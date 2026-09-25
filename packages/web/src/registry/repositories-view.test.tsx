@@ -75,13 +75,13 @@ describe("Repositories", () => {
     ).toEqual(["Repository", "Folder path", "Status", "Actions"]);
 
     expect(await rowOf("…/me/acme-web")).toHaveTextContent(
-      "…/me/acme-web/home/me/acme-web✓Ready",
+      "…/me/acme-web/home/me/acme-webReady",
     );
     expect(await rowOf("…/me/scratch")).toHaveTextContent(
-      "…/me/scratch/home/me/scratch⚠Not a Git repository",
+      "…/me/scratch/home/me/scratchNot a Git repository",
     );
     expect(await rowOf("…/me/old-site")).toHaveTextContent(
-      "…/me/old-site/home/me/old-site✕Folder missing",
+      "…/me/old-site/home/me/old-siteFolder missing",
     );
   });
 

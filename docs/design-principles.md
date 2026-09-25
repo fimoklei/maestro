@@ -36,14 +36,15 @@ for an action.
 
 ### 3. A status is a word and a shape, then a colour
 
-Every status reads without colour: a word from `CONTEXT.md` plus a glyph. Five
-families: Good ✓ green, Attention ↑/⚠ amber, Failed ✕ red, Unknown ? slate,
-Neutral slate. Neutral and Unknown share the slate badge and differ by word and
-glyph. Two readings never become two badges; the worst one wins the row
+Every status reads without colour: a badge is a word from `CONTEXT.md` plus a
+dot in its family's colour, and a mark without a visible word carries a glyph.
+Five families: Good ✓ green, Attention ↑/⚠ amber, Failed ✕ red, Unknown ?
+slate, Neutral slate. Neutral and Unknown share the slate badge and differ by
+word. Two readings never become two badges; the worst one wins the row
 and the rest go to the detail pane. Unknown is a status, never a notice.
 
 *Maestro:* a Deploy-state target with local edits and a newer release shows
-Local edits ✎ in the row; the pane lists both.
+Local edits in the row; the pane lists both.
 
 ### 4. Disclose in three steps
 

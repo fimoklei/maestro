@@ -126,13 +126,12 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    // The count gives way to a `?` badge with the reading (#994).
+    // The count gives way to an Unknown badge with the reading (#994).
     const header = await stageHeader("Pending review");
     expect(header.textContent).not.toMatch(/^Pending review \d/);
-    expect(
-      within(header).getByText("Review status unavailable"),
-    ).toBeInTheDocument();
-    expect(within(header).getByText("?")).toBeInTheDocument();
+    expect(within(header).getByText("Review status unavailable")).toHaveClass(
+      "bg-gray-3",
+    );
   });
 
   it("leaves the release summary to the tables that already say it", async () => {

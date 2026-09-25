@@ -132,15 +132,15 @@ describe("InventoryView — the table", () => {
       targets: [deployedTo(["tdd"]), deployedTo(["tdd"], [tddBehind])],
     });
 
-    expect(cellsOf("tdd").slice(4, 6)).toEqual(["↑Behind", "2"]);
-    expect(cellsOf("caveman").slice(4, 6)).toEqual(["–Not deployed", "—"]);
+    expect(cellsOf("tdd").slice(4, 6)).toEqual(["Behind", "2"]);
+    expect(cellsOf("caveman").slice(4, 6)).toEqual(["Not deployed", "—"]);
   });
 
   it("reads Up to date for a skill whose every target is clean", () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });
 
-    expect(cellsOf("tdd").slice(4, 6)).toEqual(["✓Up to date", "1"]);
+    expect(cellsOf("tdd").slice(4, 6)).toEqual(["Up to date", "1"]);
   });
 
   it("shows no status while a target's deploy-state is still being read", () => {
