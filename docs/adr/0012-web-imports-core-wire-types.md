@@ -52,7 +52,7 @@ with `import type`. Values stay forbidden.**
   reviewable by eye; several are not. At that point add a lint boundary rule
   (Biome or an ESLint import plugin) that permits `import type` from `core` and
   rejects value imports, and this ADR becomes enforced rather than agreed.
-- `.claude/rules/architecture.md` carries the instruction and stands alone: an
+- The repo's architecture rule for agents carries the instruction and stands alone: an
   agent following the rule never has to open this file. The reasoning, the
   rejected options, and the revisit trigger live only here.
 

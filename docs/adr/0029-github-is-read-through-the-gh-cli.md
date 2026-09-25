@@ -1,8 +1,8 @@
 # ADR-0029 — GitHub is read through `gh`, as a capability that degrades
 
 - **Status:** Accepted
-- **Date:** 2026-09-08 (placement decided in issue #826; measured in issue #806,
-  `docs/research/806-gh-pull-request-status.md`; recorded for the author-journey
+- **Date:** 2026-09-08 (placement decided in issue #826; measured in issue #806;
+  recorded for the author-journey
   spec #827)
 
 ## Context
@@ -56,10 +56,10 @@ that degrades instead of blocking.**
 
 - Authors who already use `gh` get review facts with no setup; authors who do
   not keep today's cockpit minus the review column.
-- `.claude/rules/gh-driver.md` carries the imperatives (`--repo`, `--state all`
+- The `gh` driver rule for agents carries the imperatives (`--repo`, `--state all`
   and `--limit` always, `[]` means none, Zod at the adapter, prompts disabled,
   bounded time, never echo output).
-- `.claude/rules/security.md` covers `gh` as the third executable and forbids
+- The security rule for agents covers `gh` as the third executable and forbids
   bridging a token to it, beside the same rule for `apm`.
 - ADR-0021 gains the stage-membership amendment; the released-only Inventory
   decisions it already carries at points 7–9 are unchanged by this record.
