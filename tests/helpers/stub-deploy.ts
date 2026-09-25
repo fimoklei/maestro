@@ -1,5 +1,3 @@
-// Shared test helper: a DeploySkill whose apm port does nothing, for tests
-// that exercise other routes but must satisfy createApp's deploy dependency.
 import {
   ConfigStore,
   DeployedLocation,
@@ -12,8 +10,6 @@ import {
   TargetOperationStore,
 } from "@maestro/core";
 
-// A Selection writer that reads nothing and writes nothing: the routes these
-// stubs serve never reach it.
 export const stubSelectionWriter = () =>
   new SelectionWriter({
     fs: {
@@ -37,8 +33,6 @@ export const stubSelectionWriter = () =>
     }),
   });
 
-// A retry use-case with no operation record to find, for tests that exercise
-// other routes but must satisfy createApp's dependency.
 export const stubRetryOperation = (deps: {
   registry: Registry;
   locks: InFlightLocks;
@@ -58,8 +52,6 @@ export const stubRetryOperation = (deps: {
 export const stubDeploy = (deps: {
   inventory: InventoryReader;
   registry: Registry;
-  // The same instance stubRemove gets: both rewrite one apm.lock.yaml, as they
-  // do in realDeps.
   locks: InFlightLocks;
 }) =>
   new DeploySkill({

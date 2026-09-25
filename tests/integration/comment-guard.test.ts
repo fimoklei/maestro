@@ -75,6 +75,18 @@ describe("comment guard", () => {
     expect(stdout).toContain("tests/c.tsx:5");
   });
 
+  it.each(["scripts/i.mjs", "scripts/i.mts", "scripts/i.d.mts", "tests/i.js"])(
+    "scans %s as well",
+    (path) => {
+      plant(path, "export const i = 1;\n// See ADR-0012.\n");
+
+      const { status, stdout } = runGuard();
+
+      expect(status).toBe(1);
+      expect(stdout).toContain(`${path}:2`);
+    },
+  );
+
   it("allows a pointer pattern in code, such as a deployed path", () => {
     plant(
       "packages/core/src/d.ts",
@@ -96,7 +108,7 @@ describe("comment guard", () => {
 
   it("ignores files outside the scanned folders and extensions", () => {
     plant("docs/research/f.ts", "// See ADR-0012.\n");
-    plant("packages/core/src/g.mjs", "// See ADR-0012.\n");
+    plant("packages/core/src/g.sh", "# See ADR-0012.\n");
     plant("packages/core/README.md", "See LEARNINGS.md.\n");
     plant("packages/core/node_modules/h/index.ts", "// See ADR-0012.\n");
 

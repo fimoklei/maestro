@@ -1,6 +1,3 @@
-// Typed contract for the cockpit's port resolver, so the integration test can
-// import it under the repo's strict TypeScript settings
-// (LEARNINGS.md · tooling/scripts-are-untypechecked-js).
 export interface CockpitPorts {
   server: number;
   web: number;

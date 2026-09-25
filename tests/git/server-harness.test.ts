@@ -1,8 +1,5 @@
-// The Harness home base's read and refresh, driven through the real Hono app
-// against a real clone and a real bare remote. The clone's origin is spelled as
-// the GitHub URL Maestro must display and redirected to the bare repo with
-// `url.<path>.insteadOf`, so the journey stays offline (LEARNINGS.md ·
-// git-config-key-channel-survives-isolation).
+// The clone's origin is the GitHub URL Maestro displays, redirected to the
+// bare repo with `url.<path>.insteadOf`, so the journey stays offline.
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -47,8 +44,7 @@ type HarnessBody = {
   freshness: { outcome: string | null; lastFetchedAt: string | null };
 };
 
-// Each case spawns a dozen git processes (clone, commit, push, fetch), which
-// outruns the 5s default on a loaded machine.
+// A dozen git processes per case outrun the 5s default on a loaded machine.
 describe("harness HTTP routes", { timeout: 30_000 }, () => {
   let base: string;
   let remote: string;
@@ -77,9 +73,8 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     await git(root, "commit", "-m", "first skill");
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
-    // A clone of an empty repo has no origin/HEAD, and released tags live in
-    // Maestro's own namespace; one adapter fetch makes it the ordinary clone
-    // an author who has opened the Harness once would already have.
+    // One adapter fetch sets origin/HEAD and Maestro's tag namespace, as for
+    // an author who opened the Harness once.
     await new HarnessGitAdapter().fetch(root);
   }, 30_000);
 
@@ -87,16 +82,13 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     await removeGitTempTree(base);
   });
 
-  // A second author's clone, so "merged by the team" is a real push and not a
-  // hand-built state.
   async function teammatePushes(message: string, tag?: string) {
     const other = join(base, "other");
     await rm(other, { recursive: true, force: true });
     await run("git", ["clone", remote, other]);
     await git(other, "config", "user.email", "mate@example.com");
     await git(other, "config", "user.name", "Mate");
-    // A skill, not a loose file: only skill content moves the Harness between
-    // released and pending release, so the teammate's push has to be one (#845).
+    // Only skill content moves the Harness to pending release (#845).
     await mkdir(join(other, ".apm", "skills", message), { recursive: true });
     await writeFile(
       join(other, ".apm", "skills", message, "SKILL.md"),
@@ -119,8 +111,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessPath,
-      // The real released read: these suites build real repositories,
-      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
       readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
@@ -129,7 +120,6 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
       registry,
       inventory,
       harness: new ReadHarnessState({
-        // Canonicalised server-side: the browser never names the harness.
         resolveRoot: async () =>
           harnessPath === undefined
             ? undefined
@@ -180,8 +170,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
   });
 
   it("names no release before a fetch of its own has confirmed one", async () => {
-    // The clone carries the author's tags, not Maestro's; calling that "no
-    // release yet" would state a fact nothing has checked (#516).
+    // The author's tags are not Maestro's; "no release yet" would be unchecked (#516).
     const app = makeApp(root);
 
     await expect(readHarness(app)).resolves.toMatchObject({
@@ -288,7 +277,6 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     expect(res.status).toBe(422);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("no-usable-origin");
-    // The whole reply, not just a sentence: nothing in it may name the path.
     expect(JSON.stringify(body)).not.toContain(base);
   });
 
@@ -304,7 +292,6 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
 
   it("plans a patch release from the team's merged skill edit", async () => {
     const app = makeApp(root);
-    // A teammate edits the one existing skill and pushes it merged.
     const other = join(base, "other");
     await run("git", ["clone", remote, other]);
     await git(other, "config", "user.email", "mate@example.com");
@@ -344,7 +331,6 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     await run("git", ["clone", remote, other]);
     await git(other, "config", "user.email", "mate@example.com");
     await git(other, "config", "user.name", "Mate");
-    // A new skill whose manifest has an empty description: advisory, not fatal.
     await mkdir(join(other, ".apm", "skills", "broken"), { recursive: true });
     await writeFile(
       join(other, ".apm", "skills", "broken", "SKILL.md"),
@@ -377,8 +363,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
   });
 
   it("catches the checkout up to the team's push, leaving unrelated local work alone", async () => {
-    // The clone fast-forwards on a refresh (#978): `wip.md` sits on a path
-    // upstream never touched, so it survives staged exactly as it was.
+    // The clone fast-forwards on a refresh (#978), so `wip.md` survives staged.
     const app = makeApp(root);
     await teammatePushes("team-change");
     await writeFile(join(root, "wip.md"), "work in progress\n", "utf8");

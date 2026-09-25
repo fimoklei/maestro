@@ -1,6 +1,5 @@
-// Scaffolding an empty GitHub repository through the real Hono routes, offline:
-// an empty bare repo with an unborn `trunk`, reached by the GitHub URL through
-// `url.<path>.insteadOf` (LEARNINGS.md · git-config-key-channel-survives-isolation).
+// Offline: an empty bare repo with an unborn `trunk`, reached by its GitHub
+// URL through `url.<path>.insteadOf`.
 import { execFile } from "node:child_process";
 import {
   mkdir,
@@ -50,8 +49,7 @@ const run = promisify(execFile);
 
 const GITHUB_URL = "https://github.com/fimoklei/team-harness";
 
-// Deliberately not `main`: the scaffold pushes what git reports as the default
-// branch, and a hardcoded `main` would pass against a `main` fixture.
+// Not `main`, so a hardcoded `main` in the scaffold cannot pass.
 const DEFAULT_BRANCH = "trunk";
 
 const CANONICAL_FILES = [
@@ -75,14 +73,12 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     (await git(cwd, ...args)).stdout.trim();
 
   beforeEach(async () => {
-    // Realpath'd: on macOS the temp dir is a symlink, and connect canonicalizes
-    // the path it stores.
+    // On macOS the temp dir is a symlink, and connect stores the real path.
     base = await realpath(await mkdtemp(join(tmpdir(), "maestro-scaffold-")));
     home = join(base, "home");
     remote = join(base, "remote.git");
     clone = join(home, "team-harness");
     await mkdir(home);
-    // Empty: no seed, no commit. This is the repository the user just created.
     await run("git", [
       "init",
       "--bare",
@@ -93,8 +89,8 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     process.env.GIT_CONFIG_COUNT = "1";
     process.env.GIT_CONFIG_KEY_0 = `url.${remote}.insteadOf`;
     process.env.GIT_CONFIG_VALUE_0 = GITHUB_URL;
-    // The adapter runs the user's own git, so the commit needs an identity the
-    // machine's config may not have. `.invalid` can never resolve (RFC 2606).
+    // The commit needs an identity the machine may lack; `.invalid` never
+    // resolves (RFC 2606).
     process.env.GIT_AUTHOR_NAME = "Fixture";
     process.env.GIT_AUTHOR_EMAIL = "fixture@example.invalid";
     process.env.GIT_COMMITTER_NAME = "Fixture";
@@ -125,12 +121,10 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
-      // The real released read: these suites build real repositories,
-      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
       readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
-    // One register, as production wires it: connect's offer is the scaffold's
-    // authority to write into the repository (#556).
+    // Connect's offer is the scaffold's authority to write (#556).
     const offers = new ScaffoldOffers();
     const connect = new ConnectInventory({
       fs,
@@ -157,7 +151,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       publish: stubPublish(),
       ...stubPromotes(),
       connect,
-      // The real adapter: this journey's whole point is the git it runs.
       scaffold: new ScaffoldHarness({
         fs,
         git: new GitHarnessScaffoldAdapter(),
@@ -189,8 +182,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       body: JSON.stringify(body),
     });
 
-  // The gate's first half: pasting the URL clones the empty repository and the
-  // refusal to connect it carries the offer.
   async function offerFor(app: ReturnType<typeof makeApp>): Promise<string> {
     const res = await post(app, "/api/inventory/connect", { path: GITHUB_URL });
     expect(res.status).toBe(422);
@@ -203,7 +194,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     const offered = await offerFor(makeApp());
 
     expect(offered).toBe(clone);
-    // An empty clone lands on the branch the remote advertised, even unborn.
     expect(await read(clone, "symbolic-ref", "HEAD")).toBe(
       `refs/heads/${DEFAULT_BRANCH}`,
     );
@@ -228,7 +218,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     expect(await readFile(join(clone, "apm.yml"), "utf8")).toContain(
       "name: team-harness",
     );
-    // The workflow says which runner it assumes, in the file (#556).
     const workflow = await readFile(
       join(clone, ".github/workflows/skill-check.yml"),
       "utf8",
@@ -251,7 +240,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
         .sort(),
     ).toEqual(CANONICAL_FILES);
 
-    // The remote holds it, on `trunk` — never a hardcoded `main`.
     expect(
       await read(remote, "rev-parse", `refs/heads/${DEFAULT_BRANCH}`),
     ).toBe(await read(clone, "rev-parse", "HEAD"));
@@ -285,7 +273,7 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
   it("sets the local origin/HEAD the empty clone never got", async () => {
     const app = makeApp();
     const offered = await offerFor(app);
-    // Absent after the clone, and the push does not write it either (#552 G3).
+    // The push does not write it either (#552).
     await expect(
       git(clone, "symbolic-ref", "refs/remotes/origin/HEAD"),
     ).rejects.toThrow();
@@ -317,13 +305,11 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     );
   });
 
-  // The refusal tells the user to fix git's identity and try again, so the
-  // clone has to be back where it started for that retry to mean anything.
+  // The clone must be back where it started for the retry to mean anything.
   it("removes a half-written scaffold when the commit fails, so a retry works", async () => {
     const app = makeApp();
     const offered = await offerFor(app);
-    // An empty ident is refused by git itself, whatever the machine's config
-    // says (measured, git 2.50.1: "fatal: empty ident name (for <>)").
+    // git refuses an empty ident whatever the config says (git 2.50.1).
     process.env.GIT_AUTHOR_NAME = "";
     process.env.GIT_AUTHOR_EMAIL = "";
     process.env.GIT_COMMITTER_NAME = "";
@@ -336,7 +322,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     for (const file of CANONICAL_FILES) {
       await expect(readFile(join(clone, file), "utf8")).rejects.toThrow();
     }
-    // Neither on disk nor claimed by the index.
     expect(await read(clone, "status", "--porcelain")).toBe("");
 
     process.env.GIT_AUTHOR_NAME = "Fixture";
@@ -350,12 +335,10 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     expect(await read(clone, "rev-list", "--count", "HEAD")).toBe("1");
   });
 
-  // The route writes, commits and pushes with the machine's own git
-  // credentials, so the path it acts on is not the client's to pick (#556).
+  // The route pushes with the machine's credentials, so the path is not
+  // the client's to pick (#556).
   it("refuses a repository the gate never offered, without touching it", async () => {
     const app = makeApp();
-    // A real clone of the same empty repository, reached without ever asking
-    // the gate about it.
     const sneaked = join(home, "sneaked");
     await run("git", ["clone", GITHUB_URL, sneaked]);
 
@@ -379,7 +362,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       error: "path-occupied",
       path: ".github",
     });
-    // Nothing written, nothing committed, nothing pushed.
     await expect(readFile(join(clone, "apm.yml"), "utf8")).rejects.toThrow();
     await expect(git(clone, "rev-parse", "HEAD")).rejects.toThrow();
   });
@@ -399,7 +381,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     expect(((await res.json()) as { error: string }).error).toBe(
       "push-rejected",
     );
-    // The work survives: one local commit, and the remote still empty.
     expect(await read(clone, "rev-list", "--count", "HEAD")).toBe("1");
     expect(await read(remote, "for-each-ref", "refs/heads")).toBe("");
   });
@@ -417,9 +398,8 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     );
   });
 
-  // `git config --get remote.origin.url` answers from the enclosing repository,
-  // so a subdirectory reads as a GitHub clone. Scaffolding one would write into
-  // it and push to a repository the user never pointed at.
+  // `remote.origin.url` answers from the enclosing repository, so a
+  // subdirectory reads as a GitHub clone.
   it("neither offers nor scaffolds a subdirectory of a repository", async () => {
     const app = makeApp();
     await offerFor(app);
@@ -431,8 +411,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       "not-an-inventory",
     );
 
-    // Refused for having no offer, one step before the scaffold's own
-    // repository check reads it (that check is covered in scaffold-harness.test.ts).
     const res = await post(app, "/api/harness/scaffold", { path: inside });
     expect(res.status).toBe(409);
     expect(((await res.json()) as { error: string }).error).toBe("not-offered");

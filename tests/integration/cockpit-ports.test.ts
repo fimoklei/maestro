@@ -32,15 +32,12 @@ describe("cockpitPortsFor", () => {
   });
 
   it("resolves a collision the same way from either worktree", () => {
-    // Both sides read the same worktree list, so neither has to be told what
-    // the other took — order of the list must not change the answer.
     expect(cockpitPortsFor(twinA, {}, [twinA, twinB])).toEqual(
       cockpitPortsFor(twinA, {}, [twinB, twinA]),
     );
   });
 
   it("leaves an uncontested worktree on its own slot", () => {
-    // A worktree added elsewhere must not shuffle a running one's ports.
     expect(cockpitPortsFor(worktree, {}, [worktree, twinA, twinB])).toEqual(
       cockpitPortsFor(worktree, {}),
     );

@@ -1,7 +1,5 @@
-// The release escape in the destination guard: a copy that no longer matches
-// the record it was installed from, but equals the chosen release in full, is
-// not local edits (#952, ADR-0006). Every other shape — an extra file, a
-// missing one, a release that cannot be read — keeps the copy protected.
+// A copy that equals the chosen release in full is not local edits (#952);
+// every other shape keeps the copy protected.
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -18,8 +16,6 @@ describe("DeployedContentAdapter, against the chosen release", () => {
   let root: string;
   let asked: { tag: string; name: string }[];
 
-  // `release` answers with the skill's files at a tag, keyed relative to the
-  // skill directory — the shape InventoryGitAdapter reads out of the clone.
   const adapter = (files: Record<string, string> | null) => {
     asked = [];
     return new DeployedContentAdapter({
@@ -42,8 +38,6 @@ describe("DeployedContentAdapter, against the chosen release", () => {
     await writeFile(abs, contents);
   };
 
-  // One claude_skill row recording what the install placed, so anything on disk
-  // that disagrees with it is drift the guard must classify.
   const writeLockfile = async (hashes: Record<string, string>) => {
     const recorded = Object.entries(hashes);
     const yaml = [
@@ -62,7 +56,6 @@ describe("DeployedContentAdapter, against the chosen release", () => {
     await writeFile(join(root, "apm.lock.yaml"), yaml, "utf8");
   };
 
-  // Both tool subtrees, because a repo deploy writes both.
   const deployEverywhere = async (files: Record<string, string>) => {
     for (const subtree of SUBTREES) {
       for (const [path, contents] of Object.entries(files)) {

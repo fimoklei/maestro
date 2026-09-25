@@ -1,16 +1,6 @@
-// The real-apm outdated canary (issue #46 / apm-driver.md): proves the driver's
-// checkOutdated and the outdated-table parser still match reality. It installs
-// the harness skill into a throwaway repo with the real apm CLI, then runs the
-// real `apm outdated` against that repo and parses it. A freshly installed
-// latest tag is up-to-date, so the check returns ok:true with an empty behind
-// set — the binary the cockpit consumes. It needs network plus auth to the
-// private agent-harness repo, so it is gated behind MAESTRO_REAL_APM=1 (the same
-// switch as apm-canary.test.ts) and stays out of the fast loop; lacking the env
-// it skips loudly rather than passing silently.
-//
-// Safety: HOME is redirected to a sandbox for every apm subprocess and the
-// install targets a throwaway repo dir, so the real ~/.apm and home are never
-// touched. apm outdated is read-only; no uninstall is ever run.
+// Needs network and auth to the private agent-harness repo, so it runs only
+// with MAESTRO_REAL_APM=1 and skips loudly otherwise (#46). HOME points at a
+// sandbox for every apm subprocess.
 import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -23,9 +13,7 @@ const run = promisify(execFile);
 
 const enabled = process.env.MAESTRO_REAL_APM === "1";
 
-// The demo Harness at its latest tag. Its skills live under the canonical
-// `.apm/skills/<name>` subpath (ADR-0021); the old root `skills/` tree was
-// dropped at v0.6.0, so asking apm for it fails validation.
+// The old root `skills/` tree was dropped at v0.6.0; asking apm for it fails.
 const HARNESS = "fimoklei/agent-harness";
 const SUBPATH = ".apm/skills";
 const SKILL = "tdd";
@@ -52,8 +40,6 @@ describe.runIf(enabled)("real apm outdated canary", () => {
     const token = tokenOut.trim();
 
     const driver = new ApmCliDriver({
-      // Merge the caller's env (checkOutdated sets COLUMNS) under the sandbox
-      // HOME and token, so neither clobbers the other.
       run: (file, args, options) =>
         run(file, args, {
           ...options,
@@ -75,9 +61,8 @@ describe.runIf(enabled)("real apm outdated canary", () => {
     expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
 
     const ref = `github.com/${HARNESS}/${SUBPATH}/${SKILL}#${tag}`;
-    // Assert the driver's own verdict, not just the side effects: the install
-    // now resolves with a result instead of throwing (#180), so an unasserted
-    // call would let a changed apm output shape pass this canary silently.
+    // The install resolves with a verdict instead of throwing (#180); without this
+    // assert a changed output shape would pass silently.
     const installed = await driver.deploySkill({
       target: { kind: "repo", repoPath: repo },
       ref,
@@ -88,8 +73,6 @@ describe.runIf(enabled)("real apm outdated canary", () => {
       kind: "repo",
       repoPath: repo,
     });
-    // A freshly installed latest tag is up-to-date: the check ran (ok:true) and
-    // nothing is behind.
     expect(result).toEqual({ ok: true, behind: [] });
   });
 });

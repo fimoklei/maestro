@@ -1,11 +1,5 @@
-// The boundary guard ADR-0012 named: web may import types from core, never
-// values. Biome's noRestrictedImports cannot tell a type import from a value
-// one (verified against its docs, 2026-07-21), so this Vitest check is the
-// build-failing rule instead — it runs in `pnpm test`, the CI gate.
-//
-// Two parts: the detector is unit-tested against string fixtures, then applied
-// to the real `packages/web/src` tree so a future value import from core fails
-// the build.
+// Web may import types from core, never values. Biome's noRestrictedImports
+// cannot tell the two apart, so this check fails the build instead.
 import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";

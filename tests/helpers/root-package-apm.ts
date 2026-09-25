@@ -1,7 +1,5 @@
-// Integration-lane support: a Selection writer over real temp roots, driven by
-// a fake apm that moves the manifest, the lockfile and the deployed files the
-// way the real one does (apm-behavior.md § Root package and its Selection).
-// Real apm stays in the canary lane (testing.md).
+// A Selection writer over real temp roots, driven by a fake apm that moves
+// the manifest, the lockfile and the deployed files the way the real one does.
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -35,8 +33,6 @@ export type RootPackageApm = Pick<
   uninstalls: { ref: string }[];
 };
 
-// Where a target's apm files live in a test's temp tree: the repo for a repo
-// target, the run's own global root for the user scope.
 export function rootPackageLocation(globalRoot: string) {
   const root = (target: DeployTarget) =>
     target.kind === "repo" ? target.repoPath : globalRoot;
@@ -49,11 +45,9 @@ export function rootPackageLocation(globalRoot: string) {
 
 export function rootPackageApm(options: {
   globalRoot: string;
-  // What the install actually places, whatever it was asked for: the
-  // half-landed install the operation record exists for.
+  // What the install actually places, whatever it was asked for.
   lands?: (skills: readonly string[]) => readonly string[];
-  // False leaves the deployed copies to the test, so a test can prove which
-  // step deleted a tree. The lockfile still records them, as apm's does.
+  // False leaves the deployed copies to the test; the lockfile still records them.
   placesFiles?: boolean;
 }): RootPackageApm {
   const location = rootPackageLocation(options.globalRoot);
@@ -65,8 +59,6 @@ export function rootPackageApm(options: {
       (tool) => tools === undefined || tools.includes(tool.apmTarget),
     ).map((tool) => tool.skillsDirPrefix);
 
-  // The files the install records, and — unless the test owns the tree — puts
-  // there. Returns their paths relative to the target's tree root.
   const placeSkills = async (
     target: DeployTarget,
     names: readonly string[],
@@ -74,8 +66,8 @@ export function rootPackageApm(options: {
   ): Promise<string[]> => {
     const tree = location.treeRoot(target);
     const files: string[] = [];
-    // Only what the previous lockfile recorded goes: apm leaves a directory it
-    // does not manage in place (apm-behavior.md § A batch install).
+    // Only what the previous lockfile recorded goes: apm leaves an unmanaged
+    // directory in place.
     const recorded = new Set(
       [
         ...(
@@ -170,8 +162,7 @@ ${skills.map((skill) => `        - ${skill}`).join("\n")}
   mcp: []
 `;
 
-// One apm_package row carrying the per-file baseline apm 0.20.0 records. A file
-// the test owns and never wrote gets no hash, rather than a made-up one.
+// A file the test never wrote gets no hash, rather than a made-up one.
 const lockfile = async (
   tree: string,
   release: string,

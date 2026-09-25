@@ -43,8 +43,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
       expect((await promote(app, "tdd")).status).toBe(200);
 
-      // New content on the same branch, and no second request opened — which
-      // is what leaves GitHub's verdict standing (#827 · user story 14).
+      // No second request opened, so GitHub's verdict stands (#827).
       expect(await branchTree("tdd")).not.toBe(first);
       expect(stages.review.created).toEqual([]);
       const state = await refresh(app);
@@ -59,8 +58,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       await promote(app, "tdd");
       const prepared = await branchTree("tdd");
       stages.review.created.length = 0;
-      // The author keeps editing after preparing. Create pull request must
-      // not carry this along (#827 · user story 19).
+      // Create pull request must not carry later edits along (#827).
       await writeSkill("tdd", "not sent yet");
 
       const response = await proposalAction(app, "create", { name: "tdd" });
@@ -107,8 +105,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     });
 
     it("refuses to reopen a merged request on a reused branch", async () => {
-      // An old merged request over this branch says nothing about the content
-      // pushed onto it since (ADR-0021, gh-driver.md).
+      // An old merged request says nothing about content pushed since.
       const app = makeApp();
       await writeSkill("tdd", "edited on disk");
       await promote(app, "tdd");
@@ -168,8 +165,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     });
 
     it("refuses a number the fresh read no longer matches to this skill", async () => {
-      // The browser's picture is a claim, never an authorisation: GitHub is
-      // re-read before anything is closed (#827).
+      // The browser's picture is a claim: GitHub is re-read before closing (#827).
       const app = makeApp();
       await writeSkill("tdd", "edited on disk");
       await promote(app, "tdd");
@@ -204,8 +200,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     });
 
     it("acts on a teammate's request over the same branch", async () => {
-      // Author identity restricts nothing: the branch and the base are what
-      // make a request this Harness's (#825).
+      // The branch and the base make a request this Harness's (#825).
       const app = makeApp();
       await writeSkill("tdd", "edited on disk");
       await promote(app, "tdd");

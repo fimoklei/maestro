@@ -1,5 +1,3 @@
-// Typed contract for the smoke readiness step, so the integration test can
-// import it under the repo's strict TypeScript settings.
 export interface WaitResult {
   ready: boolean;
   waitedMs: number;

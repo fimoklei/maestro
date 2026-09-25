@@ -1,6 +1,5 @@
-// macOS's `/usr/bin/git` is an xcrun launcher that costs ~30 ms per spawn
-// before git starts (docs/research/1093-git-lane-cost.md). Creates no
-// repository, but only this lane carries the PATH override it guards.
+// macOS's `/usr/bin/git` is an xcrun launcher costing ~30 ms per spawn.
+// Creates no repository, but only this lane carries the PATH override it guards.
 import { execFile } from "node:child_process";
 import { delimiter } from "node:path";
 import { promisify } from "node:util";

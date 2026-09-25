@@ -27,10 +27,8 @@ import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// What a user's screen shows after a removal. server-remove.test.ts asserts the
-// ref apm is handed; this asserts the row disappearing, which needs a faithful
-// apm: it rewrites the target's lockfile and deletes the file rather than
-// emptying it when the last dependency goes (docs/apm-behavior.md § Remove).
+// The row disappearing after a removal, behind a faithful fake apm that
+// deletes the lockfile when the last dependency goes.
 
 const lockfileFor = (
   names: string[],
@@ -52,8 +50,6 @@ const lockfileFor = (
     "",
   ].join("\n");
 
-// Which tools a global entry carries. The global read groups per tool from
-// these, so a skill only shows on a card whose tool has a file.
 const globalFiles = (name: string, tools: SupportedTool[]) =>
   tools.map((tool) =>
     tool === "claude"
@@ -84,11 +80,8 @@ describe("the deploy-state read after a removal", () => {
     const tools = options?.detectedTools ?? ["claude", "codex"];
     const confirms = options?.confirms ?? true;
     const registry = realRegistry(fs, join(home, "config.json"));
-    // What apm believes is installed in each scope, kept beside the lockfiles
-    // the fake rewrites.
     const state = { repo: [] as string[], global: [] as string[] };
-    // HOME redirected at the sandbox throughout, so no test can read or write
-    // the real ~/.apm (.claude/rules/apm-driver.md § Danger).
+    // HOME is the sandbox, so no test touches the real ~/.apm.
     const location = new DeployedLocation({ HOME: home });
     const apmRoot = join(home, ".apm");
 
@@ -191,8 +184,7 @@ describe("the deploy-state read after a removal", () => {
 
   type App = ReturnType<typeof makeApp>["app"];
 
-  // Priced through the route's own preflight first, then removed at that price:
-  // a removal that acknowledges no cost is refused (#364).
+  // A removal that acknowledges no cost is refused (#364).
   const removeSkill = async (
     app: App,
     body: { type: string; name: string; target: unknown },
@@ -251,8 +243,7 @@ describe("the deploy-state read after a removal", () => {
   });
 
   it("reads an emptied repo as empty, never as an error", async () => {
-    // apm deletes the lockfile with its last dependency, so the read has no
-    // file to parse — that has to be an empty list, not a 4xx.
+    // No lockfile must read as an empty list, not a 4xx.
     const { app, registry, deployInRepo } = makeApp();
     await deployInRepo(["tdd"]);
     await registry.register(repo);

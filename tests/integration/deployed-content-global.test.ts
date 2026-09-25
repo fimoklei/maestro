@@ -1,16 +1,6 @@
-// The destination guard on the GLOBAL path, end-to-end against a real deployed
-// subtree under a sandbox HOME. Unlike deployed-content.test.ts (which hardcodes
-// both roots to one dir, mirroring a per-repo install), this drives the real
-// DeployedLocation that production wires into the adapter — the global split
-// where the lockfile lives under ~/.apm but the files live under HOME. apm keys
-// the global deployed_file_hashes HOME-relative (spiked against apm 0.20.0,
-// apm-driver.md #61), so the tree root must be HOME for those keys to match a
-// live sha256. If the wiring regressed (e.g. the global root flipped to ~/.apm),
-// the files would not be found there and a clean skill would misclassify — these
-// tests would go red.
-//
-// Sandbox HOME only: DeployedLocation takes an env, so the real ~/.apm and
-// ~/.claude/skills are never read.
+// Drives the real DeployedLocation: the global lockfile lives under ~/.apm but
+// its hash keys are HOME-relative (#61), so the tree root must be HOME. A root
+// flipped to ~/.apm would misclassify a clean skill and turn these red.
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -29,8 +19,6 @@ describe("DeployedContentAdapter — global target", () => {
   let home: string;
   const target: DeployTarget = { kind: "global" };
 
-  // The production composition, only with HOME pointed at the sandbox: the
-  // lockfile resolves under <home>/.apm, the deployed root to <home>.
   const adapter = () => {
     const env = { HOME: home } as NodeJS.ProcessEnv;
     return new DeployedContentAdapter({
@@ -38,15 +26,12 @@ describe("DeployedContentAdapter — global target", () => {
     });
   };
 
-  // Materializes a deployed file under HOME (e.g. .claude/skills/tdd/SKILL.md).
   const writeDeployed = async (relPath: string, contents: string) => {
     const abs = join(home, relPath);
     await mkdir(join(abs, ".."), { recursive: true });
     await writeFile(abs, contents, "utf8");
   };
 
-  // Writes the global lockfile under <home>/.apm with HOME-relative hash keys,
-  // mirroring what a real `apm install -g -t claude,codex` records (#61).
   const writeGlobalLockfile = async (hashes: Record<string, string>) => {
     const lines = Object.entries(hashes).map(
       ([path, hash]) => `      ${path}: ${hash}`,
@@ -88,17 +73,13 @@ describe("DeployedContentAdapter — global target", () => {
   });
 
   it("does not refuse a single-tool redeploy over a prior two-tool lockfile", async () => {
-    // ADR-0011 / #136: a machine that once ran `-t claude,codex` globally has
-    // .agents hashes in the lockfile, but after dropping Codex only the .claude
-    // copy remains on disk. Scoping the guard to the detected tools (claude) must
-    // classify clean — the absent, untargeted .agents copy is not this deploy's
-    // drift. Unscoped, the missing .agents file would falsely read as diverged.
+    // Codex was dropped after a two-tool install (#136): the absent, untargeted
+    // .agents copy is not this deploy's drift.
     const skill = "---\nname: tdd\n---\n";
     await writeGlobalLockfile({
       ".claude/skills/tdd/SKILL.md": sha(skill),
       ".agents/skills/tdd/SKILL.md": sha(skill),
     });
-    // Only the claude copy is on disk; the .agents copy is gone (Codex removed).
     await writeDeployed(".claude/skills/tdd/SKILL.md", skill);
 
     await expect(
@@ -107,8 +88,6 @@ describe("DeployedContentAdapter — global target", () => {
   });
 
   it("still catches an edit in a targeted tool when scoped", async () => {
-    // Scoping must not blind the guard: an edited .claude copy is still drift
-    // even when the deploy targets claude only.
     const skill = "---\nname: tdd\n---\n";
     await writeGlobalLockfile({
       ".claude/skills/tdd/SKILL.md": sha(skill),
@@ -127,7 +106,6 @@ describe("DeployedContentAdapter — global target", () => {
       ".claude/skills/tdd/SKILL.md": sha(skill),
       ".agents/skills/tdd/SKILL.md": sha(skill),
     });
-    // Both copies recorded clean, but the .claude copy was edited after install.
     await writeDeployed(".claude/skills/tdd/SKILL.md", `${skill}edited\n`);
     await writeDeployed(".agents/skills/tdd/SKILL.md", skill);
 

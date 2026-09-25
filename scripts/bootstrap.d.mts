@@ -1,6 +1,3 @@
-// Typed contract for the bootstrap checks, so the integration test can import
-// it under the repo's strict TypeScript settings
-// (LEARNINGS.md · tooling/scripts-are-untypechecked-js).
 export interface Gap {
   tool: string;
   /** The exact command (or link) that closes this gap. */

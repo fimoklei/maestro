@@ -12,11 +12,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 
-// Integration lane: the whole chain behind ADR-0027, against real git objects.
-// A release moves the latest tag for every deployed skill at once, so the
-// content reading is what separates the one that changed from the ones that
-// did not. The remote is a bare repo on disk, reached through an insteadOf
-// rewrite — the configured origin URL stays the github.com one apm pins to.
+// A release moves the latest tag for every skill at once; only the
+// content reading separates the one that changed.
 const run = promisify(execFile);
 
 const ORIGIN_URL = "https://github.com/fimoklei/harness.git";
@@ -62,8 +59,7 @@ describe("the content reading beside apm's Behind", () => {
     await git(remote, ["init", "--bare", "--initial-branch=main", "."]);
     await git(harness, ["init", "--initial-branch=main", "."]);
     await git(harness, ["remote", "add", "origin", ORIGIN_URL]);
-    // The rewrite is transport only: `remote.origin.url` still reads as the
-    // github.com repository the lockfile pins to.
+    // The rewrite is transport only: `remote.origin.url` still reads github.com.
     await git(harness, ["config", `url.${remote}.insteadOf`, ORIGIN_URL]);
 
     await writeSkill(harness, "workflow-commit", "commit v1\n");
@@ -78,8 +74,6 @@ describe("the content reading beside apm's Behind", () => {
     await git(harness, ["tag", "v0.3.0"]);
 
     await git(harness, ["push", "origin", "main", "--tags"]);
-    // Both releases exist only on the remote from here on, so the reading has
-    // to come from what the join's own fetch brings in.
     await git(harness, ["tag", "-d", "v0.2.0"]);
     await git(harness, ["tag", "-d", "v0.3.0"]);
 

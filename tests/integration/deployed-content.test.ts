@@ -1,8 +1,5 @@
-// The destination content-drift guard, against a real deployed subtree on disk:
-// does the deployed copy still match the per-file sha256 apm recorded in the
-// lockfile's deployed_file_hashes? A deploy runs `-t claude,codex`, so BOTH the
-// .claude and .agents copies are overwritten — the guard must check both.
-// (Mechanism spiked in .claude/rules/apm-driver.md; refuse-only in DeploySkill.)
+// A deploy runs `-t claude,codex`, so the guard must check both the .claude
+// and .agents copies against the lockfile's deployed_file_hashes.
 import { createHash } from "node:crypto";
 import {
   chmod,
@@ -23,9 +20,6 @@ const sha = (contents: Buffer | string) =>
 describe("DeployedContentAdapter", () => {
   let root: string;
 
-  // Resolves both roots to the temp dir: the lockfile sits at <root>/apm.lock.yaml
-  // and deployed_file_hashes keys are relative to <root>, matching a per-repo
-  // install. The global path differs only in these two resolvers.
   const adapter = () =>
     new DeployedContentAdapter({
       location: {
@@ -40,8 +34,6 @@ describe("DeployedContentAdapter", () => {
     await writeFile(abs, contents);
   };
 
-  // Writes a lockfile with one tag-pinned claude_skill entry carrying the given
-  // deployed_file_hashes (path -> sha256), mirroring apm 0.20.0's shape.
   const writeLockfile = async (
     name: string,
     hashes: Record<string, string>,
@@ -81,9 +73,7 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("reports lockfile-malformed for a present but non-YAML lockfile", async () => {
-    // A present lockfile that does not parse must surface as a distinct error,
-    // never as the empty-disk "not-deployed" shortcut — an unreadable lockfile
-    // can never stand in for "nothing is deployed" and let a deploy proceed (#58).
+    // An unreadable lockfile must never stand in for "nothing is deployed" (#58).
     await writeFile(
       join(root, "apm.lock.yaml"),
       "dependencies: [unterminated\n",
@@ -99,10 +89,6 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("reports lockfile-malformed for a present lockfile of the wrong shape", async () => {
-    // Valid YAML, but dependencies is not the expected array of entries. With a
-    // deployed copy on disk this used to swallow to "unverifiable"; a malformed
-    // lockfile is its own visible refusal, distinct from a verifiable-but-legacy
-    // copy (#58).
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed\n");
     await writeFile(
       join(root, "apm.lock.yaml"),
@@ -119,8 +105,8 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("reports lockfile-malformed when this skill's own entry cannot be read", async () => {
-    // The view now skips an uninterpretable entry (#357), but the guard must not
-    // read that skip as "nothing deployed" for the very skill it hides (#58).
+    // The view skips an uninterpretable entry (#357); the guard must not read
+    // that skip as "nothing deployed" (#58).
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed\n");
     await writeFile(
       join(root, "apm.lock.yaml"),
@@ -164,9 +150,6 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("reports unverifiable for a legacy entry with no recorded hashes", async () => {
-    // A pre-0.20.0 install records the entry but no deployed_file_hashes, so the
-    // deployed copy could hold edits we cannot detect. Distinct from a true
-    // first deploy: refuse rather than silently overwrite (#56).
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
     await writeFile(
       join(root, "apm.lock.yaml"),
@@ -189,10 +172,7 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("reports unverifiable when deployed files exist with no lockfile entry", async () => {
-    // No entry at all, but a deployed copy sits on disk (manually copied, stale
-    // or deleted lockfile, an install never recorded for this target). The
-    // deploy would overwrite it, so refuse rather than treat it as a clean first
-    // install — there is no baseline to verify it against (#56).
+    // No baseline to verify a copy on disk against: refuse (#56).
     await writeDeployed(".claude/skills/tdd/SKILL.md", "manually placed\n");
 
     await expect(
@@ -214,11 +194,8 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("reports not-deployed when the deployed copy was fully deleted", async () => {
-    // The lockfile still records hashes, but every deployed file is gone (the
-    // user deleted .claude/skills/<name>). Nothing sits on disk to overwrite, so
-    // a re-deploy restores it — this is a first deploy, not a divergence to
-    // refuse. Treating it as diverged was a factually-wrong "local edits"
-    // refusal that blocked the very re-deploy that fixes it (ADR-0006, #65).
+    // Every recorded file is gone, so a re-deploy restores it: a first deploy,
+    // not a divergence (#65).
     await writeLockfile("tdd", {
       ".claude/skills/tdd/SKILL.md": sha("body\n"),
       ".agents/skills/tdd/SKILL.md": sha("body\n"),
@@ -233,10 +210,8 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("diverges when only some recorded files were deleted (partial)", async () => {
-    // One of two recorded files is gone, one remains. This is not an empty
-    // target — a surviving file may carry a local edit a deploy would silently
-    // reset, so it must route to the refuse/confirm path, not auto-proceed.
-    // "Nothing to lose" applies only to a fully-empty target (ADR-0006, #65).
+    // A surviving file may carry a local edit; only a fully empty target has
+    // nothing to lose (#65).
     const body = "body\n";
     await writeDeployed(".claude/skills/tdd/SKILL.md", body);
     await writeLockfile("tdd", {
@@ -253,10 +228,6 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("reports unreadable when a deploy subtree is a file, not a directory", async () => {
-    // A regular file sits where .claude/skills/<name> should be a directory, so
-    // readdir fails ENOTDIR. That is not "missing" — the destination cannot be
-    // read, so we cannot prove it safe to overwrite. Refuse rather than swallow
-    // it to empty and let the deploy proceed (the silent-overwrite #59 closes).
     await writeDeployed(".claude/skills/tdd", "a file, not a directory\n");
 
     await expect(
@@ -267,15 +238,11 @@ describe("DeployedContentAdapter", () => {
     ).resolves.toBe("unreadable");
   });
 
-  // chmod 000 has no effect when the process runs as root (CI sometimes does),
-  // so a read still succeeds there — skip rather than assert a false negative.
+  // chmod 000 has no effect when the process runs as root (CI sometimes does).
   const runsAsRoot = process.getuid?.() === 0;
   it.skipIf(runsAsRoot)(
     "reports unreadable when a deployed file cannot be read mid-walk",
     async () => {
-      // The directory walks fine but a file inside it is unreadable (EACCES). A
-      // read failure mid-walk is an unreadable destination, not absence: refuse,
-      // never miscategorise it as a generic apm execution failure (#59).
       const body = "body\n";
       await writeDeployed(".claude/skills/tdd/SKILL.md", body);
       await writeLockfile("tdd", { ".claude/skills/tdd/SKILL.md": sha(body) });
@@ -340,8 +307,6 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("is clean when both the .claude and .agents copies match", async () => {
-    // A deploy runs -t claude,codex, so a two-tool install records and overwrites
-    // both copies. Both clean -> nothing to lose -> clean (J07).
     const body = "---\nname: tdd\n---\nbody\n";
     await writeDeployed(".claude/skills/tdd/SKILL.md", body);
     await writeDeployed(".agents/skills/tdd/SKILL.md", body);
@@ -359,8 +324,6 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("diverges when the codex .agents copy is edited but .claude is clean", async () => {
-    // The guard must cover BOTH copies the deploy overwrites: editing only the
-    // .agents copy is still data a same-ref install would silently reset (#56).
     const body = "---\nname: tdd\n---\nbody\n";
     await writeDeployed(".claude/skills/tdd/SKILL.md", body);
     await writeDeployed(".agents/skills/tdd/SKILL.md", "edited codex copy\n");
@@ -378,10 +341,8 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("diverges on an edited .agents copy the lockfile never recorded", async () => {
-    // A prior single-tool install recorded only .claude hashes, but the deploy
-    // runs -t claude,codex and will overwrite .agents too. An edited .agents
-    // copy on disk must be caught even though no lock entry mentions it — scan
-    // the deploy targets, not just the recorded paths (#56).
+    // No lock entry mentions .agents, but the deploy overwrites it: scan the
+    // deploy targets, not just the recorded paths (#56).
     const body = "---\nname: tdd\n---\nbody\n";
     await writeDeployed(".claude/skills/tdd/SKILL.md", body);
     await writeDeployed(".agents/skills/tdd/SKILL.md", "edited codex copy\n");
@@ -398,8 +359,7 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("hashes file bytes, so a clean non-UTF-8 asset is not falsely diverged", async () => {
-    // apm records a byte-for-byte sha256; reading as utf8 would mangle a binary
-    // asset and block its deploy forever. Hash the raw bytes (#56).
+    // Reading as utf8 would mangle a binary asset and block its deploy forever.
     const bytes = Buffer.from([0xff, 0xfe, 0x00, 0x10, 0x80]);
     await writeDeployed(".claude/skills/tdd/logo.png", bytes);
     await writeLockfile("tdd", {
@@ -415,9 +375,6 @@ describe("DeployedContentAdapter", () => {
   });
 
   it("verifies a copy apm recorded under a package type it could not manage", async () => {
-    // A hybrid entry still records the hashes of the files it placed. Reading
-    // the baseline by name keeps those files verifiable, so the corrected
-    // release is not refused as unverifiable local work (#358).
     const body = "deployed\n";
     await writeDeployed(".claude/skills/tdd/SKILL.md", body);
     await writeLockfile(
@@ -434,9 +391,8 @@ describe("DeployedContentAdapter", () => {
     ).resolves.toBe("clean");
   });
 
-  // apm refuses the install and names the path in prose Maestro never forwards
-  // (ADR-0018). The path is recomputed here from the same subtrees the deploy
-  // targets, so the notice can spell out one `rm` (#748).
+  // Maestro never forwards apm's prose, so the path is recomputed here from
+  // the deploy's subtrees and the notice can name one `rm` (#748).
   describe("linkedSkillPath", () => {
     it("names the leaf skill directory that is a symlink", async () => {
       await mkdir(join(root, "elsewhere/tdd"), { recursive: true });
@@ -466,8 +422,6 @@ describe("DeployedContentAdapter", () => {
     });
 
     it("checks only the tools this deploy targeted", async () => {
-      // A narrowed global deploy writes one subtree; a link under the other
-      // tool's directory is not what apm refused (ADR-0011, #136).
       await mkdir(join(root, "elsewhere/tdd"), { recursive: true });
       await mkdir(join(root, ".agents/skills"), { recursive: true });
       await symlink(

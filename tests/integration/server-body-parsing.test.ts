@@ -15,10 +15,8 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: pins the 400 every POST route answers to a body it cannot
-// parse. One table over all nine, so the shared parse step cannot drift a
-// route's status, error code or wording (#434). Everything behind the parse is
-// stubbed — no route is reached.
+// One table over every POST route, so the shared parse step cannot drift a
+// route's status, code or wording (#434).
 describe("POST body parsing", () => {
   const PATH_SHAPE = {
     message:
@@ -118,8 +116,7 @@ describe("POST body parsing", () => {
     });
   }
 
-  // The sentence states what did not happen; the shape it expected rides in
-  // `detail`, which is where a reader meets it (ADR-0025 §8, #681).
+  // The expected shape rides in `detail` (#681).
   it("keeps the expected shape out of every request-shape sentence", async () => {
     for (const route of routes) {
       const res = await makeApp().request(
@@ -133,8 +130,7 @@ describe("POST body parsing", () => {
     }
   });
 
-  // Setting the Harness location never clones (#995): the flag reaches the
-  // use case, which refuses a URL before any clone is attempted.
+  // Setting the Harness location never clones (#995).
   it("refuses a URL on connect when the body asks for a local clone only", async () => {
     const res = await makeApp().request(
       "/api/inventory/connect",

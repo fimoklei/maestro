@@ -28,10 +28,7 @@ import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: the bulk-remove route over the real Hono app, driving the
-// real RemoveDeployedSkill (its guards intact) once per target. Only the apm
-// driver is faked, so continue-and-harvest, the skipped refusals and the
-// reclaim-token pass-through are exercised end to end.
+// Only the apm driver is faked, so the real guards run once per target.
 const SKILL_FILE_CONTENT = "# tdd\n";
 
 describe("bulk remove HTTP route", () => {
@@ -64,17 +61,12 @@ describe("bulk remove HTTP route", () => {
     ].join("\n");
 
   function makeApp(options?: {
-    // Repo paths whose apm removal throws, so a failure row can be proven
-    // alongside successful targets.
     failRepos?: string[];
-    // Repo paths where apm ran and did not confirm — the case that leaves a
-    // disk probe to report.
+    // apm ran and did not confirm, leaving a disk probe to report.
     unprovenRepos?: string[];
-    // Repo paths whose deployed copy has no baseline to check against, so the
-    // guard has a cost to price and a receipt to require (#458).
+    // No baseline: a cost to price and a receipt to require (#458).
     unverifiableRepos?: string[];
-    // Repo paths whose deployed copy carries local edits: refused, never
-    // priced (#775).
+    // Local edits: refused, never priced (#775).
     divergedRepos?: string[];
   }) {
     const fs = new NodeFileSystem();
@@ -190,8 +182,7 @@ describe("bulk remove HTTP route", () => {
       () => false,
     );
 
-  // Each target's own preflight receipt, minted by this app: every removal runs
-  // at a cost that was priced, and the walk forwards the proof untouched (#364).
+  // Each target's own preflight receipt, forwarded untouched (#364).
   async function entriesFor(app: App, targets: DeployTarget[]) {
     const entries = [];
     for (const target of targets) {
@@ -206,8 +197,6 @@ describe("bulk remove HTTP route", () => {
     return entries;
   }
 
-  // The token a real preflight against this app would return, so the bulk run
-  // proves the actual preflight→run contract rather than a hand-built path.
   async function globalReclaimToken(app: App): Promise<string | undefined> {
     const response = await app.request("/api/deploy/remove/preflight", {
       method: "POST",
@@ -245,7 +234,6 @@ describe("bulk remove HTTP route", () => {
       refused: [],
       failed: [],
     });
-    // One apm call per target, in the order the request listed them.
     expect(removeCalls.map((call) => call.target)).toEqual([
       globalTarget,
       repoTarget(repoA),
@@ -282,15 +270,13 @@ describe("bulk remove HTTP route", () => {
     expect(report.failed).toEqual([
       { target: repoTarget(repoA), reason: "remove-failed" },
     ]);
-    // The batch reached the targets after the failure.
     expect(removeCalls).toHaveLength(3);
-    // No raw apm output (which may carry a token) leaks into the report.
     expect(JSON.stringify(report)).not.toContain("token in stderr");
   });
 
   it("puts the disk probe of an unconfirmed removal on that target's row", async () => {
-    // apm can come off a target and still fail to say so, so the row has to
-    // carry what the probe found — never a bare failure (#416, J04).
+    // apm can come off a target and fail to say so, so the row carries what
+    // the probe found (#416).
     const { app, registry } = makeApp({ unprovenRepos: [repoA] });
     await writeRepoLockfile(repoA);
     await writeRepoLockfile(repoB);
@@ -316,8 +302,7 @@ describe("bulk remove HTTP route", () => {
     ]);
   });
 
-  // Per target, both ways: the batch is the place where one target's answer
-  // could quietly speak for the next one, so it must not (#458).
+  // One target's answer must never speak for the next (#458).
   it("keeps an unproven target out of apm and still finishes the batch", async () => {
     const { app, registry, removeCalls } = makeApp({
       unverifiableRepos: [repoA],
@@ -376,8 +361,8 @@ describe("bulk remove HTTP route", () => {
     expect(removeCalls).toHaveLength(1);
   });
 
-  // No receipt lets an edited copy through: apm 0.29.0 would abort on it after
-  // deleting the rest, so the target is left alone and the batch goes on (#775).
+  // apm 0.29.0 would abort on an edited copy after deleting the rest, so
+  // the target is left alone and the batch goes on (#775).
   it("leaves a target with local edits alone and still finishes the batch", async () => {
     const { app, registry, removeCalls } = makeApp({ divergedRepos: [repoA] });
     await writeRepoLockfile(repoA);
@@ -472,8 +457,7 @@ describe("bulk remove HTTP route", () => {
     await writeGlobalLockfile();
     await writeRepoLockfile(repoA);
     await registry.register(repoA);
-    // Claude Code is undetected, so the copy it holds is a leftover apm's own
-    // uninstall never reaches (#390).
+    // The undetected tool's copy is a leftover apm's uninstall never reaches (#390).
     await writeSkillFile(".claude/skills/tdd/SKILL.md");
     const confirmedReclaimToken = await globalReclaimToken(app);
 

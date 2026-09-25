@@ -23,12 +23,11 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// The read journey for a target that follows one Harness release: real files on
-// disk decide what is deployed, and the Release head reaches the screen through
-// the HTTP edge that shape-checks it (ADR-0031, ADR-0018).
+// Real files on disk decide what is deployed; the Release head crosses the
+// HTTP edge shape-checked.
 
 // The shape apm 0.29.0 writes for a root package: no virtual_path, a
-// skill_subset beside deployed_files (fixture apm.lock.spike-941-step3d-phantom.yaml).
+// skill_subset beside deployed_files.
 const rootPackageLockfile = (
   ref: string,
   deployedFiles: string[],
@@ -169,8 +168,7 @@ describe("reading a root-package target over HTTP", () => {
     expect(body.releaseHead.changedSkills).toEqual(["tdd"]);
   });
 
-  // The Inventory's `→ N targets` counts the Selection, so the Selection has to
-  // reach it (spec story 52).
+  // The Inventory's `→ N targets` counts the Selection.
   it("carries the Selection the count speaks about", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     await seedFiles(repo, files);

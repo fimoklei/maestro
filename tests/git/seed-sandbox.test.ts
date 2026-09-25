@@ -7,8 +7,7 @@ import { join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { seededPaths, seedSandbox } from "../../scripts/seed-sandbox.mjs";
 
-// The folder chooser opens on the sandbox HOME (ADR-0032), so everything the
-// rehearsal needs is seeded under it — ADR-0010's #168 amendment.
+// The folder chooser opens on the sandbox HOME, so everything is seeded under it.
 describe("smoke sandbox seeding", () => {
   let root: string;
   let home: string;
@@ -40,15 +39,13 @@ describe("smoke sandbox seeding", () => {
     const { inventory } = seedSandbox({ home, inventorySource });
     ok(inventory);
 
-    // Connect refuses a clone without a parseable GitHub origin (ADR-0014), and
-    // the origin lives in .git — a copy without it is unusable.
+    // Connect refuses a clone without a parseable GitHub origin, which lives in .git.
     expect(existsSync(join(inventory, ".git"))).toBe(true);
     expect(existsSync(join(inventory, "README.md"))).toBe(true);
   });
 
   it("warns and keeps seeding when the inventory source is absent", () => {
-    // Same posture the harness already takes for an unauthenticated gh: the
-    // auth-free part of the rehearsal stays usable (ADR-0010).
+    // An unauthenticated gh leaves the auth-free rehearsal usable.
     const seeded = seedSandbox({
       home,
       inventorySource: join(root, "no-such-clone"),
@@ -60,8 +57,6 @@ describe("smoke sandbox seeding", () => {
   });
 
   it("warns when the inventory source is not a clone", async () => {
-    // A tree without .git carries no origin, so connect would fail with
-    // no-usable-origin at the screen. The harness says so at launch instead.
     const notAClone = join(root, "plain-tree");
     await mkdir(notAClone);
 
@@ -82,9 +77,8 @@ describe("smoke sandbox seeding", () => {
     expect(candidates.some((path) => path.includes(" "))).toBe(true);
   });
 
-  // Redirecting HOME hides the real ~/.gitconfig, so git loses the credential
-  // helper it would normally use and every fetch of the seeded clone fails
-  // auth — read back as "Read failed" on the harness strip.
+  // Redirecting HOME hides the real ~/.gitconfig and its credential helper,
+  // so every fetch of the seeded clone would fail auth.
   it("gives git a github credential under the sandbox home", () => {
     seedSandbox({ home, inventorySource, githubToken: "smoke-token" });
 
@@ -103,13 +97,11 @@ describe("smoke sandbox seeding", () => {
   });
 
   it("leaves the sandbox with no credential helper but its own", () => {
-    // Helpers accumulate, and a git install can configure one system-wide
-    // (macOS ships osxkeychain). Left in place it also gets asked to *store*
-    // the credential, and under a HOME with no keychain that prompts the user.
+    // A system-wide helper (macOS osxkeychain) would also be asked to store
+    // the credential, and prompt the user under this HOME.
     seedSandbox({ home, inventorySource, githubToken: "smoke-token" });
 
-    // Which helper *runs* is the question; `git config --get-all` still lists
-    // a reset one, because the reset is applied by the credential machinery.
+    // `git config --get-all` still lists a reset helper; which one runs is the question.
     const run = spawnSync("git", ["credential", "fill"], {
       input: "protocol=https\nhost=github.com\n\n",
       encoding: "utf8",
@@ -133,16 +125,12 @@ describe("smoke sandbox seeding", () => {
   });
 
   it("writes no credential file when no token was bridged", () => {
-    // Same posture as the rest of seeding: an unauthenticated gh degrades the
-    // rehearsal, it never fabricates a credential.
     seedSandbox({ home, inventorySource });
 
     expect(existsSync(join(home, ".git-credentials"))).toBe(false);
   });
 
-  // The readiness step (scripts/smoke-ready.mjs) needs the paths this seeding
-  // creates. It asks for them here rather than restating the directory names,
-  // so a rename cannot leave the two halves pointing at different places.
+  // Asks the seeding for its paths, so a rename cannot split the two halves.
   it("names the seeded paths the readiness step needs", () => {
     const seeded = seedSandbox({ home, inventorySource });
     const paths = seededPaths(home);

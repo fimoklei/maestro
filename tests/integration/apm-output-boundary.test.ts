@@ -1,9 +1,5 @@
-// The wire-level fence for ADR-0018: nothing from apm's stdout or stderr may
-// reach the client. Driven end to end on purpose — the driver's own unit tests
-// prove its return value is clean, but only a run through the use-case, the
-// error table and the Hono route proves nothing re-attaches the output further
-// down. The real ApmCliDriver is used, with its injected `run` standing in for
-// apm itself; everything else on the path is real.
+// Nothing from apm's stdout or stderr may reach the client. Driven end to end
+// through the real driver, use-case, error table and route; only `run` is faked.
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -36,10 +32,8 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Each shape apm's real output can carry, named so a leak reports which kind of
-// secret escaped rather than "a string was found". Synthetic by design: these
-// must never be real captures, and the test asserts absence, so nothing here
-// depends on apm's phrasing.
+// Synthetic on purpose: never real captures. Named so a leak reports which
+// kind of secret escaped.
 const LEAK_SHAPES = {
   "a GitHub token": "ghp_0000000000000000000000000000000000oops",
   "a credential embedded in a fetch URL":
@@ -52,9 +46,7 @@ const LEAK_SHAPES = {
     "GITHUB_APM_PAT=github_pat_0000000000_oops",
 };
 
-// A failing uninstall: apm exits 0 with no positive marker, which is the only
-// signal the driver reads (apm-behavior.md § Remove). Every leak shape rides
-// along on stdout and stderr, the way a real credential-bearing run would.
+// apm exits 0 with no positive marker: the only signal the driver reads.
 const poisonedApmOutput = {
   stdout: ["[*] Uninstalling 1 package...", ...Object.values(LEAK_SHAPES)].join(
     "\n",
@@ -62,10 +54,8 @@ const poisonedApmOutput = {
   stderr: Object.values(LEAK_SHAPES).join("\n"),
 };
 
-// An `apm outdated` row carrying a leak shape in one cell. Drift is the one place
-// apm-derived data is allowed through, so the fence has to run against the shape
-// of a real table, not against prose. Column order and the light bar are the
-// parser's contract (apm-behavior.md § Drift).
+// Drift is the one place apm-derived data may pass, so the fence runs against
+// a real table shape.
 const poisonedDriftTable = (cell: "package" | "current" | "latest") => {
   const cells = {
     package: "owner/repo/skills/tdd",
@@ -97,8 +87,7 @@ describe("apm output never reaches the client", () => {
     }
   });
 
-  // `rejects` covers the other half of the driver's read: a non-zero exit
-  // arrives as a rejection whose error object carries the same two streams.
+  // A non-zero exit arrives as a rejection carrying the same two streams.
   async function removeFailingWith(mode: "resolves" | "rejects") {
     const fs = new NodeFileSystem();
     const location = new DeployedLocation({ HOME: home });
@@ -171,8 +160,7 @@ describe("apm output never reaches the client", () => {
       name: "tdd",
       target: { kind: "repo", repoPath: repo },
     };
-    // Priced first, so the removal reaches apm rather than stopping at the
-    // unacknowledged-cost refusal (#364).
+    // Priced first, so the removal reaches apm (#364).
     const preflight = await app.request("/api/deploy/remove/preflight", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -188,14 +176,11 @@ describe("apm output never reaches the client", () => {
   }
 
   it("answers a failed removal with its code and nothing else", async () => {
-    // The sentence lives in `deploy-state/notice-copy.ts` (#684), so a reply
-    // that carries apm's own words has nowhere to hide them.
     const { status, body } = await removeFailingWith("resolves");
 
     expect(status).toBe(502);
     expect(JSON.parse(body)).toEqual({
       error: "remove-failed",
-      // The per-target probe reads the disk, never apm's output (#416).
       outcome: { scope: "repo", state: "removed" },
     });
   });
@@ -215,17 +200,14 @@ describe("apm output never reaches the client", () => {
   }
 
   it("states no exit code, so the label cannot claim apm's terms", async () => {
-    // apm exits 0 on every uninstall outcome, so `apm exited 1` would be
-    // invented on this route — the reason ADR-0018 keeps the label fixed.
+    // apm exits 0 on every uninstall outcome, so `apm exited 1` would be invented.
     const { body } = await removeFailingWith("rejects");
 
     expect(body).not.toMatch(/exit/i);
   });
 
-  // Drift is the one channel apm-derived data is allowed through: `apm outdated`
-  // has no --json, so the version pair can only come off its table (ADR-0007).
-  // That makes these two routes the boundary's real test — the shape check in
-  // `parseOutdated` is what keeps them honest, not the absence of a channel.
+  // `apm outdated` has no --json, so the version pair comes off its table: the
+  // shape check in `parseOutdated` is what keeps these routes honest.
   describe("the drift routes, where apm-derived fields are allowed through", () => {
     async function driftWith(poisoned: { stdout: string; stderr: string }) {
       const fs = new NodeFileSystem();
@@ -283,15 +265,13 @@ describe("apm output never reaches the client", () => {
         const fragment = LEAK_SHAPES["a credential embedded in a fetch URL"];
         expect(perRepo).not.toContain(fragment);
         expect(global).not.toContain(fragment);
-        // Refused, not silently emptied: an empty behind set renders as
-        // up-to-date, which would hide both the leak and the drift (J04).
+        // Refused, not emptied: an empty behind set would render as up to date.
         expect(JSON.parse(perRepo)).toEqual({ ok: false });
         expect(JSON.parse(global)).toEqual({ ok: false });
       });
     }
 
     it("still forwards a row whose three fields hold their shape", async () => {
-      // The fence must not be a blanket refusal — drift is a shipped feature.
       const { perRepo } = await driftWith({
         stdout: [
           "│ owner/repo/skills/tdd │ v0.5.0 │ v0.5.1 │ outdated │ git tags │",
@@ -306,8 +286,7 @@ describe("apm output never reaches the client", () => {
             name: "tdd",
             current: "v0.5.0",
             latest: "v0.5.1",
-            // No clone to read trees from, so the content question stays
-            // unanswered and the row falls back to Behind (ADR-0027 §4).
+            // No clone to read trees from, so the row falls back to Behind.
             reading: "behind",
           },
         ],

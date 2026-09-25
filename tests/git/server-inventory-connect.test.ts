@@ -45,9 +45,6 @@ import { stubUpdate } from "../helpers/stub-update";
 const run = promisify(execFile);
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
-// Integration lane: drives the real Hono connect endpoint via app.request,
-// backed by a real ConfigStore on a temp dir. The Origin/Host guard is disabled
-// here (its enforcement lives in server-security.test.ts).
 describe("inventory connect HTTP route", () => {
   let dir: string;
 
@@ -59,8 +56,7 @@ describe("inventory connect HTTP route", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  // Released by default: Inventory answers from the latest release, so a clone
-  // that only holds the skill on disk lists nothing (#841).
+  // Released by default: Inventory answers from the latest release (#841).
   async function makeClone(options?: GitCloneOptions): Promise<string> {
     const clone = join(dir, "agent-harness");
     await mkdir(join(clone, ".apm", "skills", "tdd"), { recursive: true });
@@ -76,8 +72,7 @@ describe("inventory connect HTTP route", () => {
 
   function makeApp() {
     const fs = new NodeFileSystem();
-    // Wired inline rather than through realRegistry: connect and the inventory
-    // reader share this store, so the test needs the instance itself.
+    // Connect and the inventory reader share this store, so the test needs it.
     const store = new ConfigStore({
       fs,
       configPath: () => join(dir, "config.json"),
@@ -90,8 +85,7 @@ describe("inventory connect HTTP route", () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
-      // The real released read: these suites build real repositories,
-      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
       readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const deployState = stubDeployState({ fs });
@@ -111,8 +105,6 @@ describe("inventory connect HTTP route", () => {
         isRepositoryRoot,
         offers: new ScaffoldOffers(),
         probeHead,
-        // No URL is connected here; the clone journey lives in
-        // connect-clone-journey.test.ts.
         homeRoot: () => dir,
         clone: { clone: async () => "clone-unavailable" },
       }),
@@ -129,8 +121,6 @@ describe("inventory connect HTTP route", () => {
     });
   }
 
-  // Durable repository state, not the response: what the connect left behind
-  // in the clone is what a later authoring step will read.
   async function readRemoteHead(clone: string): Promise<string | null> {
     return await run("git", ["-C", clone, "symbolic-ref", REMOTE_HEAD]).then(
       ({ stdout }) => stdout.trim(),
@@ -170,8 +160,6 @@ describe("inventory connect HTTP route", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({
       error: "scaffoldable",
-      // The offer carries the path so a cloned repository the user never typed
-      // can still be scaffolded.
       path: await nodeRealpath(repo),
     });
   });
@@ -195,8 +183,7 @@ describe("inventory connect HTTP route", () => {
     expect(((await res.json()) as { outcome: string }).outcome).toBe("found");
   });
 
-  // A clone git never recorded `origin/HEAD` for still knows its one remote
-  // branch, so the connect repairs the pointer instead of refusing.
+  // Without a recorded `origin/HEAD`, the one remote branch repairs it.
   it("repairs a missing origin/HEAD from the single remote branch and connects", async () => {
     const clone = await makeClone({
       defaultBranch: false,
@@ -209,8 +196,7 @@ describe("inventory connect HTTP route", () => {
     expect(await readRemoteHead(clone)).toBe("refs/remotes/origin/trunk");
   });
 
-  // A fetch that pruned the default branch leaves `origin/HEAD` pointing at a
-  // ref that is gone. It reads back as a branch name and names nothing.
+  // A pruned default branch leaves `origin/HEAD` naming nothing.
   it("rejects a dangling origin/HEAD rather than reading it as the default branch", async () => {
     const clone = await makeClone({
       defaultBranch: "main",
@@ -225,8 +211,7 @@ describe("inventory connect HTTP route", () => {
     );
   });
 
-  // A wildcard is not the same question as a wildcard into `origin/*`: mirrored
-  // somewhere else, `origin/` holds whatever an older fetch left behind.
+  // Mirrored elsewhere, `origin/` holds whatever an older fetch left.
   it("refuses to repair when the branch wildcard maps somewhere other than origin", async () => {
     const clone = await makeClone({
       defaultBranch: false,
@@ -246,8 +231,7 @@ describe("inventory connect HTTP route", () => {
     expect(await readRemoteHead(clone)).toBeNull();
   });
 
-  // `^refs/heads/x` excludes a branch from the wildcard, so the namespace is
-  // incomplete however complete the positive refspec looks.
+  // `^refs/heads/x` makes the namespace incomplete.
   it("refuses to repair when a negative refspec narrows the wildcard", async () => {
     const clone = await makeClone({
       defaultBranch: false,
@@ -268,8 +252,7 @@ describe("inventory connect HTTP route", () => {
     expect(await readRemoteHead(clone)).toBeNull();
   });
 
-  // A `--single-branch` clone holds one remote branch because it asked for
-  // one, so that branch proves nothing about which one the remote leads with.
+  // A `--single-branch` clone proves nothing about the remote's lead branch.
   it("refuses a single-branch clone rather than repairing origin/HEAD from its one branch", async () => {
     const clone = await makeClone({
       defaultBranch: false,
@@ -293,8 +276,6 @@ describe("inventory connect HTTP route", () => {
   });
 
   it("rejects a Harness whose default branch cannot be established as 422 no-default-branch", async () => {
-    // Two remote branches and no `origin/HEAD`: nothing local says which one
-    // the remote leads with, and connect refuses rather than picking.
     const clone = await makeClone({
       defaultBranch: false,
       remoteBranches: ["trunk", "release"],
@@ -366,8 +347,7 @@ describe("inventory connect HTTP route", () => {
     expect(JSON.stringify(body)).not.toContain(plain);
   });
 
-  // The picker refuses a symlinked manifest outright (#148), so connect has to
-  // agree: the manifest is a real file in the repo root or it is not a Harness.
+  // The picker refuses a symlinked manifest (#148), so connect agrees.
   it.each([
     ["dangling", "does-not-exist"],
     ["file-target", "real-manifest.yml"],
@@ -380,16 +360,14 @@ describe("inventory connect HTTP route", () => {
 
     const res = await postConnect(makeApp(), { path: linked });
 
-    // A GitHub repository, so the refusal carries the scaffold offer — which is
-    // itself the proof the symlink was never read as a manifest (#556).
+    // The scaffold offer proves the symlink was never read as a manifest (#556).
     expect(res.status).toBe(422);
     expect(((await res.json()) as { error: string }).error).toBe(
       "scaffoldable",
     );
   });
 
-  // The retired shape is not a fallback (ADR-0021 §4): a clone that would have
-  // connected before must now be refused all the way out to the HTTP edge.
+  // The retired shape is not a fallback: refused out to the HTTP edge.
   it("refuses to connect the retired root skills/ shape", async () => {
     const retired = join(dir, "old-harness");
     await mkdir(join(retired, "skills", "tdd"), { recursive: true });
@@ -427,12 +405,8 @@ describe("inventory connect HTTP route", () => {
   });
 
   it("still reports success when the persisted path connects but its release cannot be read", async () => {
-    // connect only probes apm.yml, so a release ref pointing at an object the
-    // clone does not have still passes its is-an-inventory check; the count
-    // re-read is where it fails. The path is already persisted by the time that
-    // second read runs — the response must not turn into a 500 for a state
-    // change that already succeeded (Codex review finding). The count comes
-    // back null, never 0: an unread release is not an empty one (#841).
+    // The path is already persisted when the count re-read fails, so the
+    // reply must not become a 500; the count is null, never 0 (#841).
     const clone = await makeClone();
     await writeFile(
       join(clone, ".git", "refs", "maestro", "tags", "v0.1.0"),
