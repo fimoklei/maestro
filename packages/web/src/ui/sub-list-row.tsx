@@ -16,6 +16,7 @@ export function SubListRow({
   value,
   menuLabel,
   items,
+  link = null,
 }: {
   /** Null while the reading has not answered: no status before the server. */
   mark: RowMark | null;
@@ -23,6 +24,8 @@ export function SubListRow({
   value: ReactNode;
   menuLabel: string;
   items: readonly ActionsMenuItem[];
+  /** The row's own page elsewhere, such as a GitHub link cell. */
+  link?: ReactNode;
 }) {
   return (
     <li className="group/sub flex h-row items-center gap-inline border-gray-6 border-b text-row">
@@ -31,6 +34,7 @@ export function SubListRow({
       <span className="text-gray-11">
         <MachineValue>{value}</MachineValue>
       </span>
+      {link}
       {items.length === 0 ? null : (
         <ActionsMenu
           label={menuLabel}

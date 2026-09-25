@@ -8,6 +8,7 @@ import { type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
+import { GitHubLinkCell } from "../ui/github-link-cell";
 import { Notice } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import { reading } from "../ui/status-reading";
@@ -144,9 +145,8 @@ function NameList({
   );
 }
 
-// The link text names the skill, so the destination is named in the link
-// itself (design.md). A row with no readable origin keeps the name and drops
-// the link rather than pointing at a guess.
+// GitHub's mark links each skill to its folder (#1181). A row with no readable
+// origin keeps the name and drops the link rather than pointing at a guess.
 function SkillRows({
   rows,
   inline = false,
@@ -157,19 +157,18 @@ function SkillRows({
   return (
     <ul className={listClass(inline)}>
       {rows.map((row) => (
-        <li key={row.name} className="font-mono text-row text-gray-12">
-          {row.url === null ? (
-            row.name
-          ) : (
-            <a
-              href={row.url}
-              target="_blank"
-              rel="noreferrer"
-              className="underline decoration-gray-11 decoration-dotted underline-offset-2 hover:decoration-gray-12 motion-safe:transition-colors"
-            >
-              {row.name}
-            </a>
-          )}
+        <li
+          key={row.name}
+          className="inline-flex items-center gap-1 font-mono text-row text-gray-12"
+        >
+          {row.name}
+          <GitHubLinkCell
+            page={row.url === null ? undefined : { kind: "link", url: row.url }}
+            name={row.name}
+            // A preview row is a link or nothing; it is never unknown.
+            unknownCause=""
+            focusable={true}
+          />
         </li>
       ))}
     </ul>

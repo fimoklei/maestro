@@ -9,7 +9,11 @@ import {
   updatePreviewErrorResponses,
   updateRunErrorResponses,
 } from "../error-responses";
-import { githubPageField } from "../github-page-response";
+import {
+  checkedPrimitives,
+  githubPageField,
+  releaseGitHubField,
+} from "../github-page-response";
 import { requireRegisteredRepo } from "../registered-repo-route";
 import { cardReadingFields } from "../release-head-response";
 import {
@@ -78,7 +82,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, 422);
     }
     return c.json({
-      primitives: result.primitives,
+      primitives: checkedPrimitives(result.primitives),
       skipped: result.skipped,
       // Maestro's own record, not an apm reading, so it crosses as it is.
       ...(result.pendingOperation
@@ -86,6 +90,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
         : {}),
       ...cardReadingFields(result),
       ...githubPageField(result.github),
+      ...releaseGitHubField(result.releaseGitHub),
     });
   });
 
@@ -98,9 +103,18 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
     return c.json({
       tools: result.tools.map(
-        ({ releaseHead, pinnedPerSkill, extraFiles, ...group }) => ({
+        ({
+          releaseHead,
+          pinnedPerSkill,
+          extraFiles,
+          releaseGitHub,
+          primitives,
+          ...group
+        }) => ({
           ...group,
+          primitives: checkedPrimitives(primitives),
           ...cardReadingFields({ releaseHead, pinnedPerSkill, extraFiles }),
+          ...releaseGitHubField(releaseGitHub),
         }),
       ),
       skipped: result.skipped,

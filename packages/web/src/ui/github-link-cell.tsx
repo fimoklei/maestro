@@ -14,11 +14,14 @@ export function GitHubLinkCell({
   page,
   name,
   unknownCause,
+  focusable = false,
 }: {
   page: GitHubPage | undefined;
   name: string;
   /** The hover card's sentence when the page could not be read. */
   unknownCause: string;
+  /** Outside a grid, where no ⋮ menu offers the same page to the keyboard. */
+  focusable?: boolean;
 }) {
   if (page === undefined) return null;
   if (page.kind === "unknown") {
@@ -35,10 +38,10 @@ export function GitHubLinkCell({
       href={page.url}
       target="_blank"
       rel="noreferrer"
-      tabIndex={-1}
+      tabIndex={focusable ? undefined : -1}
       aria-label={viewOnGitHub(name)}
       // 24×24, the pointer floor (WCAG 2.2 SC 2.5.8).
-      className="inline-flex size-6 items-center justify-center rounded-control text-gray-11 hover:bg-gray-4 hover:text-gray-12"
+      className="inline-flex size-6 flex-none items-center justify-center rounded-control text-gray-11 hover:bg-gray-4 hover:text-gray-12 focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
     >
       <GitHubMark />
     </a>

@@ -156,6 +156,11 @@ function realDeps(): AppDeps {
     // built further down, and the record it reads changes with every write.
     operations: { pending: (target) => retryOperation.pending(target) },
     githubPage: readGitHubPage,
+    // What a target's release and skills link to (#1181).
+    harnessPage: async () => {
+      const root = await harnessRoot();
+      return root === undefined ? null : await readGitHubPage(root);
+    },
   });
   // Runs from a scratch dir under MAESTRO_HOME, created on demand, so apm's
   // .gitignore side-effect never lands in a real repo (apm-driver.md, J07).
