@@ -1,5 +1,4 @@
-// Binds 127.0.0.1 only — never 0.0.0.0 — so the cockpit is unreachable from
-// the network (see .claude/rules/security.md).
+// Never 0.0.0.0: the cockpit must be unreachable from the network.
 export function bindConfig(env: NodeJS.ProcessEnv = process.env): {
   port: number;
   hostname: string;

@@ -1,6 +1,4 @@
-// Putting one deleted skill folder back from the clone's last local commit, and
-// nothing after it: no fetch, no branch, no push, no proposal. The recovery
-// exception to "authors edit folders outside the cockpit" (ADR-0030, #888).
+// Puts one deleted skill folder back from the last local commit: no fetch, branch or push (#888).
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
@@ -13,31 +11,14 @@ import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 export type RestoreSkillError =
   | "not-configured"
   | "invalid-skill"
-  // A working tree that is mid-rewrite, conflicted or incomplete by design
-  // answers for no author's intent, so each ambiguity arrives under its own
-  // name — the same four the deletion route refuses under (#580).
   | WorktreeAmbiguity
-  // Local HEAD moved after the confirmation read it, so the committed copy is
-  // no longer the one the author approved.
   | "head-moved"
-  // This skill has a staged edit or a staged deletion. Maestro never touches
-  // the real index, so the author unstages it first (ADR-0030). A question
-  // that could not be asked lands here too: an unread index is not a clean one.
+  // Also an index that could not be read: unread is never clean.
   | "staged-changes"
-  // The confirmed commit does not hold this skill: there is nothing to restore.
   | "not-in-commit"
-  // Something already sits at the destination — a folder, a file or a link.
-  // Read again immediately before the move, so a folder created meanwhile is
-  // kept rather than replaced.
   | "destination-exists"
-  // The skills folder does not resolve inside the Harness (security.md).
   | "destination-unsafe"
-  // The skills folder could not be read at all — it is gone, or the read
-  // failed. Absent is an answer the destination gives; unreadable is none,
-  // and an unread destination is never a free one.
   | "destination-unreadable"
-  // git could no longer resolve the subtree the commit's own trees just
-  // named. A read that broke is never proof the skill was not committed.
   | "source-unreadable"
   | "restore-in-progress"
   | "restore-failed";
@@ -54,8 +35,6 @@ export class RestoreSkill {
       CopyTreeFsPort,
       "describe" | "createStagingDir" | "movePath" | "removePath"
     >;
-    // The local half of the harness git only: this writes nothing remote, so
-    // it never fetches and never depends on GitHub answering (ADR-0029).
     git: Pick<
       HarnessGitPort,
       | "readLocalHeadCommit"
@@ -71,8 +50,7 @@ export class RestoreSkill {
     this.deps = deps;
   }
 
-  // Shares the harness-root lock the publish path takes: a restoration beside
-  // a push would answer for a working tree the other is reading.
+  // Shares the harness-root lock with the publish path.
   async execute(
     name: string,
     seenHeadCommit: string,
@@ -95,16 +73,13 @@ export class RestoreSkill {
     name: string,
     seenHeadCommit: string,
   ): Promise<RestoreSkillResult> {
-    // Asked before anything else, as the deletion route asks it: every fact
-    // below is read out of a working tree, and one of these makes the whole
-    // tree unable to answer.
+    // First: an ambiguous working tree makes every fact below unreadable.
     const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
     if (ambiguity !== null) {
       return { ok: false, error: ambiguity };
     }
 
-    // Every fact re-read at the press, never taken from the row: HEAD, the
-    // index and the folder all move while a confirmation stands open.
+    // Re-read at the press, never taken from the row.
     const head = await this.deps.git.readLocalHeadCommit(root);
     if (head === null) {
       return { ok: false, error: "restore-failed" };
@@ -118,8 +93,7 @@ export class RestoreSkill {
       return { ok: false, error: "staged-changes" };
     }
 
-    // Asked of the exact commit the confirmation named, so what is checked for
-    // and what is written can never be two different commits.
+    // The confirmed commit, so check and write read the same one.
     const committed = await this.deps.git.readSkillTrees(root, head);
     if (committed === null) {
       return { ok: false, error: "restore-failed" };
@@ -133,8 +107,7 @@ export class RestoreSkill {
       return { ok: false, error: skills.error };
     }
     const destination = join(skills, name);
-    // `describe` never follows a trailing link, so an empty folder, a file and
-    // a dangling link are all something already there.
+    // `describe` does not follow links: a dangling link counts as present.
     if ((await this.deps.copyFs.describe(destination)) !== null) {
       return { ok: false, error: "destination-exists" };
     }
@@ -142,8 +115,7 @@ export class RestoreSkill {
     return await this.writeThroughStaging(root, name, head, skills);
   }
 
-  // Built beside the destination and published with one rename, so an
-  // interrupted restoration leaves no half-written folder behind.
+  // One rename publishes it, so an interruption leaves no half-written folder.
   private async writeThroughStaging(
     root: string,
     name: string,
@@ -164,17 +136,14 @@ export class RestoreSkill {
         commit,
         staging,
       );
-      // `missing` here contradicts the commit's own trees, read a moment ago:
-      // the subtree stopped being readable, which is never a skill that was
-      // never committed.
+      // The trees just named it, so `missing` means unreadable, not uncommitted.
       if (written === "missing") {
         return { ok: false, error: "source-unreadable" };
       }
       if (written !== "written") {
         return { ok: false, error: "restore-failed" };
       }
-      // Read again as late as possible: the window between the first look and
-      // this move is where a concurrent creation lands.
+      // Read again as late as possible: a concurrent creation must be kept.
       if ((await this.deps.copyFs.describe(destination)) !== null) {
         return { ok: false, error: "destination-exists" };
       }
@@ -183,15 +152,11 @@ export class RestoreSkill {
     } catch {
       return { ok: false, error: "restore-failed" };
     } finally {
-      // Only this attempt's own directory, whatever happened above.
       await this.deps.copyFs.removePath(staging).catch(() => {});
     }
   }
 
-  // The deletion side's guard, read the other way round: the skills directory
-  // must resolve inside the harness before anything is written into it. A path
-  // that leads out and a path that cannot be read are told apart, so a missing
-  // skills folder is never reported as an unsafe one.
+  // Keeps an unreadable skills folder apart from one that resolves outside.
   private async resolveSkillsDir(
     root: string,
   ): Promise<string | { error: RestoreSkillError }> {

@@ -1,26 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ApmCliDriver } from "./apm-cli-driver";
 
-// The driver shells out via an injected `run` (promisify(execFile) in
-// production). These tests pin the command construction and output
-// classification without spawning a process: refs and flags are data passed as
-// an args array (security.md), and each apm signal is a captured fixture
-// replayed through `run` (inlined so the pure lane stays free of file I/O). Each
-// constant names its capture below; all but the 0.20.0 refusal have a full file
-// in tests/fixtures/. One test feeds synthetic output instead, and says so —
-// it guards a branch no current apm dialect reaches.
 type RunCall = { file: string; args: string[]; cwd?: string };
 
-// The closing summary line of a successful install. Named so the tests that
-// mutate it into a failure summary cannot silently no-op when the capture is
-// refreshed and the timing changes.
+// Named so a test that mutates it fails loudly when a refreshed capture changes.
 const INSTALL_OK_SUMMARY = "[*] Installed 1 APM dependency in 3.8s.";
 
-// Excerpt of a successful `apm install ... -t claude` on apm 0.26.0 (2026-07-20;
-// full capture in tests/fixtures/apm-install-ok.txt, whose clone-retry lines are
-// dropped here as they carry no signal). The positive marker `Installed 1 APM
-// dependency` is what deploySkill keys on, so success never rests on the exit
-// code alone.
+// Captured `apm install ... -t claude`, apm 0.26.0.
 const installOkOutput = [
   "[*] Created apm.yml",
   "[i] Targets set: claude (persisted to apm.yml)",
@@ -36,10 +22,7 @@ const installOkOutput = [
   INSTALL_OK_SUMMARY,
 ].join("\n");
 
-// Captured output of a same-ref re-install on apm 0.26.0 (2026-08-20; full
-// capture in tests/fixtures/apm-install-no-changes.txt). Nothing changed, so
-// apm prints its no-op summary and never the `Installed N APM dependenc`
-// marker — a success the marker check alone reads as a failure.
+// Same-ref re-install, apm 0.26.0: the no-op summary, never the `Installed` marker.
 const installNoChangesOutput = [
   "[*] Validating 1 package...",
   "[+] fimoklei/agent-harness/.apm/skills/47#v0.6.0 (already in apm.yml)",
@@ -51,10 +34,7 @@ const installNoChangesOutput = [
   "[i] No changes -- install state already up to date in 1.5s.",
 ].join("\n");
 
-// Excerpt of a batch install where one `--skill` name is not in the package,
-// apm 0.29.0 (2026-09-22; full capture in
-// tests/fixtures/apm-1039-batch-unknown-skill.txt, the long list of available
-// skills dropped). Exit 1: one failing name fails every name (#1039).
+// Batch install with one unknown `--skill` name, apm 0.29.0: exit 1 fails every name (#1039).
 const batchUnknownSkillOutput = [
   "[>] Resolving fimoklei/agent-harness...",
   "[i] Targets: claude, codex  (source: --target flag)",
@@ -67,10 +47,8 @@ const batchUnknownSkillOutput = [
   "were committed.",
 ].join("\n");
 
-// Excerpt of a batch install over a symlinked `.claude/skills/caveman`, apm
-// 0.29.0 (2026-09-22; full capture in
-// tests/fixtures/apm-1039-batch-symlink-skipped.txt). Exit 0 with the marker:
-// the link was skipped, which the output never names (#1039).
+// Batch install over a symlinked skill folder, apm 0.29.0: exit 0 with the
+// marker, and the output never names the skipped link (#1039).
 const batchSymlinkSkippedOutput = [
   "  [+] fimoklei/agent-harness #v0.6.0 @f8208f12",
   "  |-- 2 skill(s) integrated -> .agents/skills/, .claude/skills/",
@@ -80,10 +58,8 @@ const batchSymlinkSkippedOutput = [
   "[*] Installed 1 APM dependency in 2.9s.",
 ].join("\n");
 
-// Captured output of a failed `apm install` on apm 0.26.0 (2026-07-20; full
-// capture in tests/fixtures/apm-install-probes-failed.txt): every probe failed,
-// nothing written, exit 1. It carries no `Installed N APM dependency` marker and
-// none of the failure signals, so only the absent marker makes it a failure.
+// Failed install, apm 0.26.0: exit 1 with no marker and no failure signal, so
+// only the absent marker makes it a failure.
 const installProbesFailedOutput = [
   "[*] Created apm.yml",
   "[i] Targets set: claude (persisted to apm.yml)",
@@ -96,12 +72,8 @@ const installProbesFailedOutput = [
   "[i] Removed apm.yml created by the failed install.",
 ].join("\n");
 
-// Captured output of `apm view ... versions` under missing GitHub auth (exit 1),
-// faithful to tests/fixtures/apm-view-auth-failed.txt — it carries apm's two
-// fixed auth phrases (Authentication failed / No token available) AND the noise
-// the allowlist must ignore: the env-hint line and the git passthrough
-// `could not read Username`. Used both to classify auth-required and to prove
-// the passthrough noise never triggers it (see viewNonAuthNoise below).
+// `apm view ... versions` under missing auth: both fixed auth phrases plus the
+// env-hint and `could not read Username` noise the allowlist must ignore.
 const viewAuthFailedOutput = [
   "[x] Failed to list versions for 'fimoklei/agent-harness': Failed to list",
   "remote refs for fimoklei/agent-harness. Authentication failed for list refs",
@@ -116,25 +88,16 @@ const viewAuthFailedOutput = [
   "prompts disabled'",
 ].join("\n");
 
-// The same apm error stripped of the two fixed phrases: only the env hint and
-// the git passthrough line remain. These lines must never classify as auth —
-// they carry no fixed phrase (auth-only scope, #119).
+// The same error minus the two fixed phrases; must never classify as auth (#119).
 const viewNonAuthNoise = [
   "Set GITHUB_APM_PAT or GITHUB_TOKEN, or run 'gh auth login'.",
   "  stderr: 'fatal: could not read Username for 'https://github.com': terminal",
   "prompts disabled'",
 ].join("\n");
 
-// Captured stdout of an `apm install ... -g -t claude` refused because the skill
-// destination is a symlink, on apm 0.20.0 (2026-07-19). This one has no file in
-// tests/fixtures/: the 0.26.0 refresh overwrote that capture with the shape
-// below, so this constant is the only surviving record of the 0.20.0 dialect and
-// cannot be re-verified without downgrading apm. 0.26.0 no longer prints this
-// shape — see installRefusedWithoutMarkerOutput below for the current one —
-// but the trap it guards is the reason the classifier ignores the exit code: apm
-// printed the positive `Installed 1 APM dependency` marker (with an `error(s)`
-// suffix) on a failed install. Rich wraps the refusal phrase across a line
-// break, so `is a symlink` only matches after whitespace normalization.
+// apm 0.20.0 symlink refusal. No fixture file survives, and it cannot be
+// re-captured without downgrading apm. It prints the success marker on a failed
+// install: the reason the classifier ignores the exit code.
 const installSymlinkRefusedOutput = [
   "[>] Installing 1 new package...",
   "  [+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 #v0.5.1 @471c4b26",
@@ -146,14 +109,8 @@ const installSymlinkRefusedOutput = [
   "[!] Install interrupted after 3.2s.",
 ].join("\n");
 
-// The same refusal without the success marker — the shape apm 0.26.0 actually
-// prints (captured 2026-07-20 against a sandbox HOME whose
-// ~/.claude/skills/tdd was a symlink; full capture in
-// tests/fixtures/apm-install-symlink-refused.txt). 0.26.0 dropped the
-// misleading positive marker: it exits 1 with an `Installation failed` line and
-// no `Installed N APM dependenc`. Rich still wraps the refusal phrase, now
-// splitting it as `is a` / `symlink`, so whitespace normalization stays
-// load-bearing.
+// apm 0.26.0 symlink refusal: exit 1, no marker. Rich splits the phrase as
+// `is a` / `symlink`, so whitespace normalization is still needed.
 const installRefusedWithoutMarkerOutput = [
   "  [x] 1 package failed:",
   "    +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from ",
@@ -163,16 +120,12 @@ const installRefusedWithoutMarkerOutput = [
   "were committed.",
 ].join("\n");
 
-// The closing summary line of a successful uninstall. Named so the wrapping test
-// cannot silently no-op if the capture is refreshed.
+// Named so the wrapping test fails loudly if a refreshed capture changes.
 const UNINSTALL_OK_SUMMARY =
   "[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) from apm_modules/";
 
-// Captured `apm uninstall -v <ref>` on apm 0.29.0 (2026-09-04, issue #772; full
-// capture in tests/fixtures/apm-uninstall-ok.txt, whose sandbox-absolute
-// `Updated .../apm.yml` line is dropped here). The `Cleaned N stale files`
-// count is kept in shape but nothing keys on it — it counts what that run
-// deleted (apm-behavior.md § Remove).
+// Captured `apm uninstall -v <ref>`, apm 0.29.0 (#772). Nothing may key on the
+// `Cleaned N stale files` count: it counts only what that run deleted.
 const uninstallOkOutput = [
   "[>] Uninstalling 1 package(s)...",
   "[+] fimoklei/agent-harness/skills/tdd - found in apm.yml",
@@ -184,20 +137,15 @@ const uninstallOkOutput = [
   UNINSTALL_OK_SUMMARY,
 ].join("\n");
 
-// Captured `apm uninstall <ref>` against a repo the package is not in (apm
-// 0.29.0, 2026-09-04; full capture in tests/fixtures/apm-uninstall-not-found.txt).
-// Exit 1, no success marker — the shape that must never read as a removal.
+// Uninstall of a package the repo lacks, apm 0.29.0: exit 1, no success marker.
 const uninstallNotFoundOutput = [
   "[>] Uninstalling 1 package(s)...",
   "[x] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 was not found in apm.yml. Run 'apm deps list' and retry with an installed package identifier.",
   "[x] Uninstall aborted: 1 requested package(s) could not be selected. Resolve the errors above and retry; no changes were made.",
 ].join("\n");
 
-// Captured `apm uninstall -v <ref>` over a copy with one deployed file edited
-// (apm 0.29.0, 2026-09-04; full capture in
-// tests/fixtures/apm-uninstall-retained.txt). Exit 1, no success marker: apm
-// kept the edited file, deleted the other twelve, and left the package in
-// apm.yml and the lockfile (apm-behavior.md § Remove).
+// Uninstall over one edited deployed file, apm 0.29.0: exit 1, no marker; apm
+// kept the edited file, deleted the rest and left the package recorded.
 const uninstallRetainedOutput = [
   "[>] Uninstalling 1 package(s)...",
   "[+] fimoklei/agent-harness/skills/tdd - found in apm.yml",
@@ -209,8 +157,7 @@ const uninstallRetainedOutput = [
   "[x] Resolve or remove the listed files, then retry uninstall.",
 ].join("\n");
 
-// Rows from a captured `apm view ... versions` table with a deployable tag (apm
-// 0.26.0, 2026-07-20; full capture in tests/fixtures/apm-view-versions.txt).
+// Rows from a captured `apm view ... versions` table, apm 0.26.0.
 const versionsTableOutput = [
   "┃ Name   ┃ Type   ┃ Commit   ┃",
   "│ v0.5.1 │ tag    │ 471c4b26 │",
@@ -231,9 +178,7 @@ function fakeRun(stdout = "") {
   return { run, calls };
 }
 
-// A `run` that rejects the way promisify(execFile) does on a non-zero exit: the
-// error carries stdout/stderr. The driver must classify on that content without
-// ever logging it (security.md).
+// Rejects as promisify(execFile) does on a non-zero exit, output on the error.
 function rejectingRun(output: { stdout?: string; stderr?: string }) {
   const run = async () => {
     const error = Object.assign(new Error("Command failed: apm view"), {
@@ -268,8 +213,8 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("passes the whole selection as one --skill flag per name", async () => {
-    // One flag per name, in the order given: a comma list is not the grammar,
-    // and a name left out stays installed (apm-behavior.md § Root package).
+    // One flag per name: a comma list is not apm's grammar, and a name left out
+    // stays installed.
     const { run, calls } = fakeRun(installOkOutput);
     const driver = new ApmCliDriver({ run });
     const root = "github.com/fimoklei/agent-harness#v0.6.0";
@@ -323,9 +268,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("installs globally with -g from the prepared scratch cwd", async () => {
-    // A global install adds -g and runs from a neutral scratch dir, because apm
-    // appends apm_modules/ to the cwd's .gitignore even for -g — never a real
-    // repo (apm-driver.md, J07).
+    // apm appends apm_modules/ to the cwd's .gitignore even for -g.
     const { run, calls } = fakeRun(installOkOutput);
     const driver = new ApmCliDriver({
       run,
@@ -348,9 +291,6 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("fails closed on a global install with no detected tools", async () => {
-    // The driver must never default a global install to every tool: a tool-less
-    // (or misused) global call throws rather than writing the dead .agents/ tree
-    // ADR-0011 forbids. DeploySkill refuses upstream, so this is a loud backstop.
     const { run, calls } = fakeRun(installOkOutput);
     const driver = new ApmCliDriver({
       run,
@@ -364,8 +304,6 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("scopes the global -t flag to the tools passed in", async () => {
-    // ADR-0011: a global install targets only the detected tools. A Claude-only
-    // machine gets -t claude, so apm writes no dead .agents/ tree (#131).
     const { run, calls } = fakeRun(installOkOutput);
     const driver = new ApmCliDriver({
       run,
@@ -410,8 +348,6 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("ignores tools on a repo install — the repo path targets every tool", async () => {
-    // Presence scoping is the global path only (#131); a stray tools value must
-    // not narrow a repo install, which always targets every DEPLOY_TOOLS tool.
     const { run, calls } = fakeRun(installOkOutput);
     const driver = new ApmCliDriver({ run });
 
@@ -431,12 +367,8 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("fails closed on a resolved run that prints no success marker", async () => {
-    // Deliberately NOT an apm 0.26.0 shape — 0.26.0 exits 1 on every observed
-    // failure, so this output is synthetic. It pins the marker check itself,
-    // which stays as fail-closed insurance against a future dialect that
-    // resolves without installing (#119). Nothing else covers that branch: the
-    // error-count tests all supply the marker, so a refactor that trusted every
-    // resolved run would pass without this.
+    // Synthetic, not an apm shape: it pins the marker check itself, which no other
+    // test covers because they all supply the marker (#119).
     const { run } = fakeRun("[*] Created apm.yml\nNothing to install.");
     const driver = new ApmCliDriver({ run });
 
@@ -446,9 +378,6 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reports a generic failure when every probe failed", async () => {
-    // apm 0.26.0 exits 1 with no `Installed N APM dependency` marker when all
-    // probes fail and nothing is written. The message names no diagnosed cause,
-    // so it stays the generic failure rather than masquerading as one (#183).
     const { run } = rejectingRun({ stdout: installProbesFailedOutput });
     const driver = new ApmCliDriver({ run });
 
@@ -471,8 +400,8 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reads a batch that skipped a symlinked destination as a success", async () => {
-    // Why DeploySkill refuses a linked destination before the install: apm's
-    // own output cannot tell this apart from a full deploy.
+    // Why DeploySkill refuses a linked destination first: this output looks like a
+    // full deploy.
     const { run } = fakeRun(batchSymlinkSkippedOutput);
     const driver = new ApmCliDriver({ run });
 
@@ -495,9 +424,6 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reports success when apm had nothing to change", async () => {
-    // Re-installing the same ref over an unchanged copy prints the no-op
-    // summary instead of the install marker, so fail-closed alone turned every
-    // re-deploy into "The deploy could not be completed".
     const { run } = fakeRun(installNoChangesOutput);
     const driver = new ApmCliDriver({ run });
 
@@ -507,10 +433,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reports a failure when the success marker comes with an error count", async () => {
-    // apm 0.20.0 printed `Installed 1 APM dependency ... with 1 error(s)` on a
-    // refused install; 0.26.0 prints no marker at all. The marker alone would
-    // read the 0.20.0 shape as a deployed skill, so success requires the marker
-    // AND no failure signal — kept as regression insurance (#180).
+    // apm 0.20.0 printed the marker with `1 error(s)` on a refused install (#180).
     const withErrors = installOkOutput.replace(
       INSTALL_OK_SUMMARY,
       "[*] Installed 1 APM dependency in 3.8s with 1 error(s).",
@@ -524,10 +447,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reports a failure when the error count is wrapped across a line break", async () => {
-    // Rich wraps mid-sentence at the ambient terminal width, and the install
-    // path pins no COLUMNS. A summary broken as `... with 1` / `error(s).` must
-    // still read as a failure — otherwise the marker stands alone and the
-    // false-success hole this fix closes reopens at narrow widths (#180).
+    // Rich wraps at the terminal width and install pins no COLUMNS (#180).
     const wrapped = installOkOutput.replace(
       INSTALL_OK_SUMMARY,
       "[*] Installed 1 APM dependency in 3.8s with 1\nerror(s).",
@@ -541,7 +461,6 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("classifies apm's symlinked-destination refusal (0.20.0 shape)", async () => {
-    // Exit 1, marker present, phrase wrapped across a line break.
     const { run } = rejectingRun({ stdout: installSymlinkRefusedOutput });
     const driver = new ApmCliDriver({ run });
 
@@ -560,9 +479,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("does not leak raw apm output in the failure it reports", async () => {
-    // The failed-install output may carry a token-bearing URL; the reported
-    // failure carries a fixed reason and nothing else (security.md). Fed the
-    // 0.26.0 refusal shape — the one production actually meets today.
+    // The 0.26.0 refusal shape: the one production meets today.
     const tokenBearing = `${installRefusedWithoutMarkerOutput}\nhttps://x-access-token:ghp_secret@github.com`;
     const { run } = rejectingRun({ stdout: tokenBearing });
     const driver = new ApmCliDriver({ run });
@@ -580,10 +497,8 @@ describe("ApmCliDriver.removeSkill", () => {
   const ref = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
 
   it("uninstalls the ref in the repo, with no -t flag", async () => {
-    // `apm uninstall` has no -t: removal spans every tool in the consumer's
-    // apm.yml targets (apm-behavior.md § Remove). Passing one would be an error,
-    // and narrowing targets: to scope a removal orphans the other tools
-    // (ADR-0013), so the command surface is deliberately this small.
+    // `apm uninstall` has no -t, and narrowing `targets:` to scope a removal
+    // orphans the other tools.
     const { run, calls } = fakeRun(uninstallOkOutput);
     const driver = new ApmCliDriver({ run });
 
@@ -625,9 +540,6 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("fails closed when nothing was removed, though apm exits 0", async () => {
-    // Every uninstall outcome exits 0, including a package that was never
-    // installed. Without the marker this is a failure, never a clean removal
-    // (apm-behavior.md § Remove).
     const { run } = fakeRun(uninstallNotFoundOutput);
     const driver = new ApmCliDriver({ run });
 
@@ -637,8 +549,6 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("fails closed when apm kept an edited file and aborted part-way", async () => {
-    // The abort prints no success marker, and the lockfile still carries the
-    // package — so nothing here may read as a removal, whatever was deleted.
     const { run } = fakeRun(uninstallRetainedOutput);
     const driver = new ApmCliDriver({ run });
 
@@ -648,10 +558,8 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("fails closed when the marker rides along with a not-found note", async () => {
-    // apm 0.26.0's partial success printed the success marker AND a trailing
-    // not-found note; 0.29.0 aborts the whole run instead, and the guard stays
-    // fail-closed for both dialects. Both markers must be read, not just the
-    // first — otherwise a package that was never there reads as removed.
+    // apm 0.26.0 printed the marker plus a not-found note. Both must be read, or a
+    // package that was never there reads as removed.
     const partial = [
       uninstallOkOutput,
       "[!] Note: 1 package(s) were not found in apm.yml",
@@ -678,9 +586,6 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("fails closed when apm exits non-zero", async () => {
-    // Only the argument parser exits non-zero (missing PACKAGES, exit 2), and it
-    // touches nothing. A rejected run is classified from its own output, so it
-    // can never read as a removal.
     const { run } = rejectingRun({ stderr: "Missing argument 'PACKAGES...'." });
     const driver = new ApmCliDriver({ run });
 
@@ -745,8 +650,7 @@ describe("ApmCliDriver.resolveLatestTag", () => {
   });
 
   it("classifies auth-required from either auth phrase on its own", async () => {
-    // The captured failure carries both phrases at once, but each stands alone:
-    // one phrase present is the whole condition, never half of it (#119).
+    // Each phrase alone is the whole condition (#119).
     const alone = [
       "[x] Authentication failed for list refs on github.com.",
       "[x] No token available.",
@@ -764,9 +668,6 @@ describe("ApmCliDriver.resolveLatestTag", () => {
   });
 
   it("returns failed for a non-auth apm error, never auth-required", async () => {
-    // Network down, host unreachable, CLI missing — anything that is not one of
-    // apm's two auth phrases stays the generic failure (issue #119: auth-only
-    // scope).
     const { run } = rejectingRun({
       stderr: "fatal: unable to access github.com: Could not resolve host",
     });
@@ -779,10 +680,7 @@ describe("ApmCliDriver.resolveLatestTag", () => {
   });
 
   it("does not classify the git passthrough or env-hint lines as auth", async () => {
-    // The allowlist matches only apm's two fixed phrases. The env-hint line and
-    // the git `could not read Username` passthrough are noise on the same error;
-    // on their own they must stay the generic failure, or a future match on them
-    // would false-positive every ambiguous git error as auth (#119).
+    // Matching these lines would read every ambiguous git error as auth (#119).
     const { run } = rejectingRun({ stderr: viewNonAuthNoise });
     const driver = new ApmCliDriver({ run });
 

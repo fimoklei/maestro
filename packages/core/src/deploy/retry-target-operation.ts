@@ -1,7 +1,5 @@
-// The way out of an operation that never finished: run the saved release and
-// desired Selection again, under the same target lock and behind a fresh
-// local-copy check. Recovery survives a restart because the intent is on disk,
-// not in this process (ADR-0031, #951).
+// Reruns a saved operation that never finished, under the same target lock and
+// behind a fresh local-copy check (#951).
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionWriter } from "./apply-selection";
 import type { DeployedContentPort, DeployTarget } from "./deploy-skill";
@@ -9,8 +7,6 @@ import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import { type CopyVerdict, LocalCopyGuard } from "./local-copy-guard";
 import type { TargetOperation, TargetOperationKind } from "./target-operation";
 
-// What the cockpit shows beside *Retry deploy* or *Retry removal*: the
-// operation, the release it was going to, and the Selection it wanted.
 export type PendingOperation = {
   kind: TargetOperationKind;
   release: string;
@@ -26,8 +22,6 @@ export type RetryTargetOperationError =
   | "deployed-unreadable"
   | "lockfile-malformed"
   | "manifest-not-recognised"
-  // The rerun still did not reach the desired Selection; the record stays and
-  // the retry can be offered again.
   | "retry-incomplete"
   | "retry-failed";
 
@@ -36,9 +30,7 @@ export type RetryTargetOperationResult =
   | {
       ok: false;
       error: RetryTargetOperationError;
-      // Present only where consent can clear the refusal: content that changed
-      // since the interruption retires the old receipt, so a retry never
-      // reuses permission for different content (#952).
+      // Present only where consent can clear the refusal (#952).
       copyReceipt?: string;
     };
 
@@ -71,7 +63,6 @@ export class RetryTargetOperation {
       deps.copyGuard ?? new LocalCopyGuard({ content: deps.deployedContent });
   }
 
-  // A read, so the card can offer the retry without taking the write lock.
   async pending(target: DeployTarget): Promise<PendingOperation | null> {
     const record = await this.deps.selection
       .pending(await this.keyFor(target))
@@ -109,8 +100,7 @@ export class RetryTargetOperation {
     input: { target: DeployTarget; confirmedCopyReceipt?: string },
     key: string,
   ): Promise<RetryTargetOperationResult> {
-    // Swallow rather than rethrow: a raw apm message may carry a token and must
-    // never reach the transport layer (security.md).
+    // Swallow rather than rethrow: a raw apm message may carry a token.
     try {
       // Read under the lock, so a retry cannot start beside the operation it is
       // recovering from.
@@ -118,8 +108,7 @@ export class RetryTargetOperation {
       if (record === null) {
         return { ok: false, error: "nothing-to-retry" };
       }
-      // The tools the interrupted run was given, never what this machine shows
-      // now: the retry converges on the operation that was saved.
+      // The saved tools, never what this machine shows now.
       const tools = record.tools ?? undefined;
       const scope = { write: record.kind, target: input.target } as const;
       const check = await this.copyGuard.check({
@@ -171,8 +160,7 @@ export class RetryTargetOperation {
   }
 }
 
-// ADR-0014: every origin Maestro deploys from is github.com, so the record
-// keeps the owner/repo alone.
+// Every origin Maestro deploys from is github.com; the record keeps owner/repo.
 function originOf(harness: string) {
   return { host: "github.com", ownerRepo: harness };
 }

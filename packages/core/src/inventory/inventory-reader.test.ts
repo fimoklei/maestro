@@ -5,14 +5,11 @@ import type { ReleasedSkill } from "./released-skills";
 
 const INVENTORY = "/inv";
 
-// Builds the SKILL.md text a Harness skill ships: YAML frontmatter between ---
-// fences, then markdown body the reader ignores.
 function skillFile(name: string, description: string): string {
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n`;
 }
 
-// The connected path only has to exist and be a directory; the content comes
-// from the release, never from what is lying on disk under it.
+// Content comes from the release, never from what is on disk.
 const connected = () =>
   new InMemoryFileSystem({ directories: { [INVENTORY]: INVENTORY } });
 
@@ -79,8 +76,7 @@ describe("InventoryReader", () => {
     });
   });
 
-  // The directory under .apm/skills/ is the skill's identity (ADR-0003); a
-  // frontmatter name that disagrees is prose, not a second source of truth.
+  // The directory is the skill's identity; a disagreeing frontmatter name is prose.
   it("names a skill by its directory, not by its frontmatter name", async () => {
     const reader = readerOver([
       {
@@ -108,8 +104,6 @@ describe("InventoryReader", () => {
     });
   });
 
-  // The same input, rejected the same way, in validate-skill-structure.test.ts.
-  // Reading one manifest two ways would make it two manifests.
   it("skips a skill whose closing delimiter carries trailing text", async () => {
     const reader = readerOver([
       {
@@ -145,9 +139,6 @@ describe("InventoryReader", () => {
           "local-only",
           "Never released",
         ),
-        // The released skill's manifest on disk carries a newer description
-        // and is gone from the working tree in the real case; either way the
-        // release is what the reader answers with.
         [`${INVENTORY}/.apm/skills/tdd/SKILL.md`]: skillFile(
           "tdd",
           "Edited locally",

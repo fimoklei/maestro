@@ -1,7 +1,4 @@
-// Removing one skill from the Working Harness's disk, and nothing after it: no
-// branch, no commit, no push, no pull request. The road a skill takes when it
-// exists nowhere else, where proposing a deletion would have nothing to
-// propose to (#798).
+// Removes a skill that exists only on the Working Harness's disk: no commit or push (#798).
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isWithinRoot } from "../filesystem/path-containment";
@@ -13,14 +10,9 @@ import type { HarnessGitPort } from "./read-harness-state";
 export type DeleteLocalSkillError =
   | "not-configured"
   | "invalid-skill"
-  // Nothing left to remove: the folder is already off the working tree.
   | "already-gone"
-  // The skill is somewhere other than this disk — a proposal branch, a tree on
-  // origin/HEAD, or a commit on local HEAD — or the local refs gave no answer
-  // at all. One reading either way: Maestro did not see it as local only.
+  // Also where the local refs gave no answer.
   | "not-local-only"
-  // The folder does not resolve inside this Harness's skills directory, so
-  // removing it would delete something else entirely (security.md).
   | "destination-unsafe"
   | "delete-failed"
   | "delete-in-progress";
@@ -33,8 +25,6 @@ export class DeleteLocalSkill {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     fs: Pick<FileSystemPort, "realpath" | "remove">;
-    // The local half of the harness git only: this writes nothing remote, so
-    // it never fetches and never depends on GitHub answering (ADR-0029).
     git: Pick<HarnessGitPort, "readMovementTrees">;
     locks: InFlightLocks;
   };
@@ -43,8 +33,7 @@ export class DeleteLocalSkill {
     this.deps = deps;
   }
 
-  // Shares the harness-root lock the publish path takes: a removal beside a
-  // push or a release would answer for refs the other moved.
+  // Shares the harness-root lock with the publish path.
   async execute(name: string): Promise<DeleteLocalSkillResult> {
     if (!isPromotableSkillName(name)) {
       return { ok: false, error: "invalid-skill" };
@@ -61,8 +50,7 @@ export class DeleteLocalSkill {
     root: string,
     name: string,
   ): Promise<DeleteLocalSkillResult> {
-    // Re-read at the press, never taken from the row: the working tree and the
-    // local refs both move while a confirmation stands open.
+    // Re-read at the press, never taken from the row.
     const trees = await this.deps.git.readMovementTrees(root).catch(() => null);
     if (trees === null) {
       return { ok: false, error: "not-local-only" };
@@ -90,9 +78,7 @@ export class DeleteLocalSkill {
     return { ok: true, name };
   }
 
-  // The import side's guard, read the other way round: the skills directory
-  // must resolve inside the harness, and the skill's own folder inside that.
-  // A symlinked folder resolves to its target and fails the second test.
+  // A symlinked skill folder resolves to its target and fails the second test.
   private async resolveFolder(
     root: string,
     name: string,

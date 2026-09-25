@@ -1,8 +1,7 @@
 import { join } from "node:path";
 import { resolveHomeDirectory } from "../home-directory";
 
-// apm derives this from the user's home, so it is HOME-redirectable: a test or
-// smoke run never touches the real ~/.apm (apm-behavior.md § Global scope).
+// Derived from HOME, as apm does, so a test or smoke run never touches ~/.apm.
 export function resolveApmGlobalRoot(
   env: NodeJS.ProcessEnv = process.env,
 ): string {

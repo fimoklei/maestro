@@ -7,12 +7,8 @@ import type { HarnessGitPort, HarnessSkillTrees } from "./read-harness-state";
 const ROOT = "/harness";
 const FOLDER = "/harness/.apm/skills/tdd";
 
-// One promote branch: the tree under review, and the tip commit that carries
-// it.
 const onBranch = (tree: string | null) => ({ tree, commit: "branch-tip" });
 
-// A skill nobody has ever seen but this author: in the working tree and in no
-// ref at all.
 const LOCAL_ONLY: HarnessSkillTrees = {
   remote: { jobs: "remote-jobs" },
   promote: {},
@@ -20,8 +16,6 @@ const LOCAL_ONLY: HarnessSkillTrees = {
   working: { jobs: "local-jobs", tdd: "working-tdd" },
 };
 
-// Every call a deletion must never make, recorded so a test can prove the
-// absence rather than assume it.
 type Calls = { git: string[]; review: string[] };
 
 function build(overrides?: {
@@ -118,8 +112,6 @@ describe("DeleteLocalSkill", () => {
     expect(removed).toEqual([]);
   });
 
-  // One reading covers all three: whatever else holds the skill, this road is
-  // the wrong one and the row must be read again.
   it.each([
     ["a proposal branch", { promote: { tdd: onBranch("branch-tdd") } }],
     ["a tree on origin/HEAD", { remote: { tdd: "remote-tdd" } }],

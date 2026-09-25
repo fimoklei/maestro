@@ -1,15 +1,10 @@
-// Scaffolding writes, commits and pushes with whatever git credentials the
-// machine already has, so the path it acts on may not be the client's to
-// choose: only one connect has just refused and offered stands (security.md).
-//
-// In-process and unpersisted: an offer lasts as long as the server does, which
-// is the session the gate hands it out in. It is not consumed on use — a
-// scaffold that failed on git identity is retried against the same offer.
+// Scaffolding pushes with the machine's git credentials, so it may act only on
+// a path connect offered, never one the client chose. In memory, and not
+// consumed on use, so a failed scaffold can retry.
 export class ScaffoldOffers {
   private readonly offered = new Set<string>();
 
-  // The canonical path validateRepoPath resolved, which is the same path the
-  // scaffold will validate its own input down to.
+  // Takes the canonical path validateRepoPath resolved.
   offer(canonicalPath: string): void {
     this.offered.add(canonicalPath);
   }

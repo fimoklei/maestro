@@ -1,4 +1,4 @@
-// The one owner of a Selection change — see ADR-0031 § How the code follows it.
+// The one owner of a Selection change.
 import type { FileSystemPort } from "../registry/file-system";
 import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
@@ -24,15 +24,11 @@ export type SelectionWrite = {
   origin: GitOrigin;
   release: string;
   previous: readonly string[];
-  // Empty only on a removal: apm refuses `skills: []`, so an empty Selection is
-  // expressed as the named uninstall instead (apm-behavior.md § Root package).
+  // Empty means a named uninstall: apm refuses `skills: []`.
   desired: readonly string[];
   tools?: readonly SupportedTool[];
 };
 
-// "apply-incomplete" is the state the operation record exists for: apm ran and
-// what is on disk is not what was asked for, so the target keeps its unfinished
-// operation and a retry converges on it.
 type SelectionError =
   | "manifest-not-recognised"
   | "destination-symlinked"
@@ -53,9 +49,6 @@ export type ApplySelectionDeps = {
   operations: Pick<TargetOperationStore, "begin" | "clear" | "read">;
 };
 
-// The seam both write use-cases hold: one object carrying the lockfile read,
-// the unfinished-operation read and the write itself, so neither has to know
-// which ports the Selection lifecycle needs (#951).
 export class SelectionWriter {
   private readonly deps: ApplySelectionDeps & {
     operations: TargetOperationStore;
@@ -93,8 +86,7 @@ export async function applySelection(
   const manifestPath = deps.location.manifestPath(write.target);
   const before = await deps.fs.readFile(manifestPath);
   const reading = readHarnessSelection(before, write.origin.ownerRepo);
-  // Before the record and before apm: a shape Maestro will not edit stops the
-  // whole write rather than leaving a half-stated intent behind (ADR-0031).
+  // Refuse before the record and before apm, so no half-stated intent remains.
   if (reading.kind === "not-recognised") {
     return { ok: false, error: "manifest-not-recognised" };
   }
@@ -118,14 +110,13 @@ export async function applySelection(
 
   if (write.desired.length === 0) {
     const removed = await deps.apm.removeSkill({ target: write.target, ref });
-    // The exit code and the marker say nothing about disk: a blocked uninstall
-    // deletes the rest of the Selection first (apm-behavior.md § Root package).
+    // Verify disk regardless: a blocked uninstall deletes the rest of the
+    // Selection first.
     return await verify(deps, write, removed.ok ? null : "apply-failed");
   }
 
-  // `--skill` only unions with the persisted list, so the exact Selection has
-  // to be in `skills:` before the install. An absent dependency is left to apm,
-  // which creates it from the flags alone (§ Root package, ADR-0031).
+  // `--skill` only adds to the persisted list, so the exact Selection must be
+  // in `skills:` before the install. apm creates an absent dependency itself.
   if (reading.kind === "selection" && before !== null) {
     const rewritten = writeHarnessSelection(
       before,
@@ -145,8 +136,6 @@ export async function applySelection(
     ...(write.tools === undefined ? {} : { tools: write.tools }),
   });
   if (!installed.ok && installed.reason === "destination-symlinked") {
-    // apm wrote nothing, and the reader is told which link to delete; the
-    // record stays so the retry is the same one attempt.
     return { ok: false, error: "destination-symlinked" };
   }
   return await verify(deps, write, installed.ok ? null : "apply-failed");
@@ -187,8 +176,7 @@ async function matches(
   ) {
     return false;
   }
-  // The manifest is what the next install reads, so a name it still holds is an
-  // unfinished removal even when this run's files look right.
+  // The next install reads the manifest: a name it still holds is unfinished.
   const manifest = readHarnessSelection(
     await deps.fs.readFile(deps.location.manifestPath(write.target)),
     write.origin.ownerRepo,

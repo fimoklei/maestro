@@ -41,7 +41,7 @@ export async function catchUpClone(root: string): Promise<void> {
       }
     }
   } catch {
-    // Unreadable mid-way: the next read reports where the clone stands.
+    // The next read reports where the clone stands.
   }
 }
 
@@ -50,7 +50,6 @@ type Located = {
   upstream: string;
   // Local paths the fast-forward rewrites, each already equal to upstream.
   landed: string[];
-  // Of those, the ones whose index entry still matched HEAD before staging.
   unstaged: string[];
 };
 
@@ -78,7 +77,6 @@ async function locate(root: string): Promise<Located> {
     return at("diverged", upstream);
   }
 
-  // Only paths the fast-forward rewrites can lose local work (#978).
   const [moved, worktree, staged, untracked] = await Promise.all([
     list(root, ["diff", "--name-only", "--no-renames", head, upstream]),
     list(root, ["diff", "--name-only", "--no-renames"]),
@@ -119,9 +117,7 @@ async function stage(root: string, paths: string[], options = gitOptions()) {
   );
 }
 
-// The working tree snapshotted over upstream's tree in a throwaway index, so
-// nothing here stages in the author's own (#574). Equal on every path given,
-// modes and deletions included, means the change has landed.
+// Uses a throwaway index, so nothing stages in the author's own (#574).
 async function matchesUpstream(
   root: string,
   upstream: string,

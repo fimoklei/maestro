@@ -1,4 +1,3 @@
-// Split so the shape checks stay pure and testable without a filesystem.
 import { isAbsolute } from "node:path";
 import type { FileSystemPort } from "./file-system";
 

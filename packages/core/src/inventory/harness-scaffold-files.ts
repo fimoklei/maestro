@@ -1,6 +1,5 @@
-// The canonical empty Harness, written as data so one reader owns the shape.
-// apm scaffolds `apm.yml` and nothing else, and `plugin.json` belongs to the
-// plugin-author workflow — see docs/research/552-empty-repo-and-scaffold-shape.md.
+// The canonical empty Harness. apm scaffolds `apm.yml` and nothing else;
+// `plugin.json` belongs to the plugin-author workflow, not here.
 import { stringify } from "yaml";
 import {
   operatingSystemFileList,
@@ -8,8 +7,7 @@ import {
 } from "../filesystem/operating-system-files";
 import { HARNESS_MANIFEST, HARNESS_SKILLS_DIR } from "./harness-layout";
 
-// skipIfExists marks a file the scaffold offers but never overwrites: a
-// caller's own CONTRIBUTING.md wins over the canonical default (#678).
+// skipIfExists: never overwrite, a caller's own file wins (#678).
 export type ScaffoldFile = {
   path: string;
   contents: string;
@@ -19,12 +17,10 @@ export type ScaffoldFile = {
 const WORKFLOW = ".github/workflows/skill-check.yml";
 const GITIGNORE = ".gitignore";
 
-// Working-tree hashing runs `git add -A`, which honours .gitignore, so these
-// four keep an operating system's files out of every proposal (#921).
+// Keeps operating-system files out of every proposal's `git add -A` (#921).
 const GITIGNORE_CONTENTS = operatingSystemGitignore();
 
-// Every entry the scaffold brings into existence, parents included, so an
-// occupied `.github/` is refused before a single byte is written.
+// Parents included, so an occupied `.github/` is refused before any write.
 export const SCAFFOLD_ENTRIES = [
   ".apm",
   HARNESS_SKILLS_DIR,
@@ -37,8 +33,7 @@ export const SCAFFOLD_ENTRIES = [
   HARNESS_MANIFEST,
 ];
 
-// The top of every tree the scaffold creates, and so exactly what a rollback
-// removes: nothing under these existed before SCAFFOLD_ENTRIES was cleared.
+// Exactly what a rollback removes.
 export const SCAFFOLD_ROOTS = [
   ".apm",
   ".github",
@@ -63,14 +58,11 @@ export const canonicalHarnessFiles = (ownerRepo: string): ScaffoldFile[] => {
   ];
 };
 
-// A repository name is a valid YAML scalar only by accident: `true`, `null`
-// and `123` are legal GitHub names that parse as non-strings unquoted.
+// `true`, `null` and `123` are legal repo names that parse as non-strings.
 const scalar = (value: string) => stringify(value).trimEnd();
 
-// `apm init -y`'s own output, reproduced rather than shelled out to: the
-// command writes this one file and nothing else (#552 S1).
-// The git tag is the real version (#642); this field exists only because
-// APM's schema requires it — never repair it back to 1.0.0.
+// `apm init -y`'s own output. The git tag is the real version (#642); APM's
+// schema requires this field, so never repair it back to 1.0.0.
 const manifest = (repo: string) => `name: ${scalar(repo)}
 version: 0.0.0
 description: ${scalar(`APM project for ${repo}`)}
@@ -103,9 +95,7 @@ Nothing is tagged yet. \`v0.1.0\` is the first release of real skill content,
 not of this scaffold.
 `;
 
-// The settled review/release policy (fimoklei/maestro#629), written as the
-// three situations a contributor is actually in (#715, after fimoklei/harness#6)
-// because scaffold is the only place a fresh Harness gets it in writing.
+// The review and release policy (#629, #715).
 const contributing = (ownerRepo: string) => `# Contributing
 
 \`README.md\` says what this Harness is. This file says what to do, step by step.
@@ -183,8 +173,7 @@ work. The steps above say they do not. Independent review holds because the
 team agreed to it, not because GitHub enforces it.
 `;
 
-// The same three rules core applies at a ref (`validate-skill-structure.ts`),
-// restated for the runner because a workflow cannot import them.
+// Keep in step with `validate-skill-structure.ts`; a workflow cannot import it.
 const SKILL_CHECK_WORKFLOW = `# Advisory structural check over the skills this Harness publishes.
 #
 # Assumes the GitHub-hosted \`ubuntu-latest\` runner and the Python 3 with PyYAML

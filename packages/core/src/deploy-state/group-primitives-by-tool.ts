@@ -1,7 +1,5 @@
 // apm writes ONE entry per skill even for a two-tool install, listing both
-// copies in deployed_files (apm-behavior.md § Lockfile), so an entry is
-// attributed per prefix found there and to no other tool (ADR-0011). A
-// root-package entry works the same way, one row for many skills (ADR-0031).
+// copies in deployed_files, so an entry is attributed per prefix found there.
 import { DEPLOY_TOOLS, type SupportedTool } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
 import { type LockfileEntry, readPackage } from "../lockfile/lockfile";
@@ -21,12 +19,8 @@ import {
 export type ToolDeployState = {
   tool: SupportedTool;
   primitives: DeployedPrimitive[];
-  // Absent where this target follows no single release (ADR-0031).
   releaseHead?: ReleaseHead;
-  // Absent unless this tool still holds per-skill dependencies on the connected
-  // Harness (#950).
   pinnedPerSkill?: PinnedPerSkill;
-  // Absent where this tool's subtree holds no file outside the selected skills.
   extraFiles?: number;
 };
 
@@ -39,28 +33,22 @@ export async function groupPrimitivesByTool(
   detectedTools: readonly SupportedTool[],
   deps: {
     fileExists: (path: string) => Promise<boolean>;
-    // The connected Harness, or null while it is unknown (#950).
     origin?: GitOrigin | null;
   },
 ): Promise<{
   tools: ToolDeployState[];
   skipped: SkippedEntry[];
   otherOrigins: string[];
-  // The release the root-package dependency follows, when there is one.
   release?: string;
 }> {
-  // An empty group is the honest "detected but nothing deployed" state.
   const tools: ToolDeployState[] = detectedTools.map((tool) => ({
     tool,
     primitives: [],
   }));
   const skipped: SkippedEntry[] = [];
-  // A skill entry no detected tool's prefix claims is not "nothing deployed" —
-  // it is deployed by a repo this read cannot attribute, so its origin is
-  // named instead of the entry vanishing (#655).
+  // Entries no detected tool claims are named by origin, never dropped (#655).
   const otherOrigins = new Set<string>();
-  // One list per tool, so a pin decides the status of the subtree it landed in
-  // and of no other.
+  // Per tool: a pin decides the status of its own subtree only.
   const pins = new Map<SupportedTool, SkillPin[]>(
     tools.map((group) => [group.tool, []]),
   );
@@ -69,8 +57,7 @@ export async function groupPrimitivesByTool(
   for (const entry of entries) {
     const reading = readPackage(entry);
     if (reading.kind === "package") {
-      // The first root package is the Harness dependency in every shape apm
-      // writes today; a second one is a shape this read cannot attribute.
+      // Only the first root package is the Harness dependency.
       if (release !== undefined) {
         continue;
       }
@@ -102,7 +89,6 @@ export async function groupPrimitivesByTool(
       continue;
     }
     if (reading.kind !== "skill") {
-      // Parsing rejects a non-root row that names no path, so this one has it.
       skipped.push(skippedFromReading(reading, entry.virtual_path ?? ""));
       continue;
     }

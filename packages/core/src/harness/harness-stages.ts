@@ -1,5 +1,4 @@
-// The three stages of a skill's journey, with independent membership: one skill
-// may hold a row in every stage (ADR-0021 point 10).
+// Stage membership is independent: one skill may hold a row in every stage.
 import type { GitOrigin } from "../deploy/git-origin";
 import { isConcurrentlyChanged, isLocalDeletion } from "./classify-movement";
 import {
@@ -17,16 +16,12 @@ export type HarnessStage =
   | "pending-review"
   | "pending-release";
 
-// Journey order, which is also the order the cross-stage line names them in.
 const STAGE_ORDER = [
   "pending-proposal",
   "pending-review",
   "pending-release",
 ] as const satisfies readonly HarnessStage[];
 
-// One flat set, so a row carries one reading and the view maps it to a chip.
-// A deletion keeps the same code and sets `deletion`, which is what makes a
-// deletion fact per-stage rather than a relabelling of another stage's row.
 type ProposalStatus = "not-yet-proposed" | "new-local-work" | "deleted-locally";
 
 export type ReviewStatus =
@@ -43,8 +38,6 @@ export type ReleaseStatus = "added" | "changed" | "renamed" | "deleted";
 
 export type StageStatus = ProposalStatus | ReviewStatus | ReleaseStatus;
 
-// Only what a row says about its request. The rest of a request stays behind
-// the port.
 export type ReviewRequestLink = {
   number: number;
   url: string;
@@ -52,9 +45,7 @@ export type ReviewRequestLink = {
   baseBranch: string;
 };
 
-// What the local content was compared against, so the stage header can name it
-// without asserting a comparison that did not happen. `number` is null for a
-// prepared branch nobody opened a request for.
+// `number` is null for a prepared branch nobody opened a request for.
 export type ProposalComparison =
   | { kind: "proposal"; number: number | null }
   | { kind: "default-branch" };
@@ -65,33 +56,23 @@ export type HarnessStageRow = {
   status: StageStatus;
   // This stage's own deletion fact. Never read across stages.
   deletion: boolean;
-  // Every matching request the row can link to. More than one only under
-  // `multiple-pull-requests`, where picking one would be an arbitrary choice.
   requests: ReviewRequestLink[];
   reviewers: RequestedReviewer[];
   comparison: ProposalComparison | null;
-  // The other stages this skill occupies. Null where any of its memberships
-  // could not be established — an unknown must never read as "only here".
+  // Null where any membership is unknown: an unknown must never read as "only here".
   alsoIn: HarnessStage[] | null;
   concurrentChange: boolean;
-  // Pending proposal only: this skill sits in the working tree and nowhere
-  // else — no tree on origin/HEAD, none at local HEAD, and no proposal branch.
-  // A deletion here has nothing to publish, so it is made on disk (#798).
+  // Only in the working tree, so a deletion is made on disk (#798).
   localOnly: boolean;
-  // origin/HEAD's copy of this skill: the opaque token a deletion confirmation
-  // is given against (#580).
+  // The token a deletion confirmation is given against (#580).
   remoteTree: string | null;
-  // Local recovery is possible: the whole folder is absent from the working
-  // tree and local HEAD holds its tree. Read from the local trees alone, never
-  // from a remote or a review read, and never from this row's `deletion`,
-  // which a review row takes from the promote branch (ADR-0030).
+  // From the local trees alone, never from `deletion`, which a review row
+  // takes from the promote branch.
   restorable: boolean;
-  // Pending release only: the name a renamed skill moved from.
   previousName: string | null;
 };
 
-// `bound` names the limit a read filled, so the stage can say what it saw
-// rather than claim it saw everything. Null when the answer was complete.
+// `bound` is the limit a read filled; null when the answer was complete.
 export type HarnessStageRead =
   | { outcome: "read"; rows: HarnessStageRow[]; bound: number | null }
   | { outcome: "unknown" }
@@ -113,12 +94,10 @@ const RELEASE_STATUS: Record<SkillMovement["kind"], ReleaseStatus> = {
 export type StageInput = {
   origin: GitOrigin;
   defaultBranch: string | null;
-  // Null where a local ref could not be read: the two local stages are then
-  // unknown, never empty.
+  // Null makes the two local stages unknown, never empty.
   trees: HarnessSkillTrees | null;
   atMergeBase: Record<string, string> | null;
   review: HarnessReviewRead;
-  // Null where the merged delta could not be computed.
   release: SkillMovement[] | null;
 };
 
@@ -130,9 +109,6 @@ export const buildStages = (input: StageInput): HarnessStages => {
   return withCrossStage({ proposal, review, release }, input, matches);
 };
 
-// A request belongs to this Harness only when its head repository, its head
-// branch and its base branch all say so. A null head repository — deleted —
-// matches nothing.
 type SkillMatches = Map<string, ReviewRequest[]>;
 
 const matchRequests = ({
@@ -206,8 +182,7 @@ const blankRow = (
   previousName: null,
 });
 
-// `isLocalDeletion` asked of the two local places only, so the answer is the
-// same whichever stage builds the row.
+// Local places only, so every stage gives the same answer.
 const isRestorable = (trees: HarnessSkillTrees, skill: string): boolean =>
   isLocalDeletion({
     remote: null,
@@ -235,15 +210,9 @@ const releaseStage = (release: SkillMovement[] | null): HarnessStageRead => {
   };
 };
 
-// The proposal a skill currently has: its promote branch, while that branch is
-// still a proposal. A proposal ends at its merged request, so a branch whose
-// tip is the head commit of one is spent and holds no stage (ADR-0021 point
-// 11). Where no review read proves that, content equality with origin/HEAD is
-// the fallback — comparing against a merged branch nobody reopened would hide
-// the author's own work.
-// `completeRead` is the whole read's own fact, asked once by the caller: a read
-// that filled its bound proves nothing spent, the way it proves nothing absent
-// (ADR-0029 point 7).
+// A branch whose tip is a merged request's head commit is spent. Without a
+// review read proving that, content equal to origin/HEAD is the fallback.
+// A bounded (incomplete) read proves nothing spent.
 const currentProposal = (
   trees: HarnessSkillTrees,
   skill: string,
@@ -256,8 +225,7 @@ const currentProposal = (
   }
   const { tree } = branch;
   const matching = matches.get(skill) ?? [];
-  // An open request outranks everything: it is review work whatever the
-  // branch's history says.
+  // An open request outranks everything.
   if (matching.some((request) => request.state === "open")) {
     return { tree };
   }
@@ -275,7 +243,6 @@ const currentProposal = (
   return tree !== (trees.remote[skill] ?? null) ? { tree } : null;
 };
 
-// One fact about the whole review read, not about any one skill.
 const isCompleteRead = (review: HarnessReviewRead): boolean =>
   review.outcome === "read" && review.complete;
 
@@ -297,9 +264,8 @@ const proposalStage = (
       working: trees.working[skill] ?? null,
     };
     const proposal = currentProposal(trees, skill, matches, complete);
-    // Against a proposal, any difference is work the reviewer has not been
-    // sent. Against the default branch, differing from local HEAD too is what
-    // separates the author's own edit from a clone merely behind (ADR-0021).
+    // Against the default branch, also differing from local HEAD separates an
+    // own edit from a clone merely behind.
     const waiting =
       proposal === null
         ? hashes.working !== hashes.remote && hashes.working !== hashes.local
@@ -310,8 +276,7 @@ const proposalStage = (
     const open = (matches.get(skill) ?? []).filter(
       (request) => request.state === "open",
     );
-    // Several open requests leave nothing to follow: the row's sentence names
-    // that ambiguity, and linking one would be an arbitrary choice.
+    // With several open requests, linking one would be arbitrary.
     const sole = open.length === 1 ? open[0] : undefined;
     rows.push({
       ...blankRow(
@@ -334,8 +299,6 @@ const proposalStage = (
         hashes,
         atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),
       ),
-      // Every place but the working tree, asked at once: a skill missing from
-      // all three exists only on this author's disk.
       localOnly:
         hashes.remote === null && hashes.local === null && branch === undefined,
       remoteTree: hashes.remote,
@@ -345,8 +308,7 @@ const proposalStage = (
 };
 
 const openStatus = (request: ReviewRequest): ReviewStatus => {
-  // Draft wins: a draft nobody can review is the fact that decides what the
-  // author does next, whatever verdict an earlier review left behind.
+  // Draft wins over any earlier verdict.
   if (request.draft) {
     return "draft";
   }
@@ -358,7 +320,7 @@ const openStatus = (request: ReviewRequest): ReviewStatus => {
     : "waiting-for-review";
 };
 
-// The two endings a matching request can have, in the order they are read.
+// Order matters: merged is read first.
 const ENDED = [
   ["merged", "proposal-merged"],
   ["closed", "proposal-closed"],
@@ -383,9 +345,7 @@ const reviewStage = (
     const matching = matches.get(skill) ?? [];
     const open = matching.filter((request) => request.state === "open");
     const proposal = currentProposal(trees, skill, matches, complete);
-    // The branch's own deletion fact, and the disk's. They disagree whenever a
-    // deletion was proposed and the folder came back, so both travel together
-    // rather than one being read off the other.
+    // The branch's deletion fact and the disk's can disagree, so both travel.
     const local = {
       deletion: proposal !== null && proposal.tree === null,
       restorable: isRestorable(trees, skill),
@@ -408,15 +368,11 @@ const reviewStage = (
       });
       continue;
     }
-    // No open request. Only content nobody merged is still review work: a
-    // branch whose content reached origin/HEAD is over, request or not.
     if (proposal === null) {
       continue;
     }
-    // What became of the requests that are no longer open. Merged first:
-    // origin/HEAD lagging one read behind is what keeps the row here at all,
-    // and reading that as a missing request turns the normal end of a review
-    // into a warning.
+    // Merged first: origin/HEAD lagging one read behind must not read as a
+    // missing request.
     const settled = ENDED.flatMap(([state, status]) => {
       const requests = matching.filter((request) => request.state === state);
       return requests.length === 0 ? [] : [{ status, requests }];
@@ -429,8 +385,7 @@ const reviewStage = (
       });
       continue;
     }
-    // A read that filled its bound cannot prove a request absent, so it says
-    // nothing here rather than claiming one is missing (ADR-0029 point 7).
+    // A bounded read cannot prove a request absent.
     if (review.complete) {
       rows.push({
         ...blankRow("pending-review", skill, "pull-request-missing"),
@@ -445,8 +400,6 @@ const reviewStage = (
   };
 };
 
-// The cross-stage line, added once every stage is built. A skill whose review
-// membership could not be established gets null rather than a shorter list.
 const withCrossStage = (
   stages: HarnessStages,
   { review }: StageInput,
@@ -473,8 +426,7 @@ const withCrossStage = (
     return {
       ...stage,
       rows: stage.rows.map((row) => {
-        // A bounded read establishes membership only where it found a request:
-        // for every other skill, absence is exactly what it cannot prove.
+        // A bounded read proves membership only where it found a request.
         const known =
           allRead && (!bounded || (matches.get(row.skill)?.length ?? 0) > 0);
         return {

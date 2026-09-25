@@ -1,12 +1,7 @@
-// Where one skill sits, from tree hashes alone (ADR-0021).
-
-// A promote branch that carries no tree for its skill is proposing to delete
-// it, which is not the same fact as having no promote branch at all.
+// A null tree proposes a deletion, unlike having no promote branch at all.
 type PromoteBranch = { tree: string | null };
 
-// `null` is a skill absent at that ref, and compares like any other value: an
-// absent skill differs from a present one, which is what makes an addition and
-// a deletion fall out of the same two tests below.
+// `null` is a skill absent at that ref; it compares like any other value.
 export type SkillTreeHashes = {
   /** The skill's tree at `origin/HEAD` — the merged truth. */
   remote: string | null;
@@ -18,27 +13,13 @@ export type SkillTreeHashes = {
   working: string | null;
 };
 
-// A skill removed from this disk: it was tracked at local HEAD
-// and is gone from the working tree. Renames are not inferred, so a moved
-// directory is this plus a separate addition, each read on its own (#575).
+// Renames are not inferred: a moved directory is a deletion plus an addition (#575).
 export const isLocalDeletion = ({ local, working }: SkillTreeHashes): boolean =>
   local !== null && working === null;
 
-// origin/HEAD moved past what local HEAD last saw. Never the promote branch
-// too — an unmerged branch is the author's own proposal, so comparing it here
-// would relabel that review as a teammate's change.
-//
-// A tree-hash difference alone cannot tell "remote moved this skill" from
-// "local moved ahead of remote" (ADR-0021 — no ancestry from hashes).
-// `atMergeBase` is this skill's tree at the merge base of local HEAD and
-// origin/HEAD — the fork point both sides last agreed on. Remote matching it
-// means origin/HEAD never touched this skill since the fork, so any
-// difference from local is this author's own commit, never a teammate's;
-// this is scoped to the one skill, unlike a whole-repo ancestry check, so an
-// unrelated commit elsewhere on origin/HEAD never blocks this skill (#579).
-// `undefined` (the merge base itself unreadable) falls back to the plain
-// comparison — the safer side for a warning that guards against overwriting
-// someone else's work.
+// Never compares the promote branch: that is the author's own proposal.
+// Remote matching `atMergeBase` means only the author changed this skill (#579).
+// `undefined` (merge base unreadable) falls back to the plain, safer comparison.
 export const isConcurrentlyChanged = (
   { remote, local }: SkillTreeHashes,
   atMergeBase?: string | null,

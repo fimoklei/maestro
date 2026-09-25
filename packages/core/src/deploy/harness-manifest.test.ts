@@ -6,8 +6,7 @@ import {
 
 const HARNESS = "fimoklei/agent-harness";
 
-// The shape apm 0.29.0 wrote in the #957 canary, trimmed to what the editor
-// reads (fixture apm.yml.957-narrowed-with-foreign.yaml).
+// The shape apm 0.29.0 wrote in the #957 canary, trimmed to what the editor reads.
 const manifest = (body: string) => `name: proj
 version: 1.0.0
 # Which agent platforms to deploy to.

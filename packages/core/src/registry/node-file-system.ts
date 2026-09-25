@@ -1,5 +1,3 @@
-// The real-disk FileSystemPort adapter — the one place in the registry domain
-// that touches node:fs.
 import {
   lstat,
   mkdir,
@@ -14,8 +12,7 @@ import {
 import { dirname } from "node:path";
 import type { FileSystemPort, RawDirEntry } from "./file-system";
 
-// Monotonic suffix so two writes in one process never share a temp filename,
-// independent of any caller-side serialization.
+// So two writes in one process never share a temp filename.
 let writeCounter = 0;
 
 function isNotFound(error: unknown): boolean {
@@ -26,8 +23,6 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
-// A missing directory reads as empty: a missing .apm/skills/ is "no skills",
-// not a failure to read it.
 async function readdirOrEmpty<T>(op: () => Promise<T[]>): Promise<T[]> {
   try {
     return await op();
@@ -60,8 +55,8 @@ export class NodeFileSystem implements FileSystemPort {
     }
   }
 
-  // lstat, not stat: following the symlink would disclose whether a target the
-  // caller never ceiling-checked exists (ADR-0009).
+  // lstat, not stat: following the symlink would disclose whether an
+  // unchecked target exists.
   async exists(path: string): Promise<boolean> {
     try {
       await lstat(path);
@@ -108,8 +103,7 @@ export class NodeFileSystem implements FileSystemPort {
     await rename(tmp, path);
   }
 
-  // "wx" is the exclusive create: the kernel refuses an existing destination,
-  // where writeFile's closing rename would replace it.
+  // "wx": the kernel refuses an existing destination.
   async createNewFile(path: string, contents: string): Promise<boolean> {
     await mkdir(dirname(path), { recursive: true });
     try {

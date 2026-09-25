@@ -1,6 +1,5 @@
 // Reads the central inventory from the local clone's latest release, never the
-// working tree and never the network (ADR-0021 §7). A malformed SKILL.md is
-// skipped, so one bad skill cannot hide the rest.
+// working tree and never the network. A malformed SKILL.md is skipped.
 import { z } from "zod";
 import { parseGitOrigin } from "../deploy/git-origin";
 import { readFrontmatter } from "../harness/validate-skill-structure";
@@ -9,22 +8,17 @@ import type { ReadReleasedSkills } from "./released-skills";
 
 type Primitive = { type: "skill"; name: string; description: string };
 
-// Three outcomes, never two: `not-configured` is inventoryPath unset, missing
-// or not a directory; `unreadable` is a connected harness whose release could
-// not be read. An empty `primitives` is only ever a successful read that found
-// no released skill (ADR-0021 §8).
+// An empty `primitives` only ever means a successful read found no released
+// skill; `unreadable` is a connected harness whose release could not be read.
 export type InventoryResult =
   | { ok: true; primitives: Primitive[] }
   | { ok: false; error: "not-configured" | "unreadable" };
 
-// `name` is prose, not identity — the directory under .apm/skills/ decides that
-// (ADR-0021 §4), so only the description is read here.
+// The frontmatter `name` is prose; the directory name is the identity.
 const frontmatterSchema = z.object({
   description: z.string(),
 });
 
-// Null on anything malformed, so the caller can skip the skill. Extraction is
-// the release validator's, so one manifest never reads two ways.
 function parseSkillFrontmatter(raw: string): { description: string } | null {
   const frontmatter = readFrontmatter(raw);
   if (frontmatter === null) {
@@ -36,7 +30,6 @@ function parseSkillFrontmatter(raw: string): { description: string } | null {
 
 export class InventoryReader {
   private readonly fs: FileSystemPort;
-  // A thunk, so the path is resolved per read and never frozen at construction.
   private readonly resolvePath: () =>
     | Promise<string | undefined>
     | (string | undefined);
@@ -57,8 +50,7 @@ export class InventoryReader {
     this.readReleasedSkills = deps.readReleasedSkills;
   }
 
-  // Canonicalised where possible, so the browser's path comparisons line up
-  // with server-side registration.
+  // Canonicalised, so browser path comparisons match server registration.
   async configuredPath(): Promise<string | null> {
     const path = await this.resolvePath();
     if (path === undefined) {
@@ -67,8 +59,7 @@ export class InventoryReader {
     return this.fs.realpath(path).catch(() => path);
   }
 
-  // The configured URL names the durable GitHub repository; a transport
-  // rewrite is local plumbing and must not replace that fact on the screen.
+  // The configured URL, never an `insteadOf` rewrite of it.
   async configuredLocation(): Promise<{
     inventoryPath: string | null;
     githubRepository: string | null;
@@ -94,7 +85,6 @@ export class InventoryReader {
       return { ok: false, error: "not-configured" };
     }
 
-    // Fail-closed: a thrown git call is an unread release, never an empty one.
     const released = await this.readReleasedSkills(root).catch(() => null);
     if (released === null) {
       return { ok: false, error: "unreadable" };

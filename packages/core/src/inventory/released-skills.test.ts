@@ -83,8 +83,7 @@ describe("releasedSkillsFromGit", () => {
     await expect(read(ROOT)).resolves.toEqual([]);
   });
 
-  // Null is unreadable, never "never released": a git failure that reads as an
-  // empty harness would hide every deployable skill without saying so.
+  // Null is unreadable, never "never released".
   it("reports unreadable when the tag namespace cannot be read", async () => {
     const read = releasedSkillsFromGit(gitOver({ tags: null }));
 

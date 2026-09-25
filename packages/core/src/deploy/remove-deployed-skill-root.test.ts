@@ -1,7 +1,3 @@
-// Removing from a target that follows one Harness release: one install at the
-// same release while skills remain, and the named uninstall when the last one
-// goes (ADR-0031, #951). The per-skill removal path a migrating target still
-// uses is proven in `remove-deployed-skill.test.ts`.
 import { describe, expect, it } from "vitest";
 import type { DeployTarget } from "./deploy-skill";
 import { InFlightLocks } from "./in-flight-locks";
@@ -38,8 +34,6 @@ function buildUseCase(copy: "clean" | "diverged" = "clean") {
   return { world, remove: new RemoveDeployedSkill(deps), deps };
 }
 
-// The removal the cockpit sends, already carrying the consent its preflight
-// minted, so these tests speak about the mechanism rather than the pricing.
 async function removeConfirmed(
   useCase: RemoveDeployedSkill,
   name: string,
@@ -92,8 +86,7 @@ describe("RemoveDeployedSkill on a target following one release", () => {
   });
 
   it("removes the last skill with the named uninstall of the Harness dependency", async () => {
-    // An empty Selection has no expression: `skills: []` is refused outright,
-    // so the last removal names the package instead (#957, apm-behavior.md).
+    // `skills: []` is refused, so the last removal names the package instead (#957).
     const { world, remove } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["prototype"] });
 
@@ -108,7 +101,7 @@ describe("RemoveDeployedSkill on a target following one release", () => {
 
   it("reports the removal incomplete when the copy is still on disk", async () => {
     // A blocked uninstall exits after deleting the rest, while the manifest and
-    // the lockfile still list every name (apm-behavior.md § Root package).
+    // lockfile still list every name.
     const { world, remove } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
     world.landsOnly(["caveman", "prototype"]);
@@ -173,8 +166,6 @@ describe("RemoveDeployedSkill on a target following one release", () => {
   });
 });
 
-// Deploy again resets an edited copy only on a target that follows one release;
-// a target still pinned per skill refuses every deploy (#945, #966).
 describe("RemoveDeployedSkill refusing a copy with local edits", () => {
   const request = { type: "skill", name: "tdd", target };
 
@@ -183,7 +174,6 @@ describe("RemoveDeployedSkill refusing a copy with local edits", () => {
     async (pinned) => {
       const request = { type: "skill", name: "tdd", target: pinned };
       const { world, deps } = buildUseCase("diverged");
-      // A pinned target is removed by its own per-skill ref, so the lookup answers.
       const remove = new RemoveDeployedSkill({
         ...deps,
         deployedRef: {

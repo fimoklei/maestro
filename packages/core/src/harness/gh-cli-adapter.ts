@@ -1,6 +1,5 @@
-// Drives the real gh CLI for one batched review read. Raw stdout and stderr
-// never leave this module: only shape-checked fields and the outcome class
-// cross (ADR-0018, ADR-0029, security.md). Nothing here is logged.
+// Raw gh stdout and stderr never leave this module and are never logged: only
+// shape-checked fields and the outcome class cross.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
@@ -18,17 +17,13 @@ import type {
 
 const defaultRun = promisify(execFile);
 
-// gh's own default is 30 and would silently drop older requests. An answer that
-// fills this bound is reported incomplete rather than as an absence.
+// gh's default of 30 would silently drop older requests. An answer that fills
+// this bound is reported incomplete, never as an absence.
 export const REVIEW_READ_LIMIT = 100;
 
-// A cockpit read must end. gh answers a whole repository in well under a
-// second, so a run still going after this got no answer at all.
 const GH_TIMEOUT_MS = 30_000;
 
-// Exactly the fields consumed below (gh-driver.md § Invocation). An unknown one
-// makes gh exit 1 and print the valid set, which pins this list against an
-// upgrade.
+// Exactly the fields consumed below; an unknown one makes gh exit 1.
 const JSON_FIELDS = [
   "number",
   "url",
@@ -43,15 +38,12 @@ const JSON_FIELDS = [
   "headRepositoryOwner",
 ].join(",");
 
-// No prompt can hang the read, and no ANSI can wrap the payload. Nothing else
-// is set: gh finds the author's own credentials, and Maestro adds none.
+// Nothing else is set: gh finds the author's own credentials; Maestro adds none.
 const NON_INTERACTIVE = { GH_PROMPT_DISABLED: "1", NO_COLOR: "1" };
 
-// No answer arrived. Anything else gh says — a rejected token, a repository it
-// will not resolve — is a reply, and stays a failed read.
+// Anything else gh says is a reply, and stays a failed read.
 const OFFLINE_PHRASES = ["error connecting to"];
 
-// Documented gh exit code for "this command needs authentication".
 const NOT_SIGNED_IN = 4;
 
 // gh prints `""` for a request nobody has reviewed, not null and not absent.
@@ -68,17 +60,12 @@ const STATES = {
   MERGED: "merged",
 } as const;
 
-// The one field that becomes a link the author can press, so it is bounded to
-// the only host this port ever queries (ADR-0014).
+// Becomes a pressable link, so it is bounded to the only host queried.
 const urlSchema = z.string().regex(/^https:\/\/github\.com\/[^\s"'<>]+$/);
 
-// A full SHA-1 object name, the only form gh prints for a head commit
-// (research 806 § 2). Anything else cannot be compared with a commit, so the
-// row carrying it fails.
 const commitSchema = z.string().regex(/^[0-9a-f]{40}$/);
 
-// Only names git-check-ref-format(1) accepts, minus any whitespace. A branch
-// crosses to the browser, so text that could not name one fails the row.
+// git-check-ref-format(1) names minus whitespace: a branch crosses to the browser.
 const branchSchema = z
   .string()
   .regex(
@@ -90,8 +77,7 @@ const reviewerSchema = z.discriminatedUnion("__typename", [
   z.object({ __typename: z.literal("Team"), slug: z.string() }),
 ]);
 
-// A row that fails this fails the whole read: an unreadable answer must never
-// arrive as a shorter one (gh-driver.md § Fields).
+// A row that fails this fails the whole read, never a shorter answer.
 const requestSchema = z.object({
   number: z.number().int().positive(),
   url: urlSchema,
@@ -107,16 +93,13 @@ const requestSchema = z.object({
   headRefName: branchSchema,
   headRefOid: commitSchema,
   baseRefName: branchSchema,
-  // Both are null once the head repository is deleted; `nameWithOwner` is empty
-  // in a list read, so the owner only ever arrives in the second field.
+  // Null once the head repository is deleted; `nameWithOwner` is empty in a list read.
   headRepository: z.object({ name: z.string() }).nullable(),
   headRepositoryOwner: z.object({ login: z.string() }).nullable(),
 });
 
 const documentSchema = z.array(requestSchema);
 
-// Injectable so command construction and classification can be unit-tested
-// without spawning gh.
 type RunFn = (
   file: string,
   args: string[],
@@ -131,8 +114,7 @@ export class GhCliAdapter implements HarnessReviewPort {
   }
 
   async readReviews(origin: GitOrigin): Promise<HarnessReviewRead> {
-    // gh treats any other host as GitHub Enterprise and sends the query there,
-    // so the gate runs before the call, not on its answer (ADR-0014).
+    // gh sends any other host's query onward as GitHub Enterprise: gate before the call.
     if (origin.host !== "github.com") {
       return { outcome: "unavailable" };
     }
@@ -174,8 +156,7 @@ export class GhCliAdapter implements HarnessReviewPort {
     };
   }
 
-  // `--head` names the branch, which is also what stops gh pushing or offering
-  // a fork: nothing local is touched here (gh 2.86.0 `gh pr create --help`).
+  // `--head` stops gh pushing or offering a fork (gh 2.86.0).
   async createRequest(
     origin: GitOrigin,
     request: NewReviewRequest,
@@ -209,8 +190,7 @@ export class GhCliAdapter implements HarnessReviewPort {
     ]);
   }
 
-  // No `--delete-branch`: withdrawal leaves the proposal branch and the
-  // author's files exactly as they are (#827).
+  // No `--delete-branch`: withdrawal leaves the proposal branch as it is (#827).
   async closeRequest(
     origin: GitOrigin,
     number: number,
@@ -224,8 +204,6 @@ export class GhCliAdapter implements HarnessReviewPort {
     ]);
   }
 
-  // One shape for all three: the host gate first, then the run, then a class.
-  // A write prints only its own URL, so nothing is parsed back out of it.
   private async write(
     origin: GitOrigin,
     args: string[],
@@ -276,21 +254,18 @@ function parseJson(stdout: string): unknown {
   try {
     return JSON.parse(stdout);
   } catch {
-    // Undefined fails the document shape, so unreadable output can never
-    // become an empty answer.
+    // Fails the document shape, so unreadable output never becomes an empty answer.
     return undefined;
   }
 }
 
-// The failure text is read here and thrown away: nothing derived from it but
-// the class crosses (security.md).
+// Only the class crosses; the failure text is thrown away.
 function noAnswerPossible(error: unknown): boolean {
   const { code, killed, stderr } = error as {
     code?: unknown;
     killed?: unknown;
     stderr?: unknown;
   };
-  // No gh on this machine, or a run cut off by the timeout before any answer.
   if (code === "ENOENT" || killed === true) {
     return true;
   }

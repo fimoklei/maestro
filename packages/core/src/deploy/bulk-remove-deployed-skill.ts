@@ -1,6 +1,5 @@
-// Adds no remove semantics: drives RemoveDeployedSkill once per target and
-// harvests the results, so one target never aborts the batch (#421). Every
-// guard, the lock and the reclaim contract stay inside the single removal.
+// Adds no remove semantics: every guard, the lock and the reclaim contract stay
+// inside the single removal.
 import type { DeployTarget } from "./deploy-skill";
 import type {
   RemoveDeployedSkill,
@@ -9,16 +8,12 @@ import type {
   RemovePreflightError,
 } from "./remove-deployed-skill";
 
+// Each token and receipt belongs to this target's own preflight: one target's
+// confirmation never licenses another's removal (#390, #458).
 export type BulkRemoveTarget = {
   target: DeployTarget;
-  // Minted by this target's own preflight; the walk forwards it untouched so a
-  // global removal reclaims exactly the copies the user confirmed (#390).
   confirmedReclaimToken?: string;
-  // Also this target's own, so one target's confirmation never licenses
-  // destroying the local edits in the copy next to it (#458).
   confirmedRemovalReceipt?: string;
-  // Set when this target's own preflight already refused it. Skipped rather
-  // than attempted, so a bulk run never retries a question already answered.
   refused?: RemovePreflightError;
 };
 
@@ -32,16 +27,13 @@ type BulkRemoveRefusedRow = {
   target: DeployTarget;
   reason: RemovePreflightError;
 };
-// `outcome` is present only where apm ran and left something to probe, exactly
-// as on a single removal: an absent key is never a state the server proved.
 type BulkRemoveFailedRow = {
   target: DeployTarget;
   reason: RemoveDeployedSkillError;
   outcome?: RemoveOutcome;
 };
 
-// Every left-alone target keeps its own row: "why was this one left" is a
-// per-target question, so identical reasons are never collapsed.
+// One row per target: identical reasons are never collapsed.
 export type BulkRemoveReport = {
   name: string;
   removed: BulkRemovedRow[];
@@ -54,9 +46,7 @@ export class BulkRemoveDeployedSkill {
     private readonly deps: { remove: Pick<RemoveDeployedSkill, "execute"> },
   ) {}
 
-  // Sequential on purpose: the run must not contend with its own per-target
-  // lock, and a target held elsewhere comes back as a failure row like any
-  // other.
+  // Sequential on purpose: the run must not contend with its own target lock.
   async execute(input: BulkRemoveInput): Promise<BulkRemoveReport> {
     const removed: BulkRemovedRow[] = [];
     const refused: BulkRemoveRefusedRow[] = [];
@@ -68,8 +58,6 @@ export class BulkRemoveDeployedSkill {
         continue;
       }
 
-      // Caught here too, so one target's unexpected exception never aborts the
-      // rest of the batch (#421).
       let result: Awaited<ReturnType<RemoveDeployedSkill["execute"]>>;
       try {
         result = await this.deps.remove.execute({

@@ -1,6 +1,5 @@
-// Which route one connect field takes, decided offline: a GitHub origin is a
-// clone, anything else is the existing local path, and any other remote is
-// refused before a network call (#554, ADR-0014).
+// Decided offline: a GitHub origin is a clone, a non-remote is a local path,
+// and any other remote is refused before a network call.
 import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 
@@ -11,15 +10,13 @@ export type ConnectInputRoute =
   | { ok: true; kind: "url"; url: string; repoName: string; ownerRepo: string }
   | { ok: false; error: ConnectInputError };
 
-// A remote spelling, not a local one: a scheme, or the scp-like `user@host:`
-// form. An absolute path may contain `@`, but never a colon right after it.
+// The scp-like `user@host:` form. A path may contain `@`, never `@host:`.
 const scpLike = /^[^/\s]+@[^/\s:]+:/;
 
 const looksRemote = (input: string): boolean =>
   input.includes("://") || scpLike.test(input);
 
-// Userinfo in a scheme url only. `URL` drops it before the host is read, and
-// git would write the whole url — token included — into the clone's config.
+// git would write the whole url, token included, into the clone's config.
 const carriesCredentials = (url: string): boolean => {
   try {
     const parsed = new URL(url);
@@ -42,8 +39,7 @@ export const classifyConnectInput = (input: string): ConnectInputRoute => {
     return { ok: false, error: "not-a-github-url" };
   }
   const repoName = origin.ownerRepo.split("/")[1] ?? "";
-  // The name becomes a new folder inside the chosen parent, so a relative
-  // segment here would place the clone outside it (security.md).
+  // A relative segment would place the clone outside the chosen parent.
   if (repoName === "" || repoName === "." || repoName === "..") {
     return { ok: false, error: "not-a-github-url" };
   }

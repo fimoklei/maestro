@@ -1,5 +1,4 @@
-// Config wins; the env var only bootstraps a fresh setup and is never
-// persisted. Undefined means "not configured".
+// Config wins; the env var only bootstraps a fresh setup and is never persisted.
 import type { MaestroConfig } from "../registry/config-store";
 
 export function resolveInventoryPath(

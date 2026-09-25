@@ -19,8 +19,6 @@ describe("refForDeployedSkill", () => {
     });
   });
 
-  // The version is read here, not by the caller taking the ref apart: what the
-  // removal reports as gone has to be the same tag the removal aimed at.
   it("names the pinned version alongside the ref", () => {
     const lookup = refForDeployedSkill([tddEntry], "tdd");
 
@@ -75,14 +73,11 @@ describe("refForDeployedSkill", () => {
     });
   });
 
-  // The entry decides which package apm removes, and a lockfile is a file in
-  // the user's repo — anything that writes there could point a row's ref at a
-  // different installed package. The row names one skill; the ref must name
-  // that same skill, or nothing is removed.
+  // A lockfile is a file in the user's repo, so its ref must name the row's own
+  // skill or nothing is removed.
 
   it("refuses an entry whose path is not this skill's own .apm/skills/ path", () => {
-    // basename() alone would accept this: the row would read "tdd" while the
-    // ref aimed somewhere else entirely.
+    // basename() alone would accept this.
     const elsewhere: LockfileEntry = {
       ...tddEntry,
       virtual_path: "vendor/other/tdd",
@@ -93,8 +88,6 @@ describe("refForDeployedSkill", () => {
     });
   });
 
-  // The retired Harness shape is not a fallback: a row written against a root
-  // skills/ subpath no longer resolves to a ref (ADR-0021 §4).
   it("refuses an entry written against the retired root skills/ path", () => {
     const retired: LockfileEntry = { ...tddEntry, virtual_path: "skills/tdd" };
     expect(refForDeployedSkill([retired], "tdd")).toEqual({
@@ -104,8 +97,6 @@ describe("refForDeployedSkill", () => {
   });
 
   it("refuses an entry hosted anywhere but GitHub", () => {
-    // Deploys are GitHub-only (ADR-0014), so a removal that trusts another host
-    // is trusting a ref no deploy of ours could have written.
     const elsewhere: LockfileEntry = { ...tddEntry, host: "evil.example.com" };
     expect(refForDeployedSkill([elsewhere], "tdd")).toEqual({
       ok: false,
@@ -122,8 +113,6 @@ describe("refForDeployedSkill", () => {
   });
 
   it("refuses an entry that is not pinned to a version tag", () => {
-    // Every deploy pins a vX.Y.Z tag (ADR-0003); a branch or bare commit in
-    // that field did not come from us.
     const unpinned: LockfileEntry = { ...tddEntry, resolved_ref: "main" };
     expect(refForDeployedSkill([unpinned], "tdd")).toEqual({
       ok: false,
@@ -132,8 +121,6 @@ describe("refForDeployedSkill", () => {
   });
 
   it("refuses when two entries both claim the same skill", () => {
-    // Ambiguous: picking either one would remove a package the user did not
-    // choose between.
     const duplicate: LockfileEntry = {
       ...tddEntry,
       repo_url: "someone-else/harness",

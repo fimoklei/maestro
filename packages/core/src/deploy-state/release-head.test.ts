@@ -6,7 +6,6 @@ import { ReleaseHeadReader } from "./release-head";
 const tags = (...names: string[]): HarnessTag[] =>
   names.map((name) => ({ name, commit: name }));
 
-// One skill tree per name, hashed by the content word beside it.
 const trees = (content: Record<string, string>): HarnessSkillTree[] =>
   Object.entries(content).map(([name, treeHash]) => ({ name, treeHash }));
 

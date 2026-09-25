@@ -35,17 +35,14 @@ describe("isPromotableSkillName", () => {
   });
 
   it("holds a promotion to the one name a deploy could carry", () => {
-    // Promoting is the first step toward a deploy, and `isValidSkillSlug` is
-    // what a deploy's package ref accepts. A name only one of the two takes
-    // buys a review branch nothing downstream can install.
+    // A name a deploy's package ref refuses buys a branch nothing can install.
     for (const name of ["tdd.v2_1", "TDD", "my_skill"]) {
       expect(isPromotableSkillName(name)).toBe(isValidSkillSlug(name));
     }
   });
 
   it("refuses a name that would leave the skills directory", () => {
-    // The name is spent as a git pathspec and as a ref, so anything but a
-    // plain directory name is refused before it reaches either.
+    // The name becomes a git pathspec and a ref.
     expect(isPromotableSkillName("..")).toBe(false);
     expect(isPromotableSkillName(".")).toBe(false);
     expect(isPromotableSkillName("../secrets")).toBe(false);

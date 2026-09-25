@@ -1,7 +1,5 @@
-// What one target currently holds of the connected Harness: the release it
-// follows, the ref a write must name, and the skills actually on disk. Read
-// from `deployed_files` plus file existence, never from `skill_subset` or
-// `skills:` — both keep names a narrow already dropped (ADR-0031, #941).
+// Read from `deployed_files` plus file existence, never from `skill_subset` or
+// `skills:`: both keep names apm already dropped (#941).
 
 import { harnessSkillPin } from "../deploy-state/pinned-per-skill";
 import {
@@ -17,9 +15,7 @@ import type { DeployedLocation } from "./deployed-location";
 import type { GitOrigin } from "./git-origin";
 import { buildHarnessPackageRef } from "./package-ref";
 
-// "empty" covers both a target apm never wrote and one whose Harness
-// dependency is gone: neither follows a release. "unreadable" is fail-closed —
-// a write must never read an unanswerable lockfile as an empty target (#58).
+// A write must never read an unanswerable lockfile as an empty target (#58).
 export type TargetSelection =
   | { kind: "empty" }
   | { kind: "root"; release: string; ref: string; deployed: string[] }
@@ -36,8 +32,7 @@ export async function readTargetSelection(deps: {
   origin: GitOrigin;
 }): Promise<TargetSelection> {
   const raw = await deps.fs.readFile(deps.location.lockfilePath(deps.target));
-  // apm deletes the lockfile with the last dependency rather than emptying it,
-  // so an absent file is an empty target, never an error (apm-driver.md).
+  // apm deletes the lockfile with the last dependency: absent means empty.
   if (raw === null) {
     return { kind: "empty" };
   }
@@ -57,8 +52,7 @@ export async function readTargetSelection(deps: {
   }
   const root = roots[0];
   if (root === undefined) {
-    // Only after ruling out a root package: a target mid-migration can hold
-    // both, and the root package is the one a write acts on.
+    // Only after ruling out a root package: a target mid-migration holds both.
     return parsed.entries.some(
       (entry) => harnessSkillPin(entry, deps.origin) !== null,
     )
@@ -66,9 +60,7 @@ export async function readTargetSelection(deps: {
       : { kind: "empty" };
   }
 
-  // The lockfile lives in the user's repo and alone decides which package apm
-  // is told to install or remove, so its release is checked against the shape
-  // our own deploy writes before it reaches a command (security.md).
+  // The lockfile is user data that reaches an apm command: check its shape.
   if (!RELEASE_TAG_PATTERN.test(root.resolved_ref)) {
     return { kind: "unreadable", reason: "ref-unresolvable" };
   }

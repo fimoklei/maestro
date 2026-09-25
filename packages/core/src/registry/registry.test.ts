@@ -6,13 +6,11 @@ import { Registry } from "./registry";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 
-// What the server injects, with an empty env so the ambient
-// MAESTRO_INVENTORY_PATH cannot reach these tests.
+// An empty env, so the ambient MAESTRO_INVENTORY_PATH cannot leak in.
 const resolveCentralInventoryPath = (
   config: Parameters<typeof resolveInventoryPath>[0],
 ) => resolveInventoryPath(config, {});
 
-// A Git repository: the folder plus its `.git` entry.
 const gitRepos = (...paths: string[]): Record<string, string> =>
   Object.fromEntries(
     paths.flatMap((path) => [
