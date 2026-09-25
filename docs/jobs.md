@@ -27,7 +27,6 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
-| Read and steer the whole cockpit in one frame, in either theme · [#984](https://github.com/fimoklei/maestro/issues/984) (map) → [#1033](https://github.com/fimoklei/maestro/issues/1033) (spec) | A, B | *When* I steer many skills across many targets, *I want to* read every screen in the same frame, with status I can tell apart without colour and in the theme my environment asks for, *so I can* find what needs me and act on it without relearning each screen. |
 
 ## NEXT
 
@@ -69,6 +68,7 @@ All shipped **skills-only**, solo, local-first.
 
 | Job | Main | Job story |
 |---|---|---|
+| Read and steer the whole cockpit in one frame, in either theme · [#984](https://github.com/fimoklei/maestro/issues/984) (map) → [#1033](https://github.com/fimoklei/maestro/issues/1033) (spec) | A, B | *When* I steer many skills across many targets, *I want to* read every screen in the same frame, with status I can tell apart without colour and in the theme my environment asks for, *so I can* find what needs me and act on it without relearning each screen. |
 | Adopt a Harness release per target · [#833](https://github.com/fimoklei/maestro/issues/833) (map) → [#945](https://github.com/fimoklei/maestro/issues/945) (spec) | B, A | *When* a Harness release is published, *I want to* move a target's whole skill selection to it in one action and see which skills really changed, *so I can* stay current without updating skills one by one. |
 | Keep the Harness view honest after a merge · [#911](https://github.com/fimoklei/maestro/issues/911) | C | *When* a proposal of mine is merged and the skill later changes on the default branch, or the operating system drops a file into a skill folder, *I want to* see rows only for work I still have to do, *so I can* trust the Harness view instead of reading nine true rows that mean nothing. |
 | Follow a skill change from local work to release · [#827](https://github.com/fimoklei/maestro/issues/827) | C | *When* I import, edit or delete a skill, *I want to* follow its proposal, review and release with a clear next action and a way back, *so I can* make it available in Inventory without losing work or mistaking an unknown status for completion. |
