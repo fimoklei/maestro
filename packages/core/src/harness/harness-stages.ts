@@ -43,8 +43,14 @@ export type ReleaseStatus = "added" | "changed" | "renamed" | "deleted";
 
 export type StageStatus = ProposalStatus | ReviewStatus | ReleaseStatus;
 
-// Only what a link needs. The rest of a request stays behind the port.
-export type ReviewRequestLink = { number: number; url: string };
+// Only what a row says about its request. The rest of a request stays behind
+// the port.
+export type ReviewRequestLink = {
+  number: number;
+  url: string;
+  headBranch: string;
+  baseBranch: string;
+};
 
 // What the local content was compared against, so the stage header can name it
 // without asserting a comparison that did not happen. `number` is null for a
@@ -176,6 +182,8 @@ const everySkill = (
 const link = (request: ReviewRequest): ReviewRequestLink => ({
   number: request.number,
   url: request.url,
+  headBranch: request.headBranch,
+  baseBranch: request.baseBranch,
 });
 
 const blankRow = (

@@ -77,6 +77,14 @@ const urlSchema = z.string().regex(/^https:\/\/github\.com\/[^\s"'<>]+$/);
 // row carrying it fails.
 const commitSchema = z.string().regex(/^[0-9a-f]{40}$/);
 
+// Only names git-check-ref-format(1) accepts, minus any whitespace. A branch
+// crosses to the browser, so text that could not name one fails the row.
+const branchSchema = z
+  .string()
+  .regex(
+    /^(?!@$)(?!\/)(?!.*\/$)(?!.*\/\/)(?!.*\.$)(?!(?:.*\/)?\.)(?!.*\.lock(?:\/|$))(?!.*\.\.)(?!.*@\{)[^\p{Cc}\s~^:?*[\\]+$/u,
+  );
+
 const reviewerSchema = z.discriminatedUnion("__typename", [
   z.object({ __typename: z.literal("User"), login: z.string() }),
   z.object({ __typename: z.literal("Team"), slug: z.string() }),
@@ -96,9 +104,9 @@ const requestSchema = z.object({
     "REVIEW_REQUIRED",
   ]),
   reviewRequests: z.array(reviewerSchema),
-  headRefName: z.string(),
+  headRefName: branchSchema,
   headRefOid: commitSchema,
-  baseRefName: z.string(),
+  baseRefName: branchSchema,
   // Both are null once the head repository is deleted; `nameWithOwner` is empty
   // in a list read, so the owner only ever arrives in the second field.
   headRepository: z.object({ name: z.string() }).nullable(),

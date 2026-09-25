@@ -12,6 +12,7 @@ import {
   stubHarnessServer,
   withStages,
 } from "./harness-flow-fixture";
+import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
 
@@ -30,12 +31,7 @@ describe("Harness freshness and failed reads", () => {
         bound: null,
         rows: [
           row("pending-proposal", "tdd", "not-yet-proposed", {
-            requests: [
-              {
-                number: 45,
-                url: "https://github.com/fimoklei/agent-harness/pull/45",
-              },
-            ],
+            requests: [pullRequest(45)],
           }),
         ],
       },

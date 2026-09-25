@@ -269,6 +269,40 @@ describe("GhCliAdapter", () => {
     expect(result).toEqual({ outcome: "failed" });
   });
 
+  it.each([
+    ["a head branch carrying prose", { headRefName: "run this\nnow" }],
+    ["a head branch with a double dot", { headRefName: "maestro/../x" }],
+    ["a base branch with a colon", { baseRefName: "https://x" }],
+    ["an empty base branch", { baseRefName: "" }],
+    ["a head branch ending in .lock", { headRefName: "maestro/x.lock" }],
+    ["a head branch ending in a dot", { headRefName: "maestro/x." }],
+    ["a head branch with a leading slash", { headRefName: "/maestro/x" }],
+    ["a head branch with a trailing slash", { headRefName: "maestro/x/" }],
+    ["a head branch with a double slash", { headRefName: "maestro//x" }],
+    ["a head branch part starting with a dot", { headRefName: "maestro/.x" }],
+    ["a base branch that is a lone @", { baseRefName: "@" }],
+  ])("fails the read on %s", async (_, over) => {
+    const { run } = fakeRun(JSON.stringify([{ ...mergedRow, ...over }]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
+  });
+
+  it("reads a branch name git accepts, dots and @ included", async () => {
+    const { run } = fakeRun(
+      JSON.stringify([
+        { ...mergedRow, headRefName: "maestro/v1.2@x", baseRefName: "main" },
+      ]),
+    );
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toMatchObject({
+      requests: [{ headBranch: "maestro/v1.2@x", baseBranch: "main" }],
+    });
+  });
+
   it("fails the read on a head commit that is not a full object name", async () => {
     const { run } = fakeRun(
       JSON.stringify([{ ...mergedRow, headRefOid: "a7cbf2e" }]),

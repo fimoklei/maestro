@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { HarnessView } from "./harness-view";
+import { pullRequest } from "./stage-row-fixture";
 
 const HARNESS: HarnessState = {
   origin: "github.com/fimoklei/agent-harness",
@@ -47,10 +48,7 @@ const IMPORTED_HARNESS: HarnessState = {
 // The same skill holding a row in all three stages, which is what one import
 // has to tell apart (#865). The two remote rows carry a request so their menus
 // are pressable, and so a stray focus would land on one of them.
-const REQUEST = {
-  number: 45,
-  url: "https://github.com/fimoklei/agent-harness/pull/45",
-};
+const REQUEST = pullRequest(45);
 
 const remoteRow = (
   stage: "pending-review" | "pending-release",

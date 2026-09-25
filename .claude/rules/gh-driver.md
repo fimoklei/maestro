@@ -55,7 +55,8 @@ ADR-0014; the field carve-out is ADR-0018.
 - Validate the parsed JSON with Zod at the adapter; a row failing the shape
   fails the whole read.
 - Let only shape-checked named fields cross — request number, URL, state, draft
-  flag, review decision, requested users and teams.
+  flag, review decision, requested users and teams, head and base branch.
+- Refuse a branch name `git check-ref-format` would refuse.
 - Never put `gh` prose in an HTTP response, a notice or a log.
 - Sort matching requests explicitly; never take `[0]`. One branch can carry
   several requests.

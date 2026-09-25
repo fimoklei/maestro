@@ -2,6 +2,7 @@ import { ArrowUpRight, GitPullRequestArrow } from "lucide-react";
 import { HoverCard } from "../ui/hover-card";
 import { MachineValue } from "../ui/machine-value";
 import {
+  PULL_REQUEST_CARD,
   pullRequestLinkName,
   pullRequestOpensLine,
   pullRequestState,
@@ -71,22 +72,28 @@ function RequestCard({
           </span>
         )}
       </div>
-      {review === null && requested === null ? null : (
-        <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-cell gap-y-tight">
-          {review === null ? null : (
-            <>
-              <dt className="text-gray-11">Review</dt>
-              <dd className="m-0">{review}</dd>
-            </>
-          )}
-          {requested === null ? null : (
-            <>
-              <dt className="text-gray-11">Requested</dt>
-              <dd className="m-0">{requested}</dd>
-            </>
-          )}
-        </dl>
-      )}
+      <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-cell gap-y-tight">
+        {review === null ? null : (
+          <>
+            <dt className="text-gray-11">{PULL_REQUEST_CARD.review}</dt>
+            <dd className="m-0">{review}</dd>
+          </>
+        )}
+        {requested === null ? null : (
+          <>
+            <dt className="text-gray-11">{PULL_REQUEST_CARD.requested}</dt>
+            <dd className="m-0">{requested}</dd>
+          </>
+        )}
+        <dt className="text-gray-11">{PULL_REQUEST_CARD.branch}</dt>
+        {/* A branch name is the fact itself: it wraps, never truncates. */}
+        <dd className="m-0 min-w-0 break-all">
+          <MachineValue>{request.headBranch}</MachineValue>{" "}
+          <span aria-hidden="true">→</span>
+          <span className="sr-only">{PULL_REQUEST_CARD.into}</span>{" "}
+          <MachineValue>{request.baseBranch}</MachineValue>
+        </dd>
+      </dl>
       <p className="m-0 border-gray-6 border-t pt-inline text-gray-11">
         {pullRequestOpensLine(request.number)}
       </p>

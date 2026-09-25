@@ -24,7 +24,7 @@ const meta = {
     row: tableRow(
       stageRow("pending-proposal", "code-review", "new-local-work", {
         comparison: { kind: "proposal", number: 47 },
-        requests: [pullRequest(47)],
+        requests: [pullRequest(47, "code-review")],
         alsoIn: ["pending-review"],
       }),
       [
