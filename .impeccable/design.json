@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-21T19:48:27.260Z",
+  "generatedAt": "2026-09-24T22:30:35.000Z",
   "title": "Design System: Maestro",
   "extensions": {
     "colorMeta": {
@@ -329,6 +329,14 @@
         "weight": 600,
         "tracking": "-0.4px",
         "purpose": "Screen title."
+      },
+      "mono-label": {
+        "displayName": "Mono label",
+        "size": "0.75rem",
+        "lineHeight": "1rem",
+        "weight": 400,
+        "tracking": "0.08em",
+        "purpose": "Geist Mono, uppercase: a card's kind label or a small section header. A mono machine value elsewhere takes the size of its slot."
       }
     },
     "fonts": [
@@ -490,7 +498,72 @@
       }
     ]
   },
-  "components": [],
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one neutral primary action in a band or dialog: gray 12 fill, gray 11 on hover. Never blue.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Deploy skill</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 0.5rem; height: 2rem; padding: 0 0.75rem; border: 1px solid; border-radius: 6px; font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.8125rem; line-height: 1.25rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-btn:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-btn-primary { color: var(--gray-1); background: var(--gray-12); border-color: var(--gray-12); } .ds-btn-primary:hover { background: var(--gray-11); border-color: var(--gray-11); }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "A secondary action: no fill, gray 7 border, gray 3 on hover.",
+      "html": "<button class=\"ds-btn ds-btn-quiet\">Cancel</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 0.5rem; height: 2rem; padding: 0 0.75rem; border: 1px solid; border-radius: 6px; font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.8125rem; line-height: 1.25rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-btn:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-btn-quiet { color: var(--gray-12); background: transparent; border-color: var(--gray-7); } .ds-btn-quiet:hover { background: var(--gray-3); }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "A destructive action, outlined: red 11 text on a red 7 border, red 3 on hover.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Delete skill</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 0.5rem; height: 2rem; padding: 0 0.75rem; border: 1px solid; border-radius: 6px; font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.8125rem; line-height: 1.25rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-btn:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-btn-danger { color: var(--red-11); background: transparent; border-color: var(--red-7); } .ds-btn-danger:hover { background: var(--red-3); }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "A labelled text field: label above, hint between label and field, one ✕ line under it on refusal. A path field sets its value in Geist Mono.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-f\">Folder path</label><span class=\"ds-field-hint\">The folder that holds apm.yml.</span><input id=\"ds-f\" class=\"ds-field-input\" value=\"~/Projects/agent-harness\"></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.25rem; font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; } .ds-field-label { color: var(--gray-12); font-size: 0.8125rem; line-height: 1.25rem; font-weight: 500; } .ds-field-hint { color: var(--gray-11); font-size: 0.75rem; line-height: 1rem; } .ds-field-input { height: 2rem; padding: 0 0.5rem; border: 1px solid var(--gray-9); border-radius: 6px; background: var(--gray-1); color: var(--gray-12); font-family: \"Geist Mono Variable\", \"Geist Mono\", \"SFMono-Regular\", Menlo, monospace; font-size: 0.8125rem; } .ds-field-input:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-field-input[aria-invalid=\"true\"] { border-color: var(--red-7); }"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "A sidebar entry, 32px high: gray 11 at rest, gray 3 on hover, gray 4 and weight 500 when current.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item\" aria-current=\"page\">Inventory</button><button class=\"ds-nav-item\">Deploy-state</button><button class=\"ds-nav-item\">Settings</button></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 0.25rem; width: 14rem; padding: 0.5rem; background: var(--gray-2); } .ds-nav-item { display: flex; align-items: center; height: 2rem; padding: 0 0.5rem; border: 0; border-radius: 6px; background: transparent; color: var(--gray-11); font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.8125rem; text-align: left; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item:hover { background: var(--gray-3); color: var(--gray-12); } .ds-nav-item:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-nav-item[aria-current=\"page\"] { background: var(--gray-4); color: var(--gray-12); font-weight: 500; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge-attention",
+      "description": "One badge per row, the worst reading: a glyph plus a CONTEXT.md word. Good and neutral stay uncoloured; attention is amber, failed is red, unknown is a gray ? box.",
+      "html": "<span class=\"ds-badge\"><span aria-hidden=\"true\">●</span>Up to date</span> <span class=\"ds-badge ds-badge-unknown\"><span aria-hidden=\"true\">?</span>Unknown</span> <span class=\"ds-badge ds-badge-attention\"><span aria-hidden=\"true\" class=\"ds-mark\">▲</span>Behind</span> <span class=\"ds-badge ds-badge-failed\"><span aria-hidden=\"true\" class=\"ds-mark\">✕</span>Folder missing</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 0.25rem; height: 1.25rem; padding: 0 0.25rem; border: 1px solid transparent; border-radius: 4px; color: var(--gray-11); font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.75rem; line-height: 1rem; font-weight: 500; white-space: nowrap; } .ds-badge-unknown { border-color: var(--gray-7); background: var(--gray-3); color: var(--gray-12); } .ds-badge-attention { border-color: var(--amber-7); background: var(--amber-3); color: var(--amber-12); } .ds-badge-attention .ds-mark { color: var(--amber-11); } .ds-badge-failed { border-color: var(--red-7); background: var(--red-3); color: var(--red-12); } .ds-badge-failed .ds-mark { color: var(--red-11); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A bordered container on gray 1 with a header line: mono uppercase kind label, mono title, mono data on the right. The border turns amber 7 when the card drifts.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-head\"><span class=\"ds-card-kind\">global</span><h2 class=\"ds-card-title\">~/.claude</h2><span class=\"ds-card-data\">v1.4.0</span></div><div class=\"ds-card-body\">Three skills deployed.</div></div>",
+      "css": ".ds-card { overflow: clip; border: 1px solid var(--gray-7); border-radius: 6px; background: var(--gray-1); color: var(--gray-12); } .ds-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--gray-7); } .ds-card-kind { color: var(--gray-11); font-family: \"Geist Mono Variable\", \"Geist Mono\", \"SFMono-Regular\", Menlo, monospace; font-size: 0.75rem; line-height: 1rem; text-transform: uppercase; letter-spacing: 0.08em; } .ds-card-title { flex: 1; min-width: 0; margin: 0; font-family: \"Geist Mono Variable\", \"Geist Mono\", \"SFMono-Regular\", Menlo, monospace; font-size: 0.8125rem; line-height: 1.25rem; font-weight: 400; } .ds-card-data { margin-left: auto; color: var(--gray-11); font-family: \"Geist Mono Variable\", \"Geist Mono\", \"SFMono-Regular\", Menlo, monospace; font-size: 0.75rem; } .ds-card-body { padding: 1rem; font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.875rem; line-height: 1.25rem; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented-control",
+      "description": "A choice between a few views: the pressed segment on gray 4 with a gray 7 border; hover stays a step below on gray 3.",
+      "html": "<fieldset class=\"ds-seg\"><button class=\"ds-seg-opt\" aria-pressed=\"true\">All</button><button class=\"ds-seg-opt\" aria-pressed=\"false\">Drift</button><button class=\"ds-seg-opt\" aria-pressed=\"false\">Local</button></fieldset>",
+      "css": ".ds-seg { display: inline-flex; gap: 0.25rem; margin: 0; padding: 2px; border: 0; border-radius: 6px; } .ds-seg-opt { padding: 0.25rem 0.75rem; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--gray-11); font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.75rem; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-seg-opt:hover { background: var(--gray-3); color: var(--gray-12); } .ds-seg-opt:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-seg-opt[aria-pressed=\"true\"] { border-color: var(--gray-7); background: var(--gray-4); color: var(--gray-12); }"
+    }
+  ],
   "narrative": {
     "northStar": "A cockpit you can read at a glance and steer without guessing: neutral surfaces, one meaning per mark, and every word readable in both themes.",
     "overview": "Maestro is a dense local cockpit for an AI agent setup. Its design system is a neutral Radix-grammar palette in a light and a dark theme, Geist type, one fixed density and one frame per screen (ADR-0033). Colour is the third cue behind the word and the glyph, never the first. The chain is design.json to tokens.css to DESIGN.md: this file is the source, tokens.css ships, DESIGN.md is regenerated and never hand-edited.",

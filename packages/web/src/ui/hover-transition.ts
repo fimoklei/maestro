@@ -1,4 +1,4 @@
-// Single owner of the hover transition window — see DESIGN.md §5, PRODUCT.md
+// Single owner of the hover transition window — see DESIGN.md § Motion, PRODUCT.md
 // (motion-safe: honors prefers-reduced-motion).
 const WINDOW = "motion-safe:duration-150 motion-safe:ease-out";
 

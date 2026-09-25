@@ -211,7 +211,7 @@ describe("Notice", () => {
   });
 
   // A notice inside a table cell is not a panel: a filled, outlined box in a
-  // row is a card inside a card, which this system rejects (DESIGN.md §6). The
+  // row is a card inside a card (DESIGN.md § Notice). The
   // tint of the rule that replaces it is proven in a browser, never here.
   describe("the inline variant", () => {
     const regionOf = (variant: "block" | "inline") => {

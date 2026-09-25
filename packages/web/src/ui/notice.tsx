@@ -35,7 +35,7 @@ export interface NoticeProps {
   notice: NoticeContent | null;
   /**
    * `inline` for a notice inside a table row: a filled, outlined panel there is
-   * a card inside a card, which this system rejects (DESIGN.md §6). The rule
+   * a card inside a card (DESIGN.md § Notice). The rule
    * on its left carries the level instead.
    */
   variant?: "block" | "inline";

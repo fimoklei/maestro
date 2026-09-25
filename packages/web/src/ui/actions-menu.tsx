@@ -33,8 +33,8 @@ export interface ActionsMenuProps {
   items: readonly ActionsMenuItem[];
   /** A trigger of the caller's own, in place of the ⋯ glyph. */
   trigger?: ReactNode;
-  /** A line above the items naming what the menu acts on. */
-  heading?: string;
+  /** Opens under the trigger at its full width, like Linear's workspace menu. */
+  fitTrigger?: boolean;
   /** False where every item moves focus on; Escape still returns it. */
   returnFocus?: boolean;
 }
@@ -43,7 +43,7 @@ export function ActionsMenu({
   label,
   items,
   trigger,
-  heading,
+  fitTrigger = false,
   returnFocus = true,
 }: ActionsMenuProps) {
   // Run once the menu has closed: an open menu traps focus, so an item that
@@ -74,7 +74,7 @@ export function ActionsMenu({
       )}
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          align="end"
+          align={fitTrigger ? "start" : "end"}
           sideOffset={4}
           onCloseAutoFocus={(event) => {
             const run = pending.current;
@@ -86,13 +86,11 @@ export function ActionsMenu({
           // A menu floats, so it takes radius 12 and the one shadow
           // (ADR-0033 §7). bg-gray-2, not gray-3: leaves the highlighted state
           // below free to read as hover (#388).
-          className="min-w-32 rounded-float border border-gray-7 bg-gray-2 p-tight shadow-float"
+          className={cn(
+            "min-w-32 rounded-float border border-gray-7 bg-gray-2 p-tight shadow-float",
+            fitTrigger && "w-(--radix-dropdown-menu-trigger-width)",
+          )}
         >
-          {heading ? (
-            <div className="px-inline py-tight text-gray-11 text-meta">
-              {heading}
-            </div>
-          ) : null}
           {orderedItems(items).map((item, index, ordered) => {
             const previous = ordered[index - 1];
             // Danger stands alone, last, behind its own divider (#1009). A
