@@ -191,6 +191,7 @@ export class ImportSkill {
         ? null
         : await this.readManifest(join(source, "SKILL.md"));
     const within = source !== null && (await this.withinHome(source));
+    // Only a folder inside the ceiling is read for provenance.
     const provenance: Provenance =
       source === null || !within
         ? { kind: "none" }

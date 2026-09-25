@@ -94,6 +94,7 @@ export class ApmCliDriver implements ApmDriverPort {
     try {
       ({ stdout } = await this.run("apm", ["view", ownerRepo, "versions"]));
     } catch (error) {
+      // The raw error may carry a token in a git URL: only the reason leaves.
       return {
         ok: false,
         reason: hasAuthPhrase(error) ? "auth-required" : "failed",
@@ -127,6 +128,7 @@ export class ApmCliDriver implements ApmDriverPort {
       const { stdout, stderr } = await this.run("apm", args, { cwd });
       output = `${stdout}\n${stderr}`;
     } catch (error) {
+      // Classify from the rejected run's own output, not the exit code (#183).
       return { ok: false, reason: classifyInstallFailure(outputOf(error)) };
     }
     // Fail-closed: an exit-0 run still has to prove itself with the marker.
@@ -135,6 +137,7 @@ export class ApmCliDriver implements ApmDriverPort {
     }
     this.log({
       operation: "deploy-skill",
+      // Basename or "global", never the full path.
       target: logTarget,
       exitCode: 0,
       durationMs: Date.now() - started,
@@ -169,6 +172,7 @@ export class ApmCliDriver implements ApmDriverPort {
     }
     this.log({
       operation: "remove-skill",
+      // Basename or "global", never the full path.
       target: logTarget,
       exitCode: 0,
       durationMs: Date.now() - started,
@@ -250,6 +254,8 @@ function removeSucceeded(output: string): boolean {
   );
 }
 
+// Only the symlink refusal is classified, so an unknown message never passes
+// as a diagnosed one (#180).
 function classifyInstallFailure(
   output: string,
 ): "destination-symlinked" | "failed" {
@@ -263,6 +269,7 @@ function outputOf(error: unknown): string {
   return `${String(stdout ?? "")}\n${String(stderr ?? "")}`;
 }
 
+// The raw text is inspected here and never leaves this scope.
 function hasAuthPhrase(error: unknown): boolean {
   const haystack = normalizeCommandOutput(outputOf(error));
   return APM_AUTH_PHRASES.some((phrase) => haystack.includes(phrase));
