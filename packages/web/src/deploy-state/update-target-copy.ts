@@ -13,17 +13,6 @@ export const UPDATE_TARGET = "Update target";
 // § Blocked control).
 export const UPDATE_TARGET_NO_ORIGIN = `${UPDATE_TARGET} — no GitHub origin`;
 
-// The same control kept in a row's menu with nothing to update, by cause
-// (copy.md § Blocked control, #1067). A read that failed claims no absence.
-export const UPDATE_TARGET_BLOCKED = {
-  notRead: `${UPDATE_TARGET} — target not read`,
-  unfinished: `${UPDATE_TARGET} — unfinished operation`,
-  pinned: `${UPDATE_TARGET} — pinned per skill`,
-  empty: `${UPDATE_TARGET} — nothing deployed`,
-  latestUnknown: `${UPDATE_TARGET} — latest release unknown`,
-  onLatest: `${UPDATE_TARGET} — on the latest release`,
-} as const;
-
 // The dialog acts on a target the reader already chose, so its title names it.
 export const updateDialogTitle = (target: string): string => `Update ${target}`;
 
@@ -146,13 +135,6 @@ function outcomeFact(
 
 // The way out of a half-landed update, named on the card and in the dialog.
 export const RETRY_UPDATE = "Retry update";
-
-// A row's retry item with no unfinished operation, or while its own retry
-// runs (copy.md § Blocked control, #1067).
-export const RETRY_UPDATE_NOTHING = `${RETRY_UPDATE} — nothing to retry`;
-export const RETRY_UPDATE_NOT_READ = `${RETRY_UPDATE} — target not read`;
-export const retryRunning = (label: string): string =>
-  `${label} — already running`;
 
 // The dialog's own reading once the outcome is in: the same heading the card
 // carries, so one state is named once (copy.md).

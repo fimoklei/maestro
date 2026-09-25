@@ -153,7 +153,7 @@ describe("proposal actions", () => {
     expect(proposals).toEqual([]);
   });
 
-  it("creates the missing request, and blocks withdrawal with its reason", async () => {
+  it("creates the missing request, and offers no withdrawal without one", async () => {
     const proposals: { action: string; body: Record<string, unknown> }[] = [];
     stubHarnessServer({
       read: {
@@ -167,10 +167,8 @@ describe("proposal actions", () => {
 
     const menu = await openRowMenu("tdd");
     expect(
-      within(menu).getByRole("menuitem", {
-        name: "Withdraw proposal — no request yet",
-      }),
-    ).toHaveAttribute("data-disabled");
+      within(menu).queryByRole("menuitem", { name: /^Withdraw proposal/ }),
+    ).toBeNull();
 
     await userEvent.click(
       within(menu).getByRole("menuitem", { name: "Create pull request" }),
@@ -181,7 +179,7 @@ describe("proposal actions", () => {
     );
   });
 
-  it("lists every matching link and blocks both mutations when requests are ambiguous", async () => {
+  it("lists every matching link and no mutation when requests are ambiguous", async () => {
     stubHarnessServer({
       read: {
         body: withStages(CONNECTED, {
@@ -201,20 +199,7 @@ describe("proposal actions", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual([
-      "View pull request #41",
-      "View pull request #44",
-      "Update proposal — close the extra requests",
-      "Withdraw proposal — close the extra requests",
-    ]);
-    for (const label of [
-      "Update proposal — close the extra requests",
-      "Withdraw proposal — close the extra requests",
-    ]) {
-      expect(
-        within(menu).getByRole("menuitem", { name: label }),
-      ).toHaveAttribute("data-disabled");
-    }
+    ).toEqual(["View pull request #41", "View pull request #44"]);
     expect(
       within(menu).getByRole("menuitem", { name: "View pull request #41" }),
     ).toHaveAttribute(

@@ -61,7 +61,7 @@ Deploy again to restore the released files. Then remove the skill.
 | Detail sentence | Useful cause or recovery context in one or two short sentences | `Pull request #45 was closed without merging. Select Reopen proposal to continue it.` |
 | Status chip | Two to four words, no verb, from `CONTEXT.md` | `Not yet proposed` |
 | Control label | Verb plus object, from `CONTEXT.md` | `Propose change` |
-| Blocked control | Label, em dash, cause in five words or fewer | `Withdraw proposal — no request yet` |
+| Blocked control | Label, em dash, cause in five words or fewer | `Update target — no GitHub origin` |
 | Meta line | Fact, comma, when it was read | `Compared with main, read just now` |
 | Empty state | `No {things} yet`, then one sentence saying what appears here | `No changes yet` |
 | Busy label | `{Verb}ing…`, the verb of the control's own label, no object | `Deploying…` |
