@@ -7,8 +7,8 @@ const meta = {
   args: {
     children: (
       <>
-        <FactRow label="Kind">Repository</FactRow>
-        <FactRow label="Path" machine title="/Users/me/work/api-gateway">
+        <FactRow label="Target">Repository</FactRow>
+        <FactRow label="Path" machine fullValue="/Users/me/work/api-gateway">
           /Users/me/work/api-gateway
         </FactRow>
         <FactRow label="Release" machine>

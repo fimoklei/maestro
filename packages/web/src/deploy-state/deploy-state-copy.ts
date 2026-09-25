@@ -6,6 +6,7 @@ export const REREAD_LABEL = "Re-read Deploy-state";
 export const FILTER_LABEL = "Filter";
 export const DISPLAY_LABEL = "Display";
 export const TABLE_LABEL = "Deploy-state table";
+export const TARGET_LABEL = "Target";
 export const ACTIONS_COLUMN_LABEL = "Actions";
 
 // The two group headers (CONTEXT.md → Target).

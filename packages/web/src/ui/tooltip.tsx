@@ -2,7 +2,8 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type { ReactNode } from "react";
 
 // shadcn/ui's tooltip on Radix, restyled to the tokens (ADR-0033). It names a
-// control that shows no words of its own; it never holds one.
+// control that shows no words of its own, or shows a value its row shortens
+// (#1123); it never holds a control.
 
 // The provider sits inside, not at the composition root: a tooltip then works
 // wherever it is rendered, including in a story and in a sibling unit test.
@@ -11,7 +12,7 @@ export function Tooltip({
   detail,
   children,
 }: {
-  /** The same words as the control's accessible name (design.md). */
+  /** The trigger's accessible name, or the whole of its shortened text. */
   label: string;
   /** A reason under the label; the trigger's description, said once. */
   detail?: string;
@@ -37,7 +38,7 @@ export function Tooltip({
             aria-label={detail}
             // Escape dismisses the tooltip alone, not the panel around it.
             onEscapeKeyDown={(event) => event.stopPropagation()}
-            className="z-50 max-w-80 rounded-control border border-gray-7 bg-gray-2 px-inline py-tight text-gray-12 text-meta shadow-float"
+            className="z-50 max-w-80 wrap-anywhere rounded-control border border-gray-7 bg-gray-2 px-inline py-tight text-gray-12 text-meta shadow-float"
           >
             {label}
             {detail === undefined ? null : (
