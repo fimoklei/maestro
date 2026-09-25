@@ -13,7 +13,7 @@ import {
   type SkippedEntry,
   skippedFromReading,
 } from "./deploy-state-types";
-import { harnessPages } from "./harness-pages";
+import { harnessPages, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import {
   countExtraRootPackageFiles,
@@ -45,7 +45,7 @@ export async function groupPrimitivesByTool(
     fileExists: (path: string) => Promise<boolean>;
     // The connected Harness, or null while it is unknown (#950).
     origin?: GitOrigin | null;
-    // The connected Harness's page, read only once a root package is found.
+    // The connected Harness's page, read only once an entry could link to it.
     harnessPage?: () => Promise<GitHubPage | null>;
   },
 ): Promise<{
@@ -119,6 +119,11 @@ export async function groupPrimitivesByTool(
       continue;
     }
     const pin = harnessSkillPin(entry, deps.origin ?? null);
+    const github = perSkillPage(
+      entry,
+      reading.name,
+      (await deps.harnessPage?.()) ?? null,
+    );
     let claimed = false;
     for (const group of tools) {
       const prefix = SKILLS_DIR_PREFIX.get(group.tool);
@@ -128,6 +133,7 @@ export async function groupPrimitivesByTool(
           type: "skill",
           name: reading.name,
           version: entry.resolved_ref,
+          ...(github === undefined ? {} : { github }),
         });
         if (pin !== null) {
           pins.get(group.tool)?.push(pin);

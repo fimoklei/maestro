@@ -5,7 +5,7 @@ import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import type { SupportedTool } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
 import type { PendingOperation } from "../deploy/retry-target-operation";
-import type { GitHubPage } from "../git/github-page";
+import { type GitHubPage, UNKNOWN_PAGE } from "../git/github-page";
 import { resolveHomeDirectory } from "../home-directory";
 import {
   type LockfileEntry,
@@ -26,7 +26,7 @@ import {
   groupPrimitivesByTool,
   type ToolDeployState,
 } from "./group-primitives-by-tool";
-import { harnessPages } from "./harness-pages";
+import { harnessPages, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import type { ReleaseHeadReader } from "./release-head";
 import {
@@ -114,23 +114,18 @@ export class DeployStateReader {
     return (await this.extras.harnessOrigin?.().catch(() => null)) ?? null;
   }
 
-  // Unlike the origin above, a failed read stays apart from no page: the link
-  // cell shows it as its own Unknown (#1181).
-  protected async connectedPage(): Promise<GitHubPage | null> {
-    return (
-      (await this.extras
-        .harnessPage?.()
-        .catch((): GitHubPage => ({ kind: "unknown" }))) ?? null
-    );
+  // Read at most once per call, and only once an entry could link to it.
+  protected connectedPage(): () => Promise<GitHubPage | null> {
+    let page: Promise<GitHubPage | null> | undefined;
+    return () => {
+      page ??= readPage(() => this.extras.harnessPage?.());
+      return page;
+    };
   }
 
   async read(repoPath: string): Promise<DeployStateResult> {
-    // A failed origin read is its own Unknown, never a failed Deploy-state read.
-    const github = (
-      this.extras.githubPage?.(repoPath) ?? Promise.resolve(null)
-    ).then(
+    const github = readPage(() => this.extras.githubPage?.(repoPath)).then(
       (page) => (page === null ? {} : { github: page }),
-      () => ({ github: { kind: "unknown" } as const }),
     );
     const raw = await this.fs.readFile(join(repoPath, "apm.lock.yaml"));
     if (raw === null) {
@@ -154,6 +149,7 @@ export class DeployStateReader {
     const primitives: DeployedPrimitive[] = [];
     const skipped: SkippedEntry[] = unreadableAsSkipped(parsed.unreadable);
     const origin = await this.connectedOrigin();
+    const harnessPage = this.connectedPage();
     const pins: SkillPin[] = [];
     let root: LockfileEntry | undefined;
     // The Selection: the root package's own skills. A leftover per-skill row
@@ -176,17 +172,17 @@ export class DeployStateReader {
       if (pin !== null) {
         pins.push(pin);
       }
+      const github = perSkillPage(entry, reading.name, await harnessPage());
       primitives.push({
         type: "skill",
         name: reading.name,
         version: entry.resolved_ref,
+        ...(github === undefined ? {} : { github }),
       });
     }
 
     const pages =
-      root === undefined
-        ? undefined
-        : harnessPages(root, await this.connectedPage());
+      root === undefined ? undefined : harnessPages(root, await harnessPage());
     if (root !== undefined) {
       const deployed = await deployedRootPackageSkills(
         root,
@@ -288,6 +284,18 @@ export class DeployStateReader {
   }
 }
 
+// Unlike an origin, a failed read stays apart from no page: the link cell
+// shows it as its own Unknown, never a failed Deploy-state read (#1180, #1181).
+async function readPage(
+  read: () => Promise<GitHubPage | null> | undefined,
+): Promise<GitHubPage | null> {
+  try {
+    return (await read()) ?? null;
+  } catch {
+    return UNKNOWN_PAGE;
+  }
+}
+
 function unreadableAsSkipped(
   unreadable: readonly UnreadableEntry[],
 ): SkippedEntry[] {
@@ -345,7 +353,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
     const grouped = await groupPrimitivesByTool(parsed.entries, detected, {
       fileExists: (file) => this.fs.isFileEntry(join(tree, file)),
       origin: await this.connectedOrigin(),
-      harnessPage: () => this.connectedPage(),
+      harnessPage: this.connectedPage(),
     });
     for (const group of grouped.tools) {
       await this.markCopies(group.primitives, { kind: "global" }, [group.tool]);

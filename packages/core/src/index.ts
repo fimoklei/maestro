@@ -124,7 +124,9 @@ export { runHelper } from "./folder-chooser/run-helper";
 export {
   type GitHubPage,
   githubPageFromOriginUrl,
+  OWNER_REPO_PATTERN,
   readGitHubPage,
+  UNKNOWN_PAGE,
 } from "./git/github-page";
 export {
   DeleteLocalSkill,

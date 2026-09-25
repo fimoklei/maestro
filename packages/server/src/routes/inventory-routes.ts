@@ -27,7 +27,7 @@ export function registerInventoryRoutes(app: Hono, deps: Deps) {
   // configured path is intentional, not an attacker probe.
   app.get("/api/inventory/config", async (c) => {
     const { github, ...location } = await deps.inventory.configuredLocation();
-    return c.json({ ...location, ...githubPageField(github) });
+    return c.json({ ...location, ...githubPageField("github", github) });
   });
 
   // Connect: a pasted path is persisted offline; a GitHub URL is cloned to a

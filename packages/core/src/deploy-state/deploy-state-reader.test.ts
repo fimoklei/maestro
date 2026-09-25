@@ -1133,6 +1133,86 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
     });
   });
 
+  it("links nothing at a non-release ref, even when the Harness origin read failed", async () => {
+    // No known tag is decidable without the origin (#1181).
+    const result = await read(repoAt("main"), async () => {
+      throw new Error("git unavailable");
+    });
+    expect(result).not.toHaveProperty("releaseGitHub");
+    expect(result).not.toHaveProperty("primitives.0.github");
+  });
+
+  // A per-skill dependency from before ADR-0031, pinned at its own tag.
+  const legacyAt = (ref: string, virtualPath = ".apm/skills/tdd") =>
+    `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: ${virtualPath}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/tdd\n  content_hash: sha256:abc\n`;
+  const legacyRepo = (ref: string, virtualPath?: string) =>
+    new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(legacyAt(ref, virtualPath)) },
+    });
+
+  it("links a per-skill dependency on the Harness to its folder at its own tag", async () => {
+    const result = await read(legacyRepo("v0.2.0"), async () => ({
+      kind: "link",
+      url: HARNESS,
+    }));
+    expect(result).toMatchObject({
+      primitives: [
+        {
+          name: "tdd",
+          github: {
+            kind: "link",
+            url: `${HARNESS}/tree/v0.2.0/.apm/skills/tdd`,
+          },
+        },
+      ],
+    });
+  });
+
+  it("links no per-skill dependency off the Harness layout or a release tag", async () => {
+    const page = async () => ({ kind: "link", url: HARNESS }) as const;
+    for (const fs of [legacyRepo("main"), legacyRepo("v0.2.0", "skills/tdd")]) {
+      const result = await read(fs, page);
+      expect(result).toMatchObject({ primitives: [{ name: "tdd" }] });
+      expect(result).not.toHaveProperty("primitives.0.github");
+    }
+  });
+
+  it("reads a per-skill dependency as unknown when the Harness origin read failed", async () => {
+    const result = await read(legacyRepo("v0.2.0"), async () => {
+      throw new Error("git unavailable");
+    });
+    expect(result).toMatchObject({
+      primitives: [{ name: "tdd", github: { kind: "unknown" } }],
+    });
+  });
+
+  it("links a global tool's per-skill dependency the same way", async () => {
+    const reader = new GlobalDeployStateReader({
+      fs: new InMemoryFileSystem({
+        files: { [GLOBAL_LOCKFILE]: lockfile(legacyAt("v0.2.0")) },
+      }),
+      toolPresence: fakePresence(["claude"]),
+      treeRoot: () => "/home",
+      harnessPage: async () => ({ kind: "link", url: HARNESS }),
+    });
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toMatchObject({
+      tools: [
+        {
+          tool: "claude",
+          primitives: [
+            {
+              name: "tdd",
+              github: {
+                kind: "link",
+                url: `${HARNESS}/tree/v0.2.0/.apm/skills/tdd`,
+              },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it("links a global tool's skills and release the same way", async () => {
     const fs = new InMemoryFileSystem({
       files: {

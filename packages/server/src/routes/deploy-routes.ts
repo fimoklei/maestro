@@ -9,11 +9,7 @@ import {
   updatePreviewErrorResponses,
   updateRunErrorResponses,
 } from "../error-responses";
-import {
-  checkedPrimitives,
-  githubPageField,
-  releaseGitHubField,
-} from "../github-page-response";
+import { checkedPrimitives, githubPageField } from "../github-page-response";
 import { requireRegisteredRepo } from "../registered-repo-route";
 import { cardReadingFields } from "../release-head-response";
 import {
@@ -89,8 +85,8 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
         ? { pendingOperation: result.pendingOperation }
         : {}),
       ...cardReadingFields(result),
-      ...githubPageField(result.github),
-      ...releaseGitHubField(result.releaseGitHub),
+      ...githubPageField("github", result.github),
+      ...githubPageField("releaseGitHub", result.releaseGitHub),
     });
   });
 
@@ -114,7 +110,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           ...group,
           primitives: checkedPrimitives(primitives),
           ...cardReadingFields({ releaseHead, pinnedPerSkill, extraFiles }),
-          ...releaseGitHubField(releaseGitHub),
+          ...githubPageField("releaseGitHub", releaseGitHub),
         }),
       ),
       skipped: result.skipped,

@@ -29,7 +29,7 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, status);
     }
     const { github, ...state } = result.state;
-    return c.json({ ...state, ...githubPageField(github) });
+    return c.json({ ...state, ...githubPageField("github", github) });
   };
 
   app.get("/api/harness", async (c) =>
