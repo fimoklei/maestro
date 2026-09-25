@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { IconButton } from "./icon-button";
 
 // A dialog's 48px header: the title and a close control
-// (design-principles.md → Dialog anatomy).
+// (design.md → Feedback and dialogs).
 export function DialogHeader({
   title,
   onClose,
