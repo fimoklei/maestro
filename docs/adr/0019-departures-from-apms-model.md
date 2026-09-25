@@ -15,9 +15,8 @@ That constraint had no home. Departures accumulated inside separate ADRs and
 wayfinder tickets, where nobody read them as a set, and a session that met one
 in isolation re-derived APM's model from the docs to judge it.
 
-This file records what Maestro **decided**. What apm *does* is
-`docs/apm-behavior.md`; what an agent *must do* when driving apm is
-`.claude/rules/apm-driver.md`.
+This file records what Maestro **decided**, not what apm *does* or what an
+agent *must do* when driving apm.
 
 ## Decision
 
@@ -60,10 +59,9 @@ Seven entries. Each names what APM says, what this route does, and the verdict:
   (`packages/core/src/deploy/apm-cli-driver.ts`, read 2026-07-30).
 - **Why `compile` is not run**, three reasons, any one sufficient:
   - It is not needed. A consumer's `apm install` reads the ref's subpath in
-    the source tree; a ref's subpath is literal, with no discovery fallback
-    (`docs/apm-behavior.md` → Producer). `agent-harness` holds no compiled
-    output at all — its `.claude/` contains only `worktrees/` and
-    `settings.local.json` (checked 2026-07-30) — and the consumer route
+    the source tree; a ref's subpath is literal, with no discovery fallback.
+    `agent-harness` holds no compiled output at all — its Claude Code folder
+    contains only `worktrees/` and `settings.local.json` (checked 2026-07-30) — and the consumer route
     installs from it.
   - It is destructive here. `apm compile` rewrites `AGENTS.md` and
     `CLAUDE.md`, both hand-owned in this repo (#346).
@@ -90,7 +88,8 @@ Seven entries. Each names what APM says, what this route does, and the verdict:
 ### 4. "Harness" means something else here than in APM — deliberate
 
 - **APM:** a harness is the **agent platform** — Copilot, Claude, Cursor —
-  detected from `.github/`, `.claude/` (quickstart glossary). It is where
+  detected from its config folder, such as `.github` or `.claude` (quickstart
+  glossary). It is where
   primitives *arrive*.
 - **This route:** "harness" is the central inventory repo — where primitives
   *depart from* — and #347 banked **Harness** as the authoring view's name.
@@ -160,7 +159,7 @@ Seven entries. Each names what APM says, what this route does, and the verdict:
   breaks the usual one-decision-one-ADR shape on purpose: the value of this
   file is reading the departures as one set, and splitting them across
   ADR-0019 / 0023 / 0027 rebuilds the exact problem #400 was opened to fix.
-- `.claude/rules/apm-driver.md` points here from its *Grounding* section, so an
+- The repo's apm driver rules for agents point here, so an
   agent about to depart meets the accepted list before re-deriving APM's model
   from the docs.
 - Nothing in this register is user-visible. The release dialog shows the delta
@@ -168,8 +167,8 @@ Seven entries. Each names what APM says, what this route does, and the verdict:
 
 ## Rejected alternatives
 
-- **A section in `docs/apm-behavior.md`.** That file records what apm *does*,
-  states in its own header that decisions live in ADRs, and is rewritten
+- **A section in the repo's apm behaviour notes.** Those notes record what apm
+  *does*, state in their own header that decisions live in ADRs, and are rewritten
   section by section on every apm upgrade. Departures from APM's *model* do
   not change when apm bumps a version, so an upgrade would churn them for the
   wrong reason.

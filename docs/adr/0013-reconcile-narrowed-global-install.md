@@ -14,7 +14,7 @@ leftovers that apm does not clean, because a narrowing `-t` never prunes —
 on disk. Verified against the apm 0.26.0 source in issue #191 and re-measured
 on 0.29.0 in #774 (narrowing `-g -t claude` still left every `.agents` file
 and hash in place; the uninstall cleanup added upstream prunes nothing on
-install); the mechanics are in `docs/apm-behavior.md` → "Ghost entries". Both
+install). Both
 leftovers are global-path only; per-repo deploys are unaffected.
 
 The consequences without a fix:
@@ -27,8 +27,8 @@ The consequences without a fix:
    the junk ADR-0011 exists to eliminate.
 
 The obvious cleanup command is off the table: `apm uninstall -g` deleted 19
-pre-existing skill dirs beyond its lockfile (`LEARNINGS.md` ·
-spike-isolation), and a per-tool `apm uninstall -g -t codex` is unspiked.
+pre-existing skill dirs beyond its lockfile when a spike ran it against
+the real home (2026-07-18), and a per-tool `apm uninstall -g -t codex` is unspiked.
 
 ## Decision
 

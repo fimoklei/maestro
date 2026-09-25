@@ -90,7 +90,7 @@ that fails the build on a hand-rolled `role="alert"` could land green.
 - A new server error code is a compile error in `web` until it is given a level
   and a heading. That is deliberate friction, and it is the only thing keeping
   the table exhaustive.
-- The instruction belongs in `.claude/rules/frontend.md`, which already fires on
+- The instruction belongs in the repo's frontend rule for agents, which already fires on
   this work; this ADR carries the reasoning, so an agent following the rule
   never has to read it. That file is Michiel's: the section is quoted for his
   yes on #616, together with one `PRODUCT.md` line adding "Harness" to the fixed
@@ -122,9 +122,7 @@ all. The scale's authority is `tokens.css`, which separated `danger` from
 lean the decision on ground that is not there.
 
 Placement is the opposite case: both systems reached the same rule and neither
-offers a fixed region. Per
-`docs/research/465-notice-placement-apple-google.md`, which holds the primary
-sources with the date each was read, Material 3 deleted the M2 banner and named
+offers a fixed region. Per the primary sources read for #465, Material 3 deleted the M2 banner and named
 no replacement, Apple ships no toast, snackbar or banner component at all, and
 both state proximity explicitly — "inline or near the action that triggered it",
 "near the items it describes".
