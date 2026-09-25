@@ -186,10 +186,8 @@ describe("Harness restore", () => {
     ).toBeInTheDocument();
   });
 
-  // The dialog promises that a moved commit restores nothing, and only the
-  // server can keep that promise: it compares the commit the confirmation
-  // carries against a fresh HEAD. A check that runs while the confirmation is
-  // open must therefore not rewrite what it carries (ADR-0030).
+  // The server compares the commit the confirmation carries against a fresh
+  // HEAD, so a check that runs meanwhile must not rewrite it.
   it("carries the commit it opened with after a later check moved the picture", async () => {
     const restores: Record<string, unknown>[] = [];
     stubHarnessServer({

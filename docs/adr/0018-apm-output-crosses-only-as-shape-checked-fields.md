@@ -18,12 +18,12 @@ Three facts frame the call:
 - **apm's output is credential-bearing by construction.** It embeds the URLs it
   fetches, and a token-bridged fetch prints
   `https://x-access-token:<token>@github.com/...`. apm owns credentials, Maestro
-  does not (`.claude/rules/security.md`).
+  does not.
 - **It also names absolute paths outside the target** — the handoff's own
   example is a path under the user's home, not under the repo being changed.
 - **The server frequently does not know what apm's terms were.** Every uninstall
   outcome exits 0, so there is no exit code to state; success is the positive
-  marker and nothing else (`docs/apm-behavior.md` § Remove). `apm exited 1` would
+  marker and nothing else. `apm exited 1` would
   be a fiction on the very path the handoff drew it for.
 
 A blanket "nothing crosses" was drafted first and is false. Drift already sends
@@ -53,7 +53,7 @@ Two arms, because the two paths differ in what they have to offer:
   must be a skill slug (`isValidSkillSlug`), and both version cells must match one
   short word of letters, digits, dots and hyphens. A row that fails fails the
   whole read — never a skipped row, which would render that skill up-to-date and
-  hide both the drift and the leak (J04).
+  hide both the drift and the leak.
 
 Two further points the arms share:
 

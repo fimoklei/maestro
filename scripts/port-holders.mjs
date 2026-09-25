@@ -1,7 +1,5 @@
-// Who holds the cockpit's ports. Each worktree serves on its own pair
-// (scripts/cockpit-ports.mjs), so a holder here is either this worktree's own
-// previous run or an unrelated process — never a sibling's, unless two pairs
-// collide, which this still refuses (.claude/skills/verify-in-smoke).
+// Who holds the cockpit's ports: this worktree's previous run or an unrelated
+// process. Each worktree serves on its own pair.
 import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { sep } from "node:path";
@@ -11,10 +9,8 @@ const runLsof = (args) => execFileSync("lsof", args, { encoding: "utf8" });
 const runGit = (args) => execFileSync("git", args, { encoding: "utf8" });
 
 /**
- * Listening pids on a port; empty when it is free, null when the lookup could
- * not answer. Listeners only: a plain `tcp:<port>` query also matches every
- * socket *connected* to it, so an open browser tab would read as a holder
- * (lsof 4.91, measured 2026-07-30).
+ * Listening pids on a port; empty when free, null when lsof could not answer.
+ * Listeners only: `tcp:<port>` also matches connected sockets (lsof 4.91).
  */
 export function pidsOnPort(port, lsof = runLsof) {
   try {
@@ -30,7 +26,6 @@ export function pidsOnPort(port, lsof = runLsof) {
   }
 }
 
-/** The command name and working directory of a pid, as far as lsof will say. */
 function describeProcess(pid, lsof) {
   let fields = [];
   try {
@@ -47,7 +42,6 @@ function describeProcess(pid, lsof) {
   };
 }
 
-/** Who holds each port, named well enough to go and stop it. */
 export function findPortHolders(ports, lsof = runLsof) {
   return ports.flatMap((port) => {
     const pids = pidsOnPort(port, lsof);
@@ -59,11 +53,9 @@ export function findPortHolders(ports, lsof = runLsof) {
   });
 }
 
-/** The opening of every held-port line: which port, and who holds it. */
 const namePortHolder = ({ port, pid, command }) =>
   `  port ${port} — ${command ?? "an unidentified process"} (pid ${pid})`;
 
-/** The launcher's refusal to start, or null when every port is free. */
 export function describeHeldPorts(holders) {
   if (holders.length === 0) return null;
 
@@ -84,9 +76,8 @@ export function describeHeldPorts(holders) {
 }
 
 /**
- * Every worktree of this repo, or null when git could not be asked — never an
- * empty list, which would read as "no worktree owns these ports" and free
- * them. Resolved, because attribution compares against resolved paths.
+ * Every worktree of this repo, resolved, or null when git could not answer:
+ * never an empty list, which would free the ports.
  */
 export function listWorktrees(repoRoot, git = runGit, resolve = realpathSync) {
   try {
@@ -122,10 +113,8 @@ function worktreeOwning(cwd, worktrees) {
 }
 
 /**
- * Split port holders into the ones this run may free — only its own worktree's
- * previous run — and the ones it must refuse rather than kill: everything else.
- * The pair is derived from this worktree's path, so a holder that is not ours
- * is an unrelated service, and killing it would cost somebody else's work.
+ * Splits holders into this worktree's own previous run, which may be freed,
+ * and everything else, which must be refused rather than killed.
  */
 export function partitionHolders(holders, { self, worktrees }) {
   if (worktrees === null) {
@@ -150,17 +139,13 @@ export function partitionHolders(holders, { self, worktrees }) {
   return { foreign, evictable };
 }
 
-/**
- * The worktree a running process sits in; null when that cannot be
- * established, so a caller about to signal it holds off instead.
- */
+/** The worktree a process sits in; null when unknown, so a caller holds off. */
 export function processWorktree(pid, { worktrees }, lsof = runLsof) {
   if (worktrees === null) return null;
 
   return worktreeOwning(describeProcess(pid, lsof).cwd, worktrees);
 }
 
-/** The launcher's refusal to evict a holder it may not kill, or null when free to go. */
 export function describeForeignHolders(foreign) {
   if (foreign.length === 0) return null;
 

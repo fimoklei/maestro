@@ -2,13 +2,10 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { type ReactNode, useRef } from "react";
 import { cn } from "./cn";
 
-// The overlay, the dismissing backdrop and the panel wired to the keyboard
-// contract — one owner, so a dialog supplies only what makes it that one.
-// Radix owns the portal, the focus trap, the return of focus and the scroll
-// lock (#997); this file owns the frame and the two refusals to close.
+// Radix owns the portal, focus trap, focus return and scroll lock (#997); this
+// file owns the frame and the two refusals to close.
 
-// Two widths, nothing between them (ADR-0033 §6). Tailwind reads whole class
-// names, so each is written out.
+// Tailwind reads whole class names, so each is written out.
 const WIDTH = {
   480: "max-w-[480px]",
   640: "max-w-[640px]",
@@ -32,10 +29,7 @@ export const DIALOG_CANCEL = { "data-dialog-cancel": "" };
 export interface DialogShellProps {
   /** The panel's accessible name — the same words as its visible heading. */
   label: string;
-  /**
-   * Ids of the on-screen elements that describe the panel, or `null` where
-   * nothing on screen does. Required, so no dialog omits one by accident.
-   */
+  /** Ids of the elements that describe the panel; required, so `null` is explicit. */
   describedBy: string | null;
   width: keyof typeof WIDTH;
   height?: keyof typeof HEIGHT;
@@ -44,10 +38,7 @@ export interface DialogShellProps {
   onClose: () => void;
   /** False while a request is in flight — its outcome is readable nowhere else. */
   closeEnabled?: boolean;
-  /**
-   * This dialog deletes files or writes to GitHub: focus opens on the control
-   * spread with `DIALOG_CANCEL`, so Enter never confirms by accident.
-   */
+  /** Focus opens on `DIALOG_CANCEL`, so Enter never confirms by accident. */
   destructive?: boolean;
   /** A field has been typed in — a click outside must not discard that work. */
   fieldsChanged?: boolean;
@@ -67,9 +58,7 @@ export function DialogShell({
   children,
 }: DialogShellProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  // Radix returns focus to its own Trigger, and these dialogs are opened from
-  // a control it never saw. The control that had focus at open is the one to
-  // come back to, so it is remembered here.
+  // Radix returns focus to its own Trigger, which these dialogs never use.
   const openerRef = useRef<Element | null>(
     typeof document === "undefined" ? null : document.activeElement,
   );
@@ -85,8 +74,6 @@ export function DialogShell({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-backdrop" />
         <Dialog.Content
           ref={panelRef}
-          // Radix hides the rest of the tree instead of stating modality;
-          // the attribute says it out loud as well.
           aria-modal="true"
           aria-label={label}
           aria-describedby={describedBy ?? undefined}
@@ -119,8 +106,7 @@ export function DialogShell({
             if (!closeEnabled || fieldsChanged) event.preventDefault();
           }}
           className={cn(
-            // Top-aligned at 96px (ADR-0033 §6), not centred: a dialog that
-            // grows keeps its header where the reader's eye already is.
+            // Top-aligned, not centred: a growing dialog keeps its header still.
             "-translate-x-1/2 fixed top-24 left-1/2 z-50 flex w-[calc(100%-2rem)] flex-col overflow-hidden rounded-float border bg-gray-2 shadow-float outline-none",
             WIDTH[width],
             HEIGHT[height],

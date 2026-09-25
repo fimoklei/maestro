@@ -1,5 +1,3 @@
-// The Harness clone catching up after a carried-back change lands upstream
-// (#978): a real clone, a real bare remote, and a teammate pushing to it.
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -38,8 +36,6 @@ describe("HarnessGitAdapter catch-up", () => {
     );
   };
 
-  // A teammate lands a change on GitHub, and the Read's fetch has already
-  // brought it into this clone's remote-tracking refs.
   const landUpstream = async (change: () => Promise<void>) => {
     await change();
     await git(teammate, "add", "-A");
@@ -145,8 +141,7 @@ describe("HarnessGitAdapter catch-up", () => {
   });
 
   it("catches up past local work on files upstream never touched, leaving it as it was", async () => {
-    // A tool's own untracked file and an unrelated edit sit in most clones;
-    // the fast-forward carries both over, unstaged (#978).
+    // The fast-forward carries untracked and unrelated edits over, unstaged (#978).
     await writeSkill(teammate, "other", "Teammate's");
     await git(teammate, "add", "-A");
     await git(teammate, "commit", "-m", "add other");

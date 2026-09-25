@@ -41,8 +41,6 @@ describe("Panel", () => {
   });
 
   it("draws no second band on a screen with nothing to put in it", () => {
-    // A band with nothing to show is not rendered; the panel then has one
-    // band (#991).
     const { container } = render(<Panel title="Harness">rows</Panel>);
 
     expect(container.querySelectorAll("[data-band]")).toHaveLength(1);

@@ -1,5 +1,4 @@
-// Every POST body the server accepts, and the request-shape refusals it
-// answers a wrong one with — the only prose the server writes (ADR-0025 §8).
+// Every POST body the server accepts, and the request-shape refusals for a wrong one.
 
 import type { Context } from "hono";
 import { z } from "zod";
@@ -15,7 +14,7 @@ export const connectBodySchema = z.object({
   localOnly: z.boolean().optional(),
 });
 
-// The field's current value: the folder the chooser opens on (ADR-0032 §2).
+// The field's current value: the folder the chooser opens on.
 export const chooseFolderBodySchema = z.object({ path: z.string() });
 
 // The destination is never sent: the connected Harness is resolved server-side.
@@ -25,16 +24,13 @@ export const importBodySchema = z.object({
   name: z.string().optional(),
 });
 
-// One spelling for every route that names a target: global carries no path, so
-// no untrusted path crosses the boundary on it (J07).
+// Global carries no path, so no untrusted path crosses the boundary on it.
 const targetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("repo"), repoPath: z.string() }),
   z.object({ kind: z.literal("global") }),
 ]);
 
-// Proves the confirmation came from this server's own preflight, not a
-// client-built claim. Shaped as core mints it (allowlist, security.md); which
-// destruction a given token authorizes is core's business, not the edge's.
+// Proves the confirmation came from this server's own preflight, not a client-built claim.
 const consentTokenSchema = z
   .string()
   .regex(/^[0-9a-f]{64}$/)
@@ -46,12 +42,10 @@ export const deployBodySchema = z.object({
   name: z.string(),
   target: targetSchema,
   // The receipt this deploy's own refusal minted, licensing the overwrite of
-  // exactly the copies it named (ADR-0006, #66, #952).
+  // exactly the copies it named (#66, #952).
   confirmedCopyReceipt: consentTokenSchema,
 });
 
-// Retrying names only the target: which operation, at which release and with
-// which Selection, comes from the record the server itself wrote (#951).
 export const retryOperationBodySchema = z.object({
   target: targetSchema,
   confirmedCopyReceipt: consentTokenSchema,
@@ -72,9 +66,6 @@ export const removeBodySchema = z.object({
   confirmedRemovalReceipt: consentTokenSchema,
 });
 
-// One skill, many targets — the mirror image of the bulk-deploy body. Each
-// target carries its own preflight answer: the token that authorises its
-// reclaim, or the allowlisted code that takes it out of the run.
 export const bulkRemoveBodySchema = z.object({
   name: z.string(),
   targets: z
@@ -89,17 +80,12 @@ export const bulkRemoveBodySchema = z.object({
     .min(1),
 });
 
-// The whole target moves to one release, so the only skill name that travels is
-// `add`: the one the Inventory's entrance asks for beside the move. Which skills
-// the release itself touches is the preview's answer, never the caller's claim.
+// Which skills the release touches is the preview's answer, never the caller's claim.
 export const updatePreflightBodySchema = z.object({
   target: targetSchema,
   add: z.string().optional(),
 });
 
-// The confirm carries the two proofs and the same request: the token, the
-// receipt, and the skill it was priced with. A different skill mints a
-// different token (#954, #955).
 export const updateBodySchema = z.object({
   target: targetSchema,
   token: z.string().regex(/^[0-9a-f]{64}$/),
@@ -121,33 +107,28 @@ export const publishReleaseBodySchema = z.object({
 // server-side, so the browser cannot point a promotion at another repository.
 export const promoteBodySchema = z.object({ name: z.string() });
 
-// A proposal mutation names the skill and the request the row showed. The
-// number is a claim, never an authorisation: the use case rechecks it against
-// a fresh read before anything is closed or reopened (#827).
+// The number is a claim, never an authorisation: it is rechecked against a fresh read (#827).
 export const proposalBodySchema = z.object({
   name: z.string(),
   number: z.number().int().positive(),
 });
 
-// The confirmation the author gave: the skill, and the origin/HEAD tree hash
-// the row stated it against. Compared against a freshly fetched remote, never
-// used as the thing to remove (#580).
+// The hash is compared against a freshly fetched remote, never used as the
+// thing to remove (#580).
 export const deletionBodySchema = z.object({
   name: z.string(),
   seenRemoteTree: z.string(),
 });
 
-// The confirmation the author gave: the skill, and the local HEAD commit the
-// row read its eligibility at. Compared against a freshly read HEAD, never
-// used as the thing to restore (ADR-0030).
+// The commit is compared against a freshly read HEAD, never used as the thing
+// to restore.
 export const restoreBodySchema = z.object({
   name: z.string(),
   seenHeadCommit: z.string(),
 });
 
-// The request-shape refusals — the only prose the server writes
-// (ADR-0025 §8). The sentence states what did not happen and where to restart;
-// the shape rides in `detail`, which is where the reader meets it.
+// The request-shape refusals, the only prose the server writes. The shape
+// rides in `detail`.
 export type RequestShape = { message: string; detail: string };
 
 export const PROMOTE_BODY: RequestShape = {
@@ -176,15 +157,11 @@ export const DELETION_BODY: RequestShape = {
     "The request carries a skill name and the origin/HEAD tree it was confirmed against.",
 };
 
-// Removing a skill that exists nowhere else. Only the name travels: nothing is
-// compared against a remote, because nothing reaches one (#798).
 export const LOCAL_DELETION_BODY: RequestShape = {
   message: "Nothing was deleted. Reload the page, then delete the skill again.",
   detail: "The request carries a skill name: { name: string }.",
 };
 
-// Putting a deleted skill folder back. The commit travels only to be compared
-// with a freshly read local HEAD (ADR-0030).
 export const RESTORE_BODY: RequestShape = {
   message:
     "Nothing was restored. Reload the page, then restore the skill again.",

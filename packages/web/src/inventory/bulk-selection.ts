@@ -15,7 +15,6 @@ export function toggleStaged(
   return next;
 }
 
-// Stages or unstages several names at once; every other name keeps its state.
 export function setStagedMany(
   staged: ReadonlySet<string>,
   names: Iterable<string>,

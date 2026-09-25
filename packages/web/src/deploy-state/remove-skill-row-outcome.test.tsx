@@ -12,15 +12,13 @@ import {
   userEvent,
 } from "./remove-skill-row-test-helpers";
 
-// Split from one 32-test file (#723) — see remove-skill-row.test.tsx.
+// Split from one file (#723); see remove-skill-row.test.tsx.
 
 afterEach(() => {
   vi.unstubAllGlobals();
   clearToasts();
 });
 
-// A removal takes its own row off the screen, so absence is the only evidence
-// left behind. The card says what went instead (#383).
 describe("removing a deployed skill from a row", () => {
   describe("announcing the outcome", () => {
     it("names the skill, its version and the target once the removal lands", async () => {
@@ -45,8 +43,6 @@ describe("removing a deployed skill from a row", () => {
       const announcement = await screen.findByText(
         `Removed tdd v0.5.0 from ${REPO_NAME}.`,
       );
-      // Read out where it stands, and focus goes back to the ⋮ the reader
-      // left it on, never to the announcement (#1124).
       expect(announcement.closest("[aria-live]")).not.toBeNull();
       expect(
         screen.getByRole("button", { name: "Actions for tdd" }),
@@ -56,9 +52,6 @@ describe("removing a deployed skill from a row", () => {
       );
     });
 
-    // The row's version can be stale by the time the user confirms — another
-    // deploy may have moved it while the confirmation was open. The trace states
-    // what the server actually removed, never what the screen happened to show.
     it("names the version the server removed, not the one the row showed", async () => {
       stubFetch(null, () =>
         jsonResponse(
@@ -79,12 +72,8 @@ describe("removing a deployed skill from a row", () => {
       ).not.toBeInTheDocument();
     });
 
-    // One toast per removal, so a second success never re-reads the first and
-    // never replaces it on screen.
     it("gives each removal its own line, the earlier one still on screen", async () => {
       const jobs = { type: "skill" as const, name: "jobs", version: "v1.2.0" };
-      // Each removal is answered for the skill it named, so the two traces
-      // cannot be told apart by accident.
       vi.stubGlobal("fetch", async (path: string, init: RequestInit) => {
         if (path === "/api/deploy/remove/preflight") {
           return jsonResponse(
@@ -116,9 +105,6 @@ describe("removing a deployed skill from a row", () => {
       ).toBeInTheDocument();
     });
 
-    // The detected tool set is probed server-side when the removal runs, so a
-    // tool appearing while the confirmation is open changes the real scope. The
-    // trace names the set apm actually reached, not the one the card knew.
     it("names the tools the server reached, not the ones the card knew", async () => {
       stubFetch(null, () =>
         jsonResponse(
@@ -145,8 +131,6 @@ describe("removing a deployed skill from a row", () => {
       ).toBeInTheDocument();
     });
 
-    // An older server answers 200 with no version. Saying so beats printing the
-    // word "undefined" over a removal that already happened.
     it("says the version is unknown when the server reported none", async () => {
       stubFetch(null, () =>
         jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
@@ -176,8 +160,6 @@ describe("removing a deployed skill from a row", () => {
       expect(screen.queryByText(/^Removed tdd/)).not.toBeInTheDocument();
     });
 
-    // The toast lives outside the table, so the sentence survives the row and
-    // the card that held it.
     it("stays on screen after the last skill on the card is gone", async () => {
       stubFetch(null);
       const { withoutTdd } = renderRow();

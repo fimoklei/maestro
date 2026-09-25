@@ -13,8 +13,6 @@ import type {
 import { ReadHarnessState } from "./read-harness-state";
 import type { HarnessSkillTree } from "./skill-movements";
 
-// A harness Maestro has fetched at least once: only then do the tags it reads
-// mean anything.
 const FETCHED: HarnessFreshness = {
   outcome: "fetched",
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
@@ -30,8 +28,6 @@ const FACTS: HarnessFacts = {
   ],
 };
 
-// An in-memory freshness record, so a refresh can be observed the way a later
-// read would see it rather than through a spy on the writer.
 function stubFreshness(
   initial: HarnessFreshness = {
     outcome: null,
@@ -47,17 +43,12 @@ function stubFreshness(
   };
 }
 
-// Skill trees per ref, keyed by the commit the use-case asks about. Anything
-// unlisted is a ref carrying no skills at all; an explicit null is a ref the
-// adapter could not read.
+// Unlisted: a ref with no skills. Null: a ref the adapter could not read.
 type TreesByRef = Record<string, HarnessSkillTree[] | null>;
 
-// One promote branch: the tree under review, and the tip commit that carries
-// it. A null tree is a branch proposing to delete its skill.
+// A null tree is a branch proposing to delete its skill.
 const onBranch = (tree: string | null) => ({ tree, commit: "branch-tip" });
 
-// A harness whose one skill sits at the same content everywhere: the quiet
-// case each movement test moves a single ref away from.
 const SETTLED_TREES: HarnessSkillTrees = {
   remote: { tdd: "same" },
   promote: {},
@@ -73,21 +64,13 @@ function buildRead(overrides?: {
   freshness?: ReturnType<typeof stubFreshness>;
   trees?: TreesByRef;
   authors?: Record<string, string>;
-  // Who the released ref's own history names, where the default branch's
-  // history names nobody.
   authorsAtRelease?: Record<string, string>;
-  // The four local refs behind the movement tables, unrelated to `trees`.
   movementTrees?: Partial<HarnessSkillTrees> | null;
-  // The ref `mergeBaseCommit` answers with; its skills come from `trees` like
-  // any other ref. `null` is an unreadable merge base.
+  // `null` is an unreadable merge base.
   mergeBase?: string | null;
-  // What GitHub answered. Defaults to a complete read that found no request,
-  // so a pushed branch reads as one whose request is missing.
+  // Defaults to a complete read that found no request.
   review?: HarnessReviewRead;
-  // The whole port, when a case is about how it is called rather than what it
-  // answered.
   readReviews?: HarnessReviewPort["readReviews"];
-  // Where the clone stands against its upstream, and what a catch-up does.
   catchUp?: () => Promise<void>;
   readCloneSync?: () => Promise<CloneSync>;
 }) {
@@ -128,7 +111,6 @@ function buildRead(overrides?: {
       publishTag: async () => {
         throw new Error("git port's publishTag was reached");
       },
-      // Reading state never promotes; reaching this would mean a read wrote.
       pushSkillPromotion: async () => {
         throw new Error("git port's pushSkillPromotion was reached");
       },
@@ -214,8 +196,7 @@ describe("ReadHarnessState", () => {
   });
 
   it("calls the comparison unknown when a ref's skills could not be read", async () => {
-    // An unreadable ref is not an empty harness: reading it as one would
-    // report every skill as removed (LEARNINGS.md · J04).
+    // An unreadable ref is not an empty harness: every skill would read as removed.
     const read = buildRead({
       facts: { defaultBranchCommit: "bbb" },
       trees: { aaa: [{ name: "tdd", treeHash: "t1" }], bbb: null },
@@ -225,7 +206,6 @@ describe("ReadHarnessState", () => {
       ok: true,
       state: {
         releaseState: "unknown",
-        // Unknown, never an empty stage: an unreadable ref says nothing.
         stages: { release: { outcome: "unknown" } },
       },
     });
@@ -260,9 +240,7 @@ describe("ReadHarnessState", () => {
   });
 
   it("reads a default branch that moved without touching a skill as released", async () => {
-    // A commit after the tag can move the branch and change no skill. Claiming
-    // merged work is waiting while Pending release shows none states a fact
-    // the content comparison contradicts (#845).
+    // A commit after the tag can move the branch and change no skill (#845).
     const read = buildRead({
       facts: { defaultBranchCommit: "bbb" },
       trees: {
@@ -282,8 +260,6 @@ describe("ReadHarnessState", () => {
   });
 
   it("does not claim work is waiting while the default branch is unknown", async () => {
-    // A clone that has never fetched has no origin/HEAD. Reading that as
-    // "merged work is pending" would invent a fact from a missing one.
     const read = buildRead({
       facts: { defaultBranch: null, defaultBranchCommit: null },
     });
@@ -295,16 +271,13 @@ describe("ReadHarnessState", () => {
       state: {
         releasedVersion: "v0.5.0",
         releaseState: "unknown",
-        // Nothing to compare against is not "nothing merged".
         stages: { release: { outcome: "unknown" } },
       },
     });
   });
 
   it("never calls a harness unreleased on tags no fetch has confirmed", async () => {
-    // Before Maestro's first successful fetch the clone carries none of the
-    // tags Maestro reads, and an empty list there means "not looked yet" —
-    // reading it as "no release exists" invents the very fact #516 forbids.
+    // Before the first fetch an empty tag list means "not looked yet" (#516).
     const read = buildRead({
       facts: { tags: [] },
       freshness: stubFreshness(),
@@ -317,8 +290,6 @@ describe("ReadHarnessState", () => {
   });
 
   it("never calls a harness unreleased on tags it could not read", async () => {
-    // A failed read of the tag namespace is not an empty one. Reading it as
-    // "no release exists" is the same invented fact, one layer down.
     const read = buildRead({ facts: { tags: null } });
 
     await expect(read.execute()).resolves.toMatchObject({
@@ -376,8 +347,7 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("finds a skill that exists only on a promote branch", async () => {
-    // A brand-new skill someone pushed for review is in none of the other
-    // three refs; taking only origin/HEAD's names would miss it entirely.
+    // A new skill pushed for review is in none of the other three refs.
     const read = buildRead({
       movementTrees: {
         remote: {},
@@ -400,8 +370,6 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("surfaces a promote branch that proposes deleting its skill", async () => {
-    // The branch carries no tree for the skill, which is not the same fact as
-    // there being no branch — a deletion is a review like any other.
     const read = buildRead({
       movementTrees: {
         remote: { tdd: "same" },
@@ -448,8 +416,7 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("reads a renamed directory as one deletion and one addition", async () => {
-    // Renames are not inferred: the old name is a deletion and the new name an
-    // addition, each progressing on its own (#575).
+    // Renames are not inferred (#575).
     const read = buildRead({
       movementTrees: {
         remote: { "old-name": "same" },
@@ -495,8 +462,7 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("calls the local stages unknown when a local ref could not be read", async () => {
-    // An empty table would say nothing is waiting, which is a claim this read
-    // cannot back (LEARNINGS.md · J04).
+    // An empty table would claim nothing is waiting, which this read cannot back.
     const read = buildRead({ movementTrees: null });
 
     await expect(read.execute()).resolves.toMatchObject({
@@ -512,9 +478,7 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("flags a local edit whose remote content already moved on as a concurrent change", async () => {
-    // A teammate pushed straight to origin/HEAD while this clone edited the
-    // same skill: both differ from local HEAD, and promoting still replaces
-    // whatever the remote holds (#579).
+    // A teammate pushed the same skill to origin/HEAD (#579).
     const read = buildRead({
       movementTrees: {
         remote: { tdd: "theirs" },
@@ -571,9 +535,7 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("never flags the author's own unpushed commit as a teammate's change", async () => {
-    // origin/HEAD's tree for this skill at the fork point is exactly what it
-    // still is now — nothing landed there since. The difference from local
-    // HEAD is this author's own unpushed commit (#579's false positive).
+    // Local is ahead, not behind: the author's own unpushed commit (#579).
     const read = buildRead({
       mergeBase: "base",
       trees: { base: [{ name: "tdd", treeHash: "old" }] },
@@ -596,9 +558,7 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("never lets a teammate's change to a different skill block this one's promotion", async () => {
-    // The branches diverged (a teammate pushed to origin/HEAD), but that push
-    // touched only `grilling` — `tdd`'s tree at the fork point still matches
-    // origin/HEAD's now, so `tdd` was never a teammate's doing (#579).
+    // origin/HEAD never moved `tdd` since the fork; only `grilling` (#579).
     const read = buildRead({
       mergeBase: "base",
       trees: {
@@ -720,8 +680,7 @@ describe("ReadHarnessState refresh", () => {
   });
 
   it("reads back the same harness it fetched, even if the connection changed", async () => {
-    // Reconnecting between the fetch and the read would otherwise fetch one
-    // harness and report the other's facts.
+    // Reconnecting mid-read would fetch one harness and report the other's facts.
     const roots = ["/harness-a", "/harness-b"];
     const fetched: string[] = [];
     const readFor: string[] = [];
@@ -749,7 +708,6 @@ describe("ReadHarnessState refresh", () => {
         publishTag: async () => {
           throw new Error("git port's publishTag was reached");
         },
-        // Reading state never promotes; reaching this would mean a read wrote.
         pushSkillPromotion: async () => {
           throw new Error("git port's pushSkillPromotion was reached");
         },
@@ -822,8 +780,7 @@ describe("ReadHarnessState refresh", () => {
   });
 
   it("answers two refreshes at once with one fetch", async () => {
-    // The view opens under StrictMode and a second tab is an ordinary day:
-    // two fetches of one clone race each other over the same git refs.
+    // StrictMode and a second tab make two fetches of one clone race each other.
     let fetches = 0;
     let releaseFetch = () => {};
     const held = new Promise<void>((resolve) => {

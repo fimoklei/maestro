@@ -14,7 +14,6 @@ const renderDialog = () =>
     />,
   );
 
-// The footer every dialog shares (design.md, ADR-0033 §2, #1116).
 describe("WithdrawDialog", () => {
   it("confirms with the outlined danger button, Cancel on the leading side", () => {
     renderDialog();

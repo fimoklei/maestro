@@ -11,9 +11,7 @@ export interface PathFieldProps extends Omit<FieldProps, "trailing"> {
   onPicked?: (path: string) => void;
 }
 
-// A folder field plus **Browse**, which opens the system folder chooser on the
-// folder already typed (ADR-0032). The field takes a typed or pasted path
-// everywhere, so where no chooser exists the field stands alone.
+// Where no chooser exists the field stands alone: it always takes a typed path.
 export function PathField({
   chooser,
   onPicked,

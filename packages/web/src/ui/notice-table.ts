@@ -1,15 +1,13 @@
 import { HttpError } from "../api/http";
 import type { NoticeAction, NoticeContent, NoticeLevel } from "./notice";
 
-// A row carries its own sentence: the server sends the code and the status
-// alone (ADR-0025). A warning is written at its call site instead — see
-// ADR-0025 for why a table cannot hold one.
+// A row carries its own sentence: the server sends only the code and status.
+// A warning is written at its call site, never in a table.
 type TableRow = {
   level: Exclude<NoticeLevel, "warning">;
   label: string;
   message: string;
-  // Why this happened, or the alternative recovery. A call site that knows
-  // more replaces it; the two are never both shown (`.claude/rules/copy.md`).
+  // A call site that knows more replaces it; the two are never both shown.
   detail?: string;
 };
 
@@ -24,11 +22,7 @@ export type NoticeFallback = {
   detail?: string;
 };
 
-/**
- * The one notice the server writes, not `web` (ADR-0025 §8): the request never
- * matched the route's shape. Null for every other failure. Every builder that
- * can meet `invalid-body` renders it through here, so the three read alike.
- */
+/** The server's own notice for a request that never matched the route's shape. */
 export function requestShapeNotice(error: unknown): NoticeContent | null {
   if (!(error instanceof HttpError) || error.code !== "invalid-body") {
     return null;
@@ -60,9 +54,7 @@ export function noticeFromTable<TCode extends string>(
     error instanceof HttpError
       ? (table as Record<string, TableRow | undefined>)[error.code ?? ""]
       : undefined;
-  // A failure no row covers — a dropped connection, a code this build
-  // predates. The caller states what that cost it; the error's own text never
-  // reaches the screen, so neither does apm prose (ADR-0018).
+  // The error's own text never reaches the screen, so neither does apm prose.
   const chosen = row ?? { level: "error" as const, ...fallback };
   return {
     level: chosen.level,

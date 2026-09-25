@@ -1,9 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-// Every file copied from Spectrum UI keeps its Apache-2.0 notice line, and the
-// repo root carries the licence notice (ADR-0033 §12). Resolved from either
-// cwd, as style-rules.test.ts does.
 const srcDir = ["packages/web/src", "src"]
   .map((candidate) => resolve(process.cwd(), candidate))
   .find((candidate) => existsSync(candidate));

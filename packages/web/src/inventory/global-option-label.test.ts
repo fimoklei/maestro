@@ -17,8 +17,7 @@ describe("globalOptionLabel", () => {
   });
 
   it("falls back to plain Global while the tool set is unknown", () => {
-    // Loading or an unreadable global deploy-state: never claim a tool set we
-    // cannot prove (mirrors J03's honest-empty rule).
+    // Loading or unreadable: never claim a tool set we cannot prove.
     expect(globalOptionLabel(undefined)).toBe("Global");
   });
 });

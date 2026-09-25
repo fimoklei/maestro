@@ -1,6 +1,5 @@
-// One request for the whole run: the server walks the targets, the web layer
-// waits (#421, #422). The report stays on screen after it, so re-reading the
-// targets belongs to closing that report (#424) rather than to the request.
+// One request for the whole run (#422). Re-reading the targets belongs to
+// closing the report (#424), not to the request.
 import type { BulkRemoveReport, BulkRemoveTarget } from "@maestro/core";
 import { useMutation } from "@tanstack/react-query";
 import { requestJson } from "../api/http";

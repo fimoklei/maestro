@@ -17,7 +17,7 @@ dependencies:
         - alpha
         - beta
         - gamma
-    - /private/tmp/claude-501/-Users-michielmerks-Projects-maestro/6604b510-2317-4b1e-9173-02d38d5b76c3/scratchpad/localpkg
+    - /private/tmp/claude-501/-Users-dev-Projects-maestro/6604b510-2317-4b1e-9173-02d38d5b76c3/scratchpad/localpkg
   mcp: []
 includes: auto
 scripts: {}

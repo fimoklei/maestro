@@ -2,9 +2,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { showSuccess, ToastHost } from "./toast";
 
-// A toast carries a success the reader may miss and nothing else (ADR-0033 §6):
-// a failure has a Notice, which stays until it is acted on.
-
 describe("the toast host", () => {
   it("shows the sentence it was given", async () => {
     render(<ToastHost />);

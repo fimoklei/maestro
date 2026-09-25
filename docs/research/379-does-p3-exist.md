@@ -67,7 +67,7 @@ export GIT_CONFIG_GLOBAL="$SB/home/.gitconfig"
 export GIT_CONFIG_SYSTEM=/dev/null
 export GIT_TERMINAL_PROMPT=0
 unset GITHUB_TOKEN GITHUB_APM_PAT
-exec /Users/michielmerks/.local/bin/apm "$@"
+exec /Users/dev/.local/bin/apm "$@"
 ```
 
 Per-case command, run with cwd = a fresh consumer repo:

@@ -12,8 +12,7 @@ location from `HOME`, not `MAESTRO_HOME`, so a global deploy would otherwise
 write into the real `~/.apm` and `~/.claude`. Two problems surfaced in dogfood:
 
 1. The sandbox **persisted between runs**, so smoke never showed a clean
-   first-run state — it already held a configured inventory
-   (`tooling/smoke-not-first-run` in `LEARNINGS.md`).
+   first-run state — it already held a configured inventory.
 2. Redirecting `HOME` **strips the gh git-credential helper**, so a real
    `apm install` of the private `agent-harness` fails while cloning. Maestro
    passes only ambient env to apm; no token reaches it.
@@ -106,7 +105,7 @@ registration. A second job uses the same sandbox — proving that a UI change
 renders correctly — and for that job the unconnected start is pure cost. It
 took a median 6 tool calls and 59 seconds of clicking to reach the screen under
 test, and the mandatory browser check was skipped in 42% of the sessions that
-edited rendering code (`reflection-notes.md`, finding 4).
+edited rendering code (a review of past agent sessions).
 
 The two jobs are split across two commands rather than resolved in one default:
 

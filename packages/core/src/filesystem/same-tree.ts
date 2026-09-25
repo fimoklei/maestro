@@ -1,21 +1,17 @@
-// Two folders compared the way a whole-folder replacement would land: the same
-// names, kinds, bytes and executable bits, with the copy's own skip applied.
 import { join } from "node:path";
 import type { FileSystemPort, RawDirEntry } from "../registry/file-system";
 import { isSkippedEntry } from "./copy-skill-folder";
 import type { CopyTreeFsPort } from "./copy-tree-fs";
 
-// Two ports, because no one port carries both file text and mode bits: the
-// executable bit is a change git records, so the comparison has to see it.
+// Needs the executable bit too: git records it as a change.
 export type SameTreeFs = Pick<FileSystemPort, "readFile" | "listRawEntries"> &
   Pick<CopyTreeFsPort, "describe">;
 
 const NOTHING: ReadonlySet<string> = new Set();
 
-// True where both folders hold the same names with the same contents. Anything
-// that cannot be proved identical counts as a difference, so a caller refusing
-// on "no change" never refuses a replacement that carries one. `exclude` names
-// entries the caller compares itself, and applies at the top level only.
+// Same names, kinds, bytes and executable bits, with the copy's skip applied.
+// Anything not provably identical is a difference. `exclude` applies at the
+// top level only.
 export async function sameTree(
   fs: SameTreeFs,
   left: string,
@@ -51,8 +47,6 @@ export async function sameTree(
   return true;
 }
 
-// Sorted, so the two sides are compared in one order whatever the filesystem
-// hands back. Null where the directory cannot be read.
 async function listing(
   fs: SameTreeFs,
   path: string,
@@ -68,8 +62,6 @@ async function listing(
         .sort((one, other) => one.name.localeCompare(other.name));
 }
 
-// The bytes and the one mode bit git tracks. A file either side cannot describe
-// is a difference: an unprovable equality is never reported as one.
 async function sameFile(
   fs: SameTreeFs,
   left: string,

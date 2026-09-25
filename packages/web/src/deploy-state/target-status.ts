@@ -25,8 +25,8 @@ export const TARGET_STATUS_WORDS = [
   EMPTY,
 ].map((value) => value.word);
 
-// A target's one Status badge (#993). How a target was built outranks what the
-// drift check made of it; nothing shows before a reading has answered (J04).
+// How a target was built outranks what the drift check made of it; nothing
+// shows before a reading has answered.
 export function targetStatus({
   indicator,
   pinnedPerSkill = false,
@@ -35,11 +35,8 @@ export function targetStatus({
   localEdits = false,
 }: {
   indicator: TargetDriftIndicator;
-  // Deployed one skill at a time: no release was adopted here (#950).
   pinnedPerSkill?: boolean;
-  // The target's release is not the latest one (ADR-0031).
   behind?: boolean;
-  // An Update that stopped part-way (#954).
   mixedReleases?: boolean;
   // A deployed skill's files changed after deployment: it blocks the next step.
   localEdits?: boolean;

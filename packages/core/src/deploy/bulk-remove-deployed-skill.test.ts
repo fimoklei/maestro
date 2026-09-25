@@ -3,9 +3,7 @@ import { BulkRemoveDeployedSkill } from "./bulk-remove-deployed-skill";
 import type { DeployTarget } from "./deploy-skill";
 import type { RemoveDeployedSkill } from "./remove-deployed-skill";
 
-// A stand-in for RemoveDeployedSkill.execute that answers from a scripted table
-// keyed by target, and records what it was handed. The per-target guards live in
-// RemoveDeployedSkill (tested there); a bulk run only orchestrates them.
+// Stands in for RemoveDeployedSkill.execute; the per-target guards are tested there.
 type Scripted = Awaited<ReturnType<RemoveDeployedSkill["execute"]>>;
 
 const key = (target: DeployTarget) =>
@@ -133,9 +131,7 @@ describe("BulkRemoveDeployedSkill", () => {
       remove: {
         async execute(input) {
           if (key(input.target) === "/repo-b") {
-            // A real dependency (e.g. a filesystem read) can reject outside
-            // RemoveDeployedSkill's own typed-error handling; the batch must
-            // still reach the rest of the targets (#421).
+            // Rejects outside RemoveDeployedSkill's typed-error handling (#421).
             calls.push({ key: "/repo-b", name: input.name, token: undefined });
             throw new Error("ENOENT: filesystem read failed");
           }
@@ -223,9 +219,7 @@ describe("BulkRemoveDeployedSkill", () => {
   });
 
   it("carries what a failed target's disk probe found onto its own row", async () => {
-    // A removal that reached apm and could not prove itself is not the same as
-    // one that never got there: the probe's answer is the only thing that says
-    // whether a copy is still on that target (#416, J04).
+    // Only the probe says whether a copy is still on that target (#416).
     const bulk = new BulkRemoveDeployedSkill({
       remove: fakeRemove({
         "/repo-a": {
@@ -248,8 +242,7 @@ describe("BulkRemoveDeployedSkill", () => {
         reason: "remove-failed",
         outcome: { scope: "repo", state: "unknown" },
       },
-      // Omitted, never null: a failure that never reached apm has no outcome,
-      // and an absent key cannot be mistaken for one the server proved.
+      // Omitted, never null: a failure that never reached apm has no outcome.
       { target: repo("/repo-b"), reason: "repo-not-registered" },
     ]);
   });
@@ -278,8 +271,6 @@ describe("BulkRemoveDeployedSkill", () => {
     ]);
   });
 
-  // Each target was priced by its own preflight, so each carries its own proof;
-  // one receipt can never speak for the target next to it (#458).
   it("passes each target's removal receipt through to its own removal", async () => {
     const calls: Call[] = [];
     const receipt = "b".repeat(64);

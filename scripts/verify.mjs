@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-// Runs lint, typecheck and tests as three separate processes, one after the
-// other, and prints one summary. Separate processes are the point: chaining
-// them with `&&` hides the later results behind the first failure.
+// Runs lint, typecheck and tests as separate processes, then one summary:
+// chaining them with `&&` hides later results behind the first failure.
 
 import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync } from "node:fs";

@@ -7,9 +7,7 @@ import {
   isRootPackage,
 } from "./root-package-skills";
 
-// The exact apm 0.29.0 output of a narrow re-install that left phantom rows
-// behind: `delta` is named in deployed_files but is on neither tool root
-// (docs/research/941-narrowing-spike.md, step 3d).
+// Real apm 0.29.0 output: `delta` is in deployed_files but on neither tool root.
 const PHANTOM_LOCKFILE = readFileSync(
   new URL(
     "../../../../tests/fixtures/apm.lock.spike-941-step3d-phantom.yaml",
@@ -18,8 +16,7 @@ const PHANTOM_LOCKFILE = readFileSync(
   "utf8",
 );
 
-// The lockfile's first dependency, or a loud failure: a fixture that stopped
-// parsing must not read as an entry with nothing in it.
+// A fixture that stops parsing must fail, not read as an empty entry.
 const firstEntry = (raw: string): LockfileEntry => {
   const parsed = parseLockfile(raw);
   const entry = parsed.ok ? parsed.entries[0] : undefined;

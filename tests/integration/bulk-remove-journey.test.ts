@@ -29,14 +29,11 @@ import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// The whole job (#409). server-bulk-remove.test.ts asserts the report the route
-// returns; this asserts the screen afterwards, so apm has to be faithful: it
-// deletes a target's lockfile with its last dependency (apm-behavior.md § Remove).
+// The screen after the run (#409), so the fake apm deletes a target's
+// lockfile with its last dependency, as real apm does.
 
 const TOOLS: SupportedTool[] = ["claude", "codex"];
 
-// Which tools a global entry carries. The global read groups per tool from
-// these, so a skill only shows on a card whose tool has a file.
 const globalFiles = (name: string) =>
   TOOLS.map((tool) =>
     tool === "claude"
@@ -78,17 +75,11 @@ describe("retiring a skill from every target it is deployed to", () => {
     }
   });
 
-  // Repo paths whose apm call throws, so one target can fail while the batch
-  // finishes.
   function makeApp(failRepos: string[] = []) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
     const fails = new Set(failRepos);
-    // What apm believes is installed in each scope, kept beside the lockfiles
-    // the fake rewrites.
     const state = new Map<string, string[]>();
-    // HOME redirected at the sandbox throughout, so no test can read or write
-    // the real ~/.apm (.claude/rules/apm-driver.md § Danger).
     const location = new DeployedLocation({ HOME: home });
     const apmRoot = join(home, ".apm");
 
@@ -192,9 +183,8 @@ describe("retiring a skill from every target it is deployed to", () => {
   });
   const globalTarget: DeployTarget = { kind: "global" };
 
-  // Consent is per target and per priced cost, so the run has to carry the
-  // receipt this app minted for each one (#364) — a hand-built entry would
-  // prove the walk, not the preflight→run contract the cockpit follows.
+  // Consent is per target and per priced cost (#364): a hand-built entry would
+  // prove the walk, not the preflight→run contract.
   const entriesFor = async (app: App, targets: DeployTarget[]) => {
     const entries = [];
     for (const target of targets) {
@@ -258,11 +248,8 @@ describe("retiring a skill from every target it is deployed to", () => {
     expect(report.failed).toEqual([
       { target: repoTarget(repoB), reason: "remove-failed" },
     ]);
-    // No raw apm output (which may carry a token) leaks into the report.
     expect(JSON.stringify(report)).not.toContain("token in stderr");
 
-    // The screen after the run: gone where it was removed, still listed where
-    // it was not, and the skills the user did not name are untouched.
     expect(await globalNamesPerTool(app)).toEqual([
       { tool: "claude", names: ["jobs"] },
       { tool: "codex", names: ["jobs"] },

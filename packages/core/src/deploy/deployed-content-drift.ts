@@ -11,13 +11,11 @@ export function classifyDeployedDrift(
   const lockPaths = Object.keys(lockHashes);
   const livePaths = Object.keys(liveHashes);
 
-  // Edited or missing recorded file.
   for (const path of lockPaths) {
     if (liveHashes[path] !== lockHashes[path]) {
       return "diverged";
     }
   }
-  // Untracked extra file the lockfile never recorded.
   for (const path of livePaths) {
     if (!(path in lockHashes)) {
       return "diverged";

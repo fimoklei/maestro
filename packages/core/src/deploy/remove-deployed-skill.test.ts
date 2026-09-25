@@ -13,30 +13,25 @@ import {
 const VERSION = "v0.5.1";
 const REF = `github.com/fimoklei/agent-harness/.apm/skills/tdd#${VERSION}`;
 
-// The scope a successful removal reports: the tools it actually ran against,
-// never the set the caller had in view.
+// A successful removal reports the tools it ran against, never the set the
+// caller had in view.
 const REPO_SCOPE = { kind: "repo" } as const;
 const GLOBAL_SCOPE = { kind: "global", tools: ["claude", "codex"] } as const;
 const CODEX_SCOPE = { kind: "global", tools: ["codex"] } as const;
 
-// The removal request the cockpit sends for the row's own skill and repo.
 const removeTdd = {
   type: "skill",
   name: "tdd",
   target: { kind: "repo", repoPath: "/repo" } as DeployTarget,
 };
 
-// The same request against the user scope: one action for every detected tool,
-// carrying no path at all (ADR-0011, #338).
 const removeTddGlobally = {
   type: "skill",
   name: "tdd",
   target: { kind: "global" } as DeployTarget,
 };
 
-// The answer a repo preflight gives when there is nothing to reclaim, which is
-// every case except the leftover-copy ones. Built in one place so widening the
-// result does not mean re-editing a dozen assertions.
+// Built in one place so widening the result does not re-edit every assertion.
 const preflightOk = (warning: RemoveWarning | null) => ({
   ok: true,
   check: { scope: "repo", warning },
@@ -44,8 +39,6 @@ const preflightOk = (warning: RemoveWarning | null) => ({
   receipt: expect.any(String),
 });
 
-// The same, on the scope that answers per detected tool rather than once for
-// the set.
 const globalPreflightOk = (tools: RemoveToolCheck[]) => ({
   ok: true,
   check: { scope: "global", tools },
@@ -60,27 +53,19 @@ type Overrides = {
   locks?: InFlightLocks;
   canonicalPath?: (path: string) => Promise<string>;
   deployedState?: DeployedContentState;
-  // The guard's answer as a function of the scope it was given, for a test that
-  // cares about which copies were looked at rather than a fixed verdict.
   deployedStateForScope?: (
     tools: readonly SupportedTool[] | undefined,
   ) => DeployedContentState;
   detectedTools?: SupportedTool[];
   detectTools?: () => Promise<SupportedTool[]>;
   cleanupFails?: boolean;
-  // The guard's answer once apm has already run, so a test can hand the probe a
-  // different disk from the one the pre-apm guard read.
+  // Lets a test hand the post-apm probe a different disk from the pre-apm guard.
   probe?: (
     tools: readonly SupportedTool[] | undefined,
   ) => Promise<DeployedContentState>;
-  // Where the deployed tree sits, for the reclaim preview's paths. A fixed
-  // fake root by default so a test that does not care about paths still gets
-  // deterministic ones.
   treeRoot?: (target: DeployTarget) => string;
 };
 
-// The calls that reached the outside world, so a test can prove a refusal
-// happened before apm — and before the lockfile — was ever touched.
 function buildUseCase(overrides: Overrides = {}) {
   const calls: {
     lookups: string[];
@@ -92,8 +77,6 @@ function buildUseCase(overrides: Overrides = {}) {
       tools: readonly SupportedTool[];
     }[];
   } = { lookups: [], removes: [], classifies: [], cleanups: [] };
-  // One fake classifier behind both readers: the shared guard reads it before
-  // apm runs, and the probe reads it after (#952).
   const deployedContent = {
     classify: async ({
       target,
@@ -150,8 +133,7 @@ function buildUseCase(overrides: Overrides = {}) {
   return { useCase, calls };
 }
 
-// The receipt the cockpit gets from its own preflight and echoes back. Taken
-// from the use-case rather than hand-built, so no test can mint one the
+// Taken from the use-case, never hand-built, so no test mints a receipt the
 // implementation would never issue.
 async function receiptFor(
   useCase: RemoveDeployedSkill,
@@ -161,9 +143,7 @@ async function receiptFor(
   return preflight.ok ? preflight.receipt : undefined;
 }
 
-// The pair the cockpit drives: price the removal, then run it at the cost that
-// was priced. Every removal needs its own preflight's receipt (#364), so a test
-// about anything else goes through both halves rather than restating consent.
+// Every removal needs its own preflight's receipt (#364).
 async function confirmedExecute(
   useCase: RemoveDeployedSkill,
   request: {
@@ -195,9 +175,7 @@ describe("RemoveDeployedSkill", () => {
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
 
-  // The version the cockpit shows on the row can be stale by the time the user
-  // confirms. What the removal reports as gone is the version it actually aimed
-  // apm at, read from the lockfile in the same breath as the ref (#383).
+  // The row's version can be stale by the time the user confirms (#383).
   it("reports the version it removed, not the one the caller had in view", async () => {
     const { useCase } = buildUseCase({
       lookup: {
@@ -218,9 +196,7 @@ describe("RemoveDeployedSkill", () => {
     });
   });
 
-  // The screen names a tool set when it asks for consent, but the set is probed
-  // live at execution time. What the removal reports as its scope is the set it
-  // actually ran against, so nothing can certify tools apm never saw (#383).
+  // The tool set is probed live at execution time (#383).
   it("reports the detected tools a global removal ran against", async () => {
     const { useCase } = buildUseCase({ detectedTools: ["claude"] });
 
@@ -302,15 +278,8 @@ describe("RemoveDeployedSkill", () => {
     expect(calls.removes).toEqual([]);
   });
 
-  // apm deletes a deployed file with local edits silently and reports nothing
-  // (apm-behavior.md § Remove). Destruction is this use-case's intent, not a
-  // side effect, so the guard states the consequence up front through
-  // `preflight` and then lets a confirmed removal through — the asymmetry with
-  // deploy and update, which refuse (#337).
-
-  // apm 0.29.0 keeps an edited or added file and aborts — after deleting the
-  // rest of the copy (apm-behavior.md § Remove). So the guard refuses in front
-  // of apm, as deploy and update already do (#775).
+  // apm 0.29.0 keeps an edited file and aborts after deleting the rest of the
+  // copy, so the guard refuses in front of apm (#775).
   it("refuses a copy with local edits before apm runs", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
 
@@ -339,11 +308,7 @@ describe("RemoveDeployedSkill", () => {
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
 
-  // Consent is proven, not taken on the caller's word: a request that carries
-  // no receipt from this server's own preflight is one nobody can show the
-  // warning for (#458). A copy with no baseline to compare against is not a
-  // clean one: nothing rules out local work, so it is priced and proven under
-  // its own wording, which never claims edits we did not see (J04).
+  // A copy with no baseline is not a clean one: nothing rules out local work (#458).
   it("refuses a copy whose edits cannot be ruled out when nothing proves the cost was stated", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
 
@@ -427,9 +392,6 @@ describe("RemoveDeployedSkill", () => {
   it("removes a copy the guard found untouched on disk", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "not-deployed" });
 
-    // Nothing on disk to protect: the lockfile entry exists (the ref resolved),
-    // but no deployed copy does. Removing it is exactly the tidy-up the user
-    // asked for.
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: true,
       removed: {
@@ -489,8 +451,8 @@ describe("RemoveDeployedSkill", () => {
     const locks = new InFlightLocks();
     const { useCase } = buildUseCase({ locks });
 
-    // A deploy already holds this repo's key: the two use-cases share one lock,
-    // so a remove cannot rewrite the same apm.lock.yaml underneath it.
+    // Deploy and remove share one lock, so a remove cannot rewrite the lockfile
+    // underneath a deploy.
     const held = locks.run("/repo", () => new Promise<void>(() => undefined));
     void held;
 
@@ -518,13 +480,9 @@ describe("RemoveDeployedSkill", () => {
   });
 });
 
-// Between the check and the click, an editor autosave can turn a clean copy
-// into an edited one. Consent names the state it was given for, so the removal
-// compares what the confirmation showed against what it now finds, and a
-// difference stops it (#364). The cost of #337's warn-don't-block stance.
+// An editor autosave between the check and the click can turn a clean copy into
+// an edited one; a difference from the priced state stops the removal (#364).
 describe("RemoveDeployedSkill when the copy changed since it was priced", () => {
-  // Clean when the confirmation priced it, changed by the time the user
-  // clicked: its baseline gone, so nothing rules out local work any more.
   function racingUseCase(overrides: Overrides = {}) {
     let state: DeployedContentState = "clean";
     const built = buildUseCase({
@@ -555,8 +513,7 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
     expect(calls.removes).toEqual([]);
   });
 
-  // An editor autosave between the check and the click is a refusal, not a
-  // restated price: there is no consent that lets apm at an edited copy (#775).
+  // No consent lets apm at an edited copy (#775).
   it("refuses outright when the copy gained local edits since it was priced", async () => {
     const { useCase, calls, edit } = racingUseCase();
     const confirmedRemovalReceipt = await receiptFor(useCase, removeTdd);
@@ -568,8 +525,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
     expect(calls.removes).toEqual([]);
   });
 
-  // Not a lock: the answer carries the proof for the state it just found, so
-  // confirming again goes through without pricing the removal a second time.
   it("hands back a receipt the same removal can be confirmed with", async () => {
     const { useCase, calls, loseBaseline } = racingUseCase();
     const stale = await receiptFor(useCase, removeTdd);
@@ -596,8 +551,7 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
 
-  // One tool's copy changing is enough: the confirmation states a cost per row,
-  // so a row that no longer reads the way it did was never agreed to (#414).
+  // The confirmation states a cost per row (#414).
   it("refuses when one tool's global copy changed and the others did not", async () => {
     let changed: SupportedTool | null = null;
     const { useCase, calls } = buildUseCase({
@@ -629,10 +583,8 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
     expect(calls.removes).toEqual([]);
   });
 
-  // The leftover copies a global removal would delete are part of the same
-  // question, and the machine's tools can change between the two halves too. A
-  // refusal that restated only the cost would leave the next attempt echoing a
-  // token minted for a tool set that no longer exists (#390).
+  // A refusal restating only the cost would leave the retry echoing a token
+  // minted for a tool set that no longer exists (#390).
   it("hands back the leftover consent it found, not the one the dialog holds", async () => {
     let detected: SupportedTool[] = ["claude", "codex"];
     let changed = false;
@@ -642,9 +594,8 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
         changed && tools?.[0] === "codex" ? "unverifiable" : "clean",
     });
     const stale = await receiptFor(useCase, removeTddGlobally);
-    // Claude Code has dropped off the machine, so its copy is now a leftover
-    // apm's own uninstall will not reach — and the copy that is left has lost
-    // its baseline, so the cost differs and the removal stops.
+    // Claude Code dropped off, so its copy is now a leftover apm will not reach,
+    // and the remaining copy lost its baseline.
     detected = ["codex"];
     changed = true;
     const refused = await useCase.execute({
@@ -668,7 +619,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
         token: expect.any(String),
       },
     });
-    // And that token is the one the retry can act on.
     await expect(
       useCase.execute({
         ...removeTddGlobally,
@@ -681,9 +631,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
     ]);
   });
 
-  // Nothing to compare against is not a free pass: a request that acknowledges
-  // no cost is treated exactly like one that acknowledged a stale one, even
-  // where the copy is clean and there is nothing to lose.
   it("refuses a removal that acknowledges no cost at all", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "clean" });
 
@@ -697,8 +644,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
     expect(calls.removes).toEqual([]);
   });
 
-  // The copy is the one the user was warned about, so the removal runs exactly
-  // as it did before this guard existed.
   it("goes ahead when the copy still reads the way it was priced", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
 
@@ -709,9 +654,8 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
   });
 });
 
-// The user scope. One action removes the skill from every detected tool, because
-// apm's uninstall has no -t and the one lever that looks like per-tool scoping
-// orphans the other tools' files (apm-behavior.md § Remove, ADR-0013).
+// One action removes the skill from every detected tool: apm's uninstall has no
+// -t, and narrowing its targets orphans the other tools' files.
 describe("RemoveDeployedSkill on the global target", () => {
   it("removes the skill in one action, naming the global scope to apm", async () => {
     const { useCase, calls } = buildUseCase();
@@ -731,8 +675,6 @@ describe("RemoveDeployedSkill on the global target", () => {
   });
 
   it("never asks the repo registry about a request that carries no path", async () => {
-    // The global scope's location is apm's own, resolved server-side, so there
-    // is no client path for the registry to gate (J07).
     const { useCase, calls } = buildUseCase({ registered: false });
 
     await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
@@ -750,12 +692,9 @@ describe("RemoveDeployedSkill on the global target", () => {
   });
 
   it("scans every supported tool's copy, not only the detected ones", async () => {
-    // Detection answers "what does this machine have today"; apm's uninstall
-    // deletes by its own recorded targets, which still name a tool that has
-    // since dropped out. Scanning only the detected set would let apm delete an
-    // edited copy the confirmation never mentioned. The scan therefore covers
-    // every supported tool — the guard's own default (undefined). The per-tool
-    // calls around it are the pricing, which answers a different question (#414).
+    // apm's uninstall deletes by its own recorded targets, which can still name a
+    // tool that has since dropped out; scanning only the detected set would let apm
+    // delete an edited copy the confirmation never mentioned (#414).
     const { useCase, calls } = buildUseCase({ detectedTools: ["claude"] });
 
     await confirmedExecute(useCase, removeTddGlobally);
@@ -767,8 +706,6 @@ describe("RemoveDeployedSkill on the global target", () => {
   });
 
   it("refuses when the machine has no detected tool to remove from", async () => {
-    // With nothing detected there is no scope to state and no copy to check, so
-    // a removal could only report an outcome it never observed (J04).
     const { useCase, calls } = buildUseCase({ detectedTools: [] });
 
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
@@ -782,8 +719,6 @@ describe("RemoveDeployedSkill on the global target", () => {
     const locks = new InFlightLocks();
     const { useCase } = buildUseCase({ locks });
 
-    // A global deploy holds the user scope's own key — there is no path to
-    // canonicalize, so both use-cases queue on the same literal.
     void locks.run("global", () => new Promise<void>(() => undefined));
 
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
@@ -815,8 +750,8 @@ describe("RemoveDeployedSkill on the global target", () => {
     });
   });
 
-  // One tool's edited copy refuses the whole removal: apm's uninstall has no -t,
-  // so it would abort on that copy after deleting the others (#775).
+  // apm's uninstall has no -t, so it would abort on that copy after deleting the
+  // others (#775).
   it("refuses the check when only one tool's copy carries local edits", async () => {
     const { useCase } = buildUseCase({
       detectedTools: ["claude", "codex"],
@@ -843,8 +778,6 @@ describe("RemoveDeployedSkill on the global target", () => {
     ]);
   });
 
-  // The confirmation states a cost on the row that carries it, so one tool's
-  // edited copy may never make another tool's clean copy look edited (#414).
   it("names the cost against the tool whose copy carries it, and no other", async () => {
     const { useCase } = buildUseCase({
       detectedTools: ["claude", "codex"],
@@ -861,8 +794,6 @@ describe("RemoveDeployedSkill on the global target", () => {
   });
 
   it("reports a tool whose check threw as unchecked, and still answers for the rest", async () => {
-    // A check that could not run is never answered as a clean copy (J04), and
-    // one unreadable copy must not take the other tools' answers with it.
     const { useCase } = buildUseCase({
       detectedTools: ["claude", "codex"],
       deployedStateForScope: (tools) => {
@@ -905,17 +836,10 @@ describe("RemoveDeployedSkill on the global target", () => {
   });
 });
 
-// apm's uninstall deletes the copies for the tools its own apm.yml still lists,
-// so a skill installed back when the machine had more tools leaves a tree behind
-// for every tool that has since dropped off. Reclaiming those is what makes a
-// global removal complete rather than complete-for-today's-tools (#339) — but
-// only when the request's token proves it came from this same instance's own
-// `preflight` (#390): a client-supplied path, or a guessed or stale token, can
-// never authorize a reclaim.
+// apm's uninstall deletes only for the tools its apm.yml still lists, leaving a
+// tree for every tool that has since dropped off (#339). Only this instance's
+// own preflight token may authorize a reclaim (#390).
 describe("RemoveDeployedSkill cleaning up after a global remove", () => {
-  // The token a real preflight against this same request would return —
-  // never hand-built, so a test cannot accidentally exercise a token the
-  // implementation would never actually issue.
   async function confirmedTokenFor(
     useCase: RemoveDeployedSkill,
     target: DeployTarget = removeTddGlobally.target,
@@ -948,8 +872,6 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 
   it("reclaims nothing when no token was ever confirmed", async () => {
-    // The defect #390 fixes: a leftover exists, but nothing confirmed it — so the
-    // removal must not delete more than the user agreed to.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
     await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
@@ -967,8 +889,6 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 
   it("reclaims nothing for a token a caller merely guessed, without ever calling preflight", async () => {
-    // The exact bypass the review flagged: a direct request that echoes back
-    // a plausible-looking token it never actually received from preflight.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
     await expect(
@@ -989,9 +909,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 
   it("reclaims nothing for a token from a different machine state", async () => {
-    // A stale confirmation: the token was valid for a prior detection state
-    // (both tools present, nothing to reclaim), replayed against a request
-    // where Claude has since dropped off. Treated as never confirmed.
+    // Valid for a prior detection state, replayed after Claude dropped off.
     const { useCase: preflightUseCase } = buildUseCase({
       detectedTools: ["claude", "codex"],
     });
@@ -1021,8 +939,8 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 
   it("keeps a skills directory several tools read, even when its tool is gone", async () => {
-    // Codex is undetected, but nine other apm targets deploy under .agents. An
-    // absent Codex proves nothing about them, so the copy stays (#202).
+    // Other apm targets deploy under .agents too, so an absent Codex proves nothing
+    // about them (#202).
     const { useCase, calls } = buildUseCase({ detectedTools: ["claude"] });
 
     await confirmedExecute(useCase, removeTddGlobally);
@@ -1031,8 +949,6 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 
   it("reclaims nothing when the removal itself failed", async () => {
-    // apm never printed its uninstall marker, so the skill may still be there.
-    // Deleting a subtree now would destroy a copy no removal replaced.
     const { useCase, calls } = buildUseCase({
       detectedTools: ["codex"],
       removed: false,
@@ -1052,8 +968,6 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 
   it("still reports the removal successful when the leftover will not go", async () => {
-    // The skill is gone; a leftover that could not be reclaimed is no worse than
-    // before the removal, and is not a failed removal.
     const { useCase, calls } = buildUseCase({
       detectedTools: ["codex"],
       cleanupFails: true,
@@ -1078,7 +992,6 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 
   it("reclaims nothing on the per-repo path", async () => {
-    // A repo's targets are its own apm.yml, not this machine's tool detection.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
     const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
@@ -1088,14 +1001,8 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 });
 
-// What the preflight names before the user confirms. A global
-// removal may force-delete a leftover tool's whole copy; the confirmation
-// must name that path by tool so the dialog can state it, and a path
-// preflight could not build is dropped rather than guessed.
 describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
-  // Which leftovers qualify, and where they sit, is RemoveConsentIssuer's own
-  // rule and is tested there. What matters here is that preflight hands the
-  // confirmation the whole consent — paths and token together.
+  // Which leftovers qualify is RemoveConsentIssuer's rule, tested there.
   it("hands the confirmation the leftover paths together with their token", async () => {
     const { useCase } = buildUseCase({ detectedTools: ["codex"] });
 
@@ -1128,9 +1035,6 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
   });
 
   it("asks the guard about the leftover copy too, after the detected tools", async () => {
-    // The reclaim deletes that copy whole, so its own row is where its cost is
-    // stated — and "the whole copy goes" does not say whether what goes was
-    // work nothing else holds (#414).
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
     await useCase.preflight(removeTddGlobally);
@@ -1165,8 +1069,8 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
     });
   });
 
-  // apm's lockfile still lists the leftover copy, so its uninstall would retain
-  // the edited file there too and abort (#775).
+  // apm's lockfile still lists the leftover copy, so its uninstall would abort
+  // there too (#775).
   it("refuses the check when the leftover copy carries local edits", async () => {
     const { useCase } = buildUseCase({
       detectedTools: ["codex"],
@@ -1181,9 +1085,8 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
   });
 });
 
-// What the confirmation must say before the user destroys a deployed copy. An
-// unverifiable copy is not a diverged one, and calling it "edited" would be a
-// claim we cannot make (#337); a diverged copy is refused, never priced (#775).
+// An unverifiable copy is not a diverged one, so it is never called "edited"
+// (#337); a diverged copy is refused, never priced (#775).
 describe("RemoveDeployedSkill.preflight", () => {
   it("refuses a copy with local edits, offering nothing to confirm", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
@@ -1192,7 +1095,6 @@ describe("RemoveDeployedSkill.preflight", () => {
       ok: false,
       error: "deployed-diverged-from-lock",
     });
-    // A check, not the action: nothing is removed by asking.
     expect(calls.removes).toEqual([]);
   });
 
@@ -1205,8 +1107,6 @@ describe("RemoveDeployedSkill.preflight", () => {
   });
 
   it("says the copy could not be checked when it cannot be read", async () => {
-    // Distinct from "no baseline recorded": there, the check ran and found
-    // nothing to compare against. Here it never ran at all.
     const { useCase } = buildUseCase({ deployedState: "unreadable" });
 
     await expect(useCase.preflight(removeTdd)).resolves.toEqual(
@@ -1239,8 +1139,6 @@ describe("RemoveDeployedSkill.preflight", () => {
   });
 
   it("refuses an unregistered repo before reading anything", async () => {
-    // A path-taking read is still a path-taking endpoint: an unregistered path
-    // may not probe a lockfile through the back door (security.md).
     const classified: string[] = [];
     const useCase = new RemoveDeployedSkill({
       registry: { isRegistered: async () => false },
@@ -1322,9 +1220,6 @@ describe("RemoveDeployedSkill.preflight", () => {
       location: { treeRoot: () => "/home" },
     });
 
-    // Priced as a cost the confirmation must state, never as a clean copy (J04),
-    // and the removal itself still refuses outright — no consent clears a copy
-    // nobody could read (#952).
     await expect(useCase.preflight(removeTdd)).resolves.toMatchObject({
       ok: true,
       check: { scope: "repo", warning: "check-did-not-run" },
@@ -1336,10 +1231,8 @@ describe("RemoveDeployedSkill.preflight", () => {
   });
 });
 
-// apm's uninstall takes every tool in one call and reports one outcome for all
-// of them, and narrowing its targets to fake a per-tool answer orphans the
-// other tools' files (ADR-0013). So after a failure the server probes the disk
-// itself and reports, per target, whether the deployed copy is still there.
+// apm's uninstall reports one outcome for every tool, so after a failure the
+// server probes the disk per target.
 describe("RemoveDeployedSkill reporting a failed removal per target", () => {
   it("reports the repo's own copy as gone when the probe finds nothing left", async () => {
     const { useCase } = buildUseCase({
@@ -1436,8 +1329,6 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
   });
 
   it("reports nothing for a failure that never reached apm", async () => {
-    // Nothing was removed, so there is no outcome to report — and a ledger here
-    // would state one the server never observed.
     const { useCase, calls } = buildUseCase({
       lookup: { ok: false, reason: "not-deployed" },
     });

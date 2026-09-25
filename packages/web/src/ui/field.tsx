@@ -6,9 +6,7 @@ import {
 } from "react";
 import { cn } from "./cn";
 
-// One text field: a visible label, a hint between the label and the field, the
-// field, and a refusal as one ✕ line under it (ADR-0033 §6). The caller owns
-// when the refusal appears — on submit, or right after a folder is picked.
+// The caller owns when the refusal appears: on submit, or right after a pick.
 
 export interface FieldProps
   extends Omit<
@@ -25,13 +23,9 @@ export interface FieldProps
   onChange: (value: string) => void;
   /** A control beside the field, such as **Browse**. */
   trailing?: ReactNode;
-  /**
-   * Id of a further element that describes the field — a `Notice` in the same
-   * slot, where the refusal has a heading and a cause. Merged, never replacing
-   * the hint and the error.
-   */
+  /** A further describing element, such as a `Notice`; merged with hint and error. */
   describedBy?: string;
-  /** The value is a path, ref or version: set in Geist Mono (ADR-0033 §6). */
+  /** The value is a path, ref or version: set in Geist Mono. */
   mono?: boolean;
   /** Refused by a `Notice` in the slot rather than by `error`. */
   invalid?: boolean;

@@ -1,7 +1,4 @@
-// The whole bulk-deploy chain over the real Hono app and a hand-built global
-// target: the guards sort the staged names against real copies, one install
-// carries the rest, the held-back row's own receipt licenses its single deploy,
-// and the deploy-state read shows every name (#1039). Only apm is faked.
+// The whole bulk-deploy chain over the real Hono app (#1039). Only apm is faked.
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -85,8 +82,6 @@ describe("bulk deploy journey", () => {
         readSkillFilesAtTag: async () => null,
       },
       recordedPackage: { read: async () => ({ kind: "unverified" as const }) },
-      // The real guard input: copies and lockfile hashes read off this run's
-      // tree, never a scripted verdict.
       deployedContent: new DeployedContentAdapter({
         location: rootPackageLocation(globalRoot),
       }),
@@ -134,7 +129,6 @@ describe("bulk deploy journey", () => {
     });
 
   it("installs the clean names at once and deploys the held one on its own receipt", async () => {
-    // A copy of docs nobody recorded: a deploy would overwrite it blindly.
     await mkdir(join(globalRoot, ".claude/skills/docs"), { recursive: true });
     await writeFile(
       join(globalRoot, ".claude/skills/docs/SKILL.md"),

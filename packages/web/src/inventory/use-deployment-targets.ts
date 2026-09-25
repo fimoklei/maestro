@@ -1,7 +1,6 @@
 import { targetLabel } from "../shell/target-label";
-// Gathers every deploy target (each detected tool, ADR-0011, and each
-// registered repo) into one flat list for the roll-up (#272). No new server
-// read — reuses the deploy-state and drift queries the cockpit already runs.
+// Every deploy target (each detected tool and each registered repo) as one flat
+// list for the roll-up (#272), from queries the cockpit already runs.
 
 import { useQueries } from "@tanstack/react-query";
 import { globalToolView, toDeployedView } from "../deploy-state/deployed-view";
@@ -16,7 +15,7 @@ import type { DeployTarget } from "./use-deploy-skill";
 export function useDeploymentTargets(
   repoPaths: string[],
   // Loading/error must reach the roll-up, or a repo-deployed skill reads
-  // "deployed nowhere" during a normal load or registry outage (J04).
+  // "deployed nowhere" during a normal load or registry outage.
   registry: { isLoading: boolean; isError: boolean },
 ): DeploymentTarget[] {
   const globalDeploy = useGlobalDeployState();
@@ -54,7 +53,7 @@ export function useDeploymentTargets(
   }
 
   // While loading, one pending target stands in so a globally-deployed skill
-  // reads as still-resolving, not "deployed nowhere" (J04).
+  // reads as still-resolving, not "deployed nowhere".
   if (globalDeploy.isLoading) {
     targets.push({
       label: "",
@@ -64,7 +63,7 @@ export function useDeploymentTargets(
       drift: globalDrift,
     });
   } else if (globalDeploy.isError) {
-    // Unknown, not empty (J04). Stale cached tools dropped, never presented as current.
+    // Unknown, not empty. Stale cached tools dropped, never presented as current.
     targets.push({
       label: "",
       target: { kind: "global" },
@@ -77,8 +76,7 @@ export function useDeploymentTargets(
       const names = tool.primitives.map((primitive) => primitive.name);
       targets.push({
         label: toolPresentation(tool.tool).label,
-        // One removal covers every tool, so each tool row names the same
-        // global target (ADR-0013).
+        // One removal covers every tool, so each tool row names the same global target.
         target: { kind: "global" },
         tool: tool.tool,
         deployed: globalToolView(names, globalDeploy.data?.skipped ?? []),

@@ -20,8 +20,6 @@ function classify(
   });
 }
 
-// A clone git left behind: `.git` present, remote already written, no commit
-// checked out yet.
 function partialCloneSeed() {
   return {
     directories: { [DEST]: DEST, [`${DEST}/.git`]: `${DEST}/.git` },
@@ -55,7 +53,6 @@ describe("classifyCloneDestination", () => {
     await expect(classify(fs)).resolves.toBe("same-origin");
   });
 
-  // Case is GitHub's to fold, not ours to refuse over.
   it("matches the origin regardless of its casing", async () => {
     const fs = new InMemoryFileSystem(cloneSeed());
 
@@ -102,8 +99,6 @@ describe("classifyCloneDestination", () => {
     );
   });
 
-  // Only a clone of the repository being asked for can be the leftover of
-  // *this* clone. Another repository with no commit yet is someone else's.
   it("reports a commitless repository of another origin as occupied", async () => {
     const fs = new InMemoryFileSystem(partialCloneSeed());
 
@@ -123,8 +118,7 @@ describe("classifyCloneDestination", () => {
     ).resolves.toBe("occupied");
   });
 
-  // Git failing to answer is not git answering "empty" — the recovery advice
-  // for a partial clone is to delete the folder.
+  // Git failing to answer is not git answering "empty".
   it("reports a repository git cannot inspect as occupied", async () => {
     const fs = new InMemoryFileSystem(partialCloneSeed());
 

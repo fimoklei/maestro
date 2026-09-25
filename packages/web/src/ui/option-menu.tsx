@@ -26,7 +26,7 @@ export interface OptionMenuProps {
   sections: readonly OptionSection[];
   /** How many options are set; shown on the control so a filter is never invisible. */
   count?: number;
-  /** Why the control cannot be used, in five words or fewer (copy.md). */
+  /** Why the control cannot be used, in five words or fewer. */
   unavailable?: string;
 }
 

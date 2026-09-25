@@ -1,12 +1,9 @@
-// Fills the smoke sandbox with what the rehearsal needs to browse: an inventory
-// clone and a handful of candidate consuming repos, all under the sandbox HOME
-// (ADR-0010, amendment "what the sandbox seeds").
+// Fills the smoke sandbox with an inventory clone and a few candidate repos,
+// all under the sandbox HOME.
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-// Mirrors a real machine's layout, so browsing the rehearsal feels like browsing
-// your own disk rather than a fixture tree.
 const PROJECTS_DIR = "Projects";
 const INVENTORY_DIR = "agent-harness";
 
@@ -19,21 +16,16 @@ const CANDIDATES = [
   { name: "scratch-notes", git: false },
 ];
 
-// The markers Maestro probes to decide a tool is installed (#131,
-// .claude/rules/apm-driver.md). Without them the redirected HOME reads as "no
-// tool installed" and every global deploy is refused. These are config-file
-// stand-ins, never the skills dirs a deploy creates, so they stay deploy-immune.
+// The markers Maestro probes to decide a tool is installed (#131). Config-file
+// stand-ins, never the skills dirs a deploy creates, so a deploy leaves them.
 function seedToolPresence(home) {
   writeFileSync(join(home, ".claude.json"), "{}\n");
   mkdirSync(join(home, ".codex"), { recursive: true });
   writeFileSync(join(home, ".codex", "config.toml"), "");
 }
 
-// Redirecting HOME hides the real ~/.gitconfig, so git loses its credential
-// helper and every fetch of the seeded clone fails auth — which the harness
-// strip reports as "Read failed", never as a setup problem. Only this
-// dev-tooling harness bridges credentials; the product never does
-// (.claude/rules/security.md). The token lands in a sandbox wiped on teardown.
+// Redirecting HOME hides the real ~/.gitconfig and its credential helper.
+// Dev tooling only: the product never bridges credentials.
 function seedGitCredentials(home, githubToken) {
   writeFileSync(
     join(home, ".git-credentials"),
@@ -48,8 +40,6 @@ function seedGitCredentials(home, githubToken) {
   );
 }
 
-// The launcher's record of the run that owns this sandbox. Named here because
-// the sandbox layout is this file's job; `smoke-ready.mjs` reads it back.
 export const MARKER_FILE = "smoke.json";
 
 /** Records which launcher owns this sandbox, so a later step can verify it. */
@@ -60,11 +50,7 @@ export function writeSmokeMarker(sandboxDir, { launcherPid }) {
   );
 }
 
-/**
- * Where seeding puts the two things the readiness step needs. Exported so
- * `smoke-ready.mjs` asks instead of restating the directory names — a rename
- * here then cannot leave the two halves pointing at different places.
- */
+/** Where seeding puts what the readiness step needs; `smoke-ready.mjs` reads it here. */
 export function seededPaths(home) {
   const projects = join(home, PROJECTS_DIR);
   return {
@@ -83,10 +69,7 @@ export function seedSandbox({ home, inventorySource, githubToken }) {
   }
 
   // Copied whole, .git included: connect refuses a clone whose origin it cannot
-  // parse (ADR-0014), and a fabricated tree would need a fabricated origin. So
-  // the source must be a clone, not merely a directory. An unusable source warns
-  // and continues, the posture the harness already takes for an unauthenticated
-  // gh — browsing and registering need no inventory.
+  // parse. An unusable source warns and continues.
   const warnings = [];
   let inventory = null;
   if (existsSync(join(inventorySource, ".git"))) {

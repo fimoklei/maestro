@@ -21,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 export const MachineValue: Story = {};
 
-// A plain word is never set in Geist Mono (design.md).
+// A plain word is never set in Geist Mono.
 export const PlainValue: Story = {
   args: {
     name: "GitHub repository",

@@ -63,7 +63,6 @@ export const git = (cwd: string, ...args: string[]) =>
 export const rowsOf = (stage: HarnessState["stages"]["proposal"]) =>
   stage.outcome === "read" ? stage.rows : [];
 
-// Registers a fresh clone of a one-skill Harness, tagged v0.1.0, per test.
 // Read `base`, `remote`, `root` and `review` inside a test, never at collection.
 export function useHarnessStages() {
   let base = "";
@@ -90,8 +89,7 @@ export function useHarnessStages() {
     await git(root, "config", "user.email", "test@example.com");
     await git(root, "config", "user.name", "Test");
     // The GitHub origin resolves to the bare repo next door, so the suite stays
-    // offline while the origin still parses as GitHub (LEARNINGS ·
-    // git-remote-get-url).
+    // offline while the origin still parses as GitHub.
     await git(root, "config", `url.${remote}.insteadOf`, ORIGIN_URL);
     await git(root, "remote", "set-url", "origin", ORIGIN_URL);
     await writeSkill("tdd", "as published");
@@ -115,8 +113,7 @@ export function useHarnessStages() {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => root,
-      // The real released read: these suites build real repositories,
-      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
       readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();

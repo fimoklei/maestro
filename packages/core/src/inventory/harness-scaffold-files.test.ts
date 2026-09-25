@@ -29,8 +29,7 @@ describe("canonicalHarnessFiles", () => {
       "Thumbs.db",
       "desktop.ini",
     ]);
-    // Offered like every other scaffold file: an occupied one refuses the
-    // scaffold, so it is never merged into a `.gitignore` already there (#921).
+    // An occupied `.gitignore` refuses the scaffold, never gets merged (#921).
     expect(gitignore?.skipIfExists).toBeUndefined();
   });
 
@@ -59,8 +58,7 @@ describe("canonicalHarnessFiles", () => {
   );
 
   it("keeps .apm/skills/ reachable by git with a placeholder file", () => {
-    // Git tracks files, never directories, so an empty skills directory would
-    // never reach the remote (#552 S5).
+    // Git tracks no empty directory, so it would never reach the remote.
     expect(byPath().get(".apm/skills/.gitkeep")?.contents).toBe("");
   });
 
@@ -98,8 +96,7 @@ describe("CONTRIBUTING.md", () => {
   const contributing = (ownerRepo?: string) =>
     byPath(ownerRepo).get("CONTRIBUTING.md");
   const text = (ownerRepo?: string) => contributing(ownerRepo)?.contents ?? "";
-  // A sentence in an 80-column markdown file wraps wherever it happens to
-  // reach the margin, so assert sentences against one flat line.
+  // Markdown wraps at the margin, so assert sentences against one flat line.
   const flat = (ownerRepo?: string) => text(ownerRepo).replace(/\s+/g, " ");
   const sections = () => text().split(/^## /m).slice(1);
   const situations = () => sections().slice(0, 3);
@@ -142,8 +139,6 @@ describe("CONTRIBUTING.md", () => {
   });
 
   it("opens the pull request with Propose change, before the curator merges", () => {
-    // Propose change renders only while a movement is pending-promotion, so a
-    // text that puts it after the merge names a control that is gone (#715).
     const ready = (situations().at(-1) as string).replace(/\s+/g, " ");
     expect(ready).toMatch(
       /\*\*Propose change\*\*.*the curator.*\*\*Publish release\*\*/,
@@ -152,8 +147,7 @@ describe("CONTRIBUTING.md", () => {
 
   it("sends the reader to the Harness itself to edit an existing skill", () => {
     expect(flat()).toMatch(/edit the skill in place under `\.apm\/skills\//i);
-    // The scaffold creates no `.claude/skills` symlink, so the text may not
-    // promise one (#715).
+    // The scaffold makes no Claude Code skills symlink; the text may not promise one.
     expect(flat()).not.toMatch(/symlink/i);
   });
 

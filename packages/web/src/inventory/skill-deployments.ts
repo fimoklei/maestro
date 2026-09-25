@@ -1,5 +1,5 @@
-// The skill detail pane's "deployed to" lens (#290, ADR-0016): a per-primitive
-// slice of the same targets the deployed column rolls up, so the two can't diverge.
+// The skill detail pane's "deployed to" lens: a per-primitive slice of the
+// targets the deployed column rolls up, so the two can't diverge.
 
 import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
 import { globalRowId, repoRowId } from "../deploy-state/target-rows";
@@ -10,12 +10,12 @@ import type { DeployTarget } from "./use-deploy-skill";
 
 export type SkillDeployment = {
   label: string;
-  // The release the target follows, stated once per row (ADR-0031). Falls back
-  // to the recorded pin where the target follows no single release.
+  // The release the target follows, stated once per row; the recorded pin where
+  // the target follows no single release.
   release: string;
   /** The deployed copy's own version, which a removal names. */
   version: string;
-  // Never up-to-date for an un-run check (J04, see deploy-state/deployed-view.ts).
+  // Never up to date for an un-run check.
   status: DriftStatus;
   /** What an update sends; every tool row names the one global target. */
   target: DeployTarget;
@@ -26,7 +26,7 @@ export type SkillDeployment = {
   /** The Deploy-state row this target is (#1065); null where it names none. */
   rowId: string | null;
   // A newer release changed this skill here, and the target follows one
-  // release, so Update target can move it (ADR-0031).
+  // release, so Update target can move it.
   updatable: boolean;
 };
 
@@ -35,13 +35,13 @@ export function skillDeployments(
   targets: DeploymentTarget[],
 ): SkillDeployment[] {
   const rows: SkillDeployment[] = [];
-  // One global removal or update covers every detected tool (ADR-0013).
+  // One global removal or update covers every detected tool.
   const tools = targets.flatMap((target) =>
     target.tool === undefined ? [] : [target.tool],
   );
 
   for (const target of targets) {
-    // Unreadable/loading is unknown, not "not deployed" — left out (J04).
+    // Unreadable/loading is unknown, not "not deployed" — left out.
     if (target.deployed.status !== "ready") {
       continue;
     }

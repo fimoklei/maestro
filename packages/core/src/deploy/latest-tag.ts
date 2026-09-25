@@ -1,6 +1,5 @@
-// Parses the Rich table `apm view <owner>/<repo> versions` prints — it has no
-// --json (apm-behavior.md § Latest tag). Semver-sorted here because apm's row
-// order is not contractual, and v0.10.0 must beat v0.9.0.
+// Parses the table `apm view <owner>/<repo> versions` prints; it has no --json.
+// Sorted here because apm's row order is not contractual.
 
 const tagRowPattern = /│\s*(v\d+\.\d+\.\d+)\s*│\s*tag\s*│/;
 
@@ -15,8 +14,7 @@ export const resolveLatestTagFromVersionsTable = (
   if (tags.length === 0) {
     return null;
   }
-  // Numeric collation reads each digit run as a number, so v0.10.0 beats
-  // v0.9.0 where a plain string compare would not.
+  // Numeric collation: v0.10.0 beats v0.9.0.
   return tags.reduce((latest, tag) =>
     tag.localeCompare(latest, "en", { numeric: true }) > 0 ? tag : latest,
   );

@@ -6,10 +6,10 @@ windsurf.
 Some primitives are not supported: cursor (instructions); opencode (hooks); 
 antigravity (instructions, hooks); windsurf (instructions)
 [*] Created 
-/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-finback/7138
+/private/tmp/claude-501/-Users-dev-orca-workspaces-maestro-finback/7138
 170a-ec42-4bae-8afb-80b5ae09959f/scratchpad/sb2/home-symlink/.apm/apm.yml
 [i] Targets set: claude (persisted to 
-/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-finback/7138
+/private/tmp/claude-501/-Users-dev-orca-workspaces-maestro-finback/7138
 170a-ec42-4bae-8afb-80b5ae09959f/scratchpad/sb2/home-symlink/.apm/apm.yml)
 [*] Validating 1 package...
 [+] fimoklei/agent-harness/skills/tdd#v0.5.1
@@ -26,7 +26,7 @@ may not support filter v2.
   [x] 1 package failed:
     +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from 
 cached package: Skill destination 
-/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-finback/7138
+/private/tmp/claude-501/-Users-dev-orca-workspaces-maestro-finback/7138
 170a-ec42-4bae-8afb-80b5ae09959f/scratchpad/sb2/home-symlink/.claude/skills/tdd 
 is a symlink -- refusing to deploy
 [x] Installation failed with 1 error(s) in 4.8s. No install transaction changes 

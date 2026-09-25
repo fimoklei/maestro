@@ -23,7 +23,6 @@ describe("FactList", () => {
     );
   });
 
-  // design.md: Geist Mono only for a version, tag, path, ref or hash.
   it("sets a machine value in mono and a plain word in the sans face", () => {
     render(
       <FactList>

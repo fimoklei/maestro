@@ -9,13 +9,11 @@ import {
   GlobalDeployStateReader,
 } from "./deploy-state-reader";
 
-// A fake presence port: the global read lists exactly these tools, in order.
 function fakePresence(tools: SupportedTool[]): ToolPresencePort {
   return { detectGlobalTools: async () => tools };
 }
 
-// The exact apm output a two-tool install (-t claude,codex) writes: one entry,
-// package_type claude_skill, two deployed_files. Captured by the 01.2 spike.
+// The exact lockfile entry apm writes for `-t claude,codex`.
 const TWO_TOOL_LOCKFILE = readFileSync(
   new URL(
     "../../../../tests/fixtures/apm.lock.global-two-tool.yaml",
@@ -27,9 +25,7 @@ const TWO_TOOL_LOCKFILE = readFileSync(
 const REPO = "/repo";
 const LOCKFILE = `${REPO}/apm.lock.yaml`;
 
-// Builds an apm.lock.yaml the way apm writes it: a tag-pinned skill entry has
-// resolved_ref (the human tag), virtual_path, and package_type. See
-// .claude/rules/apm-driver.md for the observed shape.
+// A tag-pinned skill entry has resolved_ref, virtual_path and package_type.
 function lockfile(entries: string): string {
   return `lockfile_version: '1'\ngenerated_at: '2026-06-05T13:22:03+00:00'\napm_version: 0.16.0\ndependencies:\n${entries}`;
 }
@@ -38,7 +34,6 @@ function skillEntry(ref: string, virtualPath: string): string {
   return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: ${virtualPath}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/${virtualPath}\n  content_hash: sha256:abc\n`;
 }
 
-// The same entry under any package_type apm may record.
 function typedEntry(virtualPath: string, packageType: string): string {
   return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: v0.5.0\n  virtual_path: ${virtualPath}\n  is_virtual: true\n  package_type: ${packageType}\n  deployed_files:\n  - .claude/${virtualPath}\n  content_hash: sha256:abc\n`;
 }
@@ -172,7 +167,6 @@ describe("DeployStateReader", () => {
 
   it("reports malformed when the lockfile shape is invalid", async () => {
     const fs = new InMemoryFileSystem({
-      // Valid YAML, but dependencies is not the expected array of entries.
       files: { [LOCKFILE]: "dependencies: not-a-list\n" },
     });
     const reader = new DeployStateReader({ fs });
@@ -227,12 +221,10 @@ describe("DeployStateReader", () => {
   });
 });
 
-// The global (user-scope) read: same lockfile, but grouped per detected tool.
 const GLOBAL_ROOT = "/home/.apm";
 const GLOBAL_LOCKFILE = `${GLOBAL_ROOT}/apm.lock.yaml`;
 
-// A two-tool skill entry (both .claude and .agents copies), the shape apm writes
-// for `-t claude,codex` (apm-driver.md).
+// A two-tool skill entry: the shape apm writes for `-t claude,codex`.
 function twoToolEntry(ref: string, name: string): string {
   return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: .apm/skills/${name}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/${name}\n  - .agents/skills/${name}\n  content_hash: sha256:abc\n`;
 }
@@ -345,8 +337,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
   });
 });
 
-// The root-package shape: one apm_package dependency deploying many skills,
-// captured by the #941 narrowing spike.
+// The root-package shape: one apm_package dependency deploying many skills.
 const PHANTOM_LOCKFILE = readFileSync(
   new URL(
     "../../../../tests/fixtures/apm.lock.spike-941-step3d-phantom.yaml",
@@ -355,7 +346,7 @@ const PHANTOM_LOCKFILE = readFileSync(
   "utf8",
 );
 
-// Keys copied from that capture: a root-package row carries no virtual_path.
+// A root-package row carries no virtual_path.
 function rootPackageEntry(
   ref: string,
   deployedFiles: string[],
@@ -366,7 +357,6 @@ function rootPackageEntry(
   return `- repo_url: fimoklei/agent-harness\n  name: agent-harness\n  host: github.com\n  resolved_commit: 4beb072048aa5952555e8a3941d3d1873abfe6e7\n  resolved_ref: ${ref}\n  package_type: apm_package\n  deployed_files:\n${files}  skill_subset:\n${skills}`;
 }
 
-// Every file the entry names is on disk, so nothing reads as a phantom.
 function onDisk(root: string, files: string[]): Record<string, string> {
   return Object.fromEntries(files.map((file) => [`${root}/${file}`, "x"]));
 }
@@ -418,8 +408,7 @@ describe("DeployStateReader on a root-package target", () => {
   });
 
   it("does not count a recorded row whose file is gone from disk", async () => {
-    // The real phantom capture: `delta` is recorded under .agents but the
-    // narrow deleted the file (#941 step 3d).
+    // A real capture: `delta` is recorded under .agents but the file is gone (#941).
     const onlyRealFiles = [
       ".agents/skills/alpha/SKILL.md",
       ".claude/skills/alpha/SKILL.md",
@@ -502,8 +491,7 @@ describe("DeployStateReader on a root-package target", () => {
     });
   });
 
-  // A target part-way through migration still carries per-skill rows. They
-  // belong to no Selection, so they may not swell the count (spec story 4).
+  // Leftover per-skill rows belong to no Selection and may not swell the count.
   it("keeps a leftover per-skill row out of the Release head's selection", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     const fs = new InMemoryFileSystem({
@@ -537,9 +525,7 @@ describe("DeployStateReader on a root-package target", () => {
     expect(result).toMatchObject({ ok: true, releaseHead: { selected: 1 } });
   });
 
-  // Pinned per skill and a Release head are two answers to one question. A
-  // target carrying both would show the chip and the Update target control at
-  // once, and there is no mechanism behind that Update (spec stories 59, 60).
+  // A target carrying both would show two answers to one question.
   it("reads a target still holding per-skill pins as pinned, with no Release head", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     const fs = new InMemoryFileSystem({
@@ -705,8 +691,6 @@ describe("GlobalDeployStateReader on a root-package target", () => {
     );
   });
 
-  // Same exclusivity as the repo card: a tool group still holding per-skill
-  // pins reads as Pinned per skill and is offered no Update (stories 59, 60).
   it("carries no Release head for a tool group still pinned per skill", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     const fs = new InMemoryFileSystem({
@@ -768,9 +752,7 @@ describe("GlobalDeployStateReader on a root-package target", () => {
   });
 });
 
-// A classifier that reads its own injected state, the way DeployedContentAdapter
-// does: a reader calling the method detached loses it and silently chips
-// nothing (found in smoke, #949).
+// Reads its own injected state: a detached method call would chip nothing (#949).
 class StatefulClassifier {
   private readonly edited: string;
 
@@ -807,8 +789,7 @@ describe("DeployStateReader copy chips", () => {
   });
 });
 
-// A per-skill dependency, the shape every target held before ADR-0031: one
-// entry per skill, pinned at its own tag under `.apm/skills/<name>`.
+// A per-skill dependency: one entry per skill, pinned at its own tag.
 function pinnedEntry(name: string, ref: string, prefixes = [".claude"]) {
   const files = prefixes
     .map((prefix) => `  - ${prefix}/skills/${name}/SKILL.md\n`)
@@ -964,8 +945,6 @@ describe("GlobalDeployStateReader on a target pinned per skill", () => {
   });
 });
 
-// An operation the record says never finished, so the card can offer the one
-// way out of it (#951).
 describe("DeployStateReader on a target with an unfinished operation", () => {
   const files = [".claude/skills/tdd/SKILL.md"];
   const pending = {
@@ -992,8 +971,7 @@ describe("DeployStateReader on a target with an unfinished operation", () => {
   });
 
   it("offers the retry on a target a first deploy left with no lockfile", async () => {
-    // A first Deploy that stopped writes no lockfile at all, and its Retry
-    // deploy still has to be offered (#951).
+    // A stopped first Deploy writes no lockfile; Retry deploy is still offered (#951).
     const reader = new DeployStateReader({
       fs: new InMemoryFileSystem({ files: {} }),
       operations: { pending: async () => pending },

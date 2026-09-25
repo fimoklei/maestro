@@ -1,6 +1,4 @@
-// The Harness home base's git reads, against a real clone and a real remote.
-// The remote is a bare repo on disk, so the whole suite is offline: no network
-// lane, no credentials (.claude/rules/testing.md).
+// The remote is a bare repo on disk, so the whole suite is offline.
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -41,8 +39,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await commit("first skill");
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
-    // Seeded through the adapter, so the clone carries exactly the refs the
-    // product's own fetch writes.
+    // Seeded through the adapter, so the clone carries the product's own refs.
     await new HarnessGitAdapter().fetch(root);
   }, 30_000);
 
@@ -52,8 +49,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
   const adapter = () => new HarnessGitAdapter();
 
-  // Null is a namespace the adapter could not read at all. Asserting that
-  // apart from the names keeps a read failure from passing as "no releases".
+  // Null is an unreadable namespace, never "no releases".
   const tagNames = (tags: { name: string }[] | null): string[] => {
     expect(tags).not.toBeNull();
     return (tags ?? []).map((tag) => tag.name);
@@ -67,16 +63,14 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     expect(facts.defaultBranch).toBe("main");
     expect(facts.defaultBranchCommit).toBe(head);
     expect(facts.tags).toEqual([{ name: "v0.1.0", commit: head }]);
-    // Named here, not just implied by the read: the fetch and the read agree
-    // on one namespace, and it is not the author's own `refs/tags`.
     expect(
       (await git(root, "rev-parse", "refs/maestro/tags/v0.1.0")).stdout.trim(),
     ).toBe(head);
   });
 
   it("reads an annotated tag as the commit it points at, not the tag object", async () => {
-    // A tag created outside Maestro may be annotated; comparing its own object
-    // id against a commit would read a released harness as pending.
+    // A tag made outside Maestro may be annotated; comparing its object id
+    // against a commit would read a released harness as pending.
     await git(root, "tag", "-a", "v0.2.0", "-m", "release");
     await git(root, "push", "--tags", "origin");
     await adapter().fetch(root);
@@ -123,11 +117,9 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await adapter().fetch(root);
 
     const facts = await adapter().readFacts(root);
-    // Emptied, not unreadable: a namespace with nothing in it is an answer,
-    // and only a failed read is null (#519).
+    // Emptied, not unreadable: only a failed read is null (#519).
     expect(facts.tags).toEqual([]);
-    // Pruning must reach only Maestro's own namespace: deleting the author's
-    // local tags would be a change to their repository.
+    // Pruning must never touch the author's own local tags.
     expect((await git(root, "tag", "--list")).stdout).toContain("mine");
   });
 
@@ -143,8 +135,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
   });
 
   it("leaves the author's checkout where it was", async () => {
-    // A fetch must never move HEAD, the index, or the working tree — the
-    // author's editor cannot shift underneath them (ADR-0021).
+    // A fetch must never move HEAD, the index or the working tree.
     await commit("local work");
     await writeFile(join(root, "staged.md"), "staged\n", "utf8");
     await git(root, "add", "staged.md");
@@ -173,8 +164,6 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
   });
 
   describe("skill trees", () => {
-    // Null is a ref nobody could read, which every test here but its own case
-    // treats as the failure it is rather than working around it.
     const movementTrees = async (path: string) => {
       const trees = await adapter().readMovementTrees(path);
       if (trees === null) {
@@ -222,8 +211,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     });
 
     it("leaves the author's real index and working tree untouched", async () => {
-      // The temporary index is the whole point: an author's staged work must
-      // survive a read of the Harness view (ADR-0021).
+      // The temporary index keeps the author's staged work intact.
       await writeFile(join(root, "staged.md"), "staged\n", "utf8");
       await git(root, "add", "staged.md");
       await writeSkill("draft", "never committed");
@@ -264,14 +252,12 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       const trees = await movementTrees(root);
 
       expect(trees.promote.tdd).toEqual({ tree, commit: tip });
-      // No promote branch is no ref to read: neither answer can be given.
       expect(trees.promote.unproposed?.tree ?? null).toBeNull();
       expect(trees.promote.unproposed?.commit ?? null).toBeNull();
     });
 
     it("names a promote branch that proposes deleting its skill", async () => {
-      // The branch carries no tree to hash, and dropping it would hide a
-      // deletion that is waiting for review.
+      // Dropping it would hide a deletion waiting for review.
       await git(root, "checkout", "-q", "-b", "maestro/tdd");
       await rm(join(root, ".apm", "skills", "tdd"), { recursive: true });
       await git(root, "add", "-A");
@@ -292,9 +278,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     });
 
     it("reads a committed .DS_Store on the default branch as a difference", async () => {
-      // The tree reader ignores nothing (#920): an operating-system file the
-      // default branch already carries stays visible, so removing it is work
-      // the author can see and propose.
+      // The tree reader ignores nothing (#920).
       await writeFile(join(root, ".gitignore"), ".DS_Store\n", "utf8");
       await writeFile(
         join(root, ".apm", "skills", "tdd", ".DS_Store"),
@@ -313,9 +297,8 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     });
 
     it("hashes a tracked skill file the same even when a rule ignores it", async () => {
-      // git exempts an already-tracked file from the ignore rules. An index
-      // built from nothing knows of no tracked files, so the file would drop
-      // out and an untouched skill would read as edited.
+      // git exempts tracked files from ignore rules; an index built from
+      // nothing would drop the file and read an untouched skill as edited.
       await writeFile(join(root, ".gitignore"), "*.log\n", "utf8");
       await writeFile(
         join(root, ".apm", "skills", "tdd", "notes.log"),
@@ -331,8 +314,6 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     });
 
     it("refuses to read a failed git call as a harness with nothing on disk", async () => {
-      // Reporting every skill as gone would be a confident wrong answer, and
-      // the author would see their whole harness as deleted locally.
       const notARepo = join(base, "loose");
       await mkdir(join(notARepo, ".apm", "skills", "tdd"), { recursive: true });
       await writeFile(
@@ -399,10 +380,8 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     });
 
     it("refuses to tag a tip the remote branch has already moved past", async () => {
-      // The window issue #520's one-read-then-push design leaves open: a
-      // teammate pushes between the two. The lease turns that into a refusal,
-      // and `--atomic` means no tag was created at the commit the branch left
-      // behind (#520).
+      // A teammate pushes between the read and the push: the lease refuses,
+      // and `--atomic` means no tag was created (#520).
       const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
       const other = join(base, "other");
       await run("git", ["clone", remote, other]);
@@ -422,10 +401,8 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       ).rejects.toThrow();
     });
 
-    // A push that errors out after the remote already wrote the tag — a
-    // timeout on the way back, a receive-pack that fails at the end. Reported
-    // as a failure it would strand the author: the retry reads the tag their
-    // own attempt created and refuses the whole plan (#520).
+    // The push errors after the remote wrote the tag; reported as a failure,
+    // the retry would refuse the whole plan (#520).
     const failAfterAccepting = async () => {
       const script = join(base, "receive-pack.sh");
       await writeFile(script, '#!/bin/sh\ngit-receive-pack "$@"\nexit 1\n', {
@@ -479,9 +456,8 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     });
 
     it("reports the tag as pushed even when the local mirror update fails", async () => {
-      // The remote tag is the fact that matters; a local bookkeeping write
-      // that loses a lock race must never turn an already-published release
-      // into a reported failure (#520).
+      // A lost lock race on a local bookkeeping write must never turn a
+      // published release into a failure (#520).
       const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
       const lockDir = join(root, ".git", "refs", "maestro", "tags");
       await mkdir(lockDir, { recursive: true });

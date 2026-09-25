@@ -173,8 +173,6 @@ describe("Harness release", () => {
     expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
   });
 
-  // Inventory answers from the latest release, so publishing one is the only
-  // act that changes it — nothing else refetches it (#841, ADR-0021 §9).
   it("re-reads the Inventory once the release is published", async () => {
     const calls = stubHarnessServer({
       read: { body: FETCHED },

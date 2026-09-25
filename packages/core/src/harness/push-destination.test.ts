@@ -9,15 +9,12 @@ describe("pushesWhereItFetched", () => {
   });
 
   it("accepts a transport rewrite, where both sides land on the same mirror", () => {
-    // `url.<mirror>.insteadOf` is a transport detail, not another repository:
-    // it rewrites the fetch and the push alike.
+    // `insteadOf` rewrites the fetch and the push alike.
     const mirror = "/srv/mirror.git";
     expect(pushesWhereItFetched(mirror, [mirror])).toBe(true);
   });
 
   it("refuses a push destination naming another repository", () => {
-    // A fork push-url over an upstream fetch-url publishes the skill where the
-    // author was never shown a link to.
     expect(
       pushesWhereItFetched(FETCH, ["git@github.com:someone-else/harness.git"]),
     ).toBe(false);

@@ -30,8 +30,6 @@ describe("diffSkillTrees", () => {
   });
 
   it("reads one directory's content under a new name as a rename", () => {
-    // Untouched content under a new name is one movement, not a removal and an
-    // addition the author has to pair up by eye.
     expect(
       diffSkillTrees(
         [{ name: "tdd", treeHash: "t1" }],
@@ -65,8 +63,7 @@ describe("diffSkillTrees", () => {
   });
 
   it("refuses to name a rename when two copies could equally be the one", () => {
-    // Content is the only rename signal, and duplicated content points at both
-    // copies at once. Picking either would put a claim in the author's mouth.
+    // Duplicated content points at both copies; picking either would be a guess.
     expect(
       diffSkillTrees(
         [{ name: "tdd", treeHash: "t1" }],

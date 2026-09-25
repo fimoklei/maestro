@@ -65,8 +65,6 @@ describe("Harness freshness and failed reads", () => {
     renderHarness();
 
     await screen.findByRole("button", { name: /^create a release$/i });
-    // The filled action is neutral under the new system (ADR-0033 §2); the
-    // claim is that there is exactly one of them.
     const filled = [...document.querySelectorAll("button.bg-gray-12")];
     expect(filled.map((button) => button.textContent)).toEqual([
       "Create a release",

@@ -1,8 +1,5 @@
-// Reads the ref a remove must reuse from the target's own lockfile, never from
-// what the inventory points at today (apm-driver.md § Remove).
-
-// Every deploy pins a vX.Y.Z tag (ADR-0003) — one pattern, so the release
-// search and every guard reading a pin cannot disagree.
+// A remove reuses the ref from the target's own lockfile, never from what the
+// inventory points at today.
 import { RELEASE_TAG_PATTERN } from "../harness/release-tag";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import {
@@ -16,18 +13,15 @@ import type { DeployTarget } from "./deploy-skill";
 import type { DeployedLocation } from "./deployed-location";
 
 export type DeployedRefLookup =
-  // Version travels with the ref it came from, so a report can never name a tag
-  // the removal did not aim at (#383).
   | { ok: true; ref: string; version: string }
   | {
       ok: false;
       reason: "not-deployed" | "ref-unresolvable" | "lockfile-malformed";
     };
 
-// ADR-0014.
 const SUPPORTED_HOST = "github.com";
 
-// Two segments and nothing else — keeps a traversal or an extra segment out of
+// Two segments and nothing else: keeps a traversal or an extra segment out of
 // the ref.
 const OWNER_REPO = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
@@ -54,8 +48,7 @@ export function refForDeployedSkill(
     entry.host === SUPPORTED_HOST &&
     entry.repo_url !== undefined &&
     OWNER_REPO.test(entry.repo_url) &&
-    // The row names one skill; the ref must name that same skill. basename()
-    // alone would accept `vendor/other/tdd` for a row reading "tdd".
+    // basename() alone would accept `vendor/other/tdd` for a row reading "tdd".
     entry.virtual_path === harnessSkillSubpath(name) &&
     RELEASE_TAG_PATTERN.test(entry.resolved_ref);
   if (!trustworthy) {
@@ -70,7 +63,7 @@ export function refForDeployedSkill(
 }
 
 // An absent lockfile is "nothing deployed", never an error: apm deletes the
-// file rather than emptying it when the last dependency goes (apm-driver.md).
+// file when the last dependency goes.
 export class DeployedRefAdapter {
   private readonly fs: FileSystemPort;
   private readonly location: DeployedLocation;
@@ -94,8 +87,7 @@ export class DeployedRefAdapter {
     if (!parsed.ok) {
       return { ok: false, reason: "lockfile-malformed" };
     }
-    // An entry we cannot read may be this very skill's, and "not deployed" would
-    // aim a removal at nothing while the copy stays on disk (#58, #357).
+    // An unreadable entry may be this very skill's (#58, #357).
     if (unreadableCovers(parsed.unreadable, input.name)) {
       return { ok: false, reason: "lockfile-malformed" };
     }

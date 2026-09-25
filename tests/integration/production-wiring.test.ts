@@ -13,11 +13,8 @@ import { app } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeRepoDir } from "../helpers/repo-dir";
 
-// The default `app` must resolve MAESTRO_HOME when a request arrives, not freeze
-// it at import time. Otherwise any test or tool importing { app } and POSTing
-// would write to the real ~/.maestro regardless of a sandbox set later. Here we
-// set MAESTRO_HOME after the module is already imported and prove the write
-// lands in the sandbox (see .claude/rules/security.md).
+// The default `app` must resolve MAESTRO_HOME per request, not at import
+// time, or a test importing it would write to the real ~/.maestro.
 const LOCAL = {
   "content-type": "application/json",
   host: "127.0.0.1:3000",
@@ -51,9 +48,8 @@ describe("default app config home", () => {
   });
 });
 
-// Four mutually assignable path thunks, so a mis-wiring compiles: each root is
-// a distinct sandbox dir, so a route answers correctly only through its own.
-// HOME is sandboxed because the last route reads ~/.apm (LEARNINGS · spike-isolation).
+// Distinct sandbox roots, so a route answers correctly only through its own.
+// HOME is sandboxed because the last route reads ~/.apm.
 const GLOBAL_LOCKFILE = readFileSync(
   new URL("../fixtures/apm.lock.global-single-tool.yaml", import.meta.url),
   "utf8",
@@ -75,8 +71,6 @@ describe("production wiring", () => {
     maestroHome = join(root, "maestro-home");
     inventory = join(root, "inventory");
 
-    // The global apm root and the tool-presence probe both hang off this one
-    // sandbox home.
     await mkdir(join(home, ".apm"), { recursive: true });
     await writeFile(join(home, ".claude.json"), "{}", "utf8");
     await writeFile(
@@ -130,10 +124,8 @@ describe("production wiring", () => {
     });
   });
 
-  // realDeps wires Inventory to the latest release, so a skill sitting only in
-  // the working tree is never listed and the unread release is never a count of
-  // zero (#841). The configured path itself is proved by the config route above;
-  // the positive listing over a real release is proved in the git lane.
+  // Inventory reads the latest release, so a working-tree-only skill is
+  // never listed and an unread release is never zero (#841).
   it("never lists a skill the configured path holds outside a release", async () => {
     const res = await app.request("/api/inventory/primitives");
 
@@ -141,7 +133,6 @@ describe("production wiring", () => {
     expect(await res.json()).toEqual({ error: "unreadable" });
   });
 
-  // ADR-0032 retired the listing route; nothing on disk is listed any more.
   it("answers the retired folder listing route with the catch-all", async () => {
     const res = await app.request("/api/filesystem/children", {
       method: "POST",

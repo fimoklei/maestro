@@ -1,8 +1,7 @@
 import { useId } from "react";
 import { cn } from "./cn";
 
-// A label over the value it names, inside the caller's own <dl>. One owner:
-// three panels drew the same cell and only one of them wrapped a full hash.
+// A label over its value, inside the caller's own <dl>.
 export function Fact({
   label,
   value,
@@ -19,7 +18,7 @@ export function Fact({
   hint?: string;
   /** The whole value on hover, where the visible one is shortened. */
   title?: string;
-  /** False for a plain word, which Geist Mono never sets (design.md). */
+  /** False for a plain word, which Geist Mono never sets. */
   machine?: boolean;
 }) {
   const hintId = useId();

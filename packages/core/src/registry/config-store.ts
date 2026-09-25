@@ -1,29 +1,24 @@
-// Reads and writes ~/.maestro/config.json. A corrupt config is a blocking
-// error, never silently treated as empty (security.md).
+// A corrupt config is a blocking error, never silently treated as empty.
 import { z } from "zod";
 import type { FileSystemPort } from "./file-system";
 
 const configSchema = z.object({
   repos: z.array(z.object({ path: z.string() })),
-  // Absent on a fresh config; the inventory then falls back to the env var.
   inventoryPath: z.string().optional(),
-  // How the connected Harness's last fetch went; absent until it has fetched
-  // once. Read as absent when it does not parse, unlike the rest of the config:
-  // a stale shape costs an age label, never the whole cockpit.
+  // Unlike the rest, read as absent when it does not parse: a stale shape
+  // costs an age label, never the whole cockpit.
   harnessFreshness: z
     .object({
-      // Which harness the record belongs to, so a reconnect cannot inherit it.
+      // So a reconnect cannot inherit another harness's record.
       root: z.string(),
       outcome: z.enum(["fetched", "offline", "fetch-failed"]).nullable(),
-      // An ISO moment or nothing: a hand-edited "yesterday" reaches a date
-      // formatter and throws, taking the Harness view down (#516).
+      // A non-ISO value would throw in the date formatter (#516).
       lastFetchedAt: z.iso.datetime().nullable(),
     })
     .optional()
     .catch(undefined),
-  // The unfinished Deploy, Remove or Update per target, so recovery survives a
-  // restart (ADR-0031, #951). Absent when it does not parse, like the record
-  // above: the disk, not this list, says whether a skill is deployed.
+  // Unfinished operations per target (#951). Absent when it does not parse:
+  // the disk, not this list, says what is deployed.
   targetOperations: z
     .array(
       z.object({
@@ -47,7 +42,6 @@ const configSchema = z.object({
 
 export type MaestroConfig = z.infer<typeof configSchema>;
 
-// Blocking and recoverable, so the cockpit never silently discards a registry.
 export class ConfigError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
@@ -57,8 +51,6 @@ export class ConfigError extends Error {
 
 export class ConfigStore {
   private readonly fs: FileSystemPort;
-  // A thunk, so MAESTRO_HOME is read per access and never frozen at
-  // construction.
   private readonly resolvePath: () => string;
   private tail: Promise<unknown> = Promise.resolve();
 
@@ -93,9 +85,8 @@ export class ConfigStore {
     return result.data;
   }
 
-  // The one serialized read-modify-write: every writer rewrites the whole file,
-  // so two at once would drop one. Return no `config` to leave the file
-  // untouched (a refused change).
+  // The one serialized read-modify-write: two concurrent writers would drop
+  // one. Return no `config` to leave the file untouched.
   async update<T = void>(
     mutate: (config: MaestroConfig) =>
       | Promise<{ config?: MaestroConfig; result?: T }>

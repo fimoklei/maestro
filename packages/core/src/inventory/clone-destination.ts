@@ -24,30 +24,24 @@ export const classifyCloneDestination = async (
   if (!(await fs.exists(destination))) {
     return "free";
   }
-  // Entry, not target: a symlink wearing the destination's name is someone
-  // else's arrangement, and cloning through it would write outside the parent.
+  // Entry, not target: cloning through a symlink would write outside the parent.
   if (!(await fs.isDirectoryEntry(destination))) {
     return "occupied";
   }
 
   if (!(await fs.exists(join(destination, ".git")))) {
-    // git itself clones into an existing empty directory; anything else in
-    // there is data that is not ours to move. A directory that will not open
-    // is not knowably empty, so it counts as holding something.
+    // Only a knowably empty directory is free.
     const entries = await fs.listRawEntries(destination).catch(() => null);
     return entries?.length === 0 ? "free" : "occupied";
   }
 
-  // Git failing to look is not git reporting an empty repository, and only
-  // partial-clone carries "delete this folder" as its recovery.
+  // Only partial-clone recovers by deleting the folder, so unknown is occupied.
   const head = await deps.probeHead(destination);
   if (head === "unknown") {
     return "occupied";
   }
 
-  // Read before the missing commit is interpreted: an interrupted clone
-  // already carries the remote it was cloning, so a repository with no commit
-  // and another origin is someone else's, not this clone's leftover.
+  // A commitless repository with another origin is not this clone's leftover.
   const origin = await deps.originUrl(destination);
   const parsed = origin === null ? null : parseGitOrigin(origin);
   if (parsed?.ownerRepo.toLowerCase() !== ownerRepo.toLowerCase()) {

@@ -12,9 +12,6 @@ import {
   stubServer,
 } from "./deploy-state-test-helpers";
 
-// Update target from Deploy-state (#954, #980, #1043). Successor of the
-// retired DeployStatePanel and GlobalDeployStatePanel Update tests.
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -223,7 +220,6 @@ describe("Deploy-state — Update target on the global target", () => {
         name: "Updating to v0.3.5…",
       }),
     ).toBeDisabled();
-    // Story 27: no control outside the dialog can start a second operation.
     for (const button of screen.queryAllByRole("button")) {
       expect(dialog).toContainElement(button);
     }

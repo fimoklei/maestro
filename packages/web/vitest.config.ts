@@ -1,15 +1,13 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-// The web test lane: component tests in happy-dom with Testing Library. Kept in
-// its own config so the React plugin resolves from this package; the root
-// vitest.config.ts references it by path (see .claude/rules/testing.md).
+// Own config so the React plugin resolves from this package; the root
+// vitest.config.ts references it by path.
 export default defineConfig({
   plugins: [react()],
   test: {
     name: "web",
-    // Both halve the lane's CPU time and keep per-file isolation
-    // (docs/research/1096-web-lane-setup-cost.md).
+    // Both halve the lane's CPU time and keep per-file isolation.
     environment: "happy-dom",
     pool: "threads",
     globals: true,

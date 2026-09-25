@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { cn } from "./cn";
 import { Tooltip } from "./tooltip";
 
-// A detail pane's facts (#1065): label beside value, one row per fact, in one
-// two-column grid shared by every pane.
 export function FactList({ children }: { children: ReactNode }) {
   return (
     <dl className="m-0 grid grid-cols-[auto_1fr] items-center gap-x-panel gap-y-inline text-row">

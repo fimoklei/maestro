@@ -5,8 +5,6 @@ import { removeNotice } from "./notice-copy";
 import { removePreflightView } from "./remove-preflight-view";
 import type { RemovePreflight } from "./use-remove-preflight";
 
-// The shape every case starts from: a settled, successful query. Each test
-// changes only the field it is about, so the reason it passes is visible.
 const answered = {
   data: undefined,
   error: null,
@@ -17,8 +15,6 @@ const answered = {
 const failedView = (error: unknown) =>
   removePreflightView({ ...answered, error, isError: true });
 
-// The leftover copies a global removal would also delete, as one answered check
-// reported them.
 const RECLAIMED = {
   previews: [{ tool: "claude" as const, path: "/Users/me/.claude/skills/tdd" }],
   token: "a".repeat(64),
@@ -65,8 +61,6 @@ describe("removePreflightView", () => {
     });
   });
 
-  // The global scope answers per detected tool, so the dialog can state a cost
-  // on the row that carries it rather than over the whole set (#414).
   describe("when the global scope answered", () => {
     const globalAnswer = (
       tools: RemoveToolCheck[],
@@ -120,10 +114,8 @@ describe("removePreflightView", () => {
     });
   });
 
-  // Nothing validates the response body, so a server one version away sends a
-  // 200 this build cannot read. Every one of those has to land on the state
-  // that says so — a render that throws takes the whole confirmation down in
-  // front of an irreversible action, and reading it as clean is worse (J04).
+  // Nothing validates the response body: an unreadable 200 must neither throw
+  // nor read as clean.
   describe("when a 200 carries a body this build cannot read", () => {
     const unreadable = (data: unknown) =>
       removePreflightView({
@@ -158,10 +150,6 @@ describe("removePreflightView", () => {
     });
   });
 
-  // Every unsettled check, whatever else is in hand. The last three are the
-  // ones a reopened confirmation hits: an earlier answer or an earlier failure
-  // is still there while the fresh check runs, and reporting either would price
-  // this removal from the last one — reclaim token included (#381).
   describe("while a check has not settled", () => {
     const checking = {
       kind: "offered",
@@ -189,8 +177,6 @@ describe("removePreflightView", () => {
       ).toEqual(checking);
     });
 
-    // A refetch after a failure keeps isError true. Reading the failure first
-    // would offer a confirm the previous answer's token could still price.
     it("reports a refetch after a failure as checking, not as failed", () => {
       expect(
         removePreflightView({
@@ -203,7 +189,6 @@ describe("removePreflightView", () => {
       ).toEqual(checking);
     });
 
-    // Paused offline: nothing is in flight, and nothing has answered either.
     it("reports a paused check as checking, however long it waits", () => {
       expect(
         removePreflightView({
@@ -215,8 +200,6 @@ describe("removePreflightView", () => {
     });
   });
 
-  // A failed refetch keeps the previous data; carrying it through would name
-  // paths for deletion under a "removal cannot run" message.
   describe("when an earlier answer is still in hand", () => {
     const stale: RemovePreflight = {
       check: { scope: "repo", warning: null },
@@ -261,8 +244,6 @@ describe("removePreflightView", () => {
   });
 
   describe("when the check itself failed", () => {
-    // A failed request carries no per-tool answers, so the one state it reports
-    // is true of every row at once — and it is never a clean one (J04).
     const failedCheck = {
       kind: "offered",
       check: { kind: "unanswered", warning: "check-failed" },
@@ -270,15 +251,11 @@ describe("removePreflightView", () => {
     };
 
     it("says it did not run, never that it found nothing", () => {
-      // J04, applied to consent: a check that could not run proves nothing about
-      // what the removal would destroy. It gets its own state, because borrowing
-      // the no-baseline wording would claim a cause nothing observed.
       expect(failedView(new Error("network down"))).toEqual(failedCheck);
     });
 
     it("keeps the removal on offer when the server tried and could not answer", () => {
-      // preflight-failed is the one server error that settles nothing about
-      // whether the removal can succeed, so it must not take the confirm away.
+      // preflight-failed settles nothing about the removal, so it must not take the confirm away.
       expect(
         failedView(
           new HttpError(
@@ -291,16 +268,12 @@ describe("removePreflightView", () => {
     });
 
     it("treats an unrecognised server code as a check that could not run", () => {
-      // An allowlist, never a blocklist: a code this build has never heard of
-      // says nothing about whether the removal can succeed.
       expect(
         failedView(new HttpError(500, "Something went wrong.", "who-knows")),
       ).toEqual(failedCheck);
     });
 
     it("treats an error the server sent no code with the same way", () => {
-      // A proxy page or a crash mid-request arrives as an HttpError with no
-      // code at all.
       expect(failedView(new HttpError(502, "Bad gateway"))).toEqual(
         failedCheck,
       );
@@ -308,9 +281,6 @@ describe("removePreflightView", () => {
   });
 
   describe("when the server refused the request", () => {
-    // Each of these means the removal itself cannot succeed. Confirming would
-    // spend a round-trip to be told the same thing, so the dialog says it now,
-    // in the copy module's words (#684).
     const refusals = [
       "repo-not-registered",
       "no-supported-tool",
@@ -319,9 +289,6 @@ describe("removePreflightView", () => {
     ] as const;
 
     for (const code of refusals) {
-      // The code travels beside the notice: the bulk dialog names a refusal
-      // in a right-aligned slot a full sentence does not fit, and the run is
-      // told which refusal it was (#423).
       it(`carries the copy module's notice and the code for ${code}`, () => {
         const error = new HttpError(403, "sent by the server", code);
         expect(failedView(error)).toEqual({
@@ -332,8 +299,6 @@ describe("removePreflightView", () => {
       });
     }
 
-    // The one refusal with no copy-module row: a request-shape message is the
-    // server's to write (copy.md, "Where copy lives").
     it("passes the request-shape message through for invalid-body", () => {
       const message = "Expected a JSON body with type, name, and target.";
       expect(failedView(new HttpError(400, message, "invalid-body"))).toEqual({

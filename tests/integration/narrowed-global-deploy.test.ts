@@ -1,10 +1,6 @@
-// Which deployed copies survive a narrowing global deploy, against a real tree
-// under a sandbox HOME. DeployedCleanupAdapter removes whatever it is handed
-// (deployed-cleanup.test.ts); this proves what DeploySkill hands it — the tool
-// that owns its skills directory outright, never one that shares it (#202).
-//
-// Sandbox HOME only: the resolver takes an env, so the real ~/.agents and
-// ~/.claude are never touched.
+// Which copies survive a narrowing global deploy: only a tool that owns its
+// skills directory outright is cleaned, never one that shares it (#202).
+// Sandbox HOME only: the real home is never touched.
 import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -39,14 +35,11 @@ describe("narrowed global deploy — which copies survive on disk", () => {
     await writeFile(abs, contents, "utf8");
   };
 
-  // A global deploy of "tdd" on a machine where only `present` is installed.
-  // Everything outside the cleanup decision is a minimal in-memory stub; the
-  // cleanup adapter and the filesystem are real.
+  // Only the cleanup adapter and the filesystem are real.
   const deployGlobally = async (present: SupportedTool[]) => {
     const env = { HOME: home } as NodeJS.ProcessEnv;
-    // The install records the copies but never writes them, so the tree the
-    // assertions read is the one this test seeded — anything gone was deleted
-    // by the reconciliation, not by apm.
+    // The install never writes the copies, so anything gone was deleted by
+    // the reconciliation, not by apm.
     const apm = rootPackageApm({ globalRoot: home, placesFiles: false });
     const deploy = new DeploySkill({
       inventory: {
@@ -75,7 +68,6 @@ describe("narrowed global deploy — which copies survive on disk", () => {
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,
       },
-      // A proven skill record: this journey is not about the post-install read.
       recordedPackage: {
         read: async () => ({
           kind: "recorded" as const,
@@ -112,8 +104,8 @@ describe("narrowed global deploy — which copies survive on disk", () => {
   });
 
   it("leaves the shared .agents tree alone when Codex is undetected", async () => {
-    // Ten apm targets deploy skills under .agents (docs/apm-behavior.md), so an
-    // absent Codex is one missing reader of ten — never proof the tree is dead.
+    // Ten apm targets deploy under .agents, so an absent Codex is never proof
+    // the tree is dead.
     const result = await deployGlobally(["claude"]);
 
     expect(result.ok).toBe(true);
@@ -122,8 +114,8 @@ describe("narrowed global deploy — which copies survive on disk", () => {
   });
 
   it("still removes the exclusive .claude tree when Claude Code is undetected", async () => {
-    // Claude Code alone reads .claude/skills/, so its absence does prove that
-    // copy is dead wood — ADR-0011's reconciliation survives for this case.
+    // Only Claude Code reads its skills folder, so its absence proves that copy
+    // dead.
     const result = await deployGlobally(["codex"]);
 
     expect(result.ok).toBe(true);

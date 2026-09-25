@@ -1,6 +1,4 @@
-// The shape every target held before ADR-0031: one dependency per skill, each
-// pinned at its own tag. Read here so the cockpit can tell such a target apart
-// from one on a single release, and name the way out (#950).
+// The legacy shape: one dependency per skill, each pinned at its own tag (#950).
 import type { GitOrigin } from "../deploy/git-origin";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import { claudeSkillName, type LockfileEntry } from "../lockfile/lockfile";
@@ -8,9 +6,8 @@ import type { PinnedPerSkill } from "./deploy-state-types";
 
 export type SkillPin = { name: string; release: string };
 
-// A per-skill dependency on the connected Harness, or null for every other row.
-// A foreign or unknown origin decides no status and blocks nothing: attributing
-// one would be a guess (ADR-0031, #950, J04).
+// Null for every row not on the connected Harness; an unknown origin decides
+// nothing, since attributing it would be a guess.
 export function harnessSkillPin(
   entry: LockfileEntry,
   origin: GitOrigin | null,
@@ -21,7 +18,6 @@ export function harnessSkillPin(
     name === null ||
     entry.host !== origin.host ||
     entry.repo_url !== origin.ownerRepo ||
-    // The row names one skill; the pin must name that same skill.
     entry.virtual_path !== harnessSkillSubpath(name)
   ) {
     return null;
@@ -29,8 +25,7 @@ export function harnessSkillPin(
   return { name, release: entry.resolved_ref };
 }
 
-// How many skills sit on each release, biggest group first so the card leads
-// with the release most of the target is on. Undefined is "no such status".
+// Biggest group first. Undefined is "no such status".
 export function tallyPins(
   pins: readonly SkillPin[],
 ): PinnedPerSkill | undefined {

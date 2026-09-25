@@ -1,5 +1,3 @@
-// Adds no deploy semantics: hands every name to DeploySkill's one batch and
-// groups what it answered (#292, #1039).
 import type {
   DeploySkill,
   DeploySkillError,
@@ -13,17 +11,13 @@ export type BulkDeployInput = {
 };
 
 type BulkDeployedRow = { name: string; version: string };
-// `forceable` keeps the offer honest: a per-item force clears only a
-// not-proven-clean refusal (#358).
 type BulkAttentionRow = {
   name: string;
   error: DeploySkillError;
   forceable: boolean;
-  // The receipt this row's own refusal minted, so the row's inline deploy
-  // grants exactly what that refusal read and nothing else (#952).
+  // Minted by this row's own refusal; grants only what that refusal read (#952).
   copyReceipt?: string;
 };
-// `linkedPath` is Maestro's own reading of the link apm refused (ADR-0018).
 type BulkFailure = {
   error: DeploySkillError;
   names: string[];
@@ -45,12 +39,9 @@ export class BulkDeploySkills {
   async execute(input: BulkDeployInput): Promise<BulkDeployReport> {
     const deployed: BulkDeployedRow[] = [];
     const attention: BulkAttentionRow[] = [];
-    // Keyed by error (and link) so identical failures collapse to one line, in
-    // first-seen order, without losing which skills hit them.
+    // Keyed by error and link, so identical failures collapse to one line.
     const failures = new Map<string, BulkFailure>();
 
-    // Caught here too, so an unexpected exception still answers every name
-    // with a typed error rather than aborting the report (#292).
     let rows: Awaited<ReturnType<DeploySkill["executeBatch"]>>;
     try {
       rows = await this.deps.deploy.executeBatch({
@@ -95,18 +86,13 @@ export class BulkDeploySkills {
   }
 }
 
-// One owner for both readings: a refusal the user acts on, and whether a force
-// is the action (ADR-0006). Every error absent here is a genuine failure.
+// Refusals the user acts on, and whether a force is the action. Every error
+// absent here is a genuine failure.
 const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
   "deployed-diverged-from-lock": { forceable: true },
   "deployed-unverifiable": { forceable: true },
-  // A bulk deploy never moves a target's release and never grants consent for
-  // the reader, so each of these is a row to read, not a row to force
-  // (ADR-0031, #951).
   "not-at-target-release": { forceable: false },
   "target-pinned-per-skill": { forceable: false },
-  // A deploy, removal or update already holds this target's lock. Nothing
-  // went wrong; the reader waits (spec story 51).
   "deploy-in-progress": { forceable: false },
   "manifest-not-recognised": { forceable: false },
   "operation-unfinished": { forceable: false },

@@ -1,5 +1,4 @@
-// Guards against DNS-rebinding / CSRF (security.md): JSON body, allowlisted
-// Host, present and allowlisted Origin. No static bypass header.
+// Guards against DNS rebinding and CSRF. No static bypass header.
 import type { MiddlewareHandler } from "hono";
 
 const ALLOWED_HOSTNAMES = new Set(["127.0.0.1", "localhost"]);

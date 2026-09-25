@@ -3,12 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { DeployTarget } from "./deploy-skill";
 import { DeployedLocation } from "./deployed-location";
 
-// The one place that knows where a deployed copy physically lands: the tree the
-// files sit under and the lockfile that records their hashes. For a repo both
-// sit in the repo; for global they differ — the lockfile is under ~/.apm but the
-// files are under HOME, since apm keys the global deployed_file_hashes
-// HOME-relative (apm-driver.md, #61). The guard and the cleanup share one
-// instance, so agreement on the tree is structural, not a comment.
+// For global the lockfile is under ~/.apm but the files are under HOME: apm keys
+// global deployed_file_hashes HOME-relative (#61).
 describe("DeployedLocation", () => {
   const repo: DeployTarget = { kind: "repo", repoPath: "/work/my-repo" };
   const global: DeployTarget = { kind: "global" };

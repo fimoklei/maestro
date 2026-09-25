@@ -6,9 +6,7 @@ import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { SETTINGS } from "./screens";
 import { useHarnessSummary } from "./use-harness-summary";
 
-// The sidebar's Harness button (#991): what you are steering, without opening
-// a screen. It names the connected Harness, its release and its skill count,
-// and opens the menu that holds Settings.
+// Opens the menu that holds Settings.
 
 const MENU_LABEL = "Harness menu";
 

@@ -5,9 +5,7 @@ import type {
   ReviewWriteOutcome,
 } from "@maestro/core";
 
-// The controlled GitHub boundary the server journeys drive: a real Hono app
-// and a real clone, with what GitHub answers set by the test rather than by a
-// live account (#827 — Testing Decisions).
+// GitHub's answers are set by the test, not a live account (#827).
 export type StubReview = HarnessReviewPort & {
   /** What the next read answers. */
   answer: (read: HarnessReviewRead) => void;

@@ -13,9 +13,8 @@ import {
   SET_LOCATION,
 } from "./settings-copy";
 
-// Re-points Maestro at another local Harness clone (#995): the register dialog
-// again, with a refusal as a notice in the field's slot. Presentational: the
-// host owns the field's value and the connect.
+// Re-points Maestro at another local Harness clone (#995). The host owns the
+// field's value and the connect.
 export function SetLocationDialog({
   path,
   onPathChange,

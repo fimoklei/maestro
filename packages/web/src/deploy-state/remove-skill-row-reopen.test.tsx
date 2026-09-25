@@ -12,16 +12,15 @@ import {
   userEvent,
 } from "./remove-skill-row-test-helpers";
 
-// Split from one 32-test file (#723) — see remove-skill-row.test.tsx.
+// Split from one file (#723); see remove-skill-row.test.tsx.
 
 afterEach(() => {
   vi.unstubAllGlobals();
   clearToasts();
 });
 
-// Through the mounted row and a real QueryClient, so the whole reopen — the
-// row's own query observer included — is what holds the confirm, not the
-// mapper read in isolation (#381).
+// Through the mounted row and a real QueryClient, so the row's own query
+// observer is what holds the confirm (#381).
 describe("removing a deployed skill from a row", () => {
   describe("when the confirmation is reopened for the same row", () => {
     it("holds the confirm at checking until the fresh check answers", async () => {
@@ -39,8 +38,6 @@ describe("removing a deployed skill from a row", () => {
         }
         return jsonResponse(
           {
-            // A different answer each time, so a stale one on screen shows up
-            // as the first open's verdict rather than as no verdict at all.
             check: checkFor(
               checks === 1 ? null : "cannot-verify-local-edits",
               init,

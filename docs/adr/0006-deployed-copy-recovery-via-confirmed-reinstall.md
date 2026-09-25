@@ -12,14 +12,14 @@ install` silently resetting a locally-edited deployed copy. It classifies the
 deployed subtree against the lockfile's `deployed_file_hashes` and, on anything
 it cannot prove clean, returns a hard error — the deploy or update is refused.
 
-That refuse-only stance made the one-click Update (J08, PR #55) unusable for
+That refuse-only stance made the one-click Update (PR #55) unusable for
 real deployments:
 
 - **Unverifiable** — any skill deployed before apm 0.20.0 has no
   `deployed_file_hashes`. After the 0.16 → 0.20 upgrade, the *first* Update of
   **every** existing skill is refused ("remove the deployed copy and deploy
   fresh"). That is exactly the per-repo terminal handwork Maestro exists to kill.
-- **Diverged via deletion** — deleting `.claude/skills/<name>` classifies as
+- **Diverged via deletion** — deleting the skill's folder in the Claude Code skills folder classifies as
   `diverged`, and the cockpit says *"The deployed copy has local edits.
   Deploying would overwrite them."* That is factually wrong (nothing is on disk
   to overwrite) and it blocks the re-deploy that would restore the copy.
@@ -113,13 +113,13 @@ of working behaviour"*), so a polished confirm dialog would be built twice.
 
 - **Keep refuse-only, fix the messaging (option 1 in #62).** Distinct, accurate
   messages would still send the user to a terminal to `rm -rf` the copy and
-  redeploy by hand — the exact J08 kill condition. Honest, but it leaves the
+  redeploy by hand — the exact handwork the one-click Update exists to remove. Honest, but it leaves the
   shipped feature unusable.
 - **Just proceed silently (no warning) on a not-proven-clean copy.** Simplest,
   but it silently resets a copy that *might* carry a genuine edit. We explicitly
   chose not to destroy without telling the user, even for non-precious content.
 - **A modal confirm dialog.** Better-looking, but it builds polished UI ahead of
   the deferred styling pass (ADR-0004) — built once now, rebuilt later.
-- **Different behaviour for Deploy (J07) vs Update (J08).** The destination
+- **Different behaviour for Deploy vs Update.** The destination
   hazard is identical at both entry points; two policies for one fact is DRY
   debt and a split mental model.

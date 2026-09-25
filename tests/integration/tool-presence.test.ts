@@ -1,8 +1,5 @@
-// The real filesystem tool-presence adapter, exercised against a constructed
-// sandbox HOME — never the real home (ADR-0010, apm-driver.md). Proves the two
-// deploy-immune signals from spike #127: claude ⇔ ~/.claude.json is a file,
-// codex ⇔ ~/.codex/config.toml is a file, and that a skills directory a deploy
-// would create is NOT mistaken for an installed tool.
+// Against a sandbox HOME, never the real one. The signals are the tools' own
+// config files (#127); a skills directory a deploy creates is not one.
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -67,9 +64,8 @@ describe("ToolPresenceAdapter", () => {
   });
 
   it("ignores the skills directories a deploy creates", async () => {
-    // The trap ADR-0011 exists to stop: a global deploy writes ~/.claude/skills
-    // and ~/.agents/skills (and an empty ~/.codex/). None of those is the tool's
-    // config file, so none must read back as an installed tool.
+    // A global deploy writes skills directories for each tool; none of them may
+    // read back as an installed tool.
     await mkdir(join(home, ".claude", "skills", "tdd"), { recursive: true });
     await mkdir(join(home, ".agents", "skills", "tdd"), { recursive: true });
     await mkdir(join(home, ".codex"), { recursive: true });
@@ -77,8 +73,7 @@ describe("ToolPresenceAdapter", () => {
   });
 
   it("does not mistake a directory at the marker path for the config file", async () => {
-    // A directory where the config file would be is not a config file, so it is
-    // not a signal (isFile, not exists).
+    // A directory is not a config file (isFile, not exists).
     await mkdir(join(home, ".claude.json"), { recursive: true });
     await expect(adapter().detectGlobalTools()).resolves.toEqual([]);
   });

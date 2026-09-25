@@ -3,9 +3,7 @@ import { useEffect } from "react";
 // The token layer, with the self-hosted Geist faces (no runtime CDN fetch).
 import "../src/styles/theme.css";
 
-// Both themes ship (ADR-0033 §5), so the catalogue gets the same lever the
-// cockpit will: data-theme on the root. No System here — a catalogue shows a
-// chosen theme — and no per-theme stories: the toolbar is the switch.
+// The toolbar sets data-theme on the root, as the cockpit does; no per-theme stories.
 const withTheme: Decorator = (Story, context) => {
   const theme = context.globals.theme as string;
   useEffect(() => {

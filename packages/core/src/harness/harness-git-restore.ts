@@ -1,5 +1,3 @@
-// The three git reads local skill restoration needs (ADR-0030), kept beside
-// `harness-git.ts` rather than in it: that file is already at its size ceiling.
 import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -11,21 +9,18 @@ import { harnessSkillSubpath } from "../inventory/harness-layout";
 
 const run = promisify(execFile);
 
-// Content as committed, with no line-ending rewrite: a clone configured for
-// CRLF would otherwise get bytes the commit never held (#914). A smudge filter
-// declared in `.gitattributes` still applies — checkout-index has no switch.
+// No line-ending rewrite: a CRLF clone would get bytes the commit never held
+// (#914). A `.gitattributes` smudge filter still applies.
 const NO_CONVERSION = ["-c", "core.autocrlf=false", "-c", "core.eol=lf"];
 
 const wasKilled = (error: unknown): boolean =>
   (error as { killed?: boolean }).killed === true;
 
-// The clone's own HEAD, not `origin/HEAD`: a restoration is confirmed against
-// the author's last local commit (ADR-0030).
+// The clone's own HEAD, not `origin/HEAD`.
 export const readLocalHeadCommit = (root: string): Promise<string | null> =>
   runGitText(root, ["rev-parse", "HEAD"]);
 
-// Exit 0 is a clean entry, exit 1 is a staged difference, and anything else
-// — a killed run included — is a question that got no answer (#888).
+// Exit 1 is a staged difference; anything but 0 or 1, a killed run included, is no answer (#888).
 export async function readStagedSkillDifference(
   root: string,
   name: string,
@@ -53,9 +48,7 @@ export async function readStagedSkillDifference(
   }
 }
 
-// git writes the bytes and the mode bits from the commit itself, through a
-// throwaway index, so nothing here is re-implemented and nothing the author
-// staged moves. The caller publishes the result with one rename (#888).
+// A throwaway index, so nothing the author staged moves (#888).
 export async function writeSkillTreeInto(
   root: string,
   name: string,
@@ -78,8 +71,7 @@ export async function writeSkillTreeInto(
         options,
       );
     } catch (error) {
-      // A run we cut off answered nothing, and a read that broke must never be
-      // reported as absence: only a git that ran and refused says `missing`.
+      // Only a git that ran and refused says `missing`; a cut-off run never reads as absence.
       return wasKilled(error) ? "failed" : "missing";
     }
     await run(

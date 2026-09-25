@@ -1,8 +1,8 @@
 name: Bootstrap (Windows)
 
 # Proves the one bootstrap command on Windows (#720): check, install, build.
-# Windows minutes bill at 2x, so this runs only when bootstrap's own inputs
-# change, plus a weekly run that catches a Windows break in the build itself.
+# Runs only when bootstrap's own inputs change, plus a weekly run that catches
+# a Windows break in the build itself. Not a required check.
 on:
   pull_request:
     paths:
@@ -14,6 +14,9 @@ on:
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: bootstrap-windows-${{ github.ref }}

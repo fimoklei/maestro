@@ -54,8 +54,7 @@ describe("ConnectForm", () => {
     ).not.toBeInTheDocument();
   });
 
-  // Cloning can run for minutes with nothing else on screen, so the wait is
-  // stated in sentences — never a percentage, and with nothing to cancel (#554).
+  // A clone can run for minutes: the wait is stated in sentences (#554).
   it("states progress as a sentence while the connect is running", () => {
     renderForm({ path: URL, isPending: true });
 
@@ -113,7 +112,6 @@ describe("ConnectForm", () => {
     expect(alert).toHaveTextContent("No GitHub origin");
     // Colour is never the only signal: the glyph travels with the heading.
     expect(alert.textContent).toMatch(/✕/);
-    // Under the field, above the submit it describes.
     const submit = screen.getByRole("button", { name: "Connect Inventory" });
     expect(
       alert.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -302,8 +300,7 @@ describe("ConnectForm", () => {
     ).not.toBeInTheDocument();
   });
 
-  // A scaffold writes, commits and pushes. A connect started beside it would
-  // race it for the one inventory path, so submit goes down with it (#556).
+  // A connect beside a scaffold would race it for the one path (#556).
   it("takes submit down while a scaffold is running", () => {
     renderForm({ submitDisabled: true });
 

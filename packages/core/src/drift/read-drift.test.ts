@@ -309,7 +309,7 @@ describe("ReadDrift", () => {
       behind: [{ reading: "older-tag" }, { reading: "behind" }],
     });
     expect(fetch).toHaveBeenCalledTimes(1);
-    // One ls-tree per ref, not per skill (ADR-0027 § Consequences).
+    // One ls-tree per ref, not per skill.
     expect(readSkillTreesAtTag).toHaveBeenCalledTimes(2);
   });
 

@@ -16,16 +16,12 @@ const REPO_TARGET = {
   repoPath: "/Users/me/project",
 };
 
-// The notice for a removal apm ran but proved nothing about — read off the copy
-// module, so the dialog's tests and the screen cannot drift apart.
 const noticeFor = (code: string): DeployStateNotice =>
   removeNotice(new HttpError(500, "unused", code));
 const FAILURE = noticeFor("remove-failed");
 const REFUSAL = noticeFor("repo-not-registered");
 
-// The cockpit's type scale, largest first (styles/theme.css @theme). Assertions
-// name a step's position rather than the token it lands on: what the tests are
-// protecting is the ordering, not the sizes it currently resolves to.
+// The cockpit's type scale, largest first. Tests assert a step's position, not its size.
 const SCALE = [
   "text-title",
   "text-prose",
@@ -39,35 +35,26 @@ const SCALE = [
 const stepOf = (element: HTMLElement) =>
   SCALE.findIndex((size) => element.className.includes(size));
 
-// The check answered (or is still answering): the removal is still on offer,
-// and any leftover copies it named travel with that answer.
 const offers = (
   check: RemoveCheckState,
   reclaim: readonly ReclaimPreview[] = [],
 ): RemovePreflightView => ({ kind: "offered", check, reclaim });
 
-// The repo scope's one answer, for its one row.
 const repoCheck = (
   warning: RemoveRowWarning,
   reclaim: readonly ReclaimPreview[] = [],
 ) => offers({ kind: "repo", warning }, reclaim);
 
-// The global scope's answer, one entry per detected tool.
 const toolChecks = (
   warnings: Record<string, RemoveRowWarning>,
   reclaim: readonly ReclaimPreview[] = [],
 ) => offers({ kind: "per-tool", warnings }, reclaim);
 
-// Every detected tool came back clean, for a test about something other than
-// the check.
 const cleanTools = (...tools: string[]) =>
   toolChecks(Object.fromEntries(tools.map((tool) => [tool, "none"] as const)));
 
-// The check is still running: it has claimed nothing about any row yet.
 const CHECKING = offers({ kind: "unanswered", warning: "checking" });
 
-// The request that would have carried the per-row answers failed, so the same
-// thing is true of every row.
 const CHECK_FAILED = offers({ kind: "unanswered", warning: "check-failed" });
 
 function renderDialog({
@@ -107,9 +94,6 @@ describe("RemoveSkillDialog", () => {
     expect(dialog).toHaveTextContent("/Users/me/project");
   });
 
-  // The row states `tdd v0.5.0`; the confirmation used to drop the version, so
-  // the user had to carry it across a menu and a modal to know which build was
-  // about to go.
   it("names the version being removed in the question it asks", () => {
     renderDialog({ version: "v0.5.0" });
 
@@ -119,7 +103,6 @@ describe("RemoveSkillDialog", () => {
   });
 
   it("asks without a version when the row has none to name", () => {
-    // A version the screen never had is not one to invent.
     renderDialog({ version: null });
 
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
@@ -128,16 +111,11 @@ describe("RemoveSkillDialog", () => {
   });
 
   it("names the primitive's type beside the question", () => {
-    // The title says which build goes; the type says what kind of thing it
-    // is, in the plain word the Inventory's Type column uses (#987).
     renderDialog();
 
     expect(screen.getByText("Skill")).toBeInTheDocument();
   });
 
-  // The panel asks one question and then answers only "what disappears, and
-  // where". The answer is a ledger of targets, not a paragraph about them
-  // (#411).
   describe("its ledger of targets", () => {
     it("holds the repo path in a single row on the repo scope", () => {
       renderDialog();
@@ -148,8 +126,7 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("wraps a long path mid-token rather than pushing the panel wider", () => {
-      // A repo path has no spaces to break at, so without this it sets the
-      // panel's width instead of fitting inside it.
+      // A repo path has no spaces to break at; without this it widens the panel.
       renderDialog();
 
       expect(screen.getByText(REPO_TARGET.repoPath).className).toContain(
@@ -165,8 +142,7 @@ describe("RemoveSkillDialog", () => {
       ).toBeInTheDocument();
     });
 
-    // No per-tool remove — apm's uninstall has no -t, faking one orphans the
-    // other tools' files (ADR-0013). Rows have nothing to press instead.
+    // No per-tool remove: apm's uninstall has no -t, so rows have nothing to press.
     it("gives no row anything to press, focus, or read as a control", () => {
       renderDialog({
         target: { kind: "global", tools: ["claude", "codex"] },
@@ -195,9 +171,6 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // Three lines left the panel with the ledger: the note that there is no
-  // per-tool remove, the deployed-files-and-lockfile line, and the skill name
-  // on the confirm control.
   describe("what it no longer says", () => {
     it("drops the deployed-files-and-lockfile line", () => {
       renderDialog();
@@ -217,8 +190,6 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // Confirm label used to grow with the skill name and ellipsise (#388);
-  // the title now carries the name, so the label stops repeating it.
   describe("its footer controls", () => {
     it("confirms with a fixed label that carries no name", () => {
       renderDialog();
@@ -245,8 +216,6 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // A removal deletes files: its confirm is the outlined red button, never a
-  // fill (ADR-0033 §2, #1116).
   it("confirms with the outlined danger button", () => {
     renderDialog();
 
@@ -275,8 +244,6 @@ describe("RemoveSkillDialog", () => {
   it("holds both controls unpressable while the removal is in flight", () => {
     renderDialog({ isRemoving: true });
 
-    // The write's own control stays focusable and states why (ADR-0033 §8);
-    // closing is what must not happen mid-run, so Cancel is disabled outright.
     expect(screen.getByRole("button", { name: /removing/i })).toHaveAttribute(
       "aria-disabled",
       "true",
@@ -299,9 +266,6 @@ describe("RemoveSkillDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(FAILURE.message);
   });
 
-  // What the user needs before pressing retry, in the block that just told them
-  // the removal failed. It used to be a paragraph sending them to check the repo
-  // by hand (#415).
   it("says a retry picks up only what the failure left behind", () => {
     renderDialog({ error: FAILURE });
 
@@ -310,8 +274,6 @@ describe("RemoveSkillDialog", () => {
     expect(alert).not.toHaveTextContent(/mixed state/i);
   });
 
-  // The removal has already been confirmed once, so a footer offering "cancel"
-  // and a confirm would be describing a dialog where nothing has happened yet.
   it("offers close and retry once a removal has failed", () => {
     renderDialog({ error: FAILURE });
 
@@ -348,9 +310,6 @@ describe("RemoveSkillDialog", () => {
     expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
   });
 
-  // The removal stopped because the copy is no longer the one this panel
-  // priced, and it deleted nothing on the way (#364). Everything below keeps
-  // that apart from a failure: nothing ran, so nothing is being retried.
   describe("when the copy changed since the check", () => {
     const RESTATED = noticeFor("cost-not-acknowledged");
 
@@ -372,13 +331,10 @@ describe("RemoveSkillDialog", () => {
       const alert = screen.getByRole("alert");
       expect(alert.className).toContain("amber");
       expect(alert.className).not.toContain("-red-");
-      // Never-Colour-Alone: the glyph and the words carry it without colour.
       expect(alert).toHaveTextContent("⚠");
       expect(alert).toHaveTextContent(/Nothing removed/);
     });
 
-    // The whole point of restating: the ledger states what the removal would
-    // cost now, where a failure's dialog drops the cost it named before.
     it("keeps the ledger, stating the cost it found this time", () => {
       renderDialog({
         restated: RESTATED,
@@ -419,9 +375,6 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // A warning and a failure used to render as the same object: same fill, same
-  // border, same padding, told apart only by a glyph one of them lacked. "This
-  // may cost work" and "Removal outcome unknown" mean opposite things.
   it("wears danger with a glyph when the removal failed, not the amber of a warning", () => {
     renderDialog({ error: FAILURE });
 
@@ -432,8 +385,6 @@ describe("RemoveSkillDialog", () => {
   });
 
   it("says in words that the removal failed, so the colour is not the signal", () => {
-    // The Never-Colour-Alone rule: every colour signal carries a glyph and a
-    // word, so it survives without colour perception.
     renderDialog({ error: FAILURE });
 
     expect(screen.getByRole("alert")).toHaveTextContent(
@@ -441,9 +392,6 @@ describe("RemoveSkillDialog", () => {
     );
   });
 
-  // The design handoff labels this block in apm's terms (`apm exited 1`, state
-  // 3e). ADR-0018 refused that: apm's output never leaves the server, so the
-  // label is Maestro's own and cannot move with whatever the server sent.
   it("keeps its own label whatever the server's sentence says", () => {
     renderDialog({
       error: FAILURE,
@@ -453,15 +401,11 @@ describe("RemoveSkillDialog", () => {
     expect(
       within(alert).getByText("Removal outcome unknown"),
     ).toBeInTheDocument();
-    // The label is the panel's, not a mono echo of the reason beside it.
     expect(
       within(alert).getByText("Removal outcome unknown").className,
     ).not.toContain("font-mono");
   });
 
-  // apm's uninstall reports one outcome for every tool at once, so after a
-  // failure the server probes each target itself. The panel reports what it
-  // proved, target by target, instead of warning about a mixed state (#416).
   describe("what the failed removal came off, target by target", () => {
     const FAILED = FAILURE;
     const globalTarget = {
@@ -544,8 +488,6 @@ describe("RemoveSkillDialog", () => {
       expect(row).toHaveTextContent("Outcome unknown");
     });
 
-    // A ledger under a failure that proved nothing would name targets nobody
-    // checked, under a lead-in still promising a removal that already ran.
     it("renders the error block alone when the failure proved nothing", () => {
       renderDialog({ error: FAILED, outcome: null });
 
@@ -554,8 +496,6 @@ describe("RemoveSkillDialog", () => {
       expect(screen.queryByText(/removal targets/i)).toBeNull();
     });
 
-    // The reclaim runs only after apm confirms, so a failure never reached
-    // these copies and the report never names them.
     it("drops a leftover row the report could not answer for", () => {
       renderDialog({
         target: globalTarget,
@@ -571,8 +511,6 @@ describe("RemoveSkillDialog", () => {
       ).toEqual(["Claude Code✓ Removed", "Codex✕ Not removed"]);
     });
 
-    // The pre-confirm status priced a removal that then did not happen; leaving
-    // it beside the outcome would state a cost nobody paid.
     it("drops the cost it named before the attempt", () => {
       renderDialog({
         target: globalTarget,
@@ -595,13 +533,7 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // The confirmation is the last moment the user can keep work apm would
-  // delete without a word. Every case warns; none stands in the way (#337). The
-  // warning lands on the row that carries it, so the panel never states a cost
-  // in a paragraph the reader has to match back to a target (#414).
   describe("what the check says, on the row it is about", () => {
-    // One row per detected tool, so a cost has somewhere to land that is not
-    // the whole set.
     const globalTarget = {
       kind: "global" as const,
       tools: ["claude", "codex"],
@@ -625,9 +557,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("fills only that row with amber, and pairs it with the glyph", () => {
-      // Lost work is a consequence, not a failure, so it takes amber, not red
-      // (DESIGN.md § Colors). The glyph keeps colour from being the only signal
-      // (The Third Cue Rule).
       renderDialog({
         target: globalTarget,
         preflight: toolChecks({ claude: "none", codex: "cannot-verify" }),
@@ -647,7 +576,6 @@ describe("RemoveSkillDialog", () => {
 
       const row = rowFor("Claude Code");
       expect(row).toHaveTextContent("Nothing recorded — may lose work");
-      // Claiming edits nothing saw would be a fact the check cannot state.
       expect(row).not.toHaveTextContent(/local edits/i);
     });
 
@@ -663,8 +591,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("reads a tool the answer left out as unchecked, never as clean", () => {
-      // The card detected two tools and the check reported on one. Silence on a
-      // row would read as nothing-to-lose, which is what J04 forbids.
       renderDialog({
         target: globalTarget,
         preflight: toolChecks({ claude: "none" }),
@@ -682,8 +608,6 @@ describe("RemoveSkillDialog", () => {
       }
     });
 
-    // A repo's deployed copy spans several tool subtrees and the panel gives it
-    // one row, so one aggregate answer is the honest thing to state there.
     it("puts the repo scope's aggregate answer on its single row", () => {
       renderDialog({ preflight: repoCheck("cannot-verify") });
 
@@ -695,7 +619,6 @@ describe("RemoveSkillDialog", () => {
     it("leaves no separate block saying which copy was edited", () => {
       renderDialog({ preflight: repoCheck("cannot-verify") });
 
-      // The sentence the ledger replaced. Its absence is the point of #414.
       expect(screen.getByRole("dialog")).not.toHaveTextContent(
         /removing it deletes them|copy them out/i,
       );
@@ -731,8 +654,6 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // Amber and ▲ mean "this removal will cost something" (DESIGN.md § Colors:
-  // amber means Attention) — an unanswered check has claimed nothing yet.
   describe("while the check is still running", () => {
     it("leaves every row plain, with no fill and no glyph", () => {
       renderDialog({
@@ -749,9 +670,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("holds the confirm control until the check has answered", async () => {
-      // An answered warning never blocks (#337) — but an unfinished check has
-      // not warned about anything yet. Confirming through it destroys the copy
-      // before the one screen that could have named the cost got to say it.
       const { onConfirm } = renderDialog({ preflight: CHECKING });
 
       const confirm = screen.getByRole("button", { name: /^remove/i });
@@ -767,8 +685,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("says it is still running instead of staying silent", () => {
-      // Silence reads as "nothing to lose", which is the one thing an
-      // unfinished check cannot promise (J04).
       renderDialog({ preflight: CHECKING });
 
       expect(
@@ -776,9 +692,6 @@ describe("RemoveSkillDialog", () => {
       ).toHaveTextContent(/checking/i);
     });
 
-    // The running check speaks from beside the control it is holding. In the
-    // body it would move the confirm button when the answer landed — under the
-    // pointer of someone waiting to press it.
     it("states beside the confirm control why it is unavailable", () => {
       renderDialog({ preflight: CHECKING });
 
@@ -806,9 +719,6 @@ describe("RemoveSkillDialog", () => {
     );
   });
 
-  // The cockpit's voice: terse, technical, second person nowhere (PRODUCT.md
-  // § Brand Personality). This dialog is prose-heavy, so it
-  // is where the rule slips first.
   describe("its voice", () => {
     it("addresses nobody as 'you' or 'we', in any state", () => {
       const leftover = [
@@ -839,17 +749,12 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("names the state of the copy, never an internal route", () => {
-      // "never went through central" describes a pipeline, not something the
-      // reader can act on before agreeing to lose the edits.
       renderDialog({ preflight: repoCheck("cannot-verify") });
 
       expect(screen.getByRole("dialog")).not.toHaveTextContent(/central/i);
     });
 
     it("claims no more about the edits than the check can prove", () => {
-      // The check compares the deployed files against the recorded hashes. It
-      // never looks anywhere else, so whether these edits survive elsewhere is
-      // outside what it saw — and a consent surface states only what it knows.
       renderDialog({ preflight: repoCheck("cannot-verify") });
 
       expect(screen.getByRole("dialog")).not.toHaveTextContent(
@@ -858,8 +763,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("promises no redeploy, because a redeploy pins to the latest tag", () => {
-      // The removed version is not what comes back, so the dialog offers no
-      // comfort it cannot keep (#386).
       renderDialog();
 
       expect(screen.getByRole("dialog")).not.toHaveTextContent(
@@ -868,8 +771,6 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // Mono-Is-Data Rule: name/version/path/action is mono, sentences are sans.
-  // This dialog used to set every line, prose included, in mono.
   describe("its typography", () => {
     it("sets the path it would delete from in mono", () => {
       renderDialog();
@@ -906,27 +807,18 @@ describe("RemoveSkillDialog", () => {
       ).toContain("font-ui");
     });
 
-    // The ledger is the answer, the lead-in only introduces it, so the ledger
-    // sits above its label on the scale. Asserted as a step, not literal sizes.
     it("steps the ledger above the lead-in that introduces it", () => {
       renderDialog();
 
       const leadIn = screen.getByText("Skill will be removed from:");
-      // The repo scope has exactly one row, so the count also asserts the
-      // ledger is not quietly listing something else.
       expect(screen.getAllByRole("listitem")).toHaveLength(1);
       const name = screen.getByText("/Users/me/project");
       expect(stepOf(name)).toBeGreaterThanOrEqual(0);
       expect(stepOf(name)).toBeLessThan(stepOf(leadIn));
-      // The second half of the step: the introducing line also drops down the
-      // text ramp, so size is not carrying the difference alone.
       expect(leadIn.className).toContain("text-gray-11");
       expect(name.className).not.toContain("text-gray-11");
     });
 
-    // The failure block used to name its problem in the panel's smallest text
-    // and then explain it in the panel's largest, so the box shouted the detail
-    // and whispered the headline.
     it("never names a failure more quietly than it explains it", () => {
       renderDialog({ error: FAILURE });
 
@@ -934,13 +826,11 @@ describe("RemoveSkillDialog", () => {
       const message = screen.getByText(FAILURE.message);
       expect(stepOf(label)).toBeGreaterThanOrEqual(0);
       expect(stepOf(label)).toBeLessThanOrEqual(stepOf(message));
-      // Weight carries the label instead, so the two lines can share a size.
       expect(label.className).toContain("font-semibold");
     });
   });
 
-  // Into the panel, and onto Cancel in particular: this dialog deletes files,
-  // so Enter on open must never remove anything (ADR-0033 §6).
+  // This dialog deletes files, so Enter on open must never remove anything.
   it("takes focus onto Cancel when it opens", async () => {
     renderDialog();
 
@@ -949,8 +839,6 @@ describe("RemoveSkillDialog", () => {
     );
   });
 
-  // Without a description a screen reader hears "Remove tdd v0.5.0?, dialog"
-  // and has to go hunting for the facts. Warning/failure blocks self-announce.
   describe("what it announces with the question", () => {
     const describedBy = () =>
       (screen.getByRole("dialog").getAttribute("aria-describedby") ?? "")
@@ -966,9 +854,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("carries the whole tool set on the global path", () => {
-      // The one fact #338 exists for. Left out of the description, it is the
-      // one thing a reader has to go hunting for. The ledger carries it now
-      // that the sentence naming the set is gone.
       renderDialog({
         target: { kind: "global", tools: ["claude", "codex"] },
         preflight: cleanTools("claude", "codex"),
@@ -978,9 +863,6 @@ describe("RemoveSkillDialog", () => {
       expect(describedBy()).toContain("Codex");
     });
 
-    // The description used to point at three prose lines. Two of them are gone,
-    // and pointing at an id nothing renders leaves a reader hearing the label
-    // and nothing else.
     it("points at nothing that is not on screen", () => {
       renderDialog();
 
@@ -994,8 +876,6 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // Server refusal isn't a failed check — removal is already known
-  // impossible, so the dialog says why and offers nothing (#385, #412).
   describe("when the check came back refused", () => {
     const refused = {
       kind: "refused" as const,
@@ -1016,8 +896,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("never says work may be lost", () => {
-      // There is nothing to lose: no removal will run. Borrowing the
-      // failed-check wording would warn about a cost that cannot be paid.
       renderDialog({ preflight: refused });
 
       const dialog = screen.getByRole("dialog");
@@ -1025,9 +903,6 @@ describe("RemoveSkillDialog", () => {
       expect(dialog).not.toHaveTextContent(/couldn't check this copy/i);
     });
 
-    // A ledger answers "what disappears, and where". Under a refusal nothing
-    // disappears, so the question and its answer are both moot — listing
-    // targets would state a consequence the server has already ruled out.
     it("lists no targets, because none of them lose anything", () => {
       renderDialog({
         target: { kind: "global", tools: ["claude", "codex"] },
@@ -1043,9 +918,6 @@ describe("RemoveSkillDialog", () => {
       expect(screen.queryByText("Skill will be removed from:")).toBeNull();
     });
 
-    // A disabled confirm still reads as a way through that is temporarily shut.
-    // This one is shut for good, and a control nobody can ever press is a
-    // promise the panel has no way to keep.
     it("offers no confirm control at all, not even a disabled one", () => {
       renderDialog({ preflight: refused });
 
@@ -1055,8 +927,7 @@ describe("RemoveSkillDialog", () => {
     it("leaves exactly one control in the footer, labelled close", () => {
       renderDialog({ preflight: refused });
 
-      // The backdrop's dismiss button is hidden from the a11y tree, so this is
-      // every control the panel offers.
+      // The backdrop's dismiss button is hidden from the a11y tree.
       const controls = screen.getAllByRole("button");
       expect(controls.map((control) => control.textContent)).toEqual(["Close"]);
     });
@@ -1070,9 +941,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("wears danger red with a glyph, not the amber of lost work", () => {
-      // Amber says "this will cost you something"; this says "this cannot
-      // happen". Red is the error signal (issue #213), and the glyph keeps
-      // colour from being the only one.
       renderDialog({ preflight: refused });
 
       const alert = screen.getByRole("alert");
@@ -1080,9 +948,6 @@ describe("RemoveSkillDialog", () => {
       expect(alert).toHaveTextContent("✕");
     });
 
-    // The word that carries the meaning for a reader who never sees the ✕ or
-    // the red: the glyph is decorative and hidden from the a11y tree on
-    // purpose, so the label is the whole signal there (Never-Colour-Alone).
     it("names the refusal in words a screen reader reaches", () => {
       renderDialog({ preflight: refused });
 
@@ -1096,17 +961,12 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("carries the refusal in the panel's own outline", () => {
-      // The block alone is a red box on a neutral panel; the whole screen is
-      // the refusal, so the whole screen wears it.
       renderDialog({ preflight: refused });
 
       expect(screen.getByRole("dialog").className).toContain("border-red-7");
     });
 
     it("describes itself with the refusal, now that it is the whole panel", () => {
-      // The description pointed at the lead-in and the ledger rows, and both
-      // are gone. Left empty it would leave the panel's only content resting on
-      // the live region firing — so the description follows the content.
       renderDialog({ preflight: refused });
 
       expect(screen.getByRole("dialog").getAttribute("aria-describedby")).toBe(
@@ -1115,8 +975,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("drops the promise that the skill can be redeployed", () => {
-      // That line describes a removal about to happen. Under a refusal it
-      // describes nothing.
       renderDialog({ preflight: refused });
 
       expect(screen.getByRole("dialog")).not.toHaveTextContent(
@@ -1126,24 +984,17 @@ describe("RemoveSkillDialog", () => {
   });
 
   it("keeps the neutral panel outline while the removal is still on offer", () => {
-    // The danger outline belongs to a panel whose news is bad, so a panel that
-    // still has a question to ask must not borrow it.
     renderDialog();
 
     expect(screen.getByRole("dialog").className).not.toContain("-red-");
   });
 
   it("carries a failed removal in the panel's own outline", () => {
-    // The same rule the refusal follows: a red block on a neutral panel states
-    // the failure more quietly than the panel states its question.
     renderDialog({ error: FAILURE });
 
     expect(screen.getByRole("dialog").className).toContain("border-red-7");
   });
 
-  // The global scope. The user clicked inside one tool's card, so the modal has
-  // to say out loud that the other detected tools go too — that line is what
-  // keeps the screen honest about a set-based action (#338).
   describe("on the global target", () => {
     const globalTarget = {
       kind: "global" as const,
@@ -1159,8 +1010,6 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("names the tools themselves rather than a summary of them", () => {
-      // "every detected tool" made the reader trust a count they could not
-      // see. The ledger spends the same space naming them.
       renderDialog({ target: globalTarget });
 
       const dialog = screen.getByRole("dialog");
@@ -1204,8 +1053,6 @@ describe("RemoveSkillDialog", () => {
       }
     });
 
-    // A global removal force-deletes an undetected exclusive tool's whole
-    // copy beyond apm's scoped uninstall (#390) — named on the ledger (#413).
     describe("naming what an untargeted tool's copy reclaim would also delete", () => {
       const leftover = [
         { tool: "codex" as const, path: "/Users/me/.agents/skills/tdd" },
@@ -1234,8 +1081,6 @@ describe("RemoveSkillDialog", () => {
         expect(row).toHaveTextContent("Codex");
         expect(row).toHaveTextContent("/Users/me/.agents/skills/tdd");
         expect(row).toHaveTextContent("Not installed — copy deleted in full");
-        // The glyph pairs the amber with a shape, so the row still reads as a
-        // cost without colour.
         expect(row).toHaveTextContent("▲");
       });
 
@@ -1290,9 +1135,8 @@ describe("RemoveSkillDialog", () => {
         expect(screen.queryAllByRole("listitem")).toHaveLength(2);
       });
 
-      // A live region created together with its first message announces
-      // unreliably, and the check answers after the dialog is already open —
-      // so the region waits, empty, from the first render (removal-trace.tsx).
+      // A live region created with its first message announces unreliably, so the
+      // region must exist, empty, from the first render.
       it("keeps the region mounted while the check is still running", () => {
         renderDialog({ target: oneToolTarget, preflight: CHECKING });
 
@@ -1301,8 +1145,6 @@ describe("RemoveSkillDialog", () => {
         ).toBeEmptyDOMElement();
       });
 
-      // #390: a force-deleted untargeted directory gets its own announced
-      // region, distinct from the local-edits check.
       it("announces the leftover rows as their own named region", () => {
         renderWithLeftover();
 
@@ -1312,9 +1154,6 @@ describe("RemoveSkillDialog", () => {
       });
 
       it("keeps the targeted rows in a region of their own", () => {
-        // Two regions, two subjects: what the removal was aimed at, and what
-        // else goes with it. Sharing one, a reader could not tell the copy they
-        // asked to remove from the copy they never targeted.
         renderDialog({
           target: oneToolTarget,
           preflight: toolChecks(
@@ -1341,9 +1180,6 @@ describe("RemoveSkillDialog", () => {
         expect(row.querySelector("[tabindex]")).toBeNull();
       });
 
-      // The leftover rows announce themselves, so they stay out of the dialog's
-      // description — the rule the warning and failure blocks already follow.
-      // In both channels a reader hears the same path twice.
       it("leaves the announced rows out of the dialog's description", () => {
         renderWithLeftover();
 

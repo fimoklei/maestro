@@ -1,6 +1,5 @@
 // Connects the central inventory: a local path offline, a GitHub URL by
-// cloning it first. Every check but the clone itself reads local git config.
-// Errors are typed and path-free (security.md).
+// cloning it first. Errors are typed and path-free.
 import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 import { isWithinRoot } from "../filesystem/path-containment";
@@ -37,12 +36,9 @@ export type ConnectInventoryError =
   | "no-usable-origin"
   | "no-default-branch";
 
-// What connecting did, named by the use case rather than inferred at the edge.
 export type ConnectOutcome = "found" | "joined" | "scaffolded";
 
-// `scaffoldable` refuses to connect and carries an offer instead. The path
-// travels with it because a cloned repository sits somewhere the user never
-// typed (#556).
+// `scaffoldable` carries its path: a clone sits where the user never typed.
 export type ConnectInventoryResult =
   | { ok: true; outcome: ConnectOutcome; inventoryPath: string }
   | { ok: false; error: "scaffoldable"; scaffoldPath: string }
@@ -58,9 +54,7 @@ export class ConnectInventory {
   private readonly homeRoot: () => string;
   private readonly cloneRepository: CloneRepositoryPort;
   private readonly offers: ScaffoldOffers;
-  // Destinations this instance is cloning into right now. A second request
-  // would read the first one's half-written clone as an interrupted one and
-  // tell the user to delete it (#555).
+  // A second request would read an in-flight clone as an interrupted one (#555).
   private readonly cloning = new Set<string>();
 
   constructor(deps: {
@@ -68,17 +62,13 @@ export class ConnectInventory {
     store: ConfigStore;
     originUrl: (path: string) => Promise<string | null>;
     defaultBranch: (path: string) => Promise<string | null>;
-    // Guards the offer: every other git read answers from the enclosing
-    // repository, so a subdirectory would otherwise read as a clone (#556).
+    // Without it a subdirectory would read as a clone (#556).
     isRepositoryRoot: (path: string) => Promise<boolean>;
-    // Separates a usable clone already on disk from the shell an interrupted
-    // one leaves behind (#555).
     probeHead: (path: string) => Promise<HeadProbe>;
-    // The ceiling a proposed clone destination must sit under (#554).
+    // The ceiling a clone destination must sit under.
     homeRoot: () => string;
     clone: CloneRepositoryPort;
-    // Where a `scaffoldable` refusal records the path it just offered, which
-    // is the only path the scaffold use case will act on.
+    // The scaffold acts only on a path recorded here.
     offers: ScaffoldOffers;
   }) {
     this.fs = deps.fs;
@@ -92,10 +82,8 @@ export class ConnectInventory {
     this.offers = deps.offers;
   }
 
-  // `parent` is the folder a clone lands *in*; the child folder is always the
-  // repository's own name. Modelled that way so the destination itself is
-  // never put through existing-path validation (#555). `localOnly` refuses
-  // every remote address: setting the Harness location never clones (#995).
+  // `parent` is the folder a clone lands *in*; the child is the repository's
+  // name. `localOnly` refuses every remote address (#995).
   async connect(
     input: string,
     options: { parent?: string; localOnly?: boolean } = {},
@@ -143,8 +131,6 @@ export class ConnectInventory {
     if (state === "partial-clone") {
       return { ok: false, error: "destination-partial-clone" };
     }
-    // A copy of this very repository is what the user was about to make, so it
-    // is connected rather than duplicated. Nothing on disk is touched.
     if (state === "same-origin") {
       return this.connectDirectory(destination, "found");
     }
@@ -153,19 +139,15 @@ export class ConnectInventory {
     if (cloned !== "cloned") {
       return { ok: false, error: cloned };
     }
-    // A clone that lands but does not connect stays on disk: it is a real
-    // repository, and deleting one is never Maestro's to do (#498).
+    // A clone that fails to connect stays on disk: never delete a repo (#498).
     return this.connectDirectory(destination, "joined");
   }
 
-  // The chosen parent crosses a trust boundary and is where a clone gets
-  // written, so it runs the ceiling check's order: refuse lexically outside the
-  // home ceiling before touching disk, resolve, then check containment again
-  // against the canonical ceiling (ADR-0009, security.md).
+  // Untrusted input: refuse lexically outside home before touching disk,
+  // resolve, then check containment again against the canonical home.
   private async resolveParent(chosen?: string): Promise<string | null> {
     const rawHome = this.homeRoot();
-    // Raw and resolved home both count: they differ under a symlinked prefix
-    // (macOS /var -> /private/var).
+    // Both count: they differ under a symlinked prefix (macOS /var).
     const home = await this.fs.realpath(rawHome).catch(() => rawHome);
     if (chosen === undefined) {
       return home;
@@ -198,16 +180,12 @@ export class ConnectInventory {
     const originUrl = await this.originUrl(validated.path);
     const origin = originUrl === null ? null : parseGitOrigin(originUrl);
 
-    // A real file, so a directory or a symlink wearing the manifest's name is
-    // refused here (#148). Repository truth is read before the offer, so an
-    // arbitrary folder never gets one (#556).
+    // A real file: a directory or symlink with the manifest's name is refused.
     const manifest = join(validated.path, HARNESS_MANIFEST);
     if (!(await this.fs.isFileEntry(manifest))) {
       if (origin === null || !(await this.isRepositoryRoot(validated.path))) {
         return { ok: false, error: "not-an-inventory" };
       }
-      // The offer is the scaffold's only authority to write into this
-      // repository, so making one is what records it (#556).
       this.offers.offer(validated.path);
       return { ok: false, error: "scaffoldable", scaffoldPath: validated.path };
     }
@@ -216,8 +194,6 @@ export class ConnectInventory {
       return { ok: false, error: "no-usable-origin" };
     }
 
-    // A precondition, not a stored field: every later authoring step reads the
-    // branch itself, and a Harness that cannot name one would only fail there.
     if ((await this.defaultBranch(validated.path)) === null) {
       return { ok: false, error: "no-default-branch" };
     }

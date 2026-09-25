@@ -52,8 +52,7 @@ describe("ConnectSuccessView", () => {
     },
   );
 
-  // Null is a count that could not be read; a "0 primitives found" would state
-  // a number nothing confirmed (#841).
+  // Null is an unread count, never stated as zero (#841).
   it("names no count when the released count could not be read", () => {
     render(
       <ConnectSuccessView

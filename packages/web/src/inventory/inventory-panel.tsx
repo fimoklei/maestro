@@ -48,13 +48,13 @@ export function InventoryPanel() {
     { isLoading: registry.isLoading, isError: registry.isError },
   );
 
-  // A pressed re-read shows its skeleton at once (design.md → Waiting).
+  // A pressed re-read shows its skeleton at once.
   const reread = () => {
     skeleton.press();
     invalidate();
   };
-  // A disconnected Harness is a different list, so no row of the old one
-  // stays; any other failure keeps the previous rows (ADR-0033 §11).
+  // A disconnected Harness is a different list, so no old row stays; any other
+  // failure keeps the previous rows.
   const disconnected =
     inventory.error instanceof HttpError && inventory.error.status === 409;
 

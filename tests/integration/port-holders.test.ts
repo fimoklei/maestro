@@ -21,11 +21,8 @@ interface FakeProcess {
   opaque?: boolean;
 }
 
-/**
- * A fake `lsof` over a set of processes, answering by what the query asks for
- * rather than by its exact wording. It exits 1 with no output when nothing
- * matches, which is how the real one says "none" (lsof 4.91).
- */
+// A fake `lsof` answering by what the query asks for. It exits 1 with no
+// output when nothing matches, as the real one does (lsof 4.91).
 function stubLsof(processes: FakeProcess[]) {
   const noMatch = () => {
     const failure = new Error("no match") as Error & { status: number };
@@ -54,7 +51,6 @@ function stubLsof(processes: FakeProcess[]) {
   };
 }
 
-/** An `lsof` that cannot answer at all — not installed, or refused. */
 function brokenLsof(code: string) {
   return () => {
     throw Object.assign(new Error(code), { code });
@@ -83,8 +79,7 @@ describe("pidsOnPort", () => {
   });
 
   it("ignores processes merely connected to the port", () => {
-    // A browser tab open on the cockpit does not serve it; counting it would
-    // block the launcher and get the tab killed.
+    // A browser tab does not serve the cockpit; counting it would get it killed.
     expect(pidsOnPort(5173, stubLsof([viteServer, browserTab]))).toEqual([
       4821,
     ]);
@@ -95,8 +90,7 @@ describe("pidsOnPort", () => {
   });
 
   it("answers null when the lookup itself failed", () => {
-    // Only lsof's exit 1 means "nothing matched". A missing binary or a refused
-    // query must never read as a free port.
+    // Only exit 1 means "nothing matched"; a failed query is never a free port.
     expect(pidsOnPort(5173, brokenLsof("ENOENT"))).toBeNull();
     expect(pidsOnPort(5173, brokenLsof("EACCES"))).toBeNull();
   });
@@ -174,7 +168,6 @@ const nestedWorktree = "/Users/m/maestro/.claude/worktrees/issue396";
 const siblingWorktree = "/Users/m/maestro/.claude/worktrees/issue417";
 const worktrees = [mainWorktree, nestedWorktree, siblingWorktree];
 
-/** A `git worktree list --porcelain` transcript over the paths given. */
 function stubGit(paths: string[]) {
   return () =>
     `${paths
@@ -195,8 +188,7 @@ describe("listWorktrees", () => {
   });
 
   it("resolves each path, so a symlinked checkout still matches", () => {
-    // Attribution compares strings; an unresolved path would make this
-    // worktree's own run look like a sibling's, and the launcher never starts.
+    // An unresolved path would make this worktree's run look like a sibling's.
     const resolve = (path: string) => path.replace("/Users/m", "/real/m");
 
     expect(
@@ -215,8 +207,7 @@ describe("listWorktrees", () => {
   });
 
   it("answers null when git cannot be asked", () => {
-    // Never an empty list: that reads as "no worktrees own these ports" and
-    // every holder would be killed — the eviction this whole seam prevents.
+    // Never an empty list: that would get every holder killed.
     expect(
       listWorktrees("/Users/m/maestro", brokenLsof("ENOENT") as () => string),
     ).toBeNull();
@@ -247,7 +238,6 @@ describe("partitionHolders", () => {
   });
 
   it("evicts a previous run in this worktree", () => {
-    // Deep inside it, as a dev server started from packages/web would be.
     const { foreign, evictable } = partitionHolders(
       [holderIn(`${nestedWorktree}/packages/web`)],
       { self: nestedWorktree, worktrees },
@@ -258,8 +248,7 @@ describe("partitionHolders", () => {
   });
 
   it("refuses a holder no worktree owns", () => {
-    // The pair is derived from the worktree's path, so an unrecognised holder
-    // is somebody else's service — killing it costs their work, not ours.
+    // An unrecognised holder is somebody else's service.
     const { foreign, evictable } = partitionHolders(
       [holderIn("/Applications/SomeApp.app"), holderIn(null)],
       { self: nestedWorktree, worktrees },
@@ -270,8 +259,7 @@ describe("partitionHolders", () => {
   });
 
   it("attributes a nested worktree to itself, not to the repo containing it", () => {
-    // This worktree lives inside the main one, so the longest match decides —
-    // a prefix match would read every nested run as the main worktree's.
+    // Nested worktree: the longest match decides.
     const { foreign } = partitionHolders([holderIn(nestedWorktree)], {
       self: mainWorktree,
       worktrees,
@@ -281,8 +269,7 @@ describe("partitionHolders", () => {
   });
 
   it("refuses every holder when ownership could not be established", () => {
-    // A failed worktree lookup must not read as "nobody owns these ports" —
-    // that frees a sibling's cockpit on a passing git hiccup.
+    // A failed lookup must not free a sibling's cockpit.
     const { foreign, evictable } = partitionHolders(
       [holderIn(siblingWorktree), holderIn("/Applications/SomeApp.app")],
       { self: nestedWorktree, worktrees: null },
@@ -307,8 +294,7 @@ describe("processWorktree", () => {
   });
 
   it("answers null when the process cannot be read", () => {
-    // A pid the pidfile names but the OS has reused reads as unowned, so the
-    // launcher discards the note instead of killing a stranger's process group.
+    // A reused pid reads as unowned, so no stranger's process group is killed.
     expect(processWorktree(771, { worktrees }, stubLsof([]))).toBeNull();
   });
 

@@ -5,9 +5,6 @@ import { DialogShell } from "../ui/dialog-shell";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 
-// The confirmation a restore takes before anything is written: what comes
-// back and what does not, then the facts it is given against (ADR-0030).
-// Presentational — the host owns the mutation and what the row said.
 export function RestoreDialog({
   skill,
   folder,
@@ -62,7 +59,7 @@ export function RestoreDialog({
             <Fact label="Skill" value={skill} wrap />
             <Fact label="Folder" value={folder} wrap />
             {/* The whole hash: the one commit the confirmation is given
-                against, re-read at the press (ADR-0030). */}
+                against, re-read at the press. */}
             <Fact
               label="Restored from"
               value={commit}

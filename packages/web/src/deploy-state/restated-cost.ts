@@ -1,6 +1,4 @@
-// Reads the question a refused removal restated (#364): what the copy is now,
-// the receipt that confirms exactly that, and the leftovers beside it. All or
-// nothing.
+// Reads the question a refused removal restated (#364). All or nothing.
 import type {
   ReclaimConsent,
   ReclaimPreview,
@@ -10,27 +8,20 @@ import type {
 } from "@maestro/core";
 import { HttpError } from "../api/http";
 
-// Allowlisted, because a warning this build does not know would land on a row
-// as silence, which reads as nothing to lose (J04). The tool it sits on is the
-// server's own token, and an unknown one is read as unchecked, never as clean.
+// Allowlisted: an unknown warning would land on a row as silence, which reads as
+// nothing to lose.
 const WARNINGS: Record<string, RemoveWarning> = {
   "cannot-verify-local-edits": "cannot-verify-local-edits",
   "check-did-not-run": "check-did-not-run",
 };
 
-// The whole question again, never part of it: the cost, the receipt that
-// confirms that cost, and the leftovers the removal would delete beside it.
-// Half of this pairs a fresh cost with an older consent, which is the failure
-// #364 exists to prevent. No sentence here — the caller already holds the
-// error, and `removeNotice` states it once (`copy.md`).
+// Never partial: a fresh cost paired with an older consent is what #364 prevents.
 export type RestatedCost = {
   check: RemoveCheck;
   receipt: string;
   reclaim: ReclaimConsent | null;
 };
 
-// Nothing validates this body. A restatement this build cannot read whole is
-// dropped whole: a ledger built on a guess prices a removal nobody checked.
 export function restatedCost(error: unknown): RestatedCost | null {
   if (!(error instanceof HttpError) || error.code !== "cost-not-acknowledged") {
     return null;
@@ -47,8 +38,7 @@ export function restatedCost(error: unknown): RestatedCost | null {
     : null;
 }
 
-// `undefined` means unreadable — never the same as `null`, which is the server
-// saying this removal leaves no copy behind.
+// `undefined` means unreadable; `null` means the removal leaves no copy behind.
 function readReclaim(value: unknown): ReclaimConsent | null | undefined {
   if (value === null || value === undefined) {
     return null;
@@ -98,8 +88,7 @@ function readCheck(value: unknown): RemoveCheck | null {
   return null;
 }
 
-// `undefined` means unreadable, and is never the same answer as `null`, which
-// is the check saying this copy costs nothing.
+// `undefined` means unreadable; `null` means this copy costs nothing.
 function readWarning(value: unknown): RemoveWarning | null | undefined {
   if (value === null) {
     return null;

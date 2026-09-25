@@ -7,7 +7,7 @@ interface FakeTool {
   banner?: string;
 }
 
-/** A fake command runner answering only `<tool> --version`, prior art: stubLsof in port-holders.test.ts. */
+/** A fake command runner answering only `<tool> --version`. */
 function stubRun(tools: FakeTool[]) {
   return (cmd: string, args: string[]) => {
     if (args[0] !== "--version") throw new Error(`unexpected args for ${cmd}`);

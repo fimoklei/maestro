@@ -4,9 +4,8 @@ import { LOADING_INVENTORY_CONNECTION } from "../inventory/inventory-copy";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { useFirstRun, useIsConfigured } from "./use-first-run";
 
-// Unconfigured -> routed to the connect gate (ADR-0015). Reverse holds too
-// (#96): a configured user deep-linking to /welcome bounces out, even during
-// the pending window — or WelcomeView flashes before the redirect runs.
+// A configured user deep-linking to /welcome bounces out even while pending,
+// or WelcomeView flashes before the redirect runs (#96).
 const GATE_PATH = "/welcome";
 
 function isGateRoute(pathname: string): boolean {

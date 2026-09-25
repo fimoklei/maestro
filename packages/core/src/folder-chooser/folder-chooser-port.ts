@@ -1,14 +1,10 @@
-// The operating system's own folder chooser, run by one fixed helper per
-// platform (ADR-0032).
-
-/** What the helper answered. `picked` output is still untrusted text. */
+/** `picked` output is still untrusted text. */
 export type ChooserAnswer =
   | { kind: "picked"; output: string }
   | { kind: "cancelled" }
   | { kind: "failed" };
 
 export interface FolderChooserPort {
-  /** The helper exists at its fixed path. */
   isPresent(): Promise<boolean>;
   /** `start` is an existing absolute folder, passed to the helper as data. */
   open(start: string): Promise<ChooserAnswer>;

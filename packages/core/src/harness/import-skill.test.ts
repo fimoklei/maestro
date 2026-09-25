@@ -7,14 +7,10 @@ const ROOT = "/harness";
 const SOURCE = "/work/Code Review";
 const MANIFEST =
   "---\nname: whatever\ndescription: Reviews code.\n---\n\nBody.\n";
-// The same manifest as the import stamps it into the harness: the directory
-// name is the skill's identity, so a copy that came from there names itself
-// code-review.
+// The directory name is the skill's identity, so this names code-review.
 const HELD_MANIFEST = MANIFEST.replace("whatever", "code-review");
 const ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 
-// A lockfile recording one deployed skill folder, with whatever provenance the
-// case is about.
 const lockfile = (
   provenance: string[],
   virtualPath = ".apm/skills/code-review",
@@ -35,14 +31,12 @@ const FROM_THIS_HARNESS = [
   "  repo_url: fimoklei/agent-harness",
 ];
 
-// The cases refused before any two folders are compared.
 const unreachableFacts = {
   describe: async () => {
     throw new Error("facts port was reached");
   },
 };
 
-// The cases that never reach a lockfile never reach git either.
 const unreachableGit = {
   readFacts: async () => {
     throw new Error("git port was reached");
@@ -52,21 +46,17 @@ const unreachableGit = {
   },
 };
 
-// One in-memory disk: paths that exist, directories among them, and file text.
 function harness(
   overrides: {
     files?: Record<string, string>;
     directories?: string[];
-    // Files carrying the one mode bit git tracks.
     executable?: string[];
-    // Paths whose read fails outright, as a lockfile with no read permission
-    // does — apart from one that is missing or does not parse.
+    // Reads that fail outright, unlike a missing or unparsable file.
     unreadable?: string[];
     deployedTargets?: { treeRoot: string; lockfilePath: string }[];
     copy?: () => Promise<CopySkillFolderResult>;
     originUrl?: string | null;
     trees?: HarnessSkillTrees | null;
-    // The home ceiling; "/" holds every seeded path.
     homeRoot?: string;
   } = {},
 ) {
@@ -74,7 +64,6 @@ function harness(
     [`${SOURCE}/SKILL.md`]: MANIFEST,
     ...overrides.files,
   };
-  // "/" is the ceiling every case but the outside-root one runs under.
   const directories = new Set([
     "/",
     ROOT,
@@ -135,8 +124,6 @@ function harness(
           },
   };
 
-  // The harness's own git: where it was cloned from, and whether its copy of a
-  // skill still matches the commit it sits on.
   let trees: HarnessSkillTrees | null =
     overrides.trees === undefined
       ? {
@@ -295,8 +282,6 @@ describe("ImportSkill.check", () => {
     ).resolves.toMatchObject({ check: { sourceBlocker: "deployed-copy" } });
   });
 
-  // One deployed copy of code-review, recorded by the registered repository's
-  // lockfile with whatever provenance the case is about.
   const deployedInRepo = (
     provenance: string[],
     overrides: Parameters<typeof harness>[0] = {},
@@ -338,8 +323,7 @@ describe("ImportSkill.check", () => {
     });
   });
 
-  // One Harness dependency deploying code-review beside another skill, the
-  // shape apm 0.29.0 writes for a Root package (apm.lock.957-root-selection-project.yaml).
+  // The shape apm 0.29.0 writes for a Root package.
   const rootPackageLockfile = (provenance: string[], prefix = ".claude") =>
     [
       "dependencies:",
@@ -354,7 +338,6 @@ describe("ImportSkill.check", () => {
       `  - ${prefix}/skills/code-review/SKILL.md`,
     ].join("\n");
 
-  // One copy of code-review a Root package deployed under `prefix`.
   const deployedByRootPackage = (
     provenance: string[],
     prefix = ".claude",
@@ -533,9 +516,7 @@ describe("ImportSkill.check", () => {
   });
 
   it("refuses a copy whose record names something that is not a skill slug", async () => {
-    // A record naming `Code Review` cannot be this Harness's own skill: the
-    // Harness holds skills under slugs, and a name that is not one would reach
-    // a path and a package ref it can never resolve (security.md).
+    // Not a slug, so it cannot be this Harness's own skill.
     const deployed = "/repo/.claude/skills/code-review";
     const { importSkill } = harness({
       files: {
@@ -559,9 +540,7 @@ describe("ImportSkill.check", () => {
   });
 
   it("keeps a copy outside the ceiling out of update mode, record or no record", async () => {
-    // Outside the ceiling the deployment records are never consulted, so an
-    // unreachable folder cannot become an update — it is refused for where it
-    // sits, and the name it proposes is judged like any other addition.
+    // Outside the ceiling the deployment records are never consulted.
     const { importSkill, deployed } = deployedInRepo(FROM_THIS_HARNESS, {
       homeRoot: "/elsewhere",
     });
@@ -607,8 +586,6 @@ describe("ImportSkill.check", () => {
     });
   });
 
-  // A deployed copy of code-review beside the Harness's own folder for it, each
-  // holding the files the case is about.
   const update = (
     copy: Record<string, string>,
     held: Record<string, string>,
@@ -838,8 +815,7 @@ describe("ImportSkill.execute", () => {
       name: "code-review",
       skipped: 0,
     });
-    // The canonical source and the harness's own skills directory, never a
-    // path the caller supplied.
+    // Never a path the caller supplied.
     expect(disk.copied).toMatchObject([
       {
         input: {

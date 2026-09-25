@@ -1,6 +1,4 @@
-// Promoting one skill's *removal*, against a real clone and a real remote. The
-// remote is a bare repo on disk, so the whole suite is offline: no network
-// lane, no credentials (.claude/rules/testing.md).
+// The remote is a bare repo on disk, so the whole suite is offline.
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -53,8 +51,6 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
       review: unavailableHarnessReview(),
     });
 
-  // The origin/HEAD tree hash a `deleted locally` row would have shown, read
-  // the same way the view reads it.
   const seenTree = async (skill: string) =>
     (await new HarnessGitAdapter().readMovementTrees(root))?.remote[
       skill
@@ -71,8 +67,8 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     await run("git", ["clone", remote, root]);
     await git(root, "config", "user.email", "test@example.com");
     await git(root, "config", "user.name", "Test");
-    // A GitHub origin git rewrites to the bare repo next door, so the suite
-    // stays offline (LEARNINGS · git-remote-get-url).
+    // git rewrites the GitHub origin to the bare repo next door, so the suite
+    // stays offline.
     await git(root, "config", `url.${remote}.insteadOf`, ORIGIN_URL);
     await git(root, "remote", "set-url", "origin", ORIGIN_URL);
     await writeSkill("tdd", "as published");
@@ -88,8 +84,6 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     await removeGitTempTree(base);
   });
 
-  // The remote's own view of the pushed branch, so nothing is proved from the
-  // clone that pushed it.
   const promoted = async (skill: string, ...args: string[]) =>
     (await git(remote, ...args, `refs/heads/maestro/${skill}`)).stdout.trim();
 
@@ -121,8 +115,8 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     await new HarnessGitAdapter().fetch(root);
 
     const trees = await new HarnessGitAdapter().readMovementTrees(root);
-    // The branch exists and carries no tree for this skill: a review proposing
-    // to delete it, which is not the same fact as having no branch at all.
+    // A branch with no tree for this skill proposes its deletion, which is not
+    // the same fact as having no branch at all.
     expect(Object.hasOwn(trees?.promote ?? {}, "tdd")).toBe(true);
     expect(trees?.promote.tdd?.tree ?? null).toBeNull();
     expect(trees?.remote.tdd).toBe(seen);
@@ -141,14 +135,12 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
 
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
     expect((await git(root, "status", "--porcelain")).stdout).toBe(status);
-    // No local branch either: the commit only ever exists as an object here.
     expect((await git(root, "branch", "--list")).stdout).toBe(branches);
   });
 
   it("refuses a confirmation a teammate's merged change has moved past", async () => {
     const seen = await seenTree("tdd");
 
-    // A teammate edits the same skill and merges it while the row is open.
     const other = join(base, "other");
     await run("git", ["clone", remote, other]);
     await git(other, "config", "user.email", "mate@example.com");
@@ -195,8 +187,6 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
   });
 
   describe("an ambiguous working tree", () => {
-    // Every refusal below is proved twice: the class Maestro answers with, and
-    // a remote that still has no branch for the skill.
     const refuses = async (error: string) => {
       const seen = await seenTree("tdd");
       await deleteOnDisk("tdd");
@@ -231,14 +221,12 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     it("refuses while a conflict is left unresolved", async () => {
       await conflictingBranch();
       await git(root, "merge", "theirs").catch(() => {});
-      // `--quit` drops MERGE_HEAD and leaves the conflicted entries standing,
-      // so this is the unresolved-conflict case on its own.
+      // `--quit` drops MERGE_HEAD and leaves the conflicted entries standing.
       await git(root, "merge", "--quit");
       await refuses("unresolved-conflicts");
     });
 
-    // Two branches that edit the same line of a file outside the skills tree,
-    // so the conflict never touches what the deletion is about.
+    // The conflict is outside the skills tree.
     const conflictingBranch = async () => {
       await git(root, "checkout", "-b", "theirs");
       await writeFile(join(root, "README.md"), "theirs\n", "utf8");

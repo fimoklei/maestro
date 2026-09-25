@@ -1,4 +1,4 @@
-// The Interface theme (#996, ADR-0033 §5); index.html's inline script resolves it the same way.
+// index.html's inline script resolves the theme the same way (#996).
 
 export type InterfaceTheme = "system" | "light" | "dark";
 export type Theme = "light" | "dark";

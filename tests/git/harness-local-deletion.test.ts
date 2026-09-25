@@ -1,6 +1,4 @@
-// Deleting a skill that exists nowhere else, against a real clone and a real
-// remote. The remote is a bare repo on disk, so the whole suite is offline
-// (.claude/rules/testing.md).
+// The remote is a bare repo on disk, so the whole suite is offline.
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -43,8 +41,6 @@ describe("deleting a Harness skill that exists nowhere else", () => {
       locks: new InFlightLocks(),
     });
 
-  // Every ref both repositories hold, so nothing about a branch, a tag or a
-  // remote-tracking ref can move without this test seeing it.
   const refs = async () => ({
     clone: (await git(root, "show-ref")).stdout,
     remote: (await git(remote, "show-ref")).stdout,
@@ -65,8 +61,8 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     await run("git", ["clone", remote, root]);
     await git(root, "config", "user.email", "test@example.com");
     await git(root, "config", "user.name", "Test");
-    // A GitHub origin git rewrites to the bare repo next door, so the suite
-    // stays offline (LEARNINGS · git-remote-get-url).
+    // git rewrites the GitHub origin to the bare repo next door, so the suite
+    // stays offline.
     await git(root, "config", `url.${remote}.insteadOf`, ORIGIN_URL);
     await git(root, "remote", "set-url", "origin", ORIGIN_URL);
     await writeSkill("jobs", "published");
@@ -75,7 +71,6 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     await git(root, "commit", "-m", "one skill");
     await git(root, "push", "origin", "HEAD:main");
     await new HarnessGitAdapter().fetch(root);
-    // The skill under test: written after the push, so no ref anywhere holds it.
     await writeSkill("scratch", "never proposed");
   }, 30_000);
 
@@ -108,8 +103,6 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     await deleter().execute("scratch");
 
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
-    // The staged file is still staged, and the only working-tree change is the
-    // folder that went.
     expect((await git(root, "status", "--porcelain")).stdout).toBe(
       "A  staged.md\n",
     );
@@ -124,9 +117,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     expect(await skills()).toEqual(["jobs", "scratch"]);
   });
 
-  // Which refusal it is depends on git: a symlink is a blob in the working
-  // tree, not a skill directory. What matters is that nothing outside the
-  // Harness is removed, whichever guard catches it first.
+  // Whichever guard catches it, nothing outside the Harness is removed.
   it("removes nothing through a link that points out of the Harness", async () => {
     const outside = join(base, "outside");
     await mkdir(outside, { recursive: true });

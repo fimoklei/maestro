@@ -1,32 +1,24 @@
-// The one owner of drift status in `web`: query->view mapping, per-skill and
-// per-target joins, the J04 rule, empty-wins, orphan-behind. Pure and
-// framework-free. Screens build one from their query; forTool narrows per tool.
+// The one owner of drift status in `web`; forTool narrows per tool.
 
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
 import type { DriftResponse, ReadDriftEntry } from "./use-drift";
 
-// A per-skill badge state. "up-to-date" is only ever derived from a check that
-// ran; every un-run state (pending/unknown/unverified) stays honest (J04).
+// "up-to-date" only ever comes from a check that ran.
 export type DriftStatus =
   | "behind"
-  // A newer release exists, but this skill's content did not move in it
-  // (ADR-0027). It is not counted as drift on the target.
+  // A newer release exists but this skill's content did not move; not drift.
   | "older-tag"
-  // The deployed name existed at its pin but not in the latest release
-  // (ADR-0028). It needs attention but has no update destination.
+  // Deployed name is gone from the latest release: no update destination.
   | "no-longer-released"
   | "up-to-date"
   | "unknown"
   | "unverified"
   | "pending";
 
-// A whole target's roll-up. "empty" is a confirmed-empty deployment; "drift"
-// needs a deployed skill behind; the un-run states never read as "ok".
-// "foreign" is never produced by rollUp below — a global-only reading a
-// caller derives from `empty` plus the lockfile's unattributed origins, so a
-// target holding another inventory's primitives never reads as bare (#655).
+// "foreign" is never produced by rollUp: a caller derives it from `empty` plus
+// the lockfile's unattributed origins (#655).
 export type TargetDriftIndicator =
   | "ok"
   // An entry on disk the user has to fix — outranks every drift reading, since
@@ -41,17 +33,12 @@ export type TargetDriftIndicator =
 
 type SyncedState = "synced" | "not-synced";
 
-// The drift query reduced to a view-state, internal to this module. A request
-// failure (or a { ok: false } body) becomes "unknown", never up-to-date — the
-// same honesty the server keeps when its body says the check could not run.
 type DriftView =
   | { status: "pending" }
   | { status: "unknown" }
   | { status: "unverified" }
   | { status: "ready"; behind: ReadDriftEntry[] };
 
-// These readings have a newer version of the same deployed name, so a row can
-// show the version pair and offer an update (ADR-0027 §6).
 export const lagsPin = (status: DriftStatus): boolean =>
   status === "behind" || status === "older-tag";
 
@@ -59,7 +46,6 @@ export interface DriftViewModel {
   skillStatus(name: string): DriftStatus;
   latest(name: string): string | undefined;
   targetIndicator(deployed: DeployedView): TargetDriftIndicator;
-  // Shares targetIndicator's join, so N > 0 iff the indicator reads "drift".
   driftCount(deployed: DeployedView): number;
   // Behind names not deployed here — surfaced, never dropped.
   orphanBehind(deployedNames: string[]): string[];
@@ -85,7 +71,7 @@ function mapDriftQuery(
   if (query.data === undefined) {
     return { status: "pending" };
   }
-  // { ok: false } means the check could not run — unknown, never up-to-date (J04).
+  // { ok: false } means the check could not run: unknown, never up-to-date.
   if ("behind" in query.data) {
     return { status: "ready", behind: query.data.behind };
   }
@@ -117,9 +103,7 @@ function fromDriftView(view: DriftView): DriftViewModel {
       ? view.behind.find((entry) => entry.name === name)?.latest
       : undefined;
 
-  // "empty" comes first: a confirmed-empty deployment wins over the drift
-  // check, even a failed or loading one. Only counts once deployed is
-  // confirmed ("ready") — skipped-only entries aren't empty.
+  // Confirmed-empty wins over any drift reading; skipped-only entries aren't empty.
   const rollUp = (
     deployed: DeployedView,
   ): { state: TargetDriftIndicator; behindCount: number } => {
@@ -155,9 +139,7 @@ function fromDriftView(view: DriftView): DriftViewModel {
             if (hasNoLongerReleased) {
               return { state: "attention", behindCount: 0 };
             }
-            // Orphan-behind can't be updated here, so it must not flip "drift".
-            // Moved skills only: a lagging pin is stated on the row and
-            // nowhere else (ADR-0027 §2).
+            // Moved skills only: orphan-behind and a lagging pin never flip "drift".
             const behindCount = view.behind.filter(
               (entry) => entry.reading === "behind" && names.has(entry.name),
             ).length;

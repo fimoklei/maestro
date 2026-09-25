@@ -31,13 +31,10 @@ import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
-// The Update journey: a real registry, a real root-package lockfile and real
-// files on disk, priced against a Harness whose releases the test controls,
-// then written through the real Selection lifecycle behind a fake apm that
-// moves the manifest, the lockfile and the files the way apm does (#953, #954).
+// Real registry, lockfile and files, written through the real Selection
+// lifecycle behind a fake apm (#953, #954).
 
-// The shape apm 0.29.0 writes for a root package (fixture
-// apm.lock.spike-941-step3d-phantom.yaml).
+// The shape apm 0.29.0 writes for a root package.
 const rootPackageLockfile = (ref: string, deployedFiles: string[]) =>
   [
     "lockfile_version: '1'",
@@ -152,8 +149,7 @@ describe("update HTTP journey", () => {
           },
         }),
         selection,
-        // The outcome is read from the files and the record apm just wrote,
-        // never stubbed: that reading is what the ledger states (#954).
+        // Read from what apm just wrote, never stubbed (#954).
         deployedContent: new DeployedContentAdapter({
           location: rootPackageLocation(join(home, ".apm")),
         }),
@@ -235,8 +231,7 @@ describe("update HTTP journey", () => {
     expect(body.preview.copyReceipt).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  // The Inventory's entrance: the same preview, asked to add one skill the
-  // target's own release does not hold (#955).
+  // The Inventory's entrance: adding a skill the target's release lacks (#955).
   it("names the requested skill and carries it into the desired Selection", async () => {
     const { app, registry } = await makeApp();
     await seedTarget(["tdd", "grill", "review"]);
@@ -308,8 +303,6 @@ describe("update HTTP journey", () => {
     expect(await response.json()).toStrictEqual({ error: "not-deployed" });
   });
 
-  // The confirm, end to end: the reader's token, the write, and the ledger read
-  // back off the files apm left behind.
   async function priced(options?: {
     lands?: (skills: readonly string[]) => readonly string[];
     add?: string;
@@ -357,7 +350,6 @@ describe("update HTTP journey", () => {
         { name: "review", tool: null, state: "removed" },
       ],
     });
-    // The exact Selection, with the name this release dropped gone (ADR-0031).
     expect(await readFile(join(repo, "apm.yml"), "utf8")).toBe(
       manifest(["grill", "tdd"]),
     );

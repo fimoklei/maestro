@@ -50,7 +50,7 @@ describe("SelectionBar", () => {
   });
 });
 
-// Approved words, as exact strings (copy.md → Patterns).
+// Approved words, as exact strings.
 describe("SelectionBar copy", () => {
   it("counts the selection and what the filter hides", () => {
     expect(selectedCount(3)).toBe("3 selected");

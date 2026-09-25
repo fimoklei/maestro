@@ -4,8 +4,7 @@ import {
   INVENTORY_KEY,
 } from "../inventory/use-inventory";
 
-// Offline read-on-demand, no background sync: "re-read" drops the cached
-// copies and lets Query refetch (frontend.md).
+// Drops the cached copies and lets Query refetch.
 export function useRereadInventory(): () => void {
   const queryClient = useQueryClient();
   return () => {

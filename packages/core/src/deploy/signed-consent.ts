@@ -1,10 +1,7 @@
-// One HMAC over a canonicalized payload, so every consent in this package is
-// proved the same way: minted by the server that priced the act, never looked
-// up, never persisted (ADR-0020).
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export class ConsentSigner {
-  // Never exposed over the wire, never persisted. A restart invalidates every
+  // Never exposed over the wire, never persisted: a restart invalidates every
   // outstanding consent, which is the safe direction.
   private readonly secret = randomBytes(32);
 

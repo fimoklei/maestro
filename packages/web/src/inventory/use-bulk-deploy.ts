@@ -1,5 +1,5 @@
-// On success, invalidates the target's deploy-state and drift queries
-// (frontend.md). Plan (which names to send) is the caller's; this only executes.
+// On success, invalidates the target's deploy-state and drift queries. Which
+// names to send is the caller's plan.
 import type { BulkDeployReport } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";

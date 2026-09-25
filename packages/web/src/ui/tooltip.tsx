@@ -1,12 +1,9 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type { ReactNode } from "react";
 
-// shadcn/ui's tooltip on Radix, restyled to the tokens (ADR-0033). It names a
-// control that shows no words of its own, or shows a value its row shortens
-// (#1123); it never holds a control.
+// Never holds a control.
 
-// The provider sits inside, not at the composition root: a tooltip then works
-// wherever it is rendered, including in a story and in a sibling unit test.
+// The provider sits inside, so a tooltip works in stories and unit tests too.
 export function Tooltip({
   label,
   detail,

@@ -1,5 +1,3 @@
-// The Update use-case: `preview` prices the move and mints the token, `run`
-// re-prices under the lock and writes (ADR-0031, ADR-0020).
 import type { ReleaseHeadGitPort } from "../deploy-state/release-head";
 import { highestReleaseTag } from "../harness/release-tag";
 import type { HarnessSkillTree } from "../harness/skill-movements";
@@ -22,51 +20,36 @@ import {
 import { ConsentSigner } from "./signed-consent";
 import type { TargetSelection } from "./target-selection";
 
-// A skill the reader can go and read before adopting it: the name, and its
-// folder at the chosen release. Null where a caller has no link to give; a
-// priced preview always has one, since pricing needs the origin (#960).
+// `url` points at the skill's folder at the chosen release; null where a
+// caller has no link to give (#960).
 export type UpdateSkillRow = { name: string; url: string | null };
 
-// One copy the update would overwrite, at the grain consent is given at: per
-// skill, and per tool where the target splits by tool (#952).
 export type CopyConsentRow = { name: string; tool: SupportedTool | null };
 
 export type UpdatePreview = {
-  // The release the target follows now, and the only one on offer — the latest
-  // (ADR-0031 § Accepted limits).
   release: string;
   chosenRelease: string;
-  // The three numbers the counting sentence states, over the current Selection.
   counts: { changed: number; removed: number; unchanged: number };
-  // The skill the Inventory's entrance asked for, when the target's own release
-  // does not hold it. Empty from the card, which adds no skill of its own, and
-  // empty when the request names a skill the Selection already carries (#955).
+  // The requested skill when the target's own release does not hold it; empty
+  // when the Selection already carries it (#955).
   addedByThisDeploy: readonly UpdateSkillRow[];
   changed: readonly UpdateSkillRow[];
   removed: readonly string[];
   unchanged: readonly string[];
   newInRelease: readonly UpdateSkillRow[];
-  // What the reader must agree to before the update may run. Two lists, because
-  // they are two different consents: dropping work, and overwriting a copy
-  // nothing could verify (#952, spec story 37).
+  // Two consents: dropping work, and overwriting a copy nothing could verify
+  // (#952).
   localEdits: {
     discard: readonly CopyConsentRow[];
     unverified: readonly CopyConsentRow[];
   };
-  // The exact Selection before and after. `desired` drops every name this
-  // release removed and adds none; empty means the target becomes Empty.
   selection: { current: readonly string[]; desired: readonly string[] };
-  // The guard's receipt licensing the overwrite of exactly the copies above.
-  // Null where every copy is clean, so a caller cannot offer consent nobody
-  // needs to give (#952).
+  // Null where every copy is clean, so no caller offers consent nobody needs
+  // to give (#952).
   copyReceipt: string | null;
-  // Proof this server priced this update. Stateless (ADR-0020).
   token: string;
 };
 
-// Each member's meaning for the reader is the server's
-// `updatePreviewErrorResponses` table. Every one but the catch-all is a
-// refusal something observed.
 export type UpdatePreviewError =
   | "repo-not-registered"
   | "no-supported-tool"
@@ -75,19 +58,12 @@ export type UpdatePreviewError =
   | "lockfile-malformed"
   | "deployed-unreadable"
   | "inventory-not-configured"
-  // The Harness is connected; its tags or a release tree could not be read. A
-  // preview never guesses a count (J04).
   | "inventory-unreadable"
   | "no-published-tag"
-  // The connected Harness names no GitHub origin, so nothing can attribute the
-  // target's root package to it. An update is never priced against a package
-  // Maestro cannot prove is ours (ADR-0014, ADR-0031, #960).
+  // Without a GitHub origin the target's root package cannot be proven ours,
+  // so nothing is priced (#960).
   | "inventory-origin-unavailable"
-  // The target's own record names more than one Harness package, or one whose
-  // ref is no release tag.
   | "ref-unresolvable"
-  // The requested skill is not in the release this update would adopt, so
-  // nothing is priced: the reader is never moved to a release without it.
   | "skill-not-in-release"
   | "preview-failed";
 
@@ -95,8 +71,7 @@ export type UpdatePreviewResult =
   | { ok: true; preview: UpdatePreview }
   | { ok: false; error: UpdatePreviewError };
 
-// Everything the token binds. Changing any of it retires the consent, so a
-// preview of one state never authorises the update of another (#953).
+// Everything the token binds: changing any of it retires the consent (#953).
 export type UpdateScope = {
   target: DeployTarget;
   chosenRelease: string;
@@ -106,9 +81,7 @@ export type UpdateScope = {
   copies: LocalCopyCheck;
 };
 
-// What one copy reads as once apm has run, from its content and the deployment
-// record — never from apm's own prose (ADR-0031, ADR-0018). "unknown" is the
-// honest answer where nothing could be read back.
+// Read from content and the deployment record, never from apm's prose.
 export type UpdateSkillState =
   | "updated"
   | "removed"
@@ -116,8 +89,6 @@ export type UpdateSkillState =
   | "not-removed"
   | "unknown";
 
-// One row per skill, and per tool where the target splits by tool, so a failing
-// row on the global target names where to look (spec story 33).
 export type UpdateOutcomeRow = {
   name: string;
   tool: SupportedTool | null;
@@ -126,8 +97,6 @@ export type UpdateOutcomeRow = {
 
 export type UpdateRunError =
   | UpdatePreviewError
-  // The state the token priced is not the state under the lock: a newer
-  // release, another Selection, or a copy that changed since (spec 24, 41).
   | "status-out-of-date"
   | "update-in-progress"
   | "operation-unfinished"
@@ -135,8 +104,6 @@ export type UpdateRunError =
   | "deployed-unverifiable"
   | "manifest-not-recognised"
   | "destination-symlinked"
-  // apm ran and what landed is not the desired Selection. The operation record
-  // survives, so Retry update converges on it.
   | "update-incomplete"
   | "update-failed";
 
@@ -145,10 +112,9 @@ export type UpdateRunResult =
   | {
       ok: false;
       error: UpdateRunError;
-      // Present only where apm ran: a refusal before it has nothing to read
-      // back, and an absent key can never be mistaken for a proven outcome.
+      // Only where apm ran, so an absent key is never a proven outcome.
       outcome?: readonly UpdateOutcomeRow[];
-      // Present only where consent can clear the refusal (#952).
+      // Only where consent can clear the refusal (#952).
       copyReceipt?: string;
     };
 
@@ -159,9 +125,8 @@ const COPY_ERRORS: Record<Exclude<CopyVerdict, "clean">, UpdateRunError> = {
   "lockfile-malformed": "lockfile-malformed",
 };
 
-// A copy the update kept: only content equal to the chosen release proves it
-// landed. Anything readable that is not equal did not; anything unreadable
-// proves nothing (J04).
+// A kept copy landed only when its content equals the chosen release;
+// anything unreadable proves nothing.
 const KEPT: Record<DeployedContentState, UpdateSkillState> = {
   clean: "updated",
   "not-deployed": "not-updated",
@@ -171,7 +136,7 @@ const KEPT: Record<DeployedContentState, UpdateSkillState> = {
   "lockfile-malformed": "unknown",
 };
 
-// A copy the update dropped: only an absent one proves the removal.
+// A dropped copy: only an absent one proves the removal.
 const DROPPED: Record<DeployedContentState, UpdateSkillState> = {
   "not-deployed": "removed",
   clean: "not-removed",
@@ -184,17 +149,13 @@ const DROPPED: Record<DeployedContentState, UpdateSkillState> = {
 export class UpdateTarget {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
-    // The connected Harness's own tags and trees: content decides what changed,
-    // never commit ancestry (ADR-0027).
+    // Content decides what changed, never commit ancestry.
     git: ReleaseHeadGitPort;
     resolveRoot: () => Promise<string | undefined>;
-    // Where a row's link points. Null is "not known", never a guessed host.
+    // Null is "not known", never a guessed host.
     harnessOrigin: () => Promise<GitOrigin | null>;
     toolPresence: ToolPresencePort;
-    // The one guard every write path classifies through (#952).
     copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
-    // The one owner of a Selection change: the manifest, the single apm call
-    // and the proof it landed all belong to it (ADR-0031, #951).
     selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
     // The outcome probe only; classification is the guard's.
     deployedContent: Pick<DeployedContentPort, "classify">;
@@ -205,21 +166,19 @@ export class UpdateTarget {
   };
 
   // Never exposed, never persisted: a restart retires every outstanding
-  // preview, which is the safe direction (ADR-0020).
+  // preview, which is the safe direction.
   private readonly signer = new ConsentSigner();
 
   constructor(deps: UpdateTarget["deps"]) {
     this.deps = deps;
   }
 
-  // A read: it takes no lock, so previewing cannot block an operation already
-  // in flight.
+  // A read: takes no lock, so it cannot block an operation in flight.
   async preview(input: {
     target: DeployTarget;
-    // The Inventory's entrance: one skill to add beside the release move (#955).
     add?: string;
   }): Promise<UpdatePreviewResult> {
-    // Before any filesystem or apm access (security.md).
+    // Before any filesystem or apm access.
     if (
       input.target.kind === "repo" &&
       !(await this.deps.registry.isRegistered(input.target.repoPath))
@@ -232,21 +191,19 @@ export class UpdateTarget {
         ? { ok: true, preview: priced.preview }
         : { ok: false, error: priced.error };
     } catch {
-      // A pricing that threw priced nothing; it is never answered as an update
-      // with no cost (J04).
       return { ok: false, error: "preview-failed" };
     }
   }
 
-  // The confirm. Everything it acts on it reads itself, under the target lock:
-  // the token proves the reader saw this state, never that this state holds.
+  // Re-reads everything under the target lock: the token proves the reader
+  // saw this state, never that this state still holds.
   async run(input: {
     target: DeployTarget;
     token: string;
     add?: string;
     confirmedCopyReceipt?: string;
   }): Promise<UpdateRunResult> {
-    // Before any filesystem or apm access (security.md).
+    // Before any filesystem or apm access.
     if (
       input.target.kind === "repo" &&
       !(await this.deps.registry.isRegistered(input.target.repoPath))
@@ -275,8 +232,7 @@ export class UpdateTarget {
     },
     key: string,
   ): Promise<UpdateRunResult> {
-    // Swallow rather than rethrow: a raw apm message may carry a token and must
-    // never reach the transport layer (security.md).
+    // Never rethrow: a raw apm message may carry a token.
     try {
       const priced = await this.price(input.target, input.add);
       if (!priced.ok) {
@@ -286,8 +242,8 @@ export class UpdateTarget {
       if (!this.accepts(scope, input.token)) {
         return { ok: false, error: "status-out-of-date" };
       }
-      // An unfinished operation is converged before anything else runs, so a
-      // retry never has to reconcile two intents (#951).
+      // An unfinished operation converges first, so a retry never has to
+      // reconcile two intents (#951).
       if ((await this.deps.selection.pending(key)) !== null) {
         return { ok: false, error: "operation-unfinished" };
       }
@@ -341,9 +297,7 @@ export class UpdateTarget {
     }
   }
 
-  // What landed, read back per copy: content equal to the chosen release, or an
-  // absence where the release dropped the name. apm's own marker decides
-  // nothing here (ADR-0031 § completion).
+  // Read back per copy; apm's own marker decides nothing here.
   private async outcome(
     scope: UpdateScope,
     origin: GitOrigin,
@@ -351,9 +305,8 @@ export class UpdateTarget {
     const tools: (SupportedTool | null)[] =
       scope.tools.length === 0 ? [null] : [...scope.tools];
     const kept = new Set(scope.desired);
-    // A copy equal to its recorded baseline proves only that the copy and the
-    // record agree. Which release that record names is the other half, and
-    // without it no skill is claimed to have moved (ADR-0031 § completion).
+    // A clean copy proves only that copy and record agree; the record must also
+    // name the chosen release before a skill is claimed to have moved.
     const landed = await this.deps.selection
       .readTarget(scope.target, origin)
       .catch(() => null);
@@ -384,15 +337,14 @@ export class UpdateTarget {
     return rows;
   }
 
-  // `scope` is what the update found now, never what the caller claims: a token
-  // minted for another release, Selection, tool set or content is no consent
-  // for this one (#364, #953).
+  // `scope` is what the update found now, never what the caller claims
+  // (#364, #953).
   accepts(scope: UpdateScope, token: string | undefined): boolean {
     return this.signer.matches(this.token(scope), token);
   }
 
-  // One pass for both entry points: the priced preview the reader sees and the
-  // scope the token is minted over can never disagree.
+  // Shared by preview and run, so the preview and the token's scope never
+  // disagree.
   private async price(
     target: DeployTarget,
     add?: string,
@@ -412,9 +364,6 @@ export class UpdateTarget {
     if (root === undefined) {
       return { ok: false, error: "inventory-not-configured" };
     }
-    // Before the target is read: attributing its root package to the connected
-    // Harness needs that Harness's origin, and nothing is priced without it
-    // (ADR-0014, #960).
     const origin = await this.deps.harnessOrigin().catch(() => null);
     if (origin === null) {
       return { ok: false, error: "inventory-origin-unavailable" };
@@ -441,17 +390,16 @@ export class UpdateTarget {
       return { ok: false, error: "inventory-unreadable" };
     }
 
-    // Read before anything is priced: a release that does not hold the skill
-    // the reader asked for is never adopted on their behalf (#955).
+    // A release without the requested skill is never adopted on the reader's
+    // behalf (#955).
     if (add !== undefined && !next.has(add)) {
       return { ok: false, error: "skill-not-in-release" };
     }
     const added =
       add !== undefined && !state.selection.includes(add) ? [add] : [];
 
-    // Every selected copy is at risk: the install rewrites the whole Selection,
-    // and the added skill joins them. The chosen release goes in, so a copy
-    // already equal to it is not read as an edit (#952).
+    // The install rewrites the whole Selection, so every selected copy is at
+    // risk. A copy equal to the chosen release is not an edit (#952).
     const copies = await this.deps.copyGuard.check({
       write: "update",
       target,
@@ -464,8 +412,7 @@ export class UpdateTarget {
       copies,
     );
     if (!decision.ok && decision.receipt === null) {
-      // No consent exists for a copy nobody could read; the update stops here
-      // rather than overwrite work on a guess (spec story 43).
+      // No consent exists for a copy nobody could read.
       return {
         ok: false,
         error:
@@ -487,9 +434,7 @@ export class UpdateTarget {
     const unchanged = state.selection.filter(
       (name) => next.has(name) && current.get(name) === next.get(name),
     );
-    // Update adds nothing automatically: these are shown to read, not to pick
-    // (spec story 18). The requested skill is named in its own section, so it
-    // never appears twice.
+    // Shown to read, not to pick: Update adds nothing automatically.
     const newInRelease = [...next.keys()].filter(
       (name) => !state.selection.includes(name) && !added.includes(name),
     );
@@ -533,8 +478,7 @@ export class UpdateTarget {
     };
   }
 
-  // Order-independent on every list: the same update in another order is the
-  // same update, and the tool probe orders its own answer.
+  // Order-independent on every list: the tool probe orders its own answer.
   private token(scope: UpdateScope): string {
     return this.signer.sign({
       kind: "update-preflight",
@@ -564,9 +508,8 @@ export class UpdateTarget {
   }
 }
 
-// "updated" is a claim about a release, so it needs the deployment record to
-// name that release. A record naming another one downgrades the row; a record
-// that could not be read leaves it unknown rather than either claim (J04).
+// "updated" needs the deployment record to name the chosen release; an
+// unreadable record leaves the row unknown.
 function whereRecorded(
   state: UpdateSkillState,
   onRelease: boolean | null,
@@ -577,9 +520,6 @@ function whereRecorded(
   return onRelease === null ? "unknown" : "not-updated";
 }
 
-// The one reading of what a target follows, in the terms pricing needs. Empty
-// and pinned-per-skill both follow no single release, so neither has an update
-// to preview.
 function readSelection(
   selection: TargetSelection,
 ):

@@ -3,9 +3,8 @@ import { resolveApmGlobalRoot } from "../deploy-state/resolve-apm-global-root";
 import { resolveHomeDirectory } from "../home-directory";
 import type { DeployTarget } from "./deploy-skill";
 
-// A global install splits lockfile from tree: apm writes the lockfile under
-// ~/.apm but keys deployed_file_hashes HOME-relative (apm-behavior.md § Global
-// scope). One shared instance, so guard and cleanup agree on the tree.
+// A global install splits lockfile from tree: the lockfile lives under ~/.apm
+// but deployed_file_hashes keys are HOME-relative.
 export class DeployedLocation {
   private readonly env: NodeJS.ProcessEnv;
 
@@ -13,8 +12,7 @@ export class DeployedLocation {
     this.env = env;
   }
 
-  // What deployed_file_hashes keys are relative to. Per-repo: the repo. Global:
-  // HOME, read from `env` so a sandbox can redirect it.
+  /** What deployed_file_hashes keys are relative to. */
   treeRoot(target: DeployTarget): string {
     return target.kind === "repo"
       ? target.repoPath
@@ -25,8 +23,6 @@ export class DeployedLocation {
     return this.apmRoot(target, "apm.lock.yaml");
   }
 
-  // The consumer's apm.yml, which holds the Selection apm installs from
-  // (ADR-0031). It sits beside the lockfile in both scopes.
   manifestPath(target: DeployTarget): string {
     return this.apmRoot(target, "apm.yml");
   }

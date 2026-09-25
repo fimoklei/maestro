@@ -1,4 +1,3 @@
-// Every write invalidates the list so the screen refetches (frontend.md).
 import type { RepoStatus } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";

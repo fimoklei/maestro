@@ -8,9 +8,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// A fetch stub for the cockpit's read queries plus the bulk route. Deploy-state
-// reads empty (nothing deployed), drift is up-to-date, and the bulk route
-// returns whatever `bulkReport` the test provides.
+// Stubs the reads (nothing deployed, drift up to date); the bulk route returns
+// the test's `bulkReport`.
 function stubReads(bulkReport: unknown) {
   vi.stubGlobal(
     "fetch",
@@ -41,8 +40,7 @@ function stubReads(bulkReport: unknown) {
   );
 }
 
-// Opens the dialog from the selection bar's control; the dialog's own control
-// shares its name, so it is found inside the dialog.
+// The dialog's control shares the bar's name, so it is found inside the dialog.
 async function openDialog() {
   await userEvent.click(screen.getByRole("button", { name: "Deploy skills" }));
   return screen.getByRole("dialog");
@@ -58,8 +56,6 @@ async function deploy() {
   return dialog;
 }
 
-// Successor of the retired BulkDeployBar's test (#1042): every claim it made
-// is kept here, against the dialog the selection bar opens.
 describe("BulkDeployAction", () => {
   it("deploys the staged skills to the chosen target and reports the result", async () => {
     stubReads({
@@ -81,7 +77,6 @@ describe("BulkDeployAction", () => {
 
     await deploy();
 
-    // The Report's own heading states the run (#1038).
     expect(
       await screen.findByRole("heading", { name: /2 deployed/ }),
     ).toBeVisible();
@@ -136,8 +131,6 @@ describe("BulkDeployAction", () => {
     });
   });
 
-  // The Inventory pane's single deploy runs here now (#1065), so a refused
-  // reinstall states itself as that deploy's notice did, never silently.
   it("states a refused reinstall in the dialog, from the deploy notice table", async () => {
     stubReads({
       target: { kind: "global" },
@@ -178,9 +171,8 @@ describe("BulkDeployAction", () => {
   });
 
   it("keeps the deploy button disabled until the chosen target's state has loaded", async () => {
-    // The repo's deploy-state read never resolves in this test, standing in
-    // for the window right after switching targets — the registry is ready,
-    // but this specific target's clean/behind data is not in yet.
+    // This target's deploy-state read never resolves: the registry is ready, its
+    // clean/behind data is not.
     let resolveDeployState: (() => void) | undefined;
     vi.stubGlobal(
       "fetch",
@@ -218,9 +210,8 @@ describe("BulkDeployAction", () => {
   });
 
   it("still sends a skill missing from one detected tool during a global run", async () => {
-    // "tdd" is deployed and up-to-date on Claude Code but was never installed
-    // on Codex (added to the machine later). A global run must still reach
-    // Codex, not read the Claude Code copy as "clean everywhere" (#292).
+    // tdd is up to date on Claude Code but never installed on Codex; a global run
+    // must still reach Codex (#292).
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -268,8 +259,7 @@ describe("BulkDeployAction", () => {
   });
 
   it("names a repo target by its shortened label, never its absolute path", async () => {
-    // Same shortening as the sidebar and the removal rows (#211) — an absolute
-    // path pushes the outcome off the row it belongs to.
+    // An absolute path pushes the outcome off its row (#211).
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -383,8 +373,7 @@ describe("BulkDeployAction", () => {
 
     await deploy();
 
-    // A Notice, never the counts summary: zeroed counts would read as a
-    // clean success the run never proved (#292).
+    // A Notice, never zeroed counts that would read as a clean success (#292).
     const notice = await screen.findByRole("alert");
     expect(notice).toHaveTextContent(/did not run/i);
     expect(notice).not.toHaveTextContent(/deployed/i);
@@ -446,8 +435,7 @@ describe("BulkDeployAction", () => {
   });
 
   it("reports a partial run worst group first, a failed install as one row for every name", async () => {
-    // One install carries the batch, so an install failure fails every name it
-    // carried at once (docs/apm-behavior.md § A batch install).
+    // One install carries the batch, so an install failure fails every name in it.
     stubReads({
       target: { kind: "global" },
       deployed: [{ name: "grilling", version: "v1.0.0" }],
@@ -483,8 +471,7 @@ describe("BulkDeployAction", () => {
   });
 });
 
-// Successor of the retired DeploySkillAction's target-picker claims (#1065):
-// the Inventory pane's Deploy skill opens this dialog with one skill staged.
+// The Inventory pane's Deploy skill opens this dialog with one skill staged.
 describe("BulkDeployAction — the target it deploys to", () => {
   const twoRepos = [{ path: "/projects/alpha" }, { path: "/projects/beta" }];
 
@@ -589,7 +576,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
     ).toBeDisabled();
   });
 
-  // J07: Global needs no repo, so a deploy never waits on a registration.
+  // Global needs no repo, so a deploy never waits on a registration.
   it("deploys globally when no repo is registered", async () => {
     const fetchMock = stubTools([{ tool: "claude", primitives: [] }]);
     await openOne([]);

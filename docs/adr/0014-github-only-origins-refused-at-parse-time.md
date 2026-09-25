@@ -10,8 +10,7 @@ A skill is a *virtual package*: `owner/repo` plus a `skills/<name>` subpath.
 The #152 spike (run against apm's own reference parser,
 `DependencyReference.parse`, so repeatable offline)
 established that apm's ref grammar leaves no safe room for non-GitHub
-origins — the observed grammar is in `docs/apm-behavior.md` → "Reference
-grammar":
+origins:
 
 - Transport forms (`ssh://`, `http://`, custom ports) cannot carry a
   subpath: apm rejects "A subpath cannot be embedded in a git URL".
@@ -27,8 +26,7 @@ Issue #185 later found the port observations partly stale (apm PRs
 #2210/#2211 reworked port handling). That does not move this decision: it
 rests on ADR-0003's model — Maestro deploys from the central inventory's
 GitHub remote — not on what apm's parser happens to accept in any version.
-Re-read against the 0.29.0 parser in #774: the host gate is unchanged
-(`docs/apm-behavior.md` → "Reference grammar").
+Re-read against the 0.29.0 parser in #774: the host gate is unchanged.
 
 ## Decision
 
@@ -56,7 +54,7 @@ express — at parse time, not at install time.**
   mid-deploy.
 - Supporting another host would take a new ADR plus a re-spike of apm's ref
   grammar for that host — including the post-#2210/#2211 port behavior,
-  which is currently unobserved (`docs/apm-behavior.md` → "Unobserved").
+  which is currently unobserved.
 - Implementation and its tests: `packages/core/src/deploy/git-origin.ts`.
 
 ## Rejected alternatives

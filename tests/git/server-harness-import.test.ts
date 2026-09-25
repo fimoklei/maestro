@@ -39,9 +39,6 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: the whole import journey through the HTTP route against a
-// real disk — what lands in the Working harness, what is skipped, and what is
-// refused before anything is written (#576).
 describe("harness import HTTP route", () => {
   let base: string;
   let harnessRoot: string;
@@ -76,8 +73,7 @@ describe("harness import HTTP route", () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessRoot,
-      // The real released read: these suites build real repositories,
-      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
       readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
@@ -270,8 +266,7 @@ describe("harness import HTTP route", () => {
   });
 
   it("rebuilds a manifest whose name is not a plain scalar", async () => {
-    // A frontmatter that parses and describes, but whose `name` is a mapping:
-    // the textual rewrite cannot fix it, so the document one does.
+    // A `name` that is a mapping needs the document rewrite, not the textual one.
     await writeFile(
       join(source, "SKILL.md"),
       "---\nname:\n  first: a\ndescription: Reviews code.\n---\n",
@@ -295,9 +290,7 @@ describe("harness import HTTP route", () => {
     expect(await response.json()).toMatchObject({ error: "outside-root" });
   });
 
-  // The whole chain in one case: a skill deployed into a repository, edited
-  // there, carried back through the route, and waiting in the Working harness
-  // as a pending change (#732). The seams are the value, not the steps.
+  // The whole chain in one case (#732): the seams are the value.
   it("carries an edited deployed copy back into the Harness as a pending change", async () => {
     const run = promisify(execFile);
     const git = (...args: string[]) =>
@@ -308,8 +301,7 @@ describe("harness import HTTP route", () => {
           cwd: harnessRoot,
         },
       );
-    // A real clone: a committed skill, a GitHub origin, and the remote head
-    // ref the movement read needs. Offline — the origin URL is never fetched.
+    // Offline: the origin URL is never fetched.
     await initGitClone(harnessRoot);
     const held = join(harnessRoot, ".apm", "skills", "code-review");
     await mkdir(held, { recursive: true });
@@ -318,7 +310,6 @@ describe("harness import HTTP route", () => {
     await git("add", "-A");
     await git("commit", "-m", "first skill");
 
-    // What apm deployed, and what the author then fixed in place.
     const repo = join(base, "repo");
     const deployed = join(repo, ".claude", "skills", "code-review");
     await mkdir(deployed, { recursive: true });
@@ -361,18 +352,16 @@ describe("harness import HTTP route", () => {
       mode: "update",
       name: "code-review",
     });
-    // The whole folder, not a merge: the harness's own file is gone with it.
     expect(await readFile(join(held, "SKILL.md"), "utf8")).toContain(
       "Fixed in place.",
     );
     expect(await readdir(held)).toEqual(["SKILL.md"]);
-    // The same signal the Harness screen reads as a pending proposal.
     const trees = await new HarnessGitAdapter().readMovementTrees(harnessRoot);
     expect(trees?.working["code-review"]).not.toBe(trees?.local["code-review"]);
   }, 30_000);
 
-  // The same chain for a copy one Root package deployed: the record names no
-  // one skill, so the name comes from its deployed files (#967).
+  // A Root package record names no one skill, so the name comes from its
+  // deployed files (#967).
   it("carries an edited copy a Root package deployed back as a pending change", async () => {
     const run = promisify(execFile);
     const git = (...args: string[]) =>
@@ -392,8 +381,7 @@ describe("harness import HTTP route", () => {
     await git("add", "-A");
     await git("commit", "-m", "first skill");
 
-    // A real apm 0.29.0 record: one apm_package row deploying caveman and
-    // prototype (tests/fixtures/README.md § Root-package canary).
+    // A real apm 0.29.0 record: one apm_package row deploying caveman and prototype.
     const repo = join(base, "repo");
     const deployed = join(repo, ".claude", "skills", "caveman");
     await mkdir(deployed, { recursive: true });
@@ -443,8 +431,7 @@ describe("harness import HTTP route", () => {
   }, 30_000);
 
   it("leaves nothing behind when the copy is refused mid-tree", async () => {
-    // A hard-linked file is refused, and it sits beside files the walk already
-    // planned: neither the destination nor a staging leftover may appear.
+    // Neither the destination nor a staging leftover may appear.
     await writeFile(join(source, "shared.bin"), "shared");
     await link(join(source, "shared.bin"), join(source, "shared-alias.bin"));
     const app = makeApp();

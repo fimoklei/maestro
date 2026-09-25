@@ -1,5 +1,4 @@
-// A target card's lockfile-derived readings, shape-checked at the edge; one
-// failing the shape does not cross (ADR-0018, security.md, J04).
+// A target card's lockfile-derived readings; one failing the shape does not cross.
 import {
   type PinnedPerSkill,
   RELEASE_TAG_PATTERN,
@@ -11,16 +10,13 @@ const releaseHeadSchema = z.object({
   release: z.string().regex(RELEASE_TAG_PATTERN),
   latestRelease: z.string().regex(RELEASE_TAG_PATTERN).nullable(),
   changed: z.number().int().nonnegative().nullable(),
-  // Skill names read off the Harness trees, bounded like every other name the
-  // server lets cross (ADR-0018).
   changedSkills: z.array(z.string().max(200)).optional(),
   selection: z.array(z.string().max(200)).optional(),
   selected: z.number().int().nonnegative(),
   comparedAt: z.iso.datetime().nullable(),
 });
 
-// A per-skill pin is any ref apm resolved, not only a release tag, so the
-// bound is on the shape rather than on the release pattern.
+// Bounded on shape, not on the release pattern: a pin is any ref apm resolved.
 const pinnedPerSkillSchema = z
   .array(
     z.object({
@@ -47,7 +43,6 @@ export function cardReadingFields(readings: CardReadings): CardReadings {
   return {
     ...(head.success ? { releaseHead: head.data } : {}),
     ...(pinned.success ? { pinnedPerSkill: pinned.data } : {}),
-    // The server's own count of the record's rows, never a line of apm prose.
     ...(readings.extraFiles === undefined
       ? {}
       : { extraFiles: readings.extraFiles }),

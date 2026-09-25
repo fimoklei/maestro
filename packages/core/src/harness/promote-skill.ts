@@ -1,7 +1,5 @@
-// Moving one skill's working-tree content into review: fetch, build a commit on
-// the fetched default-branch tip, push it to that skill's own branch. The
-// author's repository state is never touched — git details stay behind the port
-// (ADR-0021, security.md).
+// Pushes one skill's working-tree content to its own branch, built on the
+// fetched default-branch tip. The author's repository state is never touched.
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isConcurrentlyChanged } from "./classify-movement";
@@ -31,19 +29,12 @@ export type PromoteSkillError =
   | "skill-missing"
   | "push-elsewhere"
   | "source-changed"
-  // Origin/HEAD carries a teammate's change to this skill that a fetch just
-  // brought back — recomputed fresh, never from the state the cockpit showed
-  // before the press, since that can be stale by the time it lands here
-  // (#579).
+  // Recomputed after a fresh fetch, never from what the cockpit showed (#579).
   | "concurrent-change"
-  // Two open requests already match this branch, so sending content to it
-  // would update a proposal nobody chose (#827 · Multiple pull requests).
   | "extra-requests"
   | "promote-failed"
   | "promote-in-progress";
 
-// The branch travels with the URL: the cockpit names what was pushed, and
-// GitHub's own form is where the pull request is opened (#574).
 export type PromoteSkillResult =
   | { ok: true; branch: string; pullRequestUrl: string }
   | { ok: false; error: PromoteSkillError };
@@ -53,8 +44,6 @@ type Checked =
       ok: true;
       origin: NonNullable<ReturnType<typeof parseGitOrigin>>;
       head: string;
-      // The default branch a proposal is opened against, and the skill's own
-      // proposal branch the content lands on.
       base: string;
       branch: string;
     }
@@ -73,8 +62,7 @@ export class PromoteSkill {
     this.deps = deps;
   }
 
-  // One promotion per harness at a time: two pushes building commits from the
-  // same fetched tip would each answer for refs the other moved.
+  // One promotion per harness at a time.
   async execute(name: string, at: Date): Promise<PromoteSkillResult> {
     if (!isPromotableSkillName(name)) {
       return { ok: false, error: "invalid-skill" };
@@ -104,12 +92,8 @@ export class PromoteSkill {
       return first;
     }
 
-    // Re-fetched and rechecked right before the push, rather than trusting
-    // the read above: the gap between a check and a push is where a
-    // teammate's change would otherwise ride through unnoticed. What
-    // remains after this is local object work and the push itself — no
-    // further network call this promotion makes touches the default branch
-    // (#579).
+    // Re-fetched and rechecked right before the push, so a teammate's change
+    // cannot slip through the gap (#579).
     const refetched = await this.deps.git.fetch(root);
     if (refetched !== "fetched") {
       return { ok: false, error: "no-answer" };
@@ -119,9 +103,7 @@ export class PromoteSkill {
       return second;
     }
 
-    // What GitHub says about this branch, read now rather than taken from the
-    // cockpit: it decides whether this press updates a proposal or opens one,
-    // and an ambiguity blocks it before anything is pushed.
+    // Read now, not from the cockpit: decides update versus open.
     const open = await this.openRequests(second);
     if (open !== null && open.length > 1) {
       return { ok: false, error: "extra-requests" };
@@ -134,10 +116,7 @@ export class PromoteSkill {
     );
     switch (push) {
       case "pushed":
-        // Only where the branch has no proposal of its own. An open request
-        // keeps its discussion and GitHub's verdict; a review capability that
-        // could not answer leaves the row on Pull request missing, which
-        // Create pull request recovers (gh-driver.md).
+        // Only when GitHub answered that the branch has no request; unknown opens none.
         if (open !== null && open.length === 0) {
           await this.deps.review.createRequest(second.origin, {
             head: second.branch,
@@ -164,10 +143,7 @@ export class PromoteSkill {
     }
   }
 
-  // The default branch's current tip, and whether a teammate's change to
-  // this one skill already sits there — scoped to the skill via the merge
-  // base, so an unrelated commit elsewhere on origin/HEAD never blocks this
-  // promotion (#579).
+  // Scoped to this skill via the merge base: unrelated commits never block (#579).
   private async checkNotConcurrent(
     root: string,
     name: string,
@@ -219,9 +195,7 @@ export class PromoteSkill {
     };
   }
 
-  // The open requests over this skill's branch, or null where GitHub could not
-  // answer completely. Null is "unknown", never "none": a review capability
-  // that cannot answer degrades on its own and blocks no push (ADR-0029).
+  // Null is "unknown", never "none"; it blocks no push.
   private async openRequests(
     checked: Extract<Checked, { ok: true }>,
   ): Promise<ReviewRequest[] | null> {
