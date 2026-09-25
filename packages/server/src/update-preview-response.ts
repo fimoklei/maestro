@@ -1,5 +1,4 @@
-// The Update preview's shape check at the edge; a preview failing it does not
-// cross at all (ADR-0018, security.md).
+// The Update preview's shape check; a preview failing it does not cross at all.
 import {
   isValidSkillSlug,
   RELEASE_TAG_PATTERN,
@@ -12,8 +11,7 @@ const skillName = z.string().refine(isValidSkillSlug);
 
 const skillRow = z.object({
   name: skillName,
-  // Built by core from the connected Harness's own origin, never a line of apm
-  // prose, and never a host ADR-0014 does not admit.
+  // Built by core from the Harness's own origin, never from apm prose.
   url: z.url().startsWith("https://github.com/").nullable(),
 });
 
@@ -54,9 +52,7 @@ export function updatePreviewBody(preview: UpdatePreview): unknown | null {
   return parsed.success ? parsed.data : null;
 }
 
-// The outcome's names come off the same two readings, so they cross the same
-// way: shape-checked here, and a row failing it fails the whole report rather
-// than half-drawing a ledger (ADR-0018, #954).
+// A row failing the shape fails the whole report rather than half-drawing a ledger (#954).
 const outcomeSchema = z.array(
   z.object({
     name: skillName,

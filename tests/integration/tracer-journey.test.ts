@@ -28,10 +28,7 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// The tracer journey end to end: register, see, deploy, see it back. Each step
-// is covered on its own elsewhere; what only this file proves is that they
-// chain — the deploy reaches a repo the registration put in the registry, and
-// the read-back finds the lockfile that same deploy wrote.
+// Each step is covered elsewhere; this file proves they chain.
 
 const LATEST_TAG = "v0.5.1";
 
@@ -59,8 +56,6 @@ describe("the tracer journey through one cockpit", () => {
     }
   });
 
-  // One app for the whole journey: the same registry, inventory and filesystem
-  // carry state from one step to the next, which is the point of the tracer.
   function makeApp() {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
@@ -77,8 +72,7 @@ describe("the tracer journey through one cockpit", () => {
       ],
     });
     const locks = new InFlightLocks();
-    // The install lands a real root package in the repo, so the read-back step
-    // reads files this deploy wrote rather than a lockfile the test typed.
+    // The read-back reads files this deploy wrote, not a typed lockfile.
     const apm = rootPackageApm({ globalRoot: join(home, ".apm") });
     const deploy = new DeploySkill({
       inventory,
@@ -99,7 +93,6 @@ describe("the tracer journey through one cockpit", () => {
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,
       },
-      // A proven skill record: this journey is not about the post-install read.
       recordedPackage: {
         read: async () => ({
           kind: "recorded" as const,
@@ -150,7 +143,6 @@ describe("the tracer journey through one cockpit", () => {
         body: JSON.stringify(body),
       });
 
-    // J10 — the repo I work in joins the registered list.
     const registered = await postJson("/api/registry/repos", { path: repo });
     expect(registered.status).toBe(201);
     const { repos } = (await registered.json()) as {
@@ -159,7 +151,6 @@ describe("the tracer journey through one cockpit", () => {
     const registeredPath = repos[0]?.path;
     expect(registeredPath).toBeDefined();
 
-    // J01 — the inventory shows what there is to deploy.
     const inventory = await app.request("/api/inventory/primitives");
     expect(await inventory.json()).toEqual({
       primitives: [
@@ -171,9 +162,7 @@ describe("the tracer journey through one cockpit", () => {
       ],
     });
 
-    // J06 — one action deploys it into the repo registered a moment ago. The
-    // path comes from the registry's own answer, so a deploy that only works
-    // against a hand-spelled path would fail here.
+    // The path comes from the registry's own answer.
     const deployed = await postJson("/api/deploy", {
       type: "skill",
       name: "tdd",
@@ -184,7 +173,6 @@ describe("the tracer journey through one cockpit", () => {
       deployed: { type: "skill", name: "tdd", version: LATEST_TAG },
     });
 
-    // J02 — the same repo now reads back the skill at the tag it was pinned to.
     const state = await app.request(
       `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
     );

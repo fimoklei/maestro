@@ -57,7 +57,6 @@ const logHash = (logDir, log) => {
   }
 };
 
-/** Records a green run, with the hash of each log it left behind. */
 export function recordGreenRun(logDir, { fingerprint, finishedAt, logs }) {
   const hashes = Object.fromEntries(
     logs.map((log) => [log, logHash(logDir, log)]),
@@ -92,7 +91,6 @@ export function forgetGreenRun(logDir) {
   rmSync(join(logDir, RECORD), { force: true });
 }
 
-/** The reusable green run for this tree, or null after forgetting the record. */
 export function startRun(logDir, fingerprint, { force }) {
   const reusable =
     !force && fingerprint !== null

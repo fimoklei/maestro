@@ -18,9 +18,8 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane with the Origin/Host guard ENABLED (production posture).
-// Blocks DNS-rebinding / CSRF: a malicious site POSTing to localhost to make
-// the machine register or deploy. See .claude/rules/security.md.
+// The Origin/Host guard enabled, as in production: it blocks a malicious
+// site POSTing to localhost (DNS rebinding, CSRF).
 const LOCAL_HOST = "127.0.0.1:3000";
 const LOCAL_ORIGIN = "http://127.0.0.1:3000";
 

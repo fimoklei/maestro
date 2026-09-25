@@ -1,6 +1,5 @@
-// The one command a teammate runs after `git clone`: checks Node, pnpm and
-// apm, prints every gap with the command that closes it, then installs and
-// hands off to `pnpm dev`. Never installs a tool itself (#718).
+// Checks Node, pnpm and apm, prints each gap with the command that closes it,
+// then installs and hands off to `pnpm dev`. Never installs a tool itself (#718).
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -27,13 +26,7 @@ function apmVersionNumber(banner) {
   return /version (\d+\.\d+\.\d+)/.exec(banner)?.[1] ?? banner;
 }
 
-/**
- * Every prerequisite gap, with the exact command that closes it, plus a
- * standalone apm-version warning. `run` and `platform` are the injected seam
- * (prior art: `pidsOnPort`'s injected `lsof` in scripts/port-holders.mjs);
- * `nodeVersion` is passed in rather than read from `process` so the Node
- * check is testable with a fake version too.
- */
+/** Every prerequisite gap with the command that closes it, plus an apm-version warning. */
 export function checkPrerequisites({
   nodeVersion,
   requiredMajor,
@@ -68,7 +61,6 @@ export function checkPrerequisites({
   return { gaps, apmWarning };
 }
 
-/** The refusal to start, one line per gap. */
 export function formatGaps(gaps) {
   return [
     "[bootstrap] cannot start — fix these first:",

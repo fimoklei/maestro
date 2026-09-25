@@ -31,9 +31,8 @@ import {
   updatePreviewBody,
 } from "../update-preview-response";
 
-// The consent a refusal minted, so the reader's next attempt licenses exactly
-// the copies they were shown (#952). Spread into every refusal body: deploy,
-// update and retry all mint one.
+// Spread into every refusal body (deploy, update, retry), so the next attempt
+// licenses exactly the copies the reader was shown (#952).
 const refusalBody = (result: { copyReceipt?: string }) =>
   result.copyReceipt ? { copyReceipt: result.copyReceipt } : {};
 
@@ -49,8 +48,7 @@ type Deps = Pick<
   | "resolveGlobalRoot"
 >;
 
-// A failed check is a 200 the web maps to a badge, never an HTTP error — a
-// screen reading "up-to-date" when the check failed would falsely reassure.
+// A failed check is a 200 the web maps to a badge, never an HTTP error.
 const driftFailureBody = (result: { reason?: "unverified" }) =>
   result.reason
     ? { ok: false as const, reason: result.reason }
@@ -64,8 +62,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       drift: deps.drift,
     });
 
-  // Registry-gated: an unregistered repo is refused before any filesystem
-  // access, so a request can never read an arbitrary <path>/apm.lock.yaml.
+  // Registry-gated before any filesystem access, so no request reads an arbitrary path.
   app.get("/api/deploy-state", async (c) => {
     const gate = await requireRegisteredRepoAccess(c);
     if (!gate.ok) {
@@ -79,7 +76,6 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json({
       primitives: result.primitives,
       skipped: result.skipped,
-      // Maestro's own record, not an apm reading, so it crosses as it is.
       ...(result.pendingOperation
         ? { pendingOperation: result.pendingOperation }
         : {}),
@@ -87,8 +83,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  // Grouped per detected tool (ADR-0011). Server resolves the root itself —
-  // any ?repo is ignored. Missing lockfile is an honest empty state; malformed is 422.
+  // The server resolves the root itself; any ?repo is ignored.
   app.get("/api/deploy-state/global", async (c) => {
     const result = await deps.deployState.readGlobal(deps.resolveGlobalRoot());
     if (!result.ok) {
@@ -109,7 +104,6 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  // Business rules live in core; this route validates shape and maps errors.
   app.post("/api/deploy", async (c) => {
     const body = await parseBody(c, deployBodySchema, TARGET_BODY);
     if (!body.ok) {
@@ -119,8 +113,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     const result = await deps.deploy.execute(body.data);
     if (!result.ok) {
       const { status } = deployErrorResponses[result.error];
-      // The linked path is one core built from the deploy's own subtrees —
-      // never a line of apm prose (ADR-0018, security.md).
+      // Built by core from the deploy's own subtrees, never from apm prose.
       return c.json(
         {
           error: result.error,
@@ -142,9 +135,8 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     const result = await deps.remove.execute(body.data);
     if (!result.ok) {
       const { status } = removeErrorResponses[result.error];
-      // Omitted, never null: an absent key cannot be mistaken for an outcome
-      // the server proved (#416). The restated cost and its receipt travel
-      // together, or the confirmation names a cost it cannot act on (#364).
+      // Omitted, never null: an absent key cannot be mistaken for a proven outcome
+      // (#416). The cost and its receipt travel together (#364).
       return c.json(
         {
           error: result.error,
@@ -182,8 +174,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  // Read-only despite the POST: the target's path travels in the body, like the
-  // removal's own preflight. This slice writes nothing — the confirm is #954.
+  // Read-only despite the POST: the target's path travels in the body.
   app.post("/api/deploy/update/preflight", async (c) => {
     const body = await parseBody(
       c,
@@ -199,8 +190,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       const { status } = updatePreviewErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    // A preview failing its own shape check does not cross: the reader sees a
-    // refusal rather than a priced update the server cannot vouch for (#416).
+    // A preview failing its own shape check does not cross (#416).
     const preview = updatePreviewBody(result.preview);
     if (preview === null) {
       return c.json({ error: "preview-failed" }, 502);
@@ -208,8 +198,6 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json({ preview });
   });
 
-  // The confirm. Everything it acts on the use-case reads itself under the
-  // target lock; the body carries only the two proofs the reader was handed.
   app.post("/api/deploy/update", async (c) => {
     const body = await parseBody(c, updateBodySchema, UPDATE_BODY);
     if (!body.ok) {
@@ -217,8 +205,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
 
     const result = await deps.update.run(body.data);
-    // Omitted, never null: a refusal that never reached apm has no outcome,
-    // and an absent key cannot be mistaken for one the server proved (#416).
+    // Omitted, never null: a refusal that never reached apm has no outcome (#416).
     const outcome =
       result.ok || result.outcome
         ? updateOutcomeBody(result.ok ? result.outcome : (result.outcome ?? []))
@@ -234,17 +221,14 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
         status,
       );
     }
-    // An outcome failing its own shape check does not cross: the reader sees a
-    // refusal rather than a ledger the server cannot vouch for (#416).
+    // An outcome failing its own shape check does not cross (#416).
     if (outcome === null) {
       return c.json({ error: "update-failed" }, 502);
     }
     return c.json({ release: result.release, outcome });
   });
 
-  // The one way out of a Deploy or Remove that never finished. It re-runs the
-  // release and Selection the server itself recorded, so nothing the client
-  // sends chooses what happens (#951).
+  // Re-runs the release and Selection the server recorded; the client chooses nothing (#951).
   app.post("/api/deploy/retry", async (c) => {
     const body = await parseBody(c, retryOperationBodySchema, TARGET_BODY);
     if (!body.ok) {
@@ -265,8 +249,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json({ completed: result.completed });
   });
 
-  // Always 200 with a report — a per-skill refusal is data, not an HTTP error.
-  // Shares the deploy use-case's per-target in-flight lock (#292).
+  // Always 200 with a report: a per-skill refusal is data, not an HTTP error.
   const bulkDeploy = new BulkDeploySkills({ deploy: deps.deploy });
   app.post("/api/deploy/bulk", async (c) => {
     const body = await parseBody(c, bulkDeployBodySchema, BULK_DEPLOY_BODY);
@@ -278,9 +261,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json(report);
   });
 
-  // Always 200 with a report — one target's refusal is data, not an HTTP error.
-  // The walk delegates to the same remove use-case the single route drives, so
-  // every guard, the per-target lock and the reclaim contract stay there (#421).
+  // Always 200 with a report: one target's refusal is data, not an HTTP error.
   const bulkRemove = new BulkRemoveDeployedSkill({ remove: deps.remove });
   app.post("/api/deploy/remove/bulk", async (c) => {
     const body = await parseBody(c, bulkRemoveBodySchema, BULK_REMOVE_BODY);
@@ -292,7 +273,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json(report);
   });
 
-  // Registry-gated like deploy-state. Delegated to `apm outdated` (ADR-0001).
+  // Registry-gated like deploy-state.
   app.get("/api/drift", async (c) => {
     const gate = await requireRegisteredRepoAccess(c);
     if (!gate.ok) {
@@ -305,7 +286,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json({ behind: result.behind });
   });
 
-  // No path sent to core — user-scope is apm's global target; any ?repo is ignored.
+  // No path sent to core; any ?repo is ignored.
   app.get("/api/drift/global", async (c) => {
     const result = await deps.drift.execute({
       target: { kind: "global" },

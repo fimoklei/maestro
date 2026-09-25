@@ -1,7 +1,5 @@
-// Dev launcher: keeps one Maestro running per worktree — each on its own pair
-// of ports (scripts/cockpit-ports.mjs), so a sibling checkout can serve at the
-// same time — and with --smoke, an ephemeral, isolated rehearsal environment
-// (ADR-0010). What each platform allows: scripts/launch-policy.mjs.
+// Dev launcher: one Maestro per worktree, on its own pair of ports. With
+// --smoke, an ephemeral sandbox that never touches the real home.
 import { execFileSync, spawn } from "node:child_process";
 import {
   existsSync,
@@ -57,9 +55,7 @@ function isAlive(pid) {
   }
 }
 
-// The whole tree where the children lead their own group; the launcher's own
-// child otherwise, because a negative pid is a process group and Windows has no
-// such thing.
+// A negative pid is a process group, which Windows lacks: there, the child only.
 function killRun(pid, signal) {
   try {
     process.kill(policy.detached ? -pid : pid, signal);
@@ -72,8 +68,7 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-// Steps 1-4 read `lsof` and `ps` and signal a process group, so they run only
-// where the policy allows them (scripts/launch-policy.mjs).
+// Steps 1-4 use `lsof`, `ps` and process groups, so they run only where the policy allows.
 if (policy.singleInstance) {
   // Resolved, or a symlinked checkout reads its own previous run as a sibling's
   // and this launcher refuses to start for good.
@@ -100,8 +95,7 @@ if (policy.singleInstance) {
     rmSync(pidFile, { force: true });
   }
 
-  // 2. Refuse every holder but this worktree's own: the pair is derived from
-  // this path, so anything else on it is work this launcher did not start.
+  // 2. Refuse every holder but this worktree's own.
   const { foreign, evictable } = partitionHolders(
     findPortHolders(cockpitPortList),
     attribution,
@@ -112,8 +106,7 @@ if (policy.singleInstance) {
     process.exit(1);
   }
 
-  // 3. Fallback: free this worktree's own previous instance, when the pidfile
-  // above did not already catch it.
+  // 3. Fallback: free this worktree's own previous instance.
   let freedSomething = false;
   for (const { port, pid } of evictable) {
     // A lookup that could not answer names no pid here; step 4 refuses on it.
@@ -130,9 +123,7 @@ if (policy.singleInstance) {
     sleep(300); // let the OS release the sockets before we rebind
   }
 
-  // 4. Refuse when a holder survived the kill above — another user's process, or
-  // one that restarted itself. Starting anyway hands the cockpit's URL to it, so
-  // every later screenshot would prove that process rather than this worktree.
+  // 4. Refuse when a holder survived the kill, or the cockpit's URL would reach it.
   const stillHeld = describeHeldPorts(findPortHolders(cockpitPortList));
   if (stillHeld !== null) {
     console.error(stillHeld);
@@ -140,13 +131,10 @@ if (policy.singleInstance) {
   }
 }
 
-// 5. Start server + web — as one detached group where the policy allows it, so
-// we can kill the whole tree; in the foreground otherwise.
+// 5. Start server + web, as one detached group where the policy allows it.
 const env = { ...process.env };
 const sandbox = join(repoRoot, ".maestro-sandbox");
 
-// The children bind what the resolver decided, so nothing downstream re-derives
-// a pair of its own.
 env.PORT = String(ports.server);
 env.WEB_PORT = String(ports.web);
 
@@ -155,26 +143,20 @@ function wipeSandbox() {
 }
 
 if (smoke) {
-  // Bare start: wipe any sandbox left behind by a run that died before
-  // teardown, so smoke always begins from a clean, unconfigured state.
+  // Wipe any sandbox a crashed run left, so smoke starts unconfigured.
   wipeSandbox();
 
   env.MAESTRO_HOME = sandbox;
-  // apm derives its global (user-scope) location from HOME, not MAESTRO_HOME,
-  // so a global deploy would otherwise write into the real ~/.apm and
-  // ~/.claude/skills. Redirect HOME too, so smoke isolates the tools Maestro
-  // drives as well as Maestro's own state (.claude/rules/apm-driver.md).
+  // apm reads its global location from HOME, so redirect HOME too, or a global
+  // deploy writes into the real ~/.apm.
   env.HOME = join(sandbox, "home");
   mkdirSync(env.HOME, { recursive: true });
   console.log(
     `[smoke] MAESTRO_HOME=${env.MAESTRO_HOME} HOME=${env.HOME} (isolated from real data)`,
   );
 
-  // Corepack keeps the pinned pnpm under $HOME, so the redirect above hides it
-  // and every start would re-download it into a sandbox we wipe on teardown.
-  // A package-manager binary is dev tooling, not the user data smoke isolates.
-  // Same precedence corepack itself reads, against the real HOME: guessing
-  // ~/.cache would point at an empty directory wherever XDG_CACHE_HOME is set.
+  // Corepack keeps pnpm under $HOME, which the redirect hides. Read the real
+  // cache with corepack's own precedence: XDG_CACHE_HOME may be set.
   env.COREPACK_HOME =
     process.env.COREPACK_HOME ??
     join(
@@ -184,11 +166,8 @@ if (smoke) {
     );
   env.COREPACK_ENABLE_DOWNLOAD_PROMPT = "0";
 
-  // Only this dev-tooling harness bridges credentials to apm — the product
-  // never does (.claude/rules/security.md). gh's token is HOME-independent,
-  // so it survives the redirect above and lets a real deploy clone succeed.
-  // apm reads it from the env; git needs it written into the sandbox HOME,
-  // which seedSandbox does.
+  // Dev tooling only: the product never bridges credentials to apm. gh's token
+  // survives the HOME redirect; seedSandbox writes it for git.
   const UNAUTHENTICATED =
     "[smoke] gh not authenticated — connect/register/UI work, but the harness strip stays on 'Read failed' and a real deploy will fail";
   let githubToken;
@@ -207,9 +186,7 @@ if (smoke) {
     console.warn(UNAUTHENTICATED);
   }
 
-  // Everything the rehearsal needs is seeded under the redirected HOME, where
-  // the folder chooser opens (ADR-0032). Nothing is pre-registered: connect
-  // and registration stay UI use-cases the rehearsal exercises (ADR-0010).
+  // Nothing is pre-registered: connect and registration stay UI steps to exercise.
   const seeded = seedSandbox({
     home: env.HOME,
     inventorySource: join(homedir(), "Projects", "agent-harness"),
@@ -226,8 +203,7 @@ if (smoke) {
   );
 }
 
-// append-only, or pnpm's dynamic reporter collapses two never-ending dev
-// servers into a redrawn summary instead of streaming their prefixed lines.
+// Append-only, or pnpm's dynamic reporter redraws the two dev servers' lines.
 // pnpm is a .cmd shim on Windows; spawn can't launch that without a shell.
 const child = spawn(
   "pnpm",
@@ -258,16 +234,13 @@ console.log(
   `[dev] this worktree's cockpit: ${urls.web} (api ${urls.api}) — \`pnpm cockpit:url\` prints it again`,
 );
 
-// Where the run is detached, this pid leads the process group every server
-// below it belongs to. `pnpm smoke:ready` compares against it, because
-// answering on the cockpit's ports is not proof of being this run.
+// `pnpm smoke:ready` compares against this pid: answering on the ports is not proof.
 if (smoke) writeSmokeMarker(sandbox, { launcherPid: child.pid });
 
 function teardownSandbox() {
   if (!smoke) return;
-  // Best-effort: never apm uninstall -g (it deletes beyond its lockfile —
-  // apm-driver.md). Because HOME points into the sandbox, wiping it cannot
-  // touch the real ~/.claude or ~/.apm.
+  // Never `apm uninstall -g`: it deletes beyond its lockfile. HOME points into
+  // the sandbox, so this wipe cannot touch the real home.
   wipeSandbox();
 }
 

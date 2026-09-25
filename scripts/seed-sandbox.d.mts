@@ -1,5 +1,3 @@
-// Typed contract for the dev harness's seeding step, so the integration test
-// can import it under the repo's strict TypeScript settings.
 export interface SeedSandboxOptions {
   home: string;
   inventorySource: string;

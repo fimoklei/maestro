@@ -1,6 +1,3 @@
-// Confirming a release, driven through the real Hono app against a real clone
-// and a real bare remote. Mirrors server-harness.test.ts's setup so the plan
-// and the confirm are proven against the same journey (#520).
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -65,8 +62,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     await git(root, "commit", "-m", "first skill");
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
-    // A second skill after the tag, so every release this suite publishes has
-    // something in it — publishing v0.1.0 itself again would be empty (#970).
+    // A second skill after the tag, so every release here has content (#970).
     await mkdir(join(root, ".apm", "skills", "research"), { recursive: true });
     await writeFile(
       join(root, ".apm", "skills", "research", "SKILL.md"),
@@ -91,8 +87,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessPath,
-      // The real released read: these suites build real repositories,
-      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
       readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
@@ -141,9 +136,8 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
   const headOf = async (cwd: string) =>
     (await git(cwd, "rev-parse", "HEAD")).stdout.trim();
 
-  // A teammate's clone, pushing onto the same bare remote. This is the race
-  // every refusal below is about: someone else moved the branch or took the
-  // version between the author's plan and their confirmation (#521).
+  // A teammate's clone on the same remote: the race every refusal below
+  // is about (#521).
   const teammate = async () => {
     const other = join(base, "other");
     await run("git", ["clone", remote, other]);
@@ -152,9 +146,8 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     return other;
   };
 
-  // Runs on the remote's side of the push, before it advertises its refs — the
-  // only place to stage a name taken after this confirmation's own fetch has
-  // already answered. `"$@"` forwards the repository git passes in.
+  // Runs on the remote before it advertises its refs, the only place to
+  // take a name after this confirmation's fetch. `"$@"` forwards the repository.
   const takeTagDuringPush = async (name: string, commit: string) => {
     const script = join(base, "receive-pack.sh");
     await writeFile(
@@ -165,9 +158,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     await git(root, "config", "remote.origin.receivepack", script);
   };
 
-  // Exactly what the dialog holds and echoes back: the three fields the
-  // confirmation is checked against. Captured before a race is staged, so a
-  // test sends the plan the author actually saw.
+  // The plan the author saw, captured before a race is staged.
   const capturePlan = async (app: ReturnType<typeof makeApp>) => {
     const plan = (await (
       await app.request("/api/harness/release-plan")
@@ -308,9 +299,8 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
   });
 
   describe("a remote that moved under the plan", () => {
-    // The author opened a plan, a teammate pushed, and only then did the
-    // author confirm. Every case answers with the plan that replaces the one
-    // being refused, so the dialog can take a new confirmation (#521).
+    // Every refusal answers with the replacing plan, so the dialog can
+    // take a new confirmation (#521).
     type Refusal = {
       error: string;
       message: string;
@@ -365,8 +355,6 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     });
 
     it("refuses a plan whose previous tag was force-moved under the same name", async () => {
-      // The version numbers all still line up — only the commit the previous
-      // release points at has changed, and with it the delta the author read.
       const app = makeApp(root);
       await app.request("/api/harness/refresh", { method: "POST" });
       const plan = await capturePlan(app);
@@ -392,8 +380,6 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     });
 
     it("refuses a confirmation whose own version the remote already carries", async () => {
-      // The tag the plan proposes is taken, but the tip has not moved: the
-      // fetch at confirmation time sees it, so the push is never asked.
       const app = makeApp(root);
       await app.request("/api/harness/refresh", { method: "POST" });
       const plan = await capturePlan(app);
@@ -413,12 +399,8 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     });
 
     it("reports a version taken after this confirmation's own read as retryable", async () => {
-      // The name is taken between this confirmation's fetch and its push — the
-      // window no read can close. A normal outcome: nothing was overwritten,
-      // and the reply carries the plan to confirm instead (#521).
-      // A commit off the default branch, so the remote has something other
-      // than the tip for the name to be taken at. The tip itself never moves,
-      // which is what keeps the plan valid right up to the push.
+      // The name is taken between this confirmation's fetch and its push (#521).
+      // A commit off the default branch, so the tip itself never moves.
       const other = await teammate();
       await git(other, "checkout", "-b", "side");
       await writeFile(join(other, "side.md"), "side\n", "utf8");
@@ -430,9 +412,6 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       const app = makeApp(root);
       await app.request("/api/harness/refresh", { method: "POST" });
       const plan = await capturePlan(app);
-      // The remote takes the name mid-push, after this confirmation's own
-      // fetch has already answered. Only a hook inside the push can stage
-      // that: no read, however fresh, can see it coming.
       await takeTagDuringPush("v0.1.1", sideCommit);
 
       const res = await publish(app, {
@@ -444,7 +423,6 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       const body = (await res.json()) as Refusal;
       expect(body.error).toBe("already-released");
       expect(body.plan?.previousTag).toBe("v0.1.1");
-      // Someone else's tag stands exactly where they put it.
       expect(
         (await git(remote, "rev-parse", "refs/tags/v0.1.1")).stdout.trim(),
       ).toBe(sideCommit);
@@ -470,8 +448,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
   });
 
   describe("a push the remote refused outright", () => {
-    // Refuses the push and nothing else: fetching and `ls-remote` still work,
-    // so this is a failed push rather than an unreachable harness.
+    // Refuses only the push, so this is a failed push, not an unreachable harness.
     const refusePush = async () => {
       const script = join(base, "refuse.sh");
       await writeFile(script, "#!/bin/sh\nexit 1\n", {
@@ -496,8 +473,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       });
 
       expect(res.status).toBe(502);
-      // The one refusal that starts life as a git error: whatever git wrote to
-      // stderr must not reach the browser (security.md).
+      // Git's stderr must not reach the browser.
       const text = await res.clone().text();
       expect(text).not.toContain(root);
       expect(text).not.toContain(remote);
@@ -514,8 +490,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
   });
 
   describe("a harness whose default branch is not main", () => {
-    // `git init -b main` above is a convention, not a promise: nothing in the
-    // release path may assume the branch is called main (#521).
+    // Nothing in the release path may assume the branch is called main (#521).
     beforeEach(async () => {
       await git(root, "branch", "-m", "main", "trunk");
       await git(root, "push", "origin", "HEAD:trunk");
@@ -549,9 +524,8 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
   });
 
   describe("tags outside the default branch's history", () => {
-    // A release tag is the highest `vX.Y.Z` wherever it points — tags are
-    // neither attributed nor filtered by reachability (ADR-0021). A tag on an
-    // unmerged side branch therefore still prices the next release.
+    // A release tag is the highest `vX.Y.Z` wherever it points, so a tag on
+    // an unmerged side branch still prices the next release.
     beforeEach(async () => {
       const other = await teammate();
       await git(other, "checkout", "-b", "side");
@@ -560,9 +534,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       await git(other, "commit", "-m", "side commit");
       await git(other, "tag", "v0.4.0");
       await git(other, "push", "--tags", "origin", "HEAD:refs/heads/side");
-      // A skill added on main after the side branch forked, so main's own
-      // delta since v0.4.0 is never empty (#970) — orthogonal to the tag
-      // reachability this describe block is about.
+      // Keeps main's own delta since v0.4.0 non-empty (#970).
       await mkdir(join(root, ".apm", "skills", "prototype"), {
         recursive: true,
       });
@@ -592,8 +564,6 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
         tag: "v0.4.1",
         revision: head,
       });
-      // Tagged at the default branch's tip, never at the side branch the
-      // previous tag sits on.
       expect(
         (await git(remote, "rev-parse", "refs/tags/v0.4.1")).stdout.trim(),
       ).toBe(head);

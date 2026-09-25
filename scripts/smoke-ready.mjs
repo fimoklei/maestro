@@ -1,8 +1,5 @@
 // Brings a running `pnpm smoke` cockpit to the state a UI check needs: waits
-// until server and web answer, then connects the inventory and registers one
-// consuming repo through the API. `pnpm smoke` itself stays bare — connect and
-// registration remain the UI use-cases the rehearsal exercises (ADR-0010).
-// This step is dev tooling for verifying a change, not the rehearsal.
+// for it, connects the inventory and registers one consuming repo.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -13,21 +10,15 @@ import { MARKER_FILE, seededPaths } from "./seed-sandbox.mjs";
 
 const PORTS = cockpitPorts();
 const { web: WEB_ORIGIN, api: SERVER_ORIGIN } = cockpitUrls(PORTS);
-// The cockpit's own origin: the server refuses a state-changing request without
-// an allowlisted Origin header (packages/server/src/origin-host-guard.ts).
+// The server refuses a state-changing request without an allowlisted Origin.
 const BROWSER_ORIGIN = WEB_ORIGIN;
-// Both ports `dev.mjs` binds as one group, so ownership covers what the browser
-// renders and not only what the API answers.
+// Both ports, so ownership covers what the browser renders, not only the API.
 const COCKPIT_PORTS = [PORTS.server, PORTS.web];
 
 const wallClock = () => Date.now();
 const realSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Polls until the cockpit answers, or the deadline passes. A probe that throws
- * counts as "not up yet" — a refused connection is the normal state while the
- * dev server boots, not a fault worth reporting.
- */
+/** Polls until the cockpit answers; a probe that throws counts as not up yet. */
 export async function waitForCockpit({
   probe,
   timeoutMs = 60_000,
@@ -65,11 +56,9 @@ async function post(request, path, body, what) {
 }
 
 /**
- * Connects the inventory and registers the consuming repo, in that order — a
- * repo registered against no inventory shows deploy-state for nothing. Any
- * refusal stops the sequence — an inventory whose count could not be read
- * included (#544): a half-seeded cockpit would look ready and lie. A confirmed
- * zero is a Harness with no release yet, which is a valid state (#841).
+ * Connects the inventory, then registers the repo. Any refusal stops the
+ * sequence, an unreadable count included (#544): a half-seeded cockpit would
+ * look ready and lie.
  */
 export async function seedCockpit({ request, inventoryPath, repoPath }) {
   const connected = await post(
@@ -99,12 +88,8 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
 
 /**
  * Whether every cockpit listener is this sandbox's own smoke run. Answering is
- * not identity: a sandbox left behind by a killed run, plus a plain `pnpm dev`
- * on the same ports, would otherwise take the rehearsal's paths into the real
- * ~/.maestro. `dev.mjs --smoke` spawns its children as one detached group led
- * by the launcher, so each holder's process group is the proof. Both ports are
- * weighed because the screenshot comes from the web app, not the API (#453).
- * Every unknown refuses.
+ * not identity: a stale sandbox plus a plain `pnpm dev` would seed the real
+ * ~/.maestro. Every unknown refuses (#453).
  */
 export function identifySmokeInstance({ marker, holders, processGroupOf }) {
   if (marker === null) {
@@ -139,7 +124,6 @@ export function identifySmokeInstance({ marker, holders, processGroupOf }) {
   return { ok: true };
 }
 
-/** The launcher's own record of this run, or null when there is none to trust. */
 export function readSmokeMarker(sandboxDir) {
   try {
     const marker = JSON.parse(
@@ -189,7 +173,6 @@ async function requestJson(path, body) {
   };
 }
 
-/** Exits the process unless the cockpit belongs to this checkout's smoke run. */
 function requireOwnership(repoRoot, label, refusal) {
   const identity = identifySmokeInstance({
     marker: readSmokeMarker(join(repoRoot, ".maestro-sandbox")),
@@ -205,10 +188,7 @@ function requireOwnership(repoRoot, label, refusal) {
   process.exit(1);
 }
 
-/**
- * Asks the ownership question alone, so it can be re-asked before every
- * screenshot. Seeds nothing, so repeating it cannot register the repo twice.
- */
+/** Asks ownership alone, so it can be re-asked; it seeds nothing. */
 function check(repoRoot) {
   requireOwnership(repoRoot, "smoke:check", "the cockpit is not yours");
   console.log(
@@ -232,8 +212,7 @@ async function main() {
   });
 
   if (!ready) {
-    // Fail closed: an unanswered cockpit is not a slow one we may assume into
-    // existence.
+    // Fail closed: an unanswered cockpit is not a slow one.
     console.error(
       `[smoke:ready] nothing answered on ${SERVER_ORIGIN} and ${WEB_ORIGIN} within 60s.\n` +
         "Start the cockpit first: `pnpm smoke` (in the background), then re-run this.",

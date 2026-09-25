@@ -1,12 +1,6 @@
-// Reconciling an obsolete deployed copy on the GLOBAL path, against a real tree
-// under a sandbox HOME. When a global deploy narrows the target set (e.g. a
-// Claude-only machine that once ran `-t claude,codex`), apm leaves the codex
-// copy under ~/.agents/skills/<name> behind. DeployedCleanupAdapter removes
-// exactly that obsolete subtree — a direct, subtree-scoped filesystem removal,
-// never `apm uninstall -g`, which deletes beyond its lockfile (apm-driver.md).
-//
-// Sandbox HOME only: the resolver takes an env, so the real ~/.agents and
-// ~/.claude/skills are never touched.
+// A narrowed global deploy leaves apm's codex copy behind; the cleanup removes
+// exactly that subtree, never through `apm uninstall -g`, which deletes beyond
+// its lockfile.
 import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

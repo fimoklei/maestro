@@ -14,8 +14,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
   const { writeSkill, makeApp, refresh, read, promote } = stages;
 
   it("carries a skill through proposal, review and release as three separate rows", async () => {
-    // Local edit → prepared proposal → an open request → a further local edit,
-    // with the first change already merged: one skill, three pieces of work.
+    // One skill, three pieces of work, the first already merged.
     const app = makeApp();
     await writeSkill("tdd", "first change");
     await promote(app, "tdd");
@@ -25,14 +24,12 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       complete: true,
       limit: 100,
     });
-    // The reviewer merges the proposal in the fixture's own remote.
     await git(
       stages.remote,
       "update-ref",
       "refs/heads/main",
       "refs/heads/maestro/tdd",
     );
-    // …and the author keeps editing afterwards.
     await writeSkill("tdd", "second change");
 
     const state = await refresh(app);
@@ -46,7 +43,6 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     expect(rowsOf(state.stages.release)).toMatchObject([
       { skill: "tdd", status: "changed" },
     ]);
-    // The new local work follows the open request, so it links to it too.
     expect(rowsOf(state.stages.proposal)[0]?.requests).toEqual([
       {
         number: 45,
@@ -55,7 +51,6 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
         baseBranch: "main",
       },
     ]);
-    // Every row names the other two, in journey order.
     expect(rowsOf(state.stages.proposal)[0]?.alsoIn).toEqual([
       "pending-review",
       "pending-release",
@@ -63,8 +58,8 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
   });
 
   it("clears a carried-back change from Pending proposal once its proposal merges", async () => {
-    // #978: the change stays uncommitted in the clone after Propose change,
-    // and merging it on GitHub moved nothing locally.
+    // #978: the change stays uncommitted after Propose change, and merging it
+    // on GitHub moved nothing locally.
     const app = makeApp();
     await writeSkill("tdd", "carried back");
     await promote(app, "tdd");
@@ -97,7 +92,6 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     });
     await refresh(app);
 
-    // A second client, with nothing carried over from the first.
     const again = await read(makeApp());
 
     expect(rowsOf(again.stages.review)).toMatchObject([
@@ -241,13 +235,11 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     ]);
     expect(state.stages.review).toEqual({ outcome: "unavailable" });
     expect(state.stages.release.outcome).toBe("read");
-    // Membership is unknown, so no row claims to be the only one.
     expect(rowsOf(state.stages.proposal)[0]?.alsoIn).toBeNull();
   });
 
   it("keeps a local deletion out of another stage's reading", async () => {
     const app = makeApp();
-    // A change that merged, and then the author deletes the skill locally.
     await writeSkill("tdd", "merged change");
     await git(stages.root, "add", ".");
     await git(stages.root, "commit", "-m", "second");

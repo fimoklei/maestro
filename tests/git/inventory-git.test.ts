@@ -1,6 +1,4 @@
-// The git questions apm cannot answer, asked against a real local inventory
-// clone: does a tag's tree contain skills/<name>? (apm view is repo-level —
-// see .claude/rules/apm-driver.md.)
+// The git questions apm cannot answer, against a real local inventory clone.
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -61,8 +59,7 @@ describe("InventoryGitAdapter", () => {
   });
 
   it("rejects when the tag does not exist locally, instead of guessing", async () => {
-    // A stale clone (tag resolved remotely by apm but never fetched) must
-    // surface as an error, not masquerade as "skill not published".
+    // A stale clone must surface as an error, not "skill not published".
     await expect(adapter().skillExistsAtTag("v9.9.9", "tdd")).rejects.toThrow();
   });
 
@@ -85,8 +82,7 @@ describe("InventoryGitAdapter", () => {
   });
 
   it("detects an untracked file added since the tag", async () => {
-    // git diff alone misses untracked files; a brand-new reference file in
-    // the skill is still drift the tag does not contain.
+    // git diff alone misses untracked files.
     await writeFile(
       join(root, ".apm", "skills", "tdd", "extra.md"),
       "new reference\n",
@@ -126,9 +122,7 @@ describe("InventoryGitAdapter", () => {
     await expect(broken.skillExistsAtTag("v0.1.0", "tdd")).rejects.toThrow();
   });
 
-  // The release side of the local-copy guard: a deployed copy is compared with
-  // these hashes file for file, so an equal copy is never read as local edits
-  // (#952).
+  // A deployed copy equal to these hashes is never read as local edits (#952).
   describe("reading a skill's files at a release", () => {
     const sha = (contents: string) =>
       `sha256:${createHash("sha256").update(contents).digest("hex")}`;
@@ -196,10 +190,8 @@ describe("InventoryGitAdapter", () => {
 });
 
 describe("InventoryGitAdapter.syncBeforeDeploy", () => {
-  // Reproduces #666: a teammate's PR merges and tags on GitHub, but Maestro's
-  // own clone — checked out on the default branch, tracking origin — never
-  // moves. `git diff <tag> -- path` then reads the just-released skill as
-  // untracked-and-missing, and reports it diverged from the tag it *is*.
+  // #666: Maestro's own clone never moves after a merge on GitHub, so
+  // `git diff <tag> -- path` read the just-released skill as diverged.
   let bareRemote: string;
   let root: string;
   let author: string;
@@ -229,9 +221,6 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
     await git(author, "tag", "v0.1.0");
     await git(author, "push", "origin", "main", "v0.1.0");
 
-    // Maestro's own clone, made before the release below — exactly the state
-    // left behind right after `promote` pushes a branch and the human merges
-    // its PR on GitHub without ever pulling this clone.
     root = await mkdtemp(join(tmpdir(), "maestro-inventory-root-"));
     await git(root, "clone", bareRemote, ".");
   });
@@ -246,8 +235,7 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
     new InventoryGitAdapter({ resolveRoot: async () => root });
 
   it("clears a carried-back change once it is released, and catches up", async () => {
-    // #978: the same rule as the Harness Read, so deploy never reads a
-    // landed change as local work standing in the way.
+    // #978: deploy never reads a landed change as local work.
     await writeFile(
       join(author, ".apm", "skills", "tdd", "SKILL.md"),
       "---\nname: tdd\ndescription: Carried back\n---\n",
@@ -292,9 +280,8 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
   });
 
   it("reads promote's untracked copy of a released skill as the release it is", async () => {
-    // #750: promote commits on a branch, so this clone's `main` lacks the path
-    // while a byte-identical copy sits there untracked — which the tracked tree
-    // alone reads as the release having been deleted.
+    // #750: this clone's `main` lacks the path while an identical copy sits
+    // untracked, which the tracked tree alone reads as a deletion.
     await addSkill(author, "fresh");
     await git(author, "add", ".");
     await git(author, "commit", "-m", "add fresh skill");

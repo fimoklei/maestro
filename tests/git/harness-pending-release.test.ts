@@ -1,8 +1,5 @@
-// The Pending release delta against real repositories. The remote is a bare
-// repo on disk, so the whole file is offline (.claude/rules/testing.md).
-//
-// The point of the lane: a delta read from commit ancestry answers differently
-// per merge strategy. Reading skill trees must not (ADR-0021, #517).
+// A delta read from commit ancestry answers differently per merge strategy;
+// reading skill trees must not (#517).
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,8 +13,7 @@ import { stubReview } from "../helpers/stub-review";
 
 const run = promisify(execFile);
 
-// A harness Maestro has fetched: only a confirmed fetch makes tags mean
-// anything, and the delta hangs off the tag.
+// Only a confirmed fetch makes tags mean anything.
 const FETCHED: HarnessFreshness = {
   outcome: "fetched",
   lastFetchedAt: "2026-08-03T07:00:00.000Z",
@@ -44,9 +40,8 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     await git(root, "commit", "-m", message);
   };
 
-  // A clone whose configured origin is a GitHub URL — Maestro refuses any
-  // other (ADR-0014) — while git reaches the bare repo beside it. The rewrite
-  // keeps the lane offline (LEARNINGS.md · git-remote-get-url-resolves-insteadof).
+  // The GitHub origin is rewritten to the bare repo beside it, so the lane
+  // stays offline.
   const buildClone = async (label: string) => {
     const remote = join(base, `${label}.git`);
     const root = join(base, label);
@@ -60,7 +55,6 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     return { remote, root };
   };
 
-  // A released harness carrying one skill, plus a clone Maestro reads from.
   const buildHarness = async (label: string) => {
     const { remote, root } = await buildClone(label);
     await writeSkill(root, "tdd", "first");
@@ -84,8 +78,6 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
   const movementsOf = async (root: string): Promise<PendingSkillMovement[]> => {
     const read = readerFor(root);
     await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
-    // The delta with its authors, which is what the release dialog reads. The
-    // Pending release stage carries the same movements without the author.
     const result = await read.planRelease();
     if (!result.ok) {
       throw new Error(`unexpected refusal: ${result.error}`);
@@ -93,8 +85,6 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     return result.plan.delta;
   };
 
-  // What Pending release itself shows: the stage's own rows, so a claim about
-  // the delta is never taken as a claim about the table an author reads.
   const releaseStageOf = async (root: string): Promise<string[]> => {
     const result = await readerFor(root).refresh(
       new Date("2026-08-03T08:00:00.000Z"),
@@ -108,8 +98,6 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       : [stage.outcome];
   };
 
-  // One teammate's work — change tdd, add research — landed on main the way the
-  // named strategy would land it.
   const deliver = async (strategy: Strategy) => {
     const { remote, root } = await buildHarness(strategy);
     const mate = join(base, `${strategy}-mate`);
@@ -144,8 +132,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     await removeGitTempTree(base);
   });
 
-  // One delta, three ways of landing it: the strategies are separate tests so a
-  // failure names the one that disagreed.
+  // One test per strategy, so a failure names the one that disagreed.
   const DELIVERED: PendingSkillMovement[] = [
     { kind: "added", name: "research", author: "Mate" },
     { kind: "changed", name: "tdd", author: "Mate" },
@@ -186,8 +173,6 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
   });
 
   it("compares against the highest tag even where it sits outside main's history", async () => {
-    // A repository shared with another product tags branches Maestro's default
-    // branch never carried. The highest tag is still the previous release.
     const { root } = await buildHarness("sidetag");
     await git(root, "checkout", "-b", "side");
     await writeSkill(root, "tdd", "side release");
@@ -199,8 +184,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     await commitAll(root, "add research");
     await git(root, "push", "origin", "HEAD:main");
 
-    // v0.2.0 carries the side branch's tdd, so main's original tdd reads as a
-    // change against it — the tag is compared, not the branch it hangs off.
+    // The tag is compared, not the branch it hangs off.
     await expect(movementsOf(root)).resolves.toEqual([
       { kind: "added", name: "research", author: "Author" },
       { kind: "changed", name: "tdd", author: "Author" },
@@ -208,8 +192,6 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
   });
 
   it("names the author who deleted a skill, from the branch that no longer has it", async () => {
-    // The one claim the use-case makes about git: the commit that removed a
-    // path is still found by a log of that path at the default branch.
     const { root } = await buildHarness("deleted");
     await rm(join(root, ".apm", "skills", "tdd"), { recursive: true });
     await commitAll(root, "retire tdd");
@@ -221,8 +203,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
   });
 
   it("names a removal's author from the release the branch never carried", async () => {
-    // The release tag sits on another history and carries a skill main never
-    // saw, so main's log of that path answers nothing and the tag must.
+    // The tag sits on another history, so main's log answers nothing.
     const { root } = await buildHarness("offhistory");
     await git(root, "checkout", "-b", "side");
     await writeSkill(root, "grilling", "side only");
@@ -281,8 +262,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     ]);
   });
 
-  // The stage's own membership, measured against the latest release rather
-  // than against anything local (#845).
+  // Measured against the latest release, not anything local (#845).
   describe("Pending release membership", () => {
     it("holds a change reverted before release out of the stage", async () => {
       const { root } = await buildHarness("reverted");
@@ -334,7 +314,6 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     });
 
     it("never reads a proposal branch's content as released work", async () => {
-      // The proposal is pushed and its request may even be merged elsewhere.
       // Only what the default branch carries can await release (#845).
       const { root } = await buildHarness("reused-branch");
       await git(root, "checkout", "-b", "maestro/tdd");
@@ -345,9 +324,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
 
       await expect(releaseStageOf(root)).resolves.toEqual([]);
 
-      // The same content lands on main as a squash, and the branch stays put
-      // and is pushed again with newer content. The stage reads main's content
-      // against the release — never the branch, and never which request merged.
+      // The stage reads main's content against the release, never the branch.
       await git(root, "merge", "--squash", "maestro/tdd");
       await commitAll(root, "squashed tdd");
       await git(root, "push", "origin", "HEAD:main");

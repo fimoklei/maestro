@@ -19,10 +19,6 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: drives the real Hono app via app.request against real temp
-// dirs. The deploy-state route is registry-gated — membership is checked before
-// any lockfile is read. The Origin/Host guard is disabled here (its enforcement
-// lives in server-security.test.ts).
 describe("deploy-state HTTP route", () => {
   let home: string;
 
@@ -123,8 +119,7 @@ describe("deploy-state HTTP route", () => {
   });
 
   it("rejects a repo that is not registered, even when it has a lockfile", async () => {
-    // The lockfile exists but the repo was never registered: the gate must
-    // refuse before reading it, so the response can never leak its contents.
+    // The gate refuses before reading, so the response never leaks the lockfile.
     const repo = await makeRepo(tddLockfile);
     const { app } = makeApp();
 

@@ -1,7 +1,4 @@
-// Restoring a deleted skill folder, driven through the real Hono app against a
-// real clone and a real bare remote. Four copies of the same skill exist —
-// local HEAD's, origin/HEAD's, the proposal branch's and the release tag's —
-// and only one of them may ever land on disk (ADR-0030, #888).
+// Four copies of the same skill exist, and only one may ever land on disk (#888).
 import { execFile } from "node:child_process";
 import {
   lstat,
@@ -61,8 +58,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
   let base: string;
   let remote: string;
   let root: string;
-  // The four deliberately different copies, so the one that lands proves which
-  // source was read rather than which one happened to be identical.
+  // Deliberately different copies, so the one that lands proves its source.
   let localHead: string;
 
   const git = (cwd: string, ...args: string[]) => run("git", args, { cwd });
@@ -83,8 +79,6 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     return (await git(root, "rev-parse", "HEAD")).stdout.trim();
   };
 
-  // The tree hash of the skill folder as it stands on disk, read the same way
-  // the Harness read reads it.
   const onDisk = async () =>
     (await new HarnessGitAdapter().readMovementTrees(root))?.working.tdd ??
     null;
@@ -92,8 +86,6 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
   const treeAt = async (ref: string) =>
     (await git(root, "rev-parse", `${ref}:${FOLDER}`)).stdout.trim();
 
-  // Every ref both repositories hold, so nothing about a branch, a tag or a
-  // remote-tracking ref can move without this test seeing it.
   const refs = async () => ({
     clone: (await git(root, "show-ref")).stdout,
     remote: (await git(remote, "show-ref")).stdout,
@@ -108,7 +100,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     await git(root, "config", "user.email", "test@example.com");
     await git(root, "config", "user.name", "Test");
     // git resolves the GitHub origin to the bare repo next door, so the suite
-    // stays offline (LEARNINGS · git-remote-get-url).
+    // stays offline.
     await git(root, "config", `url.${remote}.insteadOf`, ORIGIN_URL);
     await git(root, "remote", "set-url", "origin", ORIGIN_URL);
     await writeFile(join(root, "apm.yml"), "name: agent-harness\n", "utf8");
@@ -120,8 +112,6 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     await git(root, "push", "origin", "HEAD:main");
     await commit("on the proposal branch", "proposed change");
     await git(root, "push", "origin", "HEAD:refs/heads/maestro/tdd");
-    // The author's own commit, on this disk and nowhere else: the one copy a
-    // restoration may ever choose.
     localHead = await commit("only in the local commit", "local work");
 
     await new HarnessGitAdapter().fetch(root);
@@ -213,8 +203,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
 
-  // `force` because a sparse checkout takes the folder out itself, and the
-  // ambiguity cases still have to reach the route with it gone.
+  // `force` because a sparse checkout takes the folder out itself.
   const deleteFolder = () =>
     rm(join(root, FOLDER), { recursive: true, force: true });
 
@@ -246,18 +235,15 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ name: "tdd", commit: localHead });
-    // Byte for byte: the same tree hash git recorded in the commit.
     expect(await onDisk()).toBe(committed);
-    // And nothing else was in the running: each other source differs.
     for (const ref of ["origin/main", "refs/remotes/origin/maestro/tdd"]) {
       expect(await treeAt(ref)).not.toBe(committed);
     }
     expect(await treeAt("refs/maestro/tags/v0.1.0")).not.toBe(committed);
   });
 
-  // A tree hash cannot see this: hashing the working copy back cleans the line
-  // endings again, so only the bytes on disk say whether the checkout rewrote
-  // them.
+  // A tree hash re-cleans line endings; only the bytes on disk show
+  // whether the checkout rewrote them.
   it("writes the committed bytes even where the clone asks for CRLF", async () => {
     const app = makeApp();
     await git(root, "config", "core.autocrlf", "true");
@@ -282,8 +268,6 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(
       localHead,
     );
-    // The unrelated staged file is still staged, and the folder is back with
-    // nothing of its own left to report.
     expect((await git(root, "status", "--porcelain")).stdout).toBe(
       "A  staged.md\n",
     );
@@ -301,12 +285,10 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
 
     expect(response.status).toBe(200);
     expect(await onDisk()).toBe(await treeAt("HEAD"));
-    // The restoration asked GitHub nothing at all; only the state read did.
     expect(review.created).toEqual([]);
   });
 
-  // The proposal branch still holds a different copy, so the row stays: a
-  // restoration answers for the folder, never for what review is waiting on.
+  // A restoration answers for the folder, never for what review awaits.
   it("keeps the remaining difference visible after the folder is back", async () => {
     const app = makeApp();
     await deleteFolder();
@@ -352,7 +334,6 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ error: "staged-changes" });
-    // The real index is the author's: the refusal left it exactly as it was.
     expect((await git(root, "status", "--porcelain")).stdout).toBe(staged);
     expect(await onDisk()).toBeNull();
   });
@@ -370,7 +351,6 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ error: "destination-exists" });
-    // The reader's own file is untouched, and no committed file joined it.
     expect(
       (await git(root, "status", "--porcelain", "--", FOLDER)).stdout,
     ).toBe(` D ${FOLDER}/SKILL.md\n?? ${FOLDER}/notes.md\n`);
@@ -397,11 +377,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     expect(await response.json()).toMatchObject({ error: "invalid-body" });
   });
 
-  // A working tree that is mid-rewrite, conflicted or incomplete by design
-  // cannot answer for what the author means, so nothing is written into it.
   describe("an ambiguous working tree", () => {
-    // Every refusal is proved by the clone as well as the class: the folder is
-    // still gone and no ref on either side moved.
     const refuses = async (error: string) => {
       const app = makeApp();
       await deleteFolder();
@@ -419,8 +395,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       expect(await refs()).toEqual(before);
     };
 
-    // Two branches editing the same line of a file outside the skills tree, so
-    // the conflict never touches what the restoration is about.
+    // The conflict is outside the skills tree.
     const conflictingBranch = async () => {
       await git(root, "checkout", "-b", "theirs");
       await writeFile(join(root, "README.md"), "theirs\n", "utf8");
@@ -452,15 +427,12 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     it("refuses while a conflict is left unresolved", async () => {
       await conflictingBranch();
       await git(root, "merge", "theirs").catch(() => {});
-      // `--quit` drops MERGE_HEAD and leaves the conflicted entries standing,
-      // so this is the unresolved-conflict case on its own.
+      // `--quit` drops MERGE_HEAD and leaves the conflicted entries standing.
       await git(root, "merge", "--quit");
       await refuses("unresolved-conflicts");
     });
   });
 
-  // Whatever sits at the destination is the author's, and a restoration never
-  // replaces it — whichever kind of thing it is.
   describe("an occupied destination", () => {
     const refuses = async () => {
       const app = makeApp();
@@ -500,15 +472,12 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
 
       await refuses();
 
-      // The link is still a link pointing where it did, and nothing was
-      // written through it.
       expect((await lstat(join(root, FOLDER))).isSymbolicLink()).toBe(true);
       expect(await readlink(join(root, FOLDER))).toBe(outside);
       expect(await readdir(outside)).toEqual([]);
     });
 
-    // The skills folder itself gone is a destination that cannot be read, not
-    // one that is free: an unread destination is never an empty one.
+    // An unread destination is never an empty one.
     it("refuses when the skills folder itself is gone", async () => {
       await rm(join(root, ".apm", "skills"), { recursive: true });
 

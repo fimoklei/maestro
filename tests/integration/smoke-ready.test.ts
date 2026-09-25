@@ -12,10 +12,8 @@ import {
   waitForCockpit,
 } from "../../scripts/smoke-ready.mjs";
 
-// `pnpm smoke` never exits, so nothing tells the agent when the cockpit is up.
-// Blind `sleep` calls filled that gap. This step waits for a real answer and
-// then seeds through the API, so a screenshot starts from a populated screen
-// (.claude/rules/design.md, "Verify before done").
+// `pnpm smoke` never exits, so this step waits for a real answer and seeds
+// through the API.
 
 function clock(startMs = 0) {
   let ms = startMs;
@@ -82,7 +80,6 @@ describe("waitForCockpit", () => {
   });
 
   it("treats a probe that throws as not-yet-up, not as a crash", async () => {
-    // A refused connection is the normal state while the server is booting.
     const time = clock();
     let calls = 0;
 
@@ -189,9 +186,8 @@ describe("seedCockpit", () => {
     expect(calls).toHaveLength(1);
   });
 
-  // #841 replaced the requirement this used to state. A confirmed zero is now a
-  // valid Inventory — a Harness with no release yet — so the gate refuses only
-  // a count nothing confirmed.
+  // A confirmed zero is a valid Inventory (#841); only an unconfirmed count
+  // is refused.
   it("accepts an inventory that connects with no released skills", async () => {
     const { calls, request } = recorder((path) =>
       path === "/api/inventory/connect"
@@ -216,8 +212,7 @@ describe("seedCockpit", () => {
   });
 
   it("refuses an inventory whose released skills could not be read", async () => {
-    // An unread cockpit is the same class of failure as an unanswered one: it
-    // passes as green and every UI check downstream reads nothing (issue #544).
+    // An unread cockpit would pass as green (#544).
     const { request } = recorder((path) =>
       path === "/api/inventory/connect"
         ? {
@@ -278,11 +273,8 @@ describe("seedCockpit", () => {
   });
 });
 
-// Answering on the cockpit's ports does not make a server the smoke instance.
-// A sandbox left behind by a killed run, plus a plain `pnpm dev` on the same
-// ports, would otherwise write the rehearsal's paths into the real ~/.maestro.
-// So the launcher leaves its process id in the sandbox, and this step refuses
-// unless every cockpit listener belongs to that same run.
+// Answering on the cockpit's ports does not make a server the smoke
+// instance: every listener must belong to the run whose pid the sandbox holds.
 describe("identifySmokeInstance", () => {
   const marker = { launcherPid: 500 };
   const holders = (api: number[], web: number[]) => [
@@ -302,7 +294,6 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses when the sandbox holds no marker", () => {
-    // A sandbox left behind by a killed run: the files exist, the run does not.
     const decision = identifySmokeInstance({
       marker: null,
       holders: ours,
@@ -314,8 +305,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("names the takeover when something else holds a port", () => {
-    // The hijack this check exists for reads as "you forgot to start it"
-    // otherwise, which sends the reader the wrong way (issue #453).
+    // Otherwise the hijack reads as "you forgot to start it" (#453).
     const decision = identifySmokeInstance({
       marker: null,
       holders: ours,
@@ -327,7 +317,6 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses a server belonging to another run", () => {
-    // A plain `pnpm dev`, or a sibling worktree, answering on the same port.
     const decision = identifySmokeInstance({
       marker,
       holders: holders([900], [901]),
@@ -338,8 +327,8 @@ describe("identifySmokeInstance", () => {
     expect(decision.reason).toMatch(/not this smoke run/i);
   });
 
-  // The screenshot comes from the web app on 5173, so owning the API port
-  // alone proves nothing about what the browser renders (issue #453 review).
+  // The screenshot comes from the web port, so the API port alone proves
+  // nothing (#453).
   it("refuses a foreign web listener even when the API port is ours", () => {
     const decision = identifySmokeInstance({
       marker,
@@ -374,8 +363,6 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses a second, foreign listener sharing a port", () => {
-    // lsof can name more than one holder; owning the first proves nothing
-    // about the rest.
     const decision = identifySmokeInstance({
       marker,
       holders: holders([501, 900], [502]),
@@ -387,7 +374,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses when the process group cannot be read", () => {
-    // Unknown ownership is not ownership: fail closed, as the port guard does.
+    // Unknown ownership is not ownership: fail closed.
     const decision = identifySmokeInstance({
       marker,
       holders: ours,
@@ -398,9 +385,7 @@ describe("identifySmokeInstance", () => {
   });
 });
 
-// `--check` re-asks who owns the port before each screenshot (issue #453), so
-// it must answer without the wait `smoke:ready` pays. That it seeds nothing is
-// structural: `check()` never reaches `seedCockpit`.
+// `--check` runs before each screenshot, so it must skip the wait (#453).
 describe("smoke-ready --check", () => {
   const script = join(
     dirname(fileURLToPath(import.meta.url)),
@@ -410,7 +395,6 @@ describe("smoke-ready --check", () => {
     "smoke-ready.mjs",
   );
 
-  // Comfortably under the 60s wait, comfortably over an honest check.
   const budgetMs = 10_000;
 
   const runCheck = () =>
@@ -424,7 +408,6 @@ describe("smoke-ready --check", () => {
     () => {
       const result = runCheck();
 
-      // Killed by the timeout means it fell into the wait-for-cockpit loop.
       expect(result.signal).toBeNull();
       expect(typeof result.status).toBe("number");
     },

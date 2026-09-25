@@ -20,9 +20,7 @@ type RegisteredRepoGate =
   | { ok: false; response: Response }
   | { ok: true; repo: RegisteredRepoAccess };
 
-// The only server boundary that turns a client repo query into a repository
-// operation. Readers receive the canonical path from the registry, never the
-// query string, and callers cannot invoke a reader without passing this gate.
+// Readers receive the canonical path from the registry, never the query string.
 export async function requireRegisteredRepo(
   c: Context,
   deps: RegisteredRepoRouteDeps,

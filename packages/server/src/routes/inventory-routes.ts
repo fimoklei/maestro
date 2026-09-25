@@ -10,10 +10,8 @@ export function registerInventoryRoutes(app: Hono, deps: Deps) {
   app.get("/api/inventory/primitives", async (c) => {
     const result = await deps.inventory.read();
     if (!result.ok) {
-      // 409: unset/missing/not-a-directory. 503: connected, but its release
-      // could not be read — never the same answer, or the cockpit would send
-      // the author to re-connect a live harness (#841). Never echoes the path;
-      // the cockpit writes its own words (`inventory-panel.tsx`).
+      // 409 and 503 must stay distinct, or the cockpit would send the author to
+      // re-connect a live harness (#841). Never echoes the path.
       return c.json(
         { error: result.error },
         result.error === "unreadable" ? 503 : 409,
@@ -22,14 +20,11 @@ export function registerInventoryRoutes(app: Hono, deps: Deps) {
     return c.json({ primitives: result.primitives });
   });
 
-  // A GET, so it bypasses the Origin/Host guard — returning the user's own
-  // configured path is intentional, not an attacker probe.
+  // A GET: returning the user's own configured path is intentional.
   app.get("/api/inventory/config", async (c) => {
     return c.json(await deps.inventory.configuredLocation());
   });
 
-  // Connect: a pasted path is persisted offline; a GitHub URL is cloned to a
-  // new folder under the home ceiling first and then connected (#554).
   app.post("/api/inventory/connect", async (c) => {
     const body = await parseBody(c, connectBodySchema, PATH_BODY);
     if (!body.ok) {

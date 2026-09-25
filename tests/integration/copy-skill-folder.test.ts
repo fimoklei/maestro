@@ -54,8 +54,6 @@ describe("CopySkillFolder", () => {
     return path;
   };
 
-  // Flat files at the root of an existing directory: no per-file mkdir, and
-  // written in one fan-out instead of a thousand awaits.
   const writeFlat = (count: number) =>
     Promise.all(
       Array.from({ length: count }, (_, i) =>
@@ -75,9 +73,7 @@ describe("CopySkillFolder", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  // Every refusal is proved against this, not only the one case that names it:
-  // a leftover staging directory is as much a partial destination as a half
-  // skill would be.
+  // A leftover staging directory is as much a partial destination as a half skill.
   const expectNothingWritten = async () => {
     expect(await readdir(destinationParent)).toEqual([]);
   };
@@ -103,8 +99,6 @@ describe("CopySkillFolder", () => {
       expect((await lstat(join(destination(), "SKILL.md"))).mode & 0o111).toBe(
         0,
       );
-      // The staging location is private and temporary — the destination is the
-      // only thing the copy leaves behind.
       expect(await readdir(destinationParent)).toEqual(["imported"]);
     });
 
@@ -159,8 +153,6 @@ describe("CopySkillFolder", () => {
 
       expect(await copy()).toMatchObject({ ok: true, path: destination() });
 
-      // The rule is about repository internals, not about the name of the
-      // entry that leads to them.
       expect(await readdir(destination())).toEqual(["SKILL.md"]);
     });
 
@@ -174,8 +166,6 @@ describe("CopySkillFolder", () => {
       expect(await readFile(join(destination(), "link.txt"), "utf8")).toBe(
         "asset\n",
       );
-      // Followed, not reproduced: the destination holds content, never a link
-      // back into the source it was copied from.
       expect((await lstat(join(destination(), "link.txt"))).isFile()).toBe(
         true,
       );
@@ -245,8 +235,7 @@ describe("CopySkillFolder", () => {
       await expectNothingWritten();
     });
 
-    // Device files take root to create; they reach the same branch as this
-    // socket does — both are "neither a regular file nor a directory".
+    // Device files take root to create; they reach the same branch as this socket.
     it("refuses a unix socket", async () => {
       await write("SKILL.md", "# skill\n");
       const server = createServer();
@@ -286,10 +275,8 @@ describe("CopySkillFolder", () => {
   });
 
   describe("a source that moves under it", () => {
-    // The real adapter, with the source disturbed the moment the copy starts:
-    // preflight has already decided, so this is exactly the window the rule is
-    // about. Files are planned in sorted order, so "a.md" is copied first and
-    // "b.md" meets the check afterwards.
+    // Files are planned in sorted order, so "a.md" is copied first and "b.md"
+    // meets the check after the source is disturbed.
     const copyWhileDisturbing = async (
       disturb: () => Promise<void>,
     ): Promise<CopySkillFolderResult> => {
@@ -347,9 +334,6 @@ describe("CopySkillFolder", () => {
       const link = join(source, "z-link.txt");
       await symlink(join(source, "real/asset.txt"), link);
 
-      // Containment was proved during preflight; it is proved again here, and
-      // that second proof is the only thing standing between this link and the
-      // file it now points at.
       const result = await copyWhileDisturbing(async () => {
         await rm(link);
         await symlink(outside, link);
@@ -405,8 +389,6 @@ describe("CopySkillFolder", () => {
   });
 
   describe("replacing an existing destination", () => {
-    // The folder the replacement writes over, holding one file the source has
-    // and one it does not.
     const seedDestination = async () => {
       await mkdir(join(destination(), "stale"), { recursive: true });
       await writeFile(join(destination(), "SKILL.md"), "# old\n", "utf8");
@@ -428,7 +410,6 @@ describe("CopySkillFolder", () => {
       expect(await readFile(join(destination(), "SKILL.md"), "utf8")).toBe(
         "# new\n",
       );
-      // Nothing of the staging tree survives beside the replaced folder.
       expect(await readdir(destinationParent)).toEqual(["imported"]);
     });
 
@@ -451,8 +432,7 @@ describe("CopySkillFolder", () => {
     });
 
     it("keeps the original folder when the publishing move fails", async () => {
-      // The window the rule is about: the original has been moved aside and the
-      // replacement is going in. Only the second move can fail here.
+      // Only the second move can fail here.
       const fs = new NodeCopyTreeFs();
       const original = fs.movePath.bind(fs);
       let refused = false;
