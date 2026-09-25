@@ -12,7 +12,7 @@ import {
   unregisterTitle,
 } from "./repositories-copy";
 
-// The confirmation an unregister takes (design-principles.md → Feedback):
+// The confirmation an unregister takes (design.md → Feedback and dialogs):
 // what stops, then what stays. Presentational — the host owns the mutation.
 export function UnregisterDialog({
   name,
