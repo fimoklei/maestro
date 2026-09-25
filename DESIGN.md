@@ -357,10 +357,10 @@ Every control shows the same focus ring: 2px blue 9, offset 2px.
 ### Chips
 
 - **Status badge:** one per row, the worst reading, 20px high, chip radius,
-  meta type at 500, a glyph plus a `CONTEXT.md` word. Good and neutral stay
-  uncoloured in gray 11. Unknown is a `?` on gray 3 with a gray 7 border.
-  Attention is amber 12 on amber 3 with an amber 7 border and an amber 11
-  mark; failed is the same set in red.
+  meta type at 500, a glyph plus a `CONTEXT.md` word. Every family takes
+  the same set: good is green 12 on green 3 with a green 7 border and a
+  green 11 mark; attention the same in amber, failed in red. Neutral and
+  unknown share gray 12 on gray 3 with a gray 7 border and a gray 11 mark.
 
 ### Cards / Containers
 

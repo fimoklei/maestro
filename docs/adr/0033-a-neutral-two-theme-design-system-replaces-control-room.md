@@ -56,7 +56,9 @@ The values below are the record until the first build job writes them into
 3. **Status.** Five families: Good green ✓, Attention amber ↑ or ⚠, Failed
    red ✕, Unknown slate ?, Neutral slate. The word is the first cue, the glyph
    the second, the colour the third. No Radix good/fail pair stays apart under
-   deuteranopia, so colour alone never carries a status. A primitive type is
+   deuteranopia, so colour alone never carries a status. Every family takes
+   one badge form: step 3 fill, step 7 border, the mark on 11 and the word on
+   12. Neutral and Unknown share the slate badge (#1069). A primitive type is
    its plain word in slate 11, with no hue and no icon.
 4. **The allowlist.** Seventeen foreground and background pairs are documented
    and measured, each at its own floor (4.5:1 text, 3:1 mark, field border and

@@ -30,7 +30,7 @@ before building it.
 - Give a column, badge, glyph and word one meaning on every screen.
 - Use Geist Mono only for a version, tag, path, ref or hash.
 - Use blue only for focus, selection and links. Keep the primary action neutral.
-- Put at most one coloured mark in a row. Leave a resting state uncoloured.
+- Put at most one coloured mark in a row.
 
 **Status (3).**
 - Show every status as a `CONTEXT.md` word plus its family's glyph.
