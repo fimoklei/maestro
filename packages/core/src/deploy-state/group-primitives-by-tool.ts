@@ -4,6 +4,7 @@
 // root-package entry works the same way, one row for many skills (ADR-0031).
 import { DEPLOY_TOOLS, type SupportedTool } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
+import type { GitHubPage } from "../git/github-page";
 import { type LockfileEntry, readPackage } from "../lockfile/lockfile";
 import {
   type DeployedPrimitive,
@@ -12,6 +13,7 @@ import {
   type SkippedEntry,
   skippedFromReading,
 } from "./deploy-state-types";
+import { harnessPages } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import {
   countExtraRootPackageFiles,
@@ -28,6 +30,8 @@ export type ToolDeployState = {
   pinnedPerSkill?: PinnedPerSkill;
   // Absent where this tool's subtree holds no file outside the selected skills.
   extraFiles?: number;
+  // The release's page in the connected Harness; absent where nothing links.
+  releaseGitHub?: GitHubPage;
 };
 
 const SKILLS_DIR_PREFIX = new Map<SupportedTool, string>(
@@ -41,6 +45,8 @@ export async function groupPrimitivesByTool(
     fileExists: (path: string) => Promise<boolean>;
     // The connected Harness, or null while it is unknown (#950).
     origin?: GitOrigin | null;
+    // The connected Harness's page, read only once a root package is found.
+    harnessPage?: () => Promise<GitHubPage | null>;
   },
 ): Promise<{
   tools: ToolDeployState[];
@@ -75,6 +81,7 @@ export async function groupPrimitivesByTool(
         continue;
       }
       release = entry.resolved_ref;
+      const pages = harnessPages(entry, (await deps.harnessPage?.()) ?? null);
       const deployed = await deployedRootPackageSkills(
         entry,
         tools.map((group) => SKILLS_DIR_PREFIX.get(group.tool) ?? ""),
@@ -89,12 +96,17 @@ export async function groupPrimitivesByTool(
         if (extra > 0) {
           group.extraFiles = extra;
         }
+        if (pages !== undefined) {
+          group.releaseGitHub = pages.release;
+        }
         for (const skill of deployed) {
           if (skill.prefix === prefix) {
+            const github = pages?.skill(skill.name);
             group.primitives.push({
               type: "skill",
               name: skill.name,
               version: entry.resolved_ref,
+              ...(github === undefined ? {} : { github }),
             });
           }
         }

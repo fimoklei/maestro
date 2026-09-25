@@ -163,3 +163,46 @@ describe("SelectedSkills marks", () => {
     expect(screen.getByText(/not deployed here/i)).toHaveTextContent(/foo/);
   });
 });
+
+describe("SelectedSkills GitHub links", () => {
+  const FOLDER =
+    "https://github.com/fimoklei/agent-harness/tree/v0.5.0/.apm/skills/tdd";
+  const linked: DeployedPrimitive = {
+    ...tdd,
+    github: { kind: "link", url: FOLDER },
+  };
+
+  it("links a row to its skill folder, and offers the same page in its menu", async () => {
+    renderList(upToDate, [linked]);
+
+    expect(
+      screen.getByRole("link", { name: "View tdd on GitHub" }),
+    ).toHaveAttribute("href", FOLDER);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for tdd" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "View skill on GitHub" }),
+    ).toHaveAttribute("href", FOLDER);
+  });
+
+  it("links nothing and offers no menu item where no page is known", async () => {
+    renderList(upToDate);
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for tdd" }),
+    );
+    await screen.findByRole("menuitem", { name: "Remove skill" });
+    expect(
+      screen.queryByRole("menuitem", { name: "View skill on GitHub" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an Unknown badge where the Harness origin could not be read", () => {
+    renderList(upToDate, [{ ...tdd, github: { kind: "unknown" } }]);
+
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+});

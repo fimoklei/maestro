@@ -1,5 +1,6 @@
 // A neutral module, so the reader and its pure grouping helper share these
 // shapes without importing each other (architecture.md).
+import type { GitHubPage } from "../git/github-page";
 import type { PackageClass, PackageReading } from "../lockfile/lockfile";
 
 export type DeployedPrimitive = {
@@ -10,6 +11,9 @@ export type DeployedPrimitive = {
   // ("local-edits") or has no baseline to check it against ("unverified").
   // Absent is "clean", never "not checked" — an unread copy carries no key.
   copy?: "local-edits" | "unverified";
+  // The skill's folder in the connected Harness at this release; absent where
+  // nothing links (#1181).
+  github?: GitHubPage;
 };
 
 // Which release a target follows, and how much of its selection the newest

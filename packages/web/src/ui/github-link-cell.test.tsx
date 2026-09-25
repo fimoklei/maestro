@@ -32,6 +32,21 @@ describe("GitHubLinkCell", () => {
     expect(link).toHaveAttribute("tabindex", "-1");
   });
 
+  // Outside a grid there is no ⋮ menu to carry the keyboard's way (#1181).
+  it("stays in the Tab order when it is the only way to the page", () => {
+    render(
+      <GitHubLinkCell
+        name="tdd"
+        page={{ kind: "link", url: "https://github.com/o/r" }}
+        unknownCause={CAUSE}
+        focusable={true}
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: "View tdd on GitHub" }),
+    ).not.toHaveAttribute("tabindex");
+  });
+
   it("stays empty where there is no page", () => {
     const { container } = render(
       <GitHubLinkCell name="maestro" page={undefined} unknownCause={CAUSE} />,

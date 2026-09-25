@@ -1063,3 +1063,108 @@ describe("DeployStateReader on a repository's GitHub page", () => {
     });
   });
 });
+
+describe("DeployStateReader on the Harness's GitHub pages", () => {
+  const files = [".claude/skills/tdd/SKILL.md"];
+  const HARNESS = "https://github.com/fimoklei/agent-harness";
+  const repoAt = (ref: string) =>
+    new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry(ref, files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+  const read = (
+    fs: InMemoryFileSystem,
+    harnessPage: DeployStateExtras["harnessPage"],
+  ) => new DeployStateReader({ fs, harnessPage }).read(REPO);
+
+  it("links each selected skill to its folder, and the release to its page", async () => {
+    const result = await read(repoAt("v0.3.2"), async () => ({
+      kind: "link",
+      url: HARNESS,
+    }));
+    expect(result).toMatchObject({
+      primitives: [
+        {
+          name: "tdd",
+          github: {
+            kind: "link",
+            url: `${HARNESS}/tree/v0.3.2/.apm/skills/tdd`,
+          },
+        },
+      ],
+      releaseGitHub: { kind: "link", url: `${HARNESS}/releases/tag/v0.3.2` },
+    });
+  });
+
+  it("links nothing on a root package from another repository", async () => {
+    const result = await read(repoAt("v0.3.2"), async () => ({
+      kind: "link",
+      url: "https://github.com/someone/else",
+    }));
+    expect(result).not.toHaveProperty("releaseGitHub");
+    expect(result).not.toHaveProperty("primitives.0.github");
+  });
+
+  it("links nothing at a ref that is not a release tag", async () => {
+    const result = await read(repoAt("main"), async () => ({
+      kind: "link",
+      url: HARNESS,
+    }));
+    expect(result).not.toHaveProperty("releaseGitHub");
+    expect(result).not.toHaveProperty("primitives.0.github");
+  });
+
+  it("links nothing where the Harness has no GitHub page", async () => {
+    const result = await read(repoAt("v0.3.2"), async () => null);
+    expect(result).not.toHaveProperty("releaseGitHub");
+    expect(result).not.toHaveProperty("primitives.0.github");
+  });
+
+  it("reads a failed Harness origin read as unknown and still reads the rest", async () => {
+    const result = await read(repoAt("v0.3.2"), async () => {
+      throw new Error("git unavailable");
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      primitives: [{ name: "tdd", github: { kind: "unknown" } }],
+      releaseGitHub: { kind: "unknown" },
+    });
+  });
+
+  it("links a global tool's skills and release the same way", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude"]),
+      treeRoot: () => "/home",
+      harnessPage: async () => ({ kind: "link", url: HARNESS }),
+    });
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toMatchObject({
+      tools: [
+        {
+          tool: "claude",
+          primitives: [
+            {
+              name: "tdd",
+              github: {
+                kind: "link",
+                url: `${HARNESS}/tree/v0.3.2/.apm/skills/tdd`,
+              },
+            },
+          ],
+          releaseGitHub: {
+            kind: "link",
+            url: `${HARNESS}/releases/tag/v0.3.2`,
+          },
+        },
+      ],
+    });
+  });
+});
