@@ -55,7 +55,7 @@ describe("bulkRemoveTargets", () => {
     ).toEqual([repo("/dev/acme-web")]);
   });
 
-  it("leaves out a target whose deploy-state has not been read (J04)", () => {
+  it("leaves out a target whose deploy-state has not been read", () => {
     expect(
       bulkRemoveTargets("tdd", [
         unread({ kind: "global" }, "pending"),

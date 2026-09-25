@@ -102,7 +102,7 @@ describe("SkillDetailPane", () => {
     ).toBeTruthy();
   });
 
-  it("claims no Targets count before every read has answered (J04)", () => {
+  it("claims no Targets count before every read has answered", () => {
     renderPane({ targetCount: null, unconfirmed: true });
 
     expect(fact("Targets")).toBeNull();
@@ -179,7 +179,7 @@ describe("SkillDetailPane", () => {
     ).toBeInTheDocument();
   });
 
-  it("holds off on 'Not deployed' while the reach is still unconfirmed (J04)", () => {
+  it("holds off on 'Not deployed' while the reach is still unconfirmed", () => {
     // Every read is pending or unreadable, so an empty list is "not known yet",
     // never "deployed nowhere".
     renderPane({ deployments: [], unconfirmed: true });

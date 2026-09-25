@@ -5,6 +5,9 @@ import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const guard = resolve(import.meta.dirname, "../../scripts/comment-guard.mjs");
+// Assembled so this file does not trip the guard it tests.
+const ADR = (n: string) => ["ADR", n].join("-");
+const STORY = (n: string) => ["(J", n, ")"].join("");
 
 let root: string;
 
@@ -35,21 +38,21 @@ describe("comment guard", () => {
       "packages/core/src/a.ts",
       "// Adds two numbers.\nexport const a = 1;\n",
     );
-    plant("docs/adr/0001-x.md", "# ADR-0001\n\nSee ADR-0002.\n");
+    plant("docs/adr/0001-x.md", `# ${ADR("0001")}\n\nSee ${ADR("0002")}.\n`);
 
     expect(runGuard()).toEqual({ status: 0, stdout: "" });
   });
 
   it.each([
-    "ADR-0012",
-    "ADR 0012",
+    ADR("0012"),
+    ["ADR", "0012"].join(" "),
     "docs/research/735-coverage-map.md",
     "LEARNINGS.md",
     "docs/apm-behavior.md",
     ".claude/rules/testing.md",
     "docs/jobs.md",
     "design-principles",
-    "(J07)",
+    STORY("07"),
   ])("fails a comment citing %s and names its file and line", (pointer) => {
     plant(
       "packages/web/src/b.tsx",
@@ -65,7 +68,7 @@ describe("comment guard", () => {
   it("finds a pointer inside a block comment and a JSX comment", () => {
     plant(
       "tests/c.tsx",
-      "/**\n * Rule from ADR-0012.\n */\nexport const C = () => (\n  <div>{/* see LEARNINGS.md */}</div>\n);\n",
+      `/**\n * Rule from ${ADR("0012")}.\n */\nexport const C = () => (\n  <div>{/* see LEARNINGS.md */}</div>\n);\n`,
     );
 
     const { status, stdout } = runGuard();
@@ -78,7 +81,7 @@ describe("comment guard", () => {
   it.each(["scripts/i.mjs", "scripts/i.mts", "scripts/i.d.mts", "tests/i.js"])(
     "scans %s as well",
     (path) => {
-      plant(path, "export const i = 1;\n// See ADR-0012.\n");
+      plant(path, "export const i = 1;\n// See LEARNINGS.md.\n");
 
       const { status, stdout } = runGuard();
 
@@ -86,6 +89,42 @@ describe("comment guard", () => {
       expect(stdout).toContain(`${path}:2`);
     },
   );
+
+  it.each([
+    [ADR("0012"), `export const s = "see ${ADR("0012")}";\n`],
+    [STORY("04"), `it("claims a count ${STORY("04")}", () => {});\n`],
+  ])("fails %s outside a comment as well", (_pointer, content) => {
+    plant("packages/web/src/m.test.ts", content);
+
+    const { status, stdout } = runGuard();
+
+    expect(status).toBe(1);
+    expect(stdout).toContain("packages/web/src/m.test.ts:1");
+  });
+
+  it("parses a .js file as JavaScript, so a JSX comment is found", () => {
+    plant(
+      "scripts/n.js",
+      "export const N = () => (\n  <p>it's {/* see LEARNINGS.md */}</p>\n);\n",
+    );
+
+    const { status, stdout } = runGuard();
+
+    expect(status).toBe(1);
+    expect(stdout).toContain("scripts/n.js:2");
+  });
+
+  it.each([
+    ["packages/web/src/o.css", `a {}\n/* the scale (${ADR("0033")}) */\n`],
+    ["packages/web/index.html", "<p></p>\n<!-- see LEARNINGS.md -->\n"],
+  ])("scans %s under packages", (path, content) => {
+    plant(path, content);
+
+    const { status, stdout } = runGuard();
+
+    expect(status).toBe(1);
+    expect(stdout).toContain(`${path}:2`);
+  });
 
   it("allows a pointer pattern in code, such as a deployed path", () => {
     plant(
@@ -107,16 +146,20 @@ describe("comment guard", () => {
   });
 
   it("ignores files outside the scanned folders and extensions", () => {
-    plant("docs/research/f.ts", "// See ADR-0012.\n");
-    plant("packages/core/src/g.sh", "# See ADR-0012.\n");
+    plant("docs/research/f.ts", `// See ${ADR("0012")}.\n`);
+    plant("packages/core/src/g.sh", `# See ${ADR("0012")}.\n`);
+    plant("tests/k.css", `/* See ${ADR("0012")}. */\n`);
     plant("packages/core/README.md", "See LEARNINGS.md.\n");
-    plant("packages/core/node_modules/h/index.ts", "// See ADR-0012.\n");
+    plant("packages/core/node_modules/h/index.ts", `// See ${ADR("0012")}.\n`);
 
     expect(runGuard()).toEqual({ status: 0, stdout: "" });
   });
 
   it("allows ADR pointers in docs/adr but fails the other patterns there", () => {
-    plant("docs/adr/0002-y.md", "Supersedes ADR-0001.\n\nSee LEARNINGS.md.\n");
+    plant(
+      "docs/adr/0002-y.md",
+      `Supersedes ${ADR("0001")}.\n\nSee LEARNINGS.md.\n`,
+    );
 
     const { status, stdout } = runGuard();
 

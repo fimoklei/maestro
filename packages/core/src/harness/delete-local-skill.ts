@@ -13,6 +13,7 @@ export type DeleteLocalSkillError =
   | "already-gone"
   // Also where the local refs gave no answer.
   | "not-local-only"
+  // Outside this Harness's skills folder: removing it would delete something else.
   | "destination-unsafe"
   | "delete-failed"
   | "delete-in-progress";

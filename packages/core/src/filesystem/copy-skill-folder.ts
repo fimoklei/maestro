@@ -331,6 +331,8 @@ export class CopySkillFolder {
     }
   }
 
+  // Call right before the read: the entry, and where a link points, may have
+  // changed since the plan judged them.
   private async verifyUnchanged(
     root: string,
     file: PlannedFile,

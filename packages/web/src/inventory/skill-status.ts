@@ -6,7 +6,7 @@ import {
 } from "../ui/status-reading";
 import type { DeployedRollup } from "./deployed-rollup";
 
-// One skill's worst reading across its targets; words from CONTEXT.md.
+// One skill's worst reading across its targets.
 export const UP_TO_DATE = reading("Up to date", "good");
 export const BEHIND = reading("Behind", "attention");
 export const UNKNOWN = reading("Unknown", "unknown");

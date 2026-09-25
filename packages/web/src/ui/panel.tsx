@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 // Two bands over the one region that scrolls; an empty band is not drawn (#991).
 
 export interface PanelProps {
-  /** The screen name, from CONTEXT.md. */
+  /** The screen name. */
   title: string;
   /** The screen's own count or state line, beside the title. */
   meta?: ReactNode;
