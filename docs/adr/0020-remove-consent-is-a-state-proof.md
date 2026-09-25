@@ -11,7 +11,7 @@ Removing a deployed skill destroys files on the user's own machine, and two of
 those destructions are worse than the request that names them:
 
 - **A copy carrying local edits.** apm deletes it silently
-  (`.claude/rules/apm-driver.md` § Update), so the dialog's warning is the only
+  on a same-ref install, so the dialog's warning is the only
   thing standing between a tidy-up and lost work. #337 settled that an edited
   copy still goes — destruction is the intent — on the user's word.
 - **A leftover copy of a tool this machine no longer detects.** #339 built that
@@ -91,7 +91,7 @@ Three residual gaps follow, all accepted:
   `preflight`. The guarantee is against *stale* and *forged* consent, never
   against a caller who asked no human. Closing it needs a real session, which
   Maestro has no other reason to have: a local-first single-user cockpit bound to
-  `127.0.0.1` (`.claude/rules/security.md`).
+  `127.0.0.1`.
 - **A write between the pricing and the delete.** `execute` prices, checks the
   receipt, and only then calls apm. Nothing holds the files still across that
   window — the apm write lock serialises Maestro's own operations, not an editor

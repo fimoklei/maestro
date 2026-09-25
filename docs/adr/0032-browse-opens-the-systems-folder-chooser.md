@@ -46,7 +46,7 @@ platform.**
    `System.Windows.Forms.FolderBrowserDialog`. This invocation is a design, not
    a measurement. The build measures it first — on a real Windows machine, else
    in a one-off workflow on the Windows runner with a screenshot — records the
-   result in `docs/research/`, and amends this ADR before any code if the
+   result, and amends this ADR before any code if the
    measurement disagrees.
 5. **Hidden folders differ per platform.** macOS always shows them. The Windows
    chooser follows the reader's Explorer setting and cannot be forced. The field

@@ -58,7 +58,7 @@ tools".
   deploy time. No per-tool sub-options.
 - **The tool name is the message; the path is secondary.** Each card names its
   tool (the effect: "available in Claude Code"); the concrete destination path
-  (`~/.claude/skills/…`) is a secondary detail on the card, not the headline.
+  (the skills folder under `~/.claude`) is a secondary detail on the card, not the headline.
 - **No supported tool detected → no global target.** The section shows a hint to
   install a tool and the global deploy option is disabled; Maestro never writes
   files for a tool that is not there.
@@ -79,7 +79,7 @@ tools".
   updated to match.
 - Implementation is **blocked by the detection spike**: apm's behaviour when a
   tool is absent, and Maestro's presence-detection mechanism, must be measured
-  before code — no guessing in the driver (the trap recorded in `LEARNINGS.md`).
+  before code — no guessing in the driver.
 - Single-tool users stop getting dead directories; the fix is the strongest
   reason for the change, independent of the UI clarity win.
 - Per-tool visibility can now show scheefstand between tools (Claude has a skill,
@@ -92,7 +92,7 @@ tool's deployed copy is unread. That holds only where the tool is the **sole
 reader** of its skills directory.
 
 It does not. Measured against apm 0.26.0's own target table
-(`apm_cli/integration/targets.py`, recorded in `docs/apm-behavior.md`): ten apm
+(`apm_cli/integration/targets.py`): ten apm
 targets deploy skills under `.agents` — `copilot`, `cursor`, `opencode`,
 `gemini`, `codex`, `windsurf`, `antigravity`, `agent-skills`, `openclaw`,
 `hermes`. Only `claude` and `kiro` deploy skills elsewhere. So "Codex is not
@@ -104,7 +104,7 @@ Amended:
 
 - **Removal requires exclusivity, not just absence.** A narrowed global deploy
   removes an untargeted tool's copy only where that tool owns the directory
-  outright. `.claude/skills/` qualifies; `.agents/skills/` does not, and its copy
+  outright. Claude Code's skills directory under `~/.claude` qualifies; `.agents/skills/` does not, and its copy
   is retained unconditionally.
 - **Exclusivity is declared per tool**, next to the tool definitions, so adding a
   tool cannot silently reintroduce the assumption.

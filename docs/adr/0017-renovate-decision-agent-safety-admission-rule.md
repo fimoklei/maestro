@@ -74,7 +74,7 @@ a fixed boundary:
 - Admission stays a human judgement, recorded in the PR — deliberately not
   automated, because "should this exist at all" is not a CI check.
 - This ADR records policy only. It touches no `AGENTS.md`, `CLAUDE.md`, or
-  `.claude/rules/` file; those remain owner-owned.
+  agent rules file; those remain owner-owned.
 
 ## Rejected alternatives
 
