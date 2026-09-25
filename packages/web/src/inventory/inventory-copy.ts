@@ -73,4 +73,3 @@ export const removeFromAllLabel = (count: number): string =>
 export const ACTIONS_COLUMN_LABEL = "Actions";
 export const rowActionsLabel = (name: string) => `Actions for ${name}`;
 export const DEPLOY_SKILL = "Deploy skill";
-export const REMOVE_SKILL = "Remove skill";
