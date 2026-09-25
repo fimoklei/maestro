@@ -412,6 +412,38 @@ describe("Deploy-state pane — Selected skills", () => {
     ).toBeInTheDocument();
   });
 
+  // #1124: the pane's Escape also fired, so one key closed dialog and pane.
+  it("closes only the removal dialog on Escape, leaving the pane open", async () => {
+    stubServer(() => ({
+      repos: [REPO],
+      repo: { [REPO]: { primitives: [skill("tdd")], skipped: [] } },
+      other: () =>
+        jsonResponse({
+          check: { scope: "repo", warning: null },
+          reclaim: null,
+          receipt: "b".repeat(64),
+        }),
+    }));
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    const trigger = within(pane).getByRole("button", {
+      name: "Actions for tdd",
+    });
+    await userEvent.click(trigger);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove skill" }),
+    );
+    await screen.findByRole("dialog");
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(pane).toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
   it("moves focus to Selected skills once a removed row is gone", async () => {
     let removed = false;
     stubServer(() => ({
