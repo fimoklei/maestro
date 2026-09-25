@@ -7,7 +7,8 @@ import { HoverCard } from "../ui/hover-card";
 import { MachineValue } from "../ui/machine-value";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
-import { ACTIONS_COLUMN_LABEL } from "./deploy-state-copy";
+import { useNow } from "../ui/use-now";
+import { ACTIONS_COLUMN_LABEL, TARGET_LABEL } from "./deploy-state-copy";
 import { statusSummary, type TargetRow } from "./target-rows";
 
 // The Deploy-state table's columns (#993): the kind is the group, not a column.
@@ -24,10 +25,11 @@ const unranked = Number.MAX_SAFE_INTEGER;
 // The Status cell's hover card: the badge's summary, never a control.
 function StatusCard({ row }: { row: TargetTableRow }) {
   const active = useDataTableRowActive();
+  const now = useNow();
   if (row.status === null) {
     return null;
   }
-  const lines = statusSummary(row, new Date());
+  const lines = statusSummary(row, now);
   return (
     <HoverCard
       focused={active}
@@ -77,7 +79,7 @@ export const deployStateColumns = ({
 }) =>
   createDataTableColumns<TargetTableRow>((helper) => [
     helper.accessor("name", {
-      header: "Target",
+      header: TARGET_LABEL,
       cell: ({ row }) => (
         <span className="flex min-w-0 items-baseline gap-inline">
           <span

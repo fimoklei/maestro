@@ -14,6 +14,7 @@ import { IconButton } from "../ui/icon-button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { OptionMenu } from "../ui/option-menu";
 import { Panel } from "../ui/panel";
+import { useNow } from "../ui/use-now";
 import { useReadAnnouncement } from "../ui/use-read-announcement";
 import { useReadSkeleton } from "../ui/use-read-skeleton";
 import {
@@ -34,6 +35,7 @@ import {
   REPOSITORIES,
   REREAD_LABEL,
   TABLE_LABEL,
+  TARGET_LABEL,
   targetCount,
 } from "./deploy-state-copy";
 import { freshnessLine } from "./freshness-line";
@@ -60,7 +62,7 @@ const KIND_OPTIONS = [
   { value: REPOSITORIES, label: REPOSITORIES },
 ];
 const GROUP_OPTIONS = [
-  { value: "kind", label: "Kind" },
+  { value: "kind", label: TARGET_LABEL },
   { value: "none", label: "None" },
 ];
 const COLUMN_OPTIONS = [
@@ -104,6 +106,7 @@ export function DeployStateView() {
     queryClient.invalidateQueries({ queryKey: ["drift"] });
   };
 
+  const now = useNow();
   const [kind, setKind] = useState<KindFilter>("all");
   const [statusFilter, setStatusFilter] = useState<ReadonlySet<string>>(
     new Set(),
@@ -225,7 +228,7 @@ export function DeployStateView() {
       ...repoDeploy.map((query) => query.dataUpdatedAt),
       ...repoDrift.map((query) => query.dataUpdatedAt),
     ],
-    new Date(),
+    now,
   );
 
   const selectedRow = rows.find((row) => row.id === selected) ?? null;
@@ -251,7 +254,7 @@ export function DeployStateView() {
         sections={[
           {
             kind: "radio",
-            label: "Kind",
+            label: TARGET_LABEL,
             options: KIND_OPTIONS,
             value: kind,
             onChange: (value) => setKind(value as KindFilter),
@@ -394,6 +397,7 @@ export function DeployStateView() {
               onRetry={() => retry.mutate({ target: selectedRow.wire })}
               isRetrying={retrying(selectedRow.wire)}
               onReread={reread}
+              now={now}
               actions={
                 <TargetActions
                   key={`${selectedRow.id}:${intent?.nonce ?? 0}`}

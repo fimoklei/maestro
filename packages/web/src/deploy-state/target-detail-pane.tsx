@@ -7,6 +7,7 @@ import {
   otherOriginLine,
   REPO_NOT_READ,
   REREAD_LABEL,
+  TARGET_LABEL,
 } from "./deploy-state-copy";
 import {
   changedFact,
@@ -35,6 +36,7 @@ export function TargetDetailPane({
   onRetry,
   isRetrying,
   onReread,
+  now,
   actions,
 }: {
   row: TargetRow;
@@ -46,10 +48,11 @@ export function TargetDetailPane({
   onRetry: () => void;
   isRetrying: boolean;
   onReread: () => void;
+  /** The screen's one clock, so the Compared fact ticks with band 2. */
+  now: Date;
   actions: ReactNode;
 }) {
   const skillsHeading = useRef<HTMLHeadingElement>(null);
-  const now = new Date();
   // The retry sits in its notice, after its cause, and at the foot as the
   // row's menu holds it (#1065).
   const notice: NoticeContent | null =
@@ -91,11 +94,11 @@ export function TargetDetailPane({
       actions={actions}
     >
       <FactList>
-        <FactRow label="Kind">
+        <FactRow label={TARGET_LABEL}>
           {row.group === GLOBAL ? "Global" : "Repository"}
         </FactRow>
         {row.path ? (
-          <FactRow label="Path" machine title={row.path}>
+          <FactRow label="Path" machine fullValue={row.path}>
             {row.path}
           </FactRow>
         ) : null}

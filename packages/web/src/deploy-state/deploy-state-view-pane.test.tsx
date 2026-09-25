@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse } from "../test-utils";
@@ -54,7 +54,7 @@ const repoWith = (body: object, drift: object = { behind: [] }) =>
   }));
 
 describe("Deploy-state pane — facts", () => {
-  it("opens from a row, naming the target, its kind, path and releases", async () => {
+  it("opens from a row, naming the target, its target type, path and releases", async () => {
     repoWith({ releaseHead: BEHIND });
     renderDeployState();
 
@@ -63,7 +63,7 @@ describe("Deploy-state pane — facts", () => {
     expect(
       within(pane).getByRole("heading", { level: 2, name: LABEL }),
     ).toBeInTheDocument();
-    expect(fact(pane, "Kind")).toBe("Repository");
+    expect(fact(pane, "Target")).toBe("Repository");
     expect(fact(pane, "Path")).toBe(REPO);
     expect(fact(pane, "Release")).toBe("v0.3.2");
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
@@ -75,18 +75,61 @@ describe("Deploy-state pane — facts", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the whole Path when its value is focused", async () => {
+    repoWith({ releaseHead: BEHIND });
+    renderDeployState();
+    const pane = await openPane(LABEL);
+
+    within(pane).getByText(REPO).focus();
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent(REPO);
+  });
+
+  it("shows the whole Path when its value is hovered", async () => {
+    repoWith({ releaseHead: BEHIND });
+    renderDeployState();
+    const pane = await openPane(LABEL);
+
+    await userEvent.hover(within(pane).getByText(REPO));
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent(REPO);
+  });
+
+  // #1123: the reading ages while the pane stays open, without a re-read.
+  it("ticks the Compared fact while the pane stays open", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetchMock = repoWith({ releaseHead: BEHIND });
+      renderDeployState();
+      const pane = await openPane(LABEL);
+      expect(fact(pane, "Compared")).toBe("Read just now");
+      const reads = fetchMock.mock.calls.length;
+
+      await act(() => vi.advanceTimersByTimeAsync(2 * 60_000));
+
+      expect(fact(pane, "Compared")).toBe("Read 2 min ago");
+      expect(fetchMock.mock.calls.length).toBe(reads);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   // #1065: one grammar across panes; no label stands over its value.
   it("states every fact as one label/value row, in the order the pane reads", async () => {
     repoWith({ releaseHead: BEHIND, extraFiles: 2 });
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    const list = within(pane).getByText("Kind").closest("dl");
+    const list = within(pane).getByText("Target").closest("dl");
     expect(list).toHaveClass("grid-cols-[auto_1fr]");
     expect(
       [...(list?.querySelectorAll("dt") ?? [])].map((dt) => dt.textContent),
     ).toEqual([
-      "Kind",
+      "Target",
       "Path",
       "Release",
       "Latest release",
