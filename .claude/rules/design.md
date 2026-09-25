@@ -33,9 +33,10 @@ before building it.
 - Put at most one coloured mark in a row.
 
 **Status (3).**
-- Show every status as a `CONTEXT.md` word plus its family's glyph.
+- Show a status badge as a `CONTEXT.md` word plus its family's dot. A mark
+  without a visible word keeps its family's glyph.
 - Show one badge per row: the worst reading. Put the others in the detail pane.
-- Show an unknown reading as a `?` badge, never as a notice.
+- Show an unknown reading as an Unknown badge, never as a notice.
 
 **Disclosure (4).**
 - Keep a row to one line. Put the summary in the hover card and the rest in

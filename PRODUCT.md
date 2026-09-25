@@ -109,6 +109,6 @@ state, and forms use real labels tied to their fields.
 Motion respects `prefers-reduced-motion`; because motion here is limited to
 short colour transitions, the reduced alternative is an instant state change.
 
-Colour is never the only carrier of meaning: drift and in-sync always pair their
-colour with a glyph (`▲`, `●`) and with text, so the signal survives without
-colour perception.
+Colour is never the only carrier of meaning: a status badge always pairs its
+colour with a word, and a mark without a word carries a glyph, so the signal
+survives without colour perception.

@@ -159,10 +159,9 @@ describe("UpdateTargetDialog", () => {
       removed: [],
     });
 
-    // A resting reading: the word plus the neutral glyph, kept out of the name.
+    // A resting reading: the word alone is the badge's text.
     const badge = screen.getByText("No content changes");
-    expect(badge).toHaveTextContent(/^–No content changes$/);
-    expect(within(badge).getByText("–")).toHaveAttribute("aria-hidden", "true");
+    expect(badge).toHaveTextContent(/^No content changes$/);
     expect(confirmButton().hasAttribute("disabled")).toBe(false);
   });
 
