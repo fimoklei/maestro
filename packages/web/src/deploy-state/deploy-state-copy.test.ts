@@ -9,12 +9,18 @@ import {
   REPO_NOT_READ,
   REPOS_NOT_READ,
   REREAD_LABEL,
+  TARGET_LABEL,
   targetCount,
   UNREACHED_HINT,
 } from "./deploy-state-copy";
 
 // Approved sentences, as exact strings (copy.md).
 describe("Deploy-state copy", () => {
+  // #1123: a row is a Target; the column, its split and the pane's fact say so.
+  it("names a target Target wherever the screen labels one", () => {
+    expect(TARGET_LABEL).toBe("Target");
+  });
+
   it("names the screen's one re-read control in every failed read", () => {
     expect(REREAD_LABEL).toBe("Re-read Deploy-state");
     expect([GLOBAL_NOT_READ, REPOS_NOT_READ, REPO_NOT_READ]).toEqual([

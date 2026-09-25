@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -536,6 +536,41 @@ describe("Deploy-state — Re-read and freshness", () => {
 
     expect(await screen.findByText("Read just now")).toBeInTheDocument();
   });
+
+  // #1123: every "read … ago" on the screen ages without a re-read.
+  it("ticks band 2 and the status hover card while the screen stays open", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetchMock = stubServer(() => ({
+        repos: ["/Users/me/a"],
+        repo: {
+          "/Users/me/a": {
+            primitives: [skill("tdd", "v0.3.2")],
+            skipped: [],
+            releaseHead: { ...head("v0.3.2", "v0.3.4", 2), selected: 5 },
+          },
+        },
+      }));
+      renderDeployState();
+      await findRow("…/me/a");
+      expect(await screen.findByText("Read just now")).toBeInTheDocument();
+      await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
+      expect(
+        await screen.findByText("Compared with the Harness, read just now"),
+      ).toBeInTheDocument();
+      const reads = fetchMock.mock.calls.length;
+
+      await act(() => vi.advanceTimersByTimeAsync(2 * 60_000));
+
+      expect(screen.getByText("Read 2 min ago")).toBeInTheDocument();
+      expect(
+        screen.getByText("Compared with the Harness, read 2 min ago"),
+      ).toBeInTheDocument();
+      expect(fetchMock.mock.calls.length).toBe(reads);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("Deploy-state — rows and their menu", () => {
@@ -575,6 +610,24 @@ describe("Deploy-state — rows and their menu", () => {
         .getAllByRole("button")
         .map((button) => button.getAttribute("aria-label")),
     ).toEqual(["Actions for Claude Code"]);
+  });
+
+  // #1123: a row is a Target; its Global/Repository split carries that name.
+  it("names the Global/Repository split Target in Filter and Display", async () => {
+    stubServer(() => ({ global: TWO_TOOLS }));
+    renderDeployState();
+    await findRow("Codex");
+
+    await userEvent.click(screen.getByRole("button", { name: /^Filter/ }));
+    const filter = await screen.findByRole("menu");
+    expect(within(filter).getByText("Target")).toBeInTheDocument();
+    expect(within(filter).queryByText("Kind")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(screen.getByRole("button", { name: /^Display/ }));
+    expect(
+      await screen.findByRole("menuitemradio", { name: "Target" }),
+    ).toBeInTheDocument();
   });
 
   it("filters the table by status and says why no row shows", async () => {

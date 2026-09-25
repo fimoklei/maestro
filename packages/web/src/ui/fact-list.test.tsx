@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { FactList, FactRow } from "./fact-list";
 
@@ -43,18 +44,23 @@ describe("FactList", () => {
     }
   });
 
-  it("carries the whole value on hover where the row shortens it", () => {
+  // #1123: the whole value opens from the keyboard too, not only on hover.
+  it("shows the whole value in a tooltip on focus where the row shortens it", async () => {
+    const user = userEvent.setup();
     render(
       <FactList>
-        <FactRow label="Path" machine title="/Users/me/work/api">
+        <FactRow label="Path" machine fullValue="/Users/me/work/api">
           /Users/me/work/api
         </FactRow>
       </FactList>,
     );
 
-    expect(screen.getByText("/Users/me/work/api")).toHaveAttribute(
-      "title",
-      "/Users/me/work/api",
-    );
+    await user.tab();
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("/Users/me/work/api");
+    // One place states the whole value: no native title beside the tooltip.
+    expect(document.querySelector("[title]")).toBeNull();
   });
 });
