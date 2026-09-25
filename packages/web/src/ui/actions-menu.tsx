@@ -3,23 +3,15 @@ import { Fragment, type ReactNode, useRef } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// Per-row actions menu on Radix Dropdown Menu (ADR-0004), restyled to tokens.
-// Presentational — the caller owns what each item does.
-
-// An item either runs something here or leaves for somewhere else. A link is a
-// real anchor, so the browser's own open-in-new-tab and focus behaviour apply.
 export interface ActionsMenuItem {
   label: string;
   onSelect?: () => void;
   href?: string;
   disabled?: boolean;
-  /** Drops or deletes something: red, moved last, alone behind a divider
-   * (#994, #1009). */
+  /** Drops or deletes something: red, last, behind its own divider (#1009). */
   danger?: boolean;
 }
 
-// Danger last, everything else in the caller's own order — reordering is the
-// only rule that changes an item's position (#1009).
 export const orderedItems = <T extends ActionsMenuItem>(
   items: readonly T[],
 ): readonly T[] => [
@@ -86,9 +78,8 @@ export function ActionsMenu({
             if (!returnFocus) event.preventDefault();
             run();
           }}
-          // A menu floats, so it takes radius 12 and the one shadow
-          // (ADR-0033 §7). bg-gray-2, not gray-3: leaves the highlighted state
-          // below free to read as hover (#388). z-50: above a pane's z-20 (#1124).
+          // bg-gray-2, not gray-3: the highlighted state must read as hover
+          // (#388). z-50: above a pane's z-20 (#1124).
           className={cn(
             "z-50 min-w-32 rounded-float border border-gray-7 bg-gray-2 p-tight shadow-float",
             fitTrigger && "w-(--radix-dropdown-menu-trigger-width)",
@@ -96,9 +87,7 @@ export function ActionsMenu({
         >
           {orderedItems(items).map((item, index, ordered) => {
             const previous = ordered[index - 1];
-            // Danger stands alone, last, behind its own divider (#1009). A
-            // link and an action never share a group without one either
-            // (#994) — the caller's own order says which comes first.
+            // A link and an action never share a group without a divider (#994).
             const separator =
               previous !== undefined &&
               (item.danger !== previous.danger ||
@@ -109,8 +98,7 @@ export function ActionsMenu({
                 {separator ? (
                   <DropdownMenu.Separator className="-mx-tight my-tight h-px bg-gray-6" />
                 ) : null}
-                {/* Not Radix's `disabled`: that drops the item from the
-                    keyboard, and design.md keeps it focusable (#1067). */}
+                {/* Not Radix's `disabled`: that drops the item from the keyboard (#1067). */}
                 <DropdownMenu.Item
                   aria-disabled={item.disabled || undefined}
                   data-disabled={item.disabled ? "" : undefined}

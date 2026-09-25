@@ -31,8 +31,6 @@ import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { Skeleton } from "./skeleton";
 
-// Every table screen's table (ADR-0033 §9); sorting and column visibility only.
-
 export type DataTableColumnMeta = {
   /** Width and narrow-screen hiding for the column's header and cells. */
   className?: string;
@@ -78,8 +76,7 @@ export interface DataTableGroups<T> {
   order?: readonly string[];
   /** Words on the right of a group's header, e.g. what its rows wait for. */
   meta?: (key: string) => ReactNode;
-  /** One line in place of rows for an `order` group that holds none; a
-   * group with no rows and no message is not drawn. */
+  /** One line in place of rows for an empty `order` group; none: not drawn. */
   message?: (key: string) => ReactNode | null;
 }
 
@@ -107,8 +104,6 @@ export interface DataTableProps<T extends RowData> {
   ref?: Ref<HTMLTableElement>;
 }
 
-// The grid holds focus itself, so a cell learns from here that its row is the
-// one the keyboard is on — to open its hover card or show its menu.
 const RowActiveContext = createContext(false);
 
 export const useDataTableRowActive = () => useContext(RowActiveContext);
@@ -173,8 +168,7 @@ export function DataTable<T extends RowData>({
   const gridId = useId();
   const rowDomId = (index: number) => `${gridId}-row-${index}`;
 
-  // One Tab stop for the whole grid; the arrows move this cursor, not focus,
-  // so the controls inside a row never become Tab stops of their own.
+  // One Tab stop: the arrows move this cursor, not focus.
   const [cursor, setCursor] = useState(0);
   const [gridFocused, setGridFocused] = useState(false);
   // A row opened from outside (a detail pane's pager) takes the cursor with it.
@@ -278,7 +272,6 @@ export function DataTable<T extends RowData>({
 
   const columnCount = leafColumns.length + (selection ? 1 : 0);
 
-  // One data row; `index` is its place in the flat order the cursor walks.
   const renderRow = (row: (typeof rows)[number], index: number) => {
     const id = row.id;
     const isSelected = selection?.selected.has(id) ?? false;
@@ -319,8 +312,7 @@ export function DataTable<T extends RowData>({
         <RowActiveContext value={gridFocused && index === active}>
           {selection ? (
             <GridCell className="px-inline">
-              {/* The padded label lifts the 16px box to the 24px
-                        pointer floor (WCAG 2.2 SC 2.5.8). */}
+              {/* The padding lifts the 16px box to the 24px pointer floor. */}
               {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
               <label className="-m-1 flex w-fit cursor-pointer p-1">
                 <Checkbox

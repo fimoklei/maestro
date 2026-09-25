@@ -6,9 +6,6 @@ import { jsonResponse, renderWithQuery } from "../test-utils";
 import { PathField } from "./path-field";
 import { useFolderChooser } from "./use-folder-chooser";
 
-// PathField is a Field plus **Browse**, which asks the server to open the
-// system folder chooser (ADR-0032). The server is stubbed at fetch.
-
 type ChooserReply = { status?: number; body: unknown };
 
 function stubServer(available: boolean, reply?: () => Promise<ChooserReply>) {

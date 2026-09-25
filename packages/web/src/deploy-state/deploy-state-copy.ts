@@ -1,6 +1,6 @@
 import { joinNames } from "./join-names";
 
-// Every word the Deploy-state screen shows outside its dialogs (ADR-0025).
+// Every word the Deploy-state screen shows outside its dialogs.
 
 export const REREAD_LABEL = "Re-read Deploy-state";
 export const FILTER_LABEL = "Filter";
@@ -9,7 +9,6 @@ export const TABLE_LABEL = "Deploy-state table";
 export const TARGET_LABEL = "Target";
 export const ACTIONS_COLUMN_LABEL = "Actions";
 
-// The two group headers (CONTEXT.md → Target).
 export const GLOBAL = "Global";
 export const REPOSITORIES = "Repositories";
 
@@ -19,14 +18,13 @@ export const targetCount = (count: number) =>
   `${count} ${count === 1 ? "target" : "targets"}`;
 
 // Information, never a control: Register repository on the Repositories screen
-// is the single registration affordance (ADR-0015).
+// is the only registration control.
 export const NO_REPOSITORIES =
   "No repositories registered. Select Register repository on the Repositories screen to register one.";
 
 export const NO_FILTER_MATCH =
   "No targets match the filters. Select Filter to show more targets.";
 
-// A read failure is `{the thing} not read`; its way out is Re-read (CONTEXT.md).
 export const GLOBAL_NOT_READ = {
   level: "error",
   label: "Global targets not read",

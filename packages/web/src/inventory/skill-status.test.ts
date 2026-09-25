@@ -51,8 +51,8 @@ describe("skillStatus", () => {
   });
 
   it("shows nothing while a deploy-state read is still in flight", () => {
-    // Zero reach before every read lands is not "deployed nowhere" (J04), and
-    // no status shows before the server confirms it (ADR-0033 §10).
+    // Zero reach before every read lands is not "deployed nowhere", and no status
+    // shows before the server confirms it.
     expect(skillStatus(rollup({ pending: true }))).toBeNull();
     expect(skillStatus(rollup({ targetCount: 1, pending: true }))).toBeNull();
   });
@@ -74,7 +74,7 @@ describe("targetReading", () => {
 
   it("reads Up to date for a clean copy, and for an older tag that left the skill unchanged", () => {
     expect(wordFor("up-to-date")).toBe("Up to date");
-    // ADR-0027: the pin lags, but nothing in the skill changed.
+    // The pin lags, but nothing in the skill changed.
     expect(wordFor("older-tag")).toBe("Up to date");
   });
 

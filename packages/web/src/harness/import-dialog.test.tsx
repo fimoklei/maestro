@@ -86,8 +86,6 @@ function SourceHost({
 }
 
 describe("ImportDialog", () => {
-  // Typed work is never thrown away by a stray click (ADR-0033 §6); Escape and
-  // Close still close, because those are deliberate.
   it("ignores a click outside once the name has been typed in", async () => {
     const onClose = vi.fn();
     renderDialog(DEEP, { kind: "ready", check: CHECK }, null, vi.fn(), onClose);
@@ -115,8 +113,7 @@ describe("ImportDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  // The footer every dialog shares (design.md, #1116). An import deletes
-  // nothing, so its confirm keeps the neutral fill.
+  // An import deletes nothing, so its confirm keeps the neutral fill (#1116).
   it("puts Close on the leading side and fills the import confirm", () => {
     renderDialog(DEEP, { kind: "ready", check: CHECK });
 

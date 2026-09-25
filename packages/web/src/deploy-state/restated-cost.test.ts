@@ -61,8 +61,6 @@ describe("restatedCost", () => {
     ).toBeNull();
   });
 
-  // Half a restatement is none: a cost with no receipt names a price the
-  // confirmation cannot pay, and a receipt with no cost is a blank cheque.
   it("drops a restatement that carries no receipt", () => {
     expect(
       restatedCost(refusal({ check: { scope: "repo", warning: null } })),
@@ -94,8 +92,6 @@ describe("restatedCost", () => {
     ).toBeNull();
   });
 
-  // The leftovers travel with the cost, so a confirmation can never name a
-  // copy under one attempt's cost and delete it under another's consent.
   it("reads the leftover copies the refusal named beside the cost", () => {
     expect(
       restatedCost(

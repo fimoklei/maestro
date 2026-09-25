@@ -9,15 +9,10 @@ import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 import { TYPE_WORD } from "./type-filter";
 
-// The bulk remove's confirmation (#422), grouped by what it costs (#423), and
-// the report that replaces it once the run answers (#424). The body is the
-// weighing itself: a clean target is a number, a costly one is a row with its
-// reason — and afterwards, a removed target is a number and a left-alone one
-// is a row. Presentational — the host owns the checks, the request and the
-// in-flight flag; the two view models own the grouping.
+// The bulk remove's confirmation (#422, #423) and the report that replaces it
+// (#424). Presentational — the host owns the checks, the request and the
+// in-flight flag.
 
-// One inset line, the shape every non-grouped body takes: the checks, the
-// walk, and the clean count all read as one statement about the whole run.
 function SummaryRow({
   id,
   tone,
@@ -33,14 +28,11 @@ function SummaryRow({
       className="flex items-center gap-2.5 rounded-control border border-gray-7 bg-gray-3 px-3 py-2.5 font-mono text-meta text-gray-12"
     >
       {tone === "clean" || tone === "done" ? (
-        // The Good family's mark, uncoloured as it rests: a clean copy before
-        // the run, a finished run after it (ADR-0033 §3).
         <span aria-hidden="true" className="text-gray-11 text-meta">
           ✓
         </span>
       ) : (
-        // Turning, not still: the run and the checks both take time nobody
-        // can shorten, and a static mark would read as a hang.
+        // Turning, not still: a static mark would read as a hang.
         <span
           aria-hidden="true"
           className={cn(
@@ -56,8 +48,7 @@ function SummaryRow({
   );
 }
 
-// One colour family per tone, read once — five ternaries on the same flag
-// would let the box and its rows drift apart.
+// One colour family per tone, read once, so the box and its rows cannot drift.
 const GROUP_TONE = {
   cost: {
     ink: "text-amber-12",
@@ -73,8 +64,7 @@ const GROUP_TONE = {
   },
 } as const;
 
-// One row of a group. `reason` is the right-hand slot, `detail` the line under
-// it — a report row needs both: the class that left the target alone, and why.
+// `reason` is the right-hand slot, `detail` the line under it.
 type GroupRow = {
   label: string;
   version?: string;
@@ -82,8 +72,6 @@ type GroupRow = {
   detail?: string;
 };
 
-// A box of static text with its own accessible name, so the whole cost is read
-// out with the question rather than found afterwards.
 function ReasonGroup({
   id,
   heading,
@@ -97,8 +85,6 @@ function ReasonGroup({
 }) {
   const colours = GROUP_TONE[tone];
   return (
-    // A fieldset for its grouping role, not for a form: the rows are one named
-    // block, so a reader hears the count and the reason together.
     <fieldset id={id} className="flex min-w-0 flex-col gap-1.5">
       <legend
         className={cn(
@@ -161,8 +147,7 @@ export function BulkRemoveDialog({
   targetCount: number;
   view: BulkRemoveDialogView;
   isRemoving: boolean;
-  // What the run answered, or null while there is nothing to report yet. It
-  // replaces the body, the title and the footer — the question is over (#424).
+  // What the run answered, or null before; it replaces the body, title and footer.
   report: BulkRemoveReportView | null;
   onCancel: () => void;
   onConfirm: () => void;
@@ -172,8 +157,6 @@ export function BulkRemoveDialog({
   // Nothing to walk is not a run: a refusal never blocks the others, but with
   // no others left the control would name a removal of nothing.
   const confirmable = grouped !== null && grouped.removableCount > 0;
-  // The run is over and its outcome is on screen. Its own title, its own
-  // footer, and no weighing left to draw.
   const done =
     report?.kind === "clean" || report?.kind === "partial" ? report : null;
   // The request never produced a report. "never-started" is answered and
@@ -182,8 +165,6 @@ export function BulkRemoveDialog({
     report?.kind === "never-started" || report?.kind === "outcome-unknown"
       ? report
       : null;
-  // One source for the title: the accessible name and the visible words are
-  // the same sentence, so they cannot drift apart.
   const title =
     done?.title ??
     (isRemoving
@@ -195,7 +176,6 @@ export function BulkRemoveDialog({
   const closeLabel =
     done?.kind === "clean" ? "Done" : report === null ? "Cancel" : "Close";
   const confirmOffered = report === null || report.kind === "never-started";
-  // Only skills reach this dialog today, same as the single one.
   const type = "skill" as const;
 
   const dialogId = useId();
@@ -206,10 +186,7 @@ export function BulkRemoveDialog({
   const countsId = `${dialogId}-counts`;
   const leftAloneId = `${dialogId}-left-alone`;
 
-  // The whole body, in the order the states outrank each other: the run's own
-  // report, then a request that produced none, then the run itself, then the
-  // checks in front of it, then the weighing. The groups exist only in that
-  // last state — during the walk they would price a decision already taken.
+  // In the order the states outrank each other.
   const described =
     done !== null
       ? [countsId, done.kind === "partial" ? leftAloneId : null]
@@ -225,8 +202,6 @@ export function BulkRemoveDialog({
             .filter((id) => id !== null)
             .join(" ");
 
-  // The weighing itself, drawn once: it is the confirmation's body, and it
-  // comes back beside a request that never started.
   const weighing =
     grouped === null ? null : (
       <>
@@ -281,9 +256,8 @@ export function BulkRemoveDialog({
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        {/* Mounted empty from first render — a live region created with its
-              first message announces unreliably (remove-skill-dialog.tsx). The
-              report itself is ordinary content, read where it is. */}
+        {/* Mounted empty from first render: a live region created with its
+              first message announces unreliably. */}
         <span
           role="status"
           aria-live="polite"
@@ -302,8 +276,6 @@ export function BulkRemoveDialog({
                 id={leftAloneId}
                 tone="refusal"
                 heading={`✕ Left alone · ${done.leftAlone.length}`}
-                // The class in the right-hand slot, the reason under it: one
-                // without the other says nothing to act on.
                 rows={done.leftAlone.map((row) => ({
                   label: row.label,
                   reason: row.outcome,
@@ -329,15 +301,12 @@ export function BulkRemoveDialog({
             {failure.kind === "never-started" ? weighing : null}
           </>
         ) : isRemoving ? (
-          // The wait explained rather than blank. No per-target progress and
-          // no abort: there is no partial-state exit to offer.
+          // No per-target progress and no abort: there is no partial-state exit.
           <SummaryRow id={bodyId} tone="running">
             Removing from {grouped?.removableCount ?? targetCount} targets, one
             at a time
           </SummaryRow>
         ) : grouped === null ? (
-          // Announced: the answered count climbs while the panel stands
-          // still, and the weighed body replaces it in place.
           <div role="status">
             <SummaryRow id={bodyId} tone="waiting">
               {checkingLine}
@@ -351,11 +320,7 @@ export function BulkRemoveDialog({
       <div className={DIALOG_FOOTER}>
         <Button
           type="button"
-          // Alone once the run is over: it closes the report, so it sits
-          // trailing, as bulk deploy's Close does.
           className={cn("shrink-0", confirmOffered ? null : "ml-auto")}
-          // Success only where the run finished clean: it is then the one
-          // control on the panel, and a quiet button would read as a dismiss.
           variant={done?.kind === "clean" ? "success" : "quiet"}
           disabled={isRemoving}
           {...DIALOG_CANCEL}
@@ -364,8 +329,7 @@ export function BulkRemoveDialog({
           {closeLabel}
         </Button>
         {/* Absent, not disabled, once the run is over or its outcome is
-              unknown: there is nothing left to confirm, and a control beside
-              either would rerun a removal already made or unseen. */}
+              unknown: a control would rerun a removal already made or unseen. */}
         {confirmOffered ? (
           <Button
             type="button"

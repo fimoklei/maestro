@@ -1,7 +1,3 @@
-// One sentence per import refusal and per convention finding, and the one rule
-// that decides whether Import can be pressed. Pure, so the dialog only renders
-// what this decides (#576).
-
 import { ACTIONS } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
 import { importBlockerNotice } from "./notice-copy";
@@ -43,9 +39,7 @@ export const nameBlockerNotice = (
 ): NoticeContent | null =>
   blocker === null ? null : importBlockerNotice(blocker);
 
-// The dialog's own words for the two outcomes one control has: adding a skill
-// the Harness does not hold, or replacing one it does (CONTEXT.md → Screen
-// names). No check in hand reads as adding, which is what the dialog opens on.
+// No check in hand reads as adding, which is what the dialog opens on.
 export const importLabels = (
   check: ImportCheck | undefined,
 ): { title: string; confirm: string; busy: string; hint: string } =>

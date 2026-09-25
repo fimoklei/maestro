@@ -1,6 +1,5 @@
-// Server-state for the Harness home base (frontend.md — no fetch-in-effect).
-// Two operations: a plain read that paints the local picture at once, and a
-// refresh that reaches the remote and replaces it.
+// Two reads: a plain one that paints the local picture at once, and a refresh
+// that reaches the remote and replaces it.
 
 import type {
   HarnessFreshness,
@@ -29,8 +28,6 @@ import {
   INVENTORY_KEY,
 } from "../inventory/use-inventory";
 
-// Re-exported rather than copied, so the browser's shape cannot drift from the
-// one core defines (architecture.md).
 export type {
   HarnessFreshness,
   HarnessStage,
@@ -51,8 +48,7 @@ export type {
   StructuralProblem,
 };
 
-// Every Harness read, by prefix: all of them belong to one location, so a
-// re-point drops them together.
+// Every Harness read shares this prefix, so a re-point drops them together.
 export const HARNESS_QUERIES = ["harness"] as const;
 const HARNESS_KEY = ["harness", "state"] as const;
 const RELEASE_PLAN_KEY = ["harness", "release-plan"] as const;
@@ -67,8 +63,7 @@ export function useHarness({ enabled = true }: { enabled?: boolean } = {}) {
   });
 }
 
-// The release plan for the dialog, fetched only while it is open. A plan is a
-// snapshot of one moment's delta, and a stale one would price a release the
+// Fetched only while the dialog is open: a stale plan would price a release the
 // remote has already moved past.
 export function useReleasePlan(enabled: boolean) {
   return useQuery({
@@ -88,9 +83,8 @@ export function useDiscardReleasePlan() {
   return () => queryClient.removeQueries({ queryKey: RELEASE_PLAN_KEY });
 }
 
-// Confirming a release. `previousTag` and `revision` are what the server
-// compares the freshly read remote against; neither is ever the thing to tag,
-// and no path travels (#520, #521).
+// `previousTag` and `revision` are what the server compares the fresh remote
+// against, never the thing to tag (#520, #521).
 export function usePublishRelease() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -104,9 +98,8 @@ export function usePublishRelease() {
         "/api/harness/release",
         { method: "POST", body: JSON.stringify(request) },
       );
-      // Inventory answers from the latest release, so publishing one is the
-      // only act that changes it (ADR-0021 §9). Fetched, not invalidated: a
-      // query nobody holds open would refetch nothing (#849).
+      // Fetched, not invalidated: a query nobody holds open would refetch
+      // nothing (#849).
       const inventoryRefreshed = await queryClient
         .fetchQuery({
           queryKey: INVENTORY_KEY,
@@ -139,9 +132,8 @@ export function usePublishRelease() {
   });
 }
 
-// Every field the dialog reads, down to each list element: a reply the dialog
-// would crash on or render half-blank must read as absent, so the author is
-// asked for a fresh plan instead (security.md).
+// A reply the dialog would crash on or render half-blank reads as absent, so
+// the author is asked for a fresh plan instead.
 function recomputedPlan(error: unknown): ReleasePlan | null {
   if (!(error instanceof HttpError)) {
     return null;
@@ -206,9 +198,7 @@ const isFinding = (entry: Record<string, unknown>): boolean =>
 const fetchHarnessState = () =>
   requestJson<HarnessState>("/api/harness/refresh", { method: "POST" });
 
-// What Import would do with the picked folder and the chosen name, re-asked
-// whenever either changes — the server owns every refusal, so the button never
-// decides one itself. Disabled until a folder is picked.
+// Re-asked whenever the folder or name changes: the server owns every refusal.
 export function useImportCheck(source: string | null, name: string | null) {
   return useQuery({
     queryKey: ["harness", "import-check", source, name] as const,
@@ -225,16 +215,14 @@ export function useImportCheck(source: string | null, name: string | null) {
   });
 }
 
-// What an import landed, and what it left behind: `skipped` counts the `.git`
-// entries the copy did not carry.
+// `skipped` counts the `.git` entries the copy did not carry.
 export type ImportOutcome = {
   mode: ImportMode;
   name: string;
   skipped: number;
 };
 
-// Importing itself. The harness read is invalidated rather than written: what
-// landed shows up as a pending promotion, which only the read can say (#576).
+// Invalidated rather than written: only the read can say what landed (#576).
 export function useImportSkill() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -249,13 +237,9 @@ export function useImportSkill() {
   });
 }
 
-// Where a promoted skill can be reviewed: the branch it landed on, and the URL
-// that opens GitHub's own pull-request flow. Maestro never calls GitHub's API.
 export type PromoteOutcome = { branch: string; pullRequestUrl: string };
 
-// Promoting one skill. A name travels, never a path — the server resolves the
-// harness. The harness read is invalidated rather than written: whether the row
-// is now pending review is read from git, not from this reply (#577).
+// A name travels, never a path; the row's new stage is read from git (#577).
 export function usePromoteSkill() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -270,10 +254,8 @@ export function usePromoteSkill() {
   });
 }
 
-// The three mutations that touch only GitHub: creating the request a prepared
-// branch never got, reopening a closed one and withdrawing an open one. The
-// number the row showed travels as a claim — the server rechecks it against a
-// fresh read before anything is closed or reopened (#827).
+// The number the row showed is a claim: the server rechecks it against a fresh
+// read before closing or reopening anything (#827).
 export type ProposalAction = "create" | "reopen" | "withdraw";
 
 export function useProposalAction() {
@@ -291,17 +273,14 @@ export function useProposalAction() {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    // What the row now reads is GitHub's answer, not this reply's: the state is
-    // invalidated rather than written.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
     },
   });
 }
 
-// Publishing a skill's removal. The confirmation carries the origin/HEAD tree
-// the row stated it against, so the server can refuse one the remote has moved
-// past — the browser never decides that itself (#580).
+// Carries the origin/HEAD tree the row was read against, so the server can
+// refuse a removal the remote has moved past (#580).
 export function usePromoteDeletion() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -316,10 +295,7 @@ export function usePromoteDeletion() {
   });
 }
 
-// Deleting a skill that exists nowhere else. Only the name travels: there is
-// no remote to confirm against, because nothing reaches one. The harness read
-// is invalidated rather than written — whether the row is gone is read from
-// git, not from this reply (#798).
+// Only the name travels: nothing here reaches a remote (#798).
 export function useDeleteLocalSkill() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -334,10 +310,8 @@ export function useDeleteLocalSkill() {
   });
 }
 
-// Putting a deleted skill folder back from the clone's last local commit. The
-// commit the confirmation was given against travels with it and the server
-// re-reads it; `hasRequest` never leaves the browser, and only says which
-// sentence the notice takes (ADR-0030, #915).
+// `hasRequest` never leaves the browser; it only picks the notice's sentence
+// (#915).
 export function useRestoreSkill() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -356,9 +330,7 @@ export function useRestoreSkill() {
           }),
         },
       );
-      // The folder is on disk from here on, whatever the re-read answers. The
-      // read races nothing else, so it is cancelled first and its answer
-      // written straight in, as a publication's is.
+      // The folder is on disk from here on, whatever the re-read answers.
       void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
       const state = await fetchHarnessState().then(
         (fresh) => {
@@ -381,17 +353,15 @@ export function useRestoreSkill() {
   });
 }
 
-// Writes the fetched state straight into the query cache: a refresh already
-// carries the answer, so re-reading it would only show an older picture first.
+// A refresh carries the answer, so it is written straight into the cache.
 export function useRefreshHarness() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: fetchHarnessState,
     onSuccess: (state) => {
-      // The plain read races this one on open. Cancelling it first stops a
-      // slower GET from repainting the pre-fetch picture over this answer.
-      // Not awaited: the cancel takes effect at once, and waiting for the
-      // aborted request would hold the mutation open across a remount.
+      // Cancel the plain read first, or a slower GET repaints the older
+      // picture. Not awaited: waiting on the aborted request would hold the
+      // mutation open across a remount.
       void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
       queryClient.setQueryData(HARNESS_KEY, state);
     },

@@ -6,9 +6,8 @@ import {
   scaffoldOfferExtras,
 } from "./connect-notice";
 
-// The finished notice, asserted as data (ADR-0025 §10 rejected a copy linter):
-// level, heading, sentence, detail and action label together are the reviewer's
-// unit, so the test's unit is the whole object.
+// The finished notice, asserted as one object: level, heading, sentence, detail
+// and action label are the reviewer's unit.
 function connectFor(code: string) {
   return connectNotice(new HttpError(400, "", code));
 }

@@ -7,5 +7,5 @@
   |-- 4 skill(s) integrated -> .agents/skills/, .claude/skills/
 [i] Cleaned 3 stale files from fimoklei/apm-spike-833
   [!] [fimoklei/apm-spike-833] Could not remove skill directory .claude/skills/delta: [Errno 13] Permission denied: 
-'/private/tmp/claude-501/-Users-michielmerks-Projects-maestro/6604b510-2317-4b1e-9173-02d38d5b76c3/scratchpad/proj/.claude/skills/delta'. Path retained in lockfile; will retry on next 'apm install'.
+'/private/tmp/claude-501/-Users-dev-Projects-maestro/6604b510-2317-4b1e-9173-02d38d5b76c3/scratchpad/proj/.claude/skills/delta'. Path retained in lockfile; will retry on next 'apm install'.
 [*] Installed 1 APM dependency (3 stale files cleaned) in 0.2s.

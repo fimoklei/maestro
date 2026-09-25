@@ -3,7 +3,7 @@
 
 export interface SettingsPage {
   to: string;
-  /** The page name, from CONTEXT.md. */
+  /** The page name. */
   label: string;
 }
 

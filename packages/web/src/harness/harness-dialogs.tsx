@@ -1,6 +1,3 @@
-// The dialogs the Harness view opens, and the two helpers that turn a query's
-// three states into the one prop each dialog reads. Every decision above them —
-// which is open, what a press does — stays in the view.
 import type { ComponentProps } from "react";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
@@ -31,10 +28,8 @@ import type {
 import type { useImportFlow } from "./use-import-flow";
 import { WithdrawDialog } from "./withdraw-dialog";
 
-// The whole source identity one restoration is confirmed against, taken when
-// the press was made: the skill, the commit the menu was painted at, and
-// whether a proposal is open over it. A later read moves the rows underneath;
-// it never moves this (ADR-0030).
+// Frozen when the press was made: a later read moves the rows underneath, it
+// never moves this (#915).
 export type RestoreTarget = {
   skill: string;
   commit: string;
@@ -49,8 +44,6 @@ export type HarnessDialogsProps = {
   deletion: ReturnType<typeof usePromoteDeletion>;
   deleteLocal: ReturnType<typeof useDeleteLocalSkill>;
   onDeletionClose: () => void;
-  // The frozen source a restore was pressed against. Null while no
-  // confirmation is open.
   restoring: RestoreTarget | null;
   restore: ReturnType<typeof useRestoreSkill>;
   onRestoreClose: () => void;
@@ -150,8 +143,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           skill={props.withdrawing.skill}
           number={props.withdrawing.number}
           onClose={props.onWithdrawClose}
-          // Closes on success only: a refusal is stated in the dialog, and
-          // the way forward is another confirmation.
           onConfirm={() =>
             props.withdrawing !== null &&
             props.proposalAction.mutate(
@@ -181,16 +172,13 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
   );
 }
 
-// Mounted with the dialog, so the chooser's availability is asked only once
-// Import is open.
 function ImportDialogHost(
   props: Omit<ComponentProps<typeof ImportDialog>, "chooser">,
 ) {
   return <ImportDialog {...props} chooser={useFolderChooser()} />;
 }
 
-// The Harness's own skills folder, spelled here rather than imported: `web`
-// takes types from `core` and never values (architecture.md).
+// Spelled here rather than imported: `web` takes only types from `core`.
 const SKILLS_DIR = ".apm/skills";
 
 // Which road this row's deletion takes, or null where the row offers neither.
@@ -232,8 +220,6 @@ function importLoad(
   return { kind: "loading" };
 }
 
-// The dialog stays mounted through loading, error, and the ready plan, so the
-// query's three states become its one prop.
 function planLoad(plan: ReturnType<typeof useReleasePlan>): ReleasePlanLoad {
   if (plan.data !== undefined) {
     return { kind: "ready", plan: plan.data };

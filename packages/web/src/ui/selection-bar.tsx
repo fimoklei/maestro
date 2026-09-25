@@ -2,10 +2,6 @@ import { X } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { IconButton } from "./icon-button";
 
-// The actions on a selection float at the foot of the panel, never above the
-// table (design.md → Frame). It mounts with the first choice and leaves with
-// the last, so it never stands empty.
-
 export const CLEAR_SELECTION = "Clear selection";
 export const selectedCount = (count: number) => `${count} selected`;
 export const hiddenByFilterLine = (hidden: number) =>
@@ -28,7 +24,6 @@ export function SelectionBar({
   return (
     <fieldset
       aria-labelledby={countId}
-      // It floats, so radius 12 and the one shadow (ADR-0033 §7).
       className="absolute inset-x-0 bottom-section z-20 mx-auto flex w-fit max-w-[calc(100%-var(--spacing-page))] flex-wrap items-center gap-cell rounded-float border border-gray-7 bg-gray-2 py-tight pr-tight pl-panel font-ui shadow-float"
     >
       <span id={countId} className="text-gray-12 text-row tabular-nums">

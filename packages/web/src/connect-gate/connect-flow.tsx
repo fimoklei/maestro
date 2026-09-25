@@ -25,9 +25,8 @@ const CLONE_REFUSALS = new Set([
   "destination-partial-clone",
 ]);
 
-// The connect gate's form and its mutations. renderSuccess is a slot, not a
-// flag — supply it for an in-place confirmation, omit it to lean on onSuccess
-// alone (ADR-0015).
+// Supply renderSuccess for an in-place confirmation; omit it to rely on
+// onSuccess alone.
 type ConnectFlowProps = {
   onSuccess?: (result: ConnectResponse) => void;
   renderSuccess?: (result: ConnectResponse) => ReactNode;
@@ -53,8 +52,6 @@ export function ConnectFlow({ onSuccess, renderSuccess }: ConnectFlowProps) {
     );
   }
 
-  // Both routes end the same way, so the success slot does not care which
-  // mutation got there (#556).
   const succeeded = scaffold.isSuccess ? scaffold.data : connect.data;
   if (succeeded && renderSuccess) return renderSuccess(succeeded);
 

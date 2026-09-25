@@ -1,7 +1,5 @@
-// The Inventory's second entrance into the Update preview (#955, #937): a
-// deploy the target's own release cannot serve, answered from the Report with
-// the one control that can. Successor of the retired DeploySkillAction's
-// entrance test (#1065).
+// The Inventory's second entrance into the Update preview (#955): a deploy the
+// target's release cannot serve, answered from the Report.
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";

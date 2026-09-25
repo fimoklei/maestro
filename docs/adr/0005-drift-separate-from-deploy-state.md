@@ -5,7 +5,7 @@
 
 ## Context
 
-Sub-step `01.3` (subjob `J04`) surfaces **version drift** binary — behind /
+Sub-step `01.3` surfaces **version drift** binary — behind /
 up-to-date per deployed skill, per registered repo and for global. The cockpit
 already shows deploy-state ("what is deployed where, at which version") from a
 fast, local read of each `apm.lock.yaml`. Drift is the natural neighbour on the

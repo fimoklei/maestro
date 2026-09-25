@@ -28,17 +28,15 @@ describe("Button", () => {
   });
 
   it("leaves the focus ring to the one rule every control shares", () => {
-    // ADR-0033 §2 puts the ring on blue 9 in a single :focus-visible rule
-    // (theme.css). A per-button outline utility would override it for buttons
-    // alone; outline-none would kill it outright.
+    // The ring is one :focus-visible rule in theme.css; a per-button outline
+    // utility would override it, outline-none would kill it.
     render(<Button>go</Button>);
     const button = screen.getByRole("button", { name: "go" });
     expect(button.className).not.toMatch(/outline/);
   });
 
   it("keeps the smallest size at the 24px click-target floor", () => {
-    // A control inside a row is 24px (ADR-0033 §7), which is also WCAG 2.2 AA
-    // 2.5.8's floor — it may not shrink below it.
+    // 24px is the WCAG 2.2 SC 2.5.8 floor; it may not shrink below it.
     render(<Button size="sm">+ repo</Button>);
     expect(screen.getByRole("button", { name: "+ repo" })).toHaveClass("h-6");
   });

@@ -60,7 +60,6 @@ describe("ReleaseDialog", () => {
     ).toBeInTheDocument();
   });
 
-  // Geist Mono is for the tag, never the plain word naming it (design.md, #1117).
   it("sets the Releasing as label in the sans face and its version in mono", () => {
     renderReady();
 
@@ -148,8 +147,6 @@ describe("ReleaseDialog", () => {
       delta: [{ kind: "removed", name: "grilling", author: "Linus" }],
     });
 
-    // "Deleted", never "Removed": remove belongs to deployed copies alone
-    // (CONTEXT.md → Harness skill deletion).
     expect(screen.getByText("Deleted")).toBeInTheDocument();
     expect(screen.queryByText("Removed")).not.toBeInTheDocument();
     expect(screen.queryByText("Added")).not.toBeInTheDocument();
@@ -205,8 +202,6 @@ describe("ReleaseDialog", () => {
     ).not.toBeInTheDocument();
   });
 
-  // The one publishing action in the Harness keeps the primary fill, which is
-  // neutral under the new system (#876, ADR-0033 §2).
   it("fills the publish confirmation as the primary action", () => {
     renderReady();
 
@@ -215,8 +210,8 @@ describe("ReleaseDialog", () => {
     ).toHaveClass("bg-gray-12");
   });
 
-  // The footer every dialog shares (design.md, #1116). It pushes a tag, so it
-  // opens on Close, as every dialog that writes to GitHub does.
+  // It pushes a tag, so it opens on Close, as every dialog that writes to
+  // GitHub does (#1116).
   it("puts Close on the leading side and opens with focus on it", async () => {
     renderReady();
 
@@ -293,8 +288,6 @@ describe("ReleaseDialog", () => {
     ).toBeDisabled();
   });
 
-  // Focusable, not disabled: an unavailable control stays reachable and states
-  // why (ADR-0033 §8), so the press cannot land twice and focus is not lost.
   it("holds publish unpressable and says so while a release is in flight", () => {
     renderReady({}, { publishing: true });
 

@@ -1,5 +1,4 @@
-// After every deploy attempt, invalidates the target's deploy-state query so
-// the panel refetches without a manual reload (frontend.md).
+// After every deploy attempt, invalidates the target's deploy-state query.
 import {
   type QueryClient,
   useMutation,
@@ -33,8 +32,8 @@ export type DeployRequest = {
   type: "skill";
   name: string;
   target: DeployTarget;
-  // The receipt the server's own refusal minted. Set only by the inline
-  // "Deploy again" confirm, never a plain deploy (ADR-0006, #66, #952).
+  // The receipt the server's own refusal minted. Set only by the inline "Deploy
+  // again" confirm, never a plain deploy (#66, #952).
   confirmedCopyReceipt?: string;
 };
 

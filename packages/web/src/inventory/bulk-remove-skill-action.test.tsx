@@ -68,8 +68,7 @@ function stubServer(
   return calls;
 }
 
-// Stands in for the Inventory pane's foot, which opens the run (#1065); the
-// button's own label and count are the pane's claim (skill-detail-pane.test).
+// Stands in for the Inventory pane's foot, which opens the run (#1065).
 function Opener({ targets }: { targets: BulkRemoveCandidate[] }) {
   const [open, setOpen] = useState(false);
   return (
@@ -136,7 +135,6 @@ describe("BulkRemoveRun", () => {
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
 
-    // The run's outcome replaces the question rather than vanishing with it.
     const dialog = await screen.findByRole("dialog", { name: "Removed tdd" });
     expect(dialog).toHaveTextContent("Removed 2 · refused 0 · failed 0");
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
@@ -160,10 +158,8 @@ describe("BulkRemoveRun", () => {
   });
 
   it("takes a target its own check refused out of the run rather than guessing", async () => {
-    // A refusal is an answer: the server already said this target cannot be
-    // removed, so the run is told rather than left to rediscover it. The other
-    // target still goes — one unreachable repo does not stop a good removal,
-    // and the confirm counts only what it will walk (#423).
+    // A refusal is an answer: the run is told, the other target still goes, and
+    // the confirm counts only what it will walk (#423).
     const calls = stubServer({
       preflight: (body) =>
         (body as { target: { kind: string } }).target.kind === "repo"
@@ -220,8 +216,7 @@ describe("BulkRemoveRun", () => {
   });
 
   it("weighs an unverifiable copy as a cost, naming the version it destroys", async () => {
-    // The check answered: this copy carries work the removal deletes. It is a
-    // row with its price on it, never part of the clean count (#423).
+    // A costly copy is a row with its price, never part of the clean count (#423).
     stubServer({
       preflight: (body) =>
         (body as { target: { kind: string } }).target.kind === "repo"
@@ -248,8 +243,8 @@ describe("BulkRemoveRun", () => {
   });
 
   it("refreshes the targets it removed from once the report is closed", async () => {
-    // The pane and the inventory's deployed column read the same queries; a
-    // stale one would keep listing a copy that is gone (frontend.md).
+    // The pane and the deployed column read the same queries; a stale one would
+    // keep listing a copy that is gone.
     let removed = false;
     vi.stubGlobal(
       "fetch",
@@ -295,18 +290,14 @@ describe("BulkRemoveRun", () => {
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
-    // The pane behind the report is re-read on the way out, so what it lists
-    // afterwards is exactly what still holds the skill.
     await userEvent.click(await screen.findByRole("button", { name: "Done" }));
 
     expect(await screen.findByText("Empty")).toBeInTheDocument();
   });
 
   it("re-checks from scratch on reopen, never confirming against the last open's answer", async () => {
-    // A copy can pick up local edits between two opens; an answer kept from
-    // the first would hand out a confirm against a cost nobody has measured
-    // (#337). The second check here never answers, so a live confirm can only
-    // mean the first answer was reused.
+    // A copy can pick up local edits between two opens (#337). The second check
+    // never answers, so a live confirm means the first answer was reused.
     let preflights = 0;
     vi.stubGlobal(
       "fetch",
@@ -342,9 +333,8 @@ describe("BulkRemoveRun", () => {
   });
 
   it("says Outcome unknown when the run's answer is lost, and re-reads the targets", async () => {
-    // A lost response does not prove the server never ran: the walk may have
-    // finished. Claiming nothing was removed would send the user into a retry
-    // instead of a look.
+    // A lost response does not prove the server never ran, so the report sends
+    // the user to look, not retry.
     let ran = false;
     vi.stubGlobal(
       "fetch",
@@ -400,8 +390,7 @@ describe("BulkRemoveRun", () => {
   });
 
   it("says Run not started when the server refuses the request", async () => {
-    // The server answered, so nothing was walked. The same attempt is still on
-    // offer, against the body it would act on.
+    // Nothing was walked, so the same attempt is still on offer.
     stubServer({
       report: () =>
         jsonResponse(

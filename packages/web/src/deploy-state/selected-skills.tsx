@@ -13,8 +13,6 @@ import type { DeployedPrimitive } from "./use-deploy-state";
 // Pending default avoids a spurious mark before the drift query resolves.
 const PENDING_DRIFT = driftViewModel({ data: undefined, isError: false });
 
-// A target's Selected skills in its detail pane (#993): one 32px row per
-// skill carrying one mark, and the removal flow behind each row's menu.
 export function SelectedSkills({
   primitives,
   drift = PENDING_DRIFT,
@@ -25,15 +23,13 @@ export function SelectedSkills({
 }: {
   primitives: DeployedPrimitive[];
   drift?: DriftViewModel;
-  // Required, not optional: a global target's tools must be present or the
-  // confirmation can't render, and an optional prop could drop them (#338).
+  // Required: a global target's tools must be present or the confirmation can't render.
   target: RemoveDialogTarget;
   /** The target as the table names it, for the removal's toast. */
   targetName: string;
-  // Called after the dialog is gone — a successful removal destroys the
-  // trigger the modal's own focus-restore would otherwise aim at.
+  // Called after the dialog is gone: a successful removal destroys the trigger
+  // the modal's own focus-restore would aim at.
   onRemoved?: () => void;
-  /** Where the owner sends focus once a removed row is gone. */
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
   const [removing, setRemoving] = useState<string | null>(null);
@@ -48,7 +44,6 @@ export function SelectedSkills({
     }
   }, [justRemoved, onRemoved]);
 
-  // Behind names with no matching deployed skill — surfaced, never dropped.
   const orphans = drift.orphanBehind(
     primitives.map((primitive) => primitive.name),
   );

@@ -1,4 +1,3 @@
-// Reads the per-target outcome the server sends with a failed removal (#416).
 import type {
   RemoveOutcome,
   RemoveTargetState,
@@ -13,8 +12,7 @@ const STATES: Record<string, RemoveTargetState> = {
 };
 
 // Nothing validates this body. A report this build cannot read is dropped
-// whole rather than half-drawn: a ledger built on a guess states an outcome the
-// server never proved (J04).
+// whole: a ledger built on a guess states an outcome the server never proved.
 export function removalOutcome(error: unknown): RemoveOutcome | null {
   if (!(error instanceof HttpError)) {
     return null;

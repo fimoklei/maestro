@@ -3,8 +3,7 @@ import { type ActionsMenuItem, orderedItems } from "./actions-menu";
 import { Button } from "./button";
 import { cn } from "./cn";
 
-// A detail pane's foot (#1065): the row's ⋮ items as 32px buttons, in the
-// same order. The first enabled one is primary; danger stays danger.
+// The row's ⋮ items as buttons; the first enabled one is primary (#1065).
 export type FootItem = ActionsMenuItem & {
   /** The accessible name where the label alone would not say what it acts on. */
   name?: string;

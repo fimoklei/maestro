@@ -1,5 +1,4 @@
-// Pure search model for the inventory table (#287); sorting is the
-// DataTable's own (#1040).
+// Pure search model for the inventory table (#287).
 import type { Primitive } from "./use-inventory";
 
 // Name only, case-insensitive — matching descriptions would surprise the

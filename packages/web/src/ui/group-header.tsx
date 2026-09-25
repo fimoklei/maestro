@@ -1,8 +1,6 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 
-// The row that opens a group in a DataTable (#993): the group's words, then
-// how many rows it holds, and on the right what the group waits for (#994).
 // Never a stop for the grid's cursor.
 export function GroupHeader({
   label,

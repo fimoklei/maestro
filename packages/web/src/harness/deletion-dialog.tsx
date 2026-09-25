@@ -12,9 +12,6 @@ export type DeletionMode =
   | { kind: "propose"; origin: string; seenRemoteTree: string }
   | { kind: "local"; folder: string };
 
-// The confirmation a deletion takes before anything happens: consequences
-// first, then the facts it is given against.
-// Presentational — the host owns the mutation and what the row said.
 export function DeletionDialog({
   skill,
   mode,

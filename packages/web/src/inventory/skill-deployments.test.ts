@@ -30,7 +30,7 @@ const target = (
   drift: ranDrift(behind),
 });
 
-// The same target, now following one Harness release (ADR-0031). An undefined
+// The same target, now following one Harness release. An undefined
 // `changedSkills` is the comparison that could not be read.
 const onRelease = (
   label: string,
@@ -83,8 +83,8 @@ describe("skillDeployments", () => {
     ]);
   });
 
-  // Update target moves a whole target to its newer release (ADR-0031): only
-  // a target following one release can take it.
+  // Update target moves a whole target to its newer release: only a target
+  // following one release can take it.
   it("offers an update only where this skill changed on a target following one release", () => {
     const behindOnRelease = onRelease("Claude Code", ["tdd", "grill"], ["tdd"]);
     expect(skillDeployments("tdd", [behindOnRelease])[0]?.updatable).toBe(true);

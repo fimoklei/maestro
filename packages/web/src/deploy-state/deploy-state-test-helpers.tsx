@@ -6,18 +6,15 @@ import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import { DeployStateView } from "./deploy-state-view";
 
-// The Deploy-state screen's server, answered by URL. A body is served with
-// 200; `{ status, body }` answers with that status instead.
+// Answered by URL. A body is served with 200; `{ status, body }` sets the status.
 type Answer = unknown | { status: number; body: unknown };
 
 export type ServerState = {
   repos?: string[] | Answer;
   global?: Answer;
-  // Per registered repo path.
   repo?: Record<string, Answer>;
   // "global" or a repo path; defaults to nothing behind.
   drift?: Record<string, Answer>;
-  // Anything else the test drives (preflights, writes), by exact path.
   other?: (url: string, init?: RequestInit) => Response | Promise<Response>;
 };
 
@@ -39,7 +36,6 @@ const respond = (answer: Answer): Response | Promise<Response> =>
 
 const EMPTY_TARGET = { primitives: [], skipped: [] };
 
-// Reads the state on every request, so a test can move it between reads.
 export function stubServer(read: () => ServerState) {
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -75,8 +71,6 @@ export function stubServer(read: () => ServerState) {
   return fetchMock;
 }
 
-// `state` is what another screen sent along, as the Inventory's
-// Show in Deploy-state does.
 export function renderDeployState(state?: { openTarget: string }) {
   return renderWithQuery(
     <MemoryRouter initialEntries={[{ pathname: "/", state }]}>
@@ -99,7 +93,6 @@ export function renderDeployState(state?: { openTarget: string }) {
 export const grid = () =>
   screen.getByRole("grid", { name: "Deploy-state table" });
 
-// The row whose Target cell starts with this name.
 export function rowOf(name: string): HTMLElement {
   const row = within(grid())
     .getAllByRole("row")
@@ -112,7 +105,6 @@ export function rowOf(name: string): HTMLElement {
   return row;
 }
 
-// Target, Release, Status, Skills — the ⋮ cell is left out.
 export function cellsOf(name: string): string[] {
   return within(rowOf(name))
     .getAllByRole("gridcell")

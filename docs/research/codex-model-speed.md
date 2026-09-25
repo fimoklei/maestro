@@ -93,7 +93,7 @@ Command (repeated per model), against a real 34-file / 766-insertion diff:
 
 ```
 node "$COMPANION" adversarial-review --base main~3 \
-  --cwd /Users/michielmerks/Projects/maestro --model <M> --json "<merge-gate focus>"
+  --cwd /Users/dev/Projects/maestro --model <M> --json "<merge-gate focus>"
 ```
 
 | run | model | effort | wall clock | verdict | findings |

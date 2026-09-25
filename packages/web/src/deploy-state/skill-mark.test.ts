@@ -28,7 +28,7 @@ describe("skillMark", () => {
   it("marks a changed skill Behind and an identical one Up to date", () => {
     expect(words(skillMark(undefined, "behind"))).toBe("↑ Behind");
     expect(words(skillMark(undefined, "up-to-date"))).toBe("✓ Up to date");
-    // The release moved, this skill did not: identical at both (ADR-0027).
+    // The release moved, this skill did not: identical at both.
     expect(words(skillMark(undefined, "older-tag"))).toBe("✓ Up to date");
   });
 

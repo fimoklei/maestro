@@ -48,8 +48,7 @@ export function ReachCard({
   );
 }
 
-// One target: its name, the release it follows, its own reading. The pane
-// reads the same fold as a mark (#1065), so the two never disagree.
+// One target: its name, the release it follows, its own reading.
 export function TargetReadingRow({
   deployment,
 }: {

@@ -1,5 +1,4 @@
-// Every word the Harness table shows. One row per status, so a new status
-// fails typecheck until it has copy (copy.md, ADR-0025).
+// One row per status, so a new status fails typecheck until it has copy.
 import {
   reading,
   type StatusFamily,
@@ -32,9 +31,6 @@ export const PROPOSAL_EMPTY = {
   },
 } as const;
 
-// The group names the stage; the badge marks whether this row departs from the
-// normal path within it (#994). Amber is work stuck until the author acts,
-// green an approval; everything else is where the stage expects it.
 const FAMILIES: Record<StageStatus, StatusFamily> = {
   "not-yet-proposed": "neutral",
   "new-local-work": "neutral",
@@ -56,7 +52,7 @@ const FAMILIES: Record<StageStatus, StatusFamily> = {
 };
 
 // A deletion keeps its own reading in every stage, so a local deletion never
-// relabels an earlier change somewhere else (ADR-0021 · 10).
+// relabels an earlier change somewhere else.
 const READINGS: Record<StageStatus, string> = {
   "not-yet-proposed": "Not yet proposed",
   "new-local-work": "New local work",
@@ -104,7 +100,6 @@ export type StageContext = {
 const requestNumbers = (row: HarnessStageRow): string[] =>
   row.requests.map((request) => `#${request.number}`);
 
-// "#41 and #44", or "Pending review and Pending release" — read aloud.
 const listOf = (parts: string[]): string => {
   if (parts.length < 2) {
     return parts[0] ?? "";
@@ -205,8 +200,6 @@ export const reviewerLine = (row: HarnessStageRow): string | null => {
   return requested === null ? null : `Review requested from ${requested}`;
 };
 
-// The Pull request cell (#994). Its card carries only fields the gh adapter
-// already lets cross, so the state and the review are read off the status.
 export const pullRequestLinkName = (number: number): string =>
   `Pull request #${number}, opens in a new tab`;
 
@@ -240,7 +233,6 @@ const REVIEW_WORDS: Partial<Record<StageStatus, string>> = {
 export const reviewWord = (row: HarnessStageRow): string | null =>
   REVIEW_WORDS[row.status] ?? null;
 
-// The Also in column: blank where membership is unknown, as the line is.
 export const alsoInWords = (row: HarnessStageRow): string =>
   (row.alsoIn ?? []).map((stage) => STAGE_NAMES[stage]).join(", ");
 

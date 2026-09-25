@@ -21,8 +21,6 @@ describe("StatusBadge", () => {
     expect(container).toHaveTextContent(/^Unknown$/);
   });
 
-  // Spectrum's calm data-table badge: a soft border, room around the word and
-  // one dot in the family's colour (ADR-0033 §3, #1069).
   it.each([
     [
       "good",

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useEscapeToClose } from "./use-escape-to-close";
 
-// No Tab trap (ADR-0016: side-by-side, not a dialog). Keyed on `activeKey`,
-// not mount, since one pane instance pages through its subjects.
+// No Tab trap: the pane is not a dialog. Keyed on `activeKey`, not mount,
+// since one pane instance pages through its subjects.
 export function useDetailPaneFocus({
   activeKey,
   getTriggerElement,

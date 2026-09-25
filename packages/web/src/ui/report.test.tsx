@@ -3,9 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Report } from "./report";
 
-// What one action did to several skills, worst group first (ADR-0033 §6), so
-// the reader meets what needs them before what went well.
-
 const GROUPS = [
   { tone: "good" as const, label: "Deployed", rows: [{ name: "grilling" }] },
   {

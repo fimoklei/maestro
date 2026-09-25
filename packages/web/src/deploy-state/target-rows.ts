@@ -37,8 +37,7 @@ import type {
 } from "./use-deploy-state";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
-// One Deploy-state row per target (#993): a detected tool or a registered
-// repository. Pure, so the table, the hover card and the pane read one fold.
+// One Deploy-state row per target: a detected tool or a registered repository.
 export type TargetRow = {
   id: string;
   group: typeof GLOBAL | typeof REPOSITORIES;
@@ -46,11 +45,9 @@ export type TargetRow = {
   path: string;
   /** The whole path where `name` shortens it (#211). */
   title?: string;
-  /** What a removal from this target names. */
   target: RemoveDialogTarget;
   /** What an update or retry sends; every tool row names the one global target. */
   wire: DeployTarget;
-  /** The name Update target's trigger and dialog carry. */
   updateName: string;
   release: { current: string; latest: string | null } | null;
   status: StatusReading | null;
@@ -69,7 +66,7 @@ export type TargetRow = {
   behind: boolean;
 };
 
-// A row's id, which another screen names to open that row's pane (#1065).
+// A row's id, which another screen names to open that row's pane.
 export const globalRowId = (tool: string) => `global:${tool}`;
 export const repoRowId = (repoPath: string) => `repo:${repoPath}`;
 
@@ -83,7 +80,7 @@ export const isBehind = (
   pending === undefined;
 
 // One lockfile and one release for every detected tool, so any tool reading
-// behind puts the whole global target, every tool row, behind (#951).
+// behind puts every tool row behind (#951).
 export const isGlobalBehind = (
   tools: readonly { releaseHead?: ReleaseHead }[],
   pending?: PendingOperation,
@@ -125,7 +122,6 @@ export function globalRows(
       path: destination,
       target: { kind: "global", tools },
       wire: { kind: "global" },
-      // One Update moves the whole detected set (spec story 32).
       updateName: toolNameList(tools),
       release: releaseOf(group.releaseHead, group.pinnedPerSkill),
       status: targetStatus({
@@ -140,8 +136,7 @@ export function globalRows(
       ...(pending ? { pending } : {}),
       primitives: group.primitives,
       drift: toolDrift,
-      // A skipped entry or a foreign origin names no tool, so every tool
-      // carries them (#358, #655).
+      // A skipped entry or a foreign origin names no tool, so every tool carries them.
       skipped: data.skipped,
       otherOrigins: data.otherOrigins,
       ...(group.extraFiles === undefined
@@ -209,7 +204,6 @@ export function repoRow(
   };
 }
 
-// The hover card's lines: what the Status badge compresses, one sentence each.
 export function statusSummary(row: TargetRow, now: Date): string[] {
   if (row.readFailed && row.group === REPOSITORIES) {
     return [REPO_NOT_READ.label];
@@ -231,8 +225,7 @@ export function statusSummary(row: TargetRow, now: Date): string[] {
   if (row.head) {
     const { latestRelease } = row.head;
     const sentence = releaseSentence(row.head);
-    // Claimed only from this row's own settled read (#1125): an unfinished
-    // operation, a failed read or a behind sibling tool says otherwise.
+    // Claimed only from this row's own settled read (#1125).
     if (!row.pending && !row.readFailed && !row.behind && !row.pinned) {
       if (latestRelease === null) lines.push(LATEST_RELEASE_UNKNOWN);
       else if (!sentence) lines.push(ON_LATEST_RELEASE);

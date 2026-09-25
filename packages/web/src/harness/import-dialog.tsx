@@ -22,9 +22,6 @@ export type ImportCheckLoad =
   | { kind: "error"; notice: NoticeContent }
   | { kind: "ready"; check: ImportCheck };
 
-// Importing one external skill folder: the folder, the directory name it lands
-// under, what refuses it and what is only worth knowing. Presentational — the
-// host owns the chooser, the check query and the import mutation (#576).
 export function ImportDialog({
   source,
   sourceText,
@@ -43,7 +40,6 @@ export function ImportDialog({
 }: {
   /** The folder the check was asked about; null until one is chosen. */
   source: string | null;
-  /** What the Folder path field holds, typed or picked. */
   sourceText: string;
   onSourceChange: (text: string) => void;
   /** A folder to check: picked through Browse, or typed and left. */
@@ -74,8 +70,8 @@ export function ImportDialog({
   const nameProblem = nameBlockerNotice(check?.nameBlocker ?? null);
   const advisories = advisoryTexts(check?.advisories ?? []);
   const nameErrorId = "import-name-error";
-  // A click outside must not discard a typed name (ADR-0033 §6). Once true it
-  // stays true: the reader's work is on the panel either way.
+  // A click outside must not discard a typed name. Once true it stays true:
+  // the reader's work is on the panel either way.
   const [nameTouched, setNameTouched] = useState(false);
 
   return (
@@ -114,7 +110,6 @@ export function ImportDialog({
             chooser={chooser}
             disabled={importing}
           />
-          {/* The answer to choosing a folder, so it announces assertively. */}
           <Notice trigger="user-action" notice={sourceProblem} />
         </div>
 
@@ -133,8 +128,6 @@ export function ImportDialog({
             describedBy={nameProblem === null ? undefined : nameErrorId}
             className="font-mono"
           />
-          {/* A refusal with a heading and a cause is a Notice in the field's
-              own slot (`copy.md`). */}
           <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
         </div>
 

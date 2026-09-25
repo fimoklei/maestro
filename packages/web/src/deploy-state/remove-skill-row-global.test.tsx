@@ -15,15 +15,13 @@ import {
   within,
 } from "./remove-skill-row-test-helpers";
 
-// Split from one 32-test file (#723) — see remove-skill-row.test.tsx.
+// Split from one file (#723); see remove-skill-row.test.tsx.
 
 afterEach(() => {
   vi.unstubAllGlobals();
   clearToasts();
 });
 
-// The global row. One action covers every detected tool, and the confirmation
-// has to name them — the user clicked inside one tool's card (#338).
 describe("removing a deployed skill from a row", () => {
   describe("on a global row", () => {
     const renderGlobalRow = () =>
@@ -87,11 +85,6 @@ describe("removing a deployed skill from a row", () => {
       });
     });
 
-    // A global removal can force-delete an undetected tool's copy — confirm
-    // must echo preflight's own token, never a client-rebuilt path list.
-    // The machine's tools can change between the check and the click too, so a
-    // restated cost brings its own leftovers. Sending the older token beside
-    // the newer cost would leave a copy the dialog named still on disk (#390).
     it("confirms a restated cost with the leftovers that came with it", async () => {
       const RESTATED = "c".repeat(64);
       const RESTATED_TOKEN = "d".repeat(64);

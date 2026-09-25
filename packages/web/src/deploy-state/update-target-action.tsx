@@ -9,8 +9,7 @@ import { useRetryOperation } from "./use-retry-operation";
 import { useUpdatePreflight } from "./use-update-preflight";
 import type { useUpdateTarget } from "./use-update-target";
 
-// Update target's preview, run and outcome. The caller's control opens it; the
-// caller owns the mutation, so the outcome outlives the control (story 27, #980).
+// The caller owns the mutation, so the outcome outlives the control (#980).
 export function UpdateTargetAction({
   targetName,
   target,
@@ -19,16 +18,10 @@ export function UpdateTargetAction({
   onClose = () => {},
   defaultOpen = false,
 }: {
-  // The target's own label, as the card's header shows it.
   targetName: string;
   target: DeployTarget;
-  // The skill the Inventory's entrance asks for beside the release move. Absent
-  // from the card, which adds no skill of its own (#955).
   add?: string;
-  // Owned by the caller, so the dialog keeps the run and its outcome.
   update: ReturnType<typeof useUpdateTarget>;
-  // Run when the dialog closes, so an entrance that opened on a refusal can
-  // drop it: the target the refusal described is gone (#955).
   onClose?: () => void;
   /** Opened by a control that asked for it by name. */
   defaultOpen?: boolean;
@@ -41,8 +34,6 @@ export function UpdateTargetAction({
   );
   const retry = useRetryOperation();
   const preview = preflight.data?.preview ?? null;
-  // Present only once apm ran: on a refusal it rides with the code, on success
-  // with the release the server proved (#416).
   const outcome = update.data?.outcome ?? updateOutcomeRows(update.error);
 
   const close = () => {
@@ -61,12 +52,8 @@ export function UpdateTargetAction({
           isLoading={preflight.isPending}
           isRunning={update.isPending || retry.isPending}
           outcome={outcome}
-          // The record survives an incomplete update, so the way out is the
-          // same retry the card offers (#951).
           incomplete={outcome !== null && update.isError}
           onRetry={() => retry.mutate({ target })}
-          // The one refusal with no way through from this dialog: the Harness
-          // clone's origin is fixed outside the cockpit (#960).
           blocked={
             preflight.error instanceof HttpError &&
             preflight.error.code === "inventory-origin-unavailable"

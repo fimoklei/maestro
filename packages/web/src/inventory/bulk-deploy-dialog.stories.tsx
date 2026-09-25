@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
 
-// One story per state the dialog ships (#1042).
 const meta = {
   title: "Inventory/BulkDeployDialog",
   component: BulkDeployDialog,
@@ -29,10 +28,8 @@ type Story = StoryObj<typeof meta>;
 
 export const PickTarget: Story = {};
 
-// Running: the control spins, Cancel and every other way out are off.
 export const Deploying: Story = { args: { busy: true } };
 
-// The request itself failed: a notice, never zeroed counts.
 export const DidNotRun: Story = {
   args: {
     failure: {
@@ -44,7 +41,6 @@ export const DidNotRun: Story = {
   },
 };
 
-// A partial run, worst group first; one install failure names every skill.
 export const PartialReport: Story = {
   args: {
     report: {

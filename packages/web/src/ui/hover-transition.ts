@@ -1,5 +1,3 @@
-// Single owner of the hover transition window — see DESIGN.md § Motion, PRODUCT.md
-// (motion-safe: honors prefers-reduced-motion).
 const WINDOW = "motion-safe:duration-150 motion-safe:ease-out";
 
 // Named properties, not transition-colors: that shorthand covers outline-color
