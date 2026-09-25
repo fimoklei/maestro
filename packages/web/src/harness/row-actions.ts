@@ -1,6 +1,6 @@
 // What one row's menu holds: every action the stage carries and every
-// pull-request link, plus three blocked actions kept disabled with their reason
-// after an em dash. No other absent action becomes a disabled one (#809, #844).
+// pull-request link. An absent action is never a disabled one; the Status
+// hover card names why it is absent (#1125).
 import type { ActionsMenuProps } from "../ui/actions-menu";
 import type { HarnessStageRow, ReviewRequestLink } from "./use-harness";
 
@@ -26,10 +26,6 @@ export type RowActionHandlers = {
 // Whether the press is open, and the local commit it would be given against.
 // A null commit takes the item off the menu: there is nothing to confirm.
 export type RestoreGate = { enabled: boolean; commit: string | null };
-
-const NO_REQUEST = "Withdraw proposal — no request yet";
-const EXTRA_UPDATE = "Update proposal — close the extra requests";
-const EXTRA_WITHDRAW = "Withdraw proposal — close the extra requests";
 
 // Numbered only where more than one could be meant: a sole request needs no
 // number to be unambiguous.
@@ -120,7 +116,6 @@ function stageItems(
           disabled: !enabled,
           onSelect: () => handlers.create(row.skill),
         },
-        { label: NO_REQUEST, disabled: true },
       ];
     case "proposal-closed":
       return [
@@ -139,11 +134,7 @@ function stageItems(
         },
       ];
     case "multiple-pull-requests":
-      return [
-        ...links,
-        { label: EXTRA_UPDATE, disabled: true },
-        { label: EXTRA_WITHDRAW, disabled: true },
-      ];
+      return links;
     default:
       return sole === undefined
         ? links

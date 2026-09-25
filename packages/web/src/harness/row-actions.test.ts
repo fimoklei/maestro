@@ -161,18 +161,14 @@ describe("rowItems", () => {
     }
   });
 
-  it("offers Create pull request, and blocks withdrawal with its reason", () => {
+  it("offers Create pull request, and no withdrawal without a request", () => {
     const items = rowItems(
       row({ status: "pull-request-missing", requests: [] }),
       handlers,
       true,
     );
 
-    expect(labels(items)).toEqual([
-      "Create pull request",
-      "Withdraw proposal — no request yet",
-    ]);
-    expect(disabled(items)).toEqual(["Withdraw proposal — no request yet"]);
+    expect(labels(items)).toEqual(["Create pull request"]);
   });
 
   // A merged request leaves the branch behind it. Where that branch already
@@ -181,12 +177,7 @@ describe("rowItems", () => {
   it("keeps Create pull request on a merged proposal", () => {
     const items = rowItems(row({ status: "proposal-merged" }), handlers, true);
 
-    expect(labels(items)).toEqual([
-      "View pull request",
-      "Create pull request",
-      "Withdraw proposal — no request yet",
-    ]);
-    expect(disabled(items)).toEqual(["Withdraw proposal — no request yet"]);
+    expect(labels(items)).toEqual(["View pull request", "Create pull request"]);
   });
 
   it("offers Reopen proposal, with Propose change behind it", () => {
@@ -218,7 +209,7 @@ describe("rowItems", () => {
     ]);
   });
 
-  it("lists every link and blocks both mutations under an ambiguity", () => {
+  it("lists every link and no mutation under an ambiguity", () => {
     const items = rowItems(
       row({
         status: "multiple-pull-requests",
@@ -231,12 +222,6 @@ describe("rowItems", () => {
     expect(labels(items)).toEqual([
       "View pull request #41",
       "View pull request #44",
-      "Update proposal — close the extra requests",
-      "Withdraw proposal — close the extra requests",
-    ]);
-    expect(disabled(items)).toEqual([
-      "Update proposal — close the extra requests",
-      "Withdraw proposal — close the extra requests",
     ]);
   });
 
@@ -289,8 +274,9 @@ describe("rowItems", () => {
     expect(every.some((label) => label.includes("Remove"))).toBe(false);
   });
 
-  it("turns no other absent action into a disabled one", () => {
-    // Exactly the three named blocked actions, and no fourth (#844).
+  // #1125: a menu lists only what the row's state calls for; the Status hover
+  // card names why the rest is absent.
+  it("turns no absent action into a disabled one", () => {
     const every = (
       [
         ["pending-proposal", "not-yet-proposed"],
@@ -311,14 +297,7 @@ describe("rowItems", () => {
       disabled(rowItems(row({ stage, status }), handlers, true)),
     );
 
-    // Three labels, no fourth (#844). The first appears twice: both statuses
-    // with no open request over the branch block withdrawal the same way.
-    expect(every).toEqual([
-      "Withdraw proposal — no request yet",
-      "Withdraw proposal — no request yet",
-      "Update proposal — close the extra requests",
-      "Withdraw proposal — close the extra requests",
-    ]);
+    expect(every).toEqual([]);
   });
 
   // Recovery is a local act: the folder and the commit it comes from are both

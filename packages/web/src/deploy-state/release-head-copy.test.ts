@@ -5,10 +5,13 @@ import {
   comparedLine,
   copyChipText,
   extraFilesFact,
+  LATEST_RELEASE_UNKNOWN,
+  ON_LATEST_RELEASE,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
   releaseSentence,
   unfinishedOperationNotice,
+  updateNextStep,
 } from "./release-head-copy";
 import type { ReleaseHead } from "./use-deploy-state";
 
@@ -221,5 +224,18 @@ describe("unfinishedOperationNotice", () => {
       detail:
         "Update to v0.3.4 incomplete: 3 of 5 skills now use this release.",
     });
+  });
+});
+
+describe("the hover card's release lines (#1125)", () => {
+  it("states the latest release, or that it is unknown", () => {
+    expect(ON_LATEST_RELEASE).toBe("On the latest release.");
+    expect(LATEST_RELEASE_UNKNOWN).toBe("Latest release could not be read.");
+  });
+
+  it("names Update target as the way to the newer release", () => {
+    expect(updateNextStep("v0.3.4")).toBe(
+      "Select Update target to use release v0.3.4.",
+    );
   });
 });

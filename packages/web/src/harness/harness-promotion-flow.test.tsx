@@ -241,7 +241,7 @@ describe("Harness promotion", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Create pull request", "Withdraw proposal — no request yet"]);
+    ).toEqual(["Create pull request"]);
   });
 
   it("keeps the pull-request link through a refresh and a remount", async () => {

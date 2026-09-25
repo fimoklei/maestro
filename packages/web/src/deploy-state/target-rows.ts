@@ -15,9 +15,13 @@ import {
 } from "./deployed-view";
 import {
   comparedLine,
+  LATEST_RELEASE_UNKNOWN,
+  ON_LATEST_RELEASE,
   pinnedTagsLine,
+  RELEASE_NOT_ADOPTED,
   releaseSentence,
   unfinishedOperationNotice,
+  updateNextStep,
 } from "./release-head-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { skippedEntryText, skippedNeedsAttention } from "./skipped-entry-text";
@@ -212,10 +216,11 @@ export function statusSummary(row: TargetRow, now: Date): string[] {
   }
   const lines: string[] = [];
   if (row.pending) {
-    lines.push(unfinishedOperationNotice(row.pending, row.primitives).label);
+    const notice = unfinishedOperationNotice(row.pending, row.primitives);
+    lines.push(notice.label, notice.message);
   }
   if (row.pinned) {
-    lines.push(pinnedTagsLine(row.pinned));
+    lines.push(pinnedTagsLine(row.pinned), RELEASE_NOT_ADOPTED);
   }
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {
     lines.push(otherOriginLine(row.otherOrigins));
@@ -224,8 +229,18 @@ export function statusSummary(row: TargetRow, now: Date): string[] {
     lines.push(skippedEntryText(entry));
   }
   if (row.head) {
+    const { latestRelease } = row.head;
     const sentence = releaseSentence(row.head);
+    // Claimed only from this row's own settled read (#1125): an unfinished
+    // operation, a failed read or a behind sibling tool says otherwise.
+    if (!row.pending && !row.readFailed && !row.behind && !row.pinned) {
+      if (latestRelease === null) lines.push(LATEST_RELEASE_UNKNOWN);
+      else if (!sentence) lines.push(ON_LATEST_RELEASE);
+    }
     if (sentence) lines.push(sentence);
+    if (row.behind && latestRelease !== null) {
+      lines.push(updateNextStep(latestRelease));
+    }
     lines.push(comparedLine(row.head, now));
   }
   return lines;
