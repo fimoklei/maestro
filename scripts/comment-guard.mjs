@@ -86,7 +86,7 @@ function findOffenders(root) {
 
   for (const top of ["packages", "tests", "scripts"]) {
     for (const path of filesUnder(join(root, top))) {
-      if (!/\.tsx?$/.test(path)) continue;
+      if (!/\.(tsx?|mts|mjs|js)$/.test(path)) continue;
       const text = readFileSync(path, "utf8");
       const comments = commentsByLine(path, text);
       text.split("\n").forEach((line, i) => {
