@@ -60,6 +60,7 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Deploy into a target still holding a retired Harness · [#749](https://github.com/fimoklei/maestro/issues/749) | B, A | *When* a global target still holds copies from a Harness I have left, *I want to* keep the deploy action on its card, *so I can* replace those copies one at a time instead of facing a card that only states a fact. |
 | Deploy what I just promoted, for real · [#750](https://github.com/fimoklei/maestro/issues/750) | B, C | *When* my promote has been merged and released, *I want to* have the clone catch up even though promote left an untracked copy behind, *so I can* deploy the skill instead of being told my published copy is unreleased. |
 | Decide on the executables a deploy brings | B, A | *When* what I am deploying carries executables that land on my PATH, *I want to* see that before it runs and choose whether to allow them, *so I can* accept the ones I trust instead of finding out afterwards. |
+| Delete a released skill from the Harness | C | *When* a skill in the Harness is no longer worth keeping, *I want to* delete it from the Harness through a reviewed pull request, *so I can* keep the Harness curated from the cockpit instead of deleting the folder and opening the request by hand. |
 | Steer a plugin as one unit | A, B | *When* a capability arrives as one plugin holding its own skills and MCP servers, *I want to* see and deploy it as that one thing, *so I can* keep it whole instead of reading it as loose skills that lost their origin. |
 
 ## DONE
