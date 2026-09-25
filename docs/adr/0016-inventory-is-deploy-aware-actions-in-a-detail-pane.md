@@ -5,7 +5,7 @@
 
 ## Context
 
-A prototype redesign of the Inventory view (`docs/design/inventory-redesign/`)
+A prototype redesign of the Inventory view
 reshapes the skills list into a scan table with per-row deploy information and
 an expanding detail pane. Charting it with wayfinder on 2026-07-22, the first
 step was to separate what already ships from what is new, then lock the one

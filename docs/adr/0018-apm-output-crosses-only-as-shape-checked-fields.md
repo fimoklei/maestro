@@ -6,10 +6,10 @@
 
 ## Context
 
-The remove dialog's design handoff (`docs/design/design_handoff_remove_dialog/`,
-state 3e) draws the failure block in apm's own terms: a mono label
-`apm exited 1` and, under it, the raw reason — the handoff's example is
-`permission denied: ~/.codex/skills/secret-scan/`. Tickets #415 and #416 shipped
+The remove dialog's design handoff (state 3e) draws the failure block in apm's own
+terms: a mono label `apm exited 1` and, under it, the raw reason — the
+handoff's example is `permission denied: ~/.codex/skills/secret-scan/`.
+Tickets #415 and #416 shipped
 that block with a fixed label and one curated sentence instead, and #417 was
 opened to decide whether the handoff's version may ever be built.
 
