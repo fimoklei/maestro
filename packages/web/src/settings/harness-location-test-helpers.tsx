@@ -4,7 +4,7 @@ import { vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { HarnessLocationPage } from "./harness-location-page";
 
-export const HARNESS_STATE = {
+const HARNESS_STATE = {
   origin: "github.com/fimoklei/agent-harness",
   releasedVersion: "v1.4.0",
   defaultBranch: "main",
