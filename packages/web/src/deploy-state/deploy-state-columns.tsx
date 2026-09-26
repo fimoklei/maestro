@@ -123,6 +123,13 @@ export const deployStateColumns = ({
         ),
       meta: { className: "w-43" },
     }),
+    helper.display({
+      id: "github",
+      header: GITHUB_COLUMN,
+      cell: ({ row }) => <GitHubCell row={row.original} />,
+      // Drops out on a narrow panel; the ⋮ menu keeps the same link.
+      meta: { className: "w-28 @max-[40rem]:hidden" },
+    }),
     helper.accessor("status", {
       header: "Status",
       cell: ({ row }) => <StatusCard row={row.original} />,
@@ -143,13 +150,6 @@ export const deployStateColumns = ({
       },
       sortFn: (a, b) => (a.original.skills ?? -1) - (b.original.skills ?? -1),
       meta: { className: "w-18 tabular-nums", align: "end" },
-    }),
-    helper.display({
-      id: "github",
-      header: GITHUB_COLUMN,
-      cell: ({ row }) => <GitHubCell row={row.original} />,
-      // Drops out on a narrow panel; the ⋮ menu keeps the same link.
-      meta: { className: "w-28 @max-[40rem]:hidden" },
     }),
     helper.display({
       id: "actions",
