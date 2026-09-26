@@ -35,7 +35,7 @@ export function SettingsSection({
         </h2>
         {action}
       </div>
-      <div className="flex flex-col overflow-hidden rounded-control border border-gray-7">
+      <div className="flex flex-col overflow-hidden rounded-control border border-edge">
         {children}
       </div>
     </section>

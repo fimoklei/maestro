@@ -25,7 +25,7 @@ function SummaryRow({
   return (
     <p
       id={id}
-      className="flex items-center gap-2.5 rounded-control border border-gray-7 bg-gray-3 px-3 py-2.5 font-mono text-meta text-gray-12"
+      className="flex items-center gap-2.5 rounded-control border border-edge bg-gray-3 px-3 py-2.5 font-mono text-meta text-gray-12"
     >
       {tone === "clean" || tone === "done" ? (
         <span aria-hidden="true" className="text-gray-11 text-meta">
@@ -244,7 +244,7 @@ export function BulkRemoveDialog({
       onClose={onCancel}
       closeEnabled={!isRemoving}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-edge border-b px-3.5 py-3">
         <h2 className="font-semibold font-ui text-gray-12 text-prose">
           {title.before}
           <span className="font-mono">{skillName}</span>

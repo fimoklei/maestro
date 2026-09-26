@@ -32,7 +32,7 @@ export function SettingsRow({
   control,
 }: SettingsRowProps) {
   return (
-    <div className="flex flex-wrap items-center gap-x-panel gap-y-inline border-gray-7 border-b px-panel py-cell last:border-b-0">
+    <div className="flex flex-wrap items-center gap-x-panel gap-y-inline border-edge border-b px-panel py-cell last:border-b-0">
       <div className="flex min-w-0 grow basis-[220px] flex-col">
         <span id={nameId} className="font-medium font-ui text-gray-12 text-row">
           {name}

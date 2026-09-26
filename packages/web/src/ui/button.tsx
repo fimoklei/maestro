@@ -42,9 +42,9 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
     "text-gray-1 bg-gray-12 border-gray-12 enabled:hover:bg-gray-11 enabled:hover:border-gray-11",
   ghost:
     "text-gray-11 bg-transparent border-transparent enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
-  quiet: "text-gray-12 bg-transparent border-gray-7 enabled:hover:bg-gray-3",
+  quiet: "text-gray-12 bg-transparent border-edge enabled:hover:bg-gray-3",
   dashed:
-    "text-gray-11 bg-transparent border-dashed border-gray-7 enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
+    "text-gray-11 bg-transparent border-dashed border-edge enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
   danger: "text-red-11 bg-transparent border-red-7 enabled:hover:bg-red-3",
 };
 
@@ -79,7 +79,7 @@ export function Button({
         /\bwhitespace-/.test(className ?? "") ? "" : "whitespace-nowrap",
         HOVER_TRANSITION,
         // No outline utility: the ring is one shared :focus-visible rule.
-        "disabled:cursor-not-allowed disabled:border-gray-7 disabled:bg-gray-3 disabled:text-gray-11",
+        "disabled:cursor-not-allowed disabled:border-edge disabled:bg-gray-3 disabled:text-gray-11",
         "aria-disabled:cursor-not-allowed",
         variantClasses[variant],
         sizeClasses[size],

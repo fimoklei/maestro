@@ -300,7 +300,7 @@ export function DataTable<T extends RowData>({
           onRowOpen?.(row.original);
         }}
         className={cn(
-          "group/row h-row border-gray-6 border-b",
+          "group/row h-row border-divider border-b",
           onRowOpen && "cursor-pointer",
           isOpen ? "bg-gray-5" : "hover:bg-gray-3",
           gridFocused &&
@@ -373,7 +373,7 @@ export function DataTable<T extends RowData>({
     >
       <thead className="sticky top-0 z-10 bg-gray-1">
         {table.getHeaderGroups().map((group) => (
-          <tr key={group.id} className="h-row border-gray-6 border-b">
+          <tr key={group.id} className="h-row border-divider border-b">
             {selection ? (
               <th scope="col" className="w-8 px-inline">
                 <span className="sr-only">{selection.label}</span>
@@ -453,7 +453,7 @@ export function DataTable<T extends RowData>({
         {loading ? (
           Array.from({ length: skeletonRows }, (_, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows have no identity but their place
-            <tr key={index} className="h-row border-gray-6 border-b">
+            <tr key={index} className="h-row border-divider border-b">
               {selection ? (
                 <GridCell className="px-inline">
                   <Skeleton className="size-4" />
@@ -488,7 +488,7 @@ export function DataTable<T extends RowData>({
                 onToggle={() => toggleGroup(block.key)}
               />
               {block.all.length === 0 ? (
-                <tr className="h-row border-gray-6 border-b">
+                <tr className="h-row border-divider border-b">
                   <GridCell
                     colSpan={columnCount}
                     className="truncate px-inline text-gray-11"

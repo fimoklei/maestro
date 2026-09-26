@@ -30,6 +30,8 @@ colors:
     red-7: "#f4a9aa"
     red-11: "#ce2c31"
     red-12: "#641723"
+    edge: "#e0e1e6"
+    divider: "#e8e8ec"
     backdrop: "rgba(0, 0, 0, 0.5)"
   dark:
     gray-1: "#111113"
@@ -59,6 +61,8 @@ colors:
     red-7: "#8c333a"
     red-11: "#ff9592"
     red-12: "#ffd1d9"
+    edge: "#272a2d"
+    divider: "#212225"
     backdrop: "rgba(0, 0, 0, 0.5)"
 typography:
   meta:
@@ -236,6 +240,9 @@ Values are in the frontmatter (`colors.light`, `colors.dark`).
 
 - **Slate grays** (gray 1–10): 1 canvas, 2 panel, 3 control, 4 hover,
   5 selected, 6 separator, 7 border, 8 border-hover, 9 solid, 10 solid-hover.
+- **Page lines** (edge, divider): edge is gray 4 in dark and gray 5 in light,
+  divider gray 3 in dark and gray 4 in light. Both sit between 1.1:1 and
+  1.35:1 on gray 1 and 2, and a divider is lighter than an edge.
 
 ### Named Rules
 
@@ -250,8 +257,9 @@ links. The primary action stays neutral: gray 12 fill, gray 11 on hover.
 
 - Make the destructive button outlined: red 11 text on a red 7 border, on
   gray 1 or 2.
-- Give fields and checkboxes a gray 9 border; button borders and separators
-  stay on gray 7.
+- Give fields and checkboxes a gray 9 border. Draw a panel, band, dialog or
+  secondary-button border on edge, and a row separator on divider; a floating
+  layer keeps gray 7.
 - Put a link on gray 1 or 2 only.
 - Put status words on step 12, on the page and inside a status box; never a
   status mark on step 9 (fails contrast in light).
@@ -334,8 +342,8 @@ never with scale or overshoot.
 
 Three radii. Chip (4px) for a chip or tag; control (6px) for a button, field,
 card or panel; float (12px) for a menu, popover or dialog only. Borders are
-1px: gray 7 for buttons, cards and separators, gray 9 for fields and
-checkboxes.
+1px: edge for panels, bands, cards and secondary buttons, divider for row
+separators, gray 7 for a floating layer, gray 9 for fields and checkboxes.
 
 ## Components
 
@@ -347,7 +355,7 @@ Every control shows the same focus ring: 2px blue 9, offset 2px.
 - **Shape:** control radius (6px), 1px border, row type at weight 500.
 - **Primary:** gray 1 text on a gray 12 fill; gray 11 on hover. 32px high in a
   band or dialog, 24px inside a row.
-- **Quiet:** gray 12 text, no fill, gray 7 border; gray 3 on hover.
+- **Quiet:** gray 12 text, no fill, edge border; gray 3 on hover.
 - **Ghost:** gray 11 text, no fill or border; gray 3 and gray 12 text on hover.
 - **Danger:** red 11 text on a red 7 border, no fill; red 3 on hover.
 - **Busy:** a spinner beside the `{Verb}ing…` label; the button stays focusable
@@ -366,7 +374,7 @@ Every control shows the same focus ring: 2px blue 9, offset 2px.
 ### Cards / Containers
 
 - **Corner Style:** control radius (6px).
-- **Background:** gray 1, with a 1px gray 7 border that turns amber 7 when the
+- **Background:** gray 1, with a 1px edge border that turns amber 7 when the
   card drifts.
 - **Header:** a mono label for the kind, the title in Geist Mono, data on the
   right in mono meta; it wraps rather than overflows on a narrow card.

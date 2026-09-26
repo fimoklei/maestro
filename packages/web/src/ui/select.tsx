@@ -27,7 +27,7 @@ export function Select({
       <RadixSelect.Trigger
         aria-labelledby={labelledBy}
         className={cn(
-          "inline-flex h-control min-w-32 cursor-pointer items-center justify-between gap-inline rounded-control border border-gray-7 bg-transparent px-cell font-medium font-ui text-gray-12 text-row",
+          "inline-flex h-control min-w-32 cursor-pointer items-center justify-between gap-inline rounded-control border border-edge bg-transparent px-cell font-medium font-ui text-gray-12 text-row",
           HOVER_TRANSITION,
           "hover:bg-gray-3 data-[state=open]:bg-gray-3",
         )}

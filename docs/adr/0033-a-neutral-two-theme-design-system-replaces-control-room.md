@@ -50,6 +50,11 @@ The values below are the record until the first build job writes them into
    The destructive button is outlined, red 11 text on a red 7 border. Fields
    and checkboxes take a slate 9 border, which is the 3:1 that SC 1.4.11 asks;
    button borders and separators stay on 7. A link sits on slate 1 or 2 only.
+   *Amended [#1199](https://github.com/fimoklei/maestro/issues/1199): page
+   lines draw on two role tokens, `edge` (panels, bands, cards, secondary
+   buttons) and `divider` (row separators), at about 1.2:1. They map to slate
+   4 and 3 in dark and slate 5 and 4 in light, the one place where the two
+   themes use different step numbers. A floating layer keeps slate 7.*
    Amber means Attention and never decorates, so the logo and the connect
    gate's rule turn slate. That amends ADR-0022, whose arrival otherwise
    stands.

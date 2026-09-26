@@ -67,7 +67,7 @@ export function BulkDeployDialog({
       // Its outcome is readable nowhere else while the run goes.
       closeEnabled={!busy}
     >
-      <div className="flex shrink-0 items-center border-gray-7 border-b px-panel py-cell">
+      <div className="flex shrink-0 items-center border-edge border-b px-panel py-cell">
         <h2 className="font-semibold font-ui text-gray-12 text-heading">
           {title}
         </h2>

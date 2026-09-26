@@ -45,7 +45,7 @@ export function ReleaseDelta({
         Pending release{" "}
         <span className="text-gray-11 tabular-nums">{movements.length}</span>
       </h3>
-      <div className="overflow-hidden rounded-control border border-gray-7">
+      <div className="overflow-hidden rounded-control border border-edge">
         <DataTable
           label="Pending release table"
           columns={columns}

@@ -7,7 +7,7 @@ import { panelBorderFor } from "./panel-border";
 function Body({ lines = 1 }: { lines?: number }) {
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-edge border-b px-3.5 py-3">
         <h2 className="font-semibold font-ui text-gray-12 text-prose">
           Remove <span className="font-mono">tdd</span>
         </h2>
@@ -23,7 +23,7 @@ function Body({ lines = 1 }: { lines?: number }) {
           </p>
         ))}
       </div>
-      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center gap-2.5 border-edge border-t px-3.5 py-3">
         <span className="flex-1" />
         <Button type="button" variant="quiet" size="sm" {...DIALOG_CANCEL}>
           Cancel

@@ -12,7 +12,7 @@ export function DialogHeader({
   busy?: boolean;
 }) {
   return (
-    <div className="flex h-12 shrink-0 items-center justify-between gap-inline border-gray-7 border-b pr-cell pl-panel">
+    <div className="flex h-12 shrink-0 items-center justify-between gap-inline border-edge border-b pr-cell pl-panel">
       <h2 className="m-0 truncate font-semibold font-ui text-gray-12 text-heading">
         {title}
       </h2>

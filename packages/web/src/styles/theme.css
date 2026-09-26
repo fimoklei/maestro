@@ -57,6 +57,9 @@
   --color-red-11: var(--red-11);
   --color-red-12: var(--red-12);
 
+  --color-edge: var(--edge);
+  --color-divider: var(--divider);
+
   --color-backdrop: var(--backdrop);
 
   /* the one shadow, for a menu, a popover or a dialog */

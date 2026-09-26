@@ -66,7 +66,7 @@ function StatusCard({
               {line}
             </p>
           ))}
-          <p className="m-0 border-gray-6 border-t pt-inline text-gray-11">
+          <p className="m-0 border-divider border-t pt-inline text-gray-11">
             {freshness}
           </p>
         </div>
