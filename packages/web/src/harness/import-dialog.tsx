@@ -33,10 +33,8 @@ export function ImportDialog({
   onNameChange,
   onClose,
   onImport,
-  onView,
   importing,
   importError,
-  imported,
 }: {
   /** The folder the check was asked about; null until one is chosen. */
   source: string | null;
@@ -50,13 +48,8 @@ export function ImportDialog({
   onNameChange: (name: string) => void;
   onClose: () => void;
   onImport: () => void;
-  /** Leave the dialog for the row this import landed as (#846). */
-  onView: (name: string) => void;
   importing: boolean;
   importError: NoticeContent | null;
-  // Null until an import lands. It stays on screen after it does, so what the
-  // copy left behind is readable rather than gone with the dialog (#576).
-  imported: { mode: "add" | "update"; name: string; skipped: number } | null;
 }) {
   const check = load.kind === "ready" ? load.check : undefined;
   const labels = importLabels(check);
@@ -150,40 +143,6 @@ export function ImportDialog({
           </div>
         )}
 
-        {imported === null ? null : (
-          <>
-            <Notice
-              trigger="user-action"
-              notice={{
-                level: "success",
-                label:
-                  imported.mode === "update"
-                    ? "Skill updated"
-                    : "Skill imported",
-                message:
-                  imported.mode === "update"
-                    ? "The skill was updated in the Harness. Select View in Harness to find it."
-                    : "The skill was imported into the Harness. Select View in Harness to find it.",
-                detail:
-                  imported.mode === "update"
-                    ? "The deployed copies still have the earlier version. Select View in Harness, then deploy the skill again."
-                    : undefined,
-                action: {
-                  label: "View in Harness",
-                  onClick: () => onView(imported.name),
-                },
-              }}
-            />
-            {imported.skipped === 0 ? null : (
-              <p className="m-0 font-ui text-meta text-gray-11">
-                {imported.skipped === 1
-                  ? "1 entry was skipped: .git and operating-system files."
-                  : `${imported.skipped} entries were skipped: .git and operating-system files.`}
-              </p>
-            )}
-          </>
-        )}
-
         <Notice trigger="user-action" notice={importError} />
       </div>
 
@@ -202,7 +161,7 @@ export function ImportDialog({
           className="shrink-0"
           variant="primary"
           busy={importing}
-          disabled={!importEnabled(check) || imported !== null}
+          disabled={!importEnabled(check)}
           onClick={onImport}
         >
           {importing ? labels.busy : labels.confirm}
