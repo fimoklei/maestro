@@ -22,9 +22,6 @@ storybook-static/
 # Local knowledge-graph output from the understand-anything skill (not source).
 .understand-anything/
 
-# Supacode session artifacts (local tool state, not source).
-.sc/
-
 # Codex CLI hook config written per machine (local tool state, not source).
 .codex/
 
@@ -50,6 +47,9 @@ storybook-static/
 # published Artifact; these working files are re-seeded from it when needed.
 .design/
 
-# Generated wayfinder mock artboards and their seeded canvas. The generator,
-# its manifest and the README are tracked; `node gen.mjs` re-makes the rest.
-prototype/**/*.html
+# Throwaway wayfinder mock artboards (local design scratch, not source).
+prototype/
+
+# Local notes (not source).
+reflection-notes.md
+.out-of-scope/
