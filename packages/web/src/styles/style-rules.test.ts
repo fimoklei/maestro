@@ -179,6 +179,21 @@ describe("Control Room token aliases", () => {
   });
 });
 
+// Page lines draw on edge and divider, never on a raw gray step (#1199).
+describe("page lines", () => {
+  it("no separator draws on gray 6", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      [
+        ...source.matchAll(
+          /(?<![\w-])(?:border(?:-[trblxy])?|divide)-gray-6(?![\w-])/g,
+        ),
+      ].map((match) => `${path.slice(SRC_DIR.length)}: ${match[0]}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe("type ramp", () => {
   it("no component sets an arbitrary text value", () => {
     const offenders = files.flatMap(({ path, source }) =>

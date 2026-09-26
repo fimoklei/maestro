@@ -21,7 +21,7 @@ const HEIGHT = {
 
 /** The footer every dialog closes on: Cancel leading, the confirm trailing. */
 export const DIALOG_FOOTER =
-  "flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell";
+  "flex shrink-0 items-center justify-between gap-inline border-edge border-t px-panel py-cell";
 
 /** The Cancel control a destructive dialog opens its focus on. */
 export const DIALOG_CANCEL = { "data-dialog-cancel": "" };

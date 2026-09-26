@@ -38,6 +38,10 @@
   --red-11: #ff9592;
   --red-12: #ffd1d9;
 
+  /* page lines: edge for panels, bands and secondary buttons; divider for rows */
+  --edge: #272a2d;
+  --divider: #212225;
+
   --backdrop: rgba(0, 0, 0, 0.5);
   --shadow-float-value: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
@@ -77,6 +81,10 @@
   --red-7: #f4a9aa;
   --red-11: #ce2c31;
   --red-12: #641723;
+
+  /* page lines: edge for panels, bands and secondary buttons; divider for rows */
+  --edge: #e0e1e6;
+  --divider: #e8e8ec;
 
   --backdrop: rgba(0, 0, 0, 0.5);
   --shadow-float-value: 0 4px 12px rgba(0, 0, 0, 0.12);

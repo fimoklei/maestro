@@ -27,7 +27,7 @@ export function FootActions({ items }: { items: readonly FootItem[] }) {
             aria-label={item.name}
             aria-disabled={item.disabled || undefined}
             // A blocked item reads as a disabled control, never as on offer.
-            className="aria-disabled:border-gray-7 aria-disabled:bg-gray-3 aria-disabled:text-gray-11"
+            className="aria-disabled:border-edge aria-disabled:bg-gray-3 aria-disabled:text-gray-11"
             onClick={item.disabled ? undefined : item.onSelect}
           >
             {item.label}
@@ -39,7 +39,7 @@ export function FootActions({ items }: { items: readonly FootItem[] }) {
             target="_blank"
             rel="noreferrer"
             className={cn(
-              "inline-flex h-control items-center gap-tight rounded-control border border-gray-7 px-cell font-ui text-gray-12 text-row no-underline hover:bg-gray-3",
+              "inline-flex h-control items-center gap-tight rounded-control border border-edge px-cell font-ui text-gray-12 text-row no-underline hover:bg-gray-3",
               "focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
             )}
           >

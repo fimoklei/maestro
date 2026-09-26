@@ -27,7 +27,7 @@ export function SubListRow({
   link?: ReactNode;
 }) {
   return (
-    <li className="group/sub flex h-row items-center gap-inline border-gray-6 border-b text-row">
+    <li className="group/sub flex h-row items-center gap-inline border-divider border-b text-row">
       <Mark mark={mark} />
       <span className="min-w-0 flex-1 truncate text-gray-12">{name}</span>
       <span className="text-gray-11">

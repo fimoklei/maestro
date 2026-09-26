@@ -86,7 +86,7 @@ export function SkillDetailPane({
         </h3>
         {deployments.length > 0 ? (
           <>
-            <ul className="m-0 list-none border-gray-6 border-t p-0">
+            <ul className="m-0 list-none border-divider border-t p-0">
               {deployments.map((deployment) => (
                 <SubListRow
                   key={deployment.rowId ?? deployment.label}

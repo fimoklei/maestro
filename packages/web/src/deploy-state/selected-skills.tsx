@@ -63,7 +63,7 @@ export function SelectedSkills({
         Selected skills{" "}
         <span className="text-gray-12 tabular-nums">{primitives.length}</span>
       </h3>
-      <ul className="m-0 list-none border-gray-6 border-t p-0">
+      <ul className="m-0 list-none border-divider border-t p-0">
         {primitives.map((primitive) => {
           const status = drift.skillStatus(primitive.name);
           const latest = drift.latest(primitive.name);

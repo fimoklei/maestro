@@ -86,7 +86,7 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
       id={row.id}
       className={cn(
         "flex items-baseline gap-1.5 px-3 py-2.5",
-        row.last ? null : "border-gray-6 border-b",
+        row.last ? null : "border-divider border-b",
         rowFill(row),
       )}
     >
@@ -197,7 +197,7 @@ export function RemoveSkillDialog({
       onClose={onCancel}
       closeEnabled={!isRemoving}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-edge border-b px-3.5 py-3">
         <h2 className="font-semibold font-ui text-gray-12 text-prose">
           Remove <span className="font-mono">{named}</span>
         </h2>
@@ -214,7 +214,7 @@ export function RemoveSkillDialog({
             <span id={leadInId} className="font-ui text-meta text-gray-11">
               {removeLedgerLeadIn(outcome, type)}
             </span>
-            <div className="flex flex-col overflow-hidden rounded-control border border-gray-7">
+            <div className="flex flex-col overflow-hidden rounded-control border border-edge">
               {/* Named apart, or a reader hears identical regions. */}
               <div role="status" aria-label="Removal targets">
                 <ul className="flex flex-col">

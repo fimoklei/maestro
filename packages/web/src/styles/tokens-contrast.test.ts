@@ -200,8 +200,40 @@ const THEMES = [
   ["light", '[data-theme="light"]'],
 ] as const;
 
+// Page lines sit near 1.2:1, where Linear and Vercel draw theirs (#1199):
+// visible, yet quieter than the content they divide.
+const PAGE_LINES = ["edge", "divider"] as const;
+const PAGE_LINE_FLOOR = 1.1;
+const PAGE_LINE_CEILING = 1.35;
+
 describe.each(THEMES)("%s theme contrast", (_theme, selector) => {
   const tokens = parseThemeBlock(tokensCss, selector);
+
+  it.each(PAGE_LINES)("page line %s stays quiet but visible", (line) => {
+    const fg = tokens[line];
+    expect(fg, `missing token --${line}`).toBeDefined();
+    for (const background of ["gray-1", "gray-2"]) {
+      const ratio = contrastRatio(fg as string, tokens[background] as string);
+      expect(ratio, `--${line} on --${background}`).toBeGreaterThanOrEqual(
+        PAGE_LINE_FLOOR,
+      );
+      expect(ratio, `--${line} on --${background}`).toBeLessThanOrEqual(
+        PAGE_LINE_CEILING,
+      );
+    }
+  });
+
+  it("a row divider is lighter than an edge", () => {
+    const edge = contrastRatio(
+      tokens.edge as string,
+      tokens["gray-1"] as string,
+    );
+    const divider = contrastRatio(
+      tokens.divider as string,
+      tokens["gray-1"] as string,
+    );
+    expect(divider).toBeLessThan(edge);
+  });
 
   it.each(PAIRS.map((pair) => [pair.name, pair] as const))(
     "%s",
