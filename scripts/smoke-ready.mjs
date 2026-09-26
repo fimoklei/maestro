@@ -1,5 +1,6 @@
 // Brings a running `pnpm smoke` cockpit to the state a UI check needs: waits
-// for it, connects the inventory and registers one consuming repo.
+// for it, connects the inventory, fetches its releases and registers one
+// consuming repo.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -43,7 +44,7 @@ export async function waitForCockpit({
   }
 }
 
-async function post(request, path, body, what) {
+async function call(request, path, body, what) {
   const { status, body: response } = await request(path, body);
   if (status < 200 || status >= 300) {
     const detail =
@@ -56,19 +57,18 @@ async function post(request, path, body, what) {
 }
 
 /**
- * Connects the inventory, then registers the repo. Any refusal stops the
- * sequence, an unreadable count included (#544): a half-seeded cockpit would
- * look ready and lie.
+ * Connects the inventory, fetches the harness, then registers the repo. Any
+ * refusal stops the sequence, an unreadable count or a failed fetch included
+ * (#544): a half-seeded cockpit would look ready and lie.
  */
 export async function seedCockpit({ request, inventoryPath, repoPath }) {
-  const connected = await post(
+  const connected = await call(
     request,
     "/api/inventory/connect",
     { path: inventoryPath },
     "Connecting the inventory",
   );
-  const primitiveCount = connected?.primitiveCount ?? null;
-  if (primitiveCount === null)
+  if ((connected?.primitiveCount ?? null) === null)
     throw new Error(
       `connected ${inventoryPath}, but its released skills could not be read. ` +
         "Maestro reads Inventory from the latest release under " +
@@ -76,7 +76,30 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
         "git repository.",
     );
 
-  const registered = await post(
+  // The copied clone holds no release refs until a fetch writes them.
+  const refreshed = await call(
+    request,
+    "/api/harness/refresh",
+    {},
+    "Fetching the harness",
+  );
+  const outcome = refreshed?.freshness?.outcome ?? null;
+  if (outcome !== "fetched")
+    throw new Error(
+      `connected ${inventoryPath}, but the harness could not be fetched ` +
+        `(${outcome ?? "no outcome"}), so the Inventory would show no released skills. ` +
+        "Check the network and `gh auth status`, then re-run.",
+    );
+
+  const released = await call(
+    request,
+    "/api/inventory/primitives",
+    undefined,
+    "Reading the released skills",
+  );
+  const primitiveCount = released?.primitives?.length ?? 0;
+
+  const registered = await call(
     request,
     "/api/registry/repos",
     { path: repoPath },
@@ -158,15 +181,21 @@ async function answers(url) {
   return response.ok;
 }
 
+// No body means a read: a GET.
 async function requestJson(path, body) {
-  const response = await fetch(`${SERVER_ORIGIN}${path}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      origin: BROWSER_ORIGIN,
-    },
-    body: JSON.stringify(body),
-  });
+  const response = await fetch(
+    `${SERVER_ORIGIN}${path}`,
+    body === undefined
+      ? {}
+      : {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin: BROWSER_ORIGIN,
+          },
+          body: JSON.stringify(body),
+        },
+  );
   return {
     status: response.status,
     body: await response.json().catch(() => null),

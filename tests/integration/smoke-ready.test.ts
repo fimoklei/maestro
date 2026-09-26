@@ -111,18 +111,40 @@ describe("seedCockpit", () => {
     };
   }
 
-  const happy = (path: string) =>
-    path === "/api/inventory/connect"
-      ? {
+  const released = (count: number) => ({
+    status: 200,
+    body: {
+      primitives: Array.from({ length: count }, (_, i) => ({ name: `s${i}` })),
+    },
+  });
+
+  const responder =
+    (
+      overrides: Partial<
+        Record<string, { status: number; body: unknown }>
+      > = {},
+    ) =>
+    (path: string) =>
+      overrides[path] ??
+      {
+        "/api/inventory/connect": {
           status: 200,
-          body: { inventoryPath: "/home/Projects/x", primitiveCount: 12 },
-        }
-      : {
+          body: { inventoryPath: "/home/Projects/x", primitiveCount: 0 },
+        },
+        "/api/harness/refresh": {
+          status: 200,
+          body: { freshness: { outcome: "fetched" } },
+        },
+        "/api/inventory/primitives": released(12),
+        "/api/registry/repos": {
           status: 201,
           body: { repos: [{ path: "/home/Projects/checkout-service" }] },
-        };
+        },
+      }[path] ?? { status: 404, body: null };
 
-  it("connects the inventory before registering the repo", async () => {
+  const happy = responder();
+
+  it("connects the inventory, fetches the harness, then registers the repo", async () => {
     const { calls, request } = recorder(happy);
 
     await seedCockpit({
@@ -136,6 +158,8 @@ describe("seedCockpit", () => {
         path: "/api/inventory/connect",
         body: { path: "/home/Projects/agent-harness" },
       },
+      { path: "/api/harness/refresh", body: {} },
+      { path: "/api/inventory/primitives", body: undefined },
       {
         path: "/api/registry/repos",
         body: { path: "/home/Projects/checkout-service" },
@@ -143,7 +167,9 @@ describe("seedCockpit", () => {
     ]);
   });
 
-  it("reports what it seeded", async () => {
+  // A fresh sandbox clone holds no release refs until a fetch, so the count
+  // connect returns is not what the Inventory shows.
+  it("reports the released skills read after the fetch", async () => {
     const { request } = recorder(happy);
 
     const report = await seedCockpit({
@@ -153,6 +179,50 @@ describe("seedCockpit", () => {
     });
 
     expect(report).toEqual({ primitiveCount: 12, repoCount: 1 });
+  });
+
+  it.each(["offline", "fetch-failed"])(
+    "refuses when the harness fetch ends %s, and registers nothing",
+    async (outcome) => {
+      const { calls, request } = recorder(
+        responder({
+          "/api/harness/refresh": {
+            status: 200,
+            body: { freshness: { outcome } },
+          },
+        }),
+      );
+
+      await expect(
+        seedCockpit({
+          request,
+          inventoryPath: "/home/Projects/agent-harness",
+          repoPath: "/home/Projects/checkout-service",
+        }),
+      ).rejects.toThrow(/could not be fetched.*no released skills/s);
+      expect(calls.map((call) => call.path)).not.toContain(
+        "/api/registry/repos",
+      );
+    },
+  );
+
+  it("fails loudly when the harness refresh is refused", async () => {
+    const { request } = recorder(
+      responder({
+        "/api/harness/refresh": {
+          status: 409,
+          body: { error: "harness-not-configured" },
+        },
+      }),
+    );
+
+    await expect(
+      seedCockpit({
+        request,
+        inventoryPath: "/home/Projects/agent-harness",
+        repoPath: "/home/Projects/checkout-service",
+      }),
+    ).rejects.toThrow(/Fetching the harness was refused/);
   });
 
   it("fails loudly when connect is refused", async () => {
@@ -189,16 +259,8 @@ describe("seedCockpit", () => {
   // A confirmed zero is a valid Inventory (#841); only an unconfirmed count
   // is refused.
   it("accepts an inventory that connects with no released skills", async () => {
-    const { calls, request } = recorder((path) =>
-      path === "/api/inventory/connect"
-        ? {
-            status: 200,
-            body: {
-              inventoryPath: "/home/Projects/agent-harness",
-              primitiveCount: 0,
-            },
-          }
-        : { status: 201, body: { repos: [{ path: "/x" }] } },
+    const { calls, request } = recorder(
+      responder({ "/api/inventory/primitives": released(0) }),
     );
 
     const report = await seedCockpit({
@@ -208,7 +270,7 @@ describe("seedCockpit", () => {
     });
 
     expect(report).toEqual({ primitiveCount: 0, repoCount: 1 });
-    expect(calls).toHaveLength(2);
+    expect(calls.map((call) => call.path)).toContain("/api/registry/repos");
   });
 
   it("refuses an inventory whose released skills could not be read", async () => {
@@ -254,13 +316,13 @@ describe("seedCockpit", () => {
   });
 
   it("fails loudly when registration is refused", async () => {
-    const { request } = recorder((path) =>
-      path === "/api/inventory/connect"
-        ? { status: 200, body: { inventoryPath: "/x", primitiveCount: 1 } }
-        : {
-            status: 400,
-            body: { error: "not-a-directory", message: "Not a directory." },
-          },
+    const { request } = recorder(
+      responder({
+        "/api/registry/repos": {
+          status: 400,
+          body: { error: "not-a-directory", message: "Not a directory." },
+        },
+      }),
     );
 
     await expect(
