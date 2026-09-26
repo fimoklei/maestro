@@ -118,7 +118,9 @@ export type {
   RunHelper,
 } from "./folder-chooser/folder-chooser-port";
 export { MacosFolderChooser } from "./folder-chooser/macos-folder-chooser";
+export { platformFolderChooser } from "./folder-chooser/platform-folder-chooser";
 export { runHelper } from "./folder-chooser/run-helper";
+export { WindowsFolderChooser } from "./folder-chooser/windows-folder-chooser";
 export {
   type GitHubPage,
   githubPageFromOriginUrl,

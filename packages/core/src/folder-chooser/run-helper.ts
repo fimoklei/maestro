@@ -6,7 +6,7 @@ export const runHelper: RunHelper = (file, args, options) =>
     execFile(
       file,
       args,
-      { ...options, encoding: "utf8", maxBuffer: 64 * 1024 },
+      { ...options, encoding: "utf8", maxBuffer: 64 * 1024, windowsHide: true },
       (error, stdout, stderr) => {
         resolve({
           // A spawn failure carries a string code (ENOENT) and no exit code.
