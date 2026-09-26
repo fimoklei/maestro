@@ -5,8 +5,6 @@
 
 **See and steer your AI agent skills from one screen.**
 
-![The Inventory screen: every skill in the Harness, with its status and the number of targets it is deployed to](docs/images/inventory.png)
-
 > **Alpha.** Maestro works for skills today. Hooks and MCP servers are not
 > supported yet. Expect rough edges and breaking changes between releases.
 
@@ -17,6 +15,8 @@ everywhere, at different versions, and no single place that shows them.
 Maestro is a local web app that shows every skill you have, where each copy
 is deployed and which copies are behind. From the same screen you deploy,
 update and publish skills for your whole team.
+
+<img src="docs/images/inventory.png" alt="The Inventory screen: every skill in the Harness, with its status and the number of targets it is deployed to" width="640">
 
 Maestro does not install anything itself. [APM](https://microsoft.github.io/apm/),
 the package manager for agent skills, does the installing, pinning and
