@@ -282,7 +282,7 @@ export function UpdateTargetDialog({
       width={640}
       onClose={onCancel}
     >
-      <div className="flex shrink-0 items-start justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+      <div className="flex shrink-0 items-start justify-between gap-2.5 border-edge border-b px-3.5 py-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="font-semibold font-ui text-gray-12 text-prose">
             Update <span className="break-all font-mono">{targetName}</span>
@@ -331,7 +331,7 @@ export function UpdateTargetDialog({
               </p>
             </div>
 
-            <div className="flex flex-col divide-y divide-gray-7 border-gray-7 border-y empty:hidden">
+            <div className="flex flex-col divide-y divide-divider border-divider border-y empty:hidden">
               {preview.addedByThisDeploy.length > 0 ? (
                 <Section heading={ADDED_BY_THIS_DEPLOY}>
                   <SkillRows rows={preview.addedByThisDeploy} inline={true} />

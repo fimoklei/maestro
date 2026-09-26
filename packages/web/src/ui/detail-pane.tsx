@@ -68,9 +68,9 @@ export function DetailPane({
       ref={paneRef}
       aria-label={`${title} detail`}
       onKeyDown={onKeyDown}
-      className="flex h-full w-90 max-w-full flex-none flex-col border-gray-7 border-l bg-gray-1"
+      className="flex h-full w-90 max-w-full flex-none flex-col border-edge border-l bg-gray-1"
     >
-      <div className="flex h-12 flex-none items-center gap-inline border-gray-7 border-b px-panel">
+      <div className="flex h-12 flex-none items-center gap-inline border-edge border-b px-panel">
         <h2
           ref={headingRef}
           tabIndex={-1}
@@ -98,7 +98,7 @@ export function DetailPane({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-panel">{children}</div>
       {actions ? (
-        <div className="flex flex-none flex-wrap items-start gap-inline border-gray-7 border-t p-panel">
+        <div className="flex flex-none flex-wrap items-start gap-inline border-edge border-t p-panel">
           {actions}
         </div>
       ) : null}

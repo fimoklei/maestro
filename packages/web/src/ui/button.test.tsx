@@ -95,6 +95,16 @@ describe("Button", () => {
     });
   });
 
+  it.each(["quiet", "dashed"] as const)(
+    "draws the %s variant's border on the quiet page edge",
+    (variant) => {
+      render(<Button variant={variant}>go</Button>);
+      const button = screen.getByRole("button", { name: "go" });
+      expect(button).toHaveClass("border-edge");
+      expect(button).not.toHaveClass("border-gray-7");
+    },
+  );
+
   describe("disabled state", () => {
     const variants = [
       "primary",
@@ -116,7 +126,7 @@ describe("Button", () => {
         const button = screen.getByRole("button", { name: "go" });
         expect(button).toHaveClass(
           "disabled:cursor-not-allowed",
-          "disabled:border-gray-7",
+          "disabled:border-edge",
           "disabled:bg-gray-3",
           "disabled:text-gray-11",
         );

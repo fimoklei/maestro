@@ -22,7 +22,7 @@ export function GroupHeader({
 }) {
   const Chevron = collapsed ? ChevronRight : ChevronDown;
   return (
-    <tr className="h-row border-gray-6 border-b bg-gray-2">
+    <tr className="h-row border-divider border-b bg-gray-2">
       <HeaderCell
         colSpan={columnCount}
         className="px-inline font-medium text-gray-12 text-meta"

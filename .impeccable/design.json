@@ -166,6 +166,18 @@
         "light": "#641723",
         "dark": "#ffd1d9"
       },
+      "edge": {
+        "role": "page-line",
+        "displayName": "Edge",
+        "light": "#e0e1e6",
+        "dark": "#272a2d"
+      },
+      "divider": {
+        "role": "row-line",
+        "displayName": "Divider",
+        "light": "#e8e8ec",
+        "dark": "#212225"
+      },
       "black-a7": {
         "role": "backdrop",
         "displayName": "Dialog backdrop",
@@ -215,6 +227,12 @@
         "foreground": ["gray-9"],
         "background": ["gray-1", "gray-2"],
         "floor": 3
+      },
+      {
+        "name": "Page line, quiet but visible (at most 1.35)",
+        "foreground": ["edge", "divider"],
+        "background": ["gray-1", "gray-2"],
+        "floor": 1.1
       },
       {
         "name": "Good text",
@@ -511,9 +529,9 @@
       "name": "Quiet Button",
       "kind": "button",
       "refersTo": "button-quiet",
-      "description": "A secondary action: no fill, gray 7 border, gray 3 on hover.",
+      "description": "A secondary action: no fill, edge border, gray 3 on hover.",
       "html": "<button class=\"ds-btn ds-btn-quiet\">Cancel</button>",
-      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 0.5rem; height: 2rem; padding: 0 0.75rem; border: 1px solid; border-radius: 6px; font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.8125rem; line-height: 1.25rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-btn:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-btn-quiet { color: var(--gray-12); background: transparent; border-color: var(--gray-7); } .ds-btn-quiet:hover { background: var(--gray-3); }"
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 0.5rem; height: 2rem; padding: 0 0.75rem; border: 1px solid; border-radius: 6px; font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.8125rem; line-height: 1.25rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-btn:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-btn-quiet { color: var(--gray-12); background: transparent; border-color: var(--edge); } .ds-btn-quiet:hover { background: var(--gray-3); }"
     },
     {
       "name": "Danger Button",
@@ -568,7 +586,7 @@
     "northStar": "A cockpit you can read at a glance and steer without guessing: neutral surfaces, one meaning per mark, and every word readable in both themes.",
     "overview": "Maestro is a dense local cockpit for an AI agent setup. Its design system is a neutral Radix-grammar palette in a light and a dark theme, Geist type, one fixed density and one frame per screen (ADR-0033). Colour is the third cue behind the word and the glyph, never the first. The chain is design.json to tokens.css to DESIGN.md: this file is the source, tokens.css ships, DESIGN.md is regenerated and never hand-edited.",
     "keyCharacteristics": [
-      "Radix Colors 3.0.0 values, unchanged, with light and dark on the same step numbers.",
+      "Radix Colors 3.0.0 values, unchanged, with light and dark on the same step numbers. Two page-line tokens, edge and divider, map to a different step per theme.",
       "The neutral role is named gray and its values are slate; five scales in total and no sixth.",
       "The documented foreground and background pairs are the allowlist, each measured at its own floor in both themes.",
       "Geist and Geist Mono, five sizes in rem, weights 400, 500 and 600.",
@@ -581,7 +599,7 @@
       "Show a status badge as a word plus its family's dot; a mark without a word keeps its glyph. Colour is never the only cue.",
       "Use blue only for focus, selection and links, and keep the primary action neutral: gray 12 fill, gray 11 on hover.",
       "Make the destructive button outlined: red 11 text on a red 7 border, on gray 1 or 2.",
-      "Give fields and checkboxes a gray 9 border; button borders and separators stay on gray 7.",
+      "Give fields and checkboxes a gray 9 border. Draw a panel, band, dialog or secondary-button border on edge, and a row separator on divider; a floating layer keeps gray 7.",
       "Put a link on gray 1 or 2 only.",
       "Use Geist Mono for a machine value and nothing else: version, tag, path, ref, hash.",
       "Keep a row to one line at 32px, and put no button in it.",

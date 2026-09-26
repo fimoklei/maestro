@@ -16,10 +16,10 @@ export interface PanelProps {
 
 export function Panel({ title, meta, action, band2, children }: PanelProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-control border border-gray-7 bg-gray-1">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-control border border-edge bg-gray-1">
       <div
         data-band="1"
-        className="flex h-12 shrink-0 items-center gap-inline border-gray-7 border-b px-panel"
+        className="flex h-12 shrink-0 items-center gap-inline border-edge border-b px-panel"
       >
         <h1 className="m-0 font-semibold font-ui text-gray-12 text-title tracking-title">
           {title}
@@ -32,7 +32,7 @@ export function Panel({ title, meta, action, band2, children }: PanelProps) {
       {band2 ? (
         <div
           data-band="2"
-          className="flex h-12 shrink-0 items-center gap-inline border-gray-7 border-b px-panel"
+          className="flex h-12 shrink-0 items-center gap-inline border-edge border-b px-panel"
         >
           {band2}
         </div>

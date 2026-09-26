@@ -85,7 +85,7 @@ export function ImportDialog({
       closeEnabled={!importing}
       fieldsChanged={nameTouched}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-edge border-b px-3.5 py-3">
         <h2 className="font-semibold font-ui text-gray-12 text-prose">
           {labels.title}
         </h2>

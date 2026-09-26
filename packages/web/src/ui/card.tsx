@@ -43,12 +43,12 @@ export function Card({
         // sticky descendants (inventory's column headers) in the wrong chain.
         "overflow-clip rounded-control border bg-gray-1",
         fill && "flex min-h-0 flex-1 flex-col",
-        drift ? "border-amber-7" : "border-gray-7",
+        drift ? "border-amber-7" : "border-edge",
         className,
       )}
     >
       {title ? (
-        <div className="flex flex-wrap items-center gap-x-inline gap-y-tight border-gray-7 border-b px-panel py-inline">
+        <div className="flex flex-wrap items-center gap-x-inline gap-y-tight border-edge border-b px-panel py-inline">
           {kind ? (
             <span
               className={cn(
