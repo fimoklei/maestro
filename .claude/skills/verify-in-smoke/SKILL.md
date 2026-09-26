@@ -1,11 +1,11 @@
 ---
 name: verify-in-smoke
-description: Verify a `pnpm smoke` run, screenshot, or dev-server observation before treating it as proof of correctness — checks for a stale sandbox, a squatted port from a sibling worktree, leaked browser state, and full-suite flakiness. Use before declaring a screenshot, first-run behavior, or a `pnpm test` result verified, or when `pnpm smoke` behaves unexpectedly (empty picker, blocked path, stale warning, unrelated test failures).
+description: Verify a `pnpm smoke` run, screenshot, or dev-server observation before treating it as proof of correctness — checks for a stale sandbox, a squatted port from a sibling worktree, leaked browser state, and full-suite flakiness. Use before declaring a screenshot, first-run behavior, or a `pnpm test` result verified, or when `pnpm smoke` behaves unexpectedly (a connect gate that never shows, stale state after a restart, unrelated test failures).
 ---
 
 # Verify in smoke
 
-Five things make a `pnpm smoke` run, screenshot, or test result lie to you. Check the one that matches what you're looking at before calling it evidence.
+Four things make a `pnpm smoke` run, screenshot, or test result lie to you. Check the one that matches what you're looking at before calling it evidence.
 
 ## Wrong environment: `pnpm dev` instead of `pnpm smoke`
 
