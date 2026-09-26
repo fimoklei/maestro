@@ -92,7 +92,7 @@ describe("DialogShell", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  // A dialog that closes by sending the reader on (View in Harness opens a
+  // A dialog that closes by sending the reader on (a successful import opens a
   // pane that takes focus) must not pull focus back to the opener (#1045).
   describe("on close", () => {
     function Host() {
@@ -118,7 +118,7 @@ describe("DialogShell", () => {
                   setLanded(true);
                 }}
               >
-                View in Harness
+                Import skill
               </button>
             </DialogShell>
           ) : null}
@@ -151,7 +151,7 @@ describe("DialogShell", () => {
       await userEvent.click(screen.getByRole("button", { name: "Opener" }));
 
       await userEvent.click(
-        screen.getByRole("button", { name: "View in Harness" }),
+        screen.getByRole("button", { name: "Import skill" }),
       );
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
