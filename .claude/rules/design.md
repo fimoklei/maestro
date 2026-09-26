@@ -166,7 +166,7 @@ Mandatory for any change that alters what `packages/web` renders:
    nothing (ADR-0010), so the cockpit comes up on the connect gate.
    - Verifying a first-run screen → stop here; that is the state you need.
    - Verifying anything the cockpit shows once connected → run `pnpm smoke:ready`,
-     which waits for the cockpit, connects the inventory and registers one repo.
+     which waits for the cockpit, connects the inventory, fetches its releases and registers one repo.
 2. Screenshot the changed UI with `agent-browser`, in each theme.
 3. Read changed copy at a narrow width and at 200% zoom, in one theme.
 4. Compare against the design source; on mismatch, fix before claiming done.
