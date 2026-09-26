@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cellsOf,
   findRow,
+  GITHUB_CELL,
   openPane,
   renderDeployState,
   rowOf,
@@ -38,7 +39,7 @@ const serve = (github?: unknown) =>
   }));
 
 const githubCell = (name: string) =>
-  within(rowOf(name)).getAllByRole("gridcell")[4] as HTMLElement;
+  within(rowOf(name)).getAllByRole("gridcell")[GITHUB_CELL] as HTMLElement;
 
 describe("Deploy-state — GitHub column", () => {
   it("links a repository to its GitHub page with GitHub's mark, mouse only", async () => {
@@ -47,8 +48,11 @@ describe("Deploy-state — GitHub column", () => {
     await findRow(NAME);
 
     expect(
-      screen.getByRole("columnheader", { name: "GitHub" }),
-    ).toBeInTheDocument();
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent)
+        .slice(0, 4),
+    ).toEqual(["Target", "Release", "GitHub", "Status"]);
     const link = await within(githubCell(NAME)).findByRole("link", {
       name: `View ${NAME} on GitHub`,
     });

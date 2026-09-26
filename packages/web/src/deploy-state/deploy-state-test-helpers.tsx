@@ -105,9 +105,12 @@ export function rowOf(name: string): HTMLElement {
   return row;
 }
 
+export const GITHUB_CELL = 2;
+
 export function cellsOf(name: string): string[] {
   return within(rowOf(name))
     .getAllByRole("gridcell")
+    .filter((_, index) => index !== GITHUB_CELL)
     .slice(0, 4)
     .map((cell) => cell.textContent ?? "");
 }
