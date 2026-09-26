@@ -1,47 +1,56 @@
-# #1044 — Folder chooser: Windows not yet measured, macOS time limit
+# #1044 — Folder chooser: Windows measurement, macOS time limit
 
-ADR-0032 §4 makes the Windows invocation a design until it is measured, and
-forbids its adapter until then. This file records the attempt and the ready
-measurement, so the next attempt only has to run it.
+ADR-0032 §4 made the Windows invocation a design until it was measured, and
+forbade its adapter until then. This file records that measurement.
 
-## Status
+## Windows: measured
 
-**Not measured.** No Windows machine was available. The fallback, a one-off
-workflow on `windows-latest`, was pushed as branch
-`chore/measure-windows-chooser` on 2026-09-23 (run 35789907840). GitHub did not
-start the job: *"recent account payments have failed or your spending limit
-needs to be increased"*. The branch was deleted afterwards.
+Run 2026-09-26 (#1071) as GitHub Actions run 36259005769 on `windows-latest`:
+Windows Server 2025 (NT 10.0.26100), Windows PowerShell 5.1.26100.33438, CLR
+4.0.30319.42000. An earlier attempt (run 35789907840, 2026-09-23) never started
+over the account's billing limit.
 
-Consequence, per ADR-0032: Maestro builds no Windows adapter, and on Windows the
-server reports no chooser, so **Browse** does not render there. The field takes
-a typed or pasted path.
+**How.** `1044-windows-folder-chooser/measure.mjs` starts the designed call as
+the adapter does: `execFile` of
+`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile
+-NonInteractive -STA -Command <constant script>`, the start folder in
+`MAESTRO_CHOOSER_START`. A second process screenshots the desktop, reads the
+foreground window, then sends Enter or Escape. To repeat it, copy
+`1044-windows-folder-chooser/measure-workflow.yml` to `.github/workflows/` on a
+throwaway branch named `chore/measure-windows-chooser` and push; the run
+uploads `shots/` (screenshots plus `results.json`).
 
-## The ready measurement
+**Answers.** Start folder `C:\Users\runneradmin\maestro-chooser-ümlaut 日本`
+unless noted.
 
-- `1044-windows-folder-chooser/measure.mjs` starts the designed call exactly as
-  the adapter would: `execFile` of
-  `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile
-  -NonInteractive -STA -Command <constant script>`, the start folder in
-  `MAESTRO_CHOOSER_START`. A second process screenshots the desktop, lists the
-  windows and the foreground window, then sends Enter or Escape.
-- `1044-windows-folder-chooser/measure-workflow.yml` runs it on
-  `windows-latest` and uploads `shots/` (screenshots plus `results.json`).
-  Copy it to `.github/workflows/` on a throwaway branch and push.
+| Case | Exit | stdout | Time |
+|---|---|---|---|
+| Enter, `TopMost` owner, `windowsHide: false` | 0 | the start folder | 10.1 s |
+| Escape, owner, shown | 2 | empty | 9.1 s |
+| Enter, owner, `windowsHide: true` | 0 | the start folder | 9.1 s |
+| Enter, no owner, `windowsHide: true` | 0 | the start folder | 9.1 s |
+| Enter, owner, start folder missing | 0 | `C:\Users\runneradmin\Desktop` | 9.1 s |
+| No key, 12 s time limit | killed (`SIGTERM`) | empty | 12.0 s |
 
-It answers, per case (picked, cancelled, start folder missing, killed at a
-timeout; with and without a `TopMost` owner form; `windowsHide` on and off):
+1. **Does it show?** Yes, in every case, including `-NonInteractive` and
+   `windowsHide: true`. The screenshots show *Browse For Folder* with the start
+   folder selected. The adapter sets `windowsHide`, so no console window
+   opens behind the dialog.
+2. **In front?** Yes: the foreground window was *Browse For Folder* in every
+   case, with and without the owner form. The runner's desktop had no browser
+   in front, so the adapter keeps the `TopMost` owner as the safer of the two.
+3. **stdout and exit code.** A pick exits 0 with the bare path and no newline;
+   a cancel exits 2 (the script's own `exit 2`) with empty stdout. stderr was
+   empty throughout.
+4. **Non-ASCII.** The path returned byte-exact as UTF-8 (`c3bc` for ü,
+   `e697a5 e69cac` for 日本) with `[Console]::OutputEncoding` set to UTF-8.
+5. **Does a kill close the window?** Not directly observable: the process
+   window list never showed the dialog, even while it was up. The dialog runs
+   inside the killed `powershell.exe` itself, so it ends with that process.
+   The adapter reads the kill as a cancel.
 
-1. Does the dialog show at all under `-NonInteractive`, and with
-   `windowsHide: true`?
-2. Is it in front of other windows?
-3. What do stdout and the exit code carry on a pick and on a cancel?
-4. Does a non-ASCII path survive stdout (`[Console]::OutputEncoding` UTF-8)?
-5. Does killing the process close the window?
-
-#1044 stays open for its two Windows criteria until this runs. Record the
-answers here, amend ADR-0032 §4 where they disagree, then write the
-adapter against the `FolderChooserPort` in
-`packages/core/src/folder-chooser/`.
+A missing start folder opens on the Desktop. The adapter never sends one:
+`ChooseFolder` falls back to the home folder first.
 
 ## macOS: the time limit closes the chooser
 

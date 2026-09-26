@@ -24,7 +24,6 @@ import {
   InventoryReader,
   isRepositoryRoot,
   LocalCopyGuard,
-  MacosFolderChooser,
   NodeCopyTreeFs,
   NodeFileSystem,
   PromoteSkill,
@@ -32,6 +31,7 @@ import {
   ProposalActions,
   PublishRelease,
   parseGitOrigin,
+  platformFolderChooser,
   probeHead,
   ReadDrift,
   ReadHarnessState,
@@ -352,9 +352,8 @@ function realDeps(): AppDeps {
       originUrl: readConfiguredGitOriginUrl,
       connect: (path) => connect.connect(path),
     }),
-    // No chooser on Windows yet, like Linux.
     folderChooser: new ChooseFolder({
-      chooser: process.platform === "darwin" ? new MacosFolderChooser() : null,
+      chooser: platformFolderChooser(process.platform),
       fs,
       homeRoot: () => homedir(),
     }),

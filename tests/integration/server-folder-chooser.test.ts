@@ -11,6 +11,7 @@ import {
   NodeFileSystem,
   type RunHelper,
   runHelper,
+  WindowsFolderChooser,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -254,6 +255,111 @@ describe("folder chooser HTTP route", () => {
     releases[1]?.(cancel);
     expect((await third).status).toBe(200);
     expect(releases).toHaveLength(2);
+  });
+
+  describe("on Windows", () => {
+    const POWERSHELL =
+      "D:\\Win\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+
+    function windows(run: RunHelper, present = true): FolderChooserPort {
+      return new WindowsFolderChooser({
+        run,
+        helperExists: async (path) => present && path === POWERSHELL,
+        systemRoot: "D:\\Win",
+      });
+    }
+
+    it("reports a chooser where Windows PowerShell is present", async () => {
+      const { run } = fakeRunner({});
+
+      expect(await available(makeApp(windows(run)))).toBe(true);
+      expect(await available(makeApp(windows(run, false)))).toBe(false);
+    });
+
+    it("falls back to C:\\Windows when the system root is not absolute", async () => {
+      const probed: string[] = [];
+      const chooser = new WindowsFolderChooser({
+        run: fakeRunner({}).run,
+        helperExists: async (path) => {
+          probed.push(path);
+          return true;
+        },
+        systemRoot: "Windows",
+      });
+
+      await chooser.isPresent();
+
+      expect(probed).toEqual([
+        "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      ]);
+    });
+
+    it("starts Windows PowerShell by absolute path with a constant script and the start folder in the environment", async () => {
+      const start = join(home, `it's "quoted"; $(calc)`);
+      await mkdir(start);
+      const first = fakeRunner({});
+      const second = fakeRunner({});
+
+      await choose(makeApp(windows(first.run)), start);
+      await choose(makeApp(windows(second.run)), home);
+
+      const [call] = first.calls;
+      expect(call?.file).toBe(POWERSHELL);
+      expect(call?.args.slice(0, 4)).toEqual([
+        "-NoProfile",
+        "-NonInteractive",
+        "-STA",
+        "-Command",
+      ]);
+      expect(call?.args).toHaveLength(5);
+      expect(call?.args[4]).not.toContain("quoted");
+      expect(second.calls[0]?.args).toEqual(call?.args);
+      expect(call?.env.MAESTRO_CHOOSER_START).toBe(start);
+      expect(second.calls[0]?.env.MAESTRO_CHOOSER_START).toBe(home);
+      expect(call?.timeout).toBe(5 * 60 * 1000);
+    });
+
+    it("returns the picked folder, validated like a typed path", async () => {
+      const picked = join(home, "Work ümlaut 日本");
+      await mkdir(picked);
+      const { run } = fakeRunner({ stdout: picked });
+
+      const res = await choose(makeApp(windows(run)), home);
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ path: picked });
+    });
+
+    it.each([
+      ["a cancel", { exitCode: 2 }],
+      ["the time limit", { exitCode: null, killed: true }],
+    ])("reads %s as nothing picked", async (_, outcome) => {
+      const res = await choose(makeApp(windows(fakeRunner(outcome).run)), home);
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ path: null });
+    });
+
+    it.each([
+      ["a script error", { exitCode: 1, stderr: "secret-token-text" }],
+      ["a missing program", { exitCode: null }],
+    ])("states %s from its own table", async (_, outcome) => {
+      const res = await choose(makeApp(windows(fakeRunner(outcome).run)), home);
+
+      expect(res.status).toBe(502);
+      const text = await res.text();
+      expect(JSON.parse(text)).toEqual({ error: "chooser-failed" });
+      expect(text).not.toContain("secret-token-text");
+    });
+
+    it("refuses a returned path that fails validation", async () => {
+      const { run } = fakeRunner({ stdout: join(home, "gone") });
+
+      const res = await choose(makeApp(windows(run)), home);
+
+      expect(res.status).toBe(502);
+      expect(await res.json()).toEqual({ error: "chooser-failed" });
+    });
   });
 
   // The one real process in this file, and it opens no chooser.

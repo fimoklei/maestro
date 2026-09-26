@@ -2,7 +2,8 @@
 
 - **Status:** Accepted — supersedes ADR-0009
 - **Date:** 2026-09-20 (decided in issue #1014; the form it serves in #1009 and
-  #1013; macOS measured on 26.6.2, Windows not yet measured)
+  #1013; macOS measured on 26.6.2; Windows measured 2026-09-26 on Windows
+  Server 2025 with Windows PowerShell 5.1, #1071)
 
 ## Context
 
@@ -43,18 +44,18 @@ platform.**
    invisibles)`. No `System Events`, so macOS asks the reader for no permission.
 4. **Windows.** `powershell.exe` from the system directory with `-NoProfile
    -NonInteractive -STA -Command <script>`; the script opens
-   `System.Windows.Forms.FolderBrowserDialog`. This invocation is a design, not
-   a measurement. The build measures it first — on a real Windows machine, else
-   in a one-off workflow on the Windows runner with a screenshot — records the
-   result, and amends this ADR before any code if the
-   measurement disagrees.
+   `System.Windows.Forms.FolderBrowserDialog` over a `TopMost` owner form and
+   writes the pick as UTF-8. The measurement confirmed this design: the dialog
+   shows in front under `-NonInteractive` and `windowsHide`, a pick exits 0
+   with the path on stdout, a cancel exits 2 with nothing, and a non-ASCII path
+   survives.
 5. **Hidden folders differ per platform.** macOS always shows them. The Windows
    chooser follows the reader's Explorer setting and cannot be forced. The field
    takes a typed or pasted path everywhere, so no place depends on the chooser.
 6. **The answer is untrusted input.** The helper may return one line: an
    absolute path. It passes exactly the checks a typed path passes, and nothing
    else in the helper's output crosses (ADR-0018). A cancelled chooser
-   (`osascript` error −128) means *nothing picked*: no notice, the field
+   (`osascript` error −128, PowerShell exit 2) means *nothing picked*: no notice, the field
    unchanged. Every other failure is stated from the server's own message table.
 7. **No helper, no button.** The server says whether a chooser exists: a
    supported platform and the helper present at its fixed path. Where it does
@@ -74,7 +75,6 @@ platform.**
   open a real chooser.
 - The four-mode browse dialog, its listing route and its hidden-items toggle
   retire (#1013).
-- Windows ships the button only once point 4's measurement is recorded.
 
 ## Rejected alternatives
 
