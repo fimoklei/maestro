@@ -1,7 +1,7 @@
 # Maestro
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/fimoklei/maestro)](https://github.com/fimoklei/maestro/releases)
+[![Release](https://img.shields.io/github/v/release/fimoklei/maestro?include_prereleases)](https://github.com/fimoklei/maestro/releases)
 
 **See and steer your AI agent skills from one screen.**
 
