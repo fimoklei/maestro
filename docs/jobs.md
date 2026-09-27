@@ -33,6 +33,9 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
+| Promote local edits from Deploy-state · [#1249](https://github.com/fimoklei/maestro/issues/1249) | C, A | *When* a target on Deploy-state shows **Local edits** on a skill from my Harness, *I want to* carry that edit into the Harness from there, *so I can* contribute a fix I made in place without hunting for its folder in **Import skill…**. |
+
+Why now: grilled while #1157 is in NOW; the Deploy-state drift signal (#931) that #729 left out of scope now exists.
 
 ## LATER
 
@@ -48,7 +51,6 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Add or edit a primitive in central (J09) | B | *When* I create or improve a primitive, *I want to* have it enter the central inventory, *so I can* make it reusable and deployable to any target. |
 | Deploy hooks and MCP servers | B, A | *When* my setup needs more than skills, *I want to* deploy hook and MCP server primitives too, *so I can* provision every primitive type, not just skills. |
 | See local divergence from central | A | *When* I have edited a deployed primitive in a consuming repo, *I want to* see that it has content-drifted from central, *so I can* tell which copies are modified before I reset or update them. |
-| Bring an edited deployed copy back into central · [#716](https://github.com/fimoklei/maestro/issues/716) → [#729](https://github.com/fimoklei/maestro/issues/729) | C | *When* I edit a skill Maestro has already deployed, *I want to* carry that edit into the harness instead of hand-retyping it, *so I can* contribute a fix without import silently refusing my only copy of it. |
 | See global↔local duplication | A | *When* a skill is deployed both globally and in a consuming repo, *I want to* have the cockpit flag that overlap in both views, *so I can* remove the redundant copy instead of running two unaware. |
 | Guard against duplicate deploy | B | *When* I deploy a skill already deployed on the other scope, *I want to* have the cockpit warn me before it proceeds, *so I can* avoid an accidental duplicate while still keeping a deliberate one. |
 | Backfill a newly-detected global tool | B, A | *When* I install a second tool after already deploying globally, *I want to* have the cockpit offer to bring the new tool up to the same set, *so I can* keep my tools in sync instead of the new one starting empty. |
@@ -69,6 +71,7 @@ All shipped **skills-only**, solo, local-first.
 
 | Job | Main | Job story |
 |---|---|---|
+| Bring an edited deployed copy back into central · [#716](https://github.com/fimoklei/maestro/issues/716) → [#729](https://github.com/fimoklei/maestro/issues/729) (spec) | C | *When* I edit a skill Maestro has already deployed, *I want to* carry that edit into the harness instead of hand-retyping it, *so I can* contribute a fix without import silently refusing my only copy of it. |
 | Read and steer the whole cockpit in one frame, in either theme · [#984](https://github.com/fimoklei/maestro/issues/984) (map) → [#1033](https://github.com/fimoklei/maestro/issues/1033) (spec) | A, B | *When* I steer many skills across many targets, *I want to* read every screen in the same frame, with status I can tell apart without colour and in the theme my environment asks for, *so I can* find what needs me and act on it without relearning each screen. |
 | Adopt a Harness release per target · [#833](https://github.com/fimoklei/maestro/issues/833) (map) → [#945](https://github.com/fimoklei/maestro/issues/945) (spec) | B, A | *When* a Harness release is published, *I want to* move a target's whole skill selection to it in one action and see which skills really changed, *so I can* stay current without updating skills one by one. |
 | Keep the Harness view honest after a merge · [#911](https://github.com/fimoklei/maestro/issues/911) | C | *When* a proposal of mine is merged and the skill later changes on the default branch, or the operating system drops a file into a skill folder, *I want to* see rows only for work I still have to do, *so I can* trust the Harness view instead of reading nine true rows that mean nothing. |
