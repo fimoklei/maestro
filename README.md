@@ -51,7 +51,7 @@ Run `apm --version`. If it prints no version, fix that before you continue.
 **2. Get Maestro and start it**
 
 ```sh
-git clone --branch v0.1.0 https://github.com/fimoklei/maestro.git
+git clone --branch v0.1.1 https://github.com/fimoklei/maestro.git
 cd maestro
 corepack enable
 node scripts/bootstrap.mjs
