@@ -8,6 +8,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Dialog, type DialogAction, type DialogProps } from "./dialog";
+import { Select } from "./select";
 
 const action = (overrides: Partial<DialogAction> = {}): DialogAction => ({
   label: "Restore skill",
@@ -220,6 +221,27 @@ describe("Dialog", () => {
         expect(
           screen.getByRole("textbox", { name: "Folder path" }),
         ).toHaveFocus(),
+      );
+    });
+
+    it("lands on the cockpit's Select when it is the first field", async () => {
+      renderDialog({
+        children: (
+          <>
+            <span id="target-name">Target</span>
+            <Select
+              labelledBy="target-name"
+              value="global"
+              options={[{ value: "global", label: "Global" }]}
+              disabled={false}
+              onValueChange={vi.fn()}
+            />
+          </>
+        ),
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole("combobox", { name: "Target" })).toHaveFocus(),
       );
     });
 

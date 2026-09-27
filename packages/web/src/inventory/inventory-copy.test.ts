@@ -9,6 +9,7 @@ import {
   moreTargetsLine,
   NO_FILTER_MATCH,
   NO_SEARCH_MATCH,
+  NO_TOOL_DETECTED,
   NOT_DEPLOYED_ANYWHERE,
   NOT_READ_YET,
   REMOVE_FROM_TARGET,
@@ -59,6 +60,7 @@ describe("Inventory copy", () => {
       "Deploy to maestro did not run",
     );
     expect(LOADING_TARGETS).toBe("Loading targets…");
+    expect(NO_TOOL_DETECTED).toBe("no tool detected");
   });
 
   it("heads the hover card with the reach, in zero, one and many", () => {

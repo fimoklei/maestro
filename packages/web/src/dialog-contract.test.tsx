@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { RestoreDialog } from "./harness/restore-dialog";
+import { BulkDeployDialog } from "./inventory/bulk-deploy-dialog";
 
 // The thin guard over every dialog: it proves each one runs on `Dialog`. The
 // contract itself is tested once, in `ui/dialog.test.tsx`.
@@ -33,6 +34,26 @@ const ON_DIALOG: Row[] = [
       />
     ),
   },
+  {
+    file: "inventory/bulk-deploy-dialog.tsx",
+    heading: "Deploy 2 skills",
+    render: ({ running, onClose }) => (
+      <BulkDeployDialog
+        count={2}
+        targets={[{ value: "global", label: "Global (Claude Code)" }]}
+        selected="global"
+        onSelect={vi.fn()}
+        unavailable={null}
+        fieldsChanged={false}
+        busy={running}
+        failure={null}
+        report={null}
+        reportFailure={null}
+        onDeploy={vi.fn()}
+        onClose={onClose}
+      />
+    ),
+  },
 ];
 
 // Still assembled from the old parts; each moves onto `Dialog` under #1226 and
@@ -44,7 +65,6 @@ const NOT_YET_ON_DIALOG = [
   "harness/import-dialog.tsx",
   "harness/release-dialog.tsx",
   "harness/withdraw-dialog.tsx",
-  "inventory/bulk-deploy-dialog.tsx",
   "inventory/bulk-remove-dialog.tsx",
   "registry/register-repository-dialog.tsx",
   "registry/unregister-dialog.tsx",

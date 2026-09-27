@@ -88,7 +88,9 @@ export function DialogShell({
             const target = destructive
               ? "[data-dialog-cancel]"
               : focusField
-                ? "input:not([disabled]), textarea:not([disabled]), select:not([disabled])"
+                ? // The cockpit's Select is a combobox button; the native
+                  // select Radix hides beside it for form submits is skipped.
+                  "input:not([disabled]), textarea:not([disabled]), select:not([disabled]):not([aria-hidden]), [role=combobox]:not([disabled])"
                 : null;
             const landing =
               target === null
