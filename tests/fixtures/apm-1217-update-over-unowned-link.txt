@@ -1,0 +1,19 @@
+[i] Installing to user scope (~/.apm/)
+[!] User-scope primitives are fully supported by claude, kiro, gemini, 
+grok-build, grok-cloud, agent-skills, openclaw, hermes, copilot-cowork, 
+copilot-app. Partially supported: copilot, cursor, opencode, antigravity, codex,
+windsurf.
+Some primitives are not supported: cursor (instructions); opencode (hooks); 
+antigravity (instructions, hooks); windsurf (instructions)
+[*] Validating 1 package...
+[+] fimoklei/harness#v0.4.1 (updated ref in apm.yml)
+[*] Updated apm.yml dependency entries
+[>] Installing 1 new package...
+[>] Resolving fimoklei/harness...
+  [+] fimoklei/harness #v0.4.1 @19d0c86a
+  |-- 1 skill(s) integrated -> .agents/skills/, .claude/skills/
+  [+] <project root> (local)
+  |-- (files unchanged)
+  [!] 1 file skipped -- local files exist, not managed by APM
+    Use 'apm install --force' to overwrite
+[*] Installed 1 APM dependency in 4.0s.
