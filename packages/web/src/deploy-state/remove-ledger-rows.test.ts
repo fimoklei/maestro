@@ -1,6 +1,10 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import { removeLedgerLeadIn, removeLedgerRows } from "./remove-ledger-rows";
+import {
+  removeLedgerLeadIn,
+  removeLedgerRows,
+  removeOutcomeReport,
+} from "./remove-ledger-rows";
 import type {
   RemoveCheckState,
   RemoveRowWarning,
@@ -32,7 +36,6 @@ describe("removeLedgerRows", () => {
         status: null,
         drift: false,
         leftover: false,
-        outcome: null,
       },
     ]);
   });
@@ -71,7 +74,6 @@ describe("removeLedgerRows", () => {
       status: "Not installed — copy deleted in full",
       drift: true,
       leftover: true,
-      outcome: null,
     });
   });
 
@@ -181,7 +183,7 @@ describe("removeLedgerRows", () => {
     });
   });
 
-  describe("what the server proved after a failed removal", () => {
+  describe("removeOutcomeReport, what the server proved after a failed removal", () => {
     const globalOutcome: RemoveOutcome = {
       scope: "global",
       tools: [
@@ -189,122 +191,97 @@ describe("removeLedgerRows", () => {
         { tool: "codex", state: "not-removed" },
       ],
     };
+    const namesIn = (
+      report: ReturnType<typeof removeOutcomeReport>,
+      label: string,
+    ) =>
+      report.groups
+        .find((group) => group.label === label)
+        ?.rows.map((row) => row.name);
 
-    it("puts each detected tool's proven outcome on its own row", () => {
-      const [claude, codex] = removeLedgerRows(
+    it("groups each detected tool under its proven outcome", () => {
+      const report = removeOutcomeReport(
         { kind: "global", tools: ["claude", "codex"] },
-        [],
-        perTool({ claude: "none", codex: "none" }),
         globalOutcome,
       );
 
-      expect(claude?.outcome).toBe("removed");
-      expect(codex?.outcome).toBe("not-removed");
+      expect(report.groups.map((group) => [group.tone, group.label])).toEqual([
+        ["failed", "Not removed"],
+        ["attention", "Outcome unknown"],
+        ["good", "Removed"],
+      ]);
+      expect(namesIn(report, "Removed")).toEqual(["Claude Code"]);
+      expect(namesIn(report, "Not removed")).toEqual(["Codex"]);
     });
 
     it("keeps the order the ledger showed before the user confirmed", () => {
-      expect(
-        removeLedgerRows(
-          { kind: "global", tools: ["codex", "claude"] },
-          [],
-          perTool({}),
-          globalOutcome,
-        ).map((row) => [row.name, row.outcome]),
-      ).toEqual([
-        ["Codex", "not-removed"],
-        ["Claude Code", "removed"],
-      ]);
-    });
-
-    it("drops the price it named for a removal that did not happen", () => {
-      const [claude] = removeLedgerRows(
-        { kind: "global", tools: ["claude", "codex"] },
-        [],
-        perTool({ claude: "cannot-verify", codex: "cannot-verify" }),
-        globalOutcome,
+      const report = removeOutcomeReport(
+        { kind: "global", tools: ["codex", "claude"] },
+        {
+          scope: "global",
+          tools: [
+            { tool: "claude", state: "removed" },
+            { tool: "codex", state: "removed" },
+          ],
+        },
       );
 
-      expect(claude?.status).toBeNull();
-      expect(claude?.drift).toBe(false);
-    });
-
-    it("drops a leftover copy the failure never reached", () => {
-      expect(
-        removeLedgerRows(
-          { kind: "global", tools: ["claude", "codex"] },
-          leftoverCodex,
-          perTool({}),
-          globalOutcome,
-        ).map((row) => row.name),
-      ).toEqual(["Claude Code", "Codex"]);
+      expect(namesIn(report, "Removed")).toEqual(["Codex", "Claude Code"]);
     });
 
     it("draws a row for a target only the report names", () => {
-      expect(
-        removeLedgerRows(
-          { kind: "global", tools: ["claude"] },
-          [],
-          perTool({}),
-          globalOutcome,
-        ).map((row) => [row.name, row.outcome]),
-      ).toEqual([
-        ["Claude Code", "removed"],
-        ["Codex", "not-removed"],
-      ]);
+      const report = removeOutcomeReport(
+        { kind: "global", tools: ["claude"] },
+        globalOutcome,
+      );
+
+      expect(namesIn(report, "Not removed")).toEqual(["Codex"]);
     });
 
     it("drops a target the report left out, rather than drawing it blank", () => {
-      expect(
-        removeLedgerRows(
-          { kind: "global", tools: ["claude", "codex", "cursor"] },
-          [],
-          perTool({}),
-          globalOutcome,
-        ).map((row) => row.name),
-      ).toEqual(["Claude Code", "Codex"]);
+      const report = removeOutcomeReport(
+        { kind: "global", tools: ["claude", "codex", "cursor"] },
+        globalOutcome,
+      );
+
+      expect(report.groups.flatMap((group) => group.rows)).toHaveLength(2);
     });
 
-    it("puts the repo scope's one answer on its one row", () => {
-      const [repo] = removeLedgerRows(
+    it("never reads an unproven target as removed", () => {
+      const report = removeOutcomeReport(
         { kind: "repo", repoPath: "/Users/me/project" },
-        [],
-        { kind: "repo", warning: "cannot-verify" },
         { scope: "repo", state: "unknown" },
       );
 
-      expect(repo?.outcome).toBe("unknown");
+      expect(namesIn(report, "Outcome unknown")).toEqual(["/Users/me/project"]);
+      expect(namesIn(report, "Removed")).toEqual([]);
     });
-  });
 
-  describe("removeLedgerLeadIn", () => {
-    it("asks the question while nothing has been attempted", () => {
-      expect(removeLedgerLeadIn(null, "skill")).toBe(
-        "Skill will be removed from:",
+    it("sets the repo path in mono, because it is a path", () => {
+      const report = removeOutcomeReport(
+        { kind: "repo", repoPath: "/Users/me/project" },
+        { scope: "repo", state: "not-removed" },
       );
+
+      expect(report.groups[0]?.rows[0]).toEqual({
+        name: "/Users/me/project",
+        mono: true,
+      });
     });
 
-    it("names the type being removed, not the category it belongs to", () => {
-      expect(removeLedgerLeadIn(null, "mcp")).toBe("MCP will be removed from:");
-    });
-
-    it("counts the targets the removal came off", () => {
+    it("counts the targets the removal came off in its heading", () => {
       expect(
-        removeLedgerLeadIn(
-          {
-            scope: "global",
-            tools: [
-              { tool: "claude", state: "removed" },
-              { tool: "codex", state: "not-removed" },
-            ],
-          },
-          "skill",
-        ),
-      ).toBe("Removed from 1 of 2 targets:");
+        removeOutcomeReport(
+          { kind: "global", tools: ["claude", "codex"] },
+          globalOutcome,
+        ).heading,
+      ).toBe("Removed from 1 of 2 targets");
     });
 
     it("counts an unproven target as one the removal did not come off", () => {
       expect(
-        removeLedgerLeadIn(
+        removeOutcomeReport(
+          { kind: "global", tools: ["claude", "codex"] },
           {
             scope: "global",
             tools: [
@@ -312,15 +289,27 @@ describe("removeLedgerRows", () => {
               { tool: "codex", state: "unknown" },
             ],
           },
-          "skill",
-        ),
-      ).toBe("Removed from 0 of 2 targets:");
+        ).heading,
+      ).toBe("Removed from 0 of 2 targets");
     });
 
     it("speaks of one target in the singular", () => {
       expect(
-        removeLedgerLeadIn({ scope: "repo", state: "removed" }, "skill"),
-      ).toBe("Removed from 1 of 1 target:");
+        removeOutcomeReport(
+          { kind: "repo", repoPath: "/Users/me/project" },
+          { scope: "repo", state: "removed" },
+        ).heading,
+      ).toBe("Removed from 1 of 1 target");
+    });
+  });
+
+  describe("removeLedgerLeadIn", () => {
+    it("asks the question while nothing has been attempted", () => {
+      expect(removeLedgerLeadIn("skill")).toBe("Skill will be removed from:");
+    });
+
+    it("names the type being removed, not the category it belongs to", () => {
+      expect(removeLedgerLeadIn("mcp")).toBe("MCP will be removed from:");
     });
   });
 

@@ -59,9 +59,10 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       expect(
-        screen.getByRole("status", { name: "Local edits check" }),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: CONFIRM })).toBeDisabled();
+        screen.getByRole("button", {
+          name: `${CONFIRM} — checking for local edits`,
+        }),
+      ).toHaveAttribute("aria-disabled", "true");
 
       releaseSecondCheck();
 

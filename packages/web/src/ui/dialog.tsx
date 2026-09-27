@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { DialogHeader } from "./dialog-header";
@@ -34,6 +34,7 @@ export type DialogProps = {
   describedBy: string | null;
   fieldsChanged: boolean;
   onClose: () => void;
+  /** `null`: no body, as when a failure is all the dialog has to say. */
   children: ReactNode;
 };
 
@@ -59,11 +60,13 @@ export function Dialog({
     : failure?.action === undefined
       ? "primary"
       : "quiet";
+  const failureId = useId();
+  const bodyless = children === null;
 
   return (
     <DialogShell
       label={version === null ? title : `${title} ${version}`}
-      describedBy={describedBy}
+      describedBy={bodyless && failure !== null ? failureId : describedBy}
       width={width}
       onClose={onClose}
       closeEnabled={!running}
@@ -89,16 +92,22 @@ export function Dialog({
           }
         }}
       >
-        <div className="flex min-h-0 flex-col gap-cell overflow-y-auto p-panel font-ui text-gray-12 text-prose">
-          {children}
-        </div>
+        {bodyless ? null : (
+          <div className="flex min-h-0 flex-col gap-cell overflow-y-auto p-panel font-ui text-gray-12 text-prose">
+            {children}
+          </div>
+        )}
         {/* Outside the scrolling body, so a long body never hides it. */}
         <div
           className={
-            failure === null ? undefined : "shrink-0 px-panel pb-panel"
+            failure === null
+              ? undefined
+              : bodyless
+                ? "shrink-0 p-panel"
+                : "shrink-0 px-panel pb-panel"
           }
         >
-          <Notice trigger="user-action" notice={failure} />
+          <Notice id={failureId} trigger="user-action" notice={failure} />
         </div>
         <div className={DIALOG_FOOTER}>
           <Button

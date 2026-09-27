@@ -33,7 +33,8 @@ building it.
 **Meaning and emphasis.**
 - Give a column, badge, glyph and word one meaning on every screen. Say
   `Re-read` for reading again, never `Refresh` or `Retry check`.
-- Use Geist Mono only for a version, tag, path, ref or hash.
+- Use Geist Mono only for a version, tag, path, ref or hash. Set a name in
+  Geist, in a title too.
 - Use colour only for status. Use blue only for focus, selection and links.
   Keep the primary action neutral (slate 12).
 - Put at most one coloured mark in a row.
@@ -99,7 +100,7 @@ Pick the form from this table. Add no other form, and no banner.
 | Success the reader can see | The row's new status, or the new row after an add | The row |
 | Success the reader may miss | Toast, success only, 5 s, paused on hover and focus | Bottom right |
 | Confirmation | Dialog, 480px | Top-aligned at 96px |
-| Partial result across several skills | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
+| Outcome of a run in a dialog | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
 
 - Show a field error on submit and clear it once the field is valid. Check a
   field that names a folder right after the pick.
