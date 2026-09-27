@@ -46,6 +46,14 @@ Storybook stories are **not** a lane: documentation, not coverage. Behaviour is 
   each step and nothing about the seams between them.
 - Bug fix → reproduce first, in the layer where the bug lives. When in doubt: pure.
 
+## What a test proves
+
+- Test behaviour through the public interface. A test must survive a refactor that keeps behaviour.
+- A component's callback props are its public interface; asserting that `onClose` was called is fine.
+- Never: mock your own modules, test a private function, assert call counts or order of internal calls, or verify through a side channel instead of the interface.
+- Never test a trivial function (one-liner, simple mapping, string concatenation) whose test only restates the code.
+- Never test that a route delegates to `core`. Test the behaviour in `core`.
+
 ## Mocking
 
 - Prefer in-memory data structures (real arrays/objects/Maps).
