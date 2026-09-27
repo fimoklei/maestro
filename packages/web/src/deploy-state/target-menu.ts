@@ -2,17 +2,30 @@ import { DEPLOY_SKILL } from "../inventory/inventory-copy";
 import type { FootItem } from "../ui/foot-actions";
 import type { TargetAction, TargetTableRow } from "./deploy-state-columns";
 import { VIEW_REPOSITORY_ON_GITHUB } from "./deploy-state-copy";
+import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
 import { RETRY_LABELS } from "./release-head-copy";
 import type { TargetRow } from "./target-rows";
 import { UPDATE_TARGET } from "./update-target-copy";
 
-export type MenuFacts = Pick<TargetRow, "behind" | "pending">;
+export type MenuFacts = Pick<
+  TargetRow,
+  "behind" | "pending" | "wire" | "primitives"
+>;
 
 export function targetMenuItems(
   row: MenuFacts,
   retrying: boolean,
 ): TargetTableRow["actions"] {
+  // Carrying edits back comes first: Update target would overwrite them.
+  // ponytail: repositories only; #1256 adds the global target.
+  const importable =
+    row.wire.kind === "repo" &&
+    row.pending === undefined &&
+    row.primitives.some((primitive) => primitive.copy === "local-edits");
   const items: TargetTableRow["actions"] = [
+    ...(importable
+      ? [{ action: "import" as const, label: IMPORT_LOCAL_EDITS }]
+      : []),
     { action: "deploy", label: DEPLOY_SKILL },
     ...(row.behind
       ? [{ action: "update" as const, label: UPDATE_TARGET }]

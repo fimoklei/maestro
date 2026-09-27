@@ -123,6 +123,13 @@ Pick the form from this table. Add no other form, and no banner.
   repository, once the add succeeds. Keep no success notice in it and offer
   no "add another" control. Show the new row in its natural place with its
   status. On a screen with a detail pane, select the row and open its pane.
+- Build a checklist in a dialog as a 640px form. Give each group a
+  `fieldset`: a mono uppercase legend with its count over a bordered list of
+  32px rows, each a native checkbox plus the name. Check what can run by
+  default; show a row that cannot run with an `aria-disabled` checkbox, still
+  focusable, and its reason under it in slate 11 `meta`. Name the checked count
+  in the confirm, live, and block it when nothing is checked. Add no
+  select-all.
 - Drop what only describes the copy, such as files left out or file counts.
   Put what the reader must act on in the new row's detail pane.
 - Open no dialog, alert or toast on load.

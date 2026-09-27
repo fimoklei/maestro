@@ -33,6 +33,7 @@ import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubFolderChooser } from "../helpers/stub-folder-chooser";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubImports } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
@@ -80,6 +81,7 @@ describe("harness import HTTP route", () => {
     return createApp({
       registry,
       inventory,
+      importLocalEdits: stubImports().importLocalEdits,
       importSkill: new ImportSkill({
         resolveRoot: async () => fs.realpath(harnessRoot),
         fs,

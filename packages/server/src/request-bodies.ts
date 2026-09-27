@@ -30,6 +30,16 @@ const targetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("global") }),
 ]);
 
+// Target and skill names only: core resolves every folder from the target's record.
+export const importLocalEditsCheckBodySchema = z.object({
+  target: targetSchema,
+});
+
+export const importLocalEditsBodySchema = z.object({
+  target: targetSchema,
+  names: z.array(z.string()).min(1),
+});
+
 // Proves the confirmation came from this server's own preflight, not a client-built claim.
 const consentTokenSchema = z
   .string()
@@ -194,6 +204,19 @@ export const TARGET_BODY: RequestShape = {
     "Maestro could not start this change. Reload the page, then try again.",
   detail:
     'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+export const IMPORT_LOCAL_EDITS_CHECK_BODY: RequestShape = {
+  message:
+    "Nothing was checked. Reload the page, then select Import local edits… again.",
+  detail:
+    'The request carries a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+export const IMPORT_LOCAL_EDITS_BODY: RequestShape = {
+  message:
+    "Nothing was imported. Reload the page, then select Import local edits… again.",
+  detail: "The request carries a target and a non-empty names array.",
 };
 
 export const UPDATE_TARGET_BODY: RequestShape = {

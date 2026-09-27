@@ -4,6 +4,7 @@ import type {
   DeleteLocalSkill,
   DeploySkill,
   GlobalDeployStateReader,
+  ImportLocalEdits,
   ImportSkill,
   InventoryReader,
   PromoteSkill,
@@ -25,6 +26,7 @@ export type AppDeps = {
   inventory: InventoryReader;
   harness: ReadHarnessState;
   importSkill: ImportSkill;
+  importLocalEdits: ImportLocalEdits;
   publish: PublishRelease;
   promote: PromoteSkill;
   promoteDeletion: PromoteSkillDeletion;
