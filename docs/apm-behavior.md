@@ -355,6 +355,25 @@ tag (`apm view`) + install at that tag; no other apm command is involved.
   leave the subtree reset to the tag — the edit and the extra file are gone,
   with no line saying so. The uninstall protection below does **not** apply
   to install.
+- **An update never deletes a symlinked leaf.** Measured 2026-09-27 (#1217),
+  global root package `fimoklei/harness` `v0.3.5` → `v0.4.1`,
+  `-g -t claude,codex`, with `.claude/skills/<name>` a relative symlink into
+  `.agents/skills/<name>`. Two cases, split by whether the old lockfile owns
+  the Claude Code path:
+  - *Owned* (`v0.3.5` deployed real folders, replaced by links afterwards):
+    exit 1, `Failed to integrate primitives: Cannot call rmtree on a symbolic
+    link`, `No install transaction changes were committed.` Links, `.agents`
+    copies, `apm.yml` and lockfile all stay at `v0.3.5`.
+  - *Not owned* (links in place before the first Claude Code deploy, so the
+    lockfile has no `.claude/skills` rows): exit 0 with the success marker and
+    `1 file skipped -- local files exist, not managed by APM`. `.agents` moves
+    to `v0.4.1` and the link survives, so Claude Code reads the new content
+    through it; the lockfile gets no `.claude/skills` row.
+
+  So apm did not remove the links lost on 2026-09-27; that loss has another
+  cause, not investigated here. The owned case still ends in a failed update,
+  so refusing a linked destination before apm runs stays the right order.
+  Captures: `apm-1217-*.txt`, `apm.lock.1217-*.yaml`, `links-1217-*.txt`.
 
 ## Remove — `apm uninstall`
 

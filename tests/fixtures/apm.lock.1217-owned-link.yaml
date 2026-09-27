@@ -1,0 +1,102 @@
+lockfile_version: '1'
+generated_at: '2026-09-27T14:53:24.870894+00:00'
+apm_version: 0.29.0
+dependencies:
+- repo_url: fimoklei/harness
+  name: harness
+  host: github.com
+  resolved_commit: fa585225423fc98dcee86fe74e88947f441dbf90
+  resolved_ref: v0.3.5
+  version: 1.0.0
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/workflow-commit
+  - .agents/skills/workflow-commit/SKILL.md
+  - .agents/skills/workflow-ship
+  - .agents/skills/workflow-ship/SKILL.md
+  - .claude/skills/workflow-commit
+  - .claude/skills/workflow-commit/SKILL.md
+  - .claude/skills/workflow-ship
+  - .claude/skills/workflow-ship/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/workflow-commit/SKILL.md: sha256:65b3acea329bab6705f7a9e6ba73df6e6005fb17944bdcf6e1e69867f1668226
+    .agents/skills/workflow-ship/SKILL.md: sha256:c68954e9333678279e1ee933bb21eae8725ecc716a175e6caa58acb49ee56f84
+    .claude/skills/workflow-commit/SKILL.md: sha256:65b3acea329bab6705f7a9e6ba73df6e6005fb17944bdcf6e1e69867f1668226
+    .claude/skills/workflow-ship/SKILL.md: sha256:c68954e9333678279e1ee933bb21eae8725ecc716a175e6caa58acb49ee56f84
+  content_hash: sha256:8643a75c8c47241e87c26dfa014a058525cce84a6602b825324f25eb089ab7e3
+  skill_subset:
+  - workflow-commit
+  - workflow-ship
+deployments:
+- kind: project-relative
+  target: claude
+  value: .claude/skills/workflow-commit
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/harness
+  active_owner: fimoklei/harness
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/workflow-commit/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/harness
+  active_owner: fimoklei/harness
+  content_hash: sha256:65b3acea329bab6705f7a9e6ba73df6e6005fb17944bdcf6e1e69867f1668226
+- kind: project-relative
+  target: claude
+  value: .claude/skills/workflow-ship
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/harness
+  active_owner: fimoklei/harness
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/workflow-ship/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/harness
+  active_owner: fimoklei/harness
+  content_hash: sha256:c68954e9333678279e1ee933bb21eae8725ecc716a175e6caa58acb49ee56f84
+- kind: project-relative
+  target: codex
+  value: .agents/skills/workflow-commit
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/harness
+  active_owner: fimoklei/harness
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/workflow-commit/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/harness
+  active_owner: fimoklei/harness
+  content_hash: sha256:65b3acea329bab6705f7a9e6ba73df6e6005fb17944bdcf6e1e69867f1668226
+- kind: project-relative
+  target: codex
+  value: .agents/skills/workflow-ship
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/harness
+  active_owner: fimoklei/harness
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/workflow-ship/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/harness
+  active_owner: fimoklei/harness
+  content_hash: sha256:c68954e9333678279e1ee933bb21eae8725ecc716a175e6caa58acb49ee56f84
