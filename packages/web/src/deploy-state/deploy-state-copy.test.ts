@@ -103,14 +103,17 @@ describe("Deploy-state copy", () => {
     );
   });
 
-  it("names every skill with local edits in one sentence", () => {
-    expect(localEditsLine(["tdd"])).toBe("1 skill has local edits: tdd.");
+  it("names every skill with local edits and how to keep them", () => {
+    const keep = "Select Import skill… on the Harness screen to keep them.";
+    expect(localEditsLine(["tdd"])).toBe(
+      `1 skill has changes that are not in the latest release: tdd. ${keep}`,
+    );
     expect(localEditsLine(["tdd", "grill", "review"])).toBe(
-      "3 skills have local edits: tdd, grill and review.",
+      `3 skills have changes that are not in the latest release: tdd, grill and review. ${keep}`,
     );
     const long = "write-a-very-long-skill-name-that-keeps-going-on-and-on";
     expect(localEditsLine([long, "tdd"])).toBe(
-      `2 skills have local edits: ${long} and tdd.`,
+      `2 skills have changes that are not in the latest release: ${long} and tdd. ${keep}`,
     );
   });
 });

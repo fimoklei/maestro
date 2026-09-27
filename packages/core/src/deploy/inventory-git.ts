@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { catchUpClone } from "../git/catch-up-clone";
 import { gitOptions, indexOptions } from "../git/non-interactive";
+import { MAESTRO_TAGS } from "../harness/harness-git";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { InventoryGitPort } from "./deploy-skill";
 
@@ -89,11 +90,27 @@ export class InventoryGitAdapter implements InventoryGitPort {
     const subtree = harnessSkillSubpath(name);
     try {
       const root = await this.root();
-      // -z, so a path holding a quote or a newline survives the split.
-      const { stdout } = await run(
-        "git",
-        ["-C", root, "ls-tree", "-r", "-z", "--name-only", tag, "--", subtree],
-        gitOptions(),
+      // Maestro's fetched tag first: a release published from Maestro is
+      // pushed, never tagged locally (#1213).
+      const listing = async (ref: string) =>
+        // -z, so a path holding a quote or a newline survives the split.
+        run(
+          "git",
+          [
+            "-C",
+            root,
+            "ls-tree",
+            "-r",
+            "-z",
+            "--name-only",
+            ref,
+            "--",
+            subtree,
+          ],
+          gitOptions(),
+        ).then(({ stdout }) => ({ ref, stdout }));
+      const { ref, stdout } = await listing(`${MAESTRO_TAGS}/${tag}`).catch(
+        () => listing(`refs/tags/${tag}`),
       );
       const paths = stdout.split("\0").filter((path) => path.length > 0);
       if (paths.length === 0) {
@@ -103,7 +120,7 @@ export class InventoryGitAdapter implements InventoryGitPort {
       for (const path of paths) {
         const { stdout: bytes } = await run(
           "git",
-          ["-C", root, "show", `${tag}:${path}`],
+          ["-C", root, "show", `${ref}:${path}`],
           { ...gitOptions(), encoding: "buffer", maxBuffer: 32 * 1024 * 1024 },
         );
         files[path.slice(subtree.length + 1)] =

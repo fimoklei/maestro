@@ -21,7 +21,8 @@ export const Default: Story = {};
 export const WithDetail: Story = {
   args: {
     label: "Local edits",
-    detail: "This copy differs from the release it was deployed from",
+    detail:
+      "Files changed after deployment. The latest release does not have these changes.",
     children: <Button variant="quiet">Local edits</Button>,
   },
 };

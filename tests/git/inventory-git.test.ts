@@ -165,6 +165,22 @@ describe("InventoryGitAdapter", () => {
       ).resolves.toEqual({ "SKILL.md": sha(SKILL_MD) });
     });
 
+    // A release published from Maestro is pushed, never tagged locally; the
+    // clone holds it only where Maestro's own fetch put it (#1213).
+    it("reads a release the clone holds only under Maestro's fetched tags", async () => {
+      await writeFile(
+        join(root, ".apm", "skills", "tdd", "SKILL.md"),
+        "released elsewhere\n",
+        "utf8",
+      );
+      await git("commit", "-am", "edit the skill");
+      await git("update-ref", "refs/maestro/tags/v0.2.0", "HEAD");
+
+      await expect(
+        adapter().readSkillFilesAtTag("v0.2.0", "tdd"),
+      ).resolves.toEqual({ "SKILL.md": sha("released elsewhere\n") });
+    });
+
     it("answers null for a tag the clone does not have", async () => {
       await expect(
         adapter().readSkillFilesAtTag("v9.9.9", "tdd"),
