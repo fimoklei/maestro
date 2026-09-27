@@ -72,6 +72,7 @@ describe("BulkDeployAction", () => {
         stagedNames={["tdd", "review"]}
         repos={[]}
         registryReady
+        onSelectionSpent={() => {}}
       />,
     );
 
@@ -110,6 +111,7 @@ describe("BulkDeployAction", () => {
         stagedNames={["tdd", "review"]}
         repos={[]}
         registryReady
+        onSelectionSpent={() => {}}
       />,
     );
 
@@ -155,7 +157,12 @@ describe("BulkDeployAction", () => {
       ),
     );
     renderWithQuery(
-      <BulkDeployAction stagedNames={["review"]} repos={[]} registryReady />,
+      <BulkDeployAction
+        stagedNames={["review"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
     );
 
     const dialog = await deploy();
@@ -196,6 +203,7 @@ describe("BulkDeployAction", () => {
         stagedNames={["tdd"]}
         repos={[{ path: "/repo" }]}
         registryReady
+        onSelectionSpent={() => {}}
       />,
     );
 
@@ -248,7 +256,12 @@ describe("BulkDeployAction", () => {
     );
 
     renderWithQuery(
-      <BulkDeployAction stagedNames={["tdd"]} repos={[]} registryReady />,
+      <BulkDeployAction
+        stagedNames={["tdd"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
     );
 
     await deploy();
@@ -287,6 +300,7 @@ describe("BulkDeployAction", () => {
         stagedNames={["tdd"]}
         repos={[{ path: "/Users/m/Projects/maestro" }]}
         registryReady
+        onSelectionSpent={() => {}}
       />,
     );
 
@@ -326,6 +340,7 @@ describe("BulkDeployAction", () => {
           { path: "/Users/m/Projects/agent-harness" },
         ]}
         registryReady
+        onSelectionSpent={() => {}}
       />,
     );
 
@@ -368,7 +383,12 @@ describe("BulkDeployAction", () => {
     );
 
     renderWithQuery(
-      <BulkDeployAction stagedNames={["tdd"]} repos={[]} registryReady />,
+      <BulkDeployAction
+        stagedNames={["tdd"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
     );
 
     await deploy();
@@ -410,7 +430,12 @@ describe("BulkDeployAction", () => {
       }),
     );
     renderWithQuery(
-      <BulkDeployAction stagedNames={["tdd"]} repos={[]} registryReady />,
+      <BulkDeployAction
+        stagedNames={["tdd"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
     );
 
     const dialog = await deploy();
@@ -434,6 +459,93 @@ describe("BulkDeployAction", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  describe("spending the selection", () => {
+    const report = {
+      target: { kind: "global" },
+      deployed: [{ name: "tdd", version: "v1.0.0" }],
+      attention: [],
+      failed: [],
+    };
+
+    function renderSpending() {
+      const onSelectionSpent = vi.fn();
+      renderWithQuery(
+        <BulkDeployAction
+          stagedNames={["tdd"]}
+          repos={[]}
+          registryReady
+          onSelectionSpent={onSelectionSpent}
+        />,
+      );
+      return onSelectionSpent;
+    }
+
+    it("spends the selection once the Report closes, never while it is open", async () => {
+      stubReads(report);
+      const onSelectionSpent = renderSpending();
+
+      const dialog = await deploy();
+      await within(dialog).findByRole("heading", { name: /1 deployed/ });
+      expect(onSelectionSpent).not.toHaveBeenCalled();
+
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Close" }),
+      );
+      expect(onSelectionSpent).toHaveBeenCalled();
+    });
+
+    it("spends the selection after a partial run, whose Report holds the recovery", async () => {
+      stubReads({
+        ...report,
+        deployed: [],
+        failed: [{ error: "deploy-failed", names: ["tdd"] }],
+      });
+      const onSelectionSpent = renderSpending();
+
+      const dialog = await deploy();
+      await within(dialog).findByRole("heading", { level: 3 });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Close" }),
+      );
+
+      expect(onSelectionSpent).toHaveBeenCalled();
+    });
+
+    it("keeps the selection when the dialog closes before a deploy", async () => {
+      stubReads(report);
+      const onSelectionSpent = renderSpending();
+
+      const dialog = await openDialog();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Cancel" }),
+      );
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onSelectionSpent).not.toHaveBeenCalled();
+    });
+
+    it("keeps the selection when the bulk request did not run", async () => {
+      stubReads(report);
+      const reads = fetch;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+          String(input) === "/api/deploy/bulk"
+            ? jsonResponse({ error: "deploy-failed" }, 500)
+            : reads(input, init),
+        ),
+      );
+      const onSelectionSpent = renderSpending();
+
+      const dialog = await deploy();
+      await within(dialog).findByRole("alert");
+      await userEvent.keyboard("{Escape}");
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onSelectionSpent).not.toHaveBeenCalled();
+    });
+  });
+
   it("reports a partial run worst group first, a failed install as one row for every name", async () => {
     // One install carries the batch, so an install failure fails every name in it.
     stubReads({
@@ -455,6 +567,7 @@ describe("BulkDeployAction", () => {
         stagedNames={["tdd", "caveman", "review", "grilling"]}
         repos={[]}
         registryReady
+        onSelectionSpent={() => {}}
       />,
     );
 
@@ -500,7 +613,12 @@ describe("BulkDeployAction — the target it deploys to", () => {
 
   const openOne = async (repos: { path: string }[]) => {
     renderWithQuery(
-      <BulkDeployAction stagedNames={["tdd"]} repos={repos} registryReady />,
+      <BulkDeployAction
+        stagedNames={["tdd"]}
+        repos={repos}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
     );
     return openDialog();
   };

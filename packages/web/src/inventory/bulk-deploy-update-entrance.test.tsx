@@ -69,13 +69,17 @@ function stubServer(attentionError: string) {
   return sent;
 }
 
-async function refusedDeploy(attentionError = "not-at-target-release") {
+async function refusedDeploy(
+  attentionError = "not-at-target-release",
+  onSelectionSpent = () => {},
+) {
   const sent = stubServer(attentionError);
   renderWithQuery(
     <BulkDeployAction
       stagedNames={["tdd"]}
       repos={[{ path: "/projects/alpha" }]}
       registryReady
+      onSelectionSpent={onSelectionSpent}
     />,
   );
   await userEvent.click(screen.getByRole("button", { name: "Deploy skills" }));
@@ -144,8 +148,9 @@ describe("BulkDeployAction routing into the Update preview", () => {
     );
   });
 
-  it("closes the whole flow once the dialog that cleared the refusal closes", async () => {
-    await refusedDeploy();
+  it("closes the whole flow and spends the selection once the dialog that cleared the refusal closes", async () => {
+    const onSelectionSpent = vi.fn();
+    await refusedDeploy("not-at-target-release", onSelectionSpent);
 
     await userEvent.click(
       screen.getByRole("button", { name: "Update target" }),
@@ -157,5 +162,6 @@ describe("BulkDeployAction routing into the Update preview", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Close" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(onSelectionSpent).toHaveBeenCalled();
   });
 });

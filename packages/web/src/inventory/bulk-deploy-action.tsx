@@ -30,7 +30,10 @@ type BulkDeployProps = {
 };
 
 // The selection bar's **Deploy skills** and the dialog it opens (#291, #292).
-export function BulkDeployAction(props: BulkDeployProps) {
+export function BulkDeployAction({
+  onSelectionSpent,
+  ...props
+}: BulkDeployProps & { onSelectionSpent: () => void }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -40,7 +43,13 @@ export function BulkDeployAction(props: BulkDeployProps) {
       {/* Mounted only while open, so the target reads start with the dialog
           and a closed one leaves no stale Report behind. */}
       {open ? (
-        <BulkDeployRun {...props} onClose={() => setOpen(false)} />
+        <BulkDeployRun
+          {...props}
+          onClose={(reported) => {
+            setOpen(false);
+            if (reported) onSelectionSpent();
+          }}
+        />
       ) : null}
     </>
   );
@@ -55,7 +64,7 @@ export function BulkDeployRun({
   repos,
   registryReady,
   onClose,
-}: BulkDeployProps & { onClose: () => void }) {
+}: BulkDeployProps & { onClose: (reported: boolean) => void }) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [plan, setPlan] = useState<BulkDeployPlan | null>(null);
   const bulk = useBulkDeploy();
@@ -138,6 +147,8 @@ export function BulkDeployRun({
           requestFailed: bulk.isError,
         });
 
+  const close = () => onClose(plan !== null && !bulk.isError);
+
   if (updateFor !== null) {
     return (
       <UpdateTargetAction
@@ -146,7 +157,7 @@ export function BulkDeployRun({
         update={update}
         add={updateFor}
         defaultOpen
-        onClose={onClose}
+        onClose={close}
       />
     );
   }
@@ -210,7 +221,7 @@ export function BulkDeployRun({
           : null
       }
       onDeploy={onDeploy}
-      onClose={onClose}
+      onClose={close}
     />
   );
 }
