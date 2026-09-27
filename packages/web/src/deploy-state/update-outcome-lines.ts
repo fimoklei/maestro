@@ -7,6 +7,7 @@ const STATES = new Set([
   "updated",
   "removed",
   "not-updated",
+  "missing",
   "not-removed",
   "unknown",
 ]);

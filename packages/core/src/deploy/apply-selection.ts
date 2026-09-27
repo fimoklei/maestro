@@ -1,7 +1,7 @@
 // The one owner of a Selection change.
 import type { FileSystemPort } from "../registry/file-system";
 import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
-import type { SupportedTool } from "./deploy-tools";
+import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import type { DeployedLocation } from "./deployed-location";
 import type { GitOrigin } from "./git-origin";
 import {
@@ -174,6 +174,17 @@ async function matches(
     landed.release !== write.release ||
     !sameNames(landed.deployed, write.desired)
   ) {
+    return false;
+  }
+  // A name present for one tool proves nothing about another's copy. A write
+  // naming no tools is a repo install, which apm runs for every tool.
+  const tools = write.tools ?? SUPPORTED_TOOLS;
+  const everyCopy = tools.every((tool) =>
+    write.desired.every((name) =>
+      landed.copies.some((copy) => copy.tool === tool && copy.name === name),
+    ),
+  );
+  if (!everyCopy) {
     return false;
   }
   // The next install reads the manifest: a name it still holds is unfinished.

@@ -160,6 +160,9 @@ describe("Update target copy", () => {
       ),
     ).toBe("review still deployed");
     expect(
+      outcomeLine({ name: "grill", tool: null, state: "missing" }, releases),
+    ).toBe("grill not deployed");
+    expect(
       outcomeLine({ name: "grill", tool: null, state: "unknown" }, releases),
     ).toBe("Maestro could not confirm whether grill was updated.");
   });

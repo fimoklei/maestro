@@ -52,6 +52,24 @@ describe("readTargetSelection", () => {
       release: "v0.6.0",
       ref: "github.com/fimoklei/agent-harness#v0.6.0",
       deployed: ["prototype", "caveman"],
+      copies: [
+        { name: "prototype", tool: "claude" },
+        { name: "caveman", tool: "claude" },
+      ],
+    });
+  });
+
+  it("reads each tool's copy on its own", async () => {
+    const lock = rootLock("v0.6.0", [
+      ".claude/skills/prototype/SKILL.md",
+      ".agents/skills/prototype/SKILL.md",
+    ]);
+    const result = await readTargetSelection(
+      reader(lock, [".agents/skills/prototype/SKILL.md"]),
+    );
+    expect(result).toMatchObject({
+      deployed: ["prototype"],
+      copies: [{ name: "prototype", tool: "codex" }],
     });
   });
 

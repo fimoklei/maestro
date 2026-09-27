@@ -70,6 +70,10 @@ const TREES: Record<string, { name: string; treeHash: string }[]> = {
   ],
 };
 
+// A repo install runs for every tool; its outcome reads each copy.
+const everyTool = (name: string, state: string) =>
+  ["claude", "codex"].map((tool) => ({ name, tool, state }));
+
 describe("update HTTP journey", () => {
   let home: string;
   let repo: string;
@@ -380,9 +384,9 @@ describe("update HTTP journey", () => {
     expect(await response.json()).toStrictEqual({
       release: "v0.3.4",
       outcome: [
-        { name: "tdd", tool: null, state: "updated" },
-        { name: "grill", tool: null, state: "updated" },
-        { name: "review", tool: null, state: "removed" },
+        ...everyTool("tdd", "updated"),
+        ...everyTool("grill", "updated"),
+        ...everyTool("review", "removed"),
       ],
     });
     expect(await readFile(join(repo, "apm.yml"), "utf8")).toBe(
@@ -402,9 +406,9 @@ describe("update HTTP journey", () => {
     expect(await response.json()).toStrictEqual({
       error: "update-incomplete",
       outcome: [
-        { name: "tdd", tool: null, state: "updated" },
-        { name: "grill", tool: null, state: "not-updated" },
-        { name: "review", tool: null, state: "removed" },
+        ...everyTool("tdd", "updated"),
+        ...everyTool("grill", "missing"),
+        ...everyTool("review", "removed"),
       ],
     });
   });
@@ -422,10 +426,10 @@ describe("update HTTP journey", () => {
     expect(await response.json()).toStrictEqual({
       release: "v0.3.4",
       outcome: [
-        { name: "tdd", tool: null, state: "updated" },
-        { name: "grill", tool: null, state: "updated" },
-        { name: "review", tool: null, state: "removed" },
-        { name: "wizard", tool: null, state: "updated" },
+        ...everyTool("tdd", "updated"),
+        ...everyTool("grill", "updated"),
+        ...everyTool("review", "removed"),
+        ...everyTool("wizard", "updated"),
       ],
     });
     expect(await readFile(join(repo, "apm.yml"), "utf8")).toBe(
