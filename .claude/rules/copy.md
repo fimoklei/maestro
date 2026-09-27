@@ -23,13 +23,15 @@ message:
 3. State what happened. Then give the next action and name its exact control or
    external place.
 4. Put the cause in `detail` when it helps the reader decide or recover.
-5. Read the complete message in its screen context. Rewrite anything that
+5. Run every draft through the `writing-clearly-and-concisely` skill before
+   showing it: in code, a spec, a ticket or a proposal in chat.
+6. Read the complete message in its screen context. Rewrite anything that
    requires inference.
 
 Use the screen names in `CONTEXT.md` and the exact labels of controls.
 
 The copy review is complete when every changed user-facing string is accounted
-for. The reader can tell on the first reading whether the action finished, what
+for and has passed the `writing-clearly-and-concisely` skill. The reader can tell on the first reading whether the action finished, what
 remains unchanged and what to do next.
 
 ## Patterns

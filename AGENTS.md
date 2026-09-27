@@ -61,7 +61,7 @@ Read the file before starting the task.
 - Shelling out to APM, reading external files or lockfiles → `.claude/rules/security.md`
 - React component or client-side data access → `.claude/rules/frontend.md`
 - Designing a screen, dialog or use case, or changing what `packages/web` renders → `.claude/rules/design.md`
-- User-facing copy, including controls and cockpit-visible server messages → `.claude/rules/copy.md`, and complete its copy review
+- Drafting or proposing user-facing copy — in code, a spec, a ticket or a grill option → `.claude/rules/copy.md`, and complete its copy review
 - Driving `apm` or parsing its lockfile/output → `.claude/rules/apm-driver.md`
 - Driving `gh` or parsing its output → `.claude/rules/gh-driver.md`
 - Writing a script in `scripts/` → `.claude/rules/scripts.md`
