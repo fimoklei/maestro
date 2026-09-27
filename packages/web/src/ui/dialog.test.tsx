@@ -327,43 +327,6 @@ describe("Dialog", () => {
     });
   });
 
-  // The fill is the one trace of the variant a test can read.
-  describe("the action's weight", () => {
-    it("is the primary where nothing else claims it", () => {
-      renderDialog();
-
-      expect(screen.getByRole("button", { name: "Restore skill" })).toHaveClass(
-        "bg-gray-12",
-      );
-    });
-
-    it("is danger for a destructive action", () => {
-      renderDialog({ action: action({ tone: "danger" }) });
-
-      const confirm = screen.getByRole("button", { name: "Restore skill" });
-      expect(confirm).toHaveClass("text-red-11");
-      expect(confirm).not.toHaveClass("bg-gray-12");
-    });
-
-    it("steps down while a failure carries its own action", () => {
-      renderDialog({
-        failure: {
-          level: "error",
-          label: "Harness not found",
-          message: "No Harness is at this path.",
-          action: { label: "Create Harness", onClick: vi.fn() },
-        },
-      });
-
-      expect(
-        screen.getByRole("button", { name: "Restore skill" }),
-      ).not.toHaveClass("bg-gray-12");
-      expect(
-        screen.getByRole("button", { name: "Create Harness" }),
-      ).toBeInTheDocument();
-    });
-  });
-
   describe("where focus opens", () => {
     it("lands on Cancel for a destructive action", async () => {
       renderDialog({ action: action({ tone: "danger" }) });

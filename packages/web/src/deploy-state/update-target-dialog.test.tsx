@@ -337,9 +337,6 @@ describe("UpdateTargetDialog outcome", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Changed")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
-    // The ✕, then the lone Close: primary, the one step left.
-    const close = screen.getAllByRole("button", { name: "Close" })[1];
-    expect(close).toHaveClass("bg-gray-12");
   });
 
   it("names the tool of a failing row on the global target", () => {

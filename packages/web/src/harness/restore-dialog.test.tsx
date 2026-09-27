@@ -37,13 +37,9 @@ describe("RestoreDialog", () => {
     ).toBeInTheDocument();
   });
 
-  // A restore throws away uncommitted work: it is confirmed like a deletion.
-  it("confirms with a danger button and opens on Cancel", async () => {
+  it("opens with focus on Cancel", async () => {
     renderDialog();
 
-    expect(screen.getByRole("button", { name: "Restore skill" })).toHaveClass(
-      "text-red-11",
-    );
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
     );

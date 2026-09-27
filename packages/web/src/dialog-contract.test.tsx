@@ -18,8 +18,7 @@ import { UnregisterDialog } from "./registry/unregister-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
 import type { FolderChooser } from "./ui/use-folder-chooser";
 
-// The thin guard over every dialog: it proves each one runs on `Dialog`. The
-// contract itself is tested once, in `ui/dialog.test.tsx`.
+// Proves each dialog runs on `Dialog`, not the contract itself.
 
 type Row = {
   /** The dialog's source, from `packages/web/src`. */

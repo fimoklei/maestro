@@ -112,14 +112,10 @@ describe("ImportDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  // An import deletes nothing, so its confirm keeps the neutral fill (#1116).
-  it("offers Cancel before the import and fills the import confirm", () => {
+  it("offers Cancel before the import", () => {
     renderDialog(DEEP, { kind: "ready", check: CHECK });
 
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Import skill" })).toHaveClass(
-      "bg-gray-12",
-    );
   });
 
   it("opens with focus in the Folder path field", async () => {
@@ -159,7 +155,6 @@ describe("ImportDialog", () => {
     });
 
     expect(screen.getByText("Skill not imported")).toBeInTheDocument();
-    // The ✕ and the leave control.
     expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(2);
     expect(
       screen.queryByRole("button", { name: "Cancel" }),

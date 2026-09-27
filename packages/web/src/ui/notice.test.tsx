@@ -303,7 +303,6 @@ describe("Notice", () => {
       />;
     });
   });
-  // An advisory warning: the reader can continue, so there is nothing to press.
   it("states a warning that carries no action", () => {
     render(
       <Notice
@@ -311,7 +310,7 @@ describe("Notice", () => {
         notice={{
           level: "warning",
           label: "Skill checks found issues",
-          message: "You can still import this skill.",
+          message: "You can still import the skill.",
         }}
       />,
     );
@@ -327,8 +326,8 @@ describe("Notice", () => {
           trigger="load"
           notice={{
             level: "warning",
-            label: "Skill checks need attention",
-            message: "The release still includes these skills.",
+            label: "Skill checks found issues",
+            message: "You can still publish the release.",
             items: [
               "broken has no SKILL.md.",
               "blank has an empty description.",
@@ -340,7 +339,7 @@ describe("Notice", () => {
       const list = screen.getByRole("list");
       expect(
         screen
-          .getByText("The release still includes these skills.")
+          .getByText("You can still publish the release.")
           .compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(

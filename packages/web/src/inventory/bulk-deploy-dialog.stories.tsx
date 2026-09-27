@@ -30,7 +30,7 @@ type Story = StoryObj<typeof meta>;
 export const PickTarget: Story = {};
 
 export const LoadingTargets: Story = {
-  args: { unavailable: "Loading targets…" },
+  args: { unavailable: "targets still loading" },
 };
 
 export const Deploying: Story = { args: { busy: true } };

@@ -21,8 +21,8 @@ import { globalOptionLabel } from "./global-option-label";
 import {
   bulkDeployDidNotRun,
   DEPLOY_SKILLS,
-  LOADING_TARGETS,
-  NO_TOOL_DETECTED,
+  NO_TOOL_DETECTED_CAUSE,
+  TARGETS_LOADING,
 } from "./inventory-copy";
 import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
 import { useBulkDeploy } from "./use-bulk-deploy";
@@ -189,9 +189,9 @@ export function BulkDeployRun({
       }}
       unavailable={
         !registryReady || targetLoading
-          ? LOADING_TARGETS
+          ? TARGETS_LOADING
           : isGlobal && globalDisabled
-            ? NO_TOOL_DETECTED
+            ? NO_TOOL_DETECTED_CAUSE
             : null
       }
       fieldsChanged={chosen !== null}

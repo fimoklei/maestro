@@ -36,7 +36,9 @@ describe("import refusal text", () => {
   });
 
   it("states each convention finding in order, as a warning", () => {
-    expect(advisoryNotice(["long-manifest", "long-description"])).toEqual({
+    expect(
+      advisoryNotice(["long-manifest", "long-description"], "add"),
+    ).toEqual({
       level: "warning",
       label: "Skill checks found issues",
       message: "You can still import the skill.",
@@ -47,8 +49,14 @@ describe("import refusal text", () => {
     });
   });
 
+  it("names updating as the step still open on an update", () => {
+    expect(advisoryNotice(["long-manifest"], "update")?.message).toBe(
+      "You can still update the skill.",
+    );
+  });
+
   it("states no warning while the conventions hold", () => {
-    expect(advisoryNotice([])).toBeNull();
+    expect(advisoryNotice([], "add")).toBeNull();
   });
 });
 

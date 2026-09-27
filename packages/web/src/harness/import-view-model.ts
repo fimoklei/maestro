@@ -1,5 +1,10 @@
 import type { ActionKey } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
+import {
+  ADVISORY_TEXT,
+  IMPORT_UNAVAILABLE,
+  skillChecksNotice,
+} from "./dialog-copy";
 import { importBlockerNotice } from "./notice-copy";
 import type {
   ImportCheck,
@@ -24,13 +29,6 @@ const SOURCE_BLOCKER_TEXT: Partial<Record<ImportSourceBlocker, string>> = {
     "Fix the SKILL.md frontmatter, then pick the folder again.",
   "empty-description":
     "Fill in the description in SKILL.md, then pick the folder again.",
-};
-
-// Reported, never blocking: a convention exceeded costs readability, not
-// correctness.
-const ADVISORY_TEXT: Record<ManifestAdvisory, string> = {
-  "long-manifest": "SKILL.md is over 500 lines.",
-  "long-description": "The description is over 1,024 characters.",
 };
 
 export const sourceBlockerNotice = (
@@ -68,27 +66,26 @@ export const importLabels = (
         hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
       };
 
-// Checks the skill still imports with, so there is nothing to press.
+// A convention exceeded costs readability, not correctness.
 export const advisoryNotice = (
   advisories: readonly ManifestAdvisory[],
+  mode: ImportCheck["mode"],
 ): NoticeContent | null =>
   advisories.length === 0
     ? null
-    : {
-        level: "warning",
-        label: "Skill checks found issues",
-        message: "You can still import the skill.",
-        items: advisories.map((advisory) => ADVISORY_TEXT[advisory]),
-      };
+    : skillChecksNotice(
+        mode === "update" ? "update" : "import",
+        advisories.map((advisory) => ADVISORY_TEXT[advisory]),
+      );
 
 // Available only on a check that came back clean: no check in hand is not a
 // refusal Maestro has made, and pressing on one would import something
-// unjudged. The Blocked control cause: five words or fewer.
+// unjudged.
 export function importUnavailable(load: ImportCheckLoad): string | null {
-  if (load.kind === "idle") return "no folder chosen yet";
-  if (load.kind === "loading") return "folder check still running";
-  if (load.kind === "error") return "folder check did not load";
-  if (load.check.sourceBlocker !== null) return "folder cannot be used";
-  if (load.check.nameBlocker !== null) return "name cannot be used";
+  if (load.kind === "idle") return IMPORT_UNAVAILABLE.idle;
+  if (load.kind === "loading") return IMPORT_UNAVAILABLE.loading;
+  if (load.kind === "error") return IMPORT_UNAVAILABLE.error;
+  if (load.check.sourceBlocker !== null) return IMPORT_UNAVAILABLE.source;
+  if (load.check.nameBlocker !== null) return IMPORT_UNAVAILABLE.name;
   return null;
 }

@@ -5,9 +5,6 @@ import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 
-// The header, footer, focus and close-blocking are `Dialog`'s, tested in
-// `ui/dialog.test.tsx`; this file keeps the bulk remove's own behaviour.
-
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",
   cleanLine: "3 clean copies — nothing but the deployed files goes",
@@ -101,7 +98,7 @@ describe("BulkRemoveDialog — while the checks run", () => {
     const { onConfirm } = renderDialog({ view: checking });
 
     const confirm = screen.getByRole("button", {
-      name: "Remove from 3 targets — Checks still running",
+      name: "Remove from 3 targets — checks still running",
     });
     expect(confirm).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(confirm);
@@ -193,7 +190,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "remove from 0 → — No target can be removed",
+        name: "remove from 0 → — no target can be removed",
       }),
     ).toHaveAttribute("aria-disabled", "true");
   });
@@ -326,8 +323,6 @@ describe("BulkRemoveDialog — once the run reports", () => {
     expect(dialog).toHaveTextContent("global");
   });
 
-  // Nothing left to confirm once the run is over; success shows in the
-  // result, never in the way out.
   it("leaves one way out, Close, and no retry", async () => {
     const { onCancel } = renderDialog({ report: partial });
 

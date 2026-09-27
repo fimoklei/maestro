@@ -163,7 +163,7 @@ describe("InventoryPanel", () => {
     const dialog = await openDeployDialog("tdd");
 
     expect(
-      await dialog.findByRole("button", { name: /loading targets/i }),
+      await dialog.findByRole("button", { name: /targets still loading/ }),
     ).toHaveAttribute("aria-disabled", "true");
   });
 
@@ -214,7 +214,7 @@ describe("InventoryPanel", () => {
     const dialog = await openDeployDialog("tdd");
 
     expect(
-      await dialog.findByRole("button", { name: /loading targets/i }),
+      await dialog.findByRole("button", { name: /targets still loading/ }),
     ).toHaveAttribute("aria-disabled", "true");
   });
 

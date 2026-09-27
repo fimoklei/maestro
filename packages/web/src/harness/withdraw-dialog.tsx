@@ -45,7 +45,7 @@ export function WithdrawDialog({
         remain unchanged.
       </p>
       <Card padded>
-        <dl className="flex flex-wrap gap-x-10 gap-y-3">
+        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           <Fact label="Skill" value={skill} wrap />
           <Fact label="Branch" value={`maestro/${skill}`} wrap />
           <Fact label="Pull request" value={`#${number}`} wrap />

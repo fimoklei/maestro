@@ -159,7 +159,7 @@ describe("BulkDeployAction routing into the Update preview", () => {
     await userEvent.click(
       await within(update).findByRole("button", { name: "Update target" }),
     );
-    // The ✕ and the footer's lone Close both leave; the footer is the one step left.
+    // The header's ✕, then the footer's Close.
     const [, close] = await within(update).findAllByRole("button", {
       name: "Close",
     });

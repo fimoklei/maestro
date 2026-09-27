@@ -113,8 +113,8 @@ export function Notice({
       role={assertive ? "alert" : "status"}
       className={
         variant === "inline"
-          ? `flex gap-1.5 border-l pl-2.5 ${borderClasses[level]}`
-          : `flex gap-1.5 rounded-control border px-2.5 py-2.5 ${borderClasses[level]} ${fillClasses[level]}`
+          ? `flex gap-inline border-l pl-cell ${borderClasses[level]}`
+          : `flex gap-inline rounded-control border p-cell ${borderClasses[level]} ${fillClasses[level]}`
       }
     >
       {glyph === null ? null : (
@@ -126,7 +126,7 @@ export function Notice({
         </span>
       )}
       {/* A path or command in the copy has no break point of its own. */}
-      <div className="flex min-w-0 flex-col gap-1 wrap-anywhere">
+      <div className="flex min-w-0 flex-col gap-tight wrap-anywhere">
         <span
           className={`font-semibold font-ui text-meta ${inkClasses[level]}`}
         >
@@ -138,7 +138,7 @@ export function Notice({
           {message}
         </span>
         {items === undefined || items.length === 0 ? null : (
-          <ul className="m-0 flex list-none flex-col gap-1 p-0">
+          <ul className="m-0 flex list-none flex-col gap-tight p-0">
             {items.map((item) => (
               <li key={item} className="font-ui text-gray-12 text-meta">
                 {item}

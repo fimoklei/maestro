@@ -110,14 +110,6 @@ describe("RemoveSkillDialog", () => {
     );
   });
 
-  it("sets the skill's name in Geist and only its version in mono", () => {
-    renderDialog({ version: "v0.5.0" });
-
-    const heading = screen.getByRole("heading", { level: 2 });
-    expect(within(heading).getByText("v0.5.0")).toHaveClass("font-mono");
-    expect(heading).not.toHaveClass("font-mono");
-  });
-
   it("drops the type word beside the title", () => {
     renderDialog();
 
@@ -912,16 +904,14 @@ describe("RemoveSkillDialog", () => {
       expect(screen.queryByRole("button", { name: /remove/i })).toBeNull();
     });
 
-    it("leaves exactly one control in the footer, a primary close", () => {
+    it("leaves exactly one control in the footer", () => {
       renderDialog({ preflight: refused });
 
-      // The header's ✕, then the lone Close.
       const controls = screen.getAllByRole("button");
       expect(controls.map((control) => control.textContent)).toEqual([
         "",
         "Close",
       ]);
-      expect(controls[1]).toHaveClass("bg-gray-12");
     });
 
     it("closes through the one control it leaves", async () => {
@@ -969,34 +959,6 @@ describe("RemoveSkillDialog", () => {
         /deploy it again/i,
       );
     });
-  });
-
-  it("keeps the neutral gray 7 outline, whatever the news", () => {
-    const refused = {
-      kind: "refused" as const,
-      code: "repo-not-registered" as const,
-      notice: REFUSAL,
-    };
-    const states = [
-      {},
-      { preflight: repoCheck("cannot-verify") },
-      { error: FAILURE },
-      { preflight: refused },
-      {
-        target: { kind: "global" as const, tools: ["claude"] },
-        preflight: toolChecks({ claude: "none" }, [
-          { tool: "codex", path: "/Users/me/.agents/skills/tdd" },
-        ]),
-      },
-    ];
-
-    for (const state of states) {
-      renderDialog(state);
-
-      const panel = screen.getAllByRole("dialog").at(-1) as HTMLElement;
-      expect(panel).toHaveClass("border-gray-7");
-      expect(panel.className).not.toMatch(/border-(amber|red)-7/);
-    }
   });
 
   describe("on the global target", () => {

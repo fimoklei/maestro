@@ -5,8 +5,13 @@ import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
+import {
+  FINDING_TEXT,
+  RELEASE_UNAVAILABLE,
+  skillChecksNotice,
+} from "./dialog-copy";
 import { ReleaseDelta } from "./release-delta";
-import type { ReleasePlan, SemverStep, StructuralProblem } from "./use-harness";
+import type { ReleasePlan, SemverStep } from "./use-harness";
 
 // Loading and error travel with the plan so the modal stays mounted: a focus
 // trap that unmounts between states loses the author's place.
@@ -20,14 +25,6 @@ const STEP_SEGMENTS: readonly { value: SemverStep; label: string }[] = [
   { value: "minor", label: "Minor" },
   { value: "major", label: "Major" },
 ];
-
-// One advisory sentence per broken manifest. States the fact, never a verdict:
-// the skill still ships, the author just knows what they are shipping (#519).
-const FINDING_TEXT: Record<StructuralProblem, string> = {
-  "missing-manifest": "has no SKILL.md.",
-  "invalid-frontmatter": "has frontmatter Maestro cannot read.",
-  "empty-description": "has an empty description.",
-};
 
 export function ReleaseDialog({
   origin,
@@ -103,11 +100,10 @@ export function ReleaseDialog({
   );
 }
 
-// The Blocked control cause: five words or fewer.
 function unavailableCause(load: ReleasePlanLoad): string | null {
-  if (load.kind === "loading") return "release plan still loading";
-  if (load.kind === "error") return "release plan did not load";
-  return load.plan.delta.length === 0 ? "no changes since last release" : null;
+  if (load.kind === "loading") return RELEASE_UNAVAILABLE.loading;
+  if (load.kind === "error") return RELEASE_UNAVAILABLE.error;
+  return load.plan.delta.length === 0 ? RELEASE_UNAVAILABLE.empty : null;
 }
 
 // Every version comes from the plan's map, so the browser never re-derives
@@ -131,34 +127,31 @@ function PlanBody({
         <ReleaseDelta movements={plan.delta} />
       )}
 
-      {/* Checks the skill still ships with, so there is nothing to press. */}
       <Notice
         trigger="load"
         notice={
           plan.findings.length === 0
             ? null
-            : {
-                level: "warning",
-                label: "Skill checks need attention",
-                message: "The release still includes these skills.",
-                items: plan.findings.map(
+            : skillChecksNotice(
+                "publish",
+                plan.findings.map(
                   (finding) =>
                     `${finding.skill} ${FINDING_TEXT[finding.problem]}`,
                 ),
-              }
+              )
         }
       />
 
       <Card padded>
-        <dl className="flex flex-wrap gap-x-10 gap-y-3">
+        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           <Fact label="Previous tag" value={plan.previousTag ?? "None yet"} />
           <Fact label="Branch" value={plan.defaultBranch} />
           {/* The whole commit: a short hash is not the exact revision, and
               need not be unique in a repository this size (#519). */}
           <Fact label="Revision" value={plan.revision} wrap />
         </dl>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-          <div className="flex flex-col gap-1.5">
+        <div className="mt-panel flex flex-wrap items-end justify-between gap-x-panel gap-y-cell">
+          <div className="flex flex-col gap-tight">
             <span className="font-ui text-gray-11 text-meta">Releasing as</span>
             <span className="font-mono text-gray-12 text-title">
               {plan.versions[step]}

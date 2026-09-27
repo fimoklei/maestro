@@ -89,7 +89,7 @@ describe("ReleaseDialog", () => {
 
     // The whole delta is one grid, so the step follows all of it.
     const delta = screen.getByRole("grid", { name: "Pending release table" });
-    const advisory = screen.getByText("Skill checks need attention");
+    const advisory = screen.getByText("Skill checks found issues");
     const step = screen.getByRole("button", { name: "Major" });
 
     expect(
@@ -191,10 +191,8 @@ describe("ReleaseDialog", () => {
 
     const advisory = screen.getByRole("status");
     expect(advisory).toHaveTextContent("⚠");
-    expect(advisory).toHaveTextContent("Skill checks need attention");
-    expect(advisory).toHaveTextContent(
-      "The release still includes these skills.",
-    );
+    expect(advisory).toHaveTextContent("Skill checks found issues");
+    expect(advisory).toHaveTextContent("You can still publish the release.");
     expect(
       within(advisory)
         .getAllByRole("listitem")
@@ -206,17 +204,13 @@ describe("ReleaseDialog", () => {
     renderReady();
 
     expect(
-      screen.queryByText("Skill checks need attention"),
+      screen.queryByText("Skill checks found issues"),
     ).not.toBeInTheDocument();
   });
 
-  // It pushes a tag to GitHub, so it is confirmed like a deletion.
-  it("confirms with a danger button and opens with focus on Cancel", async () => {
+  it("opens with focus on Cancel", async () => {
     renderReady();
 
-    expect(screen.getByRole("button", { name: "Publish release" })).toHaveClass(
-      "text-red-11",
-    );
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
     );

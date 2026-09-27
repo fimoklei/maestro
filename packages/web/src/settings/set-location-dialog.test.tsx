@@ -244,9 +244,6 @@ describe("Set Harness location", () => {
       ),
     ).toBeInTheDocument();
 
-    // The offer carries the action; the footer action steps down.
-    expect(setButton()).not.toHaveClass("bg-gray-12");
-
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Scaffold the Harness" }),
     );

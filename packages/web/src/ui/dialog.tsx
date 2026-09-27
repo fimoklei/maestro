@@ -1,18 +1,16 @@
 import * as Radix from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { type ReactNode, useId, useRef } from "react";
+import { type ReactNode, useEffect, useId, useRef } from "react";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
+import { ACTION_STILL_RUNNING, CANCEL, CLOSE } from "./dialog-copy";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
 import { Tooltip } from "./tooltip";
 
 // Radix owns the portal, focus trap, focus return and scroll lock (#997); this
 // module owns the frame, and derives the rest from the phase and the action.
-
-const CANCEL = "Cancel";
-const CLOSE = "Close";
 
 // The leave control a destructive dialog opens its focus on.
 const CANCEL_MARK = "data-dialog-cancel";
@@ -76,6 +74,13 @@ export function Dialog({
       : "quiet";
   const failureId = useId();
   const bodyless = children === null;
+
+  // Below a long body a new failure would sit out of view; focus stays put.
+  const failureRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (failure !== null)
+      failureRef.current?.scrollIntoView({ block: "nearest" });
+  }, [failure]);
 
   const panelRef = useRef<HTMLDivElement>(null);
   // Radix returns focus to its own Trigger, which these dialogs never use.
@@ -149,7 +154,7 @@ export function Dialog({
             <IconButton
               label={CLOSE}
               variant="ghost"
-              unavailable={running ? "action still running" : undefined}
+              unavailable={running ? ACTION_STILL_RUNNING : undefined}
               onClick={onClose}
             >
               <X aria-hidden="true" strokeWidth={1.5} className="size-4" />
@@ -167,22 +172,22 @@ export function Dialog({
               }
             }}
           >
-            {bodyless ? null : (
-              <div className="flex min-h-0 flex-col gap-cell overflow-y-auto p-panel font-ui text-gray-12 text-prose">
-                {children}
-              </div>
-            )}
-            {/* Outside the scrolling body, so a long body never hides it. */}
+            {/* Only the footer stays outside the scroll, so a tall failure at
+                200% zoom never pushes it off the panel. */}
             <div
-              className={
-                failure === null
-                  ? undefined
-                  : bodyless
-                    ? "shrink-0 p-panel"
-                    : "shrink-0 px-panel pb-panel"
-              }
+              className={cn(
+                "flex min-h-0 flex-col gap-cell overflow-y-auto font-ui text-gray-12 text-prose",
+                bodyless && failure === null ? null : "p-panel",
+              )}
             >
-              <Notice id={failureId} trigger="user-action" notice={failure} />
+              {children}
+              <div
+                ref={failureRef}
+                // Out of flow while empty, so it adds no gap under the body.
+                className={failure === null ? "sr-only" : undefined}
+              >
+                <Notice id={failureId} trigger="user-action" notice={failure} />
+              </div>
             </div>
             <div className="flex shrink-0 items-center justify-between gap-inline border-edge border-t px-panel py-cell">
               <Button

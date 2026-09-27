@@ -115,7 +115,14 @@ export function ImportDialog({
         <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
       </div>
 
-      <Notice trigger="load" notice={advisoryNotice(check?.advisories ?? [])} />
+      <Notice
+        trigger="load"
+        notice={
+          check === undefined
+            ? null
+            : advisoryNotice(check.advisories, check.mode)
+        }
+      />
     </Dialog>
   );
 }

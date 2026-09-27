@@ -46,7 +46,6 @@ async function openDialog() {
   return screen.getByRole("dialog");
 }
 
-// Its name carries the cause until the target reads land, then only the label.
 const runnable = (dialog: HTMLElement) =>
   within(dialog).findByRole("button", { name: /^Deploy skills?$/ });
 
@@ -211,7 +210,7 @@ describe("BulkDeployAction", () => {
 
     expect(
       within(dialog).getByRole("button", {
-        name: "Deploy skill — Loading targets…",
+        name: "Deploy skill — targets still loading",
       }),
     ).toHaveAttribute("aria-disabled", "true");
   });
@@ -249,7 +248,7 @@ describe("BulkDeployAction", () => {
     const dialog = await openDialog();
     expect(
       within(dialog).getByRole("button", {
-        name: "Deploy skill — Loading targets…",
+        name: "Deploy skill — targets still loading",
       }),
     ).toHaveAttribute("aria-disabled", "true");
 
@@ -459,7 +458,6 @@ describe("BulkDeployAction", () => {
     // A Notice, never zeroed counts that would read as a clean success (#292).
     const notice = await screen.findByRole("alert");
     expect(notice).toHaveTextContent(/did not run/i);
-    // Below the picker, directly above the footer it recovers from.
     const dialog = screen.getByRole("dialog");
     expect(
       within(dialog)
@@ -528,7 +526,6 @@ describe("BulkDeployAction", () => {
     expect(
       await within(dialog).findByRole("heading", { name: /1 deployed/ }),
     ).toBeVisible();
-    // Only the leave control is left, last in the footer.
     const buttons = within(dialog).getAllByRole("button");
     expect(buttons.at(-1)).toBe(footerClose(dialog));
     expect(

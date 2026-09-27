@@ -4,6 +4,7 @@ import { Dialog } from "../ui/dialog";
 import { Report, type ReportGroup } from "../ui/report";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
+import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
 
 // The bulk remove's confirmation (#422, #423) and the Report that replaces it
 // (#424). Presentational — the host owns the checks, the request and the
@@ -158,9 +159,9 @@ export function BulkRemoveDialog({
               // others, but with none left the control would remove nothing.
               unavailable:
                 grouped === null
-                  ? "Checks still running"
+                  ? TARGETS_STILL_CHECKING
                   : grouped.removableCount === 0
-                    ? "No target can be removed"
+                    ? NO_TARGET_REMOVABLE
                     : null,
               onRun: onConfirm,
             }

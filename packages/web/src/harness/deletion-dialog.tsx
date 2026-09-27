@@ -63,7 +63,7 @@ export function DeletionDialog({
         </p>
       )}
       <Card padded>
-        <dl className="flex flex-wrap gap-x-10 gap-y-3">
+        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           {/* A skill name has no break in it, and the branch carries the
               same name again. */}
           <Fact label="Skill" value={skill} wrap />

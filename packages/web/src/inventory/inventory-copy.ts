@@ -37,10 +37,10 @@ export const bulkDeployTitle = (count: number): string =>
 export const BULK_DEPLOY_TARGET = "Target";
 export const bulkDeployDidNotRun = (target: string) =>
   `Deploy to ${target} did not run`;
-// Why the bulk deploy cannot run yet: the target reads have not answered.
-export const LOADING_TARGETS = "Loading targets…";
-// Why the bulk deploy cannot run to Global: no tool to deploy into.
-export const NO_TOOL_DETECTED = "no tool detected";
+export const TARGETS_LOADING = "targets still loading";
+export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
+export const TARGETS_STILL_CHECKING = "checks still running";
+export const NO_TARGET_REMOVABLE = "no target can be removed";
 
 // The group header of rows whose status has not answered yet.
 export const NOT_READ_YET = "Not read yet";

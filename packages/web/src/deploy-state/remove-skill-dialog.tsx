@@ -37,7 +37,7 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
           ▲
         </span>
       ) : null}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-tight">
         <span className="break-all font-mono text-gray-12 text-row">
           {row.name}
         </span>

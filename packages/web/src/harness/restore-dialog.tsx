@@ -52,7 +52,7 @@ export function RestoreDialog({
         <p className="m-0 text-gray-11">Your proposal remains unchanged.</p>
       ) : null}
       <Card padded>
-        <dl className="flex flex-wrap gap-x-10 gap-y-3">
+        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           <Fact label="Skill" value={skill} wrap />
           <Fact label="Folder" value={folder} wrap />
           {/* The whole hash: the one commit the confirmation is given

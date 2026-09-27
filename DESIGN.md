@@ -400,7 +400,8 @@ Every control shows the same focus ring: 2px blue 9, offset 2px.
 ### Notice
 
 A failure or outcome stated after its cause, with one action named by its
-exact control label. The block form is a filled box on step 3 with a step 7
+exact control label; a warning the reader can continue past may omit it. The
+block form is a filled box on step 3 with a step 7
 border and status text on step 12; inside a table row it becomes an inline rule on the
 left edge instead of a box.
 
