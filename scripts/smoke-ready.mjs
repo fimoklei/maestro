@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
 import { pidsOnPort } from "./port-holders.mjs";
 import { MARKER_FILE, seededPaths } from "./seed-sandbox.mjs";
+import { parseScenarioArg, seedScenarios } from "./smoke-scenarios.mjs";
 
 const PORTS = cockpitPorts();
 const { web: WEB_ORIGIN, api: SERVER_ORIGIN } = cockpitUrls(PORTS);
@@ -182,13 +183,13 @@ async function answers(url) {
 }
 
 // No body means a read: a GET.
-async function requestJson(path, body) {
+async function requestJson(path, body, method = "POST") {
   const response = await fetch(
     `${SERVER_ORIGIN}${path}`,
     body === undefined
       ? {}
       : {
-          method: "POST",
+          method,
           headers: {
             "content-type": "application/json",
             origin: BROWSER_ORIGIN,
@@ -225,9 +226,28 @@ function check(repoRoot) {
   );
 }
 
+// Throws on any refusal, unless the caller expects one and reads the status.
+const scenarioApi = {
+  get: (path) => call(requestJson, path, undefined, `GET ${path}`),
+  post: async (path, body, { allowRefusal = false } = {}) =>
+    allowRefusal
+      ? await requestJson(path, body)
+      : await call(requestJson, path, body, `POST ${path}`),
+  del: (path, body) =>
+    call((p, b) => requestJson(p, b, "DELETE"), path, body, `DELETE ${path}`),
+};
+
 async function main() {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
   if (process.argv.includes("--check")) return check(repoRoot);
+
+  let scenarios;
+  try {
+    scenarios = parseScenarioArg(process.argv.slice(2));
+  } catch (refusal) {
+    console.error(`[smoke:ready] ${refusal.message}`);
+    process.exit(1);
+  }
 
   const sandboxHome = join(repoRoot, ".maestro-sandbox", "home");
   const { inventory: inventoryPath, firstRepo: repoPath } =
@@ -253,6 +273,8 @@ async function main() {
   // rehearsal's temporary paths into the real ~/.maestro.
   requireOwnership(repoRoot, "smoke:ready", "refusing to seed");
 
+  if (scenarios !== null) return await seedNamedScenarios(repoRoot, scenarios);
+
   if (!existsSync(inventoryPath)) {
     console.error(
       `[smoke:ready] no seeded inventory at ${inventoryPath}.\n` +
@@ -276,6 +298,29 @@ async function main() {
     console.error(`[smoke:ready] ${failure.message}`);
     process.exit(1);
   }
+}
+
+async function seedNamedScenarios(repoRoot, names) {
+  const startedAt = Date.now();
+  let seeded;
+  try {
+    seeded = await seedScenarios({
+      api: scenarioApi,
+      sandboxDir: join(repoRoot, ".maestro-sandbox"),
+      fixtureDir: join(repoRoot, "tests", "fixtures", "fixture-harness"),
+      names,
+    });
+  } catch (failure) {
+    console.error(`[smoke:ready] seeding stopped: ${failure.message}`);
+    process.exit(1);
+  }
+  for (const problem of seeded.problems)
+    console.error(`[smoke:ready] ${problem}`);
+  if (seeded.problems.length > 0) process.exit(1);
+  console.log(
+    `[smoke:ready] ${names.join(", ")} seeded and checked in ${Math.round((Date.now() - startedAt) / 100) / 10}s:\n` +
+      seeded.repos.map((repo) => `  ${repo}`).join("\n"),
+  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

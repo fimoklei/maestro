@@ -1,0 +1,61 @@
+export const SCENARIO_NAMES: string[];
+
+export function parseScenarioArg(argv: readonly string[]): string[] | null;
+
+export interface CockpitRead {
+  deployState: {
+    primitives: {
+      type: "skill";
+      name: string;
+      version: string;
+      copy?: "local-edits" | "unverified";
+    }[];
+    skipped: { reason: string }[];
+    releaseHead?: { release: string; latestRelease: string | null };
+    pinnedPerSkill?: { release: string; skills: number }[];
+    pendingOperation?: {
+      kind: "deploy" | "remove" | "update";
+      release: string;
+      desired: string[];
+    };
+  };
+  drift:
+    | { behind: { name: string; reading: string; latest?: string }[] }
+    | { ok: false; reason?: string };
+  preview?: {
+    changed: { name: string }[];
+    removed: string[];
+    newInRelease: { name: string }[];
+  };
+}
+
+export interface CockpitReading {
+  status: string | null;
+  release: string | null;
+  notice: string | null;
+  skills: Record<string, string>;
+  preview?: { changed: string[]; removed: string[]; newInRelease: string[] };
+}
+
+export function readCockpit(read: CockpitRead): CockpitReading;
+
+export interface ScenarioExpectation {
+  status?: string;
+  release?: string;
+  notice?: string;
+  skills?: Record<string, string>;
+  preview?: { changed?: string[]; removed?: string[]; newInRelease?: string[] };
+}
+
+export function scenarioMismatch(
+  scenario: { name: string; expect: ScenarioExpectation },
+  repoPath: string,
+  observed: CockpitReading,
+): string | null;
+
+export function unprefixedHashes(lockfileText: string): string[];
+
+export function releaseMirrorProblem(input: {
+  expected: Record<string, string>;
+  mirrored: Record<string, string>;
+}): string | null;

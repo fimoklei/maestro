@@ -126,6 +126,39 @@ The two jobs are split across two commands rather than resolved in one default:
   bare smoke is always unseeded at start, so there is no launch moment at which
   the check could be true. `pnpm smoke:ready` remains the step that seeds it.
 
+## Amendment (issue #961) — what the sandbox seeds for deploy states
+
+Reaching a deploy state for a browser check took an hour of hand-built
+scaffolding per session. `pnpm smoke:ready --scenario <name>` seeds named
+states instead; without `--scenario` the flow above is unchanged.
+
+- **A fixture Harness, not the real one.** Committed release trees under
+  `tests/fixtures/fixture-harness/` (four skills; `v1.0.0`, `v1.1.0`, `v2.0.0`)
+  are built with a fixed identity and date, so every run yields the same commit
+  ids and the same deployment records apart from apm's timestamp.
+- **Its origin is `github.com/fimoklei/maestro-fixture-harness`, a real, public
+  and empty repository.** apm's install pre-flight asks GitHub only whether the
+  repository exists, and refuses a missing one before any git call; content
+  always arrives through git. It must stay empty: a failed redirect then finds
+  no tags and errors instead of seeding a plausible wrong state.
+- **`pnpm smoke` redirects that origin to a local bare copy** through the
+  `GIT_CONFIG_COUNT` / `GIT_CONFIG_KEY_n` / `GIT_CONFIG_VALUE_n` environment.
+  apm blanks `GIT_CONFIG_GLOBAL`, so a sandbox `.gitconfig` never reaches it.
+  The product carries no redirect; it names the Harness by the configured
+  origin, never the rewritten one.
+- **Real actions first.** A state the cockpit reaches itself is produced through
+  its API against real apm; a broken state is one intervention on top (a folder
+  made unwritable during an Update or Deploy, a hand edit, hashes dropped from
+  the record, per-skill installs by apm, which get the same bridged token as the
+  launcher). Each run wipes the previous scenario
+  repositories and their unfinished-operation records.
+- **The command checks itself.** It reads each repository back over the API and
+  exits non-zero naming scenario, repository, expected and actual reading; an
+  unmirrored release fails at seed time naming the redirect.
+
+Playwright and golden screenshots stay out: deterministic scenarios keep both
+possible, and neither is built without a defect one would have caught.
+
 ## Rejected alternatives
 
 - **Keep smoke persistent, add a second `smoke:fresh`.** Two commands for one

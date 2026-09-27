@@ -13,6 +13,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
+import { fixtureRedirectEnv } from "./fixture-harness.mjs";
 import { launchPolicy } from "./launch-policy.mjs";
 import {
   describeForeignHolders,
@@ -23,6 +24,7 @@ import {
   processWorktree,
 } from "./port-holders.mjs";
 import { seedSandbox, writeSmokeMarker } from "./seed-sandbox.mjs";
+import { scenarioPaths } from "./smoke-scenarios.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pidFile = join(repoRoot, ".maestro-dev.pid");
@@ -185,6 +187,10 @@ if (smoke) {
   } catch {
     console.warn(UNAUTHENTICATED);
   }
+
+  // apm blanks GIT_CONFIG_GLOBAL, so only this channel sends its fetches of
+  // the scenarios' fixture Harness to the local copy `--scenario` builds.
+  Object.assign(env, fixtureRedirectEnv(scenarioPaths(sandbox).bare, env));
 
   // Nothing is pre-registered: connect and registration stay UI steps to exercise.
   const seeded = seedSandbox({

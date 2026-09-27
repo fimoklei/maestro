@@ -28,6 +28,8 @@ export default defineConfig({
     forceRerunTriggers: [
       ...configDefaults.forceRerunTriggers,
       `${fileURLToPath(new URL("./tests/fixtures/", import.meta.url))}**`,
+      // `**` skips dot folders, which the fixture Harness keeps its skills in.
+      `${fileURLToPath(new URL("./tests/fixtures/", import.meta.url))}**/.apm{,/**}`,
     ],
     // On-demand map of which files never run (`pnpm test:coverage`), no
     // threshold. Without `include` a run reports only the files a test
