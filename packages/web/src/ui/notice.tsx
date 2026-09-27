@@ -17,6 +17,8 @@ type NoticeBase = {
   message: string;
   /** Why this happened, or the alternative recovery; never a second problem. */
   detail?: string;
+  /** One line each, listed under the message, such as the checks a skill failed. */
+  items?: readonly string[];
 };
 
 // A warning may omit its action where the reader can continue without one.
@@ -99,7 +101,7 @@ export function Notice({
     return <div id={id} aria-live="polite" className="sr-only" />;
   }
 
-  const { level, label, message, detail, action } = notice;
+  const { level, label, message, detail, items, action } = notice;
   const assertive =
     (level === "warning" || level === "error") && trigger === "user-action";
   const glyph = glyphs[level];
@@ -135,6 +137,15 @@ export function Notice({
         >
           {message}
         </span>
+        {items === undefined || items.length === 0 ? null : (
+          <ul className="m-0 flex list-none flex-col gap-1 p-0">
+            {items.map((item) => (
+              <li key={item} className="font-ui text-gray-12 text-meta">
+                {item}
+              </li>
+            ))}
+          </ul>
+        )}
         {detail === undefined ? null : (
           <span className="font-ui text-meta text-gray-11">{detail}</span>
         )}

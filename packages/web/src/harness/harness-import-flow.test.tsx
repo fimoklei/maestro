@@ -253,7 +253,11 @@ describe("Harness import flow", () => {
     expect(field).toHaveAccessibleDescription(
       /already holds a skill under it/i,
     );
-    expect(screen.getByRole("button", { name: "Import skill" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", {
+        name: "Import skill — name cannot be used",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("reports the conventions without closing Import", async () => {

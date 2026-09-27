@@ -5,11 +5,10 @@ import type {
   UpdateSkillRow,
 } from "@maestro/core";
 import { type ReactNode, useId, useState } from "react";
-import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
+import { Dialog } from "../ui/dialog";
 import { GitHubMarkLink } from "../ui/github-mark-link";
-import { Notice } from "../ui/notice";
+import type { NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
 import { StatusBadge } from "../ui/status-badge";
 import { reading } from "../ui/status-reading";
@@ -19,7 +18,7 @@ import {
   ADDED_BY_THIS_DEPLOY,
   BECOMES_EMPTY,
   CHANGED,
-  CLOSE,
+  CONSENT_NOT_GIVEN,
   consentRowName,
   countingSentence,
   DISCARD_LOCAL_EDITS,
@@ -42,7 +41,6 @@ import {
   UPDATE_TARGET,
   unverifiedSentence,
   updateDialogTitle,
-  updatingLine,
 } from "./update-target-copy";
 
 // The same grain the guard reads at, so one checkbox never stands for two copies (#952).
@@ -79,7 +77,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="grid grid-cols-1 gap-x-4 gap-y-1 py-2.5 sm:grid-cols-[10.5rem_1fr]">
+    <section className="grid grid-cols-1 gap-x-panel gap-y-tight py-cell sm:grid-cols-[10.5rem_1fr]">
       <h3
         className={cn(
           "font-mono text-meta uppercase leading-5 tracking-mono",
@@ -88,13 +86,13 @@ function Section({
       >
         {heading}
       </h3>
-      <div className="flex min-w-0 flex-col gap-2">{children}</div>
+      <div className="flex min-w-0 flex-col gap-inline">{children}</div>
     </section>
   );
 }
 
 const listClass = (inline: boolean) =>
-  inline ? "flex flex-wrap gap-x-4 gap-y-0.5" : "flex flex-col gap-1";
+  inline ? "flex flex-wrap gap-x-panel gap-y-tight" : "flex flex-col gap-tight";
 
 function FoldedSection({
   heading,
@@ -108,7 +106,7 @@ function FoldedSection({
   children: ReactNode;
 }) {
   return (
-    <details className="flex flex-col gap-1">
+    <details className="flex flex-col gap-tight">
       <summary className="cursor-pointer font-mono text-gray-11 text-meta hover:text-gray-12 motion-safe:transition-colors">
         <SectionHeading inline>{foldedHeading(heading, count)}</SectionHeading>
         {note === null ? null : (
@@ -118,7 +116,7 @@ function FoldedSection({
           </span>
         )}
       </summary>
-      <div className="pt-1.5">{children}</div>
+      <div className="pt-tight">{children}</div>
     </details>
   );
 }
@@ -154,7 +152,7 @@ function SkillRows({
       {rows.map((row) => (
         <li
           key={row.name}
-          className="inline-flex items-center gap-1 font-mono text-row text-gray-12"
+          className="inline-flex items-center gap-tight font-mono text-row text-gray-12"
         >
           {row.name}
           <GitHubMarkLink
@@ -183,9 +181,9 @@ function ConsentRow({
   onToggle: () => void;
 }) {
   return (
-    <li className="flex flex-col gap-1 rounded-control border border-amber-7 bg-amber-3 px-3 py-2">
-      <p className="font-ui text-amber-12 text-meta">{sentence}</p>
-      <label className="flex cursor-pointer items-center gap-2 font-ui text-meta text-gray-12">
+    <li className="flex flex-col gap-tight rounded-control border border-amber-7 bg-amber-3 px-cell py-inline">
+      <p className="m-0 text-amber-12">{sentence}</p>
+      <label className="flex cursor-pointer items-center gap-inline">
         <input
           type="checkbox"
           checked={checked}
@@ -217,6 +215,7 @@ export function UpdateTargetDialog({
   preview: UpdatePreview | null;
   isLoading: boolean;
   error: DeployStateNotice | null;
+  /** Why no update can be priced, as a Blocked control cause. */
   blocked?: string | null;
   outcome?: readonly UpdateOutcomeRow[] | null;
   isRunning?: boolean;
@@ -256,165 +255,137 @@ export function UpdateTargetDialog({
       keys.includes(key) ? keys.filter((held) => held !== key) : [...keys, key],
     );
 
+  const failure: NoticeContent | null = incomplete
+    ? {
+        level: "warning",
+        label: UPDATE_INCOMPLETE,
+        message: UPDATE_INCOMPLETE_SENTENCE,
+        action: { label: RETRY_UPDATE, onClick: onRetry, disabled: isRunning },
+      }
+    : error && { ...error, level: "error" };
+  const unavailable = blocked ?? (consentComplete ? null : CONSENT_NOT_GIVEN);
+
   return (
-    <DialogShell
-      label={heading}
-      describedBy={preview === null ? null : leadInId}
+    <Dialog
+      title={heading}
+      version={null}
       width={640}
+      phase={isRunning ? "running" : report === null ? "idle" : "outcome"}
+      action={
+        report === null && (preview !== null || blocked !== null)
+          ? {
+              label: UPDATE_TARGET,
+              verb: "update",
+              tone: "primary",
+              unavailable,
+              onRun: onConfirm,
+            }
+          : null
+      }
+      failure={failure}
+      describedBy={preview === null ? null : leadInId}
+      fieldsChanged={false}
       onClose={onCancel}
     >
-      <div className="flex shrink-0 items-start justify-between gap-2.5 border-edge border-b px-3.5 py-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 className="font-semibold font-ui text-gray-12 text-prose">
-            Update <span className="break-all font-mono">{targetName}</span>
-          </h2>
-          {preview !== null && report === null ? (
-            <p className="font-mono text-gray-11 text-meta">
-              {releaseMoveLine(preview.release, preview.chosenRelease)}
-            </p>
+      {preview !== null && report === null ? (
+        <div className="flex items-center justify-between gap-inline">
+          <p className="m-0 font-mono text-gray-11 text-meta">
+            {releaseMoveLine(preview.release, preview.chosenRelease)}
+          </p>
+          {noContentChanges ? (
+            <StatusBadge reading={reading(NO_CONTENT_CHANGES, "neutral")} />
           ) : null}
         </div>
-        {noContentChanges ? (
-          <StatusBadge reading={reading(NO_CONTENT_CHANGES, "neutral")} />
-        ) : null}
-      </div>
+      ) : null}
+      {report !== null ? (
+        <Report heading={report.heading} groups={report.groups} />
+      ) : preview === null ? (
+        isLoading ? (
+          <p className="m-0 text-gray-11">{LOADING_PREVIEW}</p>
+        ) : null
+      ) : (
+        <>
+          <div className="flex flex-col gap-tight">
+            <p id={leadInId} className="m-0">
+              {countingSentence(preview.counts)}
+            </p>
+            <p className="m-0 text-gray-11">
+              {preview.selection.desired.length === 0
+                ? BECOMES_EMPTY
+                : selectionAfterLine(preview.selection.desired)}
+            </p>
+          </div>
 
-      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-3.5 py-3">
-        {report !== null ? (
-          <>
-            <Report heading={report.heading} groups={report.groups} />
-            {incomplete ? (
-              <Notice
-                trigger="user-action"
-                notice={{
-                  level: "warning",
-                  label: UPDATE_INCOMPLETE,
-                  message: UPDATE_INCOMPLETE_SENTENCE,
-                  action: { label: RETRY_UPDATE, onClick: onRetry },
-                }}
-              />
+          <div className="flex flex-col divide-y divide-divider border-divider border-y empty:hidden">
+            {preview.addedByThisDeploy.length > 0 ? (
+              <Section heading={ADDED_BY_THIS_DEPLOY}>
+                <SkillRows rows={preview.addedByThisDeploy} inline={true} />
+              </Section>
             ) : null}
-          </>
-        ) : preview === null ? (
-          <p className="font-ui text-meta text-gray-11">
-            {isLoading ? LOADING_PREVIEW : null}
-          </p>
-        ) : (
-          <>
-            <div className="flex flex-col gap-1">
-              <p id={leadInId} className="font-ui text-meta text-gray-12">
-                {countingSentence(preview.counts)}
-              </p>
-              <p className="font-ui text-meta text-gray-11">
-                {preview.selection.desired.length === 0
-                  ? BECOMES_EMPTY
-                  : selectionAfterLine(preview.selection.desired)}
-              </p>
-            </div>
-
-            <div className="flex flex-col divide-y divide-divider border-divider border-y empty:hidden">
-              {preview.addedByThisDeploy.length > 0 ? (
-                <Section heading={ADDED_BY_THIS_DEPLOY}>
-                  <SkillRows rows={preview.addedByThisDeploy} inline={true} />
-                </Section>
-              ) : null}
-              {preview.changed.length > 0 ? (
-                <Section heading={CHANGED}>
-                  <SkillRows rows={preview.changed} inline={true} />
-                </Section>
-              ) : null}
-              {preview.removed.length > 0 ? (
-                <Section heading={REMOVED_BY_THIS_RELEASE}>
-                  <NameList names={preview.removed} inline={true} />
-                </Section>
-              ) : null}
-              {required.length > 0 ? (
-                <Section heading={LOCAL_EDITS} signal={true}>
-                  <ul className="flex flex-col gap-2">
-                    {preview.localEdits.discard.map((row) => (
-                      <ConsentRow
-                        key={consentKey(row)}
-                        row={row}
-                        label={DISCARD_LOCAL_EDITS}
-                        sentence={localEditsSentence(
-                          row.name,
-                          preview.chosenRelease,
-                        )}
-                        checked={consented.includes(consentKey(row))}
-                        onToggle={() => toggle(consentKey(row))}
-                      />
-                    ))}
-                    {preview.localEdits.unverified.map((row) => (
-                      <ConsentRow
-                        key={consentKey(row)}
-                        row={row}
-                        label={OVERWRITE_UNVERIFIED}
-                        sentence={unverifiedSentence(row.name)}
-                        checked={consented.includes(consentKey(row))}
-                        onToggle={() => toggle(consentKey(row))}
-                      />
-                    ))}
-                  </ul>
-                  {preview.localEdits.discard.length > 0 ? (
-                    <p className="font-ui text-meta text-gray-11">
-                      {KEEP_WORK_BY_IMPORTING}
-                    </p>
-                  ) : null}
-                </Section>
-              ) : null}
-            </div>
-            <div className="flex flex-col gap-2 empty:hidden">
-              {preview.unchanged.length > 0 ? (
-                <FoldedSection
-                  heading={UNCHANGED}
-                  count={preview.unchanged.length}
-                >
-                  <NameList names={preview.unchanged} />
-                </FoldedSection>
-              ) : null}
-              {preview.newInRelease.length > 0 ? (
-                <FoldedSection
-                  heading={NEW_IN_THIS_RELEASE}
-                  count={preview.newInRelease.length}
-                  note={NOT_ADDED}
-                >
-                  <SkillRows rows={preview.newInRelease} />
-                </FoldedSection>
-              ) : null}
-            </div>
-          </>
-        )}
-
-        <Notice
-          trigger="user-action"
-          notice={error ? { ...error, level: "error" } : null}
-        />
-      </div>
-
-      <div className={DIALOG_FOOTER}>
-        <Button
-          type="button"
-          variant="quiet"
-          className={report === null ? undefined : "ml-auto"}
-          onClick={onCancel}
-        >
-          {report === null ? "Cancel" : CLOSE}
-        </Button>
-        {blocked !== null ? (
-          <Button type="button" variant="primary" disabled={true}>
-            {blocked}
-          </Button>
-        ) : preview === null || report !== null ? null : (
-          <Button
-            type="button"
-            variant="primary"
-            disabled={!consentComplete || isRunning}
-            onClick={onConfirm}
-          >
-            {isRunning ? updatingLine(preview.chosenRelease) : UPDATE_TARGET}
-          </Button>
-        )}
-      </div>
-    </DialogShell>
+            {preview.changed.length > 0 ? (
+              <Section heading={CHANGED}>
+                <SkillRows rows={preview.changed} inline={true} />
+              </Section>
+            ) : null}
+            {preview.removed.length > 0 ? (
+              <Section heading={REMOVED_BY_THIS_RELEASE}>
+                <NameList names={preview.removed} inline={true} />
+              </Section>
+            ) : null}
+            {required.length > 0 ? (
+              <Section heading={LOCAL_EDITS} signal={true}>
+                <ul className="flex flex-col gap-inline">
+                  {preview.localEdits.discard.map((row) => (
+                    <ConsentRow
+                      key={consentKey(row)}
+                      row={row}
+                      label={DISCARD_LOCAL_EDITS}
+                      sentence={localEditsSentence(
+                        row.name,
+                        preview.chosenRelease,
+                      )}
+                      checked={consented.includes(consentKey(row))}
+                      onToggle={() => toggle(consentKey(row))}
+                    />
+                  ))}
+                  {preview.localEdits.unverified.map((row) => (
+                    <ConsentRow
+                      key={consentKey(row)}
+                      row={row}
+                      label={OVERWRITE_UNVERIFIED}
+                      sentence={unverifiedSentence(row.name)}
+                      checked={consented.includes(consentKey(row))}
+                      onToggle={() => toggle(consentKey(row))}
+                    />
+                  ))}
+                </ul>
+                {preview.localEdits.discard.length > 0 ? (
+                  <p className="m-0 text-gray-11">{KEEP_WORK_BY_IMPORTING}</p>
+                ) : null}
+              </Section>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-inline empty:hidden">
+            {preview.unchanged.length > 0 ? (
+              <FoldedSection
+                heading={UNCHANGED}
+                count={preview.unchanged.length}
+              >
+                <NameList names={preview.unchanged} />
+              </FoldedSection>
+            ) : null}
+            {preview.newInRelease.length > 0 ? (
+              <FoldedSection
+                heading={NEW_IN_THIS_RELEASE}
+                count={preview.newInRelease.length}
+                note={NOT_ADDED}
+              >
+                <SkillRows rows={preview.newInRelease} />
+              </FoldedSection>
+            ) : null}
+          </div>
+        </>
+      )}
+    </Dialog>
   );
 }

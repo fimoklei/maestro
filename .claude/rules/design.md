@@ -117,6 +117,8 @@ Pick the form from this table. Add no other form, and no banner.
   add, to the new row.
 - Block every way of closing a dialog while its action runs. Ignore a click
   outside once a field has changed.
+- Keep the dialog border gray 7; status shows in the content, never the
+  border. Open a dialog that can show a Report at 640px.
 - Close a dialog that adds a row, such as Import skill or Register
   repository, once the add succeeds. Keep no success notice in it and offer
   no "add another" control. Show the new row in its natural place with its

@@ -1,4 +1,4 @@
-import { ACTIONS } from "../ui/busy-copy";
+import type { ActionKey } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
 import { importBlockerNotice } from "./notice-copy";
 import type {
@@ -7,6 +7,14 @@ import type {
   ImportSourceBlocker,
   ManifestAdvisory,
 } from "./use-harness";
+
+// The check travels with its loading and error states so the modal stays
+// mounted across them — a focus trap that unmounts loses the author's place.
+export type ImportCheckLoad =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "error"; notice: NoticeContent }
+  | { kind: "ready"; check: ImportCheck };
 
 // Beside the picked folder the way through is to pick again, not to import, so
 // only the two rows whose table sentence sends the author to Import skill are
@@ -42,7 +50,7 @@ export const nameBlockerNotice = (
 // No check in hand reads as adding, which is what the dialog opens on.
 export const importLabels = (
   check: ImportCheck | undefined,
-): { title: string; confirm: string; busy: string; hint: string } =>
+): { title: string; confirm: string; verb: ActionKey; hint: string } =>
   check?.mode === "update"
     ? {
         title:
@@ -50,23 +58,37 @@ export const importLabels = (
             ? "No changes to update"
             : "Update a skill",
         confirm: "Update skill",
-        busy: ACTIONS.update.busy,
+        verb: "update",
         hint: "Updating replaces the skill folder in the Harness.",
       }
     : {
         title: "Import a skill",
         confirm: "Import skill",
-        busy: ACTIONS.import.busy,
+        verb: "import",
         hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
       };
 
-export const advisoryTexts = (
+// Checks the skill still imports with, so there is nothing to press.
+export const advisoryNotice = (
   advisories: readonly ManifestAdvisory[],
-): string[] => advisories.map((advisory) => ADVISORY_TEXT[advisory]);
+): NoticeContent | null =>
+  advisories.length === 0
+    ? null
+    : {
+        level: "warning",
+        label: "Skill checks found issues",
+        message: "You can still import the skill.",
+        items: advisories.map((advisory) => ADVISORY_TEXT[advisory]),
+      };
 
-// Open only on a check that came back clean: no check in hand is not a refusal
-// Maestro has made, and pressing on one would import something unjudged.
-export const importEnabled = (check: ImportCheck | undefined): boolean =>
-  check !== undefined &&
-  check.sourceBlocker === null &&
-  check.nameBlocker === null;
+// Available only on a check that came back clean: no check in hand is not a
+// refusal Maestro has made, and pressing on one would import something
+// unjudged. The Blocked control cause: five words or fewer.
+export function importUnavailable(load: ImportCheckLoad): string | null {
+  if (load.kind === "idle") return "no folder chosen yet";
+  if (load.kind === "loading") return "folder check still running";
+  if (load.kind === "error") return "folder check did not load";
+  if (load.check.sourceBlocker !== null) return "folder cannot be used";
+  if (load.check.nameBlocker !== null) return "name cannot be used";
+  return null;
+}
