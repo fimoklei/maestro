@@ -1,6 +1,6 @@
 import type { RepoStatus } from "@maestro/core";
 import { screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
@@ -90,10 +90,20 @@ export function renderRepositories() {
     <MemoryRouter initialEntries={["/repositories"]}>
       <Routes>
         <Route path="/repositories" element={<RepositoriesView />} />
-        <Route path="/" element={<h1>Deploy-state screen</h1>} />
+        <Route path="/" element={<DeployStateStandIn />} />
       </Routes>
       <ToastHost />
     </MemoryRouter>,
+  );
+}
+
+function DeployStateStandIn() {
+  const state = useLocation().state as { openTarget?: string } | null;
+  return (
+    <>
+      <h1>Deploy-state screen</h1>
+      <p>opens {state?.openTarget ?? "nothing"}</p>
+    </>
   );
 }
 

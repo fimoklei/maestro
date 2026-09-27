@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FolderGit2, RefreshCw } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { repoRowId } from "../deploy-state/target-rows";
 import { targetLabel } from "../shell/target-label";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
@@ -66,7 +67,7 @@ export function RepositoriesView() {
 
   const onAction = (row: RepositoryRow, action: RepositoryAction) => {
     if (action === "view") {
-      navigate("/");
+      navigate("/", { state: { openTarget: repoRowId(row.path) } });
       return;
     }
     unregister.reset();
