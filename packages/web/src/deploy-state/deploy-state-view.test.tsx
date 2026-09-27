@@ -575,6 +575,27 @@ describe("Deploy-state — rows and their menu", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens the pane of a repository another screen asked for", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/a", "/Users/me/b"],
+      global: TWO_TOOLS,
+    }));
+    renderDeployState({ openTarget: "repo:/Users/me/b" });
+
+    expect(
+      await screen.findByRole("complementary", { name: "…/me/b detail" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens no pane and states nothing for a repository it does not list", async () => {
+    stubServer(() => ({ repos: ["/Users/me/a"], global: TWO_TOOLS }));
+    renderDeployState({ openTarget: "repo:/Users/me/gone" });
+
+    await findRow("…/me/a");
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("opens Deploy skill from a row's menu in the Inventory", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
