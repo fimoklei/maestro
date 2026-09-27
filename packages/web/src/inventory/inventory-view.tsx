@@ -415,6 +415,7 @@ export function InventoryView({
                 stagedNames={[...staged]}
                 repos={repos}
                 registryReady={registryReady}
+                onSelectionSpent={() => setStaged(new Set())}
               />
             </SelectionBar>
           ) : null}
