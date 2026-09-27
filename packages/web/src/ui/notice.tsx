@@ -1,4 +1,6 @@
+import { X } from "lucide-react";
 import { Button } from "./button";
+import { IconButton } from "./icon-button";
 
 // The one block every warning, error and confirmation is stated in (#465).
 
@@ -25,15 +27,30 @@ export type NoticeContent = NoticeBase &
     | { level: "warning"; action: NoticeAction }
   );
 
-export interface NoticeProps {
-  /** Did the user just act, or did this appear on load? Always a literal. */
-  trigger: "load" | "user-action";
+type NoticeBaseProps = {
   notice: NoticeContent | null;
-  /** `inline` inside a table row: no panel; a rule on its left carries the level. */
-  variant?: "block" | "inline";
   /** For a form field's aria-describedby. */
   id?: string;
-}
+};
+
+// Only the outcome of the reader's own action, stated in the panel, can be
+// dismissed: a notice raised on load states a condition that is still true.
+export type NoticeProps = NoticeBaseProps &
+  (
+    | {
+        /** Did the user just act, or did this appear on load? Always a literal. */
+        trigger: "load" | "user-action";
+        /** `inline` inside a table row: no panel; a rule on its left carries the level. */
+        variant?: "block" | "inline";
+        onDismiss?: never;
+      }
+    | {
+        trigger: "user-action";
+        variant?: "block";
+        /** Renders a close control; the caller clears the outcome it states. */
+        onDismiss: () => void;
+      }
+  );
 
 const borderClasses: Record<NoticeLevel, string> = {
   info: "border-gray-7",
@@ -75,6 +92,7 @@ export function Notice({
   notice,
   variant = "block",
   id,
+  onDismiss,
 }: NoticeProps) {
   if (notice === null) {
     // The region outlives its content: one that appears together with its own
@@ -137,6 +155,17 @@ export function Notice({
           </Button>
         )}
       </div>
+      {onDismiss === undefined ? null : (
+        <IconButton
+          label={`Close ${label}`}
+          variant="ghost"
+          className="ml-auto flex-none"
+          data-notice-close=""
+          onClick={onDismiss}
+        >
+          <X aria-hidden="true" strokeWidth={1.5} className="size-4" />
+        </IconButton>
+      )}
     </div>
   );
 }

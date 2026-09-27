@@ -264,4 +264,43 @@ describe("Notice", () => {
       expect(detail.previousElementSibling).toHaveTextContent("a sentence.");
     },
   );
+
+  describe("the close control", () => {
+    const outcome = {
+      level: "success",
+      label: "Release published",
+      message: "Maestro tagged v1.3.0 and refreshed Inventory.",
+    } as const;
+
+    it("is absent when nothing handles a dismissal", () => {
+      render(<Notice trigger="user-action" notice={outcome} />);
+
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("is named after the notice and hands the press to its handler", async () => {
+      const onDismiss = vi.fn();
+      render(
+        <Notice trigger="user-action" notice={outcome} onDismiss={onDismiss} />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Close Release published" }),
+      );
+
+      expect(onDismiss).toHaveBeenCalled();
+    });
+
+    it("compiles only on an outcome notice in the panel", () => {
+      // @ts-expect-error a notice raised on load states a current condition
+      <Notice trigger="load" notice={outcome} onDismiss={vi.fn()} />;
+      // @ts-expect-error a notice inside a row has no room for a control
+      <Notice
+        trigger="user-action"
+        variant="inline"
+        notice={outcome}
+        onDismiss={vi.fn()}
+      />;
+    });
+  });
 });

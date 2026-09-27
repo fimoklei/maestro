@@ -1,6 +1,13 @@
 import type { GitHubPage } from "@maestro/core";
 import { FolderGit2, FolderInput, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
@@ -98,6 +105,8 @@ export function HarnessView() {
       },
     );
   };
+
+  const rereadRef = useRef<HTMLButtonElement>(null);
 
   const [selected, setSelected] = useState<string | null>(null);
   const importFlow = useImportFlow(({ name }) => {
@@ -256,6 +265,7 @@ export function HarnessView() {
           </span>
         )}
         <IconButton
+          ref={rereadRef}
           label={REREAD_HARNESS}
           busy={refresh.isPending}
           onClick={reread}
@@ -325,8 +335,11 @@ export function HarnessView() {
             checkedOnce={checkedOnce}
             reread={reread}
             published={publish.data}
+            dismissPublished={publish.reset}
             rereadInventory={rereadInventory}
             restored={presses.restore.data}
+            dismissRestored={presses.restore.reset}
+            rereadRef={rereadRef}
           />
           {empty ? (
             <EmptyState
@@ -501,8 +514,11 @@ function Notices({
   checkedOnce,
   reread,
   published,
+  dismissPublished,
   rereadInventory,
   restored,
+  dismissRestored,
+  rereadRef,
 }: {
   state: ReturnType<typeof useHarness>["data"];
   readError: unknown;
@@ -510,8 +526,11 @@ function Notices({
   checkedOnce: boolean;
   reread: () => void;
   published: { tag: string; inventoryRefreshed: boolean } | undefined;
+  dismissPublished: () => void;
   rereadInventory: () => void;
   restored: { hasRequest: boolean; statusRead: boolean } | undefined;
+  dismissRestored: () => void;
+  rereadRef: RefObject<HTMLButtonElement | null>;
 }) {
   const notices = [
     { trigger: "load" as const, notice: harnessStateNotice(readError) },
@@ -533,9 +552,10 @@ function Notices({
           ? null
           : cloneSyncNotice(state.cloneSync, reread),
     },
+  ];
+  const outcomes = [
     // The tag is atomic, so only the Inventory re-read can fail (#849).
     {
-      trigger: "user-action" as const,
       notice:
         published === undefined
           ? null
@@ -544,10 +564,10 @@ function Notices({
               published.inventoryRefreshed,
               rereadInventory,
             ),
+      clear: dismissPublished,
     },
     // Above the table, so it outlives the row it was pressed from (#915).
     {
-      trigger: "user-action" as const,
       notice:
         restored === undefined
           ? null
@@ -556,14 +576,31 @@ function Notices({
               restored.statusRead,
               reread,
             ),
+      clear: dismissRestored,
     },
   ];
+  const slots = useRef<(HTMLDivElement | null)[]>([]);
+  // Focus leaves the control it stood on, so it goes to the next outcome
+  // still standing, else to the one re-read control.
+  const dismiss = (index: number) => {
+    const next = outcomes.findIndex(
+      (each, at) => at !== index && each.notice !== null,
+    );
+    const target =
+      next === -1
+        ? rereadRef.current
+        : (slots.current[next]?.querySelector<HTMLElement>(
+            "[data-notice-close]",
+          ) ?? null);
+    target?.focus();
+    outcomes[index]?.clear();
+  };
   // Every region is mounted before its failure is: a region outlives its
   // content, and a read that failed on open is trigger="load" (#465).
   return (
     <div
       className={
-        notices.some((each) => each.notice !== null)
+        [...notices, ...outcomes].some((each) => each.notice !== null)
           ? "flex flex-col gap-inline p-panel"
           : "flex flex-col"
       }
@@ -571,6 +608,22 @@ function Notices({
       {notices.map((each, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: five fixed slots, each always mounted
         <Notice key={index} trigger={each.trigger} notice={each.notice} />
+      ))}
+      {outcomes.map((each, index) => (
+        <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: two fixed slots, each always mounted
+          key={index}
+          ref={(slot) => {
+            slots.current[index] = slot;
+          }}
+          className="contents"
+        >
+          <Notice
+            trigger="user-action"
+            notice={each.notice}
+            onDismiss={() => dismiss(index)}
+          />
+        </div>
       ))}
     </div>
   );

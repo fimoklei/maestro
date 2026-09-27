@@ -37,6 +37,19 @@ export const withStages = (
   },
 });
 
+// A release plan with one added skill, priced from v1.2.3.
+export const PLAN = {
+  delta: [{ kind: "added", name: "research", author: "Grace" }],
+  previousTag: "v1.2.3",
+  previousTagCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  proposedStep: "minor",
+  reason: "A skill was added.",
+  versions: { major: "v2.0.0", minor: "v1.3.0", patch: "v1.2.4" },
+  revision: "0123456789abcdef0123456789abcdef01234567",
+  defaultBranch: "main",
+  findings: [{ skill: "broken", problem: "missing-manifest" }],
+};
+
 export function stubHarnessServer(options: {
   read: {
     body: unknown;

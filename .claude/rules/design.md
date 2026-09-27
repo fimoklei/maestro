@@ -71,7 +71,13 @@ building it.
 **Failures.**
 - State a failure in a `Notice` after its cause, with one action named by its
   exact control label.
-- Never move focus to a notice. Never remove a notice on a timer.
+- Never move focus to a notice when it appears. Never remove a notice on a
+  timer.
+- Give a ✕ close control, `Close {heading}`, only to a notice at the top of
+  the panel that states the outcome of the reader's own action. Give none to a
+  notice that states a current condition, or to one in a dialog, a table row,
+  the detail pane or a field slot. After a dismissal, move focus to the next
+  such notice's ✕, else to the screen's `Re-read {screen name}` control.
 - Keep the previous rows on screen after a failed read. Recover with the
   screen's `Re-read {screen name}` control, never a page reload.
 - Set `retry: false` on every query.
