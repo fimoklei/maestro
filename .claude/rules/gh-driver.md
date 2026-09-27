@@ -1,3 +1,9 @@
+---
+paths:
+  - "packages/core/src/harness/gh-*"
+  - "docs/research/806-gh-pull-request-status.md"
+---
+
 # `gh` driver rules (project-specific for Maestro)
 
 Imperatives for reading GitHub through the `gh` CLI — rules only. The observed

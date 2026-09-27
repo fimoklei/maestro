@@ -1,3 +1,8 @@
+---
+paths:
+  - "packages/web/**"
+---
+
 # Frontend conventions (project-specific for Maestro)
 
 React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer boundary lives in `architecture.md`.

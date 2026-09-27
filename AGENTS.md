@@ -25,6 +25,7 @@ central inventory lives in the separate `agent-harness` repo.
 ├── CLAUDE.md              # Claude Code adapter; imports AGENTS.md
 ├── LEARNINGS.md           # project-specific agent learnings
 ├── CONTEXT.md             # canonical glossary
+├── CODING_STANDARDS.md    # index of the rule files, read by /code-review
 ├── .claude/rules/         # Claude-specific project rules
 ├── docs/
 │   ├── brief.md           # product thesis and the bet

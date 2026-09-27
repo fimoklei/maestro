@@ -1,3 +1,11 @@
+---
+paths:
+  - "packages/**/*.ts"
+  - "packages/**/*.tsx"
+  - "tests/**/*.ts"
+  - "scripts/**"
+---
+
 # Code comments (project-specific for Maestro)
 
 - Default: no comment. A clear name and signature beat a comment.

@@ -1,3 +1,9 @@
+---
+paths:
+  - "packages/web/src/**"
+  - "packages/server/src/**"
+---
+
 # Copy (project-specific for Maestro)
 
 Applies to every word the cockpit shows, and to the server's request-shape

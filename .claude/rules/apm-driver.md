@@ -1,3 +1,15 @@
+---
+paths:
+  - "packages/core/src/deploy/**"
+  - "packages/core/src/deploy-state/**"
+  - "packages/core/src/lockfile/**"
+  - "packages/core/src/inventory/**"
+  - "packages/core/src/drift/**"
+  - "tests/integration/apm-*"
+  - "tests/fixtures/apm*"
+  - "docs/apm-behavior.md"
+---
+
 # APM driver rules (project-specific for Maestro)
 
 Imperatives for driving `apm` or parsing its lockfile/output — rules only.
