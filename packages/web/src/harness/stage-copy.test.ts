@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   alsoInWords,
   crossStageLine,
+  deployedCopiesLine,
   detailSentence,
   PROPOSAL_EMPTY,
   PULL_REQUEST_CARD,
@@ -455,6 +456,53 @@ describe("the reviewer and cross-stage lines", () => {
   it("says nothing where the skill sits in one stage alone", () => {
     expect(
       crossStageLine(row("pending-proposal", "new-local-work")),
+    ).toBeNull();
+  });
+});
+
+// Deployed copies only ever come from a release, so local work on a skill the
+// default branch already holds has not reached them (#1160).
+describe("deployed copies line", () => {
+  it("says deployed copies keep the earlier version of a changed skill", () => {
+    expect(
+      deployedCopiesLine(
+        row("pending-proposal", "not-yet-proposed", { remoteTree: "abc" }),
+      ),
+    ).toBe(
+      "Deployed copies still have the earlier version. They get this version after a release and a new deploy.",
+    );
+  });
+
+  it("says it for new local work on a proposal too", () => {
+    expect(
+      deployedCopiesLine(
+        row("pending-proposal", "new-local-work", { remoteTree: "abc" }),
+      ),
+    ).not.toBeNull();
+  });
+
+  it("says nothing for a skill the default branch does not hold", () => {
+    expect(
+      deployedCopiesLine(row("pending-proposal", "not-yet-proposed")),
+    ).toBeNull();
+  });
+
+  it("says nothing for a local deletion", () => {
+    expect(
+      deployedCopiesLine(
+        row("pending-proposal", "deleted-locally", {
+          remoteTree: "abc",
+          deletion: true,
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("says nothing outside Pending proposal", () => {
+    expect(
+      deployedCopiesLine(
+        row("pending-release", "changed", { remoteTree: "abc" }),
+      ),
     ).toBeNull();
   });
 });

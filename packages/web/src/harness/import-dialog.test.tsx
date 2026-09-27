@@ -28,8 +28,6 @@ const chooser: FolderChooser = {
 function renderDialog(
   source: string | null,
   load: ComponentProps<typeof ImportDialog>["load"] = { kind: "idle" },
-  imported: ComponentProps<typeof ImportDialog>["imported"] = null,
-  onView: ComponentProps<typeof ImportDialog>["onView"] = vi.fn(),
   onClose: ComponentProps<typeof ImportDialog>["onClose"] = vi.fn(),
   onSourceCommit: ComponentProps<
     typeof ImportDialog
@@ -39,8 +37,6 @@ function renderDialog(
     <SourceHost
       source={source}
       load={load}
-      imported={imported}
-      onView={onView}
       onClose={onClose}
       onSourceCommit={onSourceCommit}
     />,
@@ -52,15 +48,11 @@ function renderDialog(
 function SourceHost({
   source,
   load,
-  imported,
-  onView,
   onClose,
   onSourceCommit,
 }: {
   source: string | null;
   load: ComponentProps<typeof ImportDialog>["load"];
-  imported: ComponentProps<typeof ImportDialog>["imported"];
-  onView: ComponentProps<typeof ImportDialog>["onView"];
   onClose: ComponentProps<typeof ImportDialog>["onClose"];
   onSourceCommit: ComponentProps<typeof ImportDialog>["onSourceCommit"];
 }) {
@@ -77,10 +69,8 @@ function SourceHost({
       onNameChange={vi.fn()}
       onClose={onClose}
       onImport={vi.fn()}
-      onView={onView}
       importing={false}
       importError={null}
-      imported={imported}
     />
   );
 }
@@ -88,7 +78,7 @@ function SourceHost({
 describe("ImportDialog", () => {
   it("ignores a click outside once the name has been typed in", async () => {
     const onClose = vi.fn();
-    renderDialog(DEEP, { kind: "ready", check: CHECK }, null, vi.fn(), onClose);
+    renderDialog(DEEP, { kind: "ready", check: CHECK }, onClose);
 
     await userEvent.type(
       screen.getByRole("textbox", { name: /name in the harness/i }),
@@ -102,7 +92,7 @@ describe("ImportDialog", () => {
 
   it("closes on a click outside while no field has been touched", async () => {
     const onClose = vi.fn();
-    renderDialog(DEEP, { kind: "ready", check: CHECK }, null, vi.fn(), onClose);
+    renderDialog(DEEP, { kind: "ready", check: CHECK }, onClose);
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -138,14 +128,7 @@ describe("ImportDialog", () => {
 
   it("checks a typed folder once the author leaves the field", async () => {
     const onSourceCommit = vi.fn();
-    renderDialog(
-      null,
-      { kind: "idle" },
-      null,
-      vi.fn(),
-      vi.fn(),
-      onSourceCommit,
-    );
+    renderDialog(null, { kind: "idle" }, vi.fn(), onSourceCommit);
 
     await userEvent.type(
       screen.getByRole("textbox", { name: "Folder path" }),
@@ -159,14 +142,7 @@ describe("ImportDialog", () => {
 
   it("checks a folder picked through Browse at once", async () => {
     const onSourceCommit = vi.fn();
-    renderDialog(
-      null,
-      { kind: "idle" },
-      null,
-      vi.fn(),
-      vi.fn(),
-      onSourceCommit,
-    );
+    renderDialog(null, { kind: "idle" }, vi.fn(), onSourceCommit);
 
     await userEvent.click(screen.getByRole("button", { name: "Browse" }));
 
@@ -227,78 +203,6 @@ describe("ImportDialog", () => {
     expect(
       screen.getByRole("button", { name: "Import skill" }),
     ).toBeInTheDocument();
-  });
-
-  it("explains that deployed copies still need the updated skill", () => {
-    renderDialog(
-      DEEP,
-      { kind: "ready", check: { ...CHECK, mode: "update" } },
-      { mode: "update", name: "release-notes", skipped: 0 },
-    );
-
-    expect(
-      screen.getByText(
-        "The deployed copies still have the earlier version. Select View in Harness, then deploy the skill again.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("confirms the import and offers the way to the row, claiming nothing about release", async () => {
-    const onView = vi.fn();
-    renderDialog(
-      DEEP,
-      { kind: "ready", check: CHECK },
-      { mode: "add", name: "release-notes", skipped: 0 },
-      onView,
-    );
-
-    const confirmation = screen.getByText("Skill imported").closest("div")
-      ?.parentElement as HTMLElement;
-    expect(confirmation).toHaveTextContent(
-      "The skill was imported into the Harness. Select View in Harness to find it.",
-    );
-    expect(confirmation.textContent).not.toMatch(/release/i);
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "View in Harness" }),
-    );
-    expect(onView).toHaveBeenCalledWith("release-notes");
-  });
-
-  it("names .git and operating-system files for one skipped entry", () => {
-    renderDialog(
-      DEEP,
-      { kind: "ready", check: CHECK },
-      { mode: "add", name: "release-notes", skipped: 1 },
-    );
-
-    expect(
-      screen.getByText("1 entry was skipped: .git and operating-system files."),
-    ).toBeInTheDocument();
-  });
-
-  it("names .git and operating-system files for several skipped entries", () => {
-    renderDialog(
-      DEEP,
-      { kind: "ready", check: CHECK },
-      { mode: "add", name: "release-notes", skipped: 4 },
-    );
-
-    expect(
-      screen.getByText(
-        "4 entries were skipped: .git and operating-system files.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("says nothing about skipped entries when none were skipped", () => {
-    renderDialog(
-      DEEP,
-      { kind: "ready", check: CHECK },
-      { mode: "add", name: "release-notes", skipped: 0 },
-    );
-
-    expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
   });
 
   it("keeps the name closed until a folder is chosen", () => {
