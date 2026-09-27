@@ -30,7 +30,6 @@ import {
   PromoteSkillDeletion,
   ProposalActions,
   PublishRelease,
-  parseGitOrigin,
   platformFolderChooser,
   probeHead,
   ReadDrift,
@@ -43,7 +42,6 @@ import {
   RetryTargetOperation,
   readConfiguredGitOriginUrl,
   readGitHubPage,
-  readGitOriginUrl,
   releasedSkillsFromGit,
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
@@ -194,10 +192,11 @@ function realDeps(): AppDeps {
     apm,
     operations: new TargetOperationStore({ store }),
   });
+  // The configured origin names the Harness; an `insteadOf` only moves where
+  // git connects.
   const inventoryOrigin = async () => {
     const root = resolveInventoryPath(await store.read(), process.env);
-    const url = root === undefined ? null : await readGitOriginUrl(root);
-    return url === null ? null : parseGitOrigin(url);
+    return root === undefined ? null : await harnessGit.readOrigin(root);
   };
   const deploy = new DeploySkill({
     inventory,
@@ -219,7 +218,7 @@ function realDeps(): AppDeps {
     toolPresence: new ToolPresenceAdapter(),
     inventoryOriginUrl: async () => {
       const root = resolveInventoryPath(await store.read(), process.env);
-      return root === undefined ? null : readGitOriginUrl(root);
+      return root === undefined ? null : readConfiguredGitOriginUrl(root);
     },
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,
