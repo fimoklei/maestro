@@ -201,6 +201,14 @@ describe("UpdateTarget.preview", () => {
     );
   });
 
+  it("lists no skill as new that the target's own release already held", async () => {
+    const preview = await previewed({ selection: ["tdd", "grill"] });
+
+    expect(preview.newInRelease.map((row) => row.name)).toStrictEqual([
+      "wizard",
+    ]);
+  });
+
   it("refuses to price an update when the connected Harness has no usable origin", async () => {
     const result = await subject({ origin: null }).preview();
 

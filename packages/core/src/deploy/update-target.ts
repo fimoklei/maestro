@@ -459,9 +459,13 @@ export class UpdateTarget {
     const unchanged = state.selection.filter(
       (name) => next.has(name) && current.get(name) === next.get(name),
     );
-    // Shown to read, not to pick: Update adds nothing automatically.
+    // Shown to read, not to pick: Update adds nothing automatically. New since
+    // the target's own release, so a skipped release's arrivals count (#1219).
     const newInRelease = [...next.keys()].filter(
-      (name) => !state.selection.includes(name) && !added.includes(name),
+      (name) =>
+        !current.has(name) &&
+        !state.selection.includes(name) &&
+        !added.includes(name),
     );
     const scope: UpdateScope = {
       target,
