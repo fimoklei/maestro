@@ -67,11 +67,14 @@ export const inventoryColumns = ({
     helper.accessor("type", {
       header: "Type",
       cell: ({ row }) => TYPE_WORD[row.original.type],
-      meta: { className: "w-16 text-gray-11" },
+      meta: { className: "w-16 text-gray-11 @max-[35rem]:hidden" },
     }),
     helper.accessor("name", {
       header: "Name",
-      meta: { className: "w-55 font-medium text-gray-12" },
+      // Takes what is left once Targets drops out, so it never collapses (#1184).
+      meta: {
+        className: "w-55 font-medium text-gray-12 @max-[31rem]:w-auto",
+      },
     }),
     helper.accessor("description", {
       header: "Description",
@@ -104,7 +107,10 @@ export const inventoryColumns = ({
         );
       },
       sortFn: (a, b) => (a.original.targets ?? -1) - (b.original.targets ?? -1),
-      meta: { className: "w-18 tabular-nums text-gray-12", align: "end" },
+      meta: {
+        className: "w-18 tabular-nums text-gray-12 @max-[31rem]:hidden",
+        align: "end",
+      },
     }),
     helper.display({
       id: "actions",

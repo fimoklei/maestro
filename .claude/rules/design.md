@@ -145,6 +145,11 @@ Pick the form from this table. Add no other form, and no banner.
 - Link a row's own GitHub page from a `GitHub` column: GitHub's mark in slate
   11, named `View {name} on GitHub`, mouse only; the same destination is a ⋮
   item for the keyboard. No GitHub page: empty cell. In a fact, link the value.
+- Fit a table to its panel at every width; never scroll it sideways. On a
+  narrow panel hide secondary columns, least important first, at the latest
+  at the width of the columns still shown plus 8rem. Keep the name,
+  Status, checkbox and ⋮ columns; the name column takes the rest. Show every
+  hidden column's value in the row's detail pane or ⋮ menu.
 
 **Tokens.**
 - Use only the documented colour pairs. A new pairing enters `design.json` and

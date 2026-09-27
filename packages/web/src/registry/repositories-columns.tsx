@@ -40,7 +40,8 @@ export const repositoriesColumns = ({
           {row.original.name}
         </span>
       ),
-      meta: { className: "w-55" },
+      // Takes what is left once the path drops out (#1184).
+      meta: { className: "w-55 @max-[37rem]:w-auto" },
     }),
     helper.accessor("path", {
       header: COLUMNS.path,
@@ -50,7 +51,7 @@ export const repositoriesColumns = ({
         </span>
       ),
       // The path drops out first on a narrow window; the label's title keeps it.
-      meta: { className: "@max-[30rem]:hidden" },
+      meta: { className: "@max-[37rem]:hidden" },
     }),
     helper.accessor("status", {
       header: COLUMNS.status,

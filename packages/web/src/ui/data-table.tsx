@@ -22,6 +22,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -133,7 +134,8 @@ export function DataTable<T extends RowData>({
     getRowId: (row) => getRowId(row),
     enableSortingRemoval: false,
     sortDescFirst: false,
-    ...(columnVisibility === undefined ? {} : { state: { columnVisibility } }),
+    // Always controlled: dropping the state would keep the last one hidden.
+    state: { columnVisibility: columnVisibility ?? {} },
   });
   const sortedRows = table.getRowModel().rows;
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -270,7 +272,27 @@ export function DataTable<T extends RowData>({
     }
   };
 
+  // A span over a column a narrow panel hides adds an empty column that takes
+  // the flexible column's width (#1184), so full-width rows span what shows.
+  const headRow = useRef<HTMLTableRowElement>(null);
+  const [shownCount, setShownCount] = useState<number | null>(null);
   const columnCount = leafColumns.length + (selection ? 1 : 0);
+  useLayoutEffect(() => {
+    const row = headRow.current;
+    if (row === null || columnCount === 0) return;
+    const count = () =>
+      setShownCount(
+        [...row.cells].filter(
+          (cell) => getComputedStyle(cell).display !== "none",
+        ).length,
+      );
+    count();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(count);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [columnCount]);
+  const spanCount = shownCount ?? columnCount;
 
   const renderRow = (row: (typeof rows)[number], index: number) => {
     const id = row.id;
@@ -373,7 +395,11 @@ export function DataTable<T extends RowData>({
     >
       <thead className="sticky top-0 z-10 bg-gray-1">
         {table.getHeaderGroups().map((group) => (
-          <tr key={group.id} className="h-row border-divider border-b">
+          <tr
+            key={group.id}
+            ref={headRow}
+            className="h-row border-divider border-b"
+          >
             {selection ? (
               <th scope="col" className="w-8 px-inline">
                 <span className="sr-only">{selection.label}</span>
@@ -481,7 +507,7 @@ export function DataTable<T extends RowData>({
                 label={block.key}
                 count={block.all.length === 0 ? undefined : block.all.length}
                 meta={groups?.meta?.(block.key)}
-                columnCount={columnCount}
+                columnCount={spanCount}
                 collapsed={
                   block.all.length === 0 ? undefined : collapsed.has(block.key)
                 }
@@ -490,7 +516,7 @@ export function DataTable<T extends RowData>({
               {block.all.length === 0 ? (
                 <tr className="h-row border-divider border-b">
                   <GridCell
-                    colSpan={columnCount}
+                    colSpan={spanCount}
                     className="truncate px-inline text-gray-11"
                   >
                     {groups?.message?.(block.key)}
@@ -503,7 +529,7 @@ export function DataTable<T extends RowData>({
           ))
         ) : rows.length === 0 ? (
           <tr className="h-row">
-            <GridCell colSpan={columnCount} className="px-inline text-gray-11">
+            <GridCell colSpan={spanCount} className="px-inline text-gray-11">
               {empty}
             </GridCell>
           </tr>
