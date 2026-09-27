@@ -1,23 +1,25 @@
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { useEscapeToClose } from "./use-escape-to-close";
+import { useDismiss } from "./use-dismiss";
 
-function EscapePanel({
+function Panel({
   onClose,
   closeEnabled = true,
 }: {
   onClose: () => void;
   closeEnabled?: boolean;
 }) {
-  useEscapeToClose({ onClose, closeEnabled });
-  return null;
+  const containerRef = useRef<HTMLDivElement>(null);
+  useDismiss({ containerRef, onClose, closeEnabled });
+  return <div ref={containerRef} />;
 }
 
-describe("useEscapeToClose", () => {
+describe("useDismiss", () => {
   it("closes on Escape", async () => {
     const onClose = vi.fn();
-    render(<EscapePanel onClose={onClose} />);
+    render(<Panel onClose={onClose} />);
 
     await userEvent.keyboard("{Escape}");
 
@@ -29,8 +31,8 @@ describe("useEscapeToClose", () => {
     const topClose = vi.fn();
     render(
       <>
-        <EscapePanel onClose={bottomClose} />
-        <EscapePanel onClose={topClose} />
+        <Panel onClose={bottomClose} />
+        <Panel onClose={topClose} />
       </>,
     );
 
@@ -45,8 +47,8 @@ describe("useEscapeToClose", () => {
     const topClose = vi.fn();
     render(
       <>
-        <EscapePanel onClose={bottomClose} />
-        <EscapePanel onClose={topClose} closeEnabled={false} />
+        <Panel onClose={bottomClose} />
+        <Panel onClose={topClose} closeEnabled={false} />
       </>,
     );
 
@@ -61,7 +63,7 @@ describe("useEscapeToClose", () => {
     const onClose = vi.fn();
     const { getByRole } = render(
       <>
-        <EscapePanel onClose={onClose} />
+        <Panel onClose={onClose} />
         <div role="menu">
           <button type="button" role="menuitem">
             Remove from target
@@ -81,15 +83,31 @@ describe("useEscapeToClose", () => {
     const topClose = vi.fn();
     const { rerender } = render(
       <>
-        <EscapePanel onClose={bottomClose} />
-        <EscapePanel onClose={topClose} />
+        <Panel onClose={bottomClose} />
+        <Panel onClose={topClose} />
       </>,
     );
 
-    rerender(<EscapePanel onClose={bottomClose} />);
+    rerender(<Panel onClose={bottomClose} />);
     await userEvent.keyboard("{Escape}");
 
     expect(bottomClose).toHaveBeenCalledOnce();
     expect(topClose).not.toHaveBeenCalled();
+  });
+
+  it("gives an outside press to only the most recently opened panel", async () => {
+    const bottomClose = vi.fn();
+    const topClose = vi.fn();
+    render(
+      <>
+        <Panel onClose={bottomClose} />
+        <Panel onClose={topClose} />
+      </>,
+    );
+
+    await userEvent.click(document.body);
+
+    expect(topClose).toHaveBeenCalledOnce();
+    expect(bottomClose).not.toHaveBeenCalled();
   });
 });

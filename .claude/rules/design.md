@@ -63,8 +63,10 @@ building it.
   items as 32px buttons in the same order; the first enabled one is primary, a
   destructive one stays danger.
 - At 1100px and below, show the pane as a full-height sheet over the table's
-  right side, `min(360px, 100%)` wide. Esc or ✕ closes it and returns focus to
-  the row.
+  right side, `min(360px, 100%)` wide.
+- Close the pane on Esc, ✕ or a press outside it; a press on a table row or in
+  an open menu or dialog keeps it open. Return focus to the row, unless the
+  press landed on another control.
 
 **Failures.**
 - State a failure in a `Notice` after its cause, with one action named by its

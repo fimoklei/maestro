@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DetailPane, DetailPaneSlot } from "./detail-pane";
 
@@ -175,5 +175,148 @@ describe("DetailPane", () => {
     renderPane({ position: null, onPage: () => {} });
 
     expect(pane()).not.toHaveTextContent("/");
+  });
+});
+
+// A screen around the pane: the row that opened it, a control and plain text
+// beside it, and a grid whose rows move the pane.
+function Screen({ onClose = () => {} }: { onClose?: () => void }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <button type="button">tdd row</button>
+      <button type="button">Filter</button>
+      <p>Plain text</p>
+      {/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA's grid pattern builds on a table */}
+      <table role="grid" aria-label="Skills">
+        <thead>
+          <tr>
+            <th>Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>debugging</td>
+          </tr>
+        </tbody>
+      </table>
+      {open ? (
+        <DetailPane
+          title="tdd"
+          activeKey="tdd"
+          onClose={() => {
+            onClose();
+            setOpen(false);
+          }}
+          getTriggerElement={() =>
+            screen.queryByRole("button", { name: "tdd row" })
+          }
+        >
+          <p>Test-driven development.</p>
+        </DetailPane>
+      ) : null}
+    </>
+  );
+}
+
+describe("DetailPane outside press", () => {
+  it("closes on a press outside it", async () => {
+    const onClose = vi.fn();
+    render(<Screen onClose={onClose} />);
+
+    await userEvent.click(screen.getByText("Plain text"));
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("stays open on a press inside it", async () => {
+    const onClose = vi.fn();
+    render(<Screen onClose={onClose} />);
+
+    await userEvent.click(screen.getByText("Test-driven development."));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("stays open on a press on a table row, which moves the pane instead", async () => {
+    const onClose = vi.fn();
+    render(<Screen onClose={onClose} />);
+
+    await userEvent.click(screen.getByText("debugging"));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("closes on a press on a table's header, which moves nothing", async () => {
+    const onClose = vi.fn();
+    render(<Screen onClose={onClose} />);
+
+    await userEvent.click(screen.getByText("Name"));
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("leaves a press to an open menu or dialog, which closes alone", async () => {
+    // Radix portals both outside the pane, so a press inside one is outside it.
+    const onClose = vi.fn();
+    render(
+      <>
+        <Screen onClose={onClose} />
+        <div role="menu">
+          <button type="button" role="menuitem">
+            Remove from target
+          </button>
+        </div>
+      </>,
+    );
+
+    await userEvent.click(screen.getByRole("menuitem"));
+    await userEvent.click(screen.getByText("Plain text"));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("ignores a control outside it activated from the keyboard", async () => {
+    const onClose = vi.fn();
+    render(<Screen onClose={onClose} />);
+
+    screen.getByRole("button", { name: "Filter" }).focus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("leaves focus on the control the press landed on", async () => {
+    render(<Screen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+
+    expect(
+      screen.queryByRole("complementary", { name: "tdd detail" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter" })).toHaveFocus();
+  });
+
+  it("returns focus to its row after a press on nothing focusable", async () => {
+    render(<Screen />);
+
+    await userEvent.click(screen.getByText("Plain text"));
+
+    expect(
+      screen.queryByRole("complementary", { name: "tdd detail" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "tdd row" })).toHaveFocus();
+  });
+
+  it("returns focus to its row on Escape, even from a control outside it", async () => {
+    render(<Screen />);
+
+    screen.getByRole("button", { name: "Filter" }).focus();
+    await userEvent.keyboard("{Escape}");
+
+    expect(
+      screen.queryByRole("complementary", { name: "tdd detail" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "tdd row" })).toHaveFocus();
   });
 });

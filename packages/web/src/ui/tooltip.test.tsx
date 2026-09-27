@@ -1,15 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Tooltip } from "./tooltip";
-import { useEscapeToClose } from "./use-escape-to-close";
+import { useDismiss } from "./use-dismiss";
 
 function Panel({ onClose }: { onClose: () => void }) {
-  useEscapeToClose({ onClose });
+  const containerRef = useRef<HTMLDivElement>(null);
+  useDismiss({ containerRef, onClose });
   return (
-    <Tooltip label="Local edits">
-      <button type="button">✎</button>
-    </Tooltip>
+    <div ref={containerRef}>
+      <Tooltip label="Local edits">
+        <button type="button">✎</button>
+      </Tooltip>
+    </div>
   );
 }
 

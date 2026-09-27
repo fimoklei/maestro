@@ -516,7 +516,9 @@ describe("InventoryView — detail pane", () => {
     const search = screen.getByRole("searchbox", {
       name: "Search the Inventory",
     });
-    await userEvent.type(search, "caveman");
+    // Reached from the keyboard: a press on it is outside the pane.
+    search.focus();
+    await userEvent.keyboard("caveman");
 
     expect(
       screen.queryByRole("gridcell", { name: "tdd" }),
