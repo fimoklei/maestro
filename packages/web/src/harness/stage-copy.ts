@@ -17,18 +17,9 @@ export const STAGE_NAMES: Record<HarnessStage, string> = {
   "pending-release": "Pending release",
 };
 
-// Pending proposal is the one stage drawn while empty, so these are the
-// view's most-read words. `journey` states that every stage answered empty;
-// `stage` names the two ways to put a change here (#867).
-export const PROPOSAL_EMPTY = {
-  journey: {
-    title: "No changes yet",
-    body: "Skills you import or edit in your clone will appear here.",
-  },
-  stage: {
-    title: "No changes to propose yet",
-    body: "Changes you make in your clone appear here. Select Import skill… to bring one in.",
-  },
+export const JOURNEY_EMPTY = {
+  title: "No changes yet",
+  body: "Skills you import or edit in your clone will appear here.",
 } as const;
 
 const FAMILIES: Record<StageStatus, StatusFamily> = {

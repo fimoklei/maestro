@@ -42,7 +42,7 @@ import {
   staleStatusNotice,
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
-import { PROPOSAL_EMPTY, statusReading } from "./stage-copy";
+import { JOURNEY_EMPTY, statusReading } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
 import type { ReleasePlan, SemverStep } from "./use-harness";
 import {
@@ -351,8 +351,8 @@ export function HarnessView() {
                 />
               }
               headingLevel={2}
-              title={PROPOSAL_EMPTY.journey.title}
-              description={PROPOSAL_EMPTY.journey.body}
+              title={JOURNEY_EMPTY.title}
+              description={JOURNEY_EMPTY.body}
               action={
                 <Button variant="quiet" onClick={importFlow.start}>
                   Import skill…
@@ -481,28 +481,17 @@ function groupMeta(section: StageSection | undefined) {
 
 // Unknown is never drawn as empty (#848, #866).
 function groupMessage(section: StageSection | undefined, reread: () => void) {
-  if (section === undefined) return null;
-  if (section.read.outcome !== "read") {
-    const notice = stageReadNotice(section.read, section.meta ?? "", reread);
-    return notice === null ? null : (
-      <>
-        <span className="font-medium text-gray-12">{notice.message}</span>
-        {notice.detail ? (
-          <>
-            {" "}
-            <span>{notice.detail}</span>
-          </>
-        ) : null}
-      </>
-    );
-  }
-  if (section.stage !== "pending-proposal") return null;
-  return (
+  if (section === undefined || section.read.outcome === "read") return null;
+  const notice = stageReadNotice(section.read, section.meta ?? "", reread);
+  return notice === null ? null : (
     <>
-      <span className="font-medium text-gray-12">
-        {PROPOSAL_EMPTY.stage.title}
-      </span>{" "}
-      {PROPOSAL_EMPTY.stage.body}
+      <span className="font-medium text-gray-12">{notice.message}</span>
+      {notice.detail ? (
+        <>
+          {" "}
+          <span>{notice.detail}</span>
+        </>
+      ) : null}
     </>
   );
 }

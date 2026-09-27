@@ -126,8 +126,8 @@ const releaseMeta = (read: HarnessStageRead, state: HarnessState): string => {
     : `Compared with ${state.releasedVersion}`;
 };
 
-// The three stages in journey order. A confirmed empty stage still comes back:
-// the view drops it, except Pending proposal, which hosts Import skill…
+// The three stages in journey order. A confirmed empty stage still comes back;
+// the view drops it.
 export const stageSections = (state: HarnessState): StageSection[] =>
   [
     {

@@ -9,6 +9,7 @@ import {
   renderHarness,
   row,
   stageHeader,
+  stageHeaders,
   stubHarnessServer,
   withStages,
 } from "./harness-flow-fixture";
@@ -161,10 +162,9 @@ describe("Harness freshness and failed reads", () => {
     );
   });
 
-  // Pending proposal is the one stage an empty read still draws, because it
-  // hosts Import skill. Beside work in another stage the journey is not empty,
-  // so it names the two ways to put a change here.
-  it("sends the author to their clone or to Import skill when only Pending proposal is empty", async () => {
+  // Import skill… lives in the panel header, so a confirmed empty Pending
+  // proposal drops out like the other two stages (#1224).
+  it("draws no Pending proposal group when only Pending proposal is empty", async () => {
     stubHarnessServer({
       read: {
         body: withStages(RELEASED, {
@@ -174,15 +174,16 @@ describe("Harness freshness and failed reads", () => {
     });
     renderHarness();
 
+    await stageHeader("Pending review");
     expect(
-      await screen.findByText("No changes to propose yet"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Changes you make in your clone appear here. Select Import skill… to bring one in.",
+      (await stageHeaders()).some((header) =>
+        header.startsWith("Pending proposal"),
       ),
-    ).toBeInTheDocument();
+    ).toBe(false);
     expect(screen.queryByText("No changes yet")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^import skill…$/i }),
+    ).toBeInTheDocument();
   });
 
   it("draws no card, no zero and no rows for a stage nobody could read", async () => {
@@ -224,9 +225,6 @@ describe("Harness freshness and failed reads", () => {
     ).toBeInTheDocument();
     // A confirmed-empty stage's words must never stand in for an unread one.
     expect(screen.queryByText("No changes yet")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("No changes to propose yet"),
-    ).not.toBeInTheDocument();
     // Each unread stage keeps its header and one line; neither holds a row.
     expect(
       within(await harnessGrid())
