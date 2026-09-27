@@ -30,10 +30,13 @@ export const DEPLOY_TOOLS: readonly DeployTool[] = [
   },
 ];
 
-// One comma list, never a repeated flag: apm takes the last `-t` only.
-export const APM_DEPLOY_TARGET_FLAG = DEPLOY_TOOLS.map(
+export const SUPPORTED_TOOLS: readonly SupportedTool[] = DEPLOY_TOOLS.map(
   (tool) => tool.apmTarget,
-).join(",");
+);
+
+// One comma list, never a repeated flag: apm takes the last `-t` only. A repo
+// target installs for every tool.
+export const APM_DEPLOY_TARGET_FLAG = SUPPORTED_TOOLS.join(",");
 
 // Empty when nothing is detected; the caller refuses before apm runs.
 export function apmTargetFlagForTools(tools: readonly SupportedTool[]): string {

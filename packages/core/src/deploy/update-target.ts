@@ -8,7 +8,7 @@ import type {
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
-import type { SupportedTool } from "./deploy-tools";
+import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
@@ -86,6 +86,7 @@ export type UpdateSkillState =
   | "updated"
   | "removed"
   | "not-updated"
+  | "missing"
   | "not-removed"
   | "unknown";
 
@@ -125,11 +126,11 @@ const COPY_ERRORS: Record<Exclude<CopyVerdict, "clean">, UpdateRunError> = {
   "lockfile-malformed": "lockfile-malformed",
 };
 
-// A kept copy landed only when its content equals the chosen release;
-// anything unreadable proves nothing.
+// A kept copy landed only when its content equals the chosen release; an
+// absent one is missing, not old; anything unreadable proves nothing.
 const KEPT: Record<DeployedContentState, UpdateSkillState> = {
   clean: "updated",
-  "not-deployed": "not-updated",
+  "not-deployed": "missing",
   diverged: "not-updated",
   unverifiable: "unknown",
   unreadable: "unknown",
@@ -302,8 +303,8 @@ export class UpdateTarget {
     scope: UpdateScope,
     origin: GitOrigin,
   ): Promise<UpdateOutcomeRow[]> {
-    const tools: (SupportedTool | null)[] =
-      scope.tools.length === 0 ? [null] : [...scope.tools];
+    // A repo install runs for every tool, so each copy is read on its own.
+    const tools = scope.tools.length === 0 ? SUPPORTED_TOOLS : scope.tools;
     const kept = new Set(scope.desired);
     // A clean copy proves only that copy and record agree; the record must also
     // name the chosen release before a skill is claimed to have moved.
@@ -321,7 +322,7 @@ export class UpdateTarget {
           .classify({
             target: scope.target,
             name,
-            ...(tool === null ? {} : { tools: [tool] }),
+            tools: [tool],
             release: scope.chosenRelease,
           })
           .catch(() => "unreadable" as const);

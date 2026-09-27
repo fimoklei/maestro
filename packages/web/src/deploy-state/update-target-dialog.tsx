@@ -210,7 +210,7 @@ function OutcomeTrace({ lines }: { lines: readonly OutcomeLine[] }) {
             )}
           >
             <span aria-hidden="true">{line.ok ? "✓" : "✗"}</span>
-            <span className="break-all">{line.text}</span>
+            <span className="wrap-anywhere">{line.text}</span>
           </li>
         ))}
       </ul>

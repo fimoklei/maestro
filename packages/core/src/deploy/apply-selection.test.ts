@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ConfigStore } from "../registry/config-store";
 import { applySelection } from "./apply-selection";
+import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
+import { copyPaths } from "./selection-writer-fake";
 import { TargetOperationStore } from "./target-operation";
 
 const HARNESS = "fimoklei/agent-harness";
@@ -16,13 +18,19 @@ dependencies:
 ${skills.map((skill) => `        - ${skill}`).join("\n")}
 `;
 
-const lockfile = (release: string, skills: string[]) => `dependencies:
+const lockfile = (
+  release: string,
+  skills: readonly string[],
+  tools = SUPPORTED_TOOLS,
+) => `dependencies:
 - repo_url: ${HARNESS}
   host: github.com
   resolved_ref: ${release}
   package_type: apm_package
   deployed_files:
-${skills.map((skill) => `  - .claude/skills/${skill}/SKILL.md`).join("\n")}
+${copyPaths(skills, tools)
+  .map((path) => `  - ${path}`)
+  .join("\n")}
 `;
 
 // The manifest, lockfile and files, moved by the fake apm as the real one moves them.
@@ -30,6 +38,7 @@ function world() {
   const files = new Map<string, string>();
   const calls: { command: string; ref: string; skills?: string[] }[] = [];
   let landing: string[] | null = null;
+  let skipped: string | null = null;
 
   const fs = {
     readFile: async (path: string) => files.get(path) ?? null,
@@ -39,39 +48,51 @@ function world() {
     isFileEntry: async (path: string) => files.has(path),
   };
 
-  const install = (release: string, skills: readonly string[]) => {
-    const landed = landing ?? [...skills];
+  const clearCopies = () => {
     for (const key of [...files.keys()]) {
-      if (key.startsWith("/repo/.claude/skills/")) {
+      if (key.includes("/skills/")) {
         files.delete(key);
       }
     }
-    for (const skill of landed) {
-      files.set(`/repo/.claude/skills/${skill}/SKILL.md`, "content");
+  };
+
+  const install = (
+    release: string,
+    skills: readonly string[],
+    tools: readonly SupportedTool[],
+  ) => {
+    const landed = landing ?? [...skills];
+    clearCopies();
+    for (const path of copyPaths(landed, tools)) {
+      if (path !== skipped) {
+        files.set(`/repo/${path}`, "content");
+      }
     }
-    files.set("/repo/apm.lock.yaml", lockfile(release, landed));
+    skipped = null;
+    // apm keeps the row of a copy it failed to place.
+    files.set("/repo/apm.lock.yaml", lockfile(release, landed, tools));
     // apm persists the Selection into apm.yml itself, creating the dependency when absent.
     files.set("/repo/apm.yml", manifest([...skills].sort()));
   };
 
   const apm = {
-    deploySkill: async (input: { ref: string; skills?: readonly string[] }) => {
+    deploySkill: async (input: {
+      ref: string;
+      skills?: readonly string[];
+      tools?: readonly SupportedTool[];
+    }) => {
       calls.push({
         command: "install",
         ref: input.ref,
         skills: [...(input.skills ?? [])],
       });
       const release = input.ref.split("#")[1] as string;
-      install(release, input.skills ?? []);
+      install(release, input.skills ?? [], input.tools ?? SUPPORTED_TOOLS);
       return { ok: true as const };
     },
     removeSkill: async (input: { ref: string }) => {
       calls.push({ command: "uninstall", ref: input.ref });
-      for (const key of [...files.keys()]) {
-        if (key.startsWith("/repo/.claude/skills/")) {
-          files.delete(key);
-        }
-      }
+      clearCopies();
       files.delete("/repo/apm.lock.yaml");
       files.delete("/repo/apm.yml");
       return { ok: true as const };
@@ -91,6 +112,10 @@ function world() {
     operations,
     landsOnly: (skills: string[]) => {
       landing = skills;
+    },
+    // The next install leaves this one tool's copy of a skill off disk.
+    skipsCopy: (tool: SupportedTool, skill: string) => {
+      [skipped = null] = copyPaths([skill], [tool]);
     },
     deps: {
       fs,
@@ -123,7 +148,9 @@ describe("applySelection", () => {
     stage = world();
     stage.files.set("/repo/apm.yml", manifest(["prototype"]));
     stage.files.set("/repo/apm.lock.yaml", lockfile("v0.6.0", ["prototype"]));
-    stage.files.set("/repo/.claude/skills/prototype/SKILL.md", "content");
+    for (const path of copyPaths(["prototype"], SUPPORTED_TOOLS)) {
+      stage.files.set(`/repo/${path}`, "content");
+    }
   });
 
   it("writes the exact selection to the manifest and installs the root ref with it", async () => {
@@ -241,6 +268,37 @@ describe("applySelection", () => {
     expect(await stage.operations.read("/repo")).toMatchObject({
       desired: ["prototype", "review"],
     });
+  });
+
+  it("keeps the operation when one targeted tool lacks a skill's copy", async () => {
+    stage.skipsCopy("claude", "review");
+
+    const result = await applySelection(
+      stage.deps,
+      write({ tools: ["claude", "codex"] }),
+    );
+
+    expect(result).toEqual({ ok: false, error: "apply-incomplete" });
+    expect(await stage.operations.read("/repo")).toMatchObject({
+      desired: ["prototype", "review"],
+    });
+  });
+
+  it("counts every tool as targeted when the write names none", async () => {
+    stage.skipsCopy("codex", "review");
+
+    const result = await applySelection(stage.deps, write());
+
+    expect(result).toEqual({ ok: false, error: "apply-incomplete" });
+  });
+
+  it("does not wait for a copy in a tool the write did not target", async () => {
+    const result = await applySelection(
+      stage.deps,
+      write({ tools: ["codex"] }),
+    );
+
+    expect(result).toEqual({ ok: true });
   });
 
   it("keeps the operation when the record shows the tag but not the files", async () => {

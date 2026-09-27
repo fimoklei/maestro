@@ -3,7 +3,11 @@
 import { ConfigStore } from "../registry/config-store";
 import { SelectionWriter } from "./apply-selection";
 import type { DeploySkillDriverResult, DeployTarget } from "./deploy-skill";
-import type { SupportedTool } from "./deploy-tools";
+import {
+  DEPLOY_TOOLS,
+  SUPPORTED_TOOLS,
+  type SupportedTool,
+} from "./deploy-tools";
 import { TargetOperationStore } from "./target-operation";
 
 type SelectionCall = {
@@ -21,12 +25,26 @@ export type SelectionWorld = {
   files: Map<string, string>;
   // What the next install actually places, whatever it was asked for.
   landsOnly(skills: string[] | null): void;
+  // The next install leaves this one tool's copy of a skill off disk, keeping
+  // its lockfile row as apm does.
+  skipsCopy(tool: SupportedTool, skill: string): void;
   // "throw" is the run that never returned at all.
   refuseWith(result: DeploySkillDriverResult | "throw" | null): void;
   seed(input: { release: string; skills: string[] }): void;
 };
 
 const HARNESS = "fimoklei/agent-harness";
+
+// Relative to the tree root: one copy per skill per tool, as apm places them.
+export const copyPaths = (
+  skills: readonly string[],
+  tools: readonly SupportedTool[],
+): string[] =>
+  skills.flatMap((skill) =>
+    DEPLOY_TOOLS.filter((tool) => tools.includes(tool.apmTarget)).map(
+      (tool) => `${tool.skillsDirPrefix}/skills/${skill}/SKILL.md`,
+    ),
+  );
 
 export function selectionWorld(
   options: {
@@ -44,6 +62,7 @@ export function selectionWorld(
   const files = new Map<string, string>();
   const calls: SelectionCall[] = [];
   let landing: string[] | null = null;
+  let skipped: string | null = null;
   let refusal: DeploySkillDriverResult | "throw" | null = null;
 
   const manifest = (skills: readonly string[]) => `name: consumer
@@ -58,7 +77,11 @@ ${[...skills]
   .join("\n")}
 `;
 
-  const lockfile = (release: string, skills: readonly string[]) =>
+  const lockfile = (
+    release: string,
+    skills: readonly string[],
+    tools: readonly SupportedTool[],
+  ) =>
     `dependencies:
 - repo_url: ${harness}
   host: github.com
@@ -67,16 +90,29 @@ ${[...skills]
 ${
   skills.length === 0
     ? ""
-    : `  deployed_files:\n${skills
-        .map((skill) => `  - .claude/skills/${skill}/SKILL.md`)
+    : `  deployed_files:\n${copyPaths(skills, tools)
+        .map((path) => `  - ${path}`)
         .join("\n")}\n`
 }`;
 
   const clearCopies = () => {
     for (const path of [...files.keys()]) {
-      if (path.startsWith(`${treeRoot}/.claude/skills/`)) {
+      if (
+        DEPLOY_TOOLS.some((tool) =>
+          path.startsWith(`${treeRoot}/${tool.skillsDirPrefix}/skills/`),
+        )
+      ) {
         files.delete(path);
       }
+    }
+  };
+
+  const place = (
+    skills: readonly string[],
+    tools: readonly SupportedTool[],
+  ) => {
+    for (const path of copyPaths(skills, tools)) {
+      files.set(`${treeRoot}/${path}`, "content");
     }
   };
 
@@ -109,11 +145,17 @@ ${
         return refusal;
       }
       const landed = landing ?? [...(input.skills ?? [])];
+      const tools = input.tools ?? SUPPORTED_TOOLS;
       clearCopies();
-      for (const skill of landed) {
-        files.set(`${treeRoot}/.claude/skills/${skill}/SKILL.md`, "content");
+      place(landed, tools);
+      if (skipped !== null) {
+        files.delete(`${treeRoot}/${skipped}`);
+        skipped = null;
       }
-      files.set(lockfilePath, lockfile(input.ref.split("#")[1] ?? "", landed));
+      files.set(
+        lockfilePath,
+        lockfile(input.ref.split("#")[1] ?? "", landed, tools),
+      );
       // apm persists the Selection it was asked for, creating the dependency
       // when it is absent.
       files.set(manifestPath, manifest(input.skills ?? []));
@@ -133,9 +175,7 @@ ${
       }
       const kept = landing ?? [];
       clearCopies();
-      for (const skill of kept) {
-        files.set(`${treeRoot}/.claude/skills/${skill}/SKILL.md`, "content");
-      }
+      place(kept, SUPPORTED_TOOLS);
       if (kept.length === 0) {
         files.delete(lockfilePath);
         files.delete(manifestPath);
@@ -168,15 +208,16 @@ ${
     landsOnly: (skills) => {
       landing = skills;
     },
+    skipsCopy: (tool, skill) => {
+      [skipped = null] = copyPaths([skill], [tool]);
+    },
     refuseWith: (result) => {
       refusal = result;
     },
     seed: ({ release, skills }) => {
       files.set(manifestPath, manifest(skills));
-      files.set(lockfilePath, lockfile(release, skills));
-      for (const skill of skills) {
-        files.set(`${treeRoot}/.claude/skills/${skill}/SKILL.md`, "content");
-      }
+      files.set(lockfilePath, lockfile(release, skills, SUPPORTED_TOOLS));
+      place(skills, SUPPORTED_TOOLS);
     },
   };
 }
