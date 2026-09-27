@@ -5,6 +5,9 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { RestoreDialog } from "./harness/restore-dialog";
+import { RegisterRepositoryDialog } from "./registry/register-repository-dialog";
+import { SetLocationDialog } from "./settings/set-location-dialog";
+import type { FolderChooser } from "./ui/use-folder-chooser";
 
 // The thin guard over every dialog: it proves each one runs on `Dialog`. The
 // contract itself is tested once, in `ui/dialog.test.tsx`.
@@ -14,6 +17,13 @@ type Row = {
   file: string;
   heading: string;
   render: (state: { running: boolean; onClose: () => void }) => ReactElement;
+};
+
+const NO_CHOOSER: FolderChooser = {
+  available: false,
+  busy: false,
+  notice: null,
+  browse: vi.fn(),
 };
 
 const ON_DIALOG: Row[] = [
@@ -33,6 +43,37 @@ const ON_DIALOG: Row[] = [
       />
     ),
   },
+  {
+    file: "registry/register-repository-dialog.tsx",
+    heading: "Register a repository",
+    render: ({ running, onClose }) => (
+      <RegisterRepositoryDialog
+        path="/home/me/acme-web"
+        onPathChange={vi.fn()}
+        onPicked={vi.fn()}
+        chooser={NO_CHOOSER}
+        error={undefined}
+        busy={running}
+        onRegister={vi.fn()}
+        onClose={onClose}
+      />
+    ),
+  },
+  {
+    file: "settings/set-location-dialog.tsx",
+    heading: "Set Harness location",
+    render: ({ running, onClose }) => (
+      <SetLocationDialog
+        path="/home/me/agent-harness"
+        onPathChange={vi.fn()}
+        chooser={NO_CHOOSER}
+        notice={null}
+        busy={running}
+        onSet={vi.fn()}
+        onClose={onClose}
+      />
+    ),
+  },
 ];
 
 // Still assembled from the old parts; each moves onto `Dialog` under #1226 and
@@ -46,9 +87,7 @@ const NOT_YET_ON_DIALOG = [
   "harness/withdraw-dialog.tsx",
   "inventory/bulk-deploy-dialog.tsx",
   "inventory/bulk-remove-dialog.tsx",
-  "registry/register-repository-dialog.tsx",
   "registry/unregister-dialog.tsx",
-  "settings/set-location-dialog.tsx",
 ];
 
 const SRC = import.meta.dirname;

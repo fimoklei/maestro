@@ -1,12 +1,8 @@
 import { useId } from "react";
-import { ACTIONS } from "../ui/busy-copy";
-import { Button } from "../ui/button";
-import { DialogHeader } from "../ui/dialog-header";
-import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
+import { Dialog } from "../ui/dialog";
 import { PathField } from "../ui/path-field";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 import {
-  CANCEL,
   FOLDER_HINT,
   FOLDER_LABEL,
   REGISTER_REPOSITORY,
@@ -39,60 +35,40 @@ export function RegisterRepositoryDialog({
   const promiseId = useId();
 
   return (
-    <DialogShell
-      label={REGISTER_TITLE}
-      // The field states its own hint and refusal beside it.
-      describedBy={null}
+    <Dialog
+      title={REGISTER_TITLE}
+      version={null}
       width={480}
-      onClose={onClose}
-      closeEnabled={!busy}
+      phase={busy ? "running" : "idle"}
+      action={{
+        label: REGISTER_REPOSITORY,
+        verb: "register",
+        tone: "primary",
+        unavailable: null,
+        onRun: onRegister,
+      }}
+      // The refusal belongs to the field and is stated beside it.
+      failure={null}
+      describedBy={promiseId}
       fieldsChanged={path !== ""}
+      onClose={onClose}
     >
-      <form
-        className="flex min-h-0 flex-col"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!busy) onRegister();
-        }}
-      >
-        <DialogHeader title={REGISTER_TITLE} busy={busy} onClose={onClose} />
-        <div className="flex min-h-0 flex-col gap-panel overflow-y-auto p-panel">
-          <PathField
-            label={FOLDER_LABEL}
-            hint={FOLDER_HINT}
-            value={path}
-            onChange={onPathChange}
-            onPicked={onPicked}
-            chooser={chooser}
-            error={error}
-            readOnly={busy}
-            // Pasting is always possible, so no browser guess gets in the way.
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <p id={promiseId} className="m-0 font-ui text-gray-11 text-meta">
-            {WRITE_PROMISE}
-          </p>
-        </div>
-        <div className={DIALOG_FOOTER}>
-          <Button
-            type="button"
-            variant="quiet"
-            disabled={busy}
-            onClick={onClose}
-          >
-            {CANCEL}
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            busy={busy}
-            aria-describedby={promiseId}
-          >
-            {busy ? ACTIONS.register.busy : REGISTER_REPOSITORY}
-          </Button>
-        </div>
-      </form>
-    </DialogShell>
+      <PathField
+        label={FOLDER_LABEL}
+        hint={FOLDER_HINT}
+        value={path}
+        onChange={onPathChange}
+        onPicked={onPicked}
+        chooser={chooser}
+        error={error}
+        readOnly={busy}
+        // Pasting is always possible, so no browser guess gets in the way.
+        autoComplete="off"
+        spellCheck={false}
+      />
+      <p id={promiseId} className="m-0 text-gray-11">
+        {WRITE_PROMISE}
+      </p>
+    </Dialog>
   );
 }
