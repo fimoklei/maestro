@@ -116,7 +116,7 @@ describe("Repositories", () => {
     expect(screen.getAllByRole("separator")).toHaveLength(1);
   });
 
-  it("goes to Deploy-state from the row menu", async () => {
+  it("opens that repository's row in Deploy-state from the row menu", async () => {
     stubRegistry(threeRepos());
     renderRepositories();
 
@@ -131,6 +131,9 @@ describe("Repositories", () => {
 
     expect(
       await screen.findByRole("heading", { name: "Deploy-state screen" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("opens repo:/home/me/acme-web"),
     ).toBeInTheDocument();
   });
 
