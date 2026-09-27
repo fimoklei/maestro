@@ -8,6 +8,7 @@ import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog } from "./harness/deletion-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import { WithdrawDialog } from "./harness/withdraw-dialog";
+import { BulkRemoveDialog } from "./inventory/bulk-remove-dialog";
 import { RegisterRepositoryDialog } from "./registry/register-repository-dialog";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
@@ -134,6 +135,28 @@ const ON_DIALOG: Row[] = [
       />
     ),
   },
+  {
+    file: "inventory/bulk-remove-dialog.tsx",
+    heading: "Remove tdd from 3 targets",
+    render: ({ running, onClose }) => (
+      <BulkRemoveDialog
+        skillName="tdd"
+        targetCount={3}
+        view={{
+          kind: "grouped",
+          cleanLine: "3 clean copies",
+          cost: [],
+          refused: [],
+          removableCount: 3,
+          confirmLabel: "Remove from 3 targets",
+        }}
+        isRemoving={running}
+        report={null}
+        onCancel={onClose}
+        onConfirm={vi.fn()}
+      />
+    ),
+  },
 ];
 
 // Still assembled from the old parts; each moves onto `Dialog` under #1226 and
@@ -143,7 +166,6 @@ const NOT_YET_ON_DIALOG = [
   "harness/import-dialog.tsx",
   "harness/release-dialog.tsx",
   "inventory/bulk-deploy-dialog.tsx",
-  "inventory/bulk-remove-dialog.tsx",
 ];
 
 const SRC = import.meta.dirname;

@@ -53,15 +53,19 @@ describe("bulkRemoveReportView — a clean run", () => {
     }),
   });
 
-  it("names the skill without a split, so the common case reads as one outcome", () => {
+  // The dialog's title names the skill; the heading carries only the result.
+  it("heads the report with how many targets it came off", () => {
     expect(clean).toMatchObject({
-      kind: "clean",
-      title: { before: "Removed ", after: "" },
+      kind: "report",
+      heading: "Removed from 3 targets",
+      leftAlone: [],
     });
   });
 
-  it("counts every class, so zero refused and zero failed are stated rather than implied", () => {
-    expect(clean).toMatchObject({ counts: "Removed 3 · refused 0 · failed 0" });
+  it("lists every removed target by its own label", () => {
+    expect(clean).toMatchObject({
+      removed: ["global", "/dev/acme-web", "/dev/legacy-etl"],
+    });
   });
 });
 
@@ -86,11 +90,11 @@ describe("bulkRemoveReportView — a partial run", () => {
     }),
   });
 
-  it("puts the split in the title, so the outcome lands before any detail", () => {
+  it("puts the split in the heading, so the outcome lands before any detail", () => {
     expect(partial).toMatchObject({
-      kind: "partial",
-      title: { before: "Removed ", after: " from 1 of 3 targets" },
-      counts: "Removed 1 · refused 1 · failed 1",
+      kind: "report",
+      heading: "Removed from 1 of 3 targets",
+      removed: ["global"],
     });
   });
 
@@ -215,7 +219,7 @@ describe("bulkRemoveReportView — a partial run", () => {
     });
 
     expect(stray).toMatchObject({
-      kind: "partial",
+      kind: "report",
       leftAlone: [{ label: "/dev/gone", reason: "Nothing deployed here" }],
     });
   });
@@ -252,9 +256,9 @@ describe("bulkRemoveReportView — the request itself failed", () => {
     });
   });
 
-  it("shows no counts either way, so a lost run never reads as a clean one", () => {
+  it("shows no result either way, so a lost run never reads as a clean one", () => {
     for (const error of [new HttpError(500, "Boom."), new TypeError("x")]) {
-      expect(view({ error })).not.toHaveProperty("counts");
+      expect(view({ error })).not.toHaveProperty("removed");
     }
   });
 });
