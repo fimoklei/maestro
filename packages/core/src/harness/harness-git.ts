@@ -46,7 +46,7 @@ const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
 // Never `refs/tags`: an unpushed local tag must not read as a release, and
 // pruning must never delete a tag the author made (#516).
-const MAESTRO_TAGS = "refs/maestro/tags";
+export const MAESTRO_TAGS = "refs/maestro/tags";
 const TAG_REFSPEC = `+refs/tags/*:${MAESTRO_TAGS}/*`;
 const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
 

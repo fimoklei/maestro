@@ -183,13 +183,17 @@ export class DeployStateReader {
     }
 
     const target: DeployTarget = { kind: "repo", repoPath };
-    await this.markCopies(primitives, target);
     const pinnedPerSkill = tallyPins(pins);
     // Exclusive with Pinned per skill: such a target follows no single release.
     const releaseHead =
       root === undefined || pinnedPerSkill !== undefined
         ? undefined
         : await this.readHead(repoPath, root.resolved_ref, selection);
+    await this.markCopies(
+      primitives,
+      target,
+      releaseHead?.latestRelease ?? undefined,
+    );
     const extraFiles =
       root === undefined
         ? 0
@@ -219,9 +223,11 @@ export class DeployStateReader {
   }
 
   // An unreadable copy carries no chip: the write path refuses it instead.
+  // A copy equal to the latest release holds no unreleased work (#1213).
   protected async markCopies(
     primitives: DeployedPrimitive[],
     target: DeployTarget,
+    latestRelease: string | undefined,
     tools?: readonly SupportedTool[],
   ): Promise<void> {
     // Call classify on the port, never detached: it reads `this`.
@@ -236,6 +242,7 @@ export class DeployStateReader {
             target,
             name: primitive.name,
             tools,
+            release: latestRelease,
           })
           .catch(() => null);
         if (state === "diverged") {
@@ -323,7 +330,6 @@ export class GlobalDeployStateReader extends DeployStateReader {
       harnessPage: this.connectedPage(),
     });
     for (const group of grouped.tools) {
-      await this.markCopies(group.primitives, { kind: "global" }, [group.tool]);
       // Exclusive with Pinned per skill, as on the repo card.
       if (grouped.release !== undefined && group.pinnedPerSkill === undefined) {
         group.releaseHead = await this.readHead(
@@ -332,6 +338,12 @@ export class GlobalDeployStateReader extends DeployStateReader {
           group.primitives.map((primitive) => primitive.name),
         );
       }
+      await this.markCopies(
+        group.primitives,
+        { kind: "global" },
+        group.releaseHead?.latestRelease ?? undefined,
+        [group.tool],
+      );
     }
     const pendingOperation = await this.readPending({ kind: "global" });
     return {

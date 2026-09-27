@@ -121,6 +121,10 @@ function realDeps(): AppDeps {
     // never the raw path, which would run git against something unresolved.
     return await fs.realpath(path).catch(() => undefined);
   };
+  const inventoryGit = new InventoryGitAdapter({
+    resolveRoot: async () =>
+      resolveInventoryPath(await store.read(), process.env),
+  });
   // Shared instance, so guard and cleanup agree on a global deploy's lockfile root and tree.
   const deployedLocation = new DeployedLocation(process.env);
   const deployState = new GlobalDeployStateReader({
@@ -136,7 +140,11 @@ function realDeps(): AppDeps {
       const root = await harnessRoot();
       return root === undefined ? null : await harnessGit.readOrigin(root);
     },
-    content: new DeployedContentAdapter({ location: deployedLocation }),
+    // Measured against the latest release too, as Update target measures (#1213).
+    content: new DeployedContentAdapter({
+      location: deployedLocation,
+      inventoryGit,
+    }),
     // Read per request, not captured at construction: the retry use-case is
     // built further down, and the record it reads changes with every write.
     operations: { pending: (target) => retryOperation.pending(target) },
@@ -176,10 +184,6 @@ function realDeps(): AppDeps {
   // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a
   // deploy racing a remove would corrupt it.
   const apmWriteLocks = new InFlightLocks();
-  const inventoryGit = new InventoryGitAdapter({
-    resolveRoot: async () =>
-      resolveInventoryPath(await store.read(), process.env),
-  });
   const copyGuard = new LocalCopyGuard({
     content: new DeployedContentAdapter({
       location: deployedLocation,

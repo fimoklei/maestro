@@ -84,7 +84,13 @@ export class DeployedContentAdapter implements DeployedContentPort {
     }
     // Second chance: a copy equal to the release about to be installed is not
     // the reader's edit (#952).
-    return (await this.equalsRelease(input.release, input.name, subtrees, scan))
+    return (await this.equalsRelease(
+      input.release,
+      input.name,
+      subtrees,
+      scan,
+      baseline.hashes,
+    ))
       ? "clean"
       : "diverged";
   }
@@ -107,12 +113,14 @@ export class DeployedContentAdapter implements DeployedContentPort {
           .join("\n");
   }
 
-  // Whole-tree equality per subtree. An unreadable release answers false.
+  // Whole-tree equality per subtree; a subtree still equal to its record holds
+  // no work either (#1213). An unreadable release answers false.
   private async equalsRelease(
     release: string | undefined,
     name: string,
     subtrees: string[],
     scan: SubtreeScan,
+    recorded: DeployedFileHashes,
   ): Promise<boolean> {
     if (release === undefined || this.deps.inventoryGit === undefined) {
       return false;
@@ -127,6 +135,12 @@ export class DeployedContentAdapter implements DeployedContentPort {
       const deployed = stripSubtree(scan.hashes, subtree);
       // A subtree the write never landed in is not a missing copy.
       if (Object.keys(deployed).length === 0) {
+        continue;
+      }
+      if (
+        classifyDeployedDrift(stripSubtree(recorded, subtree), deployed) ===
+        "clean"
+      ) {
         continue;
       }
       if (classifyDeployedDrift(released, deployed) !== "clean") {

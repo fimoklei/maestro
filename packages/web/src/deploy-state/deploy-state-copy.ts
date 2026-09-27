@@ -58,10 +58,13 @@ export const NO_TOOL_DETECTED = {
 export const otherOriginLine = (origins: readonly string[]) =>
   `Holds primitives deployed from ${joinNames(origins)}.`;
 
+const KEEP_LOCAL_EDITS =
+  "Select Import skill… on the Harness screen to keep them.";
+
 export const localEditsLine = (names: readonly string[]) =>
   names.length === 1
-    ? `1 skill has local edits: ${names[0]}.`
-    : `${names.length} skills have local edits: ${joinNames(names)}.`;
+    ? `1 skill has changes that are not in the latest release: ${names[0]}. ${KEEP_LOCAL_EDITS}`
+    : `${names.length} skills have changes that are not in the latest release: ${joinNames(names)}. ${KEEP_LOCAL_EDITS}`;
 
 // A skill row's mark carries its reading's hint as its tooltip.
 export const NO_LONGER_RELEASED_HINT =

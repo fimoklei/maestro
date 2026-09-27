@@ -787,7 +787,148 @@ describe("DeployStateReader copy chips", () => {
       ],
     });
   });
+
+  it("leaves a copy whose changes the latest release holds unmarked (#1213)", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: RELEASED_IN_V041,
+      releaseHead: latestIs("v0.4.1"),
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result.ok && result.primitives).toStrictEqual([
+      { type: "skill", name: "tdd", version: "v0.3.5" },
+    ]);
+  });
+
+  it("keeps Local edits when the latest release could not be read (#1213)", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: RELEASED_IN_V041,
+      releaseHead: latestIs(null),
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result.ok && result.primitives).toStrictEqual([
+      { type: "skill", name: "tdd", version: "v0.3.5", copy: "local-edits" },
+    ]);
+  });
+
+  it("keeps Local edits for a copy equal to an older release than the latest (#1213)", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: RELEASED_IN_V041,
+      releaseHead: latestIs("v0.4.2"),
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result.ok && result.primitives).toStrictEqual([
+      { type: "skill", name: "tdd", version: "v0.3.5", copy: "local-edits" },
+    ]);
+  });
+
+  it("keeps Local edits on the one global tool whose copy holds unreleased work (#1213)", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".agents/skills/tdd/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+      content: {
+        classify: async ({ release, tools }) =>
+          tools?.[0] === "claude" && release === "v0.4.1"
+            ? "clean"
+            : "diverged",
+      },
+      releaseHead: latestIs("v0.4.1"),
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(
+      result.ok &&
+        result.tools.map((group) => [group.tool, group.primitives[0]?.copy]),
+    ).toStrictEqual([
+      ["claude", undefined],
+      ["codex", "local-edits"],
+    ]);
+  });
+
+  it("checks each global tool's copy against the latest release (#1213)", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude"]),
+      treeRoot: () => "/home",
+      content: RELEASED_IN_V041,
+      releaseHead: latestIs("v0.4.1"),
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(result.ok && result.tools[0]?.primitives).toStrictEqual([
+      { type: "skill", name: "tdd", version: "v0.3.5" },
+    ]);
+  });
 });
+
+// Diverged from its record, equal to the skill at v0.4.1 only.
+const RELEASED_IN_V041: DeployStateExtras["content"] = {
+  classify: async ({ release }) =>
+    release === "v0.4.1" ? "clean" : "diverged",
+};
+
+function latestIs(
+  latestRelease: string | null,
+): DeployStateExtras["releaseHead"] {
+  return {
+    read: async (input) => ({
+      release: input.release,
+      latestRelease,
+      changed: latestRelease === null ? null : 1,
+      selected: input.selection.length,
+      comparedAt: null,
+    }),
+  };
+}
 
 // A per-skill dependency: one entry per skill, pinned at its own tag.
 function pinnedEntry(name: string, ref: string, prefixes = [".claude"]) {
