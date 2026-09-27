@@ -26,11 +26,11 @@ type BulkRemoveLeftAloneRow = {
 };
 
 export type BulkRemoveReportView =
-  | { kind: "clean"; title: { before: string; after: string }; counts: string }
   | {
-      kind: "partial";
-      title: { before: string; after: string };
-      counts: string;
+      kind: "report";
+      heading: string;
+      // Target labels, in the confirmation's order.
+      removed: string[];
       leftAlone: BulkRemoveLeftAloneRow[];
     }
   // The server answered before the walk began, so nothing was removed and the
@@ -60,8 +60,7 @@ const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
   "remove-failed": "Removal not completed by apm",
 };
 
-// The title comes in two halves because the dialog renders the skill's own
-// name in mono between them.
+// The dialog's title names the skill, so the heading carries only the result.
 export function bulkRemoveReportView(input: {
   targets: readonly BulkRemoveCandidate[];
   report?: BulkRemoveReport;
@@ -92,18 +91,24 @@ export function bulkRemoveReportView(input: {
   const leftAlone = orderedLeftAlone(report, input.targets);
   const total =
     report.removed.length + report.refused.length + report.failed.length;
-  const counts = `Removed ${report.removed.length} · refused ${report.refused.length} · failed ${report.failed.length}`;
+  const labels = new Map(
+    input.targets.map((candidate) => [
+      targetQueryKey(candidate.target),
+      candidate.label,
+    ]),
+  );
 
-  if (leftAlone.length === 0) {
-    return { kind: "clean", title: { before: "Removed ", after: "" }, counts };
-  }
   return {
-    kind: "partial",
-    title: {
-      before: "Removed ",
-      after: ` from ${report.removed.length} of ${total} targets`,
-    },
-    counts,
+    kind: "report",
+    heading:
+      leftAlone.length === 0
+        ? `Removed from ${total} targets`
+        : `Removed from ${report.removed.length} of ${total} targets`,
+    // The server walks in the order it was sent: the confirmation's.
+    removed: report.removed.map((row) => {
+      const key = targetQueryKey(row.target);
+      return labels.get(key) ?? key;
+    }),
     leftAlone,
   };
 }
