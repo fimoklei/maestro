@@ -4,8 +4,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { DeletionDialog } from "./harness/deletion-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
+import { WithdrawDialog } from "./harness/withdraw-dialog";
 import { BulkRemoveDialog } from "./inventory/bulk-remove-dialog";
+import { RegisterRepositoryDialog } from "./registry/register-repository-dialog";
+import { UnregisterDialog } from "./registry/unregister-dialog";
+import { SetLocationDialog } from "./settings/set-location-dialog";
+import type { FolderChooser } from "./ui/use-folder-chooser";
 
 // The thin guard over every dialog: it proves each one runs on `Dialog`. The
 // contract itself is tested once, in `ui/dialog.test.tsx`.
@@ -17,7 +23,28 @@ type Row = {
   render: (state: { running: boolean; onClose: () => void }) => ReactElement;
 };
 
+const NO_CHOOSER: FolderChooser = {
+  available: false,
+  busy: false,
+  notice: null,
+  browse: vi.fn(),
+};
+
 const ON_DIALOG: Row[] = [
+  {
+    file: "harness/deletion-dialog.tsx",
+    heading: "Delete research",
+    render: ({ running, onClose }) => (
+      <DeletionDialog
+        skill="research"
+        mode={{ kind: "local", folder: ".apm/skills/research" }}
+        onClose={onClose}
+        onConfirm={vi.fn()}
+        deleting={running}
+        deleteError={null}
+      />
+    ),
+  },
   {
     file: "harness/restore-dialog.tsx",
     heading: "Restore research",
@@ -31,6 +58,64 @@ const ON_DIALOG: Row[] = [
         onConfirm={vi.fn()}
         restoring={running}
         restoreError={null}
+      />
+    ),
+  },
+  {
+    file: "harness/withdraw-dialog.tsx",
+    heading: "Withdraw proposal for research",
+    render: ({ running, onClose }) => (
+      <WithdrawDialog
+        skill="research"
+        number={45}
+        onClose={onClose}
+        onConfirm={vi.fn()}
+        withdrawing={running}
+        withdrawError={null}
+      />
+    ),
+  },
+  {
+    file: "registry/register-repository-dialog.tsx",
+    heading: "Register a repository",
+    render: ({ running, onClose }) => (
+      <RegisterRepositoryDialog
+        path="/home/me/acme-web"
+        onPathChange={vi.fn()}
+        onPicked={vi.fn()}
+        chooser={NO_CHOOSER}
+        error={undefined}
+        busy={running}
+        onRegister={vi.fn()}
+        onClose={onClose}
+      />
+    ),
+  },
+  {
+    file: "registry/unregister-dialog.tsx",
+    heading: "Unregister …/me/old-site",
+    render: ({ running, onClose }) => (
+      <UnregisterDialog
+        name="…/me/old-site"
+        busy={running}
+        failure={null}
+        onConfirm={vi.fn()}
+        onClose={onClose}
+      />
+    ),
+  },
+  {
+    file: "settings/set-location-dialog.tsx",
+    heading: "Set Harness location",
+    render: ({ running, onClose }) => (
+      <SetLocationDialog
+        path="/home/me/agent-harness"
+        onPathChange={vi.fn()}
+        chooser={NO_CHOOSER}
+        notice={null}
+        busy={running}
+        onSet={vi.fn()}
+        onClose={onClose}
       />
     ),
   },
@@ -63,14 +148,9 @@ const ON_DIALOG: Row[] = [
 const NOT_YET_ON_DIALOG = [
   "deploy-state/remove-skill-dialog.tsx",
   "deploy-state/update-target-dialog.tsx",
-  "harness/deletion-dialog.tsx",
   "harness/import-dialog.tsx",
   "harness/release-dialog.tsx",
-  "harness/withdraw-dialog.tsx",
   "inventory/bulk-deploy-dialog.tsx",
-  "registry/register-repository-dialog.tsx",
-  "registry/unregister-dialog.tsx",
-  "settings/set-location-dialog.tsx",
 ];
 
 const SRC = import.meta.dirname;
