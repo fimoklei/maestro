@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Notice } from "./notice";
@@ -318,5 +318,51 @@ describe("Notice", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("⚠");
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  describe("the items", () => {
+    it("lists each item, in order, under the message", () => {
+      render(
+        <Notice
+          trigger="load"
+          notice={{
+            level: "warning",
+            label: "Skill checks need attention",
+            message: "The release still includes these skills.",
+            items: [
+              "broken has no SKILL.md.",
+              "blank has an empty description.",
+            ],
+          }}
+        />,
+      );
+
+      const list = screen.getByRole("list");
+      expect(
+        screen
+          .getByText("The release still includes these skills.")
+          .compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        within(list)
+          .getAllByRole("listitem")
+          .map((item) => item.textContent),
+      ).toEqual(["broken has no SKILL.md.", "blank has an empty description."]);
+    });
+
+    it("draws no list without items", () => {
+      render(
+        <Notice
+          trigger="load"
+          notice={{
+            level: "warning",
+            label: "a heading",
+            message: "a sentence.",
+          }}
+        />,
+      );
+
+      expect(screen.queryByRole("list")).toBeNull();
+    });
   });
 });

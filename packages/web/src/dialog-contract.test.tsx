@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ReleaseDialog } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 
 // The thin guard over every dialog: it proves each one runs on `Dialog`. The
@@ -17,6 +18,20 @@ type Row = {
 };
 
 const ON_DIALOG: Row[] = [
+  {
+    file: "harness/release-dialog.tsx",
+    heading: "Publish release for github.com/fimoklei/agent-harness",
+    render: ({ running, onClose }) => (
+      <ReleaseDialog
+        origin="github.com/fimoklei/agent-harness"
+        load={{ kind: "loading" }}
+        onClose={onClose}
+        onPublish={vi.fn()}
+        publishing={running}
+        publishError={null}
+      />
+    ),
+  },
   {
     file: "harness/restore-dialog.tsx",
     heading: "Restore research",
@@ -42,7 +57,6 @@ const NOT_YET_ON_DIALOG = [
   "deploy-state/update-target-dialog.tsx",
   "harness/deletion-dialog.tsx",
   "harness/import-dialog.tsx",
-  "harness/release-dialog.tsx",
   "harness/withdraw-dialog.tsx",
   "inventory/bulk-deploy-dialog.tsx",
   "inventory/bulk-remove-dialog.tsx",
