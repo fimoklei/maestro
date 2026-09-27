@@ -118,5 +118,3 @@ export function outcomeDetail(
 export const UPDATE_INCOMPLETE = "Update incomplete";
 
 export const UPDATE_INCOMPLETE_SENTENCE = `The update is incomplete. ${RETRY_UPDATE_STEP}`;
-
-export const CLOSE = "Close";

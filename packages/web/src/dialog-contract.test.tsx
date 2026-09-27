@@ -239,35 +239,37 @@ const ON_DIALOG: Row[] = [
   },
 ];
 
-// Still assembled from the old parts; each moves onto `Dialog` under #1226 and
-// then joins ON_DIALOG.
-const NOT_YET_ON_DIALOG: string[] = [];
-
 const SRC = import.meta.dirname;
 
-// A dialog is any source outside `ui/` that imports the shell or `Dialog`.
-function dialogSources(): string[] {
-  const files = readdirSync(SRC, { recursive: true, encoding: "utf8" });
-  return files
-    .filter(
-      (file) =>
-        file.endsWith(".tsx") &&
-        !file.startsWith("ui/") &&
-        !/\.(test|stories)\.tsx$/.test(file),
-    )
-    .filter((file) =>
-      /from "\.\.\/ui\/dialog(-shell)?"/.test(
-        readFileSync(join(SRC, file), "utf8"),
-      ),
-    )
-    .sort();
-}
+const sources = readdirSync(SRC, { recursive: true, encoding: "utf8" })
+  .filter(
+    (file) => /\.tsx?$/.test(file) && !/\.(test|stories)\.tsx?$/.test(file),
+  )
+  .sort()
+  .map((file) => ({ file, text: readFileSync(join(SRC, file), "utf8") }));
+
+// Only `Dialog` opens a modal layer.
+const OPENS_A_DIALOG =
+  /@radix-ui\/react-dialog|role="(alert)?dialog"|aria-modal|<dialog\b/;
 
 describe("every dialog", () => {
-  it("is in the guard table, or listed as not yet on Dialog", () => {
-    expect(dialogSources()).toEqual(
-      [...ON_DIALOG.map((row) => row.file), ...NOT_YET_ON_DIALOG].sort(),
-    );
+  it("is in the guard table", () => {
+    const dialogs = sources
+      .filter(
+        ({ file, text }) =>
+          !file.startsWith("ui/") && /from "(\.\.\/)+ui\/dialog"/.test(text),
+      )
+      .map(({ file }) => file);
+
+    expect(dialogs).toEqual(ON_DIALOG.map((row) => row.file).sort());
+  });
+
+  it("opens only through Dialog", () => {
+    const openers = sources
+      .filter(({ text }) => OPENS_A_DIALOG.test(text))
+      .map(({ file }) => file);
+
+    expect(openers).toEqual(["ui/dialog.tsx"]);
   });
 
   describe.each(ON_DIALOG)("$file", (row) => {

@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Dialog, type DialogAction, type DialogProps } from "./dialog";
 import { Select } from "./select";
@@ -60,6 +61,150 @@ describe("Dialog", () => {
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     const buttons = screen.getAllByRole("button").map((b) => b.textContent);
     expect(buttons.slice(-2)).toEqual(["Cancel", "Restore skill"]);
+  });
+
+  it("is modal", () => {
+    renderDialog();
+
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
+  });
+
+  it("is described by the element the caller names, and by nothing else", () => {
+    const { unmount } = renderDialog({ describedBy: "lead-in" });
+    expect(screen.getByRole("dialog")).toHaveAttribute(
+      "aria-describedby",
+      "lead-in",
+    );
+    unmount();
+
+    renderDialog();
+    expect(screen.getByRole("dialog")).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("closes from its ✕", async () => {
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Close" })[0] as HTMLElement,
+    );
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("closes on a click outside when nothing runs", async () => {
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+
+    await clickOutside();
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("traps Tab inside the panel", async () => {
+    renderDialog({ phase: "outcome", action: null });
+
+    const [x, close] = screen.getAllByRole("button");
+    await userEvent.tab();
+    expect(x).toHaveFocus();
+    await userEvent.tab();
+    expect(close).toHaveFocus();
+    await userEvent.tab();
+    expect(x).toHaveFocus();
+  });
+
+  describe("once a field has changed", () => {
+    it("ignores a click outside", async () => {
+      const onClose = vi.fn();
+      renderDialog({ fieldsChanged: true, onClose });
+
+      await clickOutside();
+
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("still closes on Escape", async () => {
+      const onClose = vi.fn();
+      renderDialog({ fieldsChanged: true, onClose });
+
+      await userEvent.keyboard("{Escape}");
+
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+  });
+
+  // A dialog that closes by sending the reader on (a successful import opens a
+  // pane that takes focus) must not pull focus back to the opener (#1045).
+  describe("on close", () => {
+    function Host() {
+      const [open, setOpen] = useState(false);
+      const [landed, setLanded] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Opener
+          </button>
+          {landed ? <Landing /> : null}
+          {open ? (
+            <Dialog
+              title="Import a skill"
+              version={null}
+              width={480}
+              phase="idle"
+              action={action({
+                label: "Import skill",
+                onRun: () => {
+                  setOpen(false);
+                  setLanded(true);
+                },
+              })}
+              failure={null}
+              describedBy={null}
+              fieldsChanged={false}
+              onClose={() => setOpen(false)}
+            >
+              <p>Body sentence.</p>
+            </Dialog>
+          ) : null}
+        </>
+      );
+    }
+    function Landing() {
+      const ref = useRef<HTMLHeadingElement>(null);
+      useEffect(() => ref.current?.focus(), []);
+      return (
+        <h2 ref={ref} tabIndex={-1}>
+          code-review
+        </h2>
+      );
+    }
+
+    it("returns focus to the control that opened it", async () => {
+      render(<Host />);
+      await userEvent.click(screen.getByRole("button", { name: "Opener" }));
+
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Opener" })).toHaveFocus(),
+      );
+    });
+
+    it("leaves focus where the close sent it", async () => {
+      render(<Host />);
+      await userEvent.click(screen.getByRole("button", { name: "Opener" }));
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Import skill" }),
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+
+      expect(
+        screen.getByRole("heading", { name: "code-review" }),
+      ).toHaveFocus();
+    });
   });
 
   it("appends the version to the title and the panel's name", () => {

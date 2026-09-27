@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   BECOMES_EMPTY,
-  CLOSE,
   CONSENT_NOT_GIVEN,
   consentRowName,
   countingSentence,
@@ -175,9 +174,5 @@ describe("Update target copy", () => {
     expect(UPDATE_INCOMPLETE_SENTENCE).toBe(
       "The update is incomplete. Select Retry update to run the same release again.",
     );
-  });
-
-  it("leaves one control once the outcome is in", () => {
-    expect(CLOSE).toBe("Close");
   });
 });

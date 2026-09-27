@@ -1,13 +1,27 @@
-import { type ReactNode, useId } from "react";
+import * as Radix from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
+import { type ReactNode, useId, useRef } from "react";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
-import { DialogHeader } from "./dialog-header";
-import { DIALOG_CANCEL, DIALOG_FOOTER, DialogShell } from "./dialog-shell";
+import { cn } from "./cn";
+import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
 import { Tooltip } from "./tooltip";
 
+// Radix owns the portal, focus trap, focus return and scroll lock (#997); this
+// module owns the frame, and derives the rest from the phase and the action.
+
 const CANCEL = "Cancel";
 const CLOSE = "Close";
+
+// The leave control a destructive dialog opens its focus on.
+const CANCEL_MARK = "data-dialog-cancel";
+
+// Tailwind reads whole class names, so each is written out.
+const WIDTH = {
+  480: "max-w-[480px]",
+  640: "max-w-[640px]",
+} as const;
 
 export type DialogAction = {
   label: string;
@@ -63,68 +77,135 @@ export function Dialog({
   const failureId = useId();
   const bodyless = children === null;
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Radix returns focus to its own Trigger, which these dialogs never use.
+  const openerRef = useRef<Element | null>(
+    typeof document === "undefined" ? null : document.activeElement,
+  );
+
   return (
-    <DialogShell
-      label={version === null ? title : `${title} ${version}`}
-      describedBy={bodyless && failure !== null ? failureId : describedBy}
-      width={width}
-      onClose={onClose}
-      closeEnabled={!running}
-      destructive={danger}
-      focusField
-      fieldsChanged={fieldsChanged}
+    <Radix.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !running) onClose();
+      }}
     >
-      <DialogHeader
-        title={title}
-        version={version}
-        busy={running}
-        onClose={onClose}
-      />
-      {/* One form, so Enter in a field runs the action. */}
-      <form
-        className="flex min-h-0 flex-col"
-        onSubmit={(event) => {
-          event.preventDefault();
-          // aria-disabled does not stop Enter from submitting, so the refusal
-          // lives here.
-          if (action !== null && !running && action.unavailable === null) {
-            action.onRun();
+      <Radix.Portal>
+        <Radix.Overlay className="fixed inset-0 z-50 bg-backdrop" />
+        <Radix.Content
+          ref={panelRef}
+          aria-modal="true"
+          aria-label={version === null ? title : `${title} ${version}`}
+          aria-describedby={
+            (bodyless && failure !== null ? failureId : describedBy) ??
+            undefined
           }
-        }}
-      >
-        {bodyless ? null : (
-          <div className="flex min-h-0 flex-col gap-cell overflow-y-auto p-panel font-ui text-gray-12 text-prose">
-            {children}
-          </div>
-        )}
-        {/* Outside the scrolling body, so a long body never hides it. */}
-        <div
-          className={
-            failure === null
-              ? undefined
-              : bodyless
-                ? "shrink-0 p-panel"
-                : "shrink-0 px-panel pb-panel"
-          }
-        >
-          <Notice id={failureId} trigger="user-action" notice={failure} />
-        </div>
-        <div className={DIALOG_FOOTER}>
-          <Button
-            variant={lone ? "primary" : "quiet"}
-            className={lone ? "ml-auto" : undefined}
-            disabled={running}
-            {...DIALOG_CANCEL}
-            onClick={onClose}
-          >
-            {leave}
-          </Button>
-          {action === null ? null : (
-            <ActionButton action={action} variant={variant} running={running} />
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            // The cockpit's Select is a combobox button; the native select
+            // Radix hides beside it for form submits is skipped.
+            const target = danger
+              ? `[${CANCEL_MARK}]`
+              : "input:not([disabled]), textarea:not([disabled]), select:not([disabled]):not([aria-hidden]), [role=combobox]:not([disabled])";
+            const landing =
+              panelRef.current?.querySelector<HTMLElement>(target);
+            (landing ?? panelRef.current)?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            // A close that sent the reader on — a pane that took focus — keeps
+            // them there; only a lost focus goes back to the opener.
+            const active = document.activeElement;
+            const lost =
+              active === null ||
+              active === document.body ||
+              panelRef.current?.contains(active) === true;
+            if (!lost) return;
+            const opener = openerRef.current;
+            if (opener instanceof HTMLElement) opener.focus();
+          }}
+          onInteractOutside={(event) => {
+            // A click outside must not discard typed work.
+            if (running || fieldsChanged) event.preventDefault();
+          }}
+          className={cn(
+            // Top-aligned, not centred: a growing dialog keeps its header
+            // still. Capped, so a long body scrolls instead of pushing the
+            // footer off the screen.
+            "-translate-x-1/2 fixed top-24 left-1/2 z-50 flex max-h-[calc(100vh-9rem)] w-[calc(100%-2rem)] flex-col overflow-hidden rounded-float border border-gray-7 bg-gray-2 shadow-float outline-none",
+            WIDTH[width],
           )}
-        </div>
-      </form>
-    </DialogShell>
+        >
+          <div className="flex h-12 shrink-0 items-center justify-between gap-inline border-edge border-b pr-cell pl-panel">
+            <h2 className="m-0 truncate font-semibold font-ui text-gray-12 text-heading">
+              {title}
+              {version === null ? null : (
+                <>
+                  {" "}
+                  <span className="font-mono">{version}</span>
+                </>
+              )}
+            </h2>
+            <IconButton
+              label={CLOSE}
+              variant="ghost"
+              unavailable={running ? "action still running" : undefined}
+              onClick={onClose}
+            >
+              <X aria-hidden="true" strokeWidth={1.5} className="size-4" />
+            </IconButton>
+          </div>
+          {/* One form, so Enter in a field runs the action. */}
+          <form
+            className="flex min-h-0 flex-col"
+            onSubmit={(event) => {
+              event.preventDefault();
+              // aria-disabled does not stop Enter from submitting, so the
+              // refusal lives here.
+              if (action !== null && !running && action.unavailable === null) {
+                action.onRun();
+              }
+            }}
+          >
+            {bodyless ? null : (
+              <div className="flex min-h-0 flex-col gap-cell overflow-y-auto p-panel font-ui text-gray-12 text-prose">
+                {children}
+              </div>
+            )}
+            {/* Outside the scrolling body, so a long body never hides it. */}
+            <div
+              className={
+                failure === null
+                  ? undefined
+                  : bodyless
+                    ? "shrink-0 p-panel"
+                    : "shrink-0 px-panel pb-panel"
+              }
+            >
+              <Notice id={failureId} trigger="user-action" notice={failure} />
+            </div>
+            <div className="flex shrink-0 items-center justify-between gap-inline border-edge border-t px-panel py-cell">
+              <Button
+                variant={lone ? "primary" : "quiet"}
+                className={lone ? "ml-auto" : undefined}
+                disabled={running}
+                {...{ [CANCEL_MARK]: "" }}
+                onClick={onClose}
+              >
+                {leave}
+              </Button>
+              {action === null ? null : (
+                <ActionButton
+                  action={action}
+                  variant={variant}
+                  running={running}
+                />
+              )}
+            </div>
+          </form>
+        </Radix.Content>
+      </Radix.Portal>
+    </Radix.Root>
   );
 }
 
