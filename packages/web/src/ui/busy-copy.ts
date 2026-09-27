@@ -10,6 +10,7 @@ export type ActionKey =
   | "withdraw"
   | "reopen"
   | "create"
+  | "publish"
   | "import"
   | "register"
   | "unregister"
@@ -27,6 +28,7 @@ export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
   withdraw: { busy: "Withdrawing…", done: "Withdrew" },
   reopen: { busy: "Reopening…", done: "Reopened" },
   create: { busy: "Creating…", done: "Created" },
+  publish: { busy: "Publishing…", done: "Published" },
   import: { busy: "Importing…", done: "Imported" },
   register: { busy: "Registering…", done: "Registered" },
   unregister: { busy: "Unregistering…", done: "Unregistered" },

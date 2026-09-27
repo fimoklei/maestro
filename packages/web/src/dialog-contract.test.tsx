@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog } from "./harness/deletion-dialog";
+import { ReleaseDialog } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import { WithdrawDialog } from "./harness/withdraw-dialog";
 import { BulkRemoveDialog } from "./inventory/bulk-remove-dialog";
@@ -32,6 +33,20 @@ const NO_CHOOSER: FolderChooser = {
 };
 
 const ON_DIALOG: Row[] = [
+  {
+    file: "harness/release-dialog.tsx",
+    heading: "Publish release for github.com/fimoklei/agent-harness",
+    render: ({ running, onClose }) => (
+      <ReleaseDialog
+        origin="github.com/fimoklei/agent-harness"
+        load={{ kind: "loading" }}
+        onClose={onClose}
+        onPublish={vi.fn()}
+        publishing={running}
+        publishError={null}
+      />
+    ),
+  },
   {
     file: "harness/deletion-dialog.tsx",
     heading: "Delete research",
@@ -164,7 +179,6 @@ const ON_DIALOG: Row[] = [
 const NOT_YET_ON_DIALOG = [
   "deploy-state/remove-skill-dialog.tsx",
   "harness/import-dialog.tsx",
-  "harness/release-dialog.tsx",
   "inventory/bulk-deploy-dialog.tsx",
 ];
 
