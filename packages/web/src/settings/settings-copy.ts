@@ -20,7 +20,6 @@ export const CHANGE_LOCATION_SENTENCE =
 export const SET_LOCATION = "Set Harness location";
 export const FOLDER_LABEL = "Folder path";
 export const FOLDER_HINT = "Must be a local Harness clone.";
-export const CANCEL = "Cancel";
 
 // The dialog takes a folder only, so its refusals never offer a URL: these
 // replace the connect gate's sentences for the same codes.
