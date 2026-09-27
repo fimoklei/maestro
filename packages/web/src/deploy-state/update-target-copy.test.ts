@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BECOMES_EMPTY,
   CLOSE,
+  CONSENT_NOT_GIVEN,
   consentRowName,
   countingSentence,
   DISCARD_LOCAL_EDITS,
@@ -11,6 +12,7 @@ import {
   localEditsSentence,
   MIXED_RELEASES,
   NO_CONTENT_CHANGES,
+  NO_GITHUB_ORIGIN,
   NOT_ADDED,
   OVERWRITE_UNVERIFIED,
   outcomeDetail,
@@ -22,10 +24,8 @@ import {
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
-  UPDATE_TARGET_NO_ORIGIN,
   unverifiedSentence,
   updateDialogTitle,
-  updatingLine,
 } from "./update-target-copy";
 
 describe("Update target copy", () => {
@@ -34,7 +34,11 @@ describe("Update target copy", () => {
   });
 
   it("states the cause on the control an origin-less Harness blocks", () => {
-    expect(UPDATE_TARGET_NO_ORIGIN).toBe("Update target — no GitHub origin");
+    expect(NO_GITHUB_ORIGIN).toBe("no GitHub origin");
+  });
+
+  it("states the cause on the control until every consent is given", () => {
+    expect(CONSENT_NOT_GIVEN).toBe("consent not given");
   });
 
   it("titles the dialog with the target it acts on", () => {
@@ -130,10 +134,6 @@ describe("Update target copy", () => {
 
   it("names what is loading by the screen it is for", () => {
     expect(LOADING_PREVIEW).toBe("Loading the update preview…");
-  });
-
-  it("reads the release it is moving to while apm runs", () => {
-    expect(updatingLine("v0.3.4")).toBe("Updating to v0.3.4…");
   });
 
   it("names a half-landed update on the card", () => {
