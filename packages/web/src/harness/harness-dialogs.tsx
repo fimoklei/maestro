@@ -1,7 +1,8 @@
 import type { ComponentProps } from "react";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
-import { type ImportCheckLoad, ImportDialog } from "./import-dialog";
+import { ImportDialog } from "./import-dialog";
+import type { ImportCheckLoad } from "./import-view-model";
 import {
   deletionNotice,
   importNotice,

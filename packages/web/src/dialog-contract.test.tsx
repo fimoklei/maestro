@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog } from "./harness/deletion-dialog";
+import { ImportDialog } from "./harness/import-dialog";
 import { ReleaseDialog } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import { WithdrawDialog } from "./harness/withdraw-dialog";
@@ -151,6 +152,26 @@ const ON_DIALOG: Row[] = [
     ),
   },
   {
+    file: "harness/import-dialog.tsx",
+    heading: "Import a skill",
+    render: ({ running, onClose }) => (
+      <ImportDialog
+        source="/home/me/incoming/release-notes"
+        sourceText="/home/me/incoming/release-notes"
+        onSourceChange={vi.fn()}
+        onSourceCommit={vi.fn()}
+        chooser={NO_CHOOSER}
+        name="release-notes"
+        load={{ kind: "loading" }}
+        onNameChange={vi.fn()}
+        onClose={onClose}
+        onImport={vi.fn()}
+        importing={running}
+        importError={null}
+      />
+    ),
+  },
+  {
     file: "inventory/bulk-remove-dialog.tsx",
     heading: "Remove tdd from 3 targets",
     render: ({ running, onClose }) => (
@@ -178,7 +199,6 @@ const ON_DIALOG: Row[] = [
 // then joins ON_DIALOG.
 const NOT_YET_ON_DIALOG = [
   "deploy-state/remove-skill-dialog.tsx",
-  "harness/import-dialog.tsx",
   "inventory/bulk-deploy-dialog.tsx",
 ];
 
