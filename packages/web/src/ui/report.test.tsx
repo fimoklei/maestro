@@ -114,6 +114,25 @@ describe("Report", () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
+  it("sets a row named by a path in mono, and a name in Geist", () => {
+    render(
+      <Report
+        heading="Removed from 0 of 1 target"
+        groups={[
+          {
+            tone: "failed",
+            label: "Not removed",
+            rows: [{ name: "/Users/me/project", mono: true }],
+          },
+          { tone: "good", label: "Removed", rows: [{ name: "tdd" }] },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("/Users/me/project")).toHaveClass("font-mono");
+    expect(screen.getByText("tdd")).not.toHaveClass("font-mono");
+  });
+
   it("counts the skills a group holds, where one row stands for several", () => {
     render(
       <Report

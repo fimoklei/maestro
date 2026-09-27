@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 
 // The thin guard over every dialog: it proves each one runs on `Dialog`. The
@@ -17,6 +18,28 @@ type Row = {
 };
 
 const ON_DIALOG: Row[] = [
+  {
+    file: "deploy-state/remove-skill-dialog.tsx",
+    heading: "Remove tdd v0.5.0",
+    render: ({ running, onClose }) => (
+      <RemoveSkillDialog
+        skillName="tdd"
+        version="v0.5.0"
+        target={{ kind: "repo", repoPath: "/Users/me/project" }}
+        isRemoving={running}
+        preflight={{
+          kind: "offered",
+          check: { kind: "repo", warning: "none" },
+          reclaim: [],
+        }}
+        error={null}
+        restated={null}
+        outcome={null}
+        onCancel={onClose}
+        onConfirm={vi.fn()}
+      />
+    ),
+  },
   {
     file: "harness/restore-dialog.tsx",
     heading: "Restore research",
@@ -38,7 +61,6 @@ const ON_DIALOG: Row[] = [
 // Still assembled from the old parts; each moves onto `Dialog` under #1226 and
 // then joins ON_DIALOG.
 const NOT_YET_ON_DIALOG = [
-  "deploy-state/remove-skill-dialog.tsx",
   "deploy-state/update-target-dialog.tsx",
   "harness/deletion-dialog.tsx",
   "harness/import-dialog.tsx",

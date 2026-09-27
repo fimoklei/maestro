@@ -4,6 +4,7 @@ import type {
   RemoveTargetState,
 } from "@maestro/core";
 import type { PrimitiveType } from "../inventory/type-filter";
+import type { ReportGroup } from "../ui/report";
 import type {
   RemoveCheckState,
   RemoveRowWarning,
@@ -30,8 +31,6 @@ export type RemoveLedgerRow = {
   drift: boolean;
   // A copy nobody targeted, which the reclaim deletes whole.
   leftover: boolean;
-  // Null on a row nobody proved anything about, including every row before confirm.
-  outcome: RemoveTargetState | null;
 };
 
 // apm's own uninstall can't reach an undetected tool's leftover copy (#339).
@@ -70,48 +69,56 @@ function statusFor(warning: RemoveRowWarning | null): {
     : { status: WARNING_STATUS[warning], drift: true };
 }
 
-// Counted from the server's report, never the rows on screen: only the report
-// knows which targets apm reached.
-export function removeLedgerLeadIn(
-  outcome: RemoveOutcome | null,
-  type: PrimitiveType,
-): string {
-  if (outcome === null) {
-    return `${TYPE_LABEL[type]} will be removed from:`;
-  }
-  const states =
-    outcome.scope === "repo"
-      ? [outcome.state]
-      : outcome.tools.map((entry) => entry.state);
-  const removed = states.filter((state) => state === "removed").length;
-  const noun = states.length === 1 ? "target" : "targets";
-  return `Removed from ${removed} of ${states.length} ${noun}:`;
+export function removeLedgerLeadIn(type: PrimitiveType): string {
+  return `${TYPE_LABEL[type]} will be removed from:`;
 }
 
-// The same set the lead-in counts. The server re-detects tools at execution
-// time, so the card's list only sets the order.
-function outcomeRows(
+const OUTCOME_GROUPS: {
+  state: RemoveTargetState;
+  tone: ReportGroup["tone"];
+  label: string;
+}[] = [
+  { state: "not-removed", tone: "failed", label: "Not removed" },
+  // An unproven target may still be there, so the reader checks it.
+  { state: "unknown", tone: "attention", label: "Outcome unknown" },
+  { state: "removed", tone: "good", label: "Removed" },
+];
+
+// The server re-detects tools at execution time, so the card's list only sets
+// the order; the heading counts the server's report, never the rows on screen.
+export function removeOutcomeReport(
+  target: RemoveDialogTarget,
   outcome: RemoveOutcome,
-  targets: readonly { tool: string; name: string }[],
-): RemoveLedgerRow[] {
+): { heading: string; groups: ReportGroup[] } {
+  const targets = targetsOf(target);
   const reported =
     outcome.scope === "repo"
       ? [{ tool: targets[0]?.tool ?? "", state: outcome.state }]
       : outcome.tools;
   const onScreen = targets.map((entry) => entry.tool);
-  return [...reported]
-    .sort((a, b) => rank(onScreen, a.tool) - rank(onScreen, b.tool))
-    .map((entry) => ({
-      key: `target:${entry.tool}`,
-      name:
-        targets.find((target) => target.tool === entry.tool)?.name ??
-        toolDisplayName(entry.tool),
-      path: null,
-      status: null,
-      drift: false,
-      leftover: false,
-      outcome: entry.state,
-    }));
+  const ordered = [...reported].sort(
+    (a, b) => rank(onScreen, a.tool) - rank(onScreen, b.tool),
+  );
+  const removed = reported.filter((entry) => entry.state === "removed").length;
+  const noun = reported.length === 1 ? "target" : "targets";
+  return {
+    heading: `Removed from ${removed} of ${reported.length} ${noun}`,
+    groups: OUTCOME_GROUPS.map(({ state, tone, label }) => ({
+      tone,
+      label,
+      rows: ordered
+        .filter((entry) => entry.state === state)
+        .map((entry) =>
+          target.kind === "repo"
+            ? { name: target.repoPath, mono: true }
+            : {
+                name:
+                  targets.find((each) => each.tool === entry.tool)?.name ??
+                  toolDisplayName(entry.tool),
+              },
+        ),
+    })),
+  };
 }
 
 const rank = (onScreen: readonly string[], tool: string) => {
@@ -119,28 +126,22 @@ const rank = (onScreen: readonly string[], tool: string) => {
   return index === -1 ? onScreen.length : index;
 };
 
+const targetsOf = (target: RemoveDialogTarget) =>
+  target.kind === "repo"
+    ? [{ tool: target.repoPath, name: target.repoPath }]
+    : target.tools.map((tool) => ({ tool, name: toolDisplayName(tool) }));
+
 export function removeLedgerRows(
   target: RemoveDialogTarget,
   reclaim: readonly ReclaimPreview[],
   check: RemoveCheckState,
-  outcome: RemoveOutcome | null = null,
 ): RemoveLedgerRow[] {
-  const targets =
-    target.kind === "repo"
-      ? [{ tool: target.repoPath, name: target.repoPath }]
-      : target.tools.map((tool) => ({ tool, name: toolDisplayName(tool) }));
-
-  if (outcome !== null) {
-    return outcomeRows(outcome, targets);
-  }
-
   return [
-    ...targets.map(({ tool, name }) => ({
+    ...targetsOf(target).map(({ tool, name }) => ({
       key: `target:${name}`,
       name,
       path: null,
       leftover: false,
-      outcome: null,
       ...statusFor(warningForTool(check, tool)),
     })),
     ...reclaim.map((entry) => ({
@@ -150,7 +151,6 @@ export function removeLedgerRows(
       status: LEFTOVER_STATUS[warningForTool(check, entry.tool) ?? "none"],
       drift: true,
       leftover: true,
-      outcome: null,
     })),
   ];
 }

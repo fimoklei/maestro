@@ -6,7 +6,6 @@ import {
   jsonResponse,
   openRemoveDialog,
   REPO,
-  RETRY,
   removeCalls,
   renderRow,
   screen,
@@ -70,7 +69,8 @@ describe("removing a deployed skill from a row", () => {
 
     await openRemoveDialog();
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-    await userEvent.click(await screen.findByRole("button", { name: RETRY }));
+    await screen.findByRole("alert");
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -100,7 +100,8 @@ describe("removing a deployed skill from a row", () => {
 
     await openRemoveDialog();
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-    await userEvent.click(await screen.findByRole("button", { name: RETRY }));
+    await screen.findByRole("alert");
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(
       await screen.findByRole("button", { name: /removing/i }),
@@ -108,7 +109,9 @@ describe("removing a deployed skill from a row", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       /The removal ran but proved nothing/,
     );
-    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: "Close" }).at(-1),
+    ).toBeDisabled();
   });
 
   it("settles the removal when the retry finds nothing left", async () => {
@@ -123,7 +126,8 @@ describe("removing a deployed skill from a row", () => {
 
     await openRemoveDialog();
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-    await userEvent.click(await screen.findByRole("button", { name: RETRY }));
+    await screen.findByRole("alert");
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

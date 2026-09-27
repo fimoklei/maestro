@@ -157,6 +157,28 @@ describe("Dialog", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
     });
+
+    it("is described by the failure when it has no body", () => {
+      render(
+        <Dialog
+          title="Remove tdd"
+          version={null}
+          width={640}
+          phase="outcome"
+          action={null}
+          failure={failure}
+          describedBy={null}
+          fieldsChanged={false}
+          onClose={vi.fn()}
+        >
+          {null}
+        </Dialog>,
+      );
+
+      expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
+        /Skill has staged changes/,
+      );
+    });
   });
 
   // The fill is the one trace of the variant a test can read.
