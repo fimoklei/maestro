@@ -442,6 +442,12 @@ const importHeadings: NoticeTable<ImportSkillError> = {
     message: "Pick a folder that is not a copy deployed by another Harness.",
     detail: "Maestro can update only copies deployed by the connected Harness.",
   },
+  "origin-unproven": {
+    level: "error",
+    label: "Origin not recorded",
+    message: "Copy the skill's files into the Harness clone yourself.",
+    detail: "The deployment record does not name this copy's Harness.",
+  },
   "harness-copy-uncommitted": {
     level: "error",
     label: "Uncommitted changes in the Harness",
