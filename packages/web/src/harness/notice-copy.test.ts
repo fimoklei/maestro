@@ -645,6 +645,15 @@ const suites: [
         },
       ],
       [
+        "origin-unproven",
+        {
+          level: "error",
+          label: "Origin not recorded",
+          message: "Copy the skill's files into the Harness clone yourself.",
+          detail: "The deployment record does not name this copy's Harness.",
+        },
+      ],
+      [
         "harness-copy-uncommitted",
         {
           level: "error",

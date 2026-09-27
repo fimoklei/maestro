@@ -34,7 +34,10 @@ import { validateSkillStructure } from "./validate-skill-structure";
 export type ImportSourceBlocker =
   | "source-unreadable"
   | "outside-root"
+  // Deployed by another Harness, or recorded under a name the Harness cannot hold.
   | "deployed-copy"
+  // The deployment record names no `host` or `repo_url`.
+  | "origin-unproven"
   | "missing-manifest"
   | "invalid-frontmatter"
   | "empty-description"
@@ -252,9 +255,12 @@ export class ImportSkill {
     if (!within) {
       return "outside-root";
     }
-    // Before the manifest: a foreign deployed copy is refused whatever it holds.
+    // Before the manifest: a foreign or unproven deployed copy is refused whatever it holds.
     if (provenance.kind === "foreign") {
       return "deployed-copy";
+    }
+    if (provenance.kind === "unproven") {
+      return "origin-unproven";
     }
     const structure = validateSkillStructure(raw);
     if (structure !== null) {
@@ -327,6 +333,9 @@ export class ImportSkill {
           if (real !== source) {
             continue;
           }
+          if (entry.host === undefined || entry.repo_url === undefined) {
+            return { kind: "unproven" };
+          }
           const name = await this.ownSkillName(root, entry, file);
           return name === null ? { kind: "foreign" } : { kind: "own", name };
         }
@@ -343,9 +352,6 @@ export class ImportSkill {
   ): Promise<string | null> {
     const name = recordedSkillName(entry, file);
     if (name === null || !isValidSkillSlug(name)) {
-      return null;
-    }
-    if (entry.host === undefined || entry.repo_url === undefined) {
       return null;
     }
     // Parsed, so two spellings of one remote match. `repo_url` is owner/repo.
@@ -442,4 +448,5 @@ function recordedSkillName(entry: LockfileEntry, file: string): string | null {
 type Provenance =
   | { kind: "none" }
   | { kind: "foreign" }
+  | { kind: "unproven" }
   | { kind: "own"; name: string };
