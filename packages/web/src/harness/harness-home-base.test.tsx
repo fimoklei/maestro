@@ -92,25 +92,6 @@ describe("Harness home base", () => {
     expect(screen.queryByText("6")).not.toBeInTheDocument();
   });
 
-  it("gives a stage read empty no number", async () => {
-    // Pending proposal is the one stage a confirmed empty read still draws, so
-    // it is where a zero could be mistaken for an unread stage (#827).
-    stubHarnessServer({
-      read: {
-        body: withStages(RELEASED, {
-          review: [row("pending-review", "lint-rules", "waiting-for-review")],
-        }),
-      },
-    });
-    renderHarness();
-
-    const header = await stageHeader("Pending proposal");
-    expect(header.textContent).not.toMatch(/^Pending proposal \d/);
-    expect(
-      screen.getByText("No changes to propose yet", { exact: false }),
-    ).toBeInTheDocument();
-  });
-
   it("gives a stage nobody read no number and no card", async () => {
     stubHarnessServer({
       read: {
@@ -479,8 +460,8 @@ describe("Harness home base", () => {
   });
 
   it("shows No changes yet on a confirmed empty journey", async () => {
-    // Pending proposal always renders — it hosts Import skill… — so the empty
-    // journey is stated there rather than leaving a page with nothing on it.
+    // Every stage drops out when empty, so the empty journey is stated rather
+    // than leaving a page with nothing on it.
     stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 

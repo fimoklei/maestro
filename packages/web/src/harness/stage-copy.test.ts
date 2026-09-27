@@ -4,7 +4,7 @@ import {
   crossStageLine,
   deployedCopiesLine,
   detailSentence,
-  PROPOSAL_EMPTY,
+  JOURNEY_EMPTY,
   PULL_REQUEST_CARD,
   pullRequestLinkName,
   pullRequestState,
@@ -58,18 +58,11 @@ const ALL_STATUSES: StageStatus[] = [
 const CONTEXT = { defaultBranch: "main", releasedVersion: "v1.4.0" };
 const request = pullRequest(45);
 
-describe("the Pending proposal empty state", () => {
+describe("the empty journey", () => {
   it("states a confirmed empty journey", () => {
-    expect(PROPOSAL_EMPTY.journey).toEqual({
+    expect(JOURNEY_EMPTY).toEqual({
       title: "No changes yet",
       body: "Skills you import or edit in your clone will appear here.",
-    });
-  });
-
-  it("names Import skill… exactly as the button reads", () => {
-    expect(PROPOSAL_EMPTY.stage).toEqual({
-      title: "No changes to propose yet",
-      body: "Changes you make in your clone appear here. Select Import skill… to bring one in.",
     });
   });
 });
