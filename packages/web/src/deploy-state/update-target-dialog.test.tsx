@@ -291,6 +291,11 @@ describe("UpdateTargetDialog", () => {
 });
 
 describe("UpdateTargetDialog outcome", () => {
+  const reportGroup = (label: string) =>
+    screen
+      .getByRole("heading", { level: 4, name: new RegExp(`^${label}`) })
+      .closest("section") as HTMLElement;
+
   const showOutcome = (
     outcome: {
       name: string;
@@ -312,14 +317,19 @@ describe("UpdateTargetDialog outcome", () => {
       />,
     );
 
-  it("states one line per skill and drops the sections it planned", () => {
+  it("reports what landed per skill and drops the sections it planned", () => {
     showOutcome([
       { name: "tdd", tool: null, state: "updated" },
       { name: "review", tool: null, state: "removed" },
     ]);
 
-    expect(screen.getByText("tdd updated to v0.3.4")).toBeInTheDocument();
-    expect(screen.getByText("review removed")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Updated to v0.3.4" }),
+    ).toBeInTheDocument();
+    expect(within(reportGroup("Updated")).getByText("tdd")).toBeInTheDocument();
+    expect(
+      within(reportGroup("Removed")).getByText("review"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Changed")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
@@ -331,8 +341,12 @@ describe("UpdateTargetDialog outcome", () => {
       { name: "grill", tool: "codex", state: "not-updated" },
     ]);
 
+    const failed = within(reportGroup("Failed"));
+    expect(failed.getByText("grill in Codex")).toBeInTheDocument();
     expect(
-      screen.getByText("grill still at v0.3.2 in Codex"),
+      failed.getByText(
+        "Still at v0.3.2. Check the target card, then select Update target again.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -344,6 +358,11 @@ describe("UpdateTargetDialog outcome", () => {
     });
 
     expect(screen.getByText("Update incomplete")).toBeInTheDocument();
+    expect(
+      within(reportGroup("Failed")).getByText(
+        "Still at v0.3.2. Select Retry update to run the same release again.",
+      ),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Retry update" }));
 
     expect(onRetry).toHaveBeenCalledTimes(1);

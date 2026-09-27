@@ -94,6 +94,12 @@ async function confirmUpdate(target: string) {
   return dialog;
 }
 
+// A Report group, found by its status word, so a row is tied to its outcome.
+const reportGroup = (dialog: HTMLElement, label: string) =>
+  within(dialog)
+    .getByRole("heading", { level: 4, name: new RegExp(`^${label}`) })
+    .closest("section") as HTMLElement;
+
 const deferred = () => {
   let resolve: (response: Response) => void = () => {};
   const promise = new Promise<Response>((done) => {
@@ -198,7 +204,13 @@ describe("Deploy-state — Update target on a repository", () => {
       }),
     );
     expect(
-      await within(dialog).findByText("tdd updated to v0.3.5"),
+      await within(dialog).findByRole("heading", {
+        level: 3,
+        name: "Updated to v0.3.5",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(reportGroup(dialog, "Updated")).getByText("tdd"),
     ).toBeInTheDocument();
   });
 });
@@ -231,7 +243,13 @@ describe("Deploy-state — Update target on the global target", () => {
       }),
     );
     expect(
-      await within(dialog).findByText("tdd updated to v0.3.5"),
+      await within(dialog).findByRole("heading", {
+        level: 3,
+        name: "Updated to v0.3.5",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(reportGroup(dialog, "Updated")).getByText("tdd"),
     ).toBeInTheDocument();
   });
 
@@ -282,8 +300,13 @@ describe("Deploy-state — Update target on the global target", () => {
       ),
     );
 
+    await within(dialog).findByText("tdd in Codex");
+    const failed = within(reportGroup(dialog, "Failed"));
+    expect(failed.getByText("tdd in Codex")).toBeInTheDocument();
     expect(
-      await within(dialog).findByText("tdd still at v0.3.4 in Codex"),
+      failed.getByText(
+        "Still at v0.3.4. Select Retry update to run the same release again.",
+      ),
     ).toBeInTheDocument();
     expect(within(dialog).getByText("Update incomplete")).toBeInTheDocument();
     expect(
@@ -321,8 +344,13 @@ describe("Deploy-state — Update target on the global target", () => {
       ),
     );
 
+    await within(dialog).findByText("tdd in Claude Code");
+    const failed = within(reportGroup(dialog, "Failed"));
+    expect(failed.getByText("tdd in Claude Code")).toBeInTheDocument();
     expect(
-      await within(dialog).findByText("tdd not deployed in Claude Code"),
+      failed.getByText(
+        "Not deployed. Select Retry update to run the same release again.",
+      ),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: "Retry update" }),
@@ -363,7 +391,13 @@ describe("Deploy-state — Update target on the global target", () => {
       }),
     );
     expect(
-      await within(dialog).findByText("tdd updated to v0.3.5"),
+      await within(dialog).findByRole("heading", {
+        level: 3,
+        name: "Updated to v0.3.5",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(reportGroup(dialog, "Updated")).getByText("tdd"),
     ).toBeInTheDocument();
   });
 });

@@ -7,7 +7,7 @@ type ReportTone = "failed" | "attention" | "neutral" | "good";
 
 type ReportRow = {
   name: string;
-  /** Why this row reads the way it does, in one sentence. */
+  /** Why this row reads the way it does, in one or two short sentences. */
   detail?: string;
   /** How many primitives the row stands for, where one reason hit several. */
   count?: number;

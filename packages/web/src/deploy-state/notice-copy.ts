@@ -8,6 +8,7 @@ import type {
 import { HttpError } from "../api/http";
 import type { NoticeLevel } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
+import { UPDATE_AGAIN, UPDATE_INCOMPLETE_SENTENCE } from "./update-target-copy";
 
 // One table over the three unions: a code shared by deploy and remove reads the
 // same in both. The path-shape codes live in `inventory/connect-notice.ts`.
@@ -132,8 +133,6 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   "update-incomplete": { level: "warning", label: "Update incomplete" },
   "update-failed": { level: "error", label: "Update outcome unknown" },
 };
-
-const UPDATE_AGAIN = "then select Update target again.";
 
 // Kept apart from HEADINGS because codes shared by deploy and removal state
 // their own way through (#684). Keyed by core's unions, so a new code fails typecheck.
@@ -433,8 +432,7 @@ const UPDATE: Record<UpdateRunError, Body> = {
     detail: "Maestro edits that list only, and it found another shape.",
   },
   "update-incomplete": {
-    message:
-      "The update is incomplete. Select Retry update to run the same release again.",
+    message: UPDATE_INCOMPLETE_SENTENCE,
     detail: "apm reported success, but some files are missing.",
   },
   "update-failed": {
