@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { App } from "./App";
+import { App } from "./app";
 import { INTERFACE_THEME_KEY } from "./settings/interface-theme";
 import { jsonResponse, renderWithQuery } from "./test-utils";
 

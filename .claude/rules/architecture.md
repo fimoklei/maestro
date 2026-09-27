@@ -10,7 +10,7 @@ Where each kind of code lives. Package shape fixed by ADR-0002.
 
 Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` depends on nothing else in this repo.
 
-**`web` may import types from `core` — types only.** Write `import type`; never copy a `core` type into `web`. Importing a *value* is forbidden: call `server` instead.
+**`web` imports `core` types; it never copies them.** A value comes from `server` over HTTP.
 
 ## Ports & adapters
 
@@ -25,3 +25,24 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 - Order: normalize → validate with Zod → pass typed data inward.
 - Inside `core`, data is trusted; the boundary already checked it.
 - Untrusted-input specifics → `security.md`.
+
+## Function signatures
+
+- Scrutinise every optional parameter. A caller that omits it gets the default silently; prefer a required parameter over backwards compatibility.
+
+## Interface design
+
+### Deep modules
+
+Prefer deep modules: small interface, deep implementation. A few methods with
+simple params hiding complex logic behind them.
+
+Avoid shallow modules: large interface with many methods that just pass through
+to thin implementation. When designing, ask: can I reduce the number of methods?
+Can I simplify the parameters? Can I hide more complexity inside?
+
+### Design for testability
+
+1. **Accept dependencies, don't create them** — pass external dependencies in rather than constructing them internally.
+2. **Return results, don't produce side effects.**
+3. **Small surface area.**

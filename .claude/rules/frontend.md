@@ -22,7 +22,7 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer bo
 
 ## Components & hooks
 
-- Files kebab-case, components PascalCase, one component per file (global `code-standards.md`).
+- Components PascalCase, one component per file.
 - Small and focused; extract when a component outgrows its one job.
 - Custom hooks hold data and logic; components stay mostly presentational.
 - Co-locate a component's pure helpers and its sibling unit test.

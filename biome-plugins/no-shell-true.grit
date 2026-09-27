@@ -1,0 +1,5 @@
+language js
+
+`shell: true` as $option where {
+  register_diagnostic(span=$option, message="Start a process with an args array and no shell. Remove shell: true.")
+}
