@@ -39,7 +39,6 @@ export type RestoreTarget = {
 export type HarnessDialogsProps = {
   origin: string;
   importFlow: ReturnType<typeof useImportFlow>;
-  onImported: (name: string) => void;
   deletionRow: HarnessStageRow | null;
   deletion: ReturnType<typeof usePromoteDeletion>;
   deleteLocal: ReturnType<typeof useDeleteLocalSkill>;
@@ -72,11 +71,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           load={importLoad(props.importFlow.source, props.importFlow.check)}
           onNameChange={props.importFlow.setEditedName}
           onClose={props.importFlow.close}
-          // The dialog stays open on success: it is where the import's
-          // outcome is stated, and closing would take that with it.
           onImport={props.importFlow.submit}
-          onView={props.onImported}
-          imported={props.importFlow.importSkill.data ?? null}
           importing={props.importFlow.importSkill.isPending}
           importError={importNotice(props.importFlow.importSkill.error)}
         />

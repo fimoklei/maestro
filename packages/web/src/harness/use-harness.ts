@@ -231,9 +231,8 @@ export function useImportSkill() {
         method: "POST",
         body: JSON.stringify(request),
       }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
-    },
+    // Returned, so the dialog closes onto a read that already holds the row.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });
 }
 

@@ -80,7 +80,7 @@ Pick the form from this table. Add no other form, and no banner.
 | Information | `Notice` at `info` | In the region it describes |
 | Status of data | Badge in the row, mark in the pane | The row |
 | Busy | Spinner | The pressed button, the row's ⋮ icon, or the re-read control |
-| Success the reader can see | The row's new status | The row |
+| Success the reader can see | The row's new status, or the new row after an add | The row |
 | Success the reader may miss | Toast, success only, 5 s, paused on hover and focus | Bottom right |
 | Confirmation | Dialog, 480px | Top-aligned at 96px |
 | Partial result across several skills | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
@@ -94,9 +94,16 @@ Pick the form from this table. Add no other form, and no banner.
   header with the title and a close control, and a footer with Cancel leading
   and the action trailing.
 - Open focus on the first field, else the primary button; on Cancel in a
-  destructive dialog. Return focus to the control that opened it.
+  destructive dialog. Return focus to the control that opened it; after an
+  add, to the new row.
 - Block every way of closing a dialog while its action runs. Ignore a click
   outside once a field has changed.
+- Close a dialog that adds a row, such as Import skill or Register
+  repository, once the add succeeds. Keep no success notice in it and offer
+  no "add another" control. Show the new row in its natural place with its
+  status. On a screen with a detail pane, select the row and open its pane.
+- Drop what only describes the copy, such as files left out or file counts.
+  Put what the reader must act on in the new row's detail pane.
 - Open no dialog, alert or toast on load.
 
 **Waiting and freshness.**

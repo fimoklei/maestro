@@ -149,8 +149,8 @@ async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Harness import flow", () => {
-  it("imports the picked folder under the proposed name and rereads the harness", async () => {
-    const { calls, imports } = stubImportServer({});
+  it("imports the picked folder, closes, and opens the new row in its pane", async () => {
+    const { imports } = stubImportServer({});
     const user = userEvent.setup();
     renderWithQuery(<HarnessView />);
 
@@ -163,24 +163,81 @@ describe("Harness import flow", () => {
     await waitFor(() => {
       expect(imports).toEqual([{ source: SOURCE, name: "code-review" }]);
     });
-    // The dialog stays open and states what landed, including what the copy
-    // left behind; the harness read is asked again for the new movement.
-    expect(await screen.findByText("Skill imported")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "The skill was imported into the Harness. Select View in Harness to find it.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "3 entries were skipped: .git and operating-system files.",
-      ),
-    ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(
-        calls.filter((call) => call === "GET /api/harness").length,
-      ).toBeGreaterThan(1);
+    // The new row states the outcome; the dialog keeps nothing to say (#1160).
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    const pane = await screen.findByRole("complementary", {
+      name: "code-review detail",
     });
+    expect(within(pane).getByText("Pending proposal")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(pane).getByRole("heading", { level: 2, name: "code-review" }),
+      ).toHaveFocus(),
+    );
+    expect(
+      screen.getByRole("status", { name: "Harness stages" }),
+    ).toHaveTextContent("Imported code-review.");
+    expect(screen.queryByText("Skill imported")).not.toBeInTheDocument();
+    expect(screen.queryByText(/entries were skipped/)).not.toBeInTheDocument();
+  });
+
+  it("keeps Import open with its notice when the import is refused", async () => {
+    stubImportServer({
+      importStatus: 500,
+      importBody: { error: "internal" },
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView />);
+
+    await openImportWithSource(user);
+    await user.click(screen.getByRole("button", { name: "Import skill" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("button", { name: "Import skill" }),
+      ).toBeEnabled(),
+    );
+    expect(within(dialog).getByText("Skill not imported")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("complementary", { name: "code-review detail" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("states in the pane that deployed copies keep the earlier version after an update", async () => {
+    stubImportServer({
+      check: { ...CLEAN_CHECK, mode: "update" },
+      importBody: { mode: "update", name: "code-review", skipped: 0 },
+      imported: {
+        ...IMPORTED_HARNESS,
+        stages: {
+          ...IMPORTED_HARNESS.stages,
+          proposal: {
+            outcome: "read",
+            bound: null,
+            rows: [{ ...IMPORTED_ROW, remoteTree: "released-tree" }],
+          },
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView />);
+
+    await openImportWithSource(user);
+    await user.click(
+      await screen.findByRole("button", { name: "Update skill" }),
+    );
+
+    const pane = await screen.findByRole("complementary", {
+      name: "code-review detail",
+    });
+    expect(
+      within(pane).getByText(
+        "Deployed copies still have the earlier version. They get this version after a release and a new deploy.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("states a name clash on the name field and closes Import", async () => {
@@ -214,30 +271,6 @@ describe("Harness import flow", () => {
     expect(screen.getByRole("button", { name: "Import skill" })).toBeEnabled();
   });
 
-  it("sends the author from the confirmation to the imported row", async () => {
-    stubImportServer({});
-    const user = userEvent.setup();
-    renderWithQuery(<HarnessView />);
-
-    await openImportWithSource(user);
-    await user.click(screen.getByRole("button", { name: "Import skill" }));
-    await user.click(
-      await screen.findByRole("button", { name: "View in Harness" }),
-    );
-
-    // The dialog is gone, and the row it sent the author to is open in its
-    // pane, which holds the keyboard (#846).
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    const pane = await screen.findByRole("complementary", {
-      name: "code-review detail",
-    });
-    await waitFor(() =>
-      expect(
-        within(pane).getByRole("heading", { level: 2, name: "code-review" }),
-      ).toHaveFocus(),
-    );
-  });
-
   it("sends the author to one row of a skill that holds all three stages", async () => {
     // The import landed in Pending proposal, so that is the row the pane
     // opens on — never a later-mounted twin (#865).
@@ -247,9 +280,6 @@ describe("Harness import flow", () => {
 
     await openImportWithSource(user);
     await user.click(screen.getByRole("button", { name: "Import skill" }));
-    await user.click(
-      await screen.findByRole("button", { name: "View in Harness" }),
-    );
 
     const pane = await screen.findByRole("complementary", {
       name: "code-review detail",

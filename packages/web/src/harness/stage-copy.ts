@@ -236,6 +236,13 @@ export const reviewWord = (row: HarnessStageRow): string | null =>
 export const alsoInWords = (row: HarnessStageRow): string =>
   (row.alsoIn ?? []).map((stage) => STAGE_NAMES[stage]).join(", ");
 
+// Deployed copies come from a release only, so local work on a skill the
+// default branch holds has not reached them (#1160).
+export const deployedCopiesLine = (row: HarnessStageRow): string | null =>
+  row.stage === "pending-proposal" && !row.deletion && row.remoteTree !== null
+    ? "Deployed copies still have the earlier version. They get this version after a release and a new deploy."
+    : null;
+
 // Suppressed where any membership is unknown: "only here" is a claim, and an
 // unread stage cannot back it.
 export const crossStageLine = (row: HarnessStageRow): string | null => {
