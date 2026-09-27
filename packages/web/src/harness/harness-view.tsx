@@ -230,7 +230,7 @@ export function HarnessView() {
             label="Origin"
             value={state.origin}
             github={state.github}
-            yields
+            yields="lg"
           />
           <BandFact
             label="Released"
@@ -241,6 +241,7 @@ export function HarnessView() {
             label="Branch"
             value={state.defaultBranch ?? "Unknown"}
             machine={state.defaultBranch !== null}
+            yields="sm"
           />
         </dl>
       )}
@@ -420,13 +421,15 @@ export function HarnessView() {
   );
 }
 
-// Only Origin gives way on a narrow band: it truncates, then leaves band 2
-// under 1024px.
+// Every fact truncates rather than run under the freshness line (#1204); a
+// yielding fact leaves band 2 below its breakpoint.
+const YIELDS = { sm: "max-sm:hidden", lg: "max-lg:hidden" } as const;
+
 function BandFact({
   label,
   value,
   machine = true,
-  yields = false,
+  yields,
   github,
 }: {
   label: string;
@@ -435,16 +438,10 @@ function BandFact({
   github?: GitHubPage;
   /** False for a plain word such as None yet, which Geist Mono never sets. */
   machine?: boolean;
-  yields?: boolean;
+  yields?: keyof typeof YIELDS;
 }) {
   return (
-    <div
-      className={
-        yields
-          ? "flex min-w-0 gap-inline max-lg:hidden"
-          : "flex flex-none gap-inline"
-      }
-    >
+    <div className={`flex min-w-0 gap-inline ${yields ? YIELDS[yields] : ""}`}>
       <dt className="flex-none text-gray-11">{label}</dt>
       <dd
         title={value}
