@@ -33,7 +33,8 @@ building it.
 **Meaning and emphasis.**
 - Give a column, badge, glyph and word one meaning on every screen. Say
   `Re-read` for reading again, never `Refresh` or `Retry check`.
-- Use Geist Mono only for a version, tag, path, ref or hash.
+- Use Geist Mono only for a version, tag, path, ref or hash. Set a name in
+  Geist, in a title too.
 - Use colour only for status. Use blue only for focus, selection and links.
   Keep the primary action neutral (slate 12).
 - Put at most one coloured mark in a row.
@@ -70,7 +71,8 @@ building it.
 
 **Failures.**
 - State a failure in a `Notice` after its cause, with one action named by its
-  exact control label.
+  exact control label. A warning the reader can continue past may omit its
+  action.
 - Never move focus to a notice when it appears. Never remove a notice on a
   timer.
 - Give a ✕ close control, `Close {heading}`, only to a notice at the top of
@@ -98,21 +100,25 @@ Pick the form from this table. Add no other form, and no banner.
 | Success the reader can see | The row's new status, or the new row after an add | The row |
 | Success the reader may miss | Toast, success only, 5 s, paused on hover and focus | Bottom right |
 | Confirmation | Dialog, 480px | Top-aligned at 96px |
-| Partial result across several skills | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
+| Outcome of a run in a dialog | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
 
 - Show a field error on submit and clear it once the field is valid. Check a
   field that names a folder right after the pick.
-- Confirm only an action that deletes files or writes to GitHub: Remove,
-  Delete, Unregister, Propose change, Withdraw proposal, Create a release.
-  Deploy and Update run without one. A dialog that collects input is a form.
-- Use two dialog widths, 480 and 640, top-aligned at 96px. Give it a 48px
-  header with the title and a close control, and a footer with Cancel leading
-  and the action trailing.
-- Open focus on the first field, else the primary button; on Cancel in a
-  destructive dialog. Return focus to the control that opened it; after an
+- Confirm only Remove, Delete, Unregister, Withdraw proposal, Publish release
+  and Restore; confirm each with a danger button. Propose change, Deploy and
+  Update run without one. A dialog that collects input is a form.
+- Build every dialog on `Dialog`. Use two dialog widths, 480 and 640,
+  top-aligned at 96px. Give it a 48px header with the title and a close
+  control, and a footer with the leave control leading and the action
+  trailing. Label the leave control `Cancel` before the action runs and
+  `Close` once an outcome or failure shows; a lone `Close` is primary.
+- Open focus on Cancel in a destructive dialog, on the first field in a form,
+  else on the panel. Return focus to the control that opened it; after an
   add, to the new row.
 - Block every way of closing a dialog while its action runs. Ignore a click
   outside once a field has changed.
+- Keep the dialog border gray 7; status shows in the content, never the
+  border. Open a dialog that can show a Report at 640px.
 - Close a dialog that adds a row, such as Import skill or Register
   repository, once the add succeeds. Keep no success notice in it and offer
   no "add another" control. Show the new row in its natural place with its

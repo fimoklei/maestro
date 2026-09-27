@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { NoticeContent } from "../ui/notice";
 import { RestoreDialog } from "./restore-dialog";
@@ -35,6 +35,14 @@ describe("RestoreDialog", () => {
     expect(
       screen.getByRole("button", { name: "Restore skill" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens with focus on Cancel", async () => {
+    renderDialog();
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
   });
 
   it("says where the folder comes from and what it will not bring back", () => {

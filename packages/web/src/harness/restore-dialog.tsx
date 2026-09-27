@@ -1,9 +1,7 @@
-import { ACTIONS } from "../ui/busy-copy";
-import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { DialogShell } from "../ui/dialog-shell";
+import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
-import { Notice, type NoticeContent } from "../ui/notice";
+import type { NoticeContent } from "../ui/notice";
 
 export function RestoreDialog({
   skill,
@@ -26,74 +24,47 @@ export function RestoreDialog({
   restoring: boolean;
   restoreError: NoticeContent | null;
 }) {
-  const heading = `Restore ${skill}`;
-
   return (
-    <DialogShell
-      label={heading}
+    <Dialog
+      title={`Restore ${skill}`}
+      version={null}
+      width={480}
+      phase={restoring ? "running" : "idle"}
+      // Uncommitted work is thrown away: confirmed like a deletion.
+      action={{
+        label: "Restore skill",
+        verb: "restore",
+        tone: "danger",
+        unavailable: null,
+        onRun: onConfirm,
+      }}
+      failure={restoreError}
       // The consequences sit in the body, read in the order they are written.
       describedBy={null}
-      width={480}
-      height="tall"
+      fieldsChanged={false}
       onClose={onClose}
-      closeEnabled={!restoring}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-edge border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-gray-12 text-prose">
-          Restore <span className="font-mono">{skill}</span>
-        </h2>
-      </div>
-
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        <p className="m-0 font-ui text-meta text-gray-12">
-          Restore this skill folder from your last local commit. Changes not
-          included in that commit will not be recovered.
-        </p>
-        {hasRequest ? (
-          <p className="m-0 font-ui text-meta text-gray-11">
-            Your proposal remains unchanged.
-          </p>
-        ) : null}
-        <Card padded>
-          <dl className="flex flex-wrap gap-x-10 gap-y-3">
-            <Fact label="Skill" value={skill} wrap />
-            <Fact label="Folder" value={folder} wrap />
-            {/* The whole hash: the one commit the confirmation is given
-                against, re-read at the press. */}
-            <Fact
-              label="Restored from"
-              value={commit}
-              wrap
-              hint="Your last local commit. If it moves before you confirm, nothing is restored."
-            />
-          </dl>
-        </Card>
-        <Notice trigger="user-action" notice={restoreError} />
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2.5 border-edge border-t px-3.5 py-3">
-        <span className="flex-1" />
-        <Button
-          type="button"
-          className="shrink-0"
-          variant="quiet"
-          size="sm"
-          disabled={restoring}
-          onClick={onClose}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          className="shrink-0"
-          variant="ghost"
-          size="sm"
-          busy={restoring}
-          onClick={onConfirm}
-        >
-          {restoring ? ACTIONS.restore.busy : "Restore skill"}
-        </Button>
-      </div>
-    </DialogShell>
+      <p className="m-0">
+        Restore this skill folder from your last local commit. Changes not
+        included in that commit will not be recovered.
+      </p>
+      {hasRequest ? (
+        <p className="m-0 text-gray-11">Your proposal remains unchanged.</p>
+      ) : null}
+      <Card padded>
+        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
+          <Fact label="Skill" value={skill} wrap />
+          <Fact label="Folder" value={folder} wrap />
+          {/* The whole hash: the one commit the confirmation is given
+              against, re-read at the press. */}
+          <Fact
+            label="Restored from"
+            value={commit}
+            wrap
+            hint="Your last local commit. If it moves before you confirm, nothing is restored."
+          />
+        </dl>
+      </Card>
+    </Dialog>
   );
 }

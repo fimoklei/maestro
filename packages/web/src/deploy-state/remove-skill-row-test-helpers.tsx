@@ -15,8 +15,6 @@ export const REPO_NAME = "…/me/project";
 
 export const CONFIRM = "Remove skill";
 
-export const RETRY = "Confirm removal";
-
 // Opening the confirmation also fetches the preflight check, so tests filter it out.
 export const removeCalls = (fetchMock: { mock: { calls: unknown[][] } }) =>
   fetchMock.mock.calls.filter(([path]) => path === "/api/deploy/remove");

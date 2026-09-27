@@ -93,7 +93,6 @@ export function unregisterNotice(error: unknown): NoticeContent | null {
 // The write promise sits at the registration action.
 export const WRITE_PROMISE =
   "Registering changes no files. Files change only when you deploy.";
-export const CANCEL = "Cancel";
 
 export const unregisterTitle = (name: string) => `${UNREGISTER} ${name}`;
 export const UNREGISTER_REPOSITORY = "Unregister repository";

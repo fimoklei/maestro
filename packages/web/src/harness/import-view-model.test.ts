@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  advisoryTexts,
-  importEnabled,
+  advisoryNotice,
   importLabels,
+  importUnavailable,
   nameBlockerNotice,
   sourceBlockerNotice,
 } from "./import-view-model";
@@ -35,11 +35,28 @@ describe("import refusal text", () => {
     expect(nameBlockerNotice(null)).toBeNull();
   });
 
-  it("states each convention finding in order", () => {
-    expect(advisoryTexts(["long-manifest", "long-description"])).toEqual([
-      "SKILL.md is over 500 lines.",
-      "The description is over 1,024 characters.",
-    ]);
+  it("states each convention finding in order, as a warning", () => {
+    expect(
+      advisoryNotice(["long-manifest", "long-description"], "add"),
+    ).toEqual({
+      level: "warning",
+      label: "Skill checks found issues",
+      message: "You can still import the skill.",
+      items: [
+        "SKILL.md is over 500 lines.",
+        "The description is over 1,024 characters.",
+      ],
+    });
+  });
+
+  it("names updating as the step still open on an update", () => {
+    expect(advisoryNotice(["long-manifest"], "update")?.message).toBe(
+      "You can still update the skill.",
+    );
+  });
+
+  it("states no warning while the conventions hold", () => {
+    expect(advisoryNotice([], "add")).toBeNull();
   });
 });
 
@@ -48,7 +65,7 @@ describe("importLabels", () => {
     expect(importLabels({ ...clean, mode: "update" })).toEqual({
       title: "Update a skill",
       confirm: "Update skill",
-      busy: "Updating…",
+      verb: "update",
       hint: "Updating replaces the skill folder in the Harness.",
     });
   });
@@ -66,44 +83,63 @@ describe("importLabels", () => {
   it("names it after adding otherwise, including before a check comes back", () => {
     expect(importLabels(clean)).toMatchObject({
       confirm: "Import skill",
+      verb: "import",
       hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
     });
     expect(importLabels(undefined).confirm).toBe("Import skill");
   });
 });
 
-describe("importEnabled", () => {
-  it("opens on a check that refuses nothing", () => {
-    expect(importEnabled(clean)).toBe(true);
+describe("importUnavailable", () => {
+  const ready = (check: ImportCheck) => ({ kind: "ready" as const, check });
+
+  it("is available on a check that refuses nothing", () => {
+    expect(importUnavailable(ready(clean))).toBeNull();
   });
 
-  it("stays open while conventions are only reported", () => {
-    expect(importEnabled({ ...clean, advisories: ["long-manifest"] })).toBe(
-      true,
-    );
-  });
-
-  it("closes on a source refusal", () => {
-    expect(importEnabled({ ...clean, sourceBlocker: "deployed-copy" })).toBe(
-      false,
-    );
-  });
-
-  it("closes on a refusal the update mode raises", () => {
+  it("stays available while conventions are only reported", () => {
     expect(
-      importEnabled({
-        ...clean,
-        mode: "update",
-        sourceBlocker: "harness-copy-uncommitted",
+      importUnavailable(ready({ ...clean, advisories: ["long-manifest"] })),
+    ).toBeNull();
+  });
+
+  it("names the missing folder before one is chosen", () => {
+    expect(importUnavailable({ kind: "idle" })).toBe("no folder chosen yet");
+  });
+
+  it("names the check while it runs", () => {
+    expect(importUnavailable({ kind: "loading" })).toBe(
+      "folder check still running",
+    );
+  });
+
+  it("names a check that did not come back", () => {
+    expect(
+      importUnavailable({
+        kind: "error",
+        notice: { level: "error", label: "x", message: "y" },
       }),
-    ).toBe(false);
+    ).toBe("folder check did not load");
   });
 
-  it("closes on a name refusal", () => {
-    expect(importEnabled({ ...clean, nameBlocker: "name-taken" })).toBe(false);
+  it("names the folder on a source refusal, in either mode", () => {
+    expect(
+      importUnavailable(ready({ ...clean, sourceBlocker: "deployed-copy" })),
+    ).toBe("folder cannot be used");
+    expect(
+      importUnavailable(
+        ready({
+          ...clean,
+          mode: "update",
+          sourceBlocker: "harness-copy-uncommitted",
+        }),
+      ),
+    ).toBe("folder cannot be used");
   });
 
-  it("closes while no check is in hand", () => {
-    expect(importEnabled(undefined)).toBe(false);
+  it("names the name on a name refusal", () => {
+    expect(
+      importUnavailable(ready({ ...clean, nameBlocker: "name-taken" })),
+    ).toBe("name cannot be used");
   });
 });

@@ -1,10 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
@@ -40,6 +34,24 @@ const withCost: BulkRemoveDialogView = {
   confirmLabel: "Remove from 3 targets · 2 lose local edits",
 };
 
+const partial: BulkRemoveReportView = {
+  kind: "report",
+  heading: "Removed from 1 of 3 targets",
+  removed: ["global"],
+  leftAlone: [
+    {
+      label: "/dev/acme-api",
+      outcome: "failed",
+      reason: "Target held by another operation",
+    },
+    {
+      label: "/dev/legacy-etl",
+      outcome: "refused",
+      reason: "Repository not registered",
+    },
+  ],
+};
+
 function renderDialog(
   props: Partial<React.ComponentProps<typeof BulkRemoveDialog>> = {},
 ) {
@@ -69,23 +81,26 @@ function renderDialog(
   };
 }
 
+// Controls with visible words: the header's ✕ has none.
+const footerLabels = () =>
+  screen
+    .getAllByRole("button")
+    .filter((control) => control.textContent !== "")
+    .map((control) => control.textContent);
+
 describe("BulkRemoveDialog — while the checks run", () => {
   const checking: BulkRemoveDialogView = {
     kind: "checking",
     line: "Checking 3 targets — 1 answered",
   };
 
-  it("names the primitive's type beside the question, as a plain word", () => {
-    renderDialog();
-
-    expect(screen.getByText("Skill")).toBeInTheDocument();
-  });
-
-  it("holds the confirm until every check has answered", async () => {
+  it("holds the confirm until every check has answered, saying why", async () => {
     const { onConfirm } = renderDialog({ view: checking });
 
-    const confirm = screen.getByRole("button", { name: /^remove from/i });
-    expect(confirm).toBeDisabled();
+    const confirm = screen.getByRole("button", {
+      name: "Remove from 3 targets — checks still running",
+    });
+    expect(confirm).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(confirm);
     expect(onConfirm).not.toHaveBeenCalled();
   });
@@ -119,16 +134,15 @@ describe("BulkRemoveDialog — once the checks answer", () => {
       "3 clean copies — nothing but the deployed files goes",
     );
     expect(screen.queryByText(/Loses work/)).toBeNull();
-    expect(screen.queryByText(/CAN'T BE REMOVED/)).toBeNull();
+    expect(screen.queryByText(/Cannot be removed/)).toBeNull();
     expect(
       screen.getByRole("button", { name: "remove from 3 →" }),
-    ).toBeEnabled();
+    ).not.toHaveAttribute("aria-disabled");
   });
 
   it("groups what the removal costs, with each target's version and reason", () => {
     renderDialog({ view: withCost });
 
-    expect(screen.getByText("▲ Loses work · 2")).toBeInTheDocument();
     const cost = screen.getByRole("group", { name: "▲ Loses work · 2" });
     expect(cost).toHaveTextContent("/dev/acme-api");
     expect(cost).toHaveTextContent("v1.0.0");
@@ -149,37 +163,18 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     expect(within(refused).queryByText(/^v\d/)).toBeNull();
   });
 
-  // The footer every dialog shares (#1116).
-  it("confirms with the outlined danger button, Cancel on the leading side", () => {
-    renderDialog();
+  it("keeps the confirm live beside a refusal, carrying the cost on it", async () => {
+    const { onConfirm } = renderDialog({ view: withCost });
 
-    const cancel = screen.getByRole("button", { name: "Cancel" });
-    expect(cancel.parentElement?.firstElementChild).toBe(cancel);
-    expect(cancel.parentElement).toHaveClass("justify-between");
-    const confirm = screen.getByRole("button", { name: "remove from 3 →" });
-    expect(confirm).toHaveClass("text-red-11", "border-red-7");
-    expect(confirm).not.toHaveClass("bg-gray-12");
-  });
-
-  it("opens with focus on Cancel, so Enter removes nothing", async () => {
-    renderDialog();
-
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
-    );
-  });
-
-  it("keeps the confirm live beside a refusal, carrying the cost on it", () => {
-    renderDialog({ view: withCost });
-
-    expect(
+    await userEvent.click(
       screen.getByRole("button", {
         name: "Remove from 3 targets · 2 lose local edits",
       }),
-    ).toBeEnabled();
+    );
+    expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it("takes the confirm away when every target refused", () => {
+  it("holds the confirm when every target refused, saying why", () => {
     renderDialog({
       view: {
         kind: "grouped",
@@ -194,8 +189,10 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: /^remove from/i }),
-    ).toBeDisabled();
+      screen.getByRole("button", {
+        name: "remove from 0 → — no target can be removed",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("renders no clean line when nothing is clean", () => {
@@ -210,9 +207,10 @@ describe("BulkRemoveDialog — once the checks answer", () => {
   it("draws the group rows as static text", () => {
     renderDialog({ view: withCost });
 
-    expect(
-      screen.getAllByRole("button").map((control) => control.textContent),
-    ).toEqual(["Cancel", "Remove from 3 targets · 2 lose local edits"]);
+    expect(footerLabels()).toEqual([
+      "Cancel",
+      "Remove from 3 targets · 2 lose local edits",
+    ]);
     expect(screen.queryByRole("link")).toBeNull();
   });
 
@@ -229,63 +227,23 @@ describe("BulkRemoveDialog — once the checks answer", () => {
       expect(document.getElementById(id)).not.toBeNull();
     }
   });
-
-  it("warms its outline only while a cost group exists", () => {
-    renderDialog({ view: withCost });
-    expect(screen.getByRole("dialog")).toHaveClass("border-amber-7");
-  });
-
-  it("keeps its plain outline when the removal costs nothing", () => {
-    renderDialog();
-    expect(screen.getByRole("dialog")).not.toHaveClass("border-amber-7");
-  });
 });
 
 describe("BulkRemoveDialog — during the run", () => {
   const running = { view: withCost, isRemoving: true };
 
-  it("replaces the body with the walk, counting only what it will touch", () => {
+  it("keeps what it weighed in view while the confirm says Removing…", () => {
     renderDialog(running);
 
-    const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent("Removing from 3 targets, one at a time");
-    expect(screen.queryByText(/Loses work/)).toBeNull();
-    expect(screen.queryByText(/clean copies/)).toBeNull();
-  });
-
-  it("holds both controls unpressable", () => {
-    renderDialog(running);
-
-    // The write's own control stays focusable and states why; closing must not
-    // happen mid-run, so Cancel is disabled outright.
-    expect(screen.getByRole("button", { name: /removing/i })).toHaveAttribute(
-      "aria-disabled",
+    expect(screen.getByText("▲ Loses work · 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Removing…/ })).toHaveAttribute(
+      "aria-busy",
       "true",
     );
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
-  });
-
-  it("ignores Escape, so the user cannot walk away into a partial state", async () => {
-    const { onCancel } = renderDialog(running);
-
-    await userEvent.keyboard("{Escape}");
-
-    expect(onCancel).not.toHaveBeenCalled();
-  });
-
-  it("ignores the backdrop for the same reason", async () => {
-    // Reached the way a mouse reaches it: Radix takes pointer events off the
-    // page behind a modal, so that check is skipped rather than worked around.
-    const { onCancel } = renderDialog(running);
-
-    fireEvent.pointerDown(document.body);
-    fireEvent.click(document.body);
-
-    expect(onCancel).not.toHaveBeenCalled();
   });
 
   it("offers no confirm once Outcome unknown — looking comes before another run", async () => {
-    // The body tells the user to close and check. A live confirm beside it
+    // The notice tells the user to close and check. A live confirm beside it
     // would repeat a destructive run whose result nobody has seen.
     const { onCancel, onConfirm } = renderDialog({
       report: {
@@ -296,11 +254,10 @@ describe("BulkRemoveDialog — during the run", () => {
       },
     });
 
-    expect(screen.queryByRole("button", { name: /^remove from/i })).toBeNull();
-    const controls = screen.getAllByRole("button");
-    expect(controls.map((control) => control.textContent)).toEqual(["Close"]);
+    expect(screen.getByRole("alert")).toHaveTextContent("Outcome unknown");
+    expect(footerLabels()).toEqual(["Close"]);
 
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await userEvent.click(footerCloseButton());
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
   });
@@ -327,94 +284,56 @@ describe("BulkRemoveDialog — during the run", () => {
 });
 
 describe("BulkRemoveDialog — once the run reports", () => {
-  const clean: BulkRemoveReportView = {
-    kind: "clean",
-    title: { before: "Removed ", after: "" },
-    counts: "Removed 3 · refused 0 · failed 0",
-  };
+  it("keeps its title, so the Report's heading carries the result", () => {
+    const { rerender } = renderDialog();
+    const title = () =>
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Remove tdd from 3 targets",
+      });
+    expect(title()).toBeInTheDocument();
 
-  const partial: BulkRemoveReportView = {
-    kind: "partial",
-    title: { before: "Removed ", after: " from 1 of 3 targets" },
-    counts: "Removed 1 · refused 1 · failed 1",
-    leftAlone: [
-      {
-        label: "/dev/acme-api",
-        outcome: "failed",
-        reason: "Target held by another operation",
-      },
-      {
-        label: "/dev/legacy-etl",
-        outcome: "refused",
-        reason: "Repository not registered",
-      },
-    ],
-  };
+    rerender({ isRemoving: true });
+    expect(title()).toBeInTheDocument();
 
-  it("reads as one line when every target came off, with no group beside it", () => {
-    renderDialog({ report: clean });
-
-    const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveAccessibleName("Removed tdd");
-    expect(dialog).toHaveTextContent("Removed 3 · refused 0 · failed 0");
-    expect(screen.queryByText(/LEFT ALONE/)).toBeNull();
-    expect(screen.queryByText(/clean copies/)).toBeNull();
-  });
-
-  it("names the split in the title, so the outcome lands before any detail", () => {
-    renderDialog({ report: partial });
-
-    expect(screen.getByRole("dialog")).toHaveAccessibleName(
-      "Removed tdd from 1 of 3 targets",
-    );
-    expect(screen.getByRole("dialog")).toHaveTextContent(
-      "Removed 1 · refused 1 · failed 1",
-    );
-  });
-
-  it("gives every left-alone target its class and its own reason", () => {
-    renderDialog({ report: partial });
-
-    const group = screen.getByRole("group", { name: "✕ Left alone · 2" });
-    expect(group).toHaveTextContent("/dev/acme-api");
-    expect(group).toHaveTextContent("failed");
-    expect(group).toHaveTextContent("Target held by another operation");
-    expect(group).toHaveTextContent("/dev/legacy-etl");
-    expect(group).toHaveTextContent("refused");
-    expect(group).toHaveTextContent("Repository not registered");
-  });
-
-  it("takes the danger outline once a target was left behind", () => {
-    renderDialog({ report: partial });
-    expect(screen.getByRole("dialog")).toHaveClass("border-red-7");
-  });
-
-  // Nothing left to confirm once the run is over.
-  it("leaves one way out and no retry, whatever the run left behind", async () => {
-    const { onCancel } = renderDialog({ report: clean });
+    rerender({ isRemoving: false, report: partial });
+    expect(title()).toBeInTheDocument();
     expect(
-      screen.getAllByRole("button").map((control) => control.textContent),
-    ).toEqual(["Done"]);
+      screen.getByRole("heading", {
+        level: 3,
+        name: "Removed from 1 of 3 targets",
+      }),
+    ).toBeInTheDocument();
+  });
 
-    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+  it("gives every left-alone target its class, worst first, and its own reason", () => {
+    renderDialog({ report: partial });
+
+    const groups = screen
+      .getAllByRole("heading", { level: 4 })
+      .map((heading) => heading.textContent);
+    expect(groups).toEqual(["✕Failed1", "✕Refused1", "✓Removed1"]);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(
+      "/dev/acme-apiTarget held by another operation",
+    );
+    expect(dialog).toHaveTextContent(
+      "/dev/legacy-etlRepository not registered",
+    );
+    expect(dialog).toHaveTextContent("global");
+  });
+
+  it("leaves one way out, Close, and no retry", async () => {
+    const { onCancel } = renderDialog({ report: partial });
+
+    expect(footerLabels()).toEqual(["Close"]);
+    await userEvent.click(footerCloseButton());
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
-
-  it("says close rather than done when the run left something behind", () => {
-    renderDialog({ report: partial });
-    expect(
-      screen.getAllByRole("button").map((control) => control.textContent),
-    ).toEqual(["Close"]);
-  });
-
-  it("announces the outcome in a live region mounted before it", () => {
-    const { rerender } = renderDialog({});
-    const live = screen.getByLabelText("Bulk removal result");
-    expect(live).toHaveTextContent("");
-
-    rerender({ report: partial });
-    expect(screen.getByLabelText("Bulk removal result")).toHaveTextContent(
-      "Removed tdd from 1 of 3 targets · Removed 1 · refused 1 · failed 1",
-    );
-  });
 });
+
+function footerCloseButton(): HTMLElement {
+  return screen
+    .getAllByRole("button", { name: "Close" })
+    .find((control) => control.textContent === "Close") as HTMLElement;
+}

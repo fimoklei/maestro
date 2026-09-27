@@ -1,48 +1,24 @@
 import { useId } from "react";
-import { ACTIONS } from "../ui/busy-copy";
-import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { DIALOG_CANCEL, DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
-import { Notice } from "../ui/notice";
-import { panelBorderFor } from "../ui/panel-border";
+import { Dialog } from "../ui/dialog";
+import { Report, type ReportGroup } from "../ui/report";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
-import { TYPE_WORD } from "./type-filter";
+import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
 
-// The bulk remove's confirmation (#422, #423) and the report that replaces it
+// The bulk remove's confirmation (#422, #423) and the Report that replaces it
 // (#424). Presentational — the host owns the checks, the request and the
 // in-flight flag.
 
-function SummaryRow({
-  id,
-  tone,
-  children,
-}: {
-  id?: string;
-  tone: "clean" | "done" | "waiting" | "running";
-  children: React.ReactNode;
-}) {
+function CleanLine({ id, children }: { id: string; children: string }) {
   return (
     <p
       id={id}
-      className="flex items-center gap-2.5 rounded-control border border-edge bg-gray-3 px-3 py-2.5 font-mono text-meta text-gray-12"
+      className="m-0 flex items-center gap-inline rounded-control border border-edge bg-gray-3 px-cell py-inline font-mono text-meta text-gray-12"
     >
-      {tone === "clean" || tone === "done" ? (
-        <span aria-hidden="true" className="text-gray-11 text-meta">
-          ✓
-        </span>
-      ) : (
-        // Turning, not still: a static mark would read as a hang.
-        <span
-          aria-hidden="true"
-          className={cn(
-            "text-meta",
-            tone === "running" ? "text-amber-11" : "text-gray-11",
-          )}
-        >
-          ◐
-        </span>
-      )}
+      <span aria-hidden="true" className="text-gray-11">
+        ✓
+      </span>
       <span>{children}</span>
     </p>
   );
@@ -64,13 +40,7 @@ const GROUP_TONE = {
   },
 } as const;
 
-// `reason` is the right-hand slot, `detail` the line under it.
-type GroupRow = {
-  label: string;
-  version?: string;
-  reason: string;
-  detail?: string;
-};
+type GroupRow = { label: string; version?: string; reason: string };
 
 function ReasonGroup({
   id,
@@ -85,7 +55,7 @@ function ReasonGroup({
 }) {
   const colours = GROUP_TONE[tone];
   return (
-    <fieldset id={id} className="flex min-w-0 flex-col gap-1.5">
+    <fieldset id={id} className="flex min-w-0 flex-col gap-tight">
       <legend
         className={cn(
           "font-mono font-semibold text-meta tracking-mono-wide",
@@ -104,27 +74,18 @@ function ReasonGroup({
           <li
             key={row.label}
             className={cn(
-              "flex flex-col gap-1 px-2.5 py-2",
+              "flex items-center justify-between gap-inline px-cell py-inline",
               colours.fill,
               index < rows.length - 1 && colours.divider,
             )}
           >
-            <span className="flex items-center justify-between gap-2.5">
-              <span className="flex min-w-0 items-baseline gap-2.5">
-                <span className="truncate text-gray-12">{row.label}</span>
-                {row.version === undefined ? null : (
-                  <span className="shrink-0 text-gray-11 text-meta">
-                    {row.version}
-                  </span>
-                )}
-              </span>
-              <span className={cn("shrink-0 text-meta", colours.ink)}>
-                {row.reason}
-              </span>
+            <span className="flex min-w-0 items-baseline gap-inline">
+              <span className="truncate text-gray-12">{row.label}</span>
+              {row.version === undefined ? null : (
+                <span className="shrink-0 text-gray-11">{row.version}</span>
+              )}
             </span>
-            {row.detail === undefined ? null : (
-              <span className="text-gray-12 text-meta">{row.detail}</span>
-            )}
+            <span className={cn("shrink-0", colours.ink)}>{row.reason}</span>
           </li>
         ))}
       </ul>
@@ -147,204 +108,129 @@ export function BulkRemoveDialog({
   targetCount: number;
   view: BulkRemoveDialogView;
   isRemoving: boolean;
-  // What the run answered, or null before; it replaces the body, title and footer.
+  // What the run answered, or null before; the Report replaces the body.
   report: BulkRemoveReportView | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   const grouped = view.kind === "grouped" ? view : null;
-  const checkingLine = view.kind === "checking" ? view.line : null;
-  // Nothing to walk is not a run: a refusal never blocks the others, but with
-  // no others left the control would name a removal of nothing.
-  const confirmable = grouped !== null && grouped.removableCount > 0;
-  const done =
-    report?.kind === "clean" || report?.kind === "partial" ? report : null;
+  const done = report?.kind === "report" ? report : null;
   // The request never produced a report. "never-started" is answered and
   // repeatable; "outcome-unknown" is neither, so it keeps #422's dead end.
   const failure =
     report?.kind === "never-started" || report?.kind === "outcome-unknown"
       ? report
       : null;
-  const title =
-    done?.title ??
-    (isRemoving
-      ? { before: "Removing ", after: "" }
-      : { before: "Remove ", after: ` from ${targetCount} targets` });
-  const heading = `${title.before}${skillName}${title.after}`;
-  // "done" only where nothing was left behind: a run that left targets alone
-  // is closed, not finished.
-  const closeLabel =
-    done?.kind === "clean" ? "Done" : report === null ? "Cancel" : "Close";
+  // Absent, not disabled, once the run is over or its outcome is unknown: a
+  // control would rerun a removal already made or unseen.
   const confirmOffered = report === null || report.kind === "never-started";
-  const type = "skill" as const;
 
   const dialogId = useId();
   const cleanId = `${dialogId}-clean`;
   const costId = `${dialogId}-cost`;
   const refusedId = `${dialogId}-refused`;
-  const bodyId = `${dialogId}-body`;
-  const countsId = `${dialogId}-counts`;
-  const leftAloneId = `${dialogId}-left-alone`;
 
-  // In the order the states outrank each other.
+  // The weighing is described; the Report and the failure announce themselves.
   const described =
-    done !== null
-      ? [countsId, done.kind === "partial" ? leftAloneId : null]
+    grouped === null || done !== null
+      ? ""
+      : [
+          grouped.cleanLine === null ? null : cleanId,
+          grouped.cost.length === 0 ? null : costId,
+          grouped.refused.length === 0 ? null : refusedId,
+        ]
           .filter((id) => id !== null)
-          .join(" ")
-      : failure !== null || isRemoving || grouped === null
-        ? bodyId
-        : [
-            grouped.cleanLine === null ? null : cleanId,
-            grouped.cost.length === 0 ? null : costId,
-            grouped.refused.length === 0 ? null : refusedId,
-          ]
-            .filter((id) => id !== null)
-            .join(" ");
-
-  const weighing =
-    grouped === null ? null : (
-      <>
-        {grouped.cleanLine === null ? null : (
-          <SummaryRow id={cleanId} tone="clean">
-            {grouped.cleanLine}
-          </SummaryRow>
-        )}
-        {grouped.cost.length === 0 ? null : (
-          <ReasonGroup
-            id={costId}
-            tone="cost"
-            heading={`▲ Loses work · ${grouped.cost.length}`}
-            rows={grouped.cost}
-          />
-        )}
-        {grouped.refused.length === 0 ? null : (
-          <ReasonGroup
-            id={refusedId}
-            tone="refusal"
-            heading={`✕ Cannot be removed · ${grouped.refused.length}`}
-            rows={grouped.refused}
-          />
-        )}
-      </>
-    );
+          .join(" ");
 
   return (
-    // Closing is blocked while the run is in flight — walking away mid-run is
-    // how a partial state gets made with nobody watching.
-    <DialogShell
-      label={heading}
+    <Dialog
+      title={`Remove ${skillName} from ${targetCount} targets`}
+      version={null}
+      width={640}
+      phase={isRemoving ? "running" : confirmOffered ? "idle" : "outcome"}
+      action={
+        confirmOffered
+          ? {
+              label:
+                grouped?.confirmLabel ?? `Remove from ${targetCount} targets`,
+              verb: "remove",
+              tone: "danger",
+              // Nothing to walk is not a run: a refusal never blocks the
+              // others, but with none left the control would remove nothing.
+              unavailable:
+                grouped === null
+                  ? TARGETS_STILL_CHECKING
+                  : grouped.removableCount === 0
+                    ? NO_TARGET_REMOVABLE
+                    : null,
+              onRun: onConfirm,
+            }
+          : null
+      }
+      failure={
+        failure === null
+          ? null
+          : {
+              level: "error",
+              label: failure.label,
+              message: failure.message,
+              detail: failure.detail,
+            }
+      }
       describedBy={described === "" ? null : described}
-      width={480}
-      border={panelBorderFor({
-        failure: failure !== null || done?.kind === "partial",
-        cost: done === null && !isRemoving && (grouped?.cost.length ?? 0) > 0,
-      })}
-      destructive
+      fieldsChanged={false}
       onClose={onCancel}
-      closeEnabled={!isRemoving}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-edge border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-gray-12 text-prose">
-          {title.before}
-          <span className="font-mono">{skillName}</span>
-          {title.after}
-        </h2>
-        <span className="shrink-0 text-gray-11 text-meta">
-          {TYPE_WORD[type]}
-        </span>
-      </div>
-
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        {/* Mounted empty from first render: a live region created with its
-              first message announces unreliably. */}
-        <span
-          role="status"
-          aria-live="polite"
-          aria-label="Bulk removal result"
-          className="sr-only"
-        >
-          {done === null ? "" : `${heading} · ${done.counts}`}
-        </span>
-        {done !== null ? (
-          <>
-            <SummaryRow id={countsId} tone="done">
-              {done.counts}
-            </SummaryRow>
-            {done.kind === "partial" ? (
-              <ReasonGroup
-                id={leftAloneId}
-                tone="refusal"
-                heading={`✕ Left alone · ${done.leftAlone.length}`}
-                rows={done.leftAlone.map((row) => ({
-                  label: row.label,
-                  reason: row.outcome,
-                  detail: row.reason,
-                }))}
-              />
-            ) : null}
-          </>
-        ) : failure !== null ? (
-          <>
-            <Notice
-              id={bodyId}
-              trigger="user-action"
-              notice={{
-                level: "error",
-                label: failure.label,
-                message: failure.message,
-                detail: failure.detail,
-              }}
+      {done !== null ? (
+        <Report heading={done.heading} groups={reportGroups(done)} />
+      ) : failure?.kind === "outcome-unknown" ? null : grouped === null ? (
+        <p role="status" className="m-0 text-gray-11">
+          {view.kind === "checking" ? view.line : null}
+        </p>
+      ) : (
+        // Stays through the run and beside a failure: it is what the confirm
+        // acts on.
+        <>
+          {grouped.cleanLine === null ? null : (
+            <CleanLine id={cleanId}>{grouped.cleanLine}</CleanLine>
+          )}
+          {grouped.cost.length === 0 ? null : (
+            <ReasonGroup
+              id={costId}
+              tone="cost"
+              heading={`▲ Loses work · ${grouped.cost.length}`}
+              rows={grouped.cost}
             />
-            {/* Only where the attempt can be repeated: the body the confirm
-                  beside it would act on comes back with it. */}
-            {failure.kind === "never-started" ? weighing : null}
-          </>
-        ) : isRemoving ? (
-          // No per-target progress and no abort: there is no partial-state exit.
-          <SummaryRow id={bodyId} tone="running">
-            Removing from {grouped?.removableCount ?? targetCount} targets, one
-            at a time
-          </SummaryRow>
-        ) : grouped === null ? (
-          <div role="status">
-            <SummaryRow id={bodyId} tone="waiting">
-              {checkingLine}
-            </SummaryRow>
-          </div>
-        ) : (
-          weighing
-        )}
-      </div>
-
-      <div className={DIALOG_FOOTER}>
-        <Button
-          type="button"
-          className={cn("shrink-0", confirmOffered ? null : "ml-auto")}
-          variant={done?.kind === "clean" ? "success" : "quiet"}
-          disabled={isRemoving}
-          {...DIALOG_CANCEL}
-          onClick={onCancel}
-        >
-          {closeLabel}
-        </Button>
-        {/* Absent, not disabled, once the run is over or its outcome is
-              unknown: a control would rerun a removal already made or unseen. */}
-        {confirmOffered ? (
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="danger"
-            busy={isRemoving}
-            disabled={!confirmable}
-            onClick={onConfirm}
-          >
-            {isRemoving
-              ? ACTIONS.remove.busy
-              : (grouped?.confirmLabel ?? `Remove from ${targetCount} targets`)}
-          </Button>
-        ) : null}
-      </div>
-    </DialogShell>
+          )}
+          {grouped.refused.length === 0 ? null : (
+            <ReasonGroup
+              id={refusedId}
+              tone="refusal"
+              heading={`✕ Cannot be removed · ${grouped.refused.length}`}
+              rows={grouped.refused}
+            />
+          )}
+        </>
+      )}
+    </Dialog>
   );
+}
+
+// A refused target was never tried; a failed one was. Both were left alone.
+function reportGroups(
+  report: Extract<BulkRemoveReportView, { kind: "report" }>,
+): ReportGroup[] {
+  const leftAlone = (outcome: "failed" | "refused") =>
+    report.leftAlone
+      .filter((row) => row.outcome === outcome)
+      .map((row) => ({ name: row.label, detail: row.reason }));
+  return [
+    { tone: "failed", label: "Failed", rows: leftAlone("failed") },
+    { tone: "failed", label: "Refused", rows: leftAlone("refused") },
+    {
+      tone: "good",
+      label: "Removed",
+      rows: report.removed.map((name) => ({ name })),
+    },
+  ];
 }

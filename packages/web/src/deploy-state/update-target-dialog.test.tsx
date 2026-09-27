@@ -171,7 +171,7 @@ describe("UpdateTargetDialog", () => {
 
     const badge = screen.getByText("No content changes");
     expect(badge).toHaveTextContent(/^No content changes$/);
-    expect(confirmButton().hasAttribute("disabled")).toBe(false);
+    expect(confirmButton()).not.toHaveAttribute("aria-disabled");
   });
 
   it("badges nothing where the release changes something", () => {
@@ -190,17 +190,22 @@ describe("UpdateTargetDialog", () => {
       copyReceipt: "b".repeat(64),
     });
 
-    expect(confirmButton().hasAttribute("disabled")).toBe(true);
+    const held = () =>
+      screen.getByRole("button", {
+        name: "Update target — consent not given",
+      });
+    await user.click(held());
+    expect(onConfirm).not.toHaveBeenCalled();
     await user.click(
       screen.getByRole("checkbox", { name: "Discard local edits for tdd" }),
     );
-    expect(confirmButton().hasAttribute("disabled")).toBe(true);
+    expect(held()).toHaveAttribute("aria-disabled", "true");
     await user.click(
       screen.getByRole("checkbox", {
         name: "Overwrite unverified copy for jobs",
       }),
     );
-    expect(confirmButton().hasAttribute("disabled")).toBe(false);
+    expect(confirmButton()).not.toHaveAttribute("aria-disabled");
 
     await user.click(confirmButton());
     expect(onConfirm).toHaveBeenCalledTimes(1);
@@ -272,7 +277,7 @@ describe("UpdateTargetDialog", () => {
         targetName="agent-harness"
         preview={null}
         isLoading={false}
-        blocked="Update target — no GitHub origin"
+        blocked="no GitHub origin"
         error={{
           level: "error",
           label: "No GitHub origin",
@@ -286,7 +291,7 @@ describe("UpdateTargetDialog", () => {
     const button = screen.getByRole("button", {
       name: "Update target — no GitHub origin",
     });
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
   });
 });
 
@@ -332,7 +337,6 @@ describe("UpdateTargetDialog outcome", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Changed")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
   it("names the tool of a failing row on the global target", () => {
@@ -368,7 +372,7 @@ describe("UpdateTargetDialog outcome", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it("blocks the confirm while the update is running", () => {
+  it("names the confirm by its busy word while the update is running", () => {
     render(
       <UpdateTargetDialog
         targetName="agent-harness"
@@ -381,8 +385,9 @@ describe("UpdateTargetDialog outcome", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Updating to v0.3.4…" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Updating…" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
   });
 });

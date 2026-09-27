@@ -89,7 +89,7 @@ describe("ReleaseDialog", () => {
 
     // The whole delta is one grid, so the step follows all of it.
     const delta = screen.getByRole("grid", { name: "Pending release table" });
-    const advisory = screen.getByRole("status", { name: /structural/i });
+    const advisory = screen.getByText("Skill checks found issues");
     const step = screen.getByRole("button", { name: "Major" });
 
     expect(
@@ -181,7 +181,7 @@ describe("ReleaseDialog", () => {
     expect(screen.getByText("v2.0.0")).toBeInTheDocument();
   });
 
-  it("shows one advisory line per structurally broken skill", () => {
+  it("states the structural checks as a warning, one line per broken skill", () => {
     renderReady({
       findings: [
         { skill: "broken", problem: "missing-manifest" },
@@ -189,36 +189,31 @@ describe("ReleaseDialog", () => {
       ],
     });
 
-    const advisory = screen.getByRole("status", { name: /structural/i });
-    expect(within(advisory).getByText(/broken/)).toBeInTheDocument();
-    expect(within(advisory).getByText(/blank/)).toBeInTheDocument();
+    const advisory = screen.getByRole("status");
+    expect(advisory).toHaveTextContent("⚠");
+    expect(advisory).toHaveTextContent("Skill checks found issues");
+    expect(advisory).toHaveTextContent("You can still publish the release.");
+    expect(
+      within(advisory)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["broken has no SKILL.md.", "blank has an empty description."]);
   });
 
-  it("shows no advisory section when every skill is sound", () => {
+  it("shows no structural checks when every skill is sound", () => {
     renderReady();
 
     expect(
-      screen.queryByRole("status", { name: /structural/i }),
+      screen.queryByText("Skill checks found issues"),
     ).not.toBeInTheDocument();
   });
 
-  it("fills the publish confirmation as the primary action", () => {
+  it("opens with focus on Cancel", async () => {
     renderReady();
 
-    expect(
-      screen.getByRole("button", { name: /^publish release$/i }),
-    ).toHaveClass("bg-gray-12");
-  });
-
-  // It pushes a tag, so it opens on Close, as every dialog that writes to
-  // GitHub does (#1116).
-  it("puts Close on the leading side and opens with focus on it", async () => {
-    renderReady();
-
-    const close = screen.getByRole("button", { name: "Close" });
-    expect(close.parentElement?.firstElementChild).toBe(close);
-    expect(close.parentElement).toHaveClass("justify-between");
-    await waitFor(() => expect(close).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
   });
 
   it("publishes the proposed step when the author does not override it", async () => {
@@ -277,26 +272,35 @@ describe("ReleaseDialog", () => {
     expect(onPublish).toHaveBeenCalledWith("patch", recomputed);
   });
 
-  it("disables publish when nothing has changed since the last release", () => {
-    renderReady({ delta: [] });
+  it("holds publish back when nothing has changed since the last release", async () => {
+    const onPublish = vi.fn();
+    renderReady({ delta: [] }, { onPublish });
 
     expect(
       screen.getByText(/no skill has changed since the last release/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^publish release$/i }),
-    ).toBeDisabled();
+    const publish = screen.getByRole("button", {
+      name: "Publish release — no changes since last release",
+    });
+    expect(publish).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(publish);
+    expect(onPublish).not.toHaveBeenCalled();
   });
 
-  it("holds publish unpressable and says so while a release is in flight", () => {
-    renderReady({}, { publishing: true });
+  it("says Publishing… and cannot be closed while a release is in flight", async () => {
+    const onClose = vi.fn();
+    renderReady({}, { publishing: true, onClose });
 
-    const button = screen.getByRole("button", { name: "Creating…" });
-    expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: "Publishing…" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("states a failed publish as a readable error", () => {
+  it("states a failed publish above the footer, and the leave control becomes Close", () => {
     renderReady(
       {},
       {
@@ -308,9 +312,17 @@ describe("ReleaseDialog", () => {
       },
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /the tag was not pushed/i,
-    );
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(/the tag was not pushed/i);
+    const step = screen.getByRole("button", { name: "Major" });
+    const leave = screen.getAllByRole("button", { name: "Close" }).at(-1);
+    expect(
+      step.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      alert.compareDocumentPosition(leave as HTMLElement) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("says it is working while the plan is still loading", () => {
@@ -326,6 +338,11 @@ describe("ReleaseDialog", () => {
     );
 
     expect(screen.getByText(/loading the release plan/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Publish release — release plan still loading",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("states a plan that could not be computed as a readable error", () => {
@@ -350,5 +367,10 @@ describe("ReleaseDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       /select re-read harness/i,
     );
+    expect(
+      screen.getByRole("button", {
+        name: "Publish release — release plan did not load",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 });

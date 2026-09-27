@@ -1,26 +1,17 @@
 import { useState } from "react";
-import { Button } from "../ui/button";
-import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
+import { Dialog } from "../ui/dialog";
 import { Field } from "../ui/field";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 import {
-  advisoryTexts,
-  importEnabled,
+  advisoryNotice,
+  type ImportCheckLoad,
   importLabels,
+  importUnavailable,
   nameBlockerNotice,
   sourceBlockerNotice,
 } from "./import-view-model";
-import type { ImportCheck } from "./use-harness";
-
-// The check travels with its loading and error states so the modal stays
-// mounted across them — a focus trap that unmounts loses the author's place.
-export type ImportCheckLoad =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "error"; notice: NoticeContent }
-  | { kind: "ready"; check: ImportCheck };
 
 export function ImportDialog({
   source,
@@ -61,112 +52,77 @@ export function ImportDialog({
       ? load.notice
       : sourceBlockerNotice(check?.sourceBlocker ?? null);
   const nameProblem = nameBlockerNotice(check?.nameBlocker ?? null);
-  const advisories = advisoryTexts(check?.advisories ?? []);
   const nameErrorId = "import-name-error";
   // A click outside must not discard a typed name. Once true it stays true:
   // the reader's work is on the panel either way.
   const [nameTouched, setNameTouched] = useState(false);
 
   return (
-    <DialogShell
-      label={labels.title}
+    <Dialog
+      title={labels.title}
+      version={null}
+      width={640}
+      phase={importing ? "running" : "idle"}
+      action={{
+        label: labels.confirm,
+        verb: labels.verb,
+        tone: "primary",
+        unavailable: importUnavailable(load),
+        onRun: onImport,
+      }}
+      failure={importError}
       // Every field states its own hint and its own refusal beside it.
       describedBy={null}
-      width={640}
-      height="tall"
-      onClose={onClose}
-      closeEnabled={!importing}
       fieldsChanged={nameTouched}
+      onClose={onClose}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-edge border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-gray-12 text-prose">
-          {labels.title}
-        </h2>
-      </div>
-
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        <div className="flex flex-col gap-1.5">
-          {/* Checked right after a pick, and once a typed path is left: a
-              check per keystroke would refuse half-typed paths (#1013). */}
-          <PathField
-            label="Folder path"
-            hint="Import copies this folder to the Working Harness. The original folder stays unchanged."
-            placeholder="/path/to/skill-folder"
-            className="placeholder:text-gray-11"
-            value={sourceText}
-            onChange={onSourceChange}
-            onPicked={onSourceCommit}
-            onBlur={() => {
-              const typed = sourceText.trim();
-              if (typed !== "" && typed !== source) onSourceCommit(typed);
-            }}
-            chooser={chooser}
-            disabled={importing}
-          />
-          <Notice trigger="user-action" notice={sourceProblem} />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          {/* The directory name is the skill's identity, so the hint is stated
-              before the name is chosen, not explained after a failure. */}
-          <Field
-            label="Name in the Harness"
-            hint={labels.hint}
-            value={name}
-            onChange={(next) => {
-              setNameTouched(true);
-              onNameChange(next);
-            }}
-            disabled={source === null || locked}
-            describedBy={nameProblem === null ? undefined : nameErrorId}
-            className="font-mono"
-          />
-          <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
-        </div>
-
-        {advisories.length === 0 ? null : (
-          <div
-            role="status"
-            aria-label="Convention checks"
-            className="flex flex-col gap-1.5 rounded-control border border-amber-7 bg-amber-3 px-2.5 py-2.5"
-          >
-            <span className="font-semibold font-ui text-amber-12 text-meta">
-              Skill checks found issues. You can still import the skill.
-            </span>
-            <ul className="m-0 flex list-none flex-col gap-1 p-0">
-              {advisories.map((advisory) => (
-                <li key={advisory} className="font-ui text-meta text-gray-12">
-                  {advisory}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <Notice trigger="user-action" notice={importError} />
-      </div>
-
-      <div className={DIALOG_FOOTER}>
-        <Button
-          type="button"
-          className="shrink-0"
-          variant="quiet"
-          onClick={onClose}
+      <div className="flex flex-col gap-inline">
+        {/* Checked right after a pick, and once a typed path is left: a
+            check per keystroke would refuse half-typed paths (#1013). */}
+        <PathField
+          label="Folder path"
+          hint="Import copies this folder to the Working Harness. The original folder stays unchanged."
+          placeholder="/path/to/skill-folder"
+          className="placeholder:text-gray-11"
+          value={sourceText}
+          onChange={onSourceChange}
+          onPicked={onSourceCommit}
+          onBlur={() => {
+            const typed = sourceText.trim();
+            if (typed !== "" && typed !== source) onSourceCommit(typed);
+          }}
+          chooser={chooser}
           disabled={importing}
-        >
-          Close
-        </Button>
-        <Button
-          type="button"
-          className="shrink-0"
-          variant="primary"
-          busy={importing}
-          disabled={!importEnabled(check)}
-          onClick={onImport}
-        >
-          {importing ? labels.busy : labels.confirm}
-        </Button>
+        />
+        <Notice trigger="user-action" notice={sourceProblem} />
       </div>
-    </DialogShell>
+
+      <div className="flex flex-col gap-inline">
+        {/* The directory name is the skill's identity, so the hint is stated
+            before the name is chosen, not explained after a failure. */}
+        <Field
+          label="Name in the Harness"
+          hint={labels.hint}
+          value={name}
+          onChange={(next) => {
+            setNameTouched(true);
+            onNameChange(next);
+          }}
+          disabled={source === null || locked}
+          describedBy={nameProblem === null ? undefined : nameErrorId}
+          className="font-mono"
+        />
+        <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
+      </div>
+
+      <Notice
+        trigger="load"
+        notice={
+          check === undefined
+            ? null
+            : advisoryNotice(check.advisories, check.mode)
+        }
+      />
+    </Dialog>
   );
 }

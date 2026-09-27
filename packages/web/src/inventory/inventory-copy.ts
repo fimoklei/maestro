@@ -37,8 +37,10 @@ export const bulkDeployTitle = (count: number): string =>
 export const BULK_DEPLOY_TARGET = "Target";
 export const bulkDeployDidNotRun = (target: string) =>
   `Deploy to ${target} did not run`;
-// Both deploy pickers, while the registry has not answered.
-export const LOADING_TARGETS = "Loading targets…";
+export const TARGETS_LOADING = "targets still loading";
+export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
+export const TARGETS_STILL_CHECKING = "checks still running";
+export const NO_TARGET_REMOVABLE = "no target can be removed";
 
 // The group header of rows whose status has not answered yet.
 export const NOT_READ_YET = "Not read yet";

@@ -7,6 +7,8 @@ type ReportTone = "failed" | "attention" | "neutral" | "good";
 
 type ReportRow = {
   name: string;
+  /** The name is a path, set in mono. */
+  mono?: boolean;
   /** Why this row reads the way it does, in one or two short sentences. */
   detail?: string;
   /** How many primitives the row stands for, where one reason hit several. */
@@ -94,7 +96,14 @@ export function Report({
                 className="flex min-w-0 items-baseline justify-between gap-inline font-ui text-row"
               >
                 <span className="flex min-w-0 flex-wrap items-baseline gap-inline">
-                  <span className="font-medium text-gray-12">{row.name}</span>
+                  <span
+                    className={cn(
+                      "font-medium text-gray-12",
+                      row.mono ? "break-all font-mono" : null,
+                    )}
+                  >
+                    {row.name}
+                  </span>
                   {row.detail === undefined ? null : (
                     <span className="text-gray-11">{row.detail}</span>
                   )}

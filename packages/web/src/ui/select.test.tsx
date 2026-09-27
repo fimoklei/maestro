@@ -19,6 +19,7 @@ function Labelled({ onChange }: { onChange?: (value: string) => void }) {
         labelledBy="theme-name"
         value={value}
         options={OPTIONS}
+        disabled={false}
         onValueChange={(next) => {
           setValue(next);
           onChange?.(next);
@@ -52,5 +53,48 @@ describe("Select", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(select).toHaveTextContent("Dark");
     expect(select).toHaveFocus();
+  });
+
+  it("offers a disabled option it will not choose", async () => {
+    render(
+      <div>
+        <span id="target-name">Target</span>
+        <Select
+          labelledBy="target-name"
+          value="repo"
+          options={[
+            { value: "global", label: "Global", disabled: true },
+            { value: "repo", label: "maestro" },
+          ]}
+          disabled={false}
+          onValueChange={vi.fn()}
+        />
+      </div>,
+    );
+
+    screen.getByRole("combobox", { name: "Target" }).focus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(
+      await screen.findByRole("option", { name: "Global" }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("is disabled while its dialog runs", async () => {
+    render(
+      <div>
+        <span id="target-name">Target</span>
+        <Select
+          labelledBy="target-name"
+          value="repo"
+          options={[{ value: "repo", label: "maestro" }]}
+          disabled
+          onValueChange={vi.fn()}
+        />
+      </div>,
+    );
+
+    const select = screen.getByRole("combobox", { name: "Target" });
+    expect(select).toBeDisabled();
   });
 });

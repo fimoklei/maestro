@@ -18,7 +18,12 @@ import {
 } from "./bulk-deploy-report-view";
 import { chosenBulkDeployTargets } from "./bulk-deploy-targets";
 import { globalOptionLabel } from "./global-option-label";
-import { bulkDeployDidNotRun, DEPLOY_SKILLS } from "./inventory-copy";
+import {
+  bulkDeployDidNotRun,
+  DEPLOY_SKILLS,
+  NO_TOOL_DETECTED_CAUSE,
+  TARGETS_LOADING,
+} from "./inventory-copy";
 import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
 import { useBulkDeploy } from "./use-bulk-deploy";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
@@ -182,8 +187,14 @@ export function BulkDeployRun({
         setPlan(null);
         setChosen(value);
       }}
-      loadingTargets={!registryReady}
-      deployBlocked={targetLoading || (isGlobal && globalDisabled)}
+      unavailable={
+        !registryReady || targetLoading
+          ? TARGETS_LOADING
+          : isGlobal && globalDisabled
+            ? NO_TOOL_DETECTED_CAUSE
+            : null
+      }
+      fieldsChanged={chosen !== null}
       busy={bulk.isPending}
       failure={
         view?.tone === "error"

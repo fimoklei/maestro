@@ -132,13 +132,12 @@ describe("InventoryPanel", () => {
     const dialog = await openDeployDialog("tdd");
 
     expect(
-      await dialog.findByRole("option", { name: /alpha/ }),
+      await dialog.findByRole("button", { name: "Deploy skill" }),
+    ).not.toHaveAttribute("aria-disabled");
+    await userEvent.click(dialog.getByRole("combobox", { name: "Target" }));
+    expect(
+      await screen.findByRole("option", { name: /alpha/ }),
     ).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        dialog.getByRole("button", { name: /^Deploy skill/ }),
-      ).toBeEnabled(),
-    );
   });
 
   it("disables the deploy action while the registry is still loading", async () => {
@@ -164,8 +163,8 @@ describe("InventoryPanel", () => {
     const dialog = await openDeployDialog("tdd");
 
     expect(
-      await dialog.findByRole("button", { name: /loading targets/i }),
-    ).toBeDisabled();
+      await dialog.findByRole("button", { name: /targets still loading/ }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("holds the status unresolved while the registry is still loading", async () => {
@@ -215,8 +214,8 @@ describe("InventoryPanel", () => {
     const dialog = await openDeployDialog("tdd");
 
     expect(
-      await dialog.findByRole("button", { name: /loading targets/i }),
-    ).toBeDisabled();
+      await dialog.findByRole("button", { name: /targets still loading/ }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("shows an actionable message when the inventory is not configured", async () => {

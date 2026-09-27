@@ -1,13 +1,17 @@
 import { useState } from "react";
-import { ACTIONS } from "../ui/busy-copy";
-import { Button } from "../ui/button";
+import { loadingText } from "../ui/busy-copy";
 import { Card } from "../ui/card";
-import { DIALOG_CANCEL, DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
+import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
+import {
+  FINDING_TEXT,
+  RELEASE_UNAVAILABLE,
+  skillChecksNotice,
+} from "./dialog-copy";
 import { ReleaseDelta } from "./release-delta";
-import type { ReleasePlan, SemverStep, StructuralProblem } from "./use-harness";
+import type { ReleasePlan, SemverStep } from "./use-harness";
 
 // Loading and error travel with the plan so the modal stays mounted: a focus
 // trap that unmounts between states loses the author's place.
@@ -21,14 +25,6 @@ const STEP_SEGMENTS: readonly { value: SemverStep; label: string }[] = [
   { value: "minor", label: "Minor" },
   { value: "major", label: "Major" },
 ];
-
-// One advisory sentence per broken manifest. States the fact, never a verdict:
-// the skill still ships, the author just knows what they are shipping (#519).
-const FINDING_TEXT: Record<StructuralProblem, string> = {
-  "missing-manifest": "has no SKILL.md.",
-  "invalid-frontmatter": "has frontmatter Maestro cannot read.",
-  "empty-description": "has an empty description.",
-};
 
 export function ReleaseDialog({
   origin,
@@ -45,7 +41,6 @@ export function ReleaseDialog({
   publishing: boolean;
   publishError: NoticeContent | null;
 }) {
-  const heading = `Publish release for ${origin}`;
   const [chosenStep, setChosenStep] = useState<SemverStep | null>(null);
   // A step chosen against one previous tag names a different release under
   // the recomputed one, so the choice is dropped with the plan it belonged
@@ -63,72 +58,52 @@ export function ReleaseDialog({
     setShownPlanId(planId);
     setChosenStep(null);
   }
-  const step =
-    load.kind === "ready" ? (chosenStep ?? load.plan.proposedStep) : null;
-  const plan = load.kind === "ready" ? load.plan : null;
 
   return (
-    <DialogShell
-      label={heading}
+    <Dialog
+      title={`Publish release for ${origin}`}
+      version={null}
+      width={640}
+      phase={publishing ? "running" : "idle"}
+      // It pushes a tag to GitHub, so it is confirmed like a deletion.
+      action={{
+        label: "Publish release",
+        verb: "publish",
+        tone: "danger",
+        unavailable: unavailableCause(load),
+        onRun: () =>
+          load.kind === "ready" &&
+          onPublish(chosenStep ?? load.plan.proposedStep, load.plan),
+      }}
+      failure={publishError}
       // The plan is the body, and it arrives after the panel is announced.
       describedBy={null}
-      width={640}
-      height="tall"
-      destructive
+      fieldsChanged={chosenStep !== null}
       onClose={onClose}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-edge border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-gray-12 text-prose">
-          Publish release for <span className="font-mono">{origin}</span>
-        </h2>
-      </div>
-
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        {/* The plan is the answer to the click that opened this dialog, so
-              its failure is a user-action, not a panel that failed on load. */}
-        <Notice
-          trigger="user-action"
-          notice={load.kind === "error" ? load.notice : null}
+      {/* The plan is the answer to the click that opened this dialog, so
+          its failure is a user-action, not a panel that failed on load. */}
+      <Notice
+        trigger="user-action"
+        notice={load.kind === "error" ? load.notice : null}
+      />
+      {load.kind === "loading" ? (
+        <p className="m-0 text-gray-11">{loadingText("release plan")}</p>
+      ) : load.kind === "ready" ? (
+        <PlanBody
+          plan={load.plan}
+          step={chosenStep ?? load.plan.proposedStep}
+          onStepChange={setChosenStep}
         />
-        {load.kind === "loading" ? (
-          <p className="font-ui text-meta text-gray-11">
-            Loading the release plan…
-          </p>
-        ) : load.kind === "ready" ? (
-          <PlanBody
-            plan={load.plan}
-            step={chosenStep ?? load.plan.proposedStep}
-            onStepChange={setChosenStep}
-          />
-        ) : null}
-        <Notice trigger="user-action" notice={publishError} />
-      </div>
-
-      <div className={DIALOG_FOOTER}>
-        <Button
-          type="button"
-          className="shrink-0"
-          variant="quiet"
-          {...DIALOG_CANCEL}
-          onClick={onClose}
-        >
-          Close
-        </Button>
-        <Button
-          type="button"
-          className="shrink-0"
-          variant="primary"
-          busy={publishing}
-          disabled={step === null || plan === null || plan.delta.length === 0}
-          onClick={() =>
-            step !== null && plan !== null && onPublish(step, plan)
-          }
-        >
-          {publishing ? ACTIONS.create.busy : "Publish release"}
-        </Button>
-      </div>
-    </DialogShell>
+      ) : null}
+    </Dialog>
   );
+}
+
+function unavailableCause(load: ReleasePlanLoad): string | null {
+  if (load.kind === "loading") return RELEASE_UNAVAILABLE.loading;
+  if (load.kind === "error") return RELEASE_UNAVAILABLE.error;
+  return load.plan.delta.length === 0 ? RELEASE_UNAVAILABLE.empty : null;
 }
 
 // Every version comes from the plan's map, so the browser never re-derives
@@ -145,46 +120,38 @@ function PlanBody({
   return (
     <>
       {plan.delta.length === 0 ? (
-        <p className="font-ui text-meta text-gray-11">
+        <p className="m-0 text-gray-11">
           No skill has changed since the last release.
         </p>
       ) : (
         <ReleaseDelta movements={plan.delta} />
       )}
 
-      {plan.findings.length === 0 ? null : (
-        <div
-          role="status"
-          aria-label="Structural checks"
-          className="flex flex-col gap-1.5 rounded-control border border-amber-7 bg-amber-3 px-2.5 py-2.5"
-        >
-          <span className="font-semibold font-ui text-amber-12 text-meta">
-            Skill checks need attention
-          </span>
-          <ul className="m-0 flex list-none flex-col gap-1 p-0">
-            {plan.findings.map((finding) => (
-              <li
-                key={finding.skill}
-                className="font-ui text-meta text-gray-12"
-              >
-                <span className="font-mono text-gray-12">{finding.skill}</span>{" "}
-                {FINDING_TEXT[finding.problem]}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <Notice
+        trigger="load"
+        notice={
+          plan.findings.length === 0
+            ? null
+            : skillChecksNotice(
+                "publish",
+                plan.findings.map(
+                  (finding) =>
+                    `${finding.skill} ${FINDING_TEXT[finding.problem]}`,
+                ),
+              )
+        }
+      />
 
       <Card padded>
-        <dl className="flex flex-wrap gap-x-10 gap-y-3">
+        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           <Fact label="Previous tag" value={plan.previousTag ?? "None yet"} />
           <Fact label="Branch" value={plan.defaultBranch} />
           {/* The whole commit: a short hash is not the exact revision, and
               need not be unique in a repository this size (#519). */}
           <Fact label="Revision" value={plan.revision} wrap />
         </dl>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-          <div className="flex flex-col gap-1.5">
+        <div className="mt-panel flex flex-wrap items-end justify-between gap-x-panel gap-y-cell">
+          <div className="flex flex-col gap-tight">
             <span className="font-ui text-gray-11 text-meta">Releasing as</span>
             <span className="font-mono text-gray-12 text-title">
               {plan.versions[step]}

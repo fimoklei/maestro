@@ -135,9 +135,10 @@ describe("BulkRemoveRun", () => {
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
 
-    const dialog = await screen.findByRole("dialog", { name: "Removed tdd" });
-    expect(dialog).toHaveTextContent("Removed 2 · refused 0 · failed 0");
-    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(
+      await screen.findByRole("heading", { name: "Removed from 2 targets" }),
+    ).toBeInTheDocument();
+    await userEvent.click(closeButton());
     expect(screen.queryByRole("dialog")).toBeNull();
 
     const runs = calls.filter((call) => call.url.endsWith("/remove/bulk"));
@@ -290,7 +291,8 @@ describe("BulkRemoveRun", () => {
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
-    await userEvent.click(await screen.findByRole("button", { name: "Done" }));
+    await screen.findByRole("heading", { name: /^Removed from/ });
+    await userEvent.click(closeButton());
 
     expect(await screen.findByText("Empty")).toBeInTheDocument();
   });
@@ -325,8 +327,10 @@ describe("BulkRemoveRun", () => {
     await openIt();
 
     expect(
-      screen.getByRole("button", { name: "Remove from 1 targets" }),
-    ).toBeDisabled();
+      screen.getByRole("button", {
+        name: "Remove from 1 targets — checks still running",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("dialog")).toHaveTextContent(
       "Checking 1 targets — 0 answered",
     );
@@ -385,7 +389,7 @@ describe("BulkRemoveRun", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /outcome is unrecorded/i,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await userEvent.click(closeButton());
     expect(await screen.findByText("Empty")).toBeInTheDocument();
   });
 
@@ -409,7 +413,7 @@ describe("BulkRemoveRun", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Run not started",
     );
-    expect(screen.getByRole("dialog")).not.toHaveTextContent(/refused 0/);
+    expect(screen.queryByRole("heading", { name: /^Removed from/ })).toBeNull();
     expect(
       screen.getByRole("button", { name: "Remove from 1 targets" }),
     ).toBeEnabled();
@@ -435,15 +439,24 @@ describe("BulkRemoveRun", () => {
     await userEvent.click(confirm);
 
     expect(
-      await screen.findByRole("dialog", {
-        name: "Removed tdd from 1 of 2 targets",
+      await screen.findByRole("heading", {
+        name: "Removed from 1 of 2 targets",
       }),
     ).toBeInTheDocument();
-    const group = screen.getByRole("group", { name: "✕ Left alone · 1" });
-    expect(group).toHaveTextContent("/dev/acme-web");
-    expect(group).toHaveTextContent("refused");
-    expect(group).toHaveTextContent("Repository not registered");
-    const controls = within(screen.getByRole("dialog")).getAllByRole("button");
+    const refused = screen.getByRole("heading", { level: 4, name: /Refused/ })
+      .parentElement as HTMLElement;
+    expect(refused).toHaveTextContent("/dev/acme-web");
+    expect(refused).toHaveTextContent("Repository not registered");
+    const controls = within(screen.getByRole("dialog"))
+      .getAllByRole("button")
+      .filter((control) => control.textContent !== "");
     expect(controls.map((control) => control.textContent)).toEqual(["Close"]);
   });
 });
+
+// The footer's Close, not the header's ✕ of the same name.
+function closeButton(): HTMLElement {
+  return screen
+    .getAllByRole("button", { name: "Close" })
+    .find((control) => control.textContent === "Close") as HTMLElement;
+}

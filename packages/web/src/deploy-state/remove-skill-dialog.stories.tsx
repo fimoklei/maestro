@@ -75,14 +75,14 @@ export const LongRepoPath: Story = {
 
 export const Removing: Story = { args: { isRemoving: true } };
 
-// A removal apm did not confirm: danger red, and the footer offers it again.
+// A removal apm did not confirm; the footer offers it again.
 export const Failed: Story = {
   args: {
     error: noticeFor("remove-failed"),
   },
 };
 
-// The server's own per-target probe after a failure; the lead-in counts from it.
+// The server's own per-target probe after a failure, as a Report.
 export const FailedPerTarget: Story = {
   args: {
     target: { kind: "global", tools: ["claude", "codex"] },
@@ -126,7 +126,7 @@ export const RemovalRefused: Story = {
   },
 };
 
-// The loudest state: amber warnings and a red failure stacked.
+// A failure after warnings: the failure replaces the ledger.
 export const FailedWithWarnings: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },

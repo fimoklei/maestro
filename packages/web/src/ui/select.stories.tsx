@@ -12,6 +12,7 @@ const meta = {
       { value: "light", label: "Light" },
       { value: "dark", label: "Dark" },
     ],
+    disabled: false,
     onValueChange: () => {},
   },
   decorators: [
@@ -29,3 +30,5 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Closed: Story = {};
+
+export const Disabled: Story = { args: { disabled: true } };

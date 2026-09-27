@@ -51,6 +51,30 @@ describe("Set Harness location", () => {
     expect(footer).toEqual(["Cancel", "Set Harness location"]);
   });
 
+  it("opens with focus in the path field, so the operator can type at once", async () => {
+    stubServer();
+    renderPage();
+
+    const dialog = await openDialog();
+
+    expect(within(dialog).getByLabelText("Folder path")).toHaveFocus();
+  });
+
+  it("sets the folder on Enter in the field", async () => {
+    const { posts } = stubServer();
+    renderPage();
+    await openDialog();
+
+    await typePath("/home/me/other-harness{Enter}");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(posts("/api/inventory/connect")).toEqual([
+      { path: "/home/me/other-harness", localOnly: true },
+    ]);
+  });
+
   it("sets the typed folder, closes, and shows and announces the new location", async () => {
     const { posts } = stubServer();
     renderPage();

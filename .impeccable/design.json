@@ -580,6 +580,14 @@
       "description": "A choice between a few views: the pressed segment on gray 4 with a gray 7 border; hover stays a step below on gray 3.",
       "html": "<fieldset class=\"ds-seg\"><button class=\"ds-seg-opt\" aria-pressed=\"true\">All</button><button class=\"ds-seg-opt\" aria-pressed=\"false\">Drift</button><button class=\"ds-seg-opt\" aria-pressed=\"false\">Local</button></fieldset>",
       "css": ".ds-seg { display: inline-flex; gap: 0.25rem; margin: 0; padding: 2px; border: 0; border-radius: 6px; } .ds-seg-opt { padding: 0.25rem 0.75rem; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--gray-11); font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.75rem; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-seg-opt:hover { background: var(--gray-3); color: var(--gray-12); } .ds-seg-opt:focus-visible { outline: 2px solid var(--blue-9); outline-offset: 2px; } .ds-seg-opt[aria-pressed=\"true\"] { border-color: var(--gray-7); background: var(--gray-4); color: var(--gray-12); }"
+    },
+    {
+      "name": "Notice",
+      "kind": "custom",
+      "refersTo": "notice",
+      "description": "A failure or outcome stated after its cause, with one action named by its exact control label; a warning the reader can continue past may omit it. The block is a filled box on step 3 with a step 7 border and status text on step 12; inside a table row it becomes an inline rule on the left edge.",
+      "html": "<div class=\"ds-notice\" role=\"status\"><span class=\"ds-notice-mark\" aria-hidden=\"true\">⚠</span><div class=\"ds-notice-text\"><span class=\"ds-notice-label\">Skill checks found issues</span><span>You can still import the skill.</span></div></div>",
+      "css": ".ds-notice { display: flex; gap: 0.5rem; padding: 0.75rem; border: 1px solid var(--amber-7); border-radius: 6px; background: var(--amber-3); color: var(--gray-12); font-family: \"Geist Variable\", \"Geist\", \"Helvetica Neue\", Helvetica, sans-serif; font-size: 0.75rem; line-height: 1rem; } .ds-notice-mark { color: var(--amber-11); font-family: \"Geist Mono Variable\", \"Geist Mono\", ui-monospace, monospace; } .ds-notice-text { display: flex; flex-direction: column; gap: 0.25rem; } .ds-notice-label { color: var(--amber-12); font-weight: 600; }"
     }
   ],
   "narrative": {

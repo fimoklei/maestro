@@ -5,10 +5,11 @@ import {
   bulkDeployTitle,
   DEPLOY_SKILLS,
   deployedToLine,
-  LOADING_TARGETS,
   moreTargetsLine,
   NO_FILTER_MATCH,
   NO_SEARCH_MATCH,
+  NO_TARGET_REMOVABLE,
+  NO_TOOL_DETECTED_CAUSE,
   NOT_DEPLOYED_ANYWHERE,
   NOT_READ_YET,
   REMOVE_FROM_TARGET,
@@ -19,6 +20,8 @@ import {
   SHOW_IN_DEPLOY_STATE,
   SOME_TARGETS_NOT_READ,
   stageRowLabel,
+  TARGETS_LOADING,
+  TARGETS_STILL_CHECKING,
 } from "./inventory-copy";
 
 // Approved sentences, as exact strings.
@@ -54,11 +57,20 @@ describe("Inventory copy", () => {
     expect(BULK_DEPLOY_TARGET).toBe("Target");
   });
 
-  it("heads a bulk deploy the server never answered, and the wait for targets", () => {
+  it("heads a bulk deploy the server never answered", () => {
     expect(bulkDeployDidNotRun("maestro")).toBe(
       "Deploy to maestro did not run",
     );
-    expect(LOADING_TARGETS).toBe("Loading targets…");
+  });
+
+  it("states why a bulk deploy cannot run yet", () => {
+    expect(TARGETS_LOADING).toBe("targets still loading");
+    expect(NO_TOOL_DETECTED_CAUSE).toBe("no tool detected");
+  });
+
+  it("states why a bulk remove cannot run yet", () => {
+    expect(TARGETS_STILL_CHECKING).toBe("checks still running");
+    expect(NO_TARGET_REMOVABLE).toBe("no target can be removed");
   });
 
   it("heads the hover card with the reach, in zero, one and many", () => {

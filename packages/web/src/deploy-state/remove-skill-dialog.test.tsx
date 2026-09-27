@@ -110,10 +110,10 @@ describe("RemoveSkillDialog", () => {
     );
   });
 
-  it("names the primitive's type beside the question", () => {
+  it("drops the type word beside the title", () => {
     renderDialog();
 
-    expect(screen.getByText("Skill")).toBeInTheDocument();
+    expect(screen.queryByText("Skill")).toBeNull();
   });
 
   describe("its ledger of targets", () => {
@@ -274,15 +274,17 @@ describe("RemoveSkillDialog", () => {
     expect(alert).not.toHaveTextContent(/mixed state/i);
   });
 
-  it("offers close and retry once a removal has failed", () => {
+  it("offers close and the same confirm once a removal has failed", () => {
     renderDialog({ error: FAILURE });
 
-    expect(screen.getByRole("button", { name: "Close" })).toBeEnabled();
     expect(
-      screen.getByRole("button", { name: "Confirm removal" }),
+      screen.getAllByRole("button", { name: "Close" }).at(-1),
     ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Remove skill" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Remove skill" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Confirm removal" }),
+    ).toBeNull();
   });
 
   it("re-fires the same removal from retry", async () => {
@@ -290,9 +292,7 @@ describe("RemoveSkillDialog", () => {
       error: FAILURE,
     });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Confirm removal" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Remove skill" }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
@@ -307,7 +307,20 @@ describe("RemoveSkillDialog", () => {
       "aria-disabled",
       "true",
     );
-    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: "Close" }).at(-1),
+    ).toBeDisabled();
+  });
+
+  it("states one failure only, directly above the footer", () => {
+    renderDialog({ error: FAILURE });
+
+    const alerts = screen.getAllByRole("alert");
+    expect(alerts).toHaveLength(1);
+    const leave = screen.getAllByRole("button", { name: "Close" }).at(-1);
+    expect(alerts[0]?.compareDocumentPosition(leave as HTMLElement)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   describe("when the copy changed since the check", () => {
@@ -356,9 +369,16 @@ describe("RemoveSkillDialog", () => {
         screen.getByRole("button", { name: "Remove skill" }),
       ).toBeEnabled();
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
-      expect(
-        screen.queryByRole("button", { name: "Confirm removal" }),
-      ).toBeNull();
+    });
+
+    it("leaves the footer without a second confirm", () => {
+      renderDialog({
+        restated: RESTATED,
+        preflight: repoCheck("cannot-verify"),
+      });
+
+      const confirm = screen.getByRole("button", { name: "Remove skill" });
+      expect(screen.getByRole("alert")).toContainElement(confirm);
     });
 
     it("confirms the restated cost from that same control", async () => {
@@ -419,10 +439,9 @@ describe("RemoveSkillDialog", () => {
         { tool: "codex", state: "not-removed" },
       ],
     };
-    const rowFor = (name: string) =>
-      screen
-        .getAllByRole("listitem")
-        .find((row) => row.textContent?.includes(name)) as HTMLElement;
+    const groupOf = (name: string) =>
+      screen.getByText(name).closest("section")?.querySelector("h4")
+        ?.textContent;
 
     const renderPartialFailure = () =>
       renderDialog({
@@ -432,49 +451,26 @@ describe("RemoveSkillDialog", () => {
         outcome: partial,
       });
 
-    it("counts the targets the removal came off in the lead-in", () => {
+    it("counts the targets the removal came off in the report's heading", () => {
       renderPartialFailure();
 
       expect(
-        screen.getByText("Removed from 1 of 2 targets:"),
+        screen.getByRole("heading", {
+          level: 3,
+          name: "Removed from 1 of 2 targets",
+        }),
       ).toBeInTheDocument();
       expect(screen.queryByText("Skill will be removed from:")).toBeNull();
     });
 
-    it("dims a target the removal came off and says so in words", () => {
+    it("puts each target under its outcome, the failed one first", () => {
       renderPartialFailure();
 
-      const claude = rowFor("Claude Code");
-      expect(claude).toHaveTextContent("Removed");
-      expect(claude.className).not.toContain("bg-red-3");
-    });
-
-    it("fills a target it did not come off with danger, keeping its weight", () => {
-      renderPartialFailure();
-
-      const codex = rowFor("Codex");
-      expect(codex).toHaveTextContent("Not removed");
-      expect(codex.className).toContain("bg-red-3");
-    });
-
-    it("carries each outcome in a glyph too, so colour is never the signal", () => {
-      renderPartialFailure();
-
-      expect(rowFor("Claude Code").textContent).toContain("✓");
-      expect(rowFor("Codex").textContent).toContain("✕");
-    });
-
-    it("keeps the row order the ledger showed before the user confirmed", () => {
-      renderDialog({
-        target: { kind: "global", tools: ["codex", "claude"] },
-        preflight: cleanTools("claude", "codex"),
-        error: FAILED,
-        outcome: partial,
-      });
-
+      expect(groupOf("Codex")).toBe("✕Not removed1");
+      expect(groupOf("Claude Code")).toBe("✓Removed1");
       expect(
         screen.getAllByRole("listitem").map((row) => row.textContent),
-      ).toEqual(["Codex✕ Not removed", "Claude Code✓ Removed"]);
+      ).toEqual(["Codex", "Claude Code"]);
     });
 
     it("never reads a target the probe could not answer for as removed", () => {
@@ -483,9 +479,7 @@ describe("RemoveSkillDialog", () => {
         outcome: { scope: "repo", state: "unknown" },
       });
 
-      const row = rowFor(REPO_TARGET.repoPath);
-      expect(row).not.toHaveTextContent(/✓/);
-      expect(row).toHaveTextContent("Outcome unknown");
+      expect(groupOf(REPO_TARGET.repoPath)).toBe("⚠Outcome unknown1");
     });
 
     it("renders the error block alone when the failure proved nothing", () => {
@@ -496,7 +490,7 @@ describe("RemoveSkillDialog", () => {
       expect(screen.queryByText(/removal targets/i)).toBeNull();
     });
 
-    it("drops a leftover row the report could not answer for", () => {
+    it("drops a leftover copy the report could not answer for", () => {
       renderDialog({
         target: globalTarget,
         preflight: toolChecks({ claude: "none", codex: "none" }, [
@@ -506,9 +500,9 @@ describe("RemoveSkillDialog", () => {
         outcome: partial,
       });
 
-      expect(
-        screen.getAllByRole("listitem").map((row) => row.textContent),
-      ).toEqual(["Claude Code✓ Removed", "Codex✕ Not removed"]);
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(
+        "/Users/me/.claude/skills/tdd",
+      );
     });
 
     it("drops the cost it named before the attempt", () => {
@@ -519,17 +513,17 @@ describe("RemoveSkillDialog", () => {
         outcome: partial,
       });
 
-      expect(screen.getByRole("dialog")).not.toHaveTextContent(/local edits/i);
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(
+        /may lose work/i,
+      );
     });
 
-    it("announces the outcome, so it is not seen only by those who can see it", () => {
+    it("still offers the same confirm beside the report", () => {
       renderPartialFailure();
 
       expect(
-        within(
-          screen.getByRole("status", { name: "Removal targets" }),
-        ).getByText(/Not removed/),
-      ).toBeInTheDocument();
+        screen.getByRole("button", { name: "Remove skill" }),
+      ).toBeEnabled();
     });
   });
 
@@ -624,12 +618,6 @@ describe("RemoveSkillDialog", () => {
       );
     });
 
-    it("warms the panel outline while a row states a cost", () => {
-      renderDialog({ preflight: repoCheck("cannot-verify") });
-
-      expect(screen.getByRole("dialog").className).toContain("border-amber-7");
-    });
-
     it("keeps the neutral outline once every row came back clean", () => {
       renderDialog({ preflight: repoCheck("none") });
 
@@ -673,7 +661,7 @@ describe("RemoveSkillDialog", () => {
       const { onConfirm } = renderDialog({ preflight: CHECKING });
 
       const confirm = screen.getByRole("button", { name: /^remove/i });
-      expect(confirm).toBeDisabled();
+      expect(confirm).toHaveAttribute("aria-disabled", "true");
       await userEvent.click(confirm);
       expect(onConfirm).not.toHaveBeenCalled();
     });
@@ -684,30 +672,22 @@ describe("RemoveSkillDialog", () => {
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     });
 
-    it("says it is still running instead of staying silent", () => {
+    it("names the check as the confirm's cause", () => {
       renderDialog({ preflight: CHECKING });
 
       expect(
-        screen.getByRole("status", { name: /local edits check/i }),
-      ).toHaveTextContent(/checking/i);
-    });
-
-    it("states beside the confirm control why it is unavailable", () => {
-      renderDialog({ preflight: CHECKING });
-
-      const confirm = screen.getByRole("button", { name: /^remove/i });
-      expect(confirm).toBeDisabled();
-      expect(confirm.getAttribute("aria-describedby")).toBe(
-        screen.getByRole("status", { name: /local edits check/i }).id,
-      );
+        screen.getByRole("button", {
+          name: "Remove skill — checking for local edits",
+        }),
+      ).toBeInTheDocument();
     });
 
     it("says nothing about the check once it has answered", () => {
       renderDialog({ preflight: repoCheck("none") });
 
       expect(
-        screen.queryByRole("status", { name: /local edits check/i }),
-      ).toBeNull();
+        screen.getByRole("button", { name: "Remove skill" }),
+      ).not.toHaveAttribute("aria-disabled");
     });
   });
 
@@ -924,18 +904,22 @@ describe("RemoveSkillDialog", () => {
       expect(screen.queryByRole("button", { name: /remove/i })).toBeNull();
     });
 
-    it("leaves exactly one control in the footer, labelled close", () => {
+    it("leaves exactly one control in the footer", () => {
       renderDialog({ preflight: refused });
 
-      // The backdrop's dismiss button is hidden from the a11y tree.
       const controls = screen.getAllByRole("button");
-      expect(controls.map((control) => control.textContent)).toEqual(["Close"]);
+      expect(controls.map((control) => control.textContent)).toEqual([
+        "",
+        "Close",
+      ]);
     });
 
     it("closes through the one control it leaves", async () => {
       const { onCancel } = renderDialog({ preflight: refused });
 
-      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+      await userEvent.click(
+        screen.getAllByRole("button", { name: "Close" }).at(-1) as HTMLElement,
+      );
 
       expect(onCancel).toHaveBeenCalledTimes(1);
     });
@@ -960,12 +944,6 @@ describe("RemoveSkillDialog", () => {
       ).not.toHaveAttribute("aria-hidden");
     });
 
-    it("carries the refusal in the panel's own outline", () => {
-      renderDialog({ preflight: refused });
-
-      expect(screen.getByRole("dialog").className).toContain("border-red-7");
-    });
-
     it("describes itself with the refusal, now that it is the whole panel", () => {
       renderDialog({ preflight: refused });
 
@@ -981,18 +959,6 @@ describe("RemoveSkillDialog", () => {
         /deploy it again/i,
       );
     });
-  });
-
-  it("keeps the neutral panel outline while the removal is still on offer", () => {
-    renderDialog();
-
-    expect(screen.getByRole("dialog").className).not.toContain("-red-");
-  });
-
-  it("carries a failed removal in the panel's own outline", () => {
-    renderDialog({ error: FAILURE });
-
-    expect(screen.getByRole("dialog").className).toContain("border-red-7");
   });
 
   describe("on the global target", () => {
@@ -1089,14 +1055,6 @@ describe("RemoveSkillDialog", () => {
 
         expect(screen.getByRole("dialog")).not.toHaveTextContent(
           /this also deletes/i,
-        );
-      });
-
-      it("warms the panel outline while a leftover row is on the ledger", () => {
-        renderWithLeftover();
-
-        expect(screen.getByRole("dialog").className).toContain(
-          "border-amber-7",
         );
       });
 

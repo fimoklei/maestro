@@ -1,5 +1,10 @@
-import { ACTIONS } from "../ui/busy-copy";
+import type { ActionKey } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
+import {
+  ADVISORY_TEXT,
+  IMPORT_UNAVAILABLE,
+  skillChecksNotice,
+} from "./dialog-copy";
 import { importBlockerNotice } from "./notice-copy";
 import type {
   ImportCheck,
@@ -7,6 +12,14 @@ import type {
   ImportSourceBlocker,
   ManifestAdvisory,
 } from "./use-harness";
+
+// The check travels with its loading and error states so the modal stays
+// mounted across them — a focus trap that unmounts loses the author's place.
+export type ImportCheckLoad =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "error"; notice: NoticeContent }
+  | { kind: "ready"; check: ImportCheck };
 
 // Beside the picked folder the way through is to pick again, not to import, so
 // only the two rows whose table sentence sends the author to Import skill are
@@ -16,13 +29,6 @@ const SOURCE_BLOCKER_TEXT: Partial<Record<ImportSourceBlocker, string>> = {
     "Fix the SKILL.md frontmatter, then pick the folder again.",
   "empty-description":
     "Fill in the description in SKILL.md, then pick the folder again.",
-};
-
-// Reported, never blocking: a convention exceeded costs readability, not
-// correctness.
-const ADVISORY_TEXT: Record<ManifestAdvisory, string> = {
-  "long-manifest": "SKILL.md is over 500 lines.",
-  "long-description": "The description is over 1,024 characters.",
 };
 
 export const sourceBlockerNotice = (
@@ -42,7 +48,7 @@ export const nameBlockerNotice = (
 // No check in hand reads as adding, which is what the dialog opens on.
 export const importLabels = (
   check: ImportCheck | undefined,
-): { title: string; confirm: string; busy: string; hint: string } =>
+): { title: string; confirm: string; verb: ActionKey; hint: string } =>
   check?.mode === "update"
     ? {
         title:
@@ -50,23 +56,36 @@ export const importLabels = (
             ? "No changes to update"
             : "Update a skill",
         confirm: "Update skill",
-        busy: ACTIONS.update.busy,
+        verb: "update",
         hint: "Updating replaces the skill folder in the Harness.",
       }
     : {
         title: "Import a skill",
         confirm: "Import skill",
-        busy: ACTIONS.import.busy,
+        verb: "import",
         hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
       };
 
-export const advisoryTexts = (
+// A convention exceeded costs readability, not correctness.
+export const advisoryNotice = (
   advisories: readonly ManifestAdvisory[],
-): string[] => advisories.map((advisory) => ADVISORY_TEXT[advisory]);
+  mode: ImportCheck["mode"],
+): NoticeContent | null =>
+  advisories.length === 0
+    ? null
+    : skillChecksNotice(
+        mode === "update" ? "update" : "import",
+        advisories.map((advisory) => ADVISORY_TEXT[advisory]),
+      );
 
-// Open only on a check that came back clean: no check in hand is not a refusal
-// Maestro has made, and pressing on one would import something unjudged.
-export const importEnabled = (check: ImportCheck | undefined): boolean =>
-  check !== undefined &&
-  check.sourceBlocker === null &&
-  check.nameBlocker === null;
+// Available only on a check that came back clean: no check in hand is not a
+// refusal Maestro has made, and pressing on one would import something
+// unjudged.
+export function importUnavailable(load: ImportCheckLoad): string | null {
+  if (load.kind === "idle") return IMPORT_UNAVAILABLE.idle;
+  if (load.kind === "loading") return IMPORT_UNAVAILABLE.loading;
+  if (load.kind === "error") return IMPORT_UNAVAILABLE.error;
+  if (load.check.sourceBlocker !== null) return IMPORT_UNAVAILABLE.source;
+  if (load.check.nameBlocker !== null) return IMPORT_UNAVAILABLE.name;
+  return null;
+}
