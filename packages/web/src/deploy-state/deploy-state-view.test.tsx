@@ -428,7 +428,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
 
     expect(
       await screen.findByText(
-        "Newer release v0.3.4 changes 2 of 5 skills: tdd.",
+        "New release available: v0.3.4. 2 of 5 deployed skills changed: tdd.",
       ),
     ).toBeInTheDocument();
     expect(

@@ -21,9 +21,10 @@ export function releaseSentence(head: ReleaseHead): string | null {
   if (head.latestRelease === head.release) {
     return null;
   }
+  const available = `New release available: ${head.latestRelease}.`;
   return head.changed === null
-    ? `Newer release ${head.latestRelease}. Changes could not be read.`
-    : `Newer release ${head.latestRelease} changes ${head.changed} of ${head.selected} skills${
+    ? `${available} Changes could not be read.`
+    : `${available} ${head.changed} of ${head.selected} deployed skills changed${
         head.changedSkills?.length ? `: ${joinNames(head.changedSkills)}` : ""
       }.`;
 }

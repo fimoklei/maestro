@@ -30,22 +30,24 @@ const head = (over: Partial<ReleaseHead> = {}): ReleaseHead => ({
 describe("releaseSentence", () => {
   it("names the newer release, how much of the selection it changes, and which skills", () => {
     expect(releaseSentence(head({ changedSkills: ["tdd", "grill"] }))).toBe(
-      "Newer release v0.3.4 changes 2 of 5 skills: tdd and grill.",
+      "New release available: v0.3.4. 2 of 5 deployed skills changed: tdd and grill.",
     );
     expect(
       releaseSentence(head({ changed: 1, changedSkills: ["workflow-ship"] })),
-    ).toBe("Newer release v0.3.4 changes 1 of 5 skills: workflow-ship.");
+    ).toBe(
+      "New release available: v0.3.4. 1 of 5 deployed skills changed: workflow-ship.",
+    );
   });
 
   it("still names a release that changes nothing selected", () => {
     expect(releaseSentence(head({ changed: 0, changedSkills: [] }))).toBe(
-      "Newer release v0.3.4 changes 0 of 5 skills.",
+      "New release available: v0.3.4. 0 of 5 deployed skills changed.",
     );
   });
 
   it("says the changes could not be read rather than counting them", () => {
     expect(releaseSentence(head({ changed: null }))).toBe(
-      "Newer release v0.3.4. Changes could not be read.",
+      "New release available: v0.3.4. Changes could not be read.",
     );
   });
 
