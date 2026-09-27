@@ -19,7 +19,7 @@ import {
 import { targetRowItems } from "./target-menu";
 import { statusSummary, type TargetRow } from "./target-rows";
 
-export type TargetAction = "deploy" | "update" | "retry";
+export type TargetAction = "deploy" | "update" | "retry" | "import";
 
 export type TargetTableRow = TargetRow & {
   /** The ⋮ menu's items, in order; the pane's foot offers the same. */

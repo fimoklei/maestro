@@ -3,6 +3,7 @@ import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import {
   deployErrorResponses,
+  importLocalEditsErrorResponses,
   removeErrorResponses,
   removePreflightErrorResponses,
   retryOperationErrorResponses,
@@ -18,6 +19,10 @@ import {
   bulkDeployBodySchema,
   bulkRemoveBodySchema,
   deployBodySchema,
+  IMPORT_LOCAL_EDITS_BODY,
+  IMPORT_LOCAL_EDITS_CHECK_BODY,
+  importLocalEditsBodySchema,
+  importLocalEditsCheckBodySchema,
   parseBody,
   removeBodySchema,
   retryOperationBodySchema,
@@ -48,6 +53,7 @@ type Deps = Pick<
   | "registry"
   | "deployState"
   | "deploy"
+  | "importLocalEdits"
   | "remove"
   | "update"
   | "retryOperation"
@@ -257,6 +263,42 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       );
     }
     return c.json({ completed: result.completed });
+  });
+
+  // Read-only despite the POST. Core checks registry membership before any read.
+  app.post("/api/deploy/import-local-edits/check", async (c) => {
+    const body = await parseBody(
+      c,
+      importLocalEditsCheckBodySchema,
+      IMPORT_LOCAL_EDITS_CHECK_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importLocalEdits.check(body.data.target);
+    if (!result.ok) {
+      const { status } = importLocalEditsErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ skills: result.skills });
+  });
+
+  // A per-skill refusal is data in the 200, never an HTTP error.
+  app.post("/api/deploy/import-local-edits", async (c) => {
+    const body = await parseBody(
+      c,
+      importLocalEditsBodySchema,
+      IMPORT_LOCAL_EDITS_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importLocalEdits.execute(body.data);
+    if (!result.ok) {
+      const { status } = importLocalEditsErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ outcomes: result.outcomes });
   });
 
   // Always 200 with a report: a per-skill refusal is data, not an HTTP error.

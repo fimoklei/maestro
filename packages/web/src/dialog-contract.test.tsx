@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ImportLocalEditsDialog } from "./deploy-state/import-local-edits-dialog";
 import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog } from "./harness/deletion-dialog";
@@ -231,6 +232,23 @@ const ON_DIALOG: Row[] = [
         }}
         isRemoving={running}
         report={null}
+        onCancel={onClose}
+        onConfirm={vi.fn()}
+      />
+    ),
+  },
+  {
+    file: "deploy-state/import-local-edits-dialog.tsx",
+    heading: "Import local edits from …/me/project",
+    render: ({ running, onClose }) => (
+      <ImportLocalEditsDialog
+        targetName="…/me/project"
+        skills={[{ name: "tdd", refusal: null }]}
+        checked={new Set(["tdd"])}
+        onToggle={vi.fn()}
+        isRunning={running}
+        outcomes={null}
+        failure={null}
         onCancel={onClose}
         onConfirm={vi.fn()}
       />

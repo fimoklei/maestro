@@ -39,6 +39,7 @@ import {
   targetCount,
 } from "./deploy-state-copy";
 import { freshnessLine } from "./freshness-line";
+import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { TargetDetailPane } from "./target-detail-pane";
 import {
@@ -117,18 +118,19 @@ export function DeployStateView() {
     () =>
       (location.state as { openTarget?: string } | null)?.openTarget ?? null,
   );
+  // The dialog a menu item asked the pane's foot to open.
   const [intent, setIntent] = useState<{
-    update: boolean;
+    dialog: TargetDialog;
     nonce: number;
   } | null>(null);
   const [order, setOrder] = useState<string[]>([]);
   const gridRef = useRef<HTMLTableElement>(null);
   const getTriggerElement = useCallback(() => gridRef.current, []);
 
-  const open = useCallback((id: string | null, update = false) => {
+  const open = useCallback((id: string | null, dialog: TargetDialog = null) => {
     setSelected(id);
     setIntent((current) =>
-      id === null ? null : { update, nonce: (current?.nonce ?? 0) + 1 },
+      id === null ? null : { dialog, nonce: (current?.nonce ?? 0) + 1 },
     );
   }, []);
 
@@ -164,7 +166,7 @@ export function DeployStateView() {
         navigate("/inventory");
         return;
       }
-      open(row.id, action === "update");
+      open(row.id, action === "update" || action === "import" ? action : null);
       if (action === "retry") retry.mutate({ target: row.wire });
     },
     [navigate, open, retry],
@@ -388,7 +390,7 @@ export function DeployStateView() {
               onPage={(step) => open(order[openIndex + step] ?? selected)}
               onClose={() => open(null)}
               getTriggerElement={getTriggerElement}
-              initialFocus={intent?.update ? null : undefined}
+              initialFocus={intent?.dialog ? null : undefined}
               onRetry={() => retry.mutate({ target: selectedRow.wire })}
               isRetrying={retrying(selectedRow.wire)}
               onReread={reread}
@@ -397,7 +399,7 @@ export function DeployStateView() {
                 <TargetActions
                   key={`${selectedRow.id}:${intent?.nonce ?? 0}`}
                   row={selectedRow}
-                  openUpdate={intent?.update ?? false}
+                  dialog={intent?.dialog ?? null}
                   items={targetRowItems(selectedRow, onAction)}
                 />
               }
@@ -409,21 +411,32 @@ export function DeployStateView() {
   );
 }
 
+type TargetDialog = "update" | "import" | null;
+
 // The pane's foot. It owns the Update mutation, so the dialog stays mounted
 // through the run and keeps its outcome (#980).
 function TargetActions({
   row,
-  openUpdate,
+  dialog,
   items,
 }: {
   row: TargetRow;
-  openUpdate: boolean;
+  dialog: TargetDialog;
   items: FootItem[];
 }) {
   const update = useUpdateTarget();
+  const openUpdate = dialog === "update";
+  const [importing, setImporting] = useState(dialog === "import");
   return (
     <>
       <FootActions items={items} />
+      {importing ? (
+        <ImportLocalEditsAction
+          targetName={row.updateName}
+          target={row.wire}
+          onClose={() => setImporting(false)}
+        />
+      ) : null}
       {openUpdate ||
       update.isPending ||
       update.data !== undefined ||

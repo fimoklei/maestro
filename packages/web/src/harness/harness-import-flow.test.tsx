@@ -149,6 +149,19 @@ async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Harness import flow", () => {
+  it("opens the skill Import local edits… landed, as its Pending proposal", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(IMPORTED_HARNESS)),
+    );
+    renderWithQuery(<HarnessView openSkill="code-review" />);
+
+    const pane = await screen.findByRole("complementary", {
+      name: "code-review detail",
+    });
+    expect(within(pane).getByText("Pending proposal")).toBeInTheDocument();
+  });
+
   it("imports the picked folder, closes, and opens the new row in its pane", async () => {
     const { imports } = stubImportServer({});
     const user = userEvent.setup();

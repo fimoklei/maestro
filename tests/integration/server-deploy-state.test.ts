@@ -17,7 +17,7 @@ import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubFolderChooser } from "../helpers/stub-folder-chooser";
 import { stubHarness } from "../helpers/stub-harness";
-import { stubImport } from "../helpers/stub-import";
+import { stubImports } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
@@ -46,7 +46,7 @@ describe("deploy-state HTTP route", () => {
     const deployState = stubDeployState({ fs, githubPage });
     const locks = new InFlightLocks();
     const app = createApp({
-      importSkill: stubImport(),
+      ...stubImports(),
       registry,
       inventory,
       deployState,
