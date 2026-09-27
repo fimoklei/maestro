@@ -34,6 +34,12 @@
       "correctness": {
         "noUndeclaredDependencies": "error"
       },
+      "suspicious": {
+        "noExplicitAny": "error"
+      },
+      "nursery": {
+        "useExhaustiveSwitchCases": "error"
+      },
       "style": {
         "useFilenamingConvention": {
           "level": "error",

@@ -63,6 +63,7 @@ in `~/.maestro/config.json`.
 ## Behavioral Rules
 
 ### When touching package boundaries (core/server/web) → Read `.claude/rules/architecture.md`
+### When designing a new module, port or interface → Use the `codebase-design` skill and read `.claude/rules/architecture.md`
 ### When writing tests → Read `.claude/rules/testing.md`
 ### When writing or trimming a code comment → Read `.claude/rules/comments.md`
 ### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
