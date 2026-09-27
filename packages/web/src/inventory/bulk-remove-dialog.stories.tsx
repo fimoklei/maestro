@@ -95,9 +95,10 @@ export const OutcomeUnknown: Story = {
 export const ReportClean: Story = {
   args: {
     report: {
-      kind: "clean",
-      title: { before: "Removed ", after: "" },
-      counts: "removed 4 · refused 0 · failed 0",
+      kind: "report",
+      heading: "Removed from 4 targets",
+      removed: ["global", "/dev/acme-web", "/dev/acme-api", "/dev/legacy-etl"],
+      leftAlone: [],
     },
   },
 };
@@ -105,9 +106,9 @@ export const ReportClean: Story = {
 export const ReportPartial: Story = {
   args: {
     report: {
-      kind: "partial",
-      title: { before: "Removed ", after: " from 2 of 4" },
-      counts: "removed 2 · refused 1 · failed 1",
+      kind: "report",
+      heading: "Removed from 2 of 4 targets",
+      removed: ["global", "/dev/acme-web"],
       leftAlone: [
         {
           label: "/dev/acme-api",
