@@ -301,7 +301,7 @@ describe("Harness freshness and failed reads", () => {
     );
   });
 
-  it("names the bound a review read filled, beside its age", async () => {
+  it("names the bound a review read filled, without its age", async () => {
     stubHarnessServer({
       read: {
         body: {
@@ -325,9 +325,7 @@ describe("Harness freshness and failed reads", () => {
     renderHarness();
 
     expect(
-      await screen.findByText(
-        "Read the 50 most recent pull requests, 4 min ago",
-      ),
+      await screen.findByText("Read the 50 most recent pull requests"),
     ).toBeInTheDocument();
   });
 });

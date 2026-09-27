@@ -175,7 +175,7 @@ export function HarnessView() {
     !refresh.isPending &&
     !harness.isFetching &&
     presses.deleteLocal.isPending === false;
-  const sections = state === undefined ? [] : stageSections(state, now);
+  const sections = state === undefined ? [] : stageSections(state);
   const rows: HarnessTableRow[] =
     state === undefined
       ? []
@@ -462,7 +462,7 @@ function groupMeta(section: StageSection | undefined) {
   return section.read.outcome === "read" ? (
     section.meta
   ) : (
-    <StatusBadge reading={reading(section.meta, "unknown")} />
+    <StatusBadge reading={reading(section.meta ?? "", "unknown")} />
   );
 }
 
@@ -470,7 +470,7 @@ function groupMeta(section: StageSection | undefined) {
 function groupMessage(section: StageSection | undefined, reread: () => void) {
   if (section === undefined) return null;
   if (section.read.outcome !== "read") {
-    const notice = stageReadNotice(section.read, section.meta, reread);
+    const notice = stageReadNotice(section.read, section.meta ?? "", reread);
     return notice === null ? null : (
       <>
         <span className="font-medium text-gray-12">{notice.message}</span>
