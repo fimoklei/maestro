@@ -10,7 +10,7 @@ Where each kind of code lives. Package shape fixed by ADR-0002.
 
 Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` depends on nothing else in this repo.
 
-**`web` may import types from `core` — types only.** Write `import type`; never copy a `core` type into `web`. Importing a *value* is forbidden: call `server` instead.
+**`web` imports `core` types; it never copies them.** A value comes from `server` over HTTP.
 
 ## Ports & adapters
 

@@ -2,8 +2,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Agentation } from "agentation";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App";
 import { createQueryClient } from "./api/query-client";
+import { App } from "./app";
 // The token layer; index.html stamps data-theme on <html> before first paint.
 import "./styles/theme.css";
 

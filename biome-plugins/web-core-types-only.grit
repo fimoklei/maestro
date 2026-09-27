@@ -1,0 +1,6 @@
+language js
+
+`import $_ from "@maestro/core"` as $import where {
+  not $import <: r"import\s+type\s[\s\S]*",
+  register_diagnostic(span=$import, message="Web imports only types from @maestro/core. Write import type, or call the server.")
+}

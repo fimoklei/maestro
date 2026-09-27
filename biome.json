@@ -33,6 +33,29 @@
       "preset": "recommended",
       "correctness": {
         "noUndeclaredDependencies": "error"
+      },
+      "style": {
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "filenameCases": ["kebab-case"],
+            "requireAscii": true
+          }
+        },
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "node:child_process": {
+                "importNames": ["exec", "execSync"],
+                "message": "Start a process with execFile or spawn and an args array."
+              },
+              "child_process": {
+                "message": "Import node:child_process."
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -43,5 +66,12 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/web/src/**"],
+      "plugins": ["./biome-plugins/web-core-types-only.grit"]
+    }
+  ],
+  "plugins": ["./biome-plugins/no-shell-true.grit"]
 }
