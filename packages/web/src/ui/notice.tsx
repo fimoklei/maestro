@@ -19,13 +19,11 @@ type NoticeBase = {
   detail?: string;
 };
 
-// The union is the enforcement: a warning cannot compile without the
-// consequence it costs stated as something the user can do.
-export type NoticeContent = NoticeBase &
-  (
-    | { level: "info" | "success" | "error"; action?: NoticeAction }
-    | { level: "warning"; action: NoticeAction }
-  );
+// A warning may omit its action where the reader can continue without one.
+export type NoticeContent = NoticeBase & {
+  level: NoticeLevel;
+  action?: NoticeAction;
+};
 
 type NoticeBaseProps = {
   notice: NoticeContent | null;

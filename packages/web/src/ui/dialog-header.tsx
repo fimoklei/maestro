@@ -3,10 +3,13 @@ import { IconButton } from "./icon-button";
 
 export function DialogHeader({
   title,
+  version = null,
   onClose,
   busy = false,
 }: {
   title: string;
+  /** The one mono part, appended to the title. */
+  version?: string | null;
   onClose: () => void;
   /** The action runs: closing waits, as Escape and the backdrop do. */
   busy?: boolean;
@@ -15,6 +18,12 @@ export function DialogHeader({
     <div className="flex h-12 shrink-0 items-center justify-between gap-inline border-edge border-b pr-cell pl-panel">
       <h2 className="m-0 truncate font-semibold font-ui text-gray-12 text-heading">
         {title}
+        {version === null ? null : (
+          <>
+            {" "}
+            <span className="font-mono">{version}</span>
+          </>
+        )}
       </h2>
       <IconButton
         label="Close"

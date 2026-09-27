@@ -303,4 +303,20 @@ describe("Notice", () => {
       />;
     });
   });
+  // An advisory warning: the reader can continue, so there is nothing to press.
+  it("states a warning that carries no action", () => {
+    render(
+      <Notice
+        trigger="load"
+        notice={{
+          level: "warning",
+          label: "Skill checks found issues",
+          message: "You can still import this skill.",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("⚠");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
 });

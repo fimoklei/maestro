@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { NoticeContent } from "../ui/notice";
 import { RestoreDialog } from "./restore-dialog";
@@ -35,6 +35,18 @@ describe("RestoreDialog", () => {
     expect(
       screen.getByRole("button", { name: "Restore skill" }),
     ).toBeInTheDocument();
+  });
+
+  // A restore throws away uncommitted work: it is confirmed like a deletion.
+  it("confirms with a danger button and opens on Cancel", async () => {
+    renderDialog();
+
+    expect(screen.getByRole("button", { name: "Restore skill" })).toHaveClass(
+      "text-red-11",
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
   });
 
   it("says where the folder comes from and what it will not bring back", () => {

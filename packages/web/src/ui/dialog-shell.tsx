@@ -40,6 +40,8 @@ export interface DialogShellProps {
   closeEnabled?: boolean;
   /** Focus opens on `DIALOG_CANCEL`, so Enter never confirms by accident. */
   destructive?: boolean;
+  /** Focus opens in the first enabled field, where there is one. */
+  focusField?: boolean;
   /** A field has been typed in — a click outside must not discard that work. */
   fieldsChanged?: boolean;
   children: ReactNode;
@@ -54,6 +56,7 @@ export function DialogShell({
   onClose,
   closeEnabled = true,
   destructive = false,
+  focusField = false,
   fieldsChanged = false,
   children,
 }: DialogShellProps) {
@@ -82,12 +85,16 @@ export function DialogShell({
             // or on a confirm reads its body to nobody. The one exception is
             // the destructive one, where Cancel is the safe landing.
             event.preventDefault();
-            const cancel = destructive
-              ? panelRef.current?.querySelector<HTMLElement>(
-                  "[data-dialog-cancel]",
-                )
-              : null;
-            (cancel ?? panelRef.current)?.focus();
+            const target = destructive
+              ? "[data-dialog-cancel]"
+              : focusField
+                ? "input:not([disabled]), textarea:not([disabled]), select:not([disabled])"
+                : null;
+            const landing =
+              target === null
+                ? null
+                : panelRef.current?.querySelector<HTMLElement>(target);
+            (landing ?? panelRef.current)?.focus();
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
