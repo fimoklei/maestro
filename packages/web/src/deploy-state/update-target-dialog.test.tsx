@@ -244,7 +244,7 @@ describe("UpdateTargetDialog", () => {
     });
 
     const keep = screen.getByText(
-      "To keep the edits instead, select Cancel, then Import skill… on the Harness screen.",
+      "To keep the edits instead, select Cancel, then Import local edits….",
     );
     // Cause first, then the step: the consent precedes the way out.
     const consent = screen.getByRole("checkbox", {
