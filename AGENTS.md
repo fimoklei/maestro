@@ -26,9 +26,11 @@ lives in `docs/operating-model.md`.
 - **Docs: condense rather than expand**; drift toward feature lists is the
   failure mode. Before calling doc work done, check the touched docs against
   the conflict rule in `docs/operating-model.md`.
-- A task about the inventory, bundles, deployed primitives or APM manifests may
-  belong in `agent-harness`, the separate inventory repo (its path is
-  `inventoryPath` in `~/.maestro/config.json`).
+- Change a skill, hook or other deployed primitive in its deployed copy
+  (`~/.claude/…`, `~/.agents/…` or the consuming repo); Maestro's **Propose
+  change** carries it to the inventory repo (`inventoryPath` in
+  `~/.maestro/config.json`). Edit the inventory repo directly only for a task
+  about the inventory itself: bundles or APM manifests.
 
 ## Commands
 
