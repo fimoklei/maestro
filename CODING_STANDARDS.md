@@ -6,7 +6,7 @@ without `paths:`. Cite the file and the rule.
 
 ## Adding a rule
 
-A rule a linter, a script or a test can check becomes that check
-(`scripts/comment-guard.mjs` is the model). A rule file holds only judgement
-calls. Scope a new rule file with `paths:`; `pnpm rules-guard` fails a pattern
+For a rule a linter, a script or a test can check, propose that check
+(`scripts/comment-guard.mjs` is the model) and add it once the owner approves.
+A rule file holds only judgement calls. Scope a new rule file with `paths:`; `pnpm rules-guard` fails a pattern
 that matches no file.
