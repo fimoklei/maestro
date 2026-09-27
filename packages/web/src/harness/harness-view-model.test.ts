@@ -136,7 +136,6 @@ describe("releaseEnabled", () => {
 });
 
 describe("stageSections", () => {
-  const NOW = new Date("2026-08-03T12:00:00.000Z");
   const READ_AT = "2026-08-03T11:56:00.000Z";
 
   const state = (stages: Partial<HarnessState["stages"]>): HarnessState => ({
@@ -172,10 +171,10 @@ describe("stageSections", () => {
   });
 
   const metaOf = (built: HarnessState, stage: string) =>
-    stageSections(built, NOW).find((section) => section.stage === stage)?.meta;
+    stageSections(built).find((section) => section.stage === stage)?.meta;
 
   it("puts the three stages in journey order", () => {
-    expect(stageSections(state({}), NOW).map((each) => each.title)).toEqual([
+    expect(stageSections(state({})).map((each) => each.title)).toEqual([
       "Pending proposal",
       "Pending review",
       "Pending release",
@@ -192,7 +191,7 @@ describe("stageSections", () => {
     });
 
     expect(metaOf(built, "pending-proposal")).toBe(
-      "Compared with pull request #412, read 4 min ago",
+      "Compared with pull request #412",
     );
   });
 
@@ -205,9 +204,7 @@ describe("stageSections", () => {
       },
     });
 
-    expect(metaOf(built, "pending-proposal")).toBe(
-      "Compared with main, read 4 min ago",
-    );
+    expect(metaOf(built, "pending-proposal")).toBe("Compared with main");
   });
 
   it("asserts no single comparison when the rows disagree", () => {
@@ -223,18 +220,13 @@ describe("stageSections", () => {
     });
 
     expect(metaOf(built, "pending-proposal")).toBe(
-      "Compared with each skill's proposal or main, read 4 min ago",
+      "Compared with each skill's proposal or main",
     );
   });
 
-  it("dates a stage with no rows without naming a comparison", () => {
-    expect(metaOf(state({}), "pending-proposal")).toBe("Read 4 min ago");
-  });
-
-  it("names where the review facts came from, and when", () => {
-    expect(metaOf(state({}), "pending-review")).toBe(
-      "Read from GitHub 4 min ago",
-    );
+  it("leaves a routine read without a meta line", () => {
+    expect(metaOf(state({}), "pending-proposal")).toBeNull();
+    expect(metaOf(state({}), "pending-review")).toBeNull();
   });
 
   it("names the bound a review read filled", () => {
@@ -243,33 +235,7 @@ describe("stageSections", () => {
     });
 
     expect(metaOf(built, "pending-review")).toBe(
-      "Read the 100 most recent pull requests, 4 min ago",
-    );
-  });
-
-  it("names the bound a review read filled seconds ago", () => {
-    const built = {
-      ...state({ review: { outcome: "read", bound: 50, rows: [] } }),
-      freshness: {
-        outcome: "fetched" as const,
-        lastFetchedAt: "2026-08-03T11:59:40.000Z",
-      },
-    };
-
-    expect(metaOf(built, "pending-review")).toBe(
-      "Read the 50 most recent pull requests, just now",
-    );
-  });
-
-  it("names the bound without a date when no read has ever landed", () => {
-    const built = {
-      ...state({ review: { outcome: "read", bound: 50, rows: [] } }),
-      freshness: { outcome: null, lastFetchedAt: null },
-      localHeadCommit: "local-head",
-    };
-
-    expect(metaOf(built, "pending-review")).toBe(
-      "Read the 50 most recent pull requests",
+      "Read the 100 most recent pull requests",
     );
   });
 
@@ -283,9 +249,7 @@ describe("stageSections", () => {
   });
 
   it("names the release Pending release was compared with", () => {
-    expect(metaOf(state({}), "pending-release")).toBe(
-      "Compared with v1.4.0, read 4 min ago",
-    );
+    expect(metaOf(state({}), "pending-release")).toBe("Compared with v1.4.0");
   });
 
   it("replaces the whole slot when a local stage could not be read", () => {

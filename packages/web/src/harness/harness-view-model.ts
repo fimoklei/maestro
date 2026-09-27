@@ -64,19 +64,14 @@ export const freshnessLabel = (
     : `${cause} — last read ${since}`;
 };
 
-// The stage header's meta slot carries exactly one reading, never two (#838).
+// The stage header's meta slot carries at most one reading, never two (#838),
+// and never a routine read age: null where a successful read has nothing to name (#1218).
 export type StageSection = {
   stage: HarnessStage;
   title: string;
-  meta: string;
+  meta: string | null;
   read: HarnessStageRead;
 };
-
-const readAge = (freshness: HarnessFreshness, now: Date): string | null =>
-  freshness.lastFetchedAt === null ? null : ago(freshness.lastFetchedAt, now);
-
-const withAge = (what: string, since: string | null): string =>
-  since === null ? what : `${what}, read ${since}`;
 
 // Which ref each row was compared against. More than one distinct answer, or a
 // prepared proposal nobody opened a request for, and the slot names both
@@ -84,13 +79,12 @@ const withAge = (what: string, since: string | null): string =>
 const proposalMeta = (
   read: HarnessStageRead,
   state: HarnessState,
-  since: string | null,
-): string => {
+): string | null => {
   if (read.outcome !== "read") {
     return "Status unknown";
   }
   if (read.rows.length === 0) {
-    return since === null ? "Not read yet" : `Read ${since}`;
+    return null;
   }
   const branch = state.defaultBranch ?? "the default branch";
   // Null for a prepared proposal with no request to name: it has no reading of
@@ -106,67 +100,52 @@ const proposalMeta = (
   );
   const [only] = [...refs];
   return refs.size === 1 && typeof only === "string"
-    ? withAge(`Compared with ${only}`, since)
-    : withAge(`Compared with each skill's proposal or ${branch}`, since);
+    ? `Compared with ${only}`
+    : `Compared with each skill's proposal or ${branch}`;
 };
 
-const reviewMeta = (read: HarnessStageRead, since: string | null): string => {
+const reviewMeta = (read: HarnessStageRead): string | null => {
   if (read.outcome === "unavailable") {
     return "Review status unavailable";
   }
   if (read.outcome === "unknown") {
     return "Review status unknown";
   }
-  // A read that filled its bound names it: it saw that much and no more. The
-  // sentence already says "Read", so the age joins it without withAge's verb.
-  if (read.bound !== null) {
-    const bounded = `Read the ${read.bound} most recent pull requests`;
-    return since === null ? bounded : `${bounded}, ${since}`;
-  }
-  return since === null ? "Not read yet" : `Read from GitHub ${since}`;
+  // A read that filled its bound names it: it saw that much and no more.
+  return read.bound === null
+    ? null
+    : `Read the ${read.bound} most recent pull requests`;
 };
 
-const releaseMeta = (
-  read: HarnessStageRead,
-  state: HarnessState,
-  since: string | null,
-): string => {
+const releaseMeta = (read: HarnessStageRead, state: HarnessState): string => {
   if (read.outcome !== "read") {
     return "Status unknown";
   }
-  return withAge(
-    state.releasedVersion === null
-      ? "Nothing released yet"
-      : `Compared with ${state.releasedVersion}`,
-    since,
-  );
+  return state.releasedVersion === null
+    ? "Nothing released yet"
+    : `Compared with ${state.releasedVersion}`;
 };
 
 // The three stages in journey order. A confirmed empty stage still comes back:
 // the view drops it, except Pending proposal, which hosts Import skill…
-export const stageSections = (
-  state: HarnessState,
-  now: Date,
-): StageSection[] => {
-  const since = readAge(state.freshness, now);
-  return [
+export const stageSections = (state: HarnessState): StageSection[] =>
+  [
     {
       stage: "pending-proposal" as const,
       read: state.stages.proposal,
-      meta: proposalMeta(state.stages.proposal, state, since),
+      meta: proposalMeta(state.stages.proposal, state),
     },
     {
       stage: "pending-review" as const,
       read: state.stages.review,
-      meta: reviewMeta(state.stages.review, since),
+      meta: reviewMeta(state.stages.review),
     },
     {
       stage: "pending-release" as const,
       read: state.stages.release,
-      meta: releaseMeta(state.stages.release, state, since),
+      meta: releaseMeta(state.stages.release, state),
     },
   ].map((section) => ({ ...section, title: STAGE_NAMES[section.stage] }));
-};
 
 // Counts, never statuses: the row itself states why it is where it is (#868).
 export const harnessAnnouncement = (
@@ -174,7 +153,7 @@ export const harnessAnnouncement = (
   now: Date,
   reading = false,
 ): string => {
-  const stages = stageSections(state, now).map((section) => {
+  const stages = stageSections(state).map((section) => {
     if (section.read.outcome !== "read") {
       return `${section.title} was not read.`;
     }

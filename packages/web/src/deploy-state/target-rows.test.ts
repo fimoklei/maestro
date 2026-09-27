@@ -52,7 +52,7 @@ describe("statusSummary", () => {
   it("names Update target as the next step on a behind target", () => {
     const head = { ...ON_LATEST, release: "v0.3.2", changed: 1, selected: 3 };
     expect(statusSummary(row({ head, behind: true }), NOW)).toEqual([
-      "Newer release v0.3.4 changes 1 of 3 skills.",
+      "New release available: v0.3.4. 1 of 3 deployed skills changed.",
       "Select Update target to use release v0.3.4.",
       "Compared with the Harness, read just now",
     ]);
