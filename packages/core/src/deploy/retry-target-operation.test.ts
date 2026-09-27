@@ -99,6 +99,26 @@ describe("RetryTargetOperation", () => {
     expect(await world.operations.read("/repo")).not.toBeNull();
   });
 
+  it("stays unfinished while one tool's copy is missing, and converges once it lands", async () => {
+    const { world, retry } = buildUseCase();
+    world.seed({ release: "v0.6.0", skills: ["prototype"] });
+    await world.operations.begin(interrupted);
+    world.skipsCopy("claude", "review");
+
+    expect(await retry.execute({ target })).toEqual({
+      ok: false,
+      error: "retry-incomplete",
+    });
+    expect(await world.operations.read("/repo")).not.toBeNull();
+
+    expect(await retry.execute({ target })).toMatchObject({ ok: true });
+    expect(await world.operations.read("/repo")).toBeNull();
+    expect(world.calls.map((call) => call.ref)).toEqual([
+      `github.com/${HARNESS}#v0.6.0`,
+      `github.com/${HARNESS}#v0.6.0`,
+    ]);
+  });
+
   it("refuses when there is nothing to retry", async () => {
     const { retry } = buildUseCase();
     expect(await retry.execute({ target })).toEqual({

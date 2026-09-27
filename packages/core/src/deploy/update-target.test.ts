@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { HarnessTag } from "../harness/read-harness-state";
 import type { HarnessSkillTree } from "../harness/skill-movements";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
-import type { SupportedTool } from "./deploy-tools";
+import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
-import { selectionWorld } from "./selection-writer-fake";
-import { UpdateTarget } from "./update-target";
+import { copyPaths, selectionWorld } from "./selection-writer-fake";
+import { type UpdateSkillState, UpdateTarget } from "./update-target";
 
 const REPO: DeployTarget = { kind: "repo", repoPath: "/repo" };
 const GLOBAL: DeployTarget = { kind: "global" };
@@ -81,7 +81,11 @@ function subject(options: Options = {}) {
   const locks = new InFlightLocks();
   // Before the write the recorded baseline decides; afterwards the disk and the
   // deployment record do.
-  const classify = async (input: { name: string; release?: string }) => {
+  const classify = async (input: {
+    name: string;
+    tools?: readonly SupportedTool[];
+    release?: string;
+  }) => {
     if (world.calls.length === 0) {
       return options.copies?.[input.name] ?? "clean";
     }
@@ -89,9 +93,8 @@ function subject(options: Options = {}) {
     if (forced !== undefined) {
       return forced;
     }
-    if (
-      !world.files.has(`${TREE_ROOT}/.claude/skills/${input.name}/SKILL.md`)
-    ) {
+    const copies = copyPaths([input.name], input.tools ?? SUPPORTED_TOOLS);
+    if (!copies.some((path) => world.files.has(`${TREE_ROOT}/${path}`))) {
       return "not-deployed" as const;
     }
     const lockfile = world.files.get(`${TREE_ROOT}/apm.lock.yaml`) ?? "";
@@ -603,6 +606,10 @@ describe("UpdateTarget preflight token", () => {
   });
 });
 
+// A repo install runs for every tool; its outcome reads each copy.
+const everyTool = (name: string, state: UpdateSkillState) =>
+  (["claude", "codex"] as const).map((tool) => ({ name, tool, state }));
+
 async function confirmed(options: Options = {}) {
   const running = subject(options);
   const answer = await running.preview();
@@ -622,11 +629,11 @@ describe("UpdateTarget.run", () => {
       ok: true,
       release: "v0.3.4",
       outcome: [
-        { name: "tdd", tool: null, state: "updated" },
-        { name: "grill", tool: null, state: "updated" },
-        { name: "jobs", tool: null, state: "updated" },
-        { name: "review", tool: null, state: "removed" },
-        { name: "brief", tool: null, state: "updated" },
+        ...everyTool("tdd", "updated"),
+        ...everyTool("grill", "updated"),
+        ...everyTool("jobs", "updated"),
+        ...everyTool("review", "removed"),
+        ...everyTool("brief", "updated"),
       ],
     });
     expect(running.world.files.get("/target/apm.yml")).toContain("- brief");
@@ -649,6 +656,39 @@ describe("UpdateTarget.run", () => {
     expect(running.world.calls[0]?.tools).toStrictEqual(["claude", "codex"]);
   });
 
+  it("stays incomplete and names the missing copy when one tool lacks it", async () => {
+    const running = await confirmed({
+      target: GLOBAL,
+      detected: ["claude", "codex"],
+    });
+    running.world.skipsCopy("claude", "tdd");
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok ? null : result.error).toBe("update-incomplete");
+    expect(result.ok ? [] : (result.outcome ?? []).slice(0, 2)).toStrictEqual([
+      { name: "tdd", tool: "claude", state: "missing" },
+      { name: "tdd", tool: "codex", state: "updated" },
+    ]);
+    expect(await running.world.operations.read("global")).toMatchObject({
+      kind: "update",
+      release: "v0.3.4",
+    });
+  });
+
+  it("names the missing copy per tool on a repository too", async () => {
+    const running = await confirmed();
+    running.world.skipsCopy("codex", "tdd");
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok ? null : result.error).toBe("update-incomplete");
+    expect(result.ok ? [] : (result.outcome ?? []).slice(0, 2)).toStrictEqual([
+      { name: "tdd", tool: "claude", state: "updated" },
+      { name: "tdd", tool: "codex", state: "missing" },
+    ]);
+  });
+
   it("ends Empty through the named uninstall when the release removes every selected skill", async () => {
     const running = await confirmed({
       selection: ["review"],
@@ -660,7 +700,7 @@ describe("UpdateTarget.run", () => {
     expect(result).toStrictEqual({
       ok: true,
       release: "v0.3.4",
-      outcome: [{ name: "review", tool: null, state: "removed" }],
+      outcome: everyTool("review", "removed"),
     });
     expect(running.world.calls.map((call) => call.command)).toStrictEqual([
       "uninstall",
@@ -676,11 +716,11 @@ describe("UpdateTarget.run", () => {
     expect(result.ok).toBe(false);
     expect(result.ok ? null : result.error).toBe("update-incomplete");
     expect(result.ok ? [] : (result.outcome ?? [])).toStrictEqual([
-      { name: "tdd", tool: null, state: "updated" },
-      { name: "grill", tool: null, state: "not-updated" },
-      { name: "jobs", tool: null, state: "not-updated" },
-      { name: "review", tool: null, state: "removed" },
-      { name: "brief", tool: null, state: "not-updated" },
+      ...everyTool("tdd", "updated"),
+      ...everyTool("grill", "missing"),
+      ...everyTool("jobs", "missing"),
+      ...everyTool("review", "removed"),
+      ...everyTool("brief", "missing"),
     ]);
     expect(await running.world.operations.read("/repo")).toMatchObject({
       kind: "update",
@@ -698,7 +738,7 @@ describe("UpdateTarget.run", () => {
     expect(result.ok).toBe(false);
     expect(result.ok ? [] : (result.outcome ?? [])).toContainEqual({
       name: "tdd",
-      tool: null,
+      tool: "claude",
       state: "not-updated",
     });
   });
@@ -710,7 +750,7 @@ describe("UpdateTarget.run", () => {
 
     expect(result.ok ? result.outcome : []).toContainEqual({
       name: "grill",
-      tool: null,
+      tool: "claude",
       state: "unknown",
     });
   });
@@ -812,12 +852,12 @@ describe("UpdateTarget.run", () => {
       ok: true,
       release: "v0.3.4",
       outcome: [
-        { name: "tdd", tool: null, state: "updated" },
-        { name: "grill", tool: null, state: "updated" },
-        { name: "jobs", tool: null, state: "updated" },
-        { name: "review", tool: null, state: "removed" },
-        { name: "brief", tool: null, state: "updated" },
-        { name: "wizard", tool: null, state: "updated" },
+        ...everyTool("tdd", "updated"),
+        ...everyTool("grill", "updated"),
+        ...everyTool("jobs", "updated"),
+        ...everyTool("review", "removed"),
+        ...everyTool("brief", "updated"),
+        ...everyTool("wizard", "updated"),
       ],
     });
     expect(running.world.calls[0]?.skills).toContain("wizard");

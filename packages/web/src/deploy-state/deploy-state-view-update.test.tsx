@@ -291,6 +291,44 @@ describe("Deploy-state — Update target on the global target", () => {
     ).toBeInTheDocument();
   });
 
+  it("names a tool's missing copy and offers Retry update", async () => {
+    const update = deferred();
+    stubUpdate(update.promise, {
+      before: GLOBAL_BEHIND,
+      after: {
+        global: {
+          tools: [toolAt("v0.3.4")],
+          skipped: [],
+          pendingOperation: PENDING,
+        },
+      },
+    });
+    renderDeployState();
+
+    const dialog = await confirmUpdate("Claude Code");
+    await within(dialog).findByRole("button", { name: "Updating to v0.3.5…" });
+    update.resolve(
+      jsonResponse(
+        {
+          error: "update-incomplete",
+          message: "irrelevant",
+          outcome: [
+            { name: "tdd", tool: "claude", state: "missing" },
+            { name: "tdd", tool: "codex", state: "updated" },
+          ],
+        },
+        502,
+      ),
+    );
+
+    expect(
+      await within(dialog).findByText("tdd not deployed in Claude Code"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Retry update" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the dialog and offers no second operation when a mid-run read finds the update unfinished", async () => {
     const update = deferred();
     stubUpdate(update.promise, {

@@ -11,14 +11,24 @@ import { RELEASE_TAG_PATTERN } from "../harness/release-tag";
 import { parseLockfile } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
 import type { DeployTarget } from "./deploy-skill";
+import { DEPLOY_TOOLS, type SupportedTool } from "./deploy-tools";
 import type { DeployedLocation } from "./deployed-location";
 import type { GitOrigin } from "./git-origin";
 import { buildHarnessPackageRef } from "./package-ref";
 
+export type DeployedCopy = { name: string; tool: SupportedTool };
+
 // A write must never read an unanswerable lockfile as an empty target (#58).
 export type TargetSelection =
   | { kind: "empty" }
-  | { kind: "root"; release: string; ref: string; deployed: string[] }
+  | {
+      kind: "root";
+      release: string;
+      ref: string;
+      deployed: string[];
+      // Per tool, so one tool's copy never stands in for another's.
+      copies: DeployedCopy[];
+    }
   | { kind: "pinned-per-skill" }
   | {
       kind: "unreadable";
@@ -79,5 +89,10 @@ export async function readTargetSelection(deps: {
       tag: root.resolved_ref,
     }),
     deployed: [...new Set(skills.map((skill) => skill.name))],
+    copies: skills.flatMap((skill) =>
+      DEPLOY_TOOLS.filter((tool) => tool.skillsDirPrefix === skill.prefix).map(
+        (tool) => ({ name: skill.name, tool: tool.apmTarget }),
+      ),
+    ),
   };
 }

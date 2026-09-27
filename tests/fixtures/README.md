@@ -259,3 +259,27 @@ wrote: `skill_subset` names `caveman`, `deployed_files` holds no
 `.claude/skills/caveman` row. `apm.yml.1039-failed-batch-kept.yaml` is the
 manifest after the failed run over a Selection: the three names written before
 the install are still there.
+
+## A global update over a symlinked leaf (#1217)
+
+Captured 2026-09-27 on apm 0.29.0, global, each case in its own sandbox
+`HOME` (`realpath`ed) with cwd `$HOME/work`, `GITHUB_TOKEN` and
+`GITHUB_APM_PAT` from `gh auth token`, no rate-limit line in either update
+capture, no `COLUMNS`. `<root>` is `github.com/fimoklei/harness`, `<sel>` is
+`--skill workflow-commit --skill workflow-ship`. Each link is
+`.claude/skills/<name>` → `../../.agents/skills/<name>`, made with `ln -s`.
+What they mean is in `docs/apm-behavior.md` § Update.
+
+| Fixture | Command | Conditions | Exit | Streams |
+|---|---|---|---|---|
+| `apm-1217-update-over-owned-link.txt` | `apm install <root>#v0.4.1 <sel> -g -t claude,codex` | `apm install <root>#v0.3.5 <sel> -g -t claude,codex`, then both `.claude/skills` folders replaced by links | 1 | out+err |
+| `apm-1217-update-over-unowned-link.txt` | same | `apm install <root>#v0.3.5 <sel> -g -t codex`, links created, then the same install with `-t claude,codex` | 0 | out+err |
+
+`links-1217-*.txt` are assembled, not verbatim, and like `apm-update-noop.txt`
+have no reader: `## before` / `## after` headings over, per case, `stat -f '%HT %N%SY'` of every entry under
+`.claude/skills` and `.agents/skills` plus `shasum -a 256` of each `SKILL.md`,
+taken from `$HOME` before and after the update (`stat`, not `ls -la`, so no
+owner or date lands in the file). `apm.lock.1217-owned-link.yaml`
+is the lockfile before the owned update; it is byte-identical afterwards.
+`apm.lock.1217-unowned-link-before.yaml` and `-after.yaml` bracket the
+unowned update; neither holds a `.claude/skills` row.

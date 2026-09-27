@@ -1,0 +1,18 @@
+## before
+Symbolic Link .claude/skills/workflow-commit -> ../../.agents/skills/workflow-commit
+Symbolic Link .claude/skills/workflow-ship -> ../../.agents/skills/workflow-ship
+Directory .agents/skills/workflow-commit
+Directory .agents/skills/workflow-ship
+65b3acea329bab6705f7a9e6ba73df6e6005fb17944bdcf6e1e69867f1668226  .claude/skills/workflow-commit/SKILL.md
+c68954e9333678279e1ee933bb21eae8725ecc716a175e6caa58acb49ee56f84  .claude/skills/workflow-ship/SKILL.md
+65b3acea329bab6705f7a9e6ba73df6e6005fb17944bdcf6e1e69867f1668226  .agents/skills/workflow-commit/SKILL.md
+c68954e9333678279e1ee933bb21eae8725ecc716a175e6caa58acb49ee56f84  .agents/skills/workflow-ship/SKILL.md
+## after
+Symbolic Link .claude/skills/workflow-commit -> ../../.agents/skills/workflow-commit
+Symbolic Link .claude/skills/workflow-ship -> ../../.agents/skills/workflow-ship
+Directory .agents/skills/workflow-commit
+Directory .agents/skills/workflow-ship
+65b3acea329bab6705f7a9e6ba73df6e6005fb17944bdcf6e1e69867f1668226  .claude/skills/workflow-commit/SKILL.md
+c68954e9333678279e1ee933bb21eae8725ecc716a175e6caa58acb49ee56f84  .claude/skills/workflow-ship/SKILL.md
+65b3acea329bab6705f7a9e6ba73df6e6005fb17944bdcf6e1e69867f1668226  .agents/skills/workflow-commit/SKILL.md
+c68954e9333678279e1ee933bb21eae8725ecc716a175e6caa58acb49ee56f84  .agents/skills/workflow-ship/SKILL.md

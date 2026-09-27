@@ -33,7 +33,7 @@ export const rowId = (row: Pick<HarnessStageRow, "stage" | "skill">) =>
 
 // The ⋮ trigger is named by its stage too: three menus called "Actions for
 // tdd" would name the same thing three times.
-export const rowMenuLabel = (row: HarnessStageRow) =>
+const rowMenuLabel = (row: HarnessStageRow) =>
   `Actions for ${row.skill} in ${STAGE_NAMES[row.stage]}`;
 
 // The Status cell's hover card: the row's sentences in short, and in full in

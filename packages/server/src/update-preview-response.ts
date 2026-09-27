@@ -61,6 +61,7 @@ const outcomeSchema = z.array(
       "updated",
       "removed",
       "not-updated",
+      "missing",
       "not-removed",
       "unknown",
     ]),

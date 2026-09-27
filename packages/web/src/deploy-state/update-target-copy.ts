@@ -103,6 +103,9 @@ function outcomeFact(
   if (state === "not-updated") {
     return `${name} still at ${releases.from}`;
   }
+  if (state === "missing") {
+    return `${name} not deployed`;
+  }
   if (state === "not-removed") {
     return `${name} still deployed`;
   }

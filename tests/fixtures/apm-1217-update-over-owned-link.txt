@@ -1,0 +1,23 @@
+[i] Installing to user scope (~/.apm/)
+[!] User-scope primitives are fully supported by claude, kiro, gemini, 
+grok-build, grok-cloud, agent-skills, openclaw, hermes, copilot-cowork, 
+copilot-app. Partially supported: copilot, cursor, opencode, antigravity, codex,
+windsurf.
+Some primitives are not supported: cursor (instructions); opencode (hooks); 
+antigravity (instructions, hooks); windsurf (instructions)
+[*] Validating 1 package...
+[+] fimoklei/harness#v0.4.1 (updated ref in apm.yml)
+[*] Updated apm.yml dependency entries
+[>] Installing 1 new package...
+[>] Resolving fimoklei/harness...
+  [+] fimoklei/harness #v0.4.1 @19d0c86a
+  [+] <project root> (local)
+  |-- (files unchanged)
+[i] apm.yml restored to its previous state.
+  [!] 1 skill replaced by a different package (last installed wins)
+    Run with --verbose to see details
+  [x] 1 package failed:
+    +- fimoklei/harness -- Failed to integrate primitives: Cannot call rmtree on
+a symbolic link
+[x] Installation failed with 1 error(s) in 4.4s. No install transaction changes 
+were committed.
