@@ -421,6 +421,23 @@ describe("DeployedContentAdapter", () => {
       ).resolves.toBeNull();
     });
 
+    // apm writes through a linked skills directory; only a linked leaf is refused.
+    it("returns null when the tool's whole skills directory is a link", async () => {
+      await mkdir(join(root, "elsewhere/skills/tdd"), { recursive: true });
+      await mkdir(join(root, ".claude"), { recursive: true });
+      await symlink(
+        join(root, "elsewhere/skills"),
+        join(root, ".claude/skills"),
+      );
+
+      await expect(
+        adapter().linkedSkillPath({
+          target: { kind: "repo", repoPath: root },
+          name: "tdd",
+        }),
+      ).resolves.toBeNull();
+    });
+
     it("checks only the tools this deploy targeted", async () => {
       await mkdir(join(root, "elsewhere/tdd"), { recursive: true });
       await mkdir(join(root, ".agents/skills"), { recursive: true });
