@@ -79,44 +79,45 @@ export const updatingLine = (release: string): string =>
 
 export const MIXED_RELEASES = "Mixed releases";
 
-// From what was read back, never from what was asked for. The tool is named
-// where the copies disagree by tool.
-export function outcomeLine(
-  row: { name: string; tool: string | null; state: UpdateSkillState },
-  releases: { from: string; to: string },
-): string {
-  const where = row.tool === null ? "" : ` in ${toolDisplayName(row.tool)}`;
-  return `${outcomeFact(row.name, row.state, releases)}${where}`;
-}
+export type OutcomeVerdict = "landed" | "failed" | "unconfirmed";
 
-function outcomeFact(
-  name: string,
-  state: UpdateSkillState,
-  releases: { from: string; to: string },
-): string {
-  if (state === "updated") {
-    return `${name} updated to ${releases.to}`;
+export function outcomeHeading(to: string, verdict: OutcomeVerdict): string {
+  if (verdict === "landed") {
+    return `Updated to ${to}`;
   }
-  if (state === "removed") {
-    return `${name} removed`;
-  }
-  if (state === "not-updated") {
-    return `${name} still at ${releases.from}`;
-  }
-  if (state === "missing") {
-    return `${name} not deployed`;
-  }
-  if (state === "not-removed") {
-    return `${name} still deployed`;
-  }
-  return `Maestro could not confirm whether ${name} was updated.`;
+  return verdict === "failed"
+    ? `Not every skill reached ${to}`
+    : `Maestro could not confirm every skill reached ${to}`;
 }
 
 export const RETRY_UPDATE = "Retry update";
 
+export const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.`;
+
+export const UPDATE_AGAIN = `then select ${UPDATE_TARGET} again.`;
+
+export type UnlandedState = Exclude<UpdateSkillState, "updated" | "removed">;
+
+// From what was read back, never from apm's own words. A landed row needs no
+// sentence beyond the release it reached.
+export function outcomeDetail(
+  state: UnlandedState,
+  releases: { from: string; to: string },
+  retry: boolean,
+): string {
+  if (state === "unknown") {
+    return "Maestro could not read this skill back. Check the target card for its state.";
+  }
+  const fact = {
+    "not-updated": `Still at ${releases.from}.`,
+    missing: "Not deployed.",
+    "not-removed": `Still deployed, though ${releases.to} drops it.`,
+  }[state];
+  return `${fact} ${retry ? RETRY_UPDATE_STEP : `Check the target card, ${UPDATE_AGAIN}`}`;
+}
+
 export const UPDATE_INCOMPLETE = "Update incomplete";
 
-export const UPDATE_INCOMPLETE_SENTENCE =
-  "The update is incomplete. Select Retry update to run the same release again.";
+export const UPDATE_INCOMPLETE_SENTENCE = `The update is incomplete. ${RETRY_UPDATE_STEP}`;
 
 export const CLOSE = "Close";

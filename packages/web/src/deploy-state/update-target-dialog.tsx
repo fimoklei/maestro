@@ -10,10 +10,11 @@ import { cn } from "../ui/cn";
 import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { Notice } from "../ui/notice";
+import { Report } from "../ui/report";
 import { StatusBadge } from "../ui/status-badge";
 import { reading } from "../ui/status-reading";
 import type { DeployStateNotice } from "./notice-copy";
-import { type OutcomeLine, updateOutcomeLines } from "./update-outcome-lines";
+import { updateOutcomeReport } from "./update-outcome-report";
 import {
   ADDED_BY_THIS_DEPLOY,
   BECOMES_EMPTY,
@@ -197,27 +198,6 @@ function ConsentRow({
   );
 }
 
-function OutcomeTrace({ lines }: { lines: readonly OutcomeLine[] }) {
-  return (
-    <div role="status">
-      <ul className="flex flex-col gap-1">
-        {lines.map((line) => (
-          <li
-            key={line.key}
-            className={cn(
-              "flex items-start gap-1.5 font-mono text-meta",
-              line.ok ? "text-green-12" : "text-amber-12",
-            )}
-          >
-            <span aria-hidden="true">{line.ok ? "✓" : "✗"}</span>
-            <span className="wrap-anywhere">{line.text}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 // Prices an Update, asks for consent, and states what landed. The host owns the request.
 export function UpdateTargetDialog({
   targetName,
@@ -251,11 +231,12 @@ export function UpdateTargetDialog({
   const leadInId = `${dialogId}-lead-in`;
 
   const heading = updateDialogTitle(targetName);
-  const lines =
+  const report =
     outcome && preview
-      ? updateOutcomeLines(outcome, {
-          from: preview.release,
-          to: preview.chosenRelease,
+      ? updateOutcomeReport({
+          rows: outcome,
+          releases: { from: preview.release, to: preview.chosenRelease },
+          retry: incomplete,
         })
       : null;
   const required =
@@ -287,7 +268,7 @@ export function UpdateTargetDialog({
           <h2 className="font-semibold font-ui text-gray-12 text-prose">
             Update <span className="break-all font-mono">{targetName}</span>
           </h2>
-          {preview !== null && lines === null ? (
+          {preview !== null && report === null ? (
             <p className="font-mono text-gray-11 text-meta">
               {releaseMoveLine(preview.release, preview.chosenRelease)}
             </p>
@@ -299,9 +280,9 @@ export function UpdateTargetDialog({
       </div>
 
       <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-3.5 py-3">
-        {lines !== null ? (
+        {report !== null ? (
           <>
-            <OutcomeTrace lines={lines} />
+            <Report heading={report.heading} groups={report.groups} />
             {incomplete ? (
               <Notice
                 trigger="user-action"
@@ -414,16 +395,16 @@ export function UpdateTargetDialog({
         <Button
           type="button"
           variant="quiet"
-          className={lines === null ? undefined : "ml-auto"}
+          className={report === null ? undefined : "ml-auto"}
           onClick={onCancel}
         >
-          {lines === null ? "Cancel" : CLOSE}
+          {report === null ? "Cancel" : CLOSE}
         </Button>
         {blocked !== null ? (
           <Button type="button" variant="primary" disabled={true}>
             {blocked}
           </Button>
-        ) : preview === null || lines !== null ? null : (
+        ) : preview === null || report !== null ? null : (
           <Button
             type="button"
             variant="primary"

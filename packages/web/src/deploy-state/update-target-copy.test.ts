@@ -13,7 +13,8 @@ import {
   NO_CONTENT_CHANGES,
   NOT_ADDED,
   OVERWRITE_UNVERIFIED,
-  outcomeLine,
+  outcomeDetail,
+  outcomeHeading,
   RETRY_UPDATE,
   releaseMoveLine,
   SECTION_HEADINGS,
@@ -139,41 +140,33 @@ describe("Update target copy", () => {
     expect(MIXED_RELEASES).toBe("Mixed releases");
   });
 
-  it("states one outcome per skill, from what was read back", () => {
-    const releases = { from: "v0.3.2", to: "v0.3.4" };
-    expect(
-      outcomeLine({ name: "tdd", tool: null, state: "updated" }, releases),
-    ).toBe("tdd updated to v0.3.4");
-    expect(
-      outcomeLine({ name: "review", tool: null, state: "removed" }, releases),
-    ).toBe("review removed");
-    expect(
-      outcomeLine(
-        { name: "grill", tool: null, state: "not-updated" },
-        releases,
-      ),
-    ).toBe("grill still at v0.3.2");
-    expect(
-      outcomeLine(
-        { name: "review", tool: null, state: "not-removed" },
-        releases,
-      ),
-    ).toBe("review still deployed");
-    expect(
-      outcomeLine({ name: "grill", tool: null, state: "missing" }, releases),
-    ).toBe("grill not deployed");
-    expect(
-      outcomeLine({ name: "grill", tool: null, state: "unknown" }, releases),
-    ).toBe("Maestro could not confirm whether grill was updated.");
+  it("heads the outcome by whether every skill reached the release", () => {
+    expect(outcomeHeading("v0.3.4", "landed")).toBe("Updated to v0.3.4");
+    expect(outcomeHeading("v0.3.4", "failed")).toBe(
+      "Not every skill reached v0.3.4",
+    );
+    expect(outcomeHeading("v0.3.4", "unconfirmed")).toBe(
+      "Maestro could not confirm every skill reached v0.3.4",
+    );
   });
 
-  it("names the tool of an outcome the global target answers per tool", () => {
-    expect(
-      outcomeLine(
-        { name: "grill", tool: "codex", state: "not-updated" },
-        { from: "v0.3.2", to: "v0.3.4" },
-      ),
-    ).toBe("grill still at v0.3.2 in Codex");
+  it("states each failure's cause and next step, from what was read back", () => {
+    const releases = { from: "v0.3.2", to: "v0.3.4" };
+    expect(outcomeDetail("not-updated", releases, true)).toBe(
+      "Still at v0.3.2. Select Retry update to run the same release again.",
+    );
+    expect(outcomeDetail("missing", releases, true)).toBe(
+      "Not deployed. Select Retry update to run the same release again.",
+    );
+    expect(outcomeDetail("not-removed", releases, true)).toBe(
+      "Still deployed, though v0.3.4 drops it. Select Retry update to run the same release again.",
+    );
+    expect(outcomeDetail("not-updated", releases, false)).toBe(
+      "Still at v0.3.2. Check the target card, then select Update target again.",
+    );
+    expect(outcomeDetail("unknown", releases, false)).toBe(
+      "Maestro could not read this skill back. Check the target card for its state.",
+    );
   });
 
   it("names the one way out of a half-landed update", () => {
