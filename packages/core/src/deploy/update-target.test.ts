@@ -62,6 +62,8 @@ type Options = {
   copiesAfter?: Record<string, DeployedContentState>;
   add?: string;
   bytes?: () => string | null;
+  // A symlinked leaf destination, as the disk reports it.
+  linked?: { name: string; tool: SupportedTool; path: string };
 };
 
 const HARNESS = "fimoklei/harness";
@@ -102,7 +104,15 @@ function subject(options: Options = {}) {
   };
   const update = new UpdateTarget({
     selection: world.writer,
-    deployedContent: { classify },
+    deployedContent: {
+      classify,
+      linkedSkillPath: async (input) =>
+        options.linked !== undefined &&
+        input.name === options.linked.name &&
+        (input.tools === undefined || input.tools.includes(options.linked.tool))
+          ? options.linked.path
+          : null,
+    },
     canonicalPath: async (path) => path,
     locks,
     registry: { isRegistered: async () => options.registered ?? true },
@@ -426,6 +436,69 @@ describe("UpdateTarget.preview refusals", () => {
   });
 });
 
+describe("UpdateTarget.preview linked skill folders", () => {
+  it("refuses a global update when a selected skill's folder in a detected tool is a link", async () => {
+    const result = await subject({
+      target: GLOBAL,
+      detected: ["claude", "codex"],
+      linked: {
+        name: "tdd",
+        tool: "claude",
+        path: "/home/.claude/skills/tdd",
+      },
+    }).preview();
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: "destination-symlinked",
+      linkedPath: "/home/.claude/skills/tdd",
+    });
+  });
+
+  it("refuses a repo update when a selected skill's folder in any tool is a link", async () => {
+    const result = await subject({
+      linked: {
+        name: "jobs",
+        tool: "codex",
+        path: "/repo/.agents/skills/jobs",
+      },
+    }).preview();
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: "destination-symlinked",
+      linkedPath: "/repo/.agents/skills/jobs",
+    });
+  });
+
+  it("refuses when the skill it would add sits behind a link", async () => {
+    const result = await subject({
+      add: "wizard",
+      linked: {
+        name: "wizard",
+        tool: "claude",
+        path: "/repo/.claude/skills/wizard",
+      },
+    }).preview();
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: "destination-symlinked",
+      linkedPath: "/repo/.claude/skills/wizard",
+    });
+  });
+
+  it("prices a global update whose only link sits in a tool it does not target", async () => {
+    const result = await subject({
+      target: GLOBAL,
+      detected: ["claude"],
+      linked: { name: "tdd", tool: "codex", path: "/home/.agents/skills/tdd" },
+    }).preview();
+
+    expect(result.ok).toBe(true);
+  });
+});
+
 describe("UpdateTarget preflight token", () => {
   it("proves the priced update it was minted for", async () => {
     const { update, preview } = subject();
@@ -719,6 +792,25 @@ describe("UpdateTarget.run", () => {
       confirmedCopyReceipt: receipt,
     });
     expect(result.ok).toBe(true);
+  });
+
+  it("writes nothing when a selected skill's folder became a link after the preview", async () => {
+    const options: Options = { target: GLOBAL };
+    const running = await confirmed(options);
+    options.linked = {
+      name: "grill",
+      tool: "claude",
+      path: "/home/.claude/skills/grill",
+    };
+
+    const result = await running.run({ token: running.token });
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: "destination-symlinked",
+      linkedPath: "/home/.claude/skills/grill",
+    });
+    expect(running.world.calls).toStrictEqual([]);
   });
 
   it("writes nothing when the preflight refuses", async () => {

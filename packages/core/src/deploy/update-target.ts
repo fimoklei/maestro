@@ -65,11 +65,20 @@ export type UpdatePreviewError =
   | "inventory-origin-unavailable"
   | "ref-unresolvable"
   | "skill-not-in-release"
+  // apm skips a linked destination and still reports success (#1215).
+  | "destination-symlinked"
   | "preview-failed";
+
+// `linkedPath` rides only with `destination-symlinked`, read from disk.
+type PreviewRefusal = {
+  ok: false;
+  error: UpdatePreviewError;
+  linkedPath?: string;
+};
 
 export type UpdatePreviewResult =
   | { ok: true; preview: UpdatePreview }
-  | { ok: false; error: UpdatePreviewError };
+  | PreviewRefusal;
 
 // Everything the token binds: changing any of it retires the consent (#953).
 export type UpdateScope = {
@@ -104,7 +113,6 @@ export type UpdateRunError =
   | "deployed-diverged-from-lock"
   | "deployed-unverifiable"
   | "manifest-not-recognised"
-  | "destination-symlinked"
   | "update-incomplete"
   | "update-failed";
 
@@ -113,6 +121,7 @@ export type UpdateRunResult =
   | {
       ok: false;
       error: UpdateRunError;
+      linkedPath?: string;
       // Only where apm ran, so an absent key is never a proven outcome.
       outcome?: readonly UpdateOutcomeRow[];
       // Only where consent can clear the refusal (#952).
@@ -158,8 +167,9 @@ export class UpdateTarget {
     toolPresence: ToolPresencePort;
     copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
     selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
-    // The outcome probe only; classification is the guard's.
-    deployedContent: Pick<DeployedContentPort, "classify">;
+    // The outcome probe and the linked-folder check; classification is the
+    // guard's.
+    deployedContent: Pick<DeployedContentPort, "classify" | "linkedSkillPath">;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with deploy and remove: all three rewrite one apm.lock.yaml.
@@ -188,9 +198,7 @@ export class UpdateTarget {
     }
     try {
       const priced = await this.price(input.target, input.add);
-      return priced.ok
-        ? { ok: true, preview: priced.preview }
-        : { ok: false, error: priced.error };
+      return priced.ok ? { ok: true, preview: priced.preview } : priced;
     } catch {
       return { ok: false, error: "preview-failed" };
     }
@@ -237,7 +245,7 @@ export class UpdateTarget {
     try {
       const priced = await this.price(input.target, input.add);
       if (!priced.ok) {
-        return { ok: false, error: priced.error };
+        return priced;
       }
       const { scope } = priced;
       if (!this.accepts(scope, input.token)) {
@@ -350,8 +358,7 @@ export class UpdateTarget {
     target: DeployTarget,
     add?: string,
   ): Promise<
-    | { ok: true; preview: UpdatePreview; scope: UpdateScope }
-    | { ok: false; error: UpdatePreviewError }
+    { ok: true; preview: UpdatePreview; scope: UpdateScope } | PreviewRefusal
   > {
     const tools =
       target.kind === "global"
@@ -360,6 +367,7 @@ export class UpdateTarget {
     if (target.kind === "global" && tools.length === 0) {
       return { ok: false, error: "no-supported-tool" };
     }
+    const toolScope = tools.length === 0 ? {} : { tools };
 
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
@@ -398,6 +406,22 @@ export class UpdateTarget {
     }
     const added =
       add !== undefined && !state.selection.includes(add) ? [add] : [];
+    const desired = [
+      ...state.selection.filter((name) => next.has(name)),
+      ...added,
+    ];
+
+    // Refused before any consent is offered: no consent makes the install land.
+    for (const name of desired) {
+      const linkedPath = await this.deps.deployedContent.linkedSkillPath({
+        target,
+        name,
+        ...toolScope,
+      });
+      if (linkedPath !== null) {
+        return { ok: false, error: "destination-symlinked", linkedPath };
+      }
+    }
 
     // The install rewrites the whole Selection, so every selected copy is at
     // risk. A copy equal to the chosen release is not an edit (#952).
@@ -405,7 +429,7 @@ export class UpdateTarget {
       write: "update",
       target,
       names: [...state.selection, ...added],
-      ...(tools.length === 0 ? {} : { tools }),
+      ...toolScope,
       release: latest.name,
     });
     const decision = this.deps.copyGuard.admits(
@@ -439,10 +463,6 @@ export class UpdateTarget {
     const newInRelease = [...next.keys()].filter(
       (name) => !state.selection.includes(name) && !added.includes(name),
     );
-    const desired = [
-      ...state.selection.filter((name) => next.has(name)),
-      ...added,
-    ];
     const scope: UpdateScope = {
       target,
       chosenRelease: latest.name,

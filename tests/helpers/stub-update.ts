@@ -14,7 +14,10 @@ export const stubUpdate = () =>
       admits: () => ({ ok: true }),
     },
     selection: stubSelectionWriter(),
-    deployedContent: { classify: async () => "unreadable" },
+    deployedContent: {
+      classify: async () => "unreadable",
+      linkedSkillPath: async () => null,
+    },
     canonicalPath: async (path) => path,
     locks: new InFlightLocks(),
   });

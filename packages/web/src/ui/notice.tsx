@@ -107,7 +107,8 @@ export function Notice({
           {glyph}
         </span>
       )}
-      <div className="flex min-w-0 flex-col gap-1">
+      {/* A path or command in the copy has no break point of its own. */}
+      <div className="flex min-w-0 flex-col gap-1 wrap-anywhere">
         <span
           className={`font-semibold font-ui text-meta ${inkClasses[level]}`}
         >
