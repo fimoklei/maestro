@@ -44,14 +44,20 @@ export const UPDATE_TO_REACH_RELEASE =
 
 const DEPLOY_AGAIN = "then deploy again.";
 
-export const DELETE_LINKED_FOLDER = `Delete the linked skill folder in the target, ${DEPLOY_AGAIN}`;
+const deleteLinkedFolder = (again: string) =>
+  `Delete the linked skill folder in the target, ${again}`;
+
+// No comma after the path: a reader copying the command would paste it.
+const removeLink = (path: string, again: string) =>
+  `Run rm ${path} and ${again}`;
+
+export const DELETE_LINKED_FOLDER = deleteLinkedFolder(DEPLOY_AGAIN);
 
 const LINK_TARGET_SURVIVES =
   "This removes the link only. The folder it points at remains on disk.";
 
-// No comma after the path: a reader copying the command would paste it.
 export const linkedFolderRecovery = (path: string) =>
-  `Run rm ${path} and ${DEPLOY_AGAIN} ${LINK_TARGET_SURVIVES}`;
+  `${removeLink(path, DEPLOY_AGAIN)} ${LINK_TARGET_SURVIVES}`;
 
 type Heading = { level: NoticeLevel; label: string };
 type Body = { message: string; detail?: string };
@@ -389,6 +395,10 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
       "The latest release does not hold this skill. Publish a release on the Harness screen, then deploy again.",
     detail: "Nothing was changed, and the target keeps its own release.",
   },
+  "destination-symlinked": {
+    message: `Nothing was written. ${deleteLinkedFolder(UPDATE_AGAIN)}`,
+    detail: LINK_TARGET_SURVIVES,
+  },
   "preview-failed": {
     message: `Nothing was changed. Wait a moment, ${UPDATE_AGAIN}`,
   },
@@ -421,10 +431,6 @@ const UPDATE: Record<UpdateRunError, Body> = {
   "manifest-not-recognised": {
     message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${UPDATE_AGAIN}`,
     detail: "Maestro edits that list only, and it found another shape.",
-  },
-  "destination-symlinked": {
-    message: `Nothing was written. Delete the linked skill folder in the target, ${UPDATE_AGAIN}`,
-    detail: LINK_TARGET_SURVIVES,
   },
   "update-incomplete": {
     message:
@@ -464,17 +470,51 @@ export function deployStateHeading(code: DeployStateCode): string {
 
 /** The whole notice for a refused or failed deploy. */
 export function deployNotice(error: unknown): DeployStateNotice {
-  return noticeFor(DEPLOY, error, UNKNOWN_DEPLOY);
+  return withLinkedPath(
+    noticeFor(DEPLOY, error, UNKNOWN_DEPLOY),
+    error,
+    DEPLOY_AGAIN,
+  );
 }
 
 /** The whole notice for a refused Update preview. */
 export function updatePreviewNotice(error: unknown): DeployStateNotice {
-  return noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE);
+  return withLinkedPath(
+    noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE),
+    error,
+    UPDATE_AGAIN,
+  );
 }
 
 /** The whole notice for a refused or failed Update. */
 export function updateNotice(error: unknown): DeployStateNotice {
-  return noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN);
+  return withLinkedPath(
+    noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN),
+    error,
+    UPDATE_AGAIN,
+  );
+}
+
+// The path the server read from disk replaces the general instruction.
+function withLinkedPath(
+  notice: DeployStateNotice,
+  error: unknown,
+  again: string,
+): DeployStateNotice {
+  if (
+    !(error instanceof HttpError) ||
+    error.code !== "destination-symlinked" ||
+    typeof error.body !== "object" ||
+    error.body === null ||
+    !("linkedPath" in error.body) ||
+    typeof error.body.linkedPath !== "string"
+  ) {
+    return notice;
+  }
+  return {
+    ...notice,
+    message: `Nothing was written. ${removeLink(error.body.linkedPath, again)}`,
+  };
 }
 
 /** The whole notice for a refused or failed removal. */

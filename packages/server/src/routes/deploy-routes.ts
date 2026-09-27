@@ -33,9 +33,15 @@ import {
 } from "../update-preview-response";
 
 // Spread into every refusal body (deploy, update, retry), so the next attempt
-// licenses exactly the copies the reader was shown (#952).
-const refusalBody = (result: { copyReceipt?: string }) =>
-  result.copyReceipt ? { copyReceipt: result.copyReceipt } : {};
+// licenses exactly the copies the reader was shown (#952). `linkedPath` is
+// built by core from the target's own subtrees, never from apm prose.
+const refusalBody = (result: {
+  copyReceipt?: string;
+  linkedPath?: string;
+}) => ({
+  ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
+  ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+});
 
 type Deps = Pick<
   AppDeps,
@@ -125,15 +131,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     const result = await deps.deploy.execute(body.data);
     if (!result.ok) {
       const { status } = deployErrorResponses[result.error];
-      // Built by core from the deploy's own subtrees, never from apm prose.
-      return c.json(
-        {
-          error: result.error,
-          ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
-          ...refusalBody(result),
-        },
-        status,
-      );
+      return c.json({ error: result.error, ...refusalBody(result) }, status);
     }
     return c.json({ deployed: result.deployed });
   });
@@ -200,7 +198,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     const result = await deps.update.preview(body.data);
     if (!result.ok) {
       const { status } = updatePreviewErrorResponses[result.error];
-      return c.json({ error: result.error }, status);
+      return c.json({ error: result.error, ...refusalBody(result) }, status);
     }
     // A preview failing its own shape check does not cross (#416).
     const preview = updatePreviewBody(result.preview);

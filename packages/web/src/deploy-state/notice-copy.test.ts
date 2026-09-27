@@ -5,6 +5,7 @@ import {
   deployNotice,
   linkedFolderRecovery,
   removeNotice,
+  updateNotice,
   updatePreviewNotice,
 } from "./notice-copy";
 
@@ -562,6 +563,59 @@ describe("update preview notices", () => {
         "Nothing was changed. Wait a moment, then select Update target again.",
       detail:
         "A dropped connection, or a failure this version of Maestro does not name.",
+    });
+  });
+});
+
+describe("update notices for a linked skill folder", () => {
+  const LINKED = "/Users/dev/.claude/skills/tdd";
+  const linked = (body: unknown) =>
+    new HttpError(409, "unused", "destination-symlinked", body);
+
+  it.each([
+    ["preview", updatePreviewNotice],
+    ["run", updateNotice],
+  ])("spells out the rm for the path the server read (%s)", (_, notice) => {
+    expect(
+      notice(linked({ error: "destination-symlinked", linkedPath: LINKED })),
+    ).toEqual({
+      level: "error",
+      label: "Linked skill folder",
+      message: `Nothing was written. Run rm ${LINKED} and then select Update target again.`,
+      detail:
+        "This removes the link only. The folder it points at remains on disk.",
+    });
+  });
+
+  it.each([
+    ["preview", updatePreviewNotice],
+    ["run", updateNotice],
+  ])("names the folder in general when no path came back (%s)", (_, notice) => {
+    expect(notice(linked({ error: "destination-symlinked" }))).toEqual({
+      level: "error",
+      label: "Linked skill folder",
+      message:
+        "Nothing was written. Delete the linked skill folder in the target, then select Update target again.",
+      detail:
+        "This removes the link only. The folder it points at remains on disk.",
+    });
+  });
+});
+
+describe("deploy notice for a linked skill folder", () => {
+  it("spells out the rm for the path the server read", () => {
+    const error = new HttpError(409, "unused", "destination-symlinked", {
+      error: "destination-symlinked",
+      linkedPath: "/Users/dev/.claude/skills/tdd",
+    });
+
+    expect(deployNotice(error)).toEqual({
+      level: "error",
+      label: "Linked skill folder",
+      message:
+        "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",
+      detail:
+        "This removes the link only. The folder it points at remains on disk.",
     });
   });
 });

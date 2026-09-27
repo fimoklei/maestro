@@ -1,4 +1,11 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -88,6 +95,17 @@ describe("update HTTP journey", () => {
       rootPackageLockfile("v0.3.2", files),
       "utf8",
     );
+  }
+
+  // The skill's folder in the target becomes a link to a folder elsewhere.
+  async function linkSkillFolder(name: string): Promise<string> {
+    const elsewhere = join(home, "elsewhere", name);
+    await mkdir(elsewhere, { recursive: true });
+    await writeFile(join(elsewhere, "SKILL.md"), "# linked\n", "utf8");
+    const linked = join(repo, ".claude", "skills", name);
+    await rm(linked, { recursive: true, force: true });
+    await symlink(elsewhere, linked);
+    return linked;
   }
 
   async function makeApp(options?: {
@@ -303,6 +321,23 @@ describe("update HTTP journey", () => {
     expect(await response.json()).toStrictEqual({ error: "not-deployed" });
   });
 
+  it("refuses to price an update whose selected skill's folder is a link", async () => {
+    const { app, registry } = await makeApp();
+    await seedTarget(["tdd", "grill", "review"]);
+    const linked = await linkSkillFolder("grill");
+    await registry.register(repo);
+
+    const response = await preflight(app, {
+      target: { kind: "repo", repoPath: repo },
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toStrictEqual({
+      error: "destination-symlinked",
+      linkedPath: linked,
+    });
+  });
+
   async function priced(options?: {
     lands?: (skills: readonly string[]) => readonly string[];
     add?: string;
@@ -396,6 +431,35 @@ describe("update HTTP journey", () => {
     expect(await readFile(join(repo, "apm.yml"), "utf8")).toBe(
       manifest(["grill", "tdd", "wizard"]),
     );
+  });
+
+  it("refuses a confirm once a selected skill's folder became a link, changing nothing", async () => {
+    const { app, token, apm } = await priced();
+    const linked = await linkSkillFolder("tdd");
+    const snapshot = () =>
+      Promise.all(
+        [
+          "apm.yml",
+          "apm.lock.yaml",
+          ...["tdd", "grill", "review"].map(
+            (n) => `.claude/skills/${n}/SKILL.md`,
+          ),
+        ].map((file) => readFile(join(repo, file), "utf8")),
+      );
+    const before = await snapshot();
+
+    const response = await update(app, {
+      target: { kind: "repo", repoPath: repo },
+      token,
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toStrictEqual({
+      error: "destination-symlinked",
+      linkedPath: linked,
+    });
+    expect(apm.installs).toStrictEqual([]);
+    expect(await snapshot()).toStrictEqual(before);
   });
 
   it("refuses a confirm naming a skill the preview never priced", async () => {

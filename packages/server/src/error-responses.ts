@@ -112,6 +112,7 @@ export const updatePreviewErrorResponses: ErrorTable<UpdatePreviewError> = {
     deployErrorResponses["inventory-origin-unavailable"],
   "ref-unresolvable": deployErrorResponses["ref-unresolvable"],
   "skill-not-in-release": { status: 422 },
+  "destination-symlinked": deployErrorResponses["destination-symlinked"],
   "preview-failed": { status: 502 },
 };
 
@@ -124,7 +125,6 @@ export const updateRunErrorResponses: ErrorTable<UpdateRunError> = {
     deployErrorResponses["deployed-diverged-from-lock"],
   "deployed-unverifiable": deployErrorResponses["deployed-unverifiable"],
   "manifest-not-recognised": deployErrorResponses["manifest-not-recognised"],
-  "destination-symlinked": deployErrorResponses["destination-symlinked"],
   "update-incomplete": { status: 502 },
   "update-failed": { status: 502 },
 };
