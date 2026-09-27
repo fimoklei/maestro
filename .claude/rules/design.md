@@ -186,6 +186,10 @@ Mandatory for any change that alters what `packages/web` renders:
    - Verifying a first-run screen → stop here; that is the state you need.
    - Verifying anything the cockpit shows once connected → run `pnpm smoke:ready`,
      which waits for the cockpit, connects the inventory, fetches its releases and registers one repo.
+   - Verifying a deploy state → `pnpm smoke:ready --scenario <name>[,<name>]` or
+     `all`: `empty`, `in-sync`, `behind`, `mixed-releases`, `local-edits`,
+     `unverified`, `pinned-per-skill`, `unfinished-operation`. It exits non-zero
+     when the cockpit does not show the scenario's reading.
 2. Screenshot the changed UI with `agent-browser`, in each theme.
 3. Read changed copy at a narrow width and at 200% zoom, in one theme.
 4. Compare against the design source; on mismatch, fix before claiming done.
