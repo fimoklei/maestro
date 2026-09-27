@@ -7,7 +7,9 @@ export const UPDATE_TARGET = "Update target";
 
 // An origin-less Harness cannot attribute the target's release, so no update
 // can be priced (#960).
-export const UPDATE_TARGET_NO_ORIGIN = `${UPDATE_TARGET} — no GitHub origin`;
+export const NO_GITHUB_ORIGIN = "no GitHub origin";
+
+export const CONSENT_NOT_GIVEN = "consent not given";
 
 export const updateDialogTitle = (target: string): string => `Update ${target}`;
 
@@ -73,9 +75,6 @@ export const consentRowName = (row: CopyConsentRow): string =>
   row.tool === null ? row.name : `${row.name} in ${toolDisplayName(row.tool)}`;
 
 export const LOADING_PREVIEW = "Loading the update preview…";
-
-export const updatingLine = (release: string): string =>
-  `Updating to ${release}…`;
 
 export const MIXED_RELEASES = "Mixed releases";
 

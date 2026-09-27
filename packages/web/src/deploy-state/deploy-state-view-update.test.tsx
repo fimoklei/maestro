@@ -188,7 +188,7 @@ describe("Deploy-state — Update target on a repository", () => {
     renderDeployState();
 
     const dialog = await confirmUpdate("…/me/project");
-    await within(dialog).findByRole("button", { name: "Updating to v0.3.5…" });
+    await within(dialog).findByRole("button", { name: "Updating…" });
     // A window focus re-reads the deploy-state while apm still runs.
     act(() => {
       focusManager.setFocused(false);
@@ -229,9 +229,9 @@ describe("Deploy-state — Update target on the global target", () => {
     const dialog = await confirmUpdate("Claude Code");
     expect(
       await within(dialog).findByRole("button", {
-        name: "Updating to v0.3.5…",
+        name: "Updating…",
       }),
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-busy", "true");
     for (const button of screen.queryAllByRole("button")) {
       expect(dialog).toContainElement(button);
     }
@@ -285,7 +285,7 @@ describe("Deploy-state — Update target on the global target", () => {
     renderDeployState();
 
     const dialog = await confirmUpdate("Claude Code");
-    await within(dialog).findByRole("button", { name: "Updating to v0.3.5…" });
+    await within(dialog).findByRole("button", { name: "Updating…" });
     update.resolve(
       jsonResponse(
         {
@@ -329,7 +329,7 @@ describe("Deploy-state — Update target on the global target", () => {
     renderDeployState();
 
     const dialog = await confirmUpdate("Claude Code");
-    await within(dialog).findByRole("button", { name: "Updating to v0.3.5…" });
+    await within(dialog).findByRole("button", { name: "Updating…" });
     update.resolve(
       jsonResponse(
         {
@@ -373,7 +373,7 @@ describe("Deploy-state — Update target on the global target", () => {
     renderDeployState();
 
     const dialog = await confirmUpdate("Claude Code");
-    await within(dialog).findByRole("button", { name: "Updating to v0.3.5…" });
+    await within(dialog).findByRole("button", { name: "Updating…" });
     act(() => {
       focusManager.setFocused(false);
       focusManager.setFocused(true);

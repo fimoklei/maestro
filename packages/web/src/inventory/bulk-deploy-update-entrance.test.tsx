@@ -159,7 +159,11 @@ describe("BulkDeployAction routing into the Update preview", () => {
     await userEvent.click(
       await within(update).findByRole("button", { name: "Update target" }),
     );
-    await userEvent.click(await screen.findByRole("button", { name: "Close" }));
+    // The ✕ and the footer's lone Close both leave; the footer is the one step left.
+    const [, close] = await within(update).findAllByRole("button", {
+      name: "Close",
+    });
+    await userEvent.click(close as HTMLElement);
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(onSelectionSpent).toHaveBeenCalled();

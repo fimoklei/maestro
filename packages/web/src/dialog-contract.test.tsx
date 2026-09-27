@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog } from "./harness/deletion-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import { WithdrawDialog } from "./harness/withdraw-dialog";
@@ -75,6 +76,21 @@ const ON_DIALOG: Row[] = [
     ),
   },
   {
+    file: "deploy-state/update-target-dialog.tsx",
+    heading: "Update agent-harness",
+    render: ({ running, onClose }) => (
+      <UpdateTargetDialog
+        targetName="agent-harness"
+        preview={null}
+        isLoading={false}
+        error={null}
+        isRunning={running}
+        onCancel={onClose}
+        onConfirm={vi.fn()}
+      />
+    ),
+  },
+  {
     file: "registry/register-repository-dialog.tsx",
     heading: "Register a repository",
     render: ({ running, onClose }) => (
@@ -124,7 +140,6 @@ const ON_DIALOG: Row[] = [
 // then joins ON_DIALOG.
 const NOT_YET_ON_DIALOG = [
   "deploy-state/remove-skill-dialog.tsx",
-  "deploy-state/update-target-dialog.tsx",
   "harness/import-dialog.tsx",
   "harness/release-dialog.tsx",
   "inventory/bulk-deploy-dialog.tsx",
