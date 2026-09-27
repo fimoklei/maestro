@@ -1,3 +1,11 @@
+---
+paths:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "tests/**"
+  - "**/vitest.config.*"
+---
+
 # Testing principles (project-specific for Maestro)
 
 Runner: **Vitest**, all lanes (ADR-0002).

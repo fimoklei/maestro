@@ -1,3 +1,10 @@
+---
+paths:
+  - "packages/web/**"
+  - ".impeccable/**"
+  - "DESIGN.md"
+---
+
 # Design source (project-specific for Maestro)
 
 ## Sources
