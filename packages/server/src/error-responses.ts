@@ -278,6 +278,7 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
   // 403: outside the home ceiling, and the reply names no path.
   "outside-root": { status: 403 },
   "deployed-copy": { status: 409 },
+  "origin-unproven": { status: 409 },
   "missing-manifest": { status: 422 },
   "invalid-frontmatter": { status: 422 },
   "empty-description": { status: 422 },

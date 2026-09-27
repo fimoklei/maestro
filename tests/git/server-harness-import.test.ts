@@ -194,7 +194,7 @@ describe("harness import HTTP route", () => {
     ).rejects.toThrow();
   });
 
-  it("refuses a copy the registered target's lockfile records as deployed", async () => {
+  it("refuses a recorded copy whose record names no origin", async () => {
     const repo = join(base, "repo");
     const deployed = join(repo, ".claude", "skills", "code-review");
     await mkdir(deployed, { recursive: true });
@@ -219,7 +219,7 @@ describe("harness import HTTP route", () => {
     const response = await importSkill(app, { source: deployed });
 
     expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ error: "deployed-copy" });
+    expect(await response.json()).toMatchObject({ error: "origin-unproven" });
   });
 
   it("lets a hand-authored skill through the same folder a deploy would use (#667)", async () => {

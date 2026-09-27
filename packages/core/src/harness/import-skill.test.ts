@@ -255,7 +255,7 @@ describe("ImportSkill.check", () => {
     });
   });
 
-  it("refuses a copy the registered target's lockfile records as deployed", async () => {
+  it("refuses a recorded copy whose record names no origin", async () => {
     const deployed = "/repo/.claude/skills/code-review";
     const lockfile = [
       "dependencies:",
@@ -279,7 +279,9 @@ describe("ImportSkill.check", () => {
 
     await expect(
       importSkill.check({ source: deployed }),
-    ).resolves.toMatchObject({ check: { sourceBlocker: "deployed-copy" } });
+    ).resolves.toMatchObject({
+      check: { mode: "add", sourceBlocker: "origin-unproven" },
+    });
   });
 
   const deployedInRepo = (
@@ -491,7 +493,7 @@ describe("ImportSkill.check", () => {
     await expect(
       importSkill.check({ source: deployed }),
     ).resolves.toMatchObject({
-      check: { mode: "add", sourceBlocker: "deployed-copy" },
+      check: { mode: "add", sourceBlocker: "origin-unproven" },
     });
   });
 
@@ -843,6 +845,25 @@ describe("ImportSkill.execute", () => {
       taken.importSkill.execute({ source: SOURCE }),
     ).resolves.toEqual({ ok: false, error: "name-taken" });
     expect(taken.copied).toEqual([]);
+  });
+
+  it("copies nothing from a copy whose record cannot prove its origin", async () => {
+    const deployed = "/repo/.claude/skills/code-review";
+    const unproven = harness({
+      files: {
+        [`${deployed}/SKILL.md`]: MANIFEST,
+        "/repo/apm.lock.yaml": lockfile(["  host: github.com"]),
+      },
+      directories: [deployed, `${ROOT}/.apm/skills/code-review`],
+      deployedTargets: [
+        { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
+      ],
+    });
+
+    await expect(
+      unproven.importSkill.execute({ source: deployed }),
+    ).resolves.toEqual({ ok: false, error: "origin-unproven" });
+    expect(unproven.copied).toEqual([]);
   });
 
   it("replaces the Harness's own folder when it updates a deployed copy", async () => {
