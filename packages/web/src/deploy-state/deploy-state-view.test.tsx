@@ -427,7 +427,9 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
 
     expect(
-      await screen.findByText("Newer release v0.3.4: 2 of 5 skills changed"),
+      await screen.findByText(
+        "Newer release v0.3.4 changes 2 of 5 skills: tdd.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Compared with the Harness, read just now"),

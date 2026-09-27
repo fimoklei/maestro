@@ -67,7 +67,9 @@ describe("Deploy-state pane — facts", () => {
     expect(fact(pane, "Changed")).toBe("2 of 5 skills");
     expect(fact(pane, "Compared")).toBe("Read just now");
     expect(
-      within(pane).getByText("Newer release v0.3.4: 2 of 5 skills changed"),
+      within(pane).getByText(
+        "Newer release v0.3.4 changes 2 of 5 skills: tdd and grill.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -188,7 +190,7 @@ describe("Deploy-state pane — facts", () => {
     const pane = await openPane(LABEL);
     expect(fact(pane, "Changed")).toBe("0 of 5 skills");
     expect(
-      within(pane).getByText("Newer release v0.3.4: 0 of 5 skills changed"),
+      within(pane).getByText("Newer release v0.3.4 changes 0 of 5 skills."),
     ).toBeInTheDocument();
   });
 

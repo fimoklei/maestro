@@ -1,5 +1,6 @@
 // Every word a target's Release, Status hover card and pane state. Clock-injected.
 import { ago } from "../harness/harness-view-model";
+import { joinNames } from "./join-names";
 import {
   RETRY_UPDATE,
   UPDATE_INCOMPLETE,
@@ -22,7 +23,9 @@ export function releaseSentence(head: ReleaseHead): string | null {
   }
   return head.changed === null
     ? `Newer release ${head.latestRelease}. Changes could not be read.`
-    : `Newer release ${head.latestRelease}: ${head.changed} of ${head.selected} skills changed`;
+    : `Newer release ${head.latestRelease} changes ${head.changed} of ${head.selected} skills${
+        head.changedSkills?.length ? `: ${joinNames(head.changedSkills)}` : ""
+      }.`;
 }
 
 export const ON_LATEST_RELEASE = "On the latest release.";
@@ -116,7 +119,7 @@ export function comparedFact(head: ReleaseHead, now: Date): string {
 const COPY_CHIPS = {
   "local-edits": {
     label: "Local edits",
-    hint: "This copy differs from the release it was deployed from",
+    hint: "Files changed after deployment. The latest release does not have these changes.",
   },
   unverified: {
     label: "Unverified",

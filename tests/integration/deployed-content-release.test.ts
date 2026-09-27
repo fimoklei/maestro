@@ -152,6 +152,18 @@ describe("DeployedContentAdapter, against the chosen release", () => {
     );
   });
 
+  // Edited in one tool's folder, imported and released; the other folder was
+  // never touched (#1213).
+  it("reads a copy as clean when each tool's folder equals its record or the release", async () => {
+    await writeLockfile(recordOf({ "SKILL.md": "old" }));
+    await deployEverywhere({ "SKILL.md": "old" });
+    await writeDeployed(".claude/skills/tdd/SKILL.md", "new");
+
+    await expect(classify({ "SKILL.md": sha("new") }, "v0.6.0")).resolves.toBe(
+      "clean",
+    );
+  });
+
   it("reads a copy with no recorded hashes as unverifiable, release or not", async () => {
     await writeLockfile({});
     await deployEverywhere({ "SKILL.md": "new" });

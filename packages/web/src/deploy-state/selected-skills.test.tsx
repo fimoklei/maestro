@@ -100,15 +100,15 @@ describe("SelectedSkills marks", () => {
     expect(mark).toHaveFocus();
     const tooltip = await screen.findByRole("tooltip", { hidden: true });
     expect(tooltip).toHaveTextContent(
-      "This copy differs from the release it was deployed from",
+      "Files changed after deployment. The latest release does not have these changes.",
     );
     expect(document.body).toHaveTextContent(
-      /Local edits\s*This copy differs from the release it was deployed from/,
+      /Local edits\s*Files changed after deployment\. The latest release does not have these changes\./,
     );
     // The word is the name; the reason is said once, as the description.
     expect(mark).toHaveAccessibleName("Local edits");
     expect(mark).toHaveAccessibleDescription(
-      "This copy differs from the release it was deployed from",
+      "Files changed after deployment. The latest release does not have these changes.",
     );
     expect(mark).not.toHaveAttribute("title");
 

@@ -52,7 +52,7 @@ describe("statusSummary", () => {
   it("names Update target as the next step on a behind target", () => {
     const head = { ...ON_LATEST, release: "v0.3.2", changed: 1, selected: 3 };
     expect(statusSummary(row({ head, behind: true }), NOW)).toEqual([
-      "Newer release v0.3.4: 1 of 3 skills changed",
+      "Newer release v0.3.4 changes 1 of 3 skills.",
       "Select Update target to use release v0.3.4.",
       "Compared with the Harness, read just now",
     ]);
@@ -217,7 +217,7 @@ describe("local edits on a target", () => {
         NOW,
       ),
     ).toEqual([
-      "2 skills have local edits: tdd and review.",
+      "2 skills have changes that are not in the latest release: tdd and review. Select Import skill… on the Harness screen to keep them.",
       "On the latest release.",
       "Compared with the Harness, read just now",
     ]);
