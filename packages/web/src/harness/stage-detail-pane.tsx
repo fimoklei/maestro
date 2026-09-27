@@ -1,3 +1,4 @@
+import { TYPE_WORD } from "../inventory/type-filter";
 import { DetailPane } from "../ui/detail-pane";
 import { FactList, FactRow } from "../ui/fact-list";
 import { FootActions } from "../ui/foot-actions";
@@ -53,6 +54,7 @@ export function StageDetailPane({
       }
     >
       <FactList>
+        <FactRow label="Type">{TYPE_WORD.skill}</FactRow>
         <FactRow label="Stage">{STAGE_NAMES[row.stage]}</FactRow>
         <FactRow label="Status">
           <StatusBadge reading={row.reading} />

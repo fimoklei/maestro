@@ -307,6 +307,25 @@ describe("DataTable", () => {
     ).not.toBeInTheDocument();
   });
 
+  // #1184: Harness hides columns on a narrow panel and passes none once wide.
+  it("shows every column again once no visibility is passed", () => {
+    const table = (columnVisibility?: { colour: boolean }) => (
+      <DataTable
+        label="Fruit table"
+        columns={columns}
+        data={fruits}
+        getRowId={(fruit) => fruit.name}
+        columnVisibility={columnVisibility}
+      />
+    );
+    const { rerender } = render(table({ colour: false }));
+    rerender(table());
+
+    expect(
+      within(grid()).getByRole("columnheader", { name: "Colour" }),
+    ).toBeInTheDocument();
+  });
+
   it("draws skeleton rows in place of the data while loading, and says it is busy", () => {
     renderTable({ loading: true, skeletonRows: 4 });
 
@@ -337,6 +356,33 @@ describe("DataTable", () => {
     expect(apple).toHaveTextContent("apple");
     expect(cherry).toHaveTextContent("cherry");
     expect(pear).toHaveTextContent("pear");
+  });
+
+  // #1184: a span over a hidden column adds an empty one that takes width.
+  it("spans a full-width row over the shown columns only", () => {
+    const style = document.createElement("style");
+    style.textContent = ".narrow-hidden { display: none; }";
+    document.head.append(style);
+    renderTable({
+      columns: createDataTableColumns<Fruit>((helper) => [
+        helper.accessor("name", { header: "Name" }),
+        helper.accessor("colour", {
+          header: "Colour",
+          meta: { className: "narrow-hidden" },
+        }),
+      ]),
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green", "Blue"],
+        message: (key) => (key === "Blue" ? "No blue fruit." : null),
+      },
+    });
+
+    const groupHeader = within(grid()).getByText("Red").closest("td, th");
+    const message = within(grid()).getByText("No blue fruit.").closest("td");
+    expect(groupHeader).toHaveAttribute("colspan", "2");
+    expect(message).toHaveAttribute("colspan", "2");
+    style.remove();
   });
 
   it("draws a group that holds no rows as its message, with no count", () => {

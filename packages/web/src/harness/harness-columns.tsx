@@ -101,7 +101,8 @@ export const harnessColumns = ({
           {row.original.skill}
         </span>
       ),
-      meta: { className: "w-58" },
+      // With only Status and ⋮ beside it, Name and then Status give way (#1184).
+      meta: { className: "w-58 @max-[32.5rem]:w-auto" },
     }),
     helper.accessor("reading", {
       header: "Status",
@@ -115,7 +116,7 @@ export const harnessColumns = ({
       sortFn: (a, b) =>
         readingRank(a.original.reading) - readingRank(b.original.reading),
       // The longest reading, Deletion approved, awaiting merge, fits (#994).
-      meta: { className: "w-62" },
+      meta: { className: "w-62 @max-[26rem]:w-auto" },
     }),
     helper.display({
       id: "pull-request",

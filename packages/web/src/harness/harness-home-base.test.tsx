@@ -537,6 +537,22 @@ describe("Harness home base", () => {
     ).toBeInTheDocument();
   });
 
+  // #1184: the Type column drops out on a narrow panel; the pane keeps it.
+  it("states the row's type as a fact in the pane", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [row("pending-proposal", "tdd", "new-local-work")],
+        }),
+      },
+    });
+    renderHarness();
+
+    const pane = await openPane("tdd");
+    const type = within(pane).getByText("Type", { selector: "dt" });
+    expect(type.nextElementSibling).toHaveTextContent("Skill");
+  });
+
   // #1045: the next step is one press away, from the row and from its pane.
   it("puts Propose change first in the row menu and at the foot of the pane", async () => {
     stubHarnessServer({

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 // Whether an element is narrower than `px`, kept current by a ResizeObserver.
-// For columns a table drops: CSS hiding leaves a spanning row's columns behind.
 export function useNarrowerThan(px: number) {
   const [element, setElement] = useState<HTMLElement | null>(null);
   const [narrow, setNarrow] = useState(false);
