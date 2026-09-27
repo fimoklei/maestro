@@ -6,6 +6,7 @@ import { HOVER_TRANSITION } from "./hover-transition";
 export interface SelectOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 export interface SelectProps {
@@ -13,6 +14,8 @@ export interface SelectProps {
   labelledBy: string;
   value: string;
   options: readonly SelectOption[];
+  /** Locked while the action it feeds runs. */
+  disabled: boolean;
   onValueChange: (value: string) => void;
 }
 
@@ -20,16 +23,21 @@ export function Select({
   labelledBy,
   value,
   options,
+  disabled,
   onValueChange,
 }: SelectProps) {
   return (
-    <RadixSelect.Root value={value} onValueChange={onValueChange}>
+    <RadixSelect.Root
+      value={value}
+      disabled={disabled}
+      onValueChange={onValueChange}
+    >
       <RadixSelect.Trigger
         aria-labelledby={labelledBy}
         className={cn(
           "inline-flex h-control min-w-32 cursor-pointer items-center justify-between gap-inline rounded-control border border-edge bg-transparent px-cell font-medium font-ui text-gray-12 text-row",
           HOVER_TRANSITION,
-          "hover:bg-gray-3 data-[state=open]:bg-gray-3",
+          "hover:bg-gray-3 data-[state=open]:bg-gray-3 disabled:cursor-not-allowed disabled:text-gray-11 disabled:hover:bg-transparent",
         )}
       >
         <RadixSelect.Value />
@@ -49,10 +57,11 @@ export function Select({
               <RadixSelect.Item
                 key={option.value}
                 value={option.value}
+                disabled={option.disabled}
                 className={cn(
                   "flex h-control cursor-pointer items-center gap-inline rounded-control px-inline font-ui text-gray-11 text-row outline-none",
                   HOVER_TRANSITION,
-                  "data-[highlighted]:bg-gray-3 data-[highlighted]:text-gray-12 data-[state=checked]:text-gray-12",
+                  "data-[highlighted]:bg-gray-3 data-[highlighted]:text-gray-12 data-[state=checked]:text-gray-12 data-[disabled]:cursor-not-allowed",
                 )}
               >
                 <span

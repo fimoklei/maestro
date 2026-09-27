@@ -44,6 +44,7 @@ export function AppearancePage() {
               labelledBy={nameId}
               value={choice}
               options={OPTIONS}
+              disabled={false}
               onValueChange={choose}
             />
           }

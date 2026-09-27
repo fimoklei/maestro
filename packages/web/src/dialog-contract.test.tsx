@@ -10,6 +10,7 @@ import { ImportDialog } from "./harness/import-dialog";
 import { ReleaseDialog } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import { WithdrawDialog } from "./harness/withdraw-dialog";
+import { BulkDeployDialog } from "./inventory/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./inventory/bulk-remove-dialog";
 import { RegisterRepositoryDialog } from "./registry/register-repository-dialog";
 import { UnregisterDialog } from "./registry/unregister-dialog";
@@ -75,6 +76,26 @@ const ON_DIALOG: Row[] = [
         onConfirm={vi.fn()}
         restoring={running}
         restoreError={null}
+      />
+    ),
+  },
+  {
+    file: "inventory/bulk-deploy-dialog.tsx",
+    heading: "Deploy 2 skills",
+    render: ({ running, onClose }) => (
+      <BulkDeployDialog
+        count={2}
+        targets={[{ value: "global", label: "Global (Claude Code)" }]}
+        selected="global"
+        onSelect={vi.fn()}
+        unavailable={null}
+        fieldsChanged={false}
+        busy={running}
+        failure={null}
+        report={null}
+        reportFailure={null}
+        onDeploy={vi.fn()}
+        onClose={onClose}
       />
     ),
   },
@@ -197,10 +218,7 @@ const ON_DIALOG: Row[] = [
 
 // Still assembled from the old parts; each moves onto `Dialog` under #1226 and
 // then joins ON_DIALOG.
-const NOT_YET_ON_DIALOG = [
-  "deploy-state/remove-skill-dialog.tsx",
-  "inventory/bulk-deploy-dialog.tsx",
-];
+const NOT_YET_ON_DIALOG = ["deploy-state/remove-skill-dialog.tsx"];
 
 const SRC = import.meta.dirname;
 

@@ -589,12 +589,15 @@ describe("InventoryView — detail pane", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Deploy 1 skill",
     });
-    const run = within(dialog).getByRole("button", { name: /^Deploy skill/ });
-    await waitFor(() => expect(run).toBeEnabled());
-    await userEvent.click(run);
-    await within(dialog).findByRole("button", { name: "Deploy tdd again" });
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Close" }),
+      await within(dialog).findByRole("button", { name: "Deploy skill" }),
+    );
+    await within(dialog).findByRole("button", { name: "Deploy tdd again" });
+    // The footer's Close, after the header's ✕ of the same name.
+    await userEvent.click(
+      within(dialog)
+        .getAllByRole("button", { name: "Close" })
+        .at(-1) as HTMLElement,
     );
 
     // Another skill: the reinstall action must not carry over, or a click

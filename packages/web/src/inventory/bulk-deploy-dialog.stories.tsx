@@ -12,11 +12,12 @@ const meta = {
     ],
     selected: "/Users/m/Projects/maestro",
     onSelect: () => {},
-    loadingTargets: false,
-    deployBlocked: false,
+    unavailable: null,
+    fieldsChanged: false,
     busy: false,
     failure: null,
     report: null,
+    reportFailure: null,
     onDeploy: () => {},
     onClose: () => {},
   },
@@ -27,6 +28,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PickTarget: Story = {};
+
+export const LoadingTargets: Story = {
+  args: { unavailable: "Loading targets…" },
+};
 
 export const Deploying: Story = { args: { busy: true } };
 
