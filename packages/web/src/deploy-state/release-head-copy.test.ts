@@ -92,7 +92,7 @@ describe("copyChipText", () => {
   it("names a copy that differs from its record", () => {
     expect(copyChipText("local-edits")).toStrictEqual({
       label: "Local edits",
-      hint: "Files changed after deployment. The latest release does not have these changes.",
+      hint: "Files changed after deployment. The latest release lacks these changes. Select Import local edits… to bring them into the Harness.",
     });
   });
 
