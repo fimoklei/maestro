@@ -1,9 +1,9 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 import { Button } from "./button";
 import { Tooltip } from "./tooltip";
 
 export interface IconButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
+  extends Omit<ComponentPropsWithRef<"button">, "children"> {
   /** The action, e.g. "Re-read Inventory". */
   label: string;
   /** Why the control cannot be used, in five words or fewer. */

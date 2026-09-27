@@ -102,3 +102,16 @@ export const WithAction: Story = {
     },
   },
 };
+
+// The outcome of the reader's own action, stated in the panel.
+export const Dismissible: Story = {
+  args: {
+    notice: {
+      level: "success",
+      label: "Release published",
+      message: "Maestro tagged v1.3.0 and refreshed Inventory.",
+      detail: "A release cannot change after publication.",
+    },
+    onDismiss: () => {},
+  },
+};

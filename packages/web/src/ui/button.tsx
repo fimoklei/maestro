@@ -1,8 +1,8 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ComponentPropsWithRef } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ComponentPropsWithRef<"button"> {
   variant?: "primary" | "success" | "ghost" | "quiet" | "dashed" | "danger";
   /** `sm` is a control inside a row, the rest are the 32px control height. */
   size?: "sm" | "md" | "lg" | "icon";
