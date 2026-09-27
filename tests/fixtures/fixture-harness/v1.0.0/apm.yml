@@ -1,0 +1,11 @@
+name: maestro-fixture-harness
+version: 1.0.0
+description: Made-up Harness the smoke scenarios deploy from. Never published.
+targets:
+- claude
+- codex
+dependencies:
+  apm: []
+  mcp: []
+includes: auto
+scripts: {}
