@@ -2,6 +2,7 @@ import type { GitHubPage } from "@maestro/core";
 import { FolderGit2, FolderInput, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
+import { doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { DataTable } from "../ui/data-table";
 import { DetailPaneSlot } from "../ui/detail-pane";
@@ -98,10 +99,15 @@ export function HarnessView() {
     );
   };
 
-  const importFlow = useImportFlow();
+  const [selected, setSelected] = useState<string | null>(null);
+  const importFlow = useImportFlow(({ name }) => {
+    // An import writes the working tree, so its row is Pending proposal's —
+    // even where the skill also holds a later one (#865).
+    setSelected(rowId({ stage: "pending-proposal", skill: name }));
+    setWrite(doneSentence("import", name));
+  });
   const presses = useHarnessPresses(state);
 
-  const [selected, setSelected] = useState<string | null>(null);
   const [order, setOrder] = useState<string[]>([]);
   const gridRef = useRef<HTMLTableElement>(null);
   const getTriggerElement = useCallback(() => gridRef.current, []);
@@ -139,6 +145,12 @@ export function HarnessView() {
   }, [fetchRemote]);
 
   const now = new Date();
+  // A write's done sentence, until the next read begins. Keyed on the read
+  // starting, not its text: the import's own re-read lands after it (#1160).
+  const [write, setWrite] = useState<string | null>(null);
+  useEffect(() => {
+    if (reading) setWrite(null);
+  }, [reading]);
   const freshness =
     state === undefined ? null : freshnessLabel(state.freshness, now);
   const context = {
@@ -218,7 +230,7 @@ export function HarnessView() {
             label="Origin"
             value={state.origin}
             github={state.github}
-            yields
+            yields="lg"
           />
           <BandFact
             label="Released"
@@ -229,6 +241,7 @@ export function HarnessView() {
             label="Branch"
             value={state.defaultBranch ?? "Unknown"}
             machine={state.defaultBranch !== null}
+            yields="sm"
           />
         </dl>
       )}
@@ -300,7 +313,8 @@ export function HarnessView() {
         aria-label="Harness stages"
         className="sr-only"
       >
-        {state === undefined ? "" : harnessAnnouncement(state, now, reading)}
+        {write ??
+          (state === undefined ? "" : harnessAnnouncement(state, now, reading))}
       </span>
       <div className="relative flex h-[100cqh]">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -386,12 +400,6 @@ export function HarnessView() {
         <HarnessDialogs
           origin={state.origin}
           importFlow={importFlow}
-          onImported={(name) => {
-            importFlow.close();
-            // An import writes the working tree, so its row is Pending
-            // proposal's — even where the skill also holds a later one (#865).
-            setSelected(rowId({ stage: "pending-proposal", skill: name }));
-          }}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletion}
           deleteLocal={presses.deleteLocal}
@@ -413,13 +421,15 @@ export function HarnessView() {
   );
 }
 
-// Only Origin gives way on a narrow band: it truncates, then leaves band 2
-// under 1024px.
+// Every fact truncates rather than run under the freshness line (#1204); a
+// yielding fact leaves band 2 below its breakpoint.
+const YIELDS = { sm: "max-sm:hidden", lg: "max-lg:hidden" } as const;
+
 function BandFact({
   label,
   value,
   machine = true,
-  yields = false,
+  yields,
   github,
 }: {
   label: string;
@@ -428,16 +438,10 @@ function BandFact({
   github?: GitHubPage;
   /** False for a plain word such as None yet, which Geist Mono never sets. */
   machine?: boolean;
-  yields?: boolean;
+  yields?: keyof typeof YIELDS;
 }) {
   return (
-    <div
-      className={
-        yields
-          ? "flex min-w-0 gap-inline max-lg:hidden"
-          : "flex flex-none gap-inline"
-      }
-    >
+    <div className={`flex min-w-0 gap-inline ${yields ? YIELDS[yields] : ""}`}>
       <dt className="flex-none text-gray-11">{label}</dt>
       <dd
         title={value}

@@ -1,3 +1,4 @@
+import { TYPE_WORD } from "../inventory/type-filter";
 import { DetailPane } from "../ui/detail-pane";
 import { FactList, FactRow } from "../ui/fact-list";
 import { FootActions } from "../ui/foot-actions";
@@ -9,6 +10,7 @@ import { PullRequestCell } from "./pull-request-cell";
 import {
   alsoInWords,
   crossStageLine,
+  deployedCopiesLine,
   detailSentence,
   reviewerLine,
   STAGE_NAMES,
@@ -38,6 +40,7 @@ export function StageDetailPane({
   const reviewers = reviewerLine(row);
   const crossStage = crossStageLine(row);
   const alsoIn = alsoInWords(row);
+  const deployed = deployedCopiesLine(row);
   return (
     <DetailPane
       title={row.skill}
@@ -51,6 +54,7 @@ export function StageDetailPane({
       }
     >
       <FactList>
+        <FactRow label="Type">{TYPE_WORD.skill}</FactRow>
         <FactRow label="Stage">{STAGE_NAMES[row.stage]}</FactRow>
         <FactRow label="Status">
           <StatusBadge reading={row.reading} />
@@ -67,6 +71,9 @@ export function StageDetailPane({
         )}
         {crossStage === null ? null : (
           <p className="m-0 text-gray-11">{crossStage}</p>
+        )}
+        {deployed === null ? null : (
+          <p className="m-0 text-gray-11">{deployed}</p>
         )}
       </div>
       {/* Stated where the press was made: a refusal changed nothing, and the
