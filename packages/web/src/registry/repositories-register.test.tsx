@@ -45,14 +45,22 @@ describe("Register repository", () => {
     expect(within(dialog).getAllByRole("textbox")).toHaveLength(1);
   });
 
-  // The write promise sits at the registration action.
-  it("promises at the confirm that registering changes no files", async () => {
+  it("opens with focus in the path field, so the operator can type at once", async () => {
+    stubRegistry({ repos: [] });
+    renderRepositories();
+
+    await openDialog();
+
+    expect(field()).toHaveFocus();
+  });
+
+  it("promises that registering changes no files", async () => {
     stubRegistry({ repos: [] });
     renderRepositories();
 
     const dialog = await openDialog();
 
-    expect(confirm(dialog)).toHaveAccessibleDescription(
+    expect(dialog).toHaveAccessibleDescription(
       "Registering changes no files. Files change only when you deploy.",
     );
   });
