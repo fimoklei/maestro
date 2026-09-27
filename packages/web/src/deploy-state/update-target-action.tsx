@@ -3,7 +3,7 @@ import { HttpError } from "../api/http";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { updateNotice, updatePreviewNotice } from "./notice-copy";
 import { updateOutcomeRows } from "./update-outcome-report";
-import { UPDATE_TARGET_NO_ORIGIN } from "./update-target-copy";
+import { NO_GITHUB_ORIGIN } from "./update-target-copy";
 import { UpdateTargetDialog } from "./update-target-dialog";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdatePreflight } from "./use-update-preflight";
@@ -57,7 +57,7 @@ export function UpdateTargetAction({
           blocked={
             preflight.error instanceof HttpError &&
             preflight.error.code === "inventory-origin-unavailable"
-              ? UPDATE_TARGET_NO_ORIGIN
+              ? NO_GITHUB_ORIGIN
               : null
           }
           error={
