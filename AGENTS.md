@@ -18,8 +18,9 @@ lives in `docs/operating-model.md`.
   job — not a bigger one.
 - **Never reimplement APM.** Drive it; read its lockfiles. Install, sync,
   pinning, lockfiles, and multi-tool targeting are APM's.
-- **Build only through jobs on the board** (`docs/jobs.md`), as
-  `docs/operating-model.md` describes; small fixes need only a tracker issue.
+- **Build new capabilities only through jobs on the board** (`docs/jobs.md`),
+  as `docs/operating-model.md` describes; improving what already exists needs
+  only a tracker issue.
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
 - **UI work is not done without a browser check** (`.claude/rules/design.md` →
   "Verify before done").
