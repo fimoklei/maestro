@@ -18,6 +18,7 @@ import {
   GlobalDeployStateReader,
   HarnessFreshnessStore,
   HarnessGitAdapter,
+  ImportLocalEdits,
   ImportSkill,
   InFlightLocks,
   InventoryGitAdapter,
@@ -272,30 +273,52 @@ function realDeps(): AppDeps {
     clone: new GitCloneAdapter(),
   });
 
+  const importSkill = new ImportSkill({
+    resolveRoot: harnessRoot,
+    fs,
+    homeRoot: () => homedir(),
+    copy: new CopySkillFolder({ fs: copyTreeFs }),
+    facts: copyTreeFs,
+    git: harnessGit,
+    deployedTargets: async () => [
+      {
+        treeRoot: deployedLocation.treeRoot({ kind: "global" }),
+        lockfilePath: deployedLocation.lockfilePath({ kind: "global" }),
+      },
+      ...(await registry.list()).map((repo) => ({
+        treeRoot: repo.path,
+        lockfilePath: deployedLocation.lockfilePath({
+          kind: "repo",
+          repoPath: repo.path,
+        }),
+      })),
+    ],
+  });
+
   return {
     registry,
     inventory,
     harness,
-    importSkill: new ImportSkill({
-      resolveRoot: harnessRoot,
-      fs,
-      homeRoot: () => homedir(),
-      copy: new CopySkillFolder({ fs: copyTreeFs }),
-      facts: copyTreeFs,
+    importSkill,
+    // Measured by Deploy-state's own reader; shares the lock Delete and Restore take.
+    importLocalEdits: new ImportLocalEdits({
+      registry,
+      deployState,
+      content: new DeployedContentAdapter({
+        location: deployedLocation,
+        inventoryGit,
+      }),
+      tree: {
+        listRawEntries: (path) => fs.listRawEntries(path),
+        readFile: (path) => fs.readFile(path),
+        describe: (path) => copyTreeFs.describe(path),
+      },
+      globalRoot: () => resolveApmGlobalRoot(process.env),
+      home: () => deployedLocation.treeRoot({ kind: "global" }),
+      importSkill,
       git: harnessGit,
-      deployedTargets: async () => [
-        {
-          treeRoot: deployedLocation.treeRoot({ kind: "global" }),
-          lockfilePath: deployedLocation.lockfilePath({ kind: "global" }),
-        },
-        ...(await registry.list()).map((repo) => ({
-          treeRoot: repo.path,
-          lockfilePath: deployedLocation.lockfilePath({
-            kind: "repo",
-            repoPath: repo.path,
-          }),
-        })),
-      ],
+      resolveRoot: harnessRoot,
+      locks: harnessPromoteLocks,
     }),
     // Confirmation's own remote read, never the plan's cached one (#520).
     publish: new PublishRelease({

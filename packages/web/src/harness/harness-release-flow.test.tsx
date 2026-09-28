@@ -174,7 +174,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView />
+        <HarnessView openSkill={null} />
         <InventoryProbe />
       </StrictMode>,
     );
@@ -213,7 +213,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView />
+        <HarnessView openSkill={null} />
         <InventoryProbe />
       </StrictMode>,
     );
@@ -260,7 +260,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView />
+        <HarnessView openSkill={null} />
         <InventoryProbe />
       </StrictMode>,
     );
@@ -352,7 +352,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView />
+        <HarnessView openSkill={null} />
         <IdleInventoryProbe />
       </StrictMode>,
     );

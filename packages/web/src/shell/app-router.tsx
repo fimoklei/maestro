@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { ConnectView } from "../connect-gate/connect-view";
 import { WelcomeView } from "../connect-gate/welcome-view";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
@@ -33,9 +33,15 @@ export function AppRoutes() {
         <Route index element={<DeployStateView />} />
         <Route path="inventory" element={<InventoryPanel />} />
         <Route path="repositories" element={<RepositoriesView />} />
-        <Route path="harness" element={<HarnessView />} />
+        <Route path="harness" element={<HarnessScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   );
+}
+
+// Import local edits… names the one skill it landed (#1249).
+function HarnessScreen() {
+  const state = useLocation().state as { openSkill?: string } | null;
+  return <HarnessView openSkill={state?.openSkill ?? null} />;
 }

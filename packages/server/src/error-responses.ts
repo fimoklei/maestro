@@ -7,6 +7,7 @@ import type {
   DeploySkillError,
   HarnessStateError,
   ImportSkillError,
+  LocalEditsError,
   PromoteDeletionError,
   PromoteSkillError,
   ProposalActionError,
@@ -278,6 +279,7 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
   // 403: outside the home ceiling, and the reply names no path.
   "outside-root": { status: 403 },
   "deployed-copy": { status: 409 },
+  "origin-unproven": { status: 409 },
   "missing-manifest": { status: 422 },
   "invalid-frontmatter": { status: 422 },
   "empty-description": { status: 422 },
@@ -297,6 +299,15 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
   "harness-copy-uncommitted": { status: 409 },
   "harness-unreadable": { status: 422 },
   "nothing-to-carry-back": { status: 409 },
+};
+
+// A per-skill refusal is data in a 200; only a refused run is a status.
+export const importLocalEditsErrorResponses: ErrorTable<LocalEditsError> = {
+  "not-configured": { status: 409 },
+  "repo-not-registered": { status: 403 },
+  "unfinished-operation": { status: 409 },
+  "target-unreadable": { status: 422 },
+  "import-in-progress": { status: 409 },
 };
 
 export const chooseFolderErrorResponses: ErrorTable<ChooseFolderError> = {

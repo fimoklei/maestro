@@ -1,3 +1,4 @@
+import { type ReactNode, useId } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 
@@ -12,7 +13,7 @@ type ReportRow = {
   /** The name is a path, set in mono. */
   mono?: boolean;
   /** Why this row reads the way it does, in one or two short sentences. */
-  detail?: string;
+  detail?: ReactNode;
   /** A refusal or failure, stated as the same notice a single action shows. */
   notice?: ReportNotice;
   /** How many primitives the row stands for, where one reason hit several. */
@@ -25,6 +26,8 @@ export type ReportGroup = {
   tone: ReportTone;
   /** The group's status word. The count is drawn beside it. */
   label: string;
+  /** One sentence for the whole group, such as its next step. */
+  note?: string;
   rows: readonly ReportRow[];
 };
 
@@ -59,6 +62,7 @@ export function Report({
   heading: string;
   groups: readonly ReportGroup[];
 }) {
+  const id = useId();
   const drawn = ORDER.flatMap((tone) =>
     groups.filter((group) => group.tone === tone && group.rows.length > 0),
   );
@@ -72,9 +76,14 @@ export function Report({
       </span>
       {/* Under the dialog's own h2 title: a Report never stands alone. */}
       <h3 className="font-ui text-gray-12 text-prose">{heading}</h3>
-      {drawn.map((group) => (
-        <section key={group.label} className="flex min-w-0 flex-col gap-tight">
+      {drawn.map((group, index) => (
+        <section
+          key={group.label}
+          aria-labelledby={`${id}-${index}`}
+          className="flex min-w-0 flex-col gap-tight"
+        >
           <h4
+            id={`${id}-${index}`}
             className={cn(
               "flex items-center gap-tight font-medium font-ui text-meta",
               INK[group.tone],
@@ -93,6 +102,9 @@ export function Report({
               {group.rows.reduce((total, row) => total + (row.count ?? 1), 0)}
             </span>
           </h4>
+          {group.note === undefined ? null : (
+            <p className="m-0 font-ui text-gray-11 text-meta">{group.note}</p>
+          )}
           <ul
             className={cn(
               "flex min-w-0 flex-col",

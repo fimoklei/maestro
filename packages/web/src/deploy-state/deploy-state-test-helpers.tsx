@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
@@ -71,21 +71,22 @@ export function stubServer(read: () => ServerState) {
   return fetchMock;
 }
 
+// Stands in for the Harness screen: shows which skill it was asked to open.
+function HarnessProbe() {
+  const state = useLocation().state as { openSkill?: string } | null;
+  return <p>harness view {state?.openSkill ?? "with no skill open"}</p>;
+}
+
 export function renderDeployState(state?: { openTarget: string }) {
   return renderWithQuery(
     <MemoryRouter initialEntries={[{ pathname: "/", state }]}>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <>
-              <DeployStateView />
-              <ToastHost />
-            </>
-          }
-        />
+        <Route path="/" element={<DeployStateView />} />
         <Route path="/inventory" element={<p>inventory view</p>} />
+        <Route path="/harness" element={<HarnessProbe />} />
       </Routes>
+      {/* At the root, as in the app: a toast outlives the screen that raised it. */}
+      <ToastHost />
     </MemoryRouter>,
   );
 }

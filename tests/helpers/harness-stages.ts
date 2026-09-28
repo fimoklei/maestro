@@ -31,7 +31,7 @@ import { stubDeploy, stubRetryOperation } from "./stub-deploy";
 import { stubDeployState } from "./stub-deploy-state";
 import { stubDrift } from "./stub-drift";
 import { stubFolderChooser } from "./stub-folder-chooser";
-import { stubImport } from "./stub-import";
+import { stubImports } from "./stub-import";
 import { stubPublish } from "./stub-publish";
 import { stubRemove } from "./stub-remove";
 import { type StubReview, stubReview } from "./stub-review";
@@ -119,7 +119,7 @@ export function useHarnessStages() {
     const locks = new InFlightLocks();
     const resolveRoot = async () => await fs.realpath(root);
     return createApp({
-      importSkill: stubImport(),
+      ...stubImports(),
       registry,
       inventory,
       harness: new ReadHarnessState({

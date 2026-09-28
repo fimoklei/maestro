@@ -158,6 +158,15 @@ export type {
   StageStatus,
 } from "./harness/harness-stages";
 export {
+  ImportLocalEdits,
+  type ImportLocalEditsCheckResult,
+  type ImportLocalEditsInput,
+  type ImportLocalEditsResult,
+  type LocalEditsError,
+  type LocalEditsRefusal,
+  type LocalEditsSkill,
+} from "./harness/import-local-edits";
+export {
   type ImportCheck,
   type ImportCheckResult,
   type ImportMode,

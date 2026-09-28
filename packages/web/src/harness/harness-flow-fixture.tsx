@@ -229,7 +229,7 @@ export function renderHarness() {
   // — the open-time refresh must still be one request.
   return renderWithQuery(
     <StrictMode>
-      <HarnessView />
+      <HarnessView openSkill={null} />
     </StrictMode>,
   );
 }

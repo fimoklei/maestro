@@ -1,12 +1,15 @@
-// An ImportSkill with no harness connected: nothing is ever copied.
-import { ImportSkill } from "@maestro/core";
+// Both import use-cases with no harness connected: nothing is ever copied.
+import { ImportLocalEdits, ImportSkill, InFlightLocks } from "@maestro/core";
 
 const unreachable = (): never => {
   throw new Error("stub import port was reached");
 };
 
-export function stubImport(): ImportSkill {
-  return new ImportSkill({
+export function stubImports(): {
+  importSkill: ImportSkill;
+  importLocalEdits: ImportLocalEdits;
+} {
+  const importSkill = new ImportSkill({
     resolveRoot: async () => undefined,
     homeRoot: unreachable,
     fs: {
@@ -23,4 +26,23 @@ export function stubImport(): ImportSkill {
     git: { readFacts: unreachable, readMovementTrees: unreachable },
     deployedTargets: async () => [],
   });
+  return {
+    importSkill,
+    importLocalEdits: new ImportLocalEdits({
+      registry: { resolveRegistered: async () => undefined },
+      deployState: { read: unreachable, readGlobal: unreachable },
+      content: { classify: unreachable },
+      tree: {
+        listRawEntries: unreachable,
+        readFile: unreachable,
+        describe: unreachable,
+      },
+      globalRoot: unreachable,
+      home: unreachable,
+      importSkill,
+      git: { readSkillTreesAtTag: unreachable, readMovementTrees: unreachable },
+      resolveRoot: async () => undefined,
+      locks: new InFlightLocks(),
+    }),
+  };
 }

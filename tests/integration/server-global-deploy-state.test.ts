@@ -17,7 +17,7 @@ import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubFolderChooser } from "../helpers/stub-folder-chooser";
 import { stubHarness } from "../helpers/stub-harness";
-import { stubImport } from "../helpers/stub-import";
+import { stubImports } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
@@ -76,7 +76,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     });
     const locks = new InFlightLocks();
     return createApp({
-      importSkill: stubImport(),
+      ...stubImports(),
       registry,
       inventory,
       deployState,

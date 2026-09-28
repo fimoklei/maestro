@@ -61,7 +61,12 @@ const TABLE_LABEL = "Harness table";
 // rest is in the pane and the hover card (#994).
 const NARROW_HIDDEN = { type: false, "pull-request": false, "also-in": false };
 
-export function HarnessView() {
+export function HarnessView({
+  openSkill,
+}: {
+  /** A skill that just landed elsewhere, opened as its Pending proposal. */
+  openSkill: string | null;
+}) {
   const harness = useHarness();
   const state = harness.data;
   const refresh = useRefreshHarness();
@@ -108,7 +113,11 @@ export function HarnessView() {
 
   const rereadRef = useRef<HTMLButtonElement>(null);
 
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(() =>
+    openSkill === null
+      ? null
+      : rowId({ stage: "pending-proposal", skill: openSkill }),
+  );
   const importFlow = useImportFlow(({ name }) => {
     // An import writes the working tree, so its row is Pending proposal's —
     // even where the skill also holds a later one (#865).
