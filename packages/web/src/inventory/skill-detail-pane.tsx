@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import { DetailPane } from "../ui/detail-pane";
 import { FactList, FactRow } from "../ui/fact-list";
-import { FootActions, type FootItem } from "../ui/foot-actions";
+import { FootActions, type FootItem, firstEnabled } from "../ui/foot-actions";
 import { SubListRow } from "../ui/sub-list-row";
 import { NOT_DEPLOYED_ANYWHERE, rowActionsLabel } from "./inventory-copy";
 import type { SkillDeployment } from "./skill-deployments";
@@ -54,7 +54,9 @@ export function SkillDetailPane({
       initialFocus={initialFocus}
       onClose={onClose}
       getTriggerElement={getTriggerElement}
-      actions={<FootActions items={footItems} />}
+      actions={
+        <FootActions items={footItems} primary={firstEnabled(footItems)} />
+      }
     >
       <FactList>
         <FactRow label="Type">{TYPE_WORD[primitive.type]}</FactRow>

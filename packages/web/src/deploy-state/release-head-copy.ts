@@ -112,6 +112,11 @@ export function changedFact(head: ReleaseHead): string | null {
   return `${head.changed} of ${head.selected} skills`;
 }
 
+export const latestReleaseFact = (head: ReleaseHead | undefined) =>
+  head?.latestRelease && head.latestRelease !== head.release
+    ? head.latestRelease
+    : null;
+
 export function comparedFact(head: ReleaseHead, now: Date): string {
   const since = head.comparedAt === null ? null : ago(head.comparedAt, now);
   return since === null ? "Not read yet" : `Read ${since}`;

@@ -44,19 +44,30 @@ export const targetLinkItems = (
     ? [{ label: VIEW_REPOSITORY_ON_GITHUB, href: row.github.url }]
     : [];
 
-// One row's items, the same in its ⋮ menu and at its pane's foot.
+type MenuItem = TargetTableRow["actions"][number];
+
+// One ⋮ item as a control, for the menu and the pane.
+export const targetRowItem = (
+  row: Pick<TargetTableRow, "updateName">,
+  item: MenuItem,
+  onSelect: (action: TargetAction) => void,
+): FootItem => ({
+  label: item.label,
+  // Update target names the target it moves (#954).
+  ...(item.action === "update" && !item.disabled
+    ? { name: `${UPDATE_TARGET} ${row.updateName}` }
+    : {}),
+  disabled: item.disabled,
+  onSelect: () => onSelect(item.action),
+});
+
+// One row's items, as its ⋮ menu offers them.
 export const targetRowItems = (
   row: TargetTableRow,
   onAction: (row: TargetTableRow, action: TargetAction) => void,
 ): FootItem[] => [
-  ...row.actions.map((item) => ({
-    label: item.label,
-    // Update target names the target it moves (spec story 32).
-    ...(item.action === "update" && !item.disabled
-      ? { name: `${UPDATE_TARGET} ${row.updateName}` }
-      : {}),
-    disabled: item.disabled,
-    onSelect: () => onAction(row, item.action),
-  })),
+  ...row.actions.map((item) =>
+    targetRowItem(row, item, (action) => onAction(row, action)),
+  ),
   ...row.links,
 ];

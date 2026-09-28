@@ -152,3 +152,11 @@ export async function openPane(name: string) {
 }
 
 export const RECENT = () => new Date().toISOString();
+
+/** A pane fact's value element, found by its label. */
+export const factValue = (pane: HTMLElement, label: string) =>
+  within(pane)
+    .queryAllByText(label)
+    .find((element) => element.tagName === "DT")?.nextElementSibling as
+    | HTMLElement
+    | undefined;

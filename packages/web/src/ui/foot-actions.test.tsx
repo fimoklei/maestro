@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { FootActions } from "./foot-actions";
+import { FootActions, firstEnabled } from "./foot-actions";
 
 const labels = () =>
   screen
@@ -13,6 +13,7 @@ describe("FootActions", () => {
   it("renders the menu's items as buttons, in the menu's order", () => {
     render(
       <FootActions
+        primary={null}
         items={[
           { label: "Deploy skill", onSelect: () => {} },
           { label: "Update target", onSelect: () => {} },
@@ -35,6 +36,7 @@ describe("FootActions", () => {
   it("moves a danger item last, as the menu does", () => {
     render(
       <FootActions
+        primary={null}
         items={[
           { label: "Remove skill", danger: true, onSelect: () => {} },
           { label: "Deploy skill", onSelect: () => {} },
@@ -48,6 +50,7 @@ describe("FootActions", () => {
   it("names a control by its label, then what it acts on", () => {
     render(
       <FootActions
+        primary={null}
         items={[
           {
             label: "Update target",
@@ -65,36 +68,59 @@ describe("FootActions", () => {
     ).toHaveTextContent("Update target");
   });
 
-  // #1065: the first enabled item is the pane's one primary action.
-  it("makes the first enabled item primary and keeps danger as danger", () => {
+  it("makes the named item primary and keeps danger as danger", () => {
     render(
       <FootActions
+        primary="Import local edits…"
         items={[
-          {
-            label: "Update target — on the latest release",
-            disabled: true,
-            onSelect: () => {},
-          },
+          { label: "Import local edits…", onSelect: () => {} },
           { label: "Deploy skill", onSelect: () => {} },
-          { label: "Retry update", onSelect: () => {} },
           { label: "Remove skill", danger: true, onSelect: () => {} },
         ]}
       />,
     );
 
     const button = (name: string) => screen.getByRole("button", { name });
-    expect(button("Deploy skill")).toHaveClass("bg-gray-12");
-    expect(button("Retry update")).not.toHaveClass("bg-gray-12");
+    expect(button("Import local edits…")).toHaveClass("bg-gray-12");
+    expect(button("Deploy skill")).not.toHaveClass("bg-gray-12");
     expect(button("Remove skill")).toHaveClass("text-red-11");
-    expect(button("Update target — on the latest release")).not.toHaveClass(
-      "bg-gray-12",
+  });
+
+  it("makes nothing primary when no item is named", () => {
+    render(
+      <FootActions
+        primary={null}
+        items={[{ label: "Deploy skill", onSelect: () => {} }]}
+      />,
     );
+
+    expect(
+      screen.getByRole("button", { name: "Deploy skill" }),
+    ).not.toHaveClass("bg-gray-12");
+  });
+
+  // #1065: where the order already puts the next step first.
+  it("names the first enabled, non-danger action as firstEnabled", () => {
+    expect(
+      firstEnabled([
+        { label: "View pull request", href: "https://github.com/o/r/pull/4" },
+        { label: "Propose change", disabled: true, onSelect: () => {} },
+        { label: "Delete skill", danger: true, onSelect: () => {} },
+        { label: "Deploy skill", onSelect: () => {} },
+      ]),
+    ).toBe("Deploy skill");
+    expect(
+      firstEnabled([
+        { label: "Remove skill", danger: true, onSelect: () => {} },
+      ]),
+    ).toBeNull();
   });
 
   // #990: outside a row a control is 32px.
   it("sizes every control at the 32px control height", () => {
     render(
       <FootActions
+        primary={null}
         items={[
           { label: "Deploy skill", onSelect: () => {} },
           { label: "Remove skill", danger: true, onSelect: () => {} },
@@ -111,6 +137,7 @@ describe("FootActions", () => {
     const onSelect = vi.fn();
     render(
       <FootActions
+        primary={null}
         items={[
           {
             label: "Update target — on the latest release",
@@ -137,6 +164,7 @@ describe("FootActions", () => {
   it("opens a link item in a new tab, never as a button", () => {
     render(
       <FootActions
+        primary={null}
         items={[
           {
             label: "View pull request",

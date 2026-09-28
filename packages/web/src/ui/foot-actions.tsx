@@ -3,26 +3,40 @@ import { type ActionsMenuItem, orderedItems } from "./actions-menu";
 import { Button } from "./button";
 import { cn } from "./cn";
 
-// The row's ⋮ items as buttons; the first enabled one is primary (#1065).
+// The row's ⋮ items as buttons, at most one of them primary.
 export type FootItem = ActionsMenuItem & {
   /** The accessible name where the label alone would not say what it acts on. */
   name?: string;
 };
 
-export function FootActions({ items }: { items: readonly FootItem[] }) {
-  const ordered = orderedItems(items);
-  const primary = ordered.findIndex(
+// The primary where the ⋮ order already leads with the next step (#1065).
+export const firstEnabled = (items: readonly FootItem[]): string | null =>
+  items.find(
     (item) => item.href === undefined && !item.disabled && !item.danger,
-  );
+  )?.label ?? null;
+
+export function FootActions({
+  items,
+  primary,
+}: {
+  items: readonly FootItem[];
+  /** The label of the one primary item, or null for none. */
+  primary: string | null;
+}) {
+  const ordered = orderedItems(items);
   return (
     <>
-      {ordered.map((item, index) =>
+      {ordered.map((item) =>
         item.href === undefined ? (
           <Button
             key={item.label}
             size="md"
             variant={
-              item.danger ? "danger" : index === primary ? "primary" : "quiet"
+              item.danger
+                ? "danger"
+                : item.label === primary
+                  ? "primary"
+                  : "quiet"
             }
             aria-label={item.name}
             aria-disabled={item.disabled || undefined}

@@ -91,7 +91,7 @@ export const canImportLocalEdits = (
   primitive: Pick<DeployedPrimitive, "copy">,
 ) => pending === undefined && primitive.copy === "local-edits";
 
-const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
+export const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
   primitives
     .filter((primitive) => primitive.copy === "local-edits")
     .map((primitive) => primitive.name);
