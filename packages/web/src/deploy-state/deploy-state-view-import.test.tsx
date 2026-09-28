@@ -180,6 +180,146 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     expect(dialog).toBeInTheDocument();
   });
 
+  it("lists a refused skill disabled with its reason and leaves it out of the run", async () => {
+    const sent = stubImport(["code-review", "tdd"], landed, () =>
+      jsonResponse({
+        skills: [
+          { name: "code-review", refusal: null },
+          { name: "tdd", refusal: "deployed-copy" },
+        ],
+      }),
+    );
+    renderDeployState();
+
+    const dialog = await openDialog();
+    const refused = await within(dialog).findByRole("group", {
+      name: "✕ Cannot be imported · 1",
+    });
+    const box = within(refused).getByRole("checkbox", { name: "tdd" });
+    expect(box).toHaveAttribute("aria-disabled", "true");
+    expect(box).not.toBeChecked();
+    expect(box).toHaveAccessibleDescription(
+      "Deployed by another Harness. Make the change in that Harness.",
+    );
+    box.focus();
+    expect(box).toHaveFocus();
+    await userEvent.click(box);
+    expect(box).not.toBeChecked();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+    );
+    await screen.findByText("harness view code-review");
+    expect(sent).toEqual([{ target: TARGET, names: ["code-review"] }]);
+  });
+
+  it("blocks the confirm when no skill qualifies", async () => {
+    stubImport(["tdd"], landed, () =>
+      jsonResponse({ skills: [{ name: "tdd", refusal: "unverified" }] }),
+    );
+    renderDeployState();
+
+    const dialog = await openDialog();
+
+    expect(
+      await within(dialog).findByRole("button", {
+        name: "Import skills — no skill qualifies",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
+    expect(within(dialog).getByRole("checkbox", { name: "tdd" })).toHaveFocus();
+    expect(
+      within(dialog).queryByRole("group", { name: /Can be imported/ }),
+    ).toBeNull();
+  });
+
+  it("states no local edits when the check lists no skill", async () => {
+    stubImport(["tdd"], landed, () => jsonResponse({ skills: [] }));
+    renderDeployState();
+
+    const dialog = await openDialog();
+
+    expect(await within(dialog).findByText("No local edits")).toBeVisible();
+    expect(
+      within(dialog).getByText(`No skill on ${ROW} changed after deployment.`),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByRole("checkbox")).toBeNull();
+  });
+
+  it("states a failed check as nothing imported", async () => {
+    stubImport(["tdd"], landed, () =>
+      jsonResponse({ error: "target-unreadable" }, 422),
+    );
+    renderDeployState();
+
+    const dialog = await openDialog();
+
+    expect(
+      await within(dialog).findByText("Local edits not checked"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Nothing was imported. Select Close, then Import local edits… again.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("stays open with a Report naming each refused skill's reason", async () => {
+    stubImport(["code-review", "tdd"], () =>
+      jsonResponse({
+        outcomes: [
+          { name: "code-review", refusal: null },
+          { name: "tdd", refusal: "harness-copy-uncommitted" },
+        ],
+      }),
+    );
+    renderDeployState();
+
+    const dialog = await openDialog();
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Import 2 skills" }),
+    );
+
+    const refused = await within(dialog).findByRole("region", {
+      name: "Not imported 1",
+    });
+    expect(
+      within(refused).getByText(
+        "The Harness clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
+      ),
+    ).toBeInTheDocument();
+    const imported = within(dialog).getByRole("region", {
+      name: "Imported 1",
+    });
+    expect(within(imported).getByText("code-review")).toBeInTheDocument();
+    expect(
+      within(imported).getByText(
+        "Each is now a Pending proposal on the Harness screen. Select Propose change there.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(expect.arrayContaining(["Close"]));
+    expect(
+      within(dialog).queryByRole("button", { name: /^Import/ }),
+    ).toBeNull();
+  });
+
+  it("states an unanswered run as possibly landed", async () => {
+    stubImport(["tdd"], () => Promise.reject(new TypeError("fetch failed")));
+    renderDeployState();
+
+    const dialog = await openDialog();
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Import 1 skill" }),
+    );
+
+    expect(
+      await within(dialog).findByText("Import not confirmed"),
+    ).toBeInTheDocument();
+  });
+
   it("states a held Harness lock and imports nothing", async () => {
     stubImport(["tdd"], () =>
       jsonResponse({ error: "import-in-progress" }, 409),

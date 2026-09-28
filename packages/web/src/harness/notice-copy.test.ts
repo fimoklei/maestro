@@ -7,6 +7,7 @@ import {
   harnessStateNotice,
   importNotice,
   localDeletionNotice,
+  localEditsRefusal,
   promoteNotice,
   proposalNotice,
   publishReleaseNotice,
@@ -1121,5 +1122,56 @@ describe("skillRestoredNotice", () => {
       detail: "Your proposal remains unchanged.",
       action: { label: "Re-read Harness", onClick: retry },
     });
+  });
+});
+
+describe("localEditsRefusal", () => {
+  it.each([
+    [
+      "deployed-copy",
+      "Deployed by another Harness. Make the change in that Harness.",
+    ],
+    [
+      "origin-unproven",
+      "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.",
+    ],
+    [
+      "not-an-update",
+      "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.",
+    ],
+    [
+      "unverified",
+      "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
+    ],
+    [
+      "harness-copy-uncommitted",
+      "The Harness clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
+    ],
+    [
+      "no-local-edits",
+      "No local edits left in this copy. Nothing was imported.",
+    ],
+    [
+      "nothing-to-carry-back",
+      "The Harness already has these changes. See the skill on the Harness screen.",
+    ],
+    [
+      "copy-failed",
+      "The skill was not imported. Free up disk space, then select Import local edits… again.",
+    ],
+    [
+      "source-changed",
+      "The skill was not imported. Let the folder change finish, then select Import local edits… again.",
+    ],
+    [
+      "harness-unreadable",
+      "Nothing was copied. Make the Harness clone readable, then select Import local edits… again.",
+    ],
+    [
+      "source-unreadable",
+      "Nothing was copied. Make the folder readable, then select Import local edits… again.",
+    ],
+  ] as const)("states %s as its reason and next step", (refusal, sentence) => {
+    expect(localEditsRefusal(refusal)).toBe(sentence);
   });
 });
