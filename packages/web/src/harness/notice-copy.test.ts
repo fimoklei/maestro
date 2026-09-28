@@ -1141,7 +1141,7 @@ describe("localEditsRefusal", () => {
     ],
     [
       "outside-root",
-      "This copy is outside your home folder, where Maestro does not read. Copy the changed files into the Harness clone yourself.",
+      "Maestro reads only inside your home folder, and this copy is outside it. Copy the changed files into the Harness clone yourself.",
     ],
     [
       "deployed-copy",
@@ -1177,7 +1177,7 @@ describe("localEditsRefusal", () => {
     ],
     [
       "invalid-name",
-      "The deployment record names this skill in a form the Harness cannot hold. Copy the changed files into the Harness clone yourself.",
+      "The deployment record gives this skill a name the Harness cannot use. Copy the changed files into the Harness clone yourself.",
     ],
     [
       "name-taken",
@@ -1197,15 +1197,15 @@ describe("localEditsRefusal", () => {
     ],
     [
       "unsafe-link",
-      "Nothing was copied. Replace the symbolic link inside with a real file, then select Import local edits… again.",
+      "Nothing was copied. Replace the symbolic link in the skill folder with a real file, then select Import local edits… again.",
     ],
     [
       "hard-linked-file",
-      "Nothing was copied. Replace the shared file inside with a plain copy, then select Import local edits… again.",
+      "Nothing was copied. Replace the shared file in the skill folder with a plain copy, then select Import local edits… again.",
     ],
     [
       "special-file",
-      "Nothing was copied. Take the special file out of the folder, then select Import local edits… again.",
+      "Nothing was copied. Take the special file out of the skill folder, then select Import local edits… again.",
     ],
     [
       "too-many-files",
@@ -1241,7 +1241,7 @@ describe("localEditsRefusal", () => {
     ],
     [
       "undoes-newer-changes",
-      "The Harness changed this skill after the check. Importing now undoes those changes. Select Import local edits… again to decide.",
+      "The Harness changed this skill after the check, so it was not imported. Select Import local edits… again to choose whether to undo that change.",
     ],
   ] as const)("states %s as its reason and next step", (refusal, sentence) => {
     expect(localEditsRefusal({ refusal })).toBe(sentence);
