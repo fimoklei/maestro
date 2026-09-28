@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Report } from "./report";
@@ -131,5 +131,39 @@ describe("Report", () => {
     expect(screen.getByRole("heading", { level: 4 })).toHaveTextContent(
       "Failed2",
     );
+  });
+
+  it("states a row's whole notice: heading, sentence and detail", () => {
+    render(
+      <Report
+        heading="Deployed to maestro"
+        groups={[
+          {
+            tone: "failed",
+            label: "Failed",
+            rows: [
+              {
+                name: "tdd",
+                notice: {
+                  label: "No GitHub access",
+                  message:
+                    "Nothing was installed. Set up GitHub access in git, then deploy again.",
+                  detail: "GitHub refused the download.",
+                },
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const row = screen.getByRole("listitem");
+    expect(within(row).getByText("No GitHub access")).toBeVisible();
+    expect(
+      within(row).getByText(
+        "Nothing was installed. Set up GitHub access in git, then deploy again.",
+      ),
+    ).toBeVisible();
+    expect(within(row).getByText("GitHub refused the download.")).toBeVisible();
   });
 });

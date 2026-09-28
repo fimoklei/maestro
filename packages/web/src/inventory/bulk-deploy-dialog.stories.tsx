@@ -71,7 +71,12 @@ export const PartialReport: Story = {
           rows: [
             {
               name: "tdd",
-              detail: "Local changes in deployed files",
+              notice: {
+                label: "Local changes in deployed files",
+                message:
+                  "Deploy again to replace the local edits with the latest release.",
+                detail: "The edits never went through the Harness.",
+              },
               action: { label: "Deploy tdd again", onClick: () => {} },
             },
           ],
@@ -83,7 +88,12 @@ export const PartialReport: Story = {
             {
               name: "research, code-review",
               count: 2,
-              detail: "Deploy failed",
+              notice: {
+                label: "No GitHub access",
+                message:
+                  "Nothing was installed. Set up GitHub access in git, then deploy again.",
+                detail: "GitHub refused the download.",
+              },
             },
           ],
         },

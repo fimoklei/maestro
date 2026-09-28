@@ -161,10 +161,10 @@ describe("Update target copy", () => {
       "Still deployed, though v0.3.4 drops it. Select Retry update to run the same release again.",
     );
     expect(outcomeDetail("not-updated", releases, false)).toBe(
-      "Still at v0.3.2. Check the target card, then select Update target again.",
+      "Still at v0.3.2. Check the target on the Deploy-state screen, then select Update target again.",
     );
     expect(outcomeDetail("unknown", releases, false)).toBe(
-      "Maestro could not read this skill back. Check the target card for its state.",
+      "Maestro could not read this skill back. Check its state on the Deploy-state screen.",
     );
   });
 

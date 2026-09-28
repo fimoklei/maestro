@@ -349,7 +349,7 @@ describe("UpdateTargetDialog outcome", () => {
     expect(failed.getByText("grill in Codex")).toBeInTheDocument();
     expect(
       failed.getByText(
-        "Still at v0.3.2. Check the target card, then select Update target again.",
+        "Still at v0.3.2. Check the target on the Deploy-state screen, then select Update target again.",
       ),
     ).toBeInTheDocument();
   });

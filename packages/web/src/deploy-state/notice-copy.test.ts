@@ -1,9 +1,10 @@
+import type { DeploySkillError } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import {
   type DeployStateNotice,
   deployNotice,
-  linkedFolderRecovery,
+  deployNoticeFor,
   removeNotice,
   updateNotice,
   updatePreviewNotice,
@@ -13,14 +14,15 @@ import {
 const refusal = (code: string) => new HttpError(422, "unused", code);
 
 describe("deploy notices", () => {
-  const cases: [string, DeployStateNotice][] = [
+  const cases: [DeploySkillError, DeployStateNotice][] = [
     [
       "unsupported-primitive-type",
       {
         level: "error",
         label: "Skills only",
         message:
-          "Maestro deploys skills; hooks and MCP servers stay in the Harness. Deploy a skill instead.",
+          "Nothing was installed. Maestro deploys skills only. Select a skill, then deploy again.",
+        detail: "Hooks and MCP servers stay in the Harness.",
       },
     ],
     [
@@ -29,7 +31,9 @@ describe("deploy notices", () => {
         level: "error",
         label: "Unusable skill name",
         message:
-          "A skill name uses lowercase letters, digits and single hyphens. Rename it in the Harness, then deploy again.",
+          "Nothing was installed. Rename the skill in the Harness, then deploy again.",
+        detail:
+          "A skill name uses lowercase letters, digits and single hyphens.",
       },
     ],
     [
@@ -38,7 +42,7 @@ describe("deploy notices", () => {
         level: "error",
         label: "Skill not in the Inventory",
         message:
-          "Re-read the Inventory, then pick the skill from the list again.",
+          "Nothing was installed. Select Re-read Inventory, then select the skill again.",
       },
     ],
     [
@@ -47,7 +51,7 @@ describe("deploy notices", () => {
         level: "error",
         label: "No Harness connected",
         message:
-          "Connect a Harness on the Inventory screen, then deploy again.",
+          "Nothing was installed. Select Connect Inventory on the Inventory screen, then deploy again.",
       },
     ],
     [
@@ -56,7 +60,7 @@ describe("deploy notices", () => {
         level: "error",
         label: "Could not read Inventory",
         message:
-          "Select Re-read Inventory on the Harness location screen, then deploy again.",
+          "Nothing was installed. Select Re-read Inventory, then deploy again.",
       },
     ],
     [
@@ -64,7 +68,8 @@ describe("deploy notices", () => {
       {
         level: "error",
         label: "Repository not registered",
-        message: "Register this repository in Maestro, then deploy again.",
+        message:
+          "Nothing was installed. Select Register repository on the Repositories screen, then deploy again.",
       },
     ],
     [
@@ -73,7 +78,7 @@ describe("deploy notices", () => {
         level: "error",
         label: "No GitHub origin",
         message:
-          "Point the Harness clone's origin at its GitHub repository, then deploy again.",
+          "Nothing was installed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
         detail: "A deploy installs from a GitHub tag, over https or ssh.",
       },
     ],
@@ -82,7 +87,8 @@ describe("deploy notices", () => {
       {
         level: "error",
         label: "Not in any release",
-        message: "Publish a release on the Harness screen, then deploy again.",
+        message:
+          "Nothing was installed. Select Publish release on the Harness screen, then deploy again.",
         detail: "A deploy installs from a published tag.",
       },
     ],
@@ -92,7 +98,8 @@ describe("deploy notices", () => {
         level: "error",
         label: "Harness copy unreleased",
         message:
-          "A deploy installs the latest release, not the Harness copy. Publish a release, then deploy again.",
+          "Nothing was installed. Select Publish release on the Harness screen, then deploy again.",
+        detail: "A deploy installs the latest release, not the Harness copy.",
       },
     ],
     [
@@ -131,7 +138,7 @@ describe("deploy notices", () => {
         level: "error",
         label: "Could not read deployment record",
         message:
-          "Repair or delete apm.lock.yaml in the target, then deploy again.",
+          "Nothing was installed. Repair or delete apm.lock.yaml in the target, then deploy again.",
         detail:
           "The file is present but does not parse, so the target's state is unknown.",
       },
@@ -142,7 +149,67 @@ describe("deploy notices", () => {
         level: "error",
         label: "Another change is running",
         message:
-          "A deploy is still running on this target. Wait for it to finish.",
+          "Nothing was installed. Wait for the running deploy on this target to finish, then deploy again.",
+      },
+    ],
+    [
+      "ref-unresolvable",
+      {
+        level: "error",
+        label: "Cannot identify deployed skill",
+        message:
+          "Nothing was installed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
+        detail: "The target's record names more than one, or names no release.",
+      },
+    ],
+    [
+      "not-at-target-release",
+      {
+        level: "error",
+        label: "Not in this release",
+        message:
+          "Nothing was installed. Select Update target to move this target to a release that holds the skill.",
+        detail: "This skill is not in the release this target follows.",
+      },
+    ],
+    [
+      "target-pinned-per-skill",
+      {
+        level: "error",
+        label: "Pinned per skill",
+        message:
+          "Nothing was installed. Select Remove skill for each skill, then select Deploy skill to put them on one release.",
+        detail: "This target holds skills from separate deployments.",
+      },
+    ],
+    [
+      "manifest-not-recognised",
+      {
+        level: "error",
+        label: "Unsupported apm.yml",
+        message:
+          "Nothing was installed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
+        detail: "Maestro edits that list only, and it found another shape.",
+      },
+    ],
+    [
+      "operation-unfinished",
+      {
+        level: "error",
+        label: "Change not finished",
+        message:
+          "Nothing was installed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
+        detail: "An earlier change on this target did not finish.",
+      },
+    ],
+    [
+      "deploy-incomplete",
+      {
+        level: "error",
+        label: "Deploy incomplete",
+        message:
+          "Part of the selection is not on disk. Open the target on the Deploy-state screen and select Retry deploy.",
+        detail: "apm reported success, but some files are missing.",
       },
     ],
     [
@@ -151,7 +218,8 @@ describe("deploy notices", () => {
         level: "error",
         label: "No supported tool",
         message:
-          "A global deploy installs into Claude Code or Codex. Install one, then deploy again.",
+          "Nothing was installed. Install Claude Code or Codex, then deploy again.",
+        detail: "A global deploy installs into Claude Code or Codex.",
       },
     ],
     [
@@ -176,45 +244,22 @@ describe("deploy notices", () => {
       },
     ],
     [
-      "target-pinned-per-skill",
-      {
-        level: "error",
-        label: "Release not adopted",
-        message:
-          "This target has skills from separate deployments. Select Remove skill for each skill, then Deploy skill to put them on one release.",
-      },
-    ],
-    [
-      "not-at-target-release",
-      {
-        level: "error",
-        label: "Not in this release",
-        message:
-          "This skill is not in the release this target follows. Select Update target to move to the release that holds it.",
-      },
-    ],
-    [
-      "deploy-incomplete",
-      {
-        level: "error",
-        label: "Deploy incomplete",
-        message:
-          "Part of the selection is not on disk. Select Retry deploy to run the same release again.",
-        detail: "apm reported success, but some files are missing.",
-      },
-    ],
-    [
       "deploy-failed",
       {
         level: "error",
         label: "Deploy did not finish",
         message:
-          "The target may hold a partial install. Check its state below, then deploy again.",
+          "The target may hold a partial install. Check the target on the Deploy-state screen, then deploy again.",
       },
     ],
   ];
 
+  it("covers every deploy code", () => {
+    expect(cases).toHaveLength(24);
+  });
+
   it.each(cases)("states the whole notice for %s", (code, expected) => {
+    expect(deployNoticeFor(code, undefined)).toEqual(expected);
     expect(deployNotice(refusal(code))).toEqual(expected);
   });
 
@@ -603,6 +648,19 @@ describe("update notices for a linked skill folder", () => {
 });
 
 describe("deploy notice for a linked skill folder", () => {
+  it("spells out the rm for the path a bulk run carries", () => {
+    expect(
+      deployNoticeFor("destination-symlinked", "/Users/dev/.claude/skills/tdd"),
+    ).toEqual({
+      level: "error",
+      label: "Linked skill folder",
+      message:
+        "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",
+      detail:
+        "This removes the link only. The folder it points at remains on disk.",
+    });
+  });
+
   it("spells out the rm for the path the server read", () => {
     const error = new HttpError(409, "unused", "destination-symlinked", {
       error: "destination-symlinked",
@@ -659,11 +717,7 @@ describe("every deploy and remove notice", () => {
       deployNotice(refusal(code)),
       removeNotice(refusal(code)),
     ]),
-    {
-      label: "Linked skill folder",
-      message: linkedFolderRecovery("/home/.claude"),
-      detail: undefined,
-    },
+    deployNoticeFor("destination-symlinked", "/home/.claude"),
   ];
 
   it("never addresses the reader as you", () => {
@@ -683,10 +737,14 @@ describe("every deploy and remove notice", () => {
   });
 });
 
-describe("linkedFolderRecovery", () => {
-  it("spells out the rm for the path the server read", () => {
-    expect(linkedFolderRecovery("/Users/dev/.claude/skills/tdd")).toBe(
-      "Run rm /Users/dev/.claude/skills/tdd and then deploy again. This removes the link only. The folder it points at remains on disk.",
-    );
+describe("notices that send the reader to the target", () => {
+  it.each([
+    ["remove, unfinished", removeNotice(refusal("operation-unfinished"))],
+    ["update, unfinished", updateNotice(refusal("operation-unfinished"))],
+    ["update, failed", updateNotice(refusal("update-failed"))],
+    ["update, unknown", updateNotice(new Error("offline"))],
+  ])("names the Deploy-state screen (%s)", (_, notice) => {
+    expect(notice.message).toContain("on the Deploy-state screen");
+    expect(notice.message).not.toContain("target card");
   });
 });
