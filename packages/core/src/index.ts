@@ -160,6 +160,7 @@ export type {
 export {
   ImportLocalEdits,
   type ImportLocalEditsCheckResult,
+  type ImportLocalEditsInput,
   type ImportLocalEditsResult,
   type LocalEditsError,
   type LocalEditsRefusal,

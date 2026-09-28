@@ -329,9 +329,7 @@ describe("Deploy-state — Import local edits… on a repository", () => {
   });
 
   it("states a failed check as nothing imported", async () => {
-    stubImport(["tdd"], landed, () =>
-      jsonResponse({ error: "target-unreadable" }, 422),
-    );
+    stubImport(["tdd"], landed, () => jsonResponse({ error: "internal" }, 500));
     renderDeployState();
 
     const dialog = await openDialog();

@@ -127,7 +127,7 @@ export function DeployStateView() {
   const gridRef = useRef<HTMLTableElement>(null);
   const getTriggerElement = useCallback(() => gridRef.current, []);
 
-  const open = useCallback((id: string | null, dialog: TargetDialog = null) => {
+  const open = useCallback((id: string | null, dialog: TargetDialog) => {
     setSelected(id);
     setIntent((current) =>
       id === null ? null : { dialog, nonce: (current?.nonce ?? 0) + 1 },
@@ -366,7 +366,9 @@ export function DeployStateView() {
                     : undefined
                 }
                 openRowId={selected}
-                onRowOpen={(row) => open(selected === row.id ? null : row.id)}
+                onRowOpen={(row) =>
+                  open(selected === row.id ? null : row.id, null)
+                }
                 onRowOrderChange={setOrder}
                 empty={NO_FILTER_MATCH}
               />
@@ -387,8 +389,8 @@ export function DeployStateView() {
                   ? null
                   : { index: openIndex, count: order.length }
               }
-              onPage={(step) => open(order[openIndex + step] ?? selected)}
-              onClose={() => open(null)}
+              onPage={(step) => open(order[openIndex + step] ?? selected, null)}
+              onClose={() => open(null, null)}
               getTriggerElement={getTriggerElement}
               initialFocus={intent?.dialog ? null : undefined}
               onRetry={() => retry.mutate({ target: selectedRow.wire })}

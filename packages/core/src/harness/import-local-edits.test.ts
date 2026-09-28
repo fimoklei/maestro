@@ -38,7 +38,8 @@ type Copy = DeployedContentState;
 function target(
   overrides: {
     // Per skill, per tool: what the content port reads for that copy.
-    copies?: Record<string, { claude?: Copy; codex?: Copy }>;
+    // `both`: the reading of both tools asked together, where it differs.
+    copies?: Record<string, { claude?: Copy; codex?: Copy; both?: Copy }>;
     lockfile?: string[];
     trees?: HarnessSkillTrees;
     registered?: boolean;
@@ -49,6 +50,8 @@ function target(
     release?: Record<string, string>;
     // The global install: lockfile under ~/.apm, skills under HOME.
     global?: boolean;
+    // The newest release Deploy-state's row measures the repo against.
+    latestRelease?: string;
   } = {},
 ) {
   const copies = overrides.copies ?? {
@@ -69,11 +72,12 @@ function target(
   for (const name of Object.keys(copies)) {
     for (const prefix of [".claude", ".agents"]) {
       const folder = `${tree}/${prefix}/skills/${name}`;
+      const state = copies[name]?.[prefix === ".claude" ? "claude" : "codex"];
+      if (state === "not-deployed") {
+        continue;
+      }
       directories.add(folder);
-      files[`${folder}/SKILL.md`] =
-        copies[name]?.[prefix === ".claude" ? "claude" : "codex"] === "diverged"
-          ? EDITED
-          : HELD;
+      files[`${folder}/SKILL.md`] = state === "diverged" ? EDITED : HELD;
     }
     directories.add(`${ROOT}/.apm/skills/${name}`);
     files[`${ROOT}/.apm/skills/${name}/SKILL.md`] = HELD;
@@ -119,9 +123,15 @@ function target(
   const content = {
     classify: async (input: { name: string; tools?: readonly string[] }) => {
       const reading = copies[input.name] ?? {};
+      if (reading.both !== undefined && (input.tools?.length ?? 2) === 2) {
+        return reading.both;
+      }
       const states = (input.tools ?? ["claude", "codex"]).map(
         (tool) => reading[tool as "claude" | "codex"] ?? "clean",
       );
+      if (states.length === 1) {
+        return states[0] as Copy;
+      }
       if (states.includes("diverged")) {
         return "diverged" as const;
       }
@@ -178,17 +188,44 @@ function target(
     deployedTargets: async () => [{ treeRoot: tree, lockfilePath }],
   });
 
-  let release = overrides.release ?? { ...trees.local };
+  let release: Record<string, string> | null = overrides.release ?? {
+    ...trees.local,
+  };
+  const harnessReads = { movementTrees: 0, roots: 0 };
   const harnessGit = {
-    readMovementTrees: async () => trees,
-    readSkillTreesAtTag: async (_root: string, tag: string) =>
-      tag === "v1.0.0"
+    readMovementTrees: async () => {
+      harnessReads.movementTrees += 1;
+      return trees;
+    },
+    readSkillTreesAtTag: async (_root: string, tag: string) => {
+      if (release === null) {
+        throw new Error("tag unreadable");
+      }
+      return tag === "v1.0.0"
         ? Object.entries(release).map(([name, treeHash]) => ({
             name,
             treeHash,
           }))
-        : null,
+        : null;
+    },
   };
+  const reader = new GlobalDeployStateReader({
+    fs,
+    toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
+    treeRoot: () => HOME,
+    content,
+    operations: {
+      pending: async () =>
+        overrides.pending === true
+          ? {
+              kind: "deploy" as const,
+              release: "v1.0.0",
+              desired: ["code-review"],
+            }
+          : null,
+    },
+  });
+  const latestRelease = overrides.latestRelease;
 
   const locks = new InFlightLocks();
   const useCase = new ImportLocalEdits({
@@ -198,29 +235,34 @@ function target(
           ? undefined
           : { path: REPO },
     },
-    deployState: new GlobalDeployStateReader({
-      fs,
-      toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
-      treeRoot: () => HOME,
-      content,
-      operations: {
-        pending: async () =>
-          overrides.pending === true
-            ? {
-                kind: "deploy" as const,
+    deployState: {
+      read: async (path: string) => {
+        const state = await reader.read(path);
+        return state.ok && latestRelease !== undefined
+          ? {
+              ...state,
+              releaseHead: {
                 release: "v1.0.0",
-                desired: ["code-review"],
-              }
-            : null,
+                latestRelease,
+                changed: 0,
+                selected: 1,
+                comparedAt: null,
+              },
+            }
+          : state;
       },
-    }),
+      readGlobal: (root: string) => reader.readGlobal(root),
+    },
     content,
     tree: { ...fs, ...facts },
     globalRoot: () => APM_GLOBAL,
     home: () => HOME,
     importSkill,
     git: harnessGit,
-    resolveRoot: async () => ROOT,
+    resolveRoot: async () => {
+      harnessReads.roots += 1;
+      return ROOT;
+    },
     locks,
   });
 
@@ -230,10 +272,10 @@ function target(
   const setTrees = (next: HarnessSkillTrees) => {
     trees = next;
   };
-  const setRelease = (next: Record<string, string>) => {
+  const setRelease = (next: Record<string, string> | null) => {
     release = next;
   };
-  return { useCase, files, locks, edit, setTrees, setRelease };
+  return { useCase, files, locks, edit, setTrees, setRelease, harnessReads };
 }
 
 const REPO_TARGET = { kind: "repo" as const, repoPath: REPO };
@@ -339,6 +381,21 @@ describe("ImportLocalEdits.check", () => {
     });
   });
 
+  it("judges a Local edits row whose edit no single tool folder holds, never calling it unedited", async () => {
+    // The Claude Code folder was deleted: together the copies read edited,
+    // apart the Codex copy reads clean and the other reads not deployed.
+    const { useCase } = target({
+      copies: {
+        "code-review": { both: "diverged", claude: "not-deployed" },
+      },
+    });
+
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [{ name: "code-review", refusal: "nothing-to-carry-back" }],
+    });
+  });
+
   it("flags a skill whose Harness copy changed since its deployed release", async () => {
     const { useCase } = target({
       copies: {
@@ -371,6 +428,47 @@ describe("ImportLocalEdits.check", () => {
         { name: "code-review", refusal: null, undoesNewerSince: "v1.0.0" },
       ],
     });
+  });
+
+  it("never flags a skill deployed from the latest release, even when its tag is unreadable", async () => {
+    const { useCase, setRelease } = target({ latestRelease: "v1.0.0" });
+    setRelease(null);
+
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [{ name: "code-review", refusal: null }],
+    });
+  });
+
+  it("flags a skill from an older release whose tag is unreadable", async () => {
+    const { useCase, setRelease } = target({ latestRelease: "v1.1.0" });
+    setRelease(null);
+
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [
+        { name: "code-review", refusal: null, undoesNewerSince: "v1.0.0" },
+      ],
+    });
+  });
+
+  it("reads the Harness state once per check, whatever the skill count", async () => {
+    const { useCase, harnessReads } = target({
+      copies: {
+        "code-review": { claude: "diverged" },
+        tdd: { claude: "diverged" },
+        lint: { claude: "diverged" },
+      },
+      lockfile: [
+        ...entry("code-review", FROM_THIS_HARNESS),
+        ...entry("tdd", FROM_THIS_HARNESS),
+        ...entry("lint", FROM_THIS_HARNESS),
+      ],
+    });
+
+    await useCase.check(REPO_TARGET);
+
+    expect(harnessReads).toEqual({ roots: 1, movementTrees: 1 });
   });
 
   it("lists a global skill with identical Claude Code and Codex edits as eligible", async () => {

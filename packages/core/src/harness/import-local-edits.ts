@@ -13,6 +13,7 @@ import { type SameTreeFs, sameTree } from "../filesystem/same-tree";
 import type { Registry } from "../registry/registry";
 import type { ImportSkill, ImportSkillError } from "./import-skill";
 import type { HarnessGitPort } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 export type LocalEditsRefusal =
   | ImportSkillError
@@ -76,6 +77,9 @@ type Reading = {
   copies: Map<string, Copy>;
 };
 
+// Whether a skill's Harness copy changed since the release its copy came from.
+type MovedSince = (name: string, copy: Copy) => Promise<boolean>;
+
 type Judged =
   | { folder: string; undoesNewerSince?: string }
   | { refusal: LocalEditsRefusal; folders?: DifferingFolders };
@@ -108,9 +112,10 @@ export class ImportLocalEdits {
     if ("error" in reading) {
       return { ok: false, error: reading.error };
     }
+    const moved = await this.harnessMovement();
     const skills: LocalEditsSkill[] = [];
     for (const [name, copy] of reading.copies) {
-      skills.push(outcome(name, await this.judge(reading, name, copy)));
+      skills.push(outcome(name, await this.judge(reading, moved, name, copy)));
     }
     return { ok: true, skills };
   }
@@ -132,13 +137,14 @@ export class ImportLocalEdits {
     if ("error" in reading) {
       return { ok: false, error: reading.error };
     }
+    const moved = await this.harnessMovement();
     const outcomes: LocalEditsSkill[] = [];
     for (const name of input.names) {
       const copy = reading.copies.get(name);
       const judged: Judged =
         copy === undefined
           ? { refusal: "no-local-edits" }
-          : await this.judge(reading, name, copy);
+          : await this.judge(reading, moved, name, copy);
       if (!("folder" in judged)) {
         outcomes.push(outcome(name, judged));
         continue;
@@ -238,6 +244,7 @@ export class ImportLocalEdits {
 
   private async judge(
     reading: Reading,
+    moved: MovedSince,
     name: string,
     copy: Copy,
   ): Promise<Judged> {
@@ -274,46 +281,68 @@ export class ImportLocalEdits {
     if (mode !== "update") {
       return { refusal: "not-an-update" };
     }
-    return (await this.harnessMovedSince(name, copy.version))
+    return (await moved(name, copy))
       ? { folder: first, undoesNewerSince: copy.version }
       : { folder: first };
   }
 
   // The folder is replaced whole, so any Harness change since the deployed
-  // release would be undone. An unreadable release counts as moved.
-  private async harnessMovedSince(
-    name: string,
-    version: string,
-  ): Promise<boolean> {
+  // release would be undone. Where the trees cannot be compared, only a copy
+  // from the latest release counts as unmoved. The Harness is read once per
+  // reading; each release's trees once per release.
+  private async harnessMovement(): Promise<MovedSince> {
     const root = await this.deps.resolveRoot();
-    if (root === undefined) {
-      return true;
-    }
-    const [released, trees] = await Promise.all([
-      this.deps.git.readSkillTreesAtTag(root, version).catch(() => null),
-      this.deps.git.readMovementTrees(root).catch(() => null),
-    ]);
-    const before = released?.find((skill) => skill.name === name)?.treeHash;
-    return before === undefined || before !== trees?.working[name];
+    const working =
+      root === undefined
+        ? undefined
+        : (await this.deps.git.readMovementTrees(root).catch(() => null))
+            ?.working;
+    const released = new Map<string, Promise<HarnessSkillTree[] | null>>();
+    return async (name, copy) => {
+      const onLatest = copy.tools.some(
+        ({ release }) => release === copy.version,
+      );
+      if (root === undefined || working === undefined) {
+        return !onLatest;
+      }
+      let trees = released.get(copy.version);
+      if (trees === undefined) {
+        trees = this.deps.git
+          .readSkillTreesAtTag(root, copy.version)
+          .catch(() => null);
+        released.set(copy.version, trees);
+      }
+      const before = (await trees)?.find(
+        (skill) => skill.name === name,
+      )?.treeHash;
+      return before === undefined ? !onLatest : before !== working[name];
+    };
   }
 
-  // Per tool, measured as Deploy-state measures: against the latest release.
+  // Deploy-state's reading decides the skill is edited; this only locates the
+  // copies. Where no single tool's copy reads edited (one folder deleted,
+  // say), every copy still present is carried to ImportSkill's judgement.
   private async editedFolders(
     reading: Reading,
     name: string,
     copy: Copy,
   ): Promise<Partial<Record<SupportedTool, string>>> {
-    const folders: Partial<Record<SupportedTool, string>> = {};
+    const edited: Partial<Record<SupportedTool, string>> = {};
+    const present: Partial<Record<SupportedTool, string>> = {};
     for (const { tool, release } of copy.tools) {
       const state = await this.deps.content
         .classify({ target: reading.target, name, tools: [tool], release })
         .catch(() => null);
       const [subtree] = deployTargetSubtrees(name, [tool]);
-      if (state === "diverged" && subtree !== undefined) {
-        folders[tool] = join(reading.tree, subtree);
+      if (subtree === undefined || state === null || state === "not-deployed") {
+        continue;
+      }
+      present[tool] = join(reading.tree, subtree);
+      if (state === "diverged") {
+        edited[tool] = present[tool];
       }
     }
-    return folders;
+    return Object.keys(edited).length > 0 ? edited : present;
   }
 
   // `~/…` under home, else relative to the target: never absolute.

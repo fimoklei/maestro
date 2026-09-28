@@ -753,46 +753,91 @@ export const importBlockerNotice = (
     ? importHeadings[blocker]
     : { ...importHeadings[blocker], message };
 
-const NO_PROVABLE_ORIGIN =
-  "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.";
+// The folders are paths the dialog sets in mono, so the parts stay apart.
+export function copiesDiffer<T>(
+  folders: Record<"claude" | "codex", T>,
+): [string, T, string, T, string] {
+  return [
+    "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one: ",
+    folders.claude,
+    " or ",
+    folders.codex,
+    ".",
+  ];
+}
 
-// Followed by the two folders where the check names them.
-export const COPIES_DIFFER =
-  "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one";
-
-// Import skill… refuses the first three too, so its route is no way through.
-const LOCAL_EDITS_REFUSALS: Partial<Record<LocalEditsRefusal, string>> = {
+// Import skill's sentences where they work from this dialog, retried with
+// Import local edits…. Where Import skill says to pick a folder, this dialog
+// has none, so the way through is the manual copy or the deployed copy itself.
+// Import skill… refuses another Harness and an unproven origin too, so its
+// route is no way through for either.
+const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
+  "not-configured":
+    "Set the Harness location on the Inventory source screen, then select Import local edits… again.",
+  "destination-unsafe":
+    "Nothing was copied. Make the clone's skills folder a real folder inside it, then select Import local edits… again.",
+  "source-unreadable":
+    "Nothing was copied. Make the folder readable, then select Import local edits… again.",
+  "outside-root":
+    "This copy is outside your home folder, where Maestro does not read. Copy the changed files into the Harness clone yourself.",
   "deployed-copy":
     "Deployed by another Harness. Make the change in that Harness.",
-  "origin-unproven": NO_PROVABLE_ORIGIN,
-  // No record lists the deployed folder, so Import skill would add a skill.
-  "not-an-update": NO_PROVABLE_ORIGIN,
-  unverified:
-    "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
-  "copies-differ": `${COPIES_DIFFER}.`,
+  "origin-unproven":
+    "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.",
+  "missing-manifest":
+    "This copy has no SKILL.md. Put it back, then select Import local edits… again.",
+  "invalid-frontmatter":
+    "Fix the SKILL.md frontmatter, then select Import local edits… again.",
+  "empty-description":
+    "Fill in the description in SKILL.md, then select Import local edits… again.",
   "harness-copy-uncommitted":
     "The Harness clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
-  "no-local-edits": "No local edits left in this copy. Nothing was imported.",
+  "harness-unreadable":
+    "Nothing was copied. Make the Harness clone readable, then select Import local edits… again.",
   "nothing-to-carry-back":
     "The Harness already has these changes. See the skill on the Harness screen.",
+  "invalid-name":
+    "The deployment record names this skill in a form the Harness cannot hold. Copy the changed files into the Harness clone yourself.",
+  "name-taken":
+    "The Harness already holds a skill under this name. Copy the changed files into the Harness clone yourself.",
+  "not-found":
+    "Nothing was copied. The deployed folder is gone. Select Close, then Import local edits… again.",
+  "not-a-directory":
+    "Nothing was copied. The deployed copy is no longer a folder. Select Close, then Import local edits… again.",
+  "destination-exists":
+    "The Harness already holds a folder under this name. Copy the changed files into the Harness clone yourself.",
+  "unsafe-link":
+    "Nothing was copied. Replace the symbolic link inside with a real file, then select Import local edits… again.",
+  "hard-linked-file":
+    "Nothing was copied. Replace the shared file inside with a plain copy, then select Import local edits… again.",
+  "special-file":
+    "Nothing was copied. Take the special file out of the folder, then select Import local edits… again.",
+  "too-many-files":
+    "Nothing was copied. This copy holds over 1,000 files. Remove the files the skill does not need, then select Import local edits… again.",
+  "too-large":
+    "Nothing was copied. This copy is over 50 MiB. Remove the files the skill does not need, then select Import local edits… again.",
+  "source-changed":
+    "The skill was not imported. Let the folder change finish, then select Import local edits… again.",
+  "copy-failed":
+    "The skill was not imported. Free up disk space, then select Import local edits… again.",
+  // A record may name this Harness and still not list the folder.
+  "not-an-update":
+    "The deployment record does not list this folder, so Maestro cannot tell which skill it updates. Copy the changed files into the Harness clone yourself.",
+  unverified:
+    "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
+  "copies-differ":
+    "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one.",
+  "no-local-edits": "No local edits left in this copy. Nothing was imported.",
   "undoes-newer-changes":
     "The Harness changed this skill after the check. Importing now undoes those changes. Select Import local edits… again to decide.",
 };
 
-// One sentence under a skill Import local edits… did not carry back: its own
-// where the way through differs, else Import skill's, retried from here.
+// One sentence under a skill Import local edits… did not carry back.
 export function localEditsRefusal({
   refusal,
   folders,
 }: Pick<LocalEditsSkill, "folders"> & { refusal: LocalEditsRefusal }): string {
-  if (folders !== undefined) {
-    return `${COPIES_DIFFER}: ${folders.claude} or ${folders.codex}.`;
-  }
-  return (
-    LOCAL_EDITS_REFUSALS[refusal] ??
-    importHeadings[refusal as ImportSkillError].message.replace(
-      /then (Import skill|Update skill|pick it) again/,
-      "then select Import local edits… again",
-    )
-  );
+  return folders === undefined
+    ? LOCAL_EDITS_REFUSALS[refusal]
+    : copiesDiffer(folders).join("");
 }
