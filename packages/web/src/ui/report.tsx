@@ -6,12 +6,16 @@ import { cn } from "./cn";
 
 type ReportTone = "failed" | "attention" | "neutral" | "good";
 
+type ReportNotice = { label: string; message: string; detail?: string };
+
 type ReportRow = {
   name: string;
   /** The name is a path, set in mono. */
   mono?: boolean;
   /** Why this row reads the way it does, in one or two short sentences. */
   detail?: ReactNode;
+  /** A refusal or failure, stated as the same notice a single action shows. */
+  notice?: ReportNotice;
   /** How many primitives the row stands for, where one reason hit several. */
   count?: number;
   /** This row's own way out, where the reader has one. */
@@ -101,23 +105,42 @@ export function Report({
           {group.note === undefined ? null : (
             <p className="m-0 font-ui text-gray-11 text-meta">{group.note}</p>
           )}
-          <ul className="flex min-w-0 flex-col gap-tight">
+          <ul
+            className={cn(
+              "flex min-w-0 flex-col",
+              // A notice spans three lines; a wider gap keeps rows apart.
+              group.rows.some((row) => row.notice !== undefined)
+                ? "gap-cell"
+                : "gap-tight",
+            )}
+          >
             {group.rows.map((row) => (
               <li
                 key={row.name}
                 className="flex min-w-0 items-baseline justify-between gap-inline font-ui text-row"
               >
-                <span className="flex min-w-0 flex-wrap items-baseline gap-inline">
-                  <span
-                    className={cn(
-                      "font-medium text-gray-12",
-                      row.mono ? "break-all font-mono" : null,
+                <span className="flex min-w-0 flex-col gap-tight">
+                  <span className="flex min-w-0 flex-wrap items-baseline gap-inline">
+                    <span
+                      className={cn(
+                        "font-medium text-gray-12",
+                        row.mono ? "break-all font-mono" : null,
+                      )}
+                    >
+                      {row.name}
+                    </span>
+                    {row.detail === undefined ? null : (
+                      <span className="text-gray-11">{row.detail}</span>
                     )}
-                  >
-                    {row.name}
+                    {row.notice === undefined ? null : (
+                      <span className="text-gray-12">{row.notice.label}</span>
+                    )}
                   </span>
-                  {row.detail === undefined ? null : (
-                    <span className="text-gray-11">{row.detail}</span>
+                  {row.notice === undefined ? null : (
+                    <span className="text-gray-11">{row.notice.message}</span>
+                  )}
+                  {row.notice?.detail === undefined ? null : (
+                    <span className="text-gray-11">{row.notice.detail}</span>
                   )}
                 </span>
                 {row.action === undefined ? null : (

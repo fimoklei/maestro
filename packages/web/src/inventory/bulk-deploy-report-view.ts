@@ -1,16 +1,8 @@
 // Colour (#292): green unless any failure/attention skip. "error" is
 // distinct — the bulk request itself failing, zeroed counts never confirmed-clean.
 
-import type { BulkDeployReport, DeploySkillError } from "@maestro/core";
-import {
-  DELETE_LINKED_FOLDER,
-  DEPLOY_STILL_RUNNING,
-  deployStateHeading,
-  LEFT_ALONE_PINNED,
-  linkedFolderRecovery,
-  RETRY_ON_CARD,
-  UPDATE_TO_REACH_RELEASE,
-} from "../deploy-state/notice-copy";
+import type { BulkDeployReport } from "@maestro/core";
+import { deployNoticeFor } from "../deploy-state/notice-copy";
 import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import type { ReportGroup } from "../ui/report";
 
@@ -105,25 +97,6 @@ export function bulkDeployReportView(input: {
   };
 }
 
-// The row's words come from the deploy notice table, so a code reads the same
-// here and in a single deploy's notice, and no code can reach the screen raw.
-const RECOVERY: Partial<Record<DeploySkillError, string>> = {
-  "target-pinned-per-skill": LEFT_ALONE_PINNED,
-  "not-at-target-release": UPDATE_TO_REACH_RELEASE,
-  "operation-unfinished": RETRY_ON_CARD,
-  "deploy-in-progress": DEPLOY_STILL_RUNNING,
-  "deploy-incomplete": RETRY_ON_CARD,
-  "destination-symlinked": DELETE_LINKED_FOLDER,
-};
-
-const reasonFor = (error: DeploySkillError, linkedPath?: string) =>
-  [
-    deployStateHeading(error),
-    linkedPath ? linkedFolderRecovery(linkedPath) : RECOVERY[error],
-  ]
-    .filter((part) => part !== undefined)
-    .join(" ");
-
 /** The run folded into the Report's groups. Empty groups are not drawn. */
 export function bulkDeployReportGroups(input: {
   view: Extract<BulkDeployReportView, { tone: "success" | "attention" }>;
@@ -140,7 +113,7 @@ export function bulkDeployReportGroups(input: {
       rows: view.failed.map((line) => ({
         name: line.names.join(", "),
         count: line.names.length,
-        detail: reasonFor(line.error, line.linkedPath),
+        notice: deployNoticeFor(line.error, line.linkedPath),
       })),
     },
     {
@@ -148,7 +121,7 @@ export function bulkDeployReportGroups(input: {
       label: "Attention",
       rows: view.attention.map((row) => ({
         name: row.name,
-        detail: reasonFor(row.error),
+        notice: deployNoticeFor(row.error, undefined),
         action:
           onForce && row.forceable
             ? {

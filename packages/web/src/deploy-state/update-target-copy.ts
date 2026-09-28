@@ -104,14 +104,14 @@ export function outcomeDetail(
   retry: boolean,
 ): string {
   if (state === "unknown") {
-    return "Maestro could not read this skill back. Check the target card for its state.";
+    return "Maestro could not read this skill back. Check its state on the Deploy-state screen.";
   }
   const fact = {
     "not-updated": `Still at ${releases.from}.`,
     missing: "Not deployed.",
     "not-removed": `Still deployed, though ${releases.to} drops it.`,
   }[state];
-  return `${fact} ${retry ? RETRY_UPDATE_STEP : `Check the target card, ${UPDATE_AGAIN}`}`;
+  return `${fact} ${retry ? RETRY_UPDATE_STEP : `Check the target on the Deploy-state screen, ${UPDATE_AGAIN}`}`;
 }
 
 export const UPDATE_INCOMPLETE = "Update incomplete";

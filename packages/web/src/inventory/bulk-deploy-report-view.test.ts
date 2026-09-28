@@ -1,5 +1,6 @@
 import type { BulkDeployReport } from "@maestro/core";
 import { describe, expect, it, vi } from "vitest";
+import { deployNoticeFor } from "../deploy-state/notice-copy";
 import {
   type BulkDeployReportView,
   bulkDeployReportGroups,
@@ -194,7 +195,7 @@ describe("bulkDeployReportGroups", () => {
     label: string,
   ) => groups.find((group) => group.label === label)?.rows ?? [];
 
-  it("gives a pinned-per-skill row the reason a single deploy states", () => {
+  it("gives an attention row the whole notice a single deploy states", () => {
     const groups = bulkDeployReportGroups({
       view: view({
         tone: "attention",
@@ -204,38 +205,26 @@ describe("bulkDeployReportGroups", () => {
       }),
     });
 
-    expect(rowsOf(groups, "Attention")[0]?.detail).toContain(
-      "Left alone — pinned per skill",
+    expect(rowsOf(groups, "Attention")[0]?.notice).toEqual(
+      deployNoticeFor("target-pinned-per-skill", undefined),
     );
   });
 
-  it("gives a busy row the reason a single deploy states", () => {
+  it("gives a failed row the whole notice a single deploy states", () => {
     const groups = bulkDeployReportGroups({
       view: view({
         tone: "attention",
-        attention: [
-          { name: "tdd", error: "deploy-in-progress", forceable: false },
-        ],
+        failed: [{ error: "no-supported-tool", names: ["tdd"] }],
       }),
     });
 
-    expect(rowsOf(groups, "Attention")[0]?.detail).toContain(
-      "A deploy is still running on this target. Wait for it to finish.",
-    );
-  });
-
-  // The linked-folder recovery a single deploy stated stays with it (#748).
-  it("gives a linked skill folder the recovery a single deploy states", () => {
-    const groups = bulkDeployReportGroups({
-      view: view({
-        tone: "attention",
-        failed: [{ error: "destination-symlinked", names: ["tdd"] }],
-      }),
+    expect(rowsOf(groups, "Failed")[0]?.notice).toEqual({
+      level: "error",
+      label: "No supported tool",
+      message:
+        "Nothing was installed. Install Claude Code or Codex, then deploy again.",
+      detail: "A global deploy installs into Claude Code or Codex.",
     });
-
-    expect(rowsOf(groups, "Failed")[0]?.detail).toBe(
-      "Linked skill folder Delete the linked skill folder in the target, then deploy again.",
-    );
   });
 
   // "Delete the linked skill folder" named no path and no command, so a reader
@@ -254,22 +243,14 @@ describe("bulkDeployReportGroups", () => {
       }),
     });
 
-    expect(rowsOf(groups, "Failed")[0]?.detail).toBe(
-      "Linked skill folder Run rm /Users/dev/.claude/skills/tdd and then deploy again. This removes the link only. The folder it points at remains on disk.",
-    );
-  });
-
-  it("names a failure the report carries no recovery step for, never its code", () => {
-    const groups = bulkDeployReportGroups({
-      view: view({
-        tone: "attention",
-        failed: [{ error: "no-supported-tool", names: ["tdd"] }],
-      }),
+    expect(rowsOf(groups, "Failed")[0]?.notice).toEqual({
+      level: "error",
+      label: "Linked skill folder",
+      message:
+        "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",
+      detail:
+        "This removes the link only. The folder it points at remains on disk.",
     });
-
-    const detail = rowsOf(groups, "Failed")[0]?.detail ?? "";
-    expect(detail).toContain("No supported tool");
-    expect(detail).not.toContain("no-supported-tool");
   });
 
   it("carries every skill of a merged failure line on one row", () => {
