@@ -11,13 +11,31 @@ import {
   NO_LOCAL_EDITS,
   NO_SKILL_QUALIFIES,
   noLocalEditsLine,
+  undoesNewerLegend,
+  undoesNewerLine,
 } from "./import-local-edits-copy";
 
 describe("Import local edits… copy", () => {
   it("counts the checked skills in the confirm", () => {
-    expect(importConfirmLabel(0)).toBe("Import skills");
-    expect(importConfirmLabel(1)).toBe("Import 1 skill");
-    expect(importConfirmLabel(3)).toBe("Import 3 skills");
+    expect(importConfirmLabel(0, 0)).toBe("Import skills");
+    expect(importConfirmLabel(1, 0)).toBe("Import 1 skill");
+    expect(importConfirmLabel(3, 0)).toBe("Import 3 skills");
+  });
+
+  it("counts the checked skills that undo newer Harness changes", () => {
+    expect(importConfirmLabel(1, 1)).toBe(
+      "Import 1 skill · 1 undoes newer changes",
+    );
+    expect(importConfirmLabel(3, 2)).toBe(
+      "Import 3 skills · 2 undo newer changes",
+    );
+  });
+
+  it("names the group that undoes newer Harness changes and its release", () => {
+    expect(undoesNewerLegend(2)).toBe("▲ Undoes newer Harness changes · 2");
+    expect(undoesNewerLine("v1.4.0")).toBe(
+      "Deployed from release v1.4.0. Importing undoes newer Harness changes to this skill.",
+    );
   });
 
   it("names one landed skill in the toast and counts several", () => {

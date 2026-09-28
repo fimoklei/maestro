@@ -309,6 +309,7 @@ function realDeps(): AppDeps {
         inventoryGit,
       }),
       importSkill,
+      git: harnessGit,
       resolveRoot: harnessRoot,
       locks: harnessPromoteLocks,
     }),

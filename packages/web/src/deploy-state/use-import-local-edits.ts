@@ -29,7 +29,11 @@ export function useLocalEditsCheck(target: DeployTarget, enabled: boolean) {
 export function useImportLocalEdits() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: { target: DeployTarget; names: string[] }) =>
+    mutationFn: (request: {
+      target: DeployTarget;
+      names: string[];
+      undo: string[];
+    }) =>
       requestJson<{ outcomes: LocalEditsSkill[] }>(
         "/api/deploy/import-local-edits",
         { method: "POST", body: JSON.stringify(request) },

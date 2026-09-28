@@ -143,7 +143,9 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     expect(
       await screen.findByText("harness view code-review"),
     ).toBeInTheDocument();
-    expect(sent).toEqual([{ target: TARGET, names: ["code-review"] }]);
+    expect(sent).toEqual([
+      { target: TARGET, names: ["code-review"], undo: [] },
+    ]);
   });
 
   it("opens no skill and confirms several landed skills in a toast", async () => {
@@ -210,7 +212,49 @@ describe("Deploy-state — Import local edits… on a repository", () => {
       within(dialog).getByRole("button", { name: "Import 1 skill" }),
     );
     await screen.findByText("harness view code-review");
-    expect(sent).toEqual([{ target: TARGET, names: ["code-review"] }]);
+    expect(sent).toEqual([
+      { target: TARGET, names: ["code-review"], undo: [] },
+    ]);
+  });
+
+  it("lists a skill that undoes newer Harness changes unchecked, and sends it only once checked", async () => {
+    const sent = stubImport(["code-review", "tdd"], landed, () =>
+      jsonResponse({
+        skills: [
+          { name: "code-review", refusal: null },
+          { name: "tdd", refusal: null, undoesNewerSince: "v0.3.5" },
+        ],
+      }),
+    );
+    renderDeployState();
+
+    const dialog = await openDialog();
+    const flagged = await within(dialog).findByRole("group", {
+      name: "▲ Undoes newer Harness changes · 1",
+    });
+    const box = within(flagged).getByRole("checkbox", { name: "tdd" });
+    expect(box).not.toBeChecked();
+    expect(box).toHaveAccessibleDescription(
+      "Deployed from release v0.3.5. Importing undoes newer Harness changes to this skill.",
+    );
+    expect(
+      within(dialog).getByRole("group", { name: "Can be imported · 1" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(box);
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Import 2 skills · 1 undoes newer changes",
+      }),
+    );
+
+    await screen.findByText("harness view with no skill open");
+    expect(sent).toEqual([
+      { target: TARGET, names: ["code-review", "tdd"], undo: ["tdd"] },
+    ]);
   });
 
   it("blocks the confirm when no skill qualifies", async () => {

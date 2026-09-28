@@ -46,6 +46,17 @@ export const WithRefused: Story = {
   },
 };
 
+export const UndoesNewerChanges: Story = {
+  args: {
+    skills: [
+      { name: "code-review", refusal: null },
+      { name: "tdd", refusal: null, undoesNewerSince: "v0.3.5" },
+      { name: "grilling", refusal: "deployed-copy" },
+    ],
+    checked: new Set(["code-review", "tdd"]),
+  },
+};
+
 export const NoSkillQualifies: Story = {
   args: {
     skills: [{ name: "tdd", refusal: "unverified" }],

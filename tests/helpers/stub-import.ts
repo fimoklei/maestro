@@ -33,6 +33,7 @@ export function stubImports(): {
       deployState: { read: unreachable },
       content: { classify: unreachable },
       importSkill,
+      git: { readSkillTreesAtTag: unreachable, readMovementTrees: unreachable },
       resolveRoot: async () => undefined,
       locks: new InFlightLocks(),
     }),
