@@ -308,6 +308,13 @@ function realDeps(): AppDeps {
         location: deployedLocation,
         inventoryGit,
       }),
+      tree: {
+        listRawEntries: (path) => fs.listRawEntries(path),
+        readFile: (path) => fs.readFile(path),
+        describe: (path) => copyTreeFs.describe(path),
+      },
+      globalRoot: () => resolveApmGlobalRoot(process.env),
+      home: () => deployedLocation.treeRoot({ kind: "global" }),
       importSkill,
       resolveRoot: harnessRoot,
       locks: harnessPromoteLocks,

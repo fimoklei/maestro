@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 
@@ -11,7 +11,7 @@ type ReportRow = {
   /** The name is a path, set in mono. */
   mono?: boolean;
   /** Why this row reads the way it does, in one or two short sentences. */
-  detail?: string;
+  detail?: ReactNode;
   /** How many primitives the row stands for, where one reason hit several. */
   count?: number;
   /** This row's own way out, where the reader has one. */

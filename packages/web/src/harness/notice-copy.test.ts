@@ -1172,6 +1172,20 @@ describe("localEditsRefusal", () => {
       "Nothing was copied. Make the folder readable, then select Import local edits… again.",
     ],
   ] as const)("states %s as its reason and next step", (refusal, sentence) => {
-    expect(localEditsRefusal(refusal)).toBe(sentence);
+    expect(localEditsRefusal({ refusal })).toBe(sentence);
+  });
+
+  it("names both folders where the Claude Code and Codex copies differ", () => {
+    expect(
+      localEditsRefusal({
+        refusal: "copies-differ",
+        folders: {
+          claude: "~/.claude/skills/tdd",
+          codex: "~/.agents/skills/tdd",
+        },
+      }),
+    ).toBe(
+      "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+    );
   });
 });

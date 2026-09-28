@@ -51,6 +51,13 @@ describe("targetMenuItems", () => {
     ]);
   });
 
+  it("offers Import local edits… on the global target with Local edits", () => {
+    expect(menu({ ...EDITED, wire: { kind: "global" } })).toEqual([
+      "Import local edits…",
+      "Deploy skill",
+    ]);
+  });
+
   it("omits Import local edits… where no skill reads Local edits", () => {
     expect(
       menu({
