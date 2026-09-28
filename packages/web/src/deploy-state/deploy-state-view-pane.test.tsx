@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse } from "../test-utils";
 import {
+  factValue,
   findRow,
   grid,
   openPane,
@@ -37,11 +38,26 @@ const BEHIND = {
   comparedAt: RECENT(),
 };
 
-const fact = (pane: HTMLElement, label: string) =>
+// The value alone: a control beside it is not part of the fact.
+const fact = (pane: HTMLElement, label: string) => {
+  const value = factValue(pane, label)?.cloneNode(true) as
+    | HTMLElement
+    | undefined;
+  for (const control of value?.querySelectorAll("button") ?? []) {
+    control.remove();
+  }
+  return value?.textContent ?? null;
+};
+
+const footOf = (pane: HTMLElement) =>
   within(pane)
-    .queryAllByText(label)
-    .find((element) => element.tagName === "DT")?.nextElementSibling
-    ?.textContent ?? null;
+    .getByRole("button", { name: "Deploy skill" })
+    .closest("div") as HTMLElement;
+
+const footLabels = (pane: HTMLElement) =>
+  within(footOf(pane))
+    .getAllByRole("button")
+    .map((button) => button.textContent);
 
 const repoWith = (body: object, drift: object = { behind: [] }) =>
   stubServer(() => ({
@@ -66,11 +82,10 @@ describe("Deploy-state pane — facts", () => {
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
     expect(fact(pane, "Changed")).toBe("2 of 5 skills");
     expect(fact(pane, "Compared")).toBe("Read just now");
+    // #1272: the facts state the release; no sentence repeats them.
     expect(
-      within(pane).getByText(
-        "New release available: v0.3.4. 2 of 5 deployed skills changed: tdd and grill.",
-      ),
-    ).toBeInTheDocument();
+      within(pane).queryByText(/New release available/),
+    ).not.toBeInTheDocument();
   });
 
   // #1182: the value is the link, so its name starts with the tag.
@@ -188,12 +203,8 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
+    expect(fact(pane, "Latest release")).toBe("v0.3.4");
     expect(fact(pane, "Changed")).toBe("0 of 5 skills");
-    expect(
-      within(pane).getByText(
-        "New release available: v0.3.4. 0 of 5 deployed skills changed.",
-      ),
-    ).toBeInTheDocument();
   });
 
   it("carries the read time alone on the latest release", async () => {
@@ -229,11 +240,6 @@ describe("Deploy-state pane — facts", () => {
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
     expect(fact(pane, "Changed")).toBe("Could not be read");
     expect(fact(pane, "Compared")).toBe("Read 30 min ago");
-    expect(
-      within(pane).getByText(
-        "New release available: v0.3.4. Changes could not be read.",
-      ),
-    ).toBeInTheDocument();
   });
 
   it("states no release for a target that follows no single release", async () => {
@@ -555,7 +561,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
     ).toBeInTheDocument();
     expect(
       within(pane).getAllByRole("button", { name: "Retry update" }),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(
       within(pane).queryByRole("button", { name: /^Update target/ }),
     ).not.toBeInTheDocument();
@@ -582,8 +588,13 @@ describe("Deploy-state pane — an unfinished operation", () => {
     const pane = await openPane(LABEL);
     expect(within(pane).getByText("Removal incomplete")).toBeInTheDocument();
     expect(
+      within(within(pane).getByRole("status")).getByRole("button", {
+        name: "Retry removal",
+      }),
+    ).toBeInTheDocument();
+    expect(
       within(pane).getAllByRole("button", { name: "Retry removal" }),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it("runs the retry once, and offers no second while it runs", async () => {
@@ -636,30 +647,21 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(retries).toHaveLength(1);
   });
 
-  it("holds the row's menu at the foot, in its order, Retry update primary", async () => {
+  // #1272: the retry sits in its notice alone, as the pane's one primary.
+  it("offers the retry in its notice only, as the one primary", async () => {
     pendingRepo({ kind: "update", release: "v0.3.4", desired: ["tdd"] });
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    const foot = within(pane)
-      .getByRole("button", { name: "Deploy skill" })
-      .closest("div") as HTMLElement;
+    expect(footLabels(pane)).toEqual(["Deploy skill"]);
     expect(
-      within(foot)
-        .getAllByRole("button")
-        .map((button) => button.textContent),
-    ).toEqual(["Retry update", "Deploy skill"]);
-    expect(
-      within(foot).getByRole("button", { name: "Retry update" }),
-    ).toHaveClass("bg-gray-12", "h-control");
-    expect(
-      within(foot).getByRole("button", { name: "Deploy skill" }),
+      within(footOf(pane)).getByRole("button", { name: "Deploy skill" }),
     ).not.toHaveClass("bg-gray-12");
     expect(
       within(within(pane).getByRole("status")).getByRole("button", {
         name: "Retry update",
       }),
-    ).toBeInTheDocument();
+    ).toHaveClass("bg-gray-12");
   });
 
   it("offers the retry in the row's menu too", async () => {
@@ -674,5 +676,67 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(
       (await screen.findAllByRole("menuitem")).map((item) => item.textContent),
     ).toEqual(["Retry update", "Deploy skill"]);
+  });
+});
+
+// #1272: each action beside its reason; the primary chosen by state.
+describe("Deploy-state pane — where each action sits", () => {
+  const edited = (name: string) => skill(name, "v0.3.2", "local-edits");
+
+  it("keeps Deploy skill quiet at the foot of an In sync target", async () => {
+    repoWith({ releaseHead: { ...BEHIND, release: "v0.3.4", changed: 0 } });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(footLabels(pane)).toEqual(["Deploy skill"]);
+    for (const button of within(pane).getAllByRole("button")) {
+      expect(button).not.toHaveClass("bg-gray-12");
+    }
+  });
+
+  it("puts Update target beside Latest release as the primary, the rest quiet at the foot", async () => {
+    repoWith({ primitives: [edited("tdd")], releaseHead: BEHIND });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(
+      within(factValue(pane, "Latest release") as HTMLElement).getByRole(
+        "button",
+        { name: `Update target ${LABEL}` },
+      ),
+    ).toHaveClass("bg-gray-12");
+    expect(footLabels(pane)).toEqual(["Import local edits…", "Deploy skill"]);
+    for (const button of within(footOf(pane)).getAllByRole("button")) {
+      expect(button).not.toHaveClass("bg-gray-12");
+    }
+    expect(
+      within(pane).getByText(
+        "1 skill has changes that are not in the latest release: tdd. Select Import local edits… to keep them.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("makes Import local edits… the primary at the foot when the target is not behind", async () => {
+    repoWith({ primitives: [edited("tdd")] });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(footLabels(pane)).toEqual(["Import local edits…", "Deploy skill"]);
+    expect(
+      within(footOf(pane)).getByRole("button", { name: "Import local edits…" }),
+    ).toHaveClass("bg-gray-12");
+  });
+  it("leaves out the local-edits sentence while an operation withholds Import local edits…", async () => {
+    repoWith({
+      primitives: [edited("tdd")],
+      pendingOperation: { kind: "deploy", release: "v0.3.2", desired: ["tdd"] },
+    });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(within(pane).getByText("Deploy incomplete")).toBeInTheDocument();
+    expect(
+      within(pane).queryByText(/changes that are not in the latest release/),
+    ).not.toBeInTheDocument();
   });
 });

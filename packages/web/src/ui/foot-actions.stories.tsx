@@ -9,6 +9,7 @@ const meta = {
       { label: "Deploy skill", onSelect: () => {} },
       { label: "Remove from all 3 targets", danger: true, onSelect: () => {} },
     ],
+    primary: "Deploy skill",
   },
   decorators: [
     (Story) => (
@@ -25,12 +26,13 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-// A standing operation leads.
-export const StandingOperation: Story = {
+// Nothing primary: an In sync target's Deploy skill stays quiet.
+export const NoPrimary: Story = {
   args: {
     items: [
-      { label: "Retry update", onSelect: () => {} },
+      { label: "Import local edits…", onSelect: () => {} },
       { label: "Deploy skill", onSelect: () => {} },
     ],
+    primary: null,
   },
 };

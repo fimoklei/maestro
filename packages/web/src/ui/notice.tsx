@@ -10,6 +10,8 @@ export type NoticeAction = {
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  /** The pane's one primary action, where its notice names the next step. */
+  primary?: boolean;
 };
 
 type NoticeBase = {
@@ -151,7 +153,7 @@ export function Notice({
         )}
         {action === undefined ? null : (
           <Button
-            variant="quiet"
+            variant={action.primary ? "primary" : "quiet"}
             size="sm"
             // Button is whitespace-nowrap; a warning's action label states the
             // cost in a sentence, and that pushed the notice 12px out of the

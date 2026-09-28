@@ -85,7 +85,7 @@ export const isBehind = (
   head.latestRelease !== head.release &&
   pending === undefined;
 
-const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
+export const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
   primitives
     .filter((primitive) => primitive.copy === "local-edits")
     .map((primitive) => primitive.name);

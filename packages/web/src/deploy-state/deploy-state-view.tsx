@@ -42,11 +42,8 @@ import { freshnessLine } from "./freshness-line";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { TargetDetailPane } from "./target-detail-pane";
-import {
-  targetLinkItems,
-  targetMenuItems,
-  targetRowItems,
-} from "./target-menu";
+import { targetLinkItems, targetMenuItems } from "./target-menu";
+import { targetPaneActions } from "./target-pane-actions";
 import { globalRows, repoRow, type TargetRow } from "./target-rows";
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
@@ -232,6 +229,7 @@ export function DeployStateView() {
   );
 
   const selectedRow = rows.find((row) => row.id === selected) ?? null;
+  const placed = selectedRow ? targetPaneActions(selectedRow, onAction) : null;
   const openIndex = selected === null ? -1 : order.indexOf(selected);
   const showTable = skeleton.visible || rows.length > 0;
   const none = rows.length === 0 ? "no targets yet" : undefined;
@@ -380,7 +378,7 @@ export function DeployStateView() {
             </div>
           ) : null}
         </div>
-        {selectedRow ? (
+        {selectedRow && placed ? (
           <DetailPaneSlot>
             <TargetDetailPane
               row={selectedRow}
@@ -397,12 +395,14 @@ export function DeployStateView() {
               isRetrying={retrying(selectedRow.wire)}
               onReread={reread}
               now={now}
+              update={placed.update}
               actions={
                 <TargetActions
                   key={`${selectedRow.id}:${intent?.nonce ?? 0}`}
                   row={selectedRow}
                   dialog={intent?.dialog ?? null}
-                  items={targetRowItems(selectedRow, onAction)}
+                  items={placed.foot}
+                  primary={placed.footPrimary}
                 />
               }
             />
@@ -421,17 +421,19 @@ function TargetActions({
   row,
   dialog,
   items,
+  primary,
 }: {
   row: TargetRow;
   dialog: TargetDialog;
   items: FootItem[];
+  primary: string | null;
 }) {
   const update = useUpdateTarget();
   const openUpdate = dialog === "update";
   const [importing, setImporting] = useState(dialog === "import");
   return (
     <>
-      <FootActions items={items} />
+      <FootActions items={items} primary={primary} />
       {importing ? (
         <ImportLocalEditsAction
           targetName={row.updateName}
