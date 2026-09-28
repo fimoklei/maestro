@@ -41,6 +41,8 @@ function target(
     trees?: HarnessSkillTrees;
     registered?: boolean;
     pending?: boolean;
+    // The copy into the Harness fails for this skill: a full disk, say.
+    copyFails?: string;
   } = {},
 ) {
   const copies = overrides.copies ?? {
@@ -152,6 +154,9 @@ function target(
     },
     copy: {
       copy: async (input) => {
+        if (input.name === overrides.copyFails) {
+          return { ok: false as const, error: "copy-failed" as const };
+        }
         const path = `${input.destinationParent}/${input.name}`;
         directories.add(path);
         files[`${path}/SKILL.md`] = files[`${input.source}/SKILL.md`] as string;
@@ -243,6 +248,65 @@ describe("ImportLocalEdits.check", () => {
     });
   });
 
+  it("refuses another Harness's copy, an unproven origin and an Unverified copy, each by its own code", async () => {
+    const { useCase } = target({
+      copies: {
+        "code-review": { claude: "diverged" },
+        tdd: { claude: "diverged" },
+        lint: { claude: "unverifiable" },
+      },
+      lockfile: [
+        ...entry("code-review", [
+          "  host: github.com",
+          "  repo_url: someone/other-harness",
+        ]),
+        ...entry("tdd", []),
+        ...entry("lint", FROM_THIS_HARNESS),
+      ],
+    });
+
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [
+        { name: "code-review", refusal: "deployed-copy" },
+        { name: "tdd", refusal: "origin-unproven" },
+        { name: "lint", refusal: "unverified" },
+      ],
+    });
+  });
+
+  it("refuses a skill with uncommitted Harness changes and one whose edit the Harness holds", async () => {
+    const { useCase, files, setTrees } = target({
+      copies: {
+        "code-review": { claude: "diverged" },
+        tdd: { claude: "diverged" },
+      },
+      lockfile: [
+        ...entry("code-review", FROM_THIS_HARNESS),
+        ...entry("tdd", FROM_THIS_HARNESS),
+      ],
+    });
+    setTrees({
+      remote: {},
+      promote: {},
+      local: { "code-review": "tree-1", tdd: "tree-1" },
+      working: { "code-review": "tree-2", tdd: "tree-1" },
+    });
+    // Import stamps the recorded name into the frontmatter before comparing.
+    files[`${ROOT}/.apm/skills/tdd/SKILL.md`] = EDITED.replace(
+      "name: code-review",
+      "name: tdd",
+    );
+
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [
+        { name: "code-review", refusal: "harness-copy-uncommitted" },
+        { name: "tdd", refusal: "nothing-to-carry-back" },
+      ],
+    });
+  });
+
   it("refuses a target with an Unfinished operation", async () => {
     const { useCase } = target({ pending: true });
 
@@ -302,6 +366,13 @@ describe("ImportLocalEdits.execute", () => {
         ...entry("tdd", FROM_THIS_HARNESS),
       ],
     });
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [
+        { name: "code-review", refusal: null },
+        { name: "tdd", refusal: null },
+      ],
+    });
     setTrees({
       remote: {},
       promote: {},
@@ -318,6 +389,31 @@ describe("ImportLocalEdits.execute", () => {
         { name: "tdd", refusal: null },
       ],
     });
+  });
+
+  it("keeps landing the other skills when one fails to copy", async () => {
+    const { useCase, files } = target({
+      copies: {
+        "code-review": { claude: "diverged" },
+        tdd: { claude: "diverged" },
+      },
+      lockfile: [
+        ...entry("code-review", FROM_THIS_HARNESS),
+        ...entry("tdd", FROM_THIS_HARNESS),
+      ],
+      copyFails: "code-review",
+    });
+
+    await expect(
+      useCase.execute({ target: REPO_TARGET, names: ["code-review", "tdd"] }),
+    ).resolves.toEqual({
+      ok: true,
+      outcomes: [
+        { name: "code-review", refusal: "copy-failed" },
+        { name: "tdd", refusal: null },
+      ],
+    });
+    expect(files[`${ROOT}/.apm/skills/tdd/SKILL.md`]).toBe(EDITED);
   });
 
   it("refuses the run while another Harness change holds the lock", async () => {

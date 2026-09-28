@@ -6,6 +6,7 @@ import type {
   ImportNameBlocker,
   ImportSkillError,
   ImportSourceBlocker,
+  LocalEditsRefusal,
   PromoteDeletionError,
   PromoteSkillError,
   ProposalActionError,
@@ -750,3 +751,34 @@ export const importBlockerNotice = (
   message === undefined
     ? importHeadings[blocker]
     : { ...importHeadings[blocker], message };
+
+const NO_PROVABLE_ORIGIN =
+  "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.";
+
+// Import skill… refuses the first three too, so its route is no way through.
+const LOCAL_EDITS_REFUSALS: Partial<Record<LocalEditsRefusal, string>> = {
+  "deployed-copy":
+    "Deployed by another Harness. Make the change in that Harness.",
+  "origin-unproven": NO_PROVABLE_ORIGIN,
+  // No record lists the deployed folder, so Import skill would add a skill.
+  "not-an-update": NO_PROVABLE_ORIGIN,
+  unverified:
+    "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
+  // ponytail: no folders named yet; #1256 carries both paths into the sentence.
+  "copies-differ":
+    "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one.",
+  "harness-copy-uncommitted":
+    "The Harness clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
+  "no-local-edits": "No local edits left in this copy. Nothing was imported.",
+  "nothing-to-carry-back":
+    "The Harness already has these changes. See the skill on the Harness screen.",
+};
+
+// One sentence under a skill Import local edits… did not carry back: its own
+// where the way through differs, else Import skill's, retried from here.
+export const localEditsRefusal = (refusal: LocalEditsRefusal): string =>
+  LOCAL_EDITS_REFUSALS[refusal] ??
+  importHeadings[refusal as ImportSkillError].message.replace(
+    /then (Import skill|Update skill|pick it) again/,
+    "then select Import local edits… again",
+  );

@@ -35,6 +35,35 @@ export const NoneSelected: Story = { args: { checked: new Set() } };
 
 export const Importing: Story = { args: { isRunning: true } };
 
+export const WithRefused: Story = {
+  args: {
+    skills: [
+      { name: "code-review", refusal: null },
+      { name: "tdd", refusal: "deployed-copy" },
+      { name: "grilling", refusal: "harness-copy-uncommitted" },
+    ],
+    checked: new Set(["code-review"]),
+  },
+};
+
+export const NoSkillQualifies: Story = {
+  args: {
+    skills: [{ name: "tdd", refusal: "unverified" }],
+    checked: new Set(),
+  },
+};
+
+export const NoLocalEdits: Story = { args: { skills: [] } };
+
+export const PartlyImported: Story = {
+  args: {
+    outcomes: [
+      { name: "code-review", refusal: null },
+      { name: "tdd", refusal: "source-changed" },
+    ],
+  },
+};
+
 export const HarnessChanging: Story = {
   args: {
     failure: localEditsImportNotice(

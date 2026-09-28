@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import {
+  cannotBeImportedLegend,
+  IMPORTED_NEXT_STEP,
   importConfirmLabel,
   importedToast,
   importReportHeading,
   localEditsCheckNotice,
   localEditsImportNotice,
+  NO_LOCAL_EDITS,
+  NO_SKILL_QUALIFIES,
+  noLocalEditsLine,
 } from "./import-local-edits-copy";
 
 describe("Import local edits… copy", () => {
@@ -23,6 +28,18 @@ describe("Import local edits… copy", () => {
   it("heads a partial run with what landed of what was asked", () => {
     expect(importReportHeading(1, 2)).toBe("Imported 1 of 2 skills");
     expect(importReportHeading(0, 1)).toBe("Imported 0 of 1 skill");
+  });
+
+  it("names the refused group, an empty target and the landed skills' next step", () => {
+    expect(cannotBeImportedLegend(2)).toBe("✕ Cannot be imported · 2");
+    expect(NO_SKILL_QUALIFIES).toBe("no skill qualifies");
+    expect(NO_LOCAL_EDITS).toBe("No local edits");
+    expect(noLocalEditsLine("…/me/project")).toBe(
+      "No skill on …/me/project changed after deployment.",
+    );
+    expect(IMPORTED_NEXT_STEP).toBe(
+      "Each is now a Pending proposal on the Harness screen. Select Propose change there.",
+    );
   });
 
   it("states a failed check as nothing imported", () => {

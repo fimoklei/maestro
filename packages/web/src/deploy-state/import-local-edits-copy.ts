@@ -13,8 +13,17 @@ export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
 export const canBeImportedLegend = (count: number): string =>
   `Can be imported · ${count}`;
 
+export const cannotBeImportedLegend = (count: number): string =>
+  `✕ Cannot be imported · ${count}`;
+
 export const IMPORT_SKILLS = "Import skills";
 export const NONE_SELECTED = "none selected";
+export const NO_SKILL_QUALIFIES = "no skill qualifies";
+
+export const NO_LOCAL_EDITS = "No local edits";
+
+export const noLocalEditsLine = (target: string): string =>
+  `No skill on ${target} changed after deployment.`;
 
 export const importConfirmLabel = (count: number): string =>
   count === 0
@@ -31,6 +40,8 @@ export const importReportHeading = (landed: number, asked: number): string =>
 
 export const NOT_IMPORTED = "Not imported";
 export const IMPORTED = "Imported";
+export const IMPORTED_NEXT_STEP =
+  "Each is now a Pending proposal on the Harness screen. Select Propose change there.";
 
 const NOT_CHECKED = {
   label: "Local edits not checked",
