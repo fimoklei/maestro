@@ -1,7 +1,7 @@
 import { TYPE_WORD } from "../inventory/type-filter";
 import { DetailPane } from "../ui/detail-pane";
 import { FactList, FactRow } from "../ui/fact-list";
-import { FootActions } from "../ui/foot-actions";
+import { FootActions, firstEnabled } from "../ui/foot-actions";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import type { HarnessTableRow } from "./harness-columns";
@@ -50,7 +50,9 @@ export function StageDetailPane({
       onClose={onClose}
       getTriggerElement={getTriggerElement}
       actions={
-        row.items.length === 0 ? undefined : <FootActions items={row.items} />
+        row.items.length === 0 ? undefined : (
+          <FootActions items={row.items} primary={firstEnabled(row.items)} />
+        )
       }
     >
       <FactList>

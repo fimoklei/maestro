@@ -14,6 +14,7 @@ export function FactRow({
   label,
   machine = false,
   fullValue,
+  action,
   children,
 }: {
   label: string;
@@ -21,8 +22,24 @@ export function FactRow({
   machine?: boolean;
   /** The whole value on hover and focus, where the row shortens it. */
   fullValue?: string;
+  /** One control beside the value, for an action that changes this fact. */
+  action?: ReactNode;
   children: ReactNode;
 }) {
+  const value =
+    fullValue === undefined ? (
+      children
+    ) : (
+      <Tooltip label={fullValue}>
+        <span
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a tooltip trigger, so the whole value opens from the keyboard too (#1123)
+          tabIndex={0}
+          className="block truncate rounded-control focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
+        >
+          {children}
+        </span>
+      </Tooltip>
+    );
   return (
     <>
       <dt className="font-ui text-gray-11 text-meta">{label}</dt>
@@ -30,22 +47,21 @@ export function FactRow({
         className={cn(
           "m-0 min-w-0 text-gray-12",
           // The tooltip trigger shortens itself, so its focus ring is not clipped.
-          fullValue === undefined && "truncate",
+          fullValue === undefined && action === undefined && "truncate",
           machine ? "font-mono" : "font-ui",
         )}
       >
-        {fullValue === undefined ? (
-          children
+        {action === undefined ? (
+          value
         ) : (
-          <Tooltip label={fullValue}>
+          <span className="flex items-center justify-between gap-inline">
             <span
-              // biome-ignore lint/a11y/noNoninteractiveTabindex: a tooltip trigger, so the whole value opens from the keyboard too (#1123)
-              tabIndex={0}
-              className="block truncate rounded-control focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
+              className={cn("min-w-0", fullValue === undefined && "truncate")}
             >
-              {children}
+              {value}
             </span>
-          </Tooltip>
+            <span className="flex flex-none">{action}</span>
+          </span>
         )}
       </dd>
     </>

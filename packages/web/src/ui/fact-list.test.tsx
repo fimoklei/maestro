@@ -62,4 +62,24 @@ describe("FactList", () => {
     // One place states the whole value: no native title beside the tooltip.
     expect(document.querySelector("[title]")).toBeNull();
   });
+
+  it("carries one control beside a fact's value", () => {
+    render(
+      <FactList>
+        <FactRow
+          label="Latest release"
+          machine
+          action={<button type="button">Update target</button>}
+        >
+          v0.3.4
+        </FactRow>
+      </FactList>,
+    );
+
+    const value = screen.getByText("Latest release").nextElementSibling;
+    expect(value).toHaveTextContent("v0.3.4");
+    expect(
+      screen.getByRole("definition").querySelector("button"),
+    ).toHaveTextContent("Update target");
+  });
 });

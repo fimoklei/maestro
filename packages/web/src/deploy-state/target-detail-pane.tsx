@@ -1,10 +1,13 @@
 import { type ReactNode, useRef } from "react";
+import { Button } from "../ui/button";
 import { DetailPane } from "../ui/detail-pane";
 import { FactList, FactRow } from "../ui/fact-list";
 import { GitHubFactLink } from "../ui/github-fact-link";
+import { GitHubMarkLink } from "../ui/github-mark-link";
 import { Notice, type NoticeContent } from "../ui/notice";
 import {
   GLOBAL,
+  localEditsLine,
   ORIGIN_NOT_READ,
   otherOriginLine,
   REPO_NOT_READ,
@@ -15,17 +18,22 @@ import {
   changedFact,
   comparedFact,
   extraFilesFact,
+  latestReleaseFact,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
   RETRY_LABELS,
-  releaseSentence,
   unfinishedOperationNotice,
 } from "./release-head-copy";
 import { SelectedSkills } from "./selected-skills";
 import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
-import type { TargetRow } from "./target-rows";
+import {
+  showsReadFailure,
+  type TargetPaneActions,
+} from "./target-pane-actions";
+import { editedSkills, type TargetRow } from "./target-rows";
 
-// A target's full reading. Presentational: the foot's controls arrive as `actions`.
+// A target's full reading. Presentational: the foot's controls arrive as
+// `actions`, Update target as `update`.
 export function TargetDetailPane({
   row,
   position,
@@ -37,6 +45,7 @@ export function TargetDetailPane({
   isRetrying,
   onReread,
   now,
+  update,
   actions,
 }: {
   row: TargetRow;
@@ -50,27 +59,30 @@ export function TargetDetailPane({
   onReread: () => void;
   /** The screen's one clock, so the Compared fact ticks with band 2. */
   now: Date;
+  update: TargetPaneActions["update"];
   actions: ReactNode;
 }) {
   const skillsHeading = useRef<HTMLHeadingElement>(null);
-  const notice: NoticeContent | null =
-    row.readFailed && row.group !== GLOBAL
-      ? { ...REPO_NOT_READ, action: { label: REREAD_LABEL, onClick: onReread } }
-      : row.pending
-        ? {
-            ...unfinishedOperationNotice(row.pending, row.primitives),
-            action: {
-              label: RETRY_LABELS[row.pending.kind],
-              onClick: onRetry,
-              disabled: isRetrying,
-            },
-          }
-        : null;
+  const notice: NoticeContent | null = showsReadFailure(row)
+    ? { ...REPO_NOT_READ, action: { label: REREAD_LABEL, onClick: onReread } }
+    : row.pending
+      ? {
+          ...unfinishedOperationNotice(row.pending, row.primitives),
+          action: {
+            label: RETRY_LABELS[row.pending.kind],
+            onClick: onRetry,
+            disabled: isRetrying,
+            primary: true,
+          },
+        }
+      : null;
   const head = row.head;
   const changed = head ? changedFact(head) : null;
-  const sentence = head ? releaseSentence(head) : null;
+  const latestRelease = latestReleaseFact(head);
+  const edited = editedSkills(row.primitives);
   const why = [
-    ...(sentence === null ? [] : [sentence]),
+    // Its sentence names Import local edits…, which an operation withholds.
+    ...(edited.length === 0 || row.pending ? [] : [localEditsLine(edited)]),
     ...(row.pinned
       ? [`${pinnedTagsLine(row.pinned)}.`, RELEASE_NOT_ADOPTED]
       : []),
@@ -96,7 +108,16 @@ export function TargetDetailPane({
           {row.group === GLOBAL ? "Global" : "Repository"}
         </FactRow>
         {row.path ? (
-          <FactRow label="Path" machine fullValue={row.path}>
+          <FactRow
+            label="Path"
+            machine
+            fullValue={row.path}
+            action={
+              row.github?.kind === "link" ? (
+                <GitHubMarkLink page={row.github} name={row.name} focusable />
+              ) : undefined
+            }
+          >
             {row.path}
           </FactRow>
         ) : null}
@@ -105,11 +126,25 @@ export function TargetDetailPane({
             <GitHubFactLink page={row.releaseGitHub} value={head.release} />
           </FactRow>
         ) : null}
-        {head?.latestRelease && head.latestRelease !== head.release ? (
-          <FactRow label="Latest release" machine>
-            {head.latestRelease}
+        {latestRelease === null ? null : (
+          <FactRow
+            label="Latest release"
+            machine
+            action={
+              update === null ? undefined : (
+                <Button
+                  variant={update.primary ? "primary" : "quiet"}
+                  aria-label={update.name}
+                  onClick={update.onSelect}
+                >
+                  {update.label}
+                </Button>
+              )
+            }
+          >
+            {latestRelease}
           </FactRow>
-        ) : null}
+        )}
         {changed === null ? null : <FactRow label="Changed">{changed}</FactRow>}
         {head ? (
           <FactRow label="Compared">{comparedFact(head, now)}</FactRow>

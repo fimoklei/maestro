@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cellsOf,
+  factValue,
   findRow,
   GITHUB_CELL,
   openPane,
@@ -61,7 +62,8 @@ describe("Deploy-state — GitHub column", () => {
     expect(link).toHaveAttribute("tabindex", "-1");
   });
 
-  it("offers the same page in the row's menu and at the pane's foot", async () => {
+  // #1272: in the pane, the page is GitHub's mark beside the Path fact.
+  it("offers the same page in the row's menu and beside the pane's Path", async () => {
     serve({ kind: "link", url: URL });
     renderDeployState();
 
@@ -77,9 +79,17 @@ describe("Deploy-state — GitHub column", () => {
     await userEvent.keyboard("{Escape}");
 
     const pane = await openPane(NAME);
+    const mark = within(factValue(pane, "Path") as HTMLElement).getByRole(
+      "link",
+      {
+        name: `View ${NAME} on GitHub`,
+      },
+    );
+    expect(mark).toHaveAttribute("href", URL);
+    expect(mark).not.toHaveAttribute("tabindex");
     expect(
-      within(pane).getByRole("link", { name: "View repository on GitHub" }),
-    ).toHaveAttribute("href", URL);
+      within(pane).queryByRole("link", { name: "View repository on GitHub" }),
+    ).toBeNull();
   });
 
   it("leaves Global and a repository without a GitHub page empty, with no menu item", async () => {

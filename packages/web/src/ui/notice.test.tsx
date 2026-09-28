@@ -364,4 +364,22 @@ describe("Notice", () => {
       expect(screen.queryByRole("list")).toBeNull();
     });
   });
+
+  it("sets a primary action as the pane's primary button", () => {
+    render(
+      <Notice
+        trigger="load"
+        notice={{
+          level: "warning",
+          label: "Deploy incomplete",
+          message: "Part of the selection is not on disk.",
+          action: { label: "Retry deploy", onClick: vi.fn(), primary: true },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Retry deploy" })).toHaveClass(
+      "bg-gray-12",
+    );
+  });
 });

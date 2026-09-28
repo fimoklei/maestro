@@ -61,8 +61,15 @@ building it.
   slate 11 `meta` beside a short value, in a two-column grid. A sub-list row is
   32px: mark, name, machine value, ⋮.
 - Fix the pane's foot and scroll only its content. The foot holds the row's ⋮
-  items as 32px buttons in the same order; the first enabled one is primary, a
-  destructive one stays danger.
+  items that the pane does not place beside their fact or in a notice, as 32px
+  buttons in ⋮ order. A destructive one stays danger.
+- Give a fact at most one action button beside its value, and only for an
+  action that changes that fact.
+- Choose the pane's one primary by state, not position: an unfinished
+  operation's retry in its notice, else Update target on a behind target, else
+  Import local edits… on Local edits, else none. A pane whose ⋮ order already
+  leads with the next step (Inventory, Harness) makes its first enabled item
+  primary.
 - At 1100px and below, show the pane as a full-height sheet over the table's
   right side, `min(360px, 100%)` wide.
 - Close the pane on Esc, ✕ or a press outside it; a press on a table row or in
