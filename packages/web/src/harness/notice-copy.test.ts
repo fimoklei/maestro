@@ -1156,6 +1156,10 @@ describe("localEditsRefusal", () => {
       "The Harness already has these changes. See the skill on the Harness screen.",
     ],
     [
+      "undoes-newer-changes",
+      "The Harness changed this skill after the check. Importing now undoes those changes. Select Import local edits… again to decide.",
+    ],
+    [
       "copy-failed",
       "The skill was not imported. Free up disk space, then select Import local edits… again.",
     ],

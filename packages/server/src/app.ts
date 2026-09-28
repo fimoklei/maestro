@@ -316,6 +316,7 @@ function realDeps(): AppDeps {
       globalRoot: () => resolveApmGlobalRoot(process.env),
       home: () => deployedLocation.treeRoot({ kind: "global" }),
       importSkill,
+      git: harnessGit,
       resolveRoot: harnessRoot,
       locks: harnessPromoteLocks,
     }),

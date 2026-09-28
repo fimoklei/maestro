@@ -74,6 +74,10 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
       ],
       { cwd: harnessRoot },
     );
+    // The release `tdd` was deployed from, still the Harness's latest state.
+    await run("git", ["update-ref", "refs/maestro/tags/v1.0.0", "HEAD"], {
+      cwd: harnessRoot,
+    });
 
     // What a deploy of `tdd` from this Harness leaves behind.
     const deployed = join(repo, ".claude", "skills", "tdd");
@@ -158,6 +162,7 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
         globalRoot: () => "/nonexistent-apm-root",
         home: () => base,
         importSkill,
+        git,
         resolveRoot,
         locks: new InFlightLocks(),
       }),
@@ -205,6 +210,7 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
     const imported = await post(app, "/api/deploy/import-local-edits", {
       target,
       names: ["tdd"],
+      undo: [],
     });
     expect(imported.status).toBe(200);
     expect(await imported.json()).toEqual({

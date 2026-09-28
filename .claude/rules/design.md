@@ -126,7 +126,8 @@ Pick the form from this table. Add no other form, and no banner.
 - Build a checklist in a dialog as a 640px form. Give each group a
   `fieldset`: a mono uppercase legend with its count over a bordered list of
   32px rows, each a native checkbox plus the name. Check what can run by
-  default; show a row that cannot run with an `aria-disabled` checkbox, still
+  default; put a row that runs at a cost in an amber group, unchecked, with
+  its cost under it. Show a row that cannot run with an `aria-disabled` checkbox, still
   focusable, and its reason under it in slate 11 `meta`. Name the checked count
   in the confirm, live, and block it when nothing is checked. Add no
   select-all.

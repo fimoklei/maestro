@@ -19,6 +19,8 @@ import {
   NONE_SELECTED,
   NOT_IMPORTED,
   noLocalEditsLine,
+  undoesNewerLegend,
+  undoesNewerLine,
 } from "./import-local-edits-copy";
 import type { LocalEditsSkill } from "./use-import-local-edits";
 
@@ -48,6 +50,7 @@ export function ImportLocalEditsDialog({
   onConfirm: () => void;
 }) {
   const groupId = useId();
+  const flaggedId = useId();
   const refusedId = useId();
   // The check answers after the dialog opened: focus moves to the first
   // checkbox once, when the list appears.
@@ -56,11 +59,22 @@ export function ImportLocalEditsDialog({
   useEffect(() => {
     if (listed) firstBox.current?.focus();
   }, [listed]);
-  const eligible = (skills ?? []).filter((skill) => skill.refusal === null);
+  const eligible = (skills ?? []).filter(
+    (skill) => skill.refusal === null && skill.undoesNewerSince === undefined,
+  );
+  const flagged = (skills ?? []).flatMap(
+    ({ name, refusal, undoesNewerSince }) =>
+      refusal === null && undoesNewerSince !== undefined
+        ? [{ name, release: undoesNewerSince }]
+        : [],
+  );
   const refused = (skills ?? []).flatMap(({ refusal, ...skill }) =>
     refusal === null ? [] : [{ ...skill, refusal }],
   );
-  const count = eligible.filter((skill) => checked.has(skill.name)).length;
+  const count = [...eligible, ...flagged].filter((skill) =>
+    checked.has(skill.name),
+  ).length;
+  const undoing = flagged.filter((skill) => checked.has(skill.name)).length;
   const empty = skills !== null && skills.length === 0;
   const offered =
     outcomes === null && skills !== null && !empty && failure === null;
@@ -76,11 +90,11 @@ export function ImportLocalEditsDialog({
       action={
         offered
           ? {
-              label: importConfirmLabel(count),
+              label: importConfirmLabel(count, undoing),
               verb: "import",
               tone: "primary",
               unavailable:
-                eligible.length === 0
+                eligible.length === 0 && flagged.length === 0
                   ? NO_SKILL_QUALIFIES
                   : count === 0
                     ? NONE_SELECTED
@@ -177,6 +191,54 @@ export function ImportLocalEditsDialog({
               </ul>
             </fieldset>
           )}
+          {flagged.length === 0 ? null : (
+            <fieldset
+              id={flaggedId}
+              className="m-0 flex min-w-0 flex-col gap-tight"
+            >
+              <legend className="font-mono font-semibold text-amber-12 text-meta uppercase tracking-mono-wide">
+                {undoesNewerLegend(flagged.length)}
+              </legend>
+              <ul className="m-0 flex list-none flex-col overflow-hidden rounded-control border border-amber-7 p-0">
+                {flagged.map((skill, index) => (
+                  <li
+                    key={skill.name}
+                    className={cn(
+                      "grid grid-cols-[auto_1fr] items-center gap-x-inline gap-y-tight bg-amber-3 px-cell py-inline",
+                      index < flagged.length - 1 && "border-amber-7 border-b",
+                    )}
+                  >
+                    <input
+                      ref={
+                        eligible.length === 0 && index === 0
+                          ? firstBox
+                          : undefined
+                      }
+                      id={`${flaggedId}-box-${index}`}
+                      type="checkbox"
+                      aria-describedby={`${flaggedId}-${index}`}
+                      className="size-4 shrink-0 cursor-pointer accent-gray-12"
+                      checked={checked.has(skill.name)}
+                      disabled={isRunning}
+                      onChange={() => onToggle(skill.name)}
+                    />
+                    <label
+                      htmlFor={`${flaggedId}-box-${index}`}
+                      className="min-w-0 cursor-pointer truncate text-row"
+                    >
+                      {skill.name}
+                    </label>
+                    <p
+                      id={`${flaggedId}-${index}`}
+                      className="col-start-2 m-0 text-amber-12 text-meta"
+                    >
+                      {undoesNewerLine(skill.release)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          )}
           {refused.length === 0 ? null : (
             <fieldset
               id={refusedId}
@@ -198,7 +260,9 @@ export function ImportLocalEditsDialog({
                         reason is heard. A click changes nothing. */}
                     <input
                       ref={
-                        eligible.length === 0 && index === 0
+                        eligible.length === 0 &&
+                        flagged.length === 0 &&
+                        index === 0
                           ? firstBox
                           : undefined
                       }

@@ -40,6 +40,7 @@ export function stubImports(): {
       globalRoot: unreachable,
       home: unreachable,
       importSkill,
+      git: { readSkillTreesAtTag: unreachable, readMovementTrees: unreachable },
       resolveRoot: async () => undefined,
       locks: new InFlightLocks(),
     }),

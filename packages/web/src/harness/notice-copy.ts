@@ -775,6 +775,8 @@ const LOCAL_EDITS_REFUSALS: Partial<Record<LocalEditsRefusal, string>> = {
   "no-local-edits": "No local edits left in this copy. Nothing was imported.",
   "nothing-to-carry-back":
     "The Harness already has these changes. See the skill on the Harness screen.",
+  "undoes-newer-changes":
+    "The Harness changed this skill after the check. Importing now undoes those changes. Select Import local edits… again to decide.",
 };
 
 // One sentence under a skill Import local edits… did not carry back: its own

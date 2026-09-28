@@ -28,14 +28,16 @@ export function ImportLocalEditsAction({
   const navigate = useNavigate();
   const check = useLocalEditsCheck(target, true);
   const run = useImportLocalEdits();
-  // The reader's unchecks; every eligible skill starts checked.
-  const [unchecked, setUnchecked] = useState<ReadonlySet<string>>(new Set());
+  // The reader's toggles: an eligible skill starts checked, one that undoes
+  // newer Harness changes unchecked.
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
   const skills = check.data?.skills ?? null;
-  const checked = new Set(
-    (skills ?? [])
-      .filter((skill) => skill.refusal === null && !unchecked.has(skill.name))
-      .map((skill) => skill.name),
+  const picked = (skills ?? []).filter(
+    (skill) =>
+      skill.refusal === null &&
+      (skill.undoesNewerSince === undefined) !== toggled.has(skill.name),
   );
+  const checked = new Set(picked.map((skill) => skill.name));
   const outcomes =
     run.data?.outcomes.some((row) => row.refusal !== null) === true
       ? run.data.outcomes
@@ -46,9 +48,7 @@ export function ImportLocalEditsAction({
       targetName={targetName}
       skills={skills}
       checked={checked}
-      onToggle={(name) =>
-        setUnchecked((current) => toggleStaged(current, name))
-      }
+      onToggle={(name) => setToggled((current) => toggleStaged(current, name))}
       isRunning={run.isPending}
       outcomes={outcomes}
       failure={
@@ -59,7 +59,13 @@ export function ImportLocalEditsAction({
       onCancel={onClose}
       onConfirm={() =>
         run.mutate(
-          { target, names: [...checked] },
+          {
+            target,
+            names: [...checked],
+            undo: picked
+              .filter((skill) => skill.undoesNewerSince !== undefined)
+              .map((skill) => skill.name),
+          },
           {
             onSuccess: ({ outcomes: landed }) => {
               if (landed.some((row) => row.refusal !== null)) return;

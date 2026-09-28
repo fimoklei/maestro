@@ -38,6 +38,7 @@ export const importLocalEditsCheckBodySchema = z.object({
 export const importLocalEditsBodySchema = z.object({
   target: targetSchema,
   names: z.array(z.string()).min(1),
+  undo: z.array(z.string()),
 });
 
 // Proves the confirmation came from this server's own preflight, not a client-built claim.
@@ -216,7 +217,8 @@ export const IMPORT_LOCAL_EDITS_CHECK_BODY: RequestShape = {
 export const IMPORT_LOCAL_EDITS_BODY: RequestShape = {
   message:
     "Nothing was imported. Reload the page, then select Import local edits… again.",
-  detail: "The request carries a target and a non-empty names array.",
+  detail:
+    "The request carries a target, a non-empty names array and an undo array.",
 };
 
 export const UPDATE_TARGET_BODY: RequestShape = {

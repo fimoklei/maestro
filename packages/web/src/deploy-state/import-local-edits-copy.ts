@@ -25,10 +25,20 @@ export const NO_LOCAL_EDITS = "No local edits";
 export const noLocalEditsLine = (target: string): string =>
   `No skill on ${target} changed after deployment.`;
 
-export const importConfirmLabel = (count: number): string =>
-  count === 0
-    ? IMPORT_SKILLS
-    : `Import ${count} ${count === 1 ? "skill" : "skills"}`;
+export const undoesNewerLegend = (count: number): string =>
+  `▲ Undoes newer Harness changes · ${count}`;
+
+export const undoesNewerLine = (release: string): string =>
+  `Deployed from release ${release}. Importing undoes newer Harness changes to this skill.`;
+
+// `undoing` counts the checked skills that undo newer Harness changes.
+export const importConfirmLabel = (count: number, undoing: number): string => {
+  if (count === 0) return IMPORT_SKILLS;
+  const label = `Import ${count} ${count === 1 ? "skill" : "skills"}`;
+  return undoing === 0
+    ? label
+    : `${label} · ${undoing} ${undoing === 1 ? "undoes" : "undo"} newer changes`;
+};
 
 export const importedToast = (names: readonly string[]): string =>
   names.length === 1

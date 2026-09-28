@@ -45,6 +45,8 @@ function target(
     pending?: boolean;
     // The copy into the Harness fails for this skill: a full disk, say.
     copyFails?: string;
+    // Tree per skill at v1.0.0, the release every copy was deployed from.
+    release?: Record<string, string>;
     // The global install: lockfile under ~/.apm, skills under HOME.
     global?: boolean;
   } = {},
@@ -176,6 +178,18 @@ function target(
     deployedTargets: async () => [{ treeRoot: tree, lockfilePath }],
   });
 
+  let release = overrides.release ?? { ...trees.local };
+  const harnessGit = {
+    readMovementTrees: async () => trees,
+    readSkillTreesAtTag: async (_root: string, tag: string) =>
+      tag === "v1.0.0"
+        ? Object.entries(release).map(([name, treeHash]) => ({
+            name,
+            treeHash,
+          }))
+        : null,
+  };
+
   const locks = new InFlightLocks();
   const useCase = new ImportLocalEdits({
     registry: {
@@ -205,6 +219,7 @@ function target(
     globalRoot: () => APM_GLOBAL,
     home: () => HOME,
     importSkill,
+    git: harnessGit,
     resolveRoot: async () => ROOT,
     locks,
   });
@@ -215,7 +230,10 @@ function target(
   const setTrees = (next: HarnessSkillTrees) => {
     trees = next;
   };
-  return { useCase, files, locks, edit, setTrees };
+  const setRelease = (next: Record<string, string>) => {
+    release = next;
+  };
+  return { useCase, files, locks, edit, setTrees, setRelease };
 }
 
 const REPO_TARGET = { kind: "repo" as const, repoPath: REPO };
@@ -321,6 +339,40 @@ describe("ImportLocalEdits.check", () => {
     });
   });
 
+  it("flags a skill whose Harness copy changed since its deployed release", async () => {
+    const { useCase } = target({
+      copies: {
+        "code-review": { claude: "diverged" },
+        tdd: { claude: "diverged" },
+      },
+      lockfile: [
+        ...entry("code-review", FROM_THIS_HARNESS),
+        ...entry("tdd", FROM_THIS_HARNESS),
+      ],
+      release: { "code-review": "tree-0", tdd: "tree-1" },
+    });
+
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [
+        { name: "code-review", refusal: null, undoesNewerSince: "v1.0.0" },
+        { name: "tdd", refusal: null },
+      ],
+    });
+  });
+
+  it("flags a skill whose deployed release the Harness cannot read", async () => {
+    const { useCase, setRelease } = target();
+    setRelease({});
+
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [
+        { name: "code-review", refusal: null, undoesNewerSince: "v1.0.0" },
+      ],
+    });
+  });
+
   it("lists a global skill with identical Claude Code and Codex edits as eligible", async () => {
     const { useCase } = target({
       global: true,
@@ -381,6 +433,7 @@ describe("ImportLocalEdits.execute", () => {
     const result = await useCase.execute({
       target: REPO_TARGET,
       names: ["code-review"],
+      undo: [],
     });
 
     expect(result).toEqual({
@@ -397,7 +450,11 @@ describe("ImportLocalEdits.execute", () => {
     });
 
     await expect(
-      useCase.execute({ target: GLOBAL_TARGET, names: ["code-review"] }),
+      useCase.execute({
+        target: GLOBAL_TARGET,
+        names: ["code-review"],
+        undo: [],
+      }),
     ).resolves.toEqual({
       ok: true,
       outcomes: [{ name: "code-review", refusal: null }],
@@ -410,7 +467,11 @@ describe("ImportLocalEdits.execute", () => {
     edit("code-review", "claude", "clean");
 
     await expect(
-      useCase.execute({ target: REPO_TARGET, names: ["code-review"] }),
+      useCase.execute({
+        target: REPO_TARGET,
+        names: ["code-review"],
+        undo: [],
+      }),
     ).resolves.toEqual({
       ok: true,
       outcomes: [{ name: "code-review", refusal: "no-local-edits" }],
@@ -444,13 +505,73 @@ describe("ImportLocalEdits.execute", () => {
     });
 
     await expect(
-      useCase.execute({ target: REPO_TARGET, names: ["code-review", "tdd"] }),
+      useCase.execute({
+        target: REPO_TARGET,
+        names: ["code-review", "tdd"],
+        undo: [],
+      }),
     ).resolves.toEqual({
       ok: true,
       outcomes: [
         { name: "code-review", refusal: "harness-copy-uncommitted" },
         { name: "tdd", refusal: null },
       ],
+    });
+  });
+
+  it("lands a flagged skill only where the author chose to undo the newer changes", async () => {
+    const { useCase, files } = target({
+      copies: {
+        "code-review": { claude: "diverged" },
+        tdd: { claude: "diverged" },
+      },
+      lockfile: [
+        ...entry("code-review", FROM_THIS_HARNESS),
+        ...entry("tdd", FROM_THIS_HARNESS),
+      ],
+      release: { "code-review": "tree-0", tdd: "tree-0" },
+    });
+
+    await expect(
+      useCase.execute({
+        target: REPO_TARGET,
+        names: ["code-review", "tdd"],
+        undo: ["tdd"],
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      outcomes: [
+        { name: "code-review", refusal: "undoes-newer-changes" },
+        { name: "tdd", refusal: null },
+      ],
+    });
+    expect(files[`${ROOT}/.apm/skills/code-review/SKILL.md`]).toBe(HELD);
+    expect(files[`${ROOT}/.apm/skills/tdd/SKILL.md`]).toBe(EDITED);
+  });
+
+  it("refuses a skill the Harness moved past its release after the check", async () => {
+    const { useCase, setTrees } = target();
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [{ name: "code-review", refusal: null }],
+    });
+    // A teammate's change pulled in: committed, so Import skill still allows it.
+    setTrees({
+      remote: {},
+      promote: {},
+      local: { "code-review": "tree-2" },
+      working: { "code-review": "tree-2" },
+    });
+
+    await expect(
+      useCase.execute({
+        target: REPO_TARGET,
+        names: ["code-review"],
+        undo: [],
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      outcomes: [{ name: "code-review", refusal: "undoes-newer-changes" }],
     });
   });
 
@@ -468,7 +589,11 @@ describe("ImportLocalEdits.execute", () => {
     });
 
     await expect(
-      useCase.execute({ target: REPO_TARGET, names: ["code-review", "tdd"] }),
+      useCase.execute({
+        target: REPO_TARGET,
+        names: ["code-review", "tdd"],
+        undo: [],
+      }),
     ).resolves.toEqual({
       ok: true,
       outcomes: [
@@ -487,6 +612,7 @@ describe("ImportLocalEdits.execute", () => {
       result = await useCase.execute({
         target: REPO_TARGET,
         names: ["code-review"],
+        undo: [],
       });
     });
 
