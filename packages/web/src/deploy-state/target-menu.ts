@@ -17,9 +17,7 @@ export function targetMenuItems(
   retrying: boolean,
 ): TargetTableRow["actions"] {
   // Carrying edits back comes first: Update target would overwrite them.
-  // ponytail: repositories only; #1256 adds the global target.
   const importable =
-    row.wire.kind === "repo" &&
     row.pending === undefined &&
     row.primitives.some((primitive) => primitive.copy === "local-edits");
   const items: TargetTableRow["actions"] = [

@@ -1,10 +1,15 @@
 // Carries a target's Local edits skills back through ImportSkill's update judgement (#1249).
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
-import { deployTargetSubtrees, SUPPORTED_TOOLS } from "../deploy/deploy-tools";
+import {
+  deployTargetSubtrees,
+  SUPPORTED_TOOLS,
+  type SupportedTool,
+} from "../deploy/deploy-tools";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
-import type { DeployStateReader } from "../deploy-state/deploy-state-reader";
+import type { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
 import type { ReleaseHeadGitPort } from "../deploy-state/release-head";
+import { type SameTreeFs, sameTree } from "../filesystem/same-tree";
 import type { Registry } from "../registry/registry";
 import type { ImportSkill, ImportSkillError } from "./import-skill";
 import type { HarnessGitPort } from "./read-harness-state";
@@ -14,7 +19,6 @@ export type LocalEditsRefusal =
   // ImportSkill would add a new skill: this route only replaces the Harness's own.
   | "not-an-update"
   | "unverified"
-  // ponytail: refused unread; #1256 compares the copies and carries identical ones.
   | "copies-differ"
   | "no-local-edits"
   // Execute only: flagged, and not among the skills the author chose to undo.
@@ -35,9 +39,14 @@ export type LocalEditsError =
   | "target-unreadable"
   | "import-in-progress";
 
+// Home-relative, never absolute: the refusal's sentence names them.
+export type DifferingFolders = { claude: string; codex: string };
+
 export type LocalEditsSkill = {
   name: string;
   refusal: LocalEditsRefusal | null;
+  // With `copies-differ` only.
+  folders?: DifferingFolders;
   // Only on an eligible skill whose Harness copy changed since the release its
   // deployed copy came from: importing undoes those changes. Names that release.
   undoesNewerSince?: string;
@@ -51,25 +60,37 @@ export type ImportLocalEditsResult =
   | { ok: true; outcomes: LocalEditsSkill[] }
   | { ok: false; error: LocalEditsError };
 
+type Copy = {
+  copy: "local-edits" | "unverified";
+  // The release the deployed copy came from.
+  version: string;
+  // Each tool holding a copy, with the latest release its row measures against.
+  tools: { tool: SupportedTool; release: string | undefined }[];
+};
+
 type Reading = {
-  root: string;
-  release: string | undefined;
+  target: DeployTarget;
+  // What the deployed folders are relative to.
+  tree: string;
   // Skills reading Local edits or Unverified, in Deploy-state's order.
-  copies: Map<string, "local-edits" | "unverified">;
-  // The release each skill's deployed copy came from.
-  versions: Map<string, string>;
+  copies: Map<string, Copy>;
 };
 
 type Judged =
   | { folder: string; undoesNewerSince?: string }
-  | { refusal: LocalEditsRefusal };
+  | { refusal: LocalEditsRefusal; folders?: DifferingFolders };
 
 export class ImportLocalEdits {
   private readonly deps: {
     registry: Pick<Registry, "resolveRegistered">;
     // The reader Deploy-state uses, so the dialog agrees with the row.
-    deployState: Pick<DeployStateReader, "read">;
+    deployState: Pick<GlobalDeployStateReader, "read" | "readGlobal">;
     content: Pick<DeployedContentPort, "classify">;
+    // Compares one skill's tool copies with each other.
+    tree: SameTreeFs;
+    // The global lockfile's folder; the global tree is `home`.
+    globalRoot: () => string;
+    home: () => string;
     importSkill: Pick<ImportSkill, "check" | "execute">;
     git: Pick<ReleaseHeadGitPort, "readSkillTreesAtTag"> &
       Pick<HarnessGitPort, "readMovementTrees">;
@@ -89,12 +110,7 @@ export class ImportLocalEdits {
     }
     const skills: LocalEditsSkill[] = [];
     for (const [name, copy] of reading.copies) {
-      const judged = await this.judge(reading, name, copy);
-      skills.push(
-        "folder" in judged
-          ? { name, refusal: null, ...flag(judged) }
-          : { name, refusal: judged.refusal },
-      );
+      skills.push(outcome(name, await this.judge(reading, name, copy)));
     }
     return { ok: true, skills };
   }
@@ -119,12 +135,12 @@ export class ImportLocalEdits {
     const outcomes: LocalEditsSkill[] = [];
     for (const name of input.names) {
       const copy = reading.copies.get(name);
-      const judged =
+      const judged: Judged =
         copy === undefined
-          ? { refusal: "no-local-edits" as const }
+          ? { refusal: "no-local-edits" }
           : await this.judge(reading, name, copy);
       if (!("folder" in judged)) {
-        outcomes.push({ name, refusal: judged.refusal });
+        outcomes.push(outcome(name, judged));
         continue;
       }
       if (judged.undoesNewerSince !== undefined && !input.undo.includes(name)) {
@@ -142,9 +158,8 @@ export class ImportLocalEdits {
   private async read(
     target: DeployTarget,
   ): Promise<Reading | { error: LocalEditsError }> {
-    if (target.kind !== "repo") {
-      // ponytail: repository targets only; #1256 adds the global target.
-      return { error: "target-unreadable" };
+    if (target.kind === "global") {
+      return await this.readGlobal();
     }
     // Before any filesystem access.
     const registered = await this.deps.registry.resolveRegistered(
@@ -163,39 +178,92 @@ export class ImportLocalEdits {
     if (state.pendingOperation !== undefined) {
       return { error: "unfinished-operation" };
     }
-    const copies = new Map<string, "local-edits" | "unverified">();
-    const versions = new Map<string, string>();
+    const release = state.releaseHead?.latestRelease ?? undefined;
+    const copies = new Map<string, Copy>();
     for (const primitive of state.primitives) {
       if (primitive.copy !== undefined) {
-        copies.set(primitive.name, primitive.copy);
-        versions.set(primitive.name, primitive.version);
+        copies.set(primitive.name, {
+          copy: primitive.copy,
+          version: primitive.version,
+          tools: SUPPORTED_TOOLS.map((tool) => ({ tool, release })),
+        });
       }
     }
     return {
-      root: registered.path,
-      release: state.releaseHead?.latestRelease ?? undefined,
+      target: { kind: "repo", repoPath: registered.path },
+      tree: registered.path,
       copies,
-      versions,
     };
+  }
+
+  // One row per detected tool; a skill reads Local edits where any tool's does.
+  private async readGlobal(): Promise<Reading | { error: LocalEditsError }> {
+    const state = await this.deps.deployState
+      .readGlobal(this.deps.globalRoot())
+      .catch(() => null);
+    if (state === null || !state.ok) {
+      return { error: "target-unreadable" };
+    }
+    if (state.pendingOperation !== undefined) {
+      return { error: "unfinished-operation" };
+    }
+    const held = new Map<
+      string,
+      Pick<Copy, "tools" | "version"> & Partial<Copy>
+    >();
+    for (const group of state.tools) {
+      const release = group.releaseHead?.latestRelease ?? undefined;
+      for (const primitive of group.primitives) {
+        const skill = held.get(primitive.name) ?? {
+          tools: [],
+          version: primitive.version,
+        };
+        skill.tools.push({ tool: group.tool, release });
+        if (primitive.copy !== undefined && skill.copy !== "local-edits") {
+          skill.copy = primitive.copy;
+          // The copy that is imported names the release it came from.
+          skill.version = primitive.version;
+        }
+        held.set(primitive.name, skill);
+      }
+    }
+    const copies = new Map<string, Copy>();
+    for (const [name, { copy, version, tools }] of held) {
+      if (copy !== undefined) {
+        copies.set(name, { copy, version, tools });
+      }
+    }
+    return { target: { kind: "global" }, tree: this.deps.home(), copies };
   }
 
   private async judge(
     reading: Reading,
     name: string,
-    copy: "local-edits" | "unverified",
+    copy: Copy,
   ): Promise<Judged> {
-    if (copy === "unverified") {
+    if (copy.copy === "unverified") {
       return { refusal: "unverified" };
     }
-    const folders = await this.editedFolders(reading, name);
-    if (folders.length === 0) {
+    const edited = await this.editedFolders(reading, name, copy);
+    const first = edited.claude ?? edited.codex;
+    if (first === undefined) {
       return { refusal: "no-local-edits" };
     }
-    if (folders.length > 1) {
-      return { refusal: "copies-differ" };
+    // Identical copies are carried back as one.
+    if (
+      edited.claude !== undefined &&
+      edited.codex !== undefined &&
+      !(await sameTree(this.deps.tree, edited.claude, edited.codex))
+    ) {
+      return {
+        refusal: "copies-differ",
+        folders: {
+          claude: this.shown(reading, edited.claude),
+          codex: this.shown(reading, edited.codex),
+        },
+      };
     }
-    const folder = folders[0] as string;
-    const checked = await this.deps.importSkill.check({ source: folder });
+    const checked = await this.deps.importSkill.check({ source: first });
     if (!checked.ok) {
       return { refusal: checked.error };
     }
@@ -206,10 +274,9 @@ export class ImportLocalEdits {
     if (mode !== "update") {
       return { refusal: "not-an-update" };
     }
-    const version = reading.versions.get(name) as string;
-    return (await this.harnessMovedSince(name, version))
-      ? { folder, undoesNewerSince: version }
-      : { folder };
+    return (await this.harnessMovedSince(name, copy.version))
+      ? { folder: first, undoesNewerSince: copy.version }
+      : { folder: first };
   }
 
   // The folder is replaced whole, so any Harness change since the deployed
@@ -234,26 +301,37 @@ export class ImportLocalEdits {
   private async editedFolders(
     reading: Reading,
     name: string,
-  ): Promise<string[]> {
-    const target: DeployTarget = { kind: "repo", repoPath: reading.root };
-    const folders: string[] = [];
-    for (const tool of SUPPORTED_TOOLS) {
+    copy: Copy,
+  ): Promise<Partial<Record<SupportedTool, string>>> {
+    const folders: Partial<Record<SupportedTool, string>> = {};
+    for (const { tool, release } of copy.tools) {
       const state = await this.deps.content
-        .classify({ target, name, tools: [tool], release: reading.release })
+        .classify({ target: reading.target, name, tools: [tool], release })
         .catch(() => null);
-      if (state === "diverged") {
-        folders.push(
-          ...deployTargetSubtrees(name, [tool]).map((subtree) =>
-            join(reading.root, subtree),
-          ),
-        );
+      const [subtree] = deployTargetSubtrees(name, [tool]);
+      if (state === "diverged" && subtree !== undefined) {
+        folders[tool] = join(reading.tree, subtree);
       }
     }
     return folders;
   }
+
+  // `~/…` under home, else relative to the target: never absolute.
+  private shown(reading: Reading, folder: string): string {
+    const fromHome = relative(this.deps.home(), folder);
+    return fromHome.startsWith("..")
+      ? relative(reading.tree, folder)
+      : `~/${fromHome}`;
+  }
 }
 
-const flag = (judged: { undoesNewerSince?: string }) =>
-  judged.undoesNewerSince === undefined
-    ? {}
-    : { undoesNewerSince: judged.undoesNewerSince };
+function outcome(name: string, judged: Judged): LocalEditsSkill {
+  if ("folder" in judged) {
+    return judged.undoesNewerSince === undefined
+      ? { name, refusal: null }
+      : { name, refusal: null, undoesNewerSince: judged.undoesNewerSince };
+  }
+  return judged.folders === undefined
+    ? { name, refusal: judged.refusal }
+    : { name, refusal: judged.refusal, folders: judged.folders };
+}

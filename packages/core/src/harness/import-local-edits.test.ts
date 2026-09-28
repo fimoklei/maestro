@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { DeployedContentState } from "../deploy/deploy-skill";
 import { InFlightLocks } from "../deploy/in-flight-locks";
-import { DeployStateReader } from "../deploy-state/deploy-state-reader";
+import { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
 import { ImportLocalEdits } from "./import-local-edits";
 import { ImportSkill } from "./import-skill";
 import type { HarnessSkillTrees } from "./read-harness-state";
 
 const ROOT = "/harness";
 const REPO = "/work/app";
+const HOME = "/home/me";
+const APM_GLOBAL = `${HOME}/.apm`;
 const ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 const HELD =
   "---\nname: code-review\ndescription: Reviews code.\n---\n\nOld.\n";
@@ -45,21 +47,28 @@ function target(
     copyFails?: string;
     // Tree per skill at v1.0.0, the release every copy was deployed from.
     release?: Record<string, string>;
+    // The global install: lockfile under ~/.apm, skills under HOME.
+    global?: boolean;
   } = {},
 ) {
   const copies = overrides.copies ?? {
     "code-review": { claude: "diverged", codex: "clean" },
   };
+  const tree = overrides.global === true ? HOME : REPO;
+  const lockfilePath =
+    overrides.global === true
+      ? `${APM_GLOBAL}/apm.lock.yaml`
+      : `${REPO}/apm.lock.yaml`;
   const files: Record<string, string> = {
-    [`${REPO}/apm.lock.yaml`]: [
+    [lockfilePath]: [
       "dependencies:",
       ...(overrides.lockfile ?? entry("code-review", FROM_THIS_HARNESS)),
     ].join("\n"),
   };
-  const directories = new Set(["/", ROOT, REPO, `${ROOT}/.apm/skills`]);
+  const directories = new Set(["/", ROOT, tree, `${ROOT}/.apm/skills`]);
   for (const name of Object.keys(copies)) {
     for (const prefix of [".claude", ".agents"]) {
-      const folder = `${REPO}/${prefix}/skills/${name}`;
+      const folder = `${tree}/${prefix}/skills/${name}`;
       directories.add(folder);
       files[`${folder}/SKILL.md`] =
         copies[name]?.[prefix === ".claude" ? "claude" : "codex"] === "diverged"
@@ -129,22 +138,23 @@ function target(
     working: Object.fromEntries(Object.keys(copies).map((n) => [n, "tree-1"])),
   };
 
+  const facts = {
+    describe: async (path: string) =>
+      files[path] === undefined
+        ? null
+        : {
+            kind: "file" as const,
+            size: (files[path] as string).length,
+            hardLinks: 1,
+            executable: false,
+            identity: path,
+          },
+  };
   const importSkill = new ImportSkill({
     resolveRoot: async () => ROOT,
     homeRoot: () => "/",
     fs,
-    facts: {
-      describe: async (path: string) =>
-        files[path] === undefined
-          ? null
-          : {
-              kind: "file" as const,
-              size: (files[path] as string).length,
-              hardLinks: 1,
-              executable: false,
-              identity: path,
-            },
-    },
+    facts,
     git: {
       readFacts: async () => ({
         originUrl: ORIGIN,
@@ -165,9 +175,7 @@ function target(
         return { ok: true, path, skipped: 0 };
       },
     },
-    deployedTargets: async () => [
-      { treeRoot: REPO, lockfilePath: `${REPO}/apm.lock.yaml` },
-    ],
+    deployedTargets: async () => [{ treeRoot: tree, lockfilePath }],
   });
 
   let release = overrides.release ?? { ...trees.local };
@@ -190,8 +198,10 @@ function target(
           ? undefined
           : { path: REPO },
     },
-    deployState: new DeployStateReader({
+    deployState: new GlobalDeployStateReader({
       fs,
+      toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
+      treeRoot: () => HOME,
       content,
       operations: {
         pending: async () =>
@@ -205,6 +215,9 @@ function target(
       },
     }),
     content,
+    tree: { ...fs, ...facts },
+    globalRoot: () => APM_GLOBAL,
+    home: () => HOME,
     importSkill,
     git: harnessGit,
     resolveRoot: async () => ROOT,
@@ -224,6 +237,7 @@ function target(
 }
 
 const REPO_TARGET = { kind: "repo" as const, repoPath: REPO };
+const GLOBAL_TARGET = { kind: "global" as const };
 
 describe("ImportLocalEdits.check", () => {
   it("lists every Local edits skill from this Harness as eligible", async () => {
@@ -359,6 +373,40 @@ describe("ImportLocalEdits.check", () => {
     });
   });
 
+  it("lists a global skill with identical Claude Code and Codex edits as eligible", async () => {
+    const { useCase } = target({
+      global: true,
+      copies: { "code-review": { claude: "diverged", codex: "diverged" } },
+    });
+
+    await expect(useCase.check(GLOBAL_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [{ name: "code-review", refusal: null }],
+    });
+  });
+
+  it("refuses a global skill whose tool copies differ, naming both folders from home", async () => {
+    const { useCase, files } = target({
+      global: true,
+      copies: { "code-review": { claude: "diverged", codex: "diverged" } },
+    });
+    files[`${HOME}/.agents/skills/code-review/SKILL.md`] = `${EDITED}More.\n`;
+
+    await expect(useCase.check(GLOBAL_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [
+        {
+          name: "code-review",
+          refusal: "copies-differ",
+          folders: {
+            claude: "~/.claude/skills/code-review",
+            codex: "~/.agents/skills/code-review",
+          },
+        },
+      ],
+    });
+  });
+
   it("refuses a target with an Unfinished operation", async () => {
     const { useCase } = target({ pending: true });
 
@@ -389,6 +437,25 @@ describe("ImportLocalEdits.execute", () => {
     });
 
     expect(result).toEqual({
+      ok: true,
+      outcomes: [{ name: "code-review", refusal: null }],
+    });
+    expect(files[`${ROOT}/.apm/skills/code-review/SKILL.md`]).toBe(EDITED);
+  });
+
+  it("lands identical global tool edits as one skill", async () => {
+    const { useCase, files } = target({
+      global: true,
+      copies: { "code-review": { claude: "diverged", codex: "diverged" } },
+    });
+
+    await expect(
+      useCase.execute({
+        target: GLOBAL_TARGET,
+        names: ["code-review"],
+        undo: [],
+      }),
+    ).resolves.toEqual({
       ok: true,
       outcomes: [{ name: "code-review", refusal: null }],
     });

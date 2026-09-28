@@ -154,6 +154,13 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
         registry,
         deployState,
         content,
+        tree: {
+          listRawEntries: (path) => fs.listRawEntries(path),
+          readFile: (path) => fs.readFile(path),
+          describe: (path) => copyTreeFs.describe(path),
+        },
+        globalRoot: () => "/nonexistent-apm-root",
+        home: () => base,
         importSkill,
         git,
         resolveRoot,

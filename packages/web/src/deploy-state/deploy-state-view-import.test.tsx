@@ -257,6 +257,45 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     ]);
   });
 
+  it("names both folders in mono where a skill's tool copies differ", async () => {
+    stubImport(["code-review", "tdd"], landed, () =>
+      jsonResponse({
+        skills: [
+          { name: "code-review", refusal: null },
+          {
+            name: "tdd",
+            refusal: "copies-differ",
+            folders: {
+              claude: "~/.claude/skills/tdd",
+              codex: "~/.agents/skills/tdd",
+            },
+          },
+        ],
+      }),
+    );
+    renderDeployState();
+
+    const dialog = await openDialog();
+    const refused = await within(dialog).findByRole("group", {
+      name: "✕ Cannot be imported · 1",
+    });
+
+    const box = within(refused).getByRole("checkbox", { name: "tdd" });
+    // textContent, not the computed description: jsdom pads a <code> with
+    // spaces no browser adds.
+    expect(
+      document.getElementById(box.getAttribute("aria-describedby") ?? "")
+        ?.textContent,
+    ).toBe(
+      "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+    );
+    expect(
+      within(refused)
+        .getAllByRole("code")
+        .map((path) => path.textContent),
+    ).toEqual(["~/.claude/skills/tdd", "~/.agents/skills/tdd"]);
+  });
+
   it("blocks the confirm when no skill qualifies", async () => {
     stubImport(["tdd"], landed, () =>
       jsonResponse({ skills: [{ name: "tdd", refusal: "unverified" }] }),
