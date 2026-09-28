@@ -35,7 +35,7 @@ const selects = (target: DeploymentTarget, skillName: string): boolean =>
 // One per-skill reading from the target's Release heads: behind means this
 // skill's own files differ at the newest release (#956). Undefined where no
 // head is known.
-export function headsReading(
+function headsReading(
   heads: readonly (ReleaseHead | undefined)[],
   skillName: string,
 ): DriftStatus | undefined {
