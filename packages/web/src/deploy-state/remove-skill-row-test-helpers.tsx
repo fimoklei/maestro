@@ -2,12 +2,15 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { vi } from "vitest";
+import { driftViewModel } from "../drift/drift-view-model";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import { SelectedSkills } from "./selected-skills";
 
 // Sonner keeps toasts in a module-global store that leaks across tests.
 export const clearToasts = () => toast.dismiss();
+
+const PENDING_DRIFT = driftViewModel({ data: undefined, isError: false });
 
 export const tdd = { type: "skill" as const, name: "tdd", version: "v0.5.0" };
 export const REPO = "/Users/me/project";
@@ -85,9 +88,14 @@ export function renderRow({
   const list = (primitives: (typeof tdd)[]) => (
     <>
       <SelectedSkills
-        primitives={primitives}
-        target={target}
-        targetName={REPO_NAME}
+        row={{
+          primitives,
+          drift: PENDING_DRIFT,
+          target,
+          wire: target.kind === "repo" ? target : { kind: "global" },
+          name: REPO_NAME,
+          updateName: REPO_NAME,
+        }}
         onRemoved={onRemoved}
       />
       <ToastHost />

@@ -33,10 +33,14 @@ function renderList(
 ) {
   return renderWithQuery(
     <SelectedSkills
-      primitives={primitives}
-      drift={drift}
-      target={{ kind: "repo", repoPath: "/Users/me/project" }}
-      targetName="…/me/project"
+      row={{
+        primitives,
+        drift,
+        target: { kind: "repo", repoPath: "/Users/me/project" },
+        wire: { kind: "repo", repoPath: "/Users/me/project" },
+        name: "…/me/project",
+        updateName: "…/me/project",
+      }}
     />,
   );
 }

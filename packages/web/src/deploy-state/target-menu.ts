@@ -4,7 +4,7 @@ import type { TargetAction, TargetTableRow } from "./deploy-state-columns";
 import { VIEW_REPOSITORY_ON_GITHUB } from "./deploy-state-copy";
 import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
 import { RETRY_LABELS } from "./release-head-copy";
-import type { TargetRow } from "./target-rows";
+import { canImportLocalEdits, type TargetRow } from "./target-rows";
 import { UPDATE_TARGET } from "./update-target-copy";
 
 export type MenuFacts = Pick<
@@ -17,9 +17,9 @@ export function targetMenuItems(
   retrying: boolean,
 ): TargetTableRow["actions"] {
   // Carrying edits back comes first: Update target would overwrite them.
-  const importable =
-    row.pending === undefined &&
-    row.primitives.some((primitive) => primitive.copy === "local-edits");
+  const importable = row.primitives.some((primitive) =>
+    canImportLocalEdits(row.pending, primitive),
+  );
   const items: TargetTableRow["actions"] = [
     ...(importable
       ? [{ action: "import" as const, label: IMPORT_LOCAL_EDITS }]

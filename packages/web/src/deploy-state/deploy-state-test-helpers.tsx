@@ -71,6 +71,29 @@ export function stubServer(read: () => ServerState) {
   return fetchMock;
 }
 
+// The import's two routes: `check` answers the check; every run body is kept.
+export function importRoutes(
+  check: () => Response | Promise<Response>,
+  run: (names: string[]) => Response | Promise<Response>,
+) {
+  const sent: unknown[] = [];
+  const other: NonNullable<ServerState["other"]> = (url, init) => {
+    if (url === "/api/deploy/import-local-edits/check") {
+      return check();
+    }
+    if (url === "/api/deploy/import-local-edits") {
+      const body = JSON.parse(String(init?.body)) as { names: string[] };
+      sent.push(body);
+      return run(body.names);
+    }
+    throw new Error(`unexpected request ${url}`);
+  };
+  return { sent, other };
+}
+
+export const landed = (names: string[]) =>
+  jsonResponse({ outcomes: names.map((name) => ({ name, refusal: null })) });
+
 // Stands in for the Harness screen: shows which skill it was asked to open.
 function HarnessProbe() {
   const state = useLocation().state as { openSkill?: string } | null;

@@ -1,43 +1,37 @@
 import { type Ref, useEffect, useState } from "react";
-import {
-  type DriftViewModel,
-  driftViewModel,
-  lagsPin,
-} from "../drift/drift-view-model";
+import { lagsPin } from "../drift/drift-view-model";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { SubListRow } from "../ui/sub-list-row";
 import {
   HARNESS_ORIGIN_NOT_READ,
   VIEW_SKILL_ON_GITHUB,
 } from "./deploy-state-copy";
-import type { RemoveDialogTarget } from "./remove-ledger-rows";
+import { ImportLocalEditsAction } from "./import-local-edits-action";
+import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
 import { RemoveSkillFlow } from "./remove-skill-flow";
 import { skillMark } from "./skill-mark";
-import type { DeployedPrimitive } from "./use-deploy-state";
+import { canImportLocalEdits, type TargetRow } from "./target-rows";
 
-// Pending default avoids a spurious mark before the drift query resolves.
-const PENDING_DRIFT = driftViewModel({ data: undefined, isError: false });
+type SkillsRow = Pick<
+  TargetRow,
+  "primitives" | "drift" | "target" | "wire" | "name" | "updateName" | "pending"
+>;
+
+type OpenDialog = { kind: "remove" | "import"; name: string };
 
 export function SelectedSkills({
-  primitives,
-  drift = PENDING_DRIFT,
-  target,
-  targetName,
+  row,
   onRemoved,
   headingRef,
 }: {
-  primitives: DeployedPrimitive[];
-  drift?: DriftViewModel;
-  // Required: a global target's tools must be present or the confirmation can't render.
-  target: RemoveDialogTarget;
-  /** The target as the table names it, for the removal's toast. */
-  targetName: string;
+  row: SkillsRow;
   // Called after the dialog is gone: a successful removal destroys the trigger
   // the modal's own focus-restore would aim at.
   onRemoved?: () => void;
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
-  const [removing, setRemoving] = useState<string | null>(null);
+  const { primitives, drift } = row;
+  const [open, setOpen] = useState<OpenDialog | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
 
   // In an effect, not the success handler: the modal's focus-restore runs
@@ -95,31 +89,50 @@ export function SelectedSkills({
                       },
                     ]
                   : []),
+                ...(canImportLocalEdits(row.pending, primitive)
+                  ? [
+                      {
+                        label: IMPORT_LOCAL_EDITS,
+                        onSelect: () =>
+                          setOpen({ kind: "import", name: primitive.name }),
+                      },
+                    ]
+                  : []),
                 {
                   label: "Remove skill",
                   danger: true,
-                  onSelect: () => setRemoving(primitive.name),
+                  onSelect: () =>
+                    setOpen({ kind: "remove", name: primitive.name }),
                 },
               ]}
             />
           );
         })}
       </ul>
-      {removing !== null ? (
+      {open?.kind === "remove" ? (
         <RemoveSkillFlow
-          key={removing}
-          skillName={removing}
+          key={open.name}
+          skillName={open.name}
           version={
-            primitives.find((primitive) => primitive.name === removing)
+            primitives.find((primitive) => primitive.name === open.name)
               ?.version ?? null
           }
-          target={target}
-          targetName={targetName}
-          onCancel={() => setRemoving(null)}
+          target={row.target}
+          targetName={row.name}
+          onCancel={() => setOpen(null)}
           onRemoved={() => {
-            setRemoving(null);
+            setOpen(null);
             setJustRemoved(true);
           }}
+        />
+      ) : null}
+      {open?.kind === "import" ? (
+        <ImportLocalEditsAction
+          key={open.name}
+          targetName={row.updateName}
+          target={row.wire}
+          only={open.name}
+          onClose={() => setOpen(null)}
         />
       ) : null}
       {orphans.length > 0 && (

@@ -19,10 +19,13 @@ import {
 export function ImportLocalEditsAction({
   targetName,
   target,
+  only,
   onClose,
 }: {
   targetName: string;
   target: DeployTarget;
+  /** One skill's name to scope the dialog to it; null lists the whole target. */
+  only: string | null;
   onClose: () => void;
 }) {
   const navigate = useNavigate();
@@ -31,7 +34,10 @@ export function ImportLocalEditsAction({
   // The reader's toggles: an eligible skill starts checked, one that undoes
   // newer Harness changes unchecked.
   const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
-  const skills = check.data?.skills ?? null;
+  const skills =
+    check.data?.skills.filter(
+      (skill) => only === null || skill.name === only,
+    ) ?? null;
   const picked = (skills ?? []).filter(
     (skill) =>
       skill.refusal === null &&
