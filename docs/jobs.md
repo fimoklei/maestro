@@ -33,9 +33,6 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
-| Promote local edits from Deploy-state · [#1249](https://github.com/fimoklei/maestro/issues/1249) | C, A | *When* a target on Deploy-state shows **Local edits** on a skill from my Harness, *I want to* carry that edit into the Harness from there, *so I can* contribute a fix I made in place without hunting for its folder in **Import skill…**. |
-
-Why now: grilled while #1157 is in NOW; the Deploy-state drift signal (#931) that #729 left out of scope now exists.
 
 ## LATER
 
@@ -71,6 +68,7 @@ All shipped **skills-only**, solo, local-first.
 
 | Job | Main | Job story |
 |---|---|---|
+| Promote local edits from Deploy-state · [#1249](https://github.com/fimoklei/maestro/issues/1249) (spec) | C, A | *When* a target on Deploy-state shows **Local edits** on a skill from my Harness, *I want to* carry that edit into the Harness from there, *so I can* contribute a fix I made in place without hunting for its folder in **Import skill…**. |
 | Bring an edited deployed copy back into central · [#716](https://github.com/fimoklei/maestro/issues/716) → [#729](https://github.com/fimoklei/maestro/issues/729) (spec) | C | *When* I edit a skill Maestro has already deployed, *I want to* carry that edit into the harness instead of hand-retyping it, *so I can* contribute a fix without import silently refusing my only copy of it. |
 | Read and steer the whole cockpit in one frame, in either theme · [#984](https://github.com/fimoklei/maestro/issues/984) (map) → [#1033](https://github.com/fimoklei/maestro/issues/1033) (spec) | A, B | *When* I steer many skills across many targets, *I want to* read every screen in the same frame, with status I can tell apart without colour and in the theme my environment asks for, *so I can* find what needs me and act on it without relearning each screen. |
 | Adopt a Harness release per target · [#833](https://github.com/fimoklei/maestro/issues/833) (map) → [#945](https://github.com/fimoklei/maestro/issues/945) (spec) | B, A | *When* a Harness release is published, *I want to* move a target's whole skill selection to it in one action and see which skills really changed, *so I can* stay current without updating skills one by one. |
