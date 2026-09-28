@@ -1,7 +1,8 @@
 // Every word the Import local edits… control and its dialog show.
+import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { NoticeContent } from "../ui/notice";
-import { noticeFromTable } from "../ui/notice-table";
+import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 
 export const IMPORT_LOCAL_EDITS = "Import local edits…";
 
@@ -40,11 +41,6 @@ export const importConfirmLabel = (count: number, undoing: number): string => {
     : `${label} · ${undoing} ${undoing === 1 ? "undoes" : "undo"} newer changes`;
 };
 
-export const importedToast = (names: readonly string[]): string =>
-  names.length === 1
-    ? `Imported ${names[0]}.`
-    : `Imported ${names.length} skills.`;
-
 export const importReportHeading = (landed: number, asked: number): string =>
   `Imported ${landed} of ${asked} ${asked === 1 ? "skill" : "skills"}`;
 
@@ -59,30 +55,55 @@ const NOT_CHECKED = {
     "Nothing was imported. Select Close, then Import local edits… again.",
 };
 
-const HARNESS_CHANGING = {
-  label: "Harness already changing",
-  message:
-    "Wait for that change to finish, then select Import local edits… again.",
-};
-
 const NOT_CONFIRMED = {
   label: "Import not confirmed",
   message:
     "The Maestro server did not answer, so some skills may have landed. Select Close, then check the Harness screen.",
 };
 
+// Headings shared with the other surfaces that meet the same block.
+const LOCAL_EDITS_ERRORS: NoticeTable<LocalEditsError> = {
+  "not-configured": {
+    level: "error",
+    label: "No Harness connected",
+    message:
+      "Set the Harness location on the Inventory source screen, then select Import local edits… again.",
+  },
+  "repo-not-registered": {
+    level: "error",
+    label: "Repository not registered",
+    message:
+      "Register this repository in Maestro, then select Import local edits… again.",
+  },
+  "unfinished-operation": {
+    level: "error",
+    label: "Change not finished",
+    message:
+      "An earlier change on this target did not finish. Check the target card to finish that change, then select Import local edits… again.",
+  },
+  "target-unreadable": {
+    level: "error",
+    label: "Could not read deployment record",
+    message:
+      "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits… again.",
+  },
+  "import-in-progress": {
+    level: "error",
+    label: "Harness already changing",
+    message:
+      "Wait for that change to finish, then select Import local edits… again.",
+  },
+};
+
 export function localEditsCheckNotice(error: unknown): NoticeContent | null {
-  return noticeFromTable({}, error, NOT_CHECKED);
+  return noticeFromTable(LOCAL_EDITS_ERRORS, error, NOT_CHECKED);
 }
 
 // A refused run imported nothing; an unanswered one may have landed some.
 export function localEditsImportNotice(error: unknown): NoticeContent | null {
-  if (error instanceof HttpError && error.code !== "import-in-progress") {
-    return noticeFromTable({}, error, NOT_CHECKED);
-  }
   return noticeFromTable(
-    { "import-in-progress": { level: "error", ...HARNESS_CHANGING } },
+    LOCAL_EDITS_ERRORS,
     error,
-    NOT_CONFIRMED,
+    error instanceof HttpError ? NOT_CHECKED : NOT_CONFIRMED,
   );
 }

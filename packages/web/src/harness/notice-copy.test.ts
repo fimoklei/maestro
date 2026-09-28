@@ -1128,6 +1128,22 @@ describe("skillRestoredNotice", () => {
 describe("localEditsRefusal", () => {
   it.each([
     [
+      "not-configured",
+      "Set the Harness location on the Inventory source screen, then select Import local edits… again.",
+    ],
+    [
+      "destination-unsafe",
+      "Nothing was copied. Make the clone's skills folder a real folder inside it, then select Import local edits… again.",
+    ],
+    [
+      "source-unreadable",
+      "Nothing was copied. Make the folder readable, then select Import local edits… again.",
+    ],
+    [
+      "outside-root",
+      "This copy is outside your home folder, where Maestro does not read. Copy the changed files into the Harness clone yourself.",
+    ],
+    [
       "deployed-copy",
       "Deployed by another Harness. Make the change in that Harness.",
     ],
@@ -1136,44 +1152,96 @@ describe("localEditsRefusal", () => {
       "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.",
     ],
     [
-      "not-an-update",
-      "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.",
+      "missing-manifest",
+      "This copy has no SKILL.md. Put it back, then select Import local edits… again.",
     ],
     [
-      "unverified",
-      "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
+      "invalid-frontmatter",
+      "Fix the SKILL.md frontmatter, then select Import local edits… again.",
+    ],
+    [
+      "empty-description",
+      "Fill in the description in SKILL.md, then select Import local edits… again.",
     ],
     [
       "harness-copy-uncommitted",
       "The Harness clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
     ],
     [
-      "no-local-edits",
-      "No local edits left in this copy. Nothing was imported.",
+      "harness-unreadable",
+      "Nothing was copied. Make the Harness clone readable, then select Import local edits… again.",
     ],
     [
       "nothing-to-carry-back",
       "The Harness already has these changes. See the skill on the Harness screen.",
     ],
     [
-      "undoes-newer-changes",
-      "The Harness changed this skill after the check. Importing now undoes those changes. Select Import local edits… again to decide.",
+      "invalid-name",
+      "The deployment record names this skill in a form the Harness cannot hold. Copy the changed files into the Harness clone yourself.",
     ],
     [
-      "copy-failed",
-      "The skill was not imported. Free up disk space, then select Import local edits… again.",
+      "name-taken",
+      "The Harness already holds a skill under this name. Copy the changed files into the Harness clone yourself.",
+    ],
+    [
+      "not-found",
+      "Nothing was copied. The deployed folder is gone. Select Close, then Import local edits… again.",
+    ],
+    [
+      "not-a-directory",
+      "Nothing was copied. The deployed copy is no longer a folder. Select Close, then Import local edits… again.",
+    ],
+    [
+      "destination-exists",
+      "The Harness already holds a folder under this name. Copy the changed files into the Harness clone yourself.",
+    ],
+    [
+      "unsafe-link",
+      "Nothing was copied. Replace the symbolic link inside with a real file, then select Import local edits… again.",
+    ],
+    [
+      "hard-linked-file",
+      "Nothing was copied. Replace the shared file inside with a plain copy, then select Import local edits… again.",
+    ],
+    [
+      "special-file",
+      "Nothing was copied. Take the special file out of the folder, then select Import local edits… again.",
+    ],
+    [
+      "too-many-files",
+      "Nothing was copied. This copy holds over 1,000 files. Remove the files the skill does not need, then select Import local edits… again.",
+    ],
+    [
+      "too-large",
+      "Nothing was copied. This copy is over 50 MiB. Remove the files the skill does not need, then select Import local edits… again.",
     ],
     [
       "source-changed",
       "The skill was not imported. Let the folder change finish, then select Import local edits… again.",
     ],
     [
-      "harness-unreadable",
-      "Nothing was copied. Make the Harness clone readable, then select Import local edits… again.",
+      "copy-failed",
+      "The skill was not imported. Free up disk space, then select Import local edits… again.",
     ],
     [
-      "source-unreadable",
-      "Nothing was copied. Make the folder readable, then select Import local edits… again.",
+      "not-an-update",
+      "The deployment record does not list this folder, so Maestro cannot tell which skill it updates. Copy the changed files into the Harness clone yourself.",
+    ],
+    [
+      "unverified",
+      "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
+    ],
+    [
+      "copies-differ",
+      "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one.",
+    ],
+    [
+      "no-local-edits",
+      "No local edits left in this copy. Nothing was imported.",
+    ],
+    [
+      "undoes-newer-changes",
+      "The Harness changed this skill after the check. Importing now undoes those changes. Select Import local edits… again to decide.",
     ],
   ] as const)("states %s as its reason and next step", (refusal, sentence) => {
     expect(localEditsRefusal({ refusal })).toBe(sentence);

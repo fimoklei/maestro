@@ -1,5 +1,12 @@
-import { useEffect, useId, useRef } from "react";
-import { COPIES_DIFFER, localEditsRefusal } from "../harness/notice-copy";
+import {
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+} from "react";
+import { copiesDiffer, localEditsRefusal } from "../harness/notice-copy";
 import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
@@ -49,9 +56,6 @@ export function ImportLocalEditsDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const groupId = useId();
-  const flaggedId = useId();
-  const refusedId = useId();
   // The check answers after the dialog opened: focus moves to the first
   // checkbox once, when the list appears.
   const firstBox = useRef<HTMLInputElement>(null);
@@ -158,143 +162,165 @@ export function ImportLocalEditsDialog({
         />
       ) : (
         <>
-          {eligible.length === 0 ? null : (
-            <fieldset
-              id={groupId}
-              className="m-0 flex min-w-0 flex-col gap-tight"
-            >
-              <legend className="font-mono font-semibold text-gray-11 text-meta uppercase tracking-mono-wide">
-                {canBeImportedLegend(eligible.length)}
-              </legend>
-              <ul className="m-0 flex list-none flex-col overflow-hidden rounded-control border border-edge p-0">
-                {eligible.map((skill, index) => (
-                  <li
-                    key={skill.name}
-                    className={cn(
-                      "flex h-8 items-center px-cell",
-                      index < eligible.length - 1 && "border-edge border-b",
-                    )}
-                  >
-                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-inline text-row">
-                      <input
-                        ref={index === 0 ? firstBox : undefined}
-                        type="checkbox"
-                        className="size-4 shrink-0 accent-gray-12"
-                        checked={checked.has(skill.name)}
-                        disabled={isRunning}
-                        onChange={() => onToggle(skill.name)}
-                      />
-                      <span className="truncate">{skill.name}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </fieldset>
-          )}
-          {flagged.length === 0 ? null : (
-            <fieldset
-              id={flaggedId}
-              className="m-0 flex min-w-0 flex-col gap-tight"
-            >
-              <legend className="font-mono font-semibold text-amber-12 text-meta uppercase tracking-mono-wide">
-                {undoesNewerLegend(flagged.length)}
-              </legend>
-              <ul className="m-0 flex list-none flex-col overflow-hidden rounded-control border border-amber-7 p-0">
-                {flagged.map((skill, index) => (
-                  <li
-                    key={skill.name}
-                    className={cn(
-                      "grid grid-cols-[auto_1fr] items-center gap-x-inline gap-y-tight bg-amber-3 px-cell py-inline",
-                      index < flagged.length - 1 && "border-amber-7 border-b",
-                    )}
-                  >
-                    <input
-                      ref={
-                        eligible.length === 0 && index === 0
-                          ? firstBox
-                          : undefined
-                      }
-                      id={`${flaggedId}-box-${index}`}
-                      type="checkbox"
-                      aria-describedby={`${flaggedId}-${index}`}
-                      className="size-4 shrink-0 cursor-pointer accent-gray-12"
-                      checked={checked.has(skill.name)}
-                      disabled={isRunning}
-                      onChange={() => onToggle(skill.name)}
-                    />
-                    <label
-                      htmlFor={`${flaggedId}-box-${index}`}
-                      className="min-w-0 cursor-pointer truncate text-row"
-                    >
-                      {skill.name}
-                    </label>
-                    <p
-                      id={`${flaggedId}-${index}`}
-                      className="col-start-2 m-0 text-amber-12 text-meta"
-                    >
-                      {undoesNewerLine(skill.release)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </fieldset>
-          )}
-          {refused.length === 0 ? null : (
-            <fieldset
-              id={refusedId}
-              className="m-0 flex min-w-0 flex-col gap-tight"
-            >
-              <legend className="font-mono font-semibold text-meta text-red-12 uppercase tracking-mono-wide">
-                {cannotBeImportedLegend(refused.length)}
-              </legend>
-              <ul className="m-0 flex list-none flex-col overflow-hidden rounded-control border border-edge p-0">
-                {refused.map((skill, index) => (
-                  <li
-                    key={skill.name}
-                    className={cn(
-                      "grid grid-cols-[auto_1fr] items-center gap-x-inline gap-y-tight px-cell py-inline",
-                      index < refused.length - 1 && "border-edge border-b",
-                    )}
-                  >
-                    {/* aria-disabled, not disabled: it stays focusable so its
-                        reason is heard. A click changes nothing. */}
-                    <input
-                      ref={
-                        eligible.length === 0 &&
-                        flagged.length === 0 &&
-                        index === 0
-                          ? firstBox
-                          : undefined
-                      }
-                      id={`${refusedId}-box-${index}`}
-                      type="checkbox"
-                      aria-disabled="true"
-                      aria-describedby={`${refusedId}-${index}`}
-                      className="size-4 cursor-not-allowed opacity-50"
-                      checked={false}
-                      readOnly
-                      onClick={(event) => event.preventDefault()}
-                    />
-                    <label
-                      htmlFor={`${refusedId}-box-${index}`}
-                      className="min-w-0 truncate text-gray-11 text-row"
-                    >
-                      {skill.name}
-                    </label>
-                    <p
-                      id={`${refusedId}-${index}`}
-                      className="col-start-2 m-0 text-gray-11 text-meta"
-                    >
-                      <RefusalSentence {...skill} />
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </fieldset>
-          )}
+          <CheckGroup
+            tone="eligible"
+            legend={canBeImportedLegend(eligible.length)}
+            rows={eligible.map(({ name }) => ({ name }))}
+            checked={checked}
+            onToggle={onToggle}
+            isRunning={isRunning}
+            firstBox={firstBox}
+          />
+          <CheckGroup
+            tone="flagged"
+            legend={undoesNewerLegend(flagged.length)}
+            rows={flagged.map(({ name, release }) => ({
+              name,
+              sentence: undoesNewerLine(release),
+            }))}
+            checked={checked}
+            onToggle={onToggle}
+            isRunning={isRunning}
+            firstBox={eligible.length === 0 ? firstBox : null}
+          />
+          <CheckGroup
+            tone="refused"
+            legend={cannotBeImportedLegend(refused.length)}
+            rows={refused.map((skill) => ({
+              name: skill.name,
+              sentence: <RefusalSentence {...skill} />,
+            }))}
+            checked={checked}
+            onToggle={onToggle}
+            isRunning={isRunning}
+            firstBox={
+              eligible.length === 0 && flagged.length === 0 ? firstBox : null
+            }
+          />
         </>
       )}
     </Dialog>
+  );
+}
+
+const GROUP_TONES = {
+  eligible: {
+    legend: "text-gray-11",
+    edge: "border-edge",
+    row: "h-8",
+    name: "",
+    sentence: "",
+  },
+  flagged: {
+    legend: "text-amber-12",
+    edge: "border-amber-7",
+    row: "bg-amber-3 py-inline",
+    name: "",
+    sentence: "text-amber-12",
+  },
+  refused: {
+    legend: "text-red-12",
+    edge: "border-edge",
+    row: "py-inline",
+    name: "text-gray-11",
+    sentence: "text-gray-11",
+  },
+} as const;
+
+// One fieldset of the checklist; hidden while empty. A refused box is
+// aria-disabled, not disabled: it stays focusable so its reason is heard, and
+// a click changes nothing.
+function CheckGroup({
+  tone,
+  legend,
+  rows,
+  checked,
+  onToggle,
+  isRunning,
+  firstBox,
+}: {
+  tone: keyof typeof GROUP_TONES;
+  legend: string;
+  rows: readonly { name: string; sentence?: ReactNode }[];
+  checked: ReadonlySet<string>;
+  onToggle: (name: string) => void;
+  isRunning: boolean;
+  // Set on the group whose first box takes focus when the list appears.
+  firstBox: RefObject<HTMLInputElement | null> | null;
+}) {
+  const id = useId();
+  if (rows.length === 0) return null;
+  const style = GROUP_TONES[tone];
+  const refused = tone === "refused";
+  return (
+    <fieldset id={id} className="m-0 flex min-w-0 flex-col gap-tight">
+      <legend
+        className={cn(
+          "font-mono font-semibold text-meta uppercase tracking-mono-wide",
+          style.legend,
+        )}
+      >
+        {legend}
+      </legend>
+      <ul
+        className={cn(
+          "m-0 flex list-none flex-col overflow-hidden rounded-control border p-0",
+          style.edge,
+        )}
+      >
+        {rows.map((row, index) => (
+          <li
+            key={row.name}
+            className={cn(
+              "grid grid-cols-[auto_1fr] items-center gap-x-inline gap-y-tight px-cell",
+              style.row,
+              index < rows.length - 1 && cn("border-b", style.edge),
+            )}
+          >
+            <input
+              ref={index === 0 && firstBox !== null ? firstBox : undefined}
+              id={`${id}-box-${index}`}
+              type="checkbox"
+              aria-describedby={
+                row.sentence === undefined ? undefined : `${id}-${index}`
+              }
+              {...(refused
+                ? {
+                    "aria-disabled": "true" as const,
+                    className: "size-4 cursor-not-allowed opacity-50",
+                    checked: false,
+                    readOnly: true,
+                    onClick: (event: MouseEvent) => event.preventDefault(),
+                  }
+                : {
+                    className: "size-4 shrink-0 cursor-pointer accent-gray-12",
+                    checked: checked.has(row.name),
+                    disabled: isRunning,
+                    onChange: () => onToggle(row.name),
+                  })}
+            />
+            <label
+              htmlFor={`${id}-box-${index}`}
+              className={cn(
+                "min-w-0 truncate text-row",
+                !refused && "cursor-pointer",
+                style.name,
+              )}
+            >
+              {row.name}
+            </label>
+            {row.sentence === undefined ? null : (
+              <p
+                id={`${id}-${index}`}
+                className={cn("col-start-2 m-0 text-meta", style.sentence)}
+              >
+                {row.sentence}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </fieldset>
   );
 }
 
@@ -309,10 +335,17 @@ function RefusalSentence(
     return <>{localEditsRefusal(skill)}</>;
   }
   const path = "break-all font-mono";
+  const [lead, claude, or, codex, end] = copiesDiffer({
+    claude: <code className={path}>{folders.claude}</code>,
+    codex: <code className={path}>{folders.codex}</code>,
+  });
   return (
     <>
-      {COPIES_DIFFER}: <code className={path}>{folders.claude}</code> or{" "}
-      <code className={path}>{folders.codex}</code>.
+      {lead}
+      {claude}
+      {or}
+      {codex}
+      {end}
     </>
   );
 }

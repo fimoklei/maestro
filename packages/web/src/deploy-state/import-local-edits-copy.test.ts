@@ -4,7 +4,6 @@ import {
   cannotBeImportedLegend,
   IMPORTED_NEXT_STEP,
   importConfirmLabel,
-  importedToast,
   importReportHeading,
   localEditsCheckNotice,
   localEditsImportNotice,
@@ -38,11 +37,6 @@ describe("Import local edits… copy", () => {
     );
   });
 
-  it("names one landed skill in the toast and counts several", () => {
-    expect(importedToast(["code-review"])).toBe("Imported code-review.");
-    expect(importedToast(["code-review", "tdd"])).toBe("Imported 2 skills.");
-  });
-
   it("heads a partial run with what landed of what was asked", () => {
     expect(importReportHeading(1, 2)).toBe("Imported 1 of 2 skills");
     expect(importReportHeading(0, 1)).toBe("Imported 0 of 1 skill");
@@ -61,26 +55,52 @@ describe("Import local edits… copy", () => {
   });
 
   it("states a failed check as nothing imported", () => {
-    expect(
-      localEditsCheckNotice(new HttpError(422, "x", "target-unreadable")),
-    ).toMatchObject({
+    expect(localEditsCheckNotice(new HttpError(500, "x"))).toMatchObject({
       label: "Local edits not checked",
       message:
         "Nothing was imported. Select Close, then Import local edits… again.",
     });
   });
 
-  it("tells a held Harness lock from a refused and an unanswered run", () => {
-    expect(
-      localEditsImportNotice(new HttpError(409, "x", "import-in-progress")),
-    ).toMatchObject({
-      label: "Harness already changing",
-      message:
-        "Wait for that change to finish, then select Import local edits… again.",
+  it.each([
+    [
+      "not-configured",
+      "No Harness connected",
+      "Set the Harness location on the Inventory source screen, then select Import local edits… again.",
+    ],
+    [
+      "repo-not-registered",
+      "Repository not registered",
+      "Register this repository in Maestro, then select Import local edits… again.",
+    ],
+    [
+      "unfinished-operation",
+      "Change not finished",
+      "An earlier change on this target did not finish. Check the target card to finish that change, then select Import local edits… again.",
+    ],
+    [
+      "target-unreadable",
+      "Could not read deployment record",
+      "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits… again.",
+    ],
+    [
+      "import-in-progress",
+      "Harness already changing",
+      "Wait for that change to finish, then select Import local edits… again.",
+    ],
+  ] as const)(
+    "names the %s block on check and on import",
+    (code, label, message) => {
+      const error = new HttpError(409, "x", code);
+      expect(localEditsCheckNotice(error)).toMatchObject({ label, message });
+      expect(localEditsImportNotice(error)).toMatchObject({ label, message });
+    },
+  );
+
+  it("tells a refused run from an unanswered one", () => {
+    expect(localEditsImportNotice(new HttpError(500, "x"))).toMatchObject({
+      label: "Local edits not checked",
     });
-    expect(
-      localEditsImportNotice(new HttpError(409, "x", "unfinished-operation")),
-    ).toMatchObject({ label: "Local edits not checked" });
     expect(localEditsImportNotice(new TypeError("fetch failed"))).toMatchObject(
       {
         label: "Import not confirmed",

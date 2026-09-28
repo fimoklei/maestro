@@ -65,8 +65,8 @@ export function HarnessView({
   openSkill,
 }: {
   /** A skill that just landed elsewhere, opened as its Pending proposal. */
-  openSkill?: string;
-} = {}) {
+  openSkill: string | null;
+}) {
   const harness = useHarness();
   const state = harness.data;
   const refresh = useRefreshHarness();
@@ -114,7 +114,7 @@ export function HarnessView({
   const rereadRef = useRef<HTMLButtonElement>(null);
 
   const [selected, setSelected] = useState<string | null>(() =>
-    openSkill === undefined
+    openSkill === null
       ? null
       : rowId({ stage: "pending-proposal", skill: openSkill }),
   );

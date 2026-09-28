@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toggleStaged } from "../inventory/bulk-selection";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
+import { doneSentence } from "../ui/busy-copy";
 import { showSuccess } from "../ui/toast";
 import {
-  importedToast,
   localEditsCheckNotice,
   localEditsImportNotice,
 } from "./import-local-edits-copy";
@@ -26,7 +26,7 @@ export function ImportLocalEditsAction({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
-  const check = useLocalEditsCheck(target, true);
+  const check = useLocalEditsCheck(target);
   const run = useImportLocalEdits();
   // The reader's toggles: an eligible skill starts checked, one that undoes
   // newer Harness changes unchecked.
@@ -74,7 +74,9 @@ export function ImportLocalEditsAction({
               navigate("/harness", {
                 state: names.length === 1 ? { openSkill: names[0] } : null,
               });
-              if (names.length > 1) showSuccess(importedToast(names));
+              if (names.length > 1) {
+                showSuccess(doneSentence("import", `${names.length} skills`));
+              }
             },
           },
         )
