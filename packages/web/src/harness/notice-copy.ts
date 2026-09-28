@@ -7,6 +7,7 @@ import type {
   ImportSkillError,
   ImportSourceBlocker,
   LocalEditsRefusal,
+  LocalEditsSkill,
   PromoteDeletionError,
   PromoteSkillError,
   ProposalActionError,
@@ -755,6 +756,10 @@ export const importBlockerNotice = (
 const NO_PROVABLE_ORIGIN =
   "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.";
 
+// Followed by the two folders where the check names them.
+export const COPIES_DIFFER =
+  "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one";
+
 // Import skill… refuses the first three too, so its route is no way through.
 const LOCAL_EDITS_REFUSALS: Partial<Record<LocalEditsRefusal, string>> = {
   "deployed-copy":
@@ -764,9 +769,7 @@ const LOCAL_EDITS_REFUSALS: Partial<Record<LocalEditsRefusal, string>> = {
   "not-an-update": NO_PROVABLE_ORIGIN,
   unverified:
     "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
-  // ponytail: no folders named yet; #1256 carries both paths into the sentence.
-  "copies-differ":
-    "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one.",
+  "copies-differ": `${COPIES_DIFFER}.`,
   "harness-copy-uncommitted":
     "The Harness clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
   "no-local-edits": "No local edits left in this copy. Nothing was imported.",
@@ -776,9 +779,18 @@ const LOCAL_EDITS_REFUSALS: Partial<Record<LocalEditsRefusal, string>> = {
 
 // One sentence under a skill Import local edits… did not carry back: its own
 // where the way through differs, else Import skill's, retried from here.
-export const localEditsRefusal = (refusal: LocalEditsRefusal): string =>
-  LOCAL_EDITS_REFUSALS[refusal] ??
-  importHeadings[refusal as ImportSkillError].message.replace(
-    /then (Import skill|Update skill|pick it) again/,
-    "then select Import local edits… again",
+export function localEditsRefusal({
+  refusal,
+  folders,
+}: Pick<LocalEditsSkill, "folders"> & { refusal: LocalEditsRefusal }): string {
+  if (folders !== undefined) {
+    return `${COPIES_DIFFER}: ${folders.claude} or ${folders.codex}.`;
+  }
+  return (
+    LOCAL_EDITS_REFUSALS[refusal] ??
+    importHeadings[refusal as ImportSkillError].message.replace(
+      /then (Import skill|Update skill|pick it) again/,
+      "then select Import local edits… again",
+    )
   );
+}

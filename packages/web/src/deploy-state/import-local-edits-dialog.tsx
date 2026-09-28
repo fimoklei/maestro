@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from "react";
-import { localEditsRefusal } from "../harness/notice-copy";
+import { COPIES_DIFFER, localEditsRefusal } from "../harness/notice-copy";
 import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
@@ -57,8 +57,8 @@ export function ImportLocalEditsDialog({
     if (listed) firstBox.current?.focus();
   }, [listed]);
   const eligible = (skills ?? []).filter((skill) => skill.refusal === null);
-  const refused = (skills ?? []).flatMap(({ name, refusal }) =>
-    refusal === null ? [] : [{ name, refusal }],
+  const refused = (skills ?? []).flatMap(({ refusal, ...skill }) =>
+    refusal === null ? [] : [{ ...skill, refusal }],
   );
   const count = eligible.filter((skill) => checked.has(skill.name)).length;
   const empty = skills !== null && skills.length === 0;
@@ -110,7 +110,12 @@ export function ImportLocalEditsDialog({
                   : [
                       {
                         name: row.name,
-                        detail: localEditsRefusal(row.refusal),
+                        detail: (
+                          <RefusalSentence
+                            refusal={row.refusal}
+                            folders={row.folders}
+                          />
+                        ),
                       },
                     ],
               ),
@@ -216,7 +221,7 @@ export function ImportLocalEditsDialog({
                       id={`${refusedId}-${index}`}
                       className="col-start-2 m-0 text-gray-11 text-meta"
                     >
-                      {localEditsRefusal(skill.refusal)}
+                      <RefusalSentence {...skill} />
                     </p>
                   </li>
                 ))}
@@ -226,5 +231,24 @@ export function ImportLocalEditsDialog({
         </>
       )}
     </Dialog>
+  );
+}
+
+// The differing copies' folders are paths: mono, wrapping inside the row.
+function RefusalSentence(
+  skill: Pick<LocalEditsSkill, "folders"> & {
+    refusal: NonNullable<LocalEditsSkill["refusal"]>;
+  },
+) {
+  const { folders } = skill;
+  if (folders === undefined) {
+    return <>{localEditsRefusal(skill)}</>;
+  }
+  const path = "break-all font-mono";
+  return (
+    <>
+      {COPIES_DIFFER}: <code className={path}>{folders.claude}</code> or{" "}
+      <code className={path}>{folders.codex}</code>.
+    </>
   );
 }

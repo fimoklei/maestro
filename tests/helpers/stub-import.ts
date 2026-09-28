@@ -30,8 +30,15 @@ export function stubImports(): {
     importSkill,
     importLocalEdits: new ImportLocalEdits({
       registry: { resolveRegistered: async () => undefined },
-      deployState: { read: unreachable },
+      deployState: { read: unreachable, readGlobal: unreachable },
       content: { classify: unreachable },
+      tree: {
+        listRawEntries: unreachable,
+        readFile: unreachable,
+        describe: unreachable,
+      },
+      globalRoot: unreachable,
+      home: unreachable,
       importSkill,
       resolveRoot: async () => undefined,
       locks: new InFlightLocks(),
