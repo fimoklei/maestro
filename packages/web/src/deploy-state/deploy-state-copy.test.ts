@@ -104,7 +104,7 @@ describe("Deploy-state copy", () => {
   });
 
   it("names every skill with local edits and how to keep them", () => {
-    const keep = "Select Import skill… on the Harness screen to keep them.";
+    const keep = "Select Import local edits… to keep them.";
     expect(localEditsLine(["tdd"])).toBe(
       `1 skill has changes that are not in the latest release: tdd. ${keep}`,
     );

@@ -61,9 +61,8 @@ export const BECOMES_EMPTY =
 export const DISCARD_LOCAL_EDITS = "Discard local edits";
 export const OVERWRITE_UNVERIFIED = "Overwrite unverified copy";
 
-// Import skill… lives on the Harness screen, which this dialog cannot host.
 export const KEEP_WORK_BY_IMPORTING =
-  "To keep the edits instead, select Cancel, then Import skill… on the Harness screen.";
+  "To keep the edits instead, select Cancel, then Import local edits….";
 
 export const localEditsSentence = (name: string, release: string): string =>
   `${name} has local edits. This update replaces them with release ${release}.`;
