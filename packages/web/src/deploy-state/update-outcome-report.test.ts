@@ -59,7 +59,7 @@ describe("update outcome report", () => {
       {
         name: "spec",
         detail:
-          "Maestro could not read this skill back. Check the target card for its state.",
+          "Maestro could not read this skill back. Check its state on the Deploy-state screen.",
       },
     ]);
   });
@@ -73,14 +73,14 @@ describe("update outcome report", () => {
     ).toBe("Maestro could not confirm every skill reached v0.3.4");
   });
 
-  it("sends the reader to the target card where no retry is offered", () => {
+  it("sends the reader to the Deploy-state screen where no retry is offered", () => {
     const { groups } = report(
       [{ name: "grill", tool: null, state: "not-updated" }],
       false,
     );
 
     expect(groups[0]?.rows[0]?.detail).toBe(
-      "Still at v0.3.2. Check the target card, then select Update target again.",
+      "Still at v0.3.2. Check the target on the Deploy-state screen, then select Update target again.",
     );
   });
 

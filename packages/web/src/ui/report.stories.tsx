@@ -40,7 +40,12 @@ export const Partial: Story = {
         rows: [
           {
             name: "tdd",
-            detail: "Local changes in deployed files",
+            notice: {
+              label: "Local changes in deployed files",
+              message:
+                "Deploy again to replace the local edits with the latest release.",
+              detail: "The edits never went through the Harness.",
+            },
             action: { label: "Deploy tdd again", onClick: () => {} },
           },
         ],
