@@ -40,8 +40,9 @@ sub-steps, and grill altitudes.
 
 ## Two kinds of work
 
-- **Job work** — new capabilities, anything spec-sized. Through the board.
-- **Small work** — bug fixes, polish, chores. A tracker issue is enough.
+- **Job work** — a new capability. Through the board.
+- **Small work** — improving what already exists: bug fixes, polish, redesigning
+  a screen, chores. A tracker issue is enough, however many sub-issues it grows.
 
 ## Where things live
 
