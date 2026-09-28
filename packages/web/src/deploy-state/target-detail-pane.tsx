@@ -174,10 +174,7 @@ export function TargetDetailPane({
       ) : null}
       {row.readFailed && row.primitives.length === 0 ? null : (
         <SelectedSkills
-          primitives={row.primitives}
-          drift={row.drift}
-          target={row.target}
-          targetName={row.name}
+          row={row}
           headingRef={skillsHeading}
           onRemoved={() => skillsHeading.current?.focus()}
         />

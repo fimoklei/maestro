@@ -85,6 +85,12 @@ export const isBehind = (
   head.latestRelease !== head.release &&
   pending === undefined;
 
+/** Whether one skill's local edits can be imported from its target. */
+export const canImportLocalEdits = (
+  pending: PendingOperation | undefined,
+  primitive: Pick<DeployedPrimitive, "copy">,
+) => pending === undefined && primitive.copy === "local-edits";
+
 export const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
   primitives
     .filter((primitive) => primitive.copy === "local-edits")

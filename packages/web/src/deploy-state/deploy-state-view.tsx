@@ -438,6 +438,7 @@ function TargetActions({
         <ImportLocalEditsAction
           targetName={row.updateName}
           target={row.wire}
+          only={null}
           onClose={() => setImporting(false)}
         />
       ) : null}

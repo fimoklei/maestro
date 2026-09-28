@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse } from "../test-utils";
 import {
   findRow,
+  importRoutes,
+  landed,
   openPane,
   renderDeployState,
   stubServer,
@@ -34,27 +36,14 @@ function stubImport(
   check: () => Response | Promise<Response> = () =>
     jsonResponse({ skills: names.map((name) => ({ name, refusal: null })) }),
 ) {
-  const sent: unknown[] = [];
+  const { sent, other } = importRoutes(check, run);
   stubServer(() => ({
     repos: [REPO],
     repo: { [REPO]: edited(...names) },
-    other: (url, init) => {
-      if (url === "/api/deploy/import-local-edits/check") {
-        return check();
-      }
-      if (url === "/api/deploy/import-local-edits") {
-        const body = JSON.parse(String(init?.body)) as { names: string[] };
-        sent.push(body);
-        return run(body.names);
-      }
-      throw new Error(`unexpected request ${url}`);
-    },
+    other,
   }));
   return sent;
 }
-
-const landed = (names: string[]) =>
-  jsonResponse({ outcomes: names.map((name) => ({ name, refusal: null })) });
 
 async function openDialog() {
   const pane = await openPane(ROW);
