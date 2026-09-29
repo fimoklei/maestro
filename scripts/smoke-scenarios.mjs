@@ -19,6 +19,7 @@ import {
   FIXTURE_RELEASES,
   fixtureRedirectEnv,
   publishFixtureRelease,
+  pushUnreleasedChange,
   releasesUpTo,
 } from "./fixture-harness.mjs";
 
@@ -104,7 +105,15 @@ const SCENARIOS = [
   },
 ];
 
-export const SCENARIO_NAMES = SCENARIOS.map((scenario) => scenario.name);
+// Seeds the Harness itself, not a consuming repository.
+const HARNESS_SCENARIO = "harness-outcomes";
+const DELETED_LOCALLY = "code-review";
+const UNRELEASED = "commit-message";
+
+export const SCENARIO_NAMES = [
+  ...SCENARIOS.map((scenario) => scenario.name),
+  HARNESS_SCENARIO,
+];
 
 /** The scenario names `--scenario` asks for, or null when it is absent. */
 export function parseScenarioArg(argv) {
@@ -258,6 +267,36 @@ export function scenarioMismatch(scenario, repoPath, observed) {
   return problems.length === 0
     ? null
     : `scenario "${scenario.name}" (${repoPath}): ${problems.join("; ")}`;
+}
+
+// The row one stage shows for `skill`, or why there is none.
+function stageRow(stage, skill) {
+  if (stage.outcome !== "read")
+    return { missing: `a stage read as "${stage.outcome}"` };
+  const row = stage.rows.find((candidate) => candidate.skill === skill);
+  return row ?? { missing: "none" };
+}
+
+/** Null when `/api/harness` shows both states the Harness scenario seeds. */
+export function harnessMismatch({ releaseState, stages }) {
+  const problems = [];
+  const deletion = stageRow(stages.proposal, DELETED_LOCALLY);
+  if (deletion.status !== "deleted-locally" || !deletion.restorable)
+    problems.push(
+      `${DELETED_LOCALLY} expected a restorable "deleted-locally" row in the proposal stage, got ${deletion.missing ?? `"${deletion.status}"${deletion.restorable ? "" : ", not restorable"}`}`,
+    );
+  const change = stageRow(stages.release, UNRELEASED);
+  if (change.status !== "changed")
+    problems.push(
+      `${UNRELEASED} expected a "changed" row in the release stage, got ${change.missing ?? `"${change.status}"`}`,
+    );
+  if (releaseState !== "pending-release")
+    problems.push(
+      `release state expected "pending-release", got ${shown(releaseState)}`,
+    );
+  return problems.length === 0
+    ? null
+    : `scenario "${HARNESS_SCENARIO}": ${problems.join("; ")}`;
 }
 
 /** Files whose recorded hash lacks the `sha256:` prefix every copy check expects. */
@@ -533,5 +572,22 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
     );
     if (mismatch !== null) problems.push(mismatch);
   }
-  return { repos: scenarios.map(repoOf), problems };
+  const seeded = scenarios.map(repoOf);
+  // Last, so no deploy reading is taken against the changed Harness.
+  if (names.includes(HARNESS_SCENARIO)) {
+    seeded.push(paths.clone);
+    pushUnreleasedChange({
+      workDir: paths.work,
+      bareDir: paths.bare,
+      skill: UNRELEASED,
+    });
+    rmSync(join(paths.clone, ".apm", "skills", DELETED_LOCALLY), {
+      recursive: true,
+    });
+    const mismatch = harnessMismatch(
+      await api.post("/api/harness/refresh", {}),
+    );
+    if (mismatch !== null) problems.push(mismatch);
+  }
+  return { repos: seeded, problems };
 }

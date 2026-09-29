@@ -1,7 +1,7 @@
 // The made-up Harness the smoke scenarios deploy from, built from committed
 // release trees so every run yields the same commit ids.
 import { execFileSync } from "node:child_process";
-import { cpSync, readdirSync, rmSync } from "node:fs";
+import { appendFileSync, cpSync, readdirSync, rmSync } from "node:fs";
 import { devNull } from "node:os";
 import { join } from "node:path";
 
@@ -100,4 +100,17 @@ export function publishFixtureRelease({ workDir, bareDir, release }) {
     `${release}:refs/heads/main`,
     ...upTo.map((tag) => `refs/tags/${tag}:refs/tags/${tag}`),
   ]);
+}
+
+/**
+ * Commits one edit to `skill` on top of the last release and pushes it to
+ * `bareDir`'s main, untagged, so the Harness has work to release.
+ */
+export function pushUnreleasedChange({ workDir, bareDir, skill }) {
+  appendFileSync(
+    join(workDir, ".apm", "skills", skill, "SKILL.md"),
+    "\nAn edit merged after the last release.\n",
+  );
+  git(workDir, ["commit", "-q", "-am", `Edit ${skill} after the last release`]);
+  git(workDir, ["push", "-q", bareDir, "HEAD:refs/heads/main"]);
 }

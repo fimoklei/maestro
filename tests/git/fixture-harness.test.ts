@@ -8,6 +8,7 @@ import {
   buildFixtureHarness,
   FIXTURE_RELEASES,
   publishFixtureRelease,
+  pushUnreleasedChange,
 } from "../../scripts/fixture-harness.mjs";
 import { removeGitTempTree } from "../helpers/git-fixture";
 
@@ -59,6 +60,23 @@ describe("the scenarios' fixture Harness", () => {
         `refs/tags/v1.1.0 ${commits["v1.1.0"]}`,
         "",
       ].join("\n"),
+    );
+  });
+
+  it("pushes one untagged change to a skill after the published release", () => {
+    const workDir = join(root, "work");
+    const bare = join(root, "fixture.git");
+    const commits = buildFixtureHarness({ fixtureDir, workDir });
+    publishFixtureRelease({ workDir, bareDir: bare, release: "v2.0.0" });
+
+    pushUnreleasedChange({ workDir, bareDir: bare, skill: "commit-message" });
+
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", bare, ...args], { encoding: "utf8" }).trim();
+    expect(git("rev-parse", "main~1")).toBe(commits["v2.0.0"]);
+    expect(git("tag", "--points-at", "main")).toBe("");
+    expect(git("diff", "--name-only", "v2.0.0", "main")).toBe(
+      ".apm/skills/commit-message/SKILL.md",
     );
   });
 });
