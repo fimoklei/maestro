@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  type HarnessRead,
+  harnessMismatch,
   parseScenarioArg,
   readCockpit,
   releaseMirrorProblem,
@@ -39,7 +41,8 @@ describe("parseScenarioArg", () => {
 
   it("expands all to every scenario", () => {
     expect(parseScenarioArg(["--scenario", "all"])).toEqual(SCENARIO_NAMES);
-    expect(SCENARIO_NAMES).toHaveLength(8);
+    expect(SCENARIO_NAMES).toHaveLength(9);
+    expect(SCENARIO_NAMES).toContain("harness-outcomes");
   });
 
   it("refuses an unknown name and lists the valid ones", () => {
@@ -135,6 +138,68 @@ describe("scenarioMismatch", () => {
         observed,
       ),
     ).toMatch(/notice expected "Deploy incomplete", got none/);
+  });
+});
+
+describe("harnessMismatch", () => {
+  const row = (skill: string, status: string, restorable = false) => ({
+    skill,
+    status,
+    restorable,
+  });
+  const harness = (
+    proposal: ReturnType<typeof row>[],
+    release: ReturnType<typeof row>[],
+    releaseState = "pending-release",
+  ): HarnessRead => ({
+    releaseState,
+    stages: {
+      proposal: { outcome: "read", rows: proposal },
+      release: { outcome: "read", rows: release },
+    },
+  });
+
+  it("passes when the Harness shows a restorable deletion and unreleased work", () => {
+    expect(
+      harnessMismatch(
+        harness(
+          [row("code-review", "deleted-locally", true)],
+          [row("commit-message", "changed")],
+        ),
+      ),
+    ).toBeNull();
+  });
+
+  it("names a deletion Restore skill cannot bring back", () => {
+    expect(
+      harnessMismatch(
+        harness(
+          [row("code-review", "deleted-locally", false)],
+          [row("commit-message", "changed")],
+        ),
+      ),
+    ).toBe(
+      'scenario "harness-outcomes": code-review expected a restorable "deleted-locally" row in the proposal stage, got "deleted-locally", not restorable',
+    );
+  });
+
+  it("names unreleased work the release stage does not show", () => {
+    expect(
+      harnessMismatch(
+        harness([row("code-review", "deleted-locally", true)], [], "released"),
+      ),
+    ).toBe(
+      'scenario "harness-outcomes": commit-message expected a "changed" row in the release stage, got none; release state expected "pending-release", got "released"',
+    );
+  });
+
+  it("names a stage the cockpit could not read", () => {
+    const state = harness([], [row("commit-message", "changed")]);
+    state.stages.proposal = { outcome: "unknown" };
+
+    expect(harnessMismatch(state)).toMatch(
+      /code-review expected a restorable "deleted-locally" row in the proposal stage, got a stage read as "unknown"/,
+    );
   });
 });
 

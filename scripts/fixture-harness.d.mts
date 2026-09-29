@@ -21,3 +21,9 @@ export function publishFixtureRelease(input: {
   bareDir: string;
   release: string;
 }): void;
+
+export function pushUnreleasedChange(input: {
+  workDir: string;
+  bareDir: string;
+  skill: string;
+}): void;

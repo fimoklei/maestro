@@ -219,6 +219,8 @@ Mandatory for any change that alters what `packages/web` renders:
      `all`: `empty`, `in-sync`, `behind`, `mixed-releases`, `local-edits`,
      `unverified`, `pinned-per-skill`, `unfinished-operation`. It exits non-zero
      when the cockpit does not show the scenario's reading.
+   - Verifying a Harness authoring state → `--scenario harness-outcomes`: one
+     restorable **Deleted locally** skill and one unreleased change to release.
 2. Screenshot the changed UI with `agent-browser`, in each theme.
 3. Read changed copy at a narrow width and at 200% zoom, in one theme.
 4. Compare against the design source; on mismatch, fix before claiming done.

@@ -53,6 +53,20 @@ export function scenarioMismatch(
   observed: CockpitReading,
 ): string | null;
 
+export interface HarnessRead {
+  releaseState: string;
+  stages: Record<
+    "proposal" | "release",
+    | {
+        outcome: "read";
+        rows: { skill: string; status: string; restorable: boolean }[];
+      }
+    | { outcome: "unknown" | "unavailable" }
+  >;
+}
+
+export function harnessMismatch(read: HarnessRead): string | null;
+
 export function unprefixedHashes(lockfileText: string): string[];
 
 export function releaseMirrorProblem(input: {
