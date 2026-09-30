@@ -15,6 +15,11 @@ treat them as hypotheses, not facts.
   one permitted form is a *named* package under a sandbox `HOME`, solely to
   re-capture `apm-uninstall-global-ok.txt` in step 2.
 
+- Every install spends the machine's anonymous GitHub quota (60 an hour), token
+  or not. Run `node scripts/github-quota.mjs <calls>` before each batch and
+  wait for the reset it prints when short; discard any capture that holds a
+  `GitHub API rate limit hit` line. The canaries pass on a spent quota; only captures need it.
+
 ## Steps
 
 1. **Record the new version.** `apm --version`, and note it for the

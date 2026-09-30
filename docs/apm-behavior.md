@@ -2,10 +2,16 @@
 
 How `apm` actually behaves, captured by running it or reading its source —
 never guessed (the trap in `LEARNINGS.md`). This document describes **one apm
-version: 0.29.0, verified 2026-09-04** (issues #772–#775). On an apm upgrade
-it is re-verified and rewritten section by section per
+version: 0.32.0, verified 2026-10-01** (issues #772–#775 for the method).
+On an apm upgrade it is re-verified and rewritten section by section per
 `docs/agents/apm-upgrade.md` — sections are replaced, never appended to with
 version deltas; `git log` on this file is the version history.
+
+0.32.0 re-run: the real-apm canaries, the integration suite and every fixture
+captured by a single command. The sections that rest on the retired
+`apm-spike-833` repository (Selection narrowing, same-ref resets, mid-install
+failure) were **not** re-run byte for byte; the root-package canary covers
+their contracts on 0.32.0, and their measurements still read as 0.29.0's.
 
 Two grades of evidence back these claims, and they re-verify differently:
 
@@ -108,7 +114,9 @@ The deploy path must not trust the exit code:
    primitives are fully supported by …` / `Some primitives are not
    supported: …`, now naming `grok-build` and `grok-cloud` among the fully
    supported); a per-repo install skips straight to `[*] Created apm.yml`.
-   The block matches none of the signal phrases — inert for classification.
+   The block matches none of the signal phrases — inert for classification. Two
+   `[i] Skipped inactive experimental resolver for target 'copilot-cowork'` /
+   `'copilot-app'` lines follow the deployed-file rows — inert too.
 5. **A throttled pre-flight probe prints an `[i]` line and continues.**
    The validation step probes a public repo **anonymously** before spending
    the token (source, `install/validation.py`), so a machine whose
@@ -226,6 +234,8 @@ deployments:                    # one row per deployed file per deploy root
 - Deploy-state reads `resolved_ref` (version), `virtual_path` (identity +
   name), `package_type` (primitive type) — nothing else. Its Zod schema
   ignores unknown keys, so additive shape changes are inert for the reader.
+- **0.32.0 drops `generated_at` from new lockfiles** and adds no key (diffed
+  against `apm.lock.tag-pinned.yaml`, 2026-10-01); the parser never required it.
 - **No new key for a skill install between 0.26.0 and 0.29.0.** The four
   lockfile fixtures re-captured on 0.29.0 carry the same key set as their
   0.26.0 captures (diffed 2026-09-04). apm's entry model (source,
@@ -429,16 +439,17 @@ lockfile entry went.
    rest.** With one deployed file edited locally:
 
    ```
+   [i] Removed <pkg> from apm_modules/
    Retained user-edited file .claude/skills/tdd/SKILL.md from <pkg>; resolve it and retry.
    [i] Cleaned 12 stale files from <pkg>
-   [x] Uninstall could not remove tracked target files; package state was preserved.
+   [x] Uninstall could not remove tracked target files; manifest and lockfile ownership were preserved. Package directories may already have been removed.
    [x]   - .claude/skills/tdd
    [x]   - .claude/skills/tdd/SKILL.md
    [x] Resolve or remove the listed files, then retry uninstall.
    ```
 
-   Exit 1, no success marker. `apm.yml`, the lockfile entry and
-   `apm_modules/` keep the package; on disk only the edited file survives —
+   Exit 1, no success marker. `apm.yml` and the lockfile entry
+   keep the package, but `apm_modules/` no longer does; on disk only the edited file survives —
    the other files across both tool directories are already gone. An
    **untracked file** added inside the deployed directory does the same
    (retained: the directory), and a **missing** deployed file does not:
@@ -585,7 +596,8 @@ global deploys from a neutral cwd.
   install -g -t claude` over a lockfile written by `-t claude,codex` keeps
   the `.agents` `deployed_file_hashes` and leaves the `.agents/skills/<name>`
   files on disk — re-measured on 0.29.0 (all six `.agents` files and their
-  hashes survived). Source, re-read on 0.29.0: `install/phases/targets.py::
+  hashes survived). Source, re-read on 0.32.0 (the file-level hashes above were re-measured on
+  0.29.0 only): `install/phases/targets.py::
   _read_yaml_targets` sources the declared target universe from the
   consumer's `apm.yml` alone; `declared_target_profiles` returns `None`
   when it names nothing, and `core/deployment_state.py::_is_stale` then
