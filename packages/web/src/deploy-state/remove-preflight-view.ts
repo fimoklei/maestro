@@ -105,38 +105,25 @@ export function removePreflightView(query: {
   if (query.data === undefined) {
     return unanswered("checking");
   }
-  const check = readCheck(query.data);
-  if (check === null) {
-    return unanswered("check-failed");
-  }
   return {
     kind: "offered",
-    check,
+    check: checkState(query.data.check),
     reclaim: query.data.reclaim?.previews ?? [],
   };
 }
 
-// Nothing validates this body, so an unreadable 200 falls back to null, never
-// a clean copy: reading past it throws in front of an irreversible action.
-function readCheck(data: RemovePreflight | undefined): RemoveCheckState | null {
-  const check = (data as { check?: unknown } | undefined)?.check as
-    | Partial<RemoveCheck>
-    | undefined;
-  if (check?.scope === "repo") {
-    return { kind: "repo", warning: rowWarningFor(check.warning ?? null) };
-  }
-  if (check?.scope === "global" && Array.isArray(check.tools)) {
-    return {
-      kind: "per-tool",
-      warnings: Object.fromEntries(
-        check.tools.map((entry) => [
-          entry?.tool,
-          rowWarningFor(entry?.warning ?? null),
-        ]),
-      ),
-    };
-  }
-  return null;
+function checkState(check: RemoveCheck): RemoveCheckState {
+  return check.scope === "repo"
+    ? { kind: "repo", warning: rowWarningFor(check.warning) }
+    : {
+        kind: "per-tool",
+        warnings: Object.fromEntries(
+          check.tools.map((entry) => [
+            entry.tool,
+            rowWarningFor(entry.warning),
+          ]),
+        ),
+      };
 }
 
 function rowWarningFor(warning: RemoveWarning | null): RemoveRowWarning {
@@ -145,7 +132,7 @@ function rowWarningFor(warning: RemoveWarning | null): RemoveRowWarning {
       return "cannot-verify";
     case "check-did-not-run":
       return "check-failed";
-    default:
+    case null:
       return "none";
   }
 }
