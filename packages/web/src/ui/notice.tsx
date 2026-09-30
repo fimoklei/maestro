@@ -14,11 +14,15 @@ export type NoticeAction = {
   primary?: boolean;
 };
 
-type NoticeBase = {
+/** A notice's words, without the level its render site picks. */
+export type NoticeCopy = {
   label: string;
   message: string;
   /** Why this happened, or the alternative recovery; never a second problem. */
   detail?: string;
+};
+
+type NoticeBase = NoticeCopy & {
   /** One line each, listed under the message, such as the checks a skill failed. */
   items?: readonly string[];
 };

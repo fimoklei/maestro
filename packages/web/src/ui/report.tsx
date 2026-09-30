@@ -1,12 +1,11 @@
 import { type ReactNode, useId } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
+import type { NoticeCopy } from "./notice";
 
 // What one action did to several primitives, worst group first.
 
 type ReportTone = "failed" | "attention" | "neutral" | "good";
-
-type ReportNotice = { label: string; message: string; detail?: string };
 
 type ReportRow = {
   name: string;
@@ -15,7 +14,7 @@ type ReportRow = {
   /** Why this row reads the way it does, in one or two short sentences. */
   detail?: ReactNode;
   /** A refusal or failure, stated as the same notice a single action shows. */
-  notice?: ReportNotice;
+  notice?: NoticeCopy;
   /** How many primitives the row stands for, where one reason hit several. */
   count?: number;
   /** This row's own way out, where the reader has one. */

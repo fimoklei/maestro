@@ -305,7 +305,6 @@ describe("removePreflightView", () => {
         kind: "refused",
         code: "invalid-body",
         notice: {
-          level: "error",
           label: "Maestro could not start the action",
           message,
         },

@@ -279,7 +279,6 @@ describe("UpdateTargetDialog", () => {
         isLoading={false}
         blocked="no GitHub origin"
         error={{
-          level: "error",
           label: "No GitHub origin",
           message: "Point the Harness clone's origin at its GitHub repository.",
         }}

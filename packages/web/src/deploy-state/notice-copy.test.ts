@@ -18,7 +18,6 @@ describe("deploy notices", () => {
     [
       "unsupported-primitive-type",
       {
-        level: "error",
         label: "Skills only",
         message:
           "Nothing was installed. Maestro deploys skills only. Select a skill, then deploy again.",
@@ -28,7 +27,6 @@ describe("deploy notices", () => {
     [
       "invalid-name",
       {
-        level: "error",
         label: "Unusable skill name",
         message:
           "Nothing was installed. Rename the skill in the Harness, then deploy again.",
@@ -39,7 +37,6 @@ describe("deploy notices", () => {
     [
       "unknown-skill",
       {
-        level: "error",
         label: "Skill not in the Inventory",
         message:
           "Nothing was installed. Select Re-read Inventory, then select the skill again.",
@@ -48,7 +45,6 @@ describe("deploy notices", () => {
     [
       "inventory-not-configured",
       {
-        level: "error",
         label: "No Harness connected",
         message:
           "Nothing was installed. Select Connect Inventory on the Inventory screen, then deploy again.",
@@ -57,7 +53,6 @@ describe("deploy notices", () => {
     [
       "inventory-unreadable",
       {
-        level: "error",
         label: "Could not read Inventory",
         message:
           "Nothing was installed. Select Re-read Inventory, then deploy again.",
@@ -66,7 +61,6 @@ describe("deploy notices", () => {
     [
       "repo-not-registered",
       {
-        level: "error",
         label: "Repository not registered",
         message:
           "Nothing was installed. Select Register repository on the Repositories screen, then deploy again.",
@@ -75,7 +69,6 @@ describe("deploy notices", () => {
     [
       "inventory-origin-unavailable",
       {
-        level: "error",
         label: "No GitHub origin",
         message:
           "Nothing was installed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
@@ -85,7 +78,6 @@ describe("deploy notices", () => {
     [
       "no-published-tag",
       {
-        level: "error",
         label: "Not in any release",
         message:
           "Nothing was installed. Select Publish release on the Harness screen, then deploy again.",
@@ -95,7 +87,6 @@ describe("deploy notices", () => {
     [
       "local-diverged-from-tag",
       {
-        level: "error",
         label: "Harness copy unreleased",
         message:
           "Nothing was installed. Select Publish release on the Harness screen, then deploy again.",
@@ -105,7 +96,6 @@ describe("deploy notices", () => {
     [
       "deployed-diverged-from-lock",
       {
-        level: "warning",
         label: "Local changes in deployed files",
         message:
           "Deploy again to replace the local edits with the latest release.",
@@ -115,7 +105,6 @@ describe("deploy notices", () => {
     [
       "deployed-unverifiable",
       {
-        level: "warning",
         label: "Local edits unverifiable",
         message: "Deploy again to replace this copy with the latest release.",
         detail:
@@ -125,7 +114,6 @@ describe("deploy notices", () => {
     [
       "deployed-unreadable",
       {
-        level: "error",
         label: "Deployed copy unreadable",
         message:
           "Nothing was installed. Make the deployed copy readable, then deploy again.",
@@ -135,7 +123,6 @@ describe("deploy notices", () => {
     [
       "lockfile-malformed",
       {
-        level: "error",
         label: "Could not read deployment record",
         message:
           "Nothing was installed. Repair or delete apm.lock.yaml in the target, then deploy again.",
@@ -146,7 +133,6 @@ describe("deploy notices", () => {
     [
       "deploy-in-progress",
       {
-        level: "error",
         label: "Another change is running",
         message:
           "Nothing was installed. Wait for the running deploy on this target to finish, then deploy again.",
@@ -155,7 +141,6 @@ describe("deploy notices", () => {
     [
       "ref-unresolvable",
       {
-        level: "error",
         label: "Cannot identify deployed skill",
         message:
           "Nothing was installed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
@@ -165,7 +150,6 @@ describe("deploy notices", () => {
     [
       "not-at-target-release",
       {
-        level: "error",
         label: "Not in this release",
         message:
           "Nothing was installed. Select Update target to move this target to a release that holds the skill.",
@@ -175,7 +159,6 @@ describe("deploy notices", () => {
     [
       "target-pinned-per-skill",
       {
-        level: "error",
         label: "Pinned per skill",
         message:
           "Nothing was installed. Select Remove skill for each skill, then select Deploy skill to put them on one release.",
@@ -185,7 +168,6 @@ describe("deploy notices", () => {
     [
       "manifest-not-recognised",
       {
-        level: "error",
         label: "Unsupported apm.yml",
         message:
           "Nothing was installed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
@@ -195,7 +177,6 @@ describe("deploy notices", () => {
     [
       "operation-unfinished",
       {
-        level: "error",
         label: "Change not finished",
         message:
           "Nothing was installed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
@@ -205,7 +186,6 @@ describe("deploy notices", () => {
     [
       "deploy-incomplete",
       {
-        level: "error",
         label: "Deploy incomplete",
         message:
           "Part of the selection is not on disk. Open the target on the Deploy-state screen and select Retry deploy.",
@@ -215,7 +195,6 @@ describe("deploy notices", () => {
     [
       "no-supported-tool",
       {
-        level: "error",
         label: "No supported tool",
         message:
           "Nothing was installed. Install Claude Code or Codex, then deploy again.",
@@ -225,7 +204,6 @@ describe("deploy notices", () => {
     [
       "auth-required",
       {
-        level: "error",
         label: "No GitHub access",
         message:
           "Nothing was installed. Set up GitHub access in git, then deploy again.",
@@ -235,7 +213,6 @@ describe("deploy notices", () => {
     [
       "destination-symlinked",
       {
-        level: "error",
         label: "Linked skill folder",
         message:
           "Nothing was written. Delete the linked skill folder in the target, then deploy again.",
@@ -246,7 +223,6 @@ describe("deploy notices", () => {
     [
       "deploy-failed",
       {
-        level: "error",
         label: "Deploy did not finish",
         message:
           "The target may hold a partial install. Check the target on the Deploy-state screen, then deploy again.",
@@ -265,7 +241,6 @@ describe("deploy notices", () => {
 
   it("falls back to a named outcome for a code it does not know", () => {
     expect(deployNotice(refusal("cost-not-acknowledged"))).toEqual({
-      level: "error",
       label: "Deploy outcome unknown",
       message:
         "Nothing confirmed the deploy. Deploy again to re-check the target.",
@@ -282,7 +257,6 @@ describe("deploy notices", () => {
       { detail: "The request carries a type, a name and a target." },
     );
     expect(deployNotice(error)).toEqual({
-      level: "error",
       label: "Maestro could not start the action",
       message:
         "Maestro could not start this change. Reload the page, then try again.",
@@ -305,7 +279,6 @@ describe("remove notices", () => {
     [
       "unsupported-primitive-type",
       {
-        level: "error",
         label: "Skills only",
         message:
           "Maestro removes skills; hooks and MCP servers stay where they are. Remove a skill instead.",
@@ -314,7 +287,6 @@ describe("remove notices", () => {
     [
       "invalid-name",
       {
-        level: "error",
         label: "Unusable skill name",
         message:
           "Nothing was removed. A skill name uses lowercase letters, digits and single hyphens.",
@@ -323,7 +295,6 @@ describe("remove notices", () => {
     [
       "repo-not-registered",
       {
-        level: "error",
         label: "Repository not registered",
         message: "Register this repository in Maestro, then remove again.",
       },
@@ -331,7 +302,6 @@ describe("remove notices", () => {
     [
       "no-supported-tool",
       {
-        level: "error",
         label: "No supported tool",
         message:
           "Neither Claude Code nor Codex is on this machine. There is nothing here to remove.",
@@ -340,7 +310,6 @@ describe("remove notices", () => {
     [
       "not-deployed",
       {
-        level: "error",
         label: "Nothing deployed here",
         message: "Nothing was removed. Reload the page to read the list again.",
       },
@@ -348,7 +317,6 @@ describe("remove notices", () => {
     [
       "lockfile-malformed",
       {
-        level: "error",
         label: "Could not read deployment record",
         message:
           "Repair or delete apm.lock.yaml in the target, then remove again.",
@@ -359,7 +327,6 @@ describe("remove notices", () => {
     [
       "ref-unresolvable",
       {
-        level: "error",
         label: "Cannot identify deployed skill",
         message:
           "A removal could delete the wrong package. Deploy the skill again to restore a readable entry.",
@@ -370,7 +337,6 @@ describe("remove notices", () => {
     [
       "deployed-unreadable",
       {
-        level: "error",
         label: "Deployed copy unreadable",
         message:
           "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
@@ -379,7 +345,6 @@ describe("remove notices", () => {
     [
       "deployed-diverged-pinned-per-skill",
       {
-        level: "warning",
         label: "Local changes in deployed files",
         message:
           "The skill was not removed. Its files changed after deployment.",
@@ -390,7 +355,6 @@ describe("remove notices", () => {
     [
       "cost-not-acknowledged",
       {
-        level: "warning",
         label: "Nothing removed",
         message:
           "The copy on disk changed since this removal was priced. Check the new cost above, then remove the skill.",
@@ -399,7 +363,6 @@ describe("remove notices", () => {
     [
       "remove-in-progress",
       {
-        level: "error",
         label: "Another change is running",
         message:
           "A removal is still running on this target. Wait for it to finish.",
@@ -408,7 +371,6 @@ describe("remove notices", () => {
     [
       "remove-incomplete",
       {
-        level: "error",
         label: "Removal incomplete",
         message:
           "The skill's files are still on disk. Select Retry removal to run the same removal again.",
@@ -418,7 +380,6 @@ describe("remove notices", () => {
     [
       "remove-failed",
       {
-        level: "error",
         label: "Removal outcome unknown",
         message:
           "The copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
@@ -428,7 +389,6 @@ describe("remove notices", () => {
     [
       "preflight-failed",
       {
-        level: "error",
         label: "Could not check deployed files",
         message:
           "Make the deployed copy readable, then start the removal again.",
@@ -451,7 +411,6 @@ describe("remove notices", () => {
 
   it("falls back to a named outcome when nothing confirmed the removal", () => {
     expect(removeNotice(new Error("offline"))).toEqual({
-      level: "error",
       label: "Removal outcome unknown",
       message:
         "Nothing confirmed the removal. Reload the page, then check whether the skill is still deployed.",
@@ -468,7 +427,6 @@ describe("remove notices", () => {
       { detail: "The request carries a type, a name and a target." },
     );
     expect(removeNotice(error)).toEqual({
-      level: "error",
       label: "Maestro could not start the action",
       message:
         "Maestro could not start this change. Reload the page, then try again.",
@@ -482,7 +440,6 @@ describe("update preview notices", () => {
     [
       "repo-not-registered",
       {
-        level: "error",
         label: "Repository not registered",
         message:
           "Register this repository in Maestro, then select Update target again.",
@@ -491,7 +448,6 @@ describe("update preview notices", () => {
     [
       "no-supported-tool",
       {
-        level: "error",
         label: "No supported tool",
         message:
           "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
@@ -500,7 +456,6 @@ describe("update preview notices", () => {
     [
       "not-deployed",
       {
-        level: "error",
         label: "Nothing deployed here",
         message:
           "This target follows no release. Select Deploy skill in the Inventory to put one on it.",
@@ -509,7 +464,6 @@ describe("update preview notices", () => {
     [
       "lockfile-malformed",
       {
-        level: "error",
         label: "Could not read deployment record",
         message:
           "Repair or delete apm.lock.yaml in the target, then select Update target again.",
@@ -520,7 +474,6 @@ describe("update preview notices", () => {
     [
       "deployed-unreadable",
       {
-        level: "error",
         label: "Deployed copy unreadable",
         message:
           "Nothing was changed. Make the deployed copy readable, then select Update target again.",
@@ -530,7 +483,6 @@ describe("update preview notices", () => {
     [
       "inventory-not-configured",
       {
-        level: "error",
         label: "No Harness connected",
         message:
           "Connect a Harness on the Inventory screen, then select Update target again.",
@@ -539,7 +491,6 @@ describe("update preview notices", () => {
     [
       "inventory-unreadable",
       {
-        level: "error",
         label: "Could not read Inventory",
         message:
           "Select Re-read Inventory on the Harness location screen, then select Update target again.",
@@ -548,7 +499,6 @@ describe("update preview notices", () => {
     [
       "no-published-tag",
       {
-        level: "error",
         label: "Not in any release",
         message:
           "Publish a release on the Harness screen, then select Update target again.",
@@ -558,7 +508,6 @@ describe("update preview notices", () => {
     [
       "skill-not-in-release",
       {
-        level: "error",
         label: "Not in the latest release",
         message:
           "The latest release does not hold this skill. Publish a release on the Harness screen, then deploy again.",
@@ -568,7 +517,6 @@ describe("update preview notices", () => {
     [
       "inventory-origin-unavailable",
       {
-        level: "error",
         label: "No GitHub origin",
         message:
           "Point the Harness clone's origin at its GitHub repository, then select Update target again.",
@@ -578,7 +526,6 @@ describe("update preview notices", () => {
     [
       "ref-unresolvable",
       {
-        level: "error",
         label: "Cannot identify deployed skill",
         message:
           "Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, then select Update target again.",
@@ -588,7 +535,6 @@ describe("update preview notices", () => {
     [
       "preview-failed",
       {
-        level: "error",
         label: "Preview did not run",
         message:
           "Nothing was changed. Wait a moment, then select Update target again.",
@@ -602,7 +548,6 @@ describe("update preview notices", () => {
 
   it("names a failure it has no code for", () => {
     expect(updatePreviewNotice(new Error("offline"))).toEqual({
-      level: "error",
       label: "Preview outcome unknown",
       message:
         "Nothing was changed. Wait a moment, then select Update target again.",
@@ -624,7 +569,6 @@ describe("update notices for a linked skill folder", () => {
     expect(
       notice(linked({ error: "destination-symlinked", linkedPath: LINKED })),
     ).toEqual({
-      level: "error",
       label: "Linked skill folder",
       message: `Nothing was written. Run rm ${LINKED} and then select Update target again.`,
       detail:
@@ -637,7 +581,6 @@ describe("update notices for a linked skill folder", () => {
     ["run", updateNotice],
   ])("names the folder in general when no path came back (%s)", (_, notice) => {
     expect(notice(linked({ error: "destination-symlinked" }))).toEqual({
-      level: "error",
       label: "Linked skill folder",
       message:
         "Nothing was written. Delete the linked skill folder in the target, then select Update target again.",
@@ -652,7 +595,6 @@ describe("deploy notice for a linked skill folder", () => {
     expect(
       deployNoticeFor("destination-symlinked", "/Users/dev/.claude/skills/tdd"),
     ).toEqual({
-      level: "error",
       label: "Linked skill folder",
       message:
         "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",
@@ -668,7 +610,6 @@ describe("deploy notice for a linked skill folder", () => {
     });
 
     expect(deployNotice(error)).toEqual({
-      level: "error",
       label: "Linked skill folder",
       message:
         "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",

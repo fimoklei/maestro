@@ -219,7 +219,6 @@ describe("bulkDeployReportGroups", () => {
     });
 
     expect(rowsOf(groups, "Failed")[0]?.notice).toEqual({
-      level: "error",
       label: "No supported tool",
       message:
         "Nothing was installed. Install Claude Code or Codex, then deploy again.",
@@ -244,7 +243,6 @@ describe("bulkDeployReportGroups", () => {
     });
 
     expect(rowsOf(groups, "Failed")[0]?.notice).toEqual({
-      level: "error",
       label: "Linked skill folder",
       message:
         "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",

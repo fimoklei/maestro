@@ -6,7 +6,7 @@ import type {
   UpdateRunError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
-import type { NoticeLevel } from "../ui/notice";
+import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
 import { UPDATE_AGAIN, UPDATE_INCOMPLETE_SENTENCE } from "./update-target-copy";
 
@@ -19,13 +19,7 @@ type DeployStateCode =
   | UpdatePreviewError
   | UpdateRunError;
 
-/** A finished notice: heading, sentence and detail, ready to render. */
-export type DeployStateNotice = {
-  level: NoticeLevel;
-  label: string;
-  message: string;
-  detail?: string;
-};
+export type DeployStateNotice = NoticeCopy;
 
 export const FIX_AND_RELEASE =
   "Fix the skill in the Harness, publish a release, then deploy again.";
@@ -46,81 +40,51 @@ const DELETE_LINKED_FOLDER = deleteLinkedFolder(DEPLOY_AGAIN);
 const LINK_TARGET_SURVIVES =
   "This removes the link only. The folder it points at remains on disk.";
 
-type Heading = { level: NoticeLevel; label: string };
 type Body = { message: string; detail?: string };
 
-// Level rides here because the two refusals the user can force through are
-// `warning` on both surfaces.
-const HEADINGS: Record<DeployStateCode, Heading> = {
-  "unsupported-primitive-type": { level: "error", label: "Skills only" },
-  "invalid-name": { level: "error", label: "Unusable skill name" },
-  "unknown-skill": { level: "error", label: "Skill not in the Inventory" },
-  "inventory-not-configured": { level: "error", label: "No Harness connected" },
-  "inventory-unreadable": { level: "error", label: "Could not read Inventory" },
-  "repo-not-registered": { level: "error", label: "Repository not registered" },
-  "inventory-origin-unavailable": { level: "error", label: "No GitHub origin" },
-  "no-published-tag": { level: "error", label: "Not in any release" },
-  "local-diverged-from-tag": {
-    level: "error",
-    label: "Harness copy unreleased",
-  },
-  "deployed-diverged-from-lock": {
-    level: "warning",
-    label: "Local changes in deployed files",
-  },
-  "deployed-diverged-pinned-per-skill": {
-    level: "warning",
-    label: "Local changes in deployed files",
-  },
-  "deployed-unverifiable": {
-    level: "warning",
-    label: "Local edits unverifiable",
-  },
-  "deployed-unreadable": { level: "error", label: "Deployed copy unreadable" },
-  "lockfile-malformed": {
-    level: "error",
-    label: "Could not read deployment record",
-  },
-  "deploy-in-progress": { level: "error", label: "Another change is running" },
-  "not-at-target-release": { level: "error", label: "Not in this release" },
-  "skill-not-in-release": {
-    level: "error",
-    label: "Not in the latest release",
-  },
-  "target-pinned-per-skill": { level: "error", label: "Pinned per skill" },
-  "manifest-not-recognised": {
-    level: "error",
-    label: "Unsupported apm.yml",
-  },
-  "operation-unfinished": { level: "error", label: "Change not finished" },
-  "deploy-incomplete": { level: "error", label: "Deploy incomplete" },
-  "remove-incomplete": { level: "error", label: "Removal incomplete" },
-  "no-supported-tool": { level: "error", label: "No supported tool" },
-  "auth-required": { level: "error", label: "No GitHub access" },
-  "destination-symlinked": { level: "error", label: "Linked skill folder" },
-  "deploy-failed": { level: "error", label: "Deploy did not finish" },
-  "not-deployed": { level: "error", label: "Nothing deployed here" },
-  "ref-unresolvable": {
-    level: "error",
-    label: "Cannot identify deployed skill",
-  },
-  "cost-not-acknowledged": { level: "warning", label: "Nothing removed" },
-  "remove-in-progress": { level: "error", label: "Another change is running" },
-  "remove-failed": { level: "error", label: "Removal outcome unknown" },
-  "preflight-failed": {
-    level: "error",
-    label: "Could not check deployed files",
-  },
-  "preview-failed": { level: "error", label: "Preview did not run" },
+const LABELS: Record<DeployStateCode, string> = {
+  "unsupported-primitive-type": "Skills only",
+  "invalid-name": "Unusable skill name",
+  "unknown-skill": "Skill not in the Inventory",
+  "inventory-not-configured": "No Harness connected",
+  "inventory-unreadable": "Could not read Inventory",
+  "repo-not-registered": "Repository not registered",
+  "inventory-origin-unavailable": "No GitHub origin",
+  "no-published-tag": "Not in any release",
+  "local-diverged-from-tag": "Harness copy unreleased",
+  "deployed-diverged-from-lock": "Local changes in deployed files",
+  "deployed-diverged-pinned-per-skill": "Local changes in deployed files",
+  "deployed-unverifiable": "Local edits unverifiable",
+  "deployed-unreadable": "Deployed copy unreadable",
+  "lockfile-malformed": "Could not read deployment record",
+  "deploy-in-progress": "Another change is running",
+  "not-at-target-release": "Not in this release",
+  "skill-not-in-release": "Not in the latest release",
+  "target-pinned-per-skill": "Pinned per skill",
+  "manifest-not-recognised": "Unsupported apm.yml",
+  "operation-unfinished": "Change not finished",
+  "deploy-incomplete": "Deploy incomplete",
+  "remove-incomplete": "Removal incomplete",
+  "no-supported-tool": "No supported tool",
+  "auth-required": "No GitHub access",
+  "destination-symlinked": "Linked skill folder",
+  "deploy-failed": "Deploy did not finish",
+  "not-deployed": "Nothing deployed here",
+  "ref-unresolvable": "Cannot identify deployed skill",
+  "cost-not-acknowledged": "Nothing removed",
+  "remove-in-progress": "Another change is running",
+  "remove-failed": "Removal outcome unknown",
+  "preflight-failed": "Could not check deployed files",
+  "preview-failed": "Preview did not run",
   // "Status out of date" covers both a release and a copy that moved after the
   // preview priced them.
-  "status-out-of-date": { level: "error", label: "Status out of date" },
-  "update-in-progress": { level: "error", label: "Another change is running" },
-  "update-incomplete": { level: "warning", label: "Update incomplete" },
-  "update-failed": { level: "error", label: "Update outcome unknown" },
+  "status-out-of-date": "Status out of date",
+  "update-in-progress": "Another change is running",
+  "update-incomplete": "Update incomplete",
+  "update-failed": "Update outcome unknown",
 };
 
-// Kept apart from HEADINGS because codes shared by deploy and removal state
+// Kept apart from LABELS because codes shared by deploy and removal state
 // their own way through (#684). Keyed by core's unions, so a new code fails typecheck.
 const DEPLOY: Record<DeploySkillError, Body> = {
   "unsupported-primitive-type": {
@@ -320,14 +284,12 @@ const UNKNOWN_DETAIL =
 
 // A failure with no code — a dropped connection, or a code this build predates.
 const UNKNOWN_DEPLOY: DeployStateNotice = {
-  level: "error",
   label: "Deploy outcome unknown",
   message: `Nothing confirmed the deploy. ${RECHECK_TARGET}`,
   detail: UNKNOWN_DETAIL,
 };
 
 const UNKNOWN_REMOVE: DeployStateNotice = {
-  level: "error",
   label: "Removal outcome unknown",
   message:
     "Nothing confirmed the removal. Reload the page, then check whether the skill is still deployed.",
@@ -335,7 +297,6 @@ const UNKNOWN_REMOVE: DeployStateNotice = {
 };
 
 const UNKNOWN_UPDATE: DeployStateNotice = {
-  level: "error",
   label: "Preview outcome unknown",
   message: `Nothing was changed. Wait a moment, ${UPDATE_AGAIN}`,
   detail: UNKNOWN_DETAIL,
@@ -343,7 +304,6 @@ const UNKNOWN_UPDATE: DeployStateNotice = {
 
 // The target may hold a partial update, so this sends the reader to the card.
 const UNKNOWN_UPDATE_RUN: DeployStateNotice = {
-  level: "error",
   label: "Update outcome unknown",
   message: `Nothing confirmed the update. Check the target on the Deploy-state screen, ${UPDATE_AGAIN}`,
   detail: UNKNOWN_DETAIL,
@@ -451,13 +411,14 @@ function noticeFor(
   }
   const requestShape = requestShapeNotice(error);
   if (requestShape) {
-    return requestShape;
+    const { level: _level, ...notice } = requestShape;
+    return notice;
   }
-  const heading = HEADINGS[error.code as DeployStateCode];
+  const label = LABELS[error.code as DeployStateCode];
   const body = bodies[error.code];
-  return heading === undefined || body === undefined
+  return label === undefined || body === undefined
     ? fallback
-    : { ...heading, ...body };
+    : { label, ...body };
 }
 
 /** The whole notice for one deploy code, as a bulk run reports it. */
@@ -465,7 +426,7 @@ export function deployNoticeFor(
   code: DeploySkillError,
   linkedPath: string | undefined,
 ): DeployStateNotice {
-  const notice = { ...HEADINGS[code], ...DEPLOY[code] };
+  const notice = { label: LABELS[code], ...DEPLOY[code] };
   return code === "destination-symlinked" && linkedPath !== undefined
     ? withRm(notice, linkedPath, DEPLOY_AGAIN)
     : notice;
