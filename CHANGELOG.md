@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.2 — 2026-09-30
+
+### New Features
+- **Added Import local edits on Deploy-state.** A Repository or the global target with skills reading **Local edits** offers **Import local edits…**. One dialog lists the skills, and each one you confirm lands in the Harness as a Pending proposal. Skills that would undo newer Harness changes stay unchecked, and refused skills say why and what to do next. (#1264)
+- **Imported local edits from a single skill row.** A skill row reading **Local edits** offers **Import local edits…** in its ⋮ menu and opens the same dialog for that one skill. (#1274)
+- **Placed target pane actions beside their reason.** **Retry** shows in the unfinished-operation notice, **Update target** sits beside Latest release, and the pane's main button follows the target's state. (#1273)
+- **Showed the full notice per row in the bulk deploy report.** Each failed or attention row now says what happened, what was not installed and which control to use next, in the same words as the detail pane. (#1262)
+
+### Bug Fixes
+- **Made the remove check strict.** An unreadable or unknown answer from the remove check now shows as a failed check instead of passing as safe. (#1296)
+- **Carried the full Octicons MIT licence text.** `THIRD-PARTY-NOTICES.md` now holds the licence itself, not a link. (#1297)
+
 ## v0.1.1 — 2026-09-27
 
 ### New Features
