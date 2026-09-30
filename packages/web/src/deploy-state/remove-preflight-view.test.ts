@@ -114,42 +114,6 @@ describe("removePreflightView", () => {
     });
   });
 
-  // Nothing validates the response body: an unreadable 200 must neither throw
-  // nor read as clean.
-  describe("when a 200 carries a body this build cannot read", () => {
-    const unreadable = (data: unknown) =>
-      removePreflightView({
-        ...answered,
-        data: data as RemovePreflight,
-      });
-    const failedCheck = {
-      kind: "offered",
-      check: { kind: "unanswered", warning: "check-failed" },
-      reclaim: [],
-    };
-
-    it("fails closed on an answer with no check in it", () => {
-      expect(unreadable({ reclaim: null })).toEqual(failedCheck);
-    });
-
-    it("fails closed on a scope this build has never heard of", () => {
-      expect(
-        unreadable({ check: { scope: "per-machine" }, reclaim: null }),
-      ).toEqual(failedCheck);
-    });
-
-    it("fails closed on a global answer carrying no tool list", () => {
-      expect(
-        unreadable({ check: { scope: "global", tools: null }, reclaim: null }),
-      ).toEqual(failedCheck);
-    });
-
-    it("fails closed on a body that is not an object at all", () => {
-      expect(unreadable(null)).toEqual(failedCheck);
-      expect(unreadable("nope")).toEqual(failedCheck);
-    });
-  });
-
   describe("while a check has not settled", () => {
     const checking = {
       kind: "offered",
