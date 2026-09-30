@@ -7,6 +7,7 @@ const srcDir = ["packages/web/src", "src"]
 if (!srcDir)
   throw new Error(`web source tree not found from cwd ${process.cwd()}`);
 const repoRoot = resolve(srcDir, "../../..");
+const notices = readFileSync(join(repoRoot, "THIRD-PARTY-NOTICES.md"), "utf8");
 
 const NOTICE_LINE = "// Adapted from Spectrum UI (Apache-2.0)";
 
@@ -24,11 +25,25 @@ describe("Spectrum UI notices", () => {
   });
 
   it("names Spectrum UI and its licence in THIRD-PARTY-NOTICES.md", () => {
-    const notices = readFileSync(
-      join(repoRoot, "THIRD-PARTY-NOTICES.md"),
-      "utf8",
-    );
     expect(notices).toContain("Spectrum UI");
     expect(notices).toContain("Apache License");
+  });
+});
+
+describe("Octicons notice", () => {
+  it("names the adapted file, which opens with the notice line", () => {
+    expect(notices).toContain("packages/web/src/ui/github-mark-link.tsx");
+    const firstLine = readFileSync(
+      join(srcDir, "ui/github-mark-link.tsx"),
+      "utf8",
+    ).split("\n")[0];
+    expect(firstLine).toBe("// Adapted from Octicons (MIT)");
+  });
+
+  it("carries the MIT licence text itself", () => {
+    expect(notices).toContain("Copyright (c) 2026 GitHub Inc.");
+    expect(notices).toContain(
+      "The above copyright notice and this permission notice shall be included in all",
+    );
   });
 });
