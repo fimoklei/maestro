@@ -100,7 +100,7 @@ The two-repo topology reflects this:
 
 MVP1 proves *see + steer*, solo. It does not prove governance, team curation, or the compounding loop.
 
-What ships first within that bet (e.g. skills+bundles before hooks/MCP, or read-only before steering) is decided on the board (`docs/jobs.md`), one job at a time — not here.
+What ships first within that bet (e.g. skills+bundles before hooks/MCP, or read-only before steering) is decided through job issues (label `job`), one job at a time — not here.
 
 ---
 
@@ -114,7 +114,7 @@ MVP1 is a falsifiable bet, not a feature list. It succeeds — or dies — on on
 
 Success is therefore behavioural, not a metric: I reach for Maestro instead of hand-editing my setup, because it is faster and clearer. No usage count or retention figure means anything at N=1 — the only honest signal is whether the one user switches.
 
-This section defines what winning *is*. The live form of that test — the bet and its kill question — sits at the top of the board (`docs/jobs.md`), above the jobs that serve it.
+This section defines what winning *is*. The live form of that test — the bet and its kill question — sits at the top of `docs/jobs.md`, above the themes the jobs serve.
 
 ---
 

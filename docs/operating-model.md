@@ -1,8 +1,8 @@
 # Operating Model — Maestro
 
 How this product is run: **one board, one loop, five terms.** This page is the
-shape and the why; the transition mechanics live in the board's Legend
-(`docs/jobs.md`), executed by the `jobs` skill.
+shape and the why; the rules live in the Legend of `docs/jobs.md`, executed by
+the `jobs` skill.
 
 ## The idea
 
@@ -10,45 +10,46 @@ Jobs are the product spine. A job describes progress a user wants to make
 ("see what is deployed where"), never a feature ("build a table component").
 Features exist only as part of a job, and work happens **one job at a time**.
 
-## The board — `docs/jobs.md`
+## The board — job issues
 
-The single steering document, one page:
+The board is the set of GitHub issues labelled `job`; `docs/jobs.md` holds the
+need they serve:
 
-- **Header** — the product bet and its kill question. The one honesty check:
+- **The bet** — the product bet and its kill question. The one honesty check:
   if the owner still opens lockfiles or runs `apm` by hand, the product is
   failing — no matter how many jobs are done.
-- **NOW** — exactly one job, the one currently in the loop.
-- **NEXT** — one job, with one line why it is next.
-- **LATER** — names only; detail lives in tracker issues.
-- **DONE** — shipped jobs, one line each.
+- **Themes** — the `theme:*` labels every job carries.
 - **Out of scope** — jobs deliberately not being done; binding.
+- **Lanes** — `job:now` (exactly one job, the one in the loop), `job:next`
+  (optional), LATER (open, no lane label), DONE (closed).
 
 ## The loop (per job)
 
 ```text
-pick job (NEXT → NOW, at grill start)
-→ grill (one altitude: design the whole job)
-→ /to-spec: one spec issue, sliced into sub-issues (the tracker takes over)
+pick job (job:now, at grill start)
+→ grill (one altitude: design one spec)
+→ /to-spec: a spec issue under the job, sliced into sub-issues
 → TDD implementation
-→ ship: the PR that closes the spec issue moves the job to DONE in the same diff
-→ pick the new NEXT (one line why)
+→ ship: the PR closes the spec issue
+→ all specs closed: the operator confirms the need is met, the job closes
 ```
 
-**1 job = 1 spec issue.** If one grill cannot design the job into one spec, the
-job is too big — split it on the board. That one rule replaces roadmaps,
-sub-steps, and grill altitudes.
+**One grill = one spec issue.** A job may hold several specs; if one grill
+cannot design a spec, the spec is too big — split it. That one rule replaces
+roadmaps, sub-steps, and grill altitudes.
 
 ## Two kinds of work
 
-- **Job work** — a new capability. Through the board.
+- **Job work** — a new capability. Its spec hangs under a job.
 - **Small work** — improving what already exists: bug fixes, polish, redesigning
   a screen, chores. A tracker issue is enough, however many sub-issues it grows.
 
 ## Where things live
 
-- **Board** (`docs/jobs.md`) — steering and status. The only planning doc.
-- **Tracker** (GitHub Issues) — everything volatile: spec issues, sub-issues,
-  ideas. New ideas become issues, never board rows.
+- **`docs/jobs.md`** — the bet, the themes and out of scope. The only planning
+  doc.
+- **Tracker** (GitHub Issues) — everything volatile: jobs and their lanes, spec
+  issues, sub-issues, ideas.
 - **`docs/brief.md`** — why the product exists.
 - **`CONTEXT.md`** — the glossary.
 - **`docs/adr/`** — binding decisions.
@@ -58,7 +59,7 @@ sub-steps, and grill altitudes.
 
 ## Conflict rule
 
-When documents disagree: `docs/jobs.md` (what now) → accepted ADRs (what was
+When documents disagree: `docs/jobs.md` (what we bet on) → accepted ADRs (what was
 decided) → `CONTEXT.md` (what words mean) → `docs/brief.md` (why) → `PRODUCT.md`
 and `DESIGN.md` (the design-facing summaries). Unresolvable conflict → stop and
 flag, do not guess.
@@ -71,8 +72,9 @@ summary never overrules the original.
 ## The five terms
 
 - **Job** — progress a user wants to make; the unit of work and of scope.
-- **Board** — `docs/jobs.md`: NOW / NEXT / LATER / DONE.
-- **Loop** — one job's path from grill to DONE.
-- **Grill** — the interview that designs a job before anything is built.
+- **Board** — the `job` issues and their lanes: NOW / NEXT / LATER / DONE.
+- **Loop** — one spec's path from grill to ship; a job closes when its need is met.
+- **Grill** — the interview that designs one spec of a job before anything is
+  built.
 - **Spec issue** — the grill's output: one tracker issue (`/to-spec`) sliced
   into sub-issues.
