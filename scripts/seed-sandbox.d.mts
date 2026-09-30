@@ -25,5 +25,7 @@ export const MARKER_FILE: string;
 
 export function writeSmokeMarker(
   sandboxDir: string,
-  marker: { launcherPid: number },
+  marker: { launcherPid: number; startedAt: string | null },
 ): void;
+
+export function processStartOf(pid: number): string | null;

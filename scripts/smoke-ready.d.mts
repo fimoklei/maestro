@@ -13,6 +13,7 @@ export function waitForCockpit(input: {
 
 export interface SmokeMarker {
   launcherPid: number;
+  startedAt: string;
 }
 
 /** Null when the sandbox holds no marker worth trusting. */
@@ -32,6 +33,7 @@ export function identifySmokeInstance(input: {
   marker: SmokeMarker | null;
   holders: PortHolders[];
   parentOf: (pid: number) => number | null;
+  startOf: (pid: number) => string | null;
 }): IdentityDecision;
 
 export interface SeedReport {

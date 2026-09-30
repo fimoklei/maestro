@@ -42,12 +42,25 @@ function seedGitCredentials(home, githubToken) {
 
 export const MARKER_FILE = "smoke.json";
 
-/** Records which launcher owns this sandbox, so a later step can verify it. */
-export function writeSmokeMarker(sandboxDir, { launcherPid }) {
+/** Records which launcher owns this sandbox; the start time tells a reused pid from the launcher. */
+export function writeSmokeMarker(sandboxDir, { launcherPid, startedAt }) {
   writeFileSync(
     join(sandboxDir, MARKER_FILE),
-    `${JSON.stringify({ launcherPid })}\n`,
+    `${JSON.stringify({ launcherPid, startedAt })}\n`,
   );
+}
+
+/** When the process started, as `ps` prints it; null when it is gone or unreadable. */
+export function processStartOf(pid) {
+  try {
+    const started = execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return started === "" ? null : started;
+  } catch {
+    return null;
+  }
 }
 
 /** Where seeding puts what the readiness step needs; `smoke-ready.mjs` reads it here. */

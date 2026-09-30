@@ -1,10 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { writeSmokeMarker } from "../../scripts/seed-sandbox.mjs";
+import { MARKER_FILE, writeSmokeMarker } from "../../scripts/seed-sandbox.mjs";
 import {
   identifySmokeInstance,
   readSmokeMarker,
@@ -338,7 +338,17 @@ describe("seedCockpit", () => {
 // Answering on the cockpit's ports does not make a server the smoke
 // instance: every listener must belong to the run whose pid the sandbox holds.
 describe("identifySmokeInstance", () => {
-  const marker = { launcherPid: 500 };
+  const marker = { launcherPid: 500, startedAt: "Wed Sep 30 20:00:00 2026" };
+  // The launcher is alive and started when the marker says, unless a test says otherwise.
+  const identify = (
+    input: Omit<Parameters<typeof identifySmokeInstance>[0], "startOf"> & {
+      startOf?: (pid: number) => string | null;
+    },
+  ) =>
+    identifySmokeInstance({
+      startOf: (pid) => (pid === 500 ? marker.startedAt : null),
+      ...input,
+    });
   const holders = (api: number[], web: number[]) => [
     { port: 3000, pids: api },
     { port: 5173, pids: web },
@@ -351,7 +361,7 @@ describe("identifySmokeInstance", () => {
   const foreignRun = { 900: 899, 901: 899, 899: 1 };
 
   it("accepts a cockpit whose listeners are all the launcher's", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: ours,
       parentOf: parentsFrom(launcherChildren),
@@ -363,7 +373,7 @@ describe("identifySmokeInstance", () => {
   // pnpm starts each workspace script in a process group of its own (#1295).
   it("accepts listeners that descend from the launcher in groups of their own", () => {
     // The API holder sits beneath its `tsx watch` parent; vite is a child.
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: holders([600], [700]),
       parentOf: parentsFrom({ 600: 601, 601: 500, 700: 500, 500: 1 }),
@@ -373,7 +383,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses when the sandbox holds no marker", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker: null,
       holders: ours,
       parentOf: parentsFrom(launcherChildren),
@@ -385,7 +395,7 @@ describe("identifySmokeInstance", () => {
 
   it("names the takeover when something else holds a port", () => {
     // Otherwise the hijack reads as "you forgot to start it" (#453).
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker: null,
       holders: ours,
       parentOf: parentsFrom(launcherChildren),
@@ -396,7 +406,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses a server belonging to another run", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: holders([900], [901]),
       parentOf: parentsFrom(foreignRun),
@@ -409,7 +419,7 @@ describe("identifySmokeInstance", () => {
   // The screenshot comes from the web port, so the API port alone proves
   // nothing (#453).
   it("refuses a foreign web listener even when the API port is ours", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: holders([501], [900]),
       parentOf: parentsFrom({ 501: 500, 500: 1, ...foreignRun }),
@@ -420,7 +430,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses when nothing holds the web port", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: holders([501], []),
       parentOf: parentsFrom(launcherChildren),
@@ -431,7 +441,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses when nothing holds the server port", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: holders([], [502]),
       parentOf: parentsFrom(launcherChildren),
@@ -442,7 +452,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses a second, foreign listener sharing a port", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: holders([501, 900], [502]),
       parentOf: parentsFrom({ 501: 500, 502: 500, 500: 1, ...foreignRun }),
@@ -453,7 +463,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses, rather than hangs on, a parent chain that loops", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: holders([900], [502]),
       parentOf: parentsFrom({ 900: 901, 901: 900, 502: 500 }),
@@ -465,7 +475,7 @@ describe("identifySmokeInstance", () => {
 
   it("refuses when a parent process cannot be read", () => {
     // Unknown ownership is not ownership: fail closed.
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: ours,
       parentOf: () => null,
@@ -475,7 +485,7 @@ describe("identifySmokeInstance", () => {
   });
 
   it("refuses when the chain breaks off above the listener", () => {
-    const decision = identifySmokeInstance({
+    const decision = identify({
       marker,
       holders: holders([600], [502]),
       parentOf: parentsFrom({ 600: 601, 502: 500, 500: 1 }),
@@ -483,6 +493,31 @@ describe("identifySmokeInstance", () => {
 
     expect(decision.ok).toBe(false);
     expect(decision.reason).toMatch(/pid 600\) could not be placed/);
+  });
+  // A crashed launcher leaves its marker behind; its pid may belong to anyone
+  // by the time `smoke:ready` runs (#1298).
+  it("refuses a marker whose launcher is gone", () => {
+    const decision = identify({
+      marker,
+      holders: ours,
+      parentOf: parentsFrom(launcherChildren),
+      startOf: () => null,
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/stale/i);
+  });
+
+  it("refuses a marker whose pid now belongs to a different process", () => {
+    const decision = identify({
+      marker,
+      holders: ours,
+      parentOf: parentsFrom(launcherChildren),
+      startOf: () => "Thu Oct  1 09:30:00 2026",
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/stale/i);
   });
 });
 
@@ -520,9 +555,12 @@ describe("the smoke marker on disk", () => {
   it("reads back what the launcher wrote", async () => {
     const sandbox = await mkdtemp(join(tmpdir(), "maestro-marker-"));
     try {
-      writeSmokeMarker(sandbox, { launcherPid: 4321 });
+      writeSmokeMarker(sandbox, { launcherPid: 4321, startedAt: "T0" });
 
-      expect(readSmokeMarker(sandbox)).toEqual({ launcherPid: 4321 });
+      expect(readSmokeMarker(sandbox)).toEqual({
+        launcherPid: 4321,
+        startedAt: "T0",
+      });
     } finally {
       await rm(sandbox, { recursive: true, force: true });
     }
@@ -532,7 +570,22 @@ describe("the smoke marker on disk", () => {
   it("distrusts a marker naming pid 1 as the launcher", async () => {
     const sandbox = await mkdtemp(join(tmpdir(), "maestro-marker-"));
     try {
-      writeSmokeMarker(sandbox, { launcherPid: 1 });
+      writeSmokeMarker(sandbox, { launcherPid: 1, startedAt: "T0" });
+
+      expect(readSmokeMarker(sandbox)).toBeNull();
+    } finally {
+      await rm(sandbox, { recursive: true, force: true });
+    }
+  });
+
+  // Older runs wrote the pid alone; nothing proves it still names the launcher.
+  it("distrusts a marker written without a start time", async () => {
+    const sandbox = await mkdtemp(join(tmpdir(), "maestro-marker-"));
+    try {
+      await writeFile(
+        join(sandbox, MARKER_FILE),
+        `${JSON.stringify({ launcherPid: 4321 })}\n`,
+      );
 
       expect(readSmokeMarker(sandbox)).toBeNull();
     } finally {

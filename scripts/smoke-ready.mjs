@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
 import { pidsOnPort } from "./port-holders.mjs";
-import { MARKER_FILE, seededPaths } from "./seed-sandbox.mjs";
+import { MARKER_FILE, processStartOf, seededPaths } from "./seed-sandbox.mjs";
 import { parseScenarioArg, seedScenarios } from "./smoke-scenarios.mjs";
 
 const PORTS = cockpitPorts();
@@ -132,7 +132,7 @@ function descendsFrom(pid, ancestor, parentOf) {
  * not identity: a stale sandbox plus a plain `pnpm dev` would seed the real
  * ~/.maestro. Every unknown refuses (#453).
  */
-export function identifySmokeInstance({ marker, holders, parentOf }) {
+export function identifySmokeInstance({ marker, holders, parentOf, startOf }) {
   if (marker === null) {
     const occupied = holders.find(({ pids }) => pids.length > 0);
     return {
@@ -142,6 +142,13 @@ export function identifySmokeInstance({ marker, holders, parentOf }) {
         : "the sandbox holds no smoke marker — this cockpit was not started by `pnpm smoke`",
     };
   }
+
+  // A crashed launcher leaves its marker; the pid may since belong to anyone (#1298).
+  if (startOf(marker.launcherPid) !== marker.startedAt)
+    return {
+      ok: false,
+      reason: `the smoke marker is stale: launcher pid ${marker.launcherPid} is gone or now belongs to another process — run \`pnpm smoke\` again`,
+    };
 
   for (const { port, pids } of holders) {
     if (pids.length === 0)
@@ -170,7 +177,10 @@ export function readSmokeMarker(sandboxDir) {
     const marker = JSON.parse(
       readFileSync(join(sandboxDir, MARKER_FILE), "utf8"),
     );
-    return Number.isInteger(marker?.launcherPid) && marker.launcherPid > 1
+    return Number.isInteger(marker?.launcherPid) &&
+      marker.launcherPid > 1 &&
+      typeof marker.startedAt === "string" &&
+      marker.startedAt !== ""
       ? marker
       : null;
   } catch {
@@ -227,6 +237,7 @@ function requireOwnership(repoRoot, label, refusal) {
     marker: readSmokeMarker(join(repoRoot, ".maestro-sandbox")),
     holders: cockpitHolders(),
     parentOf,
+    startOf: processStartOf,
   });
   if (identity.ok) return;
 
