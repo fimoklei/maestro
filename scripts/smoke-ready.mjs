@@ -110,12 +110,29 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
   return { primitiveCount, repoCount: registered?.repos?.length ?? 0 };
 }
 
+// Deeper than any launcher-to-listener chain; a lookup that loops runs out.
+const MAX_ANCESTRY = 32;
+
+/** True, false, or null when the chain could not be read to its end. */
+function descendsFrom(pid, ancestor, parentOf) {
+  let current = pid;
+  for (let depth = 0; depth < MAX_ANCESTRY; depth++) {
+    if (current === ancestor) return true;
+    if (current <= 1) return false;
+    const parent = parentOf(current);
+    if (parent === null) return null;
+    current = parent;
+  }
+  return null;
+}
+
 /**
- * Whether every cockpit listener is this sandbox's own smoke run. Answering is
+ * Whether every cockpit listener is this sandbox's own smoke run: a descendant
+ * of the launcher, whatever process group pnpm gave it (#1295). Answering is
  * not identity: a stale sandbox plus a plain `pnpm dev` would seed the real
  * ~/.maestro. Every unknown refuses (#453).
  */
-export function identifySmokeInstance({ marker, holders, processGroupOf }) {
+export function identifySmokeInstance({ marker, holders, parentOf }) {
   if (marker === null) {
     const occupied = holders.find(({ pids }) => pids.length > 0);
     return {
@@ -131,13 +148,13 @@ export function identifySmokeInstance({ marker, holders, processGroupOf }) {
       return { ok: false, reason: `nothing identifiable holds port ${port}` };
 
     for (const pid of pids) {
-      const group = processGroupOf(pid);
-      if (group === null)
+      const ours = descendsFrom(pid, marker.launcherPid, parentOf);
+      if (ours === null)
         return {
           ok: false,
           reason: `the process holding port ${port} (pid ${pid}) could not be placed`,
         };
-      if (group !== marker.launcherPid)
+      if (!ours)
         return {
           ok: false,
           reason: `port ${port} is held by pid ${pid}, which is not this smoke run (launcher ${marker.launcherPid})`,
@@ -153,7 +170,9 @@ export function readSmokeMarker(sandboxDir) {
     const marker = JSON.parse(
       readFileSync(join(sandboxDir, MARKER_FILE), "utf8"),
     );
-    return typeof marker?.launcherPid === "number" ? marker : null;
+    return Number.isInteger(marker?.launcherPid) && marker.launcherPid > 1
+      ? marker
+      : null;
   } catch {
     return null;
   }
@@ -164,14 +183,14 @@ function cockpitHolders() {
   return COCKPIT_PORTS.map((port) => ({ port, pids: pidsOnPort(port) ?? [] }));
 }
 
-function processGroupOf(pid) {
+function parentOf(pid) {
   try {
-    const group = Number(
-      execFileSync("ps", ["-o", "pgid=", "-p", String(pid)], {
+    const parent = Number(
+      execFileSync("ps", ["-o", "ppid=", "-p", String(pid)], {
         encoding: "utf8",
       }).trim(),
     );
-    return Number.isInteger(group) ? group : null;
+    return Number.isInteger(parent) ? parent : null;
   } catch {
     return null;
   }
@@ -207,7 +226,7 @@ function requireOwnership(repoRoot, label, refusal) {
   const identity = identifySmokeInstance({
     marker: readSmokeMarker(join(repoRoot, ".maestro-sandbox")),
     holders: cockpitHolders(),
-    processGroupOf,
+    parentOf,
   });
   if (identity.ok) return;
 

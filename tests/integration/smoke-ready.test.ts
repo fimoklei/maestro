@@ -344,22 +344,39 @@ describe("identifySmokeInstance", () => {
     { port: 5173, pids: web },
   ];
   const ours = holders([501], [502]);
+  // Each listener's parent; a pid missing from the table cannot be read.
+  const parentsFrom = (table: Record<number, number>) => (pid: number) =>
+    table[pid] ?? null;
+  const launcherChildren = { 501: 500, 502: 500, 500: 1 };
+  const foreignRun = { 900: 899, 901: 899, 899: 1 };
 
   it("accepts a cockpit whose listeners are all the launcher's", () => {
     const decision = identifySmokeInstance({
       marker,
       holders: ours,
-      processGroupOf: () => 500,
+      parentOf: parentsFrom(launcherChildren),
     });
 
     expect(decision.ok).toBe(true);
+  });
+
+  // pnpm starts each workspace script in a process group of its own (#1295).
+  it("accepts listeners that descend from the launcher in groups of their own", () => {
+    // The API holder sits beneath its `tsx watch` parent; vite is a child.
+    const decision = identifySmokeInstance({
+      marker,
+      holders: holders([600], [700]),
+      parentOf: parentsFrom({ 600: 601, 601: 500, 700: 500, 500: 1 }),
+    });
+
+    expect(decision).toEqual({ ok: true });
   });
 
   it("refuses when the sandbox holds no marker", () => {
     const decision = identifySmokeInstance({
       marker: null,
       holders: ours,
-      processGroupOf: () => 500,
+      parentOf: parentsFrom(launcherChildren),
     });
 
     expect(decision.ok).toBe(false);
@@ -371,7 +388,7 @@ describe("identifySmokeInstance", () => {
     const decision = identifySmokeInstance({
       marker: null,
       holders: ours,
-      processGroupOf: () => 500,
+      parentOf: parentsFrom(launcherChildren),
     });
 
     expect(decision.reason).toMatch(/pid 501/);
@@ -382,7 +399,7 @@ describe("identifySmokeInstance", () => {
     const decision = identifySmokeInstance({
       marker,
       holders: holders([900], [901]),
-      processGroupOf: () => 899,
+      parentOf: parentsFrom(foreignRun),
     });
 
     expect(decision.ok).toBe(false);
@@ -395,7 +412,7 @@ describe("identifySmokeInstance", () => {
     const decision = identifySmokeInstance({
       marker,
       holders: holders([501], [900]),
-      processGroupOf: (pid) => (pid === 501 ? 500 : 899),
+      parentOf: parentsFrom({ 501: 500, 500: 1, ...foreignRun }),
     });
 
     expect(decision.ok).toBe(false);
@@ -406,7 +423,7 @@ describe("identifySmokeInstance", () => {
     const decision = identifySmokeInstance({
       marker,
       holders: holders([501], []),
-      processGroupOf: () => 500,
+      parentOf: parentsFrom(launcherChildren),
     });
 
     expect(decision.ok).toBe(false);
@@ -417,7 +434,7 @@ describe("identifySmokeInstance", () => {
     const decision = identifySmokeInstance({
       marker,
       holders: holders([], [502]),
-      processGroupOf: () => 500,
+      parentOf: parentsFrom(launcherChildren),
     });
 
     expect(decision.ok).toBe(false);
@@ -428,22 +445,44 @@ describe("identifySmokeInstance", () => {
     const decision = identifySmokeInstance({
       marker,
       holders: holders([501, 900], [502]),
-      processGroupOf: (pid) => (pid === 900 ? 899 : 500),
+      parentOf: parentsFrom({ 501: 500, 502: 500, 500: 1, ...foreignRun }),
     });
 
     expect(decision.ok).toBe(false);
     expect(decision.reason).toMatch(/pid 900/);
   });
 
-  it("refuses when the process group cannot be read", () => {
+  it("refuses, rather than hangs on, a parent chain that loops", () => {
+    const decision = identifySmokeInstance({
+      marker,
+      holders: holders([900], [502]),
+      parentOf: parentsFrom({ 900: 901, 901: 900, 502: 500 }),
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/pid 900\) could not be placed/);
+  });
+
+  it("refuses when a parent process cannot be read", () => {
     // Unknown ownership is not ownership: fail closed.
     const decision = identifySmokeInstance({
       marker,
       holders: ours,
-      processGroupOf: () => null,
+      parentOf: () => null,
     });
 
     expect(decision.ok).toBe(false);
+  });
+
+  it("refuses when the chain breaks off above the listener", () => {
+    const decision = identifySmokeInstance({
+      marker,
+      holders: holders([600], [502]),
+      parentOf: parentsFrom({ 600: 601, 502: 500, 500: 1 }),
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/pid 600\) could not be placed/);
   });
 });
 
@@ -484,6 +523,18 @@ describe("the smoke marker on disk", () => {
       writeSmokeMarker(sandbox, { launcherPid: 4321 });
 
       expect(readSmokeMarker(sandbox)).toEqual({ launcherPid: 4321 });
+    } finally {
+      await rm(sandbox, { recursive: true, force: true });
+    }
+  });
+
+  // Every process descends from pid 1, so such a marker would vouch for anyone.
+  it("distrusts a marker naming pid 1 as the launcher", async () => {
+    const sandbox = await mkdtemp(join(tmpdir(), "maestro-marker-"));
+    try {
+      writeSmokeMarker(sandbox, { launcherPid: 1 });
+
+      expect(readSmokeMarker(sandbox)).toBeNull();
     } finally {
       await rm(sandbox, { recursive: true, force: true });
     }
