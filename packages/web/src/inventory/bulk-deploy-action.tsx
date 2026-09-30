@@ -119,9 +119,8 @@ export function BulkDeployRun({
     isGlobal,
     targetLabel: chosenLabel,
     target,
-    globalTools: globalDeployState.data?.tools,
-    repoPrimitives: repoDeployState.data?.primitives,
-    repoReleaseHead: repoDeployState.data?.releaseHead,
+    globalState: globalDeployState.data,
+    repoRead: repoDeployState,
     drift,
   });
 
