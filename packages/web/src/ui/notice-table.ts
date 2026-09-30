@@ -1,5 +1,10 @@
 import { HttpError } from "../api/http";
-import type { NoticeAction, NoticeContent, NoticeLevel } from "./notice";
+import type {
+  NoticeAction,
+  NoticeContent,
+  NoticeCopy,
+  NoticeLevel,
+} from "./notice";
 
 // A row carries its own sentence: the server sends only the code and status.
 // A warning is written at its call site, never in a table.
@@ -14,13 +19,6 @@ type TableRow = {
 export type NoticeTable<TCode extends string> = Record<TCode, TableRow>;
 
 export type NoticeExtras = { action?: NoticeAction; detail?: string };
-
-/** The caller's own words for a failure no row in its table covers. */
-export type NoticeFallback = {
-  label: string;
-  message: string;
-  detail?: string;
-};
 
 /** The server's own notice for a request that never matched the route's shape. */
 export function requestShapeNotice(error: unknown): NoticeContent | null {
@@ -40,7 +38,8 @@ export function requestShapeNotice(error: unknown): NoticeContent | null {
 export function noticeFromTable<TCode extends string>(
   table: NoticeTable<TCode>,
   error: unknown,
-  fallback: NoticeFallback,
+  /** The caller's own words for a failure no row in its table covers. */
+  fallback: NoticeCopy,
   extras: NoticeExtras = {},
 ): NoticeContent | null {
   if (!error) {
