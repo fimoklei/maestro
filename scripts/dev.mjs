@@ -23,7 +23,11 @@ import {
   partitionHolders,
   processWorktree,
 } from "./port-holders.mjs";
-import { seedSandbox, writeSmokeMarker } from "./seed-sandbox.mjs";
+import {
+  processStartOf,
+  seedSandbox,
+  writeSmokeMarker,
+} from "./seed-sandbox.mjs";
 import { scenarioPaths } from "./smoke-scenarios.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -241,7 +245,11 @@ console.log(
 );
 
 // `pnpm smoke:ready` compares against this pid: answering on the ports is not proof.
-if (smoke) writeSmokeMarker(sandbox, { launcherPid: child.pid });
+if (smoke)
+  writeSmokeMarker(sandbox, {
+    launcherPid: child.pid,
+    startedAt: processStartOf(child.pid),
+  });
 
 function teardownSandbox() {
   if (!smoke) return;
