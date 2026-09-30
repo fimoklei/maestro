@@ -2,14 +2,11 @@
 // separately, so present-on-Claude-missing-on-Codex must not read as clean
 // (#292). Still-loading stays "pending", so a skill is attempted, not assumed clean.
 
-import { toolPresentation } from "../deploy-state/tool-presentation";
-import type {
-  DeployedPrimitive,
-  ReleaseHead,
-} from "../deploy-state/use-deploy-state";
-import type { ToolDeployState } from "../deploy-state/use-global-deploy-state";
+import type { DeployStateRead } from "../deploy-state/deployed-view";
+import type { GlobalDeployStateView } from "../deploy-state/use-global-deploy-state";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "./deployed-rollup";
+import { globalToolTargets, repoTarget } from "./deployment-target-rows";
 import type { DeployTarget } from "./use-deploy-skill";
 
 export function chosenBulkDeployTargets(params: {
@@ -17,25 +14,16 @@ export function chosenBulkDeployTargets(params: {
   targetLabel: string;
   // What a write would name. Every row here belongs to the one chosen target.
   target: DeployTarget;
-  globalTools: ToolDeployState[] | undefined;
+  globalState: Pick<GlobalDeployStateView, "tools" | "skipped"> | undefined;
   // Ignored when isGlobal is true.
-  repoPrimitives: DeployedPrimitive[] | undefined;
-  /** The repo's Release head, which the plan reads first (#956). */
-  repoReleaseHead?: ReleaseHead;
+  repoRead: DeployStateRead;
   drift: DriftViewModel;
 }): DeploymentTarget[] {
-  const {
-    isGlobal,
-    targetLabel,
-    target,
-    globalTools,
-    repoPrimitives,
-    repoReleaseHead,
-    drift,
-  } = params;
+  const { isGlobal, targetLabel, target, globalState, repoRead, drift } =
+    params;
 
   if (isGlobal) {
-    if (globalTools === undefined) {
+    if (globalState === undefined) {
       return [
         {
           label: targetLabel,
@@ -46,40 +34,8 @@ export function chosenBulkDeployTargets(params: {
         },
       ];
     }
-    return globalTools.map((tool) => {
-      const names = tool.primitives.map((primitive) => primitive.name);
-      return {
-        label: toolPresentation(tool.tool).label,
-        target,
-        deployed: {
-          status: "ready" as const,
-          names,
-          skippedCount: 0,
-          attentionCount: 0,
-        },
-        primitives: tool.primitives,
-        drift: drift.forTool(names),
-        ...(tool.releaseHead ? { releaseHead: tool.releaseHead } : {}),
-      };
-    });
+    return globalToolTargets(globalState, drift);
   }
 
-  return [
-    {
-      label: targetLabel,
-      target,
-      deployed:
-        repoPrimitives === undefined
-          ? { status: "pending" }
-          : {
-              status: "ready",
-              names: repoPrimitives.map((primitive) => primitive.name),
-              skippedCount: 0,
-              attentionCount: 0,
-            },
-      primitives: repoPrimitives ?? [],
-      drift,
-      ...(repoReleaseHead ? { releaseHead: repoReleaseHead } : {}),
-    },
-  ];
+  return [repoTarget({ label: targetLabel, target, read: repoRead, drift })];
 }
