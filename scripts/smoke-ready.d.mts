@@ -31,7 +31,7 @@ export interface PortHolders {
 export function identifySmokeInstance(input: {
   marker: SmokeMarker | null;
   holders: PortHolders[];
-  processGroupOf: (pid: number) => number | null;
+  parentOf: (pid: number) => number | null;
 }): IdentityDecision;
 
 export interface SeedReport {
