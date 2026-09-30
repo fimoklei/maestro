@@ -6,7 +6,7 @@ skills, hooks and MCP servers — across repos and tools, built on top of
 above it (ADR-0001).
 
 This file is the entrypoint for every agent; Claude Code reads it through
-`CLAUDE.md`. How the product is run — the board, the loop, the conflict rule —
+`CLAUDE.md`. How the product is run — the jobs, the loop, the conflict rule —
 lives in `docs/operating-model.md`.
 
 ## Hard Rules
@@ -18,7 +18,7 @@ lives in `docs/operating-model.md`.
   job — not a bigger one.
 - **Never reimplement APM.** Drive it; read its lockfiles. Install, sync,
   pinning, lockfiles, and multi-tool targeting are APM's.
-- **Build new capabilities only through jobs on the board** (`docs/jobs.md`),
+- **Build new capabilities only through a job issue** (label `job`),
   as `docs/operating-model.md` describes; improving what already exists needs
   only a tracker issue.
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
@@ -79,9 +79,8 @@ Read the file before starting the task.
 
 ## Workflow
 
-- Starting a grill, picking the next job, creating a spec issue, or shipping
-  work that closes one → the `jobs` skill; the board's Legend (`docs/jobs.md`)
-  holds the transition rules.
+- Starting a grill, picking the next job, creating a spec issue, or closing a
+  job → the `jobs` skill; the Legend in `docs/jobs.md` holds the rules.
 - Committing → `workflow-commit`. Shipping → `workflow-ship`.
 - Issues live in GitHub Issues for `fimoklei/maestro`, via `gh`; external PRs
   are not a triage surface. Before publishing a ticket →
