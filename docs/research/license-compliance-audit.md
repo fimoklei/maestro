@@ -25,6 +25,10 @@ redistribution:
 One licence needs a decision: **Agentation** (`agentation@3.0.2`) is not open
 source. It carries a noncompete clause, and end users run it too.
 
+**Resolved 2026-09-30.** #1297 carries the Octicons MIT text; #1300 loads
+agentation only when a maintainer sets `VITE_AGENTATION=1`; the seven tooling
+files moved out of the repo into the maintainer's `~/.claude`.
+
 ## How Maestro is distributed
 
 - **Source only.** Every `package.json` is `"private": true`, so nothing
