@@ -56,7 +56,8 @@ Valid jobs, deliberately not being done.
 ## Legend (the rules)
 
 - **Tracker:** GitHub Issues for `fimoklei/maestro`, via `gh`.
-- **A job** is an issue labelled `job` and one or two `theme:*` labels. Title:
+- **A job** is an issue labelled `job`, `roadmap` and one or two `theme:*`
+  labels. Title:
   a short verb phrase from the user's side. Body: a **job story** — *When
   [situation], I want to [motivation], so I can [outcome].*
 - **Lanes:** LATER is an open job with no lane label. `job:next` marks the job
