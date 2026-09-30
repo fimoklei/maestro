@@ -42,6 +42,12 @@ storybook-static/
 .agents/skills/impeccable
 .claude/skills/impeccable
 .claude/skills/codex-review
+.agents/skills/agent-browser
+.agents/skills/agentation
+.claude/skills/agent-browser
+.claude/skills/agentation
+.claude/agents/impeccable-*.md
+skills-lock.json
 
 # Throwaway design canvases (issue #827 and later). The canvas lives as a
 # published Artifact; these working files are re-seeded from it when needed.
