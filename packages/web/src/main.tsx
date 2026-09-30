@@ -1,11 +1,17 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Agentation } from "agentation";
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { createQueryClient } from "./api/query-client";
 import { App } from "./app";
 // The token layer; index.html stamps data-theme on <html> before first paint.
 import "./styles/theme.css";
+
+// A maintainer's opt-in, never on for users: every user runs `pnpm dev`, and
+// agentation's licence is not open source.
+const Agentation =
+  import.meta.env.VITE_AGENTATION === "1"
+    ? lazy(() => import("agentation").then((m) => ({ default: m.Agentation })))
+    : null;
 
 const root = document.getElementById("root");
 if (!root) {
@@ -18,10 +24,13 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
-      {/* Dev only (bundler drops this branch in prod). Omitting `endpoint`
-          silently degrades to localStorage-only, no agent ever sees it
-          (agentation@3.0.2, `endpoint` prop). */}
-      {import.meta.env.DEV && <Agentation endpoint="http://localhost:4747" />}
+      {Agentation && (
+        <Suspense fallback={null}>
+          {/* Omitting `endpoint` silently degrades to localStorage-only, no
+              agent ever sees it (agentation@3.0.2, `endpoint` prop). */}
+          <Agentation endpoint="http://localhost:4747" />
+        </Suspense>
+      )}
     </QueryClientProvider>
   </StrictMode>,
 );
