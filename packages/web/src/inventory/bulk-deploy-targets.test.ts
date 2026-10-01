@@ -15,8 +15,8 @@ describe("chosenBulkDeployTargets", () => {
       isGlobal: true,
       target: { kind: "global" },
       targetLabel: "Global",
-      globalTools: undefined,
-      repoPrimitives: undefined,
+      globalState: undefined,
+      repoRead: { data: undefined, isError: false },
       drift: d,
     });
 
@@ -36,14 +36,17 @@ describe("chosenBulkDeployTargets", () => {
       isGlobal: true,
       target: { kind: "global" },
       targetLabel: "Global",
-      globalTools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
-        },
-        { tool: "codex", primitives: [] },
-      ],
-      repoPrimitives: undefined,
+      globalState: {
+        tools: [
+          {
+            tool: "claude",
+            primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+          },
+          { tool: "codex", primitives: [] },
+        ],
+        skipped: [],
+      },
+      repoRead: { data: undefined, isError: false },
       drift: drift(),
     });
 
@@ -71,13 +74,16 @@ describe("chosenBulkDeployTargets", () => {
       isGlobal: true,
       target: { kind: "global" },
       targetLabel: "Global",
-      globalTools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
-        },
-      ],
-      repoPrimitives: undefined,
+      globalState: {
+        tools: [
+          {
+            tool: "claude",
+            primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+          },
+        ],
+        skipped: [],
+      },
+      repoRead: { data: undefined, isError: false },
       drift: drift([
         { name: "tdd", current: "v1.0.0", latest: "v1.2.0", reading: "behind" },
       ]),
@@ -94,8 +100,8 @@ describe("chosenBulkDeployTargets", () => {
       isGlobal: false,
       target: { kind: "repo", repoPath: "/dev/acme-web" },
       targetLabel: "/repo",
-      globalTools: undefined,
-      repoPrimitives: undefined,
+      globalState: undefined,
+      repoRead: { data: undefined, isError: false },
       drift: d,
     });
 
@@ -124,17 +130,22 @@ describe("chosenBulkDeployTargets", () => {
       isGlobal: true,
       target: { kind: "global" },
       targetLabel: "Global",
-      globalTools: [{ tool: "claude", primitives: [], releaseHead: head }],
-      repoPrimitives: undefined,
+      globalState: {
+        tools: [{ tool: "claude", primitives: [], releaseHead: head }],
+        skipped: [],
+      },
+      repoRead: { data: undefined, isError: false },
       drift: drift(),
     });
     const repo = chosenBulkDeployTargets({
       isGlobal: false,
       target: { kind: "repo", repoPath: "/dev/acme-web" },
       targetLabel: "/repo",
-      globalTools: undefined,
-      repoPrimitives: [],
-      repoReleaseHead: head,
+      globalState: undefined,
+      repoRead: {
+        data: { primitives: [], skipped: [], releaseHead: head },
+        isError: false,
+      },
       drift: drift(),
     });
 
@@ -149,8 +160,14 @@ describe("chosenBulkDeployTargets", () => {
       isGlobal: false,
       target: { kind: "repo", repoPath: "/dev/acme-web" },
       targetLabel: "/repo",
-      globalTools: undefined,
-      repoPrimitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+      globalState: undefined,
+      repoRead: {
+        data: {
+          primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+          skipped: [],
+        },
+        isError: false,
+      },
       drift: d,
     });
 
@@ -168,5 +185,40 @@ describe("chosenBulkDeployTargets", () => {
         drift: d,
       },
     ]);
+  });
+
+  // The bar and the table read the same global state, so they report the same
+  // attention count for the same target (#792).
+  it("carries the attention count the table shows", () => {
+    const unmanageable = {
+      reason: "unmanageable-skill" as const,
+      virtualPath: "skills/tdd",
+      packageType: "claude_skill",
+    };
+    const global = chosenBulkDeployTargets({
+      isGlobal: true,
+      target: { kind: "global" },
+      targetLabel: "Global",
+      globalState: {
+        tools: [{ tool: "claude", primitives: [] }],
+        skipped: [unmanageable],
+      },
+      repoRead: { data: undefined, isError: false },
+      drift: drift(),
+    });
+    const repo = chosenBulkDeployTargets({
+      isGlobal: false,
+      target: { kind: "repo", repoPath: "/dev/acme-web" },
+      targetLabel: "/repo",
+      globalState: undefined,
+      repoRead: {
+        data: { primitives: [], skipped: [unmanageable] },
+        isError: false,
+      },
+      drift: drift(),
+    });
+
+    expect(global[0]?.deployed).toMatchObject({ attentionCount: 1 });
+    expect(repo[0]?.deployed).toMatchObject({ attentionCount: 1 });
   });
 });

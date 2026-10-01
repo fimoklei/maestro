@@ -1,7 +1,11 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import { skippedNeedsAttention } from "./skipped-entry-text";
-import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
+import type {
+  DeployedPrimitive,
+  ReleaseHead,
+  SkippedEntry,
+} from "./use-deploy-state";
 
 // Pending/unknown must stay distinct from confirmed-empty, or the drift roll-up
 // reads "in sync" while a real behind entry is hidden.
@@ -15,31 +19,16 @@ export type DeployedView =
       attentionCount: number;
     };
 
-// Pass `read` only when the caller renders stale rows after a failed refetch, so
-// that case maps to "unknown", not a false "ready".
-export function toolDeployedView(
-  names: string[],
-  read?: { data: unknown; isError: boolean },
-  attentionCount = 0,
-): DeployedView {
-  if (read?.isError) {
-    return { status: "unknown" };
-  }
-  if (read !== undefined && read.data === undefined) {
-    return { status: "pending" };
-  }
-  return { status: "ready", names, skippedCount: 0, attentionCount };
-}
-
 export function globalToolView(
   names: string[],
   skipped: readonly SkippedEntry[],
 ): DeployedView {
-  return toolDeployedView(
+  return {
+    status: "ready",
     names,
-    undefined,
-    skipped.filter(skippedNeedsAttention).length,
-  );
+    skippedCount: 0,
+    attentionCount: skipped.filter(skippedNeedsAttention).length,
+  };
 }
 
 // The one place that upgrades a confirmed "empty" to "foreign", so the sidebar
@@ -53,15 +42,16 @@ export function withOtherOrigins(
     : indicator;
 }
 
-export function toDeployedView(
-  deployState: Pick<
-    UseQueryResult<{
-      primitives: DeployedPrimitive[];
-      skipped: SkippedEntry[];
-    }>,
-    "data" | "isError"
-  >,
-): DeployedView {
+export type DeployStateRead = Pick<
+  UseQueryResult<{
+    primitives: DeployedPrimitive[];
+    skipped: SkippedEntry[];
+    releaseHead?: ReleaseHead;
+  }>,
+  "data" | "isError"
+>;
+
+export function toDeployedView(deployState: DeployStateRead): DeployedView {
   if (deployState.isError) {
     return { status: "unknown" };
   }

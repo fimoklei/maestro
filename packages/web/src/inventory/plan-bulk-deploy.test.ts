@@ -225,4 +225,22 @@ describe("planBulkDeploy", () => {
 
     expect(Object.keys(plan).sort()).toEqual(["skippedClean", "toDeploy"]);
   });
+
+  // Attention colours a target's reading; it never decides what a run deploys (#792).
+  it("plans the same with an attention count on the target", () => {
+    const clean = target("Claude Code", ["tdd"], []);
+    const flagged: DeploymentTarget = {
+      ...clean,
+      deployed: {
+        status: "ready",
+        names: ["tdd"],
+        skippedCount: 1,
+        attentionCount: 1,
+      },
+    };
+
+    expect(planBulkDeploy(["tdd", "lint"], [flagged])).toEqual(
+      planBulkDeploy(["tdd", "lint"], [clean]),
+    );
+  });
 });
