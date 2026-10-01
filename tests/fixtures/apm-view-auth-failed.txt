@@ -5,8 +5,9 @@ No token available.
 Set GITHUB_APM_PAT or GITHUB_TOKEN, or run 'gh auth login'.
 If packages span multiple organizations, set per-org tokens: 
 GITHUB_APM_PAT_FIMOKLEI
-Run with --verbose for detailed auth diagnostics. Last error: Cmd('git') failed 
-due to: exit code(128)
-  cmdline: git ls-remote --tags --heads 
+Run with --verbose for detailed auth diagnostics. Last error: 
+Cmd('/usr/bin/git') failed due to: exit code(128)
+  cmdline: /usr/bin/git ls-remote --tags --heads 
 https://github.com/fimoklei/agent-harness.git
-  stderr: 'fatal: unable to get password from user'
+  stderr: 'fatal: unable to get password *** user
+'

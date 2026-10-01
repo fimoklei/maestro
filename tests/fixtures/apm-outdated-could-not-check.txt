@@ -5,4 +5,4 @@
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
 │ fimoklei/agent-harness/skills/tdd │ v0.5.0     │ -          │ unknown      │                      │
 └───────────────────────────────────┴────────────┴────────────┴──────────────┴──────────────────────┘
-[i] Some dependencies could not be checked (branch/commit refs)
+[i] Some dependencies could not be checked

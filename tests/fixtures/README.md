@@ -14,6 +14,19 @@ when you audit one:
   what the existing file already held, so nothing was written. Git still shows
   the older capture date. Two fixtures are in this state, marked ✓= below.
 
+**0.32.0 re-run, 2026-10-01.** Re-captured: `apm-install-ok`,
+`apm-outdated-could-not-check`, `apm-view-auth-failed`, `apm-uninstall-ok`,
+`apm-uninstall-global-ok`, `apm-uninstall-retained`. Verified unchanged:
+`apm-outdated-global`, `apm-outdated-global-uptodate`, `apm-uninstall-dry-run`,
+`apm-uninstall-not-found`, `apm-view-versions`, `apm-targets-claude.json`, and
+`apm-update-noop` (same two lines). Not overwritten: `apm-install-no-changes`
+(the no-op marker is unchanged, but the re-run was throttled),
+`apm-install-probes-failed` and `apm-install-symlink-refused` (differ only in
+wrapping and sandbox paths). Not re-run: every `apm-spike-*` fixture and the
+lockfiles — the `apm-spike-833` repository is gone; the root-package canary
+covers those contracts on 0.32.0. A 0.32.0 lockfile lacks `generated_at` and
+adds no other key.
+
 What the outputs *mean* lives in `docs/apm-behavior.md`; this file only
 records how they were taken.
 
