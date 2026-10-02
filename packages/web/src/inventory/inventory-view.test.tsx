@@ -1,9 +1,9 @@
+import type { ReadDriftEntry } from "@maestro/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import type { ReadDriftEntry } from "../drift/use-drift";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";

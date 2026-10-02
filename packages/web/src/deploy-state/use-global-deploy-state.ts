@@ -1,6 +1,4 @@
 // Exposes both the per-tool `tools` grouping and a flattened `primitives` list.
-import { useQuery } from "@tanstack/react-query";
-import { requestJson } from "../api/http";
 import type {
   DeployedPrimitive,
   GitHubPage,
@@ -8,7 +6,9 @@ import type {
   PinnedPerSkill,
   ReleaseHead,
   SkippedEntry,
-} from "./use-deploy-state";
+} from "@maestro/core";
+import { useQuery } from "@tanstack/react-query";
+import { requestJson } from "../api/http";
 
 export type ToolDeployState = {
   tool: string;

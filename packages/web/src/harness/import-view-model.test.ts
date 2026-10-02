@@ -1,3 +1,4 @@
+import type { ImportCheck } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   advisoryNotice,
@@ -6,7 +7,6 @@ import {
   nameBlockerNotice,
   sourceBlockerNotice,
 } from "./import-view-model";
-import type { ImportCheck } from "./use-harness";
 
 const clean: ImportCheck = {
   mode: "add",

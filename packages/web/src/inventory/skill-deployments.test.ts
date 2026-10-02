@@ -1,6 +1,6 @@
+import type { ReadDriftEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import type { ReadDriftEntry } from "../drift/use-drift";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { skillDeployments } from "./skill-deployments";
 

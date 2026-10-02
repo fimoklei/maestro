@@ -1,4 +1,10 @@
 // Every word a target's Release, Status hover card and pane state. Clock-injected.
+import type {
+  DeployedPrimitive,
+  PendingOperation,
+  PinnedPerSkill,
+  ReleaseHead,
+} from "@maestro/core";
 import { ago } from "../harness/harness-view-model";
 import { joinNames } from "./join-names";
 import {
@@ -7,12 +13,6 @@ import {
   UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
 } from "./update-target-copy";
-import type {
-  DeployedPrimitive,
-  PendingOperation,
-  PinnedPerSkill,
-  ReleaseHead,
-} from "./use-deploy-state";
 
 export function releaseSentence(head: ReleaseHead): string | null {
   if (head.latestRelease === null) {

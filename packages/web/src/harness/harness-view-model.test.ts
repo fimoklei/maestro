@@ -1,3 +1,4 @@
+import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   freshnessLabel,
@@ -6,7 +7,6 @@ import {
   releaseEnabled,
   stageSections,
 } from "./harness-view-model";
-import type { HarnessStageRow, HarnessState } from "./use-harness";
 
 const NOW = new Date("2026-08-03T12:00:00.000Z");
 

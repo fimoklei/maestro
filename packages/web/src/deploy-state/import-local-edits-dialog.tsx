@@ -1,3 +1,4 @@
+import type { LocalEditsSkill } from "@maestro/core";
 import {
   type MouseEvent,
   type ReactNode,
@@ -29,7 +30,6 @@ import {
   undoesNewerLegend,
   undoesNewerLine,
 } from "./import-local-edits-copy";
-import type { LocalEditsSkill } from "./use-import-local-edits";
 
 // The checklist and the Report that replaces it when any skill was refused.
 // Presentational: the host owns the check, the checks and the request.

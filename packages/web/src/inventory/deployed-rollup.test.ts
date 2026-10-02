@@ -1,6 +1,7 @@
+import type { ReadDriftEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import type { DriftResponse, ReadDriftEntry } from "../drift/use-drift";
+import type { DriftResponse } from "../drift/use-drift";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 
 const ranDrift = (behind: ReadDriftEntry[]) =>

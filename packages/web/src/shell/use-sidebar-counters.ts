@@ -1,14 +1,15 @@
 // Nothing shows before every read answered, `?` where one failed, and nothing
 // at zero (#1115).
-import { useQueries } from "@tanstack/react-query";
-import { isBehind, isGlobalBehind } from "../deploy-state/target-rows";
 import type {
+  HarnessState,
   PendingOperation,
   ReleaseHead,
-} from "../deploy-state/use-deploy-state";
+} from "@maestro/core";
+import { useQueries } from "@tanstack/react-query";
+import { isBehind, isGlobalBehind } from "../deploy-state/target-rows";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
-import { type HarnessState, useHarness } from "../harness/use-harness";
+import { useHarness } from "../harness/use-harness";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { useRegistry } from "../registry/use-registry";
 import { behindCount, UNKNOWN_COUNT } from "./sidebar-copy";

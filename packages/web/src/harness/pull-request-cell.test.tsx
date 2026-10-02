@@ -1,8 +1,8 @@
+import type { HarnessStageRow } from "@maestro/core";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PullRequestCell } from "./pull-request-cell";
 import { pullRequest } from "./stage-row-fixture";
-import type { HarnessStageRow } from "./use-harness";
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-review",

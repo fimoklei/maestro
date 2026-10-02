@@ -1,6 +1,6 @@
+import type { ReleasePlan } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ReleaseDialog } from "./release-dialog";
-import type { ReleasePlan } from "./use-harness";
 
 const PLAN: ReleasePlan = {
   delta: [

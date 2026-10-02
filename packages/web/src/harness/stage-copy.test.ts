@@ -1,3 +1,4 @@
+import type { HarnessStage, HarnessStageRow, StageStatus } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   alsoInWords,
@@ -14,7 +15,6 @@ import {
   statusReading,
 } from "./stage-copy";
 import { pullRequest } from "./stage-row-fixture";
-import type { HarnessStage, HarnessStageRow, StageStatus } from "./use-harness";
 
 const row = (
   stage: HarnessStage,
