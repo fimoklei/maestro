@@ -1,6 +1,6 @@
 // A repository's own page on GitHub, for the cockpit's GitHub column (#1126).
 import { parseGitOrigin } from "../deploy/git-origin";
-import { readConfiguredGitOrigin } from "../deploy/git-origin-url";
+import { readConfiguredGitOrigin } from "./configured-origin";
 
 // Absent where there is no page; `unknown` where the origin read failed, which
 // the column shows as its own Unknown badge (design.md → Status).

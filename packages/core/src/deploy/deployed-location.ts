@@ -1,6 +1,5 @@
 import { join } from "node:path";
-import { resolveApmGlobalRoot } from "../deploy-state/resolve-apm-global-root";
-import { resolveHomeDirectory } from "../home-directory";
+import { resolveApmGlobalRoot, resolveHomeDirectory } from "../home-directory";
 import type { DeployTarget } from "./deploy-skill";
 
 // A global install splits lockfile from tree: the lockfile lives under ~/.apm
