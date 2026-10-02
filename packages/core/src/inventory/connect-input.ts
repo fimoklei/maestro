@@ -1,6 +1,5 @@
 // Decided offline: a GitHub origin is a clone, a non-remote is a local path,
 // and any other remote is refused before a network call.
-import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 
 export type ConnectInputError = "not-a-github-url" | "url-carries-credentials";
@@ -51,6 +50,3 @@ export const classifyConnectInput = (input: string): ConnectInputRoute => {
     ownerRepo: origin.ownerRepo,
   };
 };
-
-export const cloneDestination = (parent: string, repoName: string): string =>
-  join(parent, repoName);

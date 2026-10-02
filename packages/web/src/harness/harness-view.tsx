@@ -1,4 +1,4 @@
-import type { GitHubPage } from "@maestro/core";
+import type { GitHubPage, ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput, RefreshCw } from "lucide-react";
 import {
   type RefObject,
@@ -44,7 +44,6 @@ import {
 import { rowItems } from "./row-actions";
 import { JOURNEY_EMPTY, statusReading } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
-import type { ReleasePlan, SemverStep } from "./use-harness";
 import {
   useDiscardReleasePlan,
   useHarness,

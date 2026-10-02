@@ -2,9 +2,9 @@
 // inferred from absence: it takes a confirmation (#580).
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
+import { isValidSkillSlug } from "../deploy/package-ref";
 import { type HarnessReviewPort, matchesProposal } from "./harness-review-port";
 import {
-  isPromotableSkillName,
   PROPOSAL_BODY,
   promoteBranch,
   promoteCompareUrl,
@@ -54,7 +54,7 @@ export class PromoteSkillDeletion {
     seenRemoteTree: string,
     at: Date,
   ): Promise<PromoteDeletionResult> {
-    if (!isPromotableSkillName(name)) {
+    if (!isValidSkillSlug(name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();

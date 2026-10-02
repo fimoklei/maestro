@@ -1,3 +1,11 @@
+import type {
+  DeployedPrimitive,
+  GitHubPage,
+  PendingOperation,
+  PinnedPerSkill,
+  ReleaseHead,
+  SkippedEntry,
+} from "@maestro/core";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { targetLabel } from "../shell/target-label";
@@ -28,14 +36,6 @@ import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { skippedEntryText, skippedNeedsAttention } from "./skipped-entry-text";
 import { targetStatus } from "./target-status";
 import { toolNameList, toolPresentation } from "./tool-presentation";
-import type {
-  DeployedPrimitive,
-  GitHubPage,
-  PendingOperation,
-  PinnedPerSkill,
-  ReleaseHead,
-  SkippedEntry,
-} from "./use-deploy-state";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
 // One Deploy-state row per target: a detected tool or a registered repository.

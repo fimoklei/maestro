@@ -1,8 +1,8 @@
 // What one row's menu holds: every action the stage carries and every
 // pull-request link. An absent action is never a disabled one; the Status
 // hover card names why it is absent (#1125).
+import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
 import type { ActionsMenuProps } from "../ui/actions-menu";
-import type { HarnessStageRow, ReviewRequestLink } from "./use-harness";
 
 export type RowActionHandlers = {
   // Takes the row, not the name: two stages carry the press, and a refusal

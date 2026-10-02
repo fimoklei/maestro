@@ -1,11 +1,8 @@
 // The deployed column's pivot: per-target deploy-state + drift folded onto one
 // row per skill (#272).
 
+import type { DeployedPrimitive, ReleaseHead } from "@maestro/core";
 import type { DeployedView } from "../deploy-state/deployed-view";
-import type {
-  DeployedPrimitive,
-  ReleaseHead,
-} from "../deploy-state/use-deploy-state";
 import type { DriftStatus, DriftViewModel } from "../drift/drift-view-model";
 import type { DeployTarget } from "./use-deploy-skill";
 

@@ -1,10 +1,4 @@
-import type {
-  DeleteLocalSkillResult,
-  PromoteDeletionResult,
-  PromoteSkillResult,
-  ProposalActionResult,
-  RestoreSkillResult,
-} from "@maestro/core";
+import type { ProposalActionResult } from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
@@ -54,10 +48,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result: PromoteSkillResult = await deps.promote.execute(
-      body.data.name,
-      new Date(),
-    );
+    const result = await deps.promote.execute(body.data.name, new Date());
     if (!result.ok) {
       const { status } = promoteErrorResponses[result.error];
       return c.json({ error: result.error }, status);
@@ -74,7 +65,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result: PromoteDeletionResult = await deps.promoteDeletion.execute(
+    const result = await deps.promoteDeletion.execute(
       body.data.name,
       body.data.seenRemoteTree,
       new Date(),
@@ -95,9 +86,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result: DeleteLocalSkillResult = await deps.deleteLocalSkill.execute(
-      body.data.name,
-    );
+    const result = await deps.deleteLocalSkill.execute(body.data.name);
     if (!result.ok) {
       const { status } = localDeletionErrorResponses[result.error];
       return c.json({ error: result.error }, status);
@@ -111,7 +100,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result: RestoreSkillResult = await deps.restoreSkill.execute(
+    const result = await deps.restoreSkill.execute(
       body.data.name,
       body.data.seenHeadCommit,
     );

@@ -1,3 +1,4 @@
+import type { HarnessStage, HarnessStageRow, StageStatus } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   rowItems as buildItems,
@@ -5,7 +6,6 @@ import {
   type RowActionHandlers,
 } from "./row-actions";
 import { pullRequest } from "./stage-row-fixture";
-import type { HarnessStage, HarnessStageRow, StageStatus } from "./use-harness";
 
 // The restore gate defaults to the open one here, and only here: the view has
 // one caller and passes it by hand, so a wrong call cannot pass typecheck.

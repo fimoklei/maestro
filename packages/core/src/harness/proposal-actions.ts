@@ -1,16 +1,12 @@
 // The three GitHub-only proposal mutations, each rechecked against a fresh read.
 import { parseGitOrigin } from "../deploy/git-origin";
+import { isValidSkillSlug } from "../deploy/package-ref";
 import {
   type HarnessReviewPort,
   matchesProposal,
   type ReviewRequest,
 } from "./harness-review-port";
-import {
-  isPromotableSkillName,
-  PROPOSAL_BODY,
-  promoteBranch,
-  proposalTitle,
-} from "./promote-branch";
+import { PROPOSAL_BODY, promoteBranch, proposalTitle } from "./promote-branch";
 import type { HarnessFacts } from "./read-harness-state";
 
 export type ProposalActionError =
@@ -106,7 +102,7 @@ export class ProposalActions {
   }
 
   private async checkedFacts(name: string): Promise<CheckedFacts> {
-    if (!isPromotableSkillName(name)) {
+    if (!isValidSkillSlug(name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();

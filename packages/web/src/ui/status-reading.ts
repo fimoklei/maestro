@@ -31,8 +31,6 @@ const RANK: readonly StatusFamily[] = [
   "neutral",
 ];
 
-export const glyphFor = (family: StatusFamily): string => GLYPHS[family];
-
 export function reading(
   word: string,
   family: StatusFamily,

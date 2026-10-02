@@ -3,7 +3,7 @@ import type { InventoryResult } from "../inventory/inventory-reader";
 import type { PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionResult, SelectionWriter } from "./apply-selection";
-import type { SupportedTool } from "./deploy-tools";
+import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
@@ -13,7 +13,7 @@ import {
   worstVerdict,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
-import { reclaimUntargetedCopies } from "./reclaim-untargeted-copies";
+import { reclaimTools } from "./reclaim-untargeted-copies";
 
 // Only the repo arm carries a client-supplied path; the global location is
 // resolved server-side.
@@ -442,13 +442,18 @@ export class DeploySkill {
           .catch((): SelectionResult => ({ ok: false, error: "apply-failed" }));
         if (applied.ok) {
           // Only after a proven install, and for every selected skill: one
-          // install rewrites the whole Selection (#136).
+          // install rewrites the whole Selection (#136). A repo deploy follows
+          // its own apm.yml, so it reclaims nothing.
+          const reclaimable =
+            globalTools === undefined
+              ? []
+              : reclaimableUntargetedTools(globalTools);
           for (const name of desired) {
-            await reclaimUntargetedCopies({
+            await reclaimTools({
               cleanup: this.deps.deployedCleanup,
               target,
               name,
-              detected: globalTools,
+              tools: reclaimable,
             });
           }
           for (const name of go) {

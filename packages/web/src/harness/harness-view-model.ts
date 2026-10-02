@@ -1,10 +1,10 @@
-import { STAGE_NAMES } from "./stage-copy";
 import type {
   HarnessFreshness,
   HarnessStage,
   HarnessStageRead,
   HarnessState,
-} from "./use-harness";
+} from "@maestro/core";
+import { STAGE_NAMES } from "./stage-copy";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
