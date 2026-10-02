@@ -7,7 +7,7 @@ import type { StatusReading } from "./status-reading";
 import { Tooltip } from "./tooltip";
 
 // Inside the pane a row carries a mark, never a badge (#1065).
-export type RowMark = StatusReading & { hint?: string };
+type RowMark = StatusReading & { hint?: string };
 
 export function SubListRow({
   mark,

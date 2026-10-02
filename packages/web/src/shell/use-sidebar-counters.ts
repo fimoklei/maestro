@@ -14,7 +14,7 @@ import { useInventoryConfig } from "../inventory/use-inventory";
 import { useRegistry } from "../registry/use-registry";
 import { behindCount, UNKNOWN_COUNT } from "./sidebar-copy";
 
-export type NavCounter = { text: string; unknown: boolean };
+type NavCounter = { text: string; unknown: boolean };
 
 const UNKNOWN: NavCounter = { text: UNKNOWN_COUNT.shown, unknown: true };
 
@@ -23,7 +23,7 @@ const count = (text: string): NavCounter => ({ text, unknown: false });
 type Read<T> = { data: T | undefined; isError: boolean };
 
 // One per Deploy-state row: a behind global target puts every tool row behind.
-export function deployStateCounter(
+function deployStateCounter(
   global: Read<{
     tools: { releaseHead?: ReleaseHead }[];
     pending?: PendingOperation;
@@ -53,7 +53,7 @@ export function deployStateCounter(
 
 // Skills waiting on the operator: Pending review plus Pending release, each
 // skill once. A change not yet proposed waits on its author, not the operator.
-export function harnessCounter(harness: Read<HarnessState>): NavCounter | null {
+function harnessCounter(harness: Read<HarnessState>): NavCounter | null {
   if (harness.isError) return UNKNOWN;
   if (harness.data === undefined) return null;
   const { review, release } = harness.data.stages;

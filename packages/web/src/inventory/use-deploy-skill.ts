@@ -28,7 +28,7 @@ export function invalidateTarget(
   queryClient.invalidateQueries({ queryKey: ["drift", key] });
 }
 
-export type DeployRequest = {
+type DeployRequest = {
   type: "skill";
   name: string;
   target: DeployTarget;

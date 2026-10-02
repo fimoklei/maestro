@@ -8,7 +8,7 @@ import {
   invalidateTarget,
 } from "../inventory/use-deploy-skill";
 
-export type RetryRequest = {
+type RetryRequest = {
   target: DeployTarget;
   confirmedCopyReceipt?: string;
 };

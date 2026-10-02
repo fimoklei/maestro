@@ -7,7 +7,7 @@ export type RegisteredRepo = { path: string };
 // What a write answers: the list as stored, without readings.
 type StoredRepos = { repos: RegisteredRepo[] };
 
-export type RegistryResponse = {
+type RegistryResponse = {
   repos: (RegisteredRepo & { status: RepoStatus })[];
 };
 

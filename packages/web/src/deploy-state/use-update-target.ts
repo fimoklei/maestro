@@ -8,7 +8,7 @@ import {
   invalidateTarget,
 } from "../inventory/use-deploy-skill";
 
-export type UpdateRequest = {
+type UpdateRequest = {
   target: DeployTarget;
   token: string;
   // Another skill mints another token, so the server refuses an unpreviewed move (#955).
@@ -16,7 +16,7 @@ export type UpdateRequest = {
   confirmedCopyReceipt?: string;
 };
 
-export type UpdateResponse = {
+type UpdateResponse = {
   release: string;
   outcome: UpdateOutcomeRow[];
 };

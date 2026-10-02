@@ -1,24 +1,12 @@
 // Exposes both the per-tool `tools` grouping and a flattened `primitives` list.
 import type {
   DeployedPrimitive,
-  GitHubPage,
   PendingOperation,
-  PinnedPerSkill,
-  ReleaseHead,
   SkippedEntry,
+  ToolDeployState,
 } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
-
-export type ToolDeployState = {
-  tool: string;
-  primitives: DeployedPrimitive[];
-  releaseHead?: ReleaseHead;
-  pinnedPerSkill?: PinnedPerSkill;
-  extraFiles?: number;
-  // Absent where the release has no page on GitHub (#1181).
-  releaseGitHub?: GitHubPage;
-};
 
 // Not Zod-validated here: `tools` is defaulted once in `select`. Present-but-empty
 // means "detected zero tools"; absent means "not read yet".

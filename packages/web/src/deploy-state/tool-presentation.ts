@@ -3,7 +3,7 @@ import { joinNames } from "./join-names";
 // Destinations mirror core's DEPLOY_TOOLS skillsDirPrefix. An unknown token is
 // shown verbatim, never dropped.
 
-export type ToolPresentation = {
+type ToolPresentation = {
   label: string;
   destination: string;
 };

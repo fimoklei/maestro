@@ -6,7 +6,7 @@ import {
 } from "./use-remove-preflight";
 
 // Never partial: a fresh cost paired with an older consent is what #364 prevents.
-export type RestatedCost = RemovePreflight & { receipt: string };
+type RestatedCost = RemovePreflight & { receipt: string };
 
 export function restatedCost(error: unknown): RestatedCost | null {
   if (!(error instanceof HttpError) || error.code !== "cost-not-acknowledged") {

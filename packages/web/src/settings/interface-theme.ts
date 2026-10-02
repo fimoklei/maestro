@@ -1,6 +1,6 @@
 // index.html's inline script resolves the theme the same way (#996).
 
-export type InterfaceTheme = "system" | "light" | "dark";
+type InterfaceTheme = "system" | "light" | "dark";
 export type Theme = "light" | "dark";
 
 /** The localStorage key; index.html's inline script reads the same one. */

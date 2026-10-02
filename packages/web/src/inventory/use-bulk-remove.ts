@@ -4,7 +4,7 @@ import type { BulkRemoveReport, BulkRemoveTarget } from "@maestro/core";
 import { useMutation } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-export type BulkRemoveRequest = {
+type BulkRemoveRequest = {
   name: string;
   targets: BulkRemoveTarget[];
 };
