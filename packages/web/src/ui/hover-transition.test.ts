@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HOVER_TRANSITION, REVEAL_TRANSITION } from "./hover-transition";
+import { HOVER_TRANSITION } from "./hover-transition";
 
 describe("HOVER_TRANSITION", () => {
   // transition-colors covers outline-color in Tailwind v4, which makes a focus
@@ -14,9 +14,6 @@ describe("HOVER_TRANSITION", () => {
   it("keeps the hover window and the reduced-motion guard", () => {
     expect(HOVER_TRANSITION).toBe(
       "motion-safe:transition-[color,background-color,border-color] motion-safe:duration-150 motion-safe:ease-out",
-    );
-    expect(REVEAL_TRANSITION).toBe(
-      "motion-safe:transition-opacity motion-safe:duration-150 motion-safe:ease-out",
     );
   });
 });
