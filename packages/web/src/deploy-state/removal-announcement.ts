@@ -1,6 +1,6 @@
 import { doneSentence } from "../ui/busy-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
-import { toolNameList } from "./tool-labels";
+import { toolNameList } from "./tool-presentation";
 
 export type RemovedSkill = {
   name: string;

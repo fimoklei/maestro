@@ -1,4 +1,7 @@
-import { toolNameList } from "../deploy-state/tool-labels";
+import {
+  toolDisplayName,
+  toolNameList,
+} from "../deploy-state/tool-presentation";
 
 // Shown by both gates while the inventory config read is in flight.
 export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…";
@@ -41,6 +44,20 @@ export const TARGETS_LOADING = "targets still loading";
 export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
 export const TARGETS_STILL_CHECKING = "checks still running";
 export const NO_TARGET_REMOVABLE = "no target can be removed";
+
+// The bulk-deploy picker's Global option. undefined = not loaded or
+// unreadable → plain "Global"; empty = zero detected tools (#134).
+export function globalOptionLabel(
+  tools: readonly string[] | undefined,
+): string {
+  if (tools === undefined) {
+    return "Global";
+  }
+  if (tools.length === 0) {
+    return "Global (no tool detected)";
+  }
+  return `Global (${tools.map(toolDisplayName).join(" + ")})`;
+}
 
 // The group header of rows whose status has not answered yet.
 export const NOT_READ_YET = "Not read yet";

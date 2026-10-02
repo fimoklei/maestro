@@ -3,7 +3,7 @@
 
 import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
 import { globalRowId, repoRowId } from "../deploy-state/target-rows";
-import { toolNameList } from "../deploy-state/tool-labels";
+import { toolNameList } from "../deploy-state/tool-presentation";
 import type { DriftStatus } from "../drift/drift-view-model";
 import { type DeploymentTarget, skillReading } from "./deployed-rollup";
 import type { DeployTarget } from "./use-deploy-skill";

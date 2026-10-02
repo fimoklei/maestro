@@ -1,4 +1,5 @@
 import type { Segment } from "../ui/segmented-control";
+import type { Primitive } from "./use-inventory";
 
 // Data-driven type filter (#288): segments derive from primitives present,
 // never a hardcoded list — hooks/mcp/bundles slot in the moment they appear.
@@ -51,4 +52,17 @@ export function filterByType<T extends { type: PrimitiveType }>(
   return filter === "all"
     ? [...items]
     : items.filter((item) => item.type === filter);
+}
+
+// Name only, case-insensitive — matching descriptions would surprise the
+// user with rows whose visible name looks unrelated (#287).
+export function filterByName<T extends Primitive>(
+  primitives: T[],
+  query: string,
+): T[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === "") {
+    return primitives;
+  }
+  return primitives.filter((p) => p.name.toLowerCase().includes(needle));
 }

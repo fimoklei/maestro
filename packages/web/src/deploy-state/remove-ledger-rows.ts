@@ -9,7 +9,7 @@ import type {
   RemoveCheckState,
   RemoveRowWarning,
 } from "./remove-preflight-view";
-import { toolDisplayName } from "./tool-labels";
+import { toolDisplayName } from "./tool-presentation";
 
 const TYPE_LABEL: Record<PrimitiveType, string> = {
   skill: "Skill",

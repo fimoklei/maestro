@@ -418,8 +418,8 @@ describe("connect gate", () => {
   );
 
   it("lands on Inventory even when the config refetch after connect is still in flight", async () => {
-    // invalidateQueries does not update the cache synchronously, so useFirstRun
-    // could bounce to /welcome. The refetch is held open to prove it does not.
+    // invalidateQueries does not update the cache synchronously, so the first-run
+    // gate could bounce to /welcome. The refetch is held open to prove it does not.
     let inventoryPath: string | null = null;
     let configRequests = 0;
     vi.stubGlobal(

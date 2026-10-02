@@ -2,7 +2,6 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { ConfigUnreachableNotice } from "../inventory/config-unreachable-notice";
 import { LOADING_INVENTORY_CONNECTION } from "../inventory/inventory-copy";
 import { useInventoryConfig } from "../inventory/use-inventory";
-import { useFirstRun, useIsConfigured } from "./use-first-run";
 
 // A configured user deep-linking to /welcome bounces out even while pending,
 // or WelcomeView flashes before the redirect runs (#96).
@@ -15,8 +14,11 @@ function isGateRoute(pathname: string): boolean {
 export function FirstRunGate() {
   const { pathname } = useLocation();
   const config = useInventoryConfig();
-  const firstRun = useFirstRun();
-  const configured = useIsConfigured();
+  // Both read false while pending, so the gate renders its normal shape until
+  // the config is known. `configured` also steers a configured user off a
+  // deep link to the connect gate (#96).
+  const firstRun = config.isSuccess && config.data.inventoryPath === null;
+  const configured = config.isSuccess && config.data.inventoryPath !== null;
 
   if (firstRun && !isGateRoute(pathname)) {
     return <Navigate to={GATE_PATH} replace />;
