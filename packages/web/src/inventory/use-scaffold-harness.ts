@@ -2,9 +2,10 @@
 // it invalidates exactly what connecting does (#556).
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
-import { HARNESS_QUERIES } from "../harness/use-harness";
-import type { ConnectResponse } from "./use-connect-inventory";
-import { INVENTORY_CONFIG_KEY, INVENTORY_KEY } from "./use-inventory";
+import {
+  type ConnectResponse,
+  refreshInventoryReads,
+} from "./use-connect-inventory";
 
 export function useScaffoldHarness() {
   const queryClient = useQueryClient();
@@ -14,15 +15,10 @@ export function useScaffoldHarness() {
         method: "POST",
         body: JSON.stringify({ path }),
       }),
-    onSuccess: (data) => {
-      // Seeded synchronously, as connect does: invalidation alone would not
-      // land before the gate navigates on Continue.
-      queryClient.setQueryData(INVENTORY_CONFIG_KEY, {
-        inventoryPath: data.inventoryPath,
-      });
-      queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
-      queryClient.invalidateQueries({ queryKey: INVENTORY_CONFIG_KEY });
-      queryClient.invalidateQueries({ queryKey: HARNESS_QUERIES });
-    },
+    onSuccess: (data) =>
+      refreshInventoryReads(queryClient, {
+        connectedPath: data.inventoryPath,
+        harness: true,
+      }),
   });
 }
