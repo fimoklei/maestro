@@ -34,6 +34,10 @@ The copy review is complete when every changed user-facing string is accounted
 for and has passed the `writing-clearly-and-concisely` skill. The reader can tell on the first reading whether the action finished, what
 remains unchanged and what to do next.
 
+When you retire a screen word, add the old word to `scripts/copy-guard.mjs`.
+List only a word that is wrong in every screen use; a word with a second
+meaning stays with review.
+
 ## Patterns
 
 - Name a control as `Select {control} to {result}`.

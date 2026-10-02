@@ -66,7 +66,7 @@ describe("Import local edits… copy", () => {
     [
       "not-configured",
       "No Harness connected",
-      "Set the Harness location on the Inventory source screen, then select Import local edits… again.",
+      "Select Change Harness location in Settings, then select Import local edits… again.",
     ],
     [
       "repo-not-registered",

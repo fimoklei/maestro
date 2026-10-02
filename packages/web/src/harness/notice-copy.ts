@@ -15,6 +15,8 @@ import type {
   ReleasePlanError,
   RestoreSkillError,
 } from "@maestro/core";
+import { REREAD_LABEL as REREAD_INVENTORY } from "../inventory/inventory-copy";
+import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 
@@ -26,7 +28,7 @@ const harnessHeadings: NoticeTable<HarnessStateError> = {
   "not-configured": {
     level: "error",
     label: "No Harness connected",
-    message: "Set the Harness location on the Inventory source screen.",
+    message: `${CHANGE_LOCATION_STEP}.`,
   },
   "no-usable-origin": {
     level: "error",
@@ -423,8 +425,7 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
 const importHeadings: NoticeTable<ImportSkillError> = {
   "not-configured": {
     ...harnessHeadings["not-configured"],
-    message:
-      "Set the Harness location on the Inventory source screen, then Import skill again.",
+    message: `${CHANGE_LOCATION_STEP}, then select Import skill… again.`,
   },
   "source-unreadable": {
     level: "error",
@@ -650,15 +651,15 @@ export const releasePublishedNotice = (
     ? {
         level: "success",
         label: "Release published",
-        message: `Maestro tagged ${tag} and refreshed Inventory.`,
+        message: `Maestro tagged ${tag} and re-read Inventory.`,
         detail: "A release cannot change after publication.",
       }
     : {
         level: "warning",
         label: "Release published",
-        message: `Maestro tagged ${tag} but could not refresh Inventory. Re-read Inventory to see the published skills.`,
+        message: `Maestro tagged ${tag}, but Inventory was not read. Select ${REREAD_INVENTORY} to see the published skills.`,
         detail: "A release cannot change after publication.",
-        action: { label: "Re-read Inventory", onClick: onReread },
+        action: { label: REREAD_INVENTORY, onClick: onReread },
       };
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
@@ -772,8 +773,7 @@ export function copiesDiffer<T>(
 // Import skill… refuses another Harness and an unproven origin too, so its
 // route is no way through for either.
 const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
-  "not-configured":
-    "Set the Harness location on the Inventory source screen, then select Import local edits… again.",
+  "not-configured": `${CHANGE_LOCATION_STEP}, then select Import local edits… again.`,
   "destination-unsafe":
     "Nothing was copied. Make the clone's skills folder a real folder inside it, then select Import local edits… again.",
   "source-unreadable":

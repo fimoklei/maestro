@@ -235,7 +235,7 @@ describe("Harness release", () => {
     );
     expect(await screen.findByText("Release published")).toBeInTheDocument();
     expect(
-      screen.getByText("Maestro tagged v1.3.0 and refreshed Inventory."),
+      screen.getByText("Maestro tagged v1.3.0 and re-read Inventory."),
     ).toBeInTheDocument();
     expect(
       screen.getByText("A release cannot change after publication."),
@@ -286,7 +286,7 @@ describe("Harness release", () => {
     expect(await screen.findByText("Release published")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Maestro tagged v1.3.0 but could not refresh Inventory. Re-read Inventory to see the published skills.",
+        "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -305,7 +305,7 @@ describe("Harness release", () => {
   });
 
   // Nothing is holding the Inventory open, so there is no query to invalidate.
-  // The publication still has to read it, or "refreshed Inventory" states a
+  // The publication still has to read it, or "re-read Inventory" states a
   // read that never happened (#849).
   it("reads the Inventory when no screen is holding it open", async () => {
     const calls = stubHarnessServer({
@@ -335,7 +335,7 @@ describe("Harness release", () => {
       ).toHaveLength(1),
     );
     expect(
-      await screen.findByText("Maestro tagged v1.3.0 and refreshed Inventory."),
+      await screen.findByText("Maestro tagged v1.3.0 and re-read Inventory."),
     ).toBeInTheDocument();
   });
 
@@ -369,7 +369,7 @@ describe("Harness release", () => {
 
     expect(
       await screen.findByText(
-        "Maestro tagged v1.3.0 but could not refresh Inventory. Re-read Inventory to see the published skills.",
+        "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
       ),
     ).toBeInTheDocument();
   });

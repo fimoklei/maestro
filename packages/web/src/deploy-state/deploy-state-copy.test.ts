@@ -87,10 +87,10 @@ describe("Deploy-state copy", () => {
 
   it("names every other origin a target holds", () => {
     expect(otherOriginLine(["fimoklei/agent-harness"])).toBe(
-      "Holds primitives deployed from fimoklei/agent-harness.",
+      "Holds skills, hooks and MCP servers deployed from fimoklei/agent-harness.",
     );
     expect(otherOriginLine(["a/b", "c/d"])).toBe(
-      "Holds primitives deployed from a/b and c/d.",
+      "Holds skills, hooks and MCP servers deployed from a/b and c/d.",
     );
   });
 

@@ -1,6 +1,6 @@
 # ADR-0025 — The cockpit's copy standard
 
-- **Status:** Accepted, amended 2026-09-08
+- **Status:** Accepted, amended 2026-09-08 and 2026-10-02
 - **Date:** 2026-08-31
 - **Amends:** ADR-0018's ownership of user-facing messages.
 - **Resolves:** [Cockpit language map #646](https://github.com/fimoklei/maestro/issues/646).
@@ -26,7 +26,10 @@ anchor tie-breaker and checklist with the short guidance in `copy.md`.
 2. The repo's copy rule for agents is the writing and review guide for every word the
    cockpit shows. Review the whole message in context for first-reading
    comprehension and agreement with the implemented behaviour. Enforcement
-   remains human or agent review; a copy linter is out of scope.
+   remains human or agent review, with one exception: a blocking check in
+   `pnpm lint` fails on a retired screen word in shipped copy. It lists only
+   words that are wrong in every screen use; form, length and style stay with
+   review.
 3. The screen uses the fixed names in `CONTEXT.md`. The glossary continues to
    govern code terminology and which technical terms the screen keeps.
 4. Every user-facing word belongs in `packages/web`, centralised per feature.
@@ -52,6 +55,12 @@ The writing guide no longer mandates noun-phrase headings, a 15-word limit,
 word bans or a fault checklist. Reviewers judge whether the reader understands
 the message and can act on it.
 
-This amendment changes agent guidance, not rendered copy or the Notice
+The 2026-10-02 amendment ([#969](https://github.com/fimoklei/maestro/issues/969))
+adds the retired-word check. Teams lint documentation prose, rarely UI wording.
+Measured on Maestro's copy, form and style checks fired mostly on approved
+strings, while retired screen words surviving a rename were the one defect
+that kept passing review and could be found with no false positives.
+
+The 2026-09-08 amendment changes agent guidance, not rendered copy or the Notice
 component. Existing copy implementation and any remaining migration work are
 separate changes tracked in GitHub.

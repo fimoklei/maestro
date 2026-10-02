@@ -8,6 +8,7 @@ import type {
 import { HttpError } from "../api/http";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
+import { REREAD_LABEL } from "./deploy-state-copy";
 import { UPDATE_AGAIN, UPDATE_INCOMPLETE_SENTENCE } from "./update-target-copy";
 
 // One table over the three unions: a code shared by deploy and remove reads the
@@ -219,7 +220,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
       "Neither Claude Code nor Codex is on this machine. There is nothing here to remove.",
   },
   "not-deployed": {
-    message: "Nothing was removed. Reload the page to read the list again.",
+    message: `Nothing was removed. Select ${REREAD_LABEL} on the Deploy-state screen to read the list again.`,
   },
   "lockfile-malformed": {
     message: "Repair or delete apm.lock.yaml in the target, then remove again.",
@@ -245,7 +246,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   "deployed-diverged-pinned-per-skill": {
     message: "The skill was not removed. Its files changed after deployment.",
     detail:
-      "Save the changes. Restore the files from the pinned release in the Harness clone, then select Remove skill again.",
+      "Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select Remove skill again.",
   },
   "cost-not-acknowledged": {
     message:
@@ -292,7 +293,7 @@ const UNKNOWN_DEPLOY: DeployStateNotice = {
 const UNKNOWN_REMOVE: DeployStateNotice = {
   label: "Removal outcome unknown",
   message:
-    "Nothing confirmed the removal. Reload the page, then check whether the skill is still deployed.",
+    "Nothing confirmed the removal. Check the target on the Deploy-state screen to see whether the skill is still deployed.",
   detail: UNKNOWN_DETAIL,
 };
 
