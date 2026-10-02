@@ -18,6 +18,7 @@ Retired entries are deleted, not archived.
 
 Confirmed patterns. Apply as rules. Newest on top.
 
+- **2026-10-02 · tooling/bsd-sed-needs-empty-suffix** — macOS `sed` is BSD: `sed -i 's/a/b/' file` takes the script as the backup suffix and the file name as the script, failing with `undefined label`, `extra characters at the end of d command` or `unterminated substitute pattern` (three times across the #792 and #1298 sessions). → Write `sed -i '' 's/a/b/' file`; for a multi-line edit use the Edit tool.
 - **2026-09-27 · apm-driver/insteadof-needs-an-existing-github-name** — An `insteadOf` redirect of a GitHub origin reaches apm, but apm 0.29.0 first asks `api.github.com` whether the repository exists and aborts on a 404 before any git call. → Redirect only a name that exists; `pnpm smoke:ready --scenario` uses the empty `fimoklei/maestro-fixture-harness` for this, so reach deploy states with it instead of hand-building them.
 - **2026-09-18 · tooling/gh-api-sends-ids-as-strings** — `gh api -f sub_issue_id=$ID` (and `…/dependencies/blocked_by`) posts a string; GitHub answers 422 `… is not of type integer`, which reads as a wrong id. → Pass ids with `-F`, taken from `gh api repos/<owner>/<repo>/issues/<n> --jq .id` (database id, never the issue number).
 - **2026-09-09 · tooling/smoke-binds-ipv6-only** — Under `pnpm smoke`, vite 8.2.0 listens on `[::1]` only, so `127.0.0.1:<web port>` is refused while the server is up. → Use the `localhost` URL `pnpm cockpit:url` prints; a refused web port is an address-family mismatch, not a dead stack.
