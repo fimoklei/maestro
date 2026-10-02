@@ -5,5 +5,6 @@
 [i] Targets: claude, codex  (source: --target flag)
   [+] github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 #v0.6.0 @f8208f12 (cached)
   |-- (files unchanged)
-
+  [i] Skipped inactive experimental resolver for target 'copilot-cowork' during lockfile reconciliation.
+  [i] Skipped inactive experimental resolver for target 'copilot-app' during lockfile reconciliation.
 [i] No changes -- install state already up to date in 1.3s.

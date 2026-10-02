@@ -5,6 +5,9 @@ allowBuilds:
 # A failed optional-dependency download leaves install green and the missing
 # binary to crash a later step, so ride out a slow registry instead.
 fetchRetries: 5
+# A merge that moves the lockfile leaves node_modules stale; installing first
+# keeps a script from crashing on it.
+verifyDepsBeforeRun: install
 fetchRetryMaxtimeout: 120000
 # Force patched versions of transitively-pulled deps with high-severity advisories.
 # Each key targets only the vulnerable range, so an already-safe major is untouched;

@@ -16,20 +16,23 @@ treat them as hypotheses, not facts.
   re-capture `apm-uninstall-global-ok.txt` in step 2.
 
 - Every install spends the machine's anonymous GitHub quota (60 an hour), token
-  or not. Run `node scripts/github-quota.mjs <calls>` before each batch and
-  wait for the reset it prints when short; discard any capture that holds a
-  `GitHub API rate limit hit` line. The canaries pass on a spent quota; only captures need it.
+  or not. The capture script refuses to start on a short quota; before any
+  other batch run `node scripts/github-quota.mjs <calls>` and wait for the
+  reset it prints. Discard any capture that holds a
+  `GitHub API rate limit hit` line. The canaries pass on a spent quota; only
+  captures need it.
 
 ## Steps
 
 1. **Record the new version.** `apm --version`, and note it for the
    behavior-doc header in step 4.
-2. **Re-verify the command-backed claims.** Re-run every capture in
-   `tests/fixtures/README.md` (it records each fixture's exact command,
-   conditions, exit code, and streams). For each fixture: output changed →
-   overwrite the file (re-captured); output identical → leave it and record
-   the re-run (verified unchanged), per that README's bookkeeping. Then run
-   the real-apm lanes: the four canary tests, via
+2. **Re-verify the command-backed claims.** Run
+   `node scripts/capture-apm-fixtures.mjs`: it re-runs the Command-output
+   captures of `tests/fixtures/README.md` and reports each as same or
+   differs. Differs → copy the capture over the fixture (re-captured); same →
+   leave it (verified unchanged), per that README's bookkeeping. Re-run any
+   other README capture by hand from its recorded command and conditions.
+   Then run the real-apm lanes: the four canary tests, via
    `scripts/run-apm-canary.sh`, and the integration suite. A failing lane is
    the finding, not an obstacle — it marks a behavior change. The canaries are
    a gate: the upgrade is not done until they are green against the new
@@ -43,7 +46,10 @@ treat them as hypotheses, not facts.
    rather than re-running an install.
 4. **Rewrite `docs/apm-behavior.md` section by section.** Replace each
    section's content with what the new version does; bump the version and
-   date in the header. Never append version deltas — `git log` on the file
+   date in the header. Bump the same version in the `tests/fixtures/README.md`
+   header and in `REQUIRED_APM_VERSION` (`scripts/bootstrap.mjs`);
+   `tests/integration/apm-version-pins.test.ts` stays red until all three
+   agree. Never append version deltas — `git log` on the file
    is the changelog. A claim that no longer holds is rewritten, not
    annotated.
 5. **Sweep the dependents.**
