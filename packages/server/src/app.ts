@@ -128,24 +128,31 @@ function realDeps(): AppDeps {
   });
   // Shared instance, so guard and cleanup agree on a global deploy's lockfile root and tree.
   const deployedLocation = new DeployedLocation(process.env);
+  const canonicalPath = (path: string) => fs.realpath(path);
+  const toolPresence = new ToolPresenceAdapter();
+  // Measured against the latest release too, as Update target measures (#1213).
+  const releaseAwareContent = new DeployedContentAdapter({
+    location: deployedLocation,
+    inventoryGit,
+  });
+  const deployedContent = new DeployedContentAdapter({
+    location: deployedLocation,
+  });
+  const harnessOrigin = async () => {
+    const root = await harnessRoot();
+    return root === undefined ? null : await harnessGit.readOrigin(root);
+  };
   const deployState = new GlobalDeployStateReader({
     fs,
-    toolPresence: new ToolPresenceAdapter(),
+    toolPresence,
     treeRoot: () => deployedLocation.treeRoot({ kind: "global" }),
     releaseHead: new ReleaseHeadReader({
       git: harnessGit,
       resolveRoot: harnessRoot,
       now: () => new Date(),
     }),
-    harnessOrigin: async () => {
-      const root = await harnessRoot();
-      return root === undefined ? null : await harnessGit.readOrigin(root);
-    },
-    // Measured against the latest release too, as Update target measures (#1213).
-    content: new DeployedContentAdapter({
-      location: deployedLocation,
-      inventoryGit,
-    }),
+    harnessOrigin,
+    content: releaseAwareContent,
     // Read per request, not captured at construction: the retry use-case is
     // built further down, and the record it reads changes with every write.
     operations: { pending: (target) => retryOperation.pending(target) },
@@ -175,7 +182,7 @@ function realDeps(): AppDeps {
     drift: new CheckVersionDrift({
       registry,
       apm,
-      canonicalPath: (path) => fs.realpath(path),
+      canonicalPath,
     }),
     fs,
     location: deployedLocation,
@@ -185,12 +192,7 @@ function realDeps(): AppDeps {
   // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a
   // deploy racing a remove would corrupt it.
   const apmWriteLocks = new InFlightLocks();
-  const copyGuard = new LocalCopyGuard({
-    content: new DeployedContentAdapter({
-      location: deployedLocation,
-      inventoryGit,
-    }),
-  });
+  const copyGuard = new LocalCopyGuard({ content: releaseAwareContent });
   const selection = new SelectionWriter({
     fs,
     location: deployedLocation,
@@ -210,7 +212,7 @@ function realDeps(): AppDeps {
     selection,
     inventoryGit,
     copyGuard,
-    deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
+    deployedContent,
     // apm's success marker says nothing about what it recorded, so the lockfile
     // is read back before the deploy is called clean (#358).
     recordedPackage: new RecordedPackageAdapter({
@@ -220,12 +222,12 @@ function realDeps(): AppDeps {
     // A direct subtree rm for an untargeted tool's leftover copy (#136), never `apm uninstall -g`.
     deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
     // Probed per deploy, so a global install targets only tools the machine has.
-    toolPresence: new ToolPresenceAdapter(),
+    toolPresence,
     inventoryOriginUrl: async () => {
       const root = resolveInventoryPath(await store.read(), process.env);
       return root === undefined ? null : readConfiguredGitOriginUrl(root);
     },
-    canonicalPath: (path) => fs.realpath(path),
+    canonicalPath,
     locks: apmWriteLocks,
   });
   const remove = new RemoveDeployedSkill({
@@ -233,11 +235,11 @@ function realDeps(): AppDeps {
     deployedRef: new DeployedRefAdapter({ fs, location: deployedLocation }),
     // apm deletes an edited file silently: a removal must prove nothing is lost first.
     copyGuard,
-    deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
+    deployedContent,
     apm,
     deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
-    toolPresence: new ToolPresenceAdapter(),
-    canonicalPath: (path) => fs.realpath(path),
+    toolPresence,
+    canonicalPath,
     locks: apmWriteLocks,
     location: deployedLocation,
     selection,
@@ -247,9 +249,9 @@ function realDeps(): AppDeps {
     registry,
     selection,
     copyGuard,
-    deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
-    toolPresence: new ToolPresenceAdapter(),
-    canonicalPath: (path) => fs.realpath(path),
+    deployedContent,
+    toolPresence,
+    canonicalPath,
     locks: apmWriteLocks,
   });
   const harness = new ReadHarnessState({
@@ -304,10 +306,7 @@ function realDeps(): AppDeps {
     importLocalEdits: new ImportLocalEdits({
       registry,
       deployState,
-      content: new DeployedContentAdapter({
-        location: deployedLocation,
-        inventoryGit,
-      }),
+      content: releaseAwareContent,
       tree: {
         listRawEntries: (path) => fs.listRawEntries(path),
         readFile: (path) => fs.readFile(path),
@@ -390,17 +389,12 @@ function realDeps(): AppDeps {
       registry,
       git: harnessGit,
       resolveRoot: harnessRoot,
-      harnessOrigin: async () => {
-        const root = await harnessRoot();
-        return root === undefined ? null : await harnessGit.readOrigin(root);
-      },
-      toolPresence: new ToolPresenceAdapter(),
+      harnessOrigin,
+      toolPresence,
       copyGuard,
       selection,
-      deployedContent: new DeployedContentAdapter({
-        location: deployedLocation,
-      }),
-      canonicalPath: (path) => fs.realpath(path),
+      deployedContent,
+      canonicalPath,
       locks: apmWriteLocks,
     }),
     retryOperation,
