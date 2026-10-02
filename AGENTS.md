@@ -89,5 +89,6 @@ Read the file before starting the task.
 - Screenshots and measurements of this cockpit against a `pnpm smoke` run →
   `agent-browser`. Researching a live third-party site → the Chrome browser
   tools, which drive the operator's own logged-in profile.
-- The `Dead-code sweep (1 PR/day)` cloud routine's instructions →
-  `docs/agents/dead-code-sweep.md`.
+- Cloud routine instructions: `Dead-code sweep (1 PR/day)` →
+  `docs/agents/dead-code-sweep.md`; `Code-scanning fix (1 PR/day)` →
+  `docs/agents/code-scanning-fix.md`.
