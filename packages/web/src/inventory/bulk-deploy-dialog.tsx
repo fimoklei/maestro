@@ -52,7 +52,7 @@ export function BulkDeployDialog({
       title={bulkDeployTitle(count)}
       version={null}
       width={640}
-      phase={report !== null ? "outcome" : busy ? "running" : "idle"}
+      phase={busy ? "running" : report !== null ? "outcome" : "idle"}
       action={
         report !== null
           ? null
