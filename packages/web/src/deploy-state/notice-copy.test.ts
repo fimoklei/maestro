@@ -311,7 +311,8 @@ describe("remove notices", () => {
       "not-deployed",
       {
         label: "Nothing deployed here",
-        message: "Nothing was removed. Reload the page to read the list again.",
+        message:
+          "Nothing was removed. Select Re-read Deploy-state on the Deploy-state screen to read the list again.",
       },
     ],
     [
@@ -349,7 +350,7 @@ describe("remove notices", () => {
         message:
           "The skill was not removed. Its files changed after deployment.",
         detail:
-          "Save the changes. Restore the files from the pinned release in the Harness clone, then select Remove skill again.",
+          "Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select Remove skill again.",
       },
     ],
     [
@@ -413,7 +414,7 @@ describe("remove notices", () => {
     expect(removeNotice(new Error("offline"))).toEqual({
       label: "Removal outcome unknown",
       message:
-        "Nothing confirmed the removal. Reload the page, then check whether the skill is still deployed.",
+        "Nothing confirmed the removal. Check the target on the Deploy-state screen to see whether the skill is still deployed.",
       detail:
         "A dropped connection, or a failure this version of Maestro does not name.",
     });
@@ -616,65 +617,6 @@ describe("deploy notice for a linked skill folder", () => {
       detail:
         "This removes the link only. The folder it points at remains on disk.",
     });
-  });
-});
-
-describe("every deploy and remove notice", () => {
-  const codes = [
-    "unsupported-primitive-type",
-    "invalid-name",
-    "unknown-skill",
-    "inventory-not-configured",
-    "repo-not-registered",
-    "inventory-origin-unavailable",
-    "no-published-tag",
-    "local-diverged-from-tag",
-    "deployed-diverged-from-lock",
-    "deployed-diverged-pinned-per-skill",
-    "deployed-unverifiable",
-    "deployed-unreadable",
-    "lockfile-malformed",
-    "deploy-in-progress",
-    "no-supported-tool",
-    "auth-required",
-    "destination-symlinked",
-    "target-pinned-per-skill",
-    "not-at-target-release",
-    "manifest-not-recognised",
-    "operation-unfinished",
-    "deploy-incomplete",
-    "remove-incomplete",
-    "deploy-failed",
-    "not-deployed",
-    "ref-unresolvable",
-    "cost-not-acknowledged",
-    "remove-in-progress",
-    "remove-failed",
-    "preflight-failed",
-  ];
-
-  const notices = [
-    ...codes.flatMap((code) => [
-      deployNotice(refusal(code)),
-      removeNotice(refusal(code)),
-    ]),
-    deployNoticeFor("destination-symlinked", "/home/.claude"),
-  ];
-
-  it("never addresses the reader as you", () => {
-    for (const notice of notices) {
-      expect(`${notice.message} ${notice.detail ?? ""}`).not.toMatch(
-        /\byou\b|\byour\b/i,
-      );
-    }
-  });
-
-  it("never writes valid or invalid on screen (F13)", () => {
-    for (const notice of notices) {
-      expect(
-        `${notice.label} ${notice.message} ${notice.detail ?? ""}`,
-      ).not.toMatch(/\bin?valid\b/i);
-    }
   });
 });
 

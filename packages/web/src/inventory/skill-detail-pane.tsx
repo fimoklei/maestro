@@ -108,7 +108,7 @@ export function SkillDetailPane({
           </>
         ) : unconfirmed ? (
           <p className="m-0 text-gray-11 text-meta">
-            Loading the deploy-state…
+            Loading the Deploy-state…
           </p>
         ) : (
           <p className="m-0 text-gray-11 text-meta">{NOT_DEPLOYED_ANYWHERE}</p>

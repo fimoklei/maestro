@@ -30,7 +30,7 @@ const notice = (
 const NOT_CONFIGURED: NoticeContent = {
   level: "error",
   label: "No Harness connected",
-  message: "Set the Harness location on the Inventory source screen.",
+  message: "Select Change Harness location in Settings.",
 };
 
 const NO_USABLE_ORIGIN: NoticeContent = {
@@ -475,7 +475,7 @@ const suites: [
           level: "error",
           label: "No Harness connected",
           message:
-            "Set the Harness location on the Inventory source screen, then Import skill again.",
+            "Select Change Harness location in Settings, then select Import skill… again.",
         },
       ],
       [
@@ -758,7 +758,7 @@ const suites: [
           level: "error",
           label: "No Harness connected",
           message:
-            "Nothing was restored. Set the Harness location on the Inventory source screen.",
+            "Nothing was restored. Select Change Harness location in Settings.",
         },
       ],
       [
@@ -1061,7 +1061,7 @@ describe("releasePublishedNotice", () => {
     expect(releasePublishedNotice("v1.5.0", true, reread)).toEqual({
       level: "success",
       label: "Release published",
-      message: "Maestro tagged v1.5.0 and refreshed Inventory.",
+      message: "Maestro tagged v1.5.0 and re-read Inventory.",
       detail: "A release cannot change after publication.",
     });
   });
@@ -1073,7 +1073,7 @@ describe("releasePublishedNotice", () => {
       level: "warning",
       label: "Release published",
       message:
-        "Maestro tagged v1.5.0 but could not refresh Inventory. Re-read Inventory to see the published skills.",
+        "Maestro tagged v1.5.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
       detail: "A release cannot change after publication.",
       action: { label: "Re-read Inventory", onClick: reread },
     });
@@ -1129,7 +1129,7 @@ describe("localEditsRefusal", () => {
   it.each([
     [
       "not-configured",
-      "Set the Harness location on the Inventory source screen, then select Import local edits… again.",
+      "Select Change Harness location in Settings, then select Import local edits… again.",
     ],
     [
       "destination-unsafe",

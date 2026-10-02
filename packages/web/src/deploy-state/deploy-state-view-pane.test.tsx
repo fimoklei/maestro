@@ -327,7 +327,7 @@ describe("Deploy-state pane — facts", () => {
     const pane = await openPane("Claude Code");
     expect(
       within(pane).getByText(
-        "Holds primitives deployed from fimoklei/agent-harness.",
+        "Holds skills, hooks and MCP servers deployed from fimoklei/agent-harness.",
       ),
     ).toBeInTheDocument();
     expect(

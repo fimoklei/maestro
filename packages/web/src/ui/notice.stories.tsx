@@ -109,7 +109,7 @@ export const Dismissible: Story = {
     notice: {
       level: "success",
       label: "Release published",
-      message: "Maestro tagged v1.3.0 and refreshed Inventory.",
+      message: "Maestro tagged v1.3.0 and re-read Inventory.",
       detail: "A release cannot change after publication.",
     },
     onDismiss: () => {},

@@ -1,6 +1,7 @@
 // Every word the Import local edits… control and its dialog show.
 import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 
@@ -66,8 +67,7 @@ const LOCAL_EDITS_ERRORS: NoticeTable<LocalEditsError> = {
   "not-configured": {
     level: "error",
     label: "No Harness connected",
-    message:
-      "Set the Harness location on the Inventory source screen, then select Import local edits… again.",
+    message: `${CHANGE_LOCATION_STEP}, then select Import local edits… again.`,
   },
   "repo-not-registered": {
     level: "error",

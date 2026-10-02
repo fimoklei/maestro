@@ -269,7 +269,7 @@ describe("Notice", () => {
     const outcome = {
       level: "success",
       label: "Release published",
-      message: "Maestro tagged v1.3.0 and refreshed Inventory.",
+      message: "Maestro tagged v1.3.0 and re-read Inventory.",
     } as const;
 
     it("is absent when nothing handles a dismissal", () => {

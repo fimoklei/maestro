@@ -13,6 +13,7 @@ export const LATEST_RELEASE = "Latest release";
 
 export const LOCATION = "Location";
 export const CHANGE_LOCATION = "Change Harness location";
+export const CHANGE_LOCATION_STEP = `Select ${CHANGE_LOCATION} in Settings`;
 export const CHANGE_LOCATION_SENTENCE =
   "Point Maestro at another local Harness clone.";
 

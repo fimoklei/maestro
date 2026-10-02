@@ -187,7 +187,7 @@ describe("SkillDetailPane", () => {
     expect(
       screen.queryByText(/Not deployed to any target\./i),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/Loading the deploy-state…/i)).toBeInTheDocument();
+    expect(screen.getByText("Loading the Deploy-state…")).toBeInTheDocument();
   });
 
   it("warns the reach is incomplete when a target is still unconfirmed alongside known deployments", () => {

@@ -56,7 +56,7 @@ export const NO_TOOL_DETECTED = {
 } as const;
 
 export const otherOriginLine = (origins: readonly string[]) =>
-  `Holds primitives deployed from ${joinNames(origins)}.`;
+  `Holds skills, hooks and MCP servers deployed from ${joinNames(origins)}.`;
 
 const KEEP_LOCAL_EDITS = "Select Import local edits… to keep them.";
 
