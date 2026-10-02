@@ -194,7 +194,7 @@ export function BulkDeployRun({
             : null
       }
       fieldsChanged={chosen !== null}
-      busy={bulk.isPending}
+      busy={bulk.isPending || forceDeploy.isPending}
       failure={
         view?.tone === "error"
           ? {
@@ -214,13 +214,18 @@ export function BulkDeployRun({
               }),
               groups: bulkDeployReportGroups({
                 view,
-                onForce: (name, confirmedCopyReceipt) =>
-                  forceDeploy.mutate({
-                    type: "skill",
-                    name,
-                    target,
-                    confirmedCopyReceipt,
-                  }),
+                force: {
+                  run: (name, confirmedCopyReceipt) =>
+                    forceDeploy.mutate({
+                      type: "skill",
+                      name,
+                      target,
+                      confirmedCopyReceipt,
+                    }),
+                  running: forceDeploy.isPending
+                    ? forceDeploy.variables.name
+                    : null,
+                },
                 onUpdate: setUpdateFor,
               }),
             }
