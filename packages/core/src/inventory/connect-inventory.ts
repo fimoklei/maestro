@@ -13,11 +13,7 @@ import {
 import type { CloneFailure } from "./classify-clone-failure";
 import { classifyCloneDestination } from "./clone-destination";
 import type { CloneRepositoryPort } from "./clone-repository";
-import {
-  type ConnectInputError,
-  classifyConnectInput,
-  cloneDestination,
-} from "./connect-input";
+import { type ConnectInputError, classifyConnectInput } from "./connect-input";
 import { HARNESS_MANIFEST } from "./harness-layout";
 import type { HeadProbe } from "./head-commit";
 import type { ScaffoldOffers } from "./scaffold-offers";
@@ -104,7 +100,7 @@ export class ConnectInventory {
       return { ok: false, error: "invalid-parent" };
     }
 
-    const destination = cloneDestination(parent, route.repoName);
+    const destination = join(parent, route.repoName);
     if (this.cloning.has(destination)) {
       return { ok: false, error: "clone-in-progress" };
     }

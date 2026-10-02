@@ -1,10 +1,10 @@
 // Removes a skill that exists only on the Working Harness's disk: no commit or push (#798).
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
+import { isValidSkillSlug } from "../deploy/package-ref";
 import { isWithinRoot } from "../filesystem/path-containment";
 import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import type { FileSystemPort } from "../registry/file-system";
-import { isPromotableSkillName } from "./promote-branch";
 import type { HarnessGitPort } from "./read-harness-state";
 
 export type DeleteLocalSkillError =
@@ -36,7 +36,7 @@ export class DeleteLocalSkill {
 
   // Shares the harness-root lock with the publish path.
   async execute(name: string): Promise<DeleteLocalSkillResult> {
-    if (!isPromotableSkillName(name)) {
+    if (!isValidSkillSlug(name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();

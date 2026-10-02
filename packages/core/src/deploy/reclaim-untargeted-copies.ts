@@ -1,22 +1,6 @@
 // Clears global copies apm left for a tool this machine does not have (#136).
 import type { DeployedCleanupPort, DeployTarget } from "./deploy-skill";
-import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
-
-export async function reclaimUntargetedCopies(input: {
-  cleanup: DeployedCleanupPort;
-  target: DeployTarget;
-  name: string;
-  // Undefined on the per-repo path, where nothing is ever reclaimed.
-  detected: readonly SupportedTool[] | undefined;
-}): Promise<void> {
-  if (input.detected === undefined) {
-    return;
-  }
-  await reclaimTools({
-    ...input,
-    tools: reclaimableUntargetedTools(input.detected),
-  });
-}
+import type { SupportedTool } from "./deploy-tools";
 
 // On removal, pass the tools from the user's consent; never re-derive them
 // (#390).

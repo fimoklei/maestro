@@ -1,11 +1,11 @@
 // Puts one deleted skill folder back from the last local commit: no fetch, branch or push (#888).
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
+import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import { isWithinRoot } from "../filesystem/path-containment";
 import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import type { FileSystemPort } from "../registry/file-system";
-import { isPromotableSkillName } from "./promote-branch";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
 export type RestoreSkillError =
@@ -55,7 +55,7 @@ export class RestoreSkill {
     name: string,
     seenHeadCommit: string,
   ): Promise<RestoreSkillResult> {
-    if (!isPromotableSkillName(name)) {
+    if (!isValidSkillSlug(name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
