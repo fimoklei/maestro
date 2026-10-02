@@ -270,6 +270,5 @@ export {
   type RepoStatus,
 } from "./registry/registry";
 export type { RepoPathError } from "./registry/repo-path";
-export { bindConfig } from "./server/bind-config";
 export { ToolPresenceAdapter } from "./tools/tool-presence";
 export type { ToolPresencePort } from "./tools/tool-presence-port";

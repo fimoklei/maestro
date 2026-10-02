@@ -1,8 +1,8 @@
+import type { HarnessStageRead } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { stageRow } from "../harness/stage-row-fixture";
-import type { HarnessStageRead } from "../harness/use-harness";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { Sidebar } from "./sidebar";
 

@@ -1,6 +1,6 @@
+import type { DeployedPrimitive, SkippedEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { toDeployedView } from "./deployed-view";
-import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 
 type Response = { primitives: DeployedPrimitive[]; skipped: SkippedEntry[] };
 

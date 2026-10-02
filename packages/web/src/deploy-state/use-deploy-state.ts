@@ -9,15 +9,6 @@ import type {
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-export type {
-  DeployedPrimitive,
-  GitHubPage,
-  PendingOperation,
-  PinnedPerSkill,
-  ReleaseHead,
-  SkippedEntry,
-};
-
 type DeployStateResponse = {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
