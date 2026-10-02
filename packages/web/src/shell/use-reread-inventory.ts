@@ -1,14 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  INVENTORY_CONFIG_KEY,
-  INVENTORY_KEY,
-} from "../inventory/use-inventory";
+import { refreshInventoryReads } from "../inventory/use-connect-inventory";
 
 // Drops the cached copies and lets Query refetch.
 export function useRereadInventory(): () => void {
   const queryClient = useQueryClient();
-  return () => {
-    queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
-    queryClient.invalidateQueries({ queryKey: INVENTORY_CONFIG_KEY });
-  };
+  return () =>
+    refreshInventoryReads(queryClient, { connectedPath: null, harness: false });
 }

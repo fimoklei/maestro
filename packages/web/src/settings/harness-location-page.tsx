@@ -1,17 +1,13 @@
 import type { GitHubPage } from "@maestro/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { HARNESS_QUERIES, useHarness } from "../harness/use-harness";
+import { useHarness } from "../harness/use-harness";
 import {
   INVENTORY_NOT_READ,
   NOT_READ_YET,
   REREAD_LABEL,
 } from "../inventory/inventory-copy";
-import {
-  INVENTORY_CONFIG_KEY,
-  INVENTORY_KEY,
-  useInventory,
-  useInventoryConfig,
-} from "../inventory/use-inventory";
+import { refreshInventoryReads } from "../inventory/use-connect-inventory";
+import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { targetLabel } from "../shell/target-label";
 import { harnessMetaLine } from "../shell/use-harness-summary";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
@@ -58,10 +54,8 @@ export function HarnessLocationPage() {
   const reread = () => {
     skeleton.press();
     setWrite("");
-    void queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
-    void queryClient.invalidateQueries({ queryKey: INVENTORY_CONFIG_KEY });
     // The release on the Latest release line is the Harness read's.
-    void queryClient.invalidateQueries({ queryKey: HARNESS_QUERIES });
+    refreshInventoryReads(queryClient, { connectedPath: null, harness: true });
   };
 
   // Only the Inventory read is stated as a failure: a failed Harness read
