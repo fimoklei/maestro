@@ -13,7 +13,7 @@ import {
   worstVerdict,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
-import { reclaimTools } from "./reclaim-untargeted-copies";
+import { reclaimTools } from "./reclaim-tools";
 
 // Only the repo arm carries a client-supplied path; the global location is
 // resolved server-side.
