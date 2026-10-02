@@ -1,11 +1,14 @@
-import type { HarnessState } from "@maestro/core";
+import type {
+  HarnessStage,
+  HarnessStageRow,
+  HarnessState,
+} from "@maestro/core";
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
 import { rowId } from "./harness-columns";
 import type { RestoreTarget } from "./harness-dialogs";
 import { promoteNotice, proposalNotice } from "./notice-copy";
 import type { RowActionHandlers } from "./row-actions";
-import type { HarnessStage, HarnessStageRow } from "./use-harness";
 import {
   useDeleteLocalSkill,
   usePromoteDeletion,

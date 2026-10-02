@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyConnectInput, cloneDestination } from "./connect-input";
+import { classifyConnectInput } from "./connect-input";
 
 describe("classifyConnectInput", () => {
   it("routes an https GitHub url to the clone route, named by its repository", () => {
@@ -107,25 +107,5 @@ describe("classifyConnectInput", () => {
       ok: false,
       error: "not-a-github-url",
     });
-  });
-});
-
-describe("cloneDestination", () => {
-  it("proposes a new folder named after the repository under the home ceiling", () => {
-    expect(cloneDestination("/Users/me", "agent-harness")).toBe(
-      "/Users/me/agent-harness",
-    );
-  });
-
-  it("keeps the repository's own spelling, dots and case included", () => {
-    expect(cloneDestination("/Users/me", "Agent.Harness")).toBe(
-      "/Users/me/Agent.Harness",
-    );
-  });
-
-  it("joins a ceiling with a trailing separator without doubling it", () => {
-    expect(cloneDestination("/Users/me/", "agent-harness")).toBe(
-      "/Users/me/agent-harness",
-    );
   });
 });

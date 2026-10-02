@@ -1,3 +1,4 @@
+import type { DeployedPrimitive } from "@maestro/core";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -6,7 +7,6 @@ import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse } from "../drift/use-drift";
 import { renderWithQuery } from "../test-utils";
 import { SelectedSkills } from "./selected-skills";
-import type { DeployedPrimitive } from "./use-deploy-state";
 
 // The removal flow behind a row's menu is covered by remove-skill-row-*.test.tsx.
 

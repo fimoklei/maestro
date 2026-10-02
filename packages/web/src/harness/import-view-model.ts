@@ -1,3 +1,9 @@
+import type {
+  ImportCheck,
+  ImportNameBlocker,
+  ImportSourceBlocker,
+  ManifestAdvisory,
+} from "@maestro/core";
 import type { ActionKey } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
 import {
@@ -6,12 +12,6 @@ import {
   skillChecksNotice,
 } from "./dialog-copy";
 import { importBlockerNotice } from "./notice-copy";
-import type {
-  ImportCheck,
-  ImportNameBlocker,
-  ImportSourceBlocker,
-  ManifestAdvisory,
-} from "./use-harness";
 
 // The check travels with its loading and error states so the modal stays
 // mounted across them — a focus trap that unmounts loses the author's place.

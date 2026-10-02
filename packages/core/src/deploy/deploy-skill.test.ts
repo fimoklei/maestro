@@ -468,7 +468,11 @@ describe("DeploySkill", () => {
   });
 
   it("never cleans on a repo deploy", async () => {
-    const { deps, cleaned } = buildDeps();
+    // A repo's targets are its own apm.yml, so this machine's detection says
+    // nothing about what its tree should hold.
+    const { deps, cleaned } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => ["codex"] },
+    });
     await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",

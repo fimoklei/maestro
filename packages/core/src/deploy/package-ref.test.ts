@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
+import { isValidSkillSlug } from "./package-ref";
 
 describe("isValidSkillSlug", () => {
   it("accepts a kebab-case skill name", () => {
@@ -18,17 +18,26 @@ describe("isValidSkillSlug", () => {
     expect(isValidSkillSlug("-tdd")).toBe(false);
     expect(isValidSkillSlug("tdd-")).toBe(false);
   });
-});
 
-describe("buildSkillPackageRef", () => {
-  it("builds the tag-pinned git reference apm expects", () => {
-    expect(
-      buildSkillPackageRef({
-        host: "github.com",
-        ownerRepo: "fimoklei/agent-harness",
-        name: "tdd",
-        tag: "v0.5.1",
-      }),
-    ).toBe("github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1");
+  it("refuses a name that would leave the skills directory", () => {
+    // The name becomes a git pathspec and a ref.
+    expect(isValidSkillSlug("..")).toBe(false);
+    expect(isValidSkillSlug(".")).toBe(false);
+    expect(isValidSkillSlug("../secrets")).toBe(false);
+    expect(isValidSkillSlug("nested/skill")).toBe(false);
+  });
+
+  it("refuses a name git would not take as a ref", () => {
+    expect(isValidSkillSlug("-force")).toBe(false);
+    expect(isValidSkillSlug("tdd.lock")).toBe(false);
+    expect(isValidSkillSlug("tdd..v2")).toBe(false);
+    expect(isValidSkillSlug("tdd.")).toBe(false);
+    expect(isValidSkillSlug("two words")).toBe(false);
+  });
+
+  it("refuses a dot, an underscore or a capital anywhere in the name", () => {
+    expect(isValidSkillSlug("tdd.v2_1")).toBe(false);
+    expect(isValidSkillSlug("TDD")).toBe(false);
+    expect(isValidSkillSlug("my_skill")).toBe(false);
   });
 });

@@ -1,11 +1,11 @@
-import type { UseQueryResult } from "@tanstack/react-query";
-import type { TargetDriftIndicator } from "../drift/drift-view-model";
-import { skippedNeedsAttention } from "./skipped-entry-text";
 import type {
   DeployedPrimitive,
   ReleaseHead,
   SkippedEntry,
-} from "./use-deploy-state";
+} from "@maestro/core";
+import type { UseQueryResult } from "@tanstack/react-query";
+import type { TargetDriftIndicator } from "../drift/drift-view-model";
+import { skippedNeedsAttention } from "./skipped-entry-text";
 
 // Pending/unknown must stay distinct from confirmed-empty, or the drift roll-up
 // reads "in sync" while a real behind entry is hidden.

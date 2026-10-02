@@ -1,3 +1,4 @@
+import type { ReleasePlan, SemverStep } from "@maestro/core";
 import { useState } from "react";
 import { loadingText } from "../ui/busy-copy";
 import { Card } from "../ui/card";
@@ -11,7 +12,6 @@ import {
   skillChecksNotice,
 } from "./dialog-copy";
 import { ReleaseDelta } from "./release-delta";
-import type { ReleasePlan, SemverStep } from "./use-harness";
 
 // Loading and error travel with the plan so the modal stays mounted: a focus
 // trap that unmounts between states loses the author's place.

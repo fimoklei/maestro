@@ -1,5 +1,5 @@
+import type { SkippedEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import type { SkippedEntry } from "../deploy-state/use-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
 

@@ -14,7 +14,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
 import { fixtureRedirectEnv } from "./fixture-harness.mjs";
-import { launchPolicy } from "./launch-policy.mjs";
 import {
   describeForeignHolders,
   describeHeldPorts,
@@ -35,7 +34,8 @@ const pidFile = join(repoRoot, ".maestro-dev.pid");
 const ports = cockpitPorts();
 const cockpitPortList = [ports.server, ports.web];
 const smoke = process.argv.includes("--smoke");
-const policy = launchPolicy(process.platform);
+// Windows lacks `lsof`, `ps` and process groups (#719).
+const posix = process.platform !== "win32";
 
 // A shell that never loaded nvm hands us the system node, and the failure lands
 // far downstream (corepack, vite) as something that looks unrelated.
@@ -64,7 +64,7 @@ function isAlive(pid) {
 // A negative pid is a process group, which Windows lacks: there, the child only.
 function killRun(pid, signal) {
   try {
-    process.kill(policy.detached ? -pid : pid, signal);
+    process.kill(posix ? -pid : pid, signal);
   } catch {
     // group already gone, or pid was never a group leader
   }
@@ -74,8 +74,8 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-// Steps 1-4 use `lsof`, `ps` and process groups, so they run only where the policy allows.
-if (policy.singleInstance) {
+// Steps 1-4 use `lsof`, `ps` and process groups, so they run only on POSIX.
+if (posix) {
   // Resolved, or a symlinked checkout reads its own previous run as a sibling's
   // and this launcher refuses to start for good.
   const attribution = {
@@ -137,7 +137,7 @@ if (policy.singleInstance) {
   }
 }
 
-// 5. Start server + web, as one detached group where the policy allows it.
+// 5. Start server + web, as one detached group on POSIX.
 const env = { ...process.env };
 const sandbox = join(repoRoot, ".maestro-sandbox");
 
@@ -230,14 +230,14 @@ const child = spawn(
   {
     cwd: repoRoot,
     stdio: "inherit",
-    detached: policy.detached,
+    detached: posix,
     env,
     shell: process.platform === "win32",
   },
 );
 
 // The pidfile is the note step 1 reads; nothing reads it where step 1 is off.
-if (policy.singleInstance) writeFileSync(pidFile, String(child.pid));
+if (posix) writeFileSync(pidFile, String(child.pid));
 
 const urls = cockpitUrls(ports);
 console.log(

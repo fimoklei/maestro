@@ -1,9 +1,9 @@
 // The one owner of drift status in `web`; forTool narrows per tool.
 
+import type { DeployedPrimitive, ReadDriftEntry } from "@maestro/core";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { DeployedView } from "../deploy-state/deployed-view";
-import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
-import type { DriftResponse, ReadDriftEntry } from "./use-drift";
+import type { DriftResponse } from "./use-drift";
 
 // "up-to-date" only ever comes from a check that ran.
 export type DriftStatus =

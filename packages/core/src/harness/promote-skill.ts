@@ -2,6 +2,7 @@
 // fetched default-branch tip. The author's repository state is never touched.
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
+import { isValidSkillSlug } from "../deploy/package-ref";
 import { isConcurrentlyChanged } from "./classify-movement";
 import {
   type HarnessReviewPort,
@@ -9,7 +10,6 @@ import {
   type ReviewRequest,
 } from "./harness-review-port";
 import {
-  isPromotableSkillName,
   PROPOSAL_BODY,
   promoteBranch,
   promoteCompareUrl,
@@ -64,7 +64,7 @@ export class PromoteSkill {
 
   // One promotion per harness at a time.
   async execute(name: string, at: Date): Promise<PromoteSkillResult> {
-    if (!isPromotableSkillName(name)) {
+    if (!isValidSkillSlug(name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();

@@ -3,7 +3,7 @@ import type {
   HarnessStageRow,
   ReviewRequestLink,
   StageStatus,
-} from "./use-harness";
+} from "@maestro/core";
 
 // One stage row with every field a story does not care about already settled.
 export const stageRow = (

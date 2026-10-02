@@ -1,3 +1,4 @@
+import type { HarnessStageRow, ReleasePlan, SemverStep } from "@maestro/core";
 import type { ComponentProps } from "react";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
@@ -15,9 +16,6 @@ import {
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { RestoreDialog } from "./restore-dialog";
 import type {
-  HarnessStageRow,
-  ReleasePlan,
-  SemverStep,
   useDeleteLocalSkill,
   useImportCheck,
   usePromoteDeletion,

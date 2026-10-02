@@ -1,11 +1,6 @@
 import type { GitOrigin } from "../deploy/git-origin";
-import { isValidSkillSlug } from "../deploy/package-ref";
 
 export const PROMOTE_NAMESPACE = "maestro";
-
-// The deploy slug rule: the name is later used as a pathspec and as a ref.
-export const isPromotableSkillName = (name: string): boolean =>
-  isValidSkillSlug(name);
 
 export const promoteBranch = (name: string): string =>
   `${PROMOTE_NAMESPACE}/${name}`;
