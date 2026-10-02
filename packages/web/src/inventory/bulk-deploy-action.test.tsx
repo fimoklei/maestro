@@ -195,6 +195,64 @@ describe("BulkDeployAction", () => {
     );
   });
 
+  it("holds Deploy again busy and the dialog open while it runs, so a second press sends nothing", async () => {
+    stubReads({
+      target: { kind: "global" },
+      deployed: [],
+      attention: [
+        {
+          name: "review",
+          error: "deployed-diverged-from-lock",
+          forceable: true,
+          copyReceipt: "b".repeat(64),
+        },
+      ],
+      failed: [],
+    });
+    const reads = fetch;
+    let answer: (() => void) | undefined;
+    const deployCalls = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) !== "/api/deploy") return reads(input, init);
+        deployCalls();
+        await new Promise<void>((resolve) => {
+          answer = resolve;
+        });
+        return reads(input, init);
+      }),
+    );
+    renderWithQuery(
+      <BulkDeployAction
+        stagedNames={["review"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
+    );
+
+    const dialog = await deploy();
+    const again = await within(dialog).findByRole("button", {
+      name: /deploy review again/i,
+    });
+    await userEvent.click(again);
+
+    expect(again).toHaveAccessibleName("Deploying…");
+    expect(again).toHaveAttribute("aria-busy", "true");
+    expect(again).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(again);
+    expect(deployCalls).toHaveBeenCalledTimes(1);
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    answer?.();
+    await vi.waitFor(() =>
+      expect(again).toHaveAccessibleName("Deploy review again"),
+    );
+    expect(again).not.toHaveAttribute("aria-disabled");
+  });
+
   it("names why it cannot deploy while the registry has not answered", async () => {
     stubReads({});
     renderWithQuery(

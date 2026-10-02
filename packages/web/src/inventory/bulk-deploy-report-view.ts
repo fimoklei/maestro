@@ -4,7 +4,8 @@
 import type { BulkDeployReport } from "@maestro/core";
 import { deployNoticeFor } from "../deploy-state/notice-copy";
 import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
-import type { ReportGroup } from "../ui/report";
+import { ACTIONS } from "../ui/busy-copy";
+import type { ReportGroup, ReportRowAction } from "../ui/report";
 
 type BulkReportCounts = {
   deployed: number;
@@ -97,15 +98,33 @@ export function bulkDeployReportView(input: {
   };
 }
 
+type Force = {
+  /** The row's own consent, so an inline deploy grants only what it read. */
+  run: (name: string, confirmedCopyReceipt?: string) => void;
+  /** The skill whose Deploy again is in flight: a second press would send a second deploy (#757). */
+  running: string | null;
+};
+
+function deployAgain(
+  name: string,
+  copyReceipt: string | undefined,
+  force: Force,
+): ReportRowAction {
+  const onClick = () => force.run(name, copyReceipt);
+  if (force.running === null) return { label: `Deploy ${name} again`, onClick };
+  return force.running === name
+    ? { label: ACTIONS.deploy.busy, onClick, status: "busy" }
+    : { label: `Deploy ${name} again`, onClick, status: "locked" };
+}
+
 /** The run folded into the Report's groups. Empty groups are not drawn. */
 export function bulkDeployReportGroups(input: {
   view: Extract<BulkDeployReportView, { tone: "success" | "attention" }>;
-  /** The row's own consent, so an inline deploy grants only what it read. */
-  onForce?: (name: string, confirmedCopyReceipt?: string) => void;
+  force: Force;
   /** Update target priced with this skill: the release move the deploy lacked (#955). */
   onUpdate?: (name: string) => void;
 }): ReportGroup[] {
-  const { view, onForce, onUpdate } = input;
+  const { view, force, onUpdate } = input;
   return [
     {
       tone: "failed",
@@ -122,15 +141,11 @@ export function bulkDeployReportGroups(input: {
       rows: view.attention.map((row) => ({
         name: row.name,
         notice: deployNoticeFor(row.error, undefined),
-        action:
-          onForce && row.forceable
-            ? {
-                label: `Deploy ${row.name} again`,
-                onClick: () => onForce(row.name, row.copyReceipt),
-              }
-            : onUpdate && row.error === "not-at-target-release"
-              ? { label: UPDATE_TARGET, onClick: () => onUpdate(row.name) }
-              : undefined,
+        action: row.forceable
+          ? deployAgain(row.name, row.copyReceipt, force)
+          : onUpdate && row.error === "not-at-target-release"
+            ? { label: UPDATE_TARGET, onClick: () => onUpdate(row.name) }
+            : undefined,
       })),
     },
     {

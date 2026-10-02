@@ -18,7 +18,14 @@ type ReportRow = {
   /** How many primitives the row stands for, where one reason hit several. */
   count?: number;
   /** This row's own way out, where the reader has one. */
-  action?: { label: string; onClick: () => void };
+  action?: ReportRowAction;
+};
+
+export type ReportRowAction = {
+  label: string;
+  onClick: () => void;
+  /** `busy`: this action runs; `locked`: another one does. */
+  status?: "busy" | "locked";
 };
 
 export type ReportGroup = {
@@ -147,7 +154,13 @@ export function Report({
                     variant="quiet"
                     size="sm"
                     className="shrink-0"
-                    onClick={row.action.onClick}
+                    busy={row.action.status === "busy"}
+                    aria-disabled={row.action.status !== undefined || undefined}
+                    onClick={
+                      row.action.status === undefined
+                        ? row.action.onClick
+                        : undefined
+                    }
                   >
                     {row.action.label}
                   </Button>

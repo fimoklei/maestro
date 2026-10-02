@@ -190,6 +190,8 @@ describe("bulkDeployReportGroups", () => {
     ...overrides,
   });
 
+  const noForce = { run: () => {}, running: null };
+
   const rowsOf = (
     groups: ReturnType<typeof bulkDeployReportGroups>,
     label: string,
@@ -203,6 +205,7 @@ describe("bulkDeployReportGroups", () => {
           { name: "tdd", error: "target-pinned-per-skill", forceable: false },
         ],
       }),
+      force: noForce,
     });
 
     expect(rowsOf(groups, "Attention")[0]?.notice).toEqual(
@@ -216,6 +219,7 @@ describe("bulkDeployReportGroups", () => {
         tone: "attention",
         failed: [{ error: "no-supported-tool", names: ["tdd"] }],
       }),
+      force: noForce,
     });
 
     expect(rowsOf(groups, "Failed")[0]?.notice).toEqual({
@@ -240,6 +244,7 @@ describe("bulkDeployReportGroups", () => {
           },
         ],
       }),
+      force: noForce,
     });
 
     expect(rowsOf(groups, "Failed")[0]?.notice).toEqual({
@@ -257,6 +262,7 @@ describe("bulkDeployReportGroups", () => {
         tone: "attention",
         failed: [{ error: "auth-required", names: ["tdd", "review"] }],
       }),
+      force: noForce,
     });
 
     expect(rowsOf(groups, "Failed")[0]?.name).toBe("tdd, review");
@@ -277,13 +283,39 @@ describe("bulkDeployReportGroups", () => {
           },
         ],
       }),
-      onForce,
+      force: { run: onForce, running: null },
     });
 
     const action = rowsOf(groups, "Attention")[0]?.action;
     expect(action?.label).toBe("Deploy tdd again");
     action?.onClick();
     expect(onForce).toHaveBeenCalledWith("tdd", receipt);
+  });
+
+  it("shows the running Deploy again busy and locks every other one", () => {
+    const diverged = (name: string) => ({
+      name,
+      error: "deployed-diverged-from-lock" as const,
+      forceable: true,
+      copyReceipt: "b".repeat(64),
+    });
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        attention: [diverged("tdd"), diverged("review")],
+      }),
+      force: { run: vi.fn(), running: "tdd" },
+    });
+
+    const [running, other] = rowsOf(groups, "Attention");
+    expect(running?.action).toMatchObject({
+      label: "Deploying…",
+      status: "busy",
+    });
+    expect(other?.action).toMatchObject({
+      label: "Deploy review again",
+      status: "locked",
+    });
   });
 
   it("offers no way out on a row that is not forceable", () => {
@@ -294,7 +326,7 @@ describe("bulkDeployReportGroups", () => {
           { name: "tdd", error: "target-pinned-per-skill", forceable: false },
         ],
       }),
-      onForce: vi.fn(),
+      force: { run: vi.fn(), running: null },
     });
 
     expect(rowsOf(groups, "Attention")[0]?.action).toBeUndefined();
@@ -305,6 +337,7 @@ describe("bulkDeployReportGroups", () => {
   it("has no updated-to-latest group", () => {
     const groups = bulkDeployReportGroups({
       view: view({ deployed: [{ name: "tdd", version: "v1.2.0" }] }),
+      force: noForce,
     });
 
     expect(groups.map((group) => group.label)).toEqual([
