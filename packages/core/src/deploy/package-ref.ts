@@ -1,7 +1,5 @@
 // The slug check keeps a hostile name out of command text or a path.
 
-import { harnessSkillSubpath } from "../inventory/harness-layout";
-
 const skillSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 // Also a directory name and a git refname component: keep it short for all.
@@ -17,11 +15,3 @@ export const buildHarnessPackageRef = (input: {
   ownerRepo: string;
   tag: string;
 }): string => `${input.host}/${input.ownerRepo}#${input.tag}`;
-
-export const buildSkillPackageRef = (input: {
-  host: string;
-  ownerRepo: string;
-  name: string;
-  tag: string;
-}): string =>
-  `${input.host}/${input.ownerRepo}/${harnessSkillSubpath(input.name)}#${input.tag}`;

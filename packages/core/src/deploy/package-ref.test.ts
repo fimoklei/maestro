@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
+import { isValidSkillSlug } from "./package-ref";
 
 describe("isValidSkillSlug", () => {
   it("accepts a kebab-case skill name", () => {
@@ -17,18 +17,5 @@ describe("isValidSkillSlug", () => {
     expect(isValidSkillSlug("")).toBe(false);
     expect(isValidSkillSlug("-tdd")).toBe(false);
     expect(isValidSkillSlug("tdd-")).toBe(false);
-  });
-});
-
-describe("buildSkillPackageRef", () => {
-  it("builds the tag-pinned git reference apm expects", () => {
-    expect(
-      buildSkillPackageRef({
-        host: "github.com",
-        ownerRepo: "fimoklei/agent-harness",
-        name: "tdd",
-        tag: "v0.5.1",
-      }),
-    ).toBe("github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1");
   });
 });
