@@ -203,7 +203,7 @@ export function useImportSkill() {
   });
 }
 
-export type PromoteOutcome = { branch: string; pullRequestUrl: string };
+type PromoteOutcome = { branch: string; pullRequestUrl: string };
 
 // A name travels, never a path; the row's new stage is read from git (#577).
 export function usePromoteSkill() {
@@ -222,7 +222,7 @@ export function usePromoteSkill() {
 
 // The number the row showed is a claim: the server rechecks it against a fresh
 // read before closing or reopening anything (#827).
-export type ProposalAction = "create" | "reopen" | "withdraw";
+type ProposalAction = "create" | "reopen" | "withdraw";
 
 export function useProposalAction() {
   const queryClient = useQueryClient();

@@ -21,7 +21,7 @@ export function harnessMetaLine(
   return parts.length === 0 ? null : parts.join(" · ");
 }
 
-export interface HarnessSummary {
+interface HarnessSummary {
   /** The configured Harness path, or null while none is connected. */
   path: string | null;
   /** The shortened, identifying label for that path (#211). */

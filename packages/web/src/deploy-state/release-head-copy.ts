@@ -52,8 +52,8 @@ export function pinnedTagsLine(pinned: PinnedPerSkill): string {
 export const RELEASE_NOT_ADOPTED =
   "Release not adopted. Select Remove skill for each, then Deploy skill.";
 
-export const RETRY_DEPLOY = "Retry deploy";
-export const RETRY_REMOVAL = "Retry removal";
+const RETRY_DEPLOY = "Retry deploy";
+const RETRY_REMOVAL = "Retry removal";
 export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
   deploy: RETRY_DEPLOY,
   remove: RETRY_REMOVAL,

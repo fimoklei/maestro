@@ -49,11 +49,7 @@ export function ReachCard({
 }
 
 // One target: its name, the release it follows, its own reading.
-export function TargetReadingRow({
-  deployment,
-}: {
-  deployment: TargetReading;
-}) {
+function TargetReadingRow({ deployment }: { deployment: TargetReading }) {
   const reading = targetReading(deployment.status);
   return (
     <li className="flex h-row items-center gap-inline">
