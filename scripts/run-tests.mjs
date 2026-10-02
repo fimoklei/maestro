@@ -5,9 +5,9 @@ import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 
 import { changedFiles } from "./lib/changed-files.mjs";
-import { stripAnsi } from "./lib/log-file.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const logPath = resolve(repoRoot, ".logs/test.log");
@@ -45,7 +45,7 @@ const child = spawn("vitest", args, {
 const tee = (source, sink) => {
   source.on("data", (chunk) => {
     sink.write(chunk);
-    log.write(stripAnsi(chunk.toString()));
+    log.write(stripVTControlCharacters(chunk.toString()));
   });
 };
 
