@@ -5,11 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
-import {
-  readConfiguredGitOriginUrl,
-  readGitOriginUrl,
-} from "../deploy/git-origin-url";
 import { catchUpClone, readCloneSync } from "../git/catch-up-clone";
+import { readConfiguredGitOriginUrl } from "../git/configured-origin";
 import { gitOptions, indexOptions, NO_HOOKS } from "../git/non-interactive";
 import { runGitText } from "../git/run-git-text";
 import { readRemoteDefaultBranch } from "../inventory/default-branch";
@@ -318,7 +315,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
       "origin",
     ]);
     return pushesWhereItFetched(
-      await readGitOriginUrl(root),
+      await this.read(root, ["remote", "get-url", "origin"]),
       listed === null ? [] : listed.split("\n").filter((url) => url !== ""),
     );
   }

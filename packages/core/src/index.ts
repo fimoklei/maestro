@@ -1,6 +1,5 @@
 // Only what crosses the package boundary; keep core-internal exports off it.
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
-export { resolveApmScratchCwd } from "./deploy/apm-scratch-cwd";
 export { SelectionWriter } from "./deploy/apply-selection";
 export {
   type BulkDeployReport,
@@ -25,10 +24,6 @@ export { DeployedContentAdapter } from "./deploy/deployed-content";
 export { DeployedLocation } from "./deploy/deployed-location";
 export { DeployedRefAdapter } from "./deploy/deployed-ref";
 export { parseGitOrigin } from "./deploy/git-origin";
-export {
-  readConfiguredGitOriginUrl,
-  readGitOriginUrl,
-} from "./deploy/git-origin-url";
 export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
 export {
@@ -87,7 +82,6 @@ export type {
 } from "./deploy-state/deploy-state-types";
 export type { ToolDeployState } from "./deploy-state/group-primitives-by-tool";
 export { ReleaseHeadReader } from "./deploy-state/release-head";
-export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";
 export {
@@ -121,6 +115,7 @@ export { MacosFolderChooser } from "./folder-chooser/macos-folder-chooser";
 export { platformFolderChooser } from "./folder-chooser/platform-folder-chooser";
 export { runHelper } from "./folder-chooser/run-helper";
 export { WindowsFolderChooser } from "./folder-chooser/windows-folder-chooser";
+export { readConfiguredGitOriginUrl } from "./git/configured-origin";
 export {
   type GitHubPage,
   githubPageFromOriginUrl,
@@ -229,6 +224,11 @@ export type {
   StructuralProblem,
 } from "./harness/validate-skill-structure";
 export {
+  resolveApmGlobalRoot,
+  resolveApmScratchCwd,
+  resolveMaestroConfigPath,
+} from "./home-directory";
+export {
   type CloneRepositoryPort,
   GitCloneAdapter,
 } from "./inventory/clone-repository";
@@ -260,7 +260,6 @@ export {
   type ScaffoldHarnessError,
 } from "./inventory/scaffold-harness";
 export { ScaffoldOffers } from "./inventory/scaffold-offers";
-export { resolveMaestroConfigPath } from "./registry/config-path";
 export { ConfigStore } from "./registry/config-store";
 export type { FileSystemPort } from "./registry/file-system";
 export { NodeFileSystem } from "./registry/node-file-system";

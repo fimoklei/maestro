@@ -1,8 +1,4 @@
-import { type GitRun, runGit, runGitText } from "../git/run-git-text";
-
-// Applies `insteadOf` rewrites: the URL git would actually reach.
-export const readGitOriginUrl = (repoPath: string): Promise<string | null> =>
-  runGitText(repoPath, ["remote", "get-url", "origin"]);
+import { type GitRun, runGit, runGitText } from "./run-git-text";
 
 const CONFIGURED_ORIGIN = ["config", "--get", "remote.origin.url"];
 
