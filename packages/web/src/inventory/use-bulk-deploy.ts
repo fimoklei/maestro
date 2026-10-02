@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import { type DeployTarget, invalidateTarget } from "./use-deploy-skill";
 
-export type BulkDeployRequest = {
+type BulkDeployRequest = {
   names: string[];
   target: DeployTarget;
 };

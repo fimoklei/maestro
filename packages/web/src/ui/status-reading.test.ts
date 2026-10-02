@@ -1,17 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { glyphFor, reading, worstReading } from "./status-reading";
-
-describe("glyphFor", () => {
-  it.each([
-    ["good", "✓"],
-    ["attention", "↑"],
-    ["failed", "✕"],
-    ["unknown", "?"],
-    ["neutral", "–"],
-  ] as const)("gives the %s family its glyph %s", (family, glyph) => {
-    expect(glyphFor(family)).toBe(glyph);
-  });
-});
+import { reading, worstReading } from "./status-reading";
 
 describe("reading", () => {
   it("pairs a status word with its family's glyph", () => {

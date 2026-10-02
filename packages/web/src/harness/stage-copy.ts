@@ -1,15 +1,15 @@
 // One row per status, so a new status fails typecheck until it has copy.
-import {
-  reading,
-  type StatusFamily,
-  type StatusReading,
-} from "../ui/status-reading";
 import type {
   HarnessStage,
   HarnessStageRow,
   RequestedReviewer,
   StageStatus,
-} from "./use-harness";
+} from "@maestro/core";
+import {
+  reading,
+  type StatusFamily,
+  type StatusReading,
+} from "../ui/status-reading";
 
 export const STAGE_NAMES: Record<HarnessStage, string> = {
   "pending-proposal": "Pending proposal",

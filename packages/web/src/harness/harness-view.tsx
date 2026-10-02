@@ -1,4 +1,4 @@
-import type { GitHubPage } from "@maestro/core";
+import type { GitHubPage, ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput, RefreshCw } from "lucide-react";
 import {
   type RefObject,
@@ -44,7 +44,6 @@ import {
 import { rowItems } from "./row-actions";
 import { JOURNEY_EMPTY, statusReading } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
-import type { ReleasePlan, SemverStep } from "./use-harness";
 import {
   useDiscardReleasePlan,
   useHarness,
@@ -55,7 +54,7 @@ import {
 import { useHarnessPresses } from "./use-harness-presses";
 import { useImportFlow } from "./use-import-flow";
 
-export const REREAD_HARNESS = "Re-read Harness";
+const REREAD_HARNESS = "Re-read Harness";
 const TABLE_LABEL = "Harness table";
 // Under 1024px, and beside an open pane, only Name, Status and ⋮ stay; the
 // rest is in the pane and the hover card (#994).

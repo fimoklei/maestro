@@ -1,8 +1,4 @@
-import type {
-  HarnessStateResult,
-  PublishReleaseResult,
-  ReleasePlanResult,
-} from "@maestro/core";
+import type { HarnessStateResult } from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import {
@@ -40,7 +36,7 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
   );
 
   app.get("/api/harness/release-plan", async (c) => {
-    const result: ReleasePlanResult = await deps.harness.planRelease();
+    const result = await deps.harness.planRelease();
     if (!result.ok) {
       const { status } = releasePlanErrorResponses[result.error];
       return c.json({ error: result.error }, status);
@@ -55,10 +51,7 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result: PublishReleaseResult = await deps.publish.execute(
-      body.data,
-      new Date(),
-    );
+    const result = await deps.publish.execute(body.data, new Date());
     if (!result.ok) {
       const { status } = publishReleaseErrorResponses[result.error];
       // Carries the replacing plan, so the dialog can take a new confirmation (#521).

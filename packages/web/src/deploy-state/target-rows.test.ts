@@ -1,3 +1,8 @@
+import type {
+  DeployedPrimitive,
+  ReleaseHead,
+  SupportedTool,
+} from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
@@ -7,7 +12,6 @@ import {
   statusSummary,
   type TargetRow,
 } from "./target-rows";
-import type { DeployedPrimitive, ReleaseHead } from "./use-deploy-state";
 
 const NOW = new Date("2026-09-24T10:00:00Z");
 
@@ -181,7 +185,7 @@ describe("local edits on a target", () => {
   });
 
   it("reads only the tool whose copy was edited as Local edits", () => {
-    const tool = (name: string, primitives: DeployedPrimitive[]) => ({
+    const tool = (name: SupportedTool, primitives: DeployedPrimitive[]) => ({
       tool: name,
       primitives,
       releaseHead: ON_LATEST,

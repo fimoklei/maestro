@@ -1,5 +1,3 @@
-// Error-code-to-HTTP-status tables. Every sentence lives in a `packages/web` copy module.
-
 import type {
   ChooseFolderError,
   ConnectInventoryError,
@@ -22,7 +20,11 @@ import type {
   UpdatePreviewError,
   UpdateRunError,
 } from "@maestro/core";
-import type { ErrorTable } from "./error-table";
+
+type ErrorStatus = 400 | 403 | 404 | 409 | 422 | 500 | 502 | 503;
+
+// A status only: every sentence lives in its feature copy module in `packages/web`.
+type ErrorTable<TCode extends string> = Record<TCode, { status: ErrorStatus }>;
 
 export const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "unsupported-primitive-type": { status: 422 },

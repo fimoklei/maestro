@@ -6,8 +6,8 @@ import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 
-export const PATH_LABEL = "Inventory path or GitHub URL";
-export const CLONE_LABEL = "Folder for the Harness";
+const PATH_LABEL = "Inventory path or GitHub URL";
+const CLONE_LABEL = "Folder for the Harness";
 const CLONE_HINT =
   "The Harness is cloned into a new folder here, named after the repository. Nothing already in this folder is renamed, moved or deleted.";
 

@@ -19,7 +19,7 @@ import {
   LocalCopyGuard,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
-import { reclaimTools } from "./reclaim-untargeted-copies";
+import { reclaimTools } from "./reclaim-tools";
 import { type ReclaimConsent, RemoveConsentIssuer } from "./remove-consent";
 
 // Reads the ref from the target's own lockfile, never from the caller.

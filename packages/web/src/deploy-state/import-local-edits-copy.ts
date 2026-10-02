@@ -17,7 +17,7 @@ export const canBeImportedLegend = (count: number): string =>
 export const cannotBeImportedLegend = (count: number): string =>
   `✕ Cannot be imported · ${count}`;
 
-export const IMPORT_SKILLS = "Import skills";
+const IMPORT_SKILLS = "Import skills";
 export const NONE_SELECTED = "none selected";
 export const NO_SKILL_QUALIFIES = "no skill qualifies";
 

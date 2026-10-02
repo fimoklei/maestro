@@ -1,3 +1,4 @@
+import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
 import { ArrowUpRight, GitPullRequestArrow } from "lucide-react";
 import { HoverCard } from "../ui/hover-card";
 import { MachineValue } from "../ui/machine-value";
@@ -8,7 +9,6 @@ import {
   requestedReviewers,
   reviewWord,
 } from "./stage-copy";
-import type { HarnessStageRow, ReviewRequestLink } from "./use-harness";
 
 // The Pull request column (#994): each number is a link to GitHub with a card
 // of its own. Slate, not blue: blue 11 on a hovered row falls under 4.5:1.

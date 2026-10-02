@@ -1,7 +1,7 @@
 // Every word the Update target control and its preview show.
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
 import { joinNames } from "./join-names";
-import { toolDisplayName } from "./tool-labels";
+import { toolDisplayName } from "./tool-presentation";
 
 export const UPDATE_TARGET = "Update target";
 
@@ -77,7 +77,7 @@ export const LOADING_PREVIEW = "Loading the update preview…";
 
 export const MIXED_RELEASES = "Mixed releases";
 
-export type OutcomeVerdict = "landed" | "failed" | "unconfirmed";
+type OutcomeVerdict = "landed" | "failed" | "unconfirmed";
 
 export function outcomeHeading(to: string, verdict: OutcomeVerdict): string {
   if (verdict === "landed") {
@@ -90,7 +90,7 @@ export function outcomeHeading(to: string, verdict: OutcomeVerdict): string {
 
 export const RETRY_UPDATE = "Retry update";
 
-export const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.`;
+const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.`;
 
 export const UPDATE_AGAIN = `then select ${UPDATE_TARGET} again.`;
 

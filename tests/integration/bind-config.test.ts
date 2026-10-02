@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bindConfig } from "./bind-config";
+import { bindConfig } from "../../packages/server/src/bind-config";
 
 describe("bindConfig", () => {
   it("binds the loopback address only, never a network interface", () => {

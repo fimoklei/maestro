@@ -23,7 +23,7 @@ export function skill(name: string) {
 
 type Answer = Response | Promise<Response>;
 
-export type FakeServer = {
+type FakeServer = {
   inventoryPath?: string;
   githubRepository?: string | null;
   github?: GitHubPage;

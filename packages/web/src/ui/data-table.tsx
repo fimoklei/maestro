@@ -32,13 +32,13 @@ import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { Skeleton } from "./skeleton";
 
-export type DataTableColumnMeta = {
+type DataTableColumnMeta = {
   /** Width and narrow-screen hiding for the column's header and cells. */
   className?: string;
   align?: "start" | "end";
 };
 
-export const dataTableFeatures = tableFeatures({
+const dataTableFeatures = tableFeatures({
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
   sortFns: { alphanumeric: sortFn_alphanumeric, text: sortFn_text },
@@ -48,7 +48,7 @@ export const dataTableFeatures = tableFeatures({
 
 type Features = typeof dataTableFeatures;
 // biome-ignore lint/suspicious/noExplicitAny: a column's value type differs per column, as TanStack's own ColumnDef arrays do
-export type DataTableColumn<T extends RowData> = ColumnDef<Features, T, any>;
+type DataTableColumn<T extends RowData> = ColumnDef<Features, T, any>;
 
 /** Build a screen's columns against the table's own feature set. */
 export function createDataTableColumns<T extends RowData>(
@@ -57,7 +57,7 @@ export function createDataTableColumns<T extends RowData>(
   return build(createColumnHelper<Features, T>());
 }
 
-export interface DataTableSelection<T> {
+interface DataTableSelection<T> {
   /** Accessible name of the checkbox column, e.g. "Select for bulk deploy". */
   label: string;
   /** Accessible name of one row's checkbox. */
@@ -70,7 +70,7 @@ export interface DataTableSelection<T> {
   onSetSelected?: (rows: T[], select: boolean) => void;
 }
 
-export interface DataTableGroups<T> {
+interface DataTableGroups<T> {
   /** The group a row belongs to; also its header's words. */
   key: (row: T) => string;
   /** Groups in this order first; any other follows as it first appears. */

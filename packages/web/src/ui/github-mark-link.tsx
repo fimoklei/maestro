@@ -7,7 +7,7 @@ import { reading } from "./status-reading";
 
 const UNKNOWN = reading("Unknown", "unknown");
 
-export type GitHubLink = Extract<GitHubPage, { kind: "link" }>;
+type GitHubLink = Extract<GitHubPage, { kind: "link" }>;
 
 // A row's own GitHub page (design.md → Frame): GitHub's mark as a mouse-only
 // link, since the grid is one Tab stop and the ⋮ menu is the keyboard's way.

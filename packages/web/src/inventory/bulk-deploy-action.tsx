@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { deployNotice } from "../deploy-state/notice-copy";
-import { toolNameList } from "../deploy-state/tool-labels";
+import { toolNameList } from "../deploy-state/tool-presentation";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
@@ -17,10 +17,10 @@ import {
   bulkDeploySummary,
 } from "./bulk-deploy-report-view";
 import { chosenBulkDeployTargets } from "./bulk-deploy-targets";
-import { globalOptionLabel } from "./global-option-label";
 import {
   bulkDeployDidNotRun,
   DEPLOY_SKILLS,
+  globalOptionLabel,
   NO_TOOL_DETECTED_CAUSE,
   TARGETS_LOADING,
 } from "./inventory-copy";

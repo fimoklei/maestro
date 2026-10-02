@@ -2,9 +2,6 @@ import type { ReadDriftEntry } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-// Type-only: a value re-export would pull core runtime into the bundle (#248).
-export type { ReadDriftEntry };
-
 export type DriftResponse =
   | { behind: ReadDriftEntry[] }
   | { ok: false; reason?: "unverified" };

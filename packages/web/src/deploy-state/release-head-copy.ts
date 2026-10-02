@@ -1,4 +1,10 @@
 // Every word a target's Release, Status hover card and pane state. Clock-injected.
+import type {
+  DeployedPrimitive,
+  PendingOperation,
+  PinnedPerSkill,
+  ReleaseHead,
+} from "@maestro/core";
 import { ago } from "../harness/harness-view-model";
 import { joinNames } from "./join-names";
 import {
@@ -7,12 +13,6 @@ import {
   UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
 } from "./update-target-copy";
-import type {
-  DeployedPrimitive,
-  PendingOperation,
-  PinnedPerSkill,
-  ReleaseHead,
-} from "./use-deploy-state";
 
 export function releaseSentence(head: ReleaseHead): string | null {
   if (head.latestRelease === null) {
@@ -52,8 +52,8 @@ export function pinnedTagsLine(pinned: PinnedPerSkill): string {
 export const RELEASE_NOT_ADOPTED =
   "Release not adopted. Select Remove skill for each, then Deploy skill.";
 
-export const RETRY_DEPLOY = "Retry deploy";
-export const RETRY_REMOVAL = "Retry removal";
+const RETRY_DEPLOY = "Retry deploy";
+const RETRY_REMOVAL = "Retry removal";
 export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
   deploy: RETRY_DEPLOY,
   remove: RETRY_REMOVAL,

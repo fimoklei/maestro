@@ -1,8 +1,8 @@
 import { doneSentence } from "../ui/busy-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
-import { toolNameList } from "./tool-labels";
+import { toolNameList } from "./tool-presentation";
 
-export type RemovedSkill = {
+type RemovedSkill = {
   name: string;
   version: string | undefined;
   // As the server resolved it: the detected tool set can differ from what was

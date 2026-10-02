@@ -6,7 +6,7 @@ import {
   invalidateTarget,
 } from "../inventory/use-deploy-skill";
 
-export type RemoveRequest = {
+type RemoveRequest = {
   type: "skill";
   name: string;
   target: DeployTarget;

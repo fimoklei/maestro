@@ -1,3 +1,4 @@
+import type { HarnessStageRow } from "@maestro/core";
 import { RowItemsMenu } from "../inventory/row-menu";
 import { TYPE_WORD } from "../inventory/type-filter";
 import type { ActionsMenuProps } from "../ui/actions-menu";
@@ -17,7 +18,6 @@ import {
   STAGE_NAMES,
   type StageContext,
 } from "./stage-copy";
-import type { HarnessStageRow } from "./use-harness";
 
 // One row of the Harness table (#994). A skill can hold a row in every stage,
 // so its name alone names up to three rows: the id carries the stage too.

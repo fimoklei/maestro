@@ -6,8 +6,8 @@ import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 
-import { stripAnsi } from "./lib/log-file.mjs";
 import { finishRun, startRun, treeFingerprint } from "./verify-reuse.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -52,7 +52,7 @@ const runStep = (step) =>
     const tee = (source, sink) => {
       source.on("data", (chunk) => {
         sink.write(chunk);
-        log?.write(stripAnsi(chunk.toString()));
+        log?.write(stripVTControlCharacters(chunk.toString()));
       });
     };
 
