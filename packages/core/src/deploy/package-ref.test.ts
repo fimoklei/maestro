@@ -18,4 +18,26 @@ describe("isValidSkillSlug", () => {
     expect(isValidSkillSlug("-tdd")).toBe(false);
     expect(isValidSkillSlug("tdd-")).toBe(false);
   });
+
+  it("refuses a name that would leave the skills directory", () => {
+    // The name becomes a git pathspec and a ref.
+    expect(isValidSkillSlug("..")).toBe(false);
+    expect(isValidSkillSlug(".")).toBe(false);
+    expect(isValidSkillSlug("../secrets")).toBe(false);
+    expect(isValidSkillSlug("nested/skill")).toBe(false);
+  });
+
+  it("refuses a name git would not take as a ref", () => {
+    expect(isValidSkillSlug("-force")).toBe(false);
+    expect(isValidSkillSlug("tdd.lock")).toBe(false);
+    expect(isValidSkillSlug("tdd..v2")).toBe(false);
+    expect(isValidSkillSlug("tdd.")).toBe(false);
+    expect(isValidSkillSlug("two words")).toBe(false);
+  });
+
+  it("refuses a dot, an underscore or a capital anywhere in the name", () => {
+    expect(isValidSkillSlug("tdd.v2_1")).toBe(false);
+    expect(isValidSkillSlug("TDD")).toBe(false);
+    expect(isValidSkillSlug("my_skill")).toBe(false);
+  });
 });
