@@ -1,11 +1,11 @@
 // The remote is a bare repo on disk, so the whole suite is offline.
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { promisify } from "node:util";
 import { HarnessGitAdapter } from "@maestro/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 
 const run = promisify(execFile);
@@ -169,6 +169,39 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
     await expect(adapter().pushSkillPromotion(root, "tdd", head)).resolves.toBe(
       "push-elsewhere",
+    );
+  });
+
+  // `LC_ALL=C` stands in for the whole options object: the timeout cannot be
+  // observed without a git that hangs (#786).
+  it("runs every read with the adapter's non-interactive options", async () => {
+    const realGit = join(
+      (await run("git", ["--exec-path"])).stdout.trim(),
+      "git",
+    );
+    const shimDir = join(base, "shim");
+    const log = join(base, "git.log");
+    await mkdir(shimDir);
+    await writeFile(
+      join(shimDir, "git"),
+      `#!/bin/sh\necho "LC_ALL=$LC_ALL $*" >> "${log}"\nexec "${realGit}" "$@"\n`,
+      { mode: 0o755 },
+    );
+    vi.stubEnv("PATH", `${shimDir}${delimiter}${process.env.PATH}`);
+    vi.stubEnv("LC_ALL", "");
+
+    try {
+      await adapter().readFacts(root);
+      await adapter().readTags(root);
+      await adapter().readMovementTrees(root);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const invocations = (await readFile(log, "utf8")).trim().split("\n");
+    expect(invocations.length).toBeGreaterThan(0);
+    expect(invocations.filter((line) => !line.startsWith("LC_ALL=C "))).toEqual(
+      [],
     );
   });
 

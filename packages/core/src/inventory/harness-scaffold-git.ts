@@ -55,12 +55,12 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
 
   // `--short` is safe on HEAD's own branch, unlike on a prunable remote symref.
   currentBranch(root: string): Promise<string | null> {
-    return this.read(root, ["symbolic-ref", "--short", "HEAD"]);
+    return runGitText(root, ["symbolic-ref", "--short", "HEAD"]);
   }
 
   async hasCommits(root: string): Promise<boolean> {
     return (
-      (await this.read(root, ["rev-parse", "--verify", "--quiet", "HEAD"])) !==
+      (await runGitText(root, ["rev-parse", "--verify", "--quiet", "HEAD"])) !==
       null
     );
   }
@@ -137,9 +137,5 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
 
   private git(root: string, args: string[]) {
     return run("git", ["-C", root, ...args], gitOptions());
-  }
-
-  private read(root: string, args: string[]): Promise<string | null> {
-    return runGitText(root, args, gitOptions());
   }
 }

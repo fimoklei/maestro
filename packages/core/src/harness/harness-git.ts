@@ -132,16 +132,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
     if (failure === "already-exists" || failure === "stale-tip") {
       return failure;
     }
-    // Not `read`: the remote may be unreachable, so this needs gitOptions' timeout and no-prompt env.
-    const listing = await run(
-      "git",
-      ["-C", root, "ls-remote", "origin", `refs/tags/${name}`],
-      gitOptions(),
-    ).then(
-      ({ stdout }) => stdout.trim(),
-      () => "",
-    );
-    if (listing === "") {
+    const listing = await runGitText(root, [
+      "ls-remote",
+      "origin",
+      `refs/tags/${name}`,
+    ]);
+    if (listing === null) {
       return failure;
     }
     const [published] = listing.split("\t");
@@ -176,9 +172,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
       // have landed since the last fetch (#578).
       const branchRef = `${PROMOTE_BRANCHES}/${name}`;
       await this.refreshPromoteBranchRef(root, name);
-      const existingTip = await this.read(root, ["rev-parse", branchRef]);
+      const existingTip = await runGitText(root, ["rev-parse", branchRef]);
       if (existingTip !== null) {
-        const existingTree = await this.read(root, [
+        const existingTree = await runGitText(root, [
           "rev-parse",
           `${branchRef}:${subpath}`,
         ]);
@@ -237,9 +233,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
     try {
       const branchRef = `${PROMOTE_BRANCHES}/${name}`;
       await this.refreshPromoteBranchRef(root, name);
-      const existingTip = await this.read(root, ["rev-parse", branchRef]);
+      const existingTip = await runGitText(root, ["rev-parse", branchRef]);
       if (existingTip !== null) {
-        const existingTree = await this.read(root, [
+        const existingTree = await runGitText(root, [
           "rev-parse",
           `${branchRef}:${subpath}`,
         ]);
@@ -272,7 +268,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // same name. A check that could not run is fail-closed (#580).
   async readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null> {
     // `--type=bool` normalises `1` and `on` to `true`.
-    const sparse = await this.read(root, [
+    const sparse = await runGitText(root, [
       "config",
       "--type=bool",
       "--get",
@@ -285,7 +281,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
       return "merge-in-progress";
     }
     for (const dir of ["rebase-merge", "rebase-apply"]) {
-      const path = await this.read(root, ["rev-parse", "--git-path", dir]);
+      const path = await runGitText(root, ["rev-parse", "--git-path", dir]);
       if (path !== null && (await pathExists(join(root, path)))) {
         return "rebase-in-progress";
       }
@@ -300,14 +296,14 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
   private async refExists(root: string, ref: string): Promise<boolean> {
     return (
-      (await this.read(root, ["rev-parse", "--verify", "--quiet", ref])) !==
+      (await runGitText(root, ["rev-parse", "--verify", "--quiet", ref])) !==
       null
     );
   }
 
   // Both sides as git resolves them, after `pushurl`, `pushInsteadOf` and `insteadOf`.
   private async pushLandsWhereItFetched(root: string): Promise<boolean> {
-    const listed = await this.read(root, [
+    const listed = await runGitText(root, [
       "remote",
       "get-url",
       "--push",
@@ -315,7 +311,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
       "origin",
     ]);
     return pushesWhereItFetched(
-      await this.read(root, ["remote", "get-url", "origin"]),
+      await runGitText(root, ["remote", "get-url", "origin"]),
       listed === null ? [] : listed.split("\n").filter((url) => url !== ""),
     );
   }
@@ -499,7 +495,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return {
       originUrl: await readConfiguredGitOriginUrl(root),
       defaultBranch: await readRemoteDefaultBranch(root),
-      defaultBranchCommit: await this.read(root, ["rev-parse", REMOTE_HEAD]),
+      defaultBranchCommit: await runGitText(root, ["rev-parse", REMOTE_HEAD]),
       tags: await this.readTags(root),
     };
   }
@@ -526,7 +522,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     remoteCommit: string,
   ): Promise<string | null> {
-    return this.read(root, ["merge-base", remoteCommit, "HEAD"]);
+    return runGitText(root, ["merge-base", remoteCommit, "HEAD"]);
   }
 
   catchUp = catchUpClone;
@@ -541,7 +537,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
   private async promoteRefs(
     root: string,
   ): Promise<Record<string, HarnessPromoteRef>> {
-    const listing = await this.read(root, [
+    const listing = await runGitText(root, [
       "for-each-ref",
       `--format=${PROMOTE_FORMAT}`,
       PROMOTE_BRANCHES,
@@ -553,7 +549,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     const named = await Promise.all(
       listing.split("\n").map(async (line) => {
         const [skill = "", commit = ""] = line.split("\t");
-        const tree = await this.read(root, [
+        const tree = await runGitText(root, [
           "rev-parse",
           `${PROMOTE_BRANCHES}/${skill}:${harnessSkillSubpath(skill)}`,
         ]);
@@ -663,7 +659,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     const authors = await Promise.all(
       names.map(async (name) => [
         name,
-        await this.read(root, [
+        await runGitText(root, [
           "log",
           "-1",
           "--format=%an",
@@ -700,18 +696,14 @@ export class HarnessGitAdapter implements HarnessGitPort {
     args: string[],
   ): Promise<string | null> {
     try {
-      const { stdout } = await run("git", ["-C", root, ...args]);
+      const { stdout } = await run("git", ["-C", root, ...args], gitOptions());
       return stdout;
     } catch {
       return null;
     }
   }
 
-  private read(root: string, args: string[]): Promise<string | null> {
-    return runGitText(root, args);
-  }
-
-  // `readOutput`, not `read`: a failed command must not read as a harness never released (#519).
+  // `readOutput`, not `runGitText`: a failed command must not read as a harness never released (#519).
   async readTags(root: string): Promise<HarnessTag[] | null> {
     const listing = await this.readOutput(root, [
       "for-each-ref",
