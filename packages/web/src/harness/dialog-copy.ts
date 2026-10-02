@@ -1,5 +1,5 @@
+import type { ManifestAdvisory, StructuralProblem } from "@maestro/core";
 import type { NoticeContent } from "../ui/notice";
-import type { ManifestAdvisory, StructuralProblem } from "./use-harness";
 
 // Reported, never blocking: the skill still ships or imports (#519).
 export const skillChecksNotice = (

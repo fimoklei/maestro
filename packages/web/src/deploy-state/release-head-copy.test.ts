@@ -1,3 +1,4 @@
+import type { ReleaseHead } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   changedFact,
@@ -13,7 +14,6 @@ import {
   unfinishedOperationNotice,
   updateNextStep,
 } from "./release-head-copy";
-import type { ReleaseHead } from "./use-deploy-state";
 
 // The approved sentences, pinned as exact strings.
 const NOW = new Date("2026-09-12T10:00:00.000Z");

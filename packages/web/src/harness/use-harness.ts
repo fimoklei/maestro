@@ -2,24 +2,11 @@
 // that reaches the remote and replaces it.
 
 import type {
-  HarnessFreshness,
-  HarnessStage,
-  HarnessStageRead,
-  HarnessStageRow,
   HarnessState,
   ImportCheck,
   ImportMode,
-  ImportNameBlocker,
-  ImportSourceBlocker,
-  ManifestAdvisory,
-  PendingSkillMovement,
   ReleasePlan,
-  RequestedReviewer,
-  ReviewRequestLink,
   SemverStep,
-  SkillMovementKind,
-  StageStatus,
-  StructuralProblem,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, requestJson } from "../api/http";
@@ -27,26 +14,6 @@ import {
   fetchInventoryPrimitives,
   INVENTORY_KEY,
 } from "../inventory/use-inventory";
-
-export type {
-  HarnessFreshness,
-  HarnessStage,
-  HarnessStageRead,
-  HarnessStageRow,
-  HarnessState,
-  ImportCheck,
-  ImportNameBlocker,
-  ImportSourceBlocker,
-  ManifestAdvisory,
-  PendingSkillMovement,
-  ReleasePlan,
-  RequestedReviewer,
-  ReviewRequestLink,
-  SemverStep,
-  SkillMovementKind,
-  StageStatus,
-  StructuralProblem,
-};
 
 // Every Harness read shares this prefix, so a re-point drops them together.
 export const HARNESS_QUERIES = ["harness"] as const;

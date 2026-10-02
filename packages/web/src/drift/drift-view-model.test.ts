@@ -1,5 +1,5 @@
+import type { DeployedPrimitive } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
 import { driftViewModel } from "./drift-view-model";
 import type { DriftResponse } from "./use-drift";
 

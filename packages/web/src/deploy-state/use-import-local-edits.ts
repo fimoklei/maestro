@@ -8,8 +8,6 @@ import {
   targetQueryKey,
 } from "../inventory/use-deploy-skill";
 
-export type { LocalEditsSkill };
-
 // Read-only despite the POST. Fresh every open, as the update preview is.
 export function useLocalEditsCheck(target: DeployTarget) {
   return useQuery({

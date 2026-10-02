@@ -1,5 +1,5 @@
+import type { SkippedEntry } from "@maestro/core";
 import { FIX_AND_RELEASE } from "./notice-copy";
-import type { SkippedEntry } from "./use-deploy-state";
 
 export function skippedEntryText(entry: SkippedEntry): string {
   if (entry.reason === "unsupported-type") {

@@ -1,3 +1,4 @@
+import type { DeployedPrimitive, ReleaseHead } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
@@ -7,7 +8,6 @@ import {
   statusSummary,
   type TargetRow,
 } from "./target-rows";
-import type { DeployedPrimitive, ReleaseHead } from "./use-deploy-state";
 
 const NOW = new Date("2026-09-24T10:00:00Z");
 

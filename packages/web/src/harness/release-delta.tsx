@@ -1,6 +1,6 @@
+import type { PendingSkillMovement, SkillMovementKind } from "@maestro/core";
 import { createDataTableColumns, DataTable } from "../ui/data-table";
 import { MachineValue } from "../ui/machine-value";
-import type { PendingSkillMovement, SkillMovementKind } from "./use-harness";
 
 // "Deleted", never "Removed": remove belongs to deployed copies alone.
 const KINDS: Record<SkillMovementKind, string> = {
