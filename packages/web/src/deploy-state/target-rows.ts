@@ -27,8 +27,7 @@ import {
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { skippedEntryText, skippedNeedsAttention } from "./skipped-entry-text";
 import { targetStatus } from "./target-status";
-import { toolNameList } from "./tool-labels";
-import { toolPresentation } from "./tool-presentation";
+import { toolNameList, toolPresentation } from "./tool-presentation";
 import type {
   DeployedPrimitive,
   GitHubPage,

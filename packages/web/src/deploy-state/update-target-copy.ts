@@ -1,7 +1,7 @@
 // Every word the Update target control and its preview show.
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
 import { joinNames } from "./join-names";
-import { toolDisplayName } from "./tool-labels";
+import { toolDisplayName } from "./tool-presentation";
 
 export const UPDATE_TARGET = "Update target";
 

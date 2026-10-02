@@ -49,7 +49,6 @@ import {
   stageRowLabel,
   TABLE_LABEL,
 } from "./inventory-copy";
-import { filterByName } from "./inventory-table-model";
 import type { RowAction } from "./row-menu";
 import { type SkillDeployment, skillDeployments } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
@@ -57,6 +56,7 @@ import { type PaneDialog, SkillPaneDialog } from "./skill-pane-dialogs";
 import { skillStatus } from "./skill-status";
 import {
   deriveTypeSegments,
+  filterByName,
   filterByType,
   type TypeFilter,
 } from "./type-filter";
