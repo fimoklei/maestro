@@ -22,7 +22,10 @@ import type {
   UpdatePreviewError,
   UpdateRunError,
 } from "@maestro/core";
-import type { ErrorTable } from "./error-table";
+
+type ErrorStatus = 400 | 403 | 404 | 409 | 422 | 500 | 502 | 503;
+
+type ErrorTable<TCode extends string> = Record<TCode, { status: ErrorStatus }>;
 
 export const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "unsupported-primitive-type": { status: 422 },

@@ -1,5 +1,5 @@
 import { BulkDeploySkills, BulkRemoveDeployedSkill } from "@maestro/core";
-import type { Context, Hono } from "hono";
+import type { Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import {
   deployErrorResponses,
@@ -68,20 +68,13 @@ const driftFailureBody = (result: { reason?: "unverified" }) =>
     : { ok: false as const };
 
 export function registerDeployRoutes(app: Hono, deps: Deps) {
-  const requireRegisteredRepoAccess = (c: Context) =>
-    requireRegisteredRepo(c, {
-      registry: deps.registry,
-      deployState: deps.deployState,
-      drift: deps.drift,
-    });
-
   // Registry-gated before any filesystem access, so no request reads an arbitrary path.
   app.get("/api/deploy-state", async (c) => {
-    const gate = await requireRegisteredRepoAccess(c);
+    const gate = await requireRegisteredRepo(c, deps.registry);
     if (!gate.ok) {
       return gate.response;
     }
-    const result = await gate.repo.readDeployState();
+    const result = await deps.deployState.read(gate.path);
     if (!result.ok) {
       // 422: lockfile exists but couldn't be read — never a silent empty list.
       return c.json({ error: result.error }, 422);
@@ -327,11 +320,13 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
 
   // Registry-gated like deploy-state.
   app.get("/api/drift", async (c) => {
-    const gate = await requireRegisteredRepoAccess(c);
+    const gate = await requireRegisteredRepo(c, deps.registry);
     if (!gate.ok) {
       return gate.response;
     }
-    const result = await gate.repo.readDrift();
+    const result = await deps.drift.execute({
+      target: { kind: "repo", repoPath: gate.path },
+    });
     if (!result.ok) {
       return c.json(driftFailureBody(result));
     }
