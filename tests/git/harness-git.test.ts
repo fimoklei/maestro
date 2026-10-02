@@ -163,6 +163,15 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     });
   });
 
+  it("refuses to push a skill from a clone with no origin", async () => {
+    const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+    await git(root, "remote", "remove", "origin");
+
+    await expect(adapter().pushSkillPromotion(root, "tdd", head)).resolves.toBe(
+      "push-elsewhere",
+    );
+  });
+
   describe("skill trees", () => {
     const movementTrees = async (path: string) => {
       const trees = await adapter().readMovementTrees(path);
