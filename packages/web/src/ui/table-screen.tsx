@@ -11,6 +11,7 @@ import { OptionMenu } from "./option-menu";
 import { Panel } from "./panel";
 import type { TableScreenState } from "./use-table-screen";
 import type { ViewOptions } from "./use-view-options";
+import { ScreenReportContext } from "./use-write-action";
 
 /** What a screen's pane spreads onto its `DetailPane`. */
 export type PaneFrame = {
@@ -103,106 +104,108 @@ export function TableScreen<T extends RowData>({
   const showTable = state.skeleton || rows.length > 0 || groupSpeaks;
 
   return (
-    <Panel
-      title={state.name}
-      meta={meta}
-      action={action}
-      band2={
-        <>
-          {lead}
-          <div className="ml-auto flex flex-none items-center gap-inline">
-            {freshness}
-            <IconButton
-              ref={state.rereadRef}
-              label={`Re-read ${state.name}`}
-              busy={rereading}
-              onClick={state.reread}
-            >
-              <RefreshCw
-                aria-hidden="true"
-                strokeWidth={1.5}
-                className="size-4"
-              />
-            </IconButton>
-            {view?.menus.map((menu) => (
-              <OptionMenu key={menu.label} {...menu} />
-            ))}
-          </div>
-        </>
-      }
-    >
-      {/* Mounted before any read, so its first announcement is heard. */}
-      <div role="status" className="sr-only">
-        {state.announcement}
-      </div>
-      {/* Side by side from 1100px; narrower, the pane floats over the table. */}
-      <div className="relative flex h-[100cqh]">
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          {notice ?? (
-            // Mounted before a failure is, so it is announced (#465); the
-            // padding comes only with the notice.
-            <div className={state.notice === null ? undefined : "p-panel"}>
-              <Notice trigger="load" notice={state.notice} />
+    <ScreenReportContext.Provider value={state.report}>
+      <Panel
+        title={state.name}
+        meta={meta}
+        action={action}
+        band2={
+          <>
+            {lead}
+            <div className="ml-auto flex flex-none items-center gap-inline">
+              {freshness}
+              <IconButton
+                ref={state.rereadRef}
+                label={`Re-read ${state.name}`}
+                busy={rereading}
+                onClick={state.reread}
+              >
+                <RefreshCw
+                  aria-hidden="true"
+                  strokeWidth={1.5}
+                  className="size-4"
+                />
+              </IconButton>
+              {view?.menus.map((menu) => (
+                <OptionMenu key={menu.label} {...menu} />
+              ))}
             </div>
-          )}
-          {showTable ? (
-            <div
-              aria-busy={state.reading || undefined}
-              // Room under the last row while the selection bar floats over
-              // it: bar height plus its offset (section + page + inline).
-              className={cn(
-                "min-h-0 flex-1 overflow-auto",
-                selectionBar != null &&
-                  "pb-[calc(var(--spacing-section)+var(--spacing-page)+var(--spacing-inline))]",
-              )}
-            >
-              <DataTable
-                ref={gridRef}
-                label={`${state.name} table`}
-                columns={columns}
-                data={visible}
-                getRowId={rowId}
-                loading={state.skeleton}
-                skeletonRows={Math.min(rows.length || SKELETON_FALLBACK, 30)}
-                groups={view === undefined ? groups : view.groups}
-                columnVisibility={
-                  view === undefined
-                    ? undefined
-                    : Object.fromEntries(
-                        [...view.hidden].map((id) => [id, false]),
-                      )
-                }
-                empty={noMatch}
-                openRowId={openRow === null ? null : openId}
-                onRowOpen={
-                  pane === undefined
-                    ? undefined
-                    : (row) => open(openId === rowId(row) ? null : rowId(row))
-                }
-                onRowOrderChange={setOrder}
-                selection={selection}
-              />
-            </div>
-          ) : state.settled && empty !== undefined ? (
-            <EmptyState headingLevel={2} {...empty} />
-          ) : null}
-          {selectionBar}
+          </>
+        }
+      >
+        {/* Mounted before any read, so its first announcement is heard. */}
+        <div role="status" className="sr-only">
+          {state.announcement}
         </div>
-        {openRow !== null && pane !== undefined ? (
-          <DetailPaneSlot>
-            {pane(openRow, {
-              position:
-                openIndex === -1
-                  ? null
-                  : { index: openIndex, count: order.length },
-              onPage: (step) => open(order[openIndex + step] ?? openId),
-              onClose: () => open(null),
-              getTriggerElement,
-            })}
-          </DetailPaneSlot>
-        ) : null}
-      </div>
-      {children}
-    </Panel>
+        {/* Side by side from 1100px; narrower, the pane floats over the table. */}
+        <div className="relative flex h-[100cqh]">
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+            {notice ?? (
+              // Mounted before a failure is, so it is announced (#465); the
+              // padding comes only with the notice.
+              <div className={state.notice === null ? undefined : "p-panel"}>
+                <Notice trigger="load" notice={state.notice} />
+              </div>
+            )}
+            {showTable ? (
+              <div
+                aria-busy={state.reading || undefined}
+                // Room under the last row while the selection bar floats over
+                // it: bar height plus its offset (section + page + inline).
+                className={cn(
+                  "min-h-0 flex-1 overflow-auto",
+                  selectionBar != null &&
+                    "pb-[calc(var(--spacing-section)+var(--spacing-page)+var(--spacing-inline))]",
+                )}
+              >
+                <DataTable
+                  ref={gridRef}
+                  label={`${state.name} table`}
+                  columns={columns}
+                  data={visible}
+                  getRowId={rowId}
+                  loading={state.skeleton}
+                  skeletonRows={Math.min(rows.length || SKELETON_FALLBACK, 30)}
+                  groups={view === undefined ? groups : view.groups}
+                  columnVisibility={
+                    view === undefined
+                      ? undefined
+                      : Object.fromEntries(
+                          [...view.hidden].map((id) => [id, false]),
+                        )
+                  }
+                  empty={noMatch}
+                  openRowId={openRow === null ? null : openId}
+                  onRowOpen={
+                    pane === undefined
+                      ? undefined
+                      : (row) => open(openId === rowId(row) ? null : rowId(row))
+                  }
+                  onRowOrderChange={setOrder}
+                  selection={selection}
+                />
+              </div>
+            ) : state.settled && empty !== undefined ? (
+              <EmptyState headingLevel={2} {...empty} />
+            ) : null}
+            {selectionBar}
+          </div>
+          {openRow !== null && pane !== undefined ? (
+            <DetailPaneSlot>
+              {pane(openRow, {
+                position:
+                  openIndex === -1
+                    ? null
+                    : { index: openIndex, count: order.length },
+                onPage: (step) => open(order[openIndex + step] ?? openId),
+                onClose: () => open(null),
+                getTriggerElement,
+              })}
+            </DetailPaneSlot>
+          ) : null}
+        </div>
+        {children}
+      </Panel>
+    </ScreenReportContext.Provider>
   );
 }

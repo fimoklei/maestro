@@ -2,7 +2,6 @@ import type { GitHubPage, ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
-import { doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
@@ -11,6 +10,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
+import { useWriteAction } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
@@ -22,6 +22,7 @@ import {
 } from "./harness-view-model";
 import {
   harnessStateNotice,
+  publishReleaseNotice,
   refreshNotice,
   releasePublishedNotice,
   skillRestoredNotice,
@@ -71,6 +72,14 @@ export function HarnessView({
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
   const publish = usePublishRelease();
+  // What was published is stated above the table (#849).
+  const publishWrite = useWriteAction(publish, {
+    report: table.report,
+    action: "publish",
+    show: "row",
+    name: () => null,
+    failure: publishReleaseNotice,
+  });
   const rereadInventory = useRereadInventory();
   const closePlan = () => {
     setPlanOpen(false);
@@ -79,7 +88,7 @@ export function HarnessView({
     publish.reset();
   };
   const handlePublish = (step: SemverStep, plan: ReleasePlan) => {
-    publish.mutate(
+    publishWrite.run(
       {
         step,
         previousTag: plan.previousTag,
@@ -100,14 +109,13 @@ export function HarnessView({
   // The import's done sentence already says what moved. It lands before the
   // import's own re-read paints, so that read reports no move (#1160).
   const importSaid = useRef(false);
-  const importFlow = useImportFlow(({ name }) => {
+  const importFlow = useImportFlow(table.report, ({ name }) => {
     // An import writes the working tree, so its row is Pending proposal's —
     // even where the skill also holds a later one (#865).
     open(rowId({ stage: "pending-proposal", skill: name }));
     importSaid.current = true;
-    table.report(doneSentence("import", name));
   });
-  const presses = useHarnessPresses(state);
+  const presses = useHarnessPresses(state, table.report);
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -355,18 +363,18 @@ export function HarnessView({
           origin={state.origin}
           importFlow={importFlow}
           deletionRow={presses.pendingDeletion}
-          deletion={presses.deletion}
-          deleteLocal={presses.deleteLocal}
+          deletion={presses.deletionWrite}
+          deleteLocal={presses.deleteLocalWrite}
           onDeletionClose={presses.closeConfirmation}
           restoring={presses.restoring}
-          restore={presses.restore}
+          restore={presses.restoreWrite}
           onRestoreClose={presses.closeRestore}
           withdrawing={presses.withdrawing}
-          proposalAction={presses.proposalAction}
+          proposalAction={presses.proposalWrite}
           onWithdrawClose={presses.closeWithdrawal}
           planOpen={planOpen}
           plan={plan}
-          publish={publish}
+          publish={publishWrite}
           onPlanClose={closePlan}
           onPublish={handlePublish}
         />

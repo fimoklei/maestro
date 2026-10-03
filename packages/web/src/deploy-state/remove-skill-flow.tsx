@@ -3,9 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { HttpError } from "../api/http";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
-import { showSuccess } from "../ui/toast";
+import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
-import { removalAnnouncement } from "./removal-announcement";
+import { removedName } from "./removal-announcement";
 import { removalOutcome } from "./removal-outcome";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
@@ -62,20 +62,39 @@ export function RemoveSkillFlow({
   const wireTarget: DeployTarget =
     target.kind === "repo" ? target : { kind: "global" };
   const preflight = useRemovePreflight(skillName, wireTarget);
+  const removeWrite = useWriteAction(remove, {
+    report: useScreenReport(),
+    action: "remove",
+    show: "toast",
+    name: ({ removed }) =>
+      removedName({
+        name: removed.name,
+        version: removed.version,
+        // No scope in the response falls back to what the user consented to.
+        target:
+          removed.scope?.kind === "global"
+            ? { kind: "global", tools: removed.scope.tools }
+            : target.kind === "global"
+              ? target
+              : { kind: "repo", name: targetName },
+      }),
+    // `news` states it: a retry clears the mutation's error mid-attempt.
+    failure: () => null,
+  });
 
   return (
     <RemoveSkillDialog
       skillName={skillName}
       version={version}
       target={target}
-      isRemoving={remove.isPending}
+      isRemoving={removeWrite.phase === "running"}
       preflight={removePreflightView(preflight)}
       error={news?.kind === "failed" ? news.notice : null}
       restated={news?.kind === "restated" ? news.notice : null}
       outcome={news?.kind === "failed" ? news.outcome : null}
       onCancel={onCancel}
       onConfirm={() =>
-        remove.mutate(
+        removeWrite.run(
           {
             type: "skill",
             name: skillName,
@@ -106,21 +125,7 @@ export function RemoveSkillFlow({
               }
               setNews(removalFailure(error));
             },
-            onSuccess: (data) => {
-              const scope = data.removed.scope;
-              showSuccess(
-                removalAnnouncement({
-                  name: data.removed.name,
-                  version: data.removed.version,
-                  // No scope in the response falls back to what the user consented to.
-                  target:
-                    scope?.kind === "global"
-                      ? { kind: "global", tools: scope.tools }
-                      : target.kind === "global"
-                        ? target
-                        : { kind: "repo", name: targetName },
-                }),
-              );
+            onSuccess: () => {
               onRemoved();
             },
           },

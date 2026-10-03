@@ -6,6 +6,7 @@ import {
   removePreflightView,
 } from "../deploy-state/remove-preflight-view";
 import { removePreflightQueryOptions } from "../deploy-state/use-remove-preflight";
+import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import { bulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import { bulkRemoveReportView } from "./bulk-remove-report-view";
@@ -32,6 +33,14 @@ export function BulkRemoveRun({
   onClose: () => void;
 }) {
   const run = useBulkRemove();
+  // The Report states the run, its request failure included.
+  const removeWrite = useWriteAction(run, {
+    report: useScreenReport(),
+    action: "remove",
+    show: "row",
+    name: () => null,
+    failure: () => null,
+  });
   const queryClient = useQueryClient();
 
   // On the way out, not when the request settles: the report is still being
@@ -90,7 +99,7 @@ export function BulkRemoveRun({
         ...(refused === null ? {} : { refused }),
       };
     });
-    run.mutate({ name: skillName, targets: entries });
+    removeWrite.run({ name: skillName, targets: entries });
   };
 
   return (
@@ -98,7 +107,7 @@ export function BulkRemoveRun({
       skillName={skillName}
       targetCount={targets.length}
       view={view}
-      isRemoving={run.isPending}
+      isRemoving={removeWrite.phase === "running"}
       report={bulkRemoveReportView({
         targets,
         report: run.data,

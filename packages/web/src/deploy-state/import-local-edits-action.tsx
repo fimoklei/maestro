@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toggleStaged } from "../inventory/bulk-selection";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
-import { doneSentence } from "../ui/busy-copy";
-import { showSuccess } from "../ui/toast";
+import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import {
   localEditsCheckNotice,
   localEditsImportNotice,
@@ -31,6 +30,18 @@ export function ImportLocalEditsAction({
   const navigate = useNavigate();
   const check = useLocalEditsCheck(target);
   const run = useImportLocalEdits();
+  // A refusal shows in the dialog's outcome, one skill on the Harness screen
+  // in its open row; only several are named by a toast.
+  const importWrite = useWriteAction(run, {
+    report: useScreenReport(),
+    action: "import",
+    show: "toast",
+    name: ({ outcomes: landed }) =>
+      landed.some((row) => row.refusal !== null) || landed.length < 2
+        ? null
+        : `${landed.length} skills`,
+    failure: localEditsImportNotice,
+  });
   // The reader's toggles: an eligible skill starts checked, one that undoes
   // newer Harness changes unchecked.
   const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
@@ -56,16 +67,14 @@ export function ImportLocalEditsAction({
       checked={checked}
       checksChanged={toggled.size > 0}
       onToggle={(name) => setToggled((current) => toggleStaged(current, name))}
-      isRunning={run.isPending}
+      isRunning={importWrite.phase === "running"}
       outcomes={outcomes}
       failure={
-        check.isError
-          ? localEditsCheckNotice(check.error)
-          : localEditsImportNotice(run.error)
+        check.isError ? localEditsCheckNotice(check.error) : importWrite.failure
       }
       onCancel={onClose}
       onConfirm={() =>
-        run.mutate(
+        importWrite.run(
           {
             target,
             names: [...checked],
@@ -81,9 +90,6 @@ export function ImportLocalEditsAction({
               navigate("/harness", {
                 state: names.length === 1 ? { openSkill: names[0] } : null,
               });
-              if (names.length > 1) {
-                showSuccess(doneSentence("import", `${names.length} skills`));
-              }
             },
           },
         )

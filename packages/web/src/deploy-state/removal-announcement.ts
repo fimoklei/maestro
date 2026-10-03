@@ -1,4 +1,3 @@
-import { doneSentence } from "../ui/busy-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { toolNameList } from "./tool-presentation";
 
@@ -12,18 +11,12 @@ type RemovedSkill = {
     | { kind: "repo"; name: string };
 };
 
-export function removalAnnouncement({
-  name,
-  version,
-  target,
-}: RemovedSkill): string {
+/** What a landed removal's done sentence names. */
+export function removedName({ name, version, target }: RemovedSkill): string {
   const scope =
     target.kind === "repo"
       ? target.name
       : // The detected set can be empty.
         toolNameList(target.tools) || "every detected tool";
-  return doneSentence(
-    "remove",
-    `${name} ${version ?? "(version unknown)"} from ${scope}`,
-  );
+  return `${name} ${version ?? "(version unknown)"} from ${scope}`;
 }
