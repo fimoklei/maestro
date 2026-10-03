@@ -27,6 +27,12 @@ export interface TableScreenProps<T extends RowData> {
   columns: DataTableProps<T>["columns"];
   rowId: (row: T) => string;
   groups?: DataTableProps<T>["groups"];
+  /** Band 2's left side, such as the screen's facts. */
+  lead?: ReactNode;
+  /** The freshness line, just before Re-read. */
+  freshness?: ReactNode;
+  /** The screen's own re-read is running: Re-read spins. */
+  rereading?: boolean;
   /** The screen's own narrowing, such as a search; an open pane survives it. */
   shown?: (row: T) => boolean;
   /** Shown in place of the table once a read answered with no rows. */
@@ -52,6 +58,9 @@ export function TableScreen<T extends RowData>({
   columns,
   rowId,
   groups,
+  lead,
+  freshness,
+  rereading = false,
   shown,
   empty,
   pane,
@@ -69,7 +78,11 @@ export function TableScreen<T extends RowData>({
       ? null
       : (rows.find((row) => rowId(row) === openId) ?? null);
   const openIndex = openId === null ? -1 : order.indexOf(openId);
-  const showTable = state.skeleton || rows.length > 0;
+  // An unread group says so in its own line, so it is never drawn as empty.
+  const groupSpeaks =
+    groups?.order?.some((key) => (groups.message?.(key) ?? null) !== null) ??
+    false;
+  const showTable = state.skeleton || rows.length > 0 || groupSpeaks;
 
   return (
     <Panel
@@ -77,15 +90,24 @@ export function TableScreen<T extends RowData>({
       meta={meta}
       action={action}
       band2={
-        <div className="ml-auto flex items-center gap-inline">
-          <IconButton label={`Re-read ${state.name}`} onClick={state.reread}>
-            <RefreshCw
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-4"
-            />
-          </IconButton>
-        </div>
+        <>
+          {lead}
+          <div className="ml-auto flex flex-none items-center gap-inline">
+            {freshness}
+            <IconButton
+              ref={state.rereadRef}
+              label={`Re-read ${state.name}`}
+              busy={rereading}
+              onClick={state.reread}
+            >
+              <RefreshCw
+                aria-hidden="true"
+                strokeWidth={1.5}
+                className="size-4"
+              />
+            </IconButton>
+          </div>
+        </>
       }
     >
       {/* Mounted before any read, so its first announcement is heard. */}

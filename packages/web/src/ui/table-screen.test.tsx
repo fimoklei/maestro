@@ -34,7 +34,12 @@ type ScreenProps = {
   openOnArrival?: string | null;
   withPane?: boolean;
   onState?: (state: TableScreenState) => void;
-} & Partial<Pick<TableScreenProps<Fruit>, "shown" | "notice" | "groups">>;
+} & Partial<
+  Pick<
+    TableScreenProps<Fruit>,
+    "shown" | "notice" | "groups" | "lead" | "freshness" | "rereading"
+  >
+>;
 
 function FruitScreen({
   reading = false,
@@ -115,6 +120,44 @@ describe("TableScreen", () => {
     expect(within(grid()).queryByText("pear")).not.toBeInTheDocument();
   });
 
+  it("puts the screen's facts and freshness line in band 2, before Re-read", () => {
+    render(
+      <FruitScreen
+        lead={<dl aria-label="Orchard facts" />}
+        freshness="Read 4 min ago"
+      />,
+    );
+
+    const band2 = reread().closest("[data-band='2']") as HTMLElement;
+    const facts = within(band2).getByLabelText("Orchard facts");
+    const freshness = within(band2).getByText("Read 4 min ago");
+    expect(
+      facts.compareDocumentPosition(freshness) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      freshness.compareDocumentPosition(reread()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("spins Re-read while the screen re-reads", () => {
+    const { rerender } = render(<FruitScreen rereading />);
+
+    expect(reread()).toHaveAttribute("aria-busy", "true");
+    rerender(<FruitScreen />);
+    expect(reread()).not.toHaveAttribute("aria-busy");
+  });
+
+  it("lets a dismissed notice hand focus back to Re-read", () => {
+    let state: TableScreenState | undefined;
+    render(<FruitScreen onState={(each) => (state = each)} />);
+
+    act(() => state?.rereadRef.current?.focus());
+
+    expect(reread()).toHaveFocus();
+  });
+
   describe("reads", () => {
     it("shows no skeleton for a read under 1.3 s, and says nothing of it", () => {
       vi.useFakeTimers();
@@ -191,6 +234,25 @@ describe("TableScreen", () => {
         screen.getAllByRole("button", { name: "Plant fruit" }),
       ).toHaveLength(2);
       expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    });
+
+    // An unread group is never drawn as empty.
+    it("draws a group that has something to say in place of the empty state", () => {
+      render(
+        <FruitScreen
+          rows={[]}
+          groups={{
+            key: (row) => row.colour,
+            order: ["red"],
+            message: () => "Red fruit was not read.",
+          }}
+        />,
+      );
+
+      expect(
+        within(grid()).getByText("Red fruit was not read."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("No fruit yet")).not.toBeInTheDocument();
     });
 
     it("shows no empty state before a read answers", () => {
