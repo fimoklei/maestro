@@ -10,6 +10,9 @@ Where to look first. Layer rules and package shape: `.claude/rules/architecture.
   `packages/server/src/app.ts`. Routes: `packages/server/src/routes/<feature>-routes.ts`.
 - **Harness git** port and `HarnessGitAdapter`: `packages/core/src/harness/harness-git.ts`;
   there is no `-adapter` file. `gh`: `gh-cli-adapter.ts` beside it.
+- **Drift / Behind**: read in `packages/core/src/drift/` (from `apm outdated`);
+  served by `/api/drift` in `deploy-routes.ts`, not a `drift-routes.ts`. The
+  target's reading lives in `packages/web/src/deploy-state/target-status.ts`.
 - **Shared building blocks** (components, hooks, status tokens):
   `packages/web/src/ui/`; its stories show each state.
 - **Visible sentences**: `packages/web/src/<feature>/*-copy.ts` (`busy-copy.ts` in `ui/`).
