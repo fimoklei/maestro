@@ -67,19 +67,16 @@ export const inventoryColumns = ({
     helper.accessor("type", {
       header: "Type",
       cell: ({ row }) => TYPE_WORD[row.original.type],
-      meta: { className: "w-16 text-gray-11 @max-[35rem]:hidden" },
+      meta: { className: "text-gray-11", width: 16, priority: 2 },
     }),
     helper.accessor("name", {
       header: "Name",
-      // Takes what is left once Targets drops out, so it never collapses (#1184).
-      meta: {
-        className: "w-55 font-medium text-gray-12 @max-[31rem]:w-auto",
-      },
+      meta: { className: "font-medium text-gray-12", width: 55 },
     }),
     helper.accessor("description", {
       header: "Description",
       // Drops out first on a narrow window (#992).
-      meta: { className: "text-gray-11 @max-[45rem]:hidden" },
+      meta: { className: "text-gray-11", priority: 1 },
     }),
     helper.accessor("status", {
       header: "Status",
@@ -94,7 +91,7 @@ export const inventoryColumns = ({
       sortFn: (a, b) =>
         (a.original.status ? readingRank(a.original.status) : unranked) -
         (b.original.status ? readingRank(b.original.status) : unranked),
-      meta: { className: "w-33" },
+      meta: { width: 33 },
     }),
     helper.accessor("targets", {
       header: "Targets",
@@ -108,7 +105,9 @@ export const inventoryColumns = ({
       },
       sortFn: (a, b) => (a.original.targets ?? -1) - (b.original.targets ?? -1),
       meta: {
-        className: "w-18 tabular-nums text-gray-12 @max-[31rem]:hidden",
+        className: "tabular-nums text-gray-12",
+        width: 18,
+        priority: 3,
         align: "end",
       },
     }),
@@ -122,7 +121,7 @@ export const inventoryColumns = ({
           onAction={(action) => onAction(row.original, action)}
         />
       ),
-      meta: { className: "w-10" },
+      meta: { width: 10 },
     }),
   ]);
 

@@ -40,8 +40,7 @@ export const repositoriesColumns = ({
           {row.original.name}
         </span>
       ),
-      // Takes what is left once the path drops out (#1184).
-      meta: { className: "w-55 @max-[37rem]:w-auto" },
+      meta: { width: 55 },
     }),
     helper.accessor("path", {
       header: COLUMNS.path,
@@ -50,15 +49,15 @@ export const repositoriesColumns = ({
           <MachineValue>{row.original.path}</MachineValue>
         </span>
       ),
-      // The path drops out first on a narrow window; the label's title keeps it.
-      meta: { className: "@max-[37rem]:hidden" },
+      // Drops out on a narrow window; the label's title keeps it.
+      meta: { priority: 1 },
     }),
     helper.accessor("status", {
       header: COLUMNS.status,
       cell: ({ row }) => <StatusBadge reading={row.original.status} />,
       sortFn: (a, b) =>
         readingRank(a.original.status) - readingRank(b.original.status),
-      meta: { className: "w-50" },
+      meta: { width: 50 },
     }),
     helper.display({
       id: "actions",
@@ -70,6 +69,6 @@ export const repositoriesColumns = ({
           onAction={(action) => onAction(row.original, action)}
         />
       ),
-      meta: { className: "w-10" },
+      meta: { width: 10 },
     }),
   ]);
