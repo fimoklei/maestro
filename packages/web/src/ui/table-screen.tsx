@@ -6,8 +6,10 @@ import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
 import { IconButton } from "./icon-button";
 import { Notice } from "./notice";
+import { OptionMenu } from "./option-menu";
 import { Panel } from "./panel";
 import type { TableScreenState } from "./use-table-screen";
+import type { ViewOptions } from "./use-view-options";
 
 /** What a screen's pane spreads onto its `DetailPane`. */
 export type PaneFrame = {
@@ -29,8 +31,14 @@ export interface TableScreenProps<T extends RowData> {
   groups?: DataTableProps<T>["groups"];
   /** The screen's own narrowing, such as a search; an open pane survives it. */
   shown?: (row: T) => boolean;
-  /** Shown in place of the table once a read answered with no rows. */
-  empty: Omit<EmptyStateProps, "headingLevel">;
+  /** Band 2's freshness line, before Re-read. */
+  freshness?: string | null;
+  /** Filter and Display, from `useViewOptions`; they narrow, group and switch columns. */
+  view?: ViewOptions<T>;
+  /** In place of rows when the narrowing leaves none. */
+  noMatch?: string;
+  /** Shown in place of the table once a read answered with no rows; none: nothing. */
+  empty?: Omit<EmptyStateProps, "headingLevel">;
   /** The open row's pane, built on `DetailPane`; none: rows do not open. */
   pane?: (row: T, frame: PaneFrame) => ReactNode;
   /** A screen-specific failed-read notice, in place of the screen-wide one. */
@@ -53,6 +61,9 @@ export function TableScreen<T extends RowData>({
   rowId,
   groups,
   shown,
+  freshness,
+  view,
+  noMatch,
   empty,
   pane,
   notice,
@@ -63,7 +74,9 @@ export function TableScreen<T extends RowData>({
   const getTriggerElement = useCallback(() => gridRef.current, []);
   const { openId, open } = state;
 
-  const visible = shown === undefined ? rows : rows.filter(shown);
+  const visible = rows.filter(
+    (row) => (shown?.(row) ?? true) && (view?.shown(row) ?? true),
+  );
   const openRow =
     pane === undefined
       ? null
@@ -78,6 +91,9 @@ export function TableScreen<T extends RowData>({
       action={action}
       band2={
         <div className="ml-auto flex items-center gap-inline">
+          {freshness ? (
+            <span className="text-gray-11 text-meta">{freshness}</span>
+          ) : null}
           <IconButton label={`Re-read ${state.name}`} onClick={state.reread}>
             <RefreshCw
               aria-hidden="true"
@@ -85,6 +101,9 @@ export function TableScreen<T extends RowData>({
               className="size-4"
             />
           </IconButton>
+          {view?.menus.map((menu) => (
+            <OptionMenu key={menu.label} {...menu} />
+          ))}
         </div>
       }
     >
@@ -115,7 +134,15 @@ export function TableScreen<T extends RowData>({
                 getRowId={rowId}
                 loading={state.skeleton}
                 skeletonRows={Math.min(rows.length || SKELETON_FALLBACK, 30)}
-                groups={groups}
+                groups={view === undefined ? groups : view.groups}
+                columnVisibility={
+                  view === undefined
+                    ? undefined
+                    : Object.fromEntries(
+                        [...view.hidden].map((id) => [id, false]),
+                      )
+                }
+                empty={noMatch}
                 openRowId={openRow === null ? null : openId}
                 onRowOpen={
                   pane === undefined
@@ -125,7 +152,7 @@ export function TableScreen<T extends RowData>({
                 onRowOrderChange={setOrder}
               />
             </div>
-          ) : state.settled ? (
+          ) : state.settled && empty !== undefined ? (
             <EmptyState headingLevel={2} {...empty} />
           ) : null}
         </div>

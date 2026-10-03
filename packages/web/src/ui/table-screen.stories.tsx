@@ -6,6 +6,7 @@ import { StatusBadge } from "./status-badge";
 import { reading, type StatusReading } from "./status-reading";
 import { TableScreen } from "./table-screen";
 import { useTableScreen } from "./use-table-screen";
+import { useViewOptions } from "./use-view-options";
 
 type Repo = { path: string; status: StatusReading };
 
@@ -23,7 +24,15 @@ const REPOS: Repo[] = [
   { path: "/home/me/old-site", status: reading("Folder missing", "failed") },
 ];
 
-function Screen({ rows, failed }: { rows: Repo[]; failed: boolean }) {
+function Screen({
+  rows,
+  failed,
+  withView = false,
+}: {
+  rows: Repo[];
+  failed: boolean;
+  withView?: boolean;
+}) {
   const state = useTableScreen({
     name: "Repositories",
     reading: false,
@@ -39,6 +48,16 @@ function Screen({ rows, failed }: { rows: Repo[]; failed: boolean }) {
     onReread: () => {},
     openOnArrival: null,
   });
+  const view = useViewOptions(rows, {
+    kind: { label: "Kind", options: [], of: () => "" },
+    status: {
+      words: ["Folder missing", "Ready"],
+      of: (row) => row.status.word,
+    },
+    groupings: [],
+    initialGrouping: "none",
+    columns: [{ value: "status", label: "Status" }],
+  });
   return (
     <div style={{ height: 480 }}>
       <TableScreen
@@ -47,6 +66,8 @@ function Screen({ rows, failed }: { rows: Repo[]; failed: boolean }) {
         rows={rows}
         columns={columns}
         rowId={(row) => row.path}
+        view={withView ? view : undefined}
+        freshness={withView ? "Read 4 min ago" : undefined}
         empty={{
           title: "No repositories yet",
           description:
@@ -74,3 +95,5 @@ export const Rows: Story = {};
 export const Empty: Story = { args: { rows: [] } };
 
 export const FailedRead: Story = { args: { failed: true } };
+
+export const WithViewOptions: Story = { args: { withView: true } };

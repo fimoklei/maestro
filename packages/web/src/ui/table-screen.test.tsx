@@ -5,6 +5,7 @@ import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { TableScreen, type TableScreenProps } from "./table-screen";
 import { type TableScreenState, useTableScreen } from "./use-table-screen";
+import { useViewOptions } from "./use-view-options";
 
 type Fruit = { name: string; colour: string };
 
@@ -301,5 +302,176 @@ describe("TableScreen", () => {
 
       expect(pane("pear")).not.toBeInTheDocument();
     });
+  });
+});
+
+type Plant = { name: string; kind: string; status: string | null };
+
+const PLANTS: Plant[] = [
+  { name: "oak", kind: "Tree", status: "Healthy" },
+  { name: "ash", kind: "Tree", status: "Wilting" },
+  { name: "box", kind: "Shrub", status: null },
+];
+
+const PLANT_COLUMNS = createDataTableColumns<Plant>((helper) => [
+  helper.accessor("name", { header: "Name" }),
+  helper.accessor("kind", { id: "kind", header: "Kind" }),
+]);
+
+function PlantScreen({ withPane = false }: { withPane?: boolean }) {
+  const state = useTableScreen({
+    name: "Garden",
+    reading: false,
+    settled: true,
+    failure: null,
+    onReread: () => {},
+    openOnArrival: withPane ? "box" : null,
+  });
+  const view = useViewOptions(PLANTS, {
+    kind: {
+      label: "Kind",
+      options: [
+        { value: "Tree", label: "Trees" },
+        { value: "Shrub", label: "Shrubs" },
+      ],
+      of: (row) => row.kind,
+    },
+    status: {
+      words: ["Wilting", "Healthy"],
+      of: (row) => row.status,
+      unread: "Not read yet",
+    },
+    groupings: [
+      { value: "kind", label: "Kind", groups: { key: (row) => row.kind } },
+    ],
+    initialGrouping: "none",
+    columns: [{ value: "kind", label: "Kind" }],
+  });
+  return (
+    <TableScreen
+      state={state}
+      rows={PLANTS}
+      columns={PLANT_COLUMNS}
+      rowId={(row) => row.name}
+      view={view}
+      noMatch="No plants match the filters."
+      pane={
+        withPane
+          ? (row, frame) => (
+              <DetailPane title={row.name} activeKey={row.name} {...frame}>
+                <p>{row.kind}</p>
+              </DetailPane>
+            )
+          : undefined
+      }
+    />
+  );
+}
+
+const garden = () => screen.getByRole("grid", { name: "Garden table" });
+const lines = () =>
+  within(garden())
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => row.textContent);
+
+async function choose(menu: RegExp, role: string, name: string) {
+  await userEvent.click(screen.getByRole("button", { name: menu }));
+  await userEvent.click(await screen.findByRole(role, { name }));
+  await userEvent.keyboard("{Escape}");
+}
+
+describe("TableScreen view options", () => {
+  it("puts Filter and Display beside Re-read in band 2", () => {
+    render(<PlantScreen />);
+
+    for (const name of ["Re-read Garden", "Filter", "Display"]) {
+      expect(
+        screen.getByRole("button", { name }).closest("[data-band='2']"),
+      ).not.toBeNull();
+    }
+  });
+
+  it("narrows the rows by status and counts the active filters on Filter", async () => {
+    render(<PlantScreen />);
+
+    await choose(/^Filter/, "menuitemcheckbox", "Wilting");
+
+    expect(lines()).toEqual(["ashTree"]);
+    expect(
+      screen.getByRole("button", { name: "Filter, 1 active" }),
+    ).toBeInTheDocument();
+  });
+
+  it("narrows the rows by kind, and says so when nothing matches", async () => {
+    render(<PlantScreen />);
+
+    await choose(/^Filter/, "menuitemradio", "Shrubs");
+    expect(lines()).toEqual(["boxShrub"]);
+
+    await choose(/^Filter/, "menuitemcheckbox", "Healthy");
+    expect(
+      screen.getByRole("button", { name: "Filter, 2 active" }),
+    ).toBeInTheDocument();
+    expect(
+      within(garden()).getByText("No plants match the filters."),
+    ).toBeInTheDocument();
+  });
+
+  it("groups by status worst first, an unread row last", async () => {
+    render(<PlantScreen />);
+
+    await choose(/^Display/, "menuitemradio", "Status");
+
+    expect(lines()).toEqual([
+      "Wilting 1",
+      "ashTree",
+      "Healthy 1",
+      "oakTree",
+      "Not read yet 1",
+      "boxShrub",
+    ]);
+  });
+
+  it("groups by the screen's own grouping", async () => {
+    render(<PlantScreen />);
+
+    await choose(/^Display/, "menuitemradio", "Kind");
+
+    expect(lines()).toEqual([
+      "Tree 2",
+      "oakTree",
+      "ashTree",
+      "Shrub 1",
+      "boxShrub",
+    ]);
+  });
+
+  it("switches a column off and on from Display", async () => {
+    render(<PlantScreen />);
+
+    await choose(/^Display/, "menuitemcheckbox", "Kind");
+    expect(
+      within(garden()).queryByRole("columnheader", { name: /Kind/ }),
+    ).not.toBeInTheDocument();
+
+    await choose(/^Display/, "menuitemcheckbox", "Kind");
+    expect(
+      within(garden()).getByRole("columnheader", { name: /Kind/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the open pane when a filter hides its row", async () => {
+    render(<PlantScreen withPane />);
+
+    // By keyboard: a press outside the pane would close it.
+    screen.getByRole("button", { name: "Filter" }).focus();
+    await userEvent.keyboard("{Enter}{ArrowDown}{Enter}");
+
+    expect(lines()).toEqual(["oakTree", "ashTree"]);
+
+    expect(
+      screen.getByRole("complementary", { name: "box detail" }),
+    ).toBeInTheDocument();
   });
 });
