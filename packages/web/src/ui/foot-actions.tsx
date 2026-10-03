@@ -2,6 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 import { type ActionsMenuItem, orderedItems } from "./actions-menu";
 import { Button } from "./button";
 import { cn } from "./cn";
+import { Icon } from "./icon";
 
 // The row's ⋮ items as buttons, at most one of them primary.
 export type FootItem = ActionsMenuItem & {
@@ -60,11 +61,7 @@ export function FootActions({
             )}
           >
             {item.label}
-            <ArrowUpRight
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-4"
-            />
+            <Icon of={ArrowUpRight} />
           </a>
         ),
       )}

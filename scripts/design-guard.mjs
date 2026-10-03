@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript-6";
 
 const STATUS =
-  'role="status" outside ui: report through the table screen\'s region (useWriteAction, useScreenReport) or a StatusRegion, StatusLine or LiveRegion from ui/status-region';
+  'role="status" outside ui: report through the table screen\'s region (useWriteAction, useScreenReport), useScreenStatus (ui/screen-status) in Settings, or StatusLine (ui/status-line)';
+const REGION =
+  "generic status region outside ui: report through the table screen's region (useWriteAction, useScreenReport), or useScreenStatus (ui/screen-status) in Settings";
 const TOAST =
   'toast called directly: declare show: "toast" on useWriteAction (ui/use-write-action)';
 const CHECKBOX =
@@ -16,6 +18,7 @@ const COLOUR =
 const ICON =
   "icon styled by hand: use Icon (ui/icon) for the standard size and stroke";
 
+const GENERIC_REGION = /(?:^|\/)ui\/(?:use-)?status-region$/;
 const COLOUR_CLASS = /(?:^|\s|:)[a-z]+(?:-[a-z]+)*-(?:red|amber|green|blue)-\d/;
 const SIZE_CLASS = /(?:^|\s|:)(?:size|w|h)-\d/;
 const NOT_FEATURE =
@@ -71,6 +74,9 @@ function* offencesIn(path, text) {
         ? named.elements.map((element) => element.name.text)
         : [];
     if (from === "lucide-react") for (const name of names) icons.add(name);
+    if (GENERIC_REGION.test(from)) {
+      yield { line: lineOf(statement), message: REGION };
+    }
     if (
       from === "sonner" ||
       (from.endsWith("toast") && names.includes("showSuccess"))

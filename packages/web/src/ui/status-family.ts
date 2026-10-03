@@ -7,7 +7,7 @@ export type StatusFamily =
   | "unknown"
   | "neutral";
 
-export type StatusTokens = {
+type StatusTokens = {
   glyph: string;
   /** Status text: a label, legend or sentence. */
   ink: string;
@@ -71,3 +71,36 @@ export const STATUS_TOKENS: Record<StatusFamily, StatusTokens> = {
 
 /** Attention's second glyph, for a warning rather than a lag. */
 export const WARNING_GLYPH = "⚠";
+
+type ListTokens = {
+  glyph: string;
+  edge: string;
+  fill: string;
+  sentence: string;
+};
+
+const calmRow = (family: StatusFamily): ListTokens => ({
+  glyph: STATUS_TOKENS[family].glyph,
+  edge: "border-edge",
+  fill: "",
+  sentence: "text-gray-11",
+});
+
+const markedRow = (family: StatusFamily): ListTokens => ({
+  ...calmRow(family),
+  edge: STATUS_TOKENS[family].edge,
+  fill: STATUS_TOKENS[family].fill,
+});
+
+/** A dialog list's group and row per family: calm families stay unfilled, and a row's own cost is a warning, never a lag. */
+export const LIST_TOKENS: Record<StatusFamily, ListTokens> = {
+  good: markedRow("good"),
+  attention: {
+    ...markedRow("attention"),
+    glyph: WARNING_GLYPH,
+    sentence: STATUS_TOKENS.attention.ink,
+  },
+  failed: markedRow("failed"),
+  unknown: calmRow("unknown"),
+  neutral: calmRow("neutral"),
+};

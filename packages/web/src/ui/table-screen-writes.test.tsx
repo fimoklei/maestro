@@ -63,6 +63,8 @@ function Orchard({
             Plant fruit
           </button>
         }
+        rereading={false}
+        firstReadRows={8}
         rows={rows}
         columns={COLUMNS}
         rowId={(row) => row.name}

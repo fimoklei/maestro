@@ -4,7 +4,7 @@ import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
-import { StatusLine } from "../ui/status-region";
+import { StatusLine } from "../ui/status-line";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 
 const PATH_LABEL = "Inventory path or GitHub URL";

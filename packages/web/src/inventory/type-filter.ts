@@ -24,7 +24,7 @@ export const TYPE_WORD: Record<PrimitiveType, string> = {
 };
 
 /** One option per type present; Filter adds "All". */
-export function deriveTypeSegments(
+export function typeOptions(
   primitives: readonly { type: PrimitiveType }[],
 ): { value: PrimitiveType; label: string }[] {
   const present = new Set(primitives.map((p) => p.type));

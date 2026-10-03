@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { StatusLine } from "./status-region";
+import { StatusLine } from "./status-line";
 
 const meta = {
   title: "Core/StatusLine",

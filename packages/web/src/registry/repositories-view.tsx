@@ -91,6 +91,8 @@ export function RepositoriesView() {
           {REGISTER_REPOSITORY}
         </Button>
       }
+      rereading={false}
+      firstReadRows={8}
       rows={rows}
       columns={columns}
       rowId={(row) => row.path}

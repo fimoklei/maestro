@@ -760,14 +760,14 @@ describe("RemoveSkillDialog", () => {
       );
     });
 
-    it("sets every ledger row in mono, because a target is data", () => {
+    it("sets every ledger row's tool name in Geist, because a name is not a machine value", () => {
       renderDialog({
         target: { kind: "global", tools: ["claude", "codex"] },
         preflight: cleanTools("claude", "codex"),
       });
 
       for (const name of ["Claude Code", "Codex"]) {
-        expect(screen.getByText(name).className).toContain("font-mono");
+        expect(screen.getByText(name).className).not.toContain("font-mono");
       }
     });
 

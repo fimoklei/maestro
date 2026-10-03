@@ -106,7 +106,6 @@ export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
     {
       readAt: [state.freshness.lastFetchedAt],
       outcome: state.freshness.outcome,
-      reading: false,
     },
     now,
   );

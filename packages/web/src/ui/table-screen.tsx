@@ -5,6 +5,7 @@ import { cn } from "./cn";
 import { DataTable, type DataTableProps } from "./data-table";
 import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
+import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice } from "./notice";
 import { OptionMenu } from "./option-menu";
@@ -15,7 +16,7 @@ import type { ViewOptions } from "./use-view-options";
 import { ScreenReportContext } from "./use-write-action";
 
 /** What a screen's pane spreads onto its `DetailPane`. */
-export type PaneFrame = {
+type PaneFrame = {
   position: { index: number; count: number } | null;
   onPage: (step: -1 | 1) => void;
   onClose: () => void;
@@ -37,7 +38,9 @@ export interface TableScreenProps<T extends RowData> {
   /** The freshness line, just before Re-read. */
   freshness?: ReactNode;
   /** The screen's own re-read is running: Re-read spins. */
-  rereading?: boolean;
+  rereading: boolean;
+  /** Skeleton rows on a first read, before any row is known. */
+  firstReadRows: number;
   /** The screen's own narrowing, such as a search; an open pane survives it. */
   shown?: (row: T) => boolean;
   /** Filter and Display, from `useViewOptions`; they narrow, group and switch columns. */
@@ -58,9 +61,6 @@ export interface TableScreenProps<T extends RowData> {
   children?: ReactNode;
 }
 
-// Fills the table at 1440×900 on a first read, before any row is known.
-const SKELETON_FALLBACK = 24;
-
 // The panel frame every table screen shares: bands, the one status region,
 // the failed-read notice, the skeleton, the table or its empty state, and the
 // detail pane with its paging and focus return.
@@ -74,7 +74,8 @@ export function TableScreen<T extends RowData>({
   groups,
   lead,
   freshness,
-  rereading = false,
+  rereading,
+  firstReadRows,
   shown,
   view,
   selection,
@@ -121,11 +122,7 @@ export function TableScreen<T extends RowData>({
                 busy={rereading}
                 onClick={state.reread}
               >
-                <RefreshCw
-                  aria-hidden="true"
-                  strokeWidth={1.5}
-                  className="size-4"
-                />
+                <Icon of={RefreshCw} />
               </IconButton>
               {view?.menus.map((menu) => (
                 <OptionMenu key={menu.label} {...menu} />
@@ -164,7 +161,7 @@ export function TableScreen<T extends RowData>({
                   data={visible}
                   getRowId={rowId}
                   loading={state.skeleton}
-                  skeletonRows={Math.min(rows.length || SKELETON_FALLBACK, 30)}
+                  skeletonRows={Math.min(rows.length || firstReadRows, 30)}
                   groups={view === undefined ? groups : view.groups}
                   columnVisibility={
                     view === undefined

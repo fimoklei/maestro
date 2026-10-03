@@ -32,14 +32,13 @@ export const ago = (iso: string, now: Date): string | null => {
 };
 
 /** A reading's time: epoch ms or ISO string; 0, null or unparsable has not answered. */
-export type ReadTime = number | string | null | undefined;
+type ReadTime = number | string | null | undefined;
 
 export type Freshness = {
   readAt: readonly ReadTime[];
   // `null`: no read attempted yet. `untracked`: the screen's failed reads speak
   // through their own notices, so the line only dates what answered.
   outcome: HarnessFreshness["outcome"] | "untracked";
-  reading: boolean;
 };
 
 const toMs = (time: ReadTime): number =>
@@ -49,14 +48,9 @@ const toMs = (time: ReadTime): number =>
 // than the stalest row. `on 20 Jul` reads as a date, `4 min ago` as a
 // distance; both follow "Read", so the prefix is not repeated.
 export function freshnessLine(
-  { readAt, outcome, reading }: Freshness,
+  { readAt, outcome }: Freshness,
   now: Date,
 ): string | null {
-  // A read in flight outranks every dated reading: this slot is the only
-  // feedback the author gets while one runs.
-  if (reading) {
-    return "Reading GitHub…";
-  }
   const answered = readAt.map(toMs).filter((time) => time > 0);
   const since =
     answered.length === 0
