@@ -1,6 +1,11 @@
 import { X } from "lucide-react";
 import { Button } from "./button";
 import { IconButton } from "./icon-button";
+import {
+  STATUS_TOKENS,
+  type StatusFamily,
+  WARNING_GLYPH,
+} from "./status-family";
 
 // The one block every warning, error and confirmation is stated in (#465).
 
@@ -58,39 +63,19 @@ export type NoticeProps = NoticeBaseProps &
       }
   );
 
-const borderClasses: Record<NoticeLevel, string> = {
-  info: "border-gray-7",
-  success: "border-green-7",
-  warning: "border-amber-7",
-  error: "border-red-7",
+const FAMILIES: Record<NoticeLevel, StatusFamily> = {
+  info: "neutral",
+  success: "good",
+  warning: "attention",
+  error: "failed",
 };
 
-const fillClasses: Record<NoticeLevel, string> = {
-  info: "bg-gray-3",
-  success: "bg-green-3",
-  warning: "bg-amber-3",
-  error: "bg-red-3",
-};
-
-const inkClasses: Record<NoticeLevel, string> = {
-  info: "text-gray-11",
-  success: "text-green-12",
-  warning: "text-amber-12",
-  error: "text-red-12",
-};
-
-const MARK_CLASSES: Record<NoticeLevel, string> = {
-  info: "text-gray-11",
-  success: "text-green-11",
-  warning: "text-amber-11",
-  error: "text-red-11",
-};
-
+// A notice states its status in words; info needs no mark beside them.
 const glyphs: Record<NoticeLevel, string | null> = {
   info: null,
-  success: "✓",
-  warning: "⚠",
-  error: "✕",
+  success: STATUS_TOKENS.good.glyph,
+  warning: WARNING_GLYPH,
+  error: STATUS_TOKENS.failed.glyph,
 };
 
 export function Notice({
@@ -111,6 +96,7 @@ export function Notice({
   const assertive =
     (level === "warning" || level === "error") && trigger === "user-action";
   const glyph = glyphs[level];
+  const tokens = STATUS_TOKENS[FAMILIES[level]];
 
   return (
     <div
@@ -119,23 +105,21 @@ export function Notice({
       role={assertive ? "alert" : "status"}
       className={
         variant === "inline"
-          ? `flex gap-inline border-l pl-cell ${borderClasses[level]}`
-          : `flex gap-inline rounded-control border p-cell ${borderClasses[level]} ${fillClasses[level]}`
+          ? `flex gap-inline border-l pl-cell ${tokens.edge}`
+          : `flex gap-inline rounded-control border p-cell ${tokens.edge} ${tokens.fill}`
       }
     >
       {glyph === null ? null : (
         <span
           aria-hidden="true"
-          className={`font-mono text-meta ${MARK_CLASSES[level]}`}
+          className={`font-mono text-meta ${tokens.mark}`}
         >
           {glyph}
         </span>
       )}
       {/* A path or command in the copy has no break point of its own. */}
       <div className="flex min-w-0 flex-col gap-tight wrap-anywhere">
-        <span
-          className={`font-semibold font-ui text-meta ${inkClasses[level]}`}
-        >
+        <span className={`font-semibold font-ui text-meta ${tokens.ink}`}>
           {label}
         </span>
         <span

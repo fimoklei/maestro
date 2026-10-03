@@ -5,11 +5,8 @@ import type {
   RequestedReviewer,
   StageStatus,
 } from "@maestro/core";
-import {
-  reading,
-  type StatusFamily,
-  type StatusReading,
-} from "../ui/status-reading";
+import type { StatusFamily } from "../ui/status-family";
+import { reading, type StatusReading } from "../ui/status-reading";
 
 export const STAGE_NAMES: Record<HarnessStage, string> = {
   "pending-proposal": "Pending proposal",

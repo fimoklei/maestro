@@ -10,6 +10,7 @@ import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { DataTable } from "../ui/data-table";
 import { DetailPaneSlot } from "../ui/detail-pane";
 import { FootActions, type FootItem } from "../ui/foot-actions";
+import { freshnessLine } from "../ui/freshness";
 import { IconButton } from "../ui/icon-button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { OptionMenu } from "../ui/option-menu";
@@ -38,7 +39,6 @@ import {
   TARGET_LABEL,
   targetCount,
 } from "./deploy-state-copy";
-import { freshnessLine } from "./freshness-line";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { TargetDetailPane } from "./target-detail-pane";
@@ -219,12 +219,16 @@ export function DeployStateView() {
     globalDeploy.data.skipped.length === 0 &&
     repoPaths.length === 0;
   const freshness = freshnessLine(
-    [
-      globalDeploy.dataUpdatedAt,
-      globalDrift.dataUpdatedAt,
-      ...repoDeploy.map((query) => query.dataUpdatedAt),
-      ...repoDrift.map((query) => query.dataUpdatedAt),
-    ],
+    {
+      readAt: [
+        globalDeploy.dataUpdatedAt,
+        globalDrift.dataUpdatedAt,
+        ...repoDeploy.map((query) => query.dataUpdatedAt),
+        ...repoDrift.map((query) => query.dataUpdatedAt),
+      ],
+      outcome: "untracked",
+      reading: false,
+    },
     now,
   );
 

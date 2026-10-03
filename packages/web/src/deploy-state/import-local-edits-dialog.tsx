@@ -13,6 +13,7 @@ import { Dialog } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
 import type { NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
+import { STATUS_TOKENS } from "../ui/status-family";
 import {
   CHECKING_LOCAL_EDITS,
   canBeImportedLegend,
@@ -206,29 +207,31 @@ export function ImportLocalEditsDialog({
   );
 }
 
+const attention = STATUS_TOKENS.attention;
+
 const GROUP_TONES = {
   eligible: {
-    legend: "text-gray-11",
+    legend: STATUS_TOKENS.neutral.ink,
     edge: "border-edge",
     row: "h-8",
     name: "",
     sentence: "",
   },
   flagged: {
-    legend: "text-amber-12",
-    edge: "border-amber-7",
-    row: "bg-amber-3 py-inline",
+    legend: attention.ink,
+    edge: attention.edge,
+    row: cn(attention.fill, "py-inline"),
     name: "",
-    sentence: "text-amber-12",
+    sentence: attention.ink,
   },
   refused: {
-    legend: "text-red-12",
+    legend: STATUS_TOKENS.failed.ink,
     edge: "border-edge",
     row: "py-inline",
     name: "text-gray-11",
     sentence: "text-gray-11",
   },
-} as const;
+};
 
 // One fieldset of the checklist; hidden while empty. A refused box is
 // aria-disabled, not disabled: it stays focusable so its reason is heard, and
