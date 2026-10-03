@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  renderDeployState,
+  stubServer,
+} from "./deploy-state/deploy-state-test-helpers";
+import {
   RELEASED,
   renderHarness,
   stubHarnessServer,
@@ -23,6 +27,14 @@ type Row = {
 
 const ON_TABLE_SCREEN: Row[] = [
   {
+    file: "deploy-state/deploy-state-view.tsx",
+    name: "Deploy-state",
+    render: () => {
+      stubServer(() => ({ repos: ["/Users/me/a"] }));
+      renderDeployState();
+    },
+  },
+  {
     file: "harness/harness-view.tsx",
     name: "Harness",
     render: () => {
@@ -41,10 +53,7 @@ const ON_TABLE_SCREEN: Row[] = [
 ];
 
 // Still wiring the frame by hand; each leaves with its own move (#1350–#1352).
-const NOT_YET = [
-  "deploy-state/deploy-state-view.tsx",
-  "inventory/inventory-view.tsx",
-];
+const NOT_YET = ["inventory/inventory-view.tsx"];
 
 const SRC = import.meta.dirname;
 
