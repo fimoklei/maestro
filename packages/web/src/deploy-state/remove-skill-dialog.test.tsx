@@ -166,7 +166,7 @@ describe("RemoveSkillDialog", () => {
       });
 
       for (const row of screen.getAllByRole("listitem")) {
-        expect(row.textContent).not.toMatch(/[▲✕✓·•→]/);
+        expect(row.textContent).not.toMatch(/[▲⚠✕✓·•→]/);
       }
     });
   });
@@ -557,9 +557,9 @@ describe("RemoveSkillDialog", () => {
       });
 
       expect(rowFor("Codex").className).toContain("amber");
-      expect(rowFor("Codex")).toHaveTextContent("▲");
+      expect(rowFor("Codex")).toHaveTextContent("⚠");
       expect(rowFor("Claude Code").className).not.toContain("amber");
-      expect(rowFor("Claude Code")).not.toHaveTextContent("▲");
+      expect(rowFor("Claude Code")).not.toHaveTextContent("⚠");
     });
 
     it("says the copy cannot be checked, rather than calling it edited", () => {
@@ -651,7 +651,7 @@ describe("RemoveSkillDialog", () => {
 
       for (const row of screen.getAllByRole("listitem")) {
         expect(row.className).not.toContain("amber");
-        expect(row).not.toHaveTextContent("▲");
+        expect(row).not.toHaveTextContent("⚠");
         expect(row).not.toHaveTextContent(/may lose work|deleted too/i);
       }
       expect(screen.getByRole("dialog").className).not.toContain("drift");
@@ -1047,7 +1047,7 @@ describe("RemoveSkillDialog", () => {
         expect(row).toHaveTextContent("Codex");
         expect(row).toHaveTextContent("/Users/me/.agents/skills/tdd");
         expect(row).toHaveTextContent("Not installed — copy deleted in full");
-        expect(row).toHaveTextContent("▲");
+        expect(row).toHaveTextContent("⚠");
       });
 
       it("drops the separate block that used to say what else goes", () => {

@@ -1,8 +1,7 @@
 import { useId } from "react";
-import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
+import { GroupedList } from "../ui/grouped-list";
 import { Report, type ReportGroup } from "../ui/report";
-import { STATUS_TOKENS } from "../ui/status-family";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
@@ -22,64 +21,6 @@ function CleanLine({ id, children }: { id: string; children: string }) {
       </span>
       <span>{children}</span>
     </p>
-  );
-}
-
-const GROUP_TONE = {
-  cost: STATUS_TOKENS.attention,
-  refusal: STATUS_TOKENS.failed,
-};
-
-type GroupRow = { label: string; version?: string; reason: string };
-
-function ReasonGroup({
-  id,
-  heading,
-  tone,
-  rows,
-}: {
-  id: string;
-  heading: string;
-  tone: keyof typeof GROUP_TONE;
-  rows: GroupRow[];
-}) {
-  const colours = GROUP_TONE[tone];
-  return (
-    <fieldset id={id} className="flex min-w-0 flex-col gap-tight">
-      <legend
-        className={cn(
-          "font-mono font-semibold text-meta tracking-mono-wide",
-          colours.ink,
-        )}
-      >
-        {heading}
-      </legend>
-      <ul
-        className={cn(
-          "flex flex-col overflow-hidden rounded-control border font-mono text-meta",
-          colours.edge,
-        )}
-      >
-        {rows.map((row, index) => (
-          <li
-            key={row.label}
-            className={cn(
-              "flex items-center justify-between gap-inline px-cell py-inline",
-              colours.fill,
-              index < rows.length - 1 && cn(colours.edge, "border-b"),
-            )}
-          >
-            <span className="flex min-w-0 items-baseline gap-inline">
-              <span className="truncate text-gray-12">{row.label}</span>
-              {row.version === undefined ? null : (
-                <span className="shrink-0 text-gray-11">{row.version}</span>
-              )}
-            </span>
-            <span className={cn("shrink-0", colours.ink)}>{row.reason}</span>
-          </li>
-        ))}
-      </ul>
-    </fieldset>
   );
 }
 
@@ -184,22 +125,32 @@ export function BulkRemoveDialog({
           {grouped.cleanLine === null ? null : (
             <CleanLine id={cleanId}>{grouped.cleanLine}</CleanLine>
           )}
-          {grouped.cost.length === 0 ? null : (
-            <ReasonGroup
-              id={costId}
-              tone="cost"
-              heading={`▲ Loses work · ${grouped.cost.length}`}
-              rows={grouped.cost}
-            />
-          )}
-          {grouped.refused.length === 0 ? null : (
-            <ReasonGroup
-              id={refusedId}
-              tone="refusal"
-              heading={`✕ Cannot be removed · ${grouped.refused.length}`}
-              rows={grouped.refused}
-            />
-          )}
+          <GroupedList
+            groups={[
+              {
+                tone: "attention",
+                legend: `▲ Loses work · ${grouped.cost.length}`,
+                id: costId,
+                rows: grouped.cost.map((row) => ({
+                  key: row.label,
+                  name: row.label,
+                  value: row.version,
+                  sentence: row.reason,
+                })),
+              },
+              {
+                tone: "failed",
+                legend: `✕ Cannot be removed · ${grouped.refused.length}`,
+                id: refusedId,
+                rows: grouped.refused.map((row) => ({
+                  key: row.label,
+                  name: row.label,
+                  sentence: row.reason,
+                })),
+              },
+            ]}
+            checklist={null}
+          />
         </>
       )}
     </Dialog>
