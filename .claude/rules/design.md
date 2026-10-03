@@ -219,10 +219,13 @@ Mandatory for any change that alters what `packages/web` renders:
      which waits for the cockpit, connects the inventory, fetches its releases and registers one repo.
    - Verifying a deploy state → `pnpm smoke:ready --scenario <name>[,<name>]` or
      `all`: `empty`, `in-sync`, `behind`, `mixed-releases`, `local-edits`,
-     `unverified`, `pinned-per-skill`, `unfinished-operation`. It exits non-zero
-     when the cockpit does not show the scenario's reading.
+     `unverified`, `pinned-per-skill`, `unfinished-operation`, `import-edits`
+     (both Import local edits groups), `unreadable` (Deploy-state not read),
+     `global-leftover` (a global Remove with an Other copies row). It exits
+     non-zero when the cockpit does not show the scenario's reading.
    - Verifying a Harness authoring state → `--scenario harness-outcomes`: one
      restorable **Deleted locally** skill and one unreleased change to release.
+     `harness-offline` leaves the Harness unreachable until the next run.
 2. Screenshot the changed UI with `agent-browser`, in each theme.
 3. Read changed copy at a narrow width and at 200% zoom, in one theme.
 4. Compare against the design source; on mismatch, fix before claiming done.

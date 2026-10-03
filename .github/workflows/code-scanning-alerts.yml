@@ -1,0 +1,36 @@
+name: Code-scanning alerts
+
+# Prints the open code-scanning alerts into the job log for the Code-scanning
+# fix routine (docs/agents/code-scanning-fix.md). The routine's GitHub access
+# cannot read code-scanning alerts; this job's token can, and the routine can
+# read job logs. Run on demand by the routine only.
+#
+# The job log is public, so this discloses the open alerts. Accepted: anyone
+# can run CodeQL on this public repo and get the same alerts.
+on:
+  workflow_dispatch:
+
+permissions:
+  security-events: read
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      # One JSON object per open alert between the markers: the alert number,
+      # its rule (with help text) and every flagged location on main.
+      - name: List open alerts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          numbers=$(gh api --paginate "repos/$REPO/code-scanning/alerts?state=open&per_page=100" --jq '.[].number')
+          echo "BEGIN-OPEN-ALERTS"
+          for n in $numbers; do
+            alert=$(gh api "repos/$REPO/code-scanning/alerts/$n")
+            instances=$(gh api --paginate "repos/$REPO/code-scanning/alerts/$n/instances?per_page=100" \
+              --jq '[.[] | {path: .location.path, start_line: .location.start_line, end_line: .location.end_line, message: .message.text}]' | jq -s 'add')
+            jq -c --argjson instances "$instances" \
+              '{number, rule: (.rule | {id, name, severity, security_severity_level, description, help}), instances: $instances}' <<<"$alert"
+          done
+          echo "END-OPEN-ALERTS"
