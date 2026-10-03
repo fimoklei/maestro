@@ -61,11 +61,11 @@ The quality bar for anything in the **Released harness**: structurally valid, no
 _Avoid_: published, approved (those name the future lifecycle step, not the state).
 
 **Curator**:
-The person who keeps the Harness: reviews every **Proposal** on GitHub, merges it, and creates releases. In MVP1 the curator and the **Contributor** are one person (#1336).
+The person who keeps the Harness: reviews every **Proposal** on GitHub, merges it, and creates releases. In MVP1 the curator is one person (#1336).
 _Avoid_: owner, admin, maintainer.
 
 **Contributor**:
-A person who uses the Harness's skills and proposes changes to it, deletions included. A contributor starts a change; only the **Curator**'s review lands it (#1336).
+A person who uses the Harness's skills and proposes changes to it, deletions included. A contributor starts a change; only the **Curator**'s review lands it (#1336). Several contributors may propose the same skill; they share its one proposal branch (#1370).
 _Avoid_: author (the Harness screen's role label, not a person), consumer (that names a repository).
 
 **Bundle**:
