@@ -26,9 +26,11 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 
 ## Design rules
 
-**Reuse.** Build from an existing pattern. When none fits, measure what
-Vercel, Linear and Circle do; add the new pattern to this section before
-building it.
+**Reuse.** Before building an element, look in `packages/web/src/ui/` and
+its stories; build from the module that fits. Done when every element in the
+change comes from `ui/`, or the handoff names the new one and why no existing
+module fits. When none fits, measure what Vercel, Linear and Circle do; add
+the new pattern to this section before building it.
 
 **Meaning and emphasis.**
 - Give a column, badge, glyph and word one meaning on every screen. Say

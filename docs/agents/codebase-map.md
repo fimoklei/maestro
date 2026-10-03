@@ -10,6 +10,8 @@ Where to look first. Layer rules and package shape: `.claude/rules/architecture.
   `packages/server/src/app.ts`. Routes: `packages/server/src/routes/<feature>-routes.ts`.
 - **Harness git** port and `HarnessGitAdapter`: `packages/core/src/harness/harness-git.ts`;
   there is no `-adapter` file. `gh`: `gh-cli-adapter.ts` beside it.
+- **Shared building blocks** (components, hooks, status tokens):
+  `packages/web/src/ui/`; its stories show each state.
 - **Visible sentences**: `packages/web/src/<feature>/*-copy.ts` (`busy-copy.ts` in `ui/`).
   Grep those modules first.
 - **Harness strip status text**: `packages/web/src/harness/harness-view-model.ts`;

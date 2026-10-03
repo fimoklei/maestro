@@ -24,6 +24,8 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer bo
 
 - Components PascalCase, one component per file.
 - Small and focused; extract when a component outgrows its one job.
+- A shape a second feature needs moves to `ui/` with its story, before the
+  second feature uses it.
 - Custom hooks hold data and logic; components stay mostly presentational.
 - Co-locate a component's pure helpers and its sibling unit test.
 
