@@ -17,34 +17,33 @@ export const showsReadFailure = (
 
 export type TargetPaneActions = {
   /** Update target beside the Latest release fact; null where it has no such fact. */
-  update: (FootItem & { primary: boolean }) | null;
+  update: FootItem | null;
   foot: FootItem[];
-  footPrimary: string | null;
 };
 
-// Each ⋮ item where its reason is, and the one primary chosen by the first
-// state the pane names: an unfinished operation (its notice's retry), behind
-// (Update target), local edits (Import local edits), else none (#1272).
+// Each ⋮ item where its reason is, Update target and Import local edits named
+// as the next step, except while an unfinished operation stands (#1272).
 export function targetPaneActions<Row extends PaneRow>(
   row: Row,
   onAction: (row: Row, action: TargetAction) => void,
 ): TargetPaneActions {
-  const item = (entry: TargetTableRow["actions"][number]) =>
-    targetRowItem(row, entry, (action) => onAction(row, action));
-  const find = (action: TargetAction) =>
-    row.actions.find((entry) => entry.action === action);
-  const update = find("update");
+  const item = (entry: TargetTableRow["actions"][number]): FootItem => {
+    const placed = targetRowItem(row, entry, (action) => onAction(row, action));
+    return !row.pending &&
+      (entry.action === "update" || entry.action === "import")
+      ? { ...placed, step: entry.action }
+      : placed;
+  };
+  const update = row.actions.find((entry) => entry.action === "update");
   const beside = latestReleaseFact(row.head) === null ? undefined : update;
   const retryAtFoot = showsReadFailure(row);
-  const lead = row.pending ? undefined : (update ?? find("import"));
   return {
-    update: beside ? { ...item(beside), primary: lead === beside } : null,
+    update: beside ? item(beside) : null,
     foot: row.actions
       .filter(
         (entry) =>
           (retryAtFoot || entry.action !== "retry") && entry !== beside,
       )
       .map(item),
-    footPrimary: lead === undefined || lead === beside ? null : lead.label,
   };
 }

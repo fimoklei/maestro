@@ -48,7 +48,7 @@ export function SelectedSkills({
   );
 
   return (
-    <section className="mt-section">
+    <section>
       <h3
         ref={headingRef}
         tabIndex={-1}
