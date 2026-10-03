@@ -7,7 +7,7 @@ export function resolveHomeDirectory(
   return env.HOME ?? homedir();
 }
 
-export function resolveMaestroHome(env: NodeJS.ProcessEnv): string {
+function resolveMaestroHome(env: NodeJS.ProcessEnv): string {
   return env.MAESTRO_HOME ?? join(homedir(), ".maestro");
 }
 
