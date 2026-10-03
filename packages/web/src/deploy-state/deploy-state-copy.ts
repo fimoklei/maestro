@@ -58,7 +58,7 @@ export const NO_TOOL_DETECTED = {
 export const otherOriginLine = (origins: readonly string[]) =>
   `Holds skills, hooks and MCP servers deployed from ${joinNames(origins)}.`;
 
-const KEEP_LOCAL_EDITS = "Select Import local edits… to keep them.";
+const KEEP_LOCAL_EDITS = "Select Import local edits to keep them.";
 
 export const localEditsLine = (names: readonly string[]) =>
   names.length === 1

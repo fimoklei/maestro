@@ -149,7 +149,7 @@ async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Harness import flow", () => {
-  it("opens the skill Import local edits… landed, as its Pending proposal", async () => {
+  it("opens the skill Import local edits landed, as its Pending proposal", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => jsonResponse(IMPORTED_HARNESS)),

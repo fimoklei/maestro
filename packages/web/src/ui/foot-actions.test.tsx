@@ -71,9 +71,9 @@ describe("FootActions", () => {
   it("makes the named item primary and keeps danger as danger", () => {
     render(
       <FootActions
-        primary="Import local edits…"
+        primary="Import local edits"
         items={[
-          { label: "Import local edits…", onSelect: () => {} },
+          { label: "Import local edits", onSelect: () => {} },
           { label: "Deploy skill", onSelect: () => {} },
           { label: "Remove skill", danger: true, onSelect: () => {} },
         ]}
@@ -81,7 +81,7 @@ describe("FootActions", () => {
     );
 
     const button = (name: string) => screen.getByRole("button", { name });
-    expect(button("Import local edits…")).toHaveClass("bg-gray-12");
+    expect(button("Import local edits")).toHaveClass("bg-gray-12");
     expect(button("Deploy skill")).not.toHaveClass("bg-gray-12");
     expect(button("Remove skill")).toHaveClass("text-red-11");
   });

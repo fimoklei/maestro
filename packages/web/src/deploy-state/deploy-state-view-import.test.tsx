@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse } from "../test-utils";
@@ -48,15 +48,15 @@ function stubImport(
 async function openDialog() {
   const pane = await openPane(ROW);
   await userEvent.click(
-    within(pane).getByRole("button", { name: "Import local edits…" }),
+    within(pane).getByRole("button", { name: "Import local edits" }),
   );
   return screen.findByRole("dialog", {
     name: `Import local edits from ${ROW}`,
   });
 }
 
-describe("Deploy-state — Import local edits… on a repository", () => {
-  it("leads the row's menu with Import local edits…", async () => {
+describe("Deploy-state — Import local edits on a repository", () => {
+  it("leads the row's menu with Import local edits", async () => {
     stubImport(["tdd"], landed);
     renderDeployState();
 
@@ -67,7 +67,7 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     );
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((item) => item.textContent)).toEqual([
-      "Import local edits…",
+      "Import local edits",
       "Deploy skill",
     ]);
   });
@@ -114,6 +114,20 @@ describe("Deploy-state — Import local edits… on a repository", () => {
         name: "Import skills — none selected",
       }),
     ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("ignores a click outside once a check has changed", async () => {
+    stubImport(["code-review", "tdd"], landed);
+    renderDeployState();
+
+    const dialog = await openDialog();
+    await userEvent.click(
+      await within(dialog).findByRole("checkbox", { name: "tdd" }),
+    );
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+
+    expect(dialog).toBeInTheDocument();
   });
 
   it("imports the checked skills and opens the one that landed on the Harness screen", async () => {
@@ -328,7 +342,7 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Nothing was imported. Select Close, then Import local edits… again.",
+        "Nothing was imported. Select Close, then Import local edits again.",
       ),
     ).toBeInTheDocument();
   });
@@ -406,7 +420,7 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Wait for that change to finish, then select Import local edits… again.",
+        "Wait for that change to finish, then select Import local edits again.",
       ),
     ).toBeInTheDocument();
   });

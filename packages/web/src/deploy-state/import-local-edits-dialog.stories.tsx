@@ -15,6 +15,7 @@ const meta = {
     targetName: "…/me/project",
     skills: SKILLS,
     checked: new Set(["code-review", "tdd"]),
+    checksChanged: false,
     onToggle: () => {},
     isRunning: false,
     outcomes: null,

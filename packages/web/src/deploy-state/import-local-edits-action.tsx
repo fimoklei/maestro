@@ -54,6 +54,7 @@ export function ImportLocalEditsAction({
       targetName={targetName}
       skills={skills}
       checked={checked}
+      checksChanged={toggled.size > 0}
       onToggle={(name) => setToggled((current) => toggleStaged(current, name))}
       isRunning={run.isPending}
       outcomes={outcomes}

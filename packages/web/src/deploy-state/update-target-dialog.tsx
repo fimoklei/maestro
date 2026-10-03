@@ -284,7 +284,7 @@ export function UpdateTargetDialog({
       }
       failure={failure}
       describedBy={preview === null ? null : leadInId}
-      fieldsChanged={false}
+      fieldsChanged={consented.length > 0}
       onClose={onCancel}
     >
       {preview !== null && report === null ? (

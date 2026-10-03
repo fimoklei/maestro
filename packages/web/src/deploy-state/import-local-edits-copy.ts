@@ -1,11 +1,11 @@
-// Every word the Import local edits… control and its dialog show.
+// Every word the Import local edits control and its dialog show.
 import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 
-export const IMPORT_LOCAL_EDITS = "Import local edits…";
+export const IMPORT_LOCAL_EDITS = "Import local edits";
 
 export const importLocalEditsTitle = (target: string): string =>
   `Import local edits from ${target}`;
@@ -52,8 +52,7 @@ export const IMPORTED_NEXT_STEP =
 
 const NOT_CHECKED = {
   label: "Local edits not checked",
-  message:
-    "Nothing was imported. Select Close, then Import local edits… again.",
+  message: "Nothing was imported. Select Close, then Import local edits again.",
 };
 
 const NOT_CONFIRMED = {
@@ -67,31 +66,31 @@ const LOCAL_EDITS_ERRORS: NoticeTable<LocalEditsError> = {
   "not-configured": {
     level: "error",
     label: "No Harness connected",
-    message: `${CHANGE_LOCATION_STEP}, then select Import local edits… again.`,
+    message: `${CHANGE_LOCATION_STEP}, then select Import local edits again.`,
   },
   "repo-not-registered": {
     level: "error",
     label: "Repository not registered",
     message:
-      "Register this repository in Maestro, then select Import local edits… again.",
+      "Register this repository in Maestro, then select Import local edits again.",
   },
   "unfinished-operation": {
     level: "error",
     label: "Change not finished",
     message:
-      "An earlier change on this target did not finish. Check the target card to finish that change, then select Import local edits… again.",
+      "An earlier change on this target did not finish. Check the target card to finish that change, then select Import local edits again.",
   },
   "target-unreadable": {
     level: "error",
     label: "Could not read deployment record",
     message:
-      "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits… again.",
+      "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits again.",
   },
   "import-in-progress": {
     level: "error",
     label: "Harness already changing",
     message:
-      "Wait for that change to finish, then select Import local edits… again.",
+      "Wait for that change to finish, then select Import local edits again.",
   },
 };
 

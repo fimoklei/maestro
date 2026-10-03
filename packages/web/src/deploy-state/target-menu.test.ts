@@ -43,22 +43,22 @@ describe("targetMenuItems", () => {
     ],
   };
 
-  it("leads with Import local edits… on a repository with Local edits, before Update target", () => {
+  it("leads with Import local edits on a repository with Local edits, before Update target", () => {
     expect(menu({ ...EDITED, behind: true })).toEqual([
-      "Import local edits…",
+      "Import local edits",
       "Deploy skill",
       "Update target",
     ]);
   });
 
-  it("offers Import local edits… on the global target with Local edits", () => {
+  it("offers Import local edits on the global target with Local edits", () => {
     expect(menu({ ...EDITED, wire: { kind: "global" } })).toEqual([
-      "Import local edits…",
+      "Import local edits",
       "Deploy skill",
     ]);
   });
 
-  it("omits Import local edits… where no skill reads Local edits", () => {
+  it("omits Import local edits where no skill reads Local edits", () => {
     expect(
       menu({
         ...EDITED,
@@ -69,7 +69,7 @@ describe("targetMenuItems", () => {
     ).toEqual(["Deploy skill"]);
   });
 
-  it("omits Import local edits… on a target with an Unfinished operation", () => {
+  it("omits Import local edits on a target with an Unfinished operation", () => {
     expect(
       menu({
         ...EDITED,
