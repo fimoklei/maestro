@@ -14,6 +14,9 @@ Use short sentences, familiar words and direct instructions, guided by
 [ASD-STE100 principles](https://www.asd-ste100.org/about_STE.html).
 Full compliance with the standard and its dictionary is not required.
 
+For shipped strings this file outranks `unslop` and
+`writing-clearly-and-concisely`. Where they disagree, follow this file.
+
 Use **outcome-first copy**. Treat a heading, body, detail and controls as one
 message:
 
@@ -63,15 +66,36 @@ meaning stays with review.
 
 ## Calibration
 
-```text
-Weak
-Local edits in the deployed copy
-Nothing was removed.
+Each pair is a shipped string and its fix. Match the right-hand form.
 
-Outcome-first
-Local changes in deployed files
-The skill was not removed. Its files changed after deployment.
-Deploy again to restore the released files. Then remove the skill.
+```text
+Notice: the outcome alone hides the next step
+  Weak           Local edits in the deployed copy
+                 Nothing was removed.
+  Outcome-first  Local changes in deployed files
+                 The skill was not removed. Its files changed after deployment.
+                 Deploy again to restore the released files. Then remove the skill.
+
+Notice: the control is named with Press (#860)
+  Weak           Status out of date
+                 Press Retry check to read GitHub again.
+  Outcome-first  Status out of date
+                 Select Re-read Harness to read GitHub again.
+
+Detail sentence: cause without the next step (#857)
+  Weak           The proposal branch is pushed, but no pull request opens it.
+  Outcome-first  The proposal branch is on GitHub without a pull request.
+                 Select Create pull request to open one.
+
+Empty state: off-form, with a control label that differs from the button (#867)
+  Weak           Nothing to propose
+                 Edit a skill in your clone, or press Import skill, to propose a change.
+  Outcome-first  No changes yet
+                 Skills you import or edit in your clone will appear here.
+
+Status chip: the word disagrees with what happened (#889)
+  Weak           Pull request missing   (shown after the pull request was merged)
+  Outcome-first  Proposal merged
 ```
 
 ## Forms
