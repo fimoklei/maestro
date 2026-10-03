@@ -21,7 +21,6 @@ import { Notice } from "../ui/notice";
 import { Panel } from "../ui/panel";
 import { StatusBadge } from "../ui/status-badge";
 import { reading, readingRank } from "../ui/status-reading";
-import { useNarrowerThan } from "../ui/use-narrower-than";
 import { useReadSkeleton } from "../ui/use-read-skeleton";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
@@ -56,9 +55,6 @@ import { useImportFlow } from "./use-import-flow";
 
 const REREAD_HARNESS = "Re-read Harness";
 const TABLE_LABEL = "Harness table";
-// Under 1024px, and beside an open pane, only Name, Status and ⋮ stay; the
-// rest is in the pane and the hover card (#994).
-const NARROW_HIDDEN = { type: false, "pull-request": false, "also-in": false };
 
 export function HarnessView({
   openSkill,
@@ -128,7 +124,6 @@ export function HarnessView({
   const [order, setOrder] = useState<string[]>([]);
   const gridRef = useRef<HTMLTableElement>(null);
   const getTriggerElement = useCallback(() => gridRef.current, []);
-  const table = useNarrowerThan(1008);
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -377,7 +372,6 @@ export function HarnessView({
           ) : state !== undefined || skeleton.visible ? (
             <div
               aria-busy={reading || undefined}
-              ref={table.ref}
               className="min-h-0 flex-1 overflow-auto"
             >
               <DataTable
@@ -386,7 +380,6 @@ export function HarnessView({
                 columns={columns}
                 data={rows}
                 getRowId={(row) => row.id}
-                columnVisibility={table.narrow ? NARROW_HIDDEN : undefined}
                 loading={skeleton.visible}
                 skeletonRows={Math.min(rows.length || 8, 30)}
                 groups={{
