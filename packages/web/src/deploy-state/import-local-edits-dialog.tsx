@@ -259,7 +259,7 @@ function CheckGroup({
     <fieldset id={id} className="m-0 flex min-w-0 flex-col gap-tight">
       <legend
         className={cn(
-          "font-mono font-semibold text-meta uppercase tracking-mono-wide",
+          "font-mono text-meta uppercase tracking-mono",
           style.legend,
         )}
       >
