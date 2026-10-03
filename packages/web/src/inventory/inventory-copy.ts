@@ -25,10 +25,7 @@ export const NO_RELEASED_SKILLS = {
 // The Inventory's band 2 and table (#1040).
 export const SEARCH_LABEL = "Search the Inventory";
 export const REREAD_LABEL = "Re-read Inventory";
-export const FILTER_LABEL = "Filter";
-export const DISPLAY_LABEL = "Display";
 export const NO_SKILLS_YET = "no skills yet";
-export const TABLE_LABEL = "Inventory table";
 export const STAGE_COLUMN_LABEL = "Select for bulk deploy";
 export const stageRowLabel = (name: string) => `Select ${name} for bulk deploy`;
 export const SELECT_ALL_LABEL = "Select all for bulk deploy";

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   renderDeployState,
@@ -11,10 +12,12 @@ import {
   renderHarness,
   stubHarnessServer,
 } from "./harness/harness-flow-fixture";
+import { InventoryPanel } from "./inventory/inventory-panel";
 import {
   renderRepositories,
   stubRegistry,
 } from "./registry/repositories-test-helpers";
+import { jsonResponse, renderWithQuery } from "./test-utils";
 
 // Proves each table screen runs on `TableScreen`, not the module itself.
 
@@ -43,6 +46,25 @@ const ON_TABLE_SCREEN: Row[] = [
     },
   },
   {
+    file: "inventory/inventory-view.tsx",
+    name: "Inventory",
+    render: () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).startsWith("/api/registry")
+            ? jsonResponse({ repos: [] })
+            : jsonResponse({ primitives: [] }),
+        ),
+      );
+      renderWithQuery(
+        <MemoryRouter>
+          <InventoryPanel />
+        </MemoryRouter>,
+      );
+    },
+  },
+  {
     file: "registry/repositories-view.tsx",
     name: "Repositories",
     render: () => {
@@ -51,9 +73,6 @@ const ON_TABLE_SCREEN: Row[] = [
     },
   },
 ];
-
-// Still wiring the frame by hand; each leaves with its own move (#1350–#1352).
-const NOT_YET = ["inventory/inventory-view.tsx"];
 
 const SRC = import.meta.dirname;
 
@@ -91,7 +110,7 @@ describe("every table screen", () => {
       )
       .map(({ file }) => file);
 
-    expect(byHand).toEqual(NOT_YET);
+    expect(byHand).toEqual([]);
   });
 
   describe.each(ON_TABLE_SCREEN)("$file", (row) => {

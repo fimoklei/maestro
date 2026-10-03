@@ -2,8 +2,7 @@ import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
-import type { NoticeContent } from "../ui/notice";
-import { useReadSkeleton } from "../ui/use-read-skeleton";
+import type { ReadFailure } from "../ui/use-table-screen";
 import { INVENTORY_NOT_READ } from "./inventory-copy";
 import { InventoryView } from "./inventory-view";
 import { useDeploymentTargets } from "./use-deployment-targets";
@@ -14,10 +13,7 @@ import { useInventory } from "./use-inventory";
 
 // The inventory read is web's own query, not one of the server's error tables,
 // so its two headings and sentences live with it.
-function readNotice(
-  error: Error | null,
-  reread: () => void,
-): NoticeContent | null {
+function readFailure(error: Error | null): ReadFailure | null {
   if (error === null) {
     return null;
   }
@@ -29,10 +25,7 @@ function readNotice(
           "Connect a Harness on the Harness location screen to fill this list.",
         detail: "Nothing is connected yet.",
       }
-    : {
-        ...INVENTORY_NOT_READ,
-        action: { label: "Re-read Inventory", onClick: reread },
-      };
+    : INVENTORY_NOT_READ;
 }
 
 export function InventoryPanel() {
@@ -40,7 +33,6 @@ export function InventoryPanel() {
   const registry = useRegistry();
   const invalidate = useRereadInventory();
   const navigate = useNavigate();
-  const skeleton = useReadSkeleton(inventory.isFetching);
   const repos = registry.data?.repos ?? [];
   // Reuses the existing deploy-state + drift queries — no new server read (#272).
   const targets = useDeploymentTargets(
@@ -48,11 +40,6 @@ export function InventoryPanel() {
     { isLoading: registry.isLoading, isError: registry.isError },
   );
 
-  // A pressed re-read shows its skeleton at once.
-  const reread = () => {
-    skeleton.press();
-    invalidate();
-  };
   // A disconnected Harness is a different list, so no old row stays; any other
   // failure keeps the previous rows.
   const disconnected =
@@ -64,10 +51,9 @@ export function InventoryPanel() {
       repos={repos}
       registryReady={registry.isSuccess}
       targets={targets}
-      notice={readNotice(inventory.error, reread)}
-      loading={skeleton.visible}
+      failure={readFailure(inventory.error)}
       reading={inventory.isFetching}
-      onReread={reread}
+      onReread={invalidate}
       onOpenHarness={() => navigate("/harness")}
       // Deploy-state is the index route; it opens the row it is sent (#1065).
       onShowTarget={(rowId) => navigate("/", { state: { openTarget: rowId } })}

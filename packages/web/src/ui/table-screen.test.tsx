@@ -38,7 +38,14 @@ type ScreenProps = {
 } & Partial<
   Pick<
     TableScreenProps<Fruit>,
-    "shown" | "notice" | "groups" | "lead" | "freshness" | "rereading"
+    | "shown"
+    | "notice"
+    | "groups"
+    | "lead"
+    | "freshness"
+    | "rereading"
+    | "selection"
+    | "selectionBar"
   >
 >;
 
@@ -157,6 +164,31 @@ describe("TableScreen", () => {
     act(() => state?.rereadRef.current?.focus());
 
     expect(reread()).toHaveFocus();
+  });
+
+  it("hands rows a checkbox and floats the screen's selection bar under the table", async () => {
+    const onToggle = vi.fn();
+    render(
+      <FruitScreen
+        selection={{
+          label: "Select fruit",
+          allLabel: "Select all fruit",
+          rowLabel: (row) => `Select ${row.name}`,
+          selected: new Set(["pear"]),
+          onToggle,
+        }}
+        selectionBar={<div role="toolbar" aria-label="1 fruit chosen" />}
+      />,
+    );
+
+    await userEvent.click(
+      within(grid()).getByRole("checkbox", { name: "Select apple" }),
+    );
+
+    expect(onToggle).toHaveBeenCalledWith(FRUIT[1]);
+    expect(
+      screen.getByRole("toolbar", { name: "1 fruit chosen" }),
+    ).toBeInTheDocument();
   });
 
   describe("reads", () => {
