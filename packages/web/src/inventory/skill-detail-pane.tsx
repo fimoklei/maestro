@@ -1,6 +1,7 @@
 import type { Ref } from "react";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import { DetailPane } from "../ui/detail-pane";
+import { FOCUS_RING } from "../ui/focus-ring";
 import type { FootItem } from "../ui/foot-actions";
 import { SubListRow } from "../ui/sub-list-row";
 import { NOT_DEPLOYED_ANYWHERE, rowActionsLabel } from "./inventory-copy";
@@ -68,7 +69,7 @@ export function SkillDetailPane({
           <h3
             ref={listHeadingRef}
             tabIndex={-1}
-            className="m-0 mb-inline font-normal text-gray-11 text-meta focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
+            className={`m-0 mb-inline font-normal text-gray-11 text-meta ${FOCUS_RING}`}
           >
             Deployed to
           </h3>

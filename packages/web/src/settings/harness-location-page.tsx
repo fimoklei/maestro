@@ -14,6 +14,7 @@ import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Notice } from "../ui/notice";
 import { Skeleton } from "../ui/skeleton";
+import { StatusRegion } from "../ui/status-region";
 import { useReadAnnouncement } from "../ui/use-read-announcement";
 import { useReadSkeleton } from "../ui/use-read-skeleton";
 import { useStatusRegion } from "../ui/use-status-region";
@@ -92,9 +93,9 @@ export function HarnessLocationPage() {
 
   return (
     <SettingsPanel title={SCREEN}>
-      <div role="status" className="sr-only">
+      <StatusRegion>
         {dialog.busy ? ACTIONS.setLocation.busy : region}
-      </div>
+      </StatusRegion>
       {/* Mounted before a failure is, so it is announced (#465). */}
       <Notice trigger="load" notice={readNotice} />
       <SettingsSection

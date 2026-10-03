@@ -1,5 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import { cn } from "../ui/cn";
+import { Icon } from "../ui/icon";
 import { NavItem } from "../ui/nav-item";
 import { BACK_TO_APP, PERSONAL, SETTINGS } from "./settings-copy";
 import type { SettingsPage } from "./settings-pages";
@@ -31,7 +32,7 @@ export function SettingsSidebar({
       )}
     >
       <NavItem
-        icon={<ChevronLeft size={16} strokeWidth={1.5} />}
+        icon={<Icon of={ChevronLeft} />}
         label={BACK_TO_APP}
         onClick={onBack}
       />

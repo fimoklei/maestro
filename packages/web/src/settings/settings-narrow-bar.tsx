@@ -2,6 +2,7 @@ import { ChevronLeft, Menu } from "lucide-react";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { Icon } from "../ui/icon";
 import { BACK_TO_APP } from "./settings-copy";
 import type { SettingsPage } from "./settings-pages";
 
@@ -26,7 +27,7 @@ export function SettingsNarrowBar({
       )}
     >
       <Button variant="quiet" onClick={onBack}>
-        <ChevronLeft aria-hidden="true" size={16} strokeWidth={1.5} />
+        <Icon of={ChevronLeft} />
         {BACK_TO_APP}
       </Button>
       <div className="ml-auto">
@@ -38,7 +39,7 @@ export function SettingsNarrowBar({
           }))}
           trigger={
             <Button size="icon" variant="quiet">
-              <Menu aria-hidden="true" size={16} strokeWidth={1.5} />
+              <Icon of={Menu} />
             </Button>
           }
         />

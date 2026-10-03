@@ -2,6 +2,7 @@ import { useId } from "react";
 import { Dialog } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Report, type ReportGroup } from "../ui/report";
+import { StatusLine } from "../ui/status-region";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
@@ -115,9 +116,7 @@ export function BulkRemoveDialog({
       {done !== null ? (
         <Report heading={done.heading} groups={reportGroups(done)} />
       ) : failure?.kind === "outcome-unknown" ? null : grouped === null ? (
-        <p role="status" className="m-0 text-gray-11">
-          {view.kind === "checking" ? view.line : null}
-        </p>
+        <StatusLine>{view.kind === "checking" ? view.line : null}</StatusLine>
       ) : (
         // Stays through the run and beside a failure: it is what the confirm
         // acts on.

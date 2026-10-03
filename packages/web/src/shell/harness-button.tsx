@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { ActionsMenu } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
+import { Icon } from "../ui/icon";
 import { SETTINGS } from "./screens";
 import { useHarnessSummary } from "./use-harness-summary";
 
@@ -47,12 +48,7 @@ export function HarnessButton() {
               </span>
             )}
           </span>
-          <ChevronDown
-            aria-hidden="true"
-            size={16}
-            strokeWidth={1.5}
-            className="shrink-0 text-gray-11"
-          />
+          <Icon of={ChevronDown} className="shrink-0 text-gray-11" />
         </button>
       }
     />

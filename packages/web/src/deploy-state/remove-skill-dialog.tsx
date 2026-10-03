@@ -4,6 +4,7 @@ import { Dialog } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
+import { LiveRegion } from "../ui/status-region";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   type RemoveDialogTarget,
@@ -110,18 +111,18 @@ export function RemoveSkillDialog({
             {removeLedgerLeadIn("skill")}
           </span>
           {/* Named apart, or a reader hears identical regions. */}
-          <div role="status" aria-label="Removal targets">
+          <LiveRegion label="Removal targets">
             <GroupedList groups={ledgerGroup(detectedRows)} checklist={null} />
-          </div>
+          </LiveRegion>
           {/* Mounted empty from first render: a live region created with its first
               message announces unreliably. */}
           {target.kind === "global" ? (
-            <div role="status" aria-label="Other copies">
+            <LiveRegion label="Other copies">
               <GroupedList
                 groups={ledgerGroup(leftoverRows)}
                 checklist={null}
               />
-            </div>
+            </LiveRegion>
           ) : null}
         </div>
         {/* Amber: nothing failed or was deleted, the price went up. It carries
