@@ -125,7 +125,7 @@ export function comparedFact(head: ReleaseHead, now: Date): string {
 const COPY_CHIPS = {
   "local-edits": {
     label: "Local edits",
-    hint: "Files changed after deployment. The latest release lacks these changes. Select Import local edits… to bring them into the Harness.",
+    hint: "Files changed after deployment. The latest release lacks these changes. Select Import local edits to bring them into the Harness.",
   },
   unverified: {
     label: "Unverified",

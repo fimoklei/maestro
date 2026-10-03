@@ -1129,15 +1129,15 @@ describe("localEditsRefusal", () => {
   it.each([
     [
       "not-configured",
-      "Select Change Harness location in Settings, then select Import local edits… again.",
+      "Select Change Harness location in Settings, then select Import local edits again.",
     ],
     [
       "destination-unsafe",
-      "Nothing was copied. Make the clone's skills folder a real folder inside it, then select Import local edits… again.",
+      "Nothing was copied. Make the clone's skills folder a real folder inside it, then select Import local edits again.",
     ],
     [
       "source-unreadable",
-      "Nothing was copied. Make the folder readable, then select Import local edits… again.",
+      "Nothing was copied. Make the folder readable, then select Import local edits again.",
     ],
     [
       "outside-root",
@@ -1153,15 +1153,15 @@ describe("localEditsRefusal", () => {
     ],
     [
       "missing-manifest",
-      "This copy has no SKILL.md. Put it back, then select Import local edits… again.",
+      "This copy has no SKILL.md. Put it back, then select Import local edits again.",
     ],
     [
       "invalid-frontmatter",
-      "Fix the SKILL.md frontmatter, then select Import local edits… again.",
+      "Fix the SKILL.md frontmatter, then select Import local edits again.",
     ],
     [
       "empty-description",
-      "Fill in the description in SKILL.md, then select Import local edits… again.",
+      "Fill in the description in SKILL.md, then select Import local edits again.",
     ],
     [
       "harness-copy-uncommitted",
@@ -1169,7 +1169,7 @@ describe("localEditsRefusal", () => {
     ],
     [
       "harness-unreadable",
-      "Nothing was copied. Make the Harness clone readable, then select Import local edits… again.",
+      "Nothing was copied. Make the Harness clone readable, then select Import local edits again.",
     ],
     [
       "nothing-to-carry-back",
@@ -1185,11 +1185,11 @@ describe("localEditsRefusal", () => {
     ],
     [
       "not-found",
-      "Nothing was copied. The deployed folder is gone. Select Close, then Import local edits… again.",
+      "Nothing was copied. The deployed folder is gone. Select Close, then Import local edits again.",
     ],
     [
       "not-a-directory",
-      "Nothing was copied. The deployed copy is no longer a folder. Select Close, then Import local edits… again.",
+      "Nothing was copied. The deployed copy is no longer a folder. Select Close, then Import local edits again.",
     ],
     [
       "destination-exists",
@@ -1197,31 +1197,31 @@ describe("localEditsRefusal", () => {
     ],
     [
       "unsafe-link",
-      "Nothing was copied. Replace the symbolic link in the skill folder with a real file, then select Import local edits… again.",
+      "Nothing was copied. Replace the symbolic link in the skill folder with a real file, then select Import local edits again.",
     ],
     [
       "hard-linked-file",
-      "Nothing was copied. Replace the shared file in the skill folder with a plain copy, then select Import local edits… again.",
+      "Nothing was copied. Replace the shared file in the skill folder with a plain copy, then select Import local edits again.",
     ],
     [
       "special-file",
-      "Nothing was copied. Take the special file out of the skill folder, then select Import local edits… again.",
+      "Nothing was copied. Take the special file out of the skill folder, then select Import local edits again.",
     ],
     [
       "too-many-files",
-      "Nothing was copied. This copy holds over 1,000 files. Remove the files the skill does not need, then select Import local edits… again.",
+      "Nothing was copied. This copy holds over 1,000 files. Remove the files the skill does not need, then select Import local edits again.",
     ],
     [
       "too-large",
-      "Nothing was copied. This copy is over 50 MiB. Remove the files the skill does not need, then select Import local edits… again.",
+      "Nothing was copied. This copy is over 50 MiB. Remove the files the skill does not need, then select Import local edits again.",
     ],
     [
       "source-changed",
-      "The skill was not imported. Let the folder change finish, then select Import local edits… again.",
+      "The skill was not imported. Let the folder change finish, then select Import local edits again.",
     ],
     [
       "copy-failed",
-      "The skill was not imported. Free up disk space, then select Import local edits… again.",
+      "The skill was not imported. Free up disk space, then select Import local edits again.",
     ],
     [
       "not-an-update",
@@ -1241,7 +1241,7 @@ describe("localEditsRefusal", () => {
     ],
     [
       "undoes-newer-changes",
-      "The Harness changed this skill after the check, so it was not imported. Select Import local edits… again to choose whether to undo that change.",
+      "The Harness changed this skill after the check, so it was not imported. Select Import local edits again to choose whether to undo that change.",
     ],
   ] as const)("states %s as its reason and next step", (refusal, sentence) => {
     expect(localEditsRefusal({ refusal })).toBe(sentence);

@@ -221,7 +221,7 @@ describe("local edits on a target", () => {
         NOW,
       ),
     ).toEqual([
-      "2 skills have changes that are not in the latest release: tdd and review. Select Import local edits… to keep them.",
+      "2 skills have changes that are not in the latest release: tdd and review. Select Import local edits to keep them.",
       "On the latest release.",
       "Compared with the Harness, read just now",
     ]);

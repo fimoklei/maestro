@@ -28,6 +28,7 @@ const RETIRED = [
   /\bRelease head\b/i,
   /\breload the view\b/i,
   /\bslugs?\b/i,
+  /\bImport local edits…/i,
   // A control is selected: never clicked or tapped, never `Press Close`.
   /\b(?:click|tap)(?:s|ped|ping|ed|ing)?\b/i,
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,

@@ -81,7 +81,7 @@ export function TargetDetailPane({
   const latestRelease = latestReleaseFact(head);
   const edited = editedSkills(row.primitives);
   const why = [
-    // Its sentence names Import local edits…, which an operation withholds.
+    // Its sentence names Import local edits, which an operation withholds.
     ...(edited.length === 0 || row.pending ? [] : [localEditsLine(edited)]),
     ...(row.pinned
       ? [`${pinnedTagsLine(row.pinned)}.`, RELEASE_NOT_ADOPTED]

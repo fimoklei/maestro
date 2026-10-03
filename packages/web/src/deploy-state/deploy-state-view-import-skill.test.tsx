@@ -63,15 +63,15 @@ async function openEditedPane(other: ServerState["other"]) {
 async function openSkillDialog(pane: HTMLElement, name: string, title: string) {
   await openSkillMenu(pane, name);
   await userEvent.click(
-    screen.getByRole("menuitem", { name: "Import local edits…" }),
+    screen.getByRole("menuitem", { name: "Import local edits" }),
   );
   return screen.findByRole("dialog", {
     name: `Import local edits from ${title}`,
   });
 }
 
-describe("Deploy-state — Import local edits… on a skill row", () => {
-  it("offers Import local edits… above Remove skill on a skill with local edits", async () => {
+describe("Deploy-state — Import local edits on a skill row", () => {
+  it("offers Import local edits above Remove skill on a skill with local edits", async () => {
     stubRepo({
       primitives: [skill("code-review"), skill("tdd", "local-edits")],
       skipped: [],
@@ -80,14 +80,14 @@ describe("Deploy-state — Import local edits… on a skill row", () => {
     const pane = await openPane(ROW);
 
     expect(await openSkillMenu(pane, "tdd")).toEqual([
-      "Import local edits…",
+      "Import local edits",
       "Remove skill",
     ]);
     await userEvent.keyboard("{Escape}");
     expect(await openSkillMenu(pane, "code-review")).toEqual(["Remove skill"]);
   });
 
-  it("omits Import local edits… while an unfinished operation stands", async () => {
+  it("omits Import local edits while an unfinished operation stands", async () => {
     stubRepo({
       primitives: [skill("tdd", "local-edits")],
       skipped: [],

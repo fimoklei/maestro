@@ -48,15 +48,15 @@ function stubImport(
 async function openDialog() {
   const pane = await openPane(ROW);
   await userEvent.click(
-    within(pane).getByRole("button", { name: "Import local edits…" }),
+    within(pane).getByRole("button", { name: "Import local edits" }),
   );
   return screen.findByRole("dialog", {
     name: `Import local edits from ${ROW}`,
   });
 }
 
-describe("Deploy-state — Import local edits… on a repository", () => {
-  it("leads the row's menu with Import local edits…", async () => {
+describe("Deploy-state — Import local edits on a repository", () => {
+  it("leads the row's menu with Import local edits", async () => {
     stubImport(["tdd"], landed);
     renderDeployState();
 
@@ -67,7 +67,7 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     );
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((item) => item.textContent)).toEqual([
-      "Import local edits…",
+      "Import local edits",
       "Deploy skill",
     ]);
   });
@@ -342,7 +342,7 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Nothing was imported. Select Close, then Import local edits… again.",
+        "Nothing was imported. Select Close, then Import local edits again.",
       ),
     ).toBeInTheDocument();
   });
@@ -420,7 +420,7 @@ describe("Deploy-state — Import local edits… on a repository", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Wait for that change to finish, then select Import local edits… again.",
+        "Wait for that change to finish, then select Import local edits again.",
       ),
     ).toBeInTheDocument();
   });

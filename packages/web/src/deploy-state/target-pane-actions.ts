@@ -24,7 +24,7 @@ export type TargetPaneActions = {
 
 // Each ⋮ item where its reason is, and the one primary chosen by the first
 // state the pane names: an unfinished operation (its notice's retry), behind
-// (Update target), local edits (Import local edits…), else none (#1272).
+// (Update target), local edits (Import local edits), else none (#1272).
 export function targetPaneActions<Row extends PaneRow>(
   row: Row,
   onAction: (row: Row, action: TargetAction) => void,

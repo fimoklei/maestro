@@ -705,28 +705,28 @@ describe("Deploy-state pane — where each action sits", () => {
         { name: `Update target ${LABEL}` },
       ),
     ).toHaveClass("bg-gray-12");
-    expect(footLabels(pane)).toEqual(["Import local edits…", "Deploy skill"]);
+    expect(footLabels(pane)).toEqual(["Import local edits", "Deploy skill"]);
     for (const button of within(footOf(pane)).getAllByRole("button")) {
       expect(button).not.toHaveClass("bg-gray-12");
     }
     expect(
       within(pane).getByText(
-        "1 skill has changes that are not in the latest release: tdd. Select Import local edits… to keep them.",
+        "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
       ),
     ).toBeInTheDocument();
   });
 
-  it("makes Import local edits… the primary at the foot when the target is not behind", async () => {
+  it("makes Import local edits the primary at the foot when the target is not behind", async () => {
     repoWith({ primitives: [edited("tdd")] });
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(footLabels(pane)).toEqual(["Import local edits…", "Deploy skill"]);
+    expect(footLabels(pane)).toEqual(["Import local edits", "Deploy skill"]);
     expect(
-      within(footOf(pane)).getByRole("button", { name: "Import local edits…" }),
+      within(footOf(pane)).getByRole("button", { name: "Import local edits" }),
     ).toHaveClass("bg-gray-12");
   });
-  it("leaves out the local-edits sentence while an operation withholds Import local edits…", async () => {
+  it("leaves out the local-edits sentence while an operation withholds Import local edits", async () => {
     repoWith({
       primitives: [edited("tdd")],
       pendingOperation: { kind: "deploy", release: "v0.3.2", desired: ["tdd"] },

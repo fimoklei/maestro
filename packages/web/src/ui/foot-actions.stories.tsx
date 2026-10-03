@@ -30,7 +30,7 @@ export const Default: Story = {};
 export const NoPrimary: Story = {
   args: {
     items: [
-      { label: "Import local edits…", onSelect: () => {} },
+      { label: "Import local edits", onSelect: () => {} },
       { label: "Deploy skill", onSelect: () => {} },
     ],
     primary: null,
