@@ -91,11 +91,7 @@ export const stageSections = (state: HarnessState): StageSection[] =>
   ].map((section) => ({ ...section, title: STAGE_NAMES[section.stage] }));
 
 // Counts, never statuses: the row itself states why it is where it is (#868).
-export const harnessAnnouncement = (
-  state: HarnessState,
-  now: Date,
-  reading = false,
-): string => {
+export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
   const stages = stageSections(state).map((section) => {
     if (section.read.outcome !== "read") {
       return `${section.title} was not read.`;
@@ -110,18 +106,12 @@ export const harnessAnnouncement = (
     {
       readAt: [state.freshness.lastFetchedAt],
       outcome: state.freshness.outcome,
-      reading,
+      reading: false,
     },
     now,
   );
   return `${stages.join(" ")} ${line}.`;
 };
-
-// Only when every stage answered is "No changes yet" a fact.
-export const journeyConfirmedEmpty = (state: HarnessState): boolean =>
-  [state.stages.proposal, state.stages.review, state.stages.release].every(
-    (stage) => stage.outcome === "read" && stage.rows.length === 0,
-  );
 
 // `offline` and `fetch-failed` are the two no-answer classes, and only they
 // close Release: a plan off a picture the remote never answered for could

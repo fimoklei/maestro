@@ -1,33 +1,21 @@
 import type { GitHubPage, ReleasePlan, SemverStep } from "@maestro/core";
-import { FolderGit2, FolderInput, RefreshCw } from "lucide-react";
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { FolderGit2, FolderInput } from "lucide-react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
-import { DataTable } from "../ui/data-table";
-import { DetailPaneSlot } from "../ui/detail-pane";
-import { EmptyState } from "../ui/empty-state";
 import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
-import { IconButton } from "../ui/icon-button";
 import { Notice } from "../ui/notice";
-import { Panel } from "../ui/panel";
 import { StatusBadge } from "../ui/status-badge";
 import { reading, readingRank } from "../ui/status-reading";
-import { useReadSkeleton } from "../ui/use-read-skeleton";
+import { TableScreen } from "../ui/table-screen";
+import { useTableScreen } from "../ui/use-table-screen";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
 import {
   harnessAnnouncement,
-  journeyConfirmedEmpty,
   releaseEnabled,
   type StageSection,
   stageSections,
@@ -53,9 +41,6 @@ import {
 import { useHarnessPresses } from "./use-harness-presses";
 import { useImportFlow } from "./use-import-flow";
 
-const REREAD_HARNESS = "Re-read Harness";
-const TABLE_LABEL = "Harness table";
-
 export function HarnessView({
   openSkill,
 }: {
@@ -67,14 +52,20 @@ export function HarnessView({
   const refresh = useRefreshHarness();
   const { mutate: fetchRemote } = refresh;
   const reading = refresh.isPending || harness.isFetching;
-  const skeleton = useReadSkeleton(
-    reading || (state === undefined && !harness.isError),
-  );
   // The one way back from every failed read, so a failure never closes it.
-  const reread = () => {
-    skeleton.press();
-    fetchRemote();
-  };
+  const table = useTableScreen({
+    name: "Harness",
+    reading: reading || (state === undefined && !harness.isError),
+    settled: state !== undefined,
+    failure: harnessStateNotice(harness.error) ?? refreshNotice(refresh.error),
+    onReread: fetchRemote,
+    openOnArrival:
+      openSkill === null
+        ? null
+        : rowId({ stage: "pending-proposal", skill: openSkill }),
+  });
+  const reread = table.reread;
+  const { open } = table;
 
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
@@ -106,24 +97,17 @@ export function HarnessView({
     );
   };
 
-  const rereadRef = useRef<HTMLButtonElement>(null);
-
-  const [selected, setSelected] = useState<string | null>(() =>
-    openSkill === null
-      ? null
-      : rowId({ stage: "pending-proposal", skill: openSkill }),
-  );
+  // The import's done sentence already says what moved. It lands before the
+  // import's own re-read paints, so that read reports no move (#1160).
+  const importSaid = useRef(false);
   const importFlow = useImportFlow(({ name }) => {
     // An import writes the working tree, so its row is Pending proposal's —
     // even where the skill also holds a later one (#865).
-    setSelected(rowId({ stage: "pending-proposal", skill: name }));
-    setWrite(doneSentence("import", name));
+    open(rowId({ stage: "pending-proposal", skill: name }));
+    importSaid.current = true;
+    table.report(doneSentence("import", name));
   });
   const presses = useHarnessPresses(state);
-
-  const [order, setOrder] = useState<string[]>([]);
-  const gridRef = useRef<HTMLTableElement>(null);
-  const getTriggerElement = useCallback(() => gridRef.current, []);
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -131,12 +115,12 @@ export function HarnessView({
   const failure = presses.failure();
   const failedId = failure?.id ?? null;
   useEffect(() => {
-    if (failedId !== null) setSelected(failedId);
-  }, [failedId]);
+    if (failedId !== null) open(failedId);
+  }, [failedId, open]);
   const { movedTo } = presses;
   useEffect(() => {
-    if (movedTo !== null) setSelected(movedTo);
-  }, [movedTo]);
+    if (movedTo !== null) open(movedTo);
+  }, [movedTo, open]);
 
   // The plain read paints the clone before the open-time check has caught it
   // up, so where the clone stands is stated only once a check has answered.
@@ -156,13 +140,6 @@ export function HarnessView({
     return () => clearTimeout(scheduled);
   }, [fetchRemote]);
 
-  const now = new Date();
-  // A write's done sentence, until the next read begins. Keyed on the read
-  // starting, not its text: the import's own re-read lands after it (#1160).
-  const [write, setWrite] = useState<string | null>(null);
-  useEffect(() => {
-    if (reading) setWrite(null);
-  }, [reading]);
   const freshness = useFreshnessLine(
     state === undefined
       ? null
@@ -233,68 +210,38 @@ export function HarnessView({
   const byTitle = (key: string): StageSection | undefined =>
     sections.find((section) => section.title === key);
 
-  const selectedRow = rows.find((row) => row.id === selected) ?? null;
-  const openIndex = selected === null ? -1 : order.indexOf(selected);
+  // A press moves a row between stages and the table repaints under the
+  // keyboard, so the move is reported; the first read is not a move (#868).
+  const counts =
+    state === undefined
+      ? null
+      : sections
+          .map((section) =>
+            section.read.outcome === "read" ? section.read.rows.length : "?",
+          )
+          .join(" ");
+  const heardCounts = useRef<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fires on each landed read
+  useEffect(() => {
+    const said = importSaid.current;
+    importSaid.current = false;
+    if (counts === null || state === undefined) return;
+    if (
+      !said &&
+      heardCounts.current !== null &&
+      heardCounts.current !== counts
+    ) {
+      table.report(harnessAnnouncement(state, new Date()));
+    }
+    heardCounts.current = counts;
+  }, [harness.dataUpdatedAt]);
+
   const stale =
     state !== undefined && staleStatusNotice(state.freshness, reread) !== null;
-  const empty = state !== undefined && journeyConfirmedEmpty(state);
-
-  // Re-read Harness stands even before a first read: it is the way back from
-  // a read that failed on open.
-  const band2 = (
-    <>
-      {state === undefined ? null : (
-        <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
-          <BandFact
-            label="Origin"
-            value={state.origin}
-            github={state.github}
-            yields="lg"
-          />
-          <BandFact
-            label="Released"
-            value={state.releasedVersion ?? "None yet"}
-            machine={state.releasedVersion !== null}
-          />
-          <BandFact
-            label="Branch"
-            value={state.defaultBranch ?? "Unknown"}
-            machine={state.defaultBranch !== null}
-            yields="sm"
-          />
-        </dl>
-      )}
-      <div className="ml-auto flex flex-none items-center gap-inline">
-        {freshness === null ? null : (
-          <span
-            className={
-              stale ? "text-amber-12 text-meta" : "text-gray-11 text-meta"
-            }
-          >
-            {freshness}
-          </span>
-        )}
-        <IconButton
-          ref={rereadRef}
-          label={REREAD_HARNESS}
-          busy={refresh.isPending}
-          onClick={reread}
-        >
-          {refresh.isPending ? null : (
-            <RefreshCw
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-4"
-            />
-          )}
-        </IconButton>
-      </div>
-    </>
-  );
 
   return (
-    <Panel
-      title="Harness"
+    <TableScreen
+      state={table}
       action={
         state === undefined ? null : (
           <>
@@ -323,100 +270,86 @@ export function HarnessView({
           </>
         )
       }
-      band2={band2}
+      lead={
+        state === undefined ? null : (
+          <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
+            <BandFact
+              label="Origin"
+              value={state.origin}
+              github={state.github}
+              yields="lg"
+            />
+            <BandFact
+              label="Released"
+              value={state.releasedVersion ?? "None yet"}
+              machine={state.releasedVersion !== null}
+            />
+            <BandFact
+              label="Branch"
+              value={state.defaultBranch ?? "Unknown"}
+              machine={state.defaultBranch !== null}
+              yields="sm"
+            />
+          </dl>
+        )
+      }
+      freshness={
+        freshness === null ? null : (
+          <span
+            className={
+              stale ? "text-amber-12 text-meta" : "text-gray-11 text-meta"
+            }
+          >
+            {freshness}
+          </span>
+        )
+      }
+      rereading={refresh.isPending}
+      rows={rows}
+      columns={columns}
+      rowId={(row) => row.id}
+      groups={{
+        key: (row) => row.group,
+        order: sections.map((section) => section.title),
+        meta: (key) => groupMeta(byTitle(key)),
+        message: (key) => groupMessage(byTitle(key), reread),
+      }}
+      empty={{
+        icon: (
+          <FolderGit2 aria-hidden="true" strokeWidth={1.5} className="size-4" />
+        ),
+        title: JOURNEY_EMPTY.title,
+        description: JOURNEY_EMPTY.body,
+        action: (
+          <Button variant="quiet" onClick={importFlow.start}>
+            Import skill…
+          </Button>
+        ),
+      }}
+      pane={(row, frame) => (
+        <StageDetailPane
+          row={row}
+          context={context}
+          failure={failure?.id === row.id ? failure.notice : null}
+          {...frame}
+        />
+      )}
+      notice={
+        <Notices
+          state={state}
+          readError={harness.error}
+          refreshError={refresh.error}
+          checkedOnce={checkedOnce}
+          reread={reread}
+          published={publish.data}
+          dismissPublished={publish.reset}
+          rereadInventory={rereadInventory}
+          restored={presses.restore.data}
+          dismissRestored={presses.restore.reset}
+          rereadRef={table.rereadRef}
+        />
+      }
     >
-      {/* Off-screen, polite: a press moves a row between stages and the table
-          repaints under the keyboard, saying nothing (#868). */}
-      <span
-        role="status"
-        aria-live="polite"
-        aria-label="Harness stages"
-        className="sr-only"
-      >
-        {write ??
-          (state === undefined ? "" : harnessAnnouncement(state, now, reading))}
-      </span>
-      <div className="relative flex h-[100cqh]">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <Notices
-            state={state}
-            readError={harness.error}
-            refreshError={refresh.error}
-            checkedOnce={checkedOnce}
-            reread={reread}
-            published={publish.data}
-            dismissPublished={publish.reset}
-            rereadInventory={rereadInventory}
-            restored={presses.restore.data}
-            dismissRestored={presses.restore.reset}
-            rereadRef={rereadRef}
-          />
-          {empty ? (
-            <EmptyState
-              icon={
-                <FolderGit2
-                  aria-hidden="true"
-                  strokeWidth={1.5}
-                  className="size-4"
-                />
-              }
-              headingLevel={2}
-              title={JOURNEY_EMPTY.title}
-              description={JOURNEY_EMPTY.body}
-              action={
-                <Button variant="quiet" onClick={importFlow.start}>
-                  Import skill…
-                </Button>
-              }
-            />
-          ) : state !== undefined || skeleton.visible ? (
-            <div
-              aria-busy={reading || undefined}
-              className="min-h-0 flex-1 overflow-auto"
-            >
-              <DataTable
-                ref={gridRef}
-                label={TABLE_LABEL}
-                columns={columns}
-                data={rows}
-                getRowId={(row) => row.id}
-                loading={skeleton.visible}
-                skeletonRows={Math.min(rows.length || 8, 30)}
-                groups={{
-                  key: (row) => row.group,
-                  order: sections.map((section) => section.title),
-                  meta: (key) => groupMeta(byTitle(key)),
-                  message: (key) => groupMessage(byTitle(key), reread),
-                }}
-                openRowId={selectedRow?.id ?? null}
-                onRowOpen={(row) =>
-                  setSelected(selected === row.id ? null : row.id)
-                }
-                onRowOrderChange={setOrder}
-              />
-            </div>
-          ) : null}
-        </div>
-        {selectedRow ? (
-          <DetailPaneSlot>
-            <StageDetailPane
-              row={selectedRow}
-              context={context}
-              failure={failure?.id === selectedRow.id ? failure.notice : null}
-              position={
-                openIndex === -1
-                  ? null
-                  : { index: openIndex, count: order.length }
-              }
-              onPage={(step) =>
-                setSelected(order[openIndex + step] ?? selected)
-              }
-              onClose={() => setSelected(null)}
-              getTriggerElement={getTriggerElement}
-            />
-          </DetailPaneSlot>
-        ) : null}
-      </div>
       {state === undefined ? null : (
         <HarnessDialogs
           origin={state.origin}
@@ -438,7 +371,7 @@ export function HarnessView({
           onPublish={handlePublish}
         />
       )}
-    </Panel>
+    </TableScreen>
   );
 }
 

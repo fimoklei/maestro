@@ -2,7 +2,6 @@ import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   harnessAnnouncement,
-  journeyConfirmedEmpty,
   releaseEnabled,
   stageSections,
 } from "./harness-view-model";
@@ -207,18 +206,6 @@ describe("harnessAnnouncement", () => {
     );
   });
 
-  // One owner for the freshness word: a screen reader must never hear the
-  // dated reading while the strip says a read is running.
-  it("tells a screen reader the same reading the strip shows", () => {
-    const built = state({
-      proposal: { outcome: "read", bound: null, rows: [row("tdd")] },
-    });
-
-    expect(harnessAnnouncement(built, NOW, true)).toBe(
-      "Pending proposal has 1 change. Pending review has no changes. Pending release has no changes. Reading GitHub….",
-    );
-  });
-
   it("counts more than one change in the plural", () => {
     const built = state({
       proposal: {
@@ -246,43 +233,5 @@ describe("harnessAnnouncement", () => {
     built.freshness = { outcome: null, lastFetchedAt: null };
 
     expect(harnessAnnouncement(built, NOW)).toContain("Not read yet.");
-  });
-});
-
-describe("journeyConfirmedEmpty", () => {
-  const empty: HarnessState["stages"]["proposal"] = {
-    outcome: "read",
-    rows: [],
-    bound: null,
-  };
-  const with_ = (stages: HarnessState["stages"]): HarnessState => ({
-    origin: "github.com/fimoklei/agent-harness",
-    releasedVersion: null,
-    defaultBranch: "main",
-    releaseState: "never-released",
-    freshness: { outcome: "fetched", lastFetchedAt: null },
-    cloneSync: "current",
-    localHeadCommit: "local-head",
-    stages,
-  });
-
-  it("reads three confirmed empty stages as an empty journey", () => {
-    expect(
-      journeyConfirmedEmpty(
-        with_({ proposal: empty, review: empty, release: empty }),
-      ),
-    ).toBe(true);
-  });
-
-  it("never reads an unknown stage as empty", () => {
-    expect(
-      journeyConfirmedEmpty(
-        with_({
-          proposal: empty,
-          review: { outcome: "unavailable" },
-          release: empty,
-        }),
-      ),
-    ).toBe(false);
   });
 });

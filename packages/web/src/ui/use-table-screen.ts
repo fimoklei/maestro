@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type RefObject, useRef, useState } from "react";
 import type { NoticeContent } from "./notice";
 import { useReadAnnouncement } from "./use-read-announcement";
 import { useReadSkeleton } from "./use-read-skeleton";
@@ -11,6 +11,8 @@ export type TableScreenState = {
   name: string;
   /** Skeleton first, then the screen's own read. Hand it to any notice that re-reads. */
   reread: () => void;
+  /** The Re-read control, where a dismissed notice hands focus back. */
+  rereadRef: RefObject<HTMLButtonElement | null>;
   /** Into the one status region: a busy label, a done sentence, or "" for silence. */
   report: (write: string) => void;
   /** The row whose detail pane is open. */
@@ -46,6 +48,7 @@ export function useTableScreen({
 }): TableScreenState {
   const skeleton = useReadSkeleton(reading);
   const [openId, setOpenId] = useState(openOnArrival);
+  const rereadRef = useRef<HTMLButtonElement>(null);
   const reread = () => {
     skeleton.press();
     setWrite("");
@@ -61,6 +64,7 @@ export function useTableScreen({
   return {
     name,
     reread,
+    rereadRef,
     report: setWrite,
     openId,
     open: setOpenId,

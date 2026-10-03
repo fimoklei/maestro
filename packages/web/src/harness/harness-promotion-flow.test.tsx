@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { renderWithQuery } from "../test-utils";
 import {
+  harnessRegion,
   installHarnessHooks,
   ON_DISK,
   openPane,
@@ -98,6 +99,26 @@ describe("Harness promotion", () => {
       expect(
         (await stageRows("Pending review")).map((each) => each.textContent),
       ).toEqual([expect.stringMatching(/lint-rules.*Pull request missing/)]),
+    );
+  });
+
+  // A press moves a row between stages and the table repaints under the
+  // keyboard, so the move is reported; opening the view is not a move (#868).
+  it("reports the stage move through the screen's status region", async () => {
+    stubHarnessServer({
+      read: { body: ON_DISK, afterPromote: REVIEWED },
+      promote: { body: PUSHED },
+    });
+    renderHarness();
+    await stageRows("Pending proposal");
+    expect(harnessRegion()).not.toHaveTextContent(/has \d changes?/);
+
+    await promoteRow("lint-rules");
+
+    await waitFor(() =>
+      expect(harnessRegion()).toHaveTextContent(
+        "Pending proposal has 1 change. Pending review has 1 change. Pending release has no changes. Read 4 min ago.",
+      ),
     );
   });
 

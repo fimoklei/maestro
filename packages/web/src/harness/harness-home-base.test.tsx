@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  harnessRegion,
   installHarnessHooks,
   openPane,
   RELEASED,
@@ -136,27 +137,6 @@ describe("Harness home base", () => {
     ).not.toBeInTheDocument();
   });
 
-  // A press moves a row from one stage to another and the meta line re-dates
-  // itself, both without moving focus. Nothing said so out loud before (#868).
-  it("announces what each stage holds, politely", async () => {
-    stubHarnessServer({
-      read: {
-        body: withStages(RELEASED, {
-          proposal: [row("pending-proposal", "tdd", "not-yet-proposed")],
-        }),
-      },
-    });
-    renderHarness();
-
-    const live = await screen.findByRole("status", { name: "Harness stages" });
-    await waitFor(() =>
-      expect(live).toHaveTextContent(
-        "Pending proposal has 1 change. Pending review has no changes. Pending release has no changes. Not read yet.",
-      ),
-    );
-    expect(live).toHaveAttribute("aria-live", "polite");
-  });
-
   it("shows the released version and the branch a release would tag", async () => {
     stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
@@ -235,7 +215,7 @@ describe("Harness home base", () => {
     ).toHaveLength(1);
   });
 
-  it("says the read is running while it runs", async () => {
+  it("announces a long read as every table screen does", async () => {
     let release = () => {};
     const heldUntil = new Promise<void>((resolve) => {
       release = resolve;
@@ -255,8 +235,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const live = await screen.findByRole("status", { name: "Harness stages" });
-    await waitFor(() => expect(live).toHaveTextContent("Reading GitHub…"));
+    await screen.findByRole("heading", { level: 1, name: "Harness" });
+    await act(() => vi.advanceTimersByTimeAsync(1300));
+    expect(harnessRegion()).toHaveTextContent("Loading the Harness…");
     expect(
       within(await stripFacts()).queryByText("Reading GitHub…"),
     ).not.toBeInTheDocument();
@@ -265,6 +246,9 @@ describe("Harness home base", () => {
       expect(
         within(await stripFacts()).getByText("Read 4 min ago"),
       ).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(harnessRegion()).toHaveTextContent("Harness loaded."),
     );
   });
 
