@@ -157,7 +157,6 @@ export function HarnessView({
       : {
           readAt: [state.freshness.lastFetchedAt],
           outcome: state.freshness.outcome,
-          reading: false,
         },
   );
   const context = {
@@ -313,6 +312,7 @@ export function HarnessView({
         )
       }
       rereading={refresh.isPending}
+      firstReadRows={8}
       rows={rows}
       columns={columns}
       rowId={(row) => row.id}

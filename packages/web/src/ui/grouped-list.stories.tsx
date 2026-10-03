@@ -19,6 +19,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Checklist: Story = {
   args: {
+    live: null,
     groups: [
       {
         tone: "neutral",
@@ -64,6 +65,7 @@ export const Checklist: Story = {
 // A preflight: what the removal costs and what it refuses.
 export const ReadOnly: Story = {
   args: {
+    live: null,
     groups: [
       {
         tone: "attention",

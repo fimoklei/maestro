@@ -5,6 +5,7 @@ import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { ACTION_STILL_RUNNING, CANCEL, CLOSE } from "./dialog-copy";
+import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
 import { Tooltip } from "./tooltip";
@@ -157,7 +158,7 @@ export function Dialog({
               unavailable={running ? ACTION_STILL_RUNNING : undefined}
               onClick={onClose}
             >
-              <X aria-hidden="true" strokeWidth={1.5} className="size-4" />
+              <Icon of={X} />
             </IconButton>
           </div>
           {/* One form, so Enter in a field runs the action. */}

@@ -6,7 +6,7 @@ import { EmptyState } from "../ui/empty-state";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
-import { StatusLine } from "../ui/status-region";
+import { StatusLine } from "../ui/status-line";
 import {
   CHECKING_LOCAL_EDITS,
   canBeImportedLegend,
@@ -183,6 +183,7 @@ export function ImportLocalEditsDialog({
             },
           ]}
           checklist={{ checked, onToggle, isRunning, firstBox }}
+          live={null}
         />
       )}
     </Dialog>

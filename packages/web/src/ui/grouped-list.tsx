@@ -1,11 +1,7 @@
 import { type MouseEvent, type ReactNode, type RefObject, useId } from "react";
 import { cn } from "./cn";
 import { MachineValue } from "./machine-value";
-import {
-  STATUS_TOKENS,
-  type StatusFamily,
-  WARNING_GLYPH,
-} from "./status-family";
+import { LIST_TOKENS, STATUS_TOKENS, type StatusFamily } from "./status-family";
 
 // A dialog's rows grouped by status family: a checklist, or a read-only
 // preflight in the same legend, edge and row style. A failed group holds what
@@ -43,25 +39,19 @@ type Checklist = {
   firstBox: RefObject<HTMLInputElement | null> | null;
 };
 
-const CALM: readonly StatusFamily[] = ["neutral", "unknown"];
-
-// A row's own cost is a warning, never a lag.
-const glyphOf = (tone: StatusFamily) =>
-  tone === "attention" ? WARNING_GLYPH : STATUS_TOKENS[tone].glyph;
-
-const edgeOf = (tone: StatusFamily) =>
-  CALM.includes(tone) ? "border-edge" : STATUS_TOKENS[tone].edge;
-
 export function GroupedList({
   groups,
   checklist,
+  live,
 }: {
   groups: readonly GroupedListGroup[];
   /** Null for a read-only list. */
   checklist: Checklist | null;
+  /** Names the live region for rows that arrive after the dialog opens; null: none. */
+  live: string | null;
 }) {
   const drawn = groups.filter((group) => group.rows.length > 0);
-  return (
+  const list = (
     <>
       {drawn.map((group, index) => (
         <Group
@@ -73,6 +63,14 @@ export function GroupedList({
         />
       ))}
     </>
+  );
+  // Named apart, or a reader hears identical regions.
+  return live === null ? (
+    list
+  ) : (
+    <div role="status" aria-label={live}>
+      {list}
+    </div>
   );
 }
 
@@ -88,7 +86,7 @@ function Group({
   const id = useId();
   // Refused, not disabled: the box stays focusable so its reason is heard.
   const refused = group.tone === "failed";
-  const edge = edgeOf(group.tone);
+  const { edge } = LIST_TOKENS[group.tone];
   return (
     <fieldset id={group.id} className="m-0 flex min-w-0 flex-col gap-tight">
       {group.legend === null ? null : (
@@ -142,7 +140,7 @@ function Group({
                 aria-hidden="true"
                 className={cn("font-mono text-meta", STATUS_TOKENS[tone].mark)}
               >
-                {glyphOf(tone)}
+                {LIST_TOKENS[tone].glyph}
               </span>
             ) : null;
           const nameClass = cn(
@@ -158,7 +156,7 @@ function Group({
                 lead === null
                   ? "grid-cols-[minmax(0,1fr)_auto]"
                   : "grid-cols-[auto_minmax(0,1fr)_auto]",
-                !CALM.includes(tone) && STATUS_TOKENS[tone].fill,
+                LIST_TOKENS[tone].fill,
                 index < group.rows.length - 1 && cn("border-b", edge),
               )}
             >
@@ -184,9 +182,7 @@ function Group({
                   className={cn(
                     "col-span-2 m-0 font-ui text-meta",
                     lead !== null && "col-start-2",
-                    tone === "attention"
-                      ? STATUS_TOKENS.attention.ink
-                      : "text-gray-11",
+                    LIST_TOKENS[tone].sentence,
                   )}
                 >
                   {row.sentence}

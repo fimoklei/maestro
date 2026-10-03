@@ -4,7 +4,6 @@ import { Dialog } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
-import { LiveRegion } from "../ui/status-region";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   type RemoveDialogTarget,
@@ -23,6 +22,7 @@ const CHECKING = "checking for local edits";
 // other tools' files.
 const ledgerGroup = (
   rows: readonly (RemoveLedgerRow & { id: string })[],
+  target: RemoveDialogTarget,
 ): GroupedListGroup[] => [
   {
     tone: "neutral",
@@ -30,7 +30,8 @@ const ledgerGroup = (
     rows: rows.map((row) => ({
       key: row.key,
       name: row.name,
-      mono: true,
+      // A repo target is named by its path; a tool by its name.
+      mono: target.kind === "repo",
       value: row.path ?? undefined,
       sentence: row.status ?? undefined,
       tone: row.drift ? "attention" : undefined,
@@ -110,19 +111,19 @@ export function RemoveSkillDialog({
           <span id={leadInId} className="font-ui text-gray-11 text-meta">
             {removeLedgerLeadIn("skill")}
           </span>
-          {/* Named apart, or a reader hears identical regions. */}
-          <LiveRegion label="Removal targets">
-            <GroupedList groups={ledgerGroup(detectedRows)} checklist={null} />
-          </LiveRegion>
+          <GroupedList
+            groups={ledgerGroup(detectedRows, target)}
+            checklist={null}
+            live="Removal targets"
+          />
           {/* Mounted empty from first render: a live region created with its first
               message announces unreliably. */}
           {target.kind === "global" ? (
-            <LiveRegion label="Other copies">
-              <GroupedList
-                groups={ledgerGroup(leftoverRows)}
-                checklist={null}
-              />
-            </LiveRegion>
+            <GroupedList
+              groups={ledgerGroup(leftoverRows, target)}
+              checklist={null}
+              live="Other copies"
+            />
           ) : null}
         </div>
         {/* Amber: nothing failed or was deleted, the price went up. It carries

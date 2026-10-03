@@ -1,8 +1,6 @@
 import { type RefObject, useRef, useState } from "react";
 import type { NoticeContent } from "./notice";
-import { useReadAnnouncement } from "./use-read-announcement";
-import { useReadSkeleton } from "./use-read-skeleton";
-import { useStatusRegion } from "./use-status-region";
+import { useScreenStatus } from "./screen-status";
 
 /** A failed read's words; the table screen adds `Re-read {screen name}`. */
 export type ReadFailure = Omit<NoticeContent, "action">;
@@ -46,32 +44,28 @@ export function useTableScreen({
   /** The row a navigation asked this screen to open, read on mount only. */
   openOnArrival: string | null;
 }): TableScreenState {
-  const skeleton = useReadSkeleton(reading);
   const [openId, setOpenId] = useState(openOnArrival);
   const rereadRef = useRef<HTMLButtonElement>(null);
   const reread = () => {
-    skeleton.press();
-    setWrite("");
+    status.press();
     onReread();
   };
   const notice =
     failure === null
       ? null
       : { ...failure, action: { label: `Re-read ${name}`, onClick: reread } };
-  const [announcement, setWrite] = useStatusRegion(
-    useReadAnnouncement(name, skeleton.visible, notice),
-  );
+  const status = useScreenStatus({ name, reading, notice, busy: null });
   return {
     name,
     reread,
     rereadRef,
-    report: setWrite,
+    report: status.report,
     openId,
     open: setOpenId,
     reading,
     settled,
-    skeleton: skeleton.visible,
+    skeleton: status.skeleton,
     notice,
-    announcement,
+    announcement: status.announcement,
   };
 }

@@ -32,7 +32,8 @@ function runGuard(): { status: number | null; stdout: string } {
 const CLEAN = [
   'import { FolderGit2 } from "lucide-react";',
   'import { Icon } from "../ui/icon";',
-  'import { StatusLine } from "../ui/status-region";',
+  'import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";',
+  'import { StatusLine } from "../ui/status-line";',
   'import { ToastHost } from "../ui/toast";',
   'import { STATUS_TOKENS } from "../ui/status-family";',
   "export const A = () => (",
@@ -57,7 +58,7 @@ describe("design guard", () => {
   it.each([
     [
       '<p role="status">Connecting.</p>',
-      'role="status" outside ui: report through the table screen\'s region (useWriteAction, useScreenReport) or a StatusRegion, StatusLine or LiveRegion from ui/status-region',
+      'role="status" outside ui: report through the table screen\'s region (useWriteAction, useScreenReport), useScreenStatus (ui/screen-status) in Settings, or StatusLine (ui/status-line)',
     ],
     [
       '<input type="checkbox" />',
@@ -131,9 +132,24 @@ describe("design guard", () => {
     );
   });
 
+  it.each([
+    'import { StatusRegion } from "../ui/status-region";',
+    'import { useStatusRegion } from "../ui/use-status-region";',
+  ])("fails %s and names the purpose-built region", (line) => {
+    plant("packages/web/src/feature/g.tsx", `${line}\n`);
+
+    const { status, stdout } = runGuard();
+
+    expect(status).toBe(1);
+    expect(stdout).toBe(
+      "packages/web/src/feature/g.tsx:1: generic status region outside ui: report through the table screen's region (useWriteAction, useScreenReport), or useScreenStatus (ui/screen-status) in Settings\n",
+    );
+  });
+
   it("leaves ui, tests, stories, helpers, fixtures and other packages alone", () => {
     const offending = [
       'import { toast } from "sonner";',
+      'import { StatusRegion } from "./status-region";',
       'import { X } from "lucide-react";',
       'export const E = () => <p role="status" className="text-red-11"><X strokeWidth={2} /></p>;',
       "",

@@ -1,43 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { deriveTypeSegments, filterByName } from "./type-filter";
+import { filterByName, typeOptions } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
-describe("deriveTypeSegments", () => {
-  it("returns one segment per type present in the data", () => {
-    const segments = deriveTypeSegments([{ type: "skill" }, { type: "skill" }]);
+describe("typeOptions", () => {
+  it("returns one option per type present in the data", () => {
+    const options = typeOptions([{ type: "skill" }, { type: "skill" }]);
 
-    expect(segments).toEqual([{ value: "skill", label: "Skills" }]);
+    expect(options).toEqual([{ value: "skill", label: "Skills" }]);
   });
 
-  it("collapses repeated types into one segment", () => {
-    const segments = deriveTypeSegments([
+  it("collapses repeated types into one option", () => {
+    const options = typeOptions([
       { type: "skill" },
       { type: "hook" },
       { type: "skill" },
     ]);
 
-    expect(segments.map((s) => s.value)).toEqual(["skill", "hook"]);
+    expect(options.map((s) => s.value)).toEqual(["skill", "hook"]);
   });
 
-  it("orders segments canonically, not by insertion order", () => {
-    const segments = deriveTypeSegments([
+  it("orders options canonically, not by insertion order", () => {
+    const options = typeOptions([
       { type: "bundle" },
       { type: "skill" },
       { type: "mcp" },
     ]);
 
-    expect(segments.map((s) => s.value)).toEqual(["skill", "mcp", "bundle"]);
+    expect(options.map((s) => s.value)).toEqual(["skill", "mcp", "bundle"]);
   });
 
   it("labels each type as its plural control label", () => {
-    const segments = deriveTypeSegments([
+    const options = typeOptions([
       { type: "skill" },
       { type: "hook" },
       { type: "mcp" },
       { type: "bundle" },
     ]);
 
-    expect(segments.map((s) => s.label)).toEqual([
+    expect(options.map((s) => s.label)).toEqual([
       "Skills",
       "Hooks",
       "MCP servers",
@@ -45,8 +45,8 @@ describe("deriveTypeSegments", () => {
     ]);
   });
 
-  it("yields no segments for empty data", () => {
-    expect(deriveTypeSegments([])).toEqual([]);
+  it("yields no options for empty data", () => {
+    expect(typeOptions([])).toEqual([]);
   });
 });
 

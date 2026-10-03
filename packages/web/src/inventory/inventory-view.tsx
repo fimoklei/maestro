@@ -49,7 +49,7 @@ import {
   UNKNOWN,
   UP_TO_DATE,
 } from "./skill-status";
-import { deriveTypeSegments, filterByName, TYPE_LABEL } from "./type-filter";
+import { filterByName, TYPE_LABEL, typeOptions } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
 // Presentational; the container supplies the reads (#992, #1040).
@@ -158,7 +158,7 @@ export function InventoryView({
   const view = useViewOptions(rows, {
     kind: {
       label: "Type",
-      options: deriveTypeSegments(all),
+      options: typeOptions(all),
       of: (row) => row.type,
     },
     status: {
@@ -242,6 +242,8 @@ export function InventoryView({
           />
         </div>
       }
+      rereading={false}
+      firstReadRows={24}
       rows={rows}
       columns={columns}
       rowId={(row) => row.name}

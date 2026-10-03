@@ -2,6 +2,7 @@ import type { RowData } from "@tanstack/react-table";
 import { ListFilter, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import type { DataTableProps } from "./data-table";
+import { Icon } from "./icon";
 import type { OptionMenuProps } from "./option-menu";
 import {
   ALL,
@@ -23,8 +24,8 @@ export interface ViewOptionsConfig<T extends RowData> {
   status: {
     words: readonly string[];
     of: (row: T) => string | null;
-    /** The group of a row with no status yet; none: no Status grouping. */
-    unread?: string;
+    /** The group of a row with no status yet; null: no Status grouping. */
+    unread: string | null;
   };
   /** The screen's own groupings; None and Status are added. */
   groupings: readonly (Option & { groups: Groups<T> })[];
@@ -50,10 +51,6 @@ const toggle = (set: ReadonlySet<string>, value: string) => {
   return next;
 };
 
-const icon = (Icon: typeof ListFilter) => (
-  <Icon aria-hidden="true" strokeWidth={1.5} className="size-4" />
-);
-
 /** A table screen's Filter and Display: their state, and what they do to the table. */
 export function useViewOptions<T extends RowData>(
   rows: readonly T[],
@@ -69,7 +66,7 @@ export function useViewOptions<T extends RowData>(
   const groupings = [
     { value: "none", label: NONE, groups: undefined },
     ...config.groupings,
-    ...(unread === undefined
+    ...(unread === null
       ? []
       : [
           {
@@ -99,7 +96,7 @@ export function useViewOptions<T extends RowData>(
     menus: [
       {
         label: FILTER_LABEL,
-        icon: icon(ListFilter),
+        icon: <Icon of={ListFilter} />,
         unavailable,
         count: filterCount,
         sections: [
@@ -122,7 +119,7 @@ export function useViewOptions<T extends RowData>(
       },
       {
         label: DISPLAY_LABEL,
-        icon: icon(SlidersHorizontal),
+        icon: <Icon of={SlidersHorizontal} />,
         unavailable,
         sections: [
           {

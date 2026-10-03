@@ -44,6 +44,7 @@ type ScreenProps = {
     | "lead"
     | "freshness"
     | "rereading"
+    | "firstReadRows"
     | "selection"
     | "selectionBar"
   >
@@ -76,6 +77,8 @@ function FruitScreen({
       rows={rows}
       columns={COLUMNS}
       rowId={(row) => row.name}
+      rereading={false}
+      firstReadRows={8}
       empty={{
         title: "No fruit yet",
         description: "The fruit you plant appears here.",
@@ -221,6 +224,20 @@ describe("TableScreen", () => {
       act(() => vi.advanceTimersByTime(1));
       expect(within(grid()).getByText("pear")).toBeInTheDocument();
       expect(region()).toHaveTextContent("Fruit loaded.");
+    });
+
+    it("draws the screen's own skeleton count on a first read, a known count after", () => {
+      vi.useFakeTimers();
+      const { rerender } = render(
+        <FruitScreen reading settled={false} rows={[]} firstReadRows={8} />,
+      );
+
+      act(() => vi.advanceTimersByTime(1300));
+      // The header row plus the skeleton rows.
+      expect(within(grid()).getAllByRole("row")).toHaveLength(9);
+
+      rerender(<FruitScreen reading firstReadRows={8} />);
+      expect(within(grid()).getAllByRole("row")).toHaveLength(4);
     });
 
     it("marks the table region busy while it reads, shown or not", () => {
@@ -449,6 +466,8 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
       state={state}
       rows={PLANTS}
       columns={PLANT_COLUMNS}
+      rereading={false}
+      firstReadRows={8}
       rowId={(row) => row.name}
       view={view}
       noMatch="No plants match the filters."

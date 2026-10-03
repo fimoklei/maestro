@@ -335,6 +335,7 @@ export function UpdateTargetDialog({
                     isRunning,
                     firstBox: null,
                   }}
+                  live={null}
                 />
                 {preview.localEdits.discard.length > 0 ? (
                   <p className="m-0 text-gray-11">{KEEP_WORK_BY_IMPORTING}</p>

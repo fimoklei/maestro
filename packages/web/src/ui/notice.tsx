@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { Button } from "./button";
+import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import {
   STATUS_TOKENS,
@@ -162,7 +163,7 @@ export function Notice({
           data-notice-close=""
           onClick={onDismiss}
         >
-          <X aria-hidden="true" strokeWidth={1.5} className="size-4" />
+          <Icon of={X} />
         </IconButton>
       )}
     </div>

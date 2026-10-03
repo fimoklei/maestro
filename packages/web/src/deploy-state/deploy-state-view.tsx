@@ -200,6 +200,7 @@ export function DeployStateView() {
     status: {
       words: TARGET_STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
+      unread: null,
     },
     groupings: [BY_TARGET],
     initialGrouping: BY_TARGET.value,
@@ -224,7 +225,6 @@ export function DeployStateView() {
         ...repoDrift.map((query) => query.dataUpdatedAt),
       ],
       outcome: "untracked",
-      reading: false,
     },
     now,
   );
@@ -244,6 +244,8 @@ export function DeployStateView() {
           <span className="text-gray-11 text-meta">{freshness}</span>
         )
       }
+      rereading={false}
+      firstReadRows={8}
       rows={rows}
       columns={columns}
       rowId={(row) => row.id}

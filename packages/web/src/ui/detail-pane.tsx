@@ -4,6 +4,7 @@ import { orderedItems } from "./actions-menu";
 import { Button } from "./button";
 import { FactList, FactRow } from "./fact-list";
 import { FootActions, type FootItem, firstEnabled } from "./foot-actions";
+import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
 import { useDetailPaneFocus } from "./use-detail-pane-focus";
@@ -159,7 +160,7 @@ export function DetailPane({
           variant="ghost"
           onClick={onClose}
         >
-          <X aria-hidden="true" strokeWidth={1.5} className="size-4" />
+          <Icon of={X} />
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-panel">

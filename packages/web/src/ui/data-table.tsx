@@ -159,7 +159,7 @@ export function DataTable<T extends RowData>({
     },
   });
   const widthOf = (id: string, width: number | undefined) =>
-    width === undefined || id === fit.filler
+    width === undefined || fit.fluid.includes(id)
       ? undefined
       : `calc(var(--spacing) * ${width})`;
   const sortedRows = table.getRowModel().rows;
@@ -549,14 +549,17 @@ export function DataTable<T extends RowData>({
 
 const NAME_REM = 8;
 
-// Which columns a table `available` rem wide hides, and which sized column
-// takes what is left once no column without a width shows.
+// Which columns a table `available` rem wide hides, and which sized columns
+// drop their width to share what is left: the name once no column without a
+// width shows, then, once hiding is spent, every column wider than the name's
+// floor, widest first, until the table fits.
 function fitColumns(
   columns: { id: string; width?: number; priority?: number }[],
   available: number | null,
-): { hidden: string[]; filler: string | null } {
+): { hidden: string[]; fluid: string[] } {
   let shown = columns;
   const hidden: string[] = [];
+  const freed: string[] = [];
   const fillerOf = (set: typeof columns) =>
     set.some((column) => column.width === undefined)
       ? null
@@ -566,7 +569,9 @@ function fitColumns(
     return set.reduce(
       (sum, column) =>
         sum +
-        (column.width === undefined || column.id === filler
+        (column.width === undefined ||
+        column.id === filler ||
+        freed.includes(column.id)
           ? NAME_REM
           : column.width / 4),
       0,
@@ -580,7 +585,20 @@ function fitColumns(
     hidden.push(column.id);
     shown = shown.filter((each) => each !== column);
   }
-  return { hidden, filler: fillerOf(shown) };
+  const filler = fillerOf(shown);
+  const wide = shown
+    .filter(
+      (column) =>
+        column.id !== filler &&
+        column.width !== undefined &&
+        column.width / 4 > NAME_REM,
+    )
+    .sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
+  for (const column of wide) {
+    if (available === null || needed(shown) <= available) break;
+    freed.push(column.id);
+  }
+  return { hidden, fluid: filler === null ? freed : [filler, ...freed] };
 }
 
 // The width the table's container offers, in rem; null until measured.

@@ -53,6 +53,7 @@ function Screen({
     status: {
       words: ["Folder missing", "Ready"],
       of: (row) => row.status.word,
+      unread: null,
     },
     groupings: [],
     initialGrouping: "none",
@@ -63,6 +64,8 @@ function Screen({
       <TableScreen
         state={state}
         action={<Button variant="primary">Register repository</Button>}
+        rereading={false}
+        firstReadRows={8}
         rows={rows}
         columns={columns}
         rowId={(row) => row.path}

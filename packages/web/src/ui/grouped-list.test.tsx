@@ -34,6 +34,7 @@ function checklist({
     <GroupedList
       groups={groups}
       checklist={{ checked, onToggle, isRunning, firstBox: null }}
+      live={null}
     />,
   );
   return { onToggle };
@@ -116,6 +117,7 @@ describe("GroupedList as a checklist", () => {
           isRunning: false,
           firstBox,
         }}
+        live={null}
       />,
     );
 
@@ -148,7 +150,7 @@ describe("GroupedList read-only", () => {
   ];
 
   it("draws each group by its legend with its rows, and nothing to press", () => {
-    render(<GroupedList groups={PREFLIGHT} checklist={null} />);
+    render(<GroupedList groups={PREFLIGHT} checklist={null} live={null} />);
 
     const cost = screen.getByRole("group", { name: "Loses work · 1" });
     expect(cost).toHaveTextContent("acme-api");
@@ -173,6 +175,7 @@ describe("GroupedList read-only", () => {
           },
         ]}
         checklist={null}
+        live={null}
       />,
     );
 
@@ -194,11 +197,42 @@ describe("GroupedList read-only", () => {
           },
         ]}
         checklist={null}
+        live={null}
       />,
     );
 
     const [clean, costly] = screen.getAllByRole("listitem");
     expect(clean).toHaveTextContent(/^Claude Code$/);
     expect(costly).toHaveTextContent("⚠");
+  });
+
+  it("is heard as its rows arrive, in a region named apart from its siblings", () => {
+    const groups = (names: string[]): GroupedListGroup[] => [
+      {
+        tone: "neutral",
+        legend: null,
+        rows: names.map((name) => ({ key: name, name })),
+      },
+    ];
+    const { rerender } = render(
+      <GroupedList groups={groups([])} checklist={null} live="Other copies" />,
+    );
+    const region = screen.getByRole("status", { name: "Other copies" });
+
+    rerender(
+      <GroupedList
+        groups={groups(["Cursor"])}
+        checklist={null}
+        live="Other copies"
+      />,
+    );
+
+    expect(region).toHaveTextContent("Cursor");
+  });
+
+  it("mounts no live region unless asked", () => {
+    render(<GroupedList groups={PREFLIGHT} checklist={null} live={null} />);
+
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

@@ -732,4 +732,47 @@ describe("DataTable column priority", () => {
     expect(headers()).toEqual(["Name", "Status"]);
     expect(name().style.width).toBe("");
   });
+
+  it("frees a wide column's width once hiding is spent, so the table still fits", () => {
+    stubResizeObserver();
+    render(
+      <div>
+        <DataTable
+          label="Plant table"
+          columns={createDataTableColumns<Plant>((helper) => [
+            helper.accessor("name", { header: "Name" }),
+            helper.accessor("colour", {
+              header: "Colour",
+              meta: { width: 40, priority: 1 },
+            }),
+            helper.accessor("status", {
+              header: "Status",
+              meta: { width: 62 },
+            }),
+            helper.accessor("origin", {
+              header: "Origin",
+              meta: { width: 10 },
+            }),
+          ])}
+          data={plants}
+          getRowId={(plant) => plant.name}
+        />
+      </div>,
+    );
+    const width = (name: string) =>
+      screen.getByRole("columnheader", { name }).style.width;
+
+    // Name 8rem, Colour 10rem, Status 15.5rem, Origin 2.5rem.
+    act(() => reportWidth(575));
+    expect(headers()).toEqual(["Name", "Status", "Origin"]);
+    expect(width("Status")).not.toBe("");
+    // Hiding is spent: Status shares what is left with the name.
+    act(() => reportWidth(415));
+    expect(headers()).toEqual(["Name", "Status", "Origin"]);
+    expect(width("Status")).toBe("");
+    // A column no wider than the name's 8rem keeps its width.
+    expect(width("Origin")).not.toBe("");
+    act(() => reportWidth(416));
+    expect(width("Status")).not.toBe("");
+  });
 });
