@@ -60,6 +60,14 @@ _Avoid_: wizard (the retired multi-step shape), onboarding flow, setup flow.
 The quality bar for anything in the **Released harness**: structurally valid, not repo-specific, and admitted through the loop at the moment it was needed — one primitive per promote, checked by the curator at **promote** (#623). The **Working harness** carries no such promise — a tag is where the promise is made (ADR-0021). In MVP1 the curator is one person (the owner) and the bar is written in the harness's own `CONTRIBUTING.md`. The path from contribution to curated is the future governed lifecycle.
 _Avoid_: published, approved (those name the future lifecycle step, not the state).
 
+**Curator**:
+The person who keeps the Harness: reviews every **Proposal** on GitHub, merges it, and creates releases. In MVP1 the curator and the **Contributor** are one person (#1336).
+_Avoid_: owner, admin, maintainer.
+
+**Contributor**:
+A person who uses the Harness's skills and proposes changes to it, deletions included. A contributor starts a change; only the **Curator**'s review lands it (#1336).
+_Avoid_: author (the Harness screen's role label, not a person), consumer (that names a repository).
+
 **Bundle**:
 A named set of primitives composed from the central inventory for scoped deployment (e.g. `frontend`, `engineering-stack`). The convenient unit to deploy together.
 _Avoid_: skill group, category, tag, profile, bundle in APM's sense (there it names the whole selectable package a target depends on — that is the **Harness**, ADR-0031).
@@ -177,7 +185,7 @@ details may name the exact APM mechanism or file.
 | Open proposal | **Pending review** | A matching open pull request into the Harness default branch exists. Its status is **Draft**, **Waiting for review**, **Changes requested**, or **Approved, awaiting merge**, according to the verified facts. |
 | Reviewer asked for changes | **Changes requested** | GitHub's review verdict on an open proposal. It survives an update to the proposal; only GitHub clears it. **Draft** outranks it when both apply. |
 | Unreleased skill change | **Pending release** | This skill differs between the Harness default branch and the latest release. Explain as *Merged, not yet released*; approval alone is not a merge. |
-| Harness skill deletion | **Delete** / **Deletion** / **Deleted** | *Delete* is the verb, *deletion* is the noun, and *deleted* is the state. Use these forms throughout the Harness journey, including proposed deletions; never *remove* for this concept. The confirmation reads *Delete {skill}* and confirms with **Delete skill**. *Delete* covers two roads: proposing a deletion when the skill exists elsewhere, and removing the folder from the Working Harness when it does not. |
+| Harness skill deletion | **Delete** / **Deletion** / **Deleted** | *Delete* is the verb, *deletion* is the noun, and *deleted* is the state. Use these forms throughout the Harness journey, including proposed deletions; never *remove* for this concept. The confirmation reads *Delete {skill}* and confirms with **Delete skill**. *Delete skill* always removes the folder from the Working Harness; when the skill is on the Harness default branch, **Propose change** then offers the deletion for review (#1335). |
 | Skill restoration | **Restore skill** / **Restore {skill}** | The action and confirmation button read **Restore skill**; the dialog title reads **Restore {skill}**. Never **Undo deletion**. |
 | Proposal without a pull request | **Pull request missing** | A prepared proposal has no matching pull request, confirmed by a complete check. It is not Pending review. |
 | Merged proposal, default branch not yet read | **Proposal merged** | GitHub merged the pull request and the Harness default branch has not been read since. It is the normal end of a review, so it carries no amber marking; the row leaves Pending review on the next read. Never **Pull request missing**, which claims no request ever existed. |
