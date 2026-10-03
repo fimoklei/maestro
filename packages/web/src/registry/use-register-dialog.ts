@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { targetLabel } from "../shell/target-label";
+import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { registerMessage } from "./repositories-copy";
 import { useCheckRepo, useRegisterRepo } from "./use-registry";
@@ -7,10 +9,10 @@ import { useCheckRepo, useRegisterRepo } from "./use-registry";
 // the registration. A refusal belongs to the path it was given for, so an
 // edit clears it and a late answer for an older path never lands.
 export function useRegisterDialog({
-  onRegistered,
+  report,
 }: {
-  /** The stored path, which realpath may have changed from the sent one. */
-  onRegistered: (path: string, all: readonly string[]) => void;
+  /** Into the screen's status region. */
+  report: (write: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [path, setPath] = useState("");
@@ -33,7 +35,6 @@ export function useRegisterDialog({
       register.reset();
       setOpen(true);
     },
-    registering: register.isPending,
     dialogProps: {
       path,
       onPathChange: setPath,
@@ -47,14 +48,21 @@ export function useRegisterDialog({
       },
       onRegister() {
         const sent = path;
+        report(ACTIONS.register.busy);
         register.mutate(sent, {
           onSuccess: ({ repos }) => {
             setOpen(false);
-            const paths = repos.map((repo) => repo.path);
+            // Realpath may have changed the stored path from the sent one.
             // The server appends, so the new entry is the last one.
-            onRegistered(paths[paths.length - 1] ?? sent, paths);
+            const paths = repos.map((repo) => repo.path);
+            const stored = paths[paths.length - 1] ?? sent;
+            report(doneSentence("register", targetLabel(stored, paths)));
           },
-          onError: refuse(sent),
+          onError: (error) => {
+            // The refusal under the field says it.
+            report("");
+            refuse(sent)(error);
+          },
         });
       },
       onClose() {
