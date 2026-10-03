@@ -161,7 +161,7 @@ const ON_DIALOG: Row[] = [
         onPicked={vi.fn()}
         chooser={NO_CHOOSER}
         error={undefined}
-        busy={running}
+        phase={running ? "running" : "idle"}
         onRegister={vi.fn()}
         onClose={onClose}
       />
@@ -173,7 +173,7 @@ const ON_DIALOG: Row[] = [
     render: ({ running, onClose }) => (
       <UnregisterDialog
         name="…/me/old-site"
-        busy={running}
+        phase={running ? "running" : "idle"}
         failure={null}
         onConfirm={vi.fn()}
         onClose={onClose}

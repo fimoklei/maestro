@@ -11,6 +11,7 @@ import { TableScreen } from "../ui/table-screen";
 import { useNow } from "../ui/use-now";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions } from "../ui/use-view-options";
+import { useWriteAction } from "../ui/use-write-action";
 import {
   deployStateColumns,
   type TargetAction,
@@ -126,6 +127,20 @@ export function DeployStateView() {
     [screen.open],
   );
 
+  const pendingOf = (target: DeployTarget) =>
+    targets.find((row) => sameTarget(target, row.wire));
+  const retryWrite = useWriteAction(retry, {
+    report: screen.report,
+    action: ({ target }) => pendingOf(target)?.pending?.kind ?? "update",
+    show: "row",
+    // A finished deploy or removal shows as the row's new status alone.
+    name: ({ completed }, { target }) =>
+      completed.kind === "update"
+        ? (pendingOf(target)?.updateName ?? null)
+        : null,
+    failure: () => null,
+  });
+
   const retrying = (target: DeployTarget) =>
     retry.isPending && sameTarget(retry.variables?.target, target);
 
@@ -162,9 +177,9 @@ export function DeployStateView() {
         row.id,
         action === "update" || action === "import" ? action : null,
       );
-      if (action === "retry") retry.mutate({ target: row.wire });
+      if (action === "retry") retryWrite.run({ target: row.wire });
     },
-    [navigate, openFromMenu, retry],
+    [navigate, openFromMenu, retryWrite],
   );
   const onActionRef = useRef(onAction);
   onActionRef.current = onAction;
@@ -276,7 +291,7 @@ export function DeployStateView() {
             row={row}
             {...frame}
             initialFocus={intent?.dialog ? null : undefined}
-            onRetry={() => retry.mutate({ target: row.wire })}
+            onRetry={() => retryWrite.run({ target: row.wire })}
             isRetrying={retrying(row.wire)}
             onReread={screen.reread}
             now={now}

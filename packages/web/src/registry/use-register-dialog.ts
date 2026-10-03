@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { targetLabel } from "../shell/target-label";
-import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { useFolderChooser } from "../ui/use-folder-chooser";
+import { useWriteAction } from "../ui/use-write-action";
 import { registerMessage } from "./repositories-copy";
 import { useCheckRepo, useRegisterRepo } from "./use-registry";
 
@@ -22,7 +22,20 @@ export function useRegisterDialog({
   } | null>(null);
   const chooser = useFolderChooser();
   const check = useCheckRepo();
-  const register = useRegisterRepo();
+  const registerRepo = useRegisterRepo();
+  const register = useWriteAction(registerRepo, {
+    report,
+    action: "register",
+    show: "row",
+    // Realpath may have changed the stored path from the sent one. The server
+    // appends, so the new entry is the last one.
+    name: ({ repos }, sent) => {
+      const paths = repos.map((repo) => repo.path);
+      return targetLabel(paths[paths.length - 1] ?? sent, paths);
+    },
+    // The refusal under the field says it.
+    failure: () => null,
+  });
 
   const refuse = (sent: string) => (error: unknown) =>
     setRefusal({ path: sent, message: registerMessage(error) });
@@ -32,7 +45,7 @@ export function useRegisterDialog({
     openDialog() {
       setPath("");
       setRefusal(null);
-      register.reset();
+      registerRepo.reset();
       setOpen(true);
     },
     dialogProps: {
@@ -40,7 +53,7 @@ export function useRegisterDialog({
       onPathChange: setPath,
       chooser,
       error: refusal?.path === path ? refusal.message : undefined,
-      busy: register.isPending,
+      phase: register.phase,
       onPicked(picked: string) {
         // Each pick is judged afresh; an earlier refusal is not its answer.
         setRefusal(null);
@@ -48,25 +61,13 @@ export function useRegisterDialog({
       },
       onRegister() {
         const sent = path;
-        report(ACTIONS.register.busy);
-        register.mutate(sent, {
-          onSuccess: ({ repos }) => {
-            setOpen(false);
-            // Realpath may have changed the stored path from the sent one.
-            // The server appends, so the new entry is the last one.
-            const paths = repos.map((repo) => repo.path);
-            const stored = paths[paths.length - 1] ?? sent;
-            report(doneSentence("register", targetLabel(stored, paths)));
-          },
-          onError: (error) => {
-            // The refusal under the field says it.
-            report("");
-            refuse(sent)(error);
-          },
+        register.run(sent, {
+          onSuccess: () => setOpen(false),
+          onError: refuse(sent),
         });
       },
       onClose() {
-        if (!register.isPending) setOpen(false);
+        if (register.phase !== "running") setOpen(false);
       },
     },
   };

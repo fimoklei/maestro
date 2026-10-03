@@ -17,7 +17,7 @@ const meta = {
     onPicked: () => {},
     chooser,
     error: undefined,
-    busy: false,
+    phase: "idle",
     onRegister: () => {},
     onClose: () => {},
   },
@@ -38,7 +38,7 @@ export const Refused: Story = {
 };
 
 export const Registering: Story = {
-  args: { path: "/Users/me/Projects/maestro-docs", busy: true },
+  args: { path: "/Users/me/Projects/maestro-docs", phase: "running" },
 };
 
 // Where no chooser helper exists, the field stands alone.

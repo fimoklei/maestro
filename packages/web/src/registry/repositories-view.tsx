@@ -4,11 +4,10 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { repoRowId } from "../deploy-state/target-rows";
 import { targetLabel } from "../shell/target-label";
-import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { TableScreen } from "../ui/table-screen";
-import { showSuccess } from "../ui/toast";
 import { useTableScreen } from "../ui/use-table-screen";
+import { useWriteAction } from "../ui/use-write-action";
 import { RegisterRepositoryDialog } from "./register-repository-dialog";
 import {
   type RepositoryAction,
@@ -45,10 +44,17 @@ export function RepositoriesView() {
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
-  const register = useRegisterDialog({ report });
-
   const repos = registry.data?.repos ?? [];
   const paths = repos.map((repo) => repo.path);
+  const register = useRegisterDialog({ report });
+  const unregisterWrite = useWriteAction(unregister, {
+    report,
+    action: "unregister",
+    show: "toast",
+    name: (_data, path) => targetLabel(path, paths),
+    failure: unregisterNotice,
+  });
+
   const rows: RepositoryRow[] = repos.map((repo) => ({
     path: repo.path,
     // Whole set drives each label so shared-prefix repos stay distinct (#211).
@@ -64,18 +70,8 @@ export function RepositoriesView() {
     unregister.reset();
     setUnregistering(row);
   };
-  const confirmUnregister = (row: RepositoryRow) => {
-    report(ACTIONS.unregister.busy);
-    unregister.mutate(row.path, {
-      onSuccess: () => {
-        setUnregistering(null);
-        // The toast is the end; the region does not say it twice.
-        report("");
-        showSuccess(doneSentence("unregister", row.name));
-      },
-      onError: () => report(""),
-    });
-  };
+  const confirmUnregister = (row: RepositoryRow) =>
+    unregisterWrite.run(row.path, { onSuccess: () => setUnregistering(null) });
   const onActionRef = useRef(onAction);
   onActionRef.current = onAction;
   const columns = useMemo(
@@ -113,10 +109,8 @@ export function RepositoriesView() {
       {unregistering ? (
         <UnregisterDialog
           name={unregistering.name}
-          busy={unregister.isPending}
-          failure={
-            unregister.isError ? unregisterNotice(unregister.error) : null
-          }
+          phase={unregisterWrite.phase}
+          failure={unregisterWrite.failure}
           onConfirm={() => confirmUnregister(unregistering)}
           onClose={() => setUnregistering(null)}
         />

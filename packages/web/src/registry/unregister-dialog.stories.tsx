@@ -6,7 +6,7 @@ const meta = {
   component: UnregisterDialog,
   args: {
     name: "…/Projects/old-site",
-    busy: false,
+    phase: "idle",
     failure: null,
     onConfirm: () => {},
     onClose: () => {},
@@ -19,7 +19,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Confirm: Story = {};
 
-export const Unregistering: Story = { args: { busy: true } };
+export const Unregistering: Story = { args: { phase: "running" } };
 
 export const Failed: Story = {
   args: {
