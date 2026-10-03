@@ -8,7 +8,7 @@ import {
 import { driftViewModel } from "../drift/drift-view-model";
 import { unfinishedOperationNotice } from "./release-head-copy";
 import { skillMark } from "./skill-mark";
-import { repoRow } from "./target-rows";
+import { repoRow, statusSummary } from "./target-rows";
 
 const REPO = "/sandbox/home/Projects/scenarios/behind";
 
@@ -232,5 +232,18 @@ describe("readCockpit agrees with the Deploy-state screen", () => {
         ]),
       ),
     });
+  });
+
+  it("refused read", () => {
+    const row = repoRow(
+      REPO,
+      [REPO],
+      { data: undefined, isError: true },
+      driftViewModel({ data: undefined, isError: false }),
+    );
+
+    expect(
+      readCockpit({ deployState: null, drift: { ok: false } }).status,
+    ).toBe(statusSummary(row, new Date())[0]);
   });
 });

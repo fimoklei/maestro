@@ -3,11 +3,13 @@
 // chaining them with `&&` hides later results behind the first failure.
 
 import { spawn } from "node:child_process";
-import { createWriteStream, mkdirSync } from "node:fs";
+import { createWriteStream, mkdirSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 
+import { describeOtherStacks, otherWorktreeStacks } from "./dev-stacks.mjs";
+import { listWorktrees } from "./port-holders.mjs";
 import { finishRun, startRun, treeFingerprint } from "./verify-reuse.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -96,6 +98,14 @@ if (reusable) {
   process.exit(0);
 }
 
+const busyWarning = describeOtherStacks(
+  otherWorktreeStacks({
+    self: realpathSync(repoRoot),
+    worktrees: listWorktrees(repoRoot),
+  }),
+);
+if (busyWarning) process.stdout.write(`\n${busyWarning}\n`);
+
 const results = [];
 for (const step of steps) {
   process.stdout.write(`\n=== ${step.name} ===\n`);
@@ -109,6 +119,7 @@ for (const result of results) {
   const where = passed ? "" : `  → .logs/${result.log}`;
   process.stdout.write(`  ${mark}  ${result.name}${where}\n`);
 }
+if (busyWarning) process.stdout.write(`${busyWarning}\n`);
 
 const failed = results.filter((result) => result.exitCode !== 0);
 const outcome = finishRun(logDir, {

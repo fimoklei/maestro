@@ -22,6 +22,7 @@ import {
   pushUnreleasedChange,
   releasesUpTo,
 } from "./fixture-harness.mjs";
+import { seedToolPresence } from "./seed-sandbox.mjs";
 
 const [V1_0, V1_1, V2] = FIXTURE_RELEASES;
 // Between v1.1.0 and v2.0.0 code-review changes, release-notes goes and
@@ -66,10 +67,7 @@ const SCENARIOS = [
     name: "local-edits",
     atV2: async (s, repo) => {
       await s.deploy(repo, AT_V2);
-      appendFileSync(
-        join(repo, ".claude/skills/code-review/SKILL.md"),
-        "\nA line edited by hand after the deploy.\n",
-      );
+      editByHand(repo, "code-review");
     },
     expect: {
       status: "Local edits",
@@ -103,17 +101,57 @@ const SCENARIOS = [
     },
     expect: { notice: "Deploy incomplete" },
   },
+  {
+    name: "import-edits",
+    // Both edited on a v1.1.0 deploy; only code-review moved in v2.0.0.
+    atV1: (s, repo) => s.deploy(repo, AT_V1),
+    atV2: (_s, repo) => {
+      editByHand(repo, "code-review");
+      editByHand(repo, "commit-message");
+    },
+    expect: {
+      status: "Local edits",
+      imports: {
+        "code-review": "Undoes newer Harness changes",
+        "commit-message": "Can be imported",
+      },
+    },
+  },
+  {
+    name: "unreadable",
+    atV2: (_s, repo) =>
+      writeFileSync(join(repo, "apm.lock.yaml"), "dependencies: [\n"),
+    expect: { status: "Deploy-state not read" },
+  },
 ];
 
-// Seeds the Harness itself, not a consuming repository.
+// Seeds the global target: deployed while both tools were installed, then
+// Claude Code's marker goes, so its copy is left behind.
+const GLOBAL_SCENARIO = "global-leftover";
+const LEFTOVER_SKILL = "code-review";
+// Seed the Harness itself, not a consuming repository. No import scenario
+// edits DELETED_LOCALLY, whose copies would read as another Harness's, and
+// import-edits' unmoved skill is never UNRELEASED.
 const HARNESS_SCENARIO = "harness-outcomes";
-const DELETED_LOCALLY = "code-review";
-const UNRELEASED = "commit-message";
+const DELETED_LOCALLY = "test-plan";
+const UNRELEASED = "code-review";
+const OFFLINE_SCENARIO = "harness-offline";
+// Port 1 refuses every connection, so git reports "Failed to connect".
+const UNREACHABLE_ORIGIN = "http://127.0.0.1:1/";
 
 export const SCENARIO_NAMES = [
   ...SCENARIOS.map((scenario) => scenario.name),
+  GLOBAL_SCENARIO,
   HARNESS_SCENARIO,
+  OFFLINE_SCENARIO,
 ];
+
+function editByHand(repo, skill) {
+  appendFileSync(
+    join(repo, ".claude/skills", skill, "SKILL.md"),
+    "\nA line edited by hand after the deploy.\n",
+  );
+}
 
 /** The scenario names `--scenario` asks for, or null when it is absent. */
 export function parseScenarioArg(argv) {
@@ -213,8 +251,24 @@ function releaseColumn({ releaseHead, pinnedPerSkill }) {
     : release;
 }
 
+// The Import local edits dialog's group for one checked skill.
+function importGroup({ refusal, undoesNewerSince }) {
+  if (refusal !== null) return "Cannot be imported";
+  return undoesNewerSince === undefined
+    ? "Can be imported"
+    : "Undoes newer Harness changes";
+}
+
 /** What the Deploy-state screen shows for one repository, in its own words. */
 export function readCockpit(read) {
+  // A refused read shows the card's failure notice and nothing else.
+  if (read.deployState === null)
+    return {
+      status: "Deploy-state not read",
+      release: null,
+      notice: null,
+      skills: {},
+    };
   const pending = read.deployState.pendingOperation;
   return {
     status: targetStatus(read),
@@ -233,6 +287,13 @@ export function readCockpit(read) {
             removed: read.preview.removed,
             newInRelease: read.preview.newInRelease.map((row) => row.name),
           },
+        }
+      : {}),
+    ...(read.localEdits
+      ? {
+          imports: Object.fromEntries(
+            read.localEdits.map((skill) => [skill.name, importGroup(skill)]),
+          ),
         }
       : {}),
   };
@@ -255,6 +316,12 @@ export function scenarioMismatch(scenario, repoPath, observed) {
     if (observed.skills[name] !== mark)
       problems.push(
         `${name} expected ${shown(mark)}, got ${shown(observed.skills[name])}`,
+      );
+  }
+  for (const [name, group] of Object.entries(expect.imports ?? {})) {
+    if (observed.imports?.[name] !== group)
+      problems.push(
+        `Import local edits groups ${name} under ${shown(observed.imports?.[name])}, expected ${shown(group)}`,
       );
   }
   for (const [section, names] of Object.entries(expect.preview ?? {})) {
@@ -297,6 +364,27 @@ export function harnessMismatch({ releaseState, stages }) {
   return problems.length === 0
     ? null
     : `scenario "${HARNESS_SCENARIO}": ${problems.join("; ")}`;
+}
+
+/** Null when the global Remove offers Claude Code's leftover copy, and it is on disk. */
+export function globalLeftoverMismatch({ preflight, onDisk }) {
+  const row = preflight.reclaim?.previews.find(
+    (preview) => preview.tool === "claude",
+  );
+  const problem =
+    row === undefined
+      ? `the global Remove of ${LEFTOVER_SKILL} expected an Other copies row for Claude Code, got none`
+      : onDisk(row.path)
+        ? null
+        : `the Other copies row names ${row.path}, which holds no copy`;
+  return problem === null ? null : `scenario "${GLOBAL_SCENARIO}": ${problem}`;
+}
+
+/** Null when the Harness read found its remote unreachable. */
+export function harnessOfflineMismatch({ freshness }) {
+  return freshness?.outcome === "offline"
+    ? null
+    : `scenario "${OFFLINE_SCENARIO}": the Harness read expected "offline", got ${shown(freshness?.outcome)}`;
 }
 
 /** Files whose recorded hash lacks the `sha256:` prefix every copy check expects. */
@@ -383,7 +471,8 @@ function makeWritable(dir) {
 }
 
 // Unregisters every earlier scenario repo, clears its unfinished-operation
-// records and deletes it, so nothing of a previous run shows.
+// records and deletes it, empties the global target, so nothing of a previous
+// run shows.
 async function wipe(api, paths) {
   const { repos } = await api.get("/api/registry/repos");
   for (const { path } of repos ?? []) {
@@ -402,6 +491,16 @@ async function wipe(api, paths) {
   }
   makeWritable(paths.repos);
   rmSync(paths.repos, { recursive: true, force: true });
+  // The sandbox's global target, and the Claude Code marker global-leftover drops.
+  for (const path of [
+    ".apm/apm.yml",
+    ".apm/apm.lock.yaml",
+    ".apm/apm_modules",
+    ".claude/skills",
+    ".agents/skills",
+  ])
+    rmSync(join(paths.home, path), { recursive: true, force: true });
+  seedToolPresence(paths.home);
   rmSync(paths.bare, { recursive: true, force: true });
   rmSync(paths.clone, { recursive: true, force: true });
 }
@@ -439,15 +538,16 @@ function seedingSteps(api, paths) {
     ...(token ? { GITHUB_TOKEN: token } : {}),
   };
   return {
+    // `repo` null deploys to the global target.
     async deploy(repo, names, { expectRefusal = false } = {}) {
       const report = await api.post("/api/deploy/bulk", {
         names,
-        target: target(repo),
+        target: repo === null ? { kind: "global" } : target(repo),
       });
       const landed = report.deployed.length === names.length;
       if (landed === expectRefusal)
         throw new Error(
-          `deploying ${names.join(", ")} to ${repo} ${expectRefusal ? "was expected to stop half-way but landed" : `did not land: ${JSON.stringify({ attention: report.attention, failed: report.failed })}`}`,
+          `deploying ${names.join(", ")} to ${repo ?? "the global target"} ${expectRefusal ? "was expected to stop half-way but landed" : `did not land: ${JSON.stringify({ attention: report.attention, failed: report.failed })}`}`,
         );
     },
     async update(repo) {
@@ -489,19 +589,23 @@ function seedingSteps(api, paths) {
 
 async function observe(api, scenario, repo) {
   const query = `?repo=${encodeURIComponent(repo)}`;
-  const deployState = await api.get(`/api/deploy-state${query}`);
+  const target = { kind: "repo", repoPath: repo };
+  const state = await api.get(`/api/deploy-state${query}`, {
+    allowRefusal: true,
+  });
   const drift = await api.get(`/api/drift${query}`);
   const preview = scenario.expect.preview
-    ? (
-        await api.post("/api/deploy/update/preflight", {
-          target: { kind: "repo", repoPath: repo },
-        })
-      ).preview
+    ? (await api.post("/api/deploy/update/preflight", { target })).preview
+    : undefined;
+  const localEdits = scenario.expect.imports
+    ? (await api.post("/api/deploy/import-local-edits/check", { target }))
+        .skills
     : undefined;
   return readCockpit({
-    deployState,
+    deployState: state.status < 300 ? state.body : null,
     drift,
     ...(preview ? { preview } : {}),
+    ...(localEdits ? { localEdits } : {}),
   });
 }
 
@@ -573,9 +677,24 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
     if (mismatch !== null) problems.push(mismatch);
   }
   const seeded = scenarios.map(repoOf);
+  if (names.includes(GLOBAL_SCENARIO)) {
+    seeded.push(paths.home);
+    await steps.deploy(null, AT_V2);
+    rmSync(join(paths.home, ".claude.json"));
+    const mismatch = globalLeftoverMismatch({
+      preflight: await api.post("/api/deploy/remove/preflight", {
+        type: "skill",
+        name: LEFTOVER_SKILL,
+        target: { kind: "global" },
+      }),
+      onDisk: existsSync,
+    });
+    if (mismatch !== null) problems.push(mismatch);
+  }
+  if (names.some((name) => [HARNESS_SCENARIO, OFFLINE_SCENARIO].includes(name)))
+    seeded.push(paths.clone);
   // Last, so no deploy reading is taken against the changed Harness.
   if (names.includes(HARNESS_SCENARIO)) {
-    seeded.push(paths.clone);
     pushUnreleasedChange({
       workDir: paths.work,
       bareDir: paths.bare,
@@ -585,6 +704,22 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
       recursive: true,
     });
     const mismatch = harnessMismatch(
+      await api.post("/api/harness/refresh", {}),
+    );
+    if (mismatch !== null) problems.push(mismatch);
+  }
+  // After every other Harness read: from here on no fetch of the clone
+  // answers. The clone's own redirect names the full origin, so it outmatches
+  // the shorter one the cockpit's environment carries; apm never reads it.
+  if (names.includes(OFFLINE_SCENARIO)) {
+    execFileSync("git", [
+      "-C",
+      paths.clone,
+      "config",
+      `url.${UNREACHABLE_ORIGIN}.insteadOf`,
+      FIXTURE_ORIGIN,
+    ]);
+    const mismatch = harnessOfflineMismatch(
       await api.post("/api/harness/refresh", {}),
     );
     if (mismatch !== null) problems.push(mismatch);

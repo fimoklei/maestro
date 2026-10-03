@@ -18,7 +18,7 @@ export interface CockpitRead {
       release: string;
       desired: string[];
     };
-  };
+  } | null;
   drift:
     | { behind: { name: string; reading: string; latest?: string }[] }
     | { ok: false; reason?: string };
@@ -27,6 +27,11 @@ export interface CockpitRead {
     removed: string[];
     newInRelease: { name: string }[];
   };
+  localEdits?: {
+    name: string;
+    refusal: string | null;
+    undoesNewerSince?: string;
+  }[];
 }
 
 export interface CockpitReading {
@@ -35,6 +40,7 @@ export interface CockpitReading {
   notice: string | null;
   skills: Record<string, string>;
   preview?: { changed: string[]; removed: string[]; newInRelease: string[] };
+  imports?: Record<string, string>;
 }
 
 export function readCockpit(read: CockpitRead): CockpitReading;
@@ -45,6 +51,7 @@ export interface ScenarioExpectation {
   notice?: string;
   skills?: Record<string, string>;
   preview?: { changed?: string[]; removed?: string[]; newInRelease?: string[] };
+  imports?: Record<string, string>;
 }
 
 export function scenarioMismatch(
@@ -66,6 +73,18 @@ export interface HarnessRead {
 }
 
 export function harnessMismatch(read: HarnessRead): string | null;
+
+export function globalLeftoverMismatch(input: {
+  preflight: {
+    check: { scope: string; tools: { tool: string }[] };
+    reclaim: { previews: { tool: string; path: string }[] } | null;
+  };
+  onDisk: (path: string) => boolean;
+}): string | null;
+
+export function harnessOfflineMismatch(read: {
+  freshness?: { outcome: string | null };
+}): string | null;
 
 export function unprefixedHashes(lockfileText: string): string[];
 

@@ -1,5 +1,6 @@
 // Dev launcher: one Maestro per worktree, on its own pair of ports. With
-// --smoke, an ephemeral sandbox that never touches the real home.
+// --smoke, an ephemeral sandbox that never touches the real home; with --stop,
+// it only stops this worktree's running stack.
 import { execFileSync, spawn } from "node:child_process";
 import {
   existsSync,
@@ -13,6 +14,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
+import { PID_FILE } from "./dev-stacks.mjs";
 import { fixtureRedirectEnv } from "./fixture-harness.mjs";
 import {
   describeForeignHolders,
@@ -30,10 +32,11 @@ import {
 import { scenarioPaths } from "./smoke-scenarios.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const pidFile = join(repoRoot, ".maestro-dev.pid");
+const pidFile = join(repoRoot, PID_FILE);
 const ports = cockpitPorts();
 const cockpitPortList = [ports.server, ports.web];
 const smoke = process.argv.includes("--smoke");
+const stop = process.argv.includes("--stop");
 // Windows lacks `lsof`, `ps` and process groups (#719).
 const posix = process.platform !== "win32";
 
@@ -74,6 +77,13 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+if (stop && !posix) {
+  console.error(
+    "[dev] smoke:stop needs process groups, which Windows lacks — stop the run with Ctrl+C in its terminal",
+  );
+  process.exit(1);
+}
+
 // Steps 1-4 use `lsof`, `ps` and process groups, so they run only on POSIX.
 if (posix) {
   // Resolved, or a symlinked checkout reads its own previous run as a sibling's
@@ -86,12 +96,17 @@ if (posix) {
   // 1. Kill the previous dev launcher's process group (pidfile = "the note"),
   // but only once the process proves it is ours: a pidfile left by a run that
   // died without cleanup can name a pid the OS has since handed to someone else.
+  let stoppedSomething = false;
   if (existsSync(pidFile)) {
     const previous = Number(readFileSync(pidFile, "utf8").trim());
     if (Number.isInteger(previous) && previous > 0 && isAlive(previous)) {
       if (processWorktree(previous, attribution) === attribution.self) {
-        console.log(`[dev] evicting previous dev run (pid ${previous})`);
+        console.log(`[dev] stopping this worktree's dev run (pid ${previous})`);
         killRun(previous, "SIGTERM");
+        for (let waited = 0; isAlive(previous) && waited < 5_000; waited += 100)
+          sleep(100);
+        if (isAlive(previous)) killRun(previous, "SIGKILL");
+        stoppedSomething = true;
       } else {
         console.warn(
           `[dev] stale pidfile: pid ${previous} is not this worktree's dev run — leaving it alone`,
@@ -101,13 +116,13 @@ if (posix) {
     rmSync(pidFile, { force: true });
   }
 
-  // 2. Refuse every holder but this worktree's own.
+  // 2. Refuse every holder but this worktree's own; a stop leaves them be.
   const { foreign, evictable } = partitionHolders(
     findPortHolders(cockpitPortList),
     attribution,
   );
   const foreignRefusal = describeForeignHolders(foreign);
-  if (foreignRefusal !== null) {
+  if (foreignRefusal !== null && !stop) {
     console.error(foreignRefusal);
     process.exit(1);
   }
@@ -127,6 +142,15 @@ if (posix) {
   }
   if (freedSomething) {
     sleep(300); // let the OS release the sockets before we rebind
+  }
+
+  if (stop) {
+    console.log(
+      stoppedSomething || freedSomething
+        ? "[dev] stopped this worktree's dev/smoke stack"
+        : "[dev] nothing to stop: no dev or smoke stack runs in this worktree",
+    );
+    process.exit(0);
   }
 
   // 4. Refuse when a holder survived the kill, or the cockpit's URL would reach it.

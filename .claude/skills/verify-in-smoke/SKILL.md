@@ -15,7 +15,7 @@ Four things make a `pnpm smoke` run, screenshot, or test result lie to you. Chec
 
 Each worktree serves on its own pair of ports, derived from its path — there is no fixed 5173. A URL copied from a doc, another session, or an open tab points at whatever worktree owns that port. → Ask this worktree: `pnpm cockpit:url`, or read the line `pnpm dev`/`pnpm smoke` prints on start. Screenshot only that address, against a cockpit you started here.
 
-Owning it at start does not settle it. → Run `pnpm smoke:check` before each screenshot; it re-asks who holds *this* worktree's two ports — including the one the browser renders from — and seeds nothing, so it is safe to repeat.
+Owning it at start does not settle it. → Run `pnpm smoke:check` before each screenshot; it re-asks who holds *this* worktree's two ports — including the one the browser renders from — and seeds nothing, so it is safe to repeat. It also measures every table screen at several panel widths, with a detail pane open, and names each table wider than its scroll container.
 
 ## Wrong session: leaked browser state
 
@@ -24,3 +24,7 @@ Owning it at start does not settle it. → Run `pnpm smoke:check` before each sc
 ## Wrong signal: chained commands flake
 
 `pnpm test` run standalone is honest; chained behind `lint`/`typecheck` in one invocation has shown failures in files the diff never touched. → When `pnpm test` fails in untouched files, re-run it alone before calling it a regression. Don't chain `lint`/`typecheck`/`test` in one invocation when the result is about to become a green/red claim.
+
+## When done
+
+Stop the stack with `pnpm smoke:stop`. A running stack slows every other worktree's test run.
