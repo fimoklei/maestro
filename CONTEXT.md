@@ -60,6 +60,14 @@ _Avoid_: wizard (the retired multi-step shape), onboarding flow, setup flow.
 The quality bar for anything in the **Released harness**: structurally valid, not repo-specific, and admitted through the loop at the moment it was needed — one primitive per promote, checked by the curator at **promote** (#623). The **Working harness** carries no such promise — a tag is where the promise is made (ADR-0021). In MVP1 the curator is one person (the owner) and the bar is written in the harness's own `CONTRIBUTING.md`. The path from contribution to curated is the future governed lifecycle.
 _Avoid_: published, approved (those name the future lifecycle step, not the state).
 
+**Curator**:
+The person who keeps the Harness: reviews every **Proposal** on GitHub, merges it, and creates releases. In MVP1 the curator and the **Contributor** are one person (#1336).
+_Avoid_: owner, admin, maintainer.
+
+**Contributor**:
+A person who uses the Harness's skills and proposes changes to it, deletions included. A contributor starts a change; only the **Curator**'s review lands it (#1336).
+_Avoid_: author (the Harness screen's role label, not a person), consumer (that names a repository).
+
 **Bundle**:
 A named set of primitives composed from the central inventory for scoped deployment (e.g. `frontend`, `engineering-stack`). The convenient unit to deploy together.
 _Avoid_: skill group, category, tag, profile, bundle in APM's sense (there it names the whole selectable package a target depends on — that is the **Harness**, ADR-0031).
