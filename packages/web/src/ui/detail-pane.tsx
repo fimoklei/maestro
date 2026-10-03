@@ -1,6 +1,11 @@
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
+import { orderedItems } from "./actions-menu";
+import { Button } from "./button";
+import { FactList, FactRow } from "./fact-list";
+import { FootActions, type FootItem, firstEnabled } from "./foot-actions";
 import { IconButton } from "./icon-button";
+import { Notice, type NoticeContent } from "./notice";
 import { useDetailPaneFocus } from "./use-detail-pane-focus";
 
 // Where a screen puts its pane (#1065): side by side above 1100px; at 1100px
@@ -11,6 +16,47 @@ export function DetailPaneSlot({ children }: { children: ReactNode }) {
       {children}
     </div>
   );
+}
+
+export type Fact = {
+  label: string;
+  value: ReactNode;
+  /** A version, tag, path, ref or hash: the one thing Geist Mono sets. */
+  machine?: boolean;
+  /** The whole value on hover and focus, where the row shortens it. */
+  fullValue?: string;
+  /** A link beside the value, such as the GitHub mark. */
+  link?: ReactNode;
+  /** The one action beside the value, for an action that changes this fact. */
+  action?: FootItem;
+};
+
+export type PaneNotice = {
+  content: NoticeContent;
+  trigger: "load" | "user-action";
+  /** Its action retries an unfinished operation: the next step. */
+  retry?: boolean;
+};
+
+const STEPS = ["update", "import"] as const;
+
+// The one primary by state: a notice's retry, else Update target, else Import
+// local edits, else none; a pane whose ⋮ order leads with the next step makes
+// its first enabled item primary.
+function choosePrimary(
+  notices: readonly PaneNotice[],
+  items: readonly FootItem[],
+  leadsWithNextStep: boolean,
+): PaneNotice | FootItem | null {
+  const retry = notices.find((notice) => notice.retry && notice.content.action);
+  if (retry) return retry;
+  for (const step of STEPS) {
+    const item = items.find((candidate) => candidate.step === step);
+    if (item) return item;
+  }
+  if (!leadsWithNextStep) return null;
+  const label = firstEnabled(orderedItems(items));
+  return items.find((item) => item.label === label) ?? null;
 }
 
 // A key typed into one of these belongs to it, not to the pager.
@@ -24,8 +70,13 @@ export function DetailPane({
   onClose,
   getTriggerElement,
   initialFocus,
-  actions,
-  children,
+  facts = [],
+  paragraph = [],
+  clampParagraph = false,
+  notices = [],
+  subList,
+  foot = [],
+  leadsWithNextStep = false,
 }: {
   /** The subject's name; the pane's heading and landmark name. */
   title: string;
@@ -41,9 +92,24 @@ export function DetailPane({
   getTriggerElement: (key: string) => HTMLElement | null;
   /** A selector inside the pane to focus on open; null leaves focus alone. */
   initialFocus?: string | null;
-  actions?: ReactNode;
-  children: ReactNode;
+  facts?: readonly (Fact | null)[];
+  /** The sentences that explain the subject's state. */
+  paragraph?: readonly string[];
+  /** Three lines of a long paragraph, the rest opening on ask. */
+  clampParagraph?: boolean;
+  notices?: readonly PaneNotice[];
+  subList?: ReactNode;
+  /** The row's ⋮ items the pane places nowhere else, in ⋮ order. */
+  foot?: readonly FootItem[];
+  /** The ⋮ order already leads with the next step, so its first item is primary. */
+  leadsWithNextStep?: boolean;
 }) {
+  const shown = facts.filter((fact) => fact !== null);
+  const primary = choosePrimary(
+    notices,
+    [...shown.flatMap((fact) => (fact.action ? [fact.action] : [])), ...foot],
+    leadsWithNextStep,
+  );
   const { paneRef, headingRef } = useDetailPaneFocus({
     activeKey,
     getTriggerElement,
@@ -96,10 +162,83 @@ export function DetailPane({
           <X aria-hidden="true" strokeWidth={1.5} className="size-4" />
         </IconButton>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-panel">{children}</div>
-      {actions ? (
+      <div className="min-h-0 flex-1 overflow-y-auto p-panel">
+        {shown.length > 0 ? (
+          <FactList>
+            {shown.map((fact) => (
+              <FactRow
+                key={fact.label}
+                label={fact.label}
+                machine={fact.machine}
+                fullValue={fact.fullValue}
+                action={
+                  fact.action ? (
+                    <Button
+                      variant={fact.action === primary ? "primary" : "quiet"}
+                      aria-label={fact.action.name}
+                      onClick={fact.action.onSelect}
+                    >
+                      {fact.action.label}
+                    </Button>
+                  ) : (
+                    fact.link
+                  )
+                }
+              >
+                {fact.value}
+              </FactRow>
+            ))}
+          </FactList>
+        ) : null}
+        {paragraph.length === 0 ? null : clampParagraph ? (
+          <details className="group mt-section">
+            <summary className="cursor-pointer list-none text-gray-12 text-prose focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
+              <span className="line-clamp-3 group-open:line-clamp-none">
+                {paragraph.join(" ")}
+              </span>
+              <span className="mt-tight inline-block text-gray-11 text-meta hover:text-gray-12">
+                <span className="group-open:hidden">More ›</span>
+                <span className="hidden group-open:inline">Less ‹</span>
+              </span>
+            </summary>
+          </details>
+        ) : (
+          <p className="m-0 mt-section flex flex-col gap-tight text-gray-12 text-prose">
+            {paragraph.map((line, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: two lines may read alike
+              <span key={`${index}:${line}`}>{line}</span>
+            ))}
+          </p>
+        )}
+        {notices.length > 0 ? (
+          <div className="mt-cell flex flex-col gap-cell">
+            {notices.map((notice) => (
+              <Notice
+                key={notice.content.label}
+                trigger={notice.trigger}
+                notice={
+                  notice.content.action
+                    ? {
+                        ...notice.content,
+                        action: {
+                          ...notice.content.action,
+                          primary: notice === primary,
+                        },
+                      }
+                    : notice.content
+                }
+              />
+            ))}
+          </div>
+        ) : null}
+        {subList ? <div className="mt-section">{subList}</div> : null}
+      </div>
+      {foot.length > 0 ? (
         <div className="flex flex-none flex-wrap items-start gap-inline border-edge border-t p-panel">
-          {actions}
+          <FootActions
+            items={foot}
+            primary={foot.find((item) => item === primary)?.label ?? null}
+          />
         </div>
       ) : null}
     </aside>
