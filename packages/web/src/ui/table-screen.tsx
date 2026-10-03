@@ -1,6 +1,7 @@
 import type { RowData } from "@tanstack/react-table";
 import { RefreshCw } from "lucide-react";
 import { type ReactNode, useCallback, useRef, useState } from "react";
+import { cn } from "./cn";
 import { DataTable, type DataTableProps } from "./data-table";
 import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
@@ -39,6 +40,10 @@ export interface TableScreenProps<T extends RowData> {
   shown?: (row: T) => boolean;
   /** Filter and Display, from `useViewOptions`; they narrow, group and switch columns. */
   view?: ViewOptions<T>;
+  /** Rows carry a checkbox for a bulk action. */
+  selection?: DataTableProps<T>["selection"];
+  /** Floats over the table's foot while rows are chosen. */
+  selectionBar?: ReactNode;
   /** In place of rows when the narrowing leaves none. */
   noMatch?: string;
   /** Shown in place of the table once a read answered with no rows; none: nothing. */
@@ -51,7 +56,8 @@ export interface TableScreenProps<T extends RowData> {
   children?: ReactNode;
 }
 
-const SKELETON_FALLBACK = 8;
+// Fills the table at 1440×900 on a first read, before any row is known.
+const SKELETON_FALLBACK = 24;
 
 // The panel frame every table screen shares: bands, the one status region,
 // the failed-read notice, the skeleton, the table or its empty state, and the
@@ -69,6 +75,8 @@ export function TableScreen<T extends RowData>({
   rereading = false,
   shown,
   view,
+  selection,
+  selectionBar,
   noMatch,
   empty,
   pane,
@@ -129,7 +137,7 @@ export function TableScreen<T extends RowData>({
       </div>
       {/* Side by side from 1100px; narrower, the pane floats over the table. */}
       <div className="relative flex h-[100cqh]">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {notice ?? (
             // Mounted before a failure is, so it is announced (#465); the
             // padding comes only with the notice.
@@ -140,7 +148,13 @@ export function TableScreen<T extends RowData>({
           {showTable ? (
             <div
               aria-busy={state.reading || undefined}
-              className="min-h-0 flex-1 overflow-auto"
+              // Room under the last row while the selection bar floats over
+              // it: bar height plus its offset (section + page + inline).
+              className={cn(
+                "min-h-0 flex-1 overflow-auto",
+                selectionBar != null &&
+                  "pb-[calc(var(--spacing-section)+var(--spacing-page)+var(--spacing-inline))]",
+              )}
             >
               <DataTable
                 ref={gridRef}
@@ -166,11 +180,13 @@ export function TableScreen<T extends RowData>({
                     : (row) => open(openId === rowId(row) ? null : rowId(row))
                 }
                 onRowOrderChange={setOrder}
+                selection={selection}
               />
             </div>
           ) : state.settled && empty !== undefined ? (
             <EmptyState headingLevel={2} {...empty} />
           ) : null}
+          {selectionBar}
         </div>
         {openRow !== null && pane !== undefined ? (
           <DetailPaneSlot>

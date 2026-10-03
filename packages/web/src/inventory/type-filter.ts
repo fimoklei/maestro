@@ -1,12 +1,9 @@
-import type { Segment } from "../ui/segmented-control";
 import type { Primitive } from "./use-inventory";
 
-// Data-driven type filter (#288): segments derive from primitives present,
+// Data-driven type filter (#288): options derive from primitives present,
 // never a hardcoded list — hooks/mcp/bundles slot in the moment they appear.
 
 export type PrimitiveType = "skill" | "hook" | "mcp" | "bundle";
-
-export type TypeFilter = "all" | PrimitiveType;
 
 // Fixed order, not derived from key/insertion order, so layout never shifts.
 const TYPE_ORDER: readonly PrimitiveType[] = ["skill", "hook", "mcp", "bundle"];
@@ -26,32 +23,15 @@ export const TYPE_WORD: Record<PrimitiveType, string> = {
   bundle: "Bundle",
 };
 
-// Empty in, empty out: no primitives means no control at all, never a lone
-// `all` that filters nothing.
+/** One option per type present; Filter adds "All". */
 export function deriveTypeSegments(
   primitives: readonly { type: PrimitiveType }[],
-): Segment<TypeFilter>[] {
+): { value: PrimitiveType; label: string }[] {
   const present = new Set(primitives.map((p) => p.type));
-  if (present.size === 0) {
-    return [];
-  }
-  return [
-    { value: "all", label: "All" },
-    ...TYPE_ORDER.filter((type) => present.has(type)).map((type) => ({
-      value: type,
-      label: TYPE_LABEL[type],
-    })),
-  ];
-}
-
-// Generic over the item shape so a row carrying more than `{ type }` keeps its fields.
-export function filterByType<T extends { type: PrimitiveType }>(
-  items: readonly T[],
-  filter: TypeFilter,
-): T[] {
-  return filter === "all"
-    ? [...items]
-    : items.filter((item) => item.type === filter);
+  return TYPE_ORDER.filter((type) => present.has(type)).map((type) => ({
+    value: type,
+    label: TYPE_LABEL[type],
+  }));
 }
 
 // Name only, case-insensitive — matching descriptions would surprise the

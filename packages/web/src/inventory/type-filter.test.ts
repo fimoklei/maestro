@@ -1,15 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { deriveTypeSegments, filterByName, filterByType } from "./type-filter";
+import { deriveTypeSegments, filterByName } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
 describe("deriveTypeSegments", () => {
-  it("returns all plus one segment per type present in the data", () => {
+  it("returns one segment per type present in the data", () => {
     const segments = deriveTypeSegments([{ type: "skill" }, { type: "skill" }]);
 
-    expect(segments).toEqual([
-      { value: "all", label: "All" },
-      { value: "skill", label: "Skills" },
-    ]);
+    expect(segments).toEqual([{ value: "skill", label: "Skills" }]);
   });
 
   it("collapses repeated types into one segment", () => {
@@ -19,7 +16,7 @@ describe("deriveTypeSegments", () => {
       { type: "skill" },
     ]);
 
-    expect(segments.map((s) => s.value)).toEqual(["all", "skill", "hook"]);
+    expect(segments.map((s) => s.value)).toEqual(["skill", "hook"]);
   });
 
   it("orders segments canonically, not by insertion order", () => {
@@ -29,12 +26,7 @@ describe("deriveTypeSegments", () => {
       { type: "mcp" },
     ]);
 
-    expect(segments.map((s) => s.value)).toEqual([
-      "all",
-      "skill",
-      "mcp",
-      "bundle",
-    ]);
+    expect(segments.map((s) => s.value)).toEqual(["skill", "mcp", "bundle"]);
   });
 
   it("labels each type as its plural control label", () => {
@@ -46,7 +38,6 @@ describe("deriveTypeSegments", () => {
     ]);
 
     expect(segments.map((s) => s.label)).toEqual([
-      "All",
       "Skills",
       "Hooks",
       "MCP servers",
@@ -56,25 +47,6 @@ describe("deriveTypeSegments", () => {
 
   it("yields no segments for empty data", () => {
     expect(deriveTypeSegments([])).toEqual([]);
-  });
-});
-
-describe("filterByType", () => {
-  const items = [
-    { type: "skill", name: "tdd" },
-    { type: "hook", name: "pre-commit" },
-    { type: "skill", name: "caveman" },
-  ] as const;
-
-  it("narrows to the selected type", () => {
-    expect(filterByType(items, "skill")).toEqual([
-      { type: "skill", name: "tdd" },
-      { type: "skill", name: "caveman" },
-    ]);
-  });
-
-  it("shows everything for all", () => {
-    expect(filterByType(items, "all")).toEqual(items);
   });
 });
 
