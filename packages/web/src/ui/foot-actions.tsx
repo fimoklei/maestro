@@ -7,6 +7,8 @@ import { cn } from "./cn";
 export type FootItem = ActionsMenuItem & {
   /** The accessible name where the label alone would not say what it acts on. */
   name?: string;
+  /** The next step its state names, which ranks it for the pane's primary. */
+  step?: "update" | "import";
 };
 
 // The primary where the ⋮ order already leads with the next step (#1065).

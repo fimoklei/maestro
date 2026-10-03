@@ -5,7 +5,6 @@ import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
-import { FootActions, type FootItem } from "../ui/foot-actions";
 import { freshnessLine } from "../ui/freshness";
 import { Notice } from "../ui/notice";
 import { TableScreen } from "../ui/table-screen";
@@ -282,13 +281,12 @@ export function DeployStateView() {
             onReread={screen.reread}
             now={now}
             update={placed.update}
-            actions={
+            foot={placed.foot}
+            dialogs={
               <TargetActions
                 key={`${row.id}:${intent?.nonce ?? 0}`}
                 row={row}
                 dialog={intent?.dialog ?? null}
-                items={placed.foot}
-                primary={placed.footPrimary}
               />
             }
           />
@@ -300,25 +298,20 @@ export function DeployStateView() {
 
 type TargetDialog = "update" | "import" | null;
 
-// The pane's foot. It owns the Update mutation, so the dialog stays mounted
-// through the run and keeps its outcome (#980).
+// The dialogs the pane's foot opens. It owns the Update mutation, so the
+// dialog stays mounted through the run and keeps its outcome (#980).
 function TargetActions({
   row,
   dialog,
-  items,
-  primary,
 }: {
   row: TargetRow;
   dialog: TargetDialog;
-  items: FootItem[];
-  primary: string | null;
 }) {
   const update = useUpdateTarget();
   const openUpdate = dialog === "update";
   const [importing, setImporting] = useState(dialog === "import");
   return (
     <>
-      <FootActions items={items} primary={primary} />
       {importing ? (
         <ImportLocalEditsAction
           targetName={row.updateName}

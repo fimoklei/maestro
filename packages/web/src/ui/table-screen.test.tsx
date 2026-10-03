@@ -84,9 +84,12 @@ function FruitScreen({
       pane={
         withPane
           ? (row, frame) => (
-              <DetailPane title={row.name} activeKey={row.name} {...frame}>
-                <p>{row.colour}</p>
-              </DetailPane>
+              <DetailPane
+                title={row.name}
+                activeKey={row.name}
+                paragraph={[row.colour]}
+                {...frame}
+              />
             )
           : undefined
       }
@@ -452,9 +455,12 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
       pane={
         withPane
           ? (row, frame) => (
-              <DetailPane title={row.name} activeKey={row.name} {...frame}>
-                <p>{row.kind}</p>
-              </DetailPane>
+              <DetailPane
+                title={row.name}
+                activeKey={row.name}
+                paragraph={[row.kind]}
+                {...frame}
+              />
             )
           : undefined
       }

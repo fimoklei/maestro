@@ -1,8 +1,7 @@
 import type { Ref } from "react";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import { DetailPane } from "../ui/detail-pane";
-import { FactList, FactRow } from "../ui/fact-list";
-import { FootActions, type FootItem, firstEnabled } from "../ui/foot-actions";
+import type { FootItem } from "../ui/foot-actions";
 import { SubListRow } from "../ui/sub-list-row";
 import { NOT_DEPLOYED_ANYWHERE, rowActionsLabel } from "./inventory-copy";
 import type { SkillDeployment } from "./skill-deployments";
@@ -54,66 +53,56 @@ export function SkillDetailPane({
       initialFocus={initialFocus}
       onClose={onClose}
       getTriggerElement={getTriggerElement}
-      actions={
-        <FootActions items={footItems} primary={firstEnabled(footItems)} />
+      facts={[
+        { label: "Type", value: TYPE_WORD[primitive.type] },
+        targetCount === null ? null : { label: "Targets", value: targetCount },
+      ]}
+      // Trigger-phrase descriptions run for paragraphs. Three lines identify
+      // the skill; the rest opens on ask.
+      paragraph={[primitive.description]}
+      clampParagraph
+      foot={footItems}
+      leadsWithNextStep
+      subList={
+        <section>
+          <h3
+            ref={listHeadingRef}
+            tabIndex={-1}
+            className="m-0 mb-inline font-normal text-gray-11 text-meta focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
+          >
+            Deployed to
+          </h3>
+          {deployments.length > 0 ? (
+            <>
+              <ul className="m-0 list-none border-divider border-t p-0">
+                {deployments.map((deployment) => (
+                  <SubListRow
+                    key={deployment.rowId ?? deployment.label}
+                    mark={targetReading(deployment.status)}
+                    name={deployment.label}
+                    value={deployment.release}
+                    menuLabel={rowActionsLabel(deployment.label)}
+                    items={targetItems(deployment)}
+                  />
+                ))}
+              </ul>
+              {unconfirmed ? (
+                <p className="mt-inline text-gray-11 text-meta">
+                  Loading more targets…
+                </p>
+              ) : null}
+            </>
+          ) : unconfirmed ? (
+            <p className="m-0 text-gray-11 text-meta">
+              Loading the Deploy-state…
+            </p>
+          ) : (
+            <p className="m-0 text-gray-11 text-meta">
+              {NOT_DEPLOYED_ANYWHERE}
+            </p>
+          )}
+        </section>
       }
-    >
-      <FactList>
-        <FactRow label="Type">{TYPE_WORD[primitive.type]}</FactRow>
-        {targetCount === null ? null : (
-          <FactRow label="Targets">{targetCount}</FactRow>
-        )}
-      </FactList>
-      {/* Trigger-phrase descriptions run for paragraphs. Three lines identify
-          the skill; the rest opens on ask. */}
-      <details className="group mt-section">
-        <summary className="cursor-pointer list-none text-gray-11 text-prose focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
-          <span className="line-clamp-3 group-open:line-clamp-none">
-            {primitive.description}
-          </span>
-          <span className="mt-tight inline-block text-gray-11 text-meta hover:text-gray-12">
-            <span className="group-open:hidden">More ›</span>
-            <span className="hidden group-open:inline">Less ‹</span>
-          </span>
-        </summary>
-      </details>
-
-      <section className="mt-section">
-        <h3
-          ref={listHeadingRef}
-          tabIndex={-1}
-          className="m-0 mb-inline font-normal text-gray-11 text-meta focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
-        >
-          Deployed to
-        </h3>
-        {deployments.length > 0 ? (
-          <>
-            <ul className="m-0 list-none border-divider border-t p-0">
-              {deployments.map((deployment) => (
-                <SubListRow
-                  key={deployment.rowId ?? deployment.label}
-                  mark={targetReading(deployment.status)}
-                  name={deployment.label}
-                  value={deployment.release}
-                  menuLabel={rowActionsLabel(deployment.label)}
-                  items={targetItems(deployment)}
-                />
-              ))}
-            </ul>
-            {unconfirmed ? (
-              <p className="mt-inline text-gray-11 text-meta">
-                Loading more targets…
-              </p>
-            ) : null}
-          </>
-        ) : unconfirmed ? (
-          <p className="m-0 text-gray-11 text-meta">
-            Loading the Deploy-state…
-          </p>
-        ) : (
-          <p className="m-0 text-gray-11 text-meta">{NOT_DEPLOYED_ANYWHERE}</p>
-        )}
-      </section>
-    </DetailPane>
+    />
   );
 }
