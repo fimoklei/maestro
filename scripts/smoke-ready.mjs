@@ -3,12 +3,13 @@
 // consuming repo.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
 import { pidsOnPort } from "./port-holders.mjs";
 import { MARKER_FILE, processStartOf, seededPaths } from "./seed-sandbox.mjs";
 import { parseScenarioArg, seedScenarios } from "./smoke-scenarios.mjs";
+import { checkTableFit } from "./table-fit.mjs";
 
 const PORTS = cockpitPorts();
 const { web: WEB_ORIGIN, api: SERVER_ORIGIN } = cockpitUrls(PORTS);
@@ -248,11 +249,33 @@ function requireOwnership(repoRoot, label, refusal) {
   process.exit(1);
 }
 
-/** Asks ownership alone, so it can be re-asked; it seeds nothing. */
+/** Asks ownership, then measures table fit; it seeds nothing, so it can be re-asked. */
 function check(repoRoot) {
   requireOwnership(repoRoot, "smoke:check", "the cockpit is not yours");
   console.log(
     `[smoke:check] ${WEB_ORIGIN} (ports ${COCKPIT_PORTS.join(" and ")}) still belongs to this checkout's \`pnpm smoke\` run.`,
+  );
+
+  let fit;
+  try {
+    fit = checkTableFit({
+      webOrigin: WEB_ORIGIN,
+      session: `maestro-table-fit-${basename(repoRoot)}`,
+    });
+  } catch (failure) {
+    console.error(
+      `[smoke:check] could not measure table fit with agent-browser: ${failure.message}`,
+    );
+    process.exit(1);
+  }
+  if (fit.skipped.length > 0)
+    console.log(
+      `[smoke:check] no rows, so not measured: ${fit.skipped.join(", ")}.`,
+    );
+  for (const failure of fit.failures) console.error(`[smoke:check] ${failure}`);
+  if (fit.failures.length > 0) process.exit(1);
+  console.log(
+    `[smoke:check] every table fits its scroll container (${fit.measured} measurements).`,
   );
 }
 

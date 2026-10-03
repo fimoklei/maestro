@@ -42,6 +42,7 @@ pnpm workspace. Run from the repo root.
   address).
 - `pnpm smoke` — `dev` against an isolated sandbox config
   (`MAESTRO_HOME=.maestro-sandbox`), never the real `~/.maestro`.
+  `pnpm smoke:stop` stops it when you are done.
 - `pnpm test:affected` — the coding loop: only tests the uncommitted work
   reaches. `pnpm test` runs the whole suite; `package.json` lists the lanes.
 - One test file, for TDD red/green:
