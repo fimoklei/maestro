@@ -5,7 +5,7 @@ import type {
   PinnedPerSkill,
   ReleaseHead,
 } from "@maestro/core";
-import { ago } from "../harness/harness-view-model";
+import { ago } from "../ui/freshness";
 import { joinNames } from "./join-names";
 import {
   RETRY_UPDATE,
