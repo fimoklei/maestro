@@ -14,6 +14,7 @@ import { Button } from "../ui/button";
 import { DataTable } from "../ui/data-table";
 import { DetailPaneSlot } from "../ui/detail-pane";
 import { EmptyState } from "../ui/empty-state";
+import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { IconButton } from "../ui/icon-button";
 import { Notice } from "../ui/notice";
@@ -26,7 +27,6 @@ import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
 import {
-  freshnessLabel,
   harnessAnnouncement,
   journeyConfirmedEmpty,
   releaseEnabled,
@@ -168,8 +168,15 @@ export function HarnessView({
   useEffect(() => {
     if (reading) setWrite(null);
   }, [reading]);
-  const freshness =
-    state === undefined ? null : freshnessLabel(state.freshness, now);
+  const freshness = useFreshnessLine(
+    state === undefined
+      ? null
+      : {
+          readAt: [state.freshness.lastFetchedAt],
+          outcome: state.freshness.outcome,
+          reading: false,
+        },
+  );
   const context = {
     defaultBranch: state?.defaultBranch ?? null,
     releasedVersion: state?.releasedVersion ?? null,
