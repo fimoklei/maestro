@@ -2,6 +2,7 @@ import { useId } from "react";
 import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
 import { Report, type ReportGroup } from "../ui/report";
+import { STATUS_TOKENS } from "../ui/status-family";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
@@ -24,21 +25,10 @@ function CleanLine({ id, children }: { id: string; children: string }) {
   );
 }
 
-// One colour family per tone, read once, so the box and its rows cannot drift.
 const GROUP_TONE = {
-  cost: {
-    ink: "text-amber-12",
-    border: "border-amber-7",
-    fill: "bg-amber-3",
-    divider: "border-amber-7 border-b",
-  },
-  refusal: {
-    ink: "text-red-12",
-    border: "border-red-7",
-    fill: "bg-red-3",
-    divider: "border-red-7 border-b",
-  },
-} as const;
+  cost: STATUS_TOKENS.attention,
+  refusal: STATUS_TOKENS.failed,
+};
 
 type GroupRow = { label: string; version?: string; reason: string };
 
@@ -67,7 +57,7 @@ function ReasonGroup({
       <ul
         className={cn(
           "flex flex-col overflow-hidden rounded-control border font-mono text-meta",
-          colours.border,
+          colours.edge,
         )}
       >
         {rows.map((row, index) => (
@@ -76,7 +66,7 @@ function ReasonGroup({
             className={cn(
               "flex items-center justify-between gap-inline px-cell py-inline",
               colours.fill,
-              index < rows.length - 1 && colours.divider,
+              index < rows.length - 1 && cn(colours.edge, "border-b"),
             )}
           >
             <span className="flex min-w-0 items-baseline gap-inline">
