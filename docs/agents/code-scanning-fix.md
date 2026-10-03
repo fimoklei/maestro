@@ -12,16 +12,25 @@ outcome.
 
 1. Run `pnpm install` from the repo root, then read `AGENTS.md` and
    `.claude/rules/security.md`.
-2. Via github-mcp, list the repo's code-scanning alerts with state `open`. None
-   → stop and report "No open code-scanning alerts."
+2. Read the open alerts. The routine's GitHub access cannot list
+   code-scanning alerts, so the `code-scanning-alerts.yml` workflow prints
+   them:
+   - Via github-mcp `actions_run_trigger`, run that workflow on `main`.
+   - Take its newest run created after the trigger and wait for it to
+     complete (`gh api repos/fimoklei/maestro/actions/workflows/code-scanning-alerts.yml/runs?per_page=1`).
+   - Read its job log via github-mcp `get_job_logs` with `return_content`.
+     Each line between `BEGIN-OPEN-ALERTS` and `END-OPEN-ALERTS` is one alert
+     as JSON: number, rule (with help) and every flagged location.
+   - The run fails or the markers are missing → stop and report it. No line
+     between the markers → stop and report "No open code-scanning alerts."
 3. Via github-mcp, list OPEN pull requests whose head branch starts with
    `fix/code-scanning-`. Each branch name carries the alert number it claims.
    - An open PR whose `verify` and `CodeQL` checks are green: squash-merge it
      now (step 8), then continue.
    - 3 or more still open → stop and report their numbers.
 4. Pick the open alert with the highest severity that no open PR claims; break
-   ties by lowest alert number. Read the alert's rule help and every flagged
-   location.
+   ties by lowest alert number (severity: `rule.security_severity_level`, else
+   `rule.severity`). Read the alert's rule help and every flagged location.
 5. Judge it. A **false positive** (the flagged path is unreachable, or the
    input is trusted per `security.md`) → stop and report the alert number, the
    rule and why, so the operator dismisses it in GitHub. A real defect →
@@ -41,7 +50,8 @@ outcome.
    the root cause, the fix, the test that proves it, and the `pnpm verify`
    result.
 8. Wait for the PR's `verify` and `CodeQL` checks to finish.
-   - Both green and the alert no longer appears on the PR → squash-merge via
+   - Both green and the alert no longer appears on the PR (no annotation for
+     its rule and location on the `CodeQL` check run) → squash-merge via
      github-mcp and delete the branch. CodeQL closes the alert on its next
      scan of main.
    - Any red, or the alert still present → leave the PR open, comment the
