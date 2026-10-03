@@ -38,6 +38,15 @@ When you retire a screen word, add the old word to `scripts/copy-guard.mjs`.
 List only a word that is wrong in every screen use; a word with a second
 meaning stays with review.
 
+## Sentences (ASD-STE100)
+
+- Write one instruction per sentence, in the imperative. Put the goal or
+  condition first: `To keep them, commit them first.`
+- Write in the simple present, past or future, in the active voice.
+- Use one-word verbs: `replaces`, `restores`, `changes`.
+- Write a warning as a command plus its reason.
+- Keep a sentence to 20 words or fewer.
+
 ## Patterns
 
 - Name a control as `Select {control} to {result}`.
