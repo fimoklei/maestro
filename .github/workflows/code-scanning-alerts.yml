@@ -4,6 +4,9 @@ name: Code-scanning alerts
 # fix routine (docs/agents/code-scanning-fix.md). The routine's GitHub access
 # cannot read code-scanning alerts; this job's token can, and the routine can
 # read job logs. Run on demand by the routine only.
+#
+# The job log is public, so this discloses the open alerts. Accepted: anyone
+# can run CodeQL on this public repo and get the same alerts.
 on:
   workflow_dispatch:
 
