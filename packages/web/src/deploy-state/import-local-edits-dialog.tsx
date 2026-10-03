@@ -37,6 +37,7 @@ export function ImportLocalEditsDialog({
   targetName,
   skills,
   checked,
+  checksChanged,
   onToggle,
   isRunning,
   outcomes,
@@ -48,6 +49,8 @@ export function ImportLocalEditsDialog({
   // Null while the check runs.
   skills: readonly LocalEditsSkill[] | null;
   checked: ReadonlySet<string>;
+  /** Whether any check differs from the one the dialog opened with. */
+  checksChanged: boolean;
   onToggle: (name: string) => void;
   isRunning: boolean;
   // Null before the run; set only when the dialog stays open on a refusal.
@@ -109,7 +112,7 @@ export function ImportLocalEditsDialog({
       }
       failure={failure}
       describedBy={null}
-      fieldsChanged={false}
+      fieldsChanged={checksChanged}
       onClose={onCancel}
     >
       {outcomes !== null ? (

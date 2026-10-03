@@ -1,5 +1,5 @@
 import type { UpdatePreview } from "@maestro/core";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { UpdateTargetDialog } from "./update-target-dialog";
@@ -209,6 +209,34 @@ describe("UpdateTargetDialog", () => {
 
     await user.click(confirmButton());
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a click outside once a consent is checked", async () => {
+    const onCancel = vi.fn();
+    render(
+      <UpdateTargetDialog
+        targetName="agent-harness"
+        preview={preview({
+          localEdits: {
+            discard: [{ name: "tdd", tool: null }],
+            unverified: [],
+          },
+          copyReceipt: "b".repeat(64),
+        })}
+        isLoading={false}
+        error={null}
+        onCancel={onCancel}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Discard local edits for tdd" }),
+    );
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+
+    expect(onCancel).not.toHaveBeenCalled();
   });
 
   it("says what each copy at risk costs, naming its tool on a global target", () => {

@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse } from "../test-utils";
@@ -114,6 +114,20 @@ describe("Deploy-state — Import local edits… on a repository", () => {
         name: "Import skills — none selected",
       }),
     ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("ignores a click outside once a check has changed", async () => {
+    stubImport(["code-review", "tdd"], landed);
+    renderDeployState();
+
+    const dialog = await openDialog();
+    await userEvent.click(
+      await within(dialog).findByRole("checkbox", { name: "tdd" }),
+    );
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+
+    expect(dialog).toBeInTheDocument();
   });
 
   it("imports the checked skills and opens the one that landed on the Harness screen", async () => {
