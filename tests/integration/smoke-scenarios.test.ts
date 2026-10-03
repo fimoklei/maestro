@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  globalLeftoverMismatch,
   type HarnessRead,
   harnessMismatch,
+  harnessOfflineMismatch,
   parseScenarioArg,
   readCockpit,
   releaseMirrorProblem,
@@ -41,8 +43,16 @@ describe("parseScenarioArg", () => {
 
   it("expands all to every scenario", () => {
     expect(parseScenarioArg(["--scenario", "all"])).toEqual(SCENARIO_NAMES);
-    expect(SCENARIO_NAMES).toHaveLength(9);
-    expect(SCENARIO_NAMES).toContain("harness-outcomes");
+    expect(SCENARIO_NAMES).toHaveLength(13);
+    expect(SCENARIO_NAMES).toEqual(
+      expect.arrayContaining([
+        "harness-outcomes",
+        "import-edits",
+        "unreadable",
+        "global-leftover",
+        "harness-offline",
+      ]),
+    );
   });
 
   it("refuses an unknown name and lists the valid ones", () => {
@@ -139,6 +149,80 @@ describe("scenarioMismatch", () => {
       ),
     ).toMatch(/notice expected "Deploy incomplete", got none/);
   });
+
+  it("reads a refused deploy-state as the screen's failure notice", () => {
+    const observed = readCockpit({ deployState: null, drift: { ok: false } });
+
+    expect(
+      scenarioMismatch(
+        { name: "unreadable", expect: { status: "Deploy-state not read" } },
+        REPO,
+        observed,
+      ),
+    ).toBeNull();
+  });
+
+  it("names a skill the Import local edits dialog groups elsewhere", () => {
+    const observed = readCockpit({
+      deployState: {
+        primitives: [
+          skill("code-review", { copy: "local-edits" }),
+          skill("commit-message", { copy: "local-edits" }),
+        ],
+        skipped: [],
+      },
+      drift: { behind: [] },
+      localEdits: [
+        { name: "code-review", refusal: "deployed-copy" },
+        { name: "commit-message", refusal: null },
+      ],
+    });
+
+    expect(
+      scenarioMismatch(
+        {
+          name: "import-edits",
+          expect: {
+            imports: {
+              "code-review": "Undoes newer Harness changes",
+              "commit-message": "Can be imported",
+            },
+          },
+        },
+        REPO,
+        observed,
+      ),
+    ).toBe(
+      `scenario "import-edits" (${REPO}): Import local edits groups code-review under "Cannot be imported", expected "Undoes newer Harness changes"`,
+    );
+  });
+
+  it("passes when the dialog groups each skill as declared", () => {
+    const observed = readCockpit({
+      deployState: { primitives: [], skipped: [] },
+      drift: { behind: [] },
+      localEdits: [
+        { name: "code-review", refusal: null, undoesNewerSince: "v1.1.0" },
+        { name: "commit-message", refusal: null },
+      ],
+    });
+
+    expect(
+      scenarioMismatch(
+        {
+          name: "import-edits",
+          expect: {
+            imports: {
+              "code-review": "Undoes newer Harness changes",
+              "commit-message": "Can be imported",
+            },
+          },
+        },
+        REPO,
+        observed,
+      ),
+    ).toBeNull();
+  });
 });
 
 describe("harnessMismatch", () => {
@@ -163,8 +247,8 @@ describe("harnessMismatch", () => {
     expect(
       harnessMismatch(
         harness(
-          [row("code-review", "deleted-locally", true)],
-          [row("commit-message", "changed")],
+          [row("test-plan", "deleted-locally", true)],
+          [row("code-review", "changed")],
         ),
       ),
     ).toBeNull();
@@ -174,31 +258,89 @@ describe("harnessMismatch", () => {
     expect(
       harnessMismatch(
         harness(
-          [row("code-review", "deleted-locally", false)],
-          [row("commit-message", "changed")],
+          [row("test-plan", "deleted-locally", false)],
+          [row("code-review", "changed")],
         ),
       ),
     ).toBe(
-      'scenario "harness-outcomes": code-review expected a restorable "deleted-locally" row in the proposal stage, got "deleted-locally", not restorable',
+      'scenario "harness-outcomes": test-plan expected a restorable "deleted-locally" row in the proposal stage, got "deleted-locally", not restorable',
     );
   });
 
   it("names unreleased work the release stage does not show", () => {
     expect(
       harnessMismatch(
-        harness([row("code-review", "deleted-locally", true)], [], "released"),
+        harness([row("test-plan", "deleted-locally", true)], [], "released"),
       ),
     ).toBe(
-      'scenario "harness-outcomes": commit-message expected a "changed" row in the release stage, got none; release state expected "pending-release", got "released"',
+      'scenario "harness-outcomes": code-review expected a "changed" row in the release stage, got none; release state expected "pending-release", got "released"',
     );
   });
 
   it("names a stage the cockpit could not read", () => {
-    const state = harness([], [row("commit-message", "changed")]);
+    const state = harness([], [row("code-review", "changed")]);
     state.stages.proposal = { outcome: "unknown" };
 
     expect(harnessMismatch(state)).toMatch(
-      /code-review expected a restorable "deleted-locally" row in the proposal stage, got a stage read as "unknown"/,
+      /test-plan expected a restorable "deleted-locally" row in the proposal stage, got a stage read as "unknown"/,
+    );
+  });
+});
+
+describe("globalLeftoverMismatch", () => {
+  const LEFTOVER = "/sandbox/home/.claude/skills/code-review";
+
+  it("passes when the global Remove offers the leftover copy that is on disk", () => {
+    expect(
+      globalLeftoverMismatch({
+        preflight: {
+          check: { scope: "global", tools: [{ tool: "codex" }] },
+          reclaim: { previews: [{ tool: "claude", path: LEFTOVER }] },
+        },
+        onDisk: (path) => path === LEFTOVER,
+      }),
+    ).toBeNull();
+  });
+
+  it("names a global Remove with no Other copies row", () => {
+    expect(
+      globalLeftoverMismatch({
+        preflight: {
+          check: { scope: "global", tools: [{ tool: "codex" }] },
+          reclaim: null,
+        },
+        onDisk: () => true,
+      }),
+    ).toBe(
+      'scenario "global-leftover": the global Remove of code-review expected an Other copies row for Claude Code, got none',
+    );
+  });
+
+  it("names an Other copies row whose copy is not on disk", () => {
+    expect(
+      globalLeftoverMismatch({
+        preflight: {
+          check: { scope: "global", tools: [{ tool: "codex" }] },
+          reclaim: { previews: [{ tool: "claude", path: LEFTOVER }] },
+        },
+        onDisk: () => false,
+      }),
+    ).toBe(
+      `scenario "global-leftover": the Other copies row names ${LEFTOVER}, which holds no copy`,
+    );
+  });
+});
+
+describe("harnessOfflineMismatch", () => {
+  it("passes when the Harness read reports no answer from the remote", () => {
+    expect(
+      harnessOfflineMismatch({ freshness: { outcome: "offline" } }),
+    ).toBeNull();
+  });
+
+  it("names the outcome the read reported instead", () => {
+    expect(harnessOfflineMismatch({ freshness: { outcome: "fetched" } })).toBe(
+      'scenario "harness-offline": the Harness read expected "offline", got "fetched"',
     );
   });
 });

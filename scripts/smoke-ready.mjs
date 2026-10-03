@@ -258,7 +258,10 @@ function check(repoRoot) {
 
 // Throws on any refusal, unless the caller expects one and reads the status.
 const scenarioApi = {
-  get: (path) => call(requestJson, path, undefined, `GET ${path}`),
+  get: async (path, { allowRefusal = false } = {}) =>
+    allowRefusal
+      ? await requestJson(path)
+      : await call(requestJson, path, undefined, `GET ${path}`),
   post: async (path, body, { allowRefusal = false } = {}) =>
     allowRefusal
       ? await requestJson(path, body)

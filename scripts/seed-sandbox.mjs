@@ -18,7 +18,7 @@ const CANDIDATES = [
 
 // The markers Maestro probes to decide a tool is installed (#131). Config-file
 // stand-ins, never the skills dirs a deploy creates, so a deploy leaves them.
-function seedToolPresence(home) {
+export function seedToolPresence(home) {
   writeFileSync(join(home, ".claude.json"), "{}\n");
   mkdirSync(join(home, ".codex"), { recursive: true });
   writeFileSync(join(home, ".codex", "config.toml"), "");
