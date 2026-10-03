@@ -1,20 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderGit2, RefreshCw } from "lucide-react";
+import { FolderGit2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { repoRowId } from "../deploy-state/target-rows";
 import { targetLabel } from "../shell/target-label";
-import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
-import { DataTable } from "../ui/data-table";
-import { EmptyState } from "../ui/empty-state";
-import { IconButton } from "../ui/icon-button";
-import { Notice } from "../ui/notice";
-import { Panel } from "../ui/panel";
-import { showSuccess } from "../ui/toast";
-import { useReadAnnouncement } from "../ui/use-read-announcement";
-import { useReadSkeleton } from "../ui/use-read-skeleton";
-import { useStatusRegion } from "../ui/use-status-region";
+import { Icon } from "../ui/icon";
+import { TableScreen } from "../ui/table-screen";
+import { useTableScreen } from "../ui/use-table-screen";
+import { useWriteAction } from "../ui/use-write-action";
 import { RegisterRepositoryDialog } from "./register-repository-dialog";
 import {
   type RepositoryAction,
@@ -26,10 +20,8 @@ import {
   EMPTY_TITLE,
   REGISTER_REPOSITORY,
   REPOS_NOT_READ,
-  REREAD_LABEL,
   SCREEN,
   STATUS_READINGS,
-  TABLE_LABEL,
   unregisterNotice,
 } from "./repositories-copy";
 import { UnregisterDialog } from "./unregister-dialog";
@@ -41,29 +33,35 @@ export function RepositoriesView() {
   const queryClient = useQueryClient();
   const registry = useRegistry();
   const unregister = useUnregisterRepo();
-  const skeleton = useReadSkeleton(registry.isFetching);
+  const screen = useTableScreen({
+    name: SCREEN,
+    reading: registry.isFetching,
+    settled: registry.isSuccess,
+    failure: registry.isError ? REPOS_NOT_READ : null,
+    onReread: () => queryClient.invalidateQueries({ queryKey: REGISTRY_KEY }),
+    openOnArrival: null,
+  });
+  const { report } = screen;
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
-  const register = useRegisterDialog({
-    onRegistered: (path, all) =>
-      setWrite(doneSentence("register", targetLabel(path, all))),
-  });
-
   const repos = registry.data?.repos ?? [];
   const paths = repos.map((repo) => repo.path);
+  const register = useRegisterDialog({ report });
+  const unregisterWrite = useWriteAction(unregister, {
+    report,
+    action: "unregister",
+    show: "toast",
+    name: (_data, path) => targetLabel(path, paths),
+    failure: unregisterNotice,
+  });
+
   const rows: RepositoryRow[] = repos.map((repo) => ({
     path: repo.path,
     // Whole set drives each label so shared-prefix repos stay distinct (#211).
     name: targetLabel(repo.path, paths),
     status: STATUS_READINGS[repo.status],
   }));
-
-  const reread = () => {
-    skeleton.press();
-    setWrite("");
-    queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
-  };
 
   const onAction = (row: RepositoryRow, action: RepositoryAction) => {
     if (action === "view") {
@@ -73,18 +71,8 @@ export function RepositoriesView() {
     unregister.reset();
     setUnregistering(row);
   };
-  const confirmUnregister = (row: RepositoryRow) => {
-    setWrite(ACTIONS.unregister.busy);
-    unregister.mutate(row.path, {
-      onSuccess: () => {
-        setUnregistering(null);
-        // The toast is the end; the region does not say it twice.
-        setWrite("");
-        showSuccess(doneSentence("unregister", row.name));
-      },
-      onError: () => setWrite(""),
-    });
-  };
+  const confirmUnregister = (row: RepositoryRow) =>
+    unregisterWrite.run(row.path, { onSuccess: () => setUnregistering(null) });
   const onActionRef = useRef(onAction);
   onActionRef.current = onAction;
   const columns = useMemo(
@@ -95,81 +83,35 @@ export function RepositoriesView() {
     [],
   );
 
-  const readNotice = registry.isError
-    ? { ...REPOS_NOT_READ, action: { label: REREAD_LABEL, onClick: reread } }
-    : null;
-  // A write's busy label, then its done sentence.
-  const [region, setWrite] = useStatusRegion(
-    useReadAnnouncement(SCREEN, skeleton.visible, readNotice),
-  );
-  const registerButton = (
-    <Button variant="primary" onClick={register.openDialog}>
-      {REGISTER_REPOSITORY}
-    </Button>
-  );
-
   return (
-    <Panel
-      title={SCREEN}
-      action={registerButton}
-      band2={
-        <div className="ml-auto flex items-center gap-inline">
-          <IconButton label={REREAD_LABEL} onClick={reread}>
-            <RefreshCw
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-4"
-            />
-          </IconButton>
-        </div>
+    <TableScreen
+      state={screen}
+      action={
+        <Button variant="primary" onClick={register.openDialog}>
+          {REGISTER_REPOSITORY}
+        </Button>
       }
+      rereading={false}
+      firstReadRows={8}
+      rows={rows}
+      columns={columns}
+      rowId={(row) => row.path}
+      empty={{
+        title: EMPTY_TITLE,
+        description: EMPTY_SENTENCE,
+        icon: <Icon of={FolderGit2} />,
+        action: (
+          <Button variant="quiet" onClick={register.openDialog}>
+            {REGISTER_REPOSITORY}
+          </Button>
+        ),
+      }}
     >
-      <div role="status" className="sr-only">
-        {register.registering ? ACTIONS.register.busy : region}
-      </div>
-      {/* Mounted before a failure is, so it is announced (#465); the
-          padding comes only with the notice. */}
-      <div className={readNotice === null ? undefined : "p-panel"}>
-        <Notice trigger="load" notice={readNotice} />
-      </div>
-      {skeleton.visible || rows.length > 0 ? (
-        <div aria-busy={registry.isFetching || undefined}>
-          <DataTable
-            label={TABLE_LABEL}
-            columns={columns}
-            data={rows}
-            getRowId={(row) => row.path}
-            loading={skeleton.visible}
-            skeletonRows={Math.min(rows.length || 8, 30)}
-          />
-        </div>
-      ) : null}
-      {registry.isSuccess && rows.length === 0 && !skeleton.visible ? (
-        <EmptyState
-          headingLevel={2}
-          title={EMPTY_TITLE}
-          description={EMPTY_SENTENCE}
-          icon={
-            <FolderGit2
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-4"
-            />
-          }
-          action={
-            <Button variant="quiet" onClick={register.openDialog}>
-              {REGISTER_REPOSITORY}
-            </Button>
-          }
-        />
-      ) : null}
       {unregistering ? (
         <UnregisterDialog
           name={unregistering.name}
-          busy={unregister.isPending}
-          failure={
-            unregister.isError ? unregisterNotice(unregister.error) : null
-          }
+          phase={unregisterWrite.phase}
+          failure={unregisterWrite.failure}
           onConfirm={() => confirmUnregister(unregistering)}
           onClose={() => setUnregistering(null)}
         />
@@ -177,6 +119,6 @@ export function RepositoriesView() {
       {register.open ? (
         <RegisterRepositoryDialog {...register.dialogProps} />
       ) : null}
-    </Panel>
+    </TableScreen>
   );
 }

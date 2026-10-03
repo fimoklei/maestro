@@ -81,8 +81,7 @@ const meta = {
       target(["tdd", "diagnose"]),
       target(["karpathy-guidelines"], [], true),
     ],
-    notice: null,
-    loading: false,
+    failure: null,
     reading: false,
     onReread: () => {},
   },
@@ -102,15 +101,12 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const Reading: Story = {
-  args: { primitives: undefined, loading: true, reading: true },
+  args: { primitives: undefined, reading: true },
 };
 
 export const ReadFailed: Story = {
   args: {
-    notice: {
-      ...INVENTORY_NOT_READ,
-      action: { label: "Re-read Inventory", onClick: () => {} },
-    },
+    failure: INVENTORY_NOT_READ,
   },
 };
 

@@ -13,8 +13,7 @@ export const REGISTER_REPOSITORY = "Register repository";
 export const REGISTER_TITLE = "Register a repository";
 export const UNREGISTER = "Unregister";
 export const VIEW_DEPLOY_STATE = "View Deploy-state";
-export const REREAD_LABEL = "Re-read Repositories";
-export const TABLE_LABEL = "Repositories table";
+const REREAD_LABEL = "Re-read Repositories";
 export const ACTIONS_COLUMN_LABEL = "Actions";
 export const COLUMNS = {
   repository: "Repository",

@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { type ReactNode, useId } from "react";
+import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 
 export const CLEAR_SELECTION = "Clear selection";
@@ -36,7 +37,7 @@ export function SelectionBar({
       ) : null}
       {children}
       <IconButton label={CLEAR_SELECTION} variant="ghost" onClick={onClear}>
-        <X aria-hidden="true" strokeWidth={1.5} className="size-4" />
+        <Icon of={X} />
       </IconButton>
     </fieldset>
   );

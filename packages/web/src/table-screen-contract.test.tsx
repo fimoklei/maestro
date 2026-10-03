@@ -1,0 +1,134 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  renderDeployState,
+  stubServer,
+} from "./deploy-state/deploy-state-test-helpers";
+import {
+  RELEASED,
+  renderHarness,
+  stubHarnessServer,
+} from "./harness/harness-flow-fixture";
+import { InventoryPanel } from "./inventory/inventory-panel";
+import {
+  renderRepositories,
+  stubRegistry,
+} from "./registry/repositories-test-helpers";
+import { jsonResponse, renderWithQuery } from "./test-utils";
+
+// Proves each table screen runs on `TableScreen`, not the module itself.
+
+type Row = {
+  /** The screen's source, from `packages/web/src`. */
+  file: string;
+  name: string;
+  render: () => void;
+};
+
+const ON_TABLE_SCREEN: Row[] = [
+  {
+    file: "deploy-state/deploy-state-view.tsx",
+    name: "Deploy-state",
+    render: () => {
+      stubServer(() => ({ repos: ["/Users/me/a"] }));
+      renderDeployState();
+    },
+  },
+  {
+    file: "harness/harness-view.tsx",
+    name: "Harness",
+    render: () => {
+      stubHarnessServer({ read: { body: RELEASED } });
+      renderHarness();
+    },
+  },
+  {
+    file: "inventory/inventory-view.tsx",
+    name: "Inventory",
+    render: () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).startsWith("/api/registry")
+            ? jsonResponse({ repos: [] })
+            : jsonResponse({ primitives: [] }),
+        ),
+      );
+      renderWithQuery(
+        <MemoryRouter>
+          <InventoryPanel />
+        </MemoryRouter>,
+      );
+    },
+  },
+  {
+    file: "registry/repositories-view.tsx",
+    name: "Repositories",
+    render: () => {
+      stubRegistry({ repos: [{ path: "/home/me/acme-web", status: "ready" }] });
+      renderRepositories();
+    },
+  },
+];
+
+const SRC = import.meta.dirname;
+
+const sources = readdirSync(SRC, { recursive: true, encoding: "utf8" })
+  .filter(
+    (file) => /\.tsx?$/.test(file) && !/\.(test|stories)\.tsx?$/.test(file),
+  )
+  .sort()
+  .map((file) => ({ file, text: readFileSync(join(SRC, file), "utf8") }));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("every table screen", () => {
+  it("is in the guard table", () => {
+    const screens = sources
+      .filter(
+        ({ file, text }) =>
+          !file.startsWith("ui/") && /<TableScreen\b/.test(text),
+      )
+      .map(({ file }) => file);
+
+    expect(screens).toEqual(ON_TABLE_SCREEN.map((row) => row.file).sort());
+  });
+
+  // A table in a dialog is not a screen; a table in a panel is.
+  it("puts a table in a panel only through TableScreen", () => {
+    const byHand = sources
+      .filter(
+        ({ file, text }) =>
+          !file.startsWith("ui/") &&
+          /<Panel\b/.test(text) &&
+          /<DataTable\b/.test(text),
+      )
+      .map(({ file }) => file);
+
+    expect(byHand).toEqual([]);
+  });
+
+  describe.each(ON_TABLE_SCREEN)("$file", (row) => {
+    it("has one Re-read control in band 2 and one status region", async () => {
+      row.render();
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: row.name }),
+      ).toBeInTheDocument();
+      const reread = await screen.findByRole("button", {
+        name: `Re-read ${row.name}`,
+      });
+      expect(reread.closest("[data-band='2']")).not.toBeNull();
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((region) => region.classList.contains("sr-only")),
+      ).toHaveLength(1);
+    });
+  });
+});

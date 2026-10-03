@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { Icon } from "../ui/icon";
 import { Logo } from "../ui/logo";
 import { SCREENS, SETTINGS } from "./screens";
 import { useHarnessSummary } from "./use-harness-summary";
@@ -46,7 +47,7 @@ export function NarrowBar({ className }: { className?: string }) {
           }))}
           trigger={
             <Button size="icon" variant="quiet">
-              <Menu aria-hidden="true" size={16} strokeWidth={1.5} />
+              <Icon of={Menu} />
             </Button>
           }
         />

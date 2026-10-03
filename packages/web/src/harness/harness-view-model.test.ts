@@ -1,110 +1,12 @@
 import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
-  freshnessLabel,
   harnessAnnouncement,
-  journeyConfirmedEmpty,
   releaseEnabled,
   stageSections,
 } from "./harness-view-model";
 
 const NOW = new Date("2026-08-03T12:00:00.000Z");
-
-describe("freshnessLabel", () => {
-  it("says so plainly when nothing has been read yet", () => {
-    expect(freshnessLabel({ outcome: null, lastFetchedAt: null }, NOW)).toBe(
-      "Not read yet",
-    );
-  });
-
-  // The only feedback a read gives: while one runs, the slot says so rather
-  // than dating the last one.
-  it("says a read is running instead of dating the last one", () => {
-    expect(
-      freshnessLabel(
-        { outcome: "fetched", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
-        NOW,
-        true,
-      ),
-    ).toBe("Reading GitHub…");
-  });
-
-  it("dates a successful read in words, so the age reads at a glance", () => {
-    expect(
-      freshnessLabel(
-        { outcome: "fetched", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
-        NOW,
-      ),
-    ).toBe("Read 4 min ago");
-  });
-
-  it("reads a timestamp it cannot make sense of as no time at all", () => {
-    // The config is hand-editable; a date formatter fed a bad string throws
-    // and takes the whole view down (#516).
-    expect(
-      freshnessLabel(
-        { outcome: "fetched", lastFetchedAt: "yesterday-ish" },
-        NOW,
-      ),
-    ).toBe("Not read yet");
-  });
-
-  it("treats a read with no time recorded as no read at all", () => {
-    expect(
-      freshnessLabel({ outcome: "fetched", lastFetchedAt: null }, NOW),
-    ).toBe("Not read yet");
-  });
-
-  it("dates a read seconds old as just now", () => {
-    expect(
-      freshnessLabel(
-        { outcome: "fetched", lastFetchedAt: "2026-08-03T11:59:40.000Z" },
-        NOW,
-      ),
-    ).toBe("Read just now");
-  });
-
-  it("falls back to a date once the picture is days old", () => {
-    expect(
-      freshnessLabel(
-        { outcome: "fetched", lastFetchedAt: "2026-07-20T12:00:00.000Z" },
-        NOW,
-      ),
-    ).toBe("Read on 20 Jul");
-  });
-
-  it("holds offline apart from a read that failed", () => {
-    const offline = freshnessLabel(
-      { outcome: "offline", lastFetchedAt: "2026-08-03T11:00:00.000Z" },
-      NOW,
-    );
-    const failed = freshnessLabel(
-      { outcome: "fetch-failed", lastFetchedAt: "2026-08-03T11:00:00.000Z" },
-      NOW,
-    );
-
-    expect(offline).toBe("Offline — last read 1 h ago");
-    expect(failed).toBe("Read failed — last read 1 h ago");
-    expect(offline).not.toBe(failed);
-  });
-
-  it("says never read when no read has ever succeeded", () => {
-    expect(
-      freshnessLabel({ outcome: "offline", lastFetchedAt: null }, NOW),
-    ).toBe("Offline — never read");
-  });
-
-  it("never turns a failed read into a permission verdict of ours", () => {
-    // Whether GitHub lets this author in is GitHub's answer to give (#516).
-    const label = freshnessLabel(
-      { outcome: "fetch-failed", lastFetchedAt: null },
-      NOW,
-    );
-
-    expect(label).toBe("Read failed — never read");
-    expect(label).not.toMatch(/permission|denied|not allowed|access/i);
-  });
-});
 
 describe("releaseEnabled", () => {
   it("enables Release once a fetch has answered", () => {
@@ -304,18 +206,6 @@ describe("harnessAnnouncement", () => {
     );
   });
 
-  // One owner for the freshness word: a screen reader must never hear the
-  // dated reading while the strip says a read is running.
-  it("tells a screen reader the same reading the strip shows", () => {
-    const built = state({
-      proposal: { outcome: "read", bound: null, rows: [row("tdd")] },
-    });
-
-    expect(harnessAnnouncement(built, NOW, true)).toBe(
-      "Pending proposal has 1 change. Pending review has no changes. Pending release has no changes. Reading GitHub….",
-    );
-  });
-
   it("counts more than one change in the plural", () => {
     const built = state({
       proposal: {
@@ -343,43 +233,5 @@ describe("harnessAnnouncement", () => {
     built.freshness = { outcome: null, lastFetchedAt: null };
 
     expect(harnessAnnouncement(built, NOW)).toContain("Not read yet.");
-  });
-});
-
-describe("journeyConfirmedEmpty", () => {
-  const empty: HarnessState["stages"]["proposal"] = {
-    outcome: "read",
-    rows: [],
-    bound: null,
-  };
-  const with_ = (stages: HarnessState["stages"]): HarnessState => ({
-    origin: "github.com/fimoklei/agent-harness",
-    releasedVersion: null,
-    defaultBranch: "main",
-    releaseState: "never-released",
-    freshness: { outcome: "fetched", lastFetchedAt: null },
-    cloneSync: "current",
-    localHeadCommit: "local-head",
-    stages,
-  });
-
-  it("reads three confirmed empty stages as an empty journey", () => {
-    expect(
-      journeyConfirmedEmpty(
-        with_({ proposal: empty, review: empty, release: empty }),
-      ),
-    ).toBe(true);
-  });
-
-  it("never reads an unknown stage as empty", () => {
-    expect(
-      journeyConfirmedEmpty(
-        with_({
-          proposal: empty,
-          review: { outcome: "unavailable" },
-          release: empty,
-        }),
-      ),
-    ).toBe(false);
   });
 });

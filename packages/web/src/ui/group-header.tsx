@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { Icon } from "./icon";
 
 // Never a stop for the grid's cursor.
 export function GroupHeader({
@@ -39,11 +40,7 @@ export function GroupHeader({
               // 24×24, the pointer floor (WCAG 2.2 SC 2.5.8).
               className="-ml-tight inline-flex size-6 flex-none cursor-pointer items-center justify-center rounded-control text-gray-11 hover:bg-gray-4 hover:text-gray-12"
             >
-              <Chevron
-                aria-hidden="true"
-                strokeWidth={1.5}
-                className="size-4"
-              />
+              <Icon of={Chevron} />
             </button>
           )}
           <span className="flex-none">

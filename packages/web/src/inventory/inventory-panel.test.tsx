@@ -361,8 +361,10 @@ describe("InventoryPanel", () => {
     const grid = screen.getByRole("grid", { name: "Inventory table" });
     expect(grid).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByText("tdd")).not.toBeInTheDocument();
-    expect(screen.getByTestId("inventory-status-region")).toHaveTextContent(
-      "Loading the Inventory…",
-    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .find((each) => each.classList.contains("sr-only")),
+    ).toHaveTextContent("Loading the Inventory…");
   });
 });

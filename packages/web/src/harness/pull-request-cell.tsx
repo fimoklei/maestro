@@ -1,6 +1,7 @@
 import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
 import { ArrowUpRight, GitPullRequestArrow } from "lucide-react";
 import { HoverCard } from "../ui/hover-card";
+import { Icon } from "../ui/icon";
 import { MachineValue } from "../ui/machine-value";
 import {
   PULL_REQUEST_CARD,
@@ -18,11 +19,7 @@ export function PullRequestCell({ row }: { row: HarnessStageRow }) {
   }
   return (
     <span className="inline-flex items-center gap-inline">
-      <GitPullRequestArrow
-        aria-hidden="true"
-        strokeWidth={1.5}
-        className="size-4 flex-none text-gray-11"
-      />
+      <Icon of={GitPullRequestArrow} className="flex-none text-gray-11" />
       {row.requests.map((request) => (
         <HoverCard
           key={request.number}
@@ -39,10 +36,10 @@ export function PullRequestCell({ row }: { row: HarnessStageRow }) {
             className="group/link inline-flex items-center gap-tight text-gray-12 no-underline hover:underline"
           >
             <MachineValue>#{request.number}</MachineValue>
-            <ArrowUpRight
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-3 opacity-0 group-hover/link:opacity-100"
+            <Icon
+              of={ArrowUpRight}
+              small
+              className="opacity-0 group-hover/link:opacity-100"
             />
           </a>
         </HoverCard>

@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
+import { harnessRegion } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 import { pullRequest } from "./stage-row-fixture";
 
@@ -189,9 +190,7 @@ describe("Harness import flow", () => {
         within(pane).getByRole("heading", { level: 2, name: "code-review" }),
       ).toHaveFocus(),
     );
-    expect(
-      screen.getByRole("status", { name: "Harness stages" }),
-    ).toHaveTextContent("Imported code-review.");
+    expect(harnessRegion()).toHaveTextContent("Imported code-review.");
     expect(screen.queryByText("Skill imported")).not.toBeInTheDocument();
     expect(screen.queryByText(/entries were skipped/)).not.toBeInTheDocument();
   });

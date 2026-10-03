@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createPortal } from "react-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createDataTableColumns,
   DataTable,
@@ -45,7 +45,7 @@ function renderTable(
   );
 }
 
-const grid = () => screen.getByRole("grid", { name: "Fruit table" });
+const grid = (name = "Fruit table") => screen.getByRole("grid", { name });
 
 function activeRowName(): string | null {
   const id = grid().getAttribute("aria-activedescendant");
@@ -358,33 +358,6 @@ describe("DataTable", () => {
     expect(pear).toHaveTextContent("pear");
   });
 
-  // #1184: a span over a hidden column adds an empty one that takes width.
-  it("spans a full-width row over the shown columns only", () => {
-    const style = document.createElement("style");
-    style.textContent = ".narrow-hidden { display: none; }";
-    document.head.append(style);
-    renderTable({
-      columns: createDataTableColumns<Fruit>((helper) => [
-        helper.accessor("name", { header: "Name" }),
-        helper.accessor("colour", {
-          header: "Colour",
-          meta: { className: "narrow-hidden" },
-        }),
-      ]),
-      groups: {
-        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
-        order: ["Red", "Green", "Blue"],
-        message: (key) => (key === "Blue" ? "No blue fruit." : null),
-      },
-    });
-
-    const groupHeader = within(grid()).getByText("Red").closest("td, th");
-    const message = within(grid()).getByText("No blue fruit.").closest("td");
-    expect(groupHeader).toHaveAttribute("colspan", "2");
-    expect(message).toHaveAttribute("colspan", "2");
-    style.remove();
-  });
-
   it("draws a group that holds no rows as its message, with no count", () => {
     renderTable({
       groups: {
@@ -577,5 +550,229 @@ describe("DataTable", () => {
     await userEvent.keyboard("{Enter}");
 
     expect(onRowOpen).not.toHaveBeenCalled();
+  });
+});
+
+type Plant = {
+  name: string;
+  colour: string;
+  origin: string;
+  status: string;
+};
+
+const plants: Plant[] = [
+  { name: "fern", colour: "green", origin: "Chile", status: "Good" },
+];
+
+// Widths in spacing steps of 0.25rem: Colour 10rem, Origin 6rem, Status 8rem,
+// and the name, without a width, 8rem.
+const plantColumns = createDataTableColumns<Plant>((helper) => [
+  helper.accessor("name", { header: "Name" }),
+  helper.accessor("colour", {
+    header: "Colour",
+    meta: { width: 40, priority: 1 },
+  }),
+  helper.accessor("origin", {
+    header: "Origin",
+    meta: { width: 24, priority: 2 },
+  }),
+  helper.accessor("status", { header: "Status", meta: { width: 32 } }),
+]);
+
+let reportWidth: (px: number) => void = () => {};
+
+function stubResizeObserver() {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        reportWidth = (width) =>
+          callback(
+            [{ contentRect: { width } } as ResizeObserverEntry],
+            this as unknown as ResizeObserver,
+          );
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
+}
+
+function renderPlants(
+  props: Partial<React.ComponentProps<typeof DataTable<Plant>>> = {},
+) {
+  stubResizeObserver();
+  return render(
+    <div>
+      <DataTable
+        label="Plant table"
+        columns={plantColumns}
+        data={plants}
+        getRowId={(plant) => plant.name}
+        {...props}
+      />
+    </div>,
+  );
+}
+
+const headers = () =>
+  within(screen.getByRole("grid", { name: "Plant table" }))
+    .getAllByRole("columnheader")
+    .map((header) => header.textContent);
+
+describe("DataTable column priority", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("hides the lowest priority first once the shown columns plus 8rem no longer fit", () => {
+    renderPlants();
+
+    act(() => reportWidth(512));
+    expect(headers()).toEqual(["Name", "Colour", "Origin", "Status"]);
+    act(() => reportWidth(511));
+    expect(headers()).toEqual(["Name", "Origin", "Status"]);
+    act(() => reportWidth(351));
+    expect(headers()).toEqual(["Name", "Status"]);
+  });
+
+  it("counts the 2rem checkbox column of a selectable table", () => {
+    renderPlants({
+      selection: {
+        label: "Pick",
+        rowLabel: (plant) => `Pick ${plant.name}`,
+        selected: new Set(),
+        onToggle: () => {},
+      },
+    });
+
+    act(() => reportWidth(544));
+    expect(headers()).toEqual(["Pick", "Name", "Colour", "Origin", "Status"]);
+    act(() => reportWidth(543));
+    expect(headers()).toEqual(["Pick", "Name", "Origin", "Status"]);
+  });
+
+  it("never hides a column without a priority", () => {
+    renderPlants();
+
+    act(() => reportWidth(100));
+
+    expect(headers()).toEqual(["Name", "Status"]);
+  });
+
+  it("shows a hidden column again once the table widens", () => {
+    renderPlants();
+
+    act(() => reportWidth(300));
+    act(() => reportWidth(600));
+
+    expect(headers()).toEqual(["Name", "Colour", "Origin", "Status"]);
+  });
+
+  it("counts only the columns Display leaves on, and keeps a switched-off one off when wide", () => {
+    renderPlants({ columnVisibility: { origin: false } });
+
+    act(() => reportWidth(416));
+    expect(headers()).toEqual(["Name", "Colour", "Status"]);
+    act(() => reportWidth(1200));
+    expect(headers()).toEqual(["Name", "Colour", "Status"]);
+  });
+
+  // #1184: a span over a hidden column adds an empty one that takes width.
+  it("spans a full-width row over the shown columns only", () => {
+    renderPlants({
+      groups: {
+        key: () => "Ferns",
+        order: ["Ferns", "Mosses"],
+        message: (key) => (key === "Mosses" ? "No mosses." : null),
+      },
+    });
+
+    act(() => reportWidth(300));
+
+    const groupHeader = within(grid("Plant table"))
+      .getByText("Ferns")
+      .closest("td, th");
+    const message = within(grid("Plant table"))
+      .getByText("No mosses.")
+      .closest("td");
+    expect(groupHeader).toHaveAttribute("colspan", "2");
+    expect(message).toHaveAttribute("colspan", "2");
+  });
+
+  it("lets a sized name take the rest once no column without a width shows", () => {
+    stubResizeObserver();
+    render(
+      <div>
+        <DataTable
+          label="Plant table"
+          columns={createDataTableColumns<Plant>((helper) => [
+            helper.accessor("name", { header: "Name", meta: { width: 40 } }),
+            helper.accessor("colour", {
+              header: "Colour",
+              meta: { priority: 1 },
+            }),
+            helper.accessor("status", {
+              header: "Status",
+              meta: { width: 32 },
+            }),
+          ])}
+          data={plants}
+          getRowId={(plant) => plant.name}
+        />
+      </div>,
+    );
+    const name = () => screen.getByRole("columnheader", { name: "Name" });
+
+    // Name 10rem, Colour its 8rem, Status 8rem.
+    act(() => reportWidth(416));
+    expect(headers()).toEqual(["Name", "Colour", "Status"]);
+    expect(name().style.width).not.toBe("");
+    act(() => reportWidth(415));
+    expect(headers()).toEqual(["Name", "Status"]);
+    expect(name().style.width).toBe("");
+  });
+
+  it("frees a wide column's width once hiding is spent, so the table still fits", () => {
+    stubResizeObserver();
+    render(
+      <div>
+        <DataTable
+          label="Plant table"
+          columns={createDataTableColumns<Plant>((helper) => [
+            helper.accessor("name", { header: "Name" }),
+            helper.accessor("colour", {
+              header: "Colour",
+              meta: { width: 40, priority: 1 },
+            }),
+            helper.accessor("status", {
+              header: "Status",
+              meta: { width: 62 },
+            }),
+            helper.accessor("origin", {
+              header: "Origin",
+              meta: { width: 10 },
+            }),
+          ])}
+          data={plants}
+          getRowId={(plant) => plant.name}
+        />
+      </div>,
+    );
+    const width = (name: string) =>
+      screen.getByRole("columnheader", { name }).style.width;
+
+    // Name 8rem, Colour 10rem, Status 15.5rem, Origin 2.5rem.
+    act(() => reportWidth(575));
+    expect(headers()).toEqual(["Name", "Status", "Origin"]);
+    expect(width("Status")).not.toBe("");
+    // Hiding is spent: Status shares what is left with the name.
+    act(() => reportWidth(415));
+    expect(headers()).toEqual(["Name", "Status", "Origin"]);
+    expect(width("Status")).toBe("");
+    // A column no wider than the name's 8rem keeps its width.
+    expect(width("Origin")).not.toBe("");
+    act(() => reportWidth(416));
+    expect(width("Status")).not.toBe("");
   });
 });

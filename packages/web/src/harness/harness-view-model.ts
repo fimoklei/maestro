@@ -4,65 +4,8 @@ import type {
   HarnessStageRead,
   HarnessState,
 } from "@maestro/core";
+import { freshnessLine } from "../ui/freshness";
 import { STAGE_NAMES } from "./stage-copy";
-
-const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
-
-// Fixed locale: the strip's date must not change shape with the browser's.
-const dayAndMonth = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-});
-
-// Null when the string is not a moment, so a hand-edited config reads as
-// "never read" instead of throwing inside the date formatter (#516).
-export const ago = (iso: string, now: Date): string | null => {
-  const at = Date.parse(iso);
-  if (Number.isNaN(at)) {
-    return null;
-  }
-  const elapsed = now.getTime() - at;
-  if (elapsed < MINUTE) {
-    return "just now";
-  }
-  if (elapsed < HOUR) {
-    return `${Math.floor(elapsed / MINUTE)} min ago`;
-  }
-  if (elapsed < DAY) {
-    return `${Math.floor(elapsed / HOUR)} h ago`;
-  }
-  return `on ${dayAndMonth.format(new Date(iso))}`;
-};
-
-// `on 20 Jul` reads as a date, `4 min ago` as a distance — both follow
-// "Read", so the prefix is not repeated.
-export const freshnessLabel = (
-  freshness: HarnessFreshness,
-  now: Date,
-  reading = false,
-): string => {
-  // A read in flight outranks every dated reading: this slot is the only
-  // feedback the author gets while one runs.
-  if (reading) {
-    return "Reading GitHub…";
-  }
-  const since =
-    freshness.lastFetchedAt === null ? null : ago(freshness.lastFetchedAt, now);
-  if (freshness.outcome === null) {
-    return "Not read yet";
-  }
-  if (freshness.outcome === "fetched") {
-    return since === null ? "Not read yet" : `Read ${since}`;
-  }
-  // A failure never claims a verdict GitHub has not given: no permission gate,
-  // no expired-token guess (#516).
-  const cause = freshness.outcome === "offline" ? "Offline" : "Read failed";
-  return since === null
-    ? `${cause} — never read`
-    : `${cause} — last read ${since}`;
-};
 
 // The stage header's meta slot carries at most one reading, never two (#838),
 // and never a routine read age: null where a successful read has nothing to name (#1218).
@@ -148,11 +91,7 @@ export const stageSections = (state: HarnessState): StageSection[] =>
   ].map((section) => ({ ...section, title: STAGE_NAMES[section.stage] }));
 
 // Counts, never statuses: the row itself states why it is where it is (#868).
-export const harnessAnnouncement = (
-  state: HarnessState,
-  now: Date,
-  reading = false,
-): string => {
+export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
   const stages = stageSections(state).map((section) => {
     if (section.read.outcome !== "read") {
       return `${section.title} was not read.`;
@@ -163,14 +102,15 @@ export const harnessAnnouncement = (
     }
     return `${section.title} has ${count} change${count === 1 ? "" : "s"}.`;
   });
-  return `${stages.join(" ")} ${freshnessLabel(state.freshness, now, reading)}.`;
-};
-
-// Only when every stage answered is "No changes yet" a fact.
-export const journeyConfirmedEmpty = (state: HarnessState): boolean =>
-  [state.stages.proposal, state.stages.review, state.stages.release].every(
-    (stage) => stage.outcome === "read" && stage.rows.length === 0,
+  const line = freshnessLine(
+    {
+      readAt: [state.freshness.lastFetchedAt],
+      outcome: state.freshness.outcome,
+    },
+    now,
   );
+  return `${stages.join(" ")} ${line}.`;
+};
 
 // `offline` and `fetch-failed` are the two no-answer classes, and only they
 // close Release: a plan off a picture the remote never answered for could

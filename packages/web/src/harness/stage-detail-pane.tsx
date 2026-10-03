@@ -1,8 +1,6 @@
 import { TYPE_WORD } from "../inventory/type-filter";
 import { DetailPane } from "../ui/detail-pane";
-import { FactList, FactRow } from "../ui/fact-list";
-import { FootActions, firstEnabled } from "../ui/foot-actions";
-import { Notice, type NoticeContent } from "../ui/notice";
+import type { NoticeContent } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import type { HarnessTableRow } from "./harness-columns";
 import { CONCURRENT_CHANGE_NOTICE } from "./notice-copy";
@@ -37,10 +35,7 @@ export function StageDetailPane({
   onClose: () => void;
   getTriggerElement: (key: string) => HTMLElement | null;
 }) {
-  const reviewers = reviewerLine(row);
-  const crossStage = crossStageLine(row);
   const alsoIn = alsoInWords(row);
-  const deployed = deployedCopiesLine(row);
   return (
     <DetailPane
       title={row.skill}
@@ -49,48 +44,34 @@ export function StageDetailPane({
       onPage={onPage}
       onClose={onClose}
       getTriggerElement={getTriggerElement}
-      actions={
-        row.items.length === 0 ? undefined : (
-          <FootActions items={row.items} primary={firstEnabled(row.items)} />
-        )
-      }
-    >
-      <FactList>
-        <FactRow label="Type">{TYPE_WORD.skill}</FactRow>
-        <FactRow label="Stage">{STAGE_NAMES[row.stage]}</FactRow>
-        <FactRow label="Status">
-          <StatusBadge reading={row.reading} />
-        </FactRow>
-        <FactRow label="Pull request">
-          <PullRequestCell row={row} />
-        </FactRow>
-        {alsoIn === "" ? null : <FactRow label="Also in">{alsoIn}</FactRow>}
-      </FactList>
-      <div className="mt-section flex flex-col gap-tight text-prose">
-        <p className="m-0 text-gray-12">{detailSentence(row, context)}</p>
-        {reviewers === null ? null : (
-          <p className="m-0 text-gray-11">{reviewers}</p>
-        )}
-        {crossStage === null ? null : (
-          <p className="m-0 text-gray-11">{crossStage}</p>
-        )}
-        {deployed === null ? null : (
-          <p className="m-0 text-gray-11">{deployed}</p>
-        )}
-      </div>
-      {/* Stated where the press was made: a refusal changed nothing, and the
-          press is still here (#577). */}
-      {failure === null ? null : (
-        <div className="mt-cell">
-          <Notice trigger="user-action" notice={failure} />
-        </div>
-      )}
-      {row.concurrentChange ? (
+      facts={[
+        { label: "Type", value: TYPE_WORD.skill },
+        { label: "Stage", value: STAGE_NAMES[row.stage] },
+        { label: "Status", value: <StatusBadge reading={row.reading} /> },
+        { label: "Pull request", value: <PullRequestCell row={row} /> },
+        alsoIn === "" ? null : { label: "Also in", value: alsoIn },
+      ]}
+      paragraph={[
+        detailSentence(row, context),
+        ...[
+          reviewerLine(row),
+          crossStageLine(row),
+          deployedCopiesLine(row),
+        ].filter((line) => line !== null),
+      ]}
+      notices={[
+        // Stated where the press was made: a refusal changed nothing, and the
+        // press is still here (#577).
+        ...(failure === null
+          ? []
+          : [{ content: failure, trigger: "user-action" as const }]),
         // Painted with the row, not in answer to a press, so it stays polite.
-        <div className="mt-cell">
-          <Notice trigger="load" notice={CONCURRENT_CHANGE_NOTICE} />
-        </div>
-      ) : null}
-    </DetailPane>
+        ...(row.concurrentChange
+          ? [{ content: CONCURRENT_CHANGE_NOTICE, trigger: "load" as const }]
+          : []),
+      ]}
+      foot={row.items}
+      leadsWithNextStep
+    />
   );
 }

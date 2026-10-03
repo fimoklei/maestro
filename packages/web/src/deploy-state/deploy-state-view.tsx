@@ -1,30 +1,23 @@
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { ListFilter, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
-import { toggleStaged } from "../inventory/bulk-selection";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
-import { DataTable } from "../ui/data-table";
-import { DetailPaneSlot } from "../ui/detail-pane";
-import { FootActions, type FootItem } from "../ui/foot-actions";
-import { IconButton } from "../ui/icon-button";
-import { Notice, type NoticeContent } from "../ui/notice";
-import { OptionMenu } from "../ui/option-menu";
-import { Panel } from "../ui/panel";
+import { freshnessLine } from "../ui/freshness";
+import { Notice } from "../ui/notice";
+import { TableScreen } from "../ui/table-screen";
 import { useNow } from "../ui/use-now";
-import { useReadAnnouncement } from "../ui/use-read-announcement";
-import { useReadSkeleton } from "../ui/use-read-skeleton";
+import { useTableScreen } from "../ui/use-table-screen";
+import { useViewOptions } from "../ui/use-view-options";
+import { useWriteAction } from "../ui/use-write-action";
 import {
   deployStateColumns,
   type TargetAction,
   type TargetTableRow,
 } from "./deploy-state-columns";
 import {
-  DISPLAY_LABEL,
-  FILTER_LABEL,
   GLOBAL,
   GLOBAL_NOT_READ,
   NO_FILTER_MATCH,
@@ -34,11 +27,9 @@ import {
   REPOS_NOT_READ,
   REPOSITORIES,
   REREAD_LABEL,
-  TABLE_LABEL,
   TARGET_LABEL,
   targetCount,
 } from "./deploy-state-copy";
-import { freshnessLine } from "./freshness-line";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { TargetDetailPane } from "./target-detail-pane";
@@ -52,17 +43,18 @@ import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdateTarget } from "./use-update-target";
 
-type KindFilter = "all" | typeof GLOBAL | typeof REPOSITORIES;
-
 const KIND_OPTIONS = [
-  { value: "all", label: "All" },
   { value: GLOBAL, label: GLOBAL },
   { value: REPOSITORIES, label: REPOSITORIES },
 ];
-const GROUP_OPTIONS = [
-  { value: "kind", label: TARGET_LABEL },
-  { value: "none", label: "None" },
-];
+const BY_TARGET = {
+  value: "kind",
+  label: TARGET_LABEL,
+  groups: {
+    key: (row: TargetTableRow) => row.group,
+    order: [GLOBAL, REPOSITORIES],
+  },
+};
 const COLUMN_OPTIONS = [
   { value: "release", label: "Release" },
   { value: "status", label: "Status" },
@@ -86,50 +78,68 @@ export function DeployStateView() {
   });
   const repoDrift = useQueries({ queries: repoPaths.map(driftQueryOptions) });
   const retry = useRetryOperation();
+  const location = useLocation();
 
-  // Drift is left out: its apm run is slow, so the rows never wait for it.
-  const reading =
-    registry.isFetching ||
-    globalDeploy.isFetching ||
-    repoDeploy.some((query) => query.isFetching);
-  const skeleton = useReadSkeleton(reading);
-
-  // Invalidated, not refetched by hand: that also drops drift's 5-minute cache,
-  // so a pressed re-read is really fresh.
-  const reread = () => {
-    skeleton.press();
-    queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
-    queryClient.invalidateQueries({ queryKey: ["deploy-state"] });
-    queryClient.invalidateQueries({ queryKey: ["drift"] });
-  };
+  const failures = [
+    ...(globalDeploy.isError ? [GLOBAL_NOT_READ] : []),
+    ...(registry.isError ? [REPOS_NOT_READ] : []),
+  ];
+  const isRead = globalDeploy.isSuccess && registry.isSuccess;
+  const screen = useTableScreen({
+    name: "Deploy-state",
+    // Drift is left out: its apm run is slow, so the rows never wait for it.
+    reading:
+      registry.isFetching ||
+      globalDeploy.isFetching ||
+      repoDeploy.some((query) => query.isFetching),
+    settled: isRead,
+    failure: failures[0] ?? null,
+    // Invalidated, not refetched by hand: that also drops drift's 5-minute
+    // cache, so a pressed re-read is really fresh.
+    onReread: () => {
+      queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
+      queryClient.invalidateQueries({ queryKey: ["deploy-state"] });
+      queryClient.invalidateQueries({ queryKey: ["drift"] });
+    },
+    openOnArrival:
+      (location.state as { openTarget?: string } | null)?.openTarget ?? null,
+  });
 
   const now = useNow();
-  const [kind, setKind] = useState<KindFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<ReadonlySet<string>>(
-    new Set(),
-  );
-  const [grouping, setGrouping] = useState<"kind" | "none">("kind");
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
-  const location = useLocation();
-  const [selected, setSelected] = useState<string | null>(
-    () =>
-      (location.state as { openTarget?: string } | null)?.openTarget ?? null,
-  );
   // The dialog a menu item asked the pane's foot to open.
   const [intent, setIntent] = useState<{
     dialog: TargetDialog;
     nonce: number;
   } | null>(null);
-  const [order, setOrder] = useState<string[]>([]);
-  const gridRef = useRef<HTMLTableElement>(null);
-  const getTriggerElement = useCallback(() => gridRef.current, []);
+  // Opening a row any other way drops a menu item's dialog.
+  const state = {
+    ...screen,
+    open: (id: string | null) => {
+      setIntent(null);
+      screen.open(id);
+    },
+  };
+  const openFromMenu = useCallback(
+    (id: string, dialog: TargetDialog) => {
+      screen.open(id);
+      setIntent((current) => ({ dialog, nonce: (current?.nonce ?? 0) + 1 }));
+    },
+    [screen.open],
+  );
 
-  const open = useCallback((id: string | null, dialog: TargetDialog) => {
-    setSelected(id);
-    setIntent((current) =>
-      id === null ? null : { dialog, nonce: (current?.nonce ?? 0) + 1 },
-    );
-  }, []);
+  const pendingOf = (target: DeployTarget) =>
+    targets.find((row) => sameTarget(target, row.wire));
+  const retryWrite = useWriteAction(retry, {
+    report: screen.report,
+    action: ({ target }) => pendingOf(target)?.pending?.kind ?? "update",
+    show: "row",
+    // A finished deploy or removal shows as the row's new status alone.
+    name: ({ completed }, { target }) =>
+      completed.kind === "update"
+        ? (pendingOf(target)?.updateName ?? null)
+        : null,
+    failure: () => null,
+  });
 
   const retrying = (target: DeployTarget) =>
     retry.isPending && sameTarget(retry.variables?.target, target);
@@ -163,10 +173,13 @@ export function DeployStateView() {
         navigate("/inventory");
         return;
       }
-      open(row.id, action === "update" || action === "import" ? action : null);
-      if (action === "retry") retry.mutate({ target: row.wire });
+      openFromMenu(
+        row.id,
+        action === "update" || action === "import" ? action : null,
+      );
+      if (action === "retry") retryWrite.run({ target: row.wire });
     },
-    [navigate, open, retry],
+    [navigate, openFromMenu, retryWrite],
   );
   const onActionRef = useRef(onAction);
   onActionRef.current = onAction;
@@ -178,136 +191,47 @@ export function DeployStateView() {
     [],
   );
 
-  const filterCount = (kind === "all" ? 0 : 1) + statusFilter.size;
-  const visible = rows.filter(
-    (row) =>
-      (kind === "all" || row.group === kind) &&
-      (statusFilter.size === 0 ||
-        (row.status !== null && statusFilter.has(row.status.word))),
-  );
+  const view = useViewOptions(rows, {
+    kind: {
+      label: TARGET_LABEL,
+      options: KIND_OPTIONS,
+      of: (row) => row.group,
+    },
+    status: {
+      words: TARGET_STATUS_WORDS,
+      of: (row) => row.status?.word ?? null,
+      unread: null,
+    },
+    groupings: [BY_TARGET],
+    initialGrouping: BY_TARGET.value,
+    columns: COLUMN_OPTIONS,
+    unavailable: "no targets yet",
+  });
 
-  const notices: NoticeContent[] = [
-    ...(globalDeploy.isError
-      ? [
-          {
-            ...GLOBAL_NOT_READ,
-            action: { label: REREAD_LABEL, onClick: reread },
-          },
-        ]
-      : []),
-    ...(registry.isError
-      ? [
-          {
-            ...REPOS_NOT_READ,
-            action: { label: REREAD_LABEL, onClick: reread },
-          },
-        ]
-      : []),
-  ];
-  const announcement = useReadAnnouncement(
-    "Deploy-state",
-    skeleton.visible,
-    notices[0] ?? null,
-  );
   const noTools =
     globalDeploy.isSuccess && globalDeploy.data.tools.length === 0;
-
-  const isRead = globalDeploy.isSuccess && registry.isSuccess;
+  const noRepos = registry.isSuccess && repoPaths.length === 0;
   const isColdStart =
     isRead &&
     globalDeploy.data.primitives.length === 0 &&
     globalDeploy.data.skipped.length === 0 &&
     repoPaths.length === 0;
   const freshness = freshnessLine(
-    [
-      globalDeploy.dataUpdatedAt,
-      globalDrift.dataUpdatedAt,
-      ...repoDeploy.map((query) => query.dataUpdatedAt),
-      ...repoDrift.map((query) => query.dataUpdatedAt),
-    ],
+    {
+      readAt: [
+        globalDeploy.dataUpdatedAt,
+        globalDrift.dataUpdatedAt,
+        ...repoDeploy.map((query) => query.dataUpdatedAt),
+        ...repoDrift.map((query) => query.dataUpdatedAt),
+      ],
+      outcome: "untracked",
+    },
     now,
   );
 
-  const selectedRow = rows.find((row) => row.id === selected) ?? null;
-  const placed = selectedRow ? targetPaneActions(selectedRow, onAction) : null;
-  const openIndex = selected === null ? -1 : order.indexOf(selected);
-  const showTable = skeleton.visible || rows.length > 0;
-  const none = rows.length === 0 ? "no targets yet" : undefined;
-
-  const band2 = (
-    <div className="ml-auto flex items-center gap-inline">
-      {freshness ? (
-        <span className="text-gray-11 text-meta">{freshness}</span>
-      ) : null}
-      <IconButton label={REREAD_LABEL} onClick={reread}>
-        <RefreshCw aria-hidden="true" strokeWidth={1.5} className="size-4" />
-      </IconButton>
-      <OptionMenu
-        label={FILTER_LABEL}
-        unavailable={none}
-        count={filterCount}
-        icon={
-          <ListFilter aria-hidden="true" strokeWidth={1.5} className="size-4" />
-        }
-        sections={[
-          {
-            kind: "radio",
-            label: TARGET_LABEL,
-            options: KIND_OPTIONS,
-            value: kind,
-            onChange: (value) => setKind(value as KindFilter),
-          },
-          {
-            kind: "check",
-            label: "Status",
-            options: TARGET_STATUS_WORDS.map((word) => ({
-              value: word,
-              label: word,
-            })),
-            values: statusFilter,
-            onToggle: (value) =>
-              setStatusFilter((current) => toggleStaged(current, value)),
-          },
-        ]}
-      />
-      <OptionMenu
-        label={DISPLAY_LABEL}
-        unavailable={none}
-        icon={
-          <SlidersHorizontal
-            aria-hidden="true"
-            strokeWidth={1.5}
-            className="size-4"
-          />
-        }
-        sections={[
-          {
-            kind: "radio",
-            label: "Group by",
-            options: GROUP_OPTIONS,
-            value: grouping,
-            onChange: (value) => setGrouping(value as "kind" | "none"),
-          },
-          {
-            kind: "check",
-            label: "Columns",
-            options: COLUMN_OPTIONS,
-            values: new Set(
-              COLUMN_OPTIONS.map((option) => option.value).filter(
-                (value) => !hidden.has(value),
-              ),
-            ),
-            onToggle: (value) =>
-              setHidden((current) => toggleStaged(current, value)),
-          },
-        ]}
-      />
-    </div>
-  );
-
   return (
-    <Panel
-      title="Deploy-state"
+    <TableScreen
+      state={state}
       meta={
         isColdStart
           ? NOTHING_DEPLOYED
@@ -315,125 +239,96 @@ export function DeployStateView() {
             ? targetCount(rows.length)
             : undefined
       }
-      band2={band2}
-    >
-      <div role="status" className="sr-only">
-        {announcement}
-      </div>
-      <div className="relative flex h-[100cqh]">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {notices.length > 0 || noTools ? (
-            <div className="flex flex-col gap-inline p-panel">
-              {notices.map((notice) => (
-                <Notice key={notice.label} trigger="load" notice={notice} />
-              ))}
-              {noTools ? (
-                <>
-                  <Notice trigger="load" notice={NO_TOOL_DETECTED} />
-                  {globalDeploy.data.skipped.map((entry, index) => (
-                    <p
-                      key={skippedEntryKey(entry, index)}
-                      className="m-0 text-gray-11 text-meta"
-                    >
-                      {skippedEntryText(entry)}
-                    </p>
-                  ))}
-                </>
-              ) : null}
-            </div>
-          ) : null}
-          {showTable ? (
-            <div
-              aria-busy={reading || undefined}
-              className="min-h-0 flex-1 overflow-auto"
-            >
-              <DataTable
-                ref={gridRef}
-                label={TABLE_LABEL}
-                columns={columns}
-                data={visible}
-                getRowId={(row) => row.id}
-                loading={skeleton.visible}
-                skeletonRows={Math.min(rows.length || 8, 30)}
-                columnVisibility={Object.fromEntries(
-                  [...hidden].map((id) => [id, false]),
-                )}
-                groups={
-                  grouping === "kind"
-                    ? { key: (row) => row.group, order: [GLOBAL, REPOSITORIES] }
-                    : undefined
-                }
-                openRowId={selected}
-                onRowOpen={(row) =>
-                  open(selected === row.id ? null : row.id, null)
-                }
-                onRowOrderChange={setOrder}
-                empty={NO_FILTER_MATCH}
+      freshness={
+        freshness === null ? null : (
+          <span className="text-gray-11 text-meta">{freshness}</span>
+        )
+      }
+      rereading={false}
+      firstReadRows={8}
+      rows={rows}
+      columns={columns}
+      rowId={(row) => row.id}
+      view={view}
+      noMatch={NO_FILTER_MATCH}
+      notice={
+        failures.length > 0 || noTools || noRepos ? (
+          <div className="flex flex-col gap-inline p-panel">
+            {failures.map((failure) => (
+              <Notice
+                key={failure.label}
+                trigger="load"
+                notice={{
+                  ...failure,
+                  action: {
+                    label: REREAD_LABEL,
+                    onClick: screen.reread,
+                  },
+                }}
               />
-            </div>
-          ) : null}
-          {registry.isSuccess && repoPaths.length === 0 ? (
-            <div className="p-panel">
+            ))}
+            {noTools ? (
+              <>
+                <Notice trigger="load" notice={NO_TOOL_DETECTED} />
+                {globalDeploy.data.skipped.map((entry, index) => (
+                  <p
+                    key={skippedEntryKey(entry, index)}
+                    className="m-0 text-gray-11 text-meta"
+                  >
+                    {skippedEntryText(entry)}
+                  </p>
+                ))}
+              </>
+            ) : null}
+            {noRepos ? (
               <p className="m-0 text-gray-11 text-meta">{NO_REPOSITORIES}</p>
-            </div>
-          ) : null}
-        </div>
-        {selectedRow && placed ? (
-          <DetailPaneSlot>
-            <TargetDetailPane
-              row={selectedRow}
-              position={
-                openIndex === -1
-                  ? null
-                  : { index: openIndex, count: order.length }
-              }
-              onPage={(step) => open(order[openIndex + step] ?? selected, null)}
-              onClose={() => open(null, null)}
-              getTriggerElement={getTriggerElement}
-              initialFocus={intent?.dialog ? null : undefined}
-              onRetry={() => retry.mutate({ target: selectedRow.wire })}
-              isRetrying={retrying(selectedRow.wire)}
-              onReread={reread}
-              now={now}
-              update={placed.update}
-              actions={
-                <TargetActions
-                  key={`${selectedRow.id}:${intent?.nonce ?? 0}`}
-                  row={selectedRow}
-                  dialog={intent?.dialog ?? null}
-                  items={placed.foot}
-                  primary={placed.footPrimary}
-                />
-              }
-            />
-          </DetailPaneSlot>
-        ) : null}
-      </div>
-    </Panel>
+            ) : null}
+          </div>
+        ) : undefined
+      }
+      pane={(row, frame) => {
+        const placed = targetPaneActions(row, onAction);
+        return (
+          <TargetDetailPane
+            row={row}
+            {...frame}
+            initialFocus={intent?.dialog ? null : undefined}
+            onRetry={() => retryWrite.run({ target: row.wire })}
+            isRetrying={retrying(row.wire)}
+            onReread={screen.reread}
+            now={now}
+            update={placed.update}
+            foot={placed.foot}
+            dialogs={
+              <TargetActions
+                key={`${row.id}:${intent?.nonce ?? 0}`}
+                row={row}
+                dialog={intent?.dialog ?? null}
+              />
+            }
+          />
+        );
+      }}
+    />
   );
 }
 
 type TargetDialog = "update" | "import" | null;
 
-// The pane's foot. It owns the Update mutation, so the dialog stays mounted
-// through the run and keeps its outcome (#980).
+// The dialogs the pane's foot opens. It owns the Update mutation, so the
+// dialog stays mounted through the run and keeps its outcome (#980).
 function TargetActions({
   row,
   dialog,
-  items,
-  primary,
 }: {
   row: TargetRow;
   dialog: TargetDialog;
-  items: FootItem[];
-  primary: string | null;
 }) {
   const update = useUpdateTarget();
   const openUpdate = dialog === "update";
   const [importing, setImporting] = useState(dialog === "import");
   return (
     <>
-      <FootActions items={items} primary={primary} />
       {importing ? (
         <ImportLocalEditsAction
           targetName={row.updateName}

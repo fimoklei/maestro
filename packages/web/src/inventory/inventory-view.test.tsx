@@ -65,6 +65,7 @@ const primitives: Primitive[] = [
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 function stubPendingFetch() {
@@ -81,8 +82,7 @@ const baseProps: Props = {
   repos: [],
   registryReady: true,
   targets: [],
-  notice: null,
-  loading: false,
+  failure: null,
   reading: false,
   onReread: () => {},
 };
@@ -932,26 +932,37 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
 });
 
 describe("InventoryView — reading", () => {
-  const region = () => screen.getByTestId("inventory-status-region");
+  // The screen's own region; a notice carries a role of its own.
+  const region = () => {
+    const found = screen
+      .getAllByRole("status")
+      .find((each) => each.classList.contains("sr-only"));
+    if (found === undefined) throw new Error("no status region");
+    return found;
+  };
 
   it("draws skeleton rows while a slow read runs and marks the table busy", () => {
-    renderView({ primitives: undefined, loading: true, reading: true });
+    vi.useFakeTimers();
+    renderView({ primitives: undefined, reading: true });
+    act(() => vi.advanceTimersByTime(1300));
 
     expect(grid()).toHaveAttribute("aria-busy", "true");
     expect(within(grid()).getAllByRole("row").length).toBeGreaterThan(1);
   });
 
   it("announces a read when its skeleton appears, then the Inventory loaded", () => {
+    vi.useFakeTimers();
     const view = renderView({ primitives: undefined });
-    expect(region()).toHaveAttribute("role", "status");
     expect(region()).toBeEmptyDOMElement();
 
     view.rerender(
-      <InventoryView {...baseProps} primitives={undefined} loading reading />,
+      <InventoryView {...baseProps} primitives={undefined} reading />,
     );
+    act(() => vi.advanceTimersByTime(1300));
     expect(region()).toHaveTextContent("Loading the Inventory…");
 
     view.rerender(<InventoryView {...baseProps} />);
+    act(() => vi.advanceTimersByTime(500));
     expect(region()).toHaveTextContent("Inventory loaded.");
   });
 
@@ -960,16 +971,23 @@ describe("InventoryView — reading", () => {
     stubPendingFetch();
     renderView({
       onReread,
-      notice: {
+      failure: {
         level: "error",
         label: "Could not read Inventory",
         message: "Select Re-read Inventory to try again.",
-        action: { label: "Re-read Inventory", onClick: onReread },
       },
     });
 
     expect(screen.getByText("Could not read Inventory")).toBeInTheDocument();
     expect(screen.getByRole("gridcell", { name: "tdd" })).toBeInTheDocument();
+    const notice = screen
+      .getByText("Could not read Inventory")
+      .closest<HTMLElement>('[role="status"]');
+    if (notice === null) throw new Error("the notice is not a status region");
+    await userEvent.click(
+      within(notice).getByRole("button", { name: "Re-read Inventory" }),
+    );
+    expect(onReread).toHaveBeenCalledOnce();
   });
 });
 

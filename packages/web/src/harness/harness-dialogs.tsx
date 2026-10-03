@@ -1,29 +1,15 @@
 import type { HarnessStageRow, ReleasePlan, SemverStep } from "@maestro/core";
 import type { ComponentProps } from "react";
 import { useFolderChooser } from "../ui/use-folder-chooser";
+import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { ImportDialog } from "./import-dialog";
 import type { ImportCheckLoad } from "./import-view-model";
-import {
-  deletionNotice,
-  importNotice,
-  localDeletionNotice,
-  proposalNotice,
-  publishReleaseNotice,
-  releasePlanNotice,
-  restoreNotice,
-} from "./notice-copy";
+import { importNotice, releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { RestoreDialog } from "./restore-dialog";
-import type {
-  useDeleteLocalSkill,
-  useImportCheck,
-  usePromoteDeletion,
-  useProposalAction,
-  usePublishRelease,
-  useReleasePlan,
-  useRestoreSkill,
-} from "./use-harness";
+import type { useImportCheck, useReleasePlan } from "./use-harness";
+import type { useHarnessPresses } from "./use-harness-presses";
 import type { useImportFlow } from "./use-import-flow";
 import { WithdrawDialog } from "./withdraw-dialog";
 
@@ -35,22 +21,24 @@ export type RestoreTarget = {
   hasRequest: boolean;
 };
 
+type Presses = ReturnType<typeof useHarnessPresses>;
+
 export type HarnessDialogsProps = {
   origin: string;
   importFlow: ReturnType<typeof useImportFlow>;
   deletionRow: HarnessStageRow | null;
-  deletion: ReturnType<typeof usePromoteDeletion>;
-  deleteLocal: ReturnType<typeof useDeleteLocalSkill>;
+  deletion: Presses["deletionWrite"];
+  deleteLocal: Presses["deleteLocalWrite"];
   onDeletionClose: () => void;
   restoring: RestoreTarget | null;
-  restore: ReturnType<typeof useRestoreSkill>;
+  restore: Presses["restoreWrite"];
   onRestoreClose: () => void;
   withdrawing: { skill: string; number: number } | null;
-  proposalAction: ReturnType<typeof useProposalAction>;
+  proposalAction: Presses["proposalWrite"];
   onWithdrawClose: () => void;
   planOpen: boolean;
   plan: ReturnType<typeof useReleasePlan>;
-  publish: ReturnType<typeof usePublishRelease>;
+  publish: Pick<WriteAction<unknown, unknown>, "phase" | "failure">;
   onPlanClose: () => void;
   onPublish: (step: SemverStep, plan: ReleasePlan) => void;
 };
@@ -71,8 +59,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           onNameChange={props.importFlow.setEditedName}
           onClose={props.importFlow.close}
           onImport={props.importFlow.submit}
-          importing={props.importFlow.importSkill.isPending}
-          importError={importNotice(props.importFlow.importSkill.error)}
+          importing={props.importFlow.importWrite.phase === "running"}
+          importError={props.importFlow.importWrite.failure}
         />
       ) : null}
       {deletionRow !== null && mode !== null ? (
@@ -84,11 +72,11 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           // and the way forward is another confirmation (#580).
           onConfirm={() =>
             mode.kind === "local"
-              ? props.deleteLocal.mutate(
+              ? props.deleteLocal.run(
                   { name: deletionRow.skill },
                   { onSuccess: props.onDeletionClose },
                 )
-              : props.deletion.mutate(
+              : props.deletion.run(
                   {
                     name: deletionRow.skill,
                     seenRemoteTree: mode.seenRemoteTree,
@@ -97,14 +85,11 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
                 )
           }
           deleting={
-            mode.kind === "local"
-              ? props.deleteLocal.isPending
-              : props.deletion.isPending
+            (mode.kind === "local" ? props.deleteLocal : props.deletion)
+              .phase === "running"
           }
           deleteError={
-            mode.kind === "local"
-              ? localDeletionNotice(props.deleteLocal.error)
-              : deletionNotice(props.deletion.error)
+            (mode.kind === "local" ? props.deleteLocal : props.deletion).failure
           }
         />
       ) : null}
@@ -119,7 +104,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           // the confirmation the author gave still stands.
           onConfirm={() =>
             props.restoring !== null &&
-            props.restore.mutate(
+            props.restore.run(
               {
                 name: props.restoring.skill,
                 seenHeadCommit: props.restoring.commit,
@@ -128,8 +113,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
               { onSuccess: props.onRestoreClose },
             )
           }
-          restoring={props.restore.isPending}
-          restoreError={restoreNotice(props.restore.error)}
+          restoring={props.restore.phase === "running"}
+          restoreError={props.restore.failure}
         />
       ) : null}
       {props.withdrawing !== null ? (
@@ -139,7 +124,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           onClose={props.onWithdrawClose}
           onConfirm={() =>
             props.withdrawing !== null &&
-            props.proposalAction.mutate(
+            props.proposalAction.run(
               {
                 action: "withdraw",
                 name: props.withdrawing.skill,
@@ -148,8 +133,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
               { onSuccess: props.onWithdrawClose },
             )
           }
-          withdrawing={props.proposalAction.isPending}
-          withdrawError={proposalNotice(props.proposalAction.error)}
+          withdrawing={props.proposalAction.phase === "running"}
+          withdrawError={props.proposalAction.failure}
         />
       ) : null}
       {props.planOpen ? (
@@ -158,8 +143,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           load={planLoad(props.plan)}
           onClose={props.onPlanClose}
           onPublish={props.onPublish}
-          publishing={props.publish.isPending}
-          publishError={publishReleaseNotice(props.publish.error)}
+          publishing={props.publish.phase === "running"}
+          publishError={props.publish.failure}
         />
       ) : null}
     </>

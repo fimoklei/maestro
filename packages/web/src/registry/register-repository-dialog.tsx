@@ -18,7 +18,7 @@ export function RegisterRepositoryDialog({
   onPicked,
   chooser,
   error,
-  busy,
+  phase,
   onRegister,
   onClose,
 }: {
@@ -28,7 +28,7 @@ export function RegisterRepositoryDialog({
   chooser: FolderChooser;
   /** The refusal for the path in the field, stated under it. */
   error: string | undefined;
-  busy: boolean;
+  phase: "idle" | "running";
   onRegister: () => void;
   onClose: () => void;
 }) {
@@ -39,7 +39,7 @@ export function RegisterRepositoryDialog({
       title={REGISTER_TITLE}
       version={null}
       width={480}
-      phase={busy ? "running" : "idle"}
+      phase={phase}
       action={{
         label: REGISTER_REPOSITORY,
         verb: "register",
@@ -61,7 +61,7 @@ export function RegisterRepositoryDialog({
         onPicked={onPicked}
         chooser={chooser}
         error={error}
-        readOnly={busy}
+        readOnly={phase === "running"}
         // Pasting is always possible, so no browser guess gets in the way.
         autoComplete="off"
         spellCheck={false}

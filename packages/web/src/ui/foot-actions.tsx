@@ -2,11 +2,14 @@ import { ArrowUpRight } from "lucide-react";
 import { type ActionsMenuItem, orderedItems } from "./actions-menu";
 import { Button } from "./button";
 import { cn } from "./cn";
+import { Icon } from "./icon";
 
 // The row's ⋮ items as buttons, at most one of them primary.
 export type FootItem = ActionsMenuItem & {
   /** The accessible name where the label alone would not say what it acts on. */
   name?: string;
+  /** The next step its state names, which ranks it for the pane's primary. */
+  step?: "update" | "import";
 };
 
 // The primary where the ⋮ order already leads with the next step (#1065).
@@ -58,11 +61,7 @@ export function FootActions({
             )}
           >
             {item.label}
-            <ArrowUpRight
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-4"
-            />
+            <Icon of={ArrowUpRight} />
           </a>
         ),
       )}

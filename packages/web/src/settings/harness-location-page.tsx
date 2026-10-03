@@ -13,10 +13,8 @@ import { harnessMetaLine } from "../shell/use-harness-summary";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Notice } from "../ui/notice";
+import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
 import { Skeleton } from "../ui/skeleton";
-import { useReadAnnouncement } from "../ui/use-read-announcement";
-import { useReadSkeleton } from "../ui/use-read-skeleton";
-import { useStatusRegion } from "../ui/use-status-region";
 import { SetLocationDialog } from "./set-location-dialog";
 import {
   CHANGE_LOCATION,
@@ -45,15 +43,13 @@ export function HarnessLocationPage() {
   const harness = useHarness({ enabled: connected });
   const reading =
     config.isFetching || inventory.isFetching || harness.isFetching;
-  const skeleton = useReadSkeleton(reading);
   const dialog = useSetLocationDialog({
     onSet: (stored) =>
-      setWrite(doneSentence("setLocation", targetLabel(stored))),
+      status.report(doneSentence("setLocation", targetLabel(stored))),
   });
 
   const reread = () => {
-    skeleton.press();
-    setWrite("");
+    status.press();
     // The release on the Latest release line is the Harness read's.
     refreshInventoryReads(queryClient, { connectedPath: null, harness: true });
   };
@@ -63,9 +59,12 @@ export function HarnessLocationPage() {
   // Inventory rather than carrying it, as the control sits beside the facts.
   const readNotice = inventory.isError ? INVENTORY_NOT_READ : null;
   // A write's done sentence, until the next read.
-  const [region, setWrite] = useStatusRegion(
-    useReadAnnouncement(SCREEN, skeleton.visible, readNotice),
-  );
+  const status = useScreenStatus({
+    name: SCREEN,
+    reading,
+    notice: readNotice,
+    busy: dialog.busy ? ACTIONS.setLocation.busy : null,
+  });
   const release =
     harnessMetaLine(
       harness.isSuccess ? harness.data.releasedVersion : undefined,
@@ -79,7 +78,7 @@ export function HarnessLocationPage() {
     machine = true,
     github?: GitHubPage,
   ) =>
-    skeleton.visible ? (
+    status.skeleton ? (
       <SettingsRow name={name} control={<Skeleton className="w-40" />} />
     ) : (
       <SettingsRow
@@ -92,9 +91,7 @@ export function HarnessLocationPage() {
 
   return (
     <SettingsPanel title={SCREEN}>
-      <div role="status" className="sr-only">
-        {dialog.busy ? ACTIONS.setLocation.busy : region}
-      </div>
+      <ScreenStatusRegion status={status} />
       {/* Mounted before a failure is, so it is announced (#465). */}
       <Notice trigger="load" notice={readNotice} />
       <SettingsSection

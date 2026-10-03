@@ -4,6 +4,7 @@ import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
+import { StatusLine } from "../ui/status-line";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 
 const PATH_LABEL = "Inventory path or GitHub URL";
@@ -139,9 +140,9 @@ export function ConnectForm({
 
       {isPending ? (
         // No honest percentage and nothing safe to cancel midway (#554).
-        <p role="status" className="m-0 font-ui text-gray-11 text-meta">
+        <StatusLine>
           Connecting. A GitHub URL is cloned first, which can take a minute.
-        </p>
+        </StatusLine>
       ) : null}
 
       <div className="flex flex-wrap gap-inline">

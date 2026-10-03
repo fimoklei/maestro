@@ -33,9 +33,12 @@ import { HOVER_TRANSITION } from "./hover-transition";
 import { Skeleton } from "./skeleton";
 
 type DataTableColumnMeta = {
-  /** Width and narrow-screen hiding for the column's header and cells. */
   className?: string;
   align?: "start" | "end";
+  /** Fixed width in spacing steps; a column without one takes what is left. */
+  width?: number;
+  /** A narrow table hides the lowest priority first; without one, never. */
+  priority?: number;
 };
 
 const dataTableFeatures = tableFeatures({
@@ -127,6 +130,19 @@ export function DataTable<T extends RowData>({
   onRowOrderChange,
   ref,
 }: DataTableProps<T>) {
+  const headRow = useRef<HTMLTableRowElement>(null);
+  const available = useAvailableRem(headRow);
+  const fit = fitColumns(
+    columns
+      .map((column) => ({
+        id: column.id ?? (column as { accessorKey?: string }).accessorKey ?? "",
+        width: column.meta?.width,
+        priority: column.meta?.priority,
+      }))
+      .filter((column) => columnVisibility?.[column.id] !== false),
+    // The checkbox column is w-8.
+    available === null || selection === undefined ? available : available - 2,
+  );
   const table = useTable({
     features: dataTableFeatures,
     columns,
@@ -135,8 +151,17 @@ export function DataTable<T extends RowData>({
     enableSortingRemoval: false,
     sortDescFirst: false,
     // Always controlled: dropping the state would keep the last one hidden.
-    state: { columnVisibility: columnVisibility ?? {} },
+    state: {
+      columnVisibility: {
+        ...columnVisibility,
+        ...Object.fromEntries(fit.hidden.map((id) => [id, false])),
+      },
+    },
   });
+  const widthOf = (id: string, width: number | undefined) =>
+    width === undefined || fit.fluid.includes(id)
+      ? undefined
+      : `calc(var(--spacing) * ${width})`;
   const sortedRows = table.getRowModel().rows;
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const toggleGroup = (key: string) =>
@@ -272,27 +297,7 @@ export function DataTable<T extends RowData>({
     }
   };
 
-  // A span over a column a narrow panel hides adds an empty column that takes
-  // the flexible column's width (#1184), so full-width rows span what shows.
-  const headRow = useRef<HTMLTableRowElement>(null);
-  const [shownCount, setShownCount] = useState<number | null>(null);
-  const columnCount = leafColumns.length + (selection ? 1 : 0);
-  useLayoutEffect(() => {
-    const row = headRow.current;
-    if (row === null || columnCount === 0) return;
-    const count = () =>
-      setShownCount(
-        [...row.cells].filter(
-          (cell) => getComputedStyle(cell).display !== "none",
-        ).length,
-      );
-    count();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(count);
-    observer.observe(row);
-    return () => observer.disconnect();
-  }, [columnCount]);
-  const spanCount = shownCount ?? columnCount;
+  const spanCount = leafColumns.length + (selection ? 1 : 0);
 
   const renderRow = (row: (typeof rows)[number], index: number) => {
     const id = row.id;
@@ -436,6 +441,7 @@ export function DataTable<T extends RowData>({
                 <th
                   key={header.id}
                   scope="col"
+                  style={{ width: widthOf(header.column.id, meta?.width) }}
                   aria-sort={
                     !canSort
                       ? undefined
@@ -539,6 +545,80 @@ export function DataTable<T extends RowData>({
       </tbody>
     </table>
   );
+}
+
+const NAME_REM = 8;
+
+// Which columns a table `available` rem wide hides, and which sized columns
+// drop their width to share what is left: the name once no column without a
+// width shows, then, once hiding is spent, every column wider than the name's
+// floor, widest first, until the table fits.
+function fitColumns(
+  columns: { id: string; width?: number; priority?: number }[],
+  available: number | null,
+): { hidden: string[]; fluid: string[] } {
+  let shown = columns;
+  const hidden: string[] = [];
+  const freed: string[] = [];
+  const fillerOf = (set: typeof columns) =>
+    set.some((column) => column.width === undefined)
+      ? null
+      : (set.find((column) => column.priority === undefined)?.id ?? null);
+  const needed = (set: typeof columns) => {
+    const filler = fillerOf(set);
+    return set.reduce(
+      (sum, column) =>
+        sum +
+        (column.width === undefined ||
+        column.id === filler ||
+        freed.includes(column.id)
+          ? NAME_REM
+          : column.width / 4),
+      0,
+    );
+  };
+  const byPriority = columns
+    .filter((column) => column.priority !== undefined)
+    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+  for (const column of byPriority) {
+    if (available === null || needed(shown) <= available) break;
+    hidden.push(column.id);
+    shown = shown.filter((each) => each !== column);
+  }
+  const filler = fillerOf(shown);
+  const wide = shown
+    .filter(
+      (column) =>
+        column.id !== filler &&
+        column.width !== undefined &&
+        column.width / 4 > NAME_REM,
+    )
+    .sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
+  for (const column of wide) {
+    if (available === null || needed(shown) <= available) break;
+    freed.push(column.id);
+  }
+  return { hidden, fluid: filler === null ? freed : [filler, ...freed] };
+}
+
+// The width the table's container offers, in rem; null until measured.
+function useAvailableRem(headRow: React.RefObject<HTMLTableRowElement | null>) {
+  const [available, setAvailable] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const container = headRow.current?.closest("table")?.parentElement;
+    if (container == null) return;
+    const rem =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const report = (px: number) => setAvailable(px > 0 ? px / rem : null);
+    report(container.getBoundingClientRect().width);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry !== undefined) report(entry.contentRect.width);
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [headRow]);
+  return available;
 }
 
 // jsdom maps a td to "cell" even inside a grid, so the role is stated here once.

@@ -11,13 +11,13 @@ import {
 // What stops, then what stays. The host owns the mutation.
 export function UnregisterDialog({
   name,
-  busy,
+  phase,
   failure,
   onConfirm,
   onClose,
 }: {
   name: string;
-  busy: boolean;
+  phase: "idle" | "running";
   failure: NoticeContent | null;
   onConfirm: () => void;
   onClose: () => void;
@@ -29,7 +29,7 @@ export function UnregisterDialog({
       title={unregisterTitle(name)}
       version={null}
       width={480}
-      phase={busy ? "running" : "idle"}
+      phase={phase}
       action={{
         label: UNREGISTER_REPOSITORY,
         verb: "unregister",
