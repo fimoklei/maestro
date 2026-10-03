@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
+import { Icon } from "../ui/icon";
 import { Notice } from "../ui/notice";
 import { SelectionBar } from "../ui/selection-bar";
 import { TableScreen } from "../ui/table-screen";
@@ -227,10 +228,9 @@ export function InventoryView({
       }
       lead={
         <div className="relative min-w-0 max-w-60 flex-1">
-          <Search
-            aria-hidden="true"
-            strokeWidth={1.5}
-            className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-inline size-4 text-gray-11"
+          <Icon
+            of={Search}
+            className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-inline text-gray-11"
           />
           <input
             type="search"

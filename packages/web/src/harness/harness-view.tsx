@@ -3,10 +3,13 @@ import { FolderGit2, FolderInput } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Button } from "../ui/button";
+import { cn } from "../ui/cn";
 import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
+import { Icon } from "../ui/icon";
 import { Notice } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
+import { STATUS_TOKENS } from "../ui/status-family";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
@@ -258,11 +261,7 @@ export function HarnessView({
               onClick={importFlow.start}
               className="max-lg:w-8 max-lg:justify-center max-lg:px-0"
             >
-              <FolderInput
-                aria-hidden="true"
-                strokeWidth={1.5}
-                className="size-4 lg:hidden"
-              />
+              <Icon of={FolderInput} className="lg:hidden" />
               <span className="max-lg:sr-only">Import skill…</span>
             </Button>
             {/* Closed while the remote's answer is unknown — an offline or
@@ -304,9 +303,10 @@ export function HarnessView({
       freshness={
         freshness === null ? null : (
           <span
-            className={
-              stale ? "text-amber-12 text-meta" : "text-gray-11 text-meta"
-            }
+            className={cn(
+              "text-meta",
+              stale ? STATUS_TOKENS.attention.ink : "text-gray-11",
+            )}
           >
             {freshness}
           </span>
@@ -323,9 +323,7 @@ export function HarnessView({
         message: (key) => groupMessage(byTitle(key), reread),
       }}
       empty={{
-        icon: (
-          <FolderGit2 aria-hidden="true" strokeWidth={1.5} className="size-4" />
-        ),
+        icon: <Icon of={FolderGit2} />,
         title: JOURNEY_EMPTY.title,
         description: JOURNEY_EMPTY.body,
         action: (

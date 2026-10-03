@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 import { repoRowId } from "../deploy-state/target-rows";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
+import { Icon } from "../ui/icon";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useWriteAction } from "../ui/use-write-action";
@@ -96,9 +97,7 @@ export function RepositoriesView() {
       empty={{
         title: EMPTY_TITLE,
         description: EMPTY_SENTENCE,
-        icon: (
-          <FolderGit2 aria-hidden="true" strokeWidth={1.5} className="size-4" />
-        ),
+        icon: <Icon of={FolderGit2} />,
         action: (
           <Button variant="quiet" onClick={register.openDialog}>
             {REGISTER_REPOSITORY}

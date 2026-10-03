@@ -6,6 +6,7 @@ import { EmptyState } from "../ui/empty-state";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
+import { StatusLine } from "../ui/status-region";
 import {
   CHECKING_LOCAL_EDITS,
   canBeImportedLegend,
@@ -146,9 +147,7 @@ export function ImportLocalEditsDialog({
         />
       ) : skills === null ? (
         failure === null ? (
-          <p role="status" className="m-0 text-gray-11">
-            {CHECKING_LOCAL_EDITS}
-          </p>
+          <StatusLine>{CHECKING_LOCAL_EDITS}</StatusLine>
         ) : null
       ) : empty ? (
         <EmptyState

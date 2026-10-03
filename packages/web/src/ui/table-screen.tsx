@@ -9,6 +9,7 @@ import { IconButton } from "./icon-button";
 import { Notice } from "./notice";
 import { OptionMenu } from "./option-menu";
 import { Panel } from "./panel";
+import { StatusRegion } from "./status-region";
 import type { TableScreenState } from "./use-table-screen";
 import type { ViewOptions } from "./use-view-options";
 import { ScreenReportContext } from "./use-write-action";
@@ -134,9 +135,7 @@ export function TableScreen<T extends RowData>({
         }
       >
         {/* Mounted before any read, so its first announcement is heard. */}
-        <div role="status" className="sr-only">
-          {state.announcement}
-        </div>
+        <StatusRegion>{state.announcement}</StatusRegion>
         {/* Side by side from 1100px; narrower, the pane floats over the table. */}
         <div className="relative flex h-[100cqh]">
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
