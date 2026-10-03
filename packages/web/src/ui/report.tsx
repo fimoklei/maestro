@@ -2,10 +2,15 @@ import { type ReactNode, useId } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 import type { NoticeCopy } from "./notice";
+import {
+  STATUS_TOKENS,
+  type StatusFamily,
+  WARNING_GLYPH,
+} from "./status-family";
 
 // What one action did to several primitives, worst group first.
 
-type ReportTone = "failed" | "attention" | "neutral" | "good";
+type ReportTone = Exclude<StatusFamily, "unknown">;
 
 type ReportRow = {
   name: string;
@@ -40,25 +45,12 @@ export type ReportGroup = {
 // Worst first: the reader meets what needs them before what went well.
 const ORDER: ReportTone[] = ["failed", "attention", "neutral", "good"];
 
+// A group states its status in words; neutral needs no mark beside them.
 const GLYPH: Record<ReportTone, string | null> = {
-  failed: "✕",
-  attention: "⚠",
+  failed: STATUS_TOKENS.failed.glyph,
+  attention: WARNING_GLYPH,
   neutral: null,
-  good: "✓",
-};
-
-const INK: Record<ReportTone, string> = {
-  failed: "text-red-12",
-  attention: "text-amber-12",
-  neutral: "text-gray-11",
-  good: "text-green-12",
-};
-
-const MARK: Record<ReportTone, string> = {
-  failed: "text-red-11",
-  attention: "text-amber-11",
-  neutral: "text-gray-11",
-  good: "text-green-11",
+  good: STATUS_TOKENS.good.glyph,
 };
 
 export function Report({
@@ -92,13 +84,13 @@ export function Report({
             id={`${id}-${index}`}
             className={cn(
               "flex items-center gap-tight font-medium font-ui text-meta",
-              INK[group.tone],
+              STATUS_TOKENS[group.tone].ink,
             )}
           >
             {GLYPH[group.tone] === null ? null : (
               <span
                 aria-hidden="true"
-                className={cn("font-mono", MARK[group.tone])}
+                className={cn("font-mono", STATUS_TOKENS[group.tone].mark)}
               >
                 {GLYPH[group.tone]}
               </span>

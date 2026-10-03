@@ -32,16 +32,14 @@ const facts = (
   ...extra,
 });
 
+// The pane ranks the named steps into its one primary (detail-pane.test.tsx).
 const placed = (paneFacts: PaneRow) => {
-  const { update, foot, footPrimary } = targetPaneActions(paneFacts, () => {});
+  const { update, foot } = targetPaneActions(paneFacts, () => {});
+  const named = (label: string | undefined, step: string | undefined) =>
+    step === undefined ? label : `${label} (${step})`;
   return {
-    update:
-      update === null
-        ? null
-        : `${update.name}${update.primary ? " (primary)" : ""}`,
-    foot: foot.map((item) =>
-      item.label === footPrimary ? `${item.label} (primary)` : item.label,
-    ),
+    update: update === null ? null : named(update.name, update.step),
+    foot: foot.map((item) => named(item.label, item.step)),
   };
 };
 
@@ -53,21 +51,21 @@ describe("targetPaneActions", () => {
     });
   });
 
-  it("puts a behind target's Update target beside Latest release, as its primary", () => {
+  it("puts a behind target's Update target beside Latest release, each step named", () => {
     expect(placed(facts(["import", "deploy", "update"]))).toEqual({
-      update: "Update target snapper (primary)",
-      foot: ["Import local edits", "Deploy skill"],
+      update: "Update target snapper (update)",
+      foot: ["Import local edits (import)", "Deploy skill"],
     });
   });
 
-  it("makes Import local edits primary at the foot when the target is not behind", () => {
+  it("names Import local edits as the step at the foot when the target is not behind", () => {
     expect(placed(facts(["import", "deploy"]))).toEqual({
       update: null,
-      foot: ["Import local edits (primary)", "Deploy skill"],
+      foot: ["Import local edits (import)", "Deploy skill"],
     });
   });
 
-  it("leaves the retry to its notice and makes nothing else primary", () => {
+  it("leaves the retry to its notice and names no other step", () => {
     expect(placed(facts(["retry", "import", "deploy", "update"]))).toEqual({
       update: "Update target snapper",
       foot: ["Import local edits", "Deploy skill"],
@@ -76,7 +74,7 @@ describe("targetPaneActions", () => {
 
   // #951: a global tool row reads behind when any tool is, though its own
   // release may show no Latest release fact to sit beside.
-  it("keeps Update target at the foot, primary, where no Latest release fact shows", () => {
+  it("keeps Update target at the foot, as the step, where no Latest release fact shows", () => {
     expect(
       placed(
         facts(["deploy", "update"], {
@@ -85,7 +83,7 @@ describe("targetPaneActions", () => {
       ),
     ).toEqual({
       update: null,
-      foot: ["Deploy skill", "Update target (primary)"],
+      foot: ["Deploy skill", "Update target (update)"],
     });
   });
 

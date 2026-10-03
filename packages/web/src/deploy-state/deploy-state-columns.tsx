@@ -97,8 +97,6 @@ export const deployStateColumns = ({
 }: {
   onAction: (row: TargetTableRow, action: TargetAction) => void;
 }) =>
-  // Each breakpoint is the width of the columns still shown plus 8rem for
-  // the name, so a narrow panel drops a column before the name collapses.
   createDataTableColumns<TargetTableRow>((helper) => [
     helper.accessor("name", {
       header: TARGET_LABEL,
@@ -123,14 +121,14 @@ export const deployStateColumns = ({
             <ReleaseValue release={row.original.release} />
           </span>
         ),
-      meta: { className: "w-43 @max-[31.5rem]:hidden" },
+      meta: { width: 43, priority: 3 },
     }),
     helper.display({
       id: "github",
       header: GITHUB_COLUMN,
       cell: ({ row }) => <GitHubCell row={row.original} />,
-      // Drops out on a narrow panel; the ⋮ menu keeps the same link.
-      meta: { className: "w-28 @max-[43rem]:hidden" },
+      // Drops out first on a narrow panel; the ⋮ menu keeps the same link.
+      meta: { width: 28, priority: 1 },
     }),
     helper.accessor("status", {
       header: "Status",
@@ -138,7 +136,7 @@ export const deployStateColumns = ({
       sortFn: (a, b) =>
         (a.original.status ? readingRank(a.original.status) : unranked) -
         (b.original.status ? readingRank(b.original.status) : unranked),
-      meta: { className: "w-41" },
+      meta: { width: 41 },
     }),
     helper.accessor("skills", {
       header: "Skills",
@@ -151,10 +149,7 @@ export const deployStateColumns = ({
         );
       },
       sortFn: (a, b) => (a.original.skills ?? -1) - (b.original.skills ?? -1),
-      meta: {
-        className: "w-18 tabular-nums @max-[36rem]:hidden",
-        align: "end",
-      },
+      meta: { className: "tabular-nums", width: 18, priority: 2, align: "end" },
     }),
     helper.display({
       id: "actions",
@@ -165,6 +160,6 @@ export const deployStateColumns = ({
           items={targetRowItems(row.original, onAction)}
         />
       ),
-      meta: { className: "w-10" },
+      meta: { width: 10 },
     }),
   ]);

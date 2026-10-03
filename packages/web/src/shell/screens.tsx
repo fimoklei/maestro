@@ -2,10 +2,9 @@ import { FileText, LayoutList, Pencil, Table2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { SETTINGS as SETTINGS_NAME } from "../settings/settings-copy";
 import { HARNESS_LOCATION_PAGE } from "../settings/settings-pages";
+import { Icon } from "../ui/icon";
 
 // In sidebar order; the sidebar and narrow bar both navigate by this one list.
-
-const ICON = { size: 16, strokeWidth: 1.5 } as const;
 
 export interface Screen {
   to: string;
@@ -24,19 +23,19 @@ export const SCREEN_GROUPS: ReadonlyArray<{
     label: "Screens",
     headed: false,
     items: [
-      { to: "/", label: "Deploy-state", icon: <LayoutList {...ICON} /> },
-      { to: "/inventory", label: "Inventory", icon: <Table2 {...ICON} /> },
+      { to: "/", label: "Deploy-state", icon: <Icon of={LayoutList} /> },
+      { to: "/inventory", label: "Inventory", icon: <Icon of={Table2} /> },
       {
         to: "/repositories",
         label: "Repositories",
-        icon: <FileText {...ICON} />,
+        icon: <Icon of={FileText} />,
       },
     ],
   },
   {
     label: "Author",
     headed: true,
-    items: [{ to: "/harness", label: "Harness", icon: <Pencil {...ICON} /> }],
+    items: [{ to: "/harness", label: "Harness", icon: <Icon of={Pencil} /> }],
   },
 ];
 

@@ -5,9 +5,16 @@ import type {
 } from "@maestro/core";
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
+import { useWriteAction } from "../ui/use-write-action";
 import { rowId } from "./harness-columns";
 import type { RestoreTarget } from "./harness-dialogs";
-import { promoteNotice, proposalNotice } from "./notice-copy";
+import {
+  deletionNotice,
+  localDeletionNotice,
+  promoteNotice,
+  proposalNotice,
+  restoreNotice,
+} from "./notice-copy";
 import type { RowActionHandlers } from "./row-actions";
 import {
   useDeleteLocalSkill,
@@ -17,10 +24,23 @@ import {
   useRestoreSkill,
 } from "./use-harness";
 
-export function useHarnessPresses(state: HarnessState | undefined) {
+const skillName = (_data: unknown, { name }: { name: string }) => name;
+
+export function useHarnessPresses(
+  state: HarnessState | undefined,
+  /** Into the Harness screen's status region. */
+  report: (write: string) => void,
+) {
   const promote = usePromoteSkill();
+  const promoteWrite = useWriteAction(promote, {
+    report,
+    action: "propose",
+    show: "row",
+    name: skillName,
+    failure: promoteNotice,
+  });
   const promotedSkill = promote.variables?.name ?? null;
-  const promoteFailure = promoteNotice(promote.error);
+  const promoteFailure = promoteWrite.failure;
   // The stage the press was made in. Propose change sits in two of them, and a
   // refusal belongs to the row it was pressed from, not to the skill (#865).
   const [promotedFrom, setPromotedFrom] = useState<HarnessStage | null>(null);
@@ -28,7 +48,21 @@ export function useHarnessPresses(state: HarnessState | undefined) {
   // A deletion never publishes by the row's press alone: it opens a
   // confirmation carrying the origin/HEAD tree the row was painted from (#580).
   const deletion = usePromoteDeletion();
+  const deletionWrite = useWriteAction(deletion, {
+    report,
+    action: "propose",
+    show: "row",
+    name: skillName,
+    failure: deletionNotice,
+  });
   const deleteLocal = useDeleteLocalSkill();
+  const deleteLocalWrite = useWriteAction(deleteLocal, {
+    report,
+    action: "delete",
+    show: "row",
+    name: skillName,
+    failure: localDeletionNotice,
+  });
   const [confirming, setConfirming] = useState<string | null>(null);
   const pendingDeletion =
     proposalRows(state).find((row) => row.skill === confirming) ?? null;
@@ -36,11 +70,26 @@ export function useHarnessPresses(state: HarnessState | undefined) {
   // The press freezes what it was made against, so a check landing while the
   // confirmation stands cannot rewrite the source or close it (#915).
   const restore = useRestoreSkill();
+  // The outcome notice above the table states it.
+  const restoreWrite = useWriteAction(restore, {
+    report,
+    action: "restore",
+    show: "row",
+    name: () => null,
+    failure: restoreNotice,
+  });
   const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
 
   const proposalAction = useProposalAction();
+  const proposalWrite = useWriteAction(proposalAction, {
+    report,
+    action: ({ action }) => action,
+    show: "row",
+    name: skillName,
+    failure: proposalNotice,
+  });
   const proposalSkill = proposalAction.variables?.name ?? null;
-  const proposalFailure = proposalNotice(proposalAction.error);
+  const proposalFailure = proposalWrite.failure;
   const [withdrawing, setWithdrawing] = useState<{
     skill: string;
     number: number;
@@ -93,11 +142,11 @@ export function useHarnessPresses(state: HarnessState | undefined) {
         setConfirming(row.skill);
         return;
       }
-      promote.mutate({ name: row.skill });
+      promoteWrite.run({ name: row.skill });
     },
-    create: (skill) => proposalAction.mutate({ action: "create", name: skill }),
+    create: (skill) => proposalWrite.run({ action: "create", name: skill }),
     reopen: (skill, number) =>
-      proposalAction.mutate({ action: "reopen", name: skill, number }),
+      proposalWrite.run({ action: "reopen", name: skill, number }),
     withdraw: (skill, number) => {
       proposalAction.reset();
       setWithdrawing({ skill, number });
@@ -122,6 +171,10 @@ export function useHarnessPresses(state: HarnessState | undefined) {
     deleteLocal,
     restore,
     proposalAction,
+    deletionWrite,
+    deleteLocalWrite,
+    restoreWrite,
+    proposalWrite,
     handlers,
     failure,
     movedTo,

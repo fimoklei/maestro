@@ -1,6 +1,8 @@
 import { type Ref, useEffect, useState } from "react";
 import { lagsPin } from "../drift/drift-view-model";
+import { FOCUS_RING } from "../ui/focus-ring";
 import { GitHubMarkLink } from "../ui/github-mark-link";
+import { STATUS_TOKENS } from "../ui/status-family";
 import { SubListRow } from "../ui/sub-list-row";
 import {
   HARNESS_ORIGIN_NOT_READ,
@@ -48,11 +50,11 @@ export function SelectedSkills({
   );
 
   return (
-    <section className="mt-section">
+    <section>
       <h3
         ref={headingRef}
         tabIndex={-1}
-        className="m-0 mb-inline font-normal text-gray-11 text-meta focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
+        className={`m-0 mb-inline font-normal text-gray-11 text-meta ${FOCUS_RING}`}
       >
         Selected skills{" "}
         <span className="text-gray-12 tabular-nums">{primitives.length}</span>
@@ -136,7 +138,7 @@ export function SelectedSkills({
         />
       ) : null}
       {orphans.length > 0 && (
-        <p className="mt-inline text-amber-12 text-meta">
+        <p className={`mt-inline text-meta ${STATUS_TOKENS.attention.ink}`}>
           Reported behind, not deployed here: {orphans.join(", ")}
         </p>
       )}

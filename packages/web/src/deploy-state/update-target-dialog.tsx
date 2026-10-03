@@ -8,9 +8,11 @@ import { type ReactNode, useId, useState } from "react";
 import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
 import { GitHubMarkLink } from "../ui/github-mark-link";
+import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
 import { StatusBadge } from "../ui/status-badge";
+import { STATUS_TOKENS } from "../ui/status-family";
 import { reading } from "../ui/status-reading";
 import type { DeployStateNotice } from "./notice-copy";
 import { updateOutcomeReport } from "./update-outcome-report";
@@ -81,7 +83,7 @@ function Section({
       <h3
         className={cn(
           "font-mono text-meta uppercase leading-5 tracking-mono",
-          signal ? "text-amber-12" : "text-gray-11",
+          signal ? STATUS_TOKENS.attention.ink : "text-gray-11",
         )}
       >
         {heading}
@@ -163,36 +165,6 @@ function SkillRows({
         </li>
       ))}
     </ul>
-  );
-}
-
-// Each copy carries its own consent, never a set of them.
-function ConsentRow({
-  row,
-  label,
-  sentence,
-  checked,
-  onToggle,
-}: {
-  row: CopyConsentRow;
-  label: string;
-  sentence: string;
-  checked: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <li className="flex flex-col gap-tight rounded-control border border-amber-7 bg-amber-3 px-cell py-inline">
-      <p className="m-0 text-amber-12">{sentence}</p>
-      <label className="flex cursor-pointer items-center gap-inline">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={onToggle}
-          className="accent-amber-11"
-        />
-        {`${label} for ${consentRowName(row)}`}
-      </label>
-    </li>
   );
 }
 
@@ -334,31 +306,37 @@ export function UpdateTargetDialog({
             ) : null}
             {required.length > 0 ? (
               <Section heading={LOCAL_EDITS} signal={true}>
-                <ul className="flex flex-col gap-inline">
-                  {preview.localEdits.discard.map((row) => (
-                    <ConsentRow
-                      key={consentKey(row)}
-                      row={row}
-                      label={DISCARD_LOCAL_EDITS}
-                      sentence={localEditsSentence(
-                        row.name,
-                        preview.chosenRelease,
-                      )}
-                      checked={consented.includes(consentKey(row))}
-                      onToggle={() => toggle(consentKey(row))}
-                    />
-                  ))}
-                  {preview.localEdits.unverified.map((row) => (
-                    <ConsentRow
-                      key={consentKey(row)}
-                      row={row}
-                      label={OVERWRITE_UNVERIFIED}
-                      sentence={unverifiedSentence(row.name)}
-                      checked={consented.includes(consentKey(row))}
-                      onToggle={() => toggle(consentKey(row))}
-                    />
-                  ))}
-                </ul>
+                {/* Each copy carries its own consent, never a set of them. */}
+                <GroupedList
+                  groups={[
+                    {
+                      tone: "attention",
+                      legend: null,
+                      rows: [
+                        ...preview.localEdits.discard.map((row) => ({
+                          key: consentKey(row),
+                          name: `${DISCARD_LOCAL_EDITS} for ${consentRowName(row)}`,
+                          sentence: localEditsSentence(
+                            row.name,
+                            preview.chosenRelease,
+                          ),
+                        })),
+                        ...preview.localEdits.unverified.map((row) => ({
+                          key: consentKey(row),
+                          name: `${OVERWRITE_UNVERIFIED} for ${consentRowName(row)}`,
+                          sentence: unverifiedSentence(row.name),
+                        })),
+                      ],
+                    },
+                  ]}
+                  checklist={{
+                    checked: new Set(consented),
+                    onToggle: toggle,
+                    isRunning,
+                    firstBox: null,
+                  }}
+                  live={null}
+                />
                 {preview.localEdits.discard.length > 0 ? (
                   <p className="m-0 text-gray-11">{KEEP_WORK_BY_IMPORTING}</p>
                 ) : null}

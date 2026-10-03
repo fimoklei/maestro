@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useWriteAction } from "../ui/use-write-action";
+import { importNotice } from "./notice-copy";
 import {
   type ImportOutcome,
   useImportCheck,
@@ -8,7 +10,11 @@ import {
 // Import skill…'s UI-state: the folder, the name, and the check both are sent
 // to. Every refusal comes from the server's check, so nothing here decides
 // one (#576).
-export function useImportFlow(onImported: (outcome: ImportOutcome) => void) {
+export function useImportFlow(
+  /** Into the Harness screen's status region. */
+  report: (write: string) => void,
+  onImported: (outcome: ImportOutcome) => void,
+) {
   const [open, setOpen] = useState(false);
   // What the Folder path field holds, and the folder last sent to the check.
   const [sourceText, setSourceText] = useState("");
@@ -18,6 +24,13 @@ export function useImportFlow(onImported: (outcome: ImportOutcome) => void) {
   const [editedName, setEditedName] = useState<string | null>(null);
   const check = useImportCheck(source, editedName);
   const importSkill = useImportSkill();
+  const importWrite = useWriteAction(importSkill, {
+    report,
+    action: "import",
+    show: "row",
+    name: (outcome) => outcome.name,
+    failure: importNotice,
+  });
   // An update's name is the recorded skill's own: provenance decides it, so a
   // name typed before the check came back never travels with it (#732).
   const name =
@@ -39,7 +52,7 @@ export function useImportFlow(onImported: (outcome: ImportOutcome) => void) {
     sourceText,
     name,
     check,
-    importSkill,
+    importWrite,
     start: () => setOpen(true),
     setSourceText,
     commitSource: (path: string) => {
@@ -50,7 +63,7 @@ export function useImportFlow(onImported: (outcome: ImportOutcome) => void) {
     setEditedName,
     submit: () => {
       if (source === null) return;
-      importSkill.mutate(
+      importWrite.run(
         { source, name },
         {
           onSuccess: (outcome) => {

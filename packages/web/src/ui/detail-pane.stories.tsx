@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button } from "./button";
 import { DetailPane } from "./detail-pane";
 
 const meta = {
@@ -13,12 +12,16 @@ const meta = {
     onClose: () => {},
     getTriggerElement: () => null,
     initialFocus: null,
-    actions: <Button size="sm">Deploy skill</Button>,
-    children: (
-      <p className="m-0 text-gray-11 text-prose">
-        Loop for hard bugs and slow paths.
-      </p>
-    ),
+    facts: [
+      { label: "Type", value: "Skill" },
+      { label: "Targets", value: 2 },
+    ],
+    paragraph: ["Loop for hard bugs and slow paths."],
+    foot: [
+      { label: "Deploy skill", onSelect: () => {} },
+      { label: "Remove from all 2 targets", danger: true, onSelect: () => {} },
+    ],
+    leadsWithNextStep: true,
   },
   decorators: [
     (Story) => (
@@ -37,3 +40,22 @@ export const Default: Story = {};
 
 // The table hides the open row, so there is no place to state.
 export const Unplaced: Story = { args: { position: null } };
+
+// An unfinished operation: its notice's retry takes the one primary.
+export const Retry: Story = {
+  args: {
+    leadsWithNextStep: false,
+    notices: [
+      {
+        content: {
+          level: "warning",
+          label: "Deploy incomplete",
+          message: "The deploy stopped part way.",
+          action: { label: "Retry deploy", onClick: () => {} },
+        },
+        trigger: "load",
+        retry: true,
+      },
+    ],
+  },
+};

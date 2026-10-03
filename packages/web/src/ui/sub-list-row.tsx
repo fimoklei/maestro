@@ -2,6 +2,7 @@ import { EllipsisVertical } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActionsMenu, type ActionsMenuItem } from "./actions-menu";
 import { cn } from "./cn";
+import { Icon } from "./icon";
 import { MachineValue } from "./machine-value";
 import type { StatusReading } from "./status-reading";
 import { Tooltip } from "./tooltip";
@@ -49,11 +50,7 @@ export function SubListRow({
                 "focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
               )}
             >
-              <EllipsisVertical
-                aria-hidden="true"
-                strokeWidth={1.5}
-                className="size-4"
-              />
+              <Icon of={EllipsisVertical} />
             </button>
           }
         />

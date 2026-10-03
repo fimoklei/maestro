@@ -10,6 +10,7 @@ import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
+import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
 import {
   bulkDeployReportGroups,
@@ -79,6 +80,22 @@ export function BulkDeployRun({
   // dialog takes this one's place: the Report described a target it may move.
   const [updateFor, setUpdateFor] = useState<string | null>(null);
   const update = useUpdateTarget();
+  const report = useScreenReport();
+  // The Report states the run, its request failure included.
+  const bulkWrite = useWriteAction(bulk, {
+    report,
+    action: "deploy",
+    show: "row",
+    name: () => null,
+    failure: () => null,
+  });
+  const forceWrite = useWriteAction(forceDeploy, {
+    report,
+    action: "deploy",
+    show: "row",
+    name: (_data, { name }) => name,
+    failure: (error) => ({ ...deployNotice(error), level: "error" as const }),
+  });
 
   const isKnown =
     chosen === GLOBAL_VALUE || repos.some((repo) => repo.path === chosen);
@@ -130,7 +147,7 @@ export function BulkDeployRun({
     const next = planBulkDeploy(stagedNames, chosenTargets);
     setPlan(next);
     if (next.toDeploy.length > 0) {
-      bulk.mutate({ names: next.toDeploy, target });
+      bulkWrite.run({ names: next.toDeploy, target });
     }
   };
 
@@ -194,7 +211,7 @@ export function BulkDeployRun({
             : null
       }
       fieldsChanged={chosen !== null}
-      busy={bulk.isPending || forceDeploy.isPending}
+      busy={bulkWrite.phase === "running" || forceWrite.phase === "running"}
       failure={
         view?.tone === "error"
           ? {
@@ -216,7 +233,7 @@ export function BulkDeployRun({
                 view,
                 force: {
                   run: (name, confirmedCopyReceipt) =>
-                    forceDeploy.mutate({
+                    forceWrite.run({
                       type: "skill",
                       name,
                       target,
@@ -230,11 +247,7 @@ export function BulkDeployRun({
               }),
             }
       }
-      reportFailure={
-        forceDeploy.isError
-          ? { ...deployNotice(forceDeploy.error), level: "error" }
-          : null
-      }
+      reportFailure={forceWrite.failure}
       onDeploy={onDeploy}
       onClose={close}
     />

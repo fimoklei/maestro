@@ -1,7 +1,8 @@
 import { useId } from "react";
-import { cn } from "../ui/cn";
 import { Dialog } from "../ui/dialog";
+import { GroupedList } from "../ui/grouped-list";
 import { Report, type ReportGroup } from "../ui/report";
+import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
@@ -21,75 +22,6 @@ function CleanLine({ id, children }: { id: string; children: string }) {
       </span>
       <span>{children}</span>
     </p>
-  );
-}
-
-// One colour family per tone, read once, so the box and its rows cannot drift.
-const GROUP_TONE = {
-  cost: {
-    ink: "text-amber-12",
-    border: "border-amber-7",
-    fill: "bg-amber-3",
-    divider: "border-amber-7 border-b",
-  },
-  refusal: {
-    ink: "text-red-12",
-    border: "border-red-7",
-    fill: "bg-red-3",
-    divider: "border-red-7 border-b",
-  },
-} as const;
-
-type GroupRow = { label: string; version?: string; reason: string };
-
-function ReasonGroup({
-  id,
-  heading,
-  tone,
-  rows,
-}: {
-  id: string;
-  heading: string;
-  tone: keyof typeof GROUP_TONE;
-  rows: GroupRow[];
-}) {
-  const colours = GROUP_TONE[tone];
-  return (
-    <fieldset id={id} className="flex min-w-0 flex-col gap-tight">
-      <legend
-        className={cn(
-          "font-mono font-semibold text-meta tracking-mono-wide",
-          colours.ink,
-        )}
-      >
-        {heading}
-      </legend>
-      <ul
-        className={cn(
-          "flex flex-col overflow-hidden rounded-control border font-mono text-meta",
-          colours.border,
-        )}
-      >
-        {rows.map((row, index) => (
-          <li
-            key={row.label}
-            className={cn(
-              "flex items-center justify-between gap-inline px-cell py-inline",
-              colours.fill,
-              index < rows.length - 1 && colours.divider,
-            )}
-          >
-            <span className="flex min-w-0 items-baseline gap-inline">
-              <span className="truncate text-gray-12">{row.label}</span>
-              {row.version === undefined ? null : (
-                <span className="shrink-0 text-gray-11">{row.version}</span>
-              )}
-            </span>
-            <span className={cn("shrink-0", colours.ink)}>{row.reason}</span>
-          </li>
-        ))}
-      </ul>
-    </fieldset>
   );
 }
 
@@ -184,9 +116,7 @@ export function BulkRemoveDialog({
       {done !== null ? (
         <Report heading={done.heading} groups={reportGroups(done)} />
       ) : failure?.kind === "outcome-unknown" ? null : grouped === null ? (
-        <p role="status" className="m-0 text-gray-11">
-          {view.kind === "checking" ? view.line : null}
-        </p>
+        <StatusLine>{view.kind === "checking" ? view.line : null}</StatusLine>
       ) : (
         // Stays through the run and beside a failure: it is what the confirm
         // acts on.
@@ -194,22 +124,33 @@ export function BulkRemoveDialog({
           {grouped.cleanLine === null ? null : (
             <CleanLine id={cleanId}>{grouped.cleanLine}</CleanLine>
           )}
-          {grouped.cost.length === 0 ? null : (
-            <ReasonGroup
-              id={costId}
-              tone="cost"
-              heading={`▲ Loses work · ${grouped.cost.length}`}
-              rows={grouped.cost}
-            />
-          )}
-          {grouped.refused.length === 0 ? null : (
-            <ReasonGroup
-              id={refusedId}
-              tone="refusal"
-              heading={`✕ Cannot be removed · ${grouped.refused.length}`}
-              rows={grouped.refused}
-            />
-          )}
+          <GroupedList
+            groups={[
+              {
+                tone: "attention",
+                legend: `▲ Loses work · ${grouped.cost.length}`,
+                id: costId,
+                rows: grouped.cost.map((row) => ({
+                  key: row.label,
+                  name: row.label,
+                  value: row.version,
+                  sentence: row.reason,
+                })),
+              },
+              {
+                tone: "failed",
+                legend: `✕ Cannot be removed · ${grouped.refused.length}`,
+                id: refusedId,
+                rows: grouped.refused.map((row) => ({
+                  key: row.label,
+                  name: row.label,
+                  sentence: row.reason,
+                })),
+              },
+            ]}
+            checklist={null}
+            live={null}
+          />
         </>
       )}
     </Dialog>

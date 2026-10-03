@@ -240,6 +240,15 @@ export const STAGE_TITLES = [
   "Pending release",
 ];
 
+// The screen's one status region; a notice carries a role of its own.
+export const harnessRegion = () => {
+  const region = screen
+    .getAllByRole("status")
+    .find((each) => each.classList.contains("sr-only"));
+  if (region === undefined) throw new Error("no status region");
+  return region;
+};
+
 export const harnessGrid = () =>
   screen.findByRole("grid", { name: "Harness table" });
 

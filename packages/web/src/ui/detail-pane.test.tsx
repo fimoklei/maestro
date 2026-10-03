@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DetailPane, DetailPaneSlot } from "./detail-pane";
+import { DetailPane, DetailPaneSlot, type PaneNotice } from "./detail-pane";
 
 type Props = ComponentProps<typeof DetailPane>;
 
@@ -13,14 +13,29 @@ function renderPane(props: Partial<Props> = {}) {
       activeKey="tdd"
       onClose={() => {}}
       getTriggerElement={() => null}
-      actions={<button type="button">Deploy skill</button>}
+      facts={[{ label: "Type", value: "Skill" }]}
+      paragraph={["Test-driven development."]}
+      subList={<input aria-label="Note" />}
+      foot={[{ label: "Deploy skill", onSelect: () => {} }]}
       {...props}
-    >
-      <p>Test-driven development.</p>
-      <input aria-label="Note" />
-    </DetailPane>,
+    />,
   );
 }
+
+const button = (name: string) => screen.getByRole("button", { name });
+const PRIMARY = "bg-gray-12";
+const follows = (a: Element, b: Element) =>
+  Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+const RETRY: PaneNotice = {
+  content: {
+    level: "warning",
+    label: "Deploy incomplete",
+    message: "The deploy stopped part way.",
+    action: { label: "Retry deploy", onClick: () => {} },
+  },
+  trigger: "load",
+  retry: true,
+};
 
 const pane = () => screen.getByRole("complementary", { name: "tdd detail" });
 const heading = () => screen.getByRole("heading", { level: 2, name: "tdd" });
@@ -211,13 +226,122 @@ function Screen({ onClose = () => {} }: { onClose?: () => void }) {
           getTriggerElement={() =>
             screen.queryByRole("button", { name: "tdd row" })
           }
-        >
-          <p>Test-driven development.</p>
-        </DetailPane>
+          paragraph={["Test-driven development."]}
+        />
       ) : null}
     </>
   );
 }
+
+describe("DetailPane slots", () => {
+  it("renders facts, paragraph, notice and sub-list in that order", () => {
+    renderPane({ notices: [RETRY] });
+
+    const order = [
+      screen.getByText("Type"),
+      screen.getByText("Test-driven development."),
+      screen.getByText("Deploy incomplete"),
+      screen.getByRole("textbox", { name: "Note" }),
+    ];
+    for (const [index, node] of order.slice(1).entries()) {
+      expect(follows(order[index] as Element, node)).toBe(true);
+    }
+  });
+
+  it("sets every paragraph line in one style", () => {
+    renderPane({ paragraph: ["First line.", "Review requested from ana"] });
+
+    for (const line of ["First line.", "Review requested from ana"]) {
+      expect(screen.getByText(line).parentElement).toHaveClass(
+        "text-gray-12",
+        "text-prose",
+      );
+    }
+  });
+
+  it("puts a fact's action beside its value", () => {
+    renderPane({
+      facts: [
+        {
+          label: "Latest release",
+          value: "v0.3.4",
+          action: { label: "Update target", onSelect: () => {} },
+        },
+      ],
+    });
+
+    expect(
+      screen.getByText("Latest release").nextElementSibling,
+    ).toContainElement(button("Update target"));
+  });
+});
+
+describe("DetailPane primary", () => {
+  const steps = {
+    facts: [
+      {
+        label: "Latest release",
+        value: "v0.3.4",
+        action: {
+          label: "Update target",
+          step: "update" as const,
+          onSelect: () => {},
+        },
+      },
+    ],
+    foot: [
+      { label: "Import local edits", step: "import" as const },
+      { label: "Deploy skill" },
+    ],
+  };
+
+  it("makes a notice's retry the one primary", () => {
+    renderPane({ ...steps, notices: [RETRY] });
+
+    expect(button("Retry deploy")).toHaveClass(PRIMARY);
+    for (const name of [
+      "Update target",
+      "Import local edits",
+      "Deploy skill",
+    ]) {
+      expect(button(name)).not.toHaveClass(PRIMARY);
+    }
+  });
+
+  it("makes Update target primary over Import local edits", () => {
+    renderPane(steps);
+
+    expect(button("Update target")).toHaveClass(PRIMARY);
+    expect(button("Import local edits")).not.toHaveClass(PRIMARY);
+  });
+
+  it("makes Import local edits primary where nothing is behind", () => {
+    renderPane({ foot: steps.foot });
+
+    expect(button("Import local edits")).toHaveClass(PRIMARY);
+    expect(button("Deploy skill")).not.toHaveClass(PRIMARY);
+  });
+
+  it("makes nothing primary where the state names no next step", () => {
+    renderPane();
+
+    expect(button("Deploy skill")).not.toHaveClass(PRIMARY);
+  });
+
+  it("makes the first enabled item primary where the ⋮ order leads with the next step", () => {
+    renderPane({
+      leadsWithNextStep: true,
+      foot: [
+        { label: "Propose change", disabled: true },
+        { label: "Remove skill", danger: true },
+        { label: "Deploy skill" },
+      ],
+    });
+
+    expect(button("Deploy skill")).toHaveClass(PRIMARY);
+    expect(button("Propose change")).not.toHaveClass(PRIMARY);
+  });
+});
 
 describe("DetailPane outside press", () => {
   it("closes on a press outside it", async () => {
