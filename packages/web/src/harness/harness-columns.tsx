@@ -92,7 +92,7 @@ export const harnessColumns = ({
       header: "Type",
       // Every row is a skill today; hooks and MCP servers slot in (#347).
       cell: () => <span className="text-gray-11">{TYPE_WORD.skill}</span>,
-      meta: { className: "w-14" },
+      meta: { width: 14, priority: 1 },
     }),
     helper.accessor("skill", {
       header: "Name",
@@ -101,8 +101,7 @@ export const harnessColumns = ({
           {row.original.skill}
         </span>
       ),
-      // With only Status and ⋮ beside it, Name and then Status give way (#1184).
-      meta: { className: "w-58 @max-[32.5rem]:w-auto" },
+      meta: { width: 58 },
     }),
     helper.accessor("reading", {
       header: "Status",
@@ -116,13 +115,13 @@ export const harnessColumns = ({
       sortFn: (a, b) =>
         readingRank(a.original.reading) - readingRank(b.original.reading),
       // The longest reading, Deletion approved, awaiting merge, fits (#994).
-      meta: { className: "w-62 @max-[26rem]:w-auto" },
+      meta: { width: 62 },
     }),
     helper.display({
       id: "pull-request",
       header: "Pull request",
       cell: ({ row }) => <PullRequestCell row={row.original} />,
-      meta: { className: "w-28" },
+      meta: { width: 28, priority: 3 },
     }),
     helper.display({
       id: "also-in",
@@ -130,6 +129,7 @@ export const harnessColumns = ({
       cell: ({ row }) => (
         <span className="text-gray-11">{alsoInWords(row.original)}</span>
       ),
+      meta: { priority: 2 },
     }),
     helper.display({
       id: "actions",
@@ -140,6 +140,6 @@ export const harnessColumns = ({
           items={row.original.items}
         />
       ),
-      meta: { className: "w-10" },
+      meta: { width: 10 },
     }),
   ]);
