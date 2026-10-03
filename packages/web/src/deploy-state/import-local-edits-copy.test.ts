@@ -14,7 +14,7 @@ import {
   undoesNewerLine,
 } from "./import-local-edits-copy";
 
-describe("Import local edits… copy", () => {
+describe("Import local edits copy", () => {
   it("counts the checked skills in the confirm", () => {
     expect(importConfirmLabel(0, 0)).toBe("Import skills");
     expect(importConfirmLabel(1, 0)).toBe("Import 1 skill");
@@ -58,7 +58,7 @@ describe("Import local edits… copy", () => {
     expect(localEditsCheckNotice(new HttpError(500, "x"))).toMatchObject({
       label: "Local edits not checked",
       message:
-        "Nothing was imported. Select Close, then Import local edits… again.",
+        "Nothing was imported. Select Close, then Import local edits again.",
     });
   });
 
@@ -66,27 +66,27 @@ describe("Import local edits… copy", () => {
     [
       "not-configured",
       "No Harness connected",
-      "Select Change Harness location in Settings, then select Import local edits… again.",
+      "Select Change Harness location in Settings, then select Import local edits again.",
     ],
     [
       "repo-not-registered",
       "Repository not registered",
-      "Register this repository in Maestro, then select Import local edits… again.",
+      "Register this repository in Maestro, then select Import local edits again.",
     ],
     [
       "unfinished-operation",
       "Change not finished",
-      "An earlier change on this target did not finish. Check the target card to finish that change, then select Import local edits… again.",
+      "An earlier change on this target did not finish. Check the target card to finish that change, then select Import local edits again.",
     ],
     [
       "target-unreadable",
       "Could not read deployment record",
-      "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits… again.",
+      "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits again.",
     ],
     [
       "import-in-progress",
       "Harness already changing",
-      "Wait for that change to finish, then select Import local edits… again.",
+      "Wait for that change to finish, then select Import local edits again.",
     ],
   ] as const)(
     "names the %s block on check and on import",

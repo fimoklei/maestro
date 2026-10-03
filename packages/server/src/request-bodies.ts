@@ -209,14 +209,14 @@ export const TARGET_BODY: RequestShape = {
 
 export const IMPORT_LOCAL_EDITS_CHECK_BODY: RequestShape = {
   message:
-    "Nothing was checked. Reload the page, then select Import local edits… again.",
+    "Nothing was checked. Reload the page, then select Import local edits again.",
   detail:
     'The request carries a target: { kind: "repo", repoPath } or { kind: "global" }.',
 };
 
 export const IMPORT_LOCAL_EDITS_BODY: RequestShape = {
   message:
-    "Nothing was imported. Reload the page, then select Import local edits… again.",
+    "Nothing was imported. Reload the page, then select Import local edits again.",
   detail:
     "The request carries a target, a non-empty names array and an undo array.",
 };

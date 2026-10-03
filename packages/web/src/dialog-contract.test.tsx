@@ -245,6 +245,7 @@ const ON_DIALOG: Row[] = [
         targetName="…/me/project"
         skills={[{ name: "tdd", refusal: null }]}
         checked={new Set(["tdd"])}
+        checksChanged={false}
         onToggle={vi.fn()}
         isRunning={running}
         outcomes={null}

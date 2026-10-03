@@ -354,7 +354,7 @@
         "lineHeight": "1rem",
         "weight": 400,
         "tracking": "0.08em",
-        "purpose": "Geist Mono, uppercase: a card's kind label or a small section header. A mono machine value elsewhere takes the size of its slot."
+        "purpose": "Geist Mono, uppercase: a card's kind label, a small section header or a dialog group legend. A mono machine value elsewhere takes the size of its slot."
       }
     },
     "fonts": [
@@ -422,7 +422,7 @@
       },
       "mono-wide": {
         "value": "0.12em",
-        "purpose": "Geist Mono set as a fact label or a group legend in a dialog."
+        "purpose": "Geist Mono set in mixed case as a fact label or a group legend in a dialog. Uppercase takes mono."
       }
     },
     "radiusMeta": {

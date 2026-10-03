@@ -12,7 +12,7 @@ const BEHIND_HEAD = {
 
 const LABELS: Record<TargetAction, string> = {
   retry: "Retry deploy",
-  import: "Import local edits…",
+  import: "Import local edits",
   deploy: "Deploy skill",
   update: "Update target",
 };
@@ -56,21 +56,21 @@ describe("targetPaneActions", () => {
   it("puts a behind target's Update target beside Latest release, as its primary", () => {
     expect(placed(facts(["import", "deploy", "update"]))).toEqual({
       update: "Update target snapper (primary)",
-      foot: ["Import local edits…", "Deploy skill"],
+      foot: ["Import local edits", "Deploy skill"],
     });
   });
 
-  it("makes Import local edits… primary at the foot when the target is not behind", () => {
+  it("makes Import local edits primary at the foot when the target is not behind", () => {
     expect(placed(facts(["import", "deploy"]))).toEqual({
       update: null,
-      foot: ["Import local edits… (primary)", "Deploy skill"],
+      foot: ["Import local edits (primary)", "Deploy skill"],
     });
   });
 
   it("leaves the retry to its notice and makes nothing else primary", () => {
     expect(placed(facts(["retry", "import", "deploy", "update"]))).toEqual({
       update: "Update target snapper",
-      foot: ["Import local edits…", "Deploy skill"],
+      foot: ["Import local edits", "Deploy skill"],
     });
   });
 

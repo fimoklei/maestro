@@ -40,7 +40,7 @@ export function AppRoutes() {
   );
 }
 
-// Import local edits… names the one skill it landed (#1249).
+// Import local edits names the one skill it landed (#1249).
 function HarnessScreen() {
   const state = useLocation().state as { openSkill?: string } | null;
   return <HarnessView openSkill={state?.openSkill ?? null} />;

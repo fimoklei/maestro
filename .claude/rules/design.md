@@ -26,9 +26,11 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 
 ## Design rules
 
-**Reuse.** Build from an existing pattern. When none fits, measure what
-Vercel, Linear and Circle do; add the new pattern to this section before
-building it.
+**Reuse.** Before building an element, look in `packages/web/src/ui/` and
+its stories; build from the module that fits. Done when every element in the
+change comes from `ui/`, or the handoff names the new one and why no existing
+module fits. When none fits, measure what Vercel, Linear and Circle do; add
+the new pattern to this section before building it.
 
 **Meaning and emphasis.**
 - Give a column, badge, glyph and word one meaning on every screen. Say
@@ -67,7 +69,7 @@ building it.
   action that changes that fact.
 - Choose the pane's one primary by state, not position: an unfinished
   operation's retry in its notice, else Update target on a behind target, else
-  Import local edits… on Local edits, else none. A pane whose ⋮ order already
+  Import local edits on Local edits, else none. A pane whose ⋮ order already
   leads with the next step (Inventory, Harness) makes its first enabled item
   primary.
 - At 1100px and below, show the pane as a full-height sheet over the table's

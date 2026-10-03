@@ -62,7 +62,7 @@ export const DISCARD_LOCAL_EDITS = "Discard local edits";
 export const OVERWRITE_UNVERIFIED = "Overwrite unverified copy";
 
 export const KEEP_WORK_BY_IMPORTING =
-  "To keep the edits instead, select Cancel, then Import local edits….";
+  "To keep the edits instead, select Cancel, then Import local edits.";
 
 export const localEditsSentence = (name: string, release: string): string =>
   `${name} has local edits. This update replaces them with release ${release}.`;

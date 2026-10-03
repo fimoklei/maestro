@@ -23,7 +23,7 @@ Create a GitHub issue.
 
 ## When a skill publishes a spec
 
-A spec for a new capability is a **sub-issue** of its job (label `job`, see the Legend in `docs/jobs.md`); attach it with the recipe below, the job as parent. A spec that improves something already built opens its body with the line `Small work: improves <what>, no job.`
+Create the issue with `--label spec`, alongside `ready-for-agent`. A spec for a new capability is a **sub-issue** of its job (label `job`, see the Legend in `docs/jobs.md`); attach it with the recipe below, the job as parent. A spec that improves something already built opens its body with the line `Small work: improves <what>, no job.`
 
 ## When a skill breaks a spec into tickets
 
