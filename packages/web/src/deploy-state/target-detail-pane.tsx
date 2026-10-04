@@ -151,7 +151,9 @@ export function TargetDetailPane({
                 machine: true,
                 action: update ?? undefined,
               },
-          changed === null ? null : { label: "Changed", value: changed },
+          changed === null
+            ? null
+            : { label: "Changed", value: changed, fullValue: changed },
           head ? { label: "Compared", value: comparedFact(head, now) } : null,
           row.extraFiles
             ? { label: "Extra files", value: extraFilesFact(row.extraFiles) }

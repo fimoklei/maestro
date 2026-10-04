@@ -160,6 +160,19 @@ describe("Deploy-state pane — facts", () => {
     ).toHaveTextContent(REPO);
   });
 
+  // A narrow pane shortens the names; focus still reads them all (#1394).
+  it("shows every changed skill when the Changed value is focused", async () => {
+    repoWith({ releaseHead: BEHIND });
+    renderDeployState();
+    const pane = await openPane(LABEL);
+
+    within(pane).getByText("2 of 5 skills: tdd and grill").focus();
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("2 of 5 skills: tdd and grill");
+  });
+
   it("ticks the Compared fact while the pane stays open", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
