@@ -112,11 +112,15 @@ export class PromoteSkillDeletion {
       return { ok: false, error: "confirmation-stale" };
     }
 
-    const request = await beforeProposalPush(this.deps.review, {
-      origin,
-      base: branch,
-      name,
-    });
+    const request = await beforeProposalPush(
+      this.deps.review,
+      {
+        origin,
+        base: branch,
+        name,
+      },
+      "deletion",
+    );
     if (!request.ok) {
       return request;
     }

@@ -12,7 +12,7 @@ import {
   readOriginFacts,
   requestProposal,
 } from "./proposal-request";
-import type { HarnessFacts } from "./read-harness-state";
+import type { HarnessGitPort } from "./read-harness-state";
 
 export type ProposalActionError =
   | "not-configured"
@@ -34,6 +34,7 @@ export type ProposalActionResult =
 
 type Ready = {
   ok: true;
+  root: string;
   target: ProposalTarget;
   matching: ReviewRequest[];
   open: ReviewRequest[];
@@ -44,7 +45,7 @@ type CheckedFacts = Ready | { ok: false; error: ProposalActionError };
 export class ProposalActions {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    git: { readFacts: (root: string) => Promise<HarnessFacts> };
+    git: Pick<HarnessGitPort, "readFacts" | "readMovementTrees">;
     review: HarnessReviewPort;
   };
 
@@ -61,7 +62,15 @@ export class ProposalActions {
     if (checked.open.length > 0) {
       return { ok: false, error: "request-exists" };
     }
-    return settle(await requestProposal(this.deps.review, checked.target));
+    // The pushed branch, not the cockpit, says which kind it proposes.
+    const trees = await this.deps.git.readMovementTrees(checked.root);
+    if (trees === null) {
+      return { ok: false, error: "no-answer" };
+    }
+    const kind = trees.promote[name]?.tree === null ? "deletion" : "change";
+    return settle(
+      await requestProposal(this.deps.review, checked.target, kind),
+    );
   }
 
   async reopen(name: string, number: number): Promise<ProposalActionResult> {
@@ -125,6 +134,7 @@ export class ProposalActions {
     const target = { origin, base, name };
     return {
       ok: true,
+      root,
       target,
       matching: review.requests.filter((request) =>
         matchesProposal(request, { ownerRepo: origin.ownerRepo, branch, base }),

@@ -6,10 +6,33 @@ import {
   type ReviewRequest,
   type ReviewWriteOutcome,
 } from "./harness-review-port";
-import { PROPOSAL_BODY, promoteBranch, proposalTitle } from "./promote-branch";
+import { promoteBranch } from "./promote-branch";
 import type { HarnessFacts } from "./read-harness-state";
 
 export type ProposalTarget = { origin: GitOrigin; base: string; name: string };
+
+export type ProposalKind = "change" | "deletion";
+
+const TITLE_PREFIX: Record<ProposalKind, string> = {
+  change: "Promote skill:",
+  deletion: "Delete skill:",
+};
+
+const OTHER_KIND: Record<ProposalKind, ProposalKind> = {
+  change: "deletion",
+  deletion: "change",
+};
+
+const proposalText = (
+  name: string,
+  kind: ProposalKind,
+): { title: string; body: string } => ({
+  title: `${TITLE_PREFIX[kind]} ${name}`,
+  body:
+    kind === "deletion"
+      ? `Deletes ${name} from the Harness. Targets keep the skill until each one runs Update target after the next release.`
+      : "Proposed from the Maestro cockpit.",
+});
 
 export type OriginFacts =
   | { ok: true; origin: GitOrigin; base: string; head: string | null }
@@ -53,18 +76,35 @@ export const openProposals = (
 export const requestProposal = (
   review: HarnessReviewPort,
   target: ProposalTarget,
+  kind: ProposalKind,
 ): Promise<ReviewWriteOutcome> =>
   review.createRequest(target.origin, {
     head: promoteBranch(target.name),
     base: target.base,
-    title: proposalTitle(target.name),
-    body: PROPOSAL_BODY,
+    ...proposalText(target.name, kind),
   });
+
+// Only a title of the other kind changes: any other title is someone's words.
+const retitle = async (
+  review: HarnessReviewPort,
+  target: ProposalTarget,
+  kind: ProposalKind,
+  request: ReviewRequest,
+): Promise<void> => {
+  if (!request.title.startsWith(TITLE_PREFIX[OTHER_KIND[kind]])) {
+    return;
+  }
+  // A failed retitle is not reported: the pushed branch is the truth.
+  await review.editRequest(target.origin, request.number, {
+    title: proposalText(target.name, kind).title,
+  });
+};
 
 // Read before the push, never from the cockpit: it decides open versus update.
 export const beforeProposalPush = async (
   review: HarnessReviewPort,
   target: ProposalTarget,
+  kind: ProposalKind,
 ): Promise<
   | { ok: true; afterPush: () => Promise<void> }
   | { ok: false; error: "extra-requests" }
@@ -81,8 +121,14 @@ export const beforeProposalPush = async (
   return {
     ok: true,
     afterPush: async () => {
-      if (open !== null && open.length === 0) {
-        await requestProposal(review, target);
+      if (open === null) {
+        return;
+      }
+      const [only] = open;
+      if (only === undefined) {
+        await requestProposal(review, target, kind);
+      } else {
+        await retitle(review, target, kind, only);
       }
     },
   };

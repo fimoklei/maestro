@@ -355,7 +355,7 @@ Pending review. Then a missing or unauthenticated `gh` costs the link and the
 withdrawal case, and nothing else. That is the lazy shape, and it is the one
 that survives failure mode 3 gracefully.
 
-## 6. The three writes (added 2026-09-08, `gh` 2.86.0)
+## 6. The writes (added 2026-09-08, `gh` 2.86.0)
 
 Read from `gh pr create --help`, `gh pr close --help` and `gh pr reopen --help`
 on the same version. Not executed against a live repository: a write cannot be
@@ -368,8 +368,9 @@ controlled process outcomes in the tests.
 | Open | `gh pr create --repo O/R --head <branch> --base <base> --title T --body B` | *"Upon success, the URL of the created pull request will be printed."* `--head` is what makes gh *"explicitly skip any forking or pushing behavior"*, and `--title`/`--body` are what skip the prompt. |
 | Withdraw | `gh pr close <number> --repo O/R` | Closes it. `--delete-branch` is opt-in, so omitting it leaves the branch — which is what withdrawal must do. |
 | Reopen | `gh pr reopen <number> --repo O/R` | Reopens it. A merged request cannot be reopened, so Maestro refuses one before the call rather than reading gh's prose. |
+| Retitle | `gh pr edit <number> --repo O/R --title T` | Added #1383 from `gh pr edit --help` (gh 2.101.0). *"Without a body flag the pull request keeps the body it already has."* |
 
-All three take `{<number> | <url> | <branch>}`; Maestro passes the number it
+All four take `{<number> | <url> | <branch>}`; Maestro passes the number it
 matched itself. Exit codes and the offline phrase are §3's, unchanged: a write
 classifies the same way a read does, and its stdout is never parsed.
 
@@ -396,6 +397,7 @@ git ls-remote https://github.com/fimoklei/harness.git 'refs/heads/maestro/*'
 gh pr create --help
 gh pr close --help
 gh pr reopen --help
+gh pr edit --help   # gh 2.101.0, #1383
 
 # failure probes — none of these touch the author's gh state
 env PATH=/usr/bin:/bin sh -c 'gh --version'

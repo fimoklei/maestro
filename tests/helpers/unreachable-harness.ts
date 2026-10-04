@@ -31,6 +31,7 @@ export const unavailableHarnessReview = () => ({
   createRequest: async () => ({ ok: false, error: "unavailable" }) as const,
   reopenRequest: async () => ({ ok: false, error: "unavailable" }) as const,
   closeRequest: async () => ({ ok: false, error: "unavailable" }) as const,
+  editRequest: async () => ({ ok: false, error: "unavailable" }) as const,
 });
 
 export const unfetchedFreshness = () => ({

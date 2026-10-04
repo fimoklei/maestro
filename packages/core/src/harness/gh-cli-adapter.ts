@@ -37,6 +37,7 @@ const JSON_FIELDS = [
   "headRepository",
   "headRepositoryOwner",
   "author",
+  "title",
 ].join(",");
 
 // Nothing else is set: gh finds the author's own credentials; Maestro adds none.
@@ -103,6 +104,8 @@ const requestSchema = z.object({
   headRepository: z.object({ name: z.string() }).nullable(),
   headRepositoryOwner: z.object({ login: z.string() }).nullable(),
   author: z.object({ login: loginSchema }),
+  // Stays in core: only its prefix is compared, and it never crosses to the browser.
+  title: z.string(),
 });
 
 const documentSchema = z.array(requestSchema);
@@ -211,6 +214,23 @@ export class GhCliAdapter implements HarnessReviewPort {
     ]);
   }
 
+  // No body flag: gh keeps the body, which may hold someone else's words.
+  async editRequest(
+    origin: GitOrigin,
+    number: number,
+    edit: { title: string },
+  ): Promise<ReviewWriteOutcome> {
+    return await this.write(origin, [
+      "pr",
+      "edit",
+      String(number),
+      "--repo",
+      origin.ownerRepo,
+      "--title",
+      edit.title,
+    ]);
+  }
+
   private async write(
     origin: GitOrigin,
     args: string[],
@@ -247,6 +267,7 @@ function toReviewRequest(row: z.infer<typeof requestSchema>): ReviewRequest {
     headCommit: row.headRefOid,
     baseBranch: row.baseRefName,
     author: row.author.login,
+    title: row.title,
   };
 }
 

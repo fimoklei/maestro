@@ -5,10 +5,6 @@ export const PROMOTE_NAMESPACE = "maestro";
 export const promoteBranch = (name: string): string =>
   `${PROMOTE_NAMESPACE}/${name}`;
 
-export const proposalTitle = (name: string): string => `Promote skill: ${name}`;
-
-export const PROPOSAL_BODY = "Proposed from the Maestro cockpit.";
-
 // GitHub's pull-request form, built without the GitHub API (#574).
 export const promoteCompareUrl = (
   origin: GitOrigin,
