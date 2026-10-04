@@ -7,7 +7,7 @@ import { processWorktree } from "./port-holders.mjs";
 export const PID_FILE = ".maestro-dev.pid";
 
 /** The pid a worktree's pidfile names; null when it holds none. */
-export function readStackPid(worktree) {
+function readStackPid(worktree) {
   try {
     const pid = Number(readFileSync(join(worktree, PID_FILE), "utf8").trim());
     return Number.isInteger(pid) && pid > 0 ? pid : null;

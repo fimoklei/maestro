@@ -1,8 +1,5 @@
 export const PID_FILE: string;
 
-/** Null when the worktree's pidfile names no pid. */
-export function readStackPid(worktree: string): number | null;
-
 export interface RunningStack {
   worktree: string;
   pid: number;
