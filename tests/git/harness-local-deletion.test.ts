@@ -11,6 +11,7 @@ import {
   InFlightLocks,
   NodeFileSystem,
   PromoteSkillDeletion,
+  releasedSkillsFromGit,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
@@ -157,6 +158,18 @@ describe("deleting a Harness skill from the clone", () => {
       "refs/heads/maestro/jobs",
     );
     expect(pushed.stdout.trim().split("\n")).toEqual(["README.md"]);
+  });
+
+  // Inventory lists the release, not the clone: step 1 changes no release.
+  it("keeps a released skill in Inventory after step 1", async () => {
+    await git(root, "tag", "v1.0.0");
+    await git(root, "push", "origin", "v1.0.0");
+    await new HarnessGitAdapter().fetch(root);
+
+    await expect(confirm("jobs")).resolves.toEqual({ ok: true, name: "jobs" });
+
+    const released = await releasedSkillsFromGit(new HarnessGitAdapter())(root);
+    expect(released?.map((skill) => skill.name)).toEqual(["jobs"]);
   });
 
   // Whichever guard catches it, nothing outside the Harness is removed.
