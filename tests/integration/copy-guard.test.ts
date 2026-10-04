@@ -142,6 +142,53 @@ describe("copy guard", () => {
     expect(runGuard()).toEqual({ status: 0, stdout: "" });
   });
 
+  it("fails a one-word retired word shown as a display value, returned or held in a const", () => {
+    plant(
+      "packages/web/src/i.ts",
+      [
+        'export const tab = { label: "primitives" };',
+        "export function word(): string {",
+        '  return "slugs";',
+        "}",
+        'export const shown = () => "picker";',
+        'export const UNIT = "symlink";',
+        "",
+      ].join("\n"),
+    );
+
+    const { status, stdout } = runGuard();
+
+    expect(status).toBe(1);
+    expect(stdout).toBe(
+      [
+        "packages/web/src/i.ts:1: primitives",
+        "packages/web/src/i.ts:3: slugs",
+        "packages/web/src/i.ts:5: picker",
+        "packages/web/src/i.ts:6: symlink",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("passes a code held as a value: a state, a query key, a type, an event or a hyphenated code", () => {
+    plant(
+      "packages/web/src/j.ts",
+      [
+        "type Counts = { primitives: number; skills: number };",
+        'export type Only = Pick<Counts, "primitives">;',
+        'export const row = { state: "drift", queryKey: ["drift"] };',
+        'export const on = () => window.addEventListener("refresh", () => {});',
+        "export function reading(known: boolean): string {",
+        '  return known ? "unknown" : "up-to-date";',
+        "}",
+        'export const KIND = "drift" as const;',
+        "",
+      ].join("\n"),
+    );
+
+    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+  });
+
   it("reads server messages as well", () => {
     plant(
       "packages/server/src/d.ts",

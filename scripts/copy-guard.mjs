@@ -67,12 +67,52 @@ const PASSED_ON = new Set([
   ts.SyntaxKind.AmpersandAmpersandToken,
 ]);
 
-// A one-word literal is shown when its value lands in a template or JSX
-// expression; compared, keyed or passed on, it stays a code.
+const DISPLAY_KEYS = new Set([
+  "label",
+  "title",
+  "message",
+  "detail",
+  "hint",
+  "text",
+  "heading",
+  "body",
+  "description",
+  "placeholder",
+]);
+
+// A hyphen, underscore, slash, dot or colon marks a code, route or key.
+const CODE_SHAPE = /[-_/.:]/;
+
+// Returned or held in a const, a plain word is a value that may be shown.
+function heldAsValue(parent, child, node) {
+  if (CODE_SHAPE.test(node.text)) return false;
+  return (
+    ts.isReturnStatement(parent) ||
+    (ts.isArrowFunction(parent) && parent.body === child) ||
+    (ts.isVariableDeclaration(parent) && parent.initializer === child)
+  );
+}
+
+const shownAsProperty = (parent, child) =>
+  ts.isPropertyAssignment(parent) &&
+  parent.initializer === child &&
+  ts.isIdentifier(parent.name) &&
+  DISPLAY_KEYS.has(parent.name.text);
+
+// A one-word literal is shown when its value lands in a template, a JSX
+// expression or a display property, or is returned or held as a plain word;
+// compared, keyed or passed on, it stays a code.
 function reachesSentence(node) {
   let child = node;
   for (let parent = node.parent; parent; parent = parent.parent) {
-    if (ts.isTemplateSpan(parent) || ts.isJsxExpression(parent)) return true;
+    if (
+      ts.isTemplateSpan(parent) ||
+      ts.isJsxExpression(parent) ||
+      shownAsProperty(parent, child) ||
+      heldAsValue(parent, child, node)
+    ) {
+      return true;
+    }
     const passesValueOn =
       ts.isParenthesizedExpression(parent) ||
       (ts.isConditionalExpression(parent) && parent.condition !== child) ||
