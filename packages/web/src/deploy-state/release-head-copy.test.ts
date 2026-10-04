@@ -155,6 +155,12 @@ describe("comparedFact", () => {
   it("says so when no comparison has ever succeeded", () => {
     expect(comparedFact(head({ comparedAt: null }), NOW)).toBe("Not read yet");
   });
+
+  it("says so when the read time is not a moment", () => {
+    expect(comparedFact(head({ comparedAt: "yesterday" }), NOW)).toBe(
+      "Not read yet",
+    );
+  });
 });
 
 describe("unfinishedOperationNotice", () => {

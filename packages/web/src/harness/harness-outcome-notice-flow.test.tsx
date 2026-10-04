@@ -186,9 +186,16 @@ describe("Harness outcome notices", () => {
     );
 
     expect(screen.queryByText("Skill restored")).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Re-read Harness" }),
-    ).toHaveFocus();
+    const reread = screen.getByRole("button", { name: "Re-read Harness" });
+    expect(reread).toHaveFocus();
+
+    // Dismissed until the reader runs the action again.
+    await userEvent.click(reread);
+    await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
+    expect(screen.queryByText("Skill restored")).toBeNull();
+
+    await restore();
+    expect(await screen.findByText("Skill restored")).toBeInTheDocument();
   });
 
   it("offers no close control on a notice raised on load", async () => {
