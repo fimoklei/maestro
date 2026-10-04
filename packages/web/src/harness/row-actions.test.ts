@@ -245,6 +245,35 @@ describe("rowItems", () => {
     ]);
   });
 
+  it("offers Reopen proposal on a closed deletion while the folder is deleted", () => {
+    const items = rowItems(
+      row({
+        status: "proposal-closed",
+        deletion: true,
+        folderOnDisk: false,
+        restorable: true,
+      }),
+      handlers,
+      true,
+    );
+
+    expect(labels(items)).toEqual([
+      "View pull request",
+      "Reopen proposal",
+      "Restore skill",
+    ]);
+  });
+
+  it("offers no Reopen proposal on a closed deletion once the folder is restored", () => {
+    const items = rowItems(
+      row({ status: "proposal-closed", deletion: true, folderOnDisk: true }),
+      handlers,
+      true,
+    );
+
+    expect(labels(items)).toEqual(["View pull request"]);
+  });
+
   it("names each closed request where more than one could be reopened", () => {
     const items = rowItems(
       row({
@@ -302,7 +331,8 @@ describe("rowItems", () => {
 
   it("gives a deletion the same actions a change gets, and never Remove", () => {
     // Remove stays reserved for deployed copies: nothing in the journey
-    // offers it, whatever the row proposes (#847).
+    // offers it, whatever the row proposes (#847). A closed proposal is the
+    // one stage where they differ (#1384); its own tests above cover it.
     const every = (
       [
         ["pending-proposal", "deleted-locally"],
@@ -313,7 +343,6 @@ describe("rowItems", () => {
         ["pending-review", "approved-awaiting-merge"],
         ["pending-review", "pull-request-missing"],
         ["pending-review", "proposal-merged"],
-        ["pending-review", "proposal-closed"],
         ["pending-review", "multiple-pull-requests"],
         ["pending-release", "deleted"],
       ] as [HarnessStage, StageStatus][]
