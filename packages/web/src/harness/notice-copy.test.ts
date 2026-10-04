@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import type { NoticeContent } from "../ui/notice";
+import { localDeletionNotice } from "./local-deletion-copy";
 import {
   CONCURRENT_CHANGE_NOTICE,
   deletionNotice,
   harnessStateNotice,
   importNotice,
-  localDeletionNotice,
   localEditsRefusal,
   promoteNotice,
   proposalNotice,

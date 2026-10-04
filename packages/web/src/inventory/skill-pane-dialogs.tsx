@@ -2,7 +2,7 @@ import { RemoveSkillFlow } from "../deploy-state/remove-skill-flow";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { LocalDeletionDialog } from "../harness/harness-dialogs";
-import { localDeletionNotice } from "../harness/notice-copy";
+import { localDeletionNotice } from "../harness/local-deletion-copy";
 import { useDeleteLocalSkill } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";

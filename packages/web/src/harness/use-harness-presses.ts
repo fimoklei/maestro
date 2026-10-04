@@ -8,9 +8,9 @@ import type { NoticeContent } from "../ui/notice";
 import { useWriteAction } from "../ui/use-write-action";
 import { rowId } from "./harness-columns";
 import type { LocalDeletionTarget, RestoreTarget } from "./harness-dialogs";
+import { localDeletionNotice } from "./local-deletion-copy";
 import {
   deletionNotice,
-  localDeletionNotice,
   promoteNotice,
   proposalNotice,
   restoreNotice,

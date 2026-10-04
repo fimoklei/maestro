@@ -8,10 +8,9 @@ import { ImportDialog } from "./import-dialog";
 import type { ImportCheckLoad } from "./import-view-model";
 import {
   deletionCheckNotice,
-  importNotice,
   type LocalDeletionContext,
-  releasePlanNotice,
-} from "./notice-copy";
+} from "./local-deletion-copy";
+import { importNotice, releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { RestoreDialog } from "./restore-dialog";
 import {
