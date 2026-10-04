@@ -4,6 +4,7 @@ import { HttpError } from "../api/http";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
+import { DiscardDialog } from "./discard-dialog";
 import { ImportDialog } from "./import-dialog";
 import type { ImportCheckLoad } from "./import-view-model";
 import {
@@ -31,6 +32,9 @@ export type RestoreTarget = {
   hasRequest: boolean;
 };
 
+// The request itself, frozen at the press.
+export type DiscardTarget = { name: string; seenRemoteTree: string };
+
 // `localOnly` picks the dialog's copy: a skill in no ref, or step 1 of a
 // deletion the default branch still holds (#1370).
 export type LocalDeletionTarget = { skill: string; localOnly: boolean };
@@ -49,6 +53,10 @@ export type HarnessDialogsProps = {
   restoring: RestoreTarget | null;
   restore: Presses["restoreWrite"];
   onRestoreClose: () => void;
+  discarding: DiscardTarget | null;
+  discard: Presses["discardWrite"];
+  onDiscardClose: () => void;
+  defaultBranch: string | null;
   withdrawing: { skill: string; number: number } | null;
   proposalAction: Presses["proposalWrite"];
   onWithdrawClose: () => void;
@@ -131,6 +139,23 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           }
           restoring={props.restore.phase === "running"}
           restoreError={props.restore.failure}
+        />
+      ) : null}
+      {props.discarding !== null ? (
+        <DiscardDialog
+          skill={props.discarding.name}
+          folder={`${SKILLS_DIR}/${props.discarding.name}`}
+          defaultBranch={props.defaultBranch}
+          onClose={props.onDiscardClose}
+          // Closes on success only: a refusal is stated in the dialog.
+          onConfirm={() =>
+            props.discarding !== null &&
+            props.discard.run(props.discarding, {
+              onSuccess: props.onDiscardClose,
+            })
+          }
+          discarding={props.discard.phase === "running"}
+          discardError={props.discard.failure}
         />
       ) : null}
       {props.withdrawing !== null ? (

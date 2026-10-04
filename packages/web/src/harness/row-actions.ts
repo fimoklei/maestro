@@ -13,10 +13,19 @@ export type RowActionHandlers = {
   withdraw: (skill: string, number: number) => void;
   // Takes the row: whether the skill is local-only picks the dialog's copy.
   deleteLocal: (row: HarnessStageRow) => void;
+  // Takes the row: its default-branch tree is what the author confirms.
+  discard: (row: HarnessStageRow) => void;
   // Takes the commit the menu was painted at: that is the source the author
   // confirms, and a later read must not rewrite it (#915).
   restore: (row: HarnessStageRow, commit: string) => void;
 };
+
+// Only over a default-branch copy of an edit: on a skill nothing else holds,
+// Delete skill already does the same, and a deletion has Restore skill (#1375).
+export const offersDiscard = (
+  row: HarnessStageRow,
+): row is HarnessStageRow & { remoteTree: string } =>
+  row.status === "not-yet-proposed" && !row.deletion && row.remoteTree !== null;
 
 // A null commit takes the item off the menu: there is nothing to confirm.
 export type RestoreGate = { enabled: boolean; commit: string | null };
@@ -94,6 +103,16 @@ function stageItems(
         onSelect: () => handlers.promote(row),
       },
       ...links,
+      ...(offersDiscard(row)
+        ? [
+            {
+              label: "Discard change",
+              disabled: !enabled,
+              danger: true,
+              onSelect: () => handlers.discard(row),
+            },
+          ]
+        : []),
       // A local-only skill, or one on the default branch, whose Propose change
       // then carries the deletion to the Curator (#1370). A new skill that is
       // proposed but not merged has nothing on the default branch to delete:

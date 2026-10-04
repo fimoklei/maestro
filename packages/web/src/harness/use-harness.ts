@@ -298,6 +298,22 @@ export function useDeleteLocalSkill() {
   });
 }
 
+// The tree is the default-branch copy the dialog named; the server refuses one
+// that moved since (#1375).
+export function useDiscardSkillChange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: { name: string; seenRemoteTree: string }) =>
+      requestJson<{ name: string }>("/api/harness/skill/discard", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
 // `hasRequest` never leaves the browser; it only picks the notice's sentence
 // (#915).
 export function useRestoreSkill() {

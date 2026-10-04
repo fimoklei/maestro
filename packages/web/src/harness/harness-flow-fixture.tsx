@@ -106,6 +106,8 @@ export function stubHarnessServer(options: {
   localDeletions?: Record<string, unknown>[];
   restore?: { body: unknown; status?: number };
   restores?: Record<string, unknown>[];
+  discard?: { body: unknown; status?: number };
+  discards?: Record<string, unknown>[];
   proposal?: { body: unknown; status?: number };
   proposals?: { action: string; body: Record<string, unknown> }[];
   confirmations?: Record<string, unknown>[];
@@ -192,6 +194,14 @@ export function stubHarnessServer(options: {
       if (url === "/api/harness/skill/restore") {
         options.restores?.push(JSON.parse(String(init?.body)));
         const back = options.restore ?? { body: {}, status: 500 };
+        if ((back.status ?? 200) < 400) {
+          promoted = true;
+        }
+        return jsonResponse(back.body, back.status);
+      }
+      if (url === "/api/harness/skill/discard") {
+        options.discards?.push(JSON.parse(String(init?.body)));
+        const back = options.discard ?? { body: {}, status: 500 };
         if ((back.status ?? 200) < 400) {
           promoted = true;
         }

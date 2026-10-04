@@ -8,6 +8,7 @@ import { ImportLocalEditsDialog } from "./deploy-state/import-local-edits-dialog
 import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog } from "./harness/deletion-dialog";
+import { DiscardDialog } from "./harness/discard-dialog";
 import { ImportDialog } from "./harness/import-dialog";
 import { ReleaseDialog } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
@@ -105,6 +106,21 @@ const ON_DIALOG: Row[] = [
         onConfirm={vi.fn()}
         restoring={running}
         restoreError={null}
+      />
+    ),
+  },
+  {
+    file: "harness/discard-dialog.tsx",
+    heading: "Discard change for research",
+    render: ({ running, onClose }) => (
+      <DiscardDialog
+        skill="research"
+        folder=".apm/skills/research"
+        defaultBranch="main"
+        onClose={onClose}
+        onConfirm={vi.fn()}
+        discarding={running}
+        discardError={null}
       />
     ),
   },

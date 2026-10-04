@@ -296,6 +296,20 @@ describe("Detail sentences", () => {
     },
   );
 
+  // Over a default-branch copy the row also offers Discard change (#1375).
+  it("names both controls on a change to a skill the default branch holds", () => {
+    expect(
+      detailSentence(
+        row("pending-proposal", "not-yet-proposed", {
+          remoteTree: "remote-tdd",
+        }),
+        CONTEXT,
+      ),
+    ).toBe(
+      "Your local copy differs from main. Select Propose change to send it for review, or Discard change to match main again.",
+    );
+  });
+
   // Two ways on where the folder can come back, so the one sentence names
   // both controls rather than hiding the local one (#915).
   it.each(["not-yet-proposed", "deleted-locally"] as const)(
