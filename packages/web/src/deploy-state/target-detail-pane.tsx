@@ -12,6 +12,7 @@ import {
   REREAD_LABEL,
   TARGET_LABEL,
 } from "./deploy-state-copy";
+import type { DeployStateNotice } from "./notice-copy";
 import {
   changedFact,
   comparedFact,
@@ -41,6 +42,7 @@ export function TargetDetailPane({
   initialFocus,
   onRetry,
   isRetrying,
+  retryFailure,
   onReread,
   now,
   update,
@@ -55,6 +57,8 @@ export function TargetDetailPane({
   initialFocus?: string | null;
   onRetry: () => void;
   isRetrying: boolean;
+  /** The last retry's failure, stated in place of the unfinished operation. */
+  retryFailure: DeployStateNotice | null;
   onReread: () => void;
   /** The screen's one clock, so the Compared fact ticks with band 2. */
   now: Date;
@@ -75,14 +79,16 @@ export function TargetDetailPane({
     : row.pending
       ? {
           content: {
-            ...unfinishedOperationNotice(row.pending, row.primitives),
+            ...(retryFailure
+              ? { ...retryFailure, level: "error" as const }
+              : unfinishedOperationNotice(row.pending, row.primitives)),
             action: {
               label: RETRY_LABELS[row.pending.kind],
               onClick: onRetry,
               disabled: isRetrying,
             },
           },
-          trigger: "load",
+          trigger: retryFailure ? "user-action" : "load",
           retry: true,
         }
       : null;

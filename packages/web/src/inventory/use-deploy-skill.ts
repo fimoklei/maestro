@@ -11,6 +11,11 @@ export type DeployTarget =
   | { kind: "repo"; repoPath: string }
   | { kind: "global" };
 
+export const sameTarget = (a: DeployTarget | undefined, b: DeployTarget) =>
+  a !== undefined &&
+  a.kind === b.kind &&
+  (a.kind === "global" || (b.kind === "repo" && a.repoPath === b.repoPath));
+
 // One owner for the target half of every per-target query key — a second
 // spelling would leave one panel stale after the other refetched.
 export function targetQueryKey(target: DeployTarget): string {

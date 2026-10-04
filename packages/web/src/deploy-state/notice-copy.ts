@@ -1,7 +1,9 @@
 import type {
   DeploySkillError,
+  PendingOperation,
   RemoveDeployedSkillError,
   RemovePreflightError,
+  RetryTargetOperationError,
   UpdatePreviewError,
   UpdateRunError,
 } from "@maestro/core";
@@ -12,6 +14,7 @@ import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
 import { REMOVE_SKILL, REREAD_LABEL } from "./deploy-state-copy";
+import { RETRY_LABELS, unfinishedOperationNotice } from "./release-head-copy";
 import { UPDATE_AGAIN, UPDATE_INCOMPLETE_SENTENCE } from "./update-target-copy";
 
 // One table over the three unions: a code shared by deploy and remove reads the
@@ -41,6 +44,16 @@ const removeLink = (path: string, again: string) =>
   `Run rm ${path} and ${again}`;
 
 const DELETE_LINKED_FOLDER = deleteLinkedFolder(DEPLOY_AGAIN);
+
+const EDITS_OUTSIDE_HARNESS = "The edits never went through the Harness.";
+
+const COPIES_PREDATE_TRACKING =
+  "These copies predate content tracking, so any change in them is invisible.";
+
+const MANIFEST_OTHER_SHAPE =
+  "Maestro edits that list only, and it found another shape.";
+
+const FILES_MISSING = "apm reported success, but some files are missing.";
 
 const LINK_TARGET_SURVIVES =
   "This removes the link only. The folder it points at remains on disk.";
@@ -132,7 +145,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   },
   "deployed-diverged-from-lock": {
     message: "Deploy again to replace the local edits with the latest release.",
-    detail: "The edits never went through the Harness.",
+    detail: EDITS_OUTSIDE_HARNESS,
   },
   "deployed-unverifiable": {
     message: "Deploy again to replace this copy with the latest release.",
@@ -170,7 +183,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "manifest-not-recognised": {
     message:
       "Nothing was installed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
-    detail: "Maestro edits that list only, and it found another shape.",
+    detail: MANIFEST_OTHER_SHAPE,
   },
   "operation-unfinished": {
     message:
@@ -180,7 +193,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "deploy-incomplete": {
     message:
       "Part of the selection is not on disk. Open the target on the Deploy-state screen and select Retry deploy.",
-    detail: "apm reported success, but some files are missing.",
+    detail: FILES_MISSING,
   },
   "no-supported-tool": {
     message:
@@ -257,7 +270,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   "manifest-not-recognised": {
     message:
       "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
-    detail: "Maestro edits that list only, and it found another shape.",
+    detail: MANIFEST_OTHER_SHAPE,
   },
   "operation-unfinished": {
     message:
@@ -266,7 +279,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   "remove-incomplete": {
     message:
       "The skill's files are still on disk. Select Retry removal to run the same removal again.",
-    detail: "apm reported success, but some files are missing.",
+    detail: FILES_MISSING,
   },
   "remove-failed": {
     message:
@@ -376,21 +389,20 @@ const UPDATE: Record<UpdateRunError, Body> = {
   "deployed-diverged-from-lock": {
     message:
       "Nothing was changed. Select Update target again to review the local edits before updating.",
-    detail: "The edits never went through the Harness.",
+    detail: EDITS_OUTSIDE_HARNESS,
   },
   "deployed-unverifiable": {
     message:
       "Nothing was changed. Select Update target again to review the unverified copies before updating.",
-    detail:
-      "These copies predate content tracking, so any change in them is invisible.",
+    detail: COPIES_PREDATE_TRACKING,
   },
   "manifest-not-recognised": {
     message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${UPDATE_AGAIN}`,
-    detail: "Maestro edits that list only, and it found another shape.",
+    detail: MANIFEST_OTHER_SHAPE,
   },
   "update-incomplete": {
     message: UPDATE_INCOMPLETE_SENTENCE,
-    detail: "apm reported success, but some files are missing.",
+    detail: FILES_MISSING,
   },
   "update-failed": {
     message: `Nothing proved the update finished. Check the target on the Deploy-state screen, ${UPDATE_AGAIN}`,
@@ -493,4 +505,92 @@ function withRm(
 /** The whole notice for a refused or failed removal. */
 export function removeNotice(error: unknown): DeployStateNotice {
   return noticeFor(REMOVE, error, UNKNOWN_REMOVE);
+}
+
+type RetriedOperation = Pick<PendingOperation, "kind" | "release">;
+
+const RETRY_NOUNS: Record<
+  PendingOperation["kind"],
+  { name: string; noun: string }
+> = {
+  deploy: { name: "Deploy", noun: "deploy" },
+  remove: { name: "Removal", noun: "removal" },
+  update: { name: "Update", noun: "update" },
+};
+
+function retryCopy(
+  operation: RetriedOperation,
+): Record<RetryTargetOperationError, DeployStateNotice> {
+  const retry = RETRY_LABELS[operation.kind];
+  const { name, noun } = RETRY_NOUNS[operation.kind];
+  const again = `then select ${retry} again.`;
+  return {
+    "repo-not-registered": {
+      label: LABELS["repo-not-registered"],
+      message: `Nothing was changed. Select Register repository on the Repositories screen, ${again}`,
+    },
+    "nothing-to-retry": {
+      label: "Change already finished",
+      message:
+        "Nothing was changed. The earlier change on this target already finished.",
+    },
+    "retry-in-progress": {
+      label: "Another change is running",
+      message: `Nothing was changed. Wait for the running change to finish, ${again}`,
+    },
+    "deployed-diverged-from-lock": {
+      label: LABELS["deployed-diverged-from-lock"],
+      message: `Nothing was changed. Undo the local edits in the deployed files, ${again}`,
+      detail: EDITS_OUTSIDE_HARNESS,
+    },
+    "deployed-unverifiable": {
+      label: LABELS["deployed-unverifiable"],
+      message: `Nothing was changed. Delete the unverified copies in the target, ${again}`,
+      detail: COPIES_PREDATE_TRACKING,
+    },
+    "deployed-unreadable": {
+      label: LABELS["deployed-unreadable"],
+      message: `Nothing was changed. Make the deployed copy readable, ${again}`,
+      detail: "Its permissions or its shape blocked the check.",
+    },
+    "lockfile-malformed": {
+      label: LABELS["lockfile-malformed"],
+      message: `Nothing was changed. Repair or delete apm.lock.yaml in the target, ${again}`,
+      detail:
+        "The file is present but does not parse, so the target's state is unknown.",
+    },
+    "manifest-not-recognised": {
+      label: LABELS["manifest-not-recognised"],
+      message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${again}`,
+      detail: MANIFEST_OTHER_SHAPE,
+    },
+    "retry-incomplete": {
+      label: `${name} still incomplete`,
+      message: unfinishedOperationNotice(operation).message,
+      detail: FILES_MISSING,
+    },
+    "retry-failed": {
+      label: `${name} outcome unknown`,
+      message: `Nothing proved the ${noun} finished. Select ${retry} to run it again.`,
+    },
+  };
+}
+
+/** The whole notice for a failed retry of an unfinished operation. */
+export function retryNotice(
+  error: unknown,
+  operation: RetriedOperation,
+): DeployStateNotice {
+  const copy = retryCopy(operation);
+  if (error instanceof HttpError) {
+    const requestShape = requestShapeNotice(error);
+    if (requestShape) {
+      const { level: _level, ...notice } = requestShape;
+      return notice;
+    }
+    if (Object.hasOwn(copy, error.code ?? "")) {
+      return copy[error.code as RetryTargetOperationError];
+    }
+  }
+  return { ...copy["retry-failed"], detail: UNKNOWN_DETAIL };
 }
