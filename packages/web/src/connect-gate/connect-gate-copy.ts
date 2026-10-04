@@ -10,6 +10,12 @@ export const PATH_LABEL = "Harness folder or GitHub URL";
 export const CLONE_HINT =
   "Maestro adds one new folder here and changes nothing else.";
 export const CLONE_WAIT = "Cloning can take a minute.";
+export const CLONE_LABEL = "Folder for the Harness";
+
+export const CONNECTED_TITLE = "Harness connected";
+export const CONTINUE_TO_INVENTORY = "Continue to Inventory";
+export const CREATED_TITLE = "Harness created";
+export const CONTINUE_TO_HARNESS = "Continue to Harness";
 
 export const PRIVATE_HARNESS_ACCESS =
   "Teammates need their own GitHub and APM access to a private Harness.";

@@ -4,6 +4,10 @@ import { Button } from "../ui/button";
 import { Fact } from "../ui/fact";
 import { Notice } from "../ui/notice";
 import {
+  CONNECTED_TITLE,
+  CONTINUE_TO_HARNESS,
+  CONTINUE_TO_INVENTORY,
+  CREATED_TITLE,
   connectedMessage,
   NO_SKILLS_YET,
   PRIVATE_HARNESS_ACCESS,
@@ -31,23 +35,23 @@ function completionCopy(
   switch (outcome) {
     case "found":
       return {
-        title: "Harness connected",
+        title: CONNECTED_TITLE,
         message: connectedMessage(primitiveCount),
-        continueLabel: "Continue to Inventory",
+        continueLabel: CONTINUE_TO_INVENTORY,
       };
     case "joined":
       // Only a clone can be someone else's private repository.
       return {
-        title: "Harness connected",
+        title: CONNECTED_TITLE,
         message: connectedMessage(primitiveCount),
         detail: PRIVATE_HARNESS_ACCESS,
-        continueLabel: "Continue to Inventory",
+        continueLabel: CONTINUE_TO_INVENTORY,
       };
     case "scaffolded":
       return {
-        title: "Harness created",
+        title: CREATED_TITLE,
         message: NO_SKILLS_YET,
-        continueLabel: "Continue to Harness",
+        continueLabel: CONTINUE_TO_HARNESS,
       };
   }
 }

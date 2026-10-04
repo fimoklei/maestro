@@ -9,12 +9,11 @@ import type { FolderChooser } from "../ui/use-folder-chooser";
 
 import {
   CLONE_HINT,
+  CLONE_LABEL,
   CLONE_WAIT,
   CONNECT_HARNESS,
   PATH_LABEL,
 } from "./connect-gate-copy";
-
-const CLONE_LABEL = "Folder for the Harness";
 
 // Each field owns the one notice slot under it (#1013); `ConnectFlow` owns the
 // mutations.

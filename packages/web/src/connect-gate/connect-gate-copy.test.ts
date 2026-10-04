@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   CLONE_HINT,
+  CLONE_LABEL,
   CLONE_WAIT,
   CONNECT_HARNESS,
   CONNECT_TITLE,
+  CONNECTED_TITLE,
+  CONTINUE_TO_HARNESS,
+  CONTINUE_TO_INVENTORY,
+  CREATED_TITLE,
   connectedMessage,
   NO_SKILLS_YET,
   PATH_LABEL,
@@ -28,6 +33,14 @@ describe("connect gate copy", () => {
       "Maestro adds one new folder here and changes nothing else.",
     );
     expect(CLONE_WAIT).toBe("Cloning can take a minute.");
+    expect(CLONE_LABEL).toBe("Folder for the Harness");
+  });
+
+  it("titles a finished connect and names the way on", () => {
+    expect(CONNECTED_TITLE).toBe("Harness connected");
+    expect(CONTINUE_TO_INVENTORY).toBe("Continue to Inventory");
+    expect(CREATED_TITLE).toBe("Harness created");
+    expect(CONTINUE_TO_HARNESS).toBe("Continue to Harness");
   });
 
   it("states what a connect made ready, with the item count", () => {
