@@ -64,6 +64,8 @@ type Options = {
   bytes?: () => string | null;
   // A symlinked leaf destination, as the disk reports it.
   linked?: { name: string; tool: SupportedTool; path: string };
+  // Copies the operator edited on disk, which apm keeps when it drops them.
+  edited?: { name: string; tool: SupportedTool }[];
 };
 
 const HARNESS = "fimoklei/harness";
@@ -77,6 +79,9 @@ function subject(options: Options = {}) {
       release: options.release ?? "v0.3.2",
       skills: [...(options.selection ?? SELECTION)],
     });
+  }
+  for (const { name, tool } of options.edited ?? []) {
+    world.edits(tool, name);
   }
   const locks = new InFlightLocks();
   // Before the write the recorded baseline decides; afterwards the disk and the
@@ -104,6 +109,7 @@ function subject(options: Options = {}) {
   };
   const update = new UpdateTarget({
     selection: world.writer,
+    deployedCleanup: world.cleanup,
     deployedContent: {
       classify,
       linkedSkillPath: async (input) =>
@@ -800,6 +806,95 @@ describe("UpdateTarget.run", () => {
       confirmedCopyReceipt: receipt,
     });
     expect(result.ok).toBe(true);
+  });
+
+  it("discards an edited copy of a skill the release drops once consented, and finishes", async () => {
+    const running = await confirmed({
+      copies: { review: "diverged" },
+      edited: [{ name: "review", tool: "claude" }],
+    });
+    expect(running.preview.localEdits.discard).toStrictEqual([
+      { name: "review", tool: null },
+    ]);
+    const refused = await running.run({ token: running.token });
+
+    const result = await running.run({
+      token: running.token,
+      confirmedCopyReceipt: refused.ok ? undefined : refused.copyReceipt,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.outcome : []).toContainEqual({
+      name: "review",
+      tool: "claude",
+      state: "removed",
+    });
+    expect(
+      running.world.files.has("/target/.claude/skills/review/SKILL.md"),
+    ).toBe(false);
+    expect(await running.world.operations.read("/repo")).toBeNull();
+  });
+
+  it("discards a dropped copy only in the tools the update covers", async () => {
+    const running = await confirmed({
+      target: GLOBAL,
+      detected: ["claude"],
+      copies: { review: "diverged" },
+      edited: [
+        { name: "review", tool: "claude" },
+        { name: "review", tool: "codex" },
+      ],
+    });
+    const refused = await running.run({ token: running.token });
+
+    await running.run({
+      token: running.token,
+      confirmedCopyReceipt: refused.ok ? undefined : refused.copyReceipt,
+    });
+
+    expect(
+      running.world.files.has("/target/.claude/skills/review/SKILL.md"),
+    ).toBe(false);
+    expect(
+      running.world.files.has("/target/.agents/skills/review/SKILL.md"),
+    ).toBe(true);
+  });
+
+  it("deletes no dropped copy without consent", async () => {
+    const running = await confirmed({
+      copies: { review: "diverged" },
+      edited: [{ name: "review", tool: "claude" }],
+    });
+
+    const refused = await running.run({ token: running.token });
+
+    expect(refused.ok ? null : refused.error).toBe(
+      "deployed-diverged-from-lock",
+    );
+    expect(
+      running.world.files.has("/target/.claude/skills/review/SKILL.md"),
+    ).toBe(true);
+  });
+
+  it("leaves an edited copy the release keeps to apm, even when the install fails", async () => {
+    const running = await confirmed({
+      copies: { tdd: "diverged", review: "diverged" },
+      edited: [{ name: "tdd", tool: "claude" }],
+    });
+    const refused = await running.run({ token: running.token });
+    running.world.refuseWith({ ok: false, reason: "failed" });
+
+    await running.run({
+      token: running.token,
+      confirmedCopyReceipt: refused.ok ? undefined : refused.copyReceipt,
+    });
+
+    expect(running.world.files.has("/target/.claude/skills/tdd/SKILL.md")).toBe(
+      true,
+    );
+    expect(
+      running.world.files.has("/target/.claude/skills/review/SKILL.md"),
+    ).toBe(false);
   });
 
   it("writes nothing when a selected skill's folder became a link after the preview", async () => {

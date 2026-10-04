@@ -206,6 +206,9 @@ function realDeps(): AppDeps {
     const root = resolveInventoryPath(await store.read(), process.env);
     return root === undefined ? null : await harnessGit.readOrigin(root);
   };
+  const deployedCleanup = new DeployedCleanupAdapter({
+    location: deployedLocation,
+  });
   const deploy = new DeploySkill({
     inventory,
     registry,
@@ -221,7 +224,7 @@ function realDeps(): AppDeps {
       location: deployedLocation,
     }),
     // A direct subtree rm for an untargeted tool's leftover copy (#136), never `apm uninstall -g`.
-    deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
+    deployedCleanup,
     // Probed per deploy, so a global install targets only tools the machine has.
     toolPresence,
     inventoryOriginUrl: async () => {
@@ -238,7 +241,7 @@ function realDeps(): AppDeps {
     copyGuard,
     deployedContent,
     apm,
-    deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
+    deployedCleanup,
     toolPresence,
     canonicalPath,
     locks: apmWriteLocks,
@@ -249,6 +252,7 @@ function realDeps(): AppDeps {
   const retryOperation = new RetryTargetOperation({
     registry,
     selection,
+    deployedCleanup,
     copyGuard,
     deployedContent,
     toolPresence,
@@ -406,6 +410,7 @@ function realDeps(): AppDeps {
       toolPresence,
       copyGuard,
       selection,
+      deployedCleanup,
       deployedContent,
       canonicalPath,
       locks: apmWriteLocks,

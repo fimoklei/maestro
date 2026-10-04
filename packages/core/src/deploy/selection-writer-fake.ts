@@ -2,9 +2,14 @@
 // `SelectionWriter`, with an apm that moves all three like the real one.
 import { ConfigStore } from "../registry/config-store";
 import { SelectionWriter } from "./apply-selection";
-import type { DeploySkillDriverResult, DeployTarget } from "./deploy-skill";
+import type {
+  DeployedCleanupPort,
+  DeploySkillDriverResult,
+  DeployTarget,
+} from "./deploy-skill";
 import {
   DEPLOY_TOOLS,
+  deployTargetSubtrees,
   SUPPORTED_TOOLS,
   type SupportedTool,
 } from "./deploy-tools";
@@ -23,6 +28,11 @@ export type SelectionWorld = {
   operations: TargetOperationStore;
   calls: SelectionCall[];
   files: Map<string, string>;
+  // Deletes a skill's folder per tool, as `DeployedCleanupAdapter` does.
+  cleanup: DeployedCleanupPort;
+  // The operator edited this copy: apm keeps it and its lockfile row when an
+  // install drops the skill (#1340).
+  edits(tool: SupportedTool, skill: string): void;
   // What the next install actually places, whatever it was asked for.
   landsOnly(skills: string[] | null): void;
   // The next install leaves this one tool's copy of a skill off disk, keeping
@@ -64,6 +74,7 @@ export function selectionWorld(
   let landing: string[] | null = null;
   let skipped: string | null = null;
   let refusal: DeploySkillDriverResult | "throw" | null = null;
+  const edited = new Set<string>();
 
   const manifest = (skills: readonly string[]) => `name: consumer
 dependencies:
@@ -81,6 +92,7 @@ ${[...skills]
     release: string,
     skills: readonly string[],
     tools: readonly SupportedTool[],
+    kept: readonly string[],
   ) =>
     `dependencies:
 - repo_url: ${harness}
@@ -88,9 +100,9 @@ ${[...skills]
   resolved_ref: ${release}
   package_type: apm_package
 ${
-  skills.length === 0
+  skills.length === 0 && kept.length === 0
     ? ""
-    : `  deployed_files:\n${copyPaths(skills, tools)
+    : `  deployed_files:\n${[...copyPaths(skills, tools), ...kept]
         .map((path) => `  - ${path}`)
         .join("\n")}\n`
 }`;
@@ -98,6 +110,7 @@ ${
   const clearCopies = () => {
     for (const path of [...files.keys()]) {
       if (
+        !edited.has(path) &&
         DEPLOY_TOOLS.some((tool) =>
           path.startsWith(`${treeRoot}/${tool.skillsDirPrefix}/skills/`),
         )
@@ -152,9 +165,14 @@ ${
         files.delete(`${treeRoot}/${skipped}`);
         skipped = null;
       }
+      const placed = new Set(copyPaths(landed, tools));
+      const kept = [...edited]
+        .filter((path) => files.has(path))
+        .map((path) => path.slice(treeRoot.length + 1))
+        .filter((path) => !placed.has(path));
       files.set(
         lockfilePath,
-        lockfile(input.ref.split("#")[1] ?? "", landed, tools),
+        lockfile(input.ref.split("#")[1] ?? "", landed, tools, kept),
       );
       // apm persists the Selection it was asked for, creating the dependency
       // when it is absent.
@@ -205,6 +223,22 @@ ${
     operations,
     calls,
     files,
+    cleanup: {
+      removeSkillTargets: async ({ name, tools }) => {
+        for (const subtree of deployTargetSubtrees(name, tools)) {
+          for (const path of [...files.keys()]) {
+            if (path.startsWith(`${treeRoot}/${subtree}/`)) {
+              files.delete(path);
+            }
+          }
+        }
+      },
+    },
+    edits: (tool, skill) => {
+      for (const path of copyPaths([skill], [tool])) {
+        edited.add(`${treeRoot}/${path}`);
+      }
+    },
     landsOnly: (skills) => {
       landing = skills;
     },
@@ -216,7 +250,7 @@ ${
     },
     seed: ({ release, skills }) => {
       files.set(manifestPath, manifest(skills));
-      files.set(lockfilePath, lockfile(release, skills, SUPPORTED_TOOLS));
+      files.set(lockfilePath, lockfile(release, skills, SUPPORTED_TOOLS, []));
       place(skills, SUPPORTED_TOOLS);
     },
   };

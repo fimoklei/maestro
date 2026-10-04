@@ -84,4 +84,18 @@ describe("DeployedCleanupAdapter — global target", () => {
       true,
     );
   });
+
+  it("refuses a name that would reach outside the skills folder, deleting nothing", async () => {
+    await writeDeployed(".agents/keep/SKILL.md", "codex\n");
+
+    await expect(
+      adapter().removeSkillTargets({
+        target,
+        name: "../keep",
+        tools: ["codex"],
+      }),
+    ).rejects.toThrow();
+
+    expect(await exists(join(home, ".agents/keep/SKILL.md"))).toBe(true);
+  });
 });
