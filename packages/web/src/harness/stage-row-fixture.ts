@@ -24,6 +24,7 @@ export const stageRow = (
   localOnly: false,
   remoteTree: null,
   restorable: false,
+  folderOnDisk: false,
   previousName: null,
   ...over,
 });

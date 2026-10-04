@@ -7,7 +7,7 @@ import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
 import { useWriteAction } from "../ui/use-write-action";
 import { rowId } from "./harness-columns";
-import type { RestoreTarget } from "./harness-dialogs";
+import type { LocalDeletionTarget, RestoreTarget } from "./harness-dialogs";
 import {
   deletionNotice,
   localDeletionNotice,
@@ -70,6 +70,10 @@ export function useHarnessPresses(
   const [confirming, setConfirming] = useState<string | null>(null);
   const pendingDeletion =
     proposalRows(state).find((row) => row.skill === confirming) ?? null;
+  // Frozen at the press: two stages carry Delete skill, and the row it came
+  // from turns into Deleted locally once the folder is gone.
+  const [localDeletion, setLocalDeletion] =
+    useState<LocalDeletionTarget | null>(null);
 
   // The press freezes what it was made against, so a check landing while the
   // confirmation stands cannot rewrite the source or close it (#915).
@@ -155,9 +159,9 @@ export function useHarnessPresses(
       proposalAction.reset();
       setWithdrawing({ skill, number });
     },
-    deleteLocal: (skill) => {
+    deleteLocal: (row) => {
       deleteLocal.reset();
-      setConfirming(skill);
+      setLocalDeletion({ skill: row.skill, localOnly: row.localOnly });
     },
     restore: (row, commit) => {
       restore.reset();
@@ -186,6 +190,8 @@ export function useHarnessPresses(
     // Left unreset, so a landed deletion still names the row that just moved
     // after its dialog closes. The next press resets it (#580, #581).
     closeConfirmation: () => setConfirming(null),
+    localDeletion,
+    closeLocalDeletion: () => setLocalDeletion(null),
     restoring,
     closeRestore: () => setRestoring(null),
     withdrawing,

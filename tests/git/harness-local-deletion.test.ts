@@ -6,18 +6,23 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   DeleteLocalSkill,
+  type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
   NodeFileSystem,
+  PromoteSkillDeletion,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
+import { unavailableHarnessReview } from "../helpers/unreachable-harness";
 
 const run = promisify(execFile);
 
+const AT = new Date("2026-10-04T12:00:00.000Z");
+
 const ORIGIN_URL = "git@github.com:fimoklei/agent-harness.git";
 
-describe("deleting a Harness skill that exists nowhere else", () => {
+describe("deleting a Harness skill from the clone", () => {
   let base: string;
   let remote: string;
   let root: string;
@@ -118,13 +123,40 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     );
   });
 
-  it("refuses a skill the default branch already holds", async () => {
-    await expect(confirm("jobs")).resolves.toEqual({
-      ok: false,
-      error: "not-local-only",
-    });
+  // Step 1 removes the folder; step 2, the existing deletion route, pushes it.
+  it("takes a released skill from step 1 through step 2 to its proposal branch", async () => {
+    const before = (await git(remote, "rev-parse", "main")).stdout.trim();
 
-    expect(await skills()).toEqual(["jobs", "scratch"]);
+    await expect(confirm("jobs")).resolves.toEqual({ ok: true, name: "jobs" });
+    expect(await skills()).toEqual(["scratch"]);
+    expect((await git(remote, "rev-parse", "main")).stdout.trim()).toBe(before);
+
+    const trees = await new HarnessGitAdapter().readMovementTrees(root);
+    let freshness: HarnessFreshness = { outcome: null, lastFetchedAt: null };
+    const step2 = new PromoteSkillDeletion({
+      resolveRoot: async () => root,
+      git: new HarnessGitAdapter(),
+      freshness: {
+        read: async () => freshness,
+        record: async (_root, next) => {
+          freshness = next;
+        },
+      },
+      locks: new InFlightLocks(),
+      review: unavailableHarnessReview(),
+    });
+    await expect(
+      step2.execute("jobs", trees?.remote.jobs as string, AT),
+    ).resolves.toMatchObject({ ok: true, branch: "maestro/jobs" });
+
+    const pushed = await git(
+      remote,
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "refs/heads/maestro/jobs",
+    );
+    expect(pushed.stdout.trim().split("\n")).toEqual(["README.md"]);
   });
 
   // Whichever guard catches it, nothing outside the Harness is removed.

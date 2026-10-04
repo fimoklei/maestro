@@ -269,12 +269,6 @@ const localDeletionHeadings = ({
       "Nothing was deleted. Close this dialog, then select Delete skill again.",
     detail: "Git could not read your clone.",
   },
-  "not-local-only": {
-    level: "error",
-    label: "Skill exists elsewhere",
-    message: "Nothing was deleted. Select Re-read Harness to repaint the list.",
-    detail: "Maestro found this skill outside the working tree.",
-  },
   "destination-unsafe": {
     level: "error",
     label: "Folder outside the Harness",

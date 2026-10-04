@@ -11,7 +11,8 @@ export type RowActionHandlers = {
   create: (skill: string) => void;
   reopen: (skill: string, number: number) => void;
   withdraw: (skill: string, number: number) => void;
-  deleteLocal: (skill: string) => void;
+  // Takes the row: whether the skill is local-only picks the dialog's copy.
+  deleteLocal: (row: HarnessStageRow) => void;
   // Takes the commit the menu was painted at: that is the source the author
   // confirms, and a later read must not rewrite it (#915).
   restore: (row: HarnessStageRow, commit: string) => void;
@@ -50,6 +51,25 @@ export function rowItems(
   ];
 }
 
+// Last of the stage's items, and red: it deletes files (#994).
+function deleteItem(
+  row: HarnessStageRow,
+  handlers: RowActionHandlers,
+  enabled: boolean,
+  allowed: boolean,
+): ActionsMenuProps["items"] {
+  return allowed && row.folderOnDisk
+    ? [
+        {
+          label: "Delete skill",
+          disabled: !enabled,
+          danger: true,
+          onSelect: () => handlers.deleteLocal(row),
+        },
+      ]
+    : [];
+}
+
 function stageItems(
   row: HarnessStageRow,
   handlers: RowActionHandlers,
@@ -74,23 +94,22 @@ function stageItems(
         onSelect: () => handlers.promote(row),
       },
       ...links,
-      // Only a skill that has never been proposed and sits in no ref at all:
-      // reverting a change to the default branch is a different verb (#798).
-      ...(row.status === "not-yet-proposed" && row.localOnly
-        ? [
-            {
-              label: "Delete skill",
-              disabled: !enabled,
-              danger: true,
-              onSelect: () => handlers.deleteLocal(row.skill),
-            },
-          ]
-        : []),
+      // A local-only skill, or one on the default branch, whose Propose change
+      // then carries the deletion to the Curator (#1370). A new skill that is
+      // proposed but not merged has nothing on the default branch to delete:
+      // Withdraw proposal is its way out.
+      ...deleteItem(
+        row,
+        handlers,
+        enabled,
+        row.localOnly || row.remoteTree !== null,
+      ),
     ];
   }
 
-  if (row.stage !== "pending-review") {
-    return links;
+  // The only way to delete a merged skill that was never released.
+  if (row.stage === "pending-release") {
+    return [...links, ...deleteItem(row, handlers, enabled, true)];
   }
 
   switch (row.status) {

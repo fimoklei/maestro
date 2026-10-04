@@ -251,7 +251,6 @@ export const localDeletionErrorResponses: ErrorTable<DeleteLocalSkillError> = {
   "already-gone": { status: 409 },
   "no-answer": { status: 409 },
   "confirmation-stale": { status: 409 },
-  "not-local-only": { status: 409 },
   "destination-unsafe": { status: 409 },
   "delete-failed": { status: 500 },
   "delete-in-progress": { status: 409 },

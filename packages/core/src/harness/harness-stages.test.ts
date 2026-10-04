@@ -773,3 +773,48 @@ describe("Local restoration eligibility", () => {
     expect(oneRow(built.release).restorable).toBe(false);
   });
 });
+
+describe("Folder on disk", () => {
+  const DELETED: HarnessSkillTrees = {
+    remote: { tdd: "same" },
+    promote: {},
+    local: { tdd: "same" },
+    working: {},
+  };
+
+  it("marks a row whose folder is in the working tree in every stage", () => {
+    const trees: HarnessSkillTrees = {
+      remote: { tdd: "merged" },
+      promote: { tdd: onBranch("pushed") },
+      local: { tdd: "merged" },
+      working: { tdd: "edited" },
+    };
+    const built = stages({
+      trees,
+      review: reviewOf([request()]),
+      release: [{ kind: "changed", name: "tdd" }],
+    });
+    expect(oneRow(built.proposal).folderOnDisk).toBe(true);
+    expect(oneRow(built.review).folderOnDisk).toBe(true);
+    expect(oneRow(built.release).folderOnDisk).toBe(true);
+  });
+
+  it("marks a row whose folder is gone from the working tree in every stage", () => {
+    const built = stages({
+      trees: DELETED,
+      review: reviewOf([request()]),
+      release: [{ kind: "removed", name: "tdd" }],
+    });
+    expect(oneRow(built.proposal).folderOnDisk).toBe(false);
+    expect(oneRow(built.review).folderOnDisk).toBe(false);
+    expect(oneRow(built.release).folderOnDisk).toBe(false);
+  });
+
+  it("never claims a folder on disk when the refs could not be read", () => {
+    const built = stages({
+      trees: null,
+      release: [{ kind: "changed", name: "tdd" }],
+    });
+    expect(oneRow(built.release).folderOnDisk).toBe(false);
+  });
+});

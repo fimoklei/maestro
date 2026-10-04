@@ -8,14 +8,22 @@ import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
 // The two roads a Harness skill's deletion takes. Proposing it needs the exact
 // origin/HEAD copy the confirmation is given against (#580), and the open
 // request it turns into a deletion; removing it on disk needs the folder that
-// goes (#798), read fresh while the dialog stands.
+// goes (#798), read fresh while the dialog stands. `localOnly` picks the copy:
+// a skill in no ref is gone for good, one on the default branch is step 1 of a
+// proposed deletion (#1370).
 export type DeletionMode =
   | {
       kind: "propose";
       seenRemoteTree: string;
       openRequest: { number: number; author: string } | null;
     }
-  | { kind: "local"; folder: string; check: "checking" | "failed" | "ready" };
+  | {
+      kind: "local";
+      folder: string;
+      check: "checking" | "failed" | "ready";
+      localOnly: boolean;
+      uncommitted: boolean;
+    };
 
 export function DeletionDialog({
   skill,
@@ -72,13 +80,36 @@ export function DeletionDialog({
             notice={openRequestNotice(skill, mode.openRequest)}
           />
         </>
-      ) : (
+      ) : mode.localOnly ? (
         // No second sentence: the propose mode has one because nothing is
         // lost until a merge, and here something is.
         <p className="m-0">
           {skill} is in the Harness working tree and nowhere else. Confirming
           removes the folder from disk for good.
         </p>
+      ) : (
+        <>
+          <p className="m-0">
+            Delete skill removes the {skill} folder from your clone. GitHub and
+            your targets keep the skill.
+          </p>
+          <p className="m-0 text-gray-11">
+            Then select Propose change to open a pull request.
+          </p>
+          <Notice
+            trigger="load"
+            notice={
+              mode.uncommitted
+                ? {
+                    level: "warning",
+                    label: `Uncommitted changes in ${skill}`,
+                    message:
+                      "Delete skill discards these changes. To keep them, commit them first.",
+                  }
+                : null
+            }
+          />
+        </>
       )}
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">

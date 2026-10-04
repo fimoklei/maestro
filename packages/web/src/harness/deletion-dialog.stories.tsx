@@ -28,14 +28,52 @@ export const Ready: Story = {};
 // propose and the folder goes from disk.
 export const LocalOnly: Story = {
   args: {
-    mode: { kind: "local", folder: ".apm/skills/old-skill", check: "ready" },
+    mode: {
+      kind: "local",
+      folder: ".apm/skills/old-skill",
+      check: "ready",
+      localOnly: true,
+      uncommitted: true,
+    },
+  },
+};
+
+// Step 1 of deleting a skill on the default branch: the folder leaves the
+// clone, and Propose change carries the deletion on.
+export const StepOne: Story = {
+  args: {
+    mode: {
+      kind: "local",
+      folder: ".apm/skills/old-skill",
+      check: "ready",
+      localOnly: false,
+      uncommitted: false,
+    },
+  },
+};
+
+export const StepOneUncommitted: Story = {
+  args: {
+    mode: {
+      kind: "local",
+      folder: ".apm/skills/old-skill",
+      check: "ready",
+      localOnly: false,
+      uncommitted: true,
+    },
   },
 };
 
 // The folder is read afresh on every opening; Delete skill waits for it.
 export const LocalChecking: Story = {
   args: {
-    mode: { kind: "local", folder: ".apm/skills/old-skill", check: "checking" },
+    mode: {
+      kind: "local",
+      folder: ".apm/skills/old-skill",
+      check: "checking",
+      localOnly: false,
+      uncommitted: false,
+    },
   },
 };
 

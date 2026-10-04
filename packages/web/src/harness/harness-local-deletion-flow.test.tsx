@@ -21,6 +21,7 @@ describe("Harness local deletion", () => {
     proposal: [
       row("pending-proposal", "old-skill", "not-yet-proposed", {
         localOnly: true,
+        folderOnDisk: true,
       }),
       row("pending-proposal", "code-review", "not-yet-proposed"),
     ],
@@ -128,7 +129,7 @@ describe("Harness local deletion", () => {
   it("states a refusal in the dialog, and leaves the skill in place", async () => {
     stubHarnessServer({
       read: { body: LOCAL_ONLY },
-      localDeletion: { body: { error: "not-local-only" }, status: 409 },
+      localDeletion: { body: { error: "destination-unsafe" }, status: 409 },
       deletionChecks: CLEAN,
     });
     renderHarness();
@@ -138,7 +139,7 @@ describe("Harness local deletion", () => {
     await userEvent.click(confirm);
 
     expect(
-      await within(dialog).findByText(/Skill exists elsewhere/i),
+      await within(dialog).findByText(/Folder outside the Harness/i),
     ).toBeInTheDocument();
     expect(confirm).toBeEnabled();
     // Still on the board behind the dialog: a refusal removed nothing.
@@ -253,5 +254,143 @@ describe("Harness local deletion", () => {
         { name: "old-skill", seenWorkingTree: "tree-2" },
       ]),
     );
+  });
+});
+
+// Step 1 of deleting a skill on the default branch (#1370): the folder leaves
+// the clone, and the row turns into the deletion Propose change carries on.
+describe("Harness step 1 of deleting a skill on the default branch", () => {
+  const EDITED = row("pending-proposal", "jobs", "not-yet-proposed", {
+    remoteTree: "remote-jobs",
+    folderOnDisk: true,
+  });
+
+  const DELETED = withStages(ON_DISK, {
+    proposal: [
+      row("pending-proposal", "jobs", "deleted-locally", {
+        deletion: true,
+        remoteTree: "remote-jobs",
+        restorable: true,
+      }),
+    ],
+  });
+
+  const checked = (uncommitted: boolean) => [
+    {
+      body: {
+        skills: {
+          jobs: {
+            inClone: true,
+            workingTree: "tree-1",
+            uncommitted,
+            localOnly: false,
+          },
+        },
+      },
+    },
+  ];
+
+  const openStepOne = async (stage?: string) => {
+    const menu = await openRowMenu("jobs", stage);
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: /^delete skill$/i }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: /delete jobs/i,
+    });
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("button", { name: /^delete skill/i }),
+      ).not.toHaveAttribute("aria-disabled"),
+    );
+    return dialog;
+  };
+
+  it("opens step 1 from a Pending proposal row, warning of uncommitted changes", async () => {
+    stubHarnessServer({
+      read: { body: withStages(ON_DISK, { proposal: [EDITED] }) },
+      deletionChecks: checked(true),
+    });
+    renderHarness();
+
+    const dialog = await openStepOne();
+
+    expect(
+      within(dialog).getByText(
+        "Delete skill removes the jobs folder from your clone. GitHub and your targets keep the skill.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Uncommitted changes in jobs"),
+    ).toBeInTheDocument();
+  });
+
+  it("warns of nothing for a clean folder", async () => {
+    stubHarnessServer({
+      read: { body: withStages(ON_DISK, { proposal: [EDITED] }) },
+      deletionChecks: checked(false),
+    });
+    renderHarness();
+
+    const dialog = await openStepOne();
+
+    expect(
+      within(dialog).queryByText("Uncommitted changes in jobs"),
+    ).toBeNull();
+  });
+
+  it("turns the row into Deleted locally in place, with Restore skill on it", async () => {
+    const localDeletions: Record<string, unknown>[] = [];
+    const deletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: {
+        body: withStages(ON_DISK, { proposal: [EDITED] }),
+        afterPromote: DELETED,
+      },
+      deletionChecks: checked(false),
+      localDeletion: { body: { name: "jobs" } },
+      localDeletions,
+      deletions,
+    });
+    renderHarness();
+    const dialog = await openStepOne();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^delete skill/i }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(localDeletions).toEqual([
+      { name: "jobs", seenWorkingTree: "tree-1" },
+    ]);
+    // Step 2 waits for its own press.
+    expect(deletions).toEqual([]);
+    expect(await screen.findByText("Deleted locally")).toBeVisible();
+    const menu = await openRowMenu("jobs");
+    expect(
+      within(menu).getByRole("menuitem", { name: /^restore skill$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens step 1 from a Pending release row with no proposal row", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(ON_DISK, {
+          release: [
+            row("pending-release", "jobs", "changed", { folderOnDisk: true }),
+          ],
+        }),
+      },
+      deletionChecks: checked(false),
+    });
+    renderHarness();
+
+    const dialog = await openStepOne("Pending release");
+
+    expect(
+      within(dialog).getByText(
+        "Then select Propose change to open a pull request.",
+      ),
+    ).toBeInTheDocument();
   });
 });

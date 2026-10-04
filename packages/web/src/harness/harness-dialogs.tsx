@@ -30,6 +30,10 @@ export type RestoreTarget = {
   hasRequest: boolean;
 };
 
+// `localOnly` picks the dialog's copy: a skill in no ref, or step 1 of a
+// deletion the default branch still holds (#1370).
+export type LocalDeletionTarget = { skill: string; localOnly: boolean };
+
 type Presses = ReturnType<typeof useHarnessPresses>;
 
 export type HarnessDialogsProps = {
@@ -37,8 +41,10 @@ export type HarnessDialogsProps = {
   importFlow: ReturnType<typeof useImportFlow>;
   deletionRow: HarnessStageRow | null;
   deletion: Presses["deletionWrite"];
-  deleteLocal: Presses["deleteLocalWrite"];
   onDeletionClose: () => void;
+  localDeletion: LocalDeletionTarget | null;
+  deleteLocal: Presses["deleteLocalWrite"];
+  onLocalDeletionClose: () => void;
   restoring: RestoreTarget | null;
   restore: Presses["restoreWrite"];
   onRestoreClose: () => void;
@@ -72,14 +78,14 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           importError={props.importFlow.importWrite.failure}
         />
       ) : null}
-      {deletionRow !== null && mode === "local" ? (
+      {props.localDeletion !== null ? (
         <LocalDeletionHost
-          skill={deletionRow.skill}
+          target={props.localDeletion}
           write={props.deleteLocal}
-          onClose={props.onDeletionClose}
+          onClose={props.onLocalDeletionClose}
         />
       ) : null}
-      {deletionRow !== null && mode !== null && mode !== "local" ? (
+      {deletionRow !== null && mode !== null ? (
         <DeletionDialog
           skill={deletionRow.skill}
           mode={mode}
@@ -160,11 +166,11 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
 // Mounted only while the dialog stands, so every opening reads the folder
 // afresh, and a stale refusal reads it again before the next confirmation.
 function LocalDeletionHost({
-  skill,
+  target: { skill, localOnly },
   write,
   onClose,
 }: {
-  skill: string;
+  target: LocalDeletionTarget;
   write: Presses["deleteLocalWrite"];
   onClose: () => void;
 }) {
@@ -188,6 +194,8 @@ function LocalDeletionHost({
           : seenWorkingTree === null
             ? "failed"
             : "ready",
+        localOnly,
+        uncommitted: folder?.inClone === true && folder.uncommitted,
       }}
       onClose={onClose}
       onConfirm={() =>
@@ -222,31 +230,22 @@ function ImportDialogHost(
 // Spelled here rather than imported: `web` takes only types from `core`.
 const SKILLS_DIR = ".apm/skills";
 
-// Which road this row's deletion takes, or null where the row offers neither.
-// The two are exclusive: a proposed deletion is tracked somewhere, and a
-// local-only skill is tracked nowhere.
+// The proposed deletion this row confirms, or null where it offers none.
 function deletionMode(
   row: HarnessStageRow | null,
-): Extract<DeletionMode, { kind: "propose" }> | "local" | null {
-  if (row === null) {
+): Extract<DeletionMode, { kind: "propose" }> | null {
+  if (row === null || !row.deletion || row.remoteTree === null) {
     return null;
   }
-  if (row.deletion) {
-    // A proposal row links only a sole open request, and any open request
-    // on a Deleted locally row proposes changes.
-    const open = row.requests[0];
-    return row.remoteTree === null
-      ? null
-      : {
-          kind: "propose",
-          seenRemoteTree: row.remoteTree,
-          openRequest:
-            open === undefined
-              ? null
-              : { number: open.number, author: open.author },
-        };
-  }
-  return row.localOnly ? "local" : null;
+  // A proposal row links only a sole open request, and any open request on a
+  // Deleted locally row proposes changes.
+  const open = row.requests[0];
+  return {
+    kind: "propose",
+    seenRemoteTree: row.remoteTree,
+    openRequest:
+      open === undefined ? null : { number: open.number, author: open.author },
+  };
 }
 
 // Idle until a folder is picked: with nothing to judge there is no refusal to

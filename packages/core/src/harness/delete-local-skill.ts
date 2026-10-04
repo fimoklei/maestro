@@ -1,4 +1,6 @@
-// Removes a skill's folder from the Working Harness's disk: no commit or push (#798).
+// Removes a skill's folder from the Working Harness's disk: no commit or push
+// (#798). A skill on the default branch goes the same way; Propose change then
+// carries the deletion to the Curator (#1370).
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
@@ -14,7 +16,6 @@ export type DeleteLocalSkillError =
   | "no-answer"
   // The folder no longer holds the tree the confirmation was given against.
   | "confirmation-stale"
-  | "not-local-only"
   // Outside this Harness's skills folder: removing it would delete something else.
   | "destination-unsafe"
   | "delete-failed"
@@ -103,9 +104,6 @@ export class DeleteLocalSkill {
     }
     if (check.workingTree !== seenWorkingTree) {
       return { ok: false, error: "confirmation-stale" };
-    }
-    if (!check.localOnly) {
-      return { ok: false, error: "not-local-only" };
     }
 
     const folder = await this.resolveFolder(root, name);

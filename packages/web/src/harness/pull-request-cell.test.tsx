@@ -20,6 +20,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   localOnly: false,
   remoteTree: null,
   restorable: false,
+  folderOnDisk: false,
   previousName: null,
   ...over,
 });

@@ -362,8 +362,10 @@ export function HarnessView({
           importFlow={importFlow}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletionWrite}
-          deleteLocal={presses.deleteLocalWrite}
           onDeletionClose={presses.closeConfirmation}
+          localDeletion={presses.localDeletion}
+          deleteLocal={presses.deleteLocalWrite}
+          onLocalDeletionClose={presses.closeLocalDeletion}
           restoring={presses.restoring}
           restore={presses.restoreWrite}
           onRestoreClose={presses.closeRestore}

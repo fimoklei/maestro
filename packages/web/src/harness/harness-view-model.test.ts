@@ -69,6 +69,7 @@ describe("stageSections", () => {
     localOnly: false,
     remoteTree: null,
     restorable: false,
+    folderOnDisk: false,
     previousName: null,
   });
 
@@ -193,6 +194,7 @@ describe("harnessAnnouncement", () => {
     localOnly: false,
     remoteTree: null,
     restorable: false,
+    folderOnDisk: false,
     previousName: null,
   });
 

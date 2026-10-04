@@ -116,14 +116,14 @@ describe("DeleteLocalSkill", () => {
     ["a proposal branch", { promote: { tdd: onBranch("branch-tdd") } }],
     ["a tree on origin/HEAD", { remote: { tdd: "remote-tdd" } }],
     ["a commit on local HEAD", { local: { tdd: "local-tdd" } }],
-  ])("refuses a skill that %s still holds", async (_what, over) => {
+  ])("removes a skill that %s also holds", async (_what, over) => {
     const { deletion, removed } = build({ trees: { ...LOCAL_ONLY, ...over } });
 
     await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
-      ok: false,
-      error: "not-local-only",
+      ok: true,
+      name: "tdd",
     });
-    expect(removed).toEqual([]);
+    expect(removed).toEqual([FOLDER]);
   });
 
   // Fail-closed: a clone nobody could read is not proof of what the folder holds.
