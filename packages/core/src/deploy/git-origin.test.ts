@@ -112,4 +112,11 @@ describe("parseGitOrigin", () => {
     expect(parseGitOrigin("git://git.example/acme/inventory.git")).toBeNull();
     expect(parseGitOrigin("http://git.example/acme/inventory")).toBeNull();
   });
+
+  it("rejects a pathological scp-like url in bounded time (code scanning #1)", () => {
+    const started = performance.now();
+    expect(parseGitOrigin(`.${".@".repeat(50_000)}`)).toBeNull();
+    expect(parseGitOrigin(`.${".@.:".repeat(50_000)}`)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(200);
+  });
 });
