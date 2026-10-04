@@ -73,33 +73,33 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /inventory not connected/i,
+        name: "No Harness connected",
       }),
     ).toBeInTheDocument();
 
     // welcome -> connect
     await userEvent.click(
-      screen.getByRole("button", { name: /connect inventory/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /inventory connection/i,
+        name: "Connect a Harness",
       }),
     ).toBeInTheDocument();
 
     // connect -> success beat
     await userEvent.type(
-      screen.getByLabelText(/inventory path/i),
+      screen.getByLabelText("Harness folder or GitHub URL"),
       "/home/me/agent-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
-    expect(await screen.findByText(/3 items found/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/deploys never write back to this harness/i),
+      await screen.findByText("3 items are ready in the Inventory."),
     ).toBeInTheDocument();
+    expect(screen.getByText("Harness connected")).toBeInTheDocument();
 
     // The beat holds until continue is pressed; no auto-navigate.
     expect(
@@ -139,22 +139,25 @@ describe("connect gate", () => {
     renderApp("/welcome/connect");
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "https://github.com/fimoklei/agent-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
     expect(connectBodies).toEqual([
       JSON.stringify({ path: "https://github.com/fimoklei/agent-harness" }),
     ]);
-    expect(await screen.findByText(/harness connected/i)).toBeInTheDocument();
-    expect(await screen.findByText(/3 items found/i)).toBeInTheDocument();
-    expect(screen.getByText(/cloned harness/i)).toBeInTheDocument();
+    expect(await screen.findByText("Harness connected")).toBeInTheDocument();
     expect(
-      screen.queryByText(/deploys never write back to this harness/i),
-    ).not.toBeInTheDocument();
+      await screen.findByText("3 items are ready in the Inventory."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Teammates need their own GitHub and APM access to a private Harness.",
+      ),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(
       await screen.findByRole("heading", { name: /^inventory$/i }),
@@ -219,11 +222,11 @@ describe("connect gate", () => {
     renderApp("/welcome/connect");
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "https://github.com/fimoklei/team-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
     // The offer appears in place: no second screen, no mode button.
@@ -235,14 +238,11 @@ describe("connect gate", () => {
     expect(scaffoldBodies).toEqual([
       JSON.stringify({ path: "/home/me/team-harness" }),
     ]);
-    expect(await screen.findByText(/harness created/i)).toBeInTheDocument();
-    expect(screen.getByText(/it has no skills yet/i)).toBeInTheDocument();
+    expect(await screen.findByText("Harness created")).toBeInTheDocument();
+    expect(screen.getByText("It has no skills yet.")).toBeInTheDocument();
     expect(
-      screen.getByText(/skill checks do not block releases/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/unless the team makes them required/i),
-    ).toBeInTheDocument();
+      screen.queryByText(/skill checks do not block releases/i),
+    ).not.toBeInTheDocument();
     await userEvent.click(
       await screen.findByRole("button", { name: /continue/i }),
     );
@@ -285,11 +285,11 @@ describe("connect gate", () => {
     renderApp("/welcome/connect");
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "https://github.com/fimoklei/agent-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
     // The refusal opens the clone folder field and moves under it (#1013).
@@ -306,7 +306,7 @@ describe("connect gate", () => {
       await screen.findByText("/home/me/agent-harness"),
     ).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
     expect(JSON.parse(connectBodies[1] ?? "{}")).toEqual({
       path: "https://github.com/fimoklei/agent-harness",
@@ -325,15 +325,13 @@ describe("connect gate", () => {
     expect(screen.queryByText(/\d\s·\s/)).not.toBeInTheDocument();
   });
 
-  it("shows the private-Harness access note on the connect screen", async () => {
+  // The access note belongs to a clone's success, not the form (#1391).
+  it("keeps the private-Harness access note off the connect screen", async () => {
     stubServer();
     renderApp("/welcome/connect");
 
-    expect(
-      await screen.findByText(
-        /a private harness works only when every teammate has their own github and apm access/i,
-      ),
-    ).toBeInTheDocument();
+    await screen.findByRole("heading", { level: 1, name: "Connect a Harness" });
+    expect(screen.queryByText(/private harness/i)).not.toBeInTheDocument();
   });
 
   it("states clone progress while a GitHub URL is still connecting", async () => {
@@ -356,15 +354,15 @@ describe("connect gate", () => {
     renderApp("/welcome/connect");
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "https://github.com/fimoklei/agent-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
     const status = await screen.findByRole("status");
-    expect(status).toHaveTextContent(/is cloned first/i);
+    expect(status).toHaveTextContent("Cloning can take a minute.");
     expect(status).not.toHaveTextContent(/%/);
   });
 
@@ -378,7 +376,7 @@ describe("connect gate", () => {
       expect(
         await screen.findByRole("heading", {
           level: 1,
-          name: /inventory not connected/i,
+          name: "No Harness connected",
         }),
       ).toBeInTheDocument();
     },
@@ -412,7 +410,7 @@ describe("connect gate", () => {
       // No gate screen rendered on the way there; the gate's title is the
       // marker, since every screen names itself in band 1.
       expect(
-        screen.queryByRole("heading", { name: /inventory not connected/i }),
+        screen.queryByRole("heading", { name: "No Harness connected" }),
       ).not.toBeInTheDocument();
     },
   );
@@ -449,11 +447,11 @@ describe("connect gate", () => {
     renderApp("/welcome/connect");
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "/home/me/agent-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
     await userEvent.click(
       await screen.findByRole("button", { name: /continue/i }),

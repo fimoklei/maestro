@@ -59,11 +59,22 @@ describe("ConnectForm", () => {
     renderForm({ path: URL, isPending: true });
 
     const status = screen.getByRole("status");
-    expect(status).toHaveTextContent(/cloned/i);
+    expect(status).toHaveTextContent("Cloning can take a minute.");
     expect(status).not.toHaveTextContent(/%/);
     expect(
       screen.queryByRole("button", { name: /cancel/i }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connecting…" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+  });
+
+  // Only a URL is cloned; the busy button carries a local connect alone.
+  it("shows no clone wait while a local path is connecting", () => {
+    renderForm({ path: "/home/me/agent-harness", isPending: true });
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Connecting…" })).toHaveAttribute(
       "aria-busy",
       "true",
@@ -80,7 +91,7 @@ describe("ConnectForm", () => {
     renderForm({ path: URL });
 
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
-    expect(screen.getByLabelText("Inventory path or GitHub URL")).toHaveValue(
+    expect(screen.getByLabelText("Harness folder or GitHub URL")).toHaveValue(
       URL,
     );
   });
@@ -89,7 +100,7 @@ describe("ConnectForm", () => {
     const onPathChange = vi.fn();
     renderForm({ onPathChange });
 
-    fireEvent.change(screen.getByLabelText("Inventory path or GitHub URL"), {
+    fireEvent.change(screen.getByLabelText("Harness folder or GitHub URL"), {
       target: { value: "/x" },
     });
 
@@ -112,7 +123,7 @@ describe("ConnectForm", () => {
     expect(alert).toHaveTextContent("No GitHub origin");
     // Colour is never the only signal: the glyph travels with the heading.
     expect(alert.textContent).toMatch(/✕/);
-    const submit = screen.getByRole("button", { name: "Connect Inventory" });
+    const submit = screen.getByRole("button", { name: "Connect Harness" });
     expect(
       alert.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -132,14 +143,14 @@ describe("ConnectForm", () => {
       },
     });
 
-    const input = screen.getByLabelText("Inventory path or GitHub URL");
+    const input = screen.getByLabelText("Harness folder or GitHub URL");
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAccessibleDescription(/not a harness/i);
   });
 
   it("returns focus to the refused field when a submit fails (#214)", () => {
     const { rerender } = renderForm({ path: "/home/me/not-an-inventory" });
-    const input = screen.getByLabelText("Inventory path or GitHub URL");
+    const input = screen.getByLabelText("Harness folder or GitHub URL");
     expect(input).not.toHaveFocus();
 
     rerender(
@@ -199,7 +210,7 @@ describe("ConnectForm", () => {
       const field = screen.getByLabelText("Folder for the Harness");
       expect(field).toHaveValue("/Users/me/Work");
       expect(field).toHaveAccessibleDescription(
-        /^The Harness is cloned into a new folder here, named after the repository\. Nothing already in this folder is renamed, moved or deleted\./,
+        /^Maestro adds one new folder here and changes nothing else\./,
       );
       expect(
         screen.getByText("/Users/me/Work/agent-harness"),
@@ -246,7 +257,7 @@ describe("ConnectForm", () => {
         "true",
       );
       expect(
-        screen.getByLabelText("Inventory path or GitHub URL"),
+        screen.getByLabelText("Harness folder or GitHub URL"),
       ).not.toHaveAttribute("aria-invalid");
       expect(screen.getByLabelText("Folder for the Harness")).toHaveFocus();
     });
@@ -271,10 +282,10 @@ describe("ConnectForm", () => {
     expect(offer).toHaveTextContent("/home/me/team-harness");
     // An offer is not a malformed field: the path stays valid and submittable.
     expect(
-      screen.getByLabelText("Inventory path or GitHub URL"),
+      screen.getByLabelText("Harness folder or GitHub URL"),
     ).not.toHaveAttribute("aria-invalid");
     expect(
-      screen.getByRole("button", { name: "Connect Inventory" }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     ).toBeEnabled();
 
     await userEvent.click(
@@ -305,7 +316,7 @@ describe("ConnectForm", () => {
     renderForm({ submitDisabled: true });
 
     expect(
-      screen.getByRole("button", { name: "Connect Inventory" }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     ).toBeDisabled();
   });
 
@@ -314,9 +325,9 @@ describe("ConnectForm", () => {
     renderForm({ path: "/home/me/agent-harness", onSubmit });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Connect Inventory" }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
-    screen.getByLabelText("Inventory path or GitHub URL").focus();
+    screen.getByLabelText("Harness folder or GitHub URL").focus();
     await userEvent.keyboard("{Enter}");
 
     expect(onSubmit).toHaveBeenCalledTimes(2);

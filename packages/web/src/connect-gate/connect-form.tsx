@@ -7,10 +7,14 @@ import { PathField } from "../ui/path-field";
 import { StatusLine } from "../ui/status-line";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 
-const PATH_LABEL = "Inventory path or GitHub URL";
+import {
+  CLONE_HINT,
+  CLONE_WAIT,
+  CONNECT_HARNESS,
+  PATH_LABEL,
+} from "./connect-gate-copy";
+
 const CLONE_LABEL = "Folder for the Harness";
-const CLONE_HINT =
-  "The Harness is cloned into a new folder here, named after the repository. Nothing already in this folder is renamed, moved or deleted.";
 
 // Each field owns the one notice slot under it (#1013); `ConnectFlow` owns the
 // mutations.
@@ -138,11 +142,9 @@ export function ConnectForm({
         </div>
       )}
 
-      {isPending ? (
+      {isPending && cloneChild !== null ? (
         // No honest percentage and nothing safe to cancel midway (#554).
-        <StatusLine>
-          Connecting. A GitHub URL is cloned first, which can take a minute.
-        </StatusLine>
+        <StatusLine>{CLONE_WAIT}</StatusLine>
       ) : null}
 
       <div className="flex flex-wrap gap-inline">
@@ -153,7 +155,7 @@ export function ConnectForm({
           busy={isPending}
           disabled={submitDisabled}
         >
-          {isPending ? ACTIONS.connect.busy : "Connect Inventory"}
+          {isPending ? ACTIONS.connect.busy : CONNECT_HARNESS}
         </Button>
       </div>
     </form>
