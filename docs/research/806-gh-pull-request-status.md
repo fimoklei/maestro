@@ -383,6 +383,9 @@ gh pr list --repo fimoklei/harness --state all --limit 100 --json number,state,u
 gh pr view 8 --repo fimoklei/harness --json number,state,mergedAt,mergeCommit,headRefOid,url,reviewDecision,statusCheckRollup,isDraft,closedAt,baseRefName,mergeStateStatus,mergedBy
 gh pr list --repo fimoklei/harness --state all --limit 3 --json number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,baseRefName,headRepository,headRepositoryOwner
 gh pr list --repo cli/cli --state all --limit 8 --json number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,baseRefName,headRepository,headRepositoryOwner
+# `author` (#1381, gh 2.101.0): a user is {id, is_bot, login, name}; an app is
+# {is_bot: true, login: "app/<slug>"}, with no id or name
+gh pr list --repo fimoklei/maestro --state all --limit 200 --json number,author --jq '[.[] | select(.author.is_bot == true)] | .[0:3]'
 gh api "repos/fimoklei/harness/pulls?head=fimoklei:maestro/agent-native-cli&state=all"
 gh api repos/fimoklei/harness/compare/main...maestro/app-creator --jq '{status,ahead_by,behind_by}'
 gh api "repos/fimoklei/harness/contents/.apm/skills?ref=main"

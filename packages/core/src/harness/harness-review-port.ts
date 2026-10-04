@@ -26,6 +26,8 @@ export type ReviewRequest = {
   headBranch: string;
   headCommit: string;
   baseBranch: string;
+  // A login, or `app/<slug>` for an app.
+  author: string;
 };
 
 // Three outcomes that must never collapse. `complete: false` filled its bound

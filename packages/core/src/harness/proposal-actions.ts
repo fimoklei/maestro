@@ -1,12 +1,17 @@
 // The three GitHub-only proposal mutations, each rechecked against a fresh read.
-import { parseGitOrigin } from "../deploy/git-origin";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import {
   type HarnessReviewPort,
   matchesProposal,
   type ReviewRequest,
 } from "./harness-review-port";
-import { PROPOSAL_BODY, promoteBranch, proposalTitle } from "./promote-branch";
+import { promoteBranch } from "./promote-branch";
+import {
+  openProposals,
+  type ProposalTarget,
+  readOriginFacts,
+  requestProposal,
+} from "./proposal-request";
 import type { HarnessFacts } from "./read-harness-state";
 
 export type ProposalActionError =
@@ -29,10 +34,9 @@ export type ProposalActionResult =
 
 type Ready = {
   ok: true;
-  origin: NonNullable<ReturnType<typeof parseGitOrigin>>;
-  base: string;
-  branch: string;
+  target: ProposalTarget;
   matching: ReviewRequest[];
+  open: ReviewRequest[];
 };
 
 type CheckedFacts = Ready | { ok: false; error: ProposalActionError };
@@ -54,17 +58,10 @@ export class ProposalActions {
     if (!checked.ok) {
       return checked;
     }
-    if (openOf(checked.matching).length > 0) {
+    if (checked.open.length > 0) {
       return { ok: false, error: "request-exists" };
     }
-    return settle(
-      await this.deps.review.createRequest(checked.origin, {
-        head: checked.branch,
-        base: checked.base,
-        title: proposalTitle(name),
-        body: PROPOSAL_BODY,
-      }),
-    );
+    return settle(await requestProposal(this.deps.review, checked.target));
   }
 
   async reopen(name: string, number: number): Promise<ProposalActionResult> {
@@ -73,7 +70,7 @@ export class ProposalActions {
       return checked;
     }
     // More than one open request blocks the write: reopening would add a third.
-    if (openOf(checked.matching).length > 1) {
+    if (checked.open.length > 1) {
       return { ok: false, error: "extra-requests" };
     }
     const closed = checked.matching.some(
@@ -82,7 +79,9 @@ export class ProposalActions {
     if (!closed) {
       return { ok: false, error: "request-gone" };
     }
-    return settle(await this.deps.review.reopenRequest(checked.origin, number));
+    return settle(
+      await this.deps.review.reopenRequest(checked.target.origin, number),
+    );
   }
 
   // Leaves the remote branch and the author's files as they are.
@@ -91,14 +90,15 @@ export class ProposalActions {
     if (!checked.ok) {
       return checked;
     }
-    const open = openOf(checked.matching);
-    if (open.length > 1) {
+    if (checked.open.length > 1) {
       return { ok: false, error: "extra-requests" };
     }
-    if (open[0]?.number !== number) {
+    if (checked.open[0]?.number !== number) {
       return { ok: false, error: "request-gone" };
     }
-    return settle(await this.deps.review.closeRequest(checked.origin, number));
+    return settle(
+      await this.deps.review.closeRequest(checked.target.origin, number),
+    );
   }
 
   private async checkedFacts(name: string): Promise<CheckedFacts> {
@@ -109,16 +109,11 @@ export class ProposalActions {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
-    const facts = await this.deps.git.readFacts(root);
-    const origin =
-      facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
-    if (origin === null) {
-      return { ok: false, error: "no-usable-origin" };
+    const facts = await readOriginFacts(this.deps.git, root);
+    if (!facts.ok) {
+      return facts;
     }
-    const base = facts.defaultBranch;
-    if (base === null) {
-      return { ok: false, error: "no-answer" };
-    }
+    const { origin, base } = facts;
     const review = await this.deps.review.readReviews(origin);
     if (review.outcome === "unavailable") {
       return { ok: false, error: "review-unavailable" };
@@ -127,20 +122,17 @@ export class ProposalActions {
       return { ok: false, error: "review-unknown" };
     }
     const branch = promoteBranch(name);
+    const target = { origin, base, name };
     return {
       ok: true,
-      origin,
-      base,
-      branch,
+      target,
       matching: review.requests.filter((request) =>
         matchesProposal(request, { ownerRepo: origin.ownerRepo, branch, base }),
       ),
+      open: openProposals(review.requests, target),
     };
   }
 }
-
-const openOf = (requests: ReviewRequest[]) =>
-  requests.filter((request) => request.state === "open");
 
 const settle = (outcome: {
   ok: boolean;

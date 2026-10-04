@@ -1,15 +1,10 @@
 // Pushes one skill's removal to its promote branch. A deletion is never
 // inferred from absence: it takes a confirmation (#580).
-import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
-import { type HarnessReviewPort, matchesProposal } from "./harness-review-port";
-import {
-  PROPOSAL_BODY,
-  promoteBranch,
-  promoteCompareUrl,
-  proposalTitle,
-} from "./promote-branch";
+import type { HarnessReviewPort } from "./harness-review-port";
+import { promoteBranch, promoteCompareUrl } from "./promote-branch";
+import { beforeProposalPush, readOriginFacts } from "./proposal-request";
 import type {
   HarnessFreshnessPort,
   HarnessGitPort,
@@ -79,15 +74,12 @@ export class PromoteSkillDeletion {
       return { ok: false, error: "no-answer" };
     }
 
-    const facts = await this.deps.git.readFacts(root);
-    const origin =
-      facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
-    if (origin === null) {
-      return { ok: false, error: "no-usable-origin" };
+    const facts = await readOriginFacts(this.deps.git, root);
+    if (!facts.ok) {
+      return facts;
     }
-    const head = facts.defaultBranchCommit;
-    const branch = facts.defaultBranch;
-    if (head === null || branch === null) {
+    const { origin, base: branch, head } = facts;
+    if (head === null) {
       return { ok: false, error: "no-answer" };
     }
 
@@ -120,36 +112,19 @@ export class PromoteSkillDeletion {
       return { ok: false, error: "confirmation-stale" };
     }
 
-    // Read now, not from the cockpit: decides update versus open.
-    const review = await this.deps.review.readReviews(origin);
-    const open =
-      review.outcome !== "read" || !review.complete
-        ? null
-        : review.requests.filter(
-            (request) =>
-              request.state === "open" &&
-              matchesProposal(request, {
-                ownerRepo: origin.ownerRepo,
-                branch: promoteBranch(name),
-                base: branch,
-              }),
-          );
-    if (open !== null && open.length > 1) {
-      return { ok: false, error: "extra-requests" };
+    const request = await beforeProposalPush(this.deps.review, {
+      origin,
+      base: branch,
+      name,
+    });
+    if (!request.ok) {
+      return request;
     }
 
     const push = await this.deps.git.pushSkillDeletion(root, name, head);
     switch (push) {
       case "pushed":
-        // Only when GitHub answered that the branch has no request.
-        if (open !== null && open.length === 0) {
-          await this.deps.review.createRequest(origin, {
-            head: promoteBranch(name),
-            base: branch,
-            title: proposalTitle(name),
-            body: PROPOSAL_BODY,
-          });
-        }
+        await request.afterPush();
         return {
           ok: true,
           branch: promoteBranch(name),

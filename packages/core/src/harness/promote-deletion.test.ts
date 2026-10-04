@@ -50,6 +50,7 @@ const openRequest = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
   headBranch: "maestro/tdd",
   headCommit: "3d0f1a9c5b7e2846f0a1c3d5e7b9081726354adf",
   baseBranch: "main",
+  author: "fimoklei",
   ...over,
 });
 
