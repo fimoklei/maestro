@@ -1,4 +1,5 @@
 import type {
+  DiscardSkillChangeError,
   HarnessFreshness,
   HarnessStageRead,
   HarnessStateError,
@@ -230,103 +231,183 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
 
 // Every refusal leaves the working tree as it was, so every sentence opens by
 // saying so, written once over the whole table (#915).
-const nothingRestored = (
-  table: NoticeTable<RestoreSkillError>,
-): NoticeTable<RestoreSkillError> =>
+const leftAsItWas = <E extends string>(
+  opening: string,
+  table: NoticeTable<E>,
+): NoticeTable<E> =>
   Object.fromEntries(
-    Object.entries(table).map(([code, notice]) => [
+    Object.entries<NoticeContent>(table).map(([code, notice]) => [
       code,
-      { ...notice, message: `Nothing was restored. ${notice.message}` },
+      { ...notice, message: `${opening} ${notice.message}` },
     ]),
-  ) as NoticeTable<RestoreSkillError>;
+  ) as NoticeTable<E>;
 
-const restorationHeadings: NoticeTable<RestoreSkillError> = nothingRestored({
-  "not-configured": harnessHeadings["not-configured"],
-  "invalid-skill": promoteHeadings["invalid-skill"],
-  "head-moved": {
-    level: "error",
-    label: "Confirmation out of date",
-    message: "Select Re-read Harness, then Restore skill again.",
-    detail: "Your clone's last commit moved after this confirmation.",
+const restorationHeadings = leftAsItWas<RestoreSkillError>(
+  "Nothing was restored.",
+  {
+    "not-configured": harnessHeadings["not-configured"],
+    "invalid-skill": promoteHeadings["invalid-skill"],
+    "head-moved": {
+      level: "error",
+      label: "Confirmation out of date",
+      message: "Select Re-read Harness, then Restore skill again.",
+      detail: "Your clone's last commit moved after this confirmation.",
+    },
+    "staged-changes": {
+      level: "error",
+      label: "Skill has staged changes",
+      message: "Unstage this skill in your Git tool, then Restore skill again.",
+      detail: "Maestro never changes what you staged.",
+    },
+    "not-in-commit": {
+      level: "error",
+      label: "Skill not in your last commit",
+      message: "Recover the folder in your Git tool instead.",
+      detail: "Maestro restores only what your last local commit holds.",
+    },
+    "destination-exists": {
+      level: "error",
+      label: "Folder already there",
+      message:
+        "Move the folder in the Harness clone, then Restore skill again.",
+      detail: "Something already sits where this skill folder belongs.",
+    },
+    "destination-unsafe": {
+      level: "error",
+      label: "Folder outside the Harness",
+      message: "Replace the link with a real folder, then Restore skill again.",
+      detail: "The skill folder resolves outside the Harness skills folder.",
+    },
+    "restore-in-progress": {
+      level: "error",
+      label: "Harness already changing",
+      message: "Wait for that change to finish, then Restore skill again.",
+      detail: "Maestro changes one Harness at a time.",
+    },
+    "restore-failed": {
+      level: "error",
+      label: "Skill not restored",
+      message:
+        "Make the Harness skills folder writable, then Restore skill again.",
+    },
+    // A working tree mid-operation does not say what is missing, so the same
+    // headings a deletion refuses under stand here, with the way on rewritten.
+    "sparse-checkout": {
+      ...deletionHeadings["sparse-checkout"],
+      message: "Connect a complete clone to restore skills.",
+    },
+    "merge-in-progress": {
+      ...deletionHeadings["merge-in-progress"],
+      message: "Finish or abort the merge, then Restore skill again.",
+      detail: "A half-merged working tree does not state what is missing.",
+    },
+    "rebase-in-progress": {
+      ...deletionHeadings["rebase-in-progress"],
+      message: "Finish or abort the rebase, then Restore skill again.",
+      detail: "A half-rebased working tree does not state what is missing.",
+    },
+    "unresolved-conflicts": {
+      ...deletionHeadings["unresolved-conflicts"],
+      message: "Resolve the conflicts, then Restore skill again.",
+      detail: "A conflicted working tree does not state what is missing.",
+    },
+    unreadable: {
+      ...deletionHeadings.unreadable,
+      message: "Make the Harness folder readable, then Restore skill again.",
+    },
+    // A read that failed is never proof the copy is absent, so the sentence
+    // sends the author to their Git tool rather than naming a missing skill.
+    "source-unreadable": {
+      level: "error",
+      label: "Committed copy unreadable",
+      message:
+        "Check the Harness clone with your Git tool, then Restore skill again.",
+      detail:
+        "Maestro could not read this skill out of your last local commit.",
+    },
+    "destination-unreadable": {
+      level: "error",
+      label: "Skills folder missing",
+      message:
+        "Put the .apm/skills folder back in the Harness clone, then Restore skill again.",
+      detail: "Maestro could not read the Harness skills folder.",
+    },
   },
-  "staged-changes": {
-    level: "error",
-    label: "Skill has staged changes",
-    message: "Unstage this skill in your Git tool, then Restore skill again.",
-    detail: "Maestro never changes what you staged.",
-  },
-  "not-in-commit": {
-    level: "error",
-    label: "Skill not in your last commit",
-    message: "Recover the folder in your Git tool instead.",
-    detail: "Maestro restores only what your last local commit holds.",
-  },
-  "destination-exists": {
-    level: "error",
-    label: "Folder already there",
-    message: "Move the folder in the Harness clone, then Restore skill again.",
-    detail: "Something already sits where this skill folder belongs.",
-  },
-  "destination-unsafe": {
-    level: "error",
-    label: "Folder outside the Harness",
-    message: "Replace the link with a real folder, then Restore skill again.",
-    detail: "The skill folder resolves outside the Harness skills folder.",
-  },
-  "restore-in-progress": {
-    level: "error",
-    label: "Harness already changing",
-    message: "Wait for that change to finish, then Restore skill again.",
-    detail: "Maestro changes one Harness at a time.",
-  },
-  "restore-failed": {
-    level: "error",
-    label: "Skill not restored",
-    message:
-      "Make the Harness skills folder writable, then Restore skill again.",
-  },
-  // A working tree mid-operation does not say what is missing, so the same
-  // headings a deletion refuses under stand here, with the way on rewritten.
-  "sparse-checkout": {
-    ...deletionHeadings["sparse-checkout"],
-    message: "Connect a complete clone to restore skills.",
-  },
-  "merge-in-progress": {
-    ...deletionHeadings["merge-in-progress"],
-    message: "Finish or abort the merge, then Restore skill again.",
-    detail: "A half-merged working tree does not state what is missing.",
-  },
-  "rebase-in-progress": {
-    ...deletionHeadings["rebase-in-progress"],
-    message: "Finish or abort the rebase, then Restore skill again.",
-    detail: "A half-rebased working tree does not state what is missing.",
-  },
-  "unresolved-conflicts": {
-    ...deletionHeadings["unresolved-conflicts"],
-    message: "Resolve the conflicts, then Restore skill again.",
-    detail: "A conflicted working tree does not state what is missing.",
-  },
-  unreadable: {
-    ...deletionHeadings.unreadable,
-    message: "Make the Harness folder readable, then Restore skill again.",
-  },
-  // A read that failed is never proof the copy is absent, so the sentence
-  // sends the author to their Git tool rather than naming a missing skill.
-  "source-unreadable": {
-    level: "error",
-    label: "Committed copy unreadable",
-    message:
-      "Check the Harness clone with your Git tool, then Restore skill again.",
-    detail: "Maestro could not read this skill out of your last local commit.",
-  },
-  "destination-unreadable": {
-    level: "error",
-    label: "Skills folder missing",
-    message:
-      "Put the .apm/skills folder back in the Harness clone, then Restore skill again.",
-    detail: "Maestro could not read the Harness skills folder.",
-  },
-});
+);
+
+// Takes the skill: a refusal names which one moved on (#1375).
+const discardHeadings = (skill: string) =>
+  leftAsItWas<DiscardSkillChangeError>("Nothing was discarded.", {
+    "not-configured": harnessHeadings["not-configured"],
+    "invalid-skill": promoteHeadings["invalid-skill"],
+    "no-answer": {
+      level: "error",
+      label: "Clone not read",
+      message: "Close this dialog, then select Discard change again.",
+      detail: "Git could not read your clone.",
+    },
+    "already-proposed": {
+      level: "error",
+      label: "Change already proposed",
+      message: "Select Re-read Harness to see the skill as it is now.",
+      detail: `${skill} now has a proposal branch or pull request.`,
+    },
+    "nothing-to-discard": {
+      level: "error",
+      label: "Nothing to discard",
+      message: "Select Re-read Harness to see the skill as it is now.",
+      detail: `${skill} has no change that waits for a proposal.`,
+    },
+    "confirmation-stale": {
+      level: "error",
+      label: "Confirmation out of date",
+      message: "Select Re-read Harness, then Discard change again.",
+      detail: "The default branch moved after this confirmation.",
+    },
+    "destination-unsafe": {
+      level: "error",
+      label: "Folder outside the Harness",
+      message:
+        "Replace the link with a real folder, then Discard change again.",
+      detail: "The skill folder resolves outside the Harness skills folder.",
+    },
+    "discard-in-progress": {
+      level: "error",
+      label: "Harness already changing",
+      message: "Wait for that change to finish, then Discard change again.",
+      detail: "Maestro changes one Harness at a time.",
+    },
+    "discard-failed": {
+      level: "error",
+      label: "Change not discarded",
+      message:
+        "Make the Harness skills folder writable, then Discard change again.",
+    },
+    "sparse-checkout": {
+      ...deletionHeadings["sparse-checkout"],
+      message: "Connect a complete clone to discard changes.",
+      detail: "A partial clone does not hold every file of the skill.",
+    },
+    "merge-in-progress": {
+      ...deletionHeadings["merge-in-progress"],
+      message: "Finish or abort the merge, then Discard change again.",
+      detail: "A half-merged working tree does not state what changed.",
+    },
+    "rebase-in-progress": {
+      ...deletionHeadings["rebase-in-progress"],
+      message: "Finish or abort the rebase, then Discard change again.",
+      detail: "A half-rebased working tree does not state what changed.",
+    },
+    "unresolved-conflicts": {
+      ...deletionHeadings["unresolved-conflicts"],
+      message: "Resolve the conflicts, then Discard change again.",
+      detail: "A conflicted working tree does not state what changed.",
+    },
+    unreadable: {
+      ...deletionHeadings.unreadable,
+      message: "Make the Harness folder readable, then Discard change again.",
+    },
+  });
 
 // Each refusal leaves the pull request and the clone as they were, so every
 // sentence ends on another press of the same control.
@@ -655,6 +736,16 @@ export const restoreNotice = (error: unknown): NoticeContent | null =>
     label: "Skill not restored",
     message:
       "Nothing was restored. The Maestro server did not answer. Restore skill again.",
+  });
+
+export const discardNotice = (
+  error: unknown,
+  skill: string,
+): NoticeContent | null =>
+  noticeFromTable(discardHeadings(skill), error, {
+    label: "Change not discarded",
+    message:
+      "Nothing was discarded. The Maestro server did not answer. Discard change again.",
   });
 
 // The local half is final either way: only a status the cockpit could not read

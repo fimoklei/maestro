@@ -110,6 +110,7 @@ const closedDeletion = (folderOnDisk: boolean) => {
           reopen: noop,
           withdraw: noop,
           deleteLocal: noop,
+          discard: noop,
           restore: noop,
         },
         true,

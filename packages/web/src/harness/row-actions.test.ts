@@ -41,6 +41,7 @@ const handlers = {
   reopen: () => {},
   withdraw: () => {},
   deleteLocal: () => {},
+  discard: () => {},
   restore: () => {},
 };
 
@@ -188,6 +189,83 @@ describe("rowItems", () => {
       const items = rowItems(proposal({ localOnly: true }), handlers, false);
 
       expect(disabled(items)).toContain("Delete skill");
+    });
+  });
+
+  describe("Discard change", () => {
+    const unproposed = (over: Partial<HarnessStageRow> = {}) =>
+      row({
+        stage: "pending-proposal",
+        status: "not-yet-proposed",
+        requests: [],
+        folderOnDisk: true,
+        remoteTree: "remote-tdd",
+        ...over,
+      });
+
+    it("sits between Propose change and Delete skill, in red, on a default-branch skill", () => {
+      const items = rowItems(unproposed(), handlers, true);
+
+      expect(labels(items)).toEqual([
+        "Propose change",
+        "Discard change",
+        "Delete skill",
+      ]);
+      expect(items[1]?.danger).toBe(true);
+    });
+
+    // Delete skill already does the same to a skill nothing else holds.
+    it("never offers it on a skill that is only in the clone", () => {
+      const items = rowItems(
+        unproposed({ localOnly: true, remoteTree: null }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).toEqual(["Propose change", "Delete skill"]);
+    });
+
+    it.each([
+      ["behind an open proposal", { status: "new-local-work" as const }],
+      ["that proposes a deletion", { deletion: true, folderOnDisk: false }],
+      [
+        "deleted locally",
+        {
+          status: "deleted-locally" as const,
+          deletion: true,
+          folderOnDisk: false,
+        },
+      ],
+    ])("never offers it on a row %s", (_what, over) => {
+      const items = rowItems(unproposed(over), handlers, true);
+
+      expect(labels(items)).not.toContain("Discard change");
+    });
+
+    it("never offers it outside Pending proposal", () => {
+      const items = rowItems(
+        row({ folderOnDisk: true, remoteTree: "remote-tdd" }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).not.toContain("Discard change");
+    });
+
+    it("hands over the row it was pressed on, and closes with the other writes", () => {
+      const pressed: HarnessStageRow[] = [];
+      const pressedRow = unproposed();
+      const items = rowItems(
+        pressedRow,
+        { ...handlers, discard: (row) => pressed.push(row) },
+        true,
+      );
+
+      items.find((item) => item.label === "Discard change")?.onSelect?.();
+      expect(pressed).toEqual([pressedRow]);
+      expect(disabled(rowItems(pressedRow, handlers, false))).toContain(
+        "Discard change",
+      );
     });
   });
 

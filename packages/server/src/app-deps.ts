@@ -3,6 +3,7 @@ import type {
   ConnectInventory,
   DeleteLocalSkill,
   DeploySkill,
+  DiscardSkillChange,
   GlobalDeployStateReader,
   ImportLocalEdits,
   ImportSkill,
@@ -32,6 +33,7 @@ export type AppDeps = {
   promoteDeletion: PromoteSkillDeletion;
   deleteLocalSkill: DeleteLocalSkill;
   restoreSkill: RestoreSkill;
+  discardSkillChange: DiscardSkillChange;
   proposals: ProposalActions;
   connect: ConnectInventory;
   scaffold: ScaffoldHarness;

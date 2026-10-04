@@ -3,6 +3,7 @@ import type {
   ConnectInventoryError,
   DeleteLocalSkillError,
   DeploySkillError,
+  DiscardSkillChangeError,
   HarnessStateError,
   ImportSkillError,
   LocalEditsError,
@@ -273,6 +274,23 @@ export const restoreErrorResponses: ErrorTable<RestoreSkillError> = {
   unreadable: deletionErrorResponses.unreadable,
   "restore-in-progress": { status: 409 },
   "restore-failed": { status: 500 },
+};
+
+export const discardErrorResponses: ErrorTable<DiscardSkillChangeError> = {
+  "not-configured": { status: 409 },
+  "invalid-skill": { status: 400 },
+  "sparse-checkout": deletionErrorResponses["sparse-checkout"],
+  "merge-in-progress": deletionErrorResponses["merge-in-progress"],
+  "rebase-in-progress": deletionErrorResponses["rebase-in-progress"],
+  "unresolved-conflicts": deletionErrorResponses["unresolved-conflicts"],
+  unreadable: deletionErrorResponses.unreadable,
+  "no-answer": { status: 409 },
+  "already-proposed": { status: 409 },
+  "nothing-to-discard": { status: 409 },
+  "confirmation-stale": { status: 409 },
+  "destination-unsafe": { status: 409 },
+  "discard-in-progress": { status: 409 },
+  "discard-failed": { status: 500 },
 };
 
 // Never a filesystem message, and never the path it read (#576).
