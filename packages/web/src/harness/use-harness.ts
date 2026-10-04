@@ -278,6 +278,10 @@ export function useDeletionCheck() {
   });
 }
 
+// The folder's facts where it is in the clone; null where nothing is to delete.
+export const folderInClone = (check: SkillDeletionCheck | undefined) =>
+  check?.inClone === true ? check : null;
+
 // Nothing here reaches a remote (#798). The tree is the folder the dialog's
 // check read; the server refuses a folder that changed since.
 export function useDeleteLocalSkill() {

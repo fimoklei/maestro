@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import { DELETE_UNAVAILABLE } from "../harness/dialog-copy";
+import { folderInClone } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import { Icon } from "../ui/icon";
@@ -62,10 +63,8 @@ export type CloneReading =
   | { kind: "no-harness" | "checking" | "failed" }
   | { kind: "read"; skills: Record<string, SkillDeletionCheck> };
 
-const inClone = (clone: CloneReading, name: string) => {
-  const folder = clone.kind === "read" ? clone.skills[name] : undefined;
-  return folder?.inClone === true ? folder : null;
-};
+const inClone = (clone: CloneReading, name: string) =>
+  folderInClone(clone.kind === "read" ? clone.skills[name] : undefined);
 
 // Last, as a danger item; blocked with its reason while the clone cannot
 // take it.

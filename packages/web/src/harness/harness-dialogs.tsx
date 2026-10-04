@@ -14,6 +14,7 @@ import { importNotice, releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { RestoreDialog } from "./restore-dialog";
 import {
+  folderInClone,
   useDeletionCheck,
   type useImportCheck,
   type useReleasePlan,
@@ -184,8 +185,8 @@ export function LocalDeletionDialog({
 }) {
   const check = useDeletionCheck();
   const context = { skill, screen };
-  const folder = check.data?.skills[skill];
-  const seenWorkingTree = folder?.inClone === true ? folder.workingTree : null;
+  const folder = folderInClone(check.data?.skills[skill]);
+  const seenWorkingTree = folder?.workingTree ?? null;
   const checkFailure = check.isError
     ? deletionCheckNotice("no-answer", context)
     : check.data !== undefined && seenWorkingTree === null
@@ -203,7 +204,7 @@ export function LocalDeletionDialog({
             ? "failed"
             : "ready",
         localOnly,
-        uncommitted: folder?.inClone === true && folder.uncommitted,
+        uncommitted: folder?.uncommitted === true,
       }}
       onClose={onClose}
       onConfirm={() =>
