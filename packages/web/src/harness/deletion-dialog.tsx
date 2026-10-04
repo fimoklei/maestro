@@ -1,14 +1,29 @@
 import { Card } from "../ui/card";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
-import type { NoticeContent } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
+import { StatusLine } from "../ui/status-line";
+import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
 
 // The two roads a Harness skill's deletion takes. Proposing it needs the exact
-// origin/HEAD copy the confirmation is given against (#580); removing it on
-// disk needs the folder that goes (#798).
+// origin/HEAD copy the confirmation is given against (#580), and the open
+// request it turns into a deletion; removing it on disk needs the folder that
+// goes (#798), read fresh while the dialog stands. `localOnly` picks the copy:
+// a skill in no ref is gone for good, one on the default branch is step 1 of a
+// proposed deletion (#1370).
 export type DeletionMode =
-  | { kind: "propose"; origin: string; seenRemoteTree: string }
-  | { kind: "local"; folder: string };
+  | {
+      kind: "propose";
+      seenRemoteTree: string;
+      openRequest: { number: number; author: string } | null;
+    }
+  | {
+      kind: "local";
+      folder: string;
+      check: "checking" | "failed" | "ready";
+      localOnly: boolean;
+      uncommitted: boolean;
+    };
 
 export function DeletionDialog({
   skill,
@@ -35,7 +50,10 @@ export function DeletionDialog({
         label: "Delete skill",
         verb: "delete",
         tone: "danger",
-        unavailable: null,
+        unavailable:
+          mode.kind === "local" && mode.check !== "ready"
+            ? DELETE_UNAVAILABLE[mode.check]
+            : null,
         onRun: onConfirm,
       }}
       failure={deleteError}
@@ -46,21 +64,52 @@ export function DeletionDialog({
     >
       {mode.kind === "propose" ? (
         <>
-          <p className="m-0">
-            You deleted {skill} from the Harness working tree. Confirming
-            proposes that deletion to {mode.origin} on its own branch.
-          </p>
+          {/* The warning says what this press does instead. */}
+          {mode.openRequest === null ? (
+            <p className="m-0">
+              Delete skill opens a pull request to delete {skill} from the
+              Harness.
+            </p>
+          ) : null}
           <p className="m-0 text-gray-11">
-            Nobody loses the skill until the pull request is merged.
+            Your targets keep the skill. After the next release, select Update
+            target on each target to remove it.
           </p>
+          <Notice
+            trigger="load"
+            notice={openRequestNotice(skill, mode.openRequest)}
+          />
         </>
-      ) : (
+      ) : mode.localOnly ? (
         // No second sentence: the propose mode has one because nothing is
         // lost until a merge, and here something is.
         <p className="m-0">
           {skill} is in the Harness working tree and nowhere else. Confirming
           removes the folder from disk for good.
         </p>
+      ) : (
+        <>
+          <p className="m-0">
+            Delete skill removes the {skill} folder from your clone. GitHub and
+            your targets keep the skill.
+          </p>
+          <p className="m-0 text-gray-11">
+            Then select Propose change to open a pull request.
+          </p>
+          <Notice
+            trigger="load"
+            notice={
+              mode.uncommitted
+                ? {
+                    level: "warning",
+                    label: `Uncommitted changes in ${skill}`,
+                    message:
+                      "Delete skill discards these changes. To keep them, commit them first.",
+                  }
+                : null
+            }
+          />
+        </>
       )}
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
@@ -74,10 +123,10 @@ export function DeletionDialog({
                   is given against (#580). The hint says the same thing the
                   confirmation-stale notice does (#885). */}
               <Fact
-                label="Confirmed against"
+                label="Default branch commit"
                 value={mode.seenRemoteTree}
                 wrap
-                hint="The copy on the default branch now. If it moves before you confirm, nothing is pushed."
+                hint="If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing."
               />
             </>
           ) : (
@@ -85,6 +134,24 @@ export function DeletionDialog({
           )}
         </dl>
       </Card>
+      {mode.kind === "local" && mode.check === "checking" ? (
+        <StatusLine>{DELETION_CHECKING}</StatusLine>
+      ) : null}
     </Dialog>
   );
+}
+
+// Several Contributors share one proposal branch, so the request may be a
+// teammate's, or an app's.
+function openRequestNotice(
+  skill: string,
+  request: { number: number; author: string } | null,
+): NoticeContent | null {
+  return request === null
+    ? null
+    : {
+        level: "warning",
+        label: `Pull request #${request.number} will delete ${skill} instead`,
+        message: `${request.author} opened it to propose changes to ${skill}. Delete skill replaces those changes with the deletion.`,
+      };
 }

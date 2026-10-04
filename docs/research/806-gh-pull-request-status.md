@@ -171,6 +171,22 @@ against `fimoklei/harness` and `cli/cli`:
 - `reviewDecision` values seen live: `""`, `REVIEW_REQUIRED`, `APPROVED`,
   `CHANGES_REQUESTED`.
 
+### A deleted author (measured 2026-10-04, `gh` 2.101.0)
+
+GitHub hands a deleted account's pull requests to the `ghost` user. Captured
+verbatim from `gh pr list --repo EficodeDemoOrg/mythapi-demo --state all --json …,author`:
+
+```json
+{"author":{"id":"MDQ6VXNlcjEwMTM3","is_bot":false,"login":"ghost","name":"Deleted user"},"number":24}
+```
+
+`gh pr view 9 --repo Project-Tick/MeshMC --json author` prints the same. gh
+never prints `author: null`: its `Author` is a value struct whose
+`MarshalJSON` prints any author without an id as `{"is_bot":true,"login":"app/"+login}`
+([`api/queries_issue.go`](https://github.com/cli/cli/blob/v2.101.0/api/queries_issue.go),
+read 2026-10-04). A null GraphQL author therefore arrives as
+`{"is_bot":true,"login":"app/"}`; no live one was found to capture.
+
 ### Does Maestro still need its own tree-hash reading?
 
 **Yes, for three separate answers `gh` cannot give.**
@@ -355,7 +371,7 @@ Pending review. Then a missing or unauthenticated `gh` costs the link and the
 withdrawal case, and nothing else. That is the lazy shape, and it is the one
 that survives failure mode 3 gracefully.
 
-## 6. The three writes (added 2026-09-08, `gh` 2.86.0)
+## 6. The writes (added 2026-09-08, `gh` 2.86.0)
 
 Read from `gh pr create --help`, `gh pr close --help` and `gh pr reopen --help`
 on the same version. Not executed against a live repository: a write cannot be
@@ -368,8 +384,9 @@ controlled process outcomes in the tests.
 | Open | `gh pr create --repo O/R --head <branch> --base <base> --title T --body B` | *"Upon success, the URL of the created pull request will be printed."* `--head` is what makes gh *"explicitly skip any forking or pushing behavior"*, and `--title`/`--body` are what skip the prompt. |
 | Withdraw | `gh pr close <number> --repo O/R` | Closes it. `--delete-branch` is opt-in, so omitting it leaves the branch — which is what withdrawal must do. |
 | Reopen | `gh pr reopen <number> --repo O/R` | Reopens it. A merged request cannot be reopened, so Maestro refuses one before the call rather than reading gh's prose. |
+| Retitle | `gh pr edit <number> --repo O/R --title T` | Added #1383 from `gh pr edit --help` (gh 2.101.0). *"Without a body flag the pull request keeps the body it already has."* |
 
-All three take `{<number> | <url> | <branch>}`; Maestro passes the number it
+All four take `{<number> | <url> | <branch>}`; Maestro passes the number it
 matched itself. Exit codes and the offline phrase are §3's, unchanged: a write
 classifies the same way a read does, and its stdout is never parsed.
 
@@ -383,6 +400,13 @@ gh pr list --repo fimoklei/harness --state all --limit 100 --json number,state,u
 gh pr view 8 --repo fimoklei/harness --json number,state,mergedAt,mergeCommit,headRefOid,url,reviewDecision,statusCheckRollup,isDraft,closedAt,baseRefName,mergeStateStatus,mergedBy
 gh pr list --repo fimoklei/harness --state all --limit 3 --json number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,baseRefName,headRepository,headRepositoryOwner
 gh pr list --repo cli/cli --state all --limit 8 --json number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,baseRefName,headRepository,headRepositoryOwner
+# `author` (#1381, gh 2.101.0): a user is {id, is_bot, login, name}; an app is
+# {is_bot: true, login: "app/<slug>"}, with no id or name
+gh pr list --repo fimoklei/maestro --state all --limit 200 --json number,author --jq '[.[] | select(.author.is_bot == true)] | .[0:3]'
+# deleted author (#1370, gh 2.101.0): login "ghost"
+gh search prs --author ghost --limit 5 --json repository,number,author,url
+gh pr list --repo EficodeDemoOrg/mythapi-demo --state all --limit 30 --json number,author
+gh pr view 9 --repo Project-Tick/MeshMC --json number,author
 gh api "repos/fimoklei/harness/pulls?head=fimoklei:maestro/agent-native-cli&state=all"
 gh api repos/fimoklei/harness/compare/main...maestro/app-creator --jq '{status,ahead_by,behind_by}'
 gh api "repos/fimoklei/harness/contents/.apm/skills?ref=main"
@@ -393,6 +417,7 @@ git ls-remote https://github.com/fimoklei/harness.git 'refs/heads/maestro/*'
 gh pr create --help
 gh pr close --help
 gh pr reopen --help
+gh pr edit --help   # gh 2.101.0, #1383
 
 # failure probes — none of these touch the author's gh state
 env PATH=/usr/bin:/bin sh -c 'gh --version'

@@ -43,6 +43,7 @@ export type ReviewRequestLink = {
   url: string;
   headBranch: string;
   baseBranch: string;
+  author: string;
 };
 
 // `number` is null for a prepared branch nobody opened a request for.
@@ -69,6 +70,9 @@ export type HarnessStageRow = {
   // From the local trees alone, never from `deletion`, which a review row
   // takes from the promote branch.
   restorable: boolean;
+  // The skill's folder is in the working tree, so Delete skill has something
+  // to remove. False where the refs could not be read.
+  folderOnDisk: boolean;
   previousName: string | null;
 };
 
@@ -102,7 +106,7 @@ export type StageInput = {
 };
 
 export const buildStages = (input: StageInput): HarnessStages => {
-  const release = releaseStage(input.release);
+  const release = releaseStage(input.release, input.trees);
   const matches = matchRequests(input);
   const review = reviewStage(input, matches);
   const proposal = proposalStage(input, matches);
@@ -160,6 +164,7 @@ const link = (request: ReviewRequest): ReviewRequestLink => ({
   url: request.url,
   headBranch: request.headBranch,
   baseBranch: request.baseBranch,
+  author: request.author,
 });
 
 const blankRow = (
@@ -179,6 +184,7 @@ const blankRow = (
   localOnly: false,
   remoteTree: null,
   restorable: false,
+  folderOnDisk: false,
   previousName: null,
 });
 
@@ -191,7 +197,13 @@ const isRestorable = (trees: HarnessSkillTrees, skill: string): boolean =>
     working: trees.working[skill] ?? null,
   });
 
-const releaseStage = (release: SkillMovement[] | null): HarnessStageRead => {
+const isOnDisk = (trees: HarnessSkillTrees | null, skill: string): boolean =>
+  trees !== null && Object.hasOwn(trees.working, skill);
+
+const releaseStage = (
+  release: SkillMovement[] | null,
+  trees: HarnessSkillTrees | null,
+): HarnessStageRead => {
   if (release === null) {
     return { outcome: "unknown" };
   }
@@ -205,6 +217,7 @@ const releaseStage = (release: SkillMovement[] | null): HarnessStageRead => {
         RELEASE_STATUS[movement.kind],
       ),
       deletion: movement.kind === "removed",
+      folderOnDisk: isOnDisk(trees, movement.name),
       previousName: movement.previousName ?? null,
     })),
   };
@@ -290,6 +303,7 @@ const proposalStage = (
       ),
       deletion: isLocalDeletion(hashes),
       restorable: isRestorable(trees, skill),
+      folderOnDisk: isOnDisk(trees, skill),
       requests: sole === undefined ? [] : [link(sole)],
       comparison:
         proposal === null
@@ -349,6 +363,7 @@ const reviewStage = (
     const local = {
       deletion: proposal !== null && proposal.tree === null,
       restorable: isRestorable(trees, skill),
+      folderOnDisk: isOnDisk(trees, skill),
     };
     if (open.length > 1) {
       rows.push({

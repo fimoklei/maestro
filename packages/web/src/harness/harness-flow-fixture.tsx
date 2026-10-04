@@ -91,7 +91,18 @@ export function stubHarnessServer(options: {
     retry?: { body: unknown; status?: number };
   };
   deletions?: Record<string, unknown>[];
-  localDeletion?: { body: unknown; status?: number };
+  // `retry` answers every call after the first.
+  localDeletion?: {
+    body: unknown;
+    status?: number;
+    retry?: { body: unknown; status?: number };
+  };
+  // One entry per Delete skill check; the last one answers every later check.
+  deletionChecks?: {
+    body: unknown;
+    status?: number;
+    heldUntil?: Promise<void>;
+  }[];
   localDeletions?: Record<string, unknown>[];
   restore?: { body: unknown; status?: number };
   restores?: Record<string, unknown>[];
@@ -108,6 +119,8 @@ export function stubHarnessServer(options: {
   let planCalls = 0;
   let publishCalls = 0;
   let deletionCalls = 0;
+  let localDeletionCalls = 0;
+  let checkCalls = 0;
   let refreshCalls = 0;
   let published = false;
   let promoted = false;
@@ -156,9 +169,21 @@ export function stubHarnessServer(options: {
         }
         return jsonResponse(answered.body, answered.status);
       }
+      if (url === "/api/harness/skill/delete/check") {
+        const checks = options.deletionChecks ?? [{ body: {}, status: 500 }];
+        const check = checks[Math.min(checkCalls, checks.length - 1)];
+        checkCalls += 1;
+        await check?.heldUntil;
+        return jsonResponse(check?.body, check?.status);
+      }
       if (url === "/api/harness/skill/delete") {
         options.localDeletions?.push(JSON.parse(String(init?.body)));
-        const gone = options.localDeletion ?? { body: {}, status: 500 };
+        const first = options.localDeletion ?? { body: {}, status: 500 };
+        const gone =
+          localDeletionCalls > 0 && first.retry !== undefined
+            ? first.retry
+            : first;
+        localDeletionCalls += 1;
         if ((gone.status ?? 200) < 400) {
           promoted = true;
         }

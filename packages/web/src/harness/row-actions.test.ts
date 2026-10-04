@@ -29,6 +29,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   localOnly: false,
   remoteTree: null,
   restorable: false,
+  folderOnDisk: false,
   previousName: null,
   ...over,
 });
@@ -64,76 +65,130 @@ describe("rowItems", () => {
     expect(labels(items)).toEqual(["Propose change"]);
   });
 
-  // Both facts, or nothing: a skill that exists elsewhere is deleted through a
-  // proposal, and a change to an existing skill is reverted, not deleted (#798).
-  it("offers Delete skill on a never-proposed skill that exists nowhere else", () => {
-    const items = rowItems(
+  describe("Delete skill", () => {
+    const proposal = (over: Partial<HarnessStageRow> = {}) =>
       row({
         stage: "pending-proposal",
         status: "not-yet-proposed",
         requests: [],
-        localOnly: true,
-      }),
-      handlers,
-      true,
-    );
-
-    expect(labels(items)).toEqual(["Propose change", "Delete skill"]);
-    // It deletes files, so it stands apart in red (#994).
-    expect(items.at(-1)?.danger).toBe(true);
-  });
-
-  it.each([
-    ["the skill exists elsewhere", { localOnly: false }],
-    [
-      "it is a change to an existing skill",
-      { status: "new-local-work" as const, localOnly: true },
-    ],
-  ])("never offers Delete skill when %s", (_what, over) => {
-    const items = rowItems(
-      row({
-        stage: "pending-proposal",
-        status: "not-yet-proposed",
-        requests: [],
+        folderOnDisk: true,
         ...over,
-      }),
-      handlers,
-      true,
+      });
+
+    it("offers it on a never-proposed skill that exists nowhere else", () => {
+      const items = rowItems(proposal({ localOnly: true }), handlers, true);
+
+      expect(labels(items)).toEqual(["Propose change", "Delete skill"]);
+      // It deletes files, so it stands apart in red (#994).
+      expect(items.at(-1)?.danger).toBe(true);
+    });
+
+    it.each([
+      ["not yet proposed", { status: "not-yet-proposed" as const }],
+      ["behind an open proposal", { status: "new-local-work" as const }],
+    ])("offers it, last, on a default-branch skill %s", (_what, over) => {
+      const items = rowItems(
+        proposal({ remoteTree: "remote-tdd", ...over }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items).at(-1)).toBe("Delete skill");
+      expect(items.at(-1)?.danger).toBe(true);
+    });
+
+    // Step 2 could not follow: the default branch has nothing to delete, and
+    // Withdraw proposal is the way out.
+    it("never offers it on a new skill that is proposed but not merged", () => {
+      const items = rowItems(
+        proposal({ status: "new-local-work", remoteTree: null }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).not.toContain("Delete skill");
+    });
+
+    it("never offers it on a row that is already deleted locally", () => {
+      const items = rowItems(
+        proposal({
+          status: "deleted-locally",
+          deletion: true,
+          remoteTree: "remote-tdd",
+          folderOnDisk: false,
+        }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).not.toContain("Delete skill");
+    });
+
+    it("offers it on Pending release after the links when the folder is on disk", () => {
+      const items = rowItems(
+        row({
+          stage: "pending-release",
+          status: "changed",
+          folderOnDisk: true,
+        }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).toEqual(["View pull request", "Delete skill"]);
+      expect(items.at(-1)?.danger).toBe(true);
+    });
+
+    it("never offers it on a Pending release row that reads Deleted", () => {
+      const items = rowItems(
+        row({
+          stage: "pending-release",
+          status: "deleted",
+          deletion: true,
+          folderOnDisk: false,
+        }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).not.toContain("Delete skill");
+    });
+
+    it.each([
+      "waiting-for-review",
+      "proposal-closed",
+      "pull-request-missing",
+    ] as StageStatus[])(
+      "never offers it on a Pending review row (%s)",
+      (status) => {
+        const items = rowItems(
+          row({ status, folderOnDisk: true, remoteTree: "remote-tdd" }),
+          handlers,
+          true,
+        );
+
+        expect(labels(items)).not.toContain("Delete skill");
+      },
     );
 
-    expect(labels(items)).not.toContain("Delete skill");
-  });
+    it("hands over the row it was pressed on", () => {
+      const pressed: HarnessStageRow[] = [];
+      const pressedRow = proposal({ localOnly: true });
+      const items = rowItems(
+        pressedRow,
+        { ...handlers, deleteLocal: (row) => pressed.push(row) },
+        true,
+      );
 
-  it("names the skill the deletion is for", () => {
-    const named: string[] = [];
-    const items = rowItems(
-      row({
-        stage: "pending-proposal",
-        status: "not-yet-proposed",
-        requests: [],
-        localOnly: true,
-      }),
-      { ...handlers, deleteLocal: (skill) => named.push(skill) },
-      true,
-    );
+      items.find((item) => item.label === "Delete skill")?.onSelect?.();
+      expect(pressed).toEqual([pressedRow]);
+    });
 
-    items.find((item) => item.label === "Delete skill")?.onSelect?.();
-    expect(named).toEqual(["tdd"]);
-  });
+    it("closes while the remote's answer is unknown", () => {
+      const items = rowItems(proposal({ localOnly: true }), handlers, false);
 
-  it("closes Delete skill while the remote's answer is unknown", () => {
-    const items = rowItems(
-      row({
-        stage: "pending-proposal",
-        status: "not-yet-proposed",
-        requests: [],
-        localOnly: true,
-      }),
-      handlers,
-      false,
-    );
-
-    expect(disabled(items)).toContain("Delete skill");
+      expect(disabled(items)).toContain("Delete skill");
+    });
   });
 
   it("offers Update proposal on local work behind an open proposal", () => {
@@ -188,6 +243,35 @@ describe("rowItems", () => {
       "Reopen proposal",
       "Propose change",
     ]);
+  });
+
+  it("offers Reopen proposal on a closed deletion while the folder is deleted", () => {
+    const items = rowItems(
+      row({
+        status: "proposal-closed",
+        deletion: true,
+        folderOnDisk: false,
+        restorable: true,
+      }),
+      handlers,
+      true,
+    );
+
+    expect(labels(items)).toEqual([
+      "View pull request",
+      "Reopen proposal",
+      "Restore skill",
+    ]);
+  });
+
+  it("offers no Reopen proposal on a closed deletion once the folder is restored", () => {
+    const items = rowItems(
+      row({ status: "proposal-closed", deletion: true, folderOnDisk: true }),
+      handlers,
+      true,
+    );
+
+    expect(labels(items)).toEqual(["View pull request"]);
   });
 
   it("names each closed request where more than one could be reopened", () => {
@@ -247,7 +331,8 @@ describe("rowItems", () => {
 
   it("gives a deletion the same actions a change gets, and never Remove", () => {
     // Remove stays reserved for deployed copies: nothing in the journey
-    // offers it, whatever the row proposes (#847).
+    // offers it, whatever the row proposes (#847). A closed proposal is the
+    // one stage where they differ (#1384); its own tests above cover it.
     const every = (
       [
         ["pending-proposal", "deleted-locally"],
@@ -258,7 +343,6 @@ describe("rowItems", () => {
         ["pending-review", "approved-awaiting-merge"],
         ["pending-review", "pull-request-missing"],
         ["pending-review", "proposal-merged"],
-        ["pending-review", "proposal-closed"],
         ["pending-review", "multiple-pull-requests"],
         ["pending-release", "deleted"],
       ] as [HarnessStage, StageStatus][]

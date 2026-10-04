@@ -1,6 +1,9 @@
+import type { SkillDeletionCheck } from "@maestro/core";
 import { Search } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
+import { DELETE_UNAVAILABLE } from "../harness/dialog-copy";
+import { folderInClone } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import { Icon } from "../ui/icon";
@@ -23,6 +26,7 @@ import {
   inventoryColumns,
 } from "./inventory-columns";
 import {
+  DELETE_SKILL,
   DEPLOY_SKILL,
   NO_FILTER_MATCH,
   NO_RELEASED_SKILLS,
@@ -54,9 +58,49 @@ import type { Primitive } from "./use-inventory";
 
 // Presentational; the container supplies the reads (#992, #1040).
 
+// What this computer's clone says about deleting each skill (#1385).
+export type CloneReading =
+  | { kind: "no-harness" | "checking" | "failed" }
+  | { kind: "read"; skills: Record<string, SkillDeletionCheck> };
+
+const inClone = (clone: CloneReading, name: string) =>
+  folderInClone(clone.kind === "read" ? clone.skills[name] : undefined);
+
+// Last, as a danger item; blocked with its reason while the clone cannot
+// take it.
+const deleteItem = (clone: CloneReading, name: string) => {
+  const reason =
+    clone.kind !== "read"
+      ? DELETE_UNAVAILABLE[clone.kind]
+      : inClone(clone, name) === null
+        ? DELETE_UNAVAILABLE["not-in-clone"]
+        : null;
+  return {
+    action: "delete" as const,
+    label: reason === null ? DELETE_SKILL : `${DELETE_SKILL} — ${reason}`,
+    danger: true,
+    disabled: reason !== null,
+  };
+};
+
 // The row's ⋮ and the pane's foot open the same dialog per action (#1065).
-const rowDialog = (action: RowAction): PaneDialog =>
-  action === "deploy" ? { kind: "deploy" } : { kind: "remove-all" };
+const rowDialog = (
+  action: RowAction,
+  name: string,
+  clone: CloneReading,
+): PaneDialog => {
+  switch (action) {
+    case "deploy":
+      return { kind: "deploy" };
+    case "remove":
+      return { kind: "remove-all" };
+    case "delete":
+      return {
+        kind: "delete",
+        localOnly: inClone(clone, name)?.localOnly ?? false,
+      };
+  }
+};
 
 // Worst first, as the Status sort orders them (#992).
 const STATUS_WORDS = [BEHIND, UNKNOWN, UP_TO_DATE, NOT_DEPLOYED].map(
@@ -79,6 +123,8 @@ export function InventoryView({
   onReread,
   onOpenHarness,
   onShowTarget,
+  clone,
+  onDeleted,
 }: {
   /** Undefined until the Inventory has been read once. */
   primitives: Primitive[] | undefined;
@@ -96,6 +142,10 @@ export function InventoryView({
   onOpenHarness?: () => void;
   /** Opens a target's row on Deploy-state; absent where no router is. */
   onShowTarget?: (rowId: string) => void;
+  /** Gates Delete skill on each row. */
+  clone: CloneReading;
+  /** Step 1 of a deletion landed; the next step is on the Harness view. */
+  onDeleted: (skill: string) => void;
 }) {
   const screen = useTableScreen({
     name: "Inventory",
@@ -121,9 +171,9 @@ export function InventoryView({
   const openFromMenu = useCallback(
     (name: string, action: RowAction) => {
       screen.open(name);
-      setDialog(rowDialog(action));
+      setDialog(rowDialog(action, name, clone));
     },
-    [screen.open],
+    [screen.open, clone],
   );
   const listHeading = useRef<HTMLHeadingElement>(null);
 
@@ -151,6 +201,7 @@ export function InventoryView({
               },
             ]
           : []),
+        deleteItem(clone, primitive.name),
       ],
     };
   });
@@ -323,7 +374,9 @@ export function InventoryView({
               footItems={row.actions.map((item) => ({
                 label: item.label,
                 danger: item.danger,
-                onSelect: () => setDialog(rowDialog(item.action)),
+                disabled: item.disabled,
+                onSelect: () =>
+                  setDialog(rowDialog(item.action, row.name, clone)),
               }))}
             />
             {dialog === null ? null : (
@@ -342,6 +395,7 @@ export function InventoryView({
                   setDialog(null);
                   requestAnimationFrame(() => listHeading.current?.focus());
                 }}
+                onDeleted={() => onDeleted(row.name)}
               />
             )}
           </>

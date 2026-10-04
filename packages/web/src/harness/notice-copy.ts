@@ -1,5 +1,4 @@
 import type {
-  DeleteLocalSkillError,
   HarnessFreshness,
   HarnessStageRead,
   HarnessStateError,
@@ -24,7 +23,7 @@ import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 
 // The state read's two refusals ride in every other table below: a plan, a
 // release and a proposed change all read the same harness first.
-const harnessHeadings: NoticeTable<HarnessStateError> = {
+export const harnessHeadings: NoticeTable<HarnessStateError> = {
   "not-configured": {
     level: "error",
     label: "No Harness connected",
@@ -92,7 +91,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
 // A proposed change and a deletion share a heading wherever they share a code —
 // the same thing goes wrong — but each states its own way through, so the
 // sentences differ where the two ways through differ (#686).
-const promoteHeadings: NoticeTable<PromoteSkillError> = {
+export const promoteHeadings: NoticeTable<PromoteSkillError> = {
   ...harnessHeadings,
   "invalid-skill": {
     level: "error",
@@ -226,45 +225,6 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
     label: "Unreadable working tree",
     message:
       "Nothing was pushed. Make the Harness folder readable, then Delete skill again.",
-  },
-};
-
-// Nothing here reaches GitHub, so no sentence names a push or a pull request
-// (#798).
-const localDeletionHeadings: NoticeTable<DeleteLocalSkillError> = {
-  "not-configured": harnessHeadings["not-configured"],
-  "invalid-skill": promoteHeadings["invalid-skill"],
-  "already-gone": {
-    level: "error",
-    label: "Skill already deleted",
-    message: "The Harness no longer holds this skill. Select Re-read Harness.",
-    detail: "Something removed the folder after this list was read.",
-  },
-  "not-local-only": {
-    level: "error",
-    label: "Skill exists elsewhere",
-    message: "Nothing was deleted. Select Re-read Harness to repaint the list.",
-    detail:
-      "Maestro found this skill outside the working tree, or could not read the Harness refs.",
-  },
-  "destination-unsafe": {
-    level: "error",
-    label: "Folder outside the Harness",
-    message:
-      "Nothing was deleted. Replace the link with a real folder, then Delete skill again.",
-    detail: "The skill folder resolves outside the Harness skills folder.",
-  },
-  "delete-failed": {
-    level: "error",
-    label: "Skill not deleted",
-    message:
-      "The Harness is as it was. Make the folder writable, then Delete skill again.",
-  },
-  "delete-in-progress": {
-    level: "error",
-    label: "Harness already changing",
-    message: "Wait for that change to finish, then Delete skill again.",
-    detail: "Maestro changes one Harness at a time.",
   },
 };
 
@@ -688,13 +648,6 @@ export const deletionNotice = (error: unknown): NoticeContent | null =>
     label: "Deletion not proposed",
     message:
       "The Maestro server did not answer, and nothing was pushed. Delete skill again.",
-  });
-
-export const localDeletionNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(localDeletionHeadings, error, {
-    label: "Skill not deleted",
-    message:
-      "The Maestro server did not answer, and the Harness is as it was. Delete skill again.",
   });
 
 export const restoreNotice = (error: unknown): NoticeContent | null =>

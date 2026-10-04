@@ -6,18 +6,24 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   DeleteLocalSkill,
+  type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
   NodeFileSystem,
+  PromoteSkillDeletion,
+  releasedSkillsFromGit,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
+import { unavailableHarnessReview } from "../helpers/unreachable-harness";
 
 const run = promisify(execFile);
 
+const AT = new Date("2026-10-04T12:00:00.000Z");
+
 const ORIGIN_URL = "git@github.com:fimoklei/agent-harness.git";
 
-describe("deleting a Harness skill that exists nowhere else", () => {
+describe("deleting a Harness skill from the clone", () => {
   let base: string;
   let remote: string;
   let root: string;
@@ -40,6 +46,16 @@ describe("deleting a Harness skill that exists nowhere else", () => {
       git: new HarnessGitAdapter(),
       locks: new InFlightLocks(),
     });
+
+  // Confirms against the folder as it is now, as the dialog's check does.
+  const confirm = async (name: string) => {
+    const check = await deleter().inspect();
+    const skill = check.ok ? check.skills[name] : undefined;
+    return deleter().execute(
+      name,
+      skill?.inClone === true ? skill.workingTree : "",
+    );
+  };
 
   const refs = async () => ({
     clone: (await git(root, "show-ref")).stdout,
@@ -79,7 +95,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
   });
 
   it("removes the folder and leaves every other skill alone", async () => {
-    await expect(deleter().execute("scratch")).resolves.toEqual({
+    await expect(confirm("scratch")).resolves.toEqual({
       ok: true,
       name: "scratch",
     });
@@ -90,7 +106,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
   it("leaves every ref in the clone and the remote exactly as it was", async () => {
     const before = await refs();
 
-    await deleter().execute("scratch");
+    await confirm("scratch");
 
     expect(await refs()).toEqual(before);
   });
@@ -100,7 +116,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     await git(root, "add", "staged.md");
     const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
 
-    await deleter().execute("scratch");
+    await confirm("scratch");
 
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
     expect((await git(root, "status", "--porcelain")).stdout).toBe(
@@ -108,13 +124,52 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     );
   });
 
-  it("refuses a skill the default branch already holds", async () => {
-    await expect(deleter().execute("jobs")).resolves.toEqual({
-      ok: false,
-      error: "not-local-only",
-    });
+  // Step 1 removes the folder; step 2, the existing deletion route, pushes it.
+  it("takes a released skill from step 1 through step 2 to its proposal branch", async () => {
+    const before = (await git(remote, "rev-parse", "main")).stdout.trim();
 
-    expect(await skills()).toEqual(["jobs", "scratch"]);
+    await expect(confirm("jobs")).resolves.toEqual({ ok: true, name: "jobs" });
+    expect(await skills()).toEqual(["scratch"]);
+    expect((await git(remote, "rev-parse", "main")).stdout.trim()).toBe(before);
+
+    const trees = await new HarnessGitAdapter().readMovementTrees(root);
+    let freshness: HarnessFreshness = { outcome: null, lastFetchedAt: null };
+    const step2 = new PromoteSkillDeletion({
+      resolveRoot: async () => root,
+      git: new HarnessGitAdapter(),
+      freshness: {
+        read: async () => freshness,
+        record: async (_root, next) => {
+          freshness = next;
+        },
+      },
+      locks: new InFlightLocks(),
+      review: unavailableHarnessReview(),
+    });
+    await expect(
+      step2.execute("jobs", trees?.remote.jobs as string, AT),
+    ).resolves.toMatchObject({ ok: true, branch: "maestro/jobs" });
+
+    const pushed = await git(
+      remote,
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "refs/heads/maestro/jobs",
+    );
+    expect(pushed.stdout.trim().split("\n")).toEqual(["README.md"]);
+  });
+
+  // Inventory lists the release, not the clone: step 1 changes no release.
+  it("keeps a released skill in Inventory after step 1", async () => {
+    await git(root, "tag", "v1.0.0");
+    await git(root, "push", "origin", "v1.0.0");
+    await new HarnessGitAdapter().fetch(root);
+
+    await expect(confirm("jobs")).resolves.toEqual({ ok: true, name: "jobs" });
+
+    const released = await releasedSkillsFromGit(new HarnessGitAdapter())(root);
+    expect(released?.map((skill) => skill.name)).toEqual(["jobs"]);
   });
 
   // Whichever guard catches it, nothing outside the Harness is removed.
@@ -124,7 +179,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     await writeFile(join(outside, "SKILL.md"), "---\n---\n", "utf8");
     await symlink(outside, join(root, ".apm", "skills", "linked"));
 
-    await expect(deleter().execute("linked")).resolves.toMatchObject({
+    await expect(confirm("linked")).resolves.toMatchObject({
       ok: false,
     });
 
@@ -134,7 +189,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
   });
 
   it("refuses a skill that is not there at all", async () => {
-    await expect(deleter().execute("absent")).resolves.toEqual({
+    await expect(confirm("absent")).resolves.toEqual({
       ok: false,
       error: "already-gone",
     });

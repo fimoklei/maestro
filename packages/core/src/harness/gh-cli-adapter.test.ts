@@ -18,6 +18,13 @@ const capturedHeadOid = "a7cbf2efbd0eb978503342906593ef81ca724894";
 // Captured verbatim from `gh pr list --json …` (gh 2.86.0), one row kept.
 // `nameWithOwner` is empty in a list read; the owner is in `headRepositoryOwner`.
 const mergedRow = {
+  // `author` from `gh pr view 8 --json author` (gh 2.101.0).
+  author: {
+    id: "MDQ6VXNlcjE2OTU3MjU4",
+    is_bot: false,
+    login: "fimoklei",
+    name: "Merks",
+  },
   baseRefName: "main",
   headRefName: "maestro/agent-native-cli",
   headRefOid: capturedHeadOid,
@@ -28,11 +35,20 @@ const mergedRow = {
   reviewDecision: "",
   reviewRequests: [],
   state: "MERGED",
+  // `title` from `gh pr view 8 --json title` (gh 2.101.0).
+  title: "Promote skill: agent-native-cli",
   url: "https://github.com/fimoklei/harness/pull/8",
 };
 
 // Same capture against `cli/cli`: an open request from a fork.
 const openForkRow = {
+  // `author` from `gh pr view 14398 --repo cli/cli --json author` (gh 2.101.0).
+  author: {
+    id: "MDQ6VXNlcjMwMDI1OA==",
+    is_bot: false,
+    login: "timmattison",
+    name: "Tim Mattison",
+  },
   baseRefName: "trunk",
   headRefName: "issue-12195",
   headRefOid: capturedHeadOid,
@@ -47,7 +63,36 @@ const openForkRow = {
   reviewDecision: "REVIEW_REQUIRED",
   reviewRequests: [{ __typename: "User", login: "sergiou87" }],
   state: "OPEN",
+  // `title` from `gh pr view 14398 --repo cli/cli --json title` (gh 2.101.0).
+  title: "Check for merged state when viewing a PR via the issues command",
   url: "https://github.com/cli/cli/pull/14398",
+};
+
+// Captured verbatim from `gh pr list --repo fimoklei/maestro --json …,author`
+// (gh 2.101.0): an app's request carries no id or name, and its login a prefix.
+const botRow = {
+  author: { is_bot: true, login: "app/renovate" },
+  baseRefName: "main",
+  headRefName: "renovate/lock-file-maintenance",
+  headRefOid: "288de9ad86de66312b374bb21d5a14849f5062d5",
+  headRepository: {
+    id: "R_kgDOSsMVOQ",
+    name: "maestro",
+    nameWithOwner: "fimoklei/maestro",
+  },
+  headRepositoryOwner: {
+    id: "MDQ6VXNlcjE2OTU3MjU4",
+    login: "fimoklei",
+    name: "Merks",
+  },
+  isDraft: false,
+  number: 1307,
+  reviewDecision: "",
+  reviewRequests: [],
+  state: "OPEN",
+  // `title` from `gh pr view 1307 --repo fimoklei/maestro --json title` (gh 2.101.0).
+  title: "chore(deps): lock file maintenance",
+  url: "https://github.com/fimoklei/maestro/pull/1307",
 };
 
 function fakeRun(stdout: string) {
@@ -97,7 +142,7 @@ describe("GhCliAdapter", () => {
       "--limit",
       String(REVIEW_READ_LIMIT),
       "--json",
-      "number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner",
+      "number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner,author,title",
     ]);
   });
 
@@ -158,6 +203,9 @@ describe("GhCliAdapter", () => {
           headBranch: "issue-12195",
           headCommit: capturedHeadOid,
           baseBranch: "trunk",
+          author: "timmattison",
+          title:
+            "Check for merged state when viewing a PR via the issues command",
         },
       ],
     });
@@ -191,6 +239,77 @@ describe("GhCliAdapter", () => {
     expect(result).toMatchObject({
       requests: [{ reviewers: [{ kind: "team", slug: "acme/core" }] }],
     });
+  });
+
+  // One failing row fails the whole read, so a bot's request must pass.
+  it("reads an app's request with its prefixed login", async () => {
+    const { run } = fakeRun(JSON.stringify([botRow]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toMatchObject({
+      outcome: "read",
+      requests: [{ number: 1307, author: "app/renovate" }],
+    });
+  });
+
+  // Captured from `gh pr list --repo EficodeDemoOrg/mythapi-demo --json …,author`
+  // (gh 2.101.0): GitHub hands a deleted account's requests to `ghost`.
+  it("reads a deleted account's request as ghost's", async () => {
+    const author = {
+      id: "MDQ6VXNlcjEwMTM3",
+      is_bot: false,
+      login: "ghost",
+      name: "Deleted user",
+    };
+    const { run } = fakeRun(JSON.stringify([{ ...mergedRow, author }]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toMatchObject({
+      outcome: "read",
+      requests: [{ number: 8, author: "ghost" }],
+    });
+  });
+
+  // gh 2.101.0 `api/queries_issue.go`: a null GraphQL author marshals as an
+  // id-less app with an empty slug.
+  it("reads a request with no author as ghost's", async () => {
+    const author = { is_bot: true, login: "app/" };
+    const { run } = fakeRun(JSON.stringify([{ ...mergedRow, author }]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toMatchObject({
+      outcome: "read",
+      requests: [{ number: 8, author: "ghost" }],
+    });
+  });
+
+  it.each([
+    ["an author login carrying prose", { login: "run this\nnow" }],
+    ["an author login with a path", { login: "app/../x" }],
+    ["an empty author login", { login: "" }],
+    ["an app login with an empty slug and a path", { login: "app//x" }],
+    ["an author login of 40 characters", { login: "a".repeat(40) }],
+    ["a missing author", null],
+  ])("fails the read on %s", async (_, author) => {
+    const { run } = fakeRun(JSON.stringify([{ ...mergedRow, author }]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
+  });
+
+  it.each([
+    ["a missing title", undefined],
+    ["a title that is not text", 42],
+  ])("fails the read on %s", async (_, title) => {
+    const { run } = fakeRun(JSON.stringify([{ ...mergedRow, title }]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
   });
 
   it("reads an empty array as a complete answer of none", async () => {
@@ -428,11 +547,35 @@ describe("GhCliAdapter", () => {
     ]);
   });
 
+  it("retitles a request by its number, sending no body", async () => {
+    // Without a body flag gh keeps the body: it may hold someone else's words.
+    const { calls, run } = fakeRun(
+      "https://github.com/fimoklei/harness/pull/45\n",
+    );
+
+    const result = await new GhCliAdapter({ run }).editRequest(origin, 45, {
+      title: "Delete skill: tdd",
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(calls[0]?.args).toEqual([
+      "pr",
+      "edit",
+      "45",
+      "--repo",
+      "fimoklei/harness",
+      "--title",
+      "Delete skill: tdd",
+    ]);
+    expect(calls[0]?.env.GH_PROMPT_DISABLED).toBe("1");
+  });
+
   it("sends no write to a host other than github.com", async () => {
     const elsewhere = { host: "github.example.com", ownerRepo: "acme/harness" };
     const create = fakeRun("");
     const reopen = fakeRun("");
     const close = fakeRun("");
+    const edit = fakeRun("");
 
     const results = [
       await new GhCliAdapter({ run: create.run }).createRequest(elsewhere, {
@@ -443,14 +586,23 @@ describe("GhCliAdapter", () => {
       }),
       await new GhCliAdapter({ run: reopen.run }).reopenRequest(elsewhere, 45),
       await new GhCliAdapter({ run: close.run }).closeRequest(elsewhere, 45),
+      await new GhCliAdapter({ run: edit.run }).editRequest(elsewhere, 45, {
+        title: "t",
+      }),
     ];
 
     expect(results).toEqual([
       { ok: false, error: "unavailable" },
       { ok: false, error: "unavailable" },
       { ok: false, error: "unavailable" },
+      { ok: false, error: "unavailable" },
     ]);
-    expect([create.calls, reopen.calls, close.calls]).toEqual([[], [], []]);
+    expect([create.calls, reopen.calls, close.calls, edit.calls]).toEqual([
+      [],
+      [],
+      [],
+      [],
+    ]);
   });
 
   it("reports a write GitHub refused as failed, and an unaskable one as unavailable", async () => {

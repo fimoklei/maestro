@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { NoticeContent } from "../ui/notice";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
@@ -7,11 +7,28 @@ const TREE = "0123456789abcdef0123456789abcdef01234567";
 
 const PROPOSE: DeletionMode = {
   kind: "propose",
-  origin: "github.com/fimoklei/agent-harness",
   seenRemoteTree: TREE,
+  openRequest: null,
 };
 
-const LOCAL: DeletionMode = { kind: "local", folder: ".apm/skills/research" };
+const OVER_OPEN_REQUEST: DeletionMode = {
+  ...PROPOSE,
+  openRequest: { number: 45, author: "app/renovate" },
+};
+
+const LOCAL: DeletionMode = {
+  kind: "local",
+  folder: ".apm/skills/research",
+  check: "ready",
+  localOnly: true,
+  uncommitted: true,
+};
+
+const STEP_ONE: DeletionMode = {
+  ...LOCAL,
+  localOnly: false,
+  uncommitted: false,
+};
 
 const renderDialog = (
   overrides: {
@@ -38,22 +55,82 @@ describe("DeletionDialog", () => {
     expect(screen.getByText(TREE)).toBeInTheDocument();
   });
 
-  it("says what the tree hash is and what happens if it moves", () => {
+  it("names the tree hash the default branch commit and says what a push does", () => {
     renderDialog();
 
+    expect(screen.getByText("Default branch commit")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "The copy on the default branch now. If it moves before you confirm, nothing is pushed.",
+        "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
       ),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Confirmed against")).not.toBeInTheDocument();
   });
 
   it("carries the hint in the value's accessible description", () => {
     renderDialog();
 
     expect(screen.getByText(TREE)).toHaveAccessibleDescription(
-      "The copy on the default branch now. If it moves before you confirm, nothing is pushed.",
+      "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
     );
+  });
+
+  it("says it opens a pull request to delete the skill", () => {
+    renderDialog();
+
+    expect(
+      screen.getByText(
+        "Delete skill opens a pull request to delete research from the Harness.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // A released skill is lost to a target only at Update target, never at the merge.
+  it("says the targets keep the skill until each one is updated", () => {
+    renderDialog();
+
+    expect(
+      screen.getByText(
+        "Your targets keep the skill. After the next release, select Update target on each target to remove it.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Nobody loses the skill until/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("warns of no open pull request where there is none", () => {
+    renderDialog();
+
+    expect(
+      screen.queryByText(/will delete research instead/),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("over an open pull request that proposes changes", () => {
+    it("warns that the pull request becomes the deletion and names who opened it", () => {
+      renderDialog({ mode: OVER_OPEN_REQUEST });
+
+      expect(
+        screen.getByText("Pull request #45 will delete research instead"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "app/renovate opened it to propose changes to research. Delete skill replaces those changes with the deletion.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("drops the sentence about opening a pull request", () => {
+      renderDialog({ mode: OVER_OPEN_REQUEST });
+
+      expect(
+        screen.queryByText(/opens a pull request to delete/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/^Your targets keep the skill\./),
+      ).toBeInTheDocument();
+    });
   });
 
   // Both modes share the title and the confirm button, which is what makes
@@ -86,6 +163,16 @@ describe("DeletionDialog", () => {
       expect(screen.getByText(".apm/skills/research")).toBeInTheDocument();
     });
 
+    // Every folder only here differs from the last commit; the warning would
+    // say nothing the body does not.
+    it("carries no uncommitted-changes warning", () => {
+      renderDialog({ mode: LOCAL });
+
+      expect(
+        screen.queryByText("Uncommitted changes in research"),
+      ).not.toBeInTheDocument();
+    });
+
     // The propose mode's reassurance is true only because a merge stands
     // between the author and the loss. Here nothing does.
     it("carries no reassuring second sentence", () => {
@@ -95,6 +182,65 @@ describe("DeletionDialog", () => {
         screen.queryByText(/Nobody loses the skill until/),
       ).not.toBeInTheDocument();
       expect(screen.queryByText(TREE)).not.toBeInTheDocument();
+    });
+  });
+
+  // Step 1 of deleting a skill that is on the default branch (#1370).
+  describe("a skill on the default branch", () => {
+    it("says it removes the folder from the clone and what keeps the skill", () => {
+      renderDialog({ mode: STEP_ONE });
+
+      expect(
+        screen.getByText(
+          "Delete skill removes the research folder from your clone. GitHub and your targets keep the skill.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/nowhere else/)).not.toBeInTheDocument();
+    });
+
+    it("names the next step", () => {
+      renderDialog({ mode: STEP_ONE });
+
+      expect(
+        screen.getByText("Then select Propose change to open a pull request."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the skill and its folder as facts", () => {
+      renderDialog({ mode: STEP_ONE });
+
+      expect(screen.getByText("Skill")).toBeInTheDocument();
+      expect(screen.getByText("Folder")).toBeInTheDocument();
+      expect(screen.getByText(".apm/skills/research")).toBeInTheDocument();
+    });
+
+    it("opens its focus on Cancel", async () => {
+      renderDialog({ mode: STEP_ONE });
+
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
+      );
+    });
+
+    it("warns of uncommitted changes when the check found some", () => {
+      renderDialog({ mode: { ...STEP_ONE, uncommitted: true } });
+
+      expect(
+        screen.getByText("Uncommitted changes in research"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Delete skill discards these changes. To keep them, commit them first.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("warns of nothing when the folder is clean", () => {
+      renderDialog({ mode: STEP_ONE });
+
+      expect(
+        screen.queryByText("Uncommitted changes in research"),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -24,6 +24,7 @@ export const stageRow = (
   localOnly: false,
   remoteTree: null,
   restorable: false,
+  folderOnDisk: false,
   previousName: null,
   ...over,
 });
@@ -36,4 +37,5 @@ export const pullRequest = (
   url: `https://github.com/fimoklei/agent-harness/pull/${number}`,
   headBranch: `maestro/${skill}`,
   baseBranch: "main",
+  author: "fimoklei",
 });

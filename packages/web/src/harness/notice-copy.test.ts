@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import type { NoticeContent } from "../ui/notice";
+import { localDeletionNotice } from "./local-deletion-copy";
 import {
   CONCURRENT_CHANGE_NOTICE,
   deletionNotice,
   harnessStateNotice,
   importNotice,
-  localDeletionNotice,
   localEditsRefusal,
   promoteNotice,
   proposalNotice,
@@ -397,7 +397,7 @@ const suites: [
   ],
   [
     "localDeletionNotice",
-    localDeletionNotice,
+    (error) => localDeletionNotice(error, { skill: "tdd", screen: "harness" }),
     {
       level: "error",
       label: "Skill not deleted",
@@ -411,21 +411,30 @@ const suites: [
         "already-gone",
         {
           level: "error",
-          label: "Skill already deleted",
-          message:
-            "The Harness no longer holds this skill. Select Re-read Harness.",
-          detail: "Something removed the folder after this list was read.",
+          label: "Folder already deleted",
+          message: "Select Re-read Harness to see the skill as it is now.",
+          detail:
+            "Something removed the tdd folder from your clone after this dialog opened.",
         },
       ],
       [
-        "not-local-only",
+        "confirmation-stale",
         {
           level: "error",
-          label: "Skill exists elsewhere",
+          label: "Confirmation out of date",
           message:
-            "Nothing was deleted. Select Re-read Harness to repaint the list.",
-          detail:
-            "Maestro found this skill outside the working tree, or could not read the Harness refs.",
+            "Nothing was deleted. The dialog now shows the folder as it is. Select Delete skill to delete it.",
+          detail: "The tdd folder changed after this dialog opened.",
+        },
+      ],
+      [
+        "no-answer",
+        {
+          level: "error",
+          label: "Clone not read",
+          message:
+            "Nothing was deleted. Close this dialog, then select Delete skill again.",
+          detail: "Git could not read your clone.",
         },
       ],
       [
@@ -926,6 +935,17 @@ describe.each(suites)("%s", (_name, read, fallback, cases) => {
 
   it("shows nothing without an error", () => {
     expect(read(null)).toBeNull();
+  });
+});
+
+describe("localDeletionNotice on Inventory", () => {
+  it("names Inventory's own way to the Harness view for a folder already gone", () => {
+    expect(
+      localDeletionNotice(new HttpError(409, "", "already-gone"), {
+        skill: "tdd",
+        screen: "inventory",
+      })?.message,
+    ).toBe("Select Harness to see the skill as it is now.");
   });
 });
 

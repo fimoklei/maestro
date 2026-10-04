@@ -131,6 +131,13 @@ export const deletionBodySchema = z.object({
   seenRemoteTree: z.string(),
 });
 
+// The tree is compared against a freshly read working tree, never used as the
+// thing to delete.
+export const localDeletionBodySchema = z.object({
+  name: z.string(),
+  seenWorkingTree: z.string(),
+});
+
 // The commit is compared against a freshly read HEAD, never used as the thing
 // to restore.
 export const restoreBodySchema = z.object({
@@ -170,7 +177,8 @@ export const DELETION_BODY: RequestShape = {
 
 export const LOCAL_DELETION_BODY: RequestShape = {
   message: "Nothing was deleted. Reload the page, then delete the skill again.",
-  detail: "The request carries a skill name: { name: string }.",
+  detail:
+    "The request carries a skill name and the working tree it was confirmed against.",
 };
 
 export const RESTORE_BODY: RequestShape = {

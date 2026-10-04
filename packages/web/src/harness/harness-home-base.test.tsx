@@ -526,6 +526,7 @@ describe("Harness home base", () => {
           proposal: [
             row("pending-proposal", "tdd", "not-yet-proposed", {
               localOnly: true,
+              folderOnDisk: true,
             }),
           ],
         }),

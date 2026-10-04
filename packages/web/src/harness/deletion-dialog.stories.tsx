@@ -8,8 +8,8 @@ const meta = {
     skill: "old-skill",
     mode: {
       kind: "propose",
-      origin: "github.com/fimoklei/agent-harness",
       seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+      openRequest: null,
     },
     onClose: () => {},
     onConfirm: () => {},
@@ -27,7 +27,66 @@ export const Ready: Story = {};
 // The other road: the skill exists nowhere else, so there is no deletion to
 // propose and the folder goes from disk.
 export const LocalOnly: Story = {
-  args: { mode: { kind: "local", folder: ".apm/skills/old-skill" } },
+  args: {
+    mode: {
+      kind: "local",
+      folder: ".apm/skills/old-skill",
+      check: "ready",
+      localOnly: true,
+      uncommitted: true,
+    },
+  },
+};
+
+// Step 1 of deleting a skill on the default branch: the folder leaves the
+// clone, and Propose change carries the deletion on.
+export const StepOne: Story = {
+  args: {
+    mode: {
+      kind: "local",
+      folder: ".apm/skills/old-skill",
+      check: "ready",
+      localOnly: false,
+      uncommitted: false,
+    },
+  },
+};
+
+export const StepOneUncommitted: Story = {
+  args: {
+    mode: {
+      kind: "local",
+      folder: ".apm/skills/old-skill",
+      check: "ready",
+      localOnly: false,
+      uncommitted: true,
+    },
+  },
+};
+
+// The folder is read afresh on every opening; Delete skill waits for it.
+export const LocalChecking: Story = {
+  args: {
+    mode: {
+      kind: "local",
+      folder: ".apm/skills/old-skill",
+      check: "checking",
+      localOnly: false,
+      uncommitted: false,
+    },
+  },
+};
+
+// An open pull request on the proposal branch, possibly a teammate's, becomes
+// the deletion.
+export const OverOpenRequest: Story = {
+  args: {
+    mode: {
+      kind: "propose",
+      seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+      openRequest: { number: 45, author: "teammate-login" },
+    },
+  },
 };
 
 export const Deleting: Story = {

@@ -1,20 +1,12 @@
 // Pushes one skill's working-tree content to its own branch, built on the
 // fetched default-branch tip. The author's repository state is never touched.
-import { parseGitOrigin } from "../deploy/git-origin";
+import type { GitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { isConcurrentlyChanged } from "./classify-movement";
-import {
-  type HarnessReviewPort,
-  matchesProposal,
-  type ReviewRequest,
-} from "./harness-review-port";
-import {
-  PROPOSAL_BODY,
-  promoteBranch,
-  promoteCompareUrl,
-  proposalTitle,
-} from "./promote-branch";
+import type { HarnessReviewPort } from "./harness-review-port";
+import { promoteBranch, promoteCompareUrl } from "./promote-branch";
+import { beforeProposalPush, readOriginFacts } from "./proposal-request";
 import type {
   HarnessFreshnessPort,
   HarnessGitPort,
@@ -42,10 +34,9 @@ export type PromoteSkillResult =
 type Checked =
   | {
       ok: true;
-      origin: NonNullable<ReturnType<typeof parseGitOrigin>>;
+      origin: GitOrigin;
       head: string;
       base: string;
-      branch: string;
     }
   | { ok: false; error: PromoteSkillError };
 
@@ -103,10 +94,17 @@ export class PromoteSkill {
       return second;
     }
 
-    // Read now, not from the cockpit: decides update versus open.
-    const open = await this.openRequests(second);
-    if (open !== null && open.length > 1) {
-      return { ok: false, error: "extra-requests" };
+    const request = await beforeProposalPush(
+      this.deps.review,
+      {
+        origin: second.origin,
+        base: second.base,
+        name,
+      },
+      "change",
+    );
+    if (!request.ok) {
+      return request;
     }
 
     const push = await this.deps.git.pushSkillPromotion(
@@ -116,15 +114,7 @@ export class PromoteSkill {
     );
     switch (push) {
       case "pushed":
-        // Only when GitHub answered that the branch has no request; unknown opens none.
-        if (open !== null && open.length === 0) {
-          await this.deps.review.createRequest(second.origin, {
-            head: second.branch,
-            base: second.base,
-            title: proposalTitle(name),
-            body: PROPOSAL_BODY,
-          });
-        }
+        await request.afterPush();
         return {
           ok: true,
           branch: promoteBranch(name),
@@ -148,15 +138,12 @@ export class PromoteSkill {
     root: string,
     name: string,
   ): Promise<Checked> {
-    const facts = await this.deps.git.readFacts(root);
-    const origin =
-      facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
-    if (origin === null) {
-      return { ok: false, error: "no-usable-origin" };
+    const facts = await readOriginFacts(this.deps.git, root);
+    if (!facts.ok) {
+      return facts;
     }
-    const head = facts.defaultBranchCommit;
-    const branch = facts.defaultBranch;
-    if (head === null || branch === null) {
+    const { origin, base, head } = facts;
+    if (head === null) {
       return { ok: false, error: "no-answer" };
     }
 
@@ -186,31 +173,6 @@ export class PromoteSkill {
     if (concurrentChange) {
       return { ok: false, error: "concurrent-change" };
     }
-    return {
-      ok: true,
-      origin,
-      head,
-      base: branch,
-      branch: promoteBranch(name),
-    };
-  }
-
-  // Null is "unknown", never "none"; it blocks no push.
-  private async openRequests(
-    checked: Extract<Checked, { ok: true }>,
-  ): Promise<ReviewRequest[] | null> {
-    const review = await this.deps.review.readReviews(checked.origin);
-    if (review.outcome !== "read" || !review.complete) {
-      return null;
-    }
-    return review.requests.filter(
-      (request) =>
-        request.state === "open" &&
-        matchesProposal(request, {
-          ownerRepo: checked.origin.ownerRepo,
-          branch: checked.branch,
-          base: checked.base,
-        }),
-    );
+    return { ok: true, origin, head, base };
   }
 }

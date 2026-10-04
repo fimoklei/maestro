@@ -5,6 +5,7 @@
 - **Amended:** 2026-09-06, [What Inventory says in each of its three states, now that it carries released skills only](https://github.com/fimoklei/maestro/issues/812).
 - **Amended:** 2026-09-08, [What the three stages mean](https://github.com/fimoklei/maestro/issues/808) — point 10.
 - **Amended:** 2026-09-10, [Keep the Harness author journey honest after a merge and a hand-made commit](https://github.com/fimoklei/maestro/issues/890) — points 11 and 12.
+- **Amended:** 2026-10-04, [Delete a released skill from the Harness, from the cockpit](https://github.com/fimoklei/maestro/issues/1370) — point 13.
 
 ## Context
 
@@ -94,6 +95,10 @@ consumers deploy only from the released state.**
     hash or proposal carries them. A file of that kind already committed on the
     default branch stays visible: it is what consumers install, and one commit
     removes it. Maestro never writes that `.gitignore` into an existing Harness.
+13. **Inventory may start an author action, but the work always lands on the
+    Harness view.** **Delete skill** is the only such action: it starts on the
+    Inventory skill, and after its first step the cockpit opens the Harness
+    view with the **Deleted locally** row selected.
 
 ## Consequences
 

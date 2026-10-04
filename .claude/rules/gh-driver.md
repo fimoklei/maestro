@@ -38,6 +38,7 @@ ADR-0014; the field carve-out is ADR-0018.
   or fork. Pass `--title` and `--body`, never `--fill`.
 - Withdraw with `pr close` and reopen with `pr reopen`, naming the number the
   fresh read matched. Never pass `--delete-branch`.
+- Retitle with `pr edit <number> --title`; never pass a body flag.
 - Recheck identity and the request itself against a fresh read before every
   write. A number the browser sent is a claim, never an authorisation.
 - Never write while more than one open request matches the branch.
@@ -61,7 +62,9 @@ ADR-0014; the field carve-out is ADR-0018.
 - Validate the parsed JSON with Zod at the adapter; a row failing the shape
   fails the whole read.
 - Let only shape-checked named fields cross — request number, URL, state, draft
-  flag, review decision, requested users and teams, head and base branch.
+  flag, review decision, requested users and teams, head and base branch,
+  author login, and the title, which stays in `core`. Accept an app's
+  `app/<slug>` login, and read gh's slugless `app/` (no author) as `ghost`.
 - Refuse a branch name `git check-ref-format` would refuse.
 - Never put `gh` prose in an HTTP response, a notice or a log.
 - Sort matching requests explicitly; never take `[0]`. One branch can carry

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { HarnessTableRow } from "./harness-columns";
 import { rowId } from "./harness-columns";
 import { promoteNotice } from "./notice-copy";
+import { rowItems } from "./row-actions";
 import { statusReading } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
 import { pullRequest, stageRow } from "./stage-row-fixture";
@@ -88,4 +89,43 @@ export const LocalOnly: Story = {
       ],
     ),
   },
+};
+
+const noop = () => {};
+const closedDeletion = (folderOnDisk: boolean) => {
+  const row = stageRow("pending-review", "wizard", "proposal-closed", {
+    deletion: true,
+    requests: [pullRequest(52, "wizard")],
+    folderOnDisk,
+    restorable: !folderOnDisk,
+  });
+  return {
+    ...tableRow(
+      row,
+      rowItems(
+        row,
+        {
+          promote: noop,
+          create: noop,
+          reopen: noop,
+          withdraw: noop,
+          deleteLocal: noop,
+          restore: noop,
+        },
+        true,
+        { enabled: true, commit: "local-head" },
+      ),
+    ),
+    group: "Pending review",
+  };
+};
+
+// A closed deletion: Reopen proposal while the folder is still deleted (#1384).
+export const ClosedDeletion: Story = {
+  args: { row: closedDeletion(false) },
+};
+
+// The author restored the folder: no press would act, so none is offered.
+export const ClosedDeletionRestored: Story = {
+  args: { row: closedDeletion(true) },
 };

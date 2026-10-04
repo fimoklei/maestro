@@ -26,6 +26,10 @@ export type ReviewRequest = {
   headBranch: string;
   headCommit: string;
   baseBranch: string;
+  // A login, or `app/<slug>` for an app.
+  author: string;
+  // Stays in core: it decides a retitle and never crosses to the browser.
+  title: string;
 };
 
 // Three outcomes that must never collapse. `complete: false` filled its bound
@@ -62,6 +66,12 @@ export interface HarnessReviewPort {
   ): Promise<ReviewWriteOutcome>;
   reopenRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
   closeRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
+  // Sets the title only: a body may hold a teammate's or the Curator's words.
+  editRequest(
+    origin: GitOrigin,
+    number: number,
+    edit: { title: string },
+  ): Promise<ReviewWriteOutcome>;
 }
 
 // Shared by the stage read and every mutation's recheck.

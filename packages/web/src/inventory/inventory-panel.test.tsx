@@ -43,6 +43,13 @@ function renderPanel() {
   );
 }
 
+// The Harness reads Delete skill waits on, answered as on a computer with no
+// Working Harness (#1385).
+const withoutHarness = (input: RequestInfo | URL): Response | null =>
+  String(input).startsWith("/api/harness")
+    ? jsonResponse({ error: "not-configured" }, 409)
+    : null;
+
 // Routes by URL: inventory, registry (deploy repo choice), and each target's
 // deploy-state (deployed-column roll-up). Returns the real shape with `skipped`.
 function stubApi(primitives: unknown[], repos: unknown[]) {
@@ -56,7 +63,7 @@ function stubApi(primitives: unknown[], repos: unknown[]) {
       if (url.startsWith("/api/deploy-state")) {
         return jsonResponse({ primitives: [], skipped: [] }, 200);
       }
-      return jsonResponse({ primitives }, 200);
+      return withoutHarness(input) ?? jsonResponse({ primitives }, 200);
     }),
   );
 }
@@ -145,17 +152,19 @@ describe("InventoryPanel", () => {
     // registry instead of treating "not loaded yet" as "no repos" (#37).
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (input: RequestInfo | URL) =>
-        String(input).startsWith("/api/registry")
-          ? new Promise<Response>(() => undefined)
-          : jsonResponse(
-              {
-                primitives: [
-                  { type: "skill", name: "tdd", description: "TDD loop" },
-                ],
-              },
-              200,
-            ),
+      vi.fn(
+        async (input: RequestInfo | URL) =>
+          withoutHarness(input) ??
+          (String(input).startsWith("/api/registry")
+            ? new Promise<Response>(() => undefined)
+            : jsonResponse(
+                {
+                  primitives: [
+                    { type: "skill", name: "tdd", description: "TDD loop" },
+                  ],
+                },
+                200,
+              )),
       ),
     );
     renderPanel();
@@ -173,17 +182,19 @@ describe("InventoryPanel", () => {
     // confirms it.
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (input: RequestInfo | URL) =>
-        String(input).startsWith("/api/registry")
-          ? new Promise<Response>(() => undefined)
-          : jsonResponse(
-              {
-                primitives: [
-                  { type: "skill", name: "tdd", description: "TDD loop" },
-                ],
-              },
-              200,
-            ),
+      vi.fn(
+        async (input: RequestInfo | URL) =>
+          withoutHarness(input) ??
+          (String(input).startsWith("/api/registry")
+            ? new Promise<Response>(() => undefined)
+            : jsonResponse(
+                {
+                  primitives: [
+                    { type: "skill", name: "tdd", description: "TDD loop" },
+                  ],
+                },
+                200,
+              )),
       ),
     );
     renderPanel();
@@ -196,17 +207,19 @@ describe("InventoryPanel", () => {
   it("disables the deploy action when the registry failed to load", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (input: RequestInfo | URL) =>
-        String(input).startsWith("/api/registry")
-          ? jsonResponse({ message: "boom" }, 500)
-          : jsonResponse(
-              {
-                primitives: [
-                  { type: "skill", name: "tdd", description: "TDD loop" },
-                ],
-              },
-              200,
-            ),
+      vi.fn(
+        async (input: RequestInfo | URL) =>
+          withoutHarness(input) ??
+          (String(input).startsWith("/api/registry")
+            ? jsonResponse({ message: "boom" }, 500)
+            : jsonResponse(
+                {
+                  primitives: [
+                    { type: "skill", name: "tdd", description: "TDD loop" },
+                  ],
+                },
+                200,
+              )),
       ),
     );
     renderPanel();
@@ -292,6 +305,8 @@ describe("InventoryPanel", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/registry")) return jsonResponse({ repos: [] });
+        const harness = withoutHarness(input);
+        if (harness !== null) return harness;
         if (url.startsWith("/api/deploy-state"))
           return jsonResponse({ primitives: [], skipped: [] });
         return fail
@@ -342,6 +357,8 @@ describe("InventoryPanel", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/registry")) return jsonResponse({ repos: [] });
+        const harness = withoutHarness(input);
+        if (harness !== null) return harness;
         if (url.startsWith("/api/deploy-state"))
           return jsonResponse({ primitives: [], skipped: [] });
         if (hang) return new Promise<Response>(() => undefined);

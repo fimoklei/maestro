@@ -59,6 +59,7 @@ function build(overrides?: {
     createRequest: record("review", "createRequest"),
     reopenRequest: record("review", "reopenRequest"),
     closeRequest: record("review", "closeRequest"),
+    editRequest: record("review", "editRequest"),
   };
   const deletion = new DeleteLocalSkill({
     resolveRoot: async () =>
@@ -83,7 +84,7 @@ describe("DeleteLocalSkill", () => {
   it("removes the skill's own folder from the Working Harness", async () => {
     const { deletion, removed } = build();
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
       ok: true,
       name: "tdd",
     });
@@ -93,7 +94,7 @@ describe("DeleteLocalSkill", () => {
   it("pushes nothing, branches nothing and opens no pull request", async () => {
     const { deletion, calls } = build();
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
       ok: true,
       name: "tdd",
     });
@@ -105,7 +106,7 @@ describe("DeleteLocalSkill", () => {
       trees: { ...LOCAL_ONLY, working: { jobs: "local-jobs" } },
     });
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
       ok: false,
       error: "already-gone",
     });
@@ -116,23 +117,33 @@ describe("DeleteLocalSkill", () => {
     ["a proposal branch", { promote: { tdd: onBranch("branch-tdd") } }],
     ["a tree on origin/HEAD", { remote: { tdd: "remote-tdd" } }],
     ["a commit on local HEAD", { local: { tdd: "local-tdd" } }],
-  ])("refuses a skill that %s still holds", async (_what, over) => {
+  ])("removes a skill that %s also holds", async (_what, over) => {
     const { deletion, removed } = build({ trees: { ...LOCAL_ONLY, ...over } });
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
+      ok: true,
+      name: "tdd",
+    });
+    expect(removed).toEqual([FOLDER]);
+  });
+
+  // Fail-closed: a clone nobody could read is not proof of what the folder holds.
+  it("refuses when the clone cannot be read", async () => {
+    const { deletion, removed } = build({ trees: null });
+
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
       ok: false,
-      error: "not-local-only",
+      error: "no-answer",
     });
     expect(removed).toEqual([]);
   });
 
-  // Fail-closed: refs nobody could read are not proof the skill is local only.
-  it("refuses when the local refs give no answer", async () => {
-    const { deletion, removed } = build({ trees: null });
+  it("refuses a folder that changed after the check", async () => {
+    const { deletion, removed } = build();
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "earlier-tdd")).resolves.toEqual({
       ok: false,
-      error: "not-local-only",
+      error: "confirmation-stale",
     });
     expect(removed).toEqual([]);
   });
@@ -142,7 +153,7 @@ describe("DeleteLocalSkill", () => {
       realpath: async (path) => (path.endsWith("/tdd") ? "/elsewhere" : path),
     });
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
@@ -152,7 +163,7 @@ describe("DeleteLocalSkill", () => {
   it("reports a removal the filesystem refused", async () => {
     const { deletion } = build({ removeFails: true });
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
       ok: false,
       error: "delete-failed",
     });
@@ -165,7 +176,7 @@ describe("DeleteLocalSkill", () => {
     const held = locks.run(ROOT, () => new Promise<void>(() => {}));
     void held;
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
       ok: false,
       error: "delete-in-progress",
     });
@@ -174,7 +185,7 @@ describe("DeleteLocalSkill", () => {
   it("refuses a name that is not a skill slug", async () => {
     const { deletion, removed } = build();
 
-    await expect(deletion.execute("../etc")).resolves.toEqual({
+    await expect(deletion.execute("../etc", "working-tdd")).resolves.toEqual({
       ok: false,
       error: "invalid-skill",
     });
@@ -184,10 +195,76 @@ describe("DeleteLocalSkill", () => {
   it("refuses with no Harness connected", async () => {
     const { deletion, removed } = build({ root: undefined });
 
-    await expect(deletion.execute("tdd")).resolves.toEqual({
+    await expect(deletion.execute("tdd", "working-tdd")).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });
     expect(removed).toEqual([]);
+  });
+});
+
+describe("DeleteLocalSkill.inspect", () => {
+  const TREES: HarnessSkillTrees = {
+    remote: { jobs: "jobs-v1", gone: "gone-v1", edited: "edited-v1" },
+    promote: {},
+    local: { jobs: "jobs-v1", gone: "gone-v1", edited: "edited-v1" },
+    working: { jobs: "jobs-v1", edited: "edited-v2", tdd: "working-tdd" },
+  };
+
+  it("reports, per skill, whether its folder is in the clone and what it holds", async () => {
+    const { deletion } = build({ trees: TREES });
+
+    await expect(deletion.inspect()).resolves.toEqual({
+      ok: true,
+      skills: {
+        jobs: {
+          inClone: true,
+          workingTree: "jobs-v1",
+          uncommitted: false,
+          localOnly: false,
+        },
+        edited: {
+          inClone: true,
+          workingTree: "edited-v2",
+          uncommitted: true,
+          localOnly: false,
+        },
+        tdd: {
+          inClone: true,
+          workingTree: "working-tdd",
+          uncommitted: true,
+          localOnly: true,
+        },
+        gone: { inClone: false },
+      },
+    });
+  });
+
+  it("reports a skill only a proposal branch holds as not in the clone", async () => {
+    const { deletion } = build({
+      trees: { ...TREES, promote: { fresh: onBranch("branch-fresh") } },
+    });
+
+    const result = await deletion.inspect();
+
+    expect(result.ok && result.skills.fresh).toEqual({ inClone: false });
+  });
+
+  it("answers no-answer when the clone cannot be read", async () => {
+    const { deletion } = build({ trees: null });
+
+    await expect(deletion.inspect()).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+  });
+
+  it("answers not-configured with no Harness connected", async () => {
+    const { deletion } = build({ root: undefined });
+
+    await expect(deletion.inspect()).resolves.toEqual({
+      ok: false,
+      error: "not-configured",
+    });
   });
 });
