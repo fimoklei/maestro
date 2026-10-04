@@ -1,4 +1,5 @@
 import { Card } from "../ui/card";
+import { RESTORE_SKILL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
@@ -32,7 +33,7 @@ export function RestoreDialog({
       phase={restoring ? "running" : "idle"}
       // Uncommitted work is thrown away: confirmed like a deletion.
       action={{
-        label: "Restore skill",
+        label: RESTORE_SKILL,
         verb: "restore",
         tone: "danger",
         unavailable: null,
@@ -45,8 +46,8 @@ export function RestoreDialog({
       onClose={onClose}
     >
       <p className="m-0">
-        Restore skill brings back the folder from your last local commit. Later
-        changes do not come back.
+        {RESTORE_SKILL} brings back the folder from your last local commit.
+        Later changes do not come back.
       </p>
       {hasRequest ? (
         <p className="m-0 text-gray-11">Your proposal remains unchanged.</p>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import {
   BECOMES_EMPTY,
   CONSENT_NOT_GIVEN,
@@ -21,7 +22,6 @@ import {
   SECTION_HEADINGS,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
-  UPDATE_TARGET,
   unverifiedSentence,
   updateDialogTitle,
 } from "./update-target-copy";

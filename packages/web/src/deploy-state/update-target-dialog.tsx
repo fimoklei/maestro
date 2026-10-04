@@ -6,6 +6,7 @@ import type {
 } from "@maestro/core";
 import { type ReactNode, useId, useState } from "react";
 import { cn } from "../ui/cn";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { GroupedList } from "../ui/grouped-list";
@@ -39,7 +40,6 @@ import {
   UNCHANGED,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
-  UPDATE_TARGET,
   unverifiedSentence,
   updateDialogTitle,
 } from "./update-target-copy";

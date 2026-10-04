@@ -3,8 +3,8 @@
 
 import type { BulkDeployReport } from "@maestro/core";
 import { deployNoticeFor } from "../deploy-state/notice-copy";
-import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import { ACTIONS } from "../ui/busy-copy";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
 
 type BulkReportCounts = {

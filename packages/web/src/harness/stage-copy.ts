@@ -5,7 +5,7 @@ import type {
   RequestedReviewer,
   StageStatus,
 } from "@maestro/core";
-import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
+import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
 import type { StatusFamily } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 
@@ -14,8 +14,6 @@ export const STAGE_NAMES: Record<HarnessStage, string> = {
   "pending-review": "Pending review",
   "pending-release": "Pending release",
 };
-
-export const CREATE_RELEASE = "Create a release";
 
 export const JOURNEY_EMPTY = {
   title: "No changes yet",
@@ -108,7 +106,7 @@ export function detailSentence(
 ): string {
   const branch = defaultBranch ?? "the default branch";
   const release = releasedVersion;
-  const publish = "Select Create a release to publish it.";
+  const publish = `Select ${CREATE_RELEASE} to publish it.`;
   // One next action; Restore skill stays in the row menu (#1396).
   const deleteLocally = `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
   switch (row.status) {
@@ -170,8 +168,8 @@ export function detailSentence(
         : `This skill was renamed from ${row.previousName} on ${branch}. ${publish}`;
     case "deleted":
       return release === null
-        ? `This skill is no longer on ${branch}. Select Create a release to publish the deletion.`
-        : `This skill was deleted from ${branch} after release ${release}. Select Create a release to publish the deletion.`;
+        ? `This skill is no longer on ${branch}. Select ${CREATE_RELEASE} to publish the deletion.`
+        : `This skill was deleted from ${branch} after release ${release}. Select ${CREATE_RELEASE} to publish the deletion.`;
   }
 }
 

@@ -6,16 +6,12 @@ import type {
   UpdateRunError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
-import { CREATE_RELEASE } from "../harness/stage-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
+import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
 import { REMOVE_SKILL, REREAD_LABEL } from "./deploy-state-copy";
-import {
-  UPDATE_AGAIN,
-  UPDATE_INCOMPLETE_SENTENCE,
-  UPDATE_TARGET,
-} from "./update-target-copy";
+import { UPDATE_AGAIN, UPDATE_INCOMPLETE_SENTENCE } from "./update-target-copy";
 
 // One table over the three unions: a code shared by deploy and remove reads the
 // same in both. The path-shape codes live in `inventory/connect-notice.ts`.

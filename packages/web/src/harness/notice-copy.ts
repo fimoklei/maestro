@@ -16,6 +16,11 @@ import type {
 } from "@maestro/core";
 import { REREAD_LABEL as REREAD_INVENTORY } from "../inventory/inventory-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
+import {
+  DELETE_SKILL,
+  REREAD_HARNESS,
+  UPDATE_SKILL,
+} from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 
@@ -108,8 +113,7 @@ export const promoteHeadings: NoticeTable<PromoteSkillError> = {
   "skill-missing": {
     level: "error",
     label: "Skill no longer in the Harness",
-    message:
-      "Nothing was pushed. Select Re-read Harness to read the list again.",
+    message: `Nothing was pushed. Select ${REREAD_HARNESS} to read the list again.`,
   },
   "push-elsewhere": {
     level: "error",
@@ -164,8 +168,7 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message:
-      "Nothing was pushed. Select Re-read Harness to read the list again.",
+    message: `Nothing was pushed. Select ${REREAD_HARNESS} to read the list again.`,
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
@@ -416,8 +419,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "harness-copy-uncommitted": {
     level: "error",
     label: "Uncommitted changes in the Harness",
-    message:
-      "Nothing was copied. Commit or undo them in your Git tool, then select Update skill again.",
+    message: `Nothing was copied. Commit or undo them in your Git tool, then select ${UPDATE_SKILL} again.`,
     detail: "Updating now would overwrite changes Git cannot restore.",
   },
   "harness-unreadable": {
@@ -658,12 +660,11 @@ export const skillRestoredNotice = (
 ): NoticeContent => ({
   level: "warning",
   label: "Skill restored",
-  message:
-    "The skill folder is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
+  message: `The skill folder is back, but the status is out of date. Select ${REREAD_HARNESS} to read GitHub again.`,
   detail: hasRequest
     ? "Your proposal remains unchanged."
     : "Maestro could not read GitHub after the restore.",
-  action: { label: "Re-read Harness", onClick: onRetry },
+  action: { label: REREAD_HARNESS, onClick: onRetry },
 });
 
 export const proposalNotice = (error: unknown): NoticeContent | null =>

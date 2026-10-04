@@ -4,6 +4,7 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { CREATE_RELEASE } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { Icon } from "../ui/icon";
@@ -33,7 +34,7 @@ import {
   staleStatusNotice,
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
-import { CREATE_RELEASE, JOURNEY_EMPTY, statusReading } from "./stage-copy";
+import { JOURNEY_EMPTY, statusReading } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
 import {
   useDiscardReleasePlan,
