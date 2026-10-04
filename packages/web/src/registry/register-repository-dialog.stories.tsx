@@ -33,7 +33,7 @@ export const Empty: Story = {};
 export const Refused: Story = {
   args: {
     path: "/Users/me/Projects/agent-harness",
-    error: "This is the Harness, not a valid target. Register a repository.",
+    error: "This folder is the Harness. Choose a repository you deploy to.",
   },
 };
 

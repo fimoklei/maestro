@@ -2,8 +2,10 @@ import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
+import { toast } from "sonner";
 import { afterEach, beforeEach, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
+import { ToastHost } from "../ui/toast";
 import { HarnessView } from "./harness-view";
 import { stageRow as row } from "./stage-row-fixture";
 
@@ -57,6 +59,8 @@ export function stubHarnessServer(options: {
     heldUntil?: Promise<void>;
     afterPublish?: unknown;
     afterPromote?: unknown;
+    /** The status every read answers once a write has landed. */
+    afterWriteStatus?: number;
   };
   // `retry` answers every check after the open-time one, so a test can move
   // the picture under a dialog that is already open.
@@ -253,7 +257,12 @@ export function stubHarnessServer(options: {
       // Held by the test rather than by a timer, so the race is decided by
       // hand and not by the clock.
       await options.read.heldUntil;
-      return jsonResponse(answer(options.read), options.read.status);
+      return jsonResponse(
+        answer(options.read),
+        promoted && options.read.afterWriteStatus !== undefined
+          ? options.read.afterWriteStatus
+          : options.read.status,
+      );
     }),
   );
   return calls;
@@ -265,6 +274,7 @@ export function renderHarness() {
   return renderWithQuery(
     <StrictMode>
       <HarnessView openSkill={null} />
+      <ToastHost />
     </StrictMode>,
   );
 }
@@ -384,5 +394,7 @@ export function installHarnessHooks() {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    // Sonner keeps toasts in a module-global store that leaks across tests.
+    toast.dismiss();
   });
 }

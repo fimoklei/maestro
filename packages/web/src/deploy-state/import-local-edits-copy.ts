@@ -77,8 +77,7 @@ const LOCAL_EDITS_ERRORS: NoticeTable<LocalEditsError> = {
   "unfinished-operation": {
     level: "error",
     label: "Change not finished",
-    message:
-      "An earlier change on this target did not finish. Check the target card to finish that change, then select Import local edits again.",
+    message: `An earlier change on this target did not finish. Finish it on the Deploy-state screen, then select ${IMPORT_LOCAL_EDITS} again.`,
   },
   "target-unreadable": {
     level: "error",

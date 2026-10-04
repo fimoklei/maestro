@@ -1,6 +1,6 @@
 # ADR-0025 — The cockpit's copy standard
 
-- **Status:** Accepted, amended 2026-09-08 and 2026-10-02
+- **Status:** Accepted, amended 2026-09-08, 2026-10-02 and 2026-10-04
 - **Date:** 2026-08-31
 - **Amends:** ADR-0018's ownership of user-facing messages.
 - **Resolves:** [Cockpit language map #646](https://github.com/fimoklei/maestro/issues/646).
@@ -27,9 +27,10 @@ anchor tie-breaker and checklist with the short guidance in `copy.md`.
    cockpit shows. Review the whole message in context for first-reading
    comprehension and agreement with the implemented behaviour. Enforcement
    remains human or agent review, with one exception: a blocking check in
-   `pnpm lint` fails on a retired screen word in shipped copy. It lists only
-   words that are wrong in every screen use; form, length and style stay with
-   review.
+   `pnpm lint` fails on a retired screen word, or on a word or mark the
+   register leaves out (promotional words, chat phrases, `!`), in shipped
+   copy. It lists only words and marks that are wrong in every screen use;
+   form, length and style stay with review.
 3. The screen uses the fixed names in `CONTEXT.md`. The glossary continues to
    govern code terminology and which technical terms the screen keeps.
 4. Every user-facing word belongs in `packages/web`, centralised per feature.
@@ -60,6 +61,10 @@ adds the retired-word check. Teams lint documentation prose, rarely UI wording.
 Measured on Maestro's copy, form and style checks fired mostly on approved
 strings, while retired screen words surviving a rename were the one defect
 that kept passing review and could be found with no false positives.
+
+The 2026-10-04 amendment ([#1388](https://github.com/fimoklei/maestro/issues/1388))
+extends the same check to the register's excluded words and marks. Like a
+retired word, each is wrong in every screen use.
 
 The 2026-09-08 amendment changes agent guidance, not rendered copy or the Notice
 component. Existing copy implementation and any remaining migration work are

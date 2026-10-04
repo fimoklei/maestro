@@ -310,10 +310,9 @@ describe("Detail sentences", () => {
     );
   });
 
-  // Two ways on where the folder can come back, so the one sentence names
-  // both controls rather than hiding the local one (#915).
+  // One next action: Restore skill stays in the row menu (#1396).
   it.each(["not-yet-proposed", "deleted-locally"] as const)(
-    "names Restore skill beside Propose change on a restorable %s row",
+    "names Propose change alone on a restorable %s row",
     (status) => {
       expect(
         detailSentence(
@@ -324,7 +323,7 @@ describe("Detail sentences", () => {
           CONTEXT,
         ),
       ).toBe(
-        "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion, or Restore skill to bring it back.",
+        "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
       );
     },
   );
@@ -492,9 +491,7 @@ describe("deployed copies line", () => {
       deployedCopiesLine(
         row("pending-proposal", "not-yet-proposed", { remoteTree: "abc" }),
       ),
-    ).toBe(
-      "Deployed copies still have the earlier version. They get this version after a release and a new deploy.",
-    );
+    ).toBe("Deployed copies change only after a release and Update target.");
   });
 
   it("says it for new local work on a proposal too", () => {

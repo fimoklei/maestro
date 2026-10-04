@@ -71,7 +71,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /inventory not connected/i,
+        name: "No Harness connected",
       }),
     ).toBeInTheDocument();
   });
@@ -84,7 +84,7 @@ describe("first-run gate", () => {
       await screen.findByRole("heading", { name: /deploy-state/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: /connect inventory/i }),
+      screen.queryByRole("heading", { name: "No Harness connected" }),
     ).not.toBeInTheDocument();
   });
 
@@ -105,7 +105,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /inventory not connected/i,
+        name: "No Harness connected",
       }),
     ).toBeInTheDocument();
     expect(
@@ -120,7 +120,7 @@ describe("first-run gate", () => {
     // Checked before config resolves: no Welcome in the pending window.
     expect(
       screen.queryByRole("heading", {
-        name: /inventory not connected/i,
+        name: "No Harness connected",
       }),
     ).not.toBeInTheDocument();
 
@@ -129,7 +129,7 @@ describe("first-run gate", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", {
-        name: /inventory not connected/i,
+        name: "No Harness connected",
       }),
     ).not.toBeInTheDocument();
   });
@@ -159,7 +159,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /inventory not connected/i,
+        name: "No Harness connected",
       }),
     ).toBeInTheDocument();
   });

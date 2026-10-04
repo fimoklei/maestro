@@ -6,12 +6,12 @@ describe("primitiveCountLabel", () => {
     expect(primitiveCountLabel(undefined)).toBe("Loading the count…");
   });
 
-  it("singularises a lone primitive", () => {
-    expect(primitiveCountLabel(1)).toBe("1 primitive");
+  it("singularises a lone item", () => {
+    expect(primitiveCountLabel(1)).toBe("1 item");
   });
 
   it("pluralises any other count, including zero", () => {
-    expect(primitiveCountLabel(0)).toBe("0 primitives");
-    expect(primitiveCountLabel(9)).toBe("9 primitives");
+    expect(primitiveCountLabel(0)).toBe("0 items");
+    expect(primitiveCountLabel(9)).toBe("9 items");
   });
 });

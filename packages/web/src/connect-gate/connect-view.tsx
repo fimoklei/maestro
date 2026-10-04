@@ -4,6 +4,7 @@ import { LOADING_INVENTORY_CONNECTION } from "../inventory/inventory-copy";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { Card } from "../ui/card";
 import { ConnectFlow } from "./connect-flow";
+import { CONNECT_TITLE } from "./connect-gate-copy";
 import { ConnectSuccessView } from "./connect-success-view";
 
 // Lands on an explicit "Continue" so the confirmation stays long enough to read.
@@ -29,15 +30,9 @@ export function ConnectView() {
   return (
     // Top-aligned, at most 640px, fluid below that (#995).
     <div className="mx-auto flex w-full max-w-[40rem] flex-col gap-panel">
-      <div className="flex flex-col gap-tight">
-        <h1 className="m-0 font-semibold font-ui text-gray-12 text-title tracking-title">
-          Inventory connection
-        </h1>
-        <p className="m-0 font-ui text-gray-11 text-prose">
-          A private Harness works only when every teammate has their own GitHub
-          and APM access.
-        </p>
-      </div>
+      <h1 className="m-0 font-semibold font-ui text-gray-12 text-title tracking-title">
+        {CONNECT_TITLE}
+      </h1>
       <Card padded>
         <ConnectFlow
           onSuccess={() => setHasConnected(true)}

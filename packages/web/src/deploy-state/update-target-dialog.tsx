@@ -6,6 +6,7 @@ import type {
 } from "@maestro/core";
 import { type ReactNode, useId, useState } from "react";
 import { cn } from "../ui/cn";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { GroupedList } from "../ui/grouped-list";
@@ -36,11 +37,9 @@ import {
   REMOVED_BY_THIS_RELEASE,
   RETRY_UPDATE,
   releaseMoveLine,
-  selectionAfterLine,
   UNCHANGED,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
-  UPDATE_TARGET,
   unverifiedSentence,
   updateDialogTitle,
 } from "./update-target-copy";
@@ -281,11 +280,9 @@ export function UpdateTargetDialog({
             <p id={leadInId} className="m-0">
               {countingSentence(preview.counts)}
             </p>
-            <p className="m-0 text-gray-11">
-              {preview.selection.desired.length === 0
-                ? BECOMES_EMPTY
-                : selectionAfterLine(preview.selection.desired)}
-            </p>
+            {preview.selection.desired.length === 0 ? (
+              <p className="m-0 text-gray-11">{BECOMES_EMPTY}</p>
+            ) : null}
           </div>
 
           <div className="flex flex-col divide-y divide-divider border-divider border-y empty:hidden">

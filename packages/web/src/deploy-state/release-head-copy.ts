@@ -10,43 +10,31 @@ import { joinNames } from "./join-names";
 import {
   RETRY_UPDATE,
   UPDATE_INCOMPLETE,
+  UPDATE_INCOMPLETE_REASON,
   UPDATE_INCOMPLETE_SENTENCE,
-  UPDATE_TARGET,
 } from "./update-target-copy";
 
-export function releaseSentence(head: ReleaseHead): string | null {
-  if (head.latestRelease === null) {
-    return head.changed === null ? "Changes could not be read." : null;
+// A behind target's reason; this tool's own release can already be the latest
+// when another tool on the one global target is behind (#951).
+export function behindReason(head: ReleaseHead): string {
+  const latest = head.latestRelease;
+  if (latest === head.release) {
+    return `Another tool's skills are behind ${latest}.`;
   }
-  if (head.latestRelease === head.release) {
-    return null;
-  }
-  const available = `New release available: ${head.latestRelease}.`;
   return head.changed === null
-    ? `${available} Changes could not be read.`
-    : `${available} ${head.changed} of ${head.selected} deployed skills changed${
-        head.changedSkills?.length ? `: ${joinNames(head.changedSkills)}` : ""
-      }.`;
+    ? `Changes in ${latest} could not be read.`
+    : `${head.changed} of ${head.selected} deployed skills changed in ${latest}.`;
 }
 
 export const ON_LATEST_RELEASE = "On the latest release.";
 export const LATEST_RELEASE_UNKNOWN = "Latest release could not be read.";
-export const updateNextStep = (release: string): string =>
-  `Select ${UPDATE_TARGET} to use release ${release}.`;
-
-export function comparedLine(head: ReleaseHead, now: Date): string {
-  const since = head.comparedAt === null ? null : ago(head.comparedAt, now);
-  return `Compared with the Harness, ${since === null ? "not read yet" : `read ${since}`}`;
-}
 
 export function pinnedTagsLine(pinned: PinnedPerSkill): string {
-  return pinned
-    .map((group, index) => {
-      const skills =
-        index === 0 ? ` skill${group.skills === 1 ? "" : "s"}` : "";
-      return `${group.skills}${skills} at ${group.release}`;
-    })
-    .join(", ");
+  const groups = pinned.map((group, index) => {
+    const skills = index === 0 ? ` skill${group.skills === 1 ? "" : "s"}` : "";
+    return `${group.skills}${skills} at ${group.release}`;
+  });
+  return `${groups.join(", ")}.`;
 }
 
 export const RELEASE_NOT_ADOPTED =
@@ -58,6 +46,13 @@ export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
   deploy: RETRY_DEPLOY,
   remove: RETRY_REMOVAL,
   update: RETRY_UPDATE,
+};
+
+/** What an unfinished operation left, without its retry. */
+export const UNFINISHED_REASONS: Record<PendingOperation["kind"], string> = {
+  deploy: "Part of the selection is not on disk.",
+  remove: "The skill's files are still on disk.",
+  update: UPDATE_INCOMPLETE_REASON,
 };
 
 // Warning, not error: one control converges the files.
@@ -92,12 +87,12 @@ export function unfinishedOperationNotice(
     ? {
         level: "warning",
         label: "Deploy incomplete",
-        message: `Part of the selection is not on disk. Select ${RETRY_DEPLOY} to install release ${pending.release} again.`,
+        message: `${UNFINISHED_REASONS.deploy} Select ${RETRY_DEPLOY} to install release ${pending.release} again.`,
       }
     : {
         level: "warning",
         label: "Removal incomplete",
-        message: `The skill's files are still on disk. Select ${RETRY_REMOVAL} to run the same removal again.`,
+        message: `${UNFINISHED_REASONS.remove} Select ${RETRY_REMOVAL} to run the same removal again.`,
       };
 }
 
@@ -109,7 +104,10 @@ export function changedFact(head: ReleaseHead): string | null {
   if (head.latestRelease === null || head.latestRelease === head.release) {
     return null;
   }
-  return `${head.changed} of ${head.selected} skills`;
+  const count = `${head.changed} of ${head.selected} skills`;
+  return head.changedSkills?.length
+    ? `${count}: ${joinNames(head.changedSkills)}`
+    : count;
 }
 
 export const latestReleaseFact = (head: ReleaseHead | undefined) =>
@@ -125,11 +123,11 @@ export function comparedFact(head: ReleaseHead, now: Date): string {
 const COPY_CHIPS = {
   "local-edits": {
     label: "Local edits",
-    hint: "Files changed after deployment. The latest release lacks these changes. Select Import local edits to bring them into the Harness.",
+    hint: "Files changed after deployment.",
   },
   unverified: {
     label: "Unverified",
-    hint: "This copy could not be verified against a recorded baseline",
+    hint: "The deployment record cannot check this copy.",
   },
 } satisfies Record<
   NonNullable<DeployedPrimitive["copy"]>,

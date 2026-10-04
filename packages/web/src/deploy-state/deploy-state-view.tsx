@@ -6,11 +6,10 @@ import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { freshnessLine } from "../ui/freshness";
-import { Notice } from "../ui/notice";
 import { TableScreen } from "../ui/table-screen";
 import { useNow } from "../ui/use-now";
 import { useTableScreen } from "../ui/use-table-screen";
-import { useViewOptions } from "../ui/use-view-options";
+import { useViewOptions, type ViewOptions } from "../ui/use-view-options";
 import { useWriteAction } from "../ui/use-write-action";
 import {
   deployStateColumns,
@@ -18,24 +17,24 @@ import {
   type TargetTableRow,
 } from "./deploy-state-columns";
 import {
+  deployStateNotRead,
   GLOBAL,
-  GLOBAL_NOT_READ,
   NO_FILTER_MATCH,
-  NO_REPOSITORIES,
-  NO_TOOL_DETECTED,
   NOTHING_DEPLOYED,
-  REPOS_NOT_READ,
   REPOSITORIES,
-  REREAD_LABEL,
   TARGET_LABEL,
   targetCount,
 } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
-import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { TargetDetailPane } from "./target-detail-pane";
 import { targetLinkItems, targetMenuItems } from "./target-menu";
 import { targetPaneActions } from "./target-pane-actions";
-import { globalRows, repoRow, type TargetRow } from "./target-rows";
+import {
+  emptyGroupLines,
+  globalRows,
+  repoRow,
+  type TargetRow,
+} from "./target-rows";
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { deployStateQueryOptions } from "./use-deploy-state";
@@ -80,9 +79,9 @@ export function DeployStateView() {
   const retry = useRetryOperation();
   const location = useLocation();
 
-  const failures = [
-    ...(globalDeploy.isError ? [GLOBAL_NOT_READ] : []),
-    ...(registry.isError ? [REPOS_NOT_READ] : []),
+  const notRead = [
+    ...(globalDeploy.isError ? (["global"] as const) : []),
+    ...(registry.isError ? (["repos"] as const) : []),
   ];
   const isRead = globalDeploy.isSuccess && registry.isSuccess;
   const screen = useTableScreen({
@@ -93,7 +92,7 @@ export function DeployStateView() {
       globalDeploy.isFetching ||
       repoDeploy.some((query) => query.isFetching),
     settled: isRead,
-    failure: failures[0] ?? null,
+    failure: notRead.length > 0 ? deployStateNotRead(notRead) : null,
     // Invalidated, not refetched by hand: that also drops drift's 5-minute
     // cache, so a pressed re-read is really fresh.
     onReread: () => {
@@ -191,7 +190,7 @@ export function DeployStateView() {
     [],
   );
 
-  const view = useViewOptions(rows, {
+  const view: ViewOptions<TargetTableRow> = useViewOptions(rows, {
     kind: {
       label: TARGET_LABEL,
       options: KIND_OPTIONS,
@@ -202,15 +201,34 @@ export function DeployStateView() {
       of: (row) => row.status?.word ?? null,
       unread: null,
     },
-    groupings: [BY_TARGET],
+    groupings: [
+      {
+        ...BY_TARGET,
+        groups: {
+          ...BY_TARGET.groups,
+          // An empty group says what fills it; a failed read is the notice's,
+          // and a filtered-out group is No filter match's.
+          message: (key: string) =>
+            blockLines(
+              emptyGroupLines(key, {
+                filtered: view.filterCount > 0,
+                global: globalDeploy.isSuccess
+                  ? {
+                      tools: globalDeploy.data.tools.length,
+                      skipped: globalDeploy.data.skipped,
+                    }
+                  : null,
+                repositories: registry.isSuccess ? repoPaths.length : null,
+              }),
+            ),
+        },
+      },
+    ],
     initialGrouping: BY_TARGET.value,
     columns: COLUMN_OPTIONS,
     unavailable: "no targets yet",
   });
 
-  const noTools =
-    globalDeploy.isSuccess && globalDeploy.data.tools.length === 0;
-  const noRepos = registry.isSuccess && repoPaths.length === 0;
   const isColdStart =
     isRead &&
     globalDeploy.data.primitives.length === 0 &&
@@ -251,41 +269,6 @@ export function DeployStateView() {
       rowId={(row) => row.id}
       view={view}
       noMatch={NO_FILTER_MATCH}
-      notice={
-        failures.length > 0 || noTools || noRepos ? (
-          <div className="flex flex-col gap-inline p-panel">
-            {failures.map((failure) => (
-              <Notice
-                key={failure.label}
-                trigger="load"
-                notice={{
-                  ...failure,
-                  action: {
-                    label: REREAD_LABEL,
-                    onClick: screen.reread,
-                  },
-                }}
-              />
-            ))}
-            {noTools ? (
-              <>
-                <Notice trigger="load" notice={NO_TOOL_DETECTED} />
-                {globalDeploy.data.skipped.map((entry, index) => (
-                  <p
-                    key={skippedEntryKey(entry, index)}
-                    className="m-0 text-gray-11 text-meta"
-                  >
-                    {skippedEntryText(entry)}
-                  </p>
-                ))}
-              </>
-            ) : null}
-            {noRepos ? (
-              <p className="m-0 text-gray-11 text-meta">{NO_REPOSITORIES}</p>
-            ) : null}
-          </div>
-        ) : undefined
-      }
       pane={(row, frame) => {
         const placed = targetPaneActions(row, onAction);
         return (
@@ -311,6 +294,16 @@ export function DeployStateView() {
       }}
     />
   );
+}
+
+function blockLines(lines: string[] | null) {
+  return lines === null
+    ? null
+    : lines.map((line) => (
+        <span key={line} className="block">
+          {line}
+        </span>
+      ));
 }
 
 type TargetDialog = "update" | "import" | null;

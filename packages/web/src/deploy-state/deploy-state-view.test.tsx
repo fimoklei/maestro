@@ -112,9 +112,16 @@ describe("Deploy-state — one table of every target", () => {
     stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
     renderDeployState();
 
+    expect(await screen.findByText("Nothing deployed yet")).toBeInTheDocument();
+    // Each empty group still says what fills it.
     expect(
-      await screen.findByText(
-        "Nothing deployed — deploy a skill from Inventory",
+      within(grid()).getByText(
+        "Install Claude Code or Codex to deploy skills globally.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(grid()).getByText(
+        "No repositories registered yet. Select Register repository on the Repositories screen.",
       ),
     ).toBeInTheDocument();
   });
@@ -128,12 +135,13 @@ describe("Deploy-state — one table of every target", () => {
     ).toBeInTheDocument();
   });
 
-  it("names where repositories come from while none is registered, as information only", async () => {
+  it("names where repositories come from in the empty Repositories group, as information only", async () => {
     stubServer(() => ({ repos: [], global: TWO_TOOLS }));
     renderDeployState();
 
-    const hint = await screen.findByText(
-      "No repositories registered. Select Register repository on the Repositories screen to register one.",
+    await findRow("Codex");
+    const hint = within(grid()).getByText(
+      "No repositories registered yet. Select Register repository on the Repositories screen.",
     );
     expect(within(hint).queryByRole("button")).not.toBeInTheDocument();
     expect(within(hint).queryByRole("link")).not.toBeInTheDocument();
@@ -148,7 +156,7 @@ describe("Deploy-state — one table of every target", () => {
 
     expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered\./i),
+      screen.queryByText(/no repositories registered yet\./i),
     ).not.toBeInTheDocument();
   });
 });
@@ -410,7 +418,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("Unknown"));
   });
 
-  it("sums up the status on hover: the newer release and when it was compared", async () => {
+  it("holds one reason and the read age in the status hover card", async () => {
     stubServer(() => ({
       repos: ["/Users/me/a"],
       repo: {
@@ -426,14 +434,13 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await findRow("…/me/a");
     await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
 
+    const reason = await screen.findByText(
+      "2 of 5 deployed skills changed in v0.3.4.",
+    );
+    const card = reason.parentElement as HTMLElement;
     expect(
-      await screen.findByText(
-        "New release available: v0.3.4. 2 of 5 deployed skills changed: tdd.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Compared with the Harness, read just now"),
-    ).toBeInTheDocument();
+      Array.from(card.querySelectorAll("p"), (line) => line.textContent),
+    ).toEqual(["2 of 5 deployed skills changed in v0.3.4.", "Read just now"]);
   });
 });
 
@@ -444,9 +451,9 @@ describe("Deploy-state — failed reads", () => {
     }));
     renderDeployState();
 
-    const notice = await screen.findByText("Global targets not read");
+    const notice = await screen.findByText("Deploy-state not read");
     expect(notice.closest("[role=status]")).toHaveTextContent(
-      "Select Re-read Deploy-state to read the global targets again.",
+      "Select Re-read Deploy-state to read every target again.Not read: global targets.",
     );
     expect(
       screen.queryByText(/install claude code or codex/i),
@@ -458,10 +465,44 @@ describe("Deploy-state — failed reads", () => {
     renderDeployState();
 
     expect(
-      await screen.findByText("Registered repositories not read"),
+      await screen.findByText("Not read: registered repositories."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered\./i),
+      screen.queryByText(/no repositories registered yet\./i),
+    ).not.toBeInTheDocument();
+  });
+
+  // #1393: the failures share Re-read Deploy-state, so the band shows one.
+  it("merges several failed reads into one notice that names each part", async () => {
+    stubServer(() => ({
+      repos: { status: 500, body: { message: "boom" } },
+      global: { status: 422, body: { error: "malformed" } },
+    }));
+    renderDeployState();
+
+    expect(
+      await screen.findByText(
+        "Not read: global targets and registered repositories.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Deploy-state not read")).toHaveLength(1);
+    expect(
+      screen.getAllByRole("button", { name: "Re-read Deploy-state" }),
+    ).toHaveLength(2);
+  });
+
+  it("states a missing tool in the Global group, never in the band", async () => {
+    stubServer(() => ({ repos: ["/Users/me/a"] }));
+    renderDeployState();
+
+    await findRow("…/me/a");
+    expect(
+      within(grid()).getByText(
+        "Install Claude Code or Codex to deploy skills globally.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No supported tool detected"),
     ).not.toBeInTheDocument();
   });
 
@@ -480,11 +521,10 @@ describe("Deploy-state — failed reads", () => {
     }));
     renderDeployState();
 
+    await screen.findByText(/install claude code or codex/i);
+    // With no tool row to open, the Global group's line names them.
     expect(
-      await screen.findByText(/install claude code or codex/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/hooks\/pre-commit is deployed as/i),
+      within(grid()).getByText(/hooks\/pre-commit is deployed as/i),
     ).toBeInTheDocument();
   });
 });
@@ -549,17 +589,17 @@ describe("Deploy-state — Re-read and freshness", () => {
       await findRow("…/me/a");
       expect(await screen.findByText("Read just now")).toBeInTheDocument();
       await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
-      expect(
-        await screen.findByText("Compared with the Harness, read just now"),
-      ).toBeInTheDocument();
+      const card = (
+        await screen.findByText("2 of 5 deployed skills changed in v0.3.4.")
+      ).parentElement as HTMLElement;
+      expect(within(card).getByText("Read just now")).toBeInTheDocument();
       const reads = fetchMock.mock.calls.length;
 
       await act(() => vi.advanceTimersByTimeAsync(2 * 60_000));
 
-      expect(screen.getByText("Read 2 min ago")).toBeInTheDocument();
-      expect(
-        screen.getByText("Compared with the Harness, read 2 min ago"),
-      ).toBeInTheDocument();
+      // Band 2 and the card, each once.
+      expect(screen.getAllByText("Read 2 min ago")).toHaveLength(2);
+      expect(within(card).getByText("Read 2 min ago")).toBeInTheDocument();
       expect(fetchMock.mock.calls.length).toBe(reads);
     } finally {
       vi.useRealTimers();

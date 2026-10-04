@@ -199,7 +199,7 @@ describe("ImportDialog", () => {
     );
     expect(
       screen.getByText(
-        "Import copies this folder to the Working Harness. The original folder stays unchanged.",
+        "Import copies the folder and leaves the original as it is.",
       ),
     ).toBeInTheDocument();
   });

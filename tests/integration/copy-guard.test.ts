@@ -33,7 +33,12 @@ describe("copy guard", () => {
   it("passes copy that uses the current screen words", () => {
     plant(
       "packages/web/src/a-copy.ts",
-      'export const a = "Set the Harness location, then select Re-read Inventory.";\n',
+      [
+        'export const a = "Set the Harness location, then select Re-read Inventory.";',
+        'export const b = "Read just now";',
+        'export const c = "Is it 1 !== 2?";',
+        "",
+      ].join("\n"),
     );
 
     expect(runGuard()).toEqual({ status: 0, stdout: "" });
@@ -58,6 +63,13 @@ describe("copy guard", () => {
     ["Reload the view to see it.", "Reload the view"],
     ["The skill slug is taken.", "slug"],
     ["Holds primitives deployed from it.", "primitives"],
+    ["Deploy skills seamlessly to every target.", "seamless"],
+    ["Unlock the full Harness.", "Unlock"],
+    ["An AI-powered review of each skill.", "AI-powered"],
+    ["Oops, the read failed.", "Oops"],
+    ["Let's deploy the skill.", "Let's"],
+    ["Deployed tdd! Select Close.", "!"],
+    ["Deployed tdd!", "!"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",
@@ -88,6 +100,93 @@ describe("copy guard", () => {
     expect(status).toBe(1);
     expect(stdout).toContain("packages/web/src/c.tsx:2: refreshed");
     expect(stdout).toContain("packages/web/src/c.tsx:3: picker");
+  });
+
+  it("fails a one-word lowercase retired word that reaches a sentence", () => {
+    plant(
+      "packages/web/src/g.tsx",
+      [
+        "export const g = (n: number) =>",
+        '  `${n} ${n === 1 ? "primitive" : "items"}`;',
+        "export const G = ({ n }: { n: number }) => (",
+        '  <p>{n === 1 ? "drift" : "items"}</p>',
+        ");",
+        "",
+      ].join("\n"),
+    );
+
+    const { status, stdout } = runGuard();
+
+    expect(status).toBe(1);
+    expect(stdout).toBe(
+      "packages/web/src/g.tsx:2: primitive\npackages/web/src/g.tsx:4: drift\n",
+    );
+  });
+
+  it("passes a lowercase code compared, keyed or passed inside a sentence", () => {
+    plant(
+      "packages/web/src/h.tsx",
+      [
+        "type Row = { state: string; on: (key: string) => string };",
+        "export const h = (row: Row) =>",
+        '  `${row.state === "drift" ? "Behind" : row.on("fetch")}`;',
+        "export const H = ({ row }: { row: Row }) => (",
+        "  <p>",
+        '    {row.state === "drift" ? "Behind" : ["primitives"].join("")}',
+        "  </p>",
+        ");",
+        "",
+      ].join("\n"),
+    );
+
+    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+  });
+
+  it("fails a one-word retired word shown as a display value, returned or held in a const", () => {
+    plant(
+      "packages/web/src/i.ts",
+      [
+        'export const tab = { label: "primitives" };',
+        "export function word(): string {",
+        '  return "slugs";',
+        "}",
+        'export const shown = () => "picker";',
+        'export const UNIT = "symlink";',
+        "",
+      ].join("\n"),
+    );
+
+    const { status, stdout } = runGuard();
+
+    expect(status).toBe(1);
+    expect(stdout).toBe(
+      [
+        "packages/web/src/i.ts:1: primitives",
+        "packages/web/src/i.ts:3: slugs",
+        "packages/web/src/i.ts:5: picker",
+        "packages/web/src/i.ts:6: symlink",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("passes a code held as a value: a state, a query key, a type, an event or a hyphenated code", () => {
+    plant(
+      "packages/web/src/j.ts",
+      [
+        "type Counts = { primitives: number; skills: number };",
+        'export type Only = Pick<Counts, "primitives">;',
+        'export const row = { state: "drift", queryKey: ["drift"] };',
+        'export const on = () => window.addEventListener("refresh", () => {});',
+        "export function reading(known: boolean): string {",
+        '  return known ? "unknown" : "up-to-date";',
+        "}",
+        'export const KIND = "drift" as const;',
+        "",
+      ].join("\n"),
+    );
+
+    expect(runGuard()).toEqual({ status: 0, stdout: "" });
   });
 
   it("reads server messages as well", () => {

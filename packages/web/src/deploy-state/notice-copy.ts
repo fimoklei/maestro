@@ -6,9 +6,12 @@ import type {
   UpdateRunError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { DEPLOY_SKILL } from "../inventory/inventory-copy";
+import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
+import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
-import { REREAD_LABEL } from "./deploy-state-copy";
+import { REMOVE_SKILL, REREAD_LABEL } from "./deploy-state-copy";
 import { UPDATE_AGAIN, UPDATE_INCOMPLETE_SENTENCE } from "./update-target-copy";
 
 // One table over the three unions: a code shared by deploy and remove reads the
@@ -22,12 +25,13 @@ type DeployStateCode =
 
 export type DeployStateNotice = NoticeCopy;
 
-export const FIX_AND_RELEASE =
-  "Fix the skill in the Harness, publish a release, then deploy again.";
-
 const RECHECK_TARGET = "Deploy again to re-check the target.";
 
 const DEPLOY_AGAIN = "then deploy again.";
+
+const CREATE_RELEASE_STEP = `Select ${CREATE_RELEASE} on the Harness screen`;
+
+export const FIX_AND_RELEASE = `Fix the skill in the Harness. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`;
 
 const deleteLinkedFolder = (again: string) =>
   `Delete the linked skill folder in the target, ${again}`;
@@ -78,7 +82,7 @@ const LABELS: Record<DeployStateCode, string> = {
   "preflight-failed": "Could not check deployed files",
   "preview-failed": "Preview did not run",
   // "Status out of date" covers both a release and a copy that moved after the
-  // preview priced them.
+  // preview read them.
   "status-out-of-date": "Status out of date",
   "update-in-progress": "Another change is running",
   "update-incomplete": "Update incomplete",
@@ -103,8 +107,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
       "Nothing was installed. Select Re-read Inventory, then select the skill again.",
   },
   "inventory-not-configured": {
-    message:
-      "Nothing was installed. Select Connect Inventory on the Inventory screen, then deploy again.",
+    message: `Nothing was installed. ${CHANGE_LOCATION_STEP}, ${DEPLOY_AGAIN}`,
   },
   "inventory-unreadable": {
     message:
@@ -120,13 +123,11 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "A deploy installs from a GitHub tag, over https or ssh.",
   },
   "no-published-tag": {
-    message:
-      "Nothing was installed. Select Publish release on the Harness screen, then deploy again.",
+    message: `Nothing was installed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
     detail: "A deploy installs from a published tag.",
   },
   "local-diverged-from-tag": {
-    message:
-      "Nothing was installed. Select Publish release on the Harness screen, then deploy again.",
+    message: `Nothing was installed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
     detail: "A deploy installs the latest release, not the Harness copy.",
   },
   "deployed-diverged-from-lock": {
@@ -159,13 +160,11 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "The target's record names more than one, or names no release.",
   },
   "not-at-target-release": {
-    message:
-      "Nothing was installed. Select Update target to move this target to a release that holds the skill.",
+    message: `Nothing was installed. Select ${UPDATE_TARGET} on the Deploy-state screen to move this target to a release that holds the skill.`,
     detail: "This skill is not in the release this target follows.",
   },
   "target-pinned-per-skill": {
-    message:
-      "Nothing was installed. Select Remove skill for each skill, then select Deploy skill to put them on one release.",
+    message: `Nothing was installed. Select ${REMOVE_SKILL} for each skill on the Deploy-state screen. Then select ${DEPLOY_SKILL} to put them on one release.`,
     detail: "This target holds skills from separate deployments.",
   },
   "manifest-not-recognised": {
@@ -249,8 +248,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
       "Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select Remove skill again.",
   },
   "cost-not-acknowledged": {
-    message:
-      "The copy on disk changed since this removal was priced. Check the new cost above, then remove the skill.",
+    message: `Nothing was removed. A copy changed after the check. Read the list again, then select ${REMOVE_SKILL}.`,
   },
   "remove-in-progress": {
     message:
@@ -332,13 +330,13 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     detail: "Its permissions or its shape blocked the check.",
   },
   "inventory-not-configured": {
-    message: `Connect a Harness on the Inventory screen, ${UPDATE_AGAIN}`,
+    message: `${CHANGE_LOCATION_STEP}, ${UPDATE_AGAIN}`,
   },
   "inventory-unreadable": {
     message: `Select Re-read Inventory on the Harness location screen, ${UPDATE_AGAIN}`,
   },
   "no-published-tag": {
-    message: `Publish a release on the Harness screen, ${UPDATE_AGAIN}`,
+    message: `${CREATE_RELEASE_STEP}, ${UPDATE_AGAIN}`,
     detail: "An update moves the target to a published tag.",
   },
   "inventory-origin-unavailable": {
@@ -350,8 +348,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     detail: "The target's record names more than one, or names no release.",
   },
   "skill-not-in-release": {
-    message:
-      "The latest release does not hold this skill. Publish a release on the Harness screen, then deploy again.",
+    message: `The latest release does not hold this skill. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
     detail: "Nothing was changed, and the target keeps its own release.",
   },
   "destination-symlinked": {
@@ -366,7 +363,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
 const UPDATE: Record<UpdateRunError, Body> = {
   ...UPDATE_PREVIEW,
   "status-out-of-date": {
-    message: `The target changed since this update was priced. Nothing was changed, ${UPDATE_AGAIN}`,
+    message: `Nothing was changed. The target changed after the preview. Select ${UPDATE_TARGET} again.`,
   },
   "update-in-progress": {
     message:

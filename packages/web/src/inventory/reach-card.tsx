@@ -37,9 +37,7 @@ export function ReachCard({
         </ul>
       ) : null}
       {more > 0 ? (
-        <p className="m-0 mt-inline text-gray-11">
-          {moreTargetsLine(more, deployments.length)}
-        </p>
+        <p className="m-0 mt-inline text-gray-11">{moreTargetsLine(more)}</p>
       ) : null}
       {unreadable ? (
         <p className="m-0 mt-inline text-gray-11">{SOME_TARGETS_NOT_READ}</p>

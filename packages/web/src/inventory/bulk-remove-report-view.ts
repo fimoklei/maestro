@@ -52,9 +52,9 @@ const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
   "deployed-diverged-from-lock": "Local changes in deployed files",
   "deployed-diverged-pinned-per-skill": "Local changes in deployed files",
   // Never "its copy changed": the run may have agreed to nothing at all (#364).
-  "cost-not-acknowledged": "What it would delete was never confirmed",
+  "cost-not-acknowledged": "Removal not confirmed",
   "remove-in-progress": "Target held by another operation",
-  "manifest-not-recognised": "apm.yml holds an unexpected shape",
+  "manifest-not-recognised": "Manifest not recognised",
   "operation-unfinished": "An earlier change did not finish",
   "remove-incomplete": "Files are still on disk",
   "remove-failed": "Removal not completed by apm",

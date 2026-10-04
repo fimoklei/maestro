@@ -12,10 +12,13 @@ import { targetLabel } from "../shell/target-label";
 import type { StatusReading } from "../ui/status-reading";
 import {
   GLOBAL,
-  localEditsLine,
+  localEditsReason,
+  NO_REPOSITORIES,
+  NO_TOOL_DETECTED,
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
+  UNREACHED_HINT,
 } from "./deploy-state-copy";
 import {
   globalToolView,
@@ -23,17 +26,19 @@ import {
   withOtherOrigins,
 } from "./deployed-view";
 import {
-  comparedLine,
+  behindReason,
+  comparedFact,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
   pinnedTagsLine,
-  RELEASE_NOT_ADOPTED,
-  releaseSentence,
-  unfinishedOperationNotice,
-  updateNextStep,
+  UNFINISHED_REASONS,
 } from "./release-head-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
-import { skippedEntryText, skippedNeedsAttention } from "./skipped-entry-text";
+import {
+  skippedEntryReason,
+  skippedEntryText,
+  skippedNeedsAttention,
+} from "./skipped-entry-text";
 import { targetStatus } from "./target-status";
 import { toolNameList, toolPresentation } from "./tool-presentation";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
@@ -228,40 +233,54 @@ export function repoRow(
   };
 }
 
-export function statusSummary(row: TargetRow, now: Date): string[] {
-  if (row.readFailed && row.group === REPOSITORIES) {
-    return [REPO_NOT_READ.label];
+/**
+ * The lines an empty group shows; null leaves it to the screen. A null read is
+ * the failed-read notice's, and a filtered-out group is No filter match's.
+ */
+export function emptyGroupLines(
+  group: string,
+  facts: {
+    filtered: boolean;
+    global: { tools: number; skipped: readonly SkippedEntry[] } | null;
+    repositories: number | null;
+  },
+): string[] | null {
+  if (facts.filtered) return null;
+  if (group === GLOBAL) {
+    // With no tool row to open, the line also names each skipped entry.
+    return facts.global?.tools === 0
+      ? [NO_TOOL_DETECTED, ...facts.global.skipped.map(skippedEntryText)]
+      : null;
   }
-  const lines: string[] = [];
-  // An unfinished operation's notice stays the card's heading.
-  if (row.pending) {
-    const notice = unfinishedOperationNotice(row.pending, row.primitives);
-    lines.push(notice.label, notice.message);
-  }
+  return facts.repositories === 0 ? [NO_REPOSITORIES] : null;
+}
+
+/** The Status hover card: one reason sentence, then the read age; the pane holds the rest. */
+export type StatusCard = { reason: string | null; readAge: string | null };
+
+function statusReason(row: TargetRow): string | null {
+  if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
   const edited = editedSkills(row.primitives);
-  if (edited.length > 0) lines.push(localEditsLine(edited));
-  if (row.pinned) {
-    lines.push(pinnedTagsLine(row.pinned), RELEASE_NOT_ADOPTED);
-  }
+  if (!row.readFailed && edited.length > 0) return localEditsReason(edited);
+  if (row.pinned) return pinnedTagsLine(row.pinned);
+  if (row.readFailed) return REPO_NOT_READ.label;
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {
-    lines.push(otherOriginLine(row.otherOrigins));
+    return otherOriginLine(row.otherOrigins);
   }
-  for (const entry of row.skipped.filter(skippedNeedsAttention)) {
-    lines.push(skippedEntryText(entry));
+  const skipped = row.skipped.find(skippedNeedsAttention);
+  if (skipped) return skippedEntryReason(skipped);
+  if (row.status?.family === "unknown") return UNREACHED_HINT;
+  if (!row.head) return null;
+  if (row.head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
+  return row.behind ? behindReason(row.head) : ON_LATEST_RELEASE;
+}
+
+export function statusCard(row: TargetRow, now: Date): StatusCard {
+  if (row.readFailed && row.group === REPOSITORIES) {
+    return { reason: REPO_NOT_READ.label, readAge: null };
   }
-  if (row.head) {
-    const { latestRelease } = row.head;
-    const sentence = releaseSentence(row.head);
-    // Claimed only from this row's own settled read (#1125).
-    if (!row.pending && !row.readFailed && !row.behind && !row.pinned) {
-      if (latestRelease === null) lines.push(LATEST_RELEASE_UNKNOWN);
-      else if (!sentence) lines.push(ON_LATEST_RELEASE);
-    }
-    if (sentence) lines.push(sentence);
-    if (row.behind && latestRelease !== null) {
-      lines.push(updateNextStep(latestRelease));
-    }
-    lines.push(comparedLine(row.head, now));
-  }
-  return lines;
+  return {
+    reason: statusReason(row),
+    readAge: row.head ? comparedFact(row.head, now) : null,
+  };
 }

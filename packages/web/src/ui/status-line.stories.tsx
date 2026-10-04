@@ -5,8 +5,7 @@ const meta = {
   title: "Core/StatusLine",
   component: StatusLine,
   args: {
-    children:
-      "Connecting. A GitHub URL is cloned first, which can take a minute.",
+    children: "Cloning can take a minute.",
   },
 } satisfies Meta<typeof StatusLine>;
 

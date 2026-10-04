@@ -219,7 +219,7 @@ const suites: [
           level: "error",
           label: "Skill no longer in the Harness",
           message:
-            "Nothing was pushed. Select Re-read Harness to repaint the list.",
+            "Nothing was pushed. Select Re-read Harness to read the list again.",
         },
       ],
       [
@@ -291,7 +291,7 @@ const suites: [
           level: "error",
           label: "Files changed during the check",
           message:
-            "Nothing was pushed. Select Re-read Harness to repaint the list.",
+            "Nothing was pushed. Select Re-read Harness to read the list again.",
         },
       ],
       [
@@ -670,7 +670,7 @@ const suites: [
           level: "error",
           label: "Uncommitted changes in the Harness",
           message:
-            "This skill has uncommitted changes in the Harness. Commit or undo them, then Update skill again.",
+            "Nothing was copied. Commit or undo them in your Git tool, then select Update skill again.",
           detail: "Updating now would overwrite changes Git cannot restore.",
         },
       ],
@@ -1227,19 +1227,10 @@ describe("CONCURRENT_CHANGE_NOTICE", () => {
 describe("releasePublishedNotice", () => {
   const reread = () => {};
 
-  it("states the tag and the Inventory read that followed it", () => {
-    expect(releasePublishedNotice("v1.5.0", true, reread)).toEqual({
-      level: "success",
-      label: "Release published",
-      message: "Maestro tagged v1.5.0 and re-read Inventory.",
-      detail: "A release cannot change after publication.",
-    });
-  });
-
-  it("keeps the heading and the detail when only the Inventory read failed", () => {
-    // The tag is atomic, so the release stands whatever the re-read did: one
-    // heading, one subject, one detail across both outcomes (#849).
-    expect(releasePublishedNotice("v1.5.0", false, reread)).toEqual({
+  // A full publish is a toast; only the half outcome stays in the band, because
+  // it needs an action. The tag is atomic, so only the Inventory read fails (#849).
+  it("warns that the Inventory was not read after the tag was pushed", () => {
+    expect(releasePublishedNotice("v1.5.0", reread)).toEqual({
       level: "warning",
       label: "Release published",
       message:
@@ -1253,27 +1244,10 @@ describe("releasePublishedNotice", () => {
 describe("skillRestoredNotice", () => {
   const retry = () => {};
 
-  it("states what came back and where it came from", () => {
-    expect(skillRestoredNotice(false, true, retry)).toEqual({
-      level: "success",
-      label: "Skill restored",
-      message: "Restored from your last local commit.",
-    });
-  });
-
-  it("says the open proposal is untouched", () => {
-    expect(skillRestoredNotice(true, true, retry)).toEqual({
-      level: "success",
-      label: "Skill restored",
-      message: "Restored from your last local commit.",
-      detail: "Your proposal remains unchanged.",
-    });
-  });
-
-  // The folder is back whatever GitHub said, so the heading holds. Only the
-  // status is unknown, and the way back to it rides in the notice (#915).
-  it("keeps the heading and warns when the status could not be read again", () => {
-    expect(skillRestoredNotice(false, false, retry)).toEqual({
+  // A full restore is a toast; only a status the cockpit could not read again
+  // stays in the band, with the way back to it (#915).
+  it("warns that the status is out of date after the folder came back", () => {
+    expect(skillRestoredNotice(false, retry)).toEqual({
       level: "warning",
       label: "Skill restored",
       message:
@@ -1283,8 +1257,8 @@ describe("skillRestoredNotice", () => {
     });
   });
 
-  it("still says the open proposal is untouched at warning level", () => {
-    expect(skillRestoredNotice(true, false, retry)).toEqual({
+  it("says the open proposal is untouched", () => {
+    expect(skillRestoredNotice(true, retry)).toEqual({
       level: "warning",
       label: "Skill restored",
       message:

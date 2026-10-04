@@ -45,18 +45,17 @@ const registerSentences: Record<RegisterError, string> = {
   missing: "Enter the repository's absolute path.",
   relative:
     "Enter the repository's absolute path, for example /Users/name/code/my-repo.",
-  "not-found": "Not a valid path. Pick another folder.",
-  "not-a-directory": "Not a valid path. Pick another folder.",
+  "not-found": "No folder at this path. Choose another folder.",
+  "not-a-directory": "No folder at this path. Choose another folder.",
   "central-inventory":
-    "This is the Harness, not a valid target. Register a repository.",
-  "not-a-git-repo": "Not a Git repository. Register a valid repository.",
+    "This folder is the Harness. Choose a repository you deploy to.",
+  "not-a-git-repo": "Not a Git repository. Choose a folder that holds one.",
   "already-registered": "Already registered.",
 };
 
 // A failure the table does not cover: a dropped connection, a 500, or a code
 // this build predates.
-const NOT_ANSWERED =
-  "Maestro could not register this repository. Try registering it again.";
+const NOT_ANSWERED = `Nothing was registered. Select ${REGISTER_REPOSITORY} again.`;
 
 /**
  * The field's refusal line. Required return, never `?? error.message`: an
@@ -76,9 +75,9 @@ export function registerMessage(error: unknown): string {
 
 const unregisterHeadings: NoticeTable<"not-registered"> = {
   "not-registered": {
-    level: "error",
-    label: "Repository not unregistered",
-    message: `It is no longer on the list. Select ${REREAD_LABEL} to read the list again.`,
+    level: "info",
+    label: "Repository already unregistered",
+    message: `Select ${REREAD_LABEL} to read the list again.`,
   },
 };
 
@@ -90,8 +89,7 @@ export function unregisterNotice(error: unknown): NoticeContent | null {
 }
 
 // The write promise sits at the registration action.
-export const WRITE_PROMISE =
-  "Registering changes no files. Files change only when you deploy.";
+export const WRITE_PROMISE = "Registering changes no files.";
 
 export const unregisterTitle = (name: string) => `${UNREGISTER} ${name}`;
 export const UNREGISTER_REPOSITORY = "Unregister repository";

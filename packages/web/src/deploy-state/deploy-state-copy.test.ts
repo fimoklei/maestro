@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
-  GLOBAL_NOT_READ,
+  deployStateNotRead,
   HARNESS_ORIGIN_NOT_READ,
   localEditsLine,
+  localEditsReason,
   NO_FILTER_MATCH,
   NO_LONGER_RELEASED_HINT,
+  NO_REPOSITORIES,
   NO_TOOL_DETECTED,
   NOTHING_DEPLOYED,
   ORIGIN_NOT_READ,
   otherOriginLine,
   REPO_NOT_READ,
-  REPOS_NOT_READ,
   REREAD_LABEL,
   TARGET_LABEL,
   targetCount,
@@ -28,37 +29,43 @@ describe("Deploy-state copy", () => {
 
   it("names the screen's one re-read control in every failed read", () => {
     expect(REREAD_LABEL).toBe("Re-read Deploy-state");
-    expect([GLOBAL_NOT_READ, REPOS_NOT_READ, REPO_NOT_READ]).toEqual([
-      {
-        level: "error",
-        label: "Global targets not read",
-        message:
-          "Select Re-read Deploy-state to read the global targets again.",
-      },
-      {
-        level: "error",
-        label: "Registered repositories not read",
-        message:
-          "Select Re-read Deploy-state to read the registered repositories again.",
-      },
-      {
-        level: "error",
-        label: "Deploy-state not read",
-        message:
-          "Select Re-read Deploy-state to read this repository's deploy-state again.",
-      },
-    ]);
+    expect(REPO_NOT_READ).toEqual({
+      level: "error",
+      label: "Deploy-state not read",
+      message:
+        "Select Re-read Deploy-state to read this repository's deploy-state again.",
+    });
+  });
+
+  // #1393: the band's failed reads share one action, so they are one notice.
+  it("merges the band's failed reads into one notice that names each part", () => {
+    const notice = {
+      level: "error",
+      label: "Deploy-state not read",
+      message: "Select Re-read Deploy-state to read every target again.",
+    };
+    expect(deployStateNotRead(["global"])).toEqual({
+      ...notice,
+      detail: "Not read: global targets.",
+    });
+    expect(deployStateNotRead(["repos"])).toEqual({
+      ...notice,
+      detail: "Not read: registered repositories.",
+    });
+    expect(deployStateNotRead(["global", "repos"])).toEqual({
+      ...notice,
+      detail: "Not read: global targets and registered repositories.",
+    });
   });
 
   it("keeps the approved empty and zero-tool sentences", () => {
-    expect(NOTHING_DEPLOYED).toBe(
-      "Nothing deployed — deploy a skill from Inventory",
+    expect(NOTHING_DEPLOYED).toBe("Nothing deployed yet");
+    expect(NO_TOOL_DETECTED).toBe(
+      "Install Claude Code or Codex to deploy skills globally.",
     );
-    expect(NO_TOOL_DETECTED).toEqual({
-      level: "info",
-      label: "No supported tool detected",
-      message: "Install Claude Code or Codex to deploy skills globally.",
-    });
+    expect(NO_REPOSITORIES).toBe(
+      "No repositories registered yet. Select Register repository on the Repositories screen.",
+    );
     expect(NO_FILTER_MATCH).toBe(
       "No targets match the filters. Select Filter to show more targets.",
     );
@@ -95,11 +102,16 @@ describe("Deploy-state copy", () => {
   });
 
   it("keeps the hints of the two drift marks", () => {
-    expect(NO_LONGER_RELEASED_HINT).toBe(
-      "This deployed skill is absent from the latest release",
+    expect(NO_LONGER_RELEASED_HINT).toBe("Not in the latest release.");
+    expect(UNREACHED_HINT).toBe("Update check did not run.");
+  });
+
+  it("names every skill with local edits, the reason alone", () => {
+    expect(localEditsReason(["tdd"])).toBe(
+      "1 skill has changes that are not in the latest release: tdd.",
     );
-    expect(UNREACHED_HINT).toBe(
-      "Could not reach the Harness location to check for updates",
+    expect(localEditsReason(["tdd", "review"])).toBe(
+      "2 skills have changes that are not in the latest release: tdd and review.",
     );
   });
 

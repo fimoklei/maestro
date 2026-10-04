@@ -140,7 +140,7 @@ describe("Inventory — Delete skill", () => {
   const never = new Promise<void>(() => {});
   it.each([
     [
-      "no Working Harness",
+      "no Harness connected",
       { harness: { body: { error: "not-configured" }, status: 409 } },
     ],
     [

@@ -1,9 +1,17 @@
 import type { ConnectOutcome } from "@maestro/core";
-import { primitiveCountLabel } from "../shell/primitive-count-label";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { Fact } from "../ui/fact";
 import { Notice } from "../ui/notice";
+import {
+  CONNECTED_TITLE,
+  CONTINUE_TO_HARNESS,
+  CONTINUE_TO_INVENTORY,
+  CREATED_TITLE,
+  connectedMessage,
+  NO_SKILLS_YET,
+  PRIVATE_HARNESS_ACCESS,
+} from "./connect-gate-copy";
 
 export type ConnectSuccessViewProps = {
   outcome: ConnectOutcome;
@@ -15,7 +23,8 @@ export type ConnectSuccessViewProps = {
 
 type CompletionCopy = {
   title: string;
-  detail: string;
+  message: string;
+  detail?: string;
   continueLabel: string;
 };
 
@@ -23,31 +32,26 @@ function completionCopy(
   outcome: ConnectOutcome,
   primitiveCount: number | null,
 ): CompletionCopy {
-  // An unread count is left out of the sentence rather than shown as zero.
-  const found =
-    primitiveCount === null
-      ? "Harness found"
-      : `${primitiveCountLabel(primitiveCount)} found`;
-
   switch (outcome) {
     case "found":
       return {
-        title: found,
-        detail: "Deploys never write back to this Harness.",
-        continueLabel: "Continue to Inventory",
+        title: CONNECTED_TITLE,
+        message: connectedMessage(primitiveCount),
+        continueLabel: CONTINUE_TO_INVENTORY,
       };
     case "joined":
+      // Only a clone can be someone else's private repository.
       return {
-        title: `Harness connected · ${found}`,
-        detail: "The cloned Harness is ready in Inventory.",
-        continueLabel: "Continue to Inventory",
+        title: CONNECTED_TITLE,
+        message: connectedMessage(primitiveCount),
+        detail: PRIVATE_HARNESS_ACCESS,
+        continueLabel: CONTINUE_TO_INVENTORY,
       };
     case "scaffolded":
       return {
-        title: "Harness created. It has no skills yet.",
-        detail:
-          "Skill checks do not block releases unless the team makes them required.",
-        continueLabel: "Continue to Harness",
+        title: CREATED_TITLE,
+        message: NO_SKILLS_YET,
+        continueLabel: CONTINUE_TO_HARNESS,
       };
   }
 }
@@ -65,7 +69,12 @@ export function ConnectSuccessView({
     <div className="flex flex-col gap-cell">
       <Notice
         trigger="user-action"
-        notice={{ level: "success", label: copy.title, message: copy.detail }}
+        notice={{
+          level: "success",
+          label: copy.title,
+          message: copy.message,
+          detail: copy.detail,
+        }}
       />
       {/* The distinguishing tail, with the whole path on hover (#211). */}
       <dl className="m-0">

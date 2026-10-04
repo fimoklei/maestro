@@ -1,9 +1,7 @@
 // Every word the Update target control and its preview show.
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
-import { joinNames } from "./join-names";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import { toolDisplayName } from "./tool-presentation";
-
-export const UPDATE_TARGET = "Update target";
 
 // An origin-less Harness cannot attribute the target's release, so no update
 // can be priced (#960).
@@ -51,9 +49,6 @@ export const NOT_ADDED = "not added";
 
 // Maestro's own reading from content hashes, never apm's.
 export const NO_CONTENT_CHANGES = "No content changes";
-
-export const selectionAfterLine = (desired: readonly string[]): string =>
-  `Selected skills after this update: ${joinNames(desired)}.`;
 
 export const BECOMES_EMPTY =
   "This release removes every selected skill. The target will become Empty.";
@@ -116,4 +111,5 @@ export function outcomeDetail(
 
 export const UPDATE_INCOMPLETE = "Update incomplete";
 
-export const UPDATE_INCOMPLETE_SENTENCE = `The update is incomplete. ${RETRY_UPDATE_STEP}`;
+export const UPDATE_INCOMPLETE_REASON = "The update is incomplete.";
+export const UPDATE_INCOMPLETE_SENTENCE = `${UPDATE_INCOMPLETE_REASON} ${RETRY_UPDATE_STEP}`;

@@ -21,8 +21,7 @@ export const Default: Story = {};
 export const WithDetail: Story = {
   args: {
     label: "Local edits",
-    detail:
-      "Files changed after deployment. The latest release lacks these changes. Select Import local edits to bring them into the Harness.",
+    detail: "Files changed after deployment.",
     children: <Button variant="quiet">Local edits</Button>,
   },
 };

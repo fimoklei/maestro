@@ -1,11 +1,11 @@
 import type { SkillDeletionCheck } from "@maestro/core";
 import { Search } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import { DELETE_UNAVAILABLE } from "../harness/dialog-copy";
 import { folderInClone } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
+import { DELETE_SKILL, UPDATE_TARGET } from "../ui/control-labels";
 import { Icon } from "../ui/icon";
 import { Notice } from "../ui/notice";
 import { SelectionBar } from "../ui/selection-bar";
@@ -26,7 +26,6 @@ import {
   inventoryColumns,
 } from "./inventory-columns";
 import {
-  DELETE_SKILL,
   DEPLOY_SKILL,
   NO_FILTER_MATCH,
   NO_RELEASED_SKILLS,
@@ -266,8 +265,12 @@ export function InventoryView({
     ];
   };
 
+  // One notice per band: a read failure replaces the empty state.
   const noReleased =
-    primitives !== undefined && all.length === 0 && !screen.skeleton;
+    primitives !== undefined &&
+    all.length === 0 &&
+    !screen.skeleton &&
+    screen.notice === null;
 
   return (
     <TableScreen
@@ -303,8 +306,7 @@ export function InventoryView({
       noMatch={view.filterCount > 0 ? NO_FILTER_MATCH : NO_SEARCH_MATCH}
       notice={
         noReleased ? (
-          <div className="flex flex-col gap-inline p-panel">
-            <Notice trigger="load" notice={screen.notice} />
+          <div className="p-panel">
             <Notice
               trigger="load"
               notice={

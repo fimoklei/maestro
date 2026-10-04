@@ -3,8 +3,8 @@
 
 import type { BulkDeployReport } from "@maestro/core";
 import { deployNoticeFor } from "../deploy-state/notice-copy";
-import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import { ACTIONS } from "../ui/busy-copy";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
 
 type BulkReportCounts = {
@@ -31,24 +31,15 @@ export type BulkDeployReportView =
       message: string;
     };
 
-// Zeroed outcomes are dropped; the rest in severity order, what needs the user first.
+// One idea: how many reached the target, a skill already up to date
+// included. The groups carry the other counts.
 export function bulkDeploySummary(input: {
   targetLabel: string;
   counts: BulkReportCounts;
 }): string {
-  const { counts } = input;
-  const parts = [
-    [counts.failed, "failed"],
-    [counts.attention, "attention"],
-    [counts.deployed, "deployed"],
-    [counts.skipped, "skipped"],
-  ] as const;
-  const named = parts
-    .filter(([count]) => count > 0)
-    .map(([count, label]) => `${count} ${label}`);
-  const tail =
-    named.length > 0 ? named.join(" · ") : "all selected skills are up to date";
-  return `Deployed to ${input.targetLabel} · ${tail}`;
+  const { deployed, skipped, attention, failed } = input.counts;
+  const total = deployed + skipped + attention + failed;
+  return `Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`;
 }
 
 export function bulkDeployReportView(input: {

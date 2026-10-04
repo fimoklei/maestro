@@ -8,6 +8,7 @@ import {
   globalOptionLabel,
   moreTargetsLine,
   NO_FILTER_MATCH,
+  NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
   NO_TARGET_REMOVABLE,
   NO_TOOL_DETECTED_CAUSE,
@@ -80,10 +81,17 @@ describe("Inventory copy", () => {
     expect(deployedToLine(12)).toBe("Deployed to 12 targets");
   });
 
-  it("names the row as the way to every target the card leaves out", () => {
-    expect(moreTargetsLine(2, 5)).toBe(
-      "2 more. Select the row to see all 5 targets.",
-    );
+  // A hover card holds facts only, never an action.
+  it("counts the targets the card leaves out", () => {
+    expect(moreTargetsLine(2)).toBe("And 2 more.");
+  });
+
+  it("offers Open Harness from the empty Inventory", () => {
+    expect(NO_RELEASED_SKILLS).toEqual({
+      level: "info",
+      label: "No released skills yet",
+      message: "Skills from the latest release appear here.",
+    });
   });
 
   it("says when a target's read did not answer", () => {

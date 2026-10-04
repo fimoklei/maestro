@@ -1,4 +1,5 @@
 import { Card } from "../ui/card";
+import { DELETE_SKILL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
@@ -14,6 +15,7 @@ import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
 export type DeletionMode =
   | {
       kind: "propose";
+      origin: string;
       seenRemoteTree: string;
       openRequest: { number: number; author: string } | null;
     }
@@ -47,7 +49,7 @@ export function DeletionDialog({
       width={480}
       phase={deleting ? "running" : "idle"}
       action={{
-        label: "Delete skill",
+        label: DELETE_SKILL,
         verb: "delete",
         tone: "danger",
         unavailable:
@@ -67,8 +69,7 @@ export function DeletionDialog({
           {/* The warning says what this press does instead. */}
           {mode.openRequest === null ? (
             <p className="m-0">
-              Delete skill opens a pull request to delete {skill} from the
-              Harness.
+              {DELETE_SKILL} proposes this deletion to {mode.origin} for review.
             </p>
           ) : null}
           <p className="m-0 text-gray-11">
@@ -81,17 +82,17 @@ export function DeletionDialog({
           />
         </>
       ) : mode.localOnly ? (
-        // No second sentence: the propose mode has one because nothing is
-        // lost until a merge, and here something is.
+        // No second sentence: the other modes name what keeps the skill,
+        // and here nothing does.
         <p className="m-0">
-          {skill} is in the Harness working tree and nowhere else. Confirming
-          removes the folder from disk for good.
+          {DELETE_SKILL} removes the folder from disk. No other copy of {skill}{" "}
+          exists.
         </p>
       ) : (
         <>
           <p className="m-0">
-            Delete skill removes the {skill} folder from your clone. GitHub and
-            your targets keep the skill.
+            {DELETE_SKILL} removes the {skill} folder from your clone. GitHub
+            and your targets keep the skill.
           </p>
           <p className="m-0 text-gray-11">
             Then select Propose change to open a pull request.

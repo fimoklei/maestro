@@ -84,12 +84,12 @@ export function useHarnessPresses(
   // The press freezes what it was made against, so a check landing while the
   // confirmation stands cannot rewrite the source or close it (#915).
   const restore = useRestoreSkill();
-  // The outcome notice above the table states it.
+  // A status left unread is the outcome notice above the table instead.
   const restoreWrite = useWriteAction(restore, {
     report,
     action: "restore",
-    show: "row",
-    name: () => null,
+    show: "toast",
+    name: (restored) => (restored.statusRead ? restored.name : null),
     failure: restoreNotice,
   });
   const [restoring, setRestoring] = useState<RestoreTarget | null>(null);

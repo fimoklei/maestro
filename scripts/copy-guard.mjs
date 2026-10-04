@@ -32,6 +32,9 @@ const RETIRED = [
   // A control is selected: never clicked or tapped, never `Press Close`.
   /\b(?:click|tap)(?:s|ped|ping|ed|ing)?\b/i,
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,
+  // Copy is level: no promotional words, no chat phrases, no exclamation.
+  /\b(?:seamless|effortless|supercharge|powerful|magic|unlock|leverage|AI-powered|intelligent|smartly|empower|robust|Oops|Whoops|Let's)/i,
+  /!(?=\s|$)/,
 ];
 const SCANNED = [
   join("packages", "web", "src"),
@@ -58,6 +61,69 @@ function* filesUnder(dir) {
   }
 }
 
+const PASSED_ON = new Set([
+  ts.SyntaxKind.BarBarToken,
+  ts.SyntaxKind.QuestionQuestionToken,
+  ts.SyntaxKind.AmpersandAmpersandToken,
+]);
+
+const DISPLAY_KEYS = new Set([
+  "label",
+  "title",
+  "message",
+  "detail",
+  "hint",
+  "text",
+  "heading",
+  "body",
+  "description",
+  "placeholder",
+]);
+
+// A hyphen, underscore, slash, dot or colon marks a code, route or key.
+const CODE_SHAPE = /[-_/.:]/;
+
+// Returned or held in a const, a plain word is a value that may be shown.
+function heldAsValue(parent, child, node) {
+  if (CODE_SHAPE.test(node.text)) return false;
+  return (
+    ts.isReturnStatement(parent) ||
+    (ts.isArrowFunction(parent) && parent.body === child) ||
+    (ts.isVariableDeclaration(parent) && parent.initializer === child)
+  );
+}
+
+const shownAsProperty = (parent, child) =>
+  ts.isPropertyAssignment(parent) &&
+  parent.initializer === child &&
+  ts.isIdentifier(parent.name) &&
+  DISPLAY_KEYS.has(parent.name.text);
+
+// A one-word literal is shown when its value lands in a template, a JSX
+// expression or a display property, or is returned or held as a plain word;
+// compared, keyed or passed on, it stays a code.
+function reachesSentence(node) {
+  let child = node;
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (
+      ts.isTemplateSpan(parent) ||
+      ts.isJsxExpression(parent) ||
+      shownAsProperty(parent, child) ||
+      heldAsValue(parent, child, node)
+    ) {
+      return true;
+    }
+    const passesValueOn =
+      ts.isParenthesizedExpression(parent) ||
+      (ts.isConditionalExpression(parent) && parent.condition !== child) ||
+      (ts.isBinaryExpression(parent) &&
+        PASSED_ON.has(parent.operatorToken.kind));
+    if (!passesValueOn) return false;
+    child = parent;
+  }
+  return false;
+}
+
 /** Each piece of text a reader could see, with its 1-based line. */
 function* textsOf(path, text) {
   const source = ts.createSourceFile(
@@ -81,7 +147,7 @@ function* textsOf(path, text) {
         ts.isTemplateMiddle(node) ||
         ts.isTemplateTail(node)) &&
       // A code, route or key has no space and starts lowercase.
-      /\s|^[A-Z]/.test(node.text)
+      (/\s|^[A-Z]/.test(node.text) || reachesSentence(node))
     ) {
       yield { line: lineOf(node), text: node.text };
     }

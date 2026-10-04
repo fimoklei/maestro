@@ -66,26 +66,26 @@ describe("ConnectView", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /inventory connection/i,
+        name: "Connect a Harness",
       }),
     ).toBeInTheDocument();
   });
 
-  it("shows the confirmation with the primitive count after a successful connect", async () => {
+  it("shows the confirmation with the item count after a successful connect", async () => {
     stubApi();
     renderView();
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "/home/me/agent-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
-    expect(await screen.findByText(/7 primitives found/i)).toBeInTheDocument();
+    expect(await screen.findByText("Harness connected")).toBeInTheDocument();
     expect(
-      screen.getByText(/deploys never write back to this harness/i),
+      screen.getByText("7 items are ready in the Inventory."),
     ).toBeInTheDocument();
   });
 
@@ -95,11 +95,11 @@ describe("ConnectView", () => {
     renderView();
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "/home/me/agent-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
     const source = await screen.findByText("…/me/agent-harness");
@@ -111,11 +111,11 @@ describe("ConnectView", () => {
     renderView();
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "/home/me/agent-harness",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
     await userEvent.click(
       await screen.findByRole("button", { name: /continue/i }),
@@ -139,11 +139,11 @@ describe("ConnectView", () => {
     renderView();
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "/home/me/not-a-clone",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/no apm\.yml/i);
@@ -172,11 +172,11 @@ describe("ConnectView", () => {
     renderView();
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "/home/me/skills-only-folder",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -185,9 +185,9 @@ describe("ConnectView", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Choose another clone" }),
     );
-    expect(await screen.findByLabelText(/inventory path/i)).toHaveValue(
-      "/home/me/agent-harness",
-    );
+    expect(
+      await screen.findByLabelText("Harness folder or GitHub URL"),
+    ).toHaveValue("/home/me/agent-harness");
   });
 
   it("fills the path field from a folder picked in the system chooser", async () => {
@@ -199,7 +199,7 @@ describe("ConnectView", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByLabelText(/inventory path/i)).toHaveValue(
+      expect(screen.getByLabelText("Harness folder or GitHub URL")).toHaveValue(
         "/home/me/agent-harness",
       ),
     );
@@ -210,12 +210,12 @@ describe("ConnectView", () => {
     renderView();
 
     await userEvent.type(
-      await screen.findByLabelText(/inventory path/i),
+      await screen.findByLabelText("Harness folder or GitHub URL"),
       "/home/me/typed",
     );
     await userEvent.click(screen.getByRole("button", { name: "Browse" }));
 
-    expect(screen.getByLabelText(/inventory path/i)).toHaveValue(
+    expect(screen.getByLabelText("Harness folder or GitHub URL")).toHaveValue(
       "/home/me/typed",
     );
   });
@@ -226,7 +226,7 @@ describe("ConnectView", () => {
     const fetchMock = stubApi({ picked: "/home/me/Work" });
     renderView();
 
-    const path = await screen.findByLabelText(/inventory path/i);
+    const path = await screen.findByLabelText("Harness folder or GitHub URL");
     await userEvent.type(path, "https://github.com/fimoklei/agent-harness");
     await userEvent.click(
       screen.getByRole("button", { name: "Change folder…" }),
@@ -238,10 +238,10 @@ describe("ConnectView", () => {
     await userEvent.clear(path);
     await userEvent.type(path, "/home/me/agent-harness");
     await userEvent.click(
-      screen.getByRole("button", { name: /^connect inventory$/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
-    await screen.findByText(/7 primitives found/i);
+    await screen.findByText("7 items are ready in the Inventory.");
     const connectCall = fetchMock.mock.calls.find((call) =>
       String(call[0]).startsWith("/api/inventory/connect"),
     );
@@ -255,9 +255,13 @@ describe("ConnectView", () => {
     renderView();
 
     // Checked before config resolves: the form must not flash while pending.
-    expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Harness folder or GitHub URL"),
+    ).not.toBeInTheDocument();
 
     expect(await screen.findByText("deploy-state-landed")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Harness folder or GitHub URL"),
+    ).not.toBeInTheDocument();
   });
 });

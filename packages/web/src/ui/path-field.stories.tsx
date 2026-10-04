@@ -15,7 +15,7 @@ const meta = {
   component: PathField,
   args: {
     label: "Folder path",
-    hint: "Import copies this folder to the Working Harness. The original folder stays unchanged.",
+    hint: "Import copies the folder and leaves the original as it is.",
     value: "/Users/me/.claude/skills/grilling",
     onChange: () => {},
     chooser,

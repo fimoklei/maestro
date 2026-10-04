@@ -80,7 +80,7 @@ describe("Deploy-state pane — facts", () => {
     expect(fact(pane, "Path")).toBe(REPO);
     expect(fact(pane, "Release")).toBe("v0.3.2");
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
-    expect(fact(pane, "Changed")).toBe("2 of 5 skills");
+    expect(fact(pane, "Changed")).toBe("2 of 5 skills: tdd and grill");
     expect(fact(pane, "Compared")).toBe("Read just now");
     // #1272: the facts state the release; no sentence repeats them.
     expect(
@@ -158,6 +158,19 @@ describe("Deploy-state pane — facts", () => {
     expect(
       await screen.findByRole("tooltip", { hidden: true }),
     ).toHaveTextContent(REPO);
+  });
+
+  // A narrow pane shortens the names; focus still reads them all (#1394).
+  it("shows every changed skill when the Changed value is focused", async () => {
+    repoWith({ releaseHead: BEHIND });
+    renderDeployState();
+    const pane = await openPane(LABEL);
+
+    within(pane).getByText("2 of 5 skills: tdd and grill").focus();
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("2 of 5 skills: tdd and grill");
   });
 
   it("ticks the Compared fact while the pane stays open", async () => {
@@ -287,6 +300,54 @@ describe("Deploy-state pane — facts", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps every line the Status hover card drops (#1394)", async () => {
+    repoWith(
+      {
+        primitives: [skill("tdd", "v0.3.2", "local-edits"), skill("grill")],
+        skipped: [
+          {
+            reason: "unmanageable-skill",
+            virtualPath: "skills/jobs",
+            packageType: "hybrid",
+          },
+        ],
+        releaseHead: BEHIND,
+      },
+      {
+        behind: [
+          {
+            name: "grill",
+            current: "v0.3.2",
+            latest: "v0.3.4",
+            reading: "behind",
+          },
+        ],
+      },
+    );
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(
+      within(pane).getByText(
+        "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(pane).getByText(
+        "skills/jobs is deployed as hybrid, not as a skill. Fix the skill in the Harness. Select Create a release on the Harness screen, then deploy again.",
+      ),
+    ).toBeInTheDocument();
+    expect(fact(pane, "Latest release")).toBe("v0.3.4");
+    expect(fact(pane, "Changed")).toBe("2 of 5 skills: tdd and grill");
+    expect(
+      within(pane).getByRole("button", { name: /^Update target/ }),
+    ).toBeInTheDocument();
+    expect(fact(pane, "Compared")).toMatch(/^Read /);
+    expect(
+      await within(pane).findByRole("img", { name: "Behind" }),
+    ).toBeInTheDocument();
+  });
+
   it("counts the deployed files that belong to no selected skill", async () => {
     repoWith({ extraFiles: 2 });
     renderDeployState();
@@ -311,7 +372,9 @@ describe("Deploy-state pane — facts", () => {
     expect(
       within(pane).getByText(/skills\/tdd is deployed as hybrid/i),
     ).toBeInTheDocument();
-    expect(within(pane).getByText(/publish a release/i)).toBeInTheDocument();
+    expect(
+      within(pane).getByText(/Select Create a release on the Harness screen/),
+    ).toBeInTheDocument();
   });
 
   it("names the other origin a global target holds, keeping Deploy skill", async () => {
@@ -427,9 +490,7 @@ describe("Deploy-state pane — Selected skills", () => {
     const mark = await within(pane).findByRole("img", { name: "Unverified" });
     await userEvent.hover(mark);
     await screen.findByRole("tooltip", { hidden: true });
-    expect(mark).toHaveAccessibleDescription(
-      "Could not reach the Harness location to check for updates",
-    );
+    expect(mark).toHaveAccessibleDescription("Update check did not run.");
   });
 
   it("offers Remove skill on a no-longer-released skill, never an update", async () => {
