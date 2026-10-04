@@ -121,6 +121,13 @@ describe("changedFact", () => {
     expect(changedFact(head())).toBe("2 of 5 skills");
   });
 
+  // The Status hover card counts them; the pane names them (#1394).
+  it("names the changed skills after the count", () => {
+    expect(changedFact(head({ changedSkills: ["tdd", "grill"] }))).toBe(
+      "2 of 5 skills: tdd and grill",
+    );
+  });
+
   it("still counts a newer release that changed none", () => {
     expect(changedFact(head({ changed: 0 }))).toBe("0 of 5 skills");
   });

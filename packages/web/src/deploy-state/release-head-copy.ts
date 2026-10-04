@@ -6,6 +6,7 @@ import type {
   ReleaseHead,
 } from "@maestro/core";
 import { ago } from "../ui/freshness";
+import { joinNames } from "./join-names";
 import {
   RETRY_UPDATE,
   UPDATE_INCOMPLETE,
@@ -103,7 +104,10 @@ export function changedFact(head: ReleaseHead): string | null {
   if (head.latestRelease === null || head.latestRelease === head.release) {
     return null;
   }
-  return `${head.changed} of ${head.selected} skills`;
+  const count = `${head.changed} of ${head.selected} skills`;
+  return head.changedSkills?.length
+    ? `${count}: ${joinNames(head.changedSkills)}`
+    : count;
 }
 
 export const latestReleaseFact = (head: ReleaseHead | undefined) =>

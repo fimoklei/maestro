@@ -6,6 +6,7 @@ import type {
   UpdateRunError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { DEPLOY_SKILL } from "../inventory/inventory-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
@@ -163,7 +164,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "This skill is not in the release this target follows.",
   },
   "target-pinned-per-skill": {
-    message: `Nothing was installed. Select ${REMOVE_SKILL} for each skill on the Deploy-state screen, then deploy them again.`,
+    message: `Nothing was installed. Select ${REMOVE_SKILL} for each skill on the Deploy-state screen. Then select ${DEPLOY_SKILL} to put them on one release.`,
     detail: "This target holds skills from separate deployments.",
   },
   "manifest-not-recognised": {

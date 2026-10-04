@@ -161,7 +161,7 @@ describe("deploy notices", () => {
       {
         label: "Pinned per skill",
         message:
-          "Nothing was installed. Select Remove skill for each skill on the Deploy-state screen, then deploy them again.",
+          "Nothing was installed. Select Remove skill for each skill on the Deploy-state screen. Then select Deploy skill to put them on one release.",
         detail: "This target holds skills from separate deployments.",
       },
     ],

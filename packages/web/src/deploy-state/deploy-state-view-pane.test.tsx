@@ -80,7 +80,7 @@ describe("Deploy-state pane — facts", () => {
     expect(fact(pane, "Path")).toBe(REPO);
     expect(fact(pane, "Release")).toBe("v0.3.2");
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
-    expect(fact(pane, "Changed")).toBe("2 of 5 skills");
+    expect(fact(pane, "Changed")).toBe("2 of 5 skills: tdd and grill");
     expect(fact(pane, "Compared")).toBe("Read just now");
     // #1272: the facts state the release; no sentence repeats them.
     expect(
@@ -325,6 +325,7 @@ describe("Deploy-state pane — facts", () => {
       ),
     ).toBeInTheDocument();
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
+    expect(fact(pane, "Changed")).toBe("2 of 5 skills: tdd and grill");
     expect(
       within(pane).getByRole("button", { name: /^Update target/ }),
     ).toBeInTheDocument();
