@@ -60,20 +60,18 @@ describe("Register repository", () => {
 
     const dialog = await openDialog();
 
-    expect(dialog).toHaveAccessibleDescription(
-      "Registering changes no files. Files change only when you deploy.",
-    );
+    expect(dialog).toHaveAccessibleDescription("Registering changes no files.");
   });
 
   it.each([
     ["already-registered", "Already registered."],
-    ["not-a-git-repo", "Not a Git repository. Register a valid repository."],
+    ["not-a-git-repo", "Not a Git repository. Choose a folder that holds one."],
     [
       "central-inventory",
-      "This is the Harness, not a valid target. Register a repository.",
+      "This folder is the Harness. Choose a repository you deploy to.",
     ],
-    ["not-found", "Not a valid path. Pick another folder."],
-    ["not-a-directory", "Not a valid path. Pick another folder."],
+    ["not-found", "No folder at this path. Choose another folder."],
+    ["not-a-directory", "No folder at this path. Choose another folder."],
   ])(
     "states a %s pick under the field right after the pick",
     async (code, sentence) => {
@@ -114,7 +112,7 @@ describe("Register repository", () => {
     });
     await userEvent.click(browse);
     await within(dialog).findByText(
-      "Not a Git repository. Register a valid repository.",
+      "Not a Git repository. Choose a folder that holds one.",
     );
 
     // The reader ran `git init` there and picks the same folder again.
@@ -124,7 +122,7 @@ describe("Register repository", () => {
     await waitFor(() =>
       expect(
         within(dialog).queryByText(
-          "Not a Git repository. Register a valid repository.",
+          "Not a Git repository. Choose a folder that holds one.",
         ),
       ).not.toBeInTheDocument(),
     );
@@ -187,7 +185,7 @@ describe("Register repository", () => {
 
     expect(
       await within(dialog).findByText(
-        "Not a Git repository. Register a valid repository.",
+        "Not a Git repository. Choose a folder that holds one.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -205,14 +203,14 @@ describe("Register repository", () => {
     await userEvent.type(field(), "/home/me/notes");
     await userEvent.click(confirm(dialog));
     await within(dialog).findByText(
-      "Not a Git repository. Register a valid repository.",
+      "Not a Git repository. Choose a folder that holds one.",
     );
 
     await userEvent.type(field(), "-app");
 
     expect(
       within(dialog).queryByText(
-        "Not a Git repository. Register a valid repository.",
+        "Not a Git repository. Choose a folder that holds one.",
       ),
     ).not.toBeInTheDocument();
     expect(field()).not.toHaveAttribute("aria-invalid");

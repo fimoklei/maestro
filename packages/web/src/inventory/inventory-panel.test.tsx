@@ -241,11 +241,14 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     // A panel that failed to load announces politely: nothing followed a click (#465).
-    expect(
-      (await screen.findByText(/No Harness connected/i)).closest(
-        '[role="status"]',
-      ),
-    ).not.toBeNull();
+    const notice = (await screen.findByText("No Harness connected")).closest(
+      '[role="status"]',
+    );
+    expect(notice).not.toBeNull();
+    // The Harness screen's own words for the same refusal.
+    expect(notice).toHaveTextContent(
+      /^✕No Harness connectedSelect Change Harness location in Settings\.Re-read Inventory$/,
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -253,11 +256,11 @@ describe("InventoryPanel", () => {
     stubApi([], []);
     renderPanel();
 
-    expect(await screen.findByText("No released skills")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Inventory shows skills from the latest release. Open Harness, then create a release to add skills.",
-      ),
+      await screen.findByText("No released skills yet"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Skills from the latest release appear here."),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Open Harness" }),

@@ -198,16 +198,35 @@ describe("InventoryView — the table", () => {
     const onOpenHarness = vi.fn();
     renderView({ primitives: [], onOpenHarness });
 
-    expect(screen.getByText("No released skills")).toBeInTheDocument();
+    expect(screen.getByText("No released skills yet")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Inventory shows skills from the latest release. Open Harness, then create a release to add skills.",
-      ),
+      screen.getByText("Skills from the latest release appear here."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Open Harness" }));
     expect(onOpenHarness).toHaveBeenCalledOnce();
+  });
+
+  // One notice per band: the failure blocks most, so it stands alone.
+  it("shows the read failure alone when the empty state also applies", () => {
+    renderView({
+      primitives: [],
+      onOpenHarness: vi.fn(),
+      failure: {
+        level: "error",
+        label: "Could not read Inventory",
+        message: "Select Re-read Inventory to try again.",
+      },
+    });
+
+    expect(screen.getByText("Could not read Inventory")).toBeInTheDocument();
+    expect(
+      screen.queryByText("No released skills yet"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Open Harness" }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -662,7 +681,7 @@ describe("InventoryView — detail pane", () => {
       ),
     ).toBe(true);
     expect(
-      await within(dialog).findAllByText("Deployed to Global · 1 deployed"),
+      await within(dialog).findAllByText("Deployed 1 of 1 skill to Global"),
     ).not.toHaveLength(0);
   });
 });

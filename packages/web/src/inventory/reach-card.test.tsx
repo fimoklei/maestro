@@ -28,7 +28,7 @@ describe("ReachCard", () => {
     expect(maestro).toHaveTextContent("Behind");
   });
 
-  it("lists three targets and names the row as the way to the rest", () => {
+  it("lists three targets and counts the rest", () => {
     render(
       <ReachCard
         count={5}
@@ -40,9 +40,7 @@ describe("ReachCard", () => {
     );
 
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
-    expect(
-      screen.getByText("2 more. Select the row to see all 5 targets."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("And 2 more.")).toBeInTheDocument();
   });
 
   it("says a skill is deployed nowhere without an empty list", () => {

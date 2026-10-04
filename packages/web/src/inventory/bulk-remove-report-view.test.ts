@@ -183,8 +183,22 @@ describe("bulkRemoveReportView — a partial run", () => {
       }),
     }) as { leftAlone: { reason: string }[] };
 
-    expect(changed.leftAlone[0]?.reason).not.toBe("cost-not-acknowledged");
-    expect(changed.leftAlone[0]?.reason).toMatch(/\S/);
+    expect(changed.leftAlone[0]?.reason).toBe("Removal not confirmed");
+  });
+
+  it("names a manifest it cannot read with the domain word", () => {
+    const odd = view({
+      report: report({
+        failed: [
+          {
+            target: TARGETS[1]?.target ?? { kind: "global" },
+            reason: "manifest-not-recognised",
+          },
+        ],
+      }),
+    }) as { leftAlone: { reason: string }[] };
+
+    expect(odd.leftAlone[0]?.reason).toBe("Manifest not recognised");
   });
 
   // A reason this build cannot name still gets a non-blank slot.

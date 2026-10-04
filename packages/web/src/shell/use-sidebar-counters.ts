@@ -12,7 +12,7 @@ import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { useHarness } from "../harness/use-harness";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { useRegistry } from "../registry/use-registry";
-import { behindCount, UNKNOWN_COUNT } from "./sidebar-copy";
+import { behindCount, pendingCount, UNKNOWN_COUNT } from "./sidebar-copy";
 
 type NavCounter = { text: string; unknown: boolean };
 
@@ -61,7 +61,7 @@ function harnessCounter(harness: Read<HarnessState>): NavCounter | null {
   const skills = new Set(
     [...review.rows, ...release.rows].map((row) => row.skill),
   );
-  return skills.size === 0 ? null : count(String(skills.size));
+  return skills.size === 0 ? null : count(pendingCount(skills.size));
 }
 
 /** Each counter keyed by the screen path it sits beside. */

@@ -144,33 +144,22 @@ describe("bulkDeployReportView", () => {
 });
 
 describe("bulkDeploySummary", () => {
-  it("names only the outcomes that happened", () => {
-    expect(
-      bulkDeploySummary({
-        targetLabel: "Global",
-        counts: { deployed: 1, skipped: 0, attention: 0, failed: 0 },
-      }),
-    ).toBe("Deployed to Global · 1 deployed");
-  });
-
-  it("keeps every non-zero outcome, in severity order", () => {
+  it("states how many selected skills reached the target", () => {
     expect(
       bulkDeploySummary({
         targetLabel: "global",
         counts: { deployed: 2, skipped: 1, attention: 1, failed: 3 },
       }),
-    ).toBe(
-      "Deployed to global · 3 failed · 1 attention · 2 deployed · 1 skipped",
-    );
+    ).toBe("Deployed 2 of 7 skills to global");
   });
 
-  it("says the selected skills are already up to date rather than showing a row of zeros", () => {
+  it("names one skill in the singular", () => {
     expect(
       bulkDeploySummary({
         targetLabel: "Global",
-        counts: { deployed: 0, skipped: 0, attention: 0, failed: 0 },
+        counts: { deployed: 1, skipped: 0, attention: 0, failed: 0 },
       }),
-    ).toBe("Deployed to Global · all selected skills are up to date");
+    ).toBe("Deployed 1 of 1 skill to Global");
   });
 });
 

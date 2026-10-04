@@ -33,7 +33,7 @@ export const WithHint: Story = {
 export const Refused: Story = {
   args: {
     value: "/Users/me/Projects/scratch",
-    error: "Not a Git repository. Register a valid repository.",
+    error: "Not a Git repository. Choose a folder that holds one.",
   },
 };
 

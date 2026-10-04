@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
+import { harnessHeadings } from "../harness/notice-copy";
 import { useDeletionCheck, useHarness } from "../harness/use-harness";
 import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
@@ -12,20 +13,13 @@ import { useInventory } from "./use-inventory";
 // Container: wires the inventory server-state hooks to the presentational
 // view. The 409 "not-configured" case gets its own actionable message.
 
-// The inventory read is web's own query, not one of the server's error tables,
-// so its two headings and sentences live with it.
+// A disconnected Harness reads as the Harness screen states it.
 function readFailure(error: Error | null): ReadFailure | null {
   if (error === null) {
     return null;
   }
   return error instanceof HttpError && error.status === 409
-    ? {
-        level: "error",
-        label: "No Harness connected",
-        message:
-          "Connect a Harness on the Harness location screen to fill this list.",
-        detail: "Nothing is connected yet.",
-      }
+    ? harnessHeadings["not-configured"]
     : INVENTORY_NOT_READ;
 }
 
