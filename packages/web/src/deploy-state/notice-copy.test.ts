@@ -6,6 +6,7 @@ import {
   deployNotice,
   deployNoticeFor,
   removeNotice,
+  retryNotice,
   updateNotice,
   updatePreviewNotice,
 } from "./notice-copy";
@@ -639,5 +640,154 @@ describe("notices that send the reader to the target", () => {
   ])("names the Deploy-state screen (%s)", (_, notice) => {
     expect(notice.message).toContain("on the Deploy-state screen");
     expect(notice.message).not.toContain("target card");
+  });
+});
+
+describe("retry notices", () => {
+  const deploy = { kind: "deploy", release: "v0.3.4" } as const;
+  const cases: [string, DeployStateNotice][] = [
+    [
+      "repo-not-registered",
+      {
+        label: "Repository not registered",
+        message:
+          "Nothing was changed. Select Register repository on the Repositories screen, then select Retry deploy again.",
+      },
+    ],
+    [
+      "nothing-to-retry",
+      {
+        label: "Change already finished",
+        message:
+          "Nothing was changed. The earlier change on this target already finished.",
+      },
+    ],
+    [
+      "retry-in-progress",
+      {
+        label: "Another change is running",
+        message:
+          "Nothing was changed. Wait for the running change to finish, then select Retry deploy again.",
+      },
+    ],
+    [
+      "deployed-diverged-from-lock",
+      {
+        label: "Local changes in deployed files",
+        message:
+          "Nothing was changed. Undo the local edits in the deployed files, then select Retry deploy again.",
+        detail: "The edits never went through the Harness.",
+      },
+    ],
+    [
+      "deployed-unverifiable",
+      {
+        label: "Local edits unverifiable",
+        message:
+          "Nothing was changed. Delete the unverified copies in the target, then select Retry deploy again.",
+        detail:
+          "These copies predate content tracking, so any change in them is invisible.",
+      },
+    ],
+    [
+      "deployed-unreadable",
+      {
+        label: "Deployed copy unreadable",
+        message:
+          "Nothing was changed. Make the deployed copy readable, then select Retry deploy again.",
+        detail: "Its permissions or its shape blocked the check.",
+      },
+    ],
+    [
+      "lockfile-malformed",
+      {
+        label: "Could not read deployment record",
+        message:
+          "Nothing was changed. Repair or delete apm.lock.yaml in the target, then select Retry deploy again.",
+        detail:
+          "The file is present but does not parse, so the target's state is unknown.",
+      },
+    ],
+    [
+      "manifest-not-recognised",
+      {
+        label: "Unsupported apm.yml",
+        message:
+          "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Retry deploy again.",
+        detail: "Maestro edits that list only, and it found another shape.",
+      },
+    ],
+    [
+      "retry-incomplete",
+      {
+        label: "Deploy still incomplete",
+        message:
+          "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+        detail: "apm reported success, but some files are missing.",
+      },
+    ],
+    [
+      "retry-failed",
+      {
+        label: "Deploy outcome unknown",
+        message:
+          "Nothing proved the deploy finished. Select Retry deploy to run it again.",
+      },
+    ],
+  ];
+
+  it.each(cases)("states %s", (code, notice) => {
+    expect(retryNotice(refusal(code), deploy)).toEqual(notice);
+  });
+
+  it("states a retry that never answered", () => {
+    expect(retryNotice(new Error("offline"), deploy)).toEqual({
+      label: "Deploy outcome unknown",
+      message:
+        "Nothing proved the deploy finished. Select Retry deploy to run it again.",
+      detail:
+        "A dropped connection, or a failure this version of Maestro does not name.",
+    });
+  });
+
+  it.each([
+    [
+      "remove",
+      "Removal still incomplete",
+      "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+    ],
+    [
+      "update",
+      "Update still incomplete",
+      "The update is incomplete. Select Retry update to run the same release again.",
+    ],
+  ] as const)(
+    "states an unfinished %s that is still incomplete",
+    (kind, label, message) => {
+      expect(
+        retryNotice(refusal("retry-incomplete"), { kind, release: "v0.3.4" }),
+      ).toEqual({
+        label,
+        message,
+        detail: "apm reported success, but some files are missing.",
+      });
+    },
+  );
+
+  it.each([
+    [
+      "remove",
+      "Removal outcome unknown",
+      "Nothing proved the removal finished. Select Retry removal to run it again.",
+    ],
+    [
+      "update",
+      "Update outcome unknown",
+      "Nothing proved the update finished. Select Retry update to run it again.",
+    ],
+  ] as const)("names the %s in a failed retry", (kind, label, message) => {
+    expect(
+      retryNotice(refusal("retry-failed"), { kind, release: "v0.3.4" }),
+    ).toEqual({ label, message });
   });
 });

@@ -226,11 +226,17 @@ export function UpdateTargetDialog({
       keys.includes(key) ? keys.filter((held) => held !== key) : [...keys, key],
     );
 
+  // On an incomplete update, `error` is the failed retry: it takes the place
+  // of Update incomplete and keeps Retry update.
   const failure: NoticeContent | null = incomplete
     ? {
-        level: "warning",
-        label: UPDATE_INCOMPLETE,
-        message: UPDATE_INCOMPLETE_SENTENCE,
+        ...(error
+          ? { ...error, level: "error" }
+          : {
+              level: "warning",
+              label: UPDATE_INCOMPLETE,
+              message: UPDATE_INCOMPLETE_SENTENCE,
+            }),
         action: { label: RETRY_UPDATE, onClick: onRetry, disabled: isRunning },
       }
     : error && { ...error, level: "error" };

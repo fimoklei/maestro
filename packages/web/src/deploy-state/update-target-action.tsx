@@ -33,8 +33,16 @@ export function UpdateTargetAction({
     open && update.data === undefined,
     add,
   );
-  const retry = useRetryOperation();
+  const preview = preflight.data?.preview ?? null;
   const report = useScreenReport();
+  const retry = useRetryOperation(report, () =>
+    preview === null
+      ? null
+      : {
+          operation: { kind: "update", release: preview.chosenRelease },
+          name: null,
+        },
+  );
   // The dialog's Report states the outcome, failed or not.
   const updateWrite = useWriteAction(update, {
     report,
@@ -44,14 +52,6 @@ export function UpdateTargetAction({
     failure: (error) =>
       updateOutcomeRows(error) === null ? updateNotice(error) : null,
   });
-  const retryWrite = useWriteAction(retry, {
-    report,
-    action: "update",
-    show: "row",
-    name: () => null,
-    failure: () => null,
-  });
-  const preview = preflight.data?.preview ?? null;
   const outcome = update.data?.outcome ?? updateOutcomeRows(update.error);
 
   const close = () => {
@@ -69,11 +69,11 @@ export function UpdateTargetAction({
           preview={preview}
           isLoading={preflight.isPending}
           isRunning={
-            updateWrite.phase === "running" || retryWrite.phase === "running"
+            updateWrite.phase === "running" || retry.isRetrying(target)
           }
           outcome={outcome}
           incomplete={outcome !== null && update.isError}
-          onRetry={() => retryWrite.run({ target })}
+          onRetry={() => retry.run(target)}
           blocked={
             preflight.error instanceof HttpError &&
             preflight.error.code === "inventory-origin-unavailable"
@@ -81,9 +81,10 @@ export function UpdateTargetAction({
               : null
           }
           error={
-            preflight.isError
+            retry.failure(target) ??
+            (preflight.isError
               ? updatePreviewNotice(preflight.error)
-              : updateWrite.failure
+              : updateWrite.failure)
           }
           onCancel={close}
           onConfirm={() =>
