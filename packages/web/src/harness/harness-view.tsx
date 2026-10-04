@@ -7,7 +7,7 @@ import { cn } from "../ui/cn";
 import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { Icon } from "../ui/icon";
-import { Notice } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
 import { reading, readingRank } from "../ui/status-reading";
@@ -75,12 +75,12 @@ export function HarnessView({
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
   const publish = usePublishRelease();
-  // What was published is stated above the table (#849).
+  // An Inventory left unread is the outcome notice above the table instead.
   const publishWrite = useWriteAction(publish, {
     report: table.report,
     action: "publish",
-    show: "row",
-    name: () => null,
+    show: "toast",
+    name: (published) => (published.inventoryRefreshed ? published.tag : null),
     failure: publishReleaseNotice,
   });
   const rereadInventory = useRereadInventory();
@@ -98,8 +98,7 @@ export function HarnessView({
         previousTagCommit: plan.previousTagCommit,
         revision: plan.revision,
       },
-      // The dialog closes on success and keeps no result of its own: what was
-      // published is stated above the table (#849).
+      // The dialog closes on success and keeps no result of its own (#849).
       {
         onSuccess: () => {
           setPlanOpen(false);
@@ -470,13 +469,16 @@ function Notices({
   dismissRestored: () => void;
   rereadRef: RefObject<HTMLButtonElement | null>;
 }) {
-  const notices = [
-    { trigger: "load" as const, notice: harnessStateNotice(readError) },
-    // A failed re-read is not a failed read: the state below stands. One
-    // notice either way — a stale status is what a refused press left
-    // behind, so the two never stack (#848).
+  // One notice, the one that blocks most; the next shows once it clears.
+  // A full success is a toast, so only a partial one reaches the band.
+  const candidates: {
+    notice: NoticeContent | null;
+    clear?: () => void;
+  }[] = [
+    { notice: harnessStateNotice(readError) },
+    // A failed re-read is not a failed read: the state below stands. A stale
+    // status is what a refused press left behind (#848).
     {
-      trigger: "load" as const,
       notice:
         (state === undefined
           ? null
@@ -484,85 +486,47 @@ function Notices({
         refreshNotice(refreshError),
     },
     {
-      trigger: "load" as const,
+      notice:
+        published === undefined || published.inventoryRefreshed
+          ? null
+          : releasePublishedNotice(published.tag, rereadInventory),
+      clear: dismissPublished,
+    },
+    // Above the table, so it outlives the row it was pressed from (#915).
+    {
+      notice:
+        restored === undefined || restored.statusRead
+          ? null
+          : skillRestoredNotice(restored.hasRequest, reread),
+      clear: dismissRestored,
+    },
+    {
       notice:
         state === undefined || !checkedOnce
           ? null
           : cloneSyncNotice(state.cloneSync, reread),
     },
   ];
-  const outcomes = [
-    // The tag is atomic, so only the Inventory re-read can fail (#849).
-    {
-      notice:
-        published === undefined
-          ? null
-          : releasePublishedNotice(
-              published.tag,
-              published.inventoryRefreshed,
-              rereadInventory,
-            ),
-      clear: dismissPublished,
-    },
-    // Above the table, so it outlives the row it was pressed from (#915).
-    {
-      notice:
-        restored === undefined
-          ? null
-          : skillRestoredNotice(
-              restored.hasRequest,
-              restored.statusRead,
-              reread,
-            ),
-      clear: dismissRestored,
-    },
-  ];
-  const slots = useRef<(HTMLDivElement | null)[]>([]);
-  // Focus leaves the control it stood on, so it goes to the next outcome
-  // still standing, else to the one re-read control.
-  const dismiss = (index: number) => {
-    const next = outcomes.findIndex(
-      (each, at) => at !== index && each.notice !== null,
-    );
-    const target =
-      next === -1
-        ? rereadRef.current
-        : (slots.current[next]?.querySelector<HTMLElement>(
-            "[data-notice-close]",
-          ) ?? null);
-    target?.focus();
-    outcomes[index]?.clear();
+  const shown = candidates.find((each) => each.notice !== null);
+  const clear = shown?.clear;
+  // Focus leaves the control it stood on for the one re-read control.
+  const dismiss = () => {
+    rereadRef.current?.focus();
+    clear?.();
   };
-  // Every region is mounted before its failure is: a region outlives its
-  // content, and a read that failed on open is trigger="load" (#465).
+  // The region outlives its content, so a read that failed on open is
+  // announced (#465).
   return (
-    <div
-      className={
-        [...notices, ...outcomes].some((each) => each.notice !== null)
-          ? "flex flex-col gap-inline p-panel"
-          : "flex flex-col"
-      }
-    >
-      {notices.map((each, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: five fixed slots, each always mounted
-        <Notice key={index} trigger={each.trigger} notice={each.notice} />
-      ))}
-      {outcomes.map((each, index) => (
-        <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: two fixed slots, each always mounted
-          key={index}
-          ref={(slot) => {
-            slots.current[index] = slot;
-          }}
-          className="contents"
-        >
-          <Notice
-            trigger="user-action"
-            notice={each.notice}
-            onDismiss={() => dismiss(index)}
-          />
-        </div>
-      ))}
+    <div className={shown === undefined ? "flex flex-col" : "p-panel"}>
+      {clear === undefined ? (
+        <Notice trigger="load" notice={shown?.notice ?? null} />
+      ) : (
+        <Notice
+          trigger="user-action"
+          notice={shown?.notice ?? null}
+          onDismiss={dismiss}
+        />
+      )}
     </div>
   );
 }
