@@ -29,13 +29,11 @@ export const ON_LATEST_RELEASE = "On the latest release.";
 export const LATEST_RELEASE_UNKNOWN = "Latest release could not be read.";
 
 export function pinnedTagsLine(pinned: PinnedPerSkill): string {
-  return pinned
-    .map((group, index) => {
-      const skills =
-        index === 0 ? ` skill${group.skills === 1 ? "" : "s"}` : "";
-      return `${group.skills}${skills} at ${group.release}`;
-    })
-    .join(", ");
+  const groups = pinned.map((group, index) => {
+    const skills = index === 0 ? ` skill${group.skills === 1 ? "" : "s"}` : "";
+    return `${group.skills}${skills} at ${group.release}`;
+  });
+  return `${groups.join(", ")}.`;
 }
 
 export const RELEASE_NOT_ADOPTED =
@@ -49,15 +47,12 @@ export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
   update: RETRY_UPDATE,
 };
 
-const UNFINISHED_REASONS: Record<PendingOperation["kind"], string> = {
+/** What an unfinished operation left, without its retry. */
+export const UNFINISHED_REASONS: Record<PendingOperation["kind"], string> = {
   deploy: "Part of the selection is not on disk.",
   remove: "The skill's files are still on disk.",
   update: UPDATE_INCOMPLETE_REASON,
 };
-
-/** What an unfinished operation left, without its retry. */
-export const unfinishedReason = (kind: PendingOperation["kind"]) =>
-  UNFINISHED_REASONS[kind];
 
 // Warning, not error: one control converges the files.
 export function unfinishedOperationNotice(

@@ -93,9 +93,7 @@ export function TargetDetailPane({
   const why = [
     // Its sentence names Import local edits, which an operation withholds.
     ...(edited.length === 0 || row.pending ? [] : [localEditsLine(edited)]),
-    ...(row.pinned
-      ? [`${pinnedTagsLine(row.pinned)}.`, RELEASE_NOT_ADOPTED]
-      : []),
+    ...(row.pinned ? [pinnedTagsLine(row.pinned), RELEASE_NOT_ADOPTED] : []),
     ...(row.primitives.length === 0 && row.otherOrigins.length > 0
       ? [otherOriginLine(row.otherOrigins)]
       : []),

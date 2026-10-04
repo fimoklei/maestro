@@ -73,7 +73,7 @@ describe("Harness outcome notices", () => {
 
   it("shows only the notice that blocks most", async () => {
     stubHarnessServer({
-      read: { body: STALE_AND_BEHIND, afterPromoteStatus: 500 },
+      read: { body: STALE_AND_BEHIND, afterWriteStatus: 500 },
       refresh: { body: STALE_AND_BEHIND, retry: { body: {}, status: 500 } },
       restore: { body: { name: "old-skill", commit: "local-head" } },
     });

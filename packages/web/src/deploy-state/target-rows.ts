@@ -13,6 +13,8 @@ import type { StatusReading } from "../ui/status-reading";
 import {
   GLOBAL,
   localEditsReason,
+  NO_REPOSITORIES,
+  NO_TOOL_DETECTED,
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
@@ -29,14 +31,15 @@ import {
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
   pinnedTagsLine,
-  unfinishedReason,
+  UNFINISHED_REASONS,
 } from "./release-head-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import {
   skippedEntryReason,
+  skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
-import { targetStatus, UNKNOWN } from "./target-status";
+import { targetStatus } from "./target-status";
 import { toolNameList, toolPresentation } from "./tool-presentation";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
@@ -230,21 +233,43 @@ export function repoRow(
   };
 }
 
+/**
+ * The lines an empty group shows; null leaves it to the screen. A null read is
+ * the failed-read notice's, and a filtered-out group is No filter match's.
+ */
+export function emptyGroupLines(
+  group: string,
+  facts: {
+    filtered: boolean;
+    global: { tools: number; skipped: readonly SkippedEntry[] } | null;
+    repositories: number | null;
+  },
+): string[] | null {
+  if (facts.filtered) return null;
+  if (group === GLOBAL) {
+    // With no tool row to open, the line also names each skipped entry.
+    return facts.global?.tools === 0
+      ? [NO_TOOL_DETECTED, ...facts.global.skipped.map(skippedEntryText)]
+      : null;
+  }
+  return facts.repositories === 0 ? [NO_REPOSITORIES] : null;
+}
+
 /** The Status hover card: one reason sentence, then the read age; the pane holds the rest. */
 export type StatusCard = { reason: string | null; readAge: string | null };
 
 function statusReason(row: TargetRow): string | null {
-  if (row.pending) return unfinishedReason(row.pending.kind);
+  if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
   const edited = editedSkills(row.primitives);
   if (!row.readFailed && edited.length > 0) return localEditsReason(edited);
-  if (row.pinned) return `${pinnedTagsLine(row.pinned)}.`;
+  if (row.pinned) return pinnedTagsLine(row.pinned);
   if (row.readFailed) return REPO_NOT_READ.label;
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {
     return otherOriginLine(row.otherOrigins);
   }
   const skipped = row.skipped.find(skippedNeedsAttention);
   if (skipped) return skippedEntryReason(skipped);
-  if (row.status?.word === UNKNOWN.word) return UNREACHED_HINT;
+  if (row.status?.family === "unknown") return UNREACHED_HINT;
   if (!row.head) return null;
   if (row.head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
   return row.behind ? behindReason(row.head) : ON_LATEST_RELEASE;

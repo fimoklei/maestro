@@ -60,7 +60,7 @@ export function stubHarnessServer(options: {
     afterPublish?: unknown;
     afterPromote?: unknown;
     /** The status every read answers once a write has landed. */
-    afterPromoteStatus?: number;
+    afterWriteStatus?: number;
   };
   // `retry` answers every check after the open-time one, so a test can move
   // the picture under a dialog that is already open.
@@ -249,8 +249,8 @@ export function stubHarnessServer(options: {
       await options.read.heldUntil;
       return jsonResponse(
         answer(options.read),
-        promoted && options.read.afterPromoteStatus !== undefined
-          ? options.read.afterPromoteStatus
+        promoted && options.read.afterWriteStatus !== undefined
+          ? options.read.afterWriteStatus
           : options.read.status,
       );
     }),

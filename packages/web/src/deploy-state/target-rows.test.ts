@@ -6,7 +6,13 @@ import type {
 import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
-import { globalRows, repoRow, statusCard, type TargetRow } from "./target-rows";
+import {
+  emptyGroupLines,
+  globalRows,
+  repoRow,
+  statusCard,
+  type TargetRow,
+} from "./target-rows";
 
 const NOW = new Date("2026-09-24T10:00:00Z");
 
@@ -272,5 +278,61 @@ describe("local edits on a target", () => {
       false,
     );
     expect(rows.map(words)).toEqual(["✎ Local edits", "✓ In sync"]);
+  });
+});
+
+describe("emptyGroupLines", () => {
+  const read = {
+    filtered: false,
+    global: { tools: 0, skipped: [] },
+    repositories: 0,
+  };
+
+  it("names the missing tool on an empty Global group, then each skipped entry", () => {
+    expect(
+      emptyGroupLines(GLOBAL, {
+        ...read,
+        global: {
+          tools: 0,
+          skipped: [
+            {
+              reason: "unsupported-type",
+              virtualPath: "hooks/guard",
+              packageType: "claude_hook",
+            },
+          ],
+        },
+      }),
+    ).toEqual([
+      "Install Claude Code or Codex to deploy skills globally.",
+      "hooks/guard is deployed as claude_hook, which Maestro does not manage. Its files are still there.",
+    ]);
+  });
+
+  it("says how to register on an empty Repositories group", () => {
+    expect(emptyGroupLines(REPOSITORIES, read)).toEqual([
+      "No repositories registered yet. Select Register repository on the Repositories screen.",
+    ]);
+  });
+
+  // A filtered-out group is No filter match's; a failed read is the notice's.
+  it("leaves a filtered or unread group to the screen's own line", () => {
+    expect(emptyGroupLines(GLOBAL, { ...read, filtered: true })).toBeNull();
+    expect(
+      emptyGroupLines(REPOSITORIES, { ...read, filtered: true }),
+    ).toBeNull();
+    expect(emptyGroupLines(GLOBAL, { ...read, global: null })).toBeNull();
+    expect(
+      emptyGroupLines(REPOSITORIES, { ...read, repositories: null }),
+    ).toBeNull();
+  });
+
+  it("says nothing on a group that has targets", () => {
+    expect(
+      emptyGroupLines(GLOBAL, { ...read, global: { tools: 1, skipped: [] } }),
+    ).toBeNull();
+    expect(
+      emptyGroupLines(REPOSITORIES, { ...read, repositories: 2 }),
+    ).toBeNull();
   });
 });

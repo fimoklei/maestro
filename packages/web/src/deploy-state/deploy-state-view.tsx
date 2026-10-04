@@ -1,4 +1,3 @@
-import type { SkippedEntry } from "@maestro/core";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -21,19 +20,21 @@ import {
   deployStateNotRead,
   GLOBAL,
   NO_FILTER_MATCH,
-  NO_REPOSITORIES,
-  NO_TOOL_DETECTED,
   NOTHING_DEPLOYED,
   REPOSITORIES,
   TARGET_LABEL,
   targetCount,
 } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
-import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { TargetDetailPane } from "./target-detail-pane";
 import { targetLinkItems, targetMenuItems } from "./target-menu";
 import { targetPaneActions } from "./target-pane-actions";
-import { globalRows, repoRow, type TargetRow } from "./target-rows";
+import {
+  emptyGroupLines,
+  globalRows,
+  repoRow,
+  type TargetRow,
+} from "./target-rows";
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { deployStateQueryOptions } from "./use-deploy-state";
@@ -208,15 +209,18 @@ export function DeployStateView() {
           // An empty group says what fills it; a failed read is the notice's,
           // and a filtered-out group is No filter match's.
           message: (key: string) =>
-            view.filterCount > 0
-              ? null
-              : key === GLOBAL
-                ? globalDeploy.isSuccess && globalDeploy.data.tools.length === 0
-                  ? noToolLine(globalDeploy.data.skipped)
-                  : null
-                : registry.isSuccess && repoPaths.length === 0
-                  ? NO_REPOSITORIES
+            blockLines(
+              emptyGroupLines(key, {
+                filtered: view.filterCount > 0,
+                global: globalDeploy.isSuccess
+                  ? {
+                      tools: globalDeploy.data.tools.length,
+                      skipped: globalDeploy.data.skipped,
+                    }
                   : null,
+                repositories: registry.isSuccess ? repoPaths.length : null,
+              }),
+            ),
         },
       },
     ],
@@ -292,18 +296,14 @@ export function DeployStateView() {
   );
 }
 
-// With no tool row to open, the Global line also names each skipped entry.
-function noToolLine(skipped: readonly SkippedEntry[]) {
-  return (
-    <>
-      <span className="block">{NO_TOOL_DETECTED}</span>
-      {skipped.map((entry, index) => (
-        <span key={skippedEntryKey(entry, index)} className="block">
-          {skippedEntryText(entry)}
+function blockLines(lines: string[] | null) {
+  return lines === null
+    ? null
+    : lines.map((line) => (
+        <span key={line} className="block">
+          {line}
         </span>
-      ))}
-    </>
-  );
+      ));
 }
 
 type TargetDialog = "update" | "import" | null;

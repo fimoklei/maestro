@@ -1,7 +1,6 @@
 // Every word the Update target control and its preview show.
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
 import { UPDATE_TARGET } from "../ui/control-labels";
-import { joinNames } from "./join-names";
 import { toolDisplayName } from "./tool-presentation";
 
 // An origin-less Harness cannot attribute the target's release, so no update

@@ -10,8 +10,8 @@ import {
   ON_LATEST_RELEASE,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
+  UNFINISHED_REASONS,
   unfinishedOperationNotice,
-  unfinishedReason,
 } from "./release-head-copy";
 
 // The approved sentences, pinned as exact strings.
@@ -49,15 +49,13 @@ describe("behindReason", () => {
   });
 });
 
-describe("unfinishedReason", () => {
+describe("UNFINISHED_REASONS", () => {
   it("states what an unfinished operation left, without its retry", () => {
-    expect(unfinishedReason("deploy")).toBe(
-      "Part of the selection is not on disk.",
-    );
-    expect(unfinishedReason("remove")).toBe(
-      "The skill's files are still on disk.",
-    );
-    expect(unfinishedReason("update")).toBe("The update is incomplete.");
+    expect(UNFINISHED_REASONS).toEqual({
+      deploy: "Part of the selection is not on disk.",
+      remove: "The skill's files are still on disk.",
+      update: "The update is incomplete.",
+    });
   });
 });
 
@@ -80,13 +78,13 @@ describe("copyChipText", () => {
 describe("pinnedTagsLine", () => {
   it("counts the skills a target still pins one at a time", () => {
     expect(pinnedTagsLine([{ release: "v0.3.1", skills: 3 }])).toBe(
-      "3 skills at v0.3.1",
+      "3 skills at v0.3.1.",
     );
   });
 
   it("names one skill as one", () => {
     expect(pinnedTagsLine([{ release: "v0.3.1", skills: 1 }])).toBe(
-      "1 skill at v0.3.1",
+      "1 skill at v0.3.1.",
     );
   });
 
@@ -96,7 +94,7 @@ describe("pinnedTagsLine", () => {
         { release: "v0.3.1", skills: 3 },
         { release: "v0.3.0", skills: 1 },
       ]),
-    ).toBe("3 skills at v0.3.1, 1 at v0.3.0");
+    ).toBe("3 skills at v0.3.1, 1 at v0.3.0.");
   });
 });
 
