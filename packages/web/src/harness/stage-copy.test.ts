@@ -327,7 +327,7 @@ describe("Detail sentences", () => {
         CONTEXT,
       ),
     ).toBe(
-      "Pull request #45 was closed without deleting this skill. The skill is in your clone again.",
+      "Pull request #45 was closed without merging. The folder is back in your clone, so the skill stays in the Harness.",
     );
   });
 

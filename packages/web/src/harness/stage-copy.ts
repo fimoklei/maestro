@@ -146,7 +146,7 @@ export function detailSentence(
         : `Pull request ${first(row)} was merged. Select Re-read Harness to read GitHub again.`;
     case "proposal-closed":
       return row.deletion && row.folderOnDisk
-        ? `Pull request ${first(row)} was closed without deleting this skill. The skill is in your clone again.`
+        ? `Pull request ${first(row)} was closed without merging. The folder is back in your clone, so the skill stays in the Harness.`
         : `Pull request ${first(row)} was closed without merging. Select Reopen proposal to continue it.`;
     case "multiple-pull-requests":
       // The row's own link labels are numbered here, so the sentence names
