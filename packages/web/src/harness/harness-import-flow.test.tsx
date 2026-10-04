@@ -248,7 +248,7 @@ describe("Harness import flow", () => {
     });
     expect(
       within(pane).getByText(
-        "Deployed copies still have the earlier version. They get this version after a release and a new deploy.",
+        "Deployed copies change only after a release and Update target.",
       ),
     ).toBeInTheDocument();
   });
