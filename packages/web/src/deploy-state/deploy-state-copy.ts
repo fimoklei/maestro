@@ -10,32 +10,37 @@ export const ACTIONS_COLUMN_LABEL = "Actions";
 export const GLOBAL = "Global";
 export const REPOSITORIES = "Repositories";
 
-export const NOTHING_DEPLOYED =
-  "Nothing deployed — deploy a skill from Inventory";
+export const NOTHING_DEPLOYED = "Nothing deployed yet";
 export const targetCount = (count: number) =>
   `${count} ${count === 1 ? "target" : "targets"}`;
 
 // Information, never a control: Register repository on the Repositories screen
 // is the only registration control.
 export const NO_REPOSITORIES =
-  "No repositories registered. Select Register repository on the Repositories screen to register one.";
+  "No repositories registered yet. Select Register repository on the Repositories screen.";
 
 export const NO_FILTER_MATCH =
   "No targets match the filters. Select Filter to show more targets.";
 
-export const GLOBAL_NOT_READ = {
-  level: "error",
-  label: "Global targets not read",
-  message: `Select ${REREAD_LABEL} to read the global targets again.`,
+const NOT_READ_LABEL = "Deploy-state not read";
+const NOT_READ_PARTS = {
+  global: "global targets",
+  repos: "registered repositories",
 } as const;
-export const REPOS_NOT_READ = {
-  level: "error",
-  label: "Registered repositories not read",
-  message: `Select ${REREAD_LABEL} to read the registered repositories again.`,
-} as const;
+
+// The band's one failed-read notice: every part shares the one re-read.
+export const deployStateNotRead = (
+  parts: readonly (keyof typeof NOT_READ_PARTS)[],
+) =>
+  ({
+    level: "error",
+    label: NOT_READ_LABEL,
+    message: `Select ${REREAD_LABEL} to read every target again.`,
+    detail: `Not read: ${joinNames(parts.map((part) => NOT_READ_PARTS[part]))}.`,
+  }) as const;
 export const REPO_NOT_READ = {
   level: "error",
-  label: "Deploy-state not read",
+  label: NOT_READ_LABEL,
   message: `Select ${REREAD_LABEL} to read this repository's deploy-state again.`,
 } as const;
 
@@ -47,11 +52,9 @@ export const ORIGIN_NOT_READ = `The origin of this repository could not be read.
 export const VIEW_SKILL_ON_GITHUB = "View skill on GitHub";
 export const HARNESS_ORIGIN_NOT_READ = `The origin of the Harness could not be read. Select ${REREAD_LABEL} to read it again.`;
 
-export const NO_TOOL_DETECTED = {
-  level: "info",
-  label: "No supported tool detected",
-  message: "Install Claude Code or Codex to deploy skills globally.",
-} as const;
+// The Global group's line while no supported tool is detected.
+export const NO_TOOL_DETECTED =
+  "Install Claude Code or Codex to deploy skills globally.";
 
 export const otherOriginLine = (origins: readonly string[]) =>
   `Holds skills, hooks and MCP servers deployed from ${joinNames(origins)}.`;

@@ -523,7 +523,7 @@ export function DataTable<T extends RowData>({
                 <tr className="h-row border-divider border-b">
                   <GridCell
                     colSpan={spanCount}
-                    className="truncate px-inline text-gray-11"
+                    className="px-inline py-tight text-gray-11"
                   >
                     {groups?.message?.(block.key)}
                   </GridCell>
