@@ -14,6 +14,7 @@ import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
 export type DeletionMode =
   | {
       kind: "propose";
+      origin: string;
       seenRemoteTree: string;
       openRequest: { number: number; author: string } | null;
     }
@@ -67,8 +68,7 @@ export function DeletionDialog({
           {/* The warning says what this press does instead. */}
           {mode.openRequest === null ? (
             <p className="m-0">
-              Delete skill opens a pull request to delete {skill} from the
-              Harness.
+              Delete skill proposes this deletion to {mode.origin} for review.
             </p>
           ) : null}
           <p className="m-0 text-gray-11">
@@ -84,8 +84,8 @@ export function DeletionDialog({
         // No second sentence: the propose mode has one because nothing is
         // lost until a merge, and here something is.
         <p className="m-0">
-          {skill} is in the Harness working tree and nowhere else. Confirming
-          removes the folder from disk for good.
+          Delete skill removes the folder from disk. No other copy of {skill}{" "}
+          exists.
         </p>
       ) : (
         <>

@@ -108,7 +108,8 @@ export const promoteHeadings: NoticeTable<PromoteSkillError> = {
   "skill-missing": {
     level: "error",
     label: "Skill no longer in the Harness",
-    message: "Nothing was pushed. Select Re-read Harness to repaint the list.",
+    message:
+      "Nothing was pushed. Select Re-read Harness to read the list again.",
   },
   "push-elsewhere": {
     level: "error",
@@ -163,7 +164,8 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message: "Nothing was pushed. Select Re-read Harness to repaint the list.",
+    message:
+      "Nothing was pushed. Select Re-read Harness to read the list again.",
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
@@ -415,7 +417,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
     level: "error",
     label: "Uncommitted changes in the Harness",
     message:
-      "This skill has uncommitted changes in the Harness. Commit or undo them, then Update skill again.",
+      "Nothing was copied. Commit or undo them in your Git tool, then select Update skill again.",
     detail: "Updating now would overwrite changes Git cannot restore.",
   },
   "harness-unreadable": {
@@ -600,27 +602,18 @@ export const stageReadNotice = (
   };
 };
 
-// The one place the cockpit states that a release is final (#827). The tag is
-// atomic, so only the Inventory re-read can fail on its own (#849).
+// A full publish is a toast. The tag is atomic, so only the Inventory re-read
+// can fail on its own, and that half outcome needs an action (#849).
 export const releasePublishedNotice = (
   tag: string,
-  inventoryRefreshed: boolean,
   onReread: () => void,
-): NoticeContent =>
-  inventoryRefreshed
-    ? {
-        level: "success",
-        label: "Release published",
-        message: `Maestro tagged ${tag} and re-read Inventory.`,
-        detail: "A release cannot change after publication.",
-      }
-    : {
-        level: "warning",
-        label: "Release published",
-        message: `Maestro tagged ${tag}, but Inventory was not read. Select ${REREAD_INVENTORY} to see the published skills.`,
-        detail: "A release cannot change after publication.",
-        action: { label: REREAD_INVENTORY, onClick: onReread },
-      };
+): NoticeContent => ({
+  level: "warning",
+  label: "Release published",
+  message: `Maestro tagged ${tag}, but Inventory was not read. Select ${REREAD_INVENTORY} to see the published skills.`,
+  detail: "A release cannot change after publication.",
+  action: { label: REREAD_INVENTORY, onClick: onReread },
+});
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(releasePlanHeadings, error, {
@@ -657,30 +650,21 @@ export const restoreNotice = (error: unknown): NoticeContent | null =>
       "Nothing was restored. The Maestro server did not answer. Restore skill again.",
   });
 
-// The local half is final either way: only a status the cockpit could not read
-// again turns the notice into a warning (#915).
+// A full restore is a toast. The local half is final either way, so only a
+// status the cockpit could not read again needs a notice (#915).
 export const skillRestoredNotice = (
   hasRequest: boolean,
-  statusRead: boolean,
   onRetry: () => void,
-): NoticeContent =>
-  statusRead
-    ? {
-        level: "success",
-        label: "Skill restored",
-        message: "Restored from your last local commit.",
-        ...(hasRequest ? { detail: "Your proposal remains unchanged." } : {}),
-      }
-    : {
-        level: "warning",
-        label: "Skill restored",
-        message:
-          "The skill folder is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
-        detail: hasRequest
-          ? "Your proposal remains unchanged."
-          : "Maestro could not read GitHub after the restore.",
-        action: { label: "Re-read Harness", onClick: onRetry },
-      };
+): NoticeContent => ({
+  level: "warning",
+  label: "Skill restored",
+  message:
+    "The skill folder is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
+  detail: hasRequest
+    ? "Your proposal remains unchanged."
+    : "Maestro could not read GitHub after the restore.",
+  action: { label: "Re-read Harness", onClick: onRetry },
+});
 
 export const proposalNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(proposalHeadings, error, {
