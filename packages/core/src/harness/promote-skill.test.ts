@@ -43,6 +43,7 @@ const openRequest = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
   headCommit: "3d0f1a9c5b7e2846f0a1c3d5e7b9081726354adf",
   baseBranch: "main",
   author: "fimoklei",
+  title: "Promote skill: tdd",
   ...over,
 });
 
@@ -68,6 +69,8 @@ function buildPromote(overrides?: {
   onFetch?: () => void;
   review?: HarnessReviewRead;
   onCreate?: (request: NewReviewRequest) => void;
+  onEdit?: (number: number, title: string) => void;
+  editOutcome?: ReviewWriteOutcome;
   createOutcome?: ReviewWriteOutcome;
 }) {
   let factsCall = 0;
@@ -136,6 +139,10 @@ function buildPromote(overrides?: {
       },
       reopenRequest: async () => ({ ok: true }),
       closeRequest: async () => ({ ok: true }),
+      editRequest: async (_origin, number, { title }) => {
+        overrides?.onEdit?.(number, title);
+        return overrides?.editOutcome ?? { ok: true };
+      },
     },
   });
 }
@@ -186,6 +193,22 @@ describe("PromoteSkill", () => {
       ok: true,
     });
     expect(created).toEqual([]);
+  });
+
+  it("retitles an open deletion request as the change it now carries", async () => {
+    const edited: [number, string][] = [];
+    const promote = buildPromote({
+      review: {
+        ...EMPTY_REVIEW,
+        requests: [openRequest({ title: "Delete skill: tdd" })],
+      },
+      onEdit: (number, title) => edited.push([number, title]),
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(edited).toEqual([[45, "Promote skill: tdd"]]);
   });
 
   it("refuses while more than one open request matches the branch", async () => {

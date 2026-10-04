@@ -35,6 +35,8 @@ const mergedRow = {
   reviewDecision: "",
   reviewRequests: [],
   state: "MERGED",
+  // `title` from `gh pr view 8 --json title` (gh 2.101.0).
+  title: "Promote skill: agent-native-cli",
   url: "https://github.com/fimoklei/harness/pull/8",
 };
 
@@ -61,6 +63,8 @@ const openForkRow = {
   reviewDecision: "REVIEW_REQUIRED",
   reviewRequests: [{ __typename: "User", login: "sergiou87" }],
   state: "OPEN",
+  // `title` from `gh pr view 14398 --repo cli/cli --json title` (gh 2.101.0).
+  title: "Check for merged state when viewing a PR via the issues command",
   url: "https://github.com/cli/cli/pull/14398",
 };
 
@@ -86,6 +90,8 @@ const botRow = {
   reviewDecision: "",
   reviewRequests: [],
   state: "OPEN",
+  // `title` from `gh pr view 1307 --repo fimoklei/maestro --json title` (gh 2.101.0).
+  title: "chore(deps): lock file maintenance",
   url: "https://github.com/fimoklei/maestro/pull/1307",
 };
 
@@ -136,7 +142,7 @@ describe("GhCliAdapter", () => {
       "--limit",
       String(REVIEW_READ_LIMIT),
       "--json",
-      "number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner,author",
+      "number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner,author,title",
     ]);
   });
 
@@ -198,6 +204,8 @@ describe("GhCliAdapter", () => {
           headCommit: capturedHeadOid,
           baseBranch: "trunk",
           author: "timmattison",
+          title:
+            "Check for merged state when viewing a PR via the issues command",
         },
       ],
     });
@@ -253,6 +261,17 @@ describe("GhCliAdapter", () => {
     ["a missing author", null],
   ])("fails the read on %s", async (_, author) => {
     const { run } = fakeRun(JSON.stringify([{ ...mergedRow, author }]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
+  });
+
+  it.each([
+    ["a missing title", undefined],
+    ["a title that is not text", 42],
+  ])("fails the read on %s", async (_, title) => {
+    const { run } = fakeRun(JSON.stringify([{ ...mergedRow, title }]));
 
     const result = await new GhCliAdapter({ run }).readReviews(origin);
 
@@ -494,11 +513,35 @@ describe("GhCliAdapter", () => {
     ]);
   });
 
+  it("retitles a request by its number, sending no body", async () => {
+    // Without a body flag gh keeps the body: it may hold someone else's words.
+    const { calls, run } = fakeRun(
+      "https://github.com/fimoklei/harness/pull/45\n",
+    );
+
+    const result = await new GhCliAdapter({ run }).editRequest(origin, 45, {
+      title: "Delete skill: tdd",
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(calls[0]?.args).toEqual([
+      "pr",
+      "edit",
+      "45",
+      "--repo",
+      "fimoklei/harness",
+      "--title",
+      "Delete skill: tdd",
+    ]);
+    expect(calls[0]?.env.GH_PROMPT_DISABLED).toBe("1");
+  });
+
   it("sends no write to a host other than github.com", async () => {
     const elsewhere = { host: "github.example.com", ownerRepo: "acme/harness" };
     const create = fakeRun("");
     const reopen = fakeRun("");
     const close = fakeRun("");
+    const edit = fakeRun("");
 
     const results = [
       await new GhCliAdapter({ run: create.run }).createRequest(elsewhere, {
@@ -509,14 +552,23 @@ describe("GhCliAdapter", () => {
       }),
       await new GhCliAdapter({ run: reopen.run }).reopenRequest(elsewhere, 45),
       await new GhCliAdapter({ run: close.run }).closeRequest(elsewhere, 45),
+      await new GhCliAdapter({ run: edit.run }).editRequest(elsewhere, 45, {
+        title: "t",
+      }),
     ];
 
     expect(results).toEqual([
       { ok: false, error: "unavailable" },
       { ok: false, error: "unavailable" },
       { ok: false, error: "unavailable" },
+      { ok: false, error: "unavailable" },
     ]);
-    expect([create.calls, reopen.calls, close.calls]).toEqual([[], [], []]);
+    expect([create.calls, reopen.calls, close.calls, edit.calls]).toEqual([
+      [],
+      [],
+      [],
+      [],
+    ]);
   });
 
   it("reports a write GitHub refused as failed, and an unaskable one as unavailable", async () => {

@@ -17,6 +17,7 @@ export type StubReview = HarnessReviewPort & {
   readonly created: NewReviewRequest[];
   readonly reopened: number[];
   readonly closed: number[];
+  readonly edited: { number: number; title: string }[];
 };
 
 const EMPTY: HarnessReviewRead = {
@@ -33,11 +34,13 @@ export const stubReview = (initial: HarnessReviewRead = EMPTY): StubReview => {
   const created: NewReviewRequest[] = [];
   const reopened: number[] = [];
   const closed: number[] = [];
+  const edited: { number: number; title: string }[] = [];
   return {
     asked,
     created,
     reopened,
     closed,
+    edited,
     answer: (read) => {
       current = read;
     },
@@ -58,6 +61,10 @@ export const stubReview = (initial: HarnessReviewRead = EMPTY): StubReview => {
     },
     closeRequest: async (_origin, number) => {
       closed.push(number);
+      return write;
+    },
+    editRequest: async (_origin, number, { title }) => {
+      edited.push({ number, title });
       return write;
     },
   };

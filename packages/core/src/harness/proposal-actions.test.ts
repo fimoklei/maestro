@@ -6,7 +6,7 @@ import type {
   ReviewWriteOutcome,
 } from "./harness-review-port";
 import { ProposalActions } from "./proposal-actions";
-import type { HarnessFacts } from "./read-harness-state";
+import type { HarnessFacts, HarnessSkillTrees } from "./read-harness-state";
 
 const FACTS: HarnessFacts = {
   originUrl: "git@github.com:fimoklei/agent-harness.git",
@@ -28,8 +28,17 @@ const request = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
   headCommit: "3d0f1a9c5b7e2846f0a1c3d5e7b9081726354adf",
   baseBranch: "main",
   author: "fimoklei",
+  title: "Promote skill: tdd",
   ...over,
 });
+
+// The pushed `maestro/tdd` still holds the skill: a change.
+const TREES: HarnessSkillTrees = {
+  remote: { tdd: "a1" },
+  promote: { tdd: { tree: "b2", commit: "c3" } },
+  local: { tdd: "a1" },
+  working: { tdd: "b2" },
+};
 
 const readOf = (requests: ReviewRequest[]): HarnessReviewRead => ({
   outcome: "read",
@@ -49,6 +58,7 @@ function build(overrides?: {
   facts?: Partial<HarnessFacts>;
   review?: HarnessReviewRead;
   write?: ReviewWriteOutcome;
+  trees?: HarnessSkillTrees | null;
 }) {
   const calls: Calls = { created: [], reopened: [], closed: [] };
   const write = overrides?.write ?? ({ ok: true } as ReviewWriteOutcome);
@@ -57,6 +67,8 @@ function build(overrides?: {
       overrides && "root" in overrides ? overrides.root : "/harness",
     git: {
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
+      readMovementTrees: async () =>
+        overrides && "trees" in overrides ? (overrides.trees ?? null) : TREES,
     },
     review: {
       readReviews: async () => overrides?.review ?? readOf([]),
@@ -72,6 +84,7 @@ function build(overrides?: {
         calls.closed.push(number);
         return write;
       },
+      editRequest: async () => write,
     },
   });
   return { actions, calls };
@@ -90,6 +103,36 @@ describe("ProposalActions · create", () => {
         body: "Proposed from the Maestro cockpit.",
       },
     ]);
+  });
+
+  it("titles the request Delete skill when the pushed branch deletes the skill", async () => {
+    const { actions, calls } = build({
+      trees: {
+        ...TREES,
+        promote: { tdd: { tree: null, commit: "c3" } },
+        working: {},
+      },
+    });
+
+    expect(await actions.create("tdd")).toEqual({ ok: true });
+    expect(calls.created).toEqual([
+      {
+        head: "maestro/tdd",
+        base: "main",
+        title: "Delete skill: tdd",
+        body: "Deletes tdd from the Harness. Targets keep the skill until each one runs Update target after the next release.",
+      },
+    ]);
+  });
+
+  it("opens nothing when the clone's branches could not be read", async () => {
+    const { actions, calls } = build({ trees: null });
+
+    expect(await actions.create("tdd")).toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+    expect(calls.created).toEqual([]);
   });
 
   it("refuses when a matching request is already open", async () => {

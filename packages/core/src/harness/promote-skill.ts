@@ -94,11 +94,15 @@ export class PromoteSkill {
       return second;
     }
 
-    const request = await beforeProposalPush(this.deps.review, {
-      origin: second.origin,
-      base: second.base,
-      name,
-    });
+    const request = await beforeProposalPush(
+      this.deps.review,
+      {
+        origin: second.origin,
+        base: second.base,
+        name,
+      },
+      "change",
+    );
     if (!request.ok) {
       return request;
     }

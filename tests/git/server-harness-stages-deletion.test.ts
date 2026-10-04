@@ -72,14 +72,40 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
         {
           head: "maestro/tdd",
           base: "main",
-          title: "Promote skill: tdd",
-          body: "Proposed from the Maestro cockpit.",
+          title: "Delete skill: tdd",
+          body: "Deletes tdd from the Harness. Targets keep the skill until each one runs Update target after the next release.",
         },
       ]);
       const state = await refresh(app);
       expect(rowsOf(state.stages.proposal)).toEqual([]);
       expect(rowsOf(state.stages.review)).toMatchObject([
         { skill: "tdd", status: "waiting-for-review", deletion: true },
+      ]);
+    });
+
+    it("titles Create pull request on a pushed deletion branch Delete skill", async () => {
+      const app = makeApp();
+      await proposeDeletion(app);
+      answer([]);
+      stages.review.created.length = 0;
+
+      const response = await proposalAction(app, "create", { name: "tdd" });
+
+      expect(response.status).toBe(200);
+      expect(stages.review.created).toMatchObject([
+        { head: "maestro/tdd", title: "Delete skill: tdd" },
+      ]);
+    });
+
+    it("retitles the open change request the deletion is pushed onto", async () => {
+      const app = makeApp();
+      answer([request({ title: "Promote skill: tdd (v2)" })]);
+
+      await proposeDeletion(app);
+
+      expect(stages.review.created).toEqual([]);
+      expect(stages.review.edited).toEqual([
+        { number: 45, title: "Delete skill: tdd" },
       ]);
     });
 

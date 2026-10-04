@@ -4,6 +4,7 @@ import type {
   HarnessReviewRead,
   NewReviewRequest,
   ReviewRequest,
+  ReviewWriteOutcome,
 } from "./harness-review-port";
 import { PromoteSkillDeletion } from "./promote-deletion";
 import type {
@@ -51,6 +52,7 @@ const openRequest = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
   headCommit: "3d0f1a9c5b7e2846f0a1c3d5e7b9081726354adf",
   baseBranch: "main",
   author: "fimoklei",
+  title: "Promote skill: tdd",
   ...over,
 });
 
@@ -71,6 +73,8 @@ function buildDeletion(overrides?: {
   working?: Record<string, string>;
   review?: HarnessReviewRead;
   onCreate?: (request: NewReviewRequest) => void;
+  onEdit?: (number: number, title: string) => void;
+  editOutcome?: ReviewWriteOutcome;
 }) {
   return new PromoteSkillDeletion({
     resolveRoot: async () =>
@@ -115,6 +119,10 @@ function buildDeletion(overrides?: {
       },
       reopenRequest: async () => ({ ok: true }),
       closeRequest: async () => ({ ok: true }),
+      editRequest: async (_origin, number, { title }) => {
+        overrides?.onEdit?.(number, title);
+        return overrides?.editOutcome ?? { ok: true };
+      },
     },
   });
 }
@@ -131,8 +139,8 @@ describe("PromoteSkillDeletion", () => {
       {
         head: "maestro/tdd",
         base: "main",
-        title: "Promote skill: tdd",
-        body: "Proposed from the Maestro cockpit.",
+        title: "Delete skill: tdd",
+        body: "Deletes tdd from the Harness. Targets keep the skill until each one runs Update target after the next release.",
       },
     ]);
   });
@@ -148,6 +156,34 @@ describe("PromoteSkillDeletion", () => {
       ok: true,
     });
     expect(created).toEqual([]);
+  });
+
+  it("retitles an open change request as the deletion it now carries", async () => {
+    const edited: [number, string][] = [];
+    const deletion = buildDeletion({
+      review: {
+        ...EMPTY_REVIEW,
+        requests: [openRequest({ title: "Promote skill: tdd (v2)" })],
+      },
+      onEdit: (number, title) => edited.push([number, title]),
+    });
+
+    await expect(deletion.execute("tdd", SEEN, AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(edited).toEqual([[45, "Delete skill: tdd"]]);
+  });
+
+  it("still reports the pushed deletion when the retitle fails", async () => {
+    const deletion = buildDeletion({
+      review: { ...EMPTY_REVIEW, requests: [openRequest()] },
+      editOutcome: { ok: false, error: "failed" },
+    });
+
+    await expect(deletion.execute("tdd", SEEN, AT)).resolves.toMatchObject({
+      ok: true,
+      branch: "maestro/tdd",
+    });
   });
 
   it("refuses while more than one open request matches the branch", async () => {

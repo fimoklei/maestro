@@ -79,6 +79,7 @@ function build(overrides?: {
     createRequest: record("review", "createRequest"),
     reopenRequest: record("review", "reopenRequest"),
     closeRequest: record("review", "closeRequest"),
+    editRequest: record("review", "editRequest"),
   };
   const restore = new RestoreSkill({
     resolveRoot: async () =>
