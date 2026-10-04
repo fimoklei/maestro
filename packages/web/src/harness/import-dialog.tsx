@@ -81,7 +81,7 @@ export function ImportDialog({
             check per keystroke would refuse half-typed paths (#1013). */}
         <PathField
           label="Folder path"
-          hint="Import copies this folder to the Working Harness. The original folder stays unchanged."
+          hint="Import copies the folder and leaves the original as it is."
           placeholder="/path/to/skill-folder"
           className="placeholder:text-gray-11"
           value={sourceText}

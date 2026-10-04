@@ -108,7 +108,8 @@ export const promoteHeadings: NoticeTable<PromoteSkillError> = {
   "skill-missing": {
     level: "error",
     label: "Skill no longer in the Harness",
-    message: "Nothing was pushed. Select Re-read Harness to repaint the list.",
+    message:
+      "Nothing was pushed. Select Re-read Harness to read the list again.",
   },
   "push-elsewhere": {
     level: "error",
@@ -163,7 +164,8 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message: "Nothing was pushed. Select Re-read Harness to repaint the list.",
+    message:
+      "Nothing was pushed. Select Re-read Harness to read the list again.",
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
@@ -415,7 +417,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
     level: "error",
     label: "Uncommitted changes in the Harness",
     message:
-      "This skill has uncommitted changes in the Harness. Commit or undo them, then Update skill again.",
+      "Nothing was copied. Commit or undo them in your Git tool, then select Update skill again.",
     detail: "Updating now would overwrite changes Git cannot restore.",
   },
   "harness-unreadable": {

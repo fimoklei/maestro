@@ -85,7 +85,9 @@ describe("Harness local deletion", () => {
     const dialog = await openLocalDeletion();
 
     expect(
-      within(dialog).getByText(/nowhere else\. Confirming removes the folder/i),
+      within(dialog).getByText(
+        "Delete skill removes the folder from disk. No other copy of old-skill exists.",
+      ),
     ).toBeInTheDocument();
     expect(within(dialog).getByText(".apm/skills/old-skill")).toBeVisible();
     expect(localDeletions).toEqual([]);

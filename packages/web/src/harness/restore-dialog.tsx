@@ -45,8 +45,8 @@ export function RestoreDialog({
       onClose={onClose}
     >
       <p className="m-0">
-        Restore this skill folder from your last local commit. Changes not
-        included in that commit will not be recovered.
+        Restore skill brings back the folder from your last local commit. Later
+        changes do not come back.
       </p>
       {hasRequest ? (
         <p className="m-0 text-gray-11">Your proposal remains unchanged.</p>

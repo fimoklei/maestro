@@ -218,7 +218,7 @@ const suites: [
           level: "error",
           label: "Skill no longer in the Harness",
           message:
-            "Nothing was pushed. Select Re-read Harness to repaint the list.",
+            "Nothing was pushed. Select Re-read Harness to read the list again.",
         },
       ],
       [
@@ -290,7 +290,7 @@ const suites: [
           level: "error",
           label: "Files changed during the check",
           message:
-            "Nothing was pushed. Select Re-read Harness to repaint the list.",
+            "Nothing was pushed. Select Re-read Harness to read the list again.",
         },
       ],
       [
@@ -669,7 +669,7 @@ const suites: [
           level: "error",
           label: "Uncommitted changes in the Harness",
           message:
-            "This skill has uncommitted changes in the Harness. Commit or undo them, then Update skill again.",
+            "Nothing was copied. Commit or undo them in your Git tool, then select Update skill again.",
           detail: "Updating now would overwrite changes Git cannot restore.",
         },
       ],
