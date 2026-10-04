@@ -171,6 +171,22 @@ against `fimoklei/harness` and `cli/cli`:
 - `reviewDecision` values seen live: `""`, `REVIEW_REQUIRED`, `APPROVED`,
   `CHANGES_REQUESTED`.
 
+### A deleted author (measured 2026-10-04, `gh` 2.101.0)
+
+GitHub hands a deleted account's pull requests to the `ghost` user. Captured
+verbatim from `gh pr list --repo EficodeDemoOrg/mythapi-demo --state all --json …,author`:
+
+```json
+{"author":{"id":"MDQ6VXNlcjEwMTM3","is_bot":false,"login":"ghost","name":"Deleted user"},"number":24}
+```
+
+`gh pr view 9 --repo Project-Tick/MeshMC --json author` prints the same. gh
+never prints `author: null`: its `Author` is a value struct whose
+`MarshalJSON` prints any author without an id as `{"is_bot":true,"login":"app/"+login}`
+([`api/queries_issue.go`](https://github.com/cli/cli/blob/v2.101.0/api/queries_issue.go),
+read 2026-10-04). A null GraphQL author therefore arrives as
+`{"is_bot":true,"login":"app/"}`; no live one was found to capture.
+
 ### Does Maestro still need its own tree-hash reading?
 
 **Yes, for three separate answers `gh` cannot give.**
@@ -387,6 +403,10 @@ gh pr list --repo cli/cli --state all --limit 8 --json number,url,state,isDraft,
 # `author` (#1381, gh 2.101.0): a user is {id, is_bot, login, name}; an app is
 # {is_bot: true, login: "app/<slug>"}, with no id or name
 gh pr list --repo fimoklei/maestro --state all --limit 200 --json number,author --jq '[.[] | select(.author.is_bot == true)] | .[0:3]'
+# deleted author (#1370, gh 2.101.0): login "ghost"
+gh search prs --author ghost --limit 5 --json repository,number,author,url
+gh pr list --repo EficodeDemoOrg/mythapi-demo --state all --limit 30 --json number,author
+gh pr view 9 --repo Project-Tick/MeshMC --json number,author
 gh api "repos/fimoklei/harness/pulls?head=fimoklei:maestro/agent-native-cli&state=all"
 gh api repos/fimoklei/harness/compare/main...maestro/app-creator --jq '{status,ahead_by,behind_by}'
 gh api "repos/fimoklei/harness/contents/.apm/skills?ref=main"

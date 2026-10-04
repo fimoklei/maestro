@@ -75,9 +75,12 @@ const branchSchema = z
   );
 
 // A GitHub login, or an app's `app/<slug>`: the login crosses to the browser.
+// gh prints a request with no author as a slugless `app/`; GitHub's own name
+// for a deleted account is `ghost`.
 const loginSchema = z
   .string()
-  .regex(/^(?:app\/)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/);
+  .regex(/^(?:(?:app\/)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})|app\/)$/)
+  .transform((login) => (login === "app/" ? "ghost" : login));
 
 const reviewerSchema = z.discriminatedUnion("__typename", [
   z.object({ __typename: z.literal("User"), login: z.string() }),

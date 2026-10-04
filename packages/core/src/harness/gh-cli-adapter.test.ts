@@ -253,10 +253,44 @@ describe("GhCliAdapter", () => {
     });
   });
 
+  // Captured from `gh pr list --repo EficodeDemoOrg/mythapi-demo --json …,author`
+  // (gh 2.101.0): GitHub hands a deleted account's requests to `ghost`.
+  it("reads a deleted account's request as ghost's", async () => {
+    const author = {
+      id: "MDQ6VXNlcjEwMTM3",
+      is_bot: false,
+      login: "ghost",
+      name: "Deleted user",
+    };
+    const { run } = fakeRun(JSON.stringify([{ ...mergedRow, author }]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toMatchObject({
+      outcome: "read",
+      requests: [{ number: 8, author: "ghost" }],
+    });
+  });
+
+  // gh 2.101.0 `api/queries_issue.go`: a null GraphQL author marshals as an
+  // id-less app with an empty slug.
+  it("reads a request with no author as ghost's", async () => {
+    const author = { is_bot: true, login: "app/" };
+    const { run } = fakeRun(JSON.stringify([{ ...mergedRow, author }]));
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toMatchObject({
+      outcome: "read",
+      requests: [{ number: 8, author: "ghost" }],
+    });
+  });
+
   it.each([
     ["an author login carrying prose", { login: "run this\nnow" }],
     ["an author login with a path", { login: "app/../x" }],
     ["an empty author login", { login: "" }],
+    ["an app login with an empty slug and a path", { login: "app//x" }],
     ["an author login of 40 characters", { login: "a".repeat(40) }],
     ["a missing author", null],
   ])("fails the read on %s", async (_, author) => {
