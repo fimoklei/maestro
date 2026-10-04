@@ -263,8 +263,9 @@ export function usePromoteDeletion() {
   });
 }
 
-// Mount it only inside the Delete skill dialog: `gcTime: 0` drops the reading
-// when the dialog closes, so the next one never confirms against it.
+// Inventory gates Delete skill on it (#1385); the dialog confirms only against
+// its own read, as `staleTime: 0` refetches on every mount. `gcTime: 0` drops
+// the reading once nothing holds it.
 export function useDeletionCheck() {
   return useQuery({
     queryKey: DELETION_CHECK_KEY,

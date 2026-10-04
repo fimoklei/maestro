@@ -45,6 +45,8 @@ export const IMPORT_UNAVAILABLE = {
 export const DELETE_UNAVAILABLE = {
   checking: "checking your clone",
   failed: "clone not read",
+  "no-harness": "no Working Harness",
+  "not-in-clone": "not in your clone",
 } as const;
 
 export const DELETION_CHECKING = "Checking for uncommitted changes…";

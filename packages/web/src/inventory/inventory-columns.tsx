@@ -22,7 +22,12 @@ export type InventoryRow = Primitive & {
   deployments: SkillDeployment[];
   unreadable: boolean;
   /** The ⋮ menu's items, in order. */
-  actions: { action: RowAction; label: string; danger?: boolean }[];
+  actions: {
+    action: RowAction;
+    label: string;
+    danger?: boolean;
+    disabled?: boolean;
+  }[];
 };
 
 const unranked = Number.MAX_SAFE_INTEGER;

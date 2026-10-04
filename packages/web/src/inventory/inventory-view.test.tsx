@@ -85,6 +85,8 @@ const baseProps: Props = {
   failure: null,
   reading: false,
   onReread: () => {},
+  clone: { kind: "checking" },
+  onDeleted: () => {},
 };
 
 function renderView(props: Partial<Props> = {}) {
@@ -1041,7 +1043,10 @@ describe("InventoryView — row menu", () => {
       targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])],
     });
 
-    expect(menuItems(await openMenu("tdd"))).toEqual(["Deploy skill"]);
+    expect(menuItems(await openMenu("tdd"))).toEqual([
+      "Deploy skill",
+      "Delete skill — checking your clone",
+    ]);
   });
 
   it("offers the removal where the skill reaches two targets, as the pane does", async () => {
@@ -1057,6 +1062,7 @@ describe("InventoryView — row menu", () => {
     expect(menuItems(await openMenu("tdd"))).toEqual([
       "Deploy skill",
       "Remove from all 2 targets",
+      "Delete skill — checking your clone",
     ]);
     await userEvent.keyboard("{Escape}");
     await openRow("tdd");

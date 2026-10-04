@@ -84,6 +84,21 @@ const meta = {
     failure: null,
     reading: false,
     onReread: () => {},
+    clone: {
+      kind: "read",
+      skills: Object.fromEntries(
+        primitives.map((primitive) => [
+          primitive.name,
+          {
+            inClone: true,
+            workingTree: "tree",
+            uncommitted: false,
+            localOnly: false,
+          },
+        ]),
+      ),
+    },
+    onDeleted: () => {},
   },
   decorators: [
     (Story) => (

@@ -9,6 +9,7 @@ import type { ImportCheckLoad } from "./import-view-model";
 import {
   deletionCheckNotice,
   importNotice,
+  type LocalDeletionContext,
   releasePlanNotice,
 } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
@@ -79,10 +80,13 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
         />
       ) : null}
       {props.localDeletion !== null ? (
-        <LocalDeletionHost
+        <LocalDeletionDialog
           target={props.localDeletion}
+          screen="harness"
           write={props.deleteLocal}
           onClose={props.onLocalDeletionClose}
+          // The row changes in place; nothing more to show.
+          onDeleted={props.onLocalDeletionClose}
         />
       ) : null}
       {deletionRow !== null && mode !== null ? (
@@ -165,17 +169,22 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
 
 // Mounted only while the dialog stands, so every opening reads the folder
 // afresh, and a stale refusal reads it again before the next confirmation.
-function LocalDeletionHost({
+// Inventory opens it too (#1385); `screen` picks the control its notices name.
+export function LocalDeletionDialog({
   target: { skill, localOnly },
+  screen,
   write,
   onClose,
+  onDeleted,
 }: {
   target: LocalDeletionTarget;
+  screen: LocalDeletionContext["screen"];
   write: Presses["deleteLocalWrite"];
   onClose: () => void;
+  onDeleted: () => void;
 }) {
   const check = useDeletionCheck();
-  const context = { skill, screen: "harness" } as const;
+  const context = { skill, screen };
   const folder = check.data?.skills[skill];
   const seenWorkingTree = folder?.inClone === true ? folder.workingTree : null;
   const checkFailure = check.isError
@@ -203,7 +212,7 @@ function LocalDeletionHost({
         write.run(
           { name: skill, seenWorkingTree },
           {
-            onSuccess: onClose,
+            onSuccess: onDeleted,
             onError: (error) => {
               if (
                 error instanceof HttpError &&

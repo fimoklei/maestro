@@ -1,7 +1,11 @@
 import { RemoveSkillFlow } from "../deploy-state/remove-skill-flow";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useUpdateTarget } from "../deploy-state/use-update-target";
+import { LocalDeletionDialog } from "../harness/harness-dialogs";
+import { localDeletionNotice } from "../harness/notice-copy";
+import { useDeleteLocalSkill } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployRun } from "./bulk-deploy-action";
 import { BulkRemoveRun } from "./bulk-remove-skill-action";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
@@ -12,6 +16,7 @@ import type { SkillDeployment } from "./skill-deployments";
 export type PaneDialog =
   | { kind: "deploy" }
   | { kind: "remove-all" }
+  | { kind: "delete"; localOnly: boolean }
   | { kind: "update"; deployment: SkillDeployment }
   | { kind: "remove"; deployment: SkillDeployment };
 
@@ -23,6 +28,7 @@ export function SkillPaneDialog({
   removable,
   onClose,
   onRemoved,
+  onDeleted,
 }: {
   dialog: PaneDialog;
   skillName: string;
@@ -32,8 +38,19 @@ export function SkillPaneDialog({
   onClose: () => void;
   /** A proven removal took this target's row away. */
   onRemoved: () => void;
+  /** Step 1 removed the folder; the Harness view shows the next step. */
+  onDeleted: () => void;
 }) {
   switch (dialog.kind) {
+    case "delete":
+      return (
+        <PaneDeletion
+          skill={skillName}
+          localOnly={dialog.localOnly}
+          onClose={onClose}
+          onDeleted={onDeleted}
+        />
+      );
     case "deploy":
       // The selection bar's dialog with this skill alone: a refusal or a
       // partial run reads as its Report (#1065).
@@ -95,6 +112,38 @@ function PaneUpdate({
       add={skillName}
       defaultOpen
       onClose={onClose}
+    />
+  );
+}
+
+// Its own write, so a refusal names Inventory's controls (#1385).
+function PaneDeletion({
+  skill,
+  localOnly,
+  onClose,
+  onDeleted,
+}: {
+  skill: string;
+  localOnly: boolean;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const write = useWriteAction(useDeleteLocalSkill(), {
+    report: useScreenReport(),
+    action: "delete",
+    show: "row",
+    // The Harness view's row states the outcome.
+    name: () => null,
+    failure: (error) =>
+      localDeletionNotice(error, { skill, screen: "inventory" }),
+  });
+  return (
+    <LocalDeletionDialog
+      target={{ skill, localOnly }}
+      screen="inventory"
+      write={write}
+      onClose={onClose}
+      onDeleted={onDeleted}
     />
   );
 }
