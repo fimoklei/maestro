@@ -132,7 +132,7 @@ describe("removing a deployed skill from a row", () => {
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(
-      await within(dialog).findByText(/changed since this removal was priced/),
+      await within(dialog).findByText(/A copy changed after the check/),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText("Nothing recorded — may lose work"),

@@ -249,11 +249,11 @@ describe("Repositories", () => {
     );
 
     expect(
-      await within(dialog).findByText("Repository not unregistered"),
+      await within(dialog).findByText("Repository already unregistered"),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "It is no longer on the list. Select Re-read Repositories to read the list again.",
+        "Select Re-read Repositories to read the list again.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("/home/me/scratch")).toBeInTheDocument();

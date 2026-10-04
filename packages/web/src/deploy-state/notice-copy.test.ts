@@ -47,7 +47,7 @@ describe("deploy notices", () => {
       {
         label: "No Harness connected",
         message:
-          "Nothing was installed. Select Connect Inventory on the Inventory screen, then deploy again.",
+          "Nothing was installed. Select Change Harness location in Settings, then deploy again.",
       },
     ],
     [
@@ -80,7 +80,7 @@ describe("deploy notices", () => {
       {
         label: "Not in any release",
         message:
-          "Nothing was installed. Select Publish release on the Harness screen, then deploy again.",
+          "Nothing was installed. Select Create a release on the Harness screen, then deploy again.",
         detail: "A deploy installs from a published tag.",
       },
     ],
@@ -89,7 +89,7 @@ describe("deploy notices", () => {
       {
         label: "Harness copy unreleased",
         message:
-          "Nothing was installed. Select Publish release on the Harness screen, then deploy again.",
+          "Nothing was installed. Select Create a release on the Harness screen, then deploy again.",
         detail: "A deploy installs the latest release, not the Harness copy.",
       },
     ],
@@ -152,7 +152,7 @@ describe("deploy notices", () => {
       {
         label: "Not in this release",
         message:
-          "Nothing was installed. Select Update target to move this target to a release that holds the skill.",
+          "Nothing was installed. Select Update target on the Deploy-state screen to move this target to a release that holds the skill.",
         detail: "This skill is not in the release this target follows.",
       },
     ],
@@ -161,7 +161,7 @@ describe("deploy notices", () => {
       {
         label: "Pinned per skill",
         message:
-          "Nothing was installed. Select Remove skill for each skill, then select Deploy skill to put them on one release.",
+          "Nothing was installed. Select Remove skill for each skill on the Deploy-state screen, then deploy them again.",
         detail: "This target holds skills from separate deployments.",
       },
     ],
@@ -358,7 +358,7 @@ describe("remove notices", () => {
       {
         label: "Nothing removed",
         message:
-          "The copy on disk changed since this removal was priced. Check the new cost above, then remove the skill.",
+          "Nothing was removed. A copy changed after the check. Read the list again, then select Remove skill.",
       },
     ],
     [
@@ -486,7 +486,7 @@ describe("update preview notices", () => {
       {
         label: "No Harness connected",
         message:
-          "Connect a Harness on the Inventory screen, then select Update target again.",
+          "Select Change Harness location in Settings, then select Update target again.",
       },
     ],
     [
@@ -502,7 +502,7 @@ describe("update preview notices", () => {
       {
         label: "Not in any release",
         message:
-          "Publish a release on the Harness screen, then select Update target again.",
+          "Select Create a release on the Harness screen, then select Update target again.",
         detail: "An update moves the target to a published tag.",
       },
     ],
@@ -511,7 +511,7 @@ describe("update preview notices", () => {
       {
         label: "Not in the latest release",
         message:
-          "The latest release does not hold this skill. Publish a release on the Harness screen, then deploy again.",
+          "The latest release does not hold this skill. Select Create a release on the Harness screen, then deploy again.",
         detail: "Nothing was changed, and the target keeps its own release.",
       },
     ],
@@ -554,6 +554,16 @@ describe("update preview notices", () => {
         "Nothing was changed. Wait a moment, then select Update target again.",
       detail:
         "A dropped connection, or a failure this version of Maestro does not name.",
+    });
+  });
+});
+
+describe("update notices", () => {
+  it("states a target that changed after the preview", () => {
+    expect(updateNotice(refusal("status-out-of-date"))).toEqual({
+      label: "Status out of date",
+      message:
+        "Nothing was changed. The target changed after the preview. Select Update target again.",
     });
   });
 });

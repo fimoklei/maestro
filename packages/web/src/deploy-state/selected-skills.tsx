@@ -6,6 +6,7 @@ import { STATUS_TOKENS } from "../ui/status-family";
 import { SubListRow } from "../ui/sub-list-row";
 import {
   HARNESS_ORIGIN_NOT_READ,
+  REMOVE_SKILL,
   VIEW_SKILL_ON_GITHUB,
 } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
@@ -101,7 +102,7 @@ export function SelectedSkills({
                     ]
                   : []),
                 {
-                  label: "Remove skill",
+                  label: REMOVE_SKILL,
                   danger: true,
                   onSelect: () =>
                     setOpen({ kind: "remove", name: primitive.name }),

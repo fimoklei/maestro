@@ -76,9 +76,9 @@ export function registerMessage(error: unknown): string {
 
 const unregisterHeadings: NoticeTable<"not-registered"> = {
   "not-registered": {
-    level: "error",
-    label: "Repository not unregistered",
-    message: `It is no longer on the list. Select ${REREAD_LABEL} to read the list again.`,
+    level: "info",
+    label: "Repository already unregistered",
+    message: `Select ${REREAD_LABEL} to read the list again.`,
   },
 };
 

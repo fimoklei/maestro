@@ -14,6 +14,8 @@ export const STAGE_NAMES: Record<HarnessStage, string> = {
   "pending-release": "Pending release",
 };
 
+export const CREATE_RELEASE = "Create a release";
+
 export const JOURNEY_EMPTY = {
   title: "No changes yet",
   body: "Skills you import or edit in your clone will appear here.",

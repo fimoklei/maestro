@@ -33,7 +33,7 @@ import {
   staleStatusNotice,
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
-import { JOURNEY_EMPTY, statusReading } from "./stage-copy";
+import { CREATE_RELEASE, JOURNEY_EMPTY, statusReading } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
 import {
   useDiscardReleasePlan,
@@ -271,7 +271,7 @@ export function HarnessView({
               disabled={!releaseEnabled(state.freshness) || refresh.isPending}
               onClick={() => setPlanOpen(true)}
             >
-              Create a release
+              {CREATE_RELEASE}
             </Button>
           </>
         )

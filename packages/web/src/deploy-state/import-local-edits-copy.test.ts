@@ -76,7 +76,7 @@ describe("Import local edits copy", () => {
     [
       "unfinished-operation",
       "Change not finished",
-      "An earlier change on this target did not finish. Check the target card to finish that change, then select Import local edits again.",
+      "An earlier change on this target did not finish. Finish it on the Deploy-state screen, then select Import local edits again.",
     ],
     [
       "target-unreadable",

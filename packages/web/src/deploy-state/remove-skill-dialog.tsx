@@ -4,6 +4,7 @@ import { Dialog } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
+import { REMOVE_SKILL } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   type RemoveDialogTarget,
@@ -14,7 +15,6 @@ import {
 } from "./remove-ledger-rows";
 import type { RemovePreflightView } from "./remove-preflight-view";
 
-const REMOVE_SKILL = "Remove skill";
 // Names no cost: an unfinished check has claimed nothing.
 const CHECKING = "checking for local edits";
 

@@ -117,10 +117,9 @@ describe("the screen's own words", () => {
 describe("unregisterNotice", () => {
   it("sends a repository already gone from the list to a re-read", () => {
     expect(unregisterNotice(refusal("not-registered", 404))).toEqual({
-      level: "error",
-      label: "Repository not unregistered",
-      message:
-        "It is no longer on the list. Select Re-read Repositories to read the list again.",
+      level: "info",
+      label: "Repository already unregistered",
+      message: "Select Re-read Repositories to read the list again.",
     });
   });
 

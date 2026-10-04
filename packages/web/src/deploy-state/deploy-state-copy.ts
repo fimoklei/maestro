@@ -3,6 +3,7 @@ import { joinNames } from "./join-names";
 // Every word the Deploy-state screen shows outside its dialogs.
 
 export const REREAD_LABEL = "Re-read Deploy-state";
+export const REMOVE_SKILL = "Remove skill";
 export const TARGET_LABEL = "Target";
 export const ACTIONS_COLUMN_LABEL = "Actions";
 
