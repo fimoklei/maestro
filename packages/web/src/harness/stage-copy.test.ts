@@ -315,6 +315,22 @@ describe("Detail sentences", () => {
     },
   );
 
+  // The menu offers no Reopen proposal here, so the sentence names none (#1384).
+  it("names no reopen on a closed deletion whose folder is back", () => {
+    expect(
+      detailSentence(
+        row("pending-review", "proposal-closed", {
+          requests: [request],
+          deletion: true,
+          folderOnDisk: true,
+        }),
+        CONTEXT,
+      ),
+    ).toBe(
+      "Pull request #45 was closed without deleting this skill. The skill is in your clone again.",
+    );
+  });
+
   it("names the next step when nothing is released yet", () => {
     const unreleased = { defaultBranch: "main", releasedVersion: null };
     expect(detailSentence(row("pending-release", "added"), unreleased)).toBe(

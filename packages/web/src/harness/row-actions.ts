@@ -125,14 +125,20 @@ function stageItems(
           onSelect: () => handlers.create(row.skill),
         },
       ];
-    case "proposal-closed":
+    case "proposal-closed": {
+      const reopens = row.requests.map((request) => ({
+        label: named("Reopen proposal", request, many),
+        disabled: !enabled,
+        onSelect: () => handlers.reopen(row.skill, request.number),
+      }));
+      // A deletion opens no proposal dialog, and reopening it once the folder
+      // is restored would propose deleting a skill the author kept (#1384).
+      if (row.deletion) {
+        return [...links, ...(row.folderOnDisk ? [] : reopens)];
+      }
       return [
         ...links,
-        ...row.requests.map((request) => ({
-          label: named("Reopen proposal", request, many),
-          disabled: !enabled,
-          onSelect: () => handlers.reopen(row.skill, request.number),
-        })),
+        ...reopens,
         // The way on where reopening is unavailable: a new request over the
         // same branch, which the author sends their current content to.
         {
@@ -141,6 +147,7 @@ function stageItems(
           onSelect: () => handlers.promote(row),
         },
       ];
+    }
     case "multiple-pull-requests":
       return links;
     default:
