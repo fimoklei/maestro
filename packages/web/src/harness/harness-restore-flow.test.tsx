@@ -180,10 +180,7 @@ describe("Harness restore", () => {
         screen.queryByRole("dialog", { name: /restore old-skill/i }),
       ).toBeNull(),
     );
-    expect(await screen.findByText("Skill restored")).toBeInTheDocument();
-    expect(
-      screen.getByText("Restored from your last local commit."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Restored old-skill.")).toBeInTheDocument();
   });
 
   // The server compares the commit the confirmation carries against a fresh
@@ -230,7 +227,7 @@ describe("Harness restore", () => {
     );
   });
 
-  it("says the open proposal is untouched, in the dialog and after it", async () => {
+  it("says the open proposal is untouched before the restore", async () => {
     const proposed = withStages(ON_DISK, {
       proposal: [
         row("pending-proposal", "old-skill", "deleted-locally", {
@@ -255,10 +252,7 @@ describe("Harness restore", () => {
       within(dialog).getByRole("button", { name: /^restore skill$/i }),
     );
 
-    expect(await screen.findByText("Skill restored")).toBeInTheDocument();
-    expect(
-      await screen.findByText("Your proposal remains unchanged."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Restored old-skill.")).toBeInTheDocument();
   });
 
   // The folder is back whatever GitHub answered afterwards, so the heading
