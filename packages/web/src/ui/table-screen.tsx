@@ -99,10 +99,12 @@ export function TableScreen<T extends RowData>({
       ? null
       : (rows.find((row) => rowId(row) === openId) ?? null);
   const openIndex = openId === null ? -1 : order.indexOf(openId);
+  const shownGroups = view === undefined ? groups : view.groups;
   // An unread group says so in its own line, so it is never drawn as empty.
   const groupSpeaks =
-    groups?.order?.some((key) => (groups.message?.(key) ?? null) !== null) ??
-    false;
+    shownGroups?.order?.some(
+      (key) => (shownGroups.message?.(key) ?? null) !== null,
+    ) ?? false;
   const showTable = state.skeleton || rows.length > 0 || groupSpeaks;
 
   return (
@@ -162,7 +164,7 @@ export function TableScreen<T extends RowData>({
                   getRowId={rowId}
                   loading={state.skeleton}
                   skeletonRows={Math.min(rows.length || firstReadRows, 30)}
-                  groups={view === undefined ? groups : view.groups}
+                  groups={shownGroups}
                   columnVisibility={
                     view === undefined
                       ? undefined

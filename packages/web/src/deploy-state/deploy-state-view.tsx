@@ -1,3 +1,4 @@
+import type { SkippedEntry } from "@maestro/core";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -6,11 +7,10 @@ import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { freshnessLine } from "../ui/freshness";
-import { Notice } from "../ui/notice";
 import { TableScreen } from "../ui/table-screen";
 import { useNow } from "../ui/use-now";
 import { useTableScreen } from "../ui/use-table-screen";
-import { useViewOptions } from "../ui/use-view-options";
+import { useViewOptions, type ViewOptions } from "../ui/use-view-options";
 import { useWriteAction } from "../ui/use-write-action";
 import {
   deployStateColumns,
@@ -18,15 +18,13 @@ import {
   type TargetTableRow,
 } from "./deploy-state-columns";
 import {
+  deployStateNotRead,
   GLOBAL,
-  GLOBAL_NOT_READ,
   NO_FILTER_MATCH,
   NO_REPOSITORIES,
   NO_TOOL_DETECTED,
   NOTHING_DEPLOYED,
-  REPOS_NOT_READ,
   REPOSITORIES,
-  REREAD_LABEL,
   TARGET_LABEL,
   targetCount,
 } from "./deploy-state-copy";
@@ -80,9 +78,9 @@ export function DeployStateView() {
   const retry = useRetryOperation();
   const location = useLocation();
 
-  const failures = [
-    ...(globalDeploy.isError ? [GLOBAL_NOT_READ] : []),
-    ...(registry.isError ? [REPOS_NOT_READ] : []),
+  const notRead = [
+    ...(globalDeploy.isError ? (["global"] as const) : []),
+    ...(registry.isError ? (["repos"] as const) : []),
   ];
   const isRead = globalDeploy.isSuccess && registry.isSuccess;
   const screen = useTableScreen({
@@ -93,7 +91,7 @@ export function DeployStateView() {
       globalDeploy.isFetching ||
       repoDeploy.some((query) => query.isFetching),
     settled: isRead,
-    failure: failures[0] ?? null,
+    failure: notRead.length > 0 ? deployStateNotRead(notRead) : null,
     // Invalidated, not refetched by hand: that also drops drift's 5-minute
     // cache, so a pressed re-read is really fresh.
     onReread: () => {
@@ -191,7 +189,7 @@ export function DeployStateView() {
     [],
   );
 
-  const view = useViewOptions(rows, {
+  const view: ViewOptions<TargetTableRow> = useViewOptions(rows, {
     kind: {
       label: TARGET_LABEL,
       options: KIND_OPTIONS,
@@ -202,15 +200,31 @@ export function DeployStateView() {
       of: (row) => row.status?.word ?? null,
       unread: null,
     },
-    groupings: [BY_TARGET],
+    groupings: [
+      {
+        ...BY_TARGET,
+        groups: {
+          ...BY_TARGET.groups,
+          // An empty group says what fills it; a failed read is the notice's,
+          // and a filtered-out group is No filter match's.
+          message: (key: string) =>
+            view.filterCount > 0
+              ? null
+              : key === GLOBAL
+                ? globalDeploy.isSuccess && globalDeploy.data.tools.length === 0
+                  ? noToolLine(globalDeploy.data.skipped)
+                  : null
+                : registry.isSuccess && repoPaths.length === 0
+                  ? NO_REPOSITORIES
+                  : null,
+        },
+      },
+    ],
     initialGrouping: BY_TARGET.value,
     columns: COLUMN_OPTIONS,
     unavailable: "no targets yet",
   });
 
-  const noTools =
-    globalDeploy.isSuccess && globalDeploy.data.tools.length === 0;
-  const noRepos = registry.isSuccess && repoPaths.length === 0;
   const isColdStart =
     isRead &&
     globalDeploy.data.primitives.length === 0 &&
@@ -251,41 +265,6 @@ export function DeployStateView() {
       rowId={(row) => row.id}
       view={view}
       noMatch={NO_FILTER_MATCH}
-      notice={
-        failures.length > 0 || noTools || noRepos ? (
-          <div className="flex flex-col gap-inline p-panel">
-            {failures.map((failure) => (
-              <Notice
-                key={failure.label}
-                trigger="load"
-                notice={{
-                  ...failure,
-                  action: {
-                    label: REREAD_LABEL,
-                    onClick: screen.reread,
-                  },
-                }}
-              />
-            ))}
-            {noTools ? (
-              <>
-                <Notice trigger="load" notice={NO_TOOL_DETECTED} />
-                {globalDeploy.data.skipped.map((entry, index) => (
-                  <p
-                    key={skippedEntryKey(entry, index)}
-                    className="m-0 text-gray-11 text-meta"
-                  >
-                    {skippedEntryText(entry)}
-                  </p>
-                ))}
-              </>
-            ) : null}
-            {noRepos ? (
-              <p className="m-0 text-gray-11 text-meta">{NO_REPOSITORIES}</p>
-            ) : null}
-          </div>
-        ) : undefined
-      }
       pane={(row, frame) => {
         const placed = targetPaneActions(row, onAction);
         return (
@@ -310,6 +289,20 @@ export function DeployStateView() {
         );
       }}
     />
+  );
+}
+
+// With no tool row to open, the Global line also names each skipped entry.
+function noToolLine(skipped: readonly SkippedEntry[]) {
+  return (
+    <>
+      <span className="block">{NO_TOOL_DETECTED}</span>
+      {skipped.map((entry, index) => (
+        <span key={skippedEntryKey(entry, index)} className="block">
+          {skippedEntryText(entry)}
+        </span>
+      ))}
+    </>
   );
 }
 
