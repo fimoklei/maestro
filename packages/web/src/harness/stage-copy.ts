@@ -5,6 +5,7 @@ import type {
   RequestedReviewer,
   StageStatus,
 } from "@maestro/core";
+import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import type { StatusFamily } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 
@@ -108,11 +109,8 @@ export function detailSentence(
   const branch = defaultBranch ?? "the default branch";
   const release = releasedVersion;
   const publish = "Select Create a release to publish it.";
-  // Two ways on where local HEAD still holds the folder: propose the deletion,
-  // or take it back. The sentence names both controls the row offers (#915).
-  const deleteLocally = row.restorable
-    ? `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion, or Restore skill to bring it back.`
-    : `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
+  // One next action; Restore skill stays in the row menu (#1396).
+  const deleteLocally = `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
   switch (row.status) {
     case "not-yet-proposed":
       return row.deletion
@@ -232,7 +230,7 @@ export const alsoInWords = (row: HarnessStageRow): string =>
 // default branch holds has not reached them (#1160).
 export const deployedCopiesLine = (row: HarnessStageRow): string | null =>
   row.stage === "pending-proposal" && !row.deletion && row.remoteTree !== null
-    ? "Deployed copies still have the earlier version. They get this version after a release and a new deploy."
+    ? `Deployed copies change only after a release and ${UPDATE_TARGET}.`
     : null;
 
 // Suppressed where any membership is unknown: "only here" is a claim, and an

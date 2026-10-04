@@ -8,6 +8,7 @@ const meta = {
     skill: "old-skill",
     mode: {
       kind: "propose",
+      origin: "fimoklei/harness",
       seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
       openRequest: null,
     },
@@ -83,6 +84,7 @@ export const OverOpenRequest: Story = {
   args: {
     mode: {
       kind: "propose",
+      origin: "fimoklei/harness",
       seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
       openRequest: { number: 45, author: "teammate-login" },
     },

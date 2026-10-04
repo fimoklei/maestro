@@ -119,14 +119,14 @@ describe("Harness restore", () => {
     ).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("names the row's two ways on in its detail sentence", async () => {
+  it("names Propose change as the next step in its detail sentence", async () => {
     stubHarnessServer({ read: { body: DELETED_ROW } });
     renderHarness();
 
     const pane = await openPane("old-skill");
     expect(
       within(pane).getByText(
-        "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion, or Restore skill to bring it back.",
+        "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
       ),
     ).toBeInTheDocument();
   });
@@ -144,7 +144,7 @@ describe("Harness restore", () => {
 
     expect(
       within(dialog).getByText(
-        "Restore this skill folder from your last local commit. Changes not included in that commit will not be recovered.",
+        "Restore skill brings back the folder from your last local commit. Later changes do not come back.",
       ),
     ).toBeVisible();
     expect(within(dialog).getByText(".apm/skills/old-skill")).toBeVisible();
@@ -180,10 +180,7 @@ describe("Harness restore", () => {
         screen.queryByRole("dialog", { name: /restore old-skill/i }),
       ).toBeNull(),
     );
-    expect(await screen.findByText("Skill restored")).toBeInTheDocument();
-    expect(
-      screen.getByText("Restored from your last local commit."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Restored old-skill.")).toBeInTheDocument();
   });
 
   // The server compares the commit the confirmation carries against a fresh
@@ -230,7 +227,7 @@ describe("Harness restore", () => {
     );
   });
 
-  it("says the open proposal is untouched, in the dialog and after it", async () => {
+  it("says the open proposal is untouched before the restore", async () => {
     const proposed = withStages(ON_DISK, {
       proposal: [
         row("pending-proposal", "old-skill", "deleted-locally", {
@@ -255,10 +252,7 @@ describe("Harness restore", () => {
       within(dialog).getByRole("button", { name: /^restore skill$/i }),
     );
 
-    expect(await screen.findByText("Skill restored")).toBeInTheDocument();
-    expect(
-      await screen.findByText("Your proposal remains unchanged."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Restored old-skill.")).toBeInTheDocument();
   });
 
   // The folder is back whatever GitHub answered afterwards, so the heading

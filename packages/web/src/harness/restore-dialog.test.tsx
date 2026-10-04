@@ -50,7 +50,7 @@ describe("RestoreDialog", () => {
 
     expect(
       screen.getByText(
-        "Restore this skill folder from your last local commit. Changes not included in that commit will not be recovered.",
+        "Restore skill brings back the folder from your last local commit. Later changes do not come back.",
       ),
     ).toBeInTheDocument();
   });

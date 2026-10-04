@@ -7,6 +7,7 @@ const TREE = "0123456789abcdef0123456789abcdef01234567";
 
 const PROPOSE: DeletionMode = {
   kind: "propose",
+  origin: "fimoklei/harness",
   seenRemoteTree: TREE,
   openRequest: null,
 };
@@ -75,12 +76,12 @@ describe("DeletionDialog", () => {
     );
   });
 
-  it("says it opens a pull request to delete the skill", () => {
+  it("says it proposes the deletion to the origin for review", () => {
     renderDialog();
 
     expect(
       screen.getByText(
-        "Delete skill opens a pull request to delete research from the Harness.",
+        "Delete skill proposes this deletion to fimoklei/harness for review.",
       ),
     ).toBeInTheDocument();
   });
@@ -121,11 +122,11 @@ describe("DeletionDialog", () => {
       ).toBeInTheDocument();
     });
 
-    it("drops the sentence about opening a pull request", () => {
+    it("drops the sentence about proposing the deletion", () => {
       renderDialog({ mode: OVER_OPEN_REQUEST });
 
       expect(
-        screen.queryByText(/opens a pull request to delete/),
+        screen.queryByText(/proposes this deletion/),
       ).not.toBeInTheDocument();
       expect(
         screen.getByText(/^Your targets keep the skill\./),
@@ -147,12 +148,12 @@ describe("DeletionDialog", () => {
       ).toBeInTheDocument();
     });
 
-    it("says the skill exists nowhere else and the removal is final", () => {
+    it("says the folder leaves the disk and no other copy exists", () => {
       renderDialog({ mode: LOCAL });
 
       expect(
         screen.getByText(
-          /is in the Harness working tree and nowhere else\. Confirming removes the folder from disk for good\./,
+          "Delete skill removes the folder from disk. No other copy of research exists.",
         ),
       ).toBeInTheDocument();
     });
@@ -195,7 +196,7 @@ describe("DeletionDialog", () => {
           "Delete skill removes the research folder from your clone. GitHub and your targets keep the skill.",
         ),
       ).toBeInTheDocument();
-      expect(screen.queryByText(/nowhere else/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/No other copy/)).not.toBeInTheDocument();
     });
 
     it("names the next step", () => {
