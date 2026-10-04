@@ -22,11 +22,16 @@ describe("WelcomeView", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: /inventory not connected/i,
+        name: "No Harness connected",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /connect inventory/i }),
+      screen.getByText(
+        "Connect a Harness to see its skills, hooks and MCP servers.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Connect Harness" }),
     ).toBeInTheDocument();
   });
 
@@ -34,7 +39,7 @@ describe("WelcomeView", () => {
     renderView();
 
     await userEvent.click(
-      screen.getByRole("button", { name: /connect inventory/i }),
+      screen.getByRole("button", { name: "Connect Harness" }),
     );
 
     expect(await screen.findByText("connect-screen")).toBeInTheDocument();

@@ -1,9 +1,13 @@
 import type { ConnectOutcome } from "@maestro/core";
-import { primitiveCountLabel } from "../shell/primitive-count-label";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { Fact } from "../ui/fact";
 import { Notice } from "../ui/notice";
+import {
+  connectedMessage,
+  NO_SKILLS_YET,
+  PRIVATE_HARNESS_ACCESS,
+} from "./connect-gate-copy";
 
 export type ConnectSuccessViewProps = {
   outcome: ConnectOutcome;
@@ -15,7 +19,8 @@ export type ConnectSuccessViewProps = {
 
 type CompletionCopy = {
   title: string;
-  detail: string;
+  message: string;
+  detail?: string;
   continueLabel: string;
 };
 
@@ -23,30 +28,25 @@ function completionCopy(
   outcome: ConnectOutcome,
   primitiveCount: number | null,
 ): CompletionCopy {
-  // An unread count is left out of the sentence rather than shown as zero.
-  const found =
-    primitiveCount === null
-      ? "Harness found"
-      : `${primitiveCountLabel(primitiveCount)} found`;
-
   switch (outcome) {
     case "found":
       return {
-        title: found,
-        detail: "Deploys never write back to this Harness.",
+        title: "Harness connected",
+        message: connectedMessage(primitiveCount),
         continueLabel: "Continue to Inventory",
       };
     case "joined":
+      // Only a clone can be someone else's private repository.
       return {
-        title: `Harness connected · ${found}`,
-        detail: "The cloned Harness is ready in Inventory.",
+        title: "Harness connected",
+        message: connectedMessage(primitiveCount),
+        detail: PRIVATE_HARNESS_ACCESS,
         continueLabel: "Continue to Inventory",
       };
     case "scaffolded":
       return {
-        title: "Harness created. It has no skills yet.",
-        detail:
-          "Skill checks do not block releases unless the team makes them required.",
+        title: "Harness created",
+        message: NO_SKILLS_YET,
         continueLabel: "Continue to Harness",
       };
   }
@@ -65,7 +65,12 @@ export function ConnectSuccessView({
     <div className="flex flex-col gap-cell">
       <Notice
         trigger="user-action"
-        notice={{ level: "success", label: copy.title, message: copy.detail }}
+        notice={{
+          level: "success",
+          label: copy.title,
+          message: copy.message,
+          detail: copy.detail,
+        }}
       />
       {/* The distinguishing tail, with the whole path on hover (#211). */}
       <dl className="m-0">

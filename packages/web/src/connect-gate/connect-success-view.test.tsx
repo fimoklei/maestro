@@ -4,30 +4,32 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ConnectSuccessView } from "./connect-success-view";
 
+const PRIVATE_ACCESS =
+  "Teammates need their own GitHub and APM access to a private Harness.";
+
 const outcomeCases: Array<{
   outcome: ConnectOutcome;
-  expected: RegExp[];
+  expected: string[];
   forbidden: RegExp[];
 }> = [
   {
     outcome: "found",
-    expected: [/7 items found/i, /deploys never write back to this harness/i],
-    forbidden: [/cloned/i, /advisory/i, /empty/i],
+    expected: ["Harness connected", "7 items are ready in the Inventory."],
+    forbidden: [/private harness/i, /deploys never write back/i],
   },
   {
     outcome: "joined",
-    expected: [/harness connected/i, /7 items found/i, /cloned harness/i],
-    forbidden: [/deploys never write back to this harness/i, /advisory/i],
+    expected: [
+      "Harness connected",
+      "7 items are ready in the Inventory.",
+      PRIVATE_ACCESS,
+    ],
+    forbidden: [/deploys never write back/i, /found/i],
   },
   {
     outcome: "scaffolded",
-    expected: [
-      /harness created/i,
-      /has no skills yet/i,
-      /skill checks do not block releases/i,
-      /team makes them required/i,
-    ],
-    forbidden: [/deploys never write back to this harness/i, /7 items found/i],
+    expected: ["Harness created", "It has no skills yet."],
+    forbidden: [/skill checks/i, /7 items/i, /private harness/i],
   },
 ];
 
@@ -57,7 +59,10 @@ describe("ConnectSuccessView", () => {
       />,
     );
 
-    expect(screen.getByText(/harness found/i)).toBeInTheDocument();
+    expect(screen.getByText("Harness connected")).toBeInTheDocument();
+    expect(
+      screen.getByText("The Harness is ready in the Inventory."),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/items/i)).not.toBeInTheDocument();
   });
 
