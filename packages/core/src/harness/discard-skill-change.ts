@@ -4,9 +4,8 @@ import { dirname, join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
-import { isWithinRoot } from "../filesystem/path-containment";
-import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import type { FileSystemPort } from "../registry/file-system";
+import { resolveHarnessSkillsDir } from "./harness-skills-dir";
 import type { HarnessStages } from "./harness-stages";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
@@ -165,16 +164,13 @@ export class DiscardSkillChange {
     root: string,
     name: string,
   ): Promise<string | null> {
+    const resolved = await resolveHarnessSkillsDir(this.deps.fs, root);
+    if (!resolved.ok) {
+      return null;
+    }
+    const folder = join(resolved.skills, name);
     try {
-      const realRoot = await this.deps.fs.realpath(root);
-      const skills = await this.deps.fs.realpath(
-        join(root, HARNESS_SKILLS_DIR),
-      );
-      const folder = join(skills, name);
-      return isWithinRoot(skills, realRoot) &&
-        (await this.deps.fs.realpath(folder)) === folder
-        ? folder
-        : null;
+      return (await this.deps.fs.realpath(folder)) === folder ? folder : null;
     } catch {
       return null;
     }

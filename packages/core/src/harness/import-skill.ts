@@ -22,6 +22,7 @@ import {
   parseLockfile,
 } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
+import { resolveHarnessSkillsDir } from "./harness-skills-dir";
 import type { HarnessGitPort } from "./read-harness-state";
 import {
   type ManifestAdvisory,
@@ -173,15 +174,13 @@ export class ImportSkill {
 
   // Null where a symlinked `.apm` resolves outside the harness.
   private async skillsDir(root: string): Promise<string | null> {
-    const lexical = join(root, HARNESS_SKILLS_DIR);
     try {
-      await this.deps.fs.ensureDir(lexical);
-      const real = await this.deps.fs.realpath(lexical);
-      const realRoot = await this.deps.fs.realpath(root);
-      return isWithinRoot(real, realRoot) ? real : null;
+      await this.deps.fs.ensureDir(join(root, HARNESS_SKILLS_DIR));
     } catch {
       return null;
     }
+    const resolved = await resolveHarnessSkillsDir(this.deps.fs, root);
+    return resolved.ok ? resolved.skills : null;
   }
 
   private async inspect(
