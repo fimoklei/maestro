@@ -61,7 +61,7 @@ export type HarnessDialogsProps = {
 
 export function HarnessDialogs(props: HarnessDialogsProps) {
   const { deletionRow } = props;
-  const mode = deletionMode(deletionRow);
+  const mode = deletionMode(deletionRow, props.origin);
   return (
     <>
       {props.importFlow.open ? (
@@ -242,6 +242,7 @@ const SKILLS_DIR = ".apm/skills";
 // The proposed deletion this row confirms, or null where it offers none.
 function deletionMode(
   row: HarnessStageRow | null,
+  origin: string,
 ): Extract<DeletionMode, { kind: "propose" }> | null {
   if (row === null || !row.deletion || row.remoteTree === null) {
     return null;
@@ -251,6 +252,7 @@ function deletionMode(
   const open = row.requests[0];
   return {
     kind: "propose",
+    origin,
     seenRemoteTree: row.remoteTree,
     openRequest:
       open === undefined ? null : { number: open.number, author: open.author },

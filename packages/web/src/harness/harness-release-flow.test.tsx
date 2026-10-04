@@ -5,6 +5,7 @@ import { StrictMode } from "react";
 import { describe, expect, it } from "vitest";
 import { useInventory } from "../inventory/use-inventory";
 import { renderWithQuery } from "../test-utils";
+import { ToastHost } from "../ui/toast";
 import {
   installHarnessHooks,
   PLAN,
@@ -176,6 +177,7 @@ describe("Harness release", () => {
       <StrictMode>
         <HarnessView openSkill={null} />
         <InventoryProbe />
+        <ToastHost />
       </StrictMode>,
     );
     await waitFor(() =>
@@ -201,7 +203,7 @@ describe("Harness release", () => {
     );
   });
 
-  it("states the published tag and the Inventory read that followed it", async () => {
+  it("states the published tag in a toast once the Inventory is read", async () => {
     stubHarnessServer({
       read: { body: FETCHED },
       refresh: {
@@ -215,6 +217,7 @@ describe("Harness release", () => {
       <StrictMode>
         <HarnessView openSkill={null} />
         <InventoryProbe />
+        <ToastHost />
       </StrictMode>,
     );
 
@@ -228,21 +231,13 @@ describe("Harness release", () => {
       screen.getByRole("button", { name: /^publish release$/i }),
     );
 
-    // The dialog closes on success: the outcome is stated on the screen it
-    // was published from, and the dialog holds no result state (#849).
+    // The dialog closes on success: the outcome is a toast, and the dialog
+    // holds no result state (#849).
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
-    expect(await screen.findByText("Release published")).toBeInTheDocument();
-    expect(
-      screen.getByText("Maestro tagged v1.3.0 and re-read Inventory."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("A release cannot change after publication."),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /re-read inventory/i }),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText("Published v1.3.0.")).toBeInTheDocument();
+    expect(screen.queryByText("Release published")).not.toBeInTheDocument();
   });
 
   it("keeps the publication honest when the Inventory read afterwards failed", async () => {
@@ -262,6 +257,7 @@ describe("Harness release", () => {
       <StrictMode>
         <HarnessView openSkill={null} />
         <InventoryProbe />
+        <ToastHost />
       </StrictMode>,
     );
     await waitFor(() =>
@@ -334,9 +330,7 @@ describe("Harness release", () => {
         calls.filter((call) => call.includes("/api/inventory/primitives")),
       ).toHaveLength(1),
     );
-    expect(
-      await screen.findByText("Maestro tagged v1.3.0 and re-read Inventory."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Published v1.3.0.")).toBeInTheDocument();
   });
 
   it("keeps the publication honest when an unheld Inventory read failed", async () => {
