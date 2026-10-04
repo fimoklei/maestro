@@ -31,7 +31,6 @@ import {
   NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
   NO_SKILLS_YET,
-  NOT_READ_YET,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
@@ -214,7 +213,6 @@ export function InventoryView({
     status: {
       words: STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
-      unread: NOT_READ_YET,
     },
     groupings: [BY_TYPE],
     initialGrouping: "none",

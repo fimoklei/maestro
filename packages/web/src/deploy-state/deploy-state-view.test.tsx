@@ -683,6 +683,33 @@ describe("Deploy-state — rows and their menu", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers Status in Display and groups an unread target under Not read yet", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/a", "/Users/me/b"],
+      global: TWO_TOOLS,
+      repo: { "/Users/me/a": new Promise(() => {}) },
+    }));
+    renderDeployState();
+    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("In sync"));
+
+    await userEvent.click(screen.getByRole("button", { name: /^Display/ }));
+    await userEvent.click(
+      await screen.findByRole("menuitemradio", { name: "Status" }),
+    );
+    await userEvent.keyboard("{Escape}");
+
+    const rows = within(grid()).getAllByRole("row").slice(1);
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "In sync 1",
+      expect.stringContaining("Claude Code"),
+      "Empty 2",
+      expect.stringContaining("Codex"),
+      expect.stringContaining("…/me/b"),
+      "Not read yet 1",
+      expect.stringContaining("…/me/a"),
+    ]);
+  });
+
   it("filters the table by status and says why no row shows", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();

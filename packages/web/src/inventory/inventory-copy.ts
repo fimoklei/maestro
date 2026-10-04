@@ -55,9 +55,6 @@ export function globalOptionLabel(
   return `Global (${tools.map(toolDisplayName).join(" + ")})`;
 }
 
-// The group header of rows whose status has not answered yet.
-export const NOT_READ_YET = "Not read yet";
-
 export const NO_SEARCH_MATCH =
   "No skills match the search. Clear the search box to see every skill.";
 export const NO_FILTER_MATCH =
