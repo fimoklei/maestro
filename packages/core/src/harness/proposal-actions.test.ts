@@ -6,7 +6,8 @@ import type {
   ReviewWriteOutcome,
 } from "./harness-review-port";
 import { ProposalActions } from "./proposal-actions";
-import type { HarnessFacts, HarnessSkillTrees } from "./read-harness-state";
+import type { HarnessFacts } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 const FACTS: HarnessFacts = {
   originUrl: "git@github.com:fimoklei/agent-harness.git",
@@ -33,12 +34,7 @@ const request = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
 });
 
 // The pushed `maestro/tdd` still holds the skill: a change.
-const TREES: HarnessSkillTrees = {
-  remote: { tdd: "a1" },
-  promote: { tdd: { tree: "b2", commit: "c3" } },
-  local: { tdd: "a1" },
-  working: { tdd: "b2" },
-};
+const PROMOTE_TREE: HarnessSkillTree[] = [{ name: "tdd", treeHash: "b2" }];
 
 const readOf = (requests: ReviewRequest[]): HarnessReviewRead => ({
   outcome: "read",
@@ -51,6 +47,7 @@ type Calls = {
   created: NewReviewRequest[];
   reopened: number[];
   closed: number[];
+  refsRead: string[];
 };
 
 function build(overrides?: {
@@ -58,17 +55,21 @@ function build(overrides?: {
   facts?: Partial<HarnessFacts>;
   review?: HarnessReviewRead;
   write?: ReviewWriteOutcome;
-  trees?: HarnessSkillTrees | null;
+  promoteTree?: HarnessSkillTree[] | null;
 }) {
-  const calls: Calls = { created: [], reopened: [], closed: [] };
+  const calls: Calls = { created: [], reopened: [], closed: [], refsRead: [] };
   const write = overrides?.write ?? ({ ok: true } as ReviewWriteOutcome);
   const actions = new ProposalActions({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     git: {
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      readMovementTrees: async () =>
-        overrides && "trees" in overrides ? (overrides.trees ?? null) : TREES,
+      readSkillTrees: async (_root, ref) => {
+        calls.refsRead.push(ref);
+        return overrides && "promoteTree" in overrides
+          ? (overrides.promoteTree ?? null)
+          : PROMOTE_TREE;
+      },
     },
     review: {
       readReviews: async () => overrides?.review ?? readOf([]),
@@ -105,13 +106,17 @@ describe("ProposalActions · create", () => {
     ]);
   });
 
+  it("reads only the skill's own pushed branch, never the clone", async () => {
+    const { actions, calls } = build();
+
+    await actions.create("tdd");
+
+    expect(calls.refsRead).toEqual(["refs/remotes/origin/maestro/tdd"]);
+  });
+
   it("titles the request Delete skill when the pushed branch deletes the skill", async () => {
     const { actions, calls } = build({
-      trees: {
-        ...TREES,
-        promote: { tdd: { tree: null, commit: "c3" } },
-        working: {},
-      },
+      promoteTree: [{ name: "other", treeHash: "d4" }],
     });
 
     expect(await actions.create("tdd")).toEqual({ ok: true });
@@ -125,8 +130,9 @@ describe("ProposalActions · create", () => {
     ]);
   });
 
-  it("opens nothing when the clone's branches could not be read", async () => {
-    const { actions, calls } = build({ trees: null });
+  // An unfetched or unreadable branch names no kind; guessing one would mistitle it.
+  it("opens nothing when the skill's pushed branch could not be read", async () => {
+    const { actions, calls } = build({ promoteTree: null });
 
     expect(await actions.create("tdd")).toEqual({
       ok: false,

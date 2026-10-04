@@ -45,7 +45,7 @@ type CheckedFacts = Ready | { ok: false; error: ProposalActionError };
 export class ProposalActions {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    git: Pick<HarnessGitPort, "readFacts" | "readMovementTrees">;
+    git: Pick<HarnessGitPort, "readFacts" | "readSkillTrees">;
     review: HarnessReviewPort;
   };
 
@@ -62,12 +62,17 @@ export class ProposalActions {
     if (checked.open.length > 0) {
       return { ok: false, error: "request-exists" };
     }
-    // The pushed branch, not the cockpit, says which kind it proposes.
-    const trees = await this.deps.git.readMovementTrees(checked.root);
-    if (trees === null) {
+    // The pushed branch alone says which kind it proposes; an unread one names none.
+    const pushed = await this.deps.git.readSkillTrees(
+      checked.root,
+      `refs/remotes/origin/${promoteBranch(name)}`,
+    );
+    if (pushed === null) {
       return { ok: false, error: "no-answer" };
     }
-    const kind = trees.promote[name]?.tree === null ? "deletion" : "change";
+    const kind = pushed.some((skill) => skill.name === name)
+      ? "change"
+      : "deletion";
     return settle(
       await requestProposal(this.deps.review, checked.target, kind),
     );
