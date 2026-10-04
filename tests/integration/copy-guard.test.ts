@@ -33,7 +33,12 @@ describe("copy guard", () => {
   it("passes copy that uses the current screen words", () => {
     plant(
       "packages/web/src/a-copy.ts",
-      'export const a = "Set the Harness location, then select Re-read Inventory.";\n',
+      [
+        'export const a = "Set the Harness location, then select Re-read Inventory.";',
+        'export const b = "Read just now";',
+        'export const c = "Is it 1 !== 2?";',
+        "",
+      ].join("\n"),
     );
 
     expect(runGuard()).toEqual({ status: 0, stdout: "" });
@@ -58,6 +63,13 @@ describe("copy guard", () => {
     ["Reload the view to see it.", "Reload the view"],
     ["The skill slug is taken.", "slug"],
     ["Holds primitives deployed from it.", "primitives"],
+    ["Deploy skills seamlessly to every target.", "seamless"],
+    ["Unlock the full Harness.", "Unlock"],
+    ["An AI-powered review of each skill.", "AI-powered"],
+    ["Oops, the read failed.", "Oops"],
+    ["Let's deploy the skill.", "Let's"],
+    ["Deployed tdd! Select Close.", "!"],
+    ["Deployed tdd!", "!"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",
