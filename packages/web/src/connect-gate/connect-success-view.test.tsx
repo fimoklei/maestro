@@ -11,15 +11,12 @@ const outcomeCases: Array<{
 }> = [
   {
     outcome: "found",
-    expected: [
-      /7 primitives found/i,
-      /deploys never write back to this harness/i,
-    ],
+    expected: [/7 items found/i, /deploys never write back to this harness/i],
     forbidden: [/cloned/i, /advisory/i, /empty/i],
   },
   {
     outcome: "joined",
-    expected: [/harness connected/i, /7 primitives found/i, /cloned harness/i],
+    expected: [/harness connected/i, /7 items found/i, /cloned harness/i],
     forbidden: [/deploys never write back to this harness/i, /advisory/i],
   },
   {
@@ -30,10 +27,7 @@ const outcomeCases: Array<{
       /skill checks do not block releases/i,
       /team makes them required/i,
     ],
-    forbidden: [
-      /deploys never write back to this harness/i,
-      /7 primitives found/i,
-    ],
+    forbidden: [/deploys never write back to this harness/i, /7 items found/i],
   },
 ];
 
@@ -64,7 +58,7 @@ describe("ConnectSuccessView", () => {
     );
 
     expect(screen.getByText(/harness found/i)).toBeInTheDocument();
-    expect(screen.queryByText(/primitives/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/items/i)).not.toBeInTheDocument();
   });
 
   it("shows the source and exposes a keyboard-accessible continue action", async () => {

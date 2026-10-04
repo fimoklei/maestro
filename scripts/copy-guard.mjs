@@ -58,6 +58,29 @@ function* filesUnder(dir) {
   }
 }
 
+const PASSED_ON = new Set([
+  ts.SyntaxKind.BarBarToken,
+  ts.SyntaxKind.QuestionQuestionToken,
+  ts.SyntaxKind.AmpersandAmpersandToken,
+]);
+
+// A one-word literal is shown when its value lands in a template or JSX
+// expression; compared, keyed or passed on, it stays a code.
+function reachesSentence(node) {
+  let child = node;
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (ts.isTemplateSpan(parent) || ts.isJsxExpression(parent)) return true;
+    const passesValueOn =
+      ts.isParenthesizedExpression(parent) ||
+      (ts.isConditionalExpression(parent) && parent.condition !== child) ||
+      (ts.isBinaryExpression(parent) &&
+        PASSED_ON.has(parent.operatorToken.kind));
+    if (!passesValueOn) return false;
+    child = parent;
+  }
+  return false;
+}
+
 /** Each piece of text a reader could see, with its 1-based line. */
 function* textsOf(path, text) {
   const source = ts.createSourceFile(
@@ -81,7 +104,7 @@ function* textsOf(path, text) {
         ts.isTemplateMiddle(node) ||
         ts.isTemplateTail(node)) &&
       // A code, route or key has no space and starts lowercase.
-      /\s|^[A-Z]/.test(node.text)
+      (/\s|^[A-Z]/.test(node.text) || reachesSentence(node))
     ) {
       yield { line: lineOf(node), text: node.text };
     }

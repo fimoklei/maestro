@@ -83,7 +83,7 @@ describe("ConnectView", () => {
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
 
-    expect(await screen.findByText(/7 primitives found/i)).toBeInTheDocument();
+    expect(await screen.findByText(/7 items found/i)).toBeInTheDocument();
     expect(
       screen.getByText(/deploys never write back to this harness/i),
     ).toBeInTheDocument();
@@ -241,7 +241,7 @@ describe("ConnectView", () => {
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
 
-    await screen.findByText(/7 primitives found/i);
+    await screen.findByText(/7 items found/i);
     const connectCall = fetchMock.mock.calls.find((call) =>
       String(call[0]).startsWith("/api/inventory/connect"),
     );

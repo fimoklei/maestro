@@ -90,6 +90,46 @@ describe("copy guard", () => {
     expect(stdout).toContain("packages/web/src/c.tsx:3: picker");
   });
 
+  it("fails a one-word lowercase retired word that reaches a sentence", () => {
+    plant(
+      "packages/web/src/g.tsx",
+      [
+        "export const g = (n: number) =>",
+        '  `${n} ${n === 1 ? "primitive" : "items"}`;',
+        "export const G = ({ n }: { n: number }) => (",
+        '  <p>{n === 1 ? "drift" : "items"}</p>',
+        ");",
+        "",
+      ].join("\n"),
+    );
+
+    const { status, stdout } = runGuard();
+
+    expect(status).toBe(1);
+    expect(stdout).toBe(
+      "packages/web/src/g.tsx:2: primitive\npackages/web/src/g.tsx:4: drift\n",
+    );
+  });
+
+  it("passes a lowercase code compared, keyed or passed inside a sentence", () => {
+    plant(
+      "packages/web/src/h.tsx",
+      [
+        "type Row = { state: string; on: (key: string) => string };",
+        "export const h = (row: Row) =>",
+        '  `${row.state === "drift" ? "Behind" : row.on("fetch")}`;',
+        "export const H = ({ row }: { row: Row }) => (",
+        "  <p>",
+        '    {row.state === "drift" ? "Behind" : ["primitives"].join("")}',
+        "  </p>",
+        ");",
+        "",
+      ].join("\n"),
+    );
+
+    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+  });
+
   it("reads server messages as well", () => {
     plant(
       "packages/server/src/d.ts",

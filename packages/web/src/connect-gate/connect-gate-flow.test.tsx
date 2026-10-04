@@ -96,7 +96,7 @@ describe("connect gate", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
-    expect(await screen.findByText(/3 primitives found/i)).toBeInTheDocument();
+    expect(await screen.findByText(/3 items found/i)).toBeInTheDocument();
     expect(
       screen.getByText(/deploys never write back to this harness/i),
     ).toBeInTheDocument();
@@ -150,7 +150,7 @@ describe("connect gate", () => {
       JSON.stringify({ path: "https://github.com/fimoklei/agent-harness" }),
     ]);
     expect(await screen.findByText(/harness connected/i)).toBeInTheDocument();
-    expect(await screen.findByText(/3 primitives found/i)).toBeInTheDocument();
+    expect(await screen.findByText(/3 items found/i)).toBeInTheDocument();
     expect(screen.getByText(/cloned harness/i)).toBeInTheDocument();
     expect(
       screen.queryByText(/deploys never write back to this harness/i),
