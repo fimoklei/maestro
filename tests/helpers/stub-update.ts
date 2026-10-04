@@ -14,6 +14,7 @@ export const stubUpdate = () =>
       admits: () => ({ ok: true }),
     },
     selection: stubSelectionWriter(),
+    deployedCleanup: { removeSkillTargets: async () => undefined },
     deployedContent: {
       classify: async () => "unreadable",
       linkedSkillPath: async () => null,

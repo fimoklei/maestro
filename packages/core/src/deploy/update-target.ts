@@ -4,11 +4,13 @@ import type { HarnessSkillTree } from "../harness/skill-movements";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionWriter } from "./apply-selection";
 import type {
+  DeployedCleanupPort,
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
 import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
+import { discardDroppedCopies } from "./discard-dropped-copies";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
@@ -167,6 +169,7 @@ export class UpdateTarget {
     toolPresence: ToolPresencePort;
     copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
     selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
+    deployedCleanup: DeployedCleanupPort;
     // The outcome probe and the linked-folder check; classification is the
     // guard's.
     deployedContent: Pick<DeployedContentPort, "classify" | "linkedSkillPath">;
@@ -276,6 +279,12 @@ export class UpdateTarget {
         };
       }
 
+      await discardDroppedCopies(this.deps.deployedCleanup, {
+        target: input.target,
+        previous: scope.current,
+        desired: scope.desired,
+        tools: scope.tools,
+      });
       const applied = await this.deps.selection.apply({
         target: input.target,
         key,

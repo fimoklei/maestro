@@ -9,6 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  DeployedCleanupAdapter,
   DeployedContentAdapter,
   type DeployedContentState,
   InFlightLocks,
@@ -171,6 +172,9 @@ describe("update HTTP journey", () => {
           },
         }),
         selection,
+        deployedCleanup: new DeployedCleanupAdapter({
+          location: rootPackageLocation(join(home, ".apm")),
+        }),
         // Read from what apm just wrote, never stubbed (#954).
         deployedContent: new DeployedContentAdapter({
           location: rootPackageLocation(join(home, ".apm")),
