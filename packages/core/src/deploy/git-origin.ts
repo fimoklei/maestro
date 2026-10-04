@@ -3,8 +3,10 @@
 
 export type GitOrigin = { host: string; ownerRepo: string };
 
-// scp-like SSH form has no `://` and uses a colon before the path.
-const scpPattern = /^[^/]+@([^:]+):(.+?)(?:\.git)?$/;
+// scp-like SSH form has no `://` and uses a colon before the path. User and
+// host exclude `@`, so each `@` has one place to match: no polynomial
+// backtracking on repeated `@`.
+const scpPattern = /^[^/@]+@([^:@]+):(.+?)(?:\.git)?$/;
 
 // file:, git: and http: parse cleanly but cannot round-trip to a usable skill
 // ref (#152).
