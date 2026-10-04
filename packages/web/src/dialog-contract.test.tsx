@@ -78,7 +78,7 @@ const ON_DIALOG: Row[] = [
     render: ({ running, onClose }) => (
       <DeletionDialog
         skill="research"
-        mode={{ kind: "local", folder: ".apm/skills/research" }}
+        mode={{ kind: "local", folder: ".apm/skills/research", check: "ready" }}
         onClose={onClose}
         onConfirm={vi.fn()}
         deleting={running}

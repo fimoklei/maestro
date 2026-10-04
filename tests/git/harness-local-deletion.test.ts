@@ -41,6 +41,16 @@ describe("deleting a Harness skill that exists nowhere else", () => {
       locks: new InFlightLocks(),
     });
 
+  // Confirms against the folder as it is now, as the dialog's check does.
+  const confirm = async (name: string) => {
+    const check = await deleter().inspect();
+    const skill = check.ok ? check.skills[name] : undefined;
+    return deleter().execute(
+      name,
+      skill?.inClone === true ? skill.workingTree : "",
+    );
+  };
+
   const refs = async () => ({
     clone: (await git(root, "show-ref")).stdout,
     remote: (await git(remote, "show-ref")).stdout,
@@ -79,7 +89,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
   });
 
   it("removes the folder and leaves every other skill alone", async () => {
-    await expect(deleter().execute("scratch")).resolves.toEqual({
+    await expect(confirm("scratch")).resolves.toEqual({
       ok: true,
       name: "scratch",
     });
@@ -90,7 +100,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
   it("leaves every ref in the clone and the remote exactly as it was", async () => {
     const before = await refs();
 
-    await deleter().execute("scratch");
+    await confirm("scratch");
 
     expect(await refs()).toEqual(before);
   });
@@ -100,7 +110,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     await git(root, "add", "staged.md");
     const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
 
-    await deleter().execute("scratch");
+    await confirm("scratch");
 
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
     expect((await git(root, "status", "--porcelain")).stdout).toBe(
@@ -109,7 +119,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
   });
 
   it("refuses a skill the default branch already holds", async () => {
-    await expect(deleter().execute("jobs")).resolves.toEqual({
+    await expect(confirm("jobs")).resolves.toEqual({
       ok: false,
       error: "not-local-only",
     });
@@ -124,7 +134,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
     await writeFile(join(outside, "SKILL.md"), "---\n---\n", "utf8");
     await symlink(outside, join(root, ".apm", "skills", "linked"));
 
-    await expect(deleter().execute("linked")).resolves.toMatchObject({
+    await expect(confirm("linked")).resolves.toMatchObject({
       ok: false,
     });
 
@@ -134,7 +144,7 @@ describe("deleting a Harness skill that exists nowhere else", () => {
   });
 
   it("refuses a skill that is not there at all", async () => {
-    await expect(deleter().execute("absent")).resolves.toEqual({
+    await expect(confirm("absent")).resolves.toEqual({
       ok: false,
       error: "already-gone",
     });

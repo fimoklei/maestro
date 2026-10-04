@@ -106,6 +106,8 @@ export {
 export {
   DeleteLocalSkill,
   type DeleteLocalSkillError,
+  type DeletionCheckResult,
+  type SkillDeletionCheck,
 } from "./harness/delete-local-skill";
 export { GhCliAdapter } from "./harness/gh-cli-adapter";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";

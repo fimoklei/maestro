@@ -11,7 +11,11 @@ const PROPOSE: DeletionMode = {
   seenRemoteTree: TREE,
 };
 
-const LOCAL: DeletionMode = { kind: "local", folder: ".apm/skills/research" };
+const LOCAL: DeletionMode = {
+  kind: "local",
+  folder: ".apm/skills/research",
+  check: "ready",
+};
 
 const renderDialog = (
   overrides: {

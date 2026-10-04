@@ -7,6 +7,7 @@ import type {
   ImportMode,
   ReleasePlan,
   SemverStep,
+  SkillDeletionCheck,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, requestJson } from "../api/http";
@@ -19,6 +20,7 @@ import {
 export const HARNESS_QUERIES = ["harness"] as const;
 const HARNESS_KEY = ["harness", "state"] as const;
 const RELEASE_PLAN_KEY = ["harness", "release-plan"] as const;
+const DELETION_CHECK_KEY = ["harness", "deletion-check"] as const;
 
 // Gated for callers without a connected Harness yet — the endpoint 409s until
 // one is set, and the sidebar reads it on every screen.
@@ -261,11 +263,26 @@ export function usePromoteDeletion() {
   });
 }
 
-// Only the name travels: nothing here reaches a remote (#798).
+// Mount it only inside the Delete skill dialog: `gcTime: 0` drops the reading
+// when the dialog closes, so the next one never confirms against it.
+export function useDeletionCheck() {
+  return useQuery({
+    queryKey: DELETION_CHECK_KEY,
+    queryFn: () =>
+      requestJson<{ skills: Record<string, SkillDeletionCheck> }>(
+        "/api/harness/skill/delete/check",
+      ),
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+// Nothing here reaches a remote (#798). The tree is the folder the dialog's
+// check read; the server refuses a folder that changed since.
 export function useDeleteLocalSkill() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: { name: string }) =>
+    mutationFn: (request: { name: string; seenWorkingTree: string }) =>
       requestJson<{ name: string }>("/api/harness/skill/delete", {
         method: "POST",
         body: JSON.stringify(request),

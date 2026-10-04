@@ -40,3 +40,11 @@ export const IMPORT_UNAVAILABLE = {
   source: "folder cannot be used",
   name: "name cannot be used",
 } as const;
+
+// Inventory's blocked Delete skill gives the same reasons.
+export const DELETE_UNAVAILABLE = {
+  checking: "checking your clone",
+  failed: "clone not read",
+} as const;
+
+export const DELETION_CHECKING = "Checking for uncommitted changes…";

@@ -61,7 +61,11 @@ export function useHarnessPresses(
     action: "delete",
     show: "row",
     name: skillName,
-    failure: localDeletionNotice,
+    failure: (error) =>
+      localDeletionNotice(error, {
+        skill: deleteLocal.variables?.name ?? "",
+        screen: "harness",
+      }),
   });
   const [confirming, setConfirming] = useState<string | null>(null);
   const pendingDeletion =

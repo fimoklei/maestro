@@ -1,14 +1,23 @@
 import type { HarnessStageRow, ReleasePlan, SemverStep } from "@maestro/core";
 import type { ComponentProps } from "react";
+import { HttpError } from "../api/http";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { ImportDialog } from "./import-dialog";
 import type { ImportCheckLoad } from "./import-view-model";
-import { importNotice, releasePlanNotice } from "./notice-copy";
+import {
+  deletionCheckNotice,
+  importNotice,
+  releasePlanNotice,
+} from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { RestoreDialog } from "./restore-dialog";
-import type { useImportCheck, useReleasePlan } from "./use-harness";
+import {
+  useDeletionCheck,
+  type useImportCheck,
+  type useReleasePlan,
+} from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
 import type { useImportFlow } from "./use-import-flow";
 import { WithdrawDialog } from "./withdraw-dialog";
@@ -63,7 +72,14 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           importError={props.importFlow.importWrite.failure}
         />
       ) : null}
-      {deletionRow !== null && mode !== null ? (
+      {deletionRow !== null && mode === "local" ? (
+        <LocalDeletionHost
+          skill={deletionRow.skill}
+          write={props.deleteLocal}
+          onClose={props.onDeletionClose}
+        />
+      ) : null}
+      {deletionRow !== null && mode !== null && mode !== "local" ? (
         <DeletionDialog
           skill={deletionRow.skill}
           mode={mode}
@@ -71,26 +87,16 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           // The dialog closes on success only: a refusal is stated in it,
           // and the way forward is another confirmation (#580).
           onConfirm={() =>
-            mode.kind === "local"
-              ? props.deleteLocal.run(
-                  { name: deletionRow.skill },
-                  { onSuccess: props.onDeletionClose },
-                )
-              : props.deletion.run(
-                  {
-                    name: deletionRow.skill,
-                    seenRemoteTree: mode.seenRemoteTree,
-                  },
-                  { onSuccess: props.onDeletionClose },
-                )
+            props.deletion.run(
+              {
+                name: deletionRow.skill,
+                seenRemoteTree: mode.seenRemoteTree,
+              },
+              { onSuccess: props.onDeletionClose },
+            )
           }
-          deleting={
-            (mode.kind === "local" ? props.deleteLocal : props.deletion)
-              .phase === "running"
-          }
-          deleteError={
-            (mode.kind === "local" ? props.deleteLocal : props.deletion).failure
-          }
+          deleting={props.deletion.phase === "running"}
+          deleteError={props.deletion.failure}
         />
       ) : null}
       {props.restoring !== null ? (
@@ -151,6 +157,62 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
   );
 }
 
+// Mounted only while the dialog stands, so every opening reads the folder
+// afresh, and a stale refusal reads it again before the next confirmation.
+function LocalDeletionHost({
+  skill,
+  write,
+  onClose,
+}: {
+  skill: string;
+  write: Presses["deleteLocalWrite"];
+  onClose: () => void;
+}) {
+  const check = useDeletionCheck();
+  const context = { skill, screen: "harness" } as const;
+  const folder = check.data?.skills[skill];
+  const seenWorkingTree = folder?.inClone === true ? folder.workingTree : null;
+  const checkFailure = check.isError
+    ? deletionCheckNotice("no-answer", context)
+    : check.data !== undefined && seenWorkingTree === null
+      ? deletionCheckNotice("already-gone", context)
+      : null;
+  return (
+    <DeletionDialog
+      skill={skill}
+      mode={{
+        kind: "local",
+        folder: `${SKILLS_DIR}/${skill}`,
+        check: check.isFetching
+          ? "checking"
+          : seenWorkingTree === null
+            ? "failed"
+            : "ready",
+      }}
+      onClose={onClose}
+      onConfirm={() =>
+        seenWorkingTree !== null &&
+        write.run(
+          { name: skill, seenWorkingTree },
+          {
+            onSuccess: onClose,
+            onError: (error) => {
+              if (
+                error instanceof HttpError &&
+                error.code === "confirmation-stale"
+              ) {
+                void check.refetch();
+              }
+            },
+          },
+        )
+      }
+      deleting={write.phase === "running"}
+      deleteError={write.failure ?? checkFailure}
+    />
+  );
+}
+
 function ImportDialogHost(
   props: Omit<ComponentProps<typeof ImportDialog>, "chooser">,
 ) {
@@ -166,7 +228,7 @@ const SKILLS_DIR = ".apm/skills";
 function deletionMode(
   row: HarnessStageRow | null,
   origin: string,
-): DeletionMode | null {
+): Extract<DeletionMode, { kind: "propose" }> | "local" | null {
   if (row === null) {
     return null;
   }
@@ -175,9 +237,7 @@ function deletionMode(
       ? null
       : { kind: "propose", origin, seenRemoteTree: row.remoteTree };
   }
-  return row.localOnly
-    ? { kind: "local", folder: `${SKILLS_DIR}/${row.skill}` }
-    : null;
+  return row.localOnly ? "local" : null;
 }
 
 // Idle until a folder is picked: with nothing to judge there is no refusal to

@@ -18,6 +18,7 @@ import {
   IMPORT_BODY,
   importBodySchema,
   LOCAL_DELETION_BODY,
+  localDeletionBodySchema,
   PATH_BODY,
   PROMOTE_BODY,
   PROPOSAL_BODY,
@@ -80,13 +81,29 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     });
   });
 
+  app.get("/api/harness/skill/delete/check", async (c) => {
+    const result = await deps.deleteLocalSkill.inspect();
+    if (!result.ok) {
+      const { status } = localDeletionErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ skills: result.skills });
+  });
+
   // The name is a claim: core re-reads the local refs and folder before deleting (#798).
   app.post("/api/harness/skill/delete", async (c) => {
-    const body = await parseBody(c, promoteBodySchema, LOCAL_DELETION_BODY);
+    const body = await parseBody(
+      c,
+      localDeletionBodySchema,
+      LOCAL_DELETION_BODY,
+    );
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.deleteLocalSkill.execute(body.data.name);
+    const result = await deps.deleteLocalSkill.execute(
+      body.data.name,
+      body.data.seenWorkingTree,
+    );
     if (!result.ok) {
       const { status } = localDeletionErrorResponses[result.error];
       return c.json({ error: result.error }, status);

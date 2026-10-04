@@ -2,14 +2,15 @@ import { Card } from "../ui/card";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
+import { StatusLine } from "../ui/status-line";
+import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
 
 // The two roads a Harness skill's deletion takes. Proposing it needs the exact
 // origin/HEAD copy the confirmation is given against (#580); removing it on
-// disk needs the folder that goes (#798).
+// disk needs the folder that goes (#798), read fresh while the dialog stands.
 export type DeletionMode =
   | { kind: "propose"; origin: string; seenRemoteTree: string }
-  | { kind: "local"; folder: string };
-
+  | { kind: "local"; folder: string; check: "checking" | "failed" | "ready" };
 export function DeletionDialog({
   skill,
   mode,
@@ -35,7 +36,10 @@ export function DeletionDialog({
         label: "Delete skill",
         verb: "delete",
         tone: "danger",
-        unavailable: null,
+        unavailable:
+          mode.kind === "local" && mode.check !== "ready"
+            ? DELETE_UNAVAILABLE[mode.check]
+            : null,
         onRun: onConfirm,
       }}
       failure={deleteError}
@@ -85,6 +89,9 @@ export function DeletionDialog({
           )}
         </dl>
       </Card>
+      {mode.kind === "local" && mode.check === "checking" ? (
+        <StatusLine>{DELETION_CHECKING}</StatusLine>
+      ) : null}
     </Dialog>
   );
 }

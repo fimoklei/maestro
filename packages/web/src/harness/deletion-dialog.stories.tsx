@@ -27,7 +27,16 @@ export const Ready: Story = {};
 // The other road: the skill exists nowhere else, so there is no deletion to
 // propose and the folder goes from disk.
 export const LocalOnly: Story = {
-  args: { mode: { kind: "local", folder: ".apm/skills/old-skill" } },
+  args: {
+    mode: { kind: "local", folder: ".apm/skills/old-skill", check: "ready" },
+  },
+};
+
+// The folder is read afresh on every opening; Delete skill waits for it.
+export const LocalChecking: Story = {
+  args: {
+    mode: { kind: "local", folder: ".apm/skills/old-skill", check: "checking" },
+  },
 };
 
 export const Deleting: Story = {

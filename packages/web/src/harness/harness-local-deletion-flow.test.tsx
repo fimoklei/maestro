@@ -26,6 +26,32 @@ describe("Harness local deletion", () => {
     ],
   });
 
+  // The folder as the dialog's check reads it.
+  const checked = (workingTree: string) => ({
+    body: {
+      skills: {
+        "old-skill": {
+          inClone: true,
+          workingTree,
+          uncommitted: true,
+          localOnly: true,
+        },
+      },
+    },
+  });
+  const CLEAN = [checked("tree-1")];
+
+  const confirmButton = (dialog: HTMLElement) =>
+    within(dialog).getByRole("button", { name: /^delete skill/i });
+
+  const checkedOpen = async () => {
+    const dialog = await openLocalDeletion();
+    await waitFor(() =>
+      expect(confirmButton(dialog)).not.toHaveAttribute("aria-disabled"),
+    );
+    return dialog;
+  };
+
   const openLocalDeletion = async () => {
     const menu = await openRowMenu("old-skill");
     await userEvent.click(
@@ -50,6 +76,7 @@ describe("Harness local deletion", () => {
     stubHarnessServer({
       read: { body: LOCAL_ONLY },
       localDeletion: { body: { name: "old-skill" } },
+      deletionChecks: CLEAN,
       localDeletions,
     });
     renderHarness();
@@ -77,19 +104,20 @@ describe("Harness local deletion", () => {
         }),
       },
       localDeletion: { body: { name: "old-skill" } },
+      deletionChecks: CLEAN,
       localDeletions,
       deletions,
       promotions,
     });
     renderHarness();
-    const dialog = await openLocalDeletion();
+    const dialog = await checkedOpen();
 
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: /^delete skill$/i }),
-    );
+    await userEvent.click(confirmButton(dialog));
 
     await waitFor(() =>
-      expect(localDeletions).toEqual([{ name: "old-skill" }]),
+      expect(localDeletions).toEqual([
+        { name: "old-skill", seenWorkingTree: "tree-1" },
+      ]),
     );
     // Neither push route was taken: this deletion never reaches GitHub.
     expect(deletions).toEqual([]);
@@ -101,12 +129,11 @@ describe("Harness local deletion", () => {
     stubHarnessServer({
       read: { body: LOCAL_ONLY },
       localDeletion: { body: { error: "not-local-only" }, status: 409 },
+      deletionChecks: CLEAN,
     });
     renderHarness();
-    const dialog = await openLocalDeletion();
-    const confirm = within(dialog).getByRole("button", {
-      name: /^delete skill$/i,
-    });
+    const dialog = await checkedOpen();
+    const confirm = confirmButton(dialog);
 
     await userEvent.click(confirm);
 
@@ -123,6 +150,7 @@ describe("Harness local deletion", () => {
     stubHarnessServer({
       read: { body: LOCAL_ONLY },
       localDeletion: { body: { name: "old-skill" } },
+      deletionChecks: CLEAN,
       localDeletions,
     });
     renderHarness();
@@ -139,5 +167,91 @@ describe("Harness local deletion", () => {
     );
     expect(localDeletions).toEqual([]);
     expect(screen.getByText("old-skill")).toBeVisible();
+  });
+
+  it("keeps Delete skill unavailable while the check reads the folder", async () => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const localDeletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: LOCAL_ONLY },
+      localDeletion: { body: { name: "old-skill" } },
+      localDeletions,
+      deletionChecks: [{ ...checked("tree-1"), heldUntil: held }],
+    });
+    renderHarness();
+    const dialog = await openLocalDeletion();
+
+    expect(
+      within(dialog).getByText("Checking for uncommitted changes…"),
+    ).toBeInTheDocument();
+    await userEvent.click(confirmButton(dialog));
+    expect(localDeletions).toEqual([]);
+
+    release();
+    await waitFor(() =>
+      expect(
+        within(dialog).queryByText("Checking for uncommitted changes…"),
+      ).toBeNull(),
+    );
+    expect(confirmButton(dialog)).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("states that the clone was not read when the check fails, and deletes nothing", async () => {
+    const localDeletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: LOCAL_ONLY },
+      localDeletion: { body: { name: "old-skill" } },
+      localDeletions,
+      deletionChecks: [{ body: { error: "no-answer" }, status: 409 }],
+    });
+    renderHarness();
+    const dialog = await openLocalDeletion();
+
+    expect(await within(dialog).findByText("Clone not read")).toBeVisible();
+    expect(
+      within(dialog).getByText("Git could not read your clone."),
+    ).toBeInTheDocument();
+    await userEvent.click(confirmButton(dialog));
+    expect(localDeletions).toEqual([]);
+  });
+
+  it("reads the folder again after it changed under the dialog, and confirms against the new reading", async () => {
+    const localDeletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: LOCAL_ONLY },
+      localDeletion: {
+        body: { error: "confirmation-stale" },
+        status: 409,
+        retry: { body: { name: "old-skill" } },
+      },
+      localDeletions,
+      deletionChecks: [checked("tree-1"), checked("tree-2")],
+    });
+    renderHarness();
+    const dialog = await checkedOpen();
+
+    await userEvent.click(confirmButton(dialog));
+
+    expect(
+      await within(dialog).findByText("Confirmation out of date"),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        "The old-skill folder changed after this dialog opened.",
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(confirmButton(dialog)).not.toHaveAttribute("aria-disabled"),
+    );
+    await userEvent.click(confirmButton(dialog));
+    await waitFor(() =>
+      expect(localDeletions).toEqual([
+        { name: "old-skill", seenWorkingTree: "tree-1" },
+        { name: "old-skill", seenWorkingTree: "tree-2" },
+      ]),
+    );
   });
 });
