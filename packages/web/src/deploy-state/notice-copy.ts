@@ -28,14 +28,13 @@ type DeployStateCode =
 
 export type DeployStateNotice = NoticeCopy;
 
-export const FIX_AND_RELEASE =
-  "Fix the skill in the Harness, publish a release, then deploy again.";
-
 const RECHECK_TARGET = "Deploy again to re-check the target.";
 
 const DEPLOY_AGAIN = "then deploy again.";
 
 const CREATE_RELEASE_STEP = `Select ${CREATE_RELEASE} on the Harness screen`;
+
+export const FIX_AND_RELEASE = `Fix the skill in the Harness. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`;
 
 const deleteLinkedFolder = (again: string) =>
   `Delete the linked skill folder in the target, ${again}`;

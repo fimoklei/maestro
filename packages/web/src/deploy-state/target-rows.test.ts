@@ -6,12 +6,7 @@ import type {
 import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
-import {
-  globalRows,
-  repoRow,
-  statusSummary,
-  type TargetRow,
-} from "./target-rows";
+import { globalRows, repoRow, statusCard, type TargetRow } from "./target-rows";
 
 const NOW = new Date("2026-09-24T10:00:00Z");
 
@@ -45,35 +40,43 @@ const row = (facts: Partial<TargetRow>): TargetRow => ({
   ...facts,
 });
 
-describe("statusSummary", () => {
+// The Status hover card: one reason sentence, then the read age (copy.md).
+describe("statusCard", () => {
   it("states that a target on the latest release is on it", () => {
-    expect(statusSummary(row({ head: ON_LATEST }), NOW)).toEqual([
-      "On the latest release.",
-      "Compared with the Harness, read just now",
-    ]);
+    expect(statusCard(row({ head: ON_LATEST }), NOW)).toEqual({
+      reason: "On the latest release.",
+      readAge: "Read just now",
+    });
   });
 
-  it("names Update target as the next step on a behind target", () => {
+  it("counts the changed skills in the newer release on a behind target", () => {
     const head = { ...ON_LATEST, release: "v0.3.2", changed: 1, selected: 3 };
-    expect(statusSummary(row({ head, behind: true }), NOW)).toEqual([
-      "New release available: v0.3.4. 1 of 3 deployed skills changed.",
-      "Select Update target to use release v0.3.4.",
-      "Compared with the Harness, read just now",
-    ]);
+    expect(statusCard(row({ head, behind: true }), NOW)).toEqual({
+      reason: "1 of 3 deployed skills changed in v0.3.4.",
+      readAge: "Read just now",
+    });
+  });
+
+  it("says the changes of a newer release could not be read", () => {
+    const head = { ...ON_LATEST, release: "v0.3.2", changed: null };
+    expect(statusCard(row({ head, behind: true }), NOW)).toEqual({
+      reason: "Changes in v0.3.4 could not be read.",
+      readAge: "Read just now",
+    });
   });
 
   it("states that the latest release could not be read", () => {
     expect(
-      statusSummary(row({ head: { ...ON_LATEST, latestRelease: null } }), NOW),
-    ).toEqual([
-      "Latest release could not be read.",
-      "Compared with the Harness, read just now",
-    ]);
+      statusCard(row({ head: { ...ON_LATEST, latestRelease: null } }), NOW),
+    ).toEqual({
+      reason: "Latest release could not be read.",
+      readAge: "Read just now",
+    });
   });
 
-  it("names the way out of a target pinned per skill", () => {
+  it("names the releases of a target pinned per skill", () => {
     expect(
-      statusSummary(
+      statusCard(
         row({
           pinned: [
             { release: "v0.3.1", skills: 2 },
@@ -82,44 +85,108 @@ describe("statusSummary", () => {
         }),
         NOW,
       ),
-    ).toEqual([
-      "2 skills at v0.3.1, 1 at v0.3.0",
-      "Release not adopted. Select Remove skill for each, then Deploy skill.",
-    ]);
+    ).toEqual({ reason: "2 skills at v0.3.1, 1 at v0.3.0.", readAge: null });
   });
 
-  it("names the retry of an unfinished operation, and claims no release", () => {
+  it("states an unfinished operation without its retry, and claims no release", () => {
     expect(
-      statusSummary(
+      statusCard(
         row({
           head: ON_LATEST,
           pending: { kind: "deploy", release: "v0.3.4", desired: ["tdd"] },
         }),
         NOW,
       ),
-    ).toEqual([
-      "Deploy incomplete",
-      "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
-      "Compared with the Harness, read just now",
-    ]);
+    ).toEqual({
+      reason: "Part of the selection is not on disk.",
+      readAge: "Read just now",
+    });
+    expect(
+      statusCard(
+        row({
+          head: ON_LATEST,
+          pending: { kind: "update", release: "v0.3.4", desired: ["tdd"] },
+        }),
+        NOW,
+      ).reason,
+    ).toBe("The update is incomplete.");
   });
 
-  it("claims no latest release on a tool whose global target is behind", () => {
+  it("names another tool as behind on a global tool already on the latest release", () => {
     expect(
-      statusSummary(row({ group: GLOBAL, head: ON_LATEST, behind: true }), NOW),
-    ).toEqual([
-      "Select Update target to use release v0.3.4.",
-      "Compared with the Harness, read just now",
-    ]);
+      statusCard(row({ group: GLOBAL, head: ON_LATEST, behind: true }), NOW),
+    ).toEqual({
+      reason: "Another tool's skills are behind v0.3.4.",
+      readAge: "Read just now",
+    });
   });
 
   it("claims no latest release from a read that failed", () => {
     expect(
-      statusSummary(
+      statusCard(
         row({ group: GLOBAL, head: ON_LATEST, readFailed: true }),
         NOW,
       ),
-    ).toEqual(["Compared with the Harness, read just now"]);
+    ).toEqual({ reason: "Deploy-state not read", readAge: "Read just now" });
+  });
+
+  it("explains an Unknown reading as the update check that did not run", () => {
+    const unknown = { word: "Unknown", family: "unknown", glyph: "?" } as const;
+    expect(statusCard(row({ head: ON_LATEST, status: unknown }), NOW)).toEqual({
+      reason: "Update check did not run.",
+      readAge: "Read just now",
+    });
+  });
+
+  it("states a repository's failed read alone", () => {
+    expect(statusCard(row({ readFailed: true }), NOW)).toEqual({
+      reason: "Deploy-state not read",
+      readAge: null,
+    });
+  });
+
+  it("names the edited skills without the import action", () => {
+    expect(
+      statusCard(
+        row({
+          head: ON_LATEST,
+          primitives: [
+            skill("tdd", "local-edits"),
+            skill("grill"),
+            skill("review", "local-edits"),
+          ],
+        }),
+        NOW,
+      ),
+    ).toEqual({
+      reason:
+        "2 skills have changes that are not in the latest release: tdd and review.",
+      readAge: "Read just now",
+    });
+  });
+
+  it("names a skipped entry without its fix", () => {
+    expect(
+      statusCard(
+        row({
+          head: ON_LATEST,
+          skipped: [
+            {
+              reason: "invalid-package",
+              virtualPath: "skills/tdd",
+              packageType: "invalid",
+            },
+          ],
+        }),
+        NOW,
+      ).reason,
+    ).toBe("The deploy of skills/tdd landed no files.");
+  });
+
+  it("names the other origin of a target with no skill of its own", () => {
+    expect(
+      statusCard(row({ otherOrigins: ["a/b"], primitives: [] }), NOW).reason,
+    ).toBe("Holds skills, hooks and MCP servers deployed from a/b.");
   });
 });
 
@@ -205,25 +272,5 @@ describe("local edits on a target", () => {
       false,
     );
     expect(rows.map(words)).toEqual(["✎ Local edits", "✓ In sync"]);
-  });
-
-  it("names the edited skills first in the Status card", () => {
-    expect(
-      statusSummary(
-        row({
-          head: ON_LATEST,
-          primitives: [
-            skill("tdd", "local-edits"),
-            skill("grill"),
-            skill("review", "local-edits"),
-          ],
-        }),
-        NOW,
-      ),
-    ).toEqual([
-      "2 skills have changes that are not in the latest release: tdd and review. Select Import local edits to keep them.",
-      "On the latest release.",
-      "Compared with the Harness, read just now",
-    ]);
   });
 });

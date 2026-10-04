@@ -58,13 +58,14 @@ export const otherOriginLine = (origins: readonly string[]) =>
 
 const KEEP_LOCAL_EDITS = "Select Import local edits to keep them.";
 
-export const localEditsLine = (names: readonly string[]) =>
+export const localEditsReason = (names: readonly string[]) =>
   names.length === 1
-    ? `1 skill has changes that are not in the latest release: ${names[0]}. ${KEEP_LOCAL_EDITS}`
-    : `${names.length} skills have changes that are not in the latest release: ${joinNames(names)}. ${KEEP_LOCAL_EDITS}`;
+    ? `1 skill has changes that are not in the latest release: ${names[0]}.`
+    : `${names.length} skills have changes that are not in the latest release: ${joinNames(names)}.`;
 
-// A skill row's mark carries its reading's hint as its tooltip.
-export const NO_LONGER_RELEASED_HINT =
-  "This deployed skill is absent from the latest release";
-export const UNREACHED_HINT =
-  "Could not reach the Harness location to check for updates";
+export const localEditsLine = (names: readonly string[]) =>
+  `${localEditsReason(names)} ${KEEP_LOCAL_EDITS}`;
+
+// A skill row's mark carries its reading's hint as its tooltip: one fact, no action.
+export const NO_LONGER_RELEASED_HINT = "Not in the latest release.";
+export const UNREACHED_HINT = "Update check did not run.";
