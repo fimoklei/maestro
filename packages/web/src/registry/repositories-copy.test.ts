@@ -7,6 +7,7 @@ import {
   registerMessage,
   STATUS_READINGS,
   unregisterNotice,
+  WRITE_PROMISE,
 } from "./repositories-copy";
 
 const refusal = (code: string, status = 400) =>
@@ -22,13 +23,13 @@ describe("registerMessage", () => {
 
   it("refuses a folder without Git", () => {
     expect(registerMessage(refusal("not-a-git-repo"))).toBe(
-      "Not a Git repository. Register a valid repository.",
+      "Not a Git repository. Choose a folder that holds one.",
     );
   });
 
   it("separates the Harness from the repositories it deploys to", () => {
     expect(registerMessage(refusal("central-inventory"))).toBe(
-      "This is the Harness, not a valid target. Register a repository.",
+      "This folder is the Harness. Choose a repository you deploy to.",
     );
   });
 
@@ -36,10 +37,10 @@ describe("registerMessage", () => {
   // move is the same whether nothing is there or a file is.
   it("sends a path that is missing or names a file back to another pick", () => {
     expect(registerMessage(refusal("not-found"))).toBe(
-      "Not a valid path. Pick another folder.",
+      "No folder at this path. Choose another folder.",
     );
     expect(registerMessage(refusal("not-a-directory"))).toBe(
-      "Not a valid path. Pick another folder.",
+      "No folder at this path. Choose another folder.",
     );
   });
 
@@ -73,14 +74,12 @@ describe("registerMessage", () => {
   it("never renders the wrapper's own status line for an uncovered code", () => {
     expect(
       registerMessage(new HttpError(500, "Request failed with status 500.")),
-    ).toBe(
-      "Maestro could not register this repository. Try registering it again.",
-    );
+    ).toBe("Nothing was registered. Select Register repository again.");
   });
 
   it("states the same for a failure that never reached the server", () => {
     expect(registerMessage(new TypeError("network down"))).toBe(
-      "Maestro could not register this repository. Try registering it again.",
+      "Nothing was registered. Select Register repository again.",
     );
   });
 });
@@ -107,6 +106,10 @@ describe("the screen's own words", () => {
     expect(EMPTY_SENTENCE).toBe(
       "The repositories you deploy skills to appear here, with the state of each folder.",
     );
+  });
+
+  it("says once that registering changes no files", () => {
+    expect(WRITE_PROMISE).toBe("Registering changes no files.");
   });
 
   it("states the field's one rule before the pick", () => {

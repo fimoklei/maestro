@@ -185,7 +185,9 @@ describe("Harness counter", () => {
     renderSidebar();
 
     expect(
-      await within(author()).findByRole("button", { name: "Harness 3" }),
+      await within(author()).findByRole("button", {
+        name: "Harness 3 pending",
+      }),
     ).toBeInTheDocument();
   });
 

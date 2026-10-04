@@ -17,9 +17,8 @@ export const INVENTORY_NOT_READ = {
 // Empty is an offer, not a failure: the action is the one step that fills the list.
 export const NO_RELEASED_SKILLS = {
   level: "info",
-  label: "No released skills",
-  message:
-    "Inventory shows skills from the latest release. Open Harness, then create a release to add skills.",
+  label: "No released skills yet",
+  message: "Skills from the latest release appear here.",
 } as const;
 
 // The Inventory's band 2 and table (#1040).
@@ -69,8 +68,7 @@ export const deployedToLine = (count: number): string =>
   count === 0
     ? "Not deployed to any target."
     : `Deployed to ${count} ${count === 1 ? "target" : "targets"}`;
-export const moreTargetsLine = (more: number, total: number): string =>
-  `${more} more. Select the row to see all ${total} targets.`;
+export const moreTargetsLine = (more: number): string => `And ${more} more.`;
 export const SOME_TARGETS_NOT_READ = "Some targets could not be read.";
 export const NOT_DEPLOYED_ANYWHERE =
   "Not deployed to any target. Select Deploy skill to choose a target.";

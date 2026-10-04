@@ -266,8 +266,12 @@ export function InventoryView({
     ];
   };
 
+  // One notice per band: a read failure replaces the empty state.
   const noReleased =
-    primitives !== undefined && all.length === 0 && !screen.skeleton;
+    primitives !== undefined &&
+    all.length === 0 &&
+    !screen.skeleton &&
+    screen.notice === null;
 
   return (
     <TableScreen
@@ -303,8 +307,7 @@ export function InventoryView({
       noMatch={view.filterCount > 0 ? NO_FILTER_MATCH : NO_SEARCH_MATCH}
       notice={
         noReleased ? (
-          <div className="flex flex-col gap-inline p-panel">
-            <Notice trigger="load" notice={screen.notice} />
+          <div className="p-panel">
             <Notice
               trigger="load"
               notice={

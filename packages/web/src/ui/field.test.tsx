@@ -66,7 +66,7 @@ describe("Field", () => {
     render(
       <Field
         label="Folder path"
-        error="Not a Git repository. Register a valid repository."
+        error="Not a Git repository. Choose a folder that holds one."
         value="/Users/me/scratch"
         onChange={() => {}}
       />,
@@ -74,7 +74,7 @@ describe("Field", () => {
 
     const input = screen.getByRole("textbox");
     const error = screen.getByText(
-      /Not a Git repository. Register a valid repository./,
+      /Not a Git repository. Choose a folder that holds one./,
     );
     expect(input.compareDocumentPosition(error)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
@@ -82,7 +82,7 @@ describe("Field", () => {
     expect(error).toHaveTextContent("✕");
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAccessibleDescription(
-      /Not a Git repository. Register a valid repository./,
+      /Not a Git repository. Choose a folder that holds one./,
     );
   });
 
@@ -98,7 +98,7 @@ describe("Field", () => {
       <Field
         label="Folder path"
         hint="Maestro reads the folder, it never writes to it."
-        error="Not a Git repository. Register a valid repository."
+        error="Not a Git repository. Choose a folder that holds one."
         value="/Users/me/scratch"
         onChange={() => {}}
       />,

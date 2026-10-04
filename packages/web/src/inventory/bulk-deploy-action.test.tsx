@@ -97,7 +97,9 @@ describe("BulkDeployAction", () => {
     await deploy();
 
     expect(
-      await screen.findByRole("heading", { name: /2 deployed/ }),
+      await screen.findByRole("heading", {
+        name: "Deployed 2 of 2 skills to Global",
+      }),
     ).toBeVisible();
     const fetchMock = fetch as ReturnType<typeof vi.fn>;
     const [, init] = fetchMock.mock.calls.find(
@@ -364,7 +366,9 @@ describe("BulkDeployAction", () => {
     await deploy();
 
     expect(
-      await screen.findByRole("heading", { name: /1 deployed/ }),
+      await screen.findByRole("heading", {
+        name: "Deployed 1 of 1 skill to Global",
+      }),
     ).toBeVisible();
   });
 
@@ -582,7 +586,9 @@ describe("BulkDeployAction", () => {
 
     answer?.();
     expect(
-      await within(dialog).findByRole("heading", { name: /1 deployed/ }),
+      await within(dialog).findByRole("heading", {
+        name: "Deployed 1 of 1 skill to Global",
+      }),
     ).toBeVisible();
     const buttons = within(dialog).getAllByRole("button");
     expect(buttons.at(-1)).toBe(footerClose(dialog));
@@ -619,7 +625,9 @@ describe("BulkDeployAction", () => {
       const onSelectionSpent = renderSpending();
 
       const dialog = await deploy();
-      await within(dialog).findByRole("heading", { name: /1 deployed/ });
+      await within(dialog).findByRole("heading", {
+        name: "Deployed 1 of 1 skill to Global",
+      });
       expect(onSelectionSpent).not.toHaveBeenCalled();
 
       await userEvent.click(footerClose(dialog));
