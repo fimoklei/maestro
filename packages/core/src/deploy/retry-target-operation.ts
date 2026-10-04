@@ -2,7 +2,12 @@
 // behind a fresh local-copy check (#951).
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionWriter } from "./apply-selection";
-import type { DeployedContentPort, DeployTarget } from "./deploy-skill";
+import type {
+  DeployedCleanupPort,
+  DeployedContentPort,
+  DeployTarget,
+} from "./deploy-skill";
+import { discardDroppedCopies } from "./discard-dropped-copies";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import { type CopyVerdict, LocalCopyGuard } from "./local-copy-guard";
 import type { TargetOperation, TargetOperationKind } from "./target-operation";
@@ -48,6 +53,7 @@ export class RetryTargetOperation {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
     selection: SelectionWriter;
+    deployedCleanup: DeployedCleanupPort;
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
     deployedContent: Pick<DeployedContentPort, "classify" | "contentDigest">;
     toolPresence: ToolPresencePort;
@@ -132,6 +138,14 @@ export class RetryTargetOperation {
         };
       }
 
+      if (record.kind === "update") {
+        await discardDroppedCopies(this.deps.deployedCleanup, {
+          target: input.target,
+          previous: record.previous,
+          desired: record.desired,
+          tools: record.tools ?? [],
+        });
+      }
       const applied = await this.deps.selection.apply({
         target: input.target,
         key,

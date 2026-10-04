@@ -12,6 +12,7 @@ function buildUseCase(state: DeployedContentState = "clean") {
   const retry = new RetryTargetOperation({
     registry: { isRegistered: async () => true },
     selection: world.writer,
+    deployedCleanup: world.cleanup,
     deployedContent: {
       classify: async () => state,
       contentDigest: async () => null,
@@ -74,6 +75,37 @@ describe("RetryTargetOperation", () => {
         skills: ["prototype", "review"],
       },
     ]);
+  });
+
+  it("discards a consented edited copy an Update dropped, and finishes", async () => {
+    const { world, retry } = buildUseCase("diverged");
+    world.seed({ release: "v0.6.0", skills: ["prototype", "review"] });
+    world.edits("claude", "review");
+    await world.operations.begin({
+      ...interrupted,
+      kind: "update",
+      release: "v0.7.0",
+      previous: ["prototype", "review"],
+      desired: ["prototype"],
+    });
+    const refused = await retry.execute({ target });
+    expect(refused.ok ? null : refused.error).toBe(
+      "deployed-diverged-from-lock",
+    );
+    expect(world.files.has("/target/.claude/skills/review/SKILL.md")).toBe(
+      true,
+    );
+
+    const result = await retry.execute({
+      target,
+      confirmedCopyReceipt: refused.ok ? undefined : refused.copyReceipt,
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(world.files.has("/target/.claude/skills/review/SKILL.md")).toBe(
+      false,
+    );
+    expect(await world.operations.read("/repo")).toBeNull();
   });
 
   it("clears the operation once the retry converged", async () => {
@@ -203,6 +235,7 @@ describe("RetryTargetOperation", () => {
     const retry = new RetryTargetOperation({
       registry: { isRegistered: async () => false },
       selection: world.writer,
+      deployedCleanup: world.cleanup,
       deployedContent: {
         classify: async () => "clean" as const,
         contentDigest: async () => null,

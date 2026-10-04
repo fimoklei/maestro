@@ -40,6 +40,7 @@ export const stubRetryOperation = (deps: {
   new RetryTargetOperation({
     registry: deps.registry,
     selection: stubSelectionWriter(),
+    deployedCleanup: { removeSkillTargets: async () => undefined },
     deployedContent: {
       classify: async () => "not-deployed",
       contentDigest: async () => null,

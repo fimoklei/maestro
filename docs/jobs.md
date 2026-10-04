@@ -59,7 +59,8 @@ Valid jobs, deliberately not being done.
 - **A job** is an issue labelled `job`, `roadmap` and one or two `theme:*`
   labels. Title:
   a short verb phrase from the user's side. Body: a **job story** — *When
-  [situation], I want to [motivation], so I can [outcome].*
+  [situation], I want to [motivation], so I can [outcome].* Under it, a
+  **brief**: the facts and open questions a grill starts from.
 - **Lanes:** LATER is an open job with no lane label. `job:next` marks the job
   picked to go next; it may stay empty. `job:now` marks exactly one job, the
   one in the loop. DONE is a closed job.
