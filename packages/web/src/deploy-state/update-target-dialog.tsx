@@ -36,7 +36,6 @@ import {
   REMOVED_BY_THIS_RELEASE,
   RETRY_UPDATE,
   releaseMoveLine,
-  selectionAfterLine,
   UNCHANGED,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
@@ -281,11 +280,9 @@ export function UpdateTargetDialog({
             <p id={leadInId} className="m-0">
               {countingSentence(preview.counts)}
             </p>
-            <p className="m-0 text-gray-11">
-              {preview.selection.desired.length === 0
-                ? BECOMES_EMPTY
-                : selectionAfterLine(preview.selection.desired)}
-            </p>
+            {preview.selection.desired.length === 0 ? (
+              <p className="m-0 text-gray-11">{BECOMES_EMPTY}</p>
+            ) : null}
           </div>
 
           <div className="flex flex-col divide-y divide-divider border-divider border-y empty:hidden">

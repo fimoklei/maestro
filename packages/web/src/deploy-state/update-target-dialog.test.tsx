@@ -136,14 +136,10 @@ describe("UpdateTargetDialog", () => {
     expect(within(section).getByText("not added")).toBeTruthy();
   });
 
-  it("states the exact Selection the update leaves behind", () => {
+  it("leaves the selected skills to the sections, never a second list", () => {
     show();
 
-    expect(
-      screen.getByText(
-        "Selected skills after this update: tdd, jobs, grill, brief and worktree.",
-      ),
-    ).toBeTruthy();
+    expect(screen.queryByText(/^Selected skills after/)).toBeNull();
   });
 
   it("states the target becoming Empty when the release removes every skill", () => {

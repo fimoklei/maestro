@@ -1,10 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { FIX_AND_RELEASE } from "./notice-copy";
 import {
   skippedEntryKey,
+  skippedEntryReason,
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
+
+describe("skippedEntryReason", () => {
+  it("states what went wrong, without the fix", () => {
+    expect(
+      skippedEntryReason({
+        reason: "unmanageable-skill",
+        virtualPath: "skills/tdd",
+        packageType: "hybrid",
+      }),
+    ).toBe("skills/tdd is deployed as hybrid, not as a skill.");
+  });
+});
 
 describe("skippedEntryText", () => {
   it("names the unsupported type of a skipped entry", () => {
@@ -26,9 +38,9 @@ describe("skippedEntryText", () => {
       packageType: "hybrid",
     });
 
-    expect(text).toContain("hybrid");
-    // One string, one place: the deploy refusal for the same state says this.
-    expect(text).toContain(FIX_AND_RELEASE);
+    expect(text).toBe(
+      "skills/tdd is deployed as hybrid, not as a skill. Fix the skill in the Harness. Select Create a release on the Harness screen, then deploy again.",
+    );
   });
 
   it("states that a failed deployment landed nothing at all", () => {
@@ -38,7 +50,9 @@ describe("skippedEntryText", () => {
         virtualPath: "skills/tdd",
         packageType: "invalid",
       }),
-    ).toBe(`The deploy of skills/tdd landed no files. ${FIX_AND_RELEASE}`);
+    ).toBe(
+      "The deploy of skills/tdd landed no files. Fix the skill in the Harness. Select Create a release on the Harness screen, then deploy again.",
+    );
   });
 
   it("says one entry could not be read, not that the record is broken", () => {

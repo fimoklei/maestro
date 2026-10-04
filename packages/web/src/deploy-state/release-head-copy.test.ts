@@ -1,18 +1,17 @@
 import type { ReleaseHead } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
+  behindReason,
   changedFact,
   comparedFact,
-  comparedLine,
   copyChipText,
   extraFilesFact,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
-  releaseSentence,
   unfinishedOperationNotice,
-  updateNextStep,
+  unfinishedReason,
 } from "./release-head-copy";
 
 // The approved sentences, pinned as exact strings.
@@ -27,64 +26,38 @@ const head = (over: Partial<ReleaseHead> = {}): ReleaseHead => ({
   ...over,
 });
 
-describe("releaseSentence", () => {
-  it("names the newer release, how much of the selection it changes, and which skills", () => {
-    expect(releaseSentence(head({ changedSkills: ["tdd", "grill"] }))).toBe(
-      "New release available: v0.3.4. 2 of 5 deployed skills changed: tdd and grill.",
+describe("behindReason", () => {
+  it("counts the changed skills in the newer release", () => {
+    expect(behindReason(head())).toBe(
+      "2 of 5 deployed skills changed in v0.3.4.",
     );
-    expect(
-      releaseSentence(head({ changed: 1, changedSkills: ["workflow-ship"] })),
-    ).toBe(
-      "New release available: v0.3.4. 1 of 5 deployed skills changed: workflow-ship.",
-    );
-  });
-
-  it("still names a release that changes nothing selected", () => {
-    expect(releaseSentence(head({ changed: 0, changedSkills: [] }))).toBe(
-      "New release available: v0.3.4. 0 of 5 deployed skills changed.",
+    expect(behindReason(head({ changed: 0 }))).toBe(
+      "0 of 5 deployed skills changed in v0.3.4.",
     );
   });
 
   it("says the changes could not be read rather than counting them", () => {
-    expect(releaseSentence(head({ changed: null }))).toBe(
-      "New release available: v0.3.4. Changes could not be read.",
+    expect(behindReason(head({ changed: null }))).toBe(
+      "Changes in v0.3.4 could not be read.",
     );
   });
 
-  it("says only that the changes could not be read when no newer release is known", () => {
-    expect(releaseSentence(head({ latestRelease: null, changed: null }))).toBe(
-      "Changes could not be read.",
+  it("names another tool when this tool is already on the newer release", () => {
+    expect(behindReason(head({ release: "v0.3.4" }))).toBe(
+      "Another tool's skills are behind v0.3.4.",
     );
-  });
-
-  it("has no sentence for a target on the latest release", () => {
-    expect(releaseSentence(head({ release: "v0.3.4", changed: 0 }))).toBeNull();
   });
 });
 
-describe("comparedLine", () => {
-  it("says when the comparison was read", () => {
-    expect(comparedLine(head(), NOW)).toBe(
-      "Compared with the Harness, read just now",
+describe("unfinishedReason", () => {
+  it("states what an unfinished operation left, without its retry", () => {
+    expect(unfinishedReason("deploy")).toBe(
+      "Part of the selection is not on disk.",
     );
-  });
-
-  it("keeps an older read time rather than claiming it is current", () => {
-    expect(
-      comparedLine(head({ comparedAt: "2026-09-12T09:30:00.000Z" }), NOW),
-    ).toBe("Compared with the Harness, read 30 min ago");
-  });
-
-  it("says so when no comparison has ever succeeded", () => {
-    expect(comparedLine(head({ comparedAt: null }), NOW)).toBe(
-      "Compared with the Harness, not read yet",
+    expect(unfinishedReason("remove")).toBe(
+      "The skill's files are still on disk.",
     );
-  });
-
-  it("says so when the read time is not a moment", () => {
-    expect(comparedLine(head({ comparedAt: "yesterday" }), NOW)).toBe(
-      "Compared with the Harness, not read yet",
-    );
+    expect(unfinishedReason("update")).toBe("The update is incomplete.");
   });
 });
 
@@ -92,14 +65,14 @@ describe("copyChipText", () => {
   it("names a copy that differs from its record", () => {
     expect(copyChipText("local-edits")).toStrictEqual({
       label: "Local edits",
-      hint: "Files changed after deployment. The latest release lacks these changes. Select Import local edits to bring them into the Harness.",
+      hint: "Files changed after deployment.",
     });
   });
 
   it("names a copy with no record to check it against", () => {
     expect(copyChipText("unverified")).toStrictEqual({
       label: "Unverified",
-      hint: "This copy could not be verified against a recorded baseline",
+      hint: "The deployment record cannot check this copy.",
     });
   });
 });
@@ -233,11 +206,5 @@ describe("the hover card's release lines (#1125)", () => {
   it("states the latest release, or that it is unknown", () => {
     expect(ON_LATEST_RELEASE).toBe("On the latest release.");
     expect(LATEST_RELEASE_UNKNOWN).toBe("Latest release could not be read.");
-  });
-
-  it("names Update target as the way to the newer release", () => {
-    expect(updateNextStep("v0.3.4")).toBe(
-      "Select Update target to use release v0.3.4.",
-    );
   });
 });

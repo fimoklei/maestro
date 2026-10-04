@@ -52,9 +52,6 @@ export const NOT_ADDED = "not added";
 // Maestro's own reading from content hashes, never apm's.
 export const NO_CONTENT_CHANGES = "No content changes";
 
-export const selectionAfterLine = (desired: readonly string[]): string =>
-  `Selected skills after this update: ${joinNames(desired)}.`;
-
 export const BECOMES_EMPTY =
   "This release removes every selected skill. The target will become Empty.";
 
@@ -116,4 +113,5 @@ export function outcomeDetail(
 
 export const UPDATE_INCOMPLETE = "Update incomplete";
 
-export const UPDATE_INCOMPLETE_SENTENCE = `The update is incomplete. ${RETRY_UPDATE_STEP}`;
+export const UPDATE_INCOMPLETE_REASON = "The update is incomplete.";
+export const UPDATE_INCOMPLETE_SENTENCE = `${UPDATE_INCOMPLETE_REASON} ${RETRY_UPDATE_STEP}`;

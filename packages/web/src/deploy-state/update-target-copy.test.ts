@@ -19,7 +19,6 @@ import {
   RETRY_UPDATE,
   releaseMoveLine,
   SECTION_HEADINGS,
-  selectionAfterLine,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
@@ -90,12 +89,6 @@ describe("Update target copy", () => {
 
   it("states a release that touches nothing selected", () => {
     expect(NO_CONTENT_CHANGES).toBe("No content changes");
-  });
-
-  it("states the exact Selection the update leaves behind", () => {
-    expect(selectionAfterLine(["tdd", "grill", "jobs"])).toBe(
-      "Selected skills after this update: tdd, grill and jobs.",
-    );
   });
 
   it("states an update that leaves no skill as the Empty it makes", () => {

@@ -3,6 +3,7 @@ import {
   GLOBAL_NOT_READ,
   HARNESS_ORIGIN_NOT_READ,
   localEditsLine,
+  localEditsReason,
   NO_FILTER_MATCH,
   NO_LONGER_RELEASED_HINT,
   NO_TOOL_DETECTED,
@@ -95,11 +96,16 @@ describe("Deploy-state copy", () => {
   });
 
   it("keeps the hints of the two drift marks", () => {
-    expect(NO_LONGER_RELEASED_HINT).toBe(
-      "This deployed skill is absent from the latest release",
+    expect(NO_LONGER_RELEASED_HINT).toBe("Not in the latest release.");
+    expect(UNREACHED_HINT).toBe("Update check did not run.");
+  });
+
+  it("names every skill with local edits, the reason alone", () => {
+    expect(localEditsReason(["tdd"])).toBe(
+      "1 skill has changes that are not in the latest release: tdd.",
     );
-    expect(UNREACHED_HINT).toBe(
-      "Could not reach the Harness location to check for updates",
+    expect(localEditsReason(["tdd", "review"])).toBe(
+      "2 skills have changes that are not in the latest release: tdd and review.",
     );
   });
 

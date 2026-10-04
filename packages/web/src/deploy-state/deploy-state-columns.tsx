@@ -17,7 +17,7 @@ import {
   TARGET_LABEL,
 } from "./deploy-state-copy";
 import { targetRowItems } from "./target-menu";
-import { statusSummary, type TargetRow } from "./target-rows";
+import { statusCard, type TargetRow } from "./target-rows";
 
 export type TargetAction = "deploy" | "update" | "retry" | "import";
 
@@ -36,7 +36,7 @@ function StatusCard({ row }: { row: TargetTableRow }) {
   if (row.status === null) {
     return null;
   }
-  const lines = statusSummary(row, now);
+  const { reason, readAge } = statusCard(row, now);
   return (
     <HoverCard
       focused={active}
@@ -46,11 +46,8 @@ function StatusCard({ row }: { row: TargetTableRow }) {
             <StatusBadge reading={row.status} />
             {row.release ? <ReleaseValue release={row.release} /> : null}
           </div>
-          {lines.map((line) => (
-            <p key={line} className="m-0 text-gray-11">
-              {line}
-            </p>
-          ))}
+          {reason ? <p className="m-0 text-gray-11">{reason}</p> : null}
+          {readAge ? <p className="m-0 text-gray-11">{readAge}</p> : null}
         </div>
       }
     >

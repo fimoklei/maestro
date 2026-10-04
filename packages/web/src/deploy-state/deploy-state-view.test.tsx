@@ -410,7 +410,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("Unknown"));
   });
 
-  it("sums up the status on hover: the newer release and when it was compared", async () => {
+  it("holds one reason and the read age in the status hover card", async () => {
     stubServer(() => ({
       repos: ["/Users/me/a"],
       repo: {
@@ -426,14 +426,13 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await findRow("…/me/a");
     await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
 
+    const reason = await screen.findByText(
+      "2 of 5 deployed skills changed in v0.3.4.",
+    );
+    const card = reason.parentElement as HTMLElement;
     expect(
-      await screen.findByText(
-        "New release available: v0.3.4. 2 of 5 deployed skills changed: tdd.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Compared with the Harness, read just now"),
-    ).toBeInTheDocument();
+      Array.from(card.querySelectorAll("p"), (line) => line.textContent),
+    ).toEqual(["2 of 5 deployed skills changed in v0.3.4.", "Read just now"]);
   });
 });
 
@@ -549,17 +548,17 @@ describe("Deploy-state — Re-read and freshness", () => {
       await findRow("…/me/a");
       expect(await screen.findByText("Read just now")).toBeInTheDocument();
       await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
-      expect(
-        await screen.findByText("Compared with the Harness, read just now"),
-      ).toBeInTheDocument();
+      const card = (
+        await screen.findByText("2 of 5 deployed skills changed in v0.3.4.")
+      ).parentElement as HTMLElement;
+      expect(within(card).getByText("Read just now")).toBeInTheDocument();
       const reads = fetchMock.mock.calls.length;
 
       await act(() => vi.advanceTimersByTimeAsync(2 * 60_000));
 
-      expect(screen.getByText("Read 2 min ago")).toBeInTheDocument();
-      expect(
-        screen.getByText("Compared with the Harness, read 2 min ago"),
-      ).toBeInTheDocument();
+      // Band 2 and the card, each once.
+      expect(screen.getAllByText("Read 2 min ago")).toHaveLength(2);
+      expect(within(card).getByText("Read 2 min ago")).toBeInTheDocument();
       expect(fetchMock.mock.calls.length).toBe(reads);
     } finally {
       vi.useRealTimers();

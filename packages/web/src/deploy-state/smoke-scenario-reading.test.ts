@@ -8,7 +8,7 @@ import {
 import { driftViewModel } from "../drift/drift-view-model";
 import { unfinishedOperationNotice } from "./release-head-copy";
 import { skillMark } from "./skill-mark";
-import { repoRow, statusSummary } from "./target-rows";
+import { repoRow, statusCard } from "./target-rows";
 
 const REPO = "/sandbox/home/Projects/scenarios/behind";
 
@@ -244,6 +244,6 @@ describe("readCockpit agrees with the Deploy-state screen", () => {
 
     expect(
       readCockpit({ deployState: null, drift: { ok: false } }).status,
-    ).toBe(statusSummary(row, new Date())[0]);
+    ).toBe(statusCard(row, new Date()).reason);
   });
 });
