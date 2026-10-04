@@ -1,6 +1,8 @@
 import type { HarnessFreshness } from "@maestro/core";
 import { useNow } from "./use-now";
 
+export const NOT_READ_YET = "Not read yet";
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -60,10 +62,10 @@ export function freshnessLine(
     return since === null ? null : `Read ${since}`;
   }
   if (outcome === null) {
-    return "Not read yet";
+    return NOT_READ_YET;
   }
   if (outcome === "fetched") {
-    return since === null ? "Not read yet" : `Read ${since}`;
+    return since === null ? NOT_READ_YET : `Read ${since}`;
   }
   // A failure never claims a verdict GitHub has not given: no permission gate,
   // no expired-token guess (#516).

@@ -5,7 +5,7 @@ import type {
   PinnedPerSkill,
   ReleaseHead,
 } from "@maestro/core";
-import { ago } from "../ui/freshness";
+import { ago, NOT_READ_YET } from "../ui/freshness";
 import { joinNames } from "./join-names";
 import {
   RETRY_UPDATE,
@@ -117,7 +117,7 @@ export const latestReleaseFact = (head: ReleaseHead | undefined) =>
 
 export function comparedFact(head: ReleaseHead, now: Date): string {
   const since = head.comparedAt === null ? null : ago(head.comparedAt, now);
-  return since === null ? "Not read yet" : `Read ${since}`;
+  return since === null ? NOT_READ_YET : `Read ${since}`;
 }
 
 const COPY_CHIPS = {

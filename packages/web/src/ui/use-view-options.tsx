@@ -2,6 +2,7 @@ import type { RowData } from "@tanstack/react-table";
 import { ListFilter, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import type { DataTableProps } from "./data-table";
+import { NOT_READ_YET } from "./freshness";
 import { Icon } from "./icon";
 import type { OptionMenuProps } from "./option-menu";
 import {
@@ -24,8 +25,6 @@ export interface ViewOptionsConfig<T extends RowData> {
   status: {
     words: readonly string[];
     of: (row: T) => string | null;
-    /** The group of a row with no status yet; null: no Status grouping. */
-    unread: string | null;
   };
   /** The screen's own groupings; None and Status are added. */
   groupings: readonly (Option & { groups: Groups<T> })[];
@@ -57,7 +56,6 @@ export function useViewOptions<T extends RowData>(
   config: ViewOptionsConfig<T>,
 ): ViewOptions<T> {
   const { kind, status } = config;
-  const { unread } = status;
   const [kindValue, setKind] = useState("all");
   const [statuses, setStatuses] = useState<ReadonlySet<string>>(new Set());
   const [grouping, setGrouping] = useState(config.initialGrouping);
@@ -66,18 +64,14 @@ export function useViewOptions<T extends RowData>(
   const groupings = [
     { value: "none", label: NONE, groups: undefined },
     ...config.groupings,
-    ...(unread === null
-      ? []
-      : [
-          {
-            value: "status",
-            label: STATUS_LABEL,
-            groups: {
-              key: (row: T) => status.of(row) ?? unread,
-              order: status.words,
-            },
-          },
-        ]),
+    {
+      value: "status",
+      label: STATUS_LABEL,
+      groups: {
+        key: (row: T) => status.of(row) ?? NOT_READ_YET,
+        order: status.words,
+      },
+    },
   ];
   const unavailable = rows.length === 0 ? config.unavailable : undefined;
   const filterCount = (kindValue === "all" ? 0 : 1) + statuses.size;

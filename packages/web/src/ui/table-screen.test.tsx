@@ -453,7 +453,6 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
     status: {
       words: ["Wilting", "Healthy"],
       of: (row) => row.status,
-      unread: "Not read yet",
     },
     groupings: [
       { value: "kind", label: "Kind", groups: { key: (row) => row.kind } },

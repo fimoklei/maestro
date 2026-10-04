@@ -199,7 +199,6 @@ export function DeployStateView() {
     status: {
       words: TARGET_STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
-      unread: null,
     },
     groupings: [
       {
