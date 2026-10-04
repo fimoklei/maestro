@@ -86,7 +86,7 @@ _Avoid_: undeploy (constructed jargon), uninstall (APM's verb for the mechanism)
 
 **Skill restoration**:
 Recovery of a locally deleted skill folder in the Working Harness from the last local commit, without changing its proposal.
-_Avoid_: undo deletion, which implies recovering the exact pre-deletion state.
+_Avoid_: undo deletion, which implies recovering the exact pre-deletion state; restore for returning a folder to the default branch, which is **Discard change**.
 
 **Proposal**:
 One skill's change offered for review: the branch **Propose change** pushed, and the pull request opened over it. A proposal ends when its pull request is merged; the branch itself may outlive it, and a later change to that skill on the default branch never revives it. Without a pull-request check, Maestro cannot see the end and reads the branch as before (#890).
@@ -186,6 +186,7 @@ details may name the exact APM mechanism or file.
 | Reviewer asked for changes | **Changes requested** | GitHub's review verdict on an open proposal. It survives an update to the proposal; only GitHub clears it. **Draft** outranks it when both apply. |
 | Unreleased skill change | **Pending release** | This skill differs between the Harness default branch and the latest release. Explain as *Merged, not yet released*; approval alone is not a merge. |
 | Harness skill deletion | **Delete** / **Deletion** / **Deleted** | *Delete* is the verb, *deletion* is the noun, and *deleted* is the state. Use these forms throughout the Harness journey, including proposed deletions; never *remove* for this concept. The confirmation reads *Delete {skill}* and confirms with **Delete skill**. *Delete skill* always removes the folder from the Working Harness; when the skill is on the Harness default branch, **Propose change** then offers the deletion for review (#1335). |
+| Discard an unproposed Harness edit | **Discard change** | After a confirmation, replaces a **Not yet proposed** skill folder in the Working Harness with its copy on the default branch. Deployed copies remain unchanged. Say *replace*, never *restore*: *restore* belongs to **Restore skill** (Skill restoration). Never **Discard local edits**, which acts on a deployed copy (#1375). |
 | Skill restoration | **Restore skill** / **Restore {skill}** | The action and confirmation button read **Restore skill**; the dialog title reads **Restore {skill}**. Never **Undo deletion**. |
 | Proposal without a pull request | **Pull request missing** | A prepared proposal has no matching pull request, confirmed by a complete check. It is not Pending review. |
 | Merged proposal, default branch not yet read | **Proposal merged** | GitHub merged the pull request and the Harness default branch has not been read since. It is the normal end of a review, so it carries no amber marking; the row leaves Pending review on the next read. Never **Pull request missing**, which claims no request ever existed. |

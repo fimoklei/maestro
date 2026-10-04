@@ -5,6 +5,7 @@ import { localDeletionNotice } from "./local-deletion-copy";
 import {
   CONCURRENT_CHANGE_NOTICE,
   deletionNotice,
+  discardNotice,
   harnessStateNotice,
   importNotice,
   localEditsRefusal,
@@ -918,6 +919,155 @@ const suites: [
           message:
             "Nothing was restored. Put the .apm/skills folder back in the Harness clone, then Restore skill again.",
           detail: "Maestro could not read the Harness skills folder.",
+        },
+      ],
+    ],
+  ],
+  [
+    "discardNotice",
+    (error: unknown) => discardNotice(error, "tdd"),
+    {
+      level: "error",
+      label: "Change not discarded",
+      message:
+        "Nothing was discarded. The Maestro server did not answer. Discard change again.",
+    },
+    [
+      [
+        "not-configured",
+        {
+          level: "error",
+          label: "No Harness connected",
+          message:
+            "Nothing was discarded. Select Change Harness location in Settings.",
+        },
+      ],
+      [
+        "invalid-skill",
+        {
+          level: "error",
+          label: "Unusable skill name",
+          message:
+            "Nothing was discarded. A skill name uses lowercase letters, digits and single hyphens, like code-review.",
+        },
+      ],
+      [
+        "no-answer",
+        {
+          level: "error",
+          label: "Clone not read",
+          message:
+            "Nothing was discarded. Close this dialog, then select Discard change again.",
+          detail: "Git could not read your clone.",
+        },
+      ],
+      [
+        "already-proposed",
+        {
+          level: "error",
+          label: "Change already proposed",
+          message:
+            "Nothing was discarded. Select Re-read Harness to see the skill as it is now.",
+          detail: "tdd now has a proposal branch or pull request.",
+        },
+      ],
+      [
+        "nothing-to-discard",
+        {
+          level: "error",
+          label: "Nothing to discard",
+          message:
+            "Nothing was discarded. Select Re-read Harness to see the skill as it is now.",
+          detail: "tdd has no change that waits for a proposal.",
+        },
+      ],
+      [
+        "confirmation-stale",
+        {
+          level: "error",
+          label: "Confirmation out of date",
+          message:
+            "Nothing was discarded. Select Re-read Harness, then Discard change again.",
+          detail: "The default branch moved after this confirmation.",
+        },
+      ],
+      [
+        "destination-unsafe",
+        {
+          level: "error",
+          label: "Folder outside the Harness",
+          message:
+            "Nothing was discarded. Replace the link with a real folder, then Discard change again.",
+          detail:
+            "The skill folder resolves outside the Harness skills folder.",
+        },
+      ],
+      [
+        "discard-in-progress",
+        {
+          level: "error",
+          label: "Harness already changing",
+          message:
+            "Nothing was discarded. Wait for that change to finish, then Discard change again.",
+          detail: "Maestro changes one Harness at a time.",
+        },
+      ],
+      [
+        "discard-failed",
+        {
+          level: "error",
+          label: "Change not discarded",
+          message:
+            "Nothing was discarded. Make the Harness skills folder writable, then Discard change again.",
+        },
+      ],
+      [
+        "sparse-checkout",
+        {
+          level: "error",
+          label: "Partial clone",
+          message:
+            "Nothing was discarded. Connect a complete clone to discard changes.",
+          detail: "A partial clone does not hold every file of the skill.",
+        },
+      ],
+      [
+        "merge-in-progress",
+        {
+          level: "error",
+          label: "Unfinished merge",
+          message:
+            "Nothing was discarded. Finish or abort the merge, then Discard change again.",
+          detail: "A half-merged working tree does not state what changed.",
+        },
+      ],
+      [
+        "rebase-in-progress",
+        {
+          level: "error",
+          label: "Unfinished rebase",
+          message:
+            "Nothing was discarded. Finish or abort the rebase, then Discard change again.",
+          detail: "A half-rebased working tree does not state what changed.",
+        },
+      ],
+      [
+        "unresolved-conflicts",
+        {
+          level: "error",
+          label: "Unresolved conflicts",
+          message:
+            "Nothing was discarded. Resolve the conflicts, then Discard change again.",
+          detail: "A conflicted working tree does not state what changed.",
+        },
+      ],
+      [
+        "unreadable",
+        {
+          level: "error",
+          label: "Unreadable working tree",
+          message:
+            "Nothing was discarded. Make the Harness folder readable, then Discard change again.",
         },
       ],
     ],

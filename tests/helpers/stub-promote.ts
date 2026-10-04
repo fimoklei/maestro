@@ -1,6 +1,7 @@
 // Every way a skill leaves the working tree, with no harness connected.
 import {
   DeleteLocalSkill,
+  DiscardSkillChange,
   InFlightLocks,
   NodeCopyTreeFs,
   PromoteSkill,
@@ -19,6 +20,7 @@ export function stubPromotes(): {
   promoteDeletion: PromoteSkillDeletion;
   deleteLocalSkill: DeleteLocalSkill;
   restoreSkill: RestoreSkill;
+  discardSkillChange: DiscardSkillChange;
   proposals: ProposalActions;
 } {
   const deps = {
@@ -40,6 +42,12 @@ export function stubPromotes(): {
     }),
     restoreSkill: new RestoreSkill({
       ...deps,
+      fs: { realpath: async (path) => path },
+      copyFs: new NodeCopyTreeFs(),
+    }),
+    discardSkillChange: new DiscardSkillChange({
+      ...deps,
+      readStages: async () => null,
       fs: { realpath: async (path) => path },
       copyFs: new NodeCopyTreeFs(),
     }),

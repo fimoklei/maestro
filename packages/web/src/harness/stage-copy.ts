@@ -8,6 +8,7 @@ import type {
 import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
 import type { StatusFamily } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
+import { offersDiscard } from "./row-actions";
 
 export const STAGE_NAMES: Record<HarnessStage, string> = {
   "pending-proposal": "Pending proposal",
@@ -111,8 +112,11 @@ export function detailSentence(
   const deleteLocally = `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
   switch (row.status) {
     case "not-yet-proposed":
-      return row.deletion
-        ? deleteLocally
+      if (row.deletion) {
+        return deleteLocally;
+      }
+      return offersDiscard(row)
+        ? `Your local copy differs from ${branch}. Select Propose change to send it for review, or Discard change to match ${branch} again.`
         : `Your local copy differs from ${branch}. Select Propose change to send it for review.`;
     case "deleted-locally":
       return deleteLocally;

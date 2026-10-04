@@ -18,6 +18,7 @@ import { promisify } from "node:util";
 import {
   ConfigStore,
   DeleteLocalSkill,
+  DiscardSkillChange,
   HarnessFreshnessStore,
   HarnessGitAdapter,
   type HarnessState,
@@ -167,6 +168,17 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       }),
       restoreSkill: new RestoreSkill({
         resolveRoot,
+        fs,
+        copyFs: new NodeCopyTreeFs(),
+        git: new HarnessGitAdapter(),
+        locks: new InFlightLocks(),
+      }),
+      discardSkillChange: new DiscardSkillChange({
+        resolveRoot,
+        readStages: async () => {
+          const read = await harness.execute();
+          return read.ok ? read.state.stages : null;
+        },
         fs,
         copyFs: new NodeCopyTreeFs(),
         git: new HarnessGitAdapter(),

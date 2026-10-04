@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import {
   ConfigStore,
   DeleteLocalSkill,
+  DiscardSkillChange,
   HarnessFreshnessStore,
   HarnessGitAdapter,
   type HarnessState,
@@ -120,16 +121,17 @@ export function useHarnessStages() {
     });
     const locks = new InFlightLocks();
     const resolveRoot = async () => await fs.realpath(root);
+    const harness = new ReadHarnessState({
+      resolveRoot,
+      git: new HarnessGitAdapter(),
+      freshness: new HarnessFreshnessStore({ store }),
+      review,
+    });
     return createApp({
       ...stubImports(),
       registry,
       inventory,
-      harness: new ReadHarnessState({
-        resolveRoot,
-        git: new HarnessGitAdapter(),
-        freshness: new HarnessFreshnessStore({ store }),
-        review,
-      }),
+      harness,
       publish: stubPublish(),
       promote: new PromoteSkill({
         resolveRoot,
@@ -153,6 +155,17 @@ export function useHarnessStages() {
       }),
       restoreSkill: new RestoreSkill({
         resolveRoot,
+        fs,
+        copyFs: new NodeCopyTreeFs(),
+        git: new HarnessGitAdapter(),
+        locks,
+      }),
+      discardSkillChange: new DiscardSkillChange({
+        resolveRoot,
+        readStages: async () => {
+          const read = await harness.execute();
+          return read.ok ? read.state.stages : null;
+        },
         fs,
         copyFs: new NodeCopyTreeFs(),
         git: new HarnessGitAdapter(),

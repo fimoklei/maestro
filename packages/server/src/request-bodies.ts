@@ -138,6 +138,13 @@ export const localDeletionBodySchema = z.object({
   seenWorkingTree: z.string(),
 });
 
+// The tree is compared against a freshly read default branch, and is the copy
+// that replaces the folder (#1375).
+export const discardBodySchema = z.object({
+  name: z.string(),
+  seenRemoteTree: z.string(),
+});
+
 // The commit is compared against a freshly read HEAD, never used as the thing
 // to restore.
 export const restoreBodySchema = z.object({
@@ -186,6 +193,13 @@ export const RESTORE_BODY: RequestShape = {
     "Nothing was restored. Reload the page, then restore the skill again.",
   detail:
     "The request carries a skill name and the local commit it was confirmed against.",
+};
+
+export const DISCARD_BODY: RequestShape = {
+  message:
+    "Nothing was discarded. Reload the page, then discard the change again.",
+  detail:
+    "The request carries a skill name and the default-branch tree it was confirmed against: { name: string, seenRemoteTree: string }.",
 };
 
 export const RELEASE_BODY: RequestShape = {

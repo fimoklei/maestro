@@ -180,7 +180,8 @@ export function HarnessView({
   const localSettled =
     !refresh.isPending &&
     !harness.isFetching &&
-    presses.deleteLocal.isPending === false;
+    presses.deleteLocal.isPending === false &&
+    presses.discard.isPending === false;
   const sections = state === undefined ? [] : stageSections(state);
   const rows: HarnessTableRow[] =
     state === undefined
@@ -369,6 +370,10 @@ export function HarnessView({
           restoring={presses.restoring}
           restore={presses.restoreWrite}
           onRestoreClose={presses.closeRestore}
+          discarding={presses.discarding}
+          discard={presses.discardWrite}
+          onDiscardClose={presses.closeDiscard}
+          defaultBranch={state.defaultBranch}
           withdrawing={presses.withdrawing}
           proposalAction={presses.proposalWrite}
           onWithdrawClose={presses.closeWithdrawal}

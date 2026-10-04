@@ -6,6 +6,7 @@ export type ActionKey =
   | "remove"
   | "delete"
   | "restore"
+  | "discard"
   | "propose"
   | "withdraw"
   | "reopen"
@@ -24,6 +25,8 @@ export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
   remove: { busy: "Removing…", done: "Removed" },
   delete: { busy: "Deleting…", done: "Deleted" },
   restore: { busy: "Restoring…", done: "Restored" },
+  // "Discarded tdd." would read as the whole skill gone (#1375).
+  discard: { busy: "Discarding…", done: "Discarded change to" },
   propose: { busy: "Proposing…", done: "Proposed" },
   withdraw: { busy: "Withdrawing…", done: "Withdrew" },
   reopen: { busy: "Reopening…", done: "Reopened" },

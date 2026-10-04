@@ -296,6 +296,20 @@ describe("Detail sentences", () => {
     },
   );
 
+  // Over a default-branch copy the row also offers Discard change (#1375).
+  it("names both controls on a change to a skill the default branch holds", () => {
+    expect(
+      detailSentence(
+        row("pending-proposal", "not-yet-proposed", {
+          remoteTree: "remote-tdd",
+        }),
+        CONTEXT,
+      ),
+    ).toBe(
+      "Your local copy differs from main. Select Propose change to send it for review, or Discard change to match main again.",
+    );
+  });
+
   // One next action: Restore skill stays in the row menu (#1396).
   it.each(["not-yet-proposed", "deleted-locally"] as const)(
     "names Propose change alone on a restorable %s row",

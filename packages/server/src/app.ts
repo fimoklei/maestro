@@ -12,6 +12,7 @@ import {
   DeployedLocation,
   DeployedRefAdapter,
   DeploySkill,
+  DiscardSkillChange,
   GhCliAdapter,
   GitCloneAdapter,
   GitHarnessScaffoldAdapter,
@@ -356,6 +357,18 @@ function realDeps(): AppDeps {
     // Behind the same lock, so a restoration never races a push reading the tree.
     restoreSkill: new RestoreSkill({
       resolveRoot: harnessRoot,
+      fs,
+      copyFs: copyTreeFs,
+      git: harnessGit,
+      locks: harnessPromoteLocks,
+    }),
+    // Rechecks the stage the row was read in, behind the same lock.
+    discardSkillChange: new DiscardSkillChange({
+      resolveRoot: harnessRoot,
+      readStages: async () => {
+        const read = await harness.execute();
+        return read.ok ? read.state.stages : null;
+      },
       fs,
       copyFs: copyTreeFs,
       git: harnessGit,

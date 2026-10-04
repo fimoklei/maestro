@@ -7,17 +7,23 @@ import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
 import { useWriteAction } from "../ui/use-write-action";
 import { rowId } from "./harness-columns";
-import type { LocalDeletionTarget, RestoreTarget } from "./harness-dialogs";
+import type {
+  DiscardTarget,
+  LocalDeletionTarget,
+  RestoreTarget,
+} from "./harness-dialogs";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
   deletionNotice,
+  discardNotice,
   promoteNotice,
   proposalNotice,
   restoreNotice,
 } from "./notice-copy";
-import type { RowActionHandlers } from "./row-actions";
+import { offersDiscard, type RowActionHandlers } from "./row-actions";
 import {
   useDeleteLocalSkill,
+  useDiscardSkillChange,
   usePromoteDeletion,
   usePromoteSkill,
   useProposalAction,
@@ -87,6 +93,18 @@ export function useHarnessPresses(
     failure: restoreNotice,
   });
   const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
+
+  const discard = useDiscardSkillChange();
+  const discardWrite = useWriteAction(discard, {
+    report,
+    action: "discard",
+    show: "row",
+    name: skillName,
+    failure: (error) => discardNotice(error, discard.variables?.name ?? ""),
+  });
+  // Frozen at the press, like a restore: a later read never rewrites the tree
+  // the author confirms.
+  const [discarding, setDiscarding] = useState<DiscardTarget | null>(null);
 
   const proposalAction = useProposalAction();
   const proposalWrite = useWriteAction(proposalAction, {
@@ -163,6 +181,13 @@ export function useHarnessPresses(
       deleteLocal.reset();
       setLocalDeletion({ skill: row.skill, localOnly: row.localOnly });
     },
+    discard: (row) => {
+      if (!offersDiscard(row)) {
+        return;
+      }
+      discard.reset();
+      setDiscarding({ name: row.skill, seenRemoteTree: row.remoteTree });
+    },
     restore: (row, commit) => {
       restore.reset();
       setRestoring({
@@ -178,10 +203,12 @@ export function useHarnessPresses(
     deletion,
     deleteLocal,
     restore,
+    discard,
     proposalAction,
     deletionWrite,
     deleteLocalWrite,
     restoreWrite,
+    discardWrite,
     proposalWrite,
     handlers,
     failure,
@@ -194,6 +221,8 @@ export function useHarnessPresses(
     closeLocalDeletion: () => setLocalDeletion(null),
     restoring,
     closeRestore: () => setRestoring(null),
+    discarding,
+    closeDiscard: () => setDiscarding(null),
     withdrawing,
     closeWithdrawal: () => setWithdrawing(null),
   };

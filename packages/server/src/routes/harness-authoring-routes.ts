@@ -4,6 +4,7 @@ import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
 import {
   deletionErrorResponses,
+  discardErrorResponses,
   importErrorResponses,
   localDeletionErrorResponses,
   promoteErrorResponses,
@@ -14,7 +15,9 @@ import {
 import {
   connectBodySchema,
   DELETION_BODY,
+  DISCARD_BODY,
   deletionBodySchema,
+  discardBodySchema,
   IMPORT_BODY,
   importBodySchema,
   LOCAL_DELETION_BODY,
@@ -37,6 +40,7 @@ type Deps = Pick<
   | "promoteDeletion"
   | "deleteLocalSkill"
   | "restoreSkill"
+  | "discardSkillChange"
   | "proposals"
   | "importSkill"
   | "scaffold"
@@ -126,6 +130,24 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, status);
     }
     return c.json({ name: result.name, commit: result.commit });
+  });
+
+  // The tree is the default-branch copy the author confirmed; core refuses one
+  // that moved since (#1375).
+  app.post("/api/harness/skill/discard", async (c) => {
+    const body = await parseBody(c, discardBodySchema, DISCARD_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.discardSkillChange.execute(
+      body.data.name,
+      body.data.seenRemoteTree,
+    );
+    if (!result.ok) {
+      const { status } = discardErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ name: result.name });
   });
 
   // Each rechecks identity and the request against a fresh read.
