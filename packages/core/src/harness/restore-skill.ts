@@ -3,9 +3,8 @@ import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
-import { isWithinRoot } from "../filesystem/path-containment";
-import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import type { FileSystemPort } from "../registry/file-system";
+import { resolveHarnessSkillsDir } from "./harness-skills-dir";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
 export type RestoreSkillError =
@@ -102,10 +101,17 @@ export class RestoreSkill {
       return { ok: false, error: "not-in-commit" };
     }
 
-    const skills = await this.resolveSkillsDir(root);
-    if (typeof skills !== "string") {
-      return { ok: false, error: skills.error };
+    const resolved = await resolveHarnessSkillsDir(this.deps.fs, root);
+    if (!resolved.ok) {
+      return {
+        ok: false,
+        error:
+          resolved.reason === "unreadable"
+            ? "destination-unreadable"
+            : "destination-unsafe",
+      };
     }
+    const { skills } = resolved;
     const destination = join(skills, name);
     // `describe` does not follow links: a dangling link counts as present.
     if ((await this.deps.copyFs.describe(destination)) !== null) {
@@ -154,22 +160,5 @@ export class RestoreSkill {
     } finally {
       await this.deps.copyFs.removePath(staging).catch(() => {});
     }
-  }
-
-  // Keeps an unreadable skills folder apart from one that resolves outside.
-  private async resolveSkillsDir(
-    root: string,
-  ): Promise<string | { error: RestoreSkillError }> {
-    let realRoot: string;
-    let skills: string;
-    try {
-      realRoot = await this.deps.fs.realpath(root);
-      skills = await this.deps.fs.realpath(join(root, HARNESS_SKILLS_DIR));
-    } catch {
-      return { error: "destination-unreadable" };
-    }
-    return isWithinRoot(skills, realRoot)
-      ? skills
-      : { error: "destination-unsafe" };
   }
 }

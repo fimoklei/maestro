@@ -5,8 +5,8 @@ import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { isWithinRoot } from "../filesystem/path-containment";
-import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import type { FileSystemPort } from "../registry/file-system";
+import { resolveHarnessSkillsDir } from "./harness-skills-dir";
 import type { HarnessGitPort, HarnessSkillTrees } from "./read-harness-state";
 
 export type DeleteLocalSkillError =
@@ -118,20 +118,18 @@ export class DeleteLocalSkill {
     return { ok: true, name };
   }
 
-  // A symlinked skill folder resolves to its target and fails the second test.
+  // A symlinked skill folder resolves to its target and fails the containment test.
   private async resolveFolder(
     root: string,
     name: string,
   ): Promise<string | null> {
+    const resolved = await resolveHarnessSkillsDir(this.deps.fs, root);
+    if (!resolved.ok) {
+      return null;
+    }
     try {
-      const realRoot = await this.deps.fs.realpath(root);
-      const skills = await this.deps.fs.realpath(
-        join(root, HARNESS_SKILLS_DIR),
-      );
-      const folder = await this.deps.fs.realpath(join(skills, name));
-      return isWithinRoot(skills, realRoot) && isWithinRoot(folder, skills)
-        ? folder
-        : null;
+      const folder = await this.deps.fs.realpath(join(resolved.skills, name));
+      return isWithinRoot(folder, resolved.skills) ? folder : null;
     } catch {
       return null;
     }
