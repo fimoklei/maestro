@@ -45,7 +45,7 @@ export type HarnessDialogsProps = {
 
 export function HarnessDialogs(props: HarnessDialogsProps) {
   const { deletionRow } = props;
-  const mode = deletionMode(deletionRow, props.origin);
+  const mode = deletionMode(deletionRow);
   return (
     <>
       {props.importFlow.open ? (
@@ -163,17 +163,24 @@ const SKILLS_DIR = ".apm/skills";
 // Which road this row's deletion takes, or null where the row offers neither.
 // The two are exclusive: a proposed deletion is tracked somewhere, and a
 // local-only skill is tracked nowhere.
-function deletionMode(
-  row: HarnessStageRow | null,
-  origin: string,
-): DeletionMode | null {
+function deletionMode(row: HarnessStageRow | null): DeletionMode | null {
   if (row === null) {
     return null;
   }
   if (row.deletion) {
+    // A proposal row links only a sole open request, and any open request
+    // on a Deleted locally row proposes changes.
+    const open = row.requests[0];
     return row.remoteTree === null
       ? null
-      : { kind: "propose", origin, seenRemoteTree: row.remoteTree };
+      : {
+          kind: "propose",
+          seenRemoteTree: row.remoteTree,
+          openRequest:
+            open === undefined
+              ? null
+              : { number: open.number, author: open.author },
+        };
   }
   return row.localOnly
     ? { kind: "local", folder: `${SKILLS_DIR}/${row.skill}` }

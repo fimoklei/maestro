@@ -62,7 +62,41 @@ describe("Harness deletion proposal", () => {
     expect(
       within(dialog).getByRole("button", { name: /^delete skill$/i }),
     ).toBeVisible();
-    expect(dialog.textContent ?? "").not.toMatch(/remov/i);
+    // Remove names a target's deployed copy, so only the targets' sentence
+    // may use it (#1370).
+    const targets = "select Update target on each target to remove it.";
+    expect(dialog.textContent ?? "").toContain(targets);
+    expect((dialog.textContent ?? "").replace(targets, "")).not.toMatch(
+      /remov/i,
+    );
+  });
+
+  it("names who opened the open pull request the deletion replaces", async () => {
+    const overOpenRequest = withStages(ON_DISK, {
+      proposal: [
+        row("pending-proposal", "old-skill", "deleted-locally", {
+          deletion: true,
+          remoteTree: "abc123",
+          requests: [pullRequest(45, "old-skill")],
+        }),
+      ],
+    });
+    stubHarnessServer({
+      read: { body: overOpenRequest },
+      deletion: { body: REMOVED },
+    });
+    renderHarness();
+
+    const dialog = await openDeletionConfirmation();
+
+    expect(
+      within(dialog).getByText(
+        "Pull request #45 will delete old-skill instead",
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText(/^fimoklei opened it to propose changes/),
+    ).toBeVisible();
   });
 
   it("asks for a confirmation on a deletion, and pushes nothing until it is given", async () => {

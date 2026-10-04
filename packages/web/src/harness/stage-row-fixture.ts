@@ -36,4 +36,5 @@ export const pullRequest = (
   url: `https://github.com/fimoklei/agent-harness/pull/${number}`,
   headBranch: `maestro/${skill}`,
   baseBranch: "main",
+  author: "fimoklei",
 });

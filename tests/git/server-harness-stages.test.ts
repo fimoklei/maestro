@@ -49,6 +49,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
         url: "https://github.com/fimoklei/agent-harness/pull/45",
         headBranch: "maestro/tdd",
         baseBranch: "main",
+        author: "fimoklei",
       },
     ]);
     expect(rowsOf(state.stages.proposal)[0]?.alsoIn).toEqual([

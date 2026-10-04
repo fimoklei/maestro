@@ -43,6 +43,7 @@ export type ReviewRequestLink = {
   url: string;
   headBranch: string;
   baseBranch: string;
+  author: string;
 };
 
 // `number` is null for a prepared branch nobody opened a request for.
@@ -160,6 +161,7 @@ const link = (request: ReviewRequest): ReviewRequestLink => ({
   url: request.url,
   headBranch: request.headBranch,
   baseBranch: request.baseBranch,
+  author: request.author,
 });
 
 const blankRow = (

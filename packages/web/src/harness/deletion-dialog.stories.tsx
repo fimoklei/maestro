@@ -8,8 +8,8 @@ const meta = {
     skill: "old-skill",
     mode: {
       kind: "propose",
-      origin: "github.com/fimoklei/agent-harness",
       seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+      openRequest: null,
     },
     onClose: () => {},
     onConfirm: () => {},
@@ -28,6 +28,18 @@ export const Ready: Story = {};
 // propose and the folder goes from disk.
 export const LocalOnly: Story = {
   args: { mode: { kind: "local", folder: ".apm/skills/old-skill" } },
+};
+
+// An open pull request on the proposal branch, possibly a teammate's, becomes
+// the deletion.
+export const OverOpenRequest: Story = {
+  args: {
+    mode: {
+      kind: "propose",
+      seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+      openRequest: { number: 45, author: "teammate-login" },
+    },
+  },
 };
 
 export const Deleting: Story = {
