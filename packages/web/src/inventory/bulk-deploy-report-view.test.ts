@@ -150,7 +150,16 @@ describe("bulkDeploySummary", () => {
         targetLabel: "global",
         counts: { deployed: 2, skipped: 1, attention: 1, failed: 3 },
       }),
-    ).toBe("Deployed 2 of 7 skills to global");
+    ).toBe("Deployed 3 of 7 skills to global");
+  });
+
+  it("counts a skill already up to date as having reached the target", () => {
+    expect(
+      bulkDeploySummary({
+        targetLabel: "Global",
+        counts: { deployed: 0, skipped: 2, attention: 0, failed: 0 },
+      }),
+    ).toBe("Deployed 2 of 2 skills to Global");
   });
 
   it("names one skill in the singular", () => {

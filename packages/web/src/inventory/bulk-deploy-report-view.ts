@@ -31,14 +31,15 @@ export type BulkDeployReportView =
       message: string;
     };
 
-// One idea: how many reached the target. The groups carry the other counts.
+// One idea: how many reached the target, a skill already up to date
+// included. The groups carry the other counts.
 export function bulkDeploySummary(input: {
   targetLabel: string;
   counts: BulkReportCounts;
 }): string {
   const { deployed, skipped, attention, failed } = input.counts;
   const total = deployed + skipped + attention + failed;
-  return `Deployed ${deployed} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`;
+  return `Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`;
 }
 
 export function bulkDeployReportView(input: {

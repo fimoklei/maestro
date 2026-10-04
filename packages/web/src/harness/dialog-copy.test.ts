@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVISORY_TEXT,
+  DELETE_UNAVAILABLE,
   FINDING_TEXT,
   IMPORT_UNAVAILABLE,
   RELEASE_UNAVAILABLE,
@@ -55,6 +56,15 @@ describe("Harness dialog copy", () => {
       error: "folder check did not load",
       source: "folder cannot be used",
       name: "name cannot be used",
+    });
+  });
+
+  it("states why Delete skill cannot run yet, in screen names", () => {
+    expect(DELETE_UNAVAILABLE).toEqual({
+      checking: "checking your clone",
+      failed: "clone not read",
+      "no-harness": "no Harness connected",
+      "not-in-clone": "not in your clone",
     });
   });
 });
