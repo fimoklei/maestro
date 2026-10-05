@@ -17,6 +17,7 @@ import { RestoreDialog } from "./restore-dialog";
 import {
   folderInClone,
   useDeletionCheck,
+  useHarness,
   type useImportCheck,
   type useReleasePlan,
 } from "./use-harness";
@@ -209,6 +210,7 @@ export function LocalDeletionDialog({
   onDeleted: () => void;
 }) {
   const check = useDeletionCheck();
+  const harness = useHarness();
   const context = { skill, screen };
   const folder = folderInClone(check.data?.skills[skill]);
   const seenWorkingTree = folder?.workingTree ?? null;
@@ -222,6 +224,10 @@ export function LocalDeletionDialog({
       skill={skill}
       mode={{
         kind: "local",
+        // Both screens read the Harness already; the plain word stands in
+        // until that read lands. The host is dropped: owner/repo names it.
+        origin: harness.data?.origin.replace(/^[^/]+\//, "") ?? "the Harness",
+        screen,
         folder: `${SKILLS_DIR}/${skill}`,
         check: check.isFetching
           ? "checking"

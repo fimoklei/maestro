@@ -319,7 +319,7 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
 
     expect(
       within(dialog).getByText(
-        "Delete skill removes the jobs folder from your clone. GitHub and your targets keep the skill.",
+        "Delete skill removes the jobs folder from your clone of fimoklei/agent-harness. The skill stays in fimoklei/agent-harness and in your targets.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -391,7 +391,7 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
 
     expect(
       within(dialog).getByText(
-        "Then select Propose change to open a pull request.",
+        "To also delete it from fimoklei/agent-harness, select Propose change.",
       ),
     ).toBeInTheDocument();
   });
