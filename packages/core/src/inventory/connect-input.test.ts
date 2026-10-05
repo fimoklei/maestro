@@ -108,4 +108,11 @@ describe("classifyConnectInput", () => {
       error: "not-a-github-url",
     });
   });
+
+  it("classifies a long run of repeated '!@' in linear time", () => {
+    const started = performance.now();
+    const route = classifyConnectInput("!@".repeat(20_000));
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(route).toEqual({ ok: true, kind: "path" });
+  });
 });

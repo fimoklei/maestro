@@ -10,7 +10,7 @@ export type ConnectInputRoute =
   | { ok: false; error: ConnectInputError };
 
 // The scp-like `user@host:` form. A path may contain `@`, never `@host:`.
-const scpLike = /^[^/\s]+@[^/\s:]+:/;
+const scpLike = /^[^/\s@]+@[^/\s:]+:/;
 
 const looksRemote = (input: string): boolean =>
   input.includes("://") || scpLike.test(input);
