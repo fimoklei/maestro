@@ -5,20 +5,21 @@ import type {
   NoticeCopy,
   NoticeLevel,
 } from "./notice";
+import type { Copy } from "./phrase";
 
 // A row carries its own sentence: the server sends only the code and status.
 // A warning is written at its call site, never in a table.
 type TableRow = {
   level: Exclude<NoticeLevel, "warning">;
   label: string;
-  message: string;
+  message: Copy;
   // A call site that knows more replaces it; the two are never both shown.
-  detail?: string;
+  detail?: Copy;
 };
 
 export type NoticeTable<TCode extends string> = Record<TCode, TableRow>;
 
-export type NoticeExtras = { action?: NoticeAction; detail?: string };
+export type NoticeExtras = { action?: NoticeAction; detail?: Copy };
 
 /** The server's own notice for a request that never matched the route's shape. */
 export function requestShapeNotice(error: unknown): NoticeContent | null {

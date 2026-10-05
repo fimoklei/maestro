@@ -2,8 +2,32 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Notice } from "./notice";
+import { machine, named, phrase } from "./phrase";
 
 describe("Notice", () => {
+  it("sets a name and a machine value apart while reading the same sentence", () => {
+    render(
+      <Notice
+        trigger="load"
+        notice={{
+          level: "error",
+          label: "Change already proposed",
+          message: phrase`${named("tdd")} has local edits.`,
+          detail: phrase`Release ${machine("v1.4.0")} replaces them.`,
+          items: [phrase`${named("grill-me")} has no description.`],
+        }}
+      />,
+    );
+
+    const region = screen.getByRole("status");
+    expect(region).toHaveTextContent(
+      "tdd has local edits.grill-me has no description.Release v1.4.0 replaces them.",
+    );
+    expect(within(region).getByText("tdd").tagName).toBe("B");
+    expect(within(region).getByText("grill-me").tagName).toBe("B");
+    expect(within(region).getByText("v1.4.0")).toHaveClass("font-mono");
+  });
+
   it("renders no glyph for info, so nothing reads as a fault", () => {
     render(
       <Notice

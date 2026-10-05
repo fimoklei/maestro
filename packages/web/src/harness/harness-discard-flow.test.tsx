@@ -2,6 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { sentence } from "../test-utils";
 import {
   harnessRegion,
   installHarnessHooks,
@@ -46,7 +47,9 @@ describe("Harness discard", () => {
     const pane = await openPane("code-review");
     expect(
       within(pane).getByText(
-        "Your local copy differs from main. Select Propose change to send it for review, or Discard change to match main again.",
+        sentence(
+          "Your local copy differs from main. Select Propose change to send it for review, or Discard change to match main again.",
+        ),
       ),
     ).toBeInTheDocument();
   });
@@ -119,7 +122,7 @@ describe("Harness discard", () => {
     ).toBeVisible();
     expect(
       within(dialog).getByText(
-        "code-review now has a proposal branch or pull request.",
+        sentence("code-review now has a proposal branch or pull request."),
       ),
     ).toBeVisible();
   });

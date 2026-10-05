@@ -158,6 +158,7 @@ describe("SelectedSkills marks", () => {
     );
 
     expect(screen.getByText(/not deployed here/i)).toHaveTextContent(/foo/);
+    expect(screen.getByText("foo").tagName).toBe("B");
   });
 });
 

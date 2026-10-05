@@ -56,7 +56,7 @@ carries the content fact.
 
 ## Consequences
 
-- `CONTEXT.md`'s **Version drift** term gains the two readings, and the screen
+- `GLOSSARY.md`'s **Version drift** term gains the two readings, and the screen
   names gain **Older tag**.
 - The join lives in its own use-case in `core`. The version-drift use-case keeps
   one owner — `apm outdated` — and web keeps no product logic

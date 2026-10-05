@@ -11,6 +11,7 @@ import { Dialog } from "../ui/dialog";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
+import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
@@ -132,7 +133,7 @@ function NameList({
   return (
     <ul className={listClass(inline)}>
       {names.map((name) => (
-        <li key={name} className="font-mono text-row text-gray-12">
+        <li key={name} className="font-ui text-row text-gray-12">
           {name}
         </li>
       ))}
@@ -153,7 +154,7 @@ function SkillRows({
       {rows.map((row) => (
         <li
           key={row.name}
-          className="inline-flex items-center gap-tight font-mono text-row text-gray-12"
+          className="inline-flex items-center gap-tight font-ui text-row text-gray-12"
         >
           {row.name}
           <GitHubMarkLink
@@ -319,15 +320,21 @@ export function UpdateTargetDialog({
                         ...preview.localEdits.discard.map((row) => ({
                           key: consentKey(row),
                           name: `${DISCARD_LOCAL_EDITS} for ${consentRowName(row)}`,
-                          sentence: localEditsSentence(
-                            row.name,
-                            preview.chosenRelease,
+                          sentence: (
+                            <PhraseText
+                              copy={localEditsSentence(
+                                row.name,
+                                preview.chosenRelease,
+                              )}
+                            />
                           ),
                         })),
                         ...preview.localEdits.unverified.map((row) => ({
                           key: consentKey(row),
                           name: `${OVERWRITE_UNVERIFIED} for ${consentRowName(row)}`,
-                          sentence: unverifiedSentence(row.name),
+                          sentence: (
+                            <PhraseText copy={unverifiedSentence(row.name)} />
+                          ),
                         })),
                       ],
                     },

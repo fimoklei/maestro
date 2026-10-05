@@ -1,10 +1,17 @@
 import { Toaster, toast } from "sonner";
+import type { Copy } from "./phrase";
+import { PhraseText } from "./phrase-text";
 
 // Success only: everything else is a Notice, so no other level is exposed.
 
 /** Announce a success the reader may miss: a removed row, a result elsewhere. */
-export function showSuccess(sentence: string): void {
-  toast.success(sentence);
+export function showSuccess(sentence: Copy): void {
+  toast.success(
+    // A name keeps the toast's green ink; only its weight sets it apart.
+    <span className="[&_b]:text-inherit">
+      <PhraseText copy={sentence} />
+    </span>,
+  );
 }
 
 /** Mounted once, at the composition root. */

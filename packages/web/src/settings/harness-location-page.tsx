@@ -10,6 +10,7 @@ import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { NOT_READ_YET } from "../ui/freshness";
 import { Notice } from "../ui/notice";
+import { plainText } from "../ui/phrase";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
 import { Skeleton } from "../ui/skeleton";
 import { SetLocationDialog } from "./set-location-dialog";
@@ -42,7 +43,9 @@ export function HarnessLocationPage() {
     config.isFetching || inventory.isFetching || harness.isFetching;
   const dialog = useSetLocationDialog({
     onSet: (stored) =>
-      status.report(doneSentence("setLocation", targetLabel(stored))),
+      status.report(
+        plainText(doneSentence("setLocation", targetLabel(stored))),
+      ),
   });
 
   const reread = () => {

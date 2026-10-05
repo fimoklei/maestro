@@ -26,7 +26,7 @@ real deployments:
 
 The deeper question is what the product owes a hand-edited deployed copy. The
 glossary already answers it: a deploy *"is generated, never hand-edited"*
-(`CONTEXT.md` → Deploy), and a local edit is **content drift** to reconcile, not
+(`GLOSSARY.md` → Deploy), and a local edit is **content drift** to reconcile, not
 treasured work. The thing worth protecting lives in the central inventory, not
 in the deployed copy. The only real hazard is the *silence* of apm's reset — not
 the loss itself.

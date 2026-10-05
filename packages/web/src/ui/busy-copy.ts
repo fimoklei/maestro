@@ -1,5 +1,7 @@
 // Every busy label and done sentence the cockpit uses (#1026).
 
+import { type Copy, type Phrase, phrase } from "./phrase";
+
 export type ActionKey =
   | "deploy"
   | "update"
@@ -41,8 +43,8 @@ export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
 };
 
 /** What the screen's status region says once a write lands. */
-export function doneSentence(action: ActionKey, name: string): string {
-  return `${ACTIONS[action].done} ${name}.`;
+export function doneSentence(action: ActionKey, name: Copy): Phrase {
+  return phrase`${ACTIONS[action].done} ${name}.`;
 }
 
 /** Heard while the skeleton is up, never seen outside a dialog. */

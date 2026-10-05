@@ -1,11 +1,11 @@
 # ADR-0007 — Show version drift as a version pair, not a binary flag
 
-- **Status:** Accepted — reverses the binary-only decision in roadmap 01.3 and `CONTEXT.md`
+- **Status:** Accepted — reverses the binary-only decision in roadmap 01.3 and `GLOSSARY.md`
 - **Date:** 2026-06-19
 
 ## Context
 
-Roadmap 01.3 and `CONTEXT.md` deliberately scoped version drift to **binary**
+Roadmap 01.3 and `GLOSSARY.md` deliberately scoped version drift to **binary**
 (behind / up-to-date), never a version diff. The stated reason: do not
 re-derive APM's version resolution; consume `apm outdated` and avoid
 brittleness.
@@ -33,7 +33,7 @@ and is semver-fragile — the most cost for the least value.
 
 ## Consequences
 
-- `CONTEXT.md`'s "Version drift" term is updated to the version pair.
+- `GLOSSARY.md`'s "Version drift" term is updated to the version pair.
 - The drift parser keeps two fields where it kept one; the binary
   behind/up-to-date judgment stays derivable (latest ≠ deployed).
 - This **supersedes the drift payload shape in ADR-0005** (`behind: string[]`):

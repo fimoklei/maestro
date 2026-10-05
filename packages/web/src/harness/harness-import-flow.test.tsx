@@ -2,7 +2,7 @@ import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
 import { harnessRegion } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 import { pullRequest } from "./stage-row-fixture";
@@ -248,7 +248,9 @@ describe("Harness import flow", () => {
     });
     expect(
       within(pane).getByText(
-        "Deployed copies change only after a release and Update target.",
+        sentence(
+          "Deployed copies change only after a release and Update target.",
+        ),
       ),
     ).toBeInTheDocument();
   });

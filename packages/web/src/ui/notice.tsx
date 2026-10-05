@@ -2,6 +2,8 @@ import { X } from "lucide-react";
 import { Button } from "./button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
+import { type Copy, plainText } from "./phrase";
+import { PhraseText } from "./phrase-text";
 import {
   STATUS_TOKENS,
   type StatusFamily,
@@ -23,14 +25,14 @@ export type NoticeAction = {
 /** A notice's words, without the level its render site picks. */
 export type NoticeCopy = {
   label: string;
-  message: string;
+  message: Copy;
   /** Why this happened, or the alternative recovery; never a second problem. */
-  detail?: string;
+  detail?: Copy;
 };
 
 type NoticeBase = NoticeCopy & {
   /** One line each, listed under the message, such as the checks a skill failed. */
-  items?: readonly string[];
+  items?: readonly Copy[];
 };
 
 // A warning may omit its action where the reader can continue without one.
@@ -126,19 +128,24 @@ export function Notice({
         <span
           className={`font-ui text-meta ${variant === "inline" ? "text-gray-11" : "text-gray-12"}`}
         >
-          {message}
+          <PhraseText copy={message} />
         </span>
         {items === undefined || items.length === 0 ? null : (
           <ul className="m-0 flex list-none flex-col gap-tight p-0">
             {items.map((item) => (
-              <li key={item} className="font-ui text-gray-12 text-meta">
-                {item}
+              <li
+                key={plainText(item)}
+                className="font-ui text-gray-12 text-meta"
+              >
+                <PhraseText copy={item} />
               </li>
             ))}
           </ul>
         )}
         {detail === undefined ? null : (
-          <span className="font-ui text-meta text-gray-11">{detail}</span>
+          <span className="font-ui text-meta text-gray-11">
+            <PhraseText copy={detail} />
+          </span>
         )}
         {action === undefined ? null : (
           <Button

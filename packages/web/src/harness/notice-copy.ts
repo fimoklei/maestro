@@ -20,6 +20,7 @@ import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { REREAD_HARNESS, UPDATE_SKILL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
+import { named, phrase } from "../ui/phrase";
 
 // A new code in core fails typecheck here until it has a row.
 
@@ -239,7 +240,7 @@ const leftAsItWas = <E extends string>(
   Object.fromEntries(
     Object.entries<NoticeContent>(table).map(([code, notice]) => [
       code,
-      { ...notice, message: `${opening} ${notice.message}` },
+      { ...notice, message: phrase`${opening} ${notice.message}` },
     ]),
   ) as NoticeTable<E>;
 
@@ -351,13 +352,13 @@ const discardHeadings = (skill: string) =>
       level: "error",
       label: "Change already proposed",
       message: "Select Re-read Harness to see the skill as it is now.",
-      detail: `${skill} now has a proposal branch or pull request.`,
+      detail: phrase`${named(skill)} now has a proposal branch or pull request.`,
     },
     "nothing-to-discard": {
       level: "error",
       label: "Nothing to discard",
       message: "Select Re-read Harness to see the skill as it is now.",
-      detail: `${skill} has no change that waits for a proposal.`,
+      detail: phrase`${named(skill)} has no change that waits for a proposal.`,
     },
     "confirmation-stale": {
       level: "error",

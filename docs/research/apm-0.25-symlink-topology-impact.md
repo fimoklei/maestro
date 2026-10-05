@@ -92,7 +92,7 @@ they show, not *whether*.
    and an empty card for the other — while both tools read the same physical
    copy. ADR-0011's premise "a skill can genuinely exist in one tool and not
    the other" is structurally false in this topology; the ADR needs an
-   amendment and `CONTEXT.md`'s **Target** / **Global deploy** definitions
+   amendment and `GLOSSARY.md`'s **Target** / **Global deploy** definitions
    need the "one source, many readers" case. The new `deployments:` block
    (`target: agents`) is a candidate replacement signal for prefix-sniffing.
 2. **The destination drift guard loses its baseline.**
@@ -162,7 +162,7 @@ From the 0.21.0–0.25.0 release notes; none observed locally yet (the
    `apm-driver.md`, verify the #2114 pruning claim, re-run the real-apm
    canaries.
 3. **Shared skills directory** — Delta 3 + the machine migration (57 leaf
-   symlinks → one directory symlink) + ADR-0011 amendment + `CONTEXT.md`
+   symlinks → one directory symlink) + ADR-0011 amendment + `GLOSSARY.md`
    updates. Built against 0.25.0 behavior, hence after (2).
 
 Side findings for the inventory repo (`agent-harness`), out of scope here:

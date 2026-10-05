@@ -1,10 +1,11 @@
 import type { ManifestAdvisory, StructuralProblem } from "@maestro/core";
 import type { NoticeContent } from "../ui/notice";
+import type { Copy } from "../ui/phrase";
 
 // Reported, never blocking: the skill still ships or imports (#519).
 export const skillChecksNotice = (
   step: "import" | "update" | "publish",
-  items: readonly string[],
+  items: readonly Copy[],
 ): NoticeContent => ({
   level: "warning",
   label: "Skill checks found issues",

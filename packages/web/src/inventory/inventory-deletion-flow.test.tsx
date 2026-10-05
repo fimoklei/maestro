@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RELEASED, row, withStages } from "../harness/harness-flow-fixture";
 import { HarnessView } from "../harness/harness-view";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
 import { InventoryPanel } from "./inventory-panel";
 
 // Delete skill starts in Inventory and lands on the Harness view (#1385).
@@ -123,12 +123,16 @@ describe("Inventory — Delete skill", () => {
     );
     expect(
       dialog.getByText(
-        "Delete skill removes the tdd folder from your clone of fimoklei/agent-harness. The skill stays in fimoklei/agent-harness and in your targets.",
+        sentence(
+          "Delete skill removes the tdd folder from your clone of fimoklei/agent-harness. The skill stays in fimoklei/agent-harness and in your targets.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(
       dialog.getByText(
-        "To also delete it from fimoklei/agent-harness, go to the Harness screen and select Propose change.",
+        sentence(
+          "To also delete it from fimoklei/agent-harness, go to the Harness screen and select Propose change.",
+        ),
       ),
     ).toBeInTheDocument();
     const confirm = dialog.getByRole("button", { name: /^delete skill/i });

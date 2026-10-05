@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { plainText } from "../ui/phrase";
 import {
   cannotBeImportedLegend,
   IMPORTED_NEXT_STEP,
@@ -46,7 +47,7 @@ describe("Import local edits copy", () => {
     expect(cannotBeImportedLegend(2)).toBe("✕ Cannot be imported · 2");
     expect(NO_SKILL_QUALIFIES).toBe("no skill qualifies");
     expect(NO_LOCAL_EDITS).toBe("No local edits");
-    expect(noLocalEditsLine("…/me/project")).toBe(
+    expect(plainText(noLocalEditsLine("…/me/project"))).toBe(
       "No skill on …/me/project changed after deployment.",
     );
     expect(IMPORTED_NEXT_STEP).toBe(

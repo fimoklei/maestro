@@ -5,6 +5,7 @@ import type {
 } from "@maestro/core";
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
+import { named, phrase } from "../ui/phrase";
 import { useWriteAction } from "../ui/use-write-action";
 import { rowId } from "./harness-columns";
 import type {
@@ -89,7 +90,8 @@ export function useHarnessPresses(
     report,
     action: "restore",
     show: "toast",
-    name: (restored) => (restored.statusRead ? restored.name : null),
+    name: (restored) =>
+      restored.statusRead ? phrase`${named(restored.name)}` : null,
     failure: restoreNotice,
   });
   const [restoring, setRestoring] = useState<RestoreTarget | null>(null);

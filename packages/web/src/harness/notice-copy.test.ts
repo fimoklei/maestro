@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { readNotice } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
@@ -1076,7 +1077,7 @@ const suites: [
 
 describe.each(suites)("%s", (_name, read, fallback, cases) => {
   it.each(cases)("states the whole notice for %s", (code, expected) => {
-    expect(notice(read, code)).toEqual(expected);
+    expect(readNotice(notice(read, code))).toEqual(expected);
   });
 
   it("states its own cost when no row covers the failure", () => {

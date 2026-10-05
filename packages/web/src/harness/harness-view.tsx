@@ -9,6 +9,7 @@ import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { Icon } from "../ui/icon";
 import { Notice, type NoticeContent } from "../ui/notice";
+import { PhraseText } from "../ui/phrase-text";
 import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
 import { reading, readingRank } from "../ui/status-reading";
@@ -439,11 +440,15 @@ function groupMessage(section: StageSection | undefined, reread: () => void) {
   const notice = stageReadNotice(section.read, section.meta ?? "", reread);
   return notice === null ? null : (
     <>
-      <span className="font-medium text-gray-12">{notice.message}</span>
+      <span className="font-medium text-gray-12">
+        <PhraseText copy={notice.message} />
+      </span>
       {notice.detail ? (
         <>
           {" "}
-          <span>{notice.detail}</span>
+          <span>
+            <PhraseText copy={notice.detail} />
+          </span>
         </>
       ) : null}
     </>

@@ -35,14 +35,22 @@ the new pattern to this section before building it.
 **Meaning and emphasis.**
 - Give a column, badge, glyph and word one meaning on every screen. Say
   `Re-read` for reading again, never `Refresh` or `Retry check`.
-- Use Geist Mono only for a version, tag, path, ref or hash. Set a name in
-  Geist, in a title too.
+- Set a name (skill, repo, target, bundle, person) inside a sentence in Geist
+  medium `text-gray-12` against regular `text-gray-11` body text, with
+  `InlineName`; build such a sentence as a `phrase`. Never set a name in mono;
+  make it a link only when it opens that thing. A heading, title, button or
+  label keeps the name as plain text. In a sentence set in a status ink,
+  such as a toast, the name keeps that ink and gains weight only.
+- Use Geist Mono only for what the user types or copies: a version, tag,
+  path, ref, hash or command. In running text, set it with
+  `InlineMachineValue`, on `gray-3`.
+- Make an action a button or link, never bold text.
 - Use colour only for status. Use blue only for focus, selection and links.
   Keep the primary action neutral (slate 12).
 - Put at most one coloured mark in a row.
 
 **Status.**
-- Show a status badge as a `CONTEXT.md` word plus its family's dot. A mark
+- Show a status badge as a `GLOSSARY.md` word plus its family's dot. A mark
   without a visible word keeps its family's glyph.
 - Use the five families: Good ✓ green, Attention ↑/⚠ amber, Failed ✕ red,
   Unknown ? slate, Neutral slate. Neutral and Unknown differ by word only.

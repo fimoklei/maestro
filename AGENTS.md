@@ -74,7 +74,7 @@ Read the file before starting the task.
 - Before searching for where code lives (adapters, routes, visible sentences,
   error codes) → `docs/agents/codebase-map.md`.
 - Before measuring anything → `docs/research/`; the answer is often captured there.
-- Domain terms → `CONTEXT.md`; decisions → `docs/adr/` (`docs/agents/domain.md`).
+- Domain terms → `GLOSSARY.md`; decisions → `docs/adr/` (`docs/agents/domain.md`).
 - `LEARNINGS.md` — read at session start. Apply `## Active` as rules;
   `## Tentative` is consider-only. Capture and format rules live in its header.
 

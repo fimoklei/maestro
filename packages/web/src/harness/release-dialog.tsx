@@ -5,6 +5,7 @@ import { Card } from "../ui/card";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
+import { named, phrase } from "../ui/phrase";
 import { SegmentedControl } from "../ui/segmented-control";
 import {
   FINDING_TEXT,
@@ -136,7 +137,7 @@ function PlanBody({
                 "publish",
                 plan.findings.map(
                   (finding) =>
-                    `${finding.skill} ${FINDING_TEXT[finding.problem]}`,
+                    phrase`${named(finding.skill)} ${FINDING_TEXT[finding.problem]}`,
                 ),
               )
         }

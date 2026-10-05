@@ -1,5 +1,6 @@
 import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import {
   CONFIRM,
   clearToasts,
@@ -133,7 +134,7 @@ describe("removing a deployed skill from a row", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(onRemoved).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText(/Removed tdd/)).toBeNull();
+    expect(screen.queryByText(sentence(/Removed tdd/))).toBeNull();
   });
 
   it("keeps a first attempt open when the skill is not deployed", async () => {
