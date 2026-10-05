@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Notice } from "./notice";
+import { machine, named, phrase } from "./phrase";
 
 const meta = {
   title: "UI/Notice",
@@ -113,5 +114,17 @@ export const Dismissible: Story = {
       detail: "A release cannot change after publication.",
     },
     onDismiss: () => {},
+  },
+};
+
+// A name and a machine value inside the sentences, set apart from the words.
+export const NamesInSentences: Story = {
+  args: {
+    notice: {
+      level: "warning",
+      label: "Pull request #45 will delete research instead",
+      message: phrase`${named("app/renovate")} opened it to propose changes to ${named("research")}. Delete skill replaces those changes with the deletion.`,
+      detail: phrase`Deployed from release ${machine("v1.4.0")}.`,
+    },
   },
 };

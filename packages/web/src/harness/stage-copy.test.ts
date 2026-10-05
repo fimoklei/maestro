@@ -1,5 +1,6 @@
 import type { HarnessStage, HarnessStageRow, StageStatus } from "@maestro/core";
 import { describe, expect, it } from "vitest";
+import { plainText } from "../ui/phrase";
 import {
   alsoInWords,
   crossStageLine,
@@ -284,13 +285,15 @@ describe("Detail sentences", () => {
     "states the approved sentence for %s (deletion: %s)",
     (status, deletion, sentence) => {
       expect(
-        detailSentence(
-          row("pending-review", status, {
-            requests: [request],
-            deletion,
-            previousName: "testing",
-          }),
-          CONTEXT,
+        plainText(
+          detailSentence(
+            row("pending-review", status, {
+              requests: [request],
+              deletion,
+              previousName: "testing",
+            }),
+            CONTEXT,
+          ),
         ),
       ).toBe(sentence);
     },
@@ -299,11 +302,13 @@ describe("Detail sentences", () => {
   // Over a default-branch copy the row also offers Discard change (#1375).
   it("names both controls on a change to a skill the default branch holds", () => {
     expect(
-      detailSentence(
-        row("pending-proposal", "not-yet-proposed", {
-          remoteTree: "remote-tdd",
-        }),
-        CONTEXT,
+      plainText(
+        detailSentence(
+          row("pending-proposal", "not-yet-proposed", {
+            remoteTree: "remote-tdd",
+          }),
+          CONTEXT,
+        ),
       ),
     ).toBe(
       "Your local copy differs from main. Select Propose change to send it for review, or Discard change to match main again.",
@@ -315,12 +320,14 @@ describe("Detail sentences", () => {
     "names Propose change alone on a restorable %s row",
     (status) => {
       expect(
-        detailSentence(
-          row("pending-proposal", status, {
-            deletion: true,
-            restorable: true,
-          }),
-          CONTEXT,
+        plainText(
+          detailSentence(
+            row("pending-proposal", status, {
+              deletion: true,
+              restorable: true,
+            }),
+            CONTEXT,
+          ),
         ),
       ).toBe(
         "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
@@ -331,13 +338,15 @@ describe("Detail sentences", () => {
   // The menu offers no Reopen proposal here, so the sentence names none (#1384).
   it("names no reopen on a closed deletion whose folder is back", () => {
     expect(
-      detailSentence(
-        row("pending-review", "proposal-closed", {
-          requests: [request],
-          deletion: true,
-          folderOnDisk: true,
-        }),
-        CONTEXT,
+      plainText(
+        detailSentence(
+          row("pending-review", "proposal-closed", {
+            requests: [request],
+            deletion: true,
+            folderOnDisk: true,
+          }),
+          CONTEXT,
+        ),
       ),
     ).toBe(
       "Pull request #45 was closed without merging. The folder is back in your clone, so the skill stays in the Harness.",
@@ -346,20 +355,28 @@ describe("Detail sentences", () => {
 
   it("names the next step when nothing is released yet", () => {
     const unreleased = { defaultBranch: "main", releasedVersion: null };
-    expect(detailSentence(row("pending-release", "added"), unreleased)).toBe(
+    expect(
+      plainText(detailSentence(row("pending-release", "added"), unreleased)),
+    ).toBe(
       "This skill is on main and in no release yet. Select Create a release to publish it.",
     );
-    expect(detailSentence(row("pending-release", "deleted"), unreleased)).toBe(
+    expect(
+      plainText(detailSentence(row("pending-release", "deleted"), unreleased)),
+    ).toBe(
       "This skill is no longer on main. Select Create a release to publish the deletion.",
     );
-    expect(detailSentence(row("pending-release", "renamed"), unreleased)).toBe(
+    expect(
+      plainText(detailSentence(row("pending-release", "renamed"), unreleased)),
+    ).toBe(
       "This skill was renamed on main. Select Create a release to publish it.",
     );
   });
 
   it("names the prepared proposal when new local work has no request yet", () => {
     expect(
-      detailSentence(row("pending-proposal", "new-local-work"), CONTEXT),
+      plainText(
+        detailSentence(row("pending-proposal", "new-local-work"), CONTEXT),
+      ),
     ).toBe(
       "You edited this skill after preparing its proposal. Select Update proposal to send the edits.",
     );
@@ -367,11 +384,13 @@ describe("Detail sentences", () => {
 
   it("states the approved sentence for two matching requests", () => {
     expect(
-      detailSentence(
-        row("pending-review", "multiple-pull-requests", {
-          requests: [pullRequest(41), pullRequest(44)],
-        }),
-        CONTEXT,
+      plainText(
+        detailSentence(
+          row("pending-review", "multiple-pull-requests", {
+            requests: [pullRequest(41), pullRequest(44)],
+          }),
+          CONTEXT,
+        ),
       ),
     ).toBe(
       "Pull requests #41 and #44 both match this branch. Open the extra pull requests on GitHub and close them.",
@@ -382,11 +401,13 @@ describe("Detail sentences", () => {
   // sentence past the length #840 settled. Every link stays in the row menu.
   it("keeps the sentence one length for three matching requests or more", () => {
     expect(
-      detailSentence(
-        row("pending-review", "multiple-pull-requests", {
-          requests: [pullRequest(41), pullRequest(44), pullRequest(47)],
-        }),
-        CONTEXT,
+      plainText(
+        detailSentence(
+          row("pending-review", "multiple-pull-requests", {
+            requests: [pullRequest(41), pullRequest(44), pullRequest(47)],
+          }),
+          CONTEXT,
+        ),
       ),
     ).toBe(
       "Several pull requests match this branch. Open the extra pull requests on GitHub and close them.",
@@ -395,7 +416,9 @@ describe("Detail sentences", () => {
 
   it("names the branch it compared against when no proposal exists", () => {
     expect(
-      detailSentence(row("pending-proposal", "not-yet-proposed"), CONTEXT),
+      plainText(
+        detailSentence(row("pending-proposal", "not-yet-proposed"), CONTEXT),
+      ),
     ).toContain("main");
   });
 
@@ -426,13 +449,14 @@ describe("Detail sentences", () => {
           }),
           CONTEXT,
         );
-        const clauses = sentence.split(". ").filter((part) => part !== "");
-        expect(clauses.length, sentence).toBeLessThanOrEqual(2);
+        const text = plainText(sentence);
+        const clauses = text.split(". ").filter((part) => part !== "");
+        expect(clauses.length, text).toBeLessThanOrEqual(2);
         for (const clause of clauses) {
           expect(clause.split(" ").length, clause).toBeLessThanOrEqual(15);
         }
         // F1: every sentence starts capitalised.
-        expect(sentence[0], sentence).toBe(sentence[0]?.toUpperCase());
+        expect(text[0], text).toBe(text[0]?.toUpperCase());
       }
     }
   });

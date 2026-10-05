@@ -1,11 +1,13 @@
 // Adapted from Spectrum UI (Apache-2.0)
 import type { ReactNode } from "react";
+import type { Copy } from "./phrase";
+import { PhraseText } from "./phrase-text";
 
 export interface EmptyStateProps {
   /** `No {things} yet`. */
   title: string;
   /** One sentence saying what appears here. */
-  description: string;
+  description: Copy;
   /** The heading's rank in the screen's outline. */
   headingLevel: 2 | 3;
   /** A 16px Lucide icon; decorative. */
@@ -36,7 +38,7 @@ export function EmptyState({
         {title}
       </Heading>
       <p className="m-0 max-w-[46ch] font-ui text-gray-11 text-prose">
-        {description}
+        <PhraseText copy={description} />
       </p>
       {action ? <div className="mt-inline">{action}</div> : null}
     </div>

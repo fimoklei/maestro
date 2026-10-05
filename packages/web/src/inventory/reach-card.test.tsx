@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
+import { sentence } from "../test-utils";
 import { ReachCard } from "./reach-card";
 
 type Deployment = ComponentProps<typeof ReachCard>["deployments"][number];
@@ -20,7 +21,9 @@ describe("ReachCard", () => {
       />,
     );
 
-    expect(screen.getByText("Deployed to 2 targets")).toBeInTheDocument();
+    expect(
+      screen.getByText(sentence("Deployed to 2 targets")),
+    ).toBeInTheDocument();
     const [global, maestro] = screen.getAllByRole("listitem");
     expect(global).toHaveTextContent("Global");
     expect(global).toHaveTextContent("v1.4.0");

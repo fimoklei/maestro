@@ -2,6 +2,7 @@ import { type ReactNode, useId } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 import type { NoticeCopy } from "./notice";
+import { PhraseText } from "./phrase-text";
 import {
   STATUS_TOKENS,
   type StatusFamily,
@@ -135,10 +136,14 @@ export function Report({
                     )}
                   </span>
                   {row.notice === undefined ? null : (
-                    <span className="text-gray-11">{row.notice.message}</span>
+                    <span className="text-gray-11">
+                      <PhraseText copy={row.notice.message} />
+                    </span>
                   )}
                   {row.notice?.detail === undefined ? null : (
-                    <span className="text-gray-11">{row.notice.detail}</span>
+                    <span className="text-gray-11">
+                      <PhraseText copy={row.notice.detail} />
+                    </span>
                   )}
                 </span>
                 {row.action === undefined ? null : (

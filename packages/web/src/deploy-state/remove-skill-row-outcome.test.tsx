@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import {
   CONFIRM,
   clearToasts,
@@ -29,7 +30,9 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
+        await screen.findByText(
+          sentence(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
+        ),
       ).toBeInTheDocument();
     });
 
@@ -41,7 +44,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       const announcement = await screen.findByText(
-        `Removed tdd v0.5.0 from ${REPO_NAME}.`,
+        sentence(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
       );
       expect(announcement.closest("[aria-live]")).not.toBeNull();
       expect(
@@ -65,10 +68,12 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`Removed tdd v0.9.0 from ${REPO_NAME}.`),
+        await screen.findByText(
+          sentence(`Removed tdd v0.9.0 from ${REPO_NAME}.`),
+        ),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
+        screen.queryByText(sentence(`Removed tdd v0.5.0 from ${REPO_NAME}.`)),
       ).not.toBeInTheDocument();
     });
 
@@ -91,17 +96,21 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`);
+      await screen.findByText(
+        sentence(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
+      );
 
       await openRemoveDialog("jobs");
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`Removed jobs v1.2.0 from ${REPO_NAME}.`);
+      await screen.findByText(
+        sentence(`Removed jobs v1.2.0 from ${REPO_NAME}.`),
+      );
 
       expect(
-        screen.getByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
+        screen.getByText(sentence(`Removed tdd v0.5.0 from ${REPO_NAME}.`)),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(`Removed jobs v1.2.0 from ${REPO_NAME}.`),
+        screen.getByText(sentence(`Removed jobs v1.2.0 from ${REPO_NAME}.`)),
       ).toBeInTheDocument();
     });
 
@@ -126,7 +135,7 @@ describe("removing a deployed skill from a row", () => {
 
       expect(
         await screen.findByText(
-          "Removed tdd v0.5.0 from Claude Code and Codex.",
+          sentence("Removed tdd v0.5.0 from Claude Code and Codex."),
         ),
       ).toBeInTheDocument();
     });
@@ -142,7 +151,7 @@ describe("removing a deployed skill from a row", () => {
 
       expect(
         await screen.findByText(
-          `Removed tdd (version unknown) from ${REPO_NAME}.`,
+          sentence(`Removed tdd (version unknown) from ${REPO_NAME}.`),
         ),
       ).toBeInTheDocument();
     });
@@ -157,7 +166,9 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       await screen.findByRole("alert");
-      expect(screen.queryByText(/^Removed tdd/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(sentence(/^Removed tdd/)),
+      ).not.toBeInTheDocument();
     });
 
     it("stays on screen after the last skill on the card is gone", async () => {
@@ -166,11 +177,13 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`);
+      await screen.findByText(
+        sentence(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
+      );
       withoutTdd();
 
       expect(
-        screen.getByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
+        screen.getByText(sentence(`Removed tdd v0.5.0 from ${REPO_NAME}.`)),
       ).toBeInTheDocument();
     });
   });

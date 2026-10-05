@@ -6,6 +6,7 @@ import { repoRowId } from "../deploy-state/target-rows";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
+import { named, phrase } from "../ui/phrase";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useWriteAction } from "../ui/use-write-action";
@@ -52,7 +53,7 @@ export function RepositoriesView() {
     report,
     action: "unregister",
     show: "toast",
-    name: (_data, path) => targetLabel(path, paths),
+    name: (_data, path) => phrase`${named(targetLabel(path, paths))}`,
     failure: unregisterNotice,
   });
 

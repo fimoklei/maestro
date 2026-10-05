@@ -6,6 +6,7 @@ import type {
   StageStatus,
 } from "@maestro/core";
 import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
+import { type Copy, machine, named, phrase } from "../ui/phrase";
 import type { StatusFamily } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { offersDiscard } from "./row-actions";
@@ -104,7 +105,7 @@ const first = (row: HarnessStageRow): string => requestNumbers(row)[0] ?? "";
 export function detailSentence(
   row: HarnessStageRow,
   { defaultBranch, releasedVersion }: StageContext,
-): string {
+): Copy {
   const branch = defaultBranch ?? "the default branch";
   const release = releasedVersion;
   const publish = `Select ${CREATE_RELEASE} to publish it.`;
@@ -169,7 +170,7 @@ export function detailSentence(
     case "renamed":
       return row.previousName === null
         ? `This skill was renamed on ${branch}. ${publish}`
-        : `This skill was renamed from ${row.previousName} on ${branch}. ${publish}`;
+        : phrase`This skill was renamed from ${named(row.previousName)} on ${defaultBranch === null ? branch : machine(defaultBranch)}. ${publish}`;
     case "deleted":
       return release === null
         ? `This skill is no longer on ${branch}. Select ${CREATE_RELEASE} to publish the deletion.`

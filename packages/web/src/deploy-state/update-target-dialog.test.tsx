@@ -2,6 +2,7 @@ import type { UpdatePreview } from "@maestro/core";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import { UpdateTargetDialog } from "./update-target-dialog";
 
 const row = (name: string) => ({
@@ -235,6 +236,14 @@ describe("UpdateTargetDialog", () => {
     expect(onCancel).not.toHaveBeenCalled();
   });
 
+  it("sets the skills it lists in Geist, never mono", () => {
+    show();
+
+    for (const name of ["tdd", "review"]) {
+      expect(screen.getByText(name, { exact: true })).toHaveClass("font-ui");
+    }
+  });
+
   it("says what each copy at risk costs, naming its tool on a global target", () => {
     show({
       localEdits: {
@@ -246,12 +255,14 @@ describe("UpdateTargetDialog", () => {
 
     expect(
       screen.getByText(
-        "tdd has local edits. This update replaces them with release v0.3.4.",
+        sentence(
+          "tdd has local edits. This update replaces them with release v0.3.4.",
+        ),
       ),
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "jobs could not be verified. This update overwrites it.",
+        sentence("jobs could not be verified. This update overwrites it."),
       ),
     ).toBeTruthy();
     expect(

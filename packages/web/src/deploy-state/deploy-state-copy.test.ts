@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { plainText } from "../ui/phrase";
 import {
   deployStateNotRead,
   HARNESS_ORIGIN_NOT_READ,
@@ -93,10 +94,10 @@ describe("Deploy-state copy", () => {
   });
 
   it("names every other origin a target holds", () => {
-    expect(otherOriginLine(["fimoklei/agent-harness"])).toBe(
+    expect(plainText(otherOriginLine(["fimoklei/agent-harness"]))).toBe(
       "Holds skills, hooks and MCP servers deployed from fimoklei/agent-harness.",
     );
-    expect(otherOriginLine(["a/b", "c/d"])).toBe(
+    expect(plainText(otherOriginLine(["a/b", "c/d"]))).toBe(
       "Holds skills, hooks and MCP servers deployed from a/b and c/d.",
     );
   });
@@ -107,24 +108,24 @@ describe("Deploy-state copy", () => {
   });
 
   it("names every skill with local edits, the reason alone", () => {
-    expect(localEditsReason(["tdd"])).toBe(
+    expect(plainText(localEditsReason(["tdd"]))).toBe(
       "1 skill has changes that are not in the latest release: tdd.",
     );
-    expect(localEditsReason(["tdd", "review"])).toBe(
+    expect(plainText(localEditsReason(["tdd", "review"]))).toBe(
       "2 skills have changes that are not in the latest release: tdd and review.",
     );
   });
 
   it("names every skill with local edits and how to keep them", () => {
     const keep = "Select Import local edits to keep them.";
-    expect(localEditsLine(["tdd"])).toBe(
+    expect(plainText(localEditsLine(["tdd"]))).toBe(
       `1 skill has changes that are not in the latest release: tdd. ${keep}`,
     );
-    expect(localEditsLine(["tdd", "grill", "review"])).toBe(
+    expect(plainText(localEditsLine(["tdd", "grill", "review"]))).toBe(
       `3 skills have changes that are not in the latest release: tdd, grill and review. ${keep}`,
     );
     const long = "write-a-very-long-skill-name-that-keeps-going-on-and-on";
-    expect(localEditsLine([long, "tdd"])).toBe(
+    expect(plainText(localEditsLine([long, "tdd"]))).toBe(
       `2 skills have changes that are not in the latest release: ${long} and tdd. ${keep}`,
     );
   });

@@ -1,6 +1,7 @@
 // Every word the Update target control and its preview show.
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
 import { UPDATE_TARGET } from "../ui/control-labels";
+import { machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
 
 // An origin-less Harness cannot attribute the target's release, so no update
@@ -59,11 +60,11 @@ export const OVERWRITE_UNVERIFIED = "Overwrite unverified copy";
 export const KEEP_WORK_BY_IMPORTING =
   "To keep the edits instead, select Cancel, then Import local edits.";
 
-export const localEditsSentence = (name: string, release: string): string =>
-  `${name} has local edits. This update replaces them with release ${release}.`;
+export const localEditsSentence = (name: string, release: string): Phrase =>
+  phrase`${named(name)} has local edits. This update replaces them with release ${machine(release)}.`;
 
-export const unverifiedSentence = (name: string): string =>
-  `${name} could not be verified. This update overwrites it.`;
+export const unverifiedSentence = (name: string): Phrase =>
+  phrase`${named(name)} could not be verified. This update overwrites it.`;
 
 export const consentRowName = (row: CopyConsentRow): string =>
   row.tool === null ? row.name : `${row.name} in ${toolDisplayName(row.tool)}`;

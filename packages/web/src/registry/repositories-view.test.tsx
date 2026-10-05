@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import {
   type FakeRegistry,
   REGISTER,
@@ -187,7 +188,7 @@ describe("Repositories", () => {
     );
 
     expect(
-      await screen.findByText("Unregistered …/me/old-site."),
+      await screen.findByText(sentence("Unregistered …/me/old-site.")),
     ).toBeInTheDocument();
     // The toast is the end; the region neither says it twice nor falls back to
     // repeating the earlier read.
@@ -258,7 +259,7 @@ describe("Repositories", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("/home/me/scratch")).toBeInTheDocument();
     expect(
-      screen.queryByText("Unregistered …/me/scratch."),
+      screen.queryByText(sentence("Unregistered …/me/scratch.")),
     ).not.toBeInTheDocument();
   });
 

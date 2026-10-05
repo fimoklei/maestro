@@ -1,6 +1,7 @@
 import type { DeleteLocalSkillError } from "@maestro/core";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
+import { named, phrase } from "../ui/phrase";
 import { harnessHeadings, promoteHeadings } from "./notice-copy";
 
 /** Delete skill opens from the Harness view and from Inventory. */
@@ -27,14 +28,14 @@ const localDeletionHeadings = ({
     level: "error",
     label: "Folder already deleted",
     message: SEE_IT_NOW[screen],
-    detail: `Something removed the ${skill} folder from your clone after this dialog opened.`,
+    detail: phrase`Something removed the ${named(skill)} folder from your clone after this dialog opened.`,
   },
   "confirmation-stale": {
     level: "error",
     label: "Confirmation out of date",
     message:
       "Nothing was deleted. The dialog now shows the folder as it is. Select Delete skill to delete it.",
-    detail: `The ${skill} folder changed after this dialog opened.`,
+    detail: phrase`The ${named(skill)} folder changed after this dialog opened.`,
   },
   "no-answer": {
     level: "error",

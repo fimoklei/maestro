@@ -2,6 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { sentence } from "../test-utils";
 import {
   installHarnessHooks,
   ON_DISK,
@@ -95,7 +96,9 @@ describe("Harness deletion proposal", () => {
       ),
     ).toBeVisible();
     expect(
-      within(dialog).getByText(/^fimoklei opened it to propose changes/),
+      within(dialog).getByText(
+        sentence(/^fimoklei opened it to propose changes/),
+      ),
     ).toBeVisible();
   });
 

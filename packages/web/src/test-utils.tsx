@@ -2,6 +2,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { createQueryClient } from "./api/query-client";
+import type { NoticeCopy } from "./ui/notice";
+import { type Copy, plainText } from "./ui/phrase";
 import { ScreenReportContext } from "./ui/use-write-action";
 
 export function jsonResponse(body: unknown, status = 200) {
@@ -28,3 +30,32 @@ export function renderWithQuery(ui: ReactNode) {
 }
 
 const ignoreReport = () => {};
+
+/** A notice as read: every sentence in plain text. */
+export function readNotice<T extends NoticeCopy & { items?: readonly Copy[] }>(
+  notice: T | null,
+) {
+  if (notice === null) return null;
+  return {
+    ...notice,
+    message: plainText(notice.message),
+    ...(notice.detail === undefined
+      ? {}
+      : { detail: plainText(notice.detail) }),
+    ...(notice.items === undefined
+      ? {}
+      : { items: notice.items.map(plainText) }),
+  };
+}
+
+/** Matches the element whose whole text reads `text`, names set apart or not. */
+export const sentence = (text: string | RegExp) => {
+  const reads = (element: Element) =>
+    typeof text === "string"
+      ? element.textContent === text
+      : text.test(element.textContent ?? "");
+  return (_content: string, element: Element | null) =>
+    element !== null &&
+    reads(element) &&
+    [...element.children].every((child) => !reads(child));
+};

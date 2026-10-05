@@ -1,7 +1,8 @@
-import { type Ref, useEffect, useState } from "react";
+import { Fragment, type Ref, useEffect, useState } from "react";
 import { lagsPin } from "../drift/drift-view-model";
 import { FOCUS_RING } from "../ui/focus-ring";
 import { GitHubMarkLink } from "../ui/github-mark-link";
+import { InlineName } from "../ui/inline-name";
 import { STATUS_TOKENS } from "../ui/status-family";
 import { SubListRow } from "../ui/sub-list-row";
 import {
@@ -139,8 +140,17 @@ export function SelectedSkills({
         />
       ) : null}
       {orphans.length > 0 && (
-        <p className={`mt-inline text-meta ${STATUS_TOKENS.attention.ink}`}>
-          Reported behind, not deployed here: {orphans.join(", ")}
+        // A name keeps the line's attention ink; only its weight sets it apart.
+        <p
+          className={`mt-inline text-meta ${STATUS_TOKENS.attention.ink} [&_b]:text-inherit`}
+        >
+          Reported behind, not deployed here:{" "}
+          {orphans.map((orphan, index) => (
+            <Fragment key={orphan}>
+              {index > 0 ? ", " : null}
+              <InlineName>{orphan}</InlineName>
+            </Fragment>
+          ))}
         </p>
       )}
     </section>

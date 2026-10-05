@@ -6,6 +6,7 @@ import {
   noticeFromTable,
   requestShapeNotice,
 } from "../ui/notice-table";
+import { plainText } from "../ui/phrase";
 import { reading, type StatusReading } from "../ui/status-reading";
 
 export const SCREEN = "Repositories";
@@ -68,7 +69,7 @@ export function registerMessage(error: unknown): string {
   }
   const requestShape = requestShapeNotice(error);
   if (requestShape) {
-    return requestShape.message;
+    return plainText(requestShape.message);
   }
   return registerSentences[error.code as RegisterError] ?? NOT_ANSWERED;
 }

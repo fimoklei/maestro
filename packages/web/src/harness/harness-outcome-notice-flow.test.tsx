@@ -2,6 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { sentence } from "../test-utils";
 import {
   installHarnessHooks,
   ON_DISK,
@@ -124,9 +125,13 @@ describe("Harness outcome notices", () => {
     renderHarness();
 
     await restore();
-    expect(await screen.findByText("Restored old-skill.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(sentence("Restored old-skill.")),
+    ).toBeInTheDocument();
     await publish();
-    expect(await screen.findByText("Published v1.3.0.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(sentence("Published v1.3.0.")),
+    ).toBeInTheDocument();
 
     expect(screen.queryByText("Skill restored")).toBeNull();
     expect(screen.queryByText("Release published")).toBeNull();
@@ -149,7 +154,7 @@ describe("Harness outcome notices", () => {
     expect(
       within(notice).getByRole("button", { name: "Re-read Harness" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Restored old-skill.")).toBeNull();
+    expect(screen.queryByText(sentence("Restored old-skill."))).toBeNull();
   });
 
   it("keeps a partial publish in the band, with its action", async () => {
@@ -168,7 +173,7 @@ describe("Harness outcome notices", () => {
     expect(
       within(notice).getByRole("button", { name: "Re-read Inventory" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Published v1.3.0.")).toBeNull();
+    expect(screen.queryByText(sentence("Published v1.3.0."))).toBeNull();
   });
 
   it("dismisses an outcome and hands focus to Re-read Harness", async () => {

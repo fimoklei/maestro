@@ -2,6 +2,7 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 import { ACTIONS, type ActionKey, doneSentence } from "./busy-copy";
 import type { NoticeContent } from "./notice";
+import { type Copy, plainText } from "./phrase";
 import { showSuccess } from "./toast";
 
 type Report = (write: string) => void;
@@ -47,7 +48,7 @@ export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
     action: ActionKey | ((variables: TVariables) => ActionKey);
     show: "toast" | "row";
     /** What the done sentence names; null where a Report, a notice or the next screen states the outcome. */
-    name: (data: TData, variables: TVariables) => string | null;
+    name: (data: TData, variables: TVariables) => Copy | null;
     failure: (error: unknown) => TFailure | null;
   },
 ): WriteAction<TData, TVariables, TFailure> {
@@ -61,7 +62,7 @@ export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
         onSuccess: (data) => {
           const named = name(data, variables);
           if (named === null || show === "toast") report("");
-          else report(doneSentence(key, named));
+          else report(plainText(doneSentence(key, named)));
           if (named !== null && show === "toast") {
             showSuccess(doneSentence(key, named));
           }

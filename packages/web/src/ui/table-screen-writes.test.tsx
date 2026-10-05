@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it } from "vitest";
-import { renderWithQuery } from "../test-utils";
+import { renderWithQuery, sentence } from "../test-utils";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
@@ -184,7 +184,7 @@ describe("a write on a table screen", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: "plum" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Deployed plum.")).toHaveLength(1);
+    expect(screen.getAllByText(sentence("Deployed plum."))).toHaveLength(1);
   });
 
   it("says a success the reader may miss in a toast, the region silent", async () => {
@@ -193,7 +193,9 @@ describe("a write on a table screen", () => {
 
     answer.resolve();
 
-    expect(await screen.findByText("Deployed plum.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(sentence("Deployed plum.")),
+    ).toBeInTheDocument();
     expect(region()).toBeEmptyDOMElement();
   });
 

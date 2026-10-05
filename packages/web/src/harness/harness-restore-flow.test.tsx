@@ -2,6 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { sentence } from "../test-utils";
 import {
   installHarnessHooks,
   ON_DISK,
@@ -126,7 +127,9 @@ describe("Harness restore", () => {
     const pane = await openPane("old-skill");
     expect(
       within(pane).getByText(
-        "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+        sentence(
+          "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+        ),
       ),
     ).toBeInTheDocument();
   });
@@ -180,7 +183,9 @@ describe("Harness restore", () => {
         screen.queryByRole("dialog", { name: /restore old-skill/i }),
       ).toBeNull(),
     );
-    expect(await screen.findByText("Restored old-skill.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(sentence("Restored old-skill.")),
+    ).toBeInTheDocument();
   });
 
   // The server compares the commit the confirmation carries against a fresh
@@ -252,7 +257,9 @@ describe("Harness restore", () => {
       within(dialog).getByRole("button", { name: /^restore skill$/i }),
     );
 
-    expect(await screen.findByText("Restored old-skill.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(sentence("Restored old-skill.")),
+    ).toBeInTheDocument();
   });
 
   // The folder is back whatever GitHub answered afterwards, so the heading
