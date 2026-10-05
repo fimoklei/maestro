@@ -2,6 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { sentence } from "../test-utils";
 import {
   installHarnessHooks,
   ON_DISK,
@@ -86,7 +87,9 @@ describe("Harness local deletion", () => {
 
     expect(
       within(dialog).getByText(
-        "Delete skill removes the folder from disk. No other copy of old-skill exists.",
+        sentence(
+          "Delete skill removes the folder from disk. No other copy of old-skill exists.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(within(dialog).getByText(".apm/skills/old-skill")).toBeVisible();
@@ -243,7 +246,7 @@ describe("Harness local deletion", () => {
     ).toBeVisible();
     expect(
       within(dialog).getByText(
-        "The old-skill folder changed after this dialog opened.",
+        sentence("The old-skill folder changed after this dialog opened."),
       ),
     ).toBeInTheDocument();
     await waitFor(() =>
@@ -319,11 +322,13 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
 
     expect(
       within(dialog).getByText(
-        "Delete skill removes the jobs folder from your clone of fimoklei/agent-harness. The skill stays in fimoklei/agent-harness and in your targets.",
+        sentence(
+          "Delete skill removes the jobs folder from your clone of fimoklei/agent-harness. The skill stays in fimoklei/agent-harness and in your targets.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByText("Uncommitted changes in jobs"),
+      within(dialog).getByText(sentence("Uncommitted changes in jobs")),
     ).toBeInTheDocument();
   });
 
@@ -391,7 +396,9 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
 
     expect(
       within(dialog).getByText(
-        "To also delete it from fimoklei/agent-harness, select Propose change.",
+        sentence(
+          "To also delete it from fimoklei/agent-harness, select Propose change.",
+        ),
       ),
     ).toBeInTheDocument();
   });

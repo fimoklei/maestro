@@ -1,7 +1,6 @@
-// Joins names into one readable clause: "", "a", "a and b", "a, b and c".
-// en-GB fixes the form to no Oxford comma, whatever locale the reader runs.
-const listFormat = new Intl.ListFormat("en-GB");
+import { namedList, plainText } from "../ui/phrase";
 
+// Joins names into one readable clause: "", "a", "a and b", "a, b and c".
 export function joinNames(names: readonly string[]): string {
-  return listFormat.format(names);
+  return plainText(namedList(names));
 }

@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse } from "../test-utils";
+import { jsonResponse, sentence } from "../test-utils";
 import {
   findRow,
   importRoutes,
@@ -326,7 +326,9 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     expect(await within(dialog).findByText("No local edits")).toBeVisible();
     expect(
-      within(dialog).getByText(`No skill on ${ROW} changed after deployment.`),
+      within(dialog).getByText(
+        sentence(`No skill on ${ROW} changed after deployment.`),
+      ),
     ).toBeInTheDocument();
     expect(within(dialog).queryByRole("checkbox")).toBeNull();
   });

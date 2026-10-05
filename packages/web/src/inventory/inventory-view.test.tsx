@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";
 import type { Primitive } from "./use-inventory";
@@ -681,7 +681,9 @@ describe("InventoryView — detail pane", () => {
       ),
     ).toBe(true);
     expect(
-      await within(dialog).findAllByText("Deployed 1 of 1 skill to Global"),
+      await within(dialog).findAllByText(
+        sentence("Deployed 1 of 1 skill to Global"),
+      ),
     ).not.toHaveLength(0);
   });
 });
@@ -1299,7 +1301,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const card = await screen.findByText("Deployed to 1 target");
+    const card = await screen.findByText(sentence("Deployed to 1 target"));
     const row = within(card.parentElement as HTMLElement).getByRole("listitem");
     expect(row).toHaveTextContent("beta");
     expect(row).toHaveTextContent("v0.3.2");
@@ -1318,7 +1320,7 @@ describe("InventoryView — hover card", () => {
     await userEvent.hover(within(grid()).getByText("2"));
 
     expect(
-      await screen.findByText("Deployed to 2 targets"),
+      await screen.findByText(sentence("Deployed to 2 targets")),
     ).toBeInTheDocument();
   });
 
@@ -1328,7 +1330,9 @@ describe("InventoryView — hover card", () => {
 
     act(() => grid().focus());
 
-    expect(await screen.findByText("Deployed to 1 target")).toBeInTheDocument();
+    expect(
+      await screen.findByText(sentence("Deployed to 1 target")),
+    ).toBeInTheDocument();
   });
 });
 

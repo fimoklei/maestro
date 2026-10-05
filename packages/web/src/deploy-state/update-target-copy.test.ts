@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { UPDATE_TARGET } from "../ui/control-labels";
+import { plainText } from "../ui/phrase";
 import {
   BECOMES_EMPTY,
   CONSENT_NOT_GIVEN,
@@ -106,13 +107,13 @@ describe("Update target copy", () => {
   });
 
   it("says what an edited copy differs from", () => {
-    expect(localEditsSentence("tdd", "v0.3.4")).toBe(
+    expect(plainText(localEditsSentence("tdd", "v0.3.4"))).toBe(
       "tdd has local edits. This update replaces them with release v0.3.4.",
     );
   });
 
   it("says what an unverified copy could not prove", () => {
-    expect(unverifiedSentence("jobs")).toBe(
+    expect(plainText(unverifiedSentence("jobs"))).toBe(
       "jobs could not be verified. This update overwrites it.",
     );
   });

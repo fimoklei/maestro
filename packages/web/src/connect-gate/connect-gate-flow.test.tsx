@@ -19,6 +19,7 @@ function fallback(url: string) {
         defaultBranch: "main",
         releaseState: "never-released",
         freshness: { outcome: null, lastFetchedAt: null },
+        cloneSync: "current",
         stages: {
           proposal: { outcome: "read", rows: [], bound: null },
           review: { outcome: "read", rows: [], bound: null },
@@ -196,6 +197,7 @@ describe("connect gate", () => {
               defaultBranch: "trunk",
               releaseState: "never-released",
               freshness: { outcome: null, lastFetchedAt: null },
+              cloneSync: "current",
               stages: {
                 proposal: { outcome: "read", rows: [], bound: null },
                 review: { outcome: "read", rows: [], bound: null },

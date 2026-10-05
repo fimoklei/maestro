@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
+import { plainText } from "../ui/phrase";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import type {
   RemoveCheckState,
@@ -263,14 +264,16 @@ describe("RemoveSkillDialog", () => {
     renderDialog({ error: FAILURE });
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(FAILURE.message);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      plainText(FAILURE.message),
+    );
   });
 
   it("says a retry picks up only what the failure left behind", () => {
     renderDialog({ error: FAILURE });
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(FAILURE.detail ?? "");
+    expect(alert).toHaveTextContent(plainText(FAILURE.detail ?? ""));
     expect(alert).not.toHaveTextContent(/mixed state/i);
   });
 
@@ -332,7 +335,9 @@ describe("RemoveSkillDialog", () => {
         preflight: repoCheck("cannot-verify"),
       });
 
-      expect(screen.getByRole("alert")).toHaveTextContent(RESTATED.message);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        plainText(RESTATED.message),
+      );
     });
 
     it("wears the amber of a cost, never the danger of a failure", () => {
@@ -485,7 +490,9 @@ describe("RemoveSkillDialog", () => {
     it("renders the error block alone when the failure proved nothing", () => {
       renderDialog({ error: FAILED, outcome: null });
 
-      expect(screen.getByRole("alert")).toHaveTextContent(FAILED.message);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        plainText(FAILED.message),
+      );
       expect(screen.queryAllByRole("listitem")).toEqual([]);
       expect(screen.queryByText(/removal targets/i)).toBeNull();
     });
@@ -803,7 +810,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog({ error: FAILURE });
 
       const label = screen.getByText("Removal outcome unknown");
-      const message = screen.getByText(FAILURE.message);
+      const message = screen.getByText(plainText(FAILURE.message));
       expect(stepOf(label)).toBeGreaterThanOrEqual(0);
       expect(stepOf(label)).toBeLessThanOrEqual(stepOf(message));
       expect(label.className).toContain("font-semibold");
@@ -866,7 +873,7 @@ describe("RemoveSkillDialog", () => {
     it("states the refusal for the code the server sent", () => {
       renderDialog({ preflight: refused });
 
-      expect(screen.getByText(REFUSAL.message)).toBeInTheDocument();
+      expect(screen.getByText(plainText(REFUSAL.message))).toBeInTheDocument();
     });
 
     it("labels the block as the thing that cannot happen", () => {

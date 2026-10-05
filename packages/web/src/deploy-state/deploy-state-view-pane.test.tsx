@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse } from "../test-utils";
+import { jsonResponse, sentence } from "../test-utils";
 import {
   factValue,
   findRow,
@@ -329,7 +329,9 @@ describe("Deploy-state pane — facts", () => {
     const pane = await openPane(LABEL);
     expect(
       within(pane).getByText(
-        "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
+        sentence(
+          "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(
@@ -390,7 +392,9 @@ describe("Deploy-state pane — facts", () => {
     const pane = await openPane("Claude Code");
     expect(
       within(pane).getByText(
-        "Holds skills, hooks and MCP servers deployed from fimoklei/agent-harness.",
+        sentence(
+          "Holds skills, hooks and MCP servers deployed from fimoklei/agent-harness.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(
@@ -772,7 +776,9 @@ describe("Deploy-state pane — where each action sits", () => {
     }
     expect(
       within(pane).getByText(
-        "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
+        sentence(
+          "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
+        ),
       ),
     ).toBeInTheDocument();
   });

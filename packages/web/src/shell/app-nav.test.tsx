@@ -17,6 +17,7 @@ const HARNESS_STATE = {
   defaultBranch: "main",
   releaseState: "released",
   freshness: { outcome: null, lastFetchedAt: null },
+  cloneSync: "current",
   stages: {
     proposal: { outcome: "read", rows: [], bound: null },
     review: { outcome: "read", rows: [], bound: null },

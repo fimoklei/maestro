@@ -8,6 +8,7 @@ import { GITHUB_COLUMN } from "../ui/github-link-copy";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { HoverCard } from "../ui/hover-card";
 import { MachineValue } from "../ui/machine-value";
+import { PhraseText } from "../ui/phrase-text";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
 import { useNow } from "../ui/use-now";
@@ -46,7 +47,11 @@ function StatusCard({ row }: { row: TargetTableRow }) {
             <StatusBadge reading={row.status} />
             {row.release ? <ReleaseValue release={row.release} /> : null}
           </div>
-          {reason ? <p className="m-0 text-gray-11">{reason}</p> : null}
+          {reason ? (
+            <p className="m-0 text-gray-11">
+              <PhraseText copy={reason} />
+            </p>
+          ) : null}
           {readAge ? <p className="m-0 text-gray-11">{readAge}</p> : null}
         </div>
       }

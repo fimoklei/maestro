@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 
@@ -83,7 +84,9 @@ describe("DeletionDialog", () => {
 
     expect(
       screen.getByText(
-        "Delete skill proposes this deletion to fimoklei/harness for review.",
+        sentence(
+          "Delete skill proposes this deletion to fimoklei/harness for review.",
+        ),
       ),
     ).toBeInTheDocument();
   });
@@ -119,7 +122,9 @@ describe("DeletionDialog", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByText(
-          "app/renovate opened it to propose changes to research. Delete skill replaces those changes with the deletion.",
+          sentence(
+            "app/renovate opened it to propose changes to research. Delete skill replaces those changes with the deletion.",
+          ),
         ),
       ).toBeInTheDocument();
     });
@@ -155,7 +160,9 @@ describe("DeletionDialog", () => {
 
       expect(
         screen.getByText(
-          "Delete skill removes the folder from disk. No other copy of research exists.",
+          sentence(
+            "Delete skill removes the folder from disk. No other copy of research exists.",
+          ),
         ),
       ).toBeInTheDocument();
     });
@@ -195,7 +202,9 @@ describe("DeletionDialog", () => {
 
       expect(
         screen.getByText(
-          "Delete skill removes the research folder from your clone of fimoklei/harness. The skill stays in fimoklei/harness and in your targets.",
+          sentence(
+            "Delete skill removes the research folder from your clone of fimoklei/harness. The skill stays in fimoklei/harness and in your targets.",
+          ),
         ),
       ).toBeInTheDocument();
       expect(screen.queryByText(/No other copy/)).not.toBeInTheDocument();
@@ -206,7 +215,9 @@ describe("DeletionDialog", () => {
 
       expect(
         screen.getByText(
-          "To also delete it from fimoklei/harness, select Propose change.",
+          sentence(
+            "To also delete it from fimoklei/harness, select Propose change.",
+          ),
         ),
       ).toBeInTheDocument();
     });
@@ -216,7 +227,9 @@ describe("DeletionDialog", () => {
 
       expect(
         screen.getByText(
-          "To also delete it from fimoklei/harness, go to the Harness screen and select Propose change.",
+          sentence(
+            "To also delete it from fimoklei/harness, go to the Harness screen and select Propose change.",
+          ),
         ),
       ).toBeInTheDocument();
     });
@@ -250,7 +263,9 @@ describe("DeletionDialog", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByText(
-          "The skill's files in your clone of fimoklei/harness differ from its last commit.",
+          sentence(
+            "The skill's files in your clone of fimoklei/harness differ from its last commit.",
+          ),
         ),
       ).toBeInTheDocument();
     });

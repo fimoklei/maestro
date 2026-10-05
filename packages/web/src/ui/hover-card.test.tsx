@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import { HoverCard } from "./hover-card";
 
 function renderCard(props: { focused?: boolean } = {}) {
@@ -11,7 +12,7 @@ function renderCard(props: { focused?: boolean } = {}) {
   );
 }
 
-const card = () => screen.queryByText("Deployed to 2 targets");
+const card = () => screen.queryByText(sentence("Deployed to 2 targets"));
 
 afterEach(() => {
   vi.useRealTimers();
@@ -97,7 +98,9 @@ describe("HoverCard", () => {
     const before = screen.getByRole("button", { name: "Before" });
     before.focus();
 
-    expect(await screen.findByText("Deployed to 2 targets")).toBeVisible();
+    expect(
+      await screen.findByText(sentence("Deployed to 2 targets")),
+    ).toBeVisible();
     expect(before).toHaveFocus();
     await userEvent.tab();
     expect(before).not.toHaveFocus();

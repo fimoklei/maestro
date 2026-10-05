@@ -1,3 +1,4 @@
+import { namedList, phrase } from "../ui/phrase";
 import { joinNames } from "./join-names";
 
 // Every word the Deploy-state screen shows outside its dialogs.
@@ -57,17 +58,17 @@ export const NO_TOOL_DETECTED =
   "Install Claude Code or Codex to deploy skills globally.";
 
 export const otherOriginLine = (origins: readonly string[]) =>
-  `Holds skills, hooks and MCP servers deployed from ${joinNames(origins)}.`;
+  phrase`Holds skills, hooks and MCP servers deployed from ${namedList(origins)}.`;
 
 const KEEP_LOCAL_EDITS = "Select Import local edits to keep them.";
 
 export const localEditsReason = (names: readonly string[]) =>
   names.length === 1
-    ? `1 skill has changes that are not in the latest release: ${names[0]}.`
-    : `${names.length} skills have changes that are not in the latest release: ${joinNames(names)}.`;
+    ? phrase`1 skill has changes that are not in the latest release: ${namedList(names)}.`
+    : phrase`${names.length} skills have changes that are not in the latest release: ${namedList(names)}.`;
 
 export const localEditsLine = (names: readonly string[]) =>
-  `${localEditsReason(names)} ${KEEP_LOCAL_EDITS}`;
+  phrase`${localEditsReason(names)} ${KEEP_LOCAL_EDITS}`;
 
 // A skill row's mark carries its reading's hint as its tooltip: one fact, no action.
 export const NO_LONGER_RELEASED_HINT = "Not in the latest release.";

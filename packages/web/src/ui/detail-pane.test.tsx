@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DetailPane, DetailPaneSlot, type PaneNotice } from "./detail-pane";
+import { named, phrase } from "./phrase";
 
 type Props = ComponentProps<typeof DetailPane>;
 
@@ -256,6 +257,20 @@ describe("DetailPane slots", () => {
         "text-gray-12",
         "text-prose",
       );
+    }
+  });
+
+  it("sets a name in the paragraph apart, in full and clamped", () => {
+    const line = phrase`Holds skills deployed from ${named("fimoklei/harness")}.`;
+    for (const clampParagraph of [false, true]) {
+      const { unmount } = renderPane({ paragraph: [line], clampParagraph });
+
+      const name = screen.getByText("fimoklei/harness");
+      expect(name.tagName).toBe("B");
+      expect(name.parentElement).toHaveTextContent(
+        "Holds skills deployed from fimoklei/harness.",
+      );
+      unmount();
     }
   });
 

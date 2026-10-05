@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACTIONS, doneSentence, loadedText, loadingText } from "./busy-copy";
+import { plainText } from "./phrase";
 
 describe("busy labels", () => {
   it.each([
@@ -51,11 +52,13 @@ describe("done sentences", () => {
     ["connect", "Connected tdd."],
     ["setLocation", "Set tdd."],
   ] as const)("ends %s as %s", (action, sentence) => {
-    expect(doneSentence(action, "tdd")).toBe(sentence);
+    expect(plainText(doneSentence(action, "tdd"))).toBe(sentence);
   });
 
   it("names a bulk write by its count", () => {
-    expect(doneSentence("deploy", "12 skills")).toBe("Deployed 12 skills.");
+    expect(plainText(doneSentence("deploy", "12 skills"))).toBe(
+      "Deployed 12 skills.",
+    );
   });
 });
 

@@ -4,6 +4,7 @@ import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
+import { named, type Phrase, phrase } from "../ui/phrase";
 
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 
@@ -24,8 +25,8 @@ export const NO_SKILL_QUALIFIES = "no skill qualifies";
 
 export const NO_LOCAL_EDITS = "No local edits";
 
-export const noLocalEditsLine = (target: string): string =>
-  `No skill on ${target} changed after deployment.`;
+export const noLocalEditsLine = (target: string): Phrase =>
+  phrase`No skill on ${named(target)} changed after deployment.`;
 
 export const undoesNewerLegend = (count: number): string =>
   `▲ Undoes newer Harness changes · ${count}`;

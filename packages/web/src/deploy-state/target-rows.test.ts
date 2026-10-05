@@ -5,11 +5,13 @@ import type {
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
+import { plainText } from "../ui/phrase";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
 import {
   emptyGroupLines,
   globalRows,
   repoRow,
+  type StatusCard,
   statusCard,
   type TargetRow,
 } from "./target-rows";
@@ -44,6 +46,12 @@ const row = (facts: Partial<TargetRow>): TargetRow => ({
   readFailed: false,
   behind: false,
   ...facts,
+});
+
+// The hover card as read: its reason sentence in plain text.
+const readCard = (card: StatusCard) => ({
+  ...card,
+  reason: card.reason === null ? null : plainText(card.reason),
 });
 
 // The Status hover card: one reason sentence, then the read age (copy.md).
@@ -153,16 +161,18 @@ describe("statusCard", () => {
 
   it("names the edited skills without the import action", () => {
     expect(
-      statusCard(
-        row({
-          head: ON_LATEST,
-          primitives: [
-            skill("tdd", "local-edits"),
-            skill("grill"),
-            skill("review", "local-edits"),
-          ],
-        }),
-        NOW,
+      readCard(
+        statusCard(
+          row({
+            head: ON_LATEST,
+            primitives: [
+              skill("tdd", "local-edits"),
+              skill("grill"),
+              skill("review", "local-edits"),
+            ],
+          }),
+          NOW,
+        ),
       ),
     ).toEqual({
       reason:
@@ -191,7 +201,8 @@ describe("statusCard", () => {
 
   it("names the other origin of a target with no skill of its own", () => {
     expect(
-      statusCard(row({ otherOrigins: ["a/b"], primitives: [] }), NOW).reason,
+      readCard(statusCard(row({ otherOrigins: ["a/b"], primitives: [] }), NOW))
+        .reason,
     ).toBe("Holds skills, hooks and MCP servers deployed from a/b.");
   });
 });

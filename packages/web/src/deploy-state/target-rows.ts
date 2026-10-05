@@ -9,6 +9,7 @@ import type {
 import type { DriftViewModel } from "../drift/drift-view-model";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { targetLabel } from "../shell/target-label";
+import type { Copy } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
 import {
   GLOBAL,
@@ -256,9 +257,9 @@ export function emptyGroupLines(
 }
 
 /** The Status hover card: one reason sentence, then the read age; the pane holds the rest. */
-export type StatusCard = { reason: string | null; readAge: string | null };
+export type StatusCard = { reason: Copy | null; readAge: string | null };
 
-function statusReason(row: TargetRow): string | null {
+function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
   const edited = editedSkills(row.primitives);
   if (!row.readFailed && edited.length > 0) return localEditsReason(edited);

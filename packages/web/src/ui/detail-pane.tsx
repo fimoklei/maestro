@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { orderedItems } from "./actions-menu";
 import { Button } from "./button";
 import { FactList, FactRow } from "./fact-list";
@@ -7,6 +7,8 @@ import { FootActions, type FootItem, firstEnabled } from "./foot-actions";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
+import { type Copy, plainText } from "./phrase";
+import { PhraseText } from "./phrase-text";
 import { useDetailPaneFocus } from "./use-detail-pane-focus";
 
 // Where a screen puts its pane (#1065): side by side above 1100px; at 1100px
@@ -95,7 +97,7 @@ export function DetailPane({
   initialFocus?: string | null;
   facts?: readonly (Fact | null)[];
   /** The sentences that explain the subject's state. */
-  paragraph?: readonly string[];
+  paragraph?: readonly Copy[];
   /** Three lines of a long paragraph, the rest opening on ask. */
   clampParagraph?: boolean;
   notices?: readonly PaneNotice[];
@@ -195,7 +197,13 @@ export function DetailPane({
           <details className="group mt-section">
             <summary className="cursor-pointer list-none text-gray-12 text-prose focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
               <span className="line-clamp-3 group-open:line-clamp-none">
-                {paragraph.join(" ")}
+                {paragraph.map((line, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: two lines may read alike
+                  <Fragment key={`${index}:${plainText(line)}`}>
+                    {index > 0 ? " " : null}
+                    <PhraseText copy={line} />
+                  </Fragment>
+                ))}
               </span>
               <span className="mt-tight inline-block text-gray-11 text-meta hover:text-gray-12">
                 <span className="group-open:hidden">More ›</span>
@@ -207,7 +215,9 @@ export function DetailPane({
           <p className="m-0 mt-section flex flex-col gap-tight text-gray-12 text-prose">
             {paragraph.map((line, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: two lines may read alike
-              <span key={`${index}:${line}`}>{line}</span>
+              <span key={`${index}:${plainText(line)}`}>
+                <PhraseText copy={line} />
+              </span>
             ))}
           </p>
         )}

@@ -1,5 +1,6 @@
+import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
-import { toolNameList } from "./tool-presentation";
+import { toolDisplayName } from "./tool-presentation";
 
 type RemovedSkill = {
   name: string;
@@ -12,11 +13,15 @@ type RemovedSkill = {
 };
 
 /** What a landed removal's done sentence names. */
-export function removedName({ name, version, target }: RemovedSkill): string {
+export function removedName({ name, version, target }: RemovedSkill): Phrase {
   const scope =
     target.kind === "repo"
-      ? target.name
+      ? named(target.name)
       : // The detected set can be empty.
-        toolNameList(target.tools) || "every detected tool";
-  return `${name} ${version ?? "(version unknown)"} from ${scope}`;
+        target.tools.length === 0
+        ? "every detected tool"
+        : namedList(target.tools.map(toolDisplayName));
+  const release =
+    version === undefined ? "(version unknown)" : machine(version);
+  return phrase`${named(name)} ${release} from ${scope}`;
 }

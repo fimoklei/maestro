@@ -2,7 +2,10 @@ import { Card } from "../ui/card";
 import { DELETE_SKILL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
+import { InlineName } from "../ui/inline-name";
 import { Notice, type NoticeContent } from "../ui/notice";
+import { named, phrase } from "../ui/phrase";
+import { PhraseText } from "../ui/phrase-text";
 import { StatusLine } from "../ui/status-line";
 import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
 import type { LocalDeletionContext } from "./local-deletion-copy";
@@ -72,7 +75,8 @@ export function DeletionDialog({
           {/* The warning says what this press does instead. */}
           {mode.openRequest === null ? (
             <p className="m-0">
-              {DELETE_SKILL} proposes this deletion to {mode.origin} for review.
+              {DELETE_SKILL} proposes this deletion to{" "}
+              <InlineName>{mode.origin}</InlineName> for review.
             </p>
           ) : null}
           <p className="m-0 text-gray-11">
@@ -88,19 +92,24 @@ export function DeletionDialog({
         // No second sentence: the other modes name what keeps the skill,
         // and here nothing does.
         <p className="m-0">
-          {DELETE_SKILL} removes the folder from disk. No other copy of {skill}{" "}
-          exists.
+          {DELETE_SKILL} removes the folder from disk. No other copy of{" "}
+          <InlineName>{skill}</InlineName> exists.
         </p>
       ) : (
         <>
           <p className="m-0">
-            {DELETE_SKILL} removes the {skill} folder from your clone of{" "}
-            {mode.origin}. The skill stays in {mode.origin} and in your targets.
+            {DELETE_SKILL} removes the <InlineName>{skill}</InlineName> folder
+            from your clone of <InlineName>{mode.origin}</InlineName>. The skill
+            stays in <InlineName>{mode.origin}</InlineName> and in your targets.
           </p>
           <p className="m-0 text-gray-11">
-            {mode.screen === "harness"
-              ? `To also delete it from ${mode.origin}, select Propose change.`
-              : `To also delete it from ${mode.origin}, go to the Harness screen and select Propose change.`}
+            <PhraseText
+              copy={
+                mode.screen === "harness"
+                  ? phrase`To also delete it from ${named(mode.origin)}, select Propose change.`
+                  : phrase`To also delete it from ${named(mode.origin)}, go to the Harness screen and select Propose change.`
+              }
+            />
           </p>
           <Notice
             trigger="load"
@@ -111,7 +120,7 @@ export function DeletionDialog({
                     label: `Uncommitted changes in ${skill}`,
                     message:
                       "Delete skill discards them. To keep them, commit them in your Git tool first.",
-                    detail: `The skill's files in your clone of ${mode.origin} differ from its last commit.`,
+                    detail: phrase`The skill's files in your clone of ${named(mode.origin)} differ from its last commit.`,
                   }
                 : null
             }
@@ -159,6 +168,6 @@ function openRequestNotice(
     : {
         level: "warning",
         label: `Pull request #${request.number} will delete ${skill} instead`,
-        message: `${request.author} opened it to propose changes to ${skill}. Delete skill replaces those changes with the deletion.`,
+        message: phrase`${named(request.author)} opened it to propose changes to ${named(skill)}. Delete skill replaces those changes with the deletion.`,
       };
 }
