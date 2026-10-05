@@ -98,7 +98,7 @@ Seven entries. Each names what APM says, what this route does, and the verdict:
   reached the screen from there. #352 settled it 2026-08-01: the word stays,
   because #347 put it on a screen and a glossary cannot outvote that. Renaming
   the view would re-open #347 and leave two sidebar entries reading "Inventory".
-  `CONTEXT.md` now carries **Harness** as a real term whose *Avoid* line names
+  `GLOSSARY.md` now carries **Harness** as a real term whose *Avoid* line names
   APM's meaning; ADR-0021 records the decision.
 - **Consequence:** a newcomer who reads APM first learns *harness = my tool*,
   then opens a Harness view whose subject is the team's shared repo. The *Avoid*

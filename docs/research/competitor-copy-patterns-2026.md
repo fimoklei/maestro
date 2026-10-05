@@ -179,7 +179,7 @@ pattern it applies.
 | `inventory-copy.ts:18` | No released skills / Inventory shows skills from the latest release. Open Harness, then create a release to add skills. | No released skills yet / Skills from the latest release appear here. + **Open Harness** | Empty-state form |
 | `inventory-copy.ts:73` | `{more} more. Select the row to see all {total} targets.` | `And {more} more.` | Hover card: no action |
 | `bulk-deploy-report-view.ts:40` | `Deployed to {target} · {n} failed · {n} attention · {n} deployed · {n} skipped` | `Deployed {n} of {m} skills to {target}` | One idea; the groups carry the counts |
-| `bulk-remove-report-view.ts:44` | apm.yml holds an unexpected shape | Manifest not recognised | One name (`CONTEXT.md`) |
+| `bulk-remove-report-view.ts:44` | apm.yml holds an unexpected shape | Manifest not recognised | One name (`GLOSSARY.md`) |
 | `bulk-remove-report-view.ts:44` | What it would delete was never confirmed | Removal not confirmed | ≤ 5 words, concrete |
 
 ### Deploy-state — *Which targets need action?*
@@ -192,8 +192,8 @@ pattern it applies.
 | `deploy-state-copy.ts:19` | No repositories registered. Select Register repository on the Repositories screen to register one. | No repositories registered yet. Select Register repository on the Repositories screen. | Drop the restated purpose |
 | `target-rows.ts:231` | Status hover card, up to ten lines | One reason sentence + read age, for example `2 of 5 deployed skills changed in v1.4.0.` / `Read 4 min ago`. Everything else moves to the pane | Hover card rule |
 | `release-head-copy.ts:128` | Files changed after deployment. The latest release lacks these changes. Select Import local edits to bring them into the Harness. | Files changed after deployment. | Hover card: one idea, no action |
-| `release-head-copy.ts:132` | This copy could not be verified against a recorded baseline | The deployment record cannot check this copy. | `CONTEXT.md` wording; *baseline* is jargon |
-| `deploy-state-copy.ts:68` | Could not reach the Harness location to check for updates | Update check did not run. Maestro could not reach the Harness. | The `?` marker's name in `CONTEXT.md` |
+| `release-head-copy.ts:132` | This copy could not be verified against a recorded baseline | The deployment record cannot check this copy. | `GLOSSARY.md` wording; *baseline* is jargon |
+| `deploy-state-copy.ts:68` | Could not reach the Harness location to check for updates | Update check did not run. Maestro could not reach the Harness. | The `?` marker's name in `GLOSSARY.md` |
 | `deploy-state-copy.ts:66` | This deployed skill is absent from the latest release | Not in the latest release. | Short form of **No longer released** |
 | `skipped-entry-text.ts:9` | … Fix the skill in the Harness, publish a release, then deploy again. | … Fix the skill in the Harness, select Create a release, then deploy again. | Exact control label |
 | `update-target-copy.ts:55` | Counting line *and* `Selected skills after this update: {names}.` | Counting line only | One idea; the sections already list the names |

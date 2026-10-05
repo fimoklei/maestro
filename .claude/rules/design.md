@@ -42,7 +42,7 @@ the new pattern to this section before building it.
 - Put at most one coloured mark in a row.
 
 **Status.**
-- Show a status badge as a `CONTEXT.md` word plus its family's dot. A mark
+- Show a status badge as a `GLOSSARY.md` word plus its family's dot. A mark
   without a visible word keeps its family's glyph.
 - Use the five families: Good ✓ green, Attention ↑/⚠ amber, Failed ✕ red,
   Unknown ? slate, Neutral slate. Neutral and Unknown differ by word only.

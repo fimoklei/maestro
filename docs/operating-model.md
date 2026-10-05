@@ -51,7 +51,7 @@ roadmaps, sub-steps, and grill altitudes.
 - **Tracker** (GitHub Issues) — everything volatile: jobs and their lanes, spec
   issues, sub-issues, ideas.
 - **`docs/brief.md`** — why the product exists.
-- **`CONTEXT.md`** — the glossary.
+- **`GLOSSARY.md`** — the glossary.
 - **`docs/adr/`** — binding decisions.
 - **`.claude/rules/`** — how agents work in this repo.
 - **`PRODUCT.md`** / **`DESIGN.md`** — the design-facing summaries agents read
@@ -60,7 +60,7 @@ roadmaps, sub-steps, and grill altitudes.
 ## Conflict rule
 
 When documents disagree: `docs/jobs.md` (what we bet on) → accepted ADRs (what was
-decided) → `CONTEXT.md` (what words mean) → `docs/brief.md` (why) → `PRODUCT.md`
+decided) → `GLOSSARY.md` (what words mean) → `docs/brief.md` (why) → `PRODUCT.md`
 and `DESIGN.md` (the design-facing summaries). Unresolvable conflict → stop and
 flag, do not guess.
 

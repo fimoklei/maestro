@@ -125,7 +125,7 @@ about 1,223 of them copy (heuristic, roughly 90% precision on a hand sample).
 
 | Check | Real defects | False positives or judgment calls |
 |---|---|---|
-| Retired screen words from `CONTEXT.md`, single-meaning only | 7 (4× "Inventory source screen", 2× "refresh … Inventory", "Holds primitives") | 0 on strings that ship. A plain grep gives 60 for `Press\|Click\|Tap` alone, all in code and comments |
+| Retired screen words from `GLOSSARY.md`, single-meaning only | 7 (4× "Inventory source screen", 2× "refresh … Inventory", "Holds primitives") | 0 on strings that ship. A plain grep gives 60 for `Press\|Click\|Tap` alone, all in code and comments |
 | `Press`/`Click` instead of `Select` | 0 today (about 20 before #860) | 0 |
 | `…` instead of `...` | 0 | 0; busy labels are already pinned by a test |
 | Blocked-control cause, five words or fewer | 0 | Causes built at runtime are invisible to a source scan |

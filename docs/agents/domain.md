@@ -4,7 +4,7 @@ How the engineering skills should consume this repo's domain documentation when 
 
 ## Before exploring, read these
 
-- **`CONTEXT.md`** at the repo root — the canonical glossary.
+- **`GLOSSARY.md`** at the repo root — the canonical glossary.
 - **`docs/adr/`** — read ADRs that touch the area you're about to work in.
 
 New terms and decisions land there through the `/domain-modeling` skill.
@@ -15,7 +15,7 @@ Single-context repo (this repo):
 
 ```
 /
-├── CONTEXT.md
+├── GLOSSARY.md
 ├── docs/adr/
 │   ├── 0001-apm-is-the-engine-maestro-is-the-cockpit.md
 │   └── 0002-local-first-client-server-web-app.md
@@ -24,7 +24,7 @@ Single-context repo (this repo):
 
 ## Use the glossary's vocabulary
 
-When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
+When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `GLOSSARY.md`. Don't drift to synonyms the glossary explicitly avoids.
 
 If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
 

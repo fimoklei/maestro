@@ -430,7 +430,7 @@ scaffold writes `apm: []` and import copies the folder. Departure stands.
 current docs: APM uses "harness" for the consumer's agent tool — "I ship a set of
 harness hooks", "the harness-specific config file"
 [doc: /apm/reference/package-types/, mcp-as-primitive]. APM's own word for what
-Maestro calls the harness is **package** (or **plugin**). `CONTEXT.md` already
+Maestro calls the harness is **package** (or **plugin**). `GLOSSARY.md` already
 carries the *Avoid* line.
 
 **§5 — `.apm/skills/` is APM's shape (resolved drift).** Fully resolved and now
@@ -556,7 +556,7 @@ APM's actual grouping constructs are: the **package** (`.apm/` + `apm.yml`), the
 list** (§G5). None of them is called a bundle.
 
 `docs/apm-behavior.md` never mentions bundles, so nothing measured backs the UI
-tag. Either the tag means something Maestro-specific and needs a `CONTEXT.md`
+tag. Either the tag means something Maestro-specific and needs a `GLOSSARY.md`
 entry, or it should go.
 
 #### G5 — APM documents a `skills:` narrowing field that Maestro never considered

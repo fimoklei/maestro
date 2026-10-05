@@ -25,7 +25,7 @@ and *into what component layer*.
 The honest trade-off was named during the decision: a full level-3 system
 (design tokens **plus** a Storybook catalogue, theme-switching, and an
 exhaustive component variant set) pays off at multi-app / team scale — which
-`CONTEXT.md` marks explicitly as *future, not MVP1*. For a solo, effectively
+`GLOSSARY.md` marks explicitly as *future, not MVP1*. For a solo, effectively
 one-screen cockpit, the scale infrastructure is YAGNI today. The owner
 **overrode that argument deliberately**: dogfooding, a near-term demo, and
 learning a modern 2026 component stack are real, stated drivers, and the
