@@ -1,4 +1,4 @@
-import type { GitHubPage } from "@maestro/core";
+import type { GitHubPage, HarnessState } from "@maestro/core";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
@@ -10,12 +10,14 @@ const HARNESS_STATE = {
   defaultBranch: "main",
   releaseState: "released",
   freshness: { outcome: null, lastFetchedAt: null },
+  cloneSync: "current",
+  localHeadCommit: null,
   stages: {
     proposal: { outcome: "read", rows: [], bound: null },
     review: { outcome: "read", rows: [], bound: null },
     release: { outcome: "read", rows: [], bound: null },
   },
-};
+} satisfies HarnessState;
 
 export function skill(name: string) {
   return { type: "skill", name, description: `${name} skill` };

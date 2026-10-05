@@ -17,11 +17,7 @@ import type {
 } from "@maestro/core";
 import { REREAD_LABEL as REREAD_INVENTORY } from "../inventory/inventory-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
-import {
-  DELETE_SKILL,
-  REREAD_HARNESS,
-  UPDATE_SKILL,
-} from "../ui/control-labels";
+import { REREAD_HARNESS, UPDATE_SKILL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 

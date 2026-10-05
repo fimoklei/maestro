@@ -50,6 +50,7 @@ Confirmed patterns. Apply as rules. Newest on top.
 
 Single observations. Consider but do not auto-apply. Promote to Active on reconfirmation.
 
+- **2026-10-05 · web/split-sentence-escapes-getbytext** — Once a name renders in its own element (`InlineName`), `getByText("whole sentence")` finds nothing, and `queryByText` of it passes vacuously. → Query a sentence with `sentence("…")` from `test-utils.tsx`; never leave a negative `queryByText` on a split sentence.
 - **2026-09-26 · web/svg-use-needs-a-file-url** — Vite inlined the small logo SVG as a data URL; Chrome rendered `<use href="data:…#mark">` as an empty mark while component tests passed. → Import an external SVG referenced by `<use>` with `?no-inline` and verify the mark in a browser.
 - **2026-09-22 · tooling/agent-browser-default-session-is-shared** — Every worktree drives the same default `agent-browser` browser; another session moved the tab to its cockpit mid-check, and `pnpm smoke:check` stayed green. → Use `agent-browser --session <worktree-name>`; check `get url` names this worktree's port before each screenshot.
 - **2026-09-11 · apm-driver/manifest-git-entry-is-an-object** — apm 0.29.0 writes a git dependency in `apm.yml` as an object (`git:`, `ref:`, `skills:`), so a `sed` on the `#tag` string matched nothing and the install ran at the old tag, green. → Move a pin by editing `ref:`; check with `grep -n ref:` before installing. Capture: `docs/research/929-native-model-spike.md`.

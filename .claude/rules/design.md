@@ -221,7 +221,8 @@ Mandatory for any change that alters what `packages/web` renders:
    - Verifying a deploy state → `pnpm smoke:ready --scenario <name>[,<name>]` or
      `all`: `empty`, `in-sync`, `behind`, `mixed-releases`, `local-edits`,
      `unverified`, `pinned-per-skill`, `unfinished-operation`, `import-edits`
-     (both Import local edits groups), `unreadable` (Deploy-state not read),
+     (both Import local edits groups; also behind, so Update target shows its
+     consent rows), `unreadable` (Deploy-state not read),
      `global-leftover` (a global Remove with an Other copies row). It exits
      non-zero when the cockpit does not show the scenario's reading.
    - Verifying a Harness authoring state → `--scenario harness-outcomes`: one

@@ -30,7 +30,7 @@
     "copy-guard": "node scripts/copy-guard.mjs",
     "design-guard": "node scripts/design-guard.mjs",
     "rules-guard": "node scripts/rules-guard.mjs",
-    "lint": "biome check . && node scripts/comment-guard.mjs && node scripts/rules-guard.mjs && node scripts/copy-guard.mjs && node scripts/design-guard.mjs",
+    "lint": "biome check --error-on-warnings . && node scripts/comment-guard.mjs && node scripts/rules-guard.mjs && node scripts/copy-guard.mjs && node scripts/design-guard.mjs",
     "format": "biome check --write .",
     "verify": "node scripts/verify.mjs"
   },

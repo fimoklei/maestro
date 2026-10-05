@@ -107,6 +107,7 @@ describe("copy guard", () => {
       "packages/web/src/g.tsx",
       [
         "export const g = (n: number) =>",
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: planted source text
         '  `${n} ${n === 1 ? "primitive" : "items"}`;',
         "export const G = ({ n }: { n: number }) => (",
         '  <p>{n === 1 ? "drift" : "items"}</p>',
@@ -129,6 +130,7 @@ describe("copy guard", () => {
       [
         "type Row = { state: string; on: (key: string) => string };",
         "export const h = (row: Row) =>",
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: planted source text
         '  `${row.state === "drift" ? "Behind" : row.on("fetch")}`;',
         "export const H = ({ row }: { row: Row }) => (",
         "  <p>",
