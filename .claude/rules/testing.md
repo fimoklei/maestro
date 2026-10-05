@@ -58,6 +58,8 @@ Storybook stories are **not** a lane: documentation, not coverage. Behaviour is 
 
 - Prefer in-memory data structures (real arrays/objects/Maps).
 - Mock only external deps (fs/git/network, APM) that would otherwise force the file into integration.
+- Type every hand-built server response with `satisfies` and its `@maestro/core`
+  type, or build it from a typed fixture.
 
 ## File size
 

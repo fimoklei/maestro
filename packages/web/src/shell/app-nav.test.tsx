@@ -1,3 +1,4 @@
+import type { HarnessState } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -18,12 +19,13 @@ const HARNESS_STATE = {
   releaseState: "released",
   freshness: { outcome: null, lastFetchedAt: null },
   cloneSync: "current",
+  localHeadCommit: null,
   stages: {
     proposal: { outcome: "read", rows: [], bound: null },
     review: { outcome: "read", rows: [], bound: null },
     release: { outcome: "read", rows: [], bound: null },
   },
-};
+} satisfies HarnessState;
 
 function stubEmptyServer() {
   vi.stubGlobal(

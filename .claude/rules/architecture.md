@@ -25,6 +25,8 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 - Order: normalize → validate with Zod → pass typed data inward.
 - Inside `core`, data is trusted; the boundary already checked it.
 - Untrusted-input specifics → `security.md`.
+- Give every `as` cast a reason a reviewer can check. A cast on a copy table or
+  a notice needs a test that renders its result.
 
 ## Function signatures
 

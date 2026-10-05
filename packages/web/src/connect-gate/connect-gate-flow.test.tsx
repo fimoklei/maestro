@@ -1,3 +1,4 @@
+import type { HarnessState } from "@maestro/core";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -20,12 +21,13 @@ function fallback(url: string) {
         releaseState: "never-released",
         freshness: { outcome: null, lastFetchedAt: null },
         cloneSync: "current",
+        localHeadCommit: null,
         stages: {
           proposal: { outcome: "read", rows: [], bound: null },
           review: { outcome: "read", rows: [], bound: null },
           release: { outcome: "read", rows: [], bound: null },
         },
-      },
+      } satisfies HarnessState,
       200,
     );
   }
@@ -198,12 +200,13 @@ describe("connect gate", () => {
               releaseState: "never-released",
               freshness: { outcome: null, lastFetchedAt: null },
               cloneSync: "current",
+              localHeadCommit: null,
               stages: {
                 proposal: { outcome: "read", rows: [], bound: null },
                 review: { outcome: "read", rows: [], bound: null },
                 release: { outcome: "read", rows: [], bound: null },
               },
-            },
+            } satisfies HarnessState,
             200,
           );
         }

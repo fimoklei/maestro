@@ -1,4 +1,4 @@
-import type { HarnessStageRead } from "@maestro/core";
+import type { HarnessStageRead, HarnessState } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -31,7 +31,9 @@ function stubServer({
 }: {
   global?: Reply;
   repos?: Record<string, Reply>;
-  harness?: Partial<Record<"proposal" | "review" | "release", unknown>> & {
+  harness?: Partial<
+    Record<"proposal" | "review" | "release", HarnessStageRead>
+  > & {
     status?: number;
   };
 }) {
@@ -57,13 +59,15 @@ function stubServer({
             defaultBranch: "main",
             releaseState: "released",
             freshness: { outcome: null, lastFetchedAt: null },
+            cloneSync: "current",
+            localHeadCommit: null,
             stages: {
               proposal: read([]),
               review: read([]),
               release: read([]),
               ...stages,
             },
-          },
+          } satisfies HarnessState,
           status,
         );
       }
