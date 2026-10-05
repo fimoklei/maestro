@@ -53,7 +53,6 @@ function Screen({
     status: {
       words: ["Folder missing", "Ready"],
       of: (row) => row.status.word,
-      unread: null,
     },
     groupings: [],
     initialGrouping: "none",

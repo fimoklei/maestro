@@ -3,14 +3,13 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
-import type { DeployTarget } from "../inventory/use-deploy-skill";
+import { type DeployTarget, sameTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { freshnessLine } from "../ui/freshness";
 import { TableScreen } from "../ui/table-screen";
 import { useNow } from "../ui/use-now";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions, type ViewOptions } from "../ui/use-view-options";
-import { useWriteAction } from "../ui/use-write-action";
 import {
   deployStateColumns,
   type TargetAction,
@@ -60,11 +59,6 @@ const COLUMN_OPTIONS = [
   { value: "skills", label: "Skills" },
 ];
 
-const sameTarget = (a: DeployTarget | undefined, b: DeployTarget) =>
-  a !== undefined &&
-  a.kind === b.kind &&
-  (a.kind === "global" || (b.kind === "repo" && a.repoPath === b.repoPath));
-
 export function DeployStateView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -76,7 +70,6 @@ export function DeployStateView() {
     queries: repoPaths.map(deployStateQueryOptions),
   });
   const repoDrift = useQueries({ queries: repoPaths.map(driftQueryOptions) });
-  const retry = useRetryOperation();
   const location = useLocation();
 
   const notRead = [
@@ -128,20 +121,15 @@ export function DeployStateView() {
 
   const pendingOf = (target: DeployTarget) =>
     targets.find((row) => sameTarget(target, row.wire));
-  const retryWrite = useWriteAction(retry, {
-    report: screen.report,
-    action: ({ target }) => pendingOf(target)?.pending?.kind ?? "update",
-    show: "row",
-    // A finished deploy or removal shows as the row's new status alone.
-    name: ({ completed }, { target }) =>
-      completed.kind === "update"
-        ? (pendingOf(target)?.updateName ?? null)
-        : null,
-    failure: () => null,
+  const retry = useRetryOperation(screen.report, (target) => {
+    const row = pendingOf(target);
+    if (row?.pending === undefined) return null;
+    return {
+      operation: row.pending,
+      // A finished deploy or removal shows as the row's new status alone.
+      name: row.pending.kind === "update" ? row.updateName : null,
+    };
   });
-
-  const retrying = (target: DeployTarget) =>
-    retry.isPending && sameTarget(retry.variables?.target, target);
 
   const targets: TargetRow[] = [
     ...(globalDeploy.data
@@ -162,7 +150,7 @@ export function DeployStateView() {
   ];
   const rows: TargetTableRow[] = targets.map((row) => ({
     ...row,
-    actions: targetMenuItems(row, retrying(row.wire)),
+    actions: targetMenuItems(row, retry.isRetrying(row.wire)),
     links: targetLinkItems(row),
   }));
 
@@ -176,9 +164,9 @@ export function DeployStateView() {
         row.id,
         action === "update" || action === "import" ? action : null,
       );
-      if (action === "retry") retryWrite.run({ target: row.wire });
+      if (action === "retry") retry.run(row.wire);
     },
-    [navigate, openFromMenu, retryWrite],
+    [navigate, openFromMenu, retry],
   );
   const onActionRef = useRef(onAction);
   onActionRef.current = onAction;
@@ -199,7 +187,6 @@ export function DeployStateView() {
     status: {
       words: TARGET_STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
-      unread: null,
     },
     groupings: [
       {
@@ -276,8 +263,9 @@ export function DeployStateView() {
             row={row}
             {...frame}
             initialFocus={intent?.dialog ? null : undefined}
-            onRetry={() => retryWrite.run({ target: row.wire })}
-            isRetrying={retrying(row.wire)}
+            onRetry={() => retry.run(row.wire)}
+            isRetrying={retry.isRetrying(row.wire)}
+            retryFailure={retry.failure(row.wire)}
             onReread={screen.reread}
             now={now}
             update={placed.update}

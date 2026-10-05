@@ -13,7 +13,6 @@ import {
   NO_TARGET_REMOVABLE,
   NO_TOOL_DETECTED_CAUSE,
   NOT_DEPLOYED_ANYWHERE,
-  NOT_READ_YET,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
@@ -38,10 +37,6 @@ describe("Inventory copy", () => {
     expect(NO_FILTER_MATCH).toBe(
       "No skills match the filters. Select Filter to show more skills.",
     );
-  });
-
-  it("heads the rows whose status has not answered yet", () => {
-    expect(NOT_READ_YET).toBe("Not read yet");
   });
 
   it("names a row's checkbox after its skill", () => {

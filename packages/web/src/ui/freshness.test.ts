@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { freshnessLine } from "./freshness";
+import { freshnessLine, NOT_READ_YET } from "./freshness";
 
 const NOW = new Date("2026-08-03T12:00:00.000Z");
 const minutesAgo = (minutes: number) => NOW.getTime() - minutes * 60_000;
@@ -142,5 +142,11 @@ describe("freshnessLine on a screen whose reads report failure elsewhere", () =>
       freshnessLine({ readAt: [undefined, 0], outcome: "untracked" }, NOW),
     ).toBeNull();
     expect(freshnessLine({ readAt: [], outcome: "untracked" }, NOW)).toBeNull();
+  });
+});
+
+describe("Freshness copy", () => {
+  it("heads the rows whose status has not answered yet", () => {
+    expect(NOT_READ_YET).toBe("Not read yet");
   });
 });

@@ -62,6 +62,7 @@ const repoAt = (release: string, pendingOperation?: object) => ({
 function stubUpdate(
   answer: Promise<Response>,
   states: { before: ServerState; during?: ServerState; after: ServerState },
+  retry?: () => Response,
 ) {
   let phase: "before" | "during" | "after" = "before";
   void answer.then(() => {
@@ -76,6 +77,9 @@ function stubUpdate(
       if (url === "/api/deploy/update") {
         phase = "during";
         return answer;
+      }
+      if (url === "/api/deploy/retry" && retry) {
+        return retry();
       }
       throw new Error(`unexpected request ${url}`);
     },
@@ -312,6 +316,54 @@ describe("Deploy-state — Update target on the global target", () => {
     expect(
       within(dialog).getByRole("button", { name: "Retry update" }),
     ).toBeInTheDocument();
+  });
+
+  it("states a failed Retry update in the dialog, in place of Update incomplete", async () => {
+    const update = deferred();
+    stubUpdate(
+      update.promise,
+      {
+        before: GLOBAL_BEHIND,
+        after: {
+          global: {
+            tools: [toolAt("v0.3.4")],
+            skipped: [],
+            pendingOperation: PENDING,
+          },
+        },
+      },
+      () => jsonResponse({ error: "retry-failed", message: "irrelevant" }, 502),
+    );
+    renderDeployState();
+
+    const dialog = await confirmUpdate("Claude Code");
+    update.resolve(
+      jsonResponse(
+        {
+          error: "update-incomplete",
+          message: "irrelevant",
+          outcome: [{ name: "tdd", tool: "claude", state: "not-updated" }],
+        },
+        502,
+      ),
+    );
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Retry update" }),
+    );
+
+    const notice = await within(dialog).findByRole("alert");
+    expect(
+      within(notice).getByText("Update outcome unknown"),
+    ).toBeInTheDocument();
+    expect(
+      within(notice).getByText(
+        "Nothing proved the update finished. Select Retry update to run it again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(notice).getByRole("button", { name: "Retry update" }),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText("Update incomplete")).toBeNull();
   });
 
   it("names a tool's missing copy and offers Retry update", async () => {
