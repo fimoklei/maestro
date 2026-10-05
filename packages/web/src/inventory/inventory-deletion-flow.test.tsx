@@ -123,7 +123,12 @@ describe("Inventory — Delete skill", () => {
     );
     expect(
       dialog.getByText(
-        "Delete skill removes the tdd folder from your clone. GitHub and your targets keep the skill.",
+        "Delete skill removes the tdd folder from your clone of fimoklei/agent-harness. The skill stays in fimoklei/agent-harness and in your targets.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      dialog.getByText(
+        "To also delete it from fimoklei/agent-harness, go to the Harness screen and select Propose change.",
       ),
     ).toBeInTheDocument();
     const confirm = dialog.getByRole("button", { name: /^delete skill/i });

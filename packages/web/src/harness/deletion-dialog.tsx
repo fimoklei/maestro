@@ -5,6 +5,7 @@ import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { StatusLine } from "../ui/status-line";
 import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
+import type { LocalDeletionContext } from "./local-deletion-copy";
 
 // The two roads a Harness skill's deletion takes. Proposing it needs the exact
 // origin/HEAD copy the confirmation is given against (#580), and the open
@@ -21,6 +22,8 @@ export type DeletionMode =
     }
   | {
       kind: "local";
+      origin: string;
+      screen: LocalDeletionContext["screen"];
       folder: string;
       check: "checking" | "failed" | "ready";
       localOnly: boolean;
@@ -91,11 +94,13 @@ export function DeletionDialog({
       ) : (
         <>
           <p className="m-0">
-            {DELETE_SKILL} removes the {skill} folder from your clone. GitHub
-            and your targets keep the skill.
+            {DELETE_SKILL} removes the {skill} folder from your clone of{" "}
+            {mode.origin}. The skill stays in {mode.origin} and in your targets.
           </p>
           <p className="m-0 text-gray-11">
-            Then select Propose change to open a pull request.
+            {mode.screen === "harness"
+              ? `To also delete it from ${mode.origin}, select Propose change.`
+              : `To also delete it from ${mode.origin}, go to the Harness screen and select Propose change.`}
           </p>
           <Notice
             trigger="load"
@@ -105,7 +110,8 @@ export function DeletionDialog({
                     level: "warning",
                     label: `Uncommitted changes in ${skill}`,
                     message:
-                      "Delete skill discards these changes. To keep them, commit them first.",
+                      "Delete skill discards them. To keep them, commit them in your Git tool first.",
+                    detail: `The skill's files in your clone of ${mode.origin} differ from its last commit.`,
                   }
                 : null
             }

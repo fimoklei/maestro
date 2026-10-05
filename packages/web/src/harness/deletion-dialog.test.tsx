@@ -19,6 +19,8 @@ const OVER_OPEN_REQUEST: DeletionMode = {
 
 const LOCAL: DeletionMode = {
   kind: "local",
+  origin: "fimoklei/harness",
+  screen: "harness",
   folder: ".apm/skills/research",
   check: "ready",
   localOnly: true,
@@ -193,17 +195,29 @@ describe("DeletionDialog", () => {
 
       expect(
         screen.getByText(
-          "Delete skill removes the research folder from your clone. GitHub and your targets keep the skill.",
+          "Delete skill removes the research folder from your clone of fimoklei/harness. The skill stays in fimoklei/harness and in your targets.",
         ),
       ).toBeInTheDocument();
       expect(screen.queryByText(/No other copy/)).not.toBeInTheDocument();
     });
 
-    it("names the next step", () => {
+    it("names the next step to delete it from the Harness too", () => {
       renderDialog({ mode: STEP_ONE });
 
       expect(
-        screen.getByText("Then select Propose change to open a pull request."),
+        screen.getByText(
+          "To also delete it from fimoklei/harness, select Propose change.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("names the Harness screen when opened from another screen", () => {
+      renderDialog({ mode: { ...STEP_ONE, screen: "inventory" } });
+
+      expect(
+        screen.getByText(
+          "To also delete it from fimoklei/harness, go to the Harness screen and select Propose change.",
+        ),
       ).toBeInTheDocument();
     });
 
@@ -231,7 +245,12 @@ describe("DeletionDialog", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByText(
-          "Delete skill discards these changes. To keep them, commit them first.",
+          "Delete skill discards them. To keep them, commit them in your Git tool first.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "The skill's files in your clone of fimoklei/harness differ from its last commit.",
         ),
       ).toBeInTheDocument();
     });

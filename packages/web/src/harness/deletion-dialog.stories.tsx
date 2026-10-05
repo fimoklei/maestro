@@ -31,6 +31,8 @@ export const LocalOnly: Story = {
   args: {
     mode: {
       kind: "local",
+      origin: "fimoklei/harness",
+      screen: "harness",
       folder: ".apm/skills/old-skill",
       check: "ready",
       localOnly: true,
@@ -45,6 +47,8 @@ export const StepOne: Story = {
   args: {
     mode: {
       kind: "local",
+      origin: "fimoklei/harness",
+      screen: "harness",
       folder: ".apm/skills/old-skill",
       check: "ready",
       localOnly: false,
@@ -57,6 +61,8 @@ export const StepOneUncommitted: Story = {
   args: {
     mode: {
       kind: "local",
+      origin: "fimoklei/harness",
+      screen: "harness",
       folder: ".apm/skills/old-skill",
       check: "ready",
       localOnly: false,
@@ -70,6 +76,8 @@ export const LocalChecking: Story = {
   args: {
     mode: {
       kind: "local",
+      origin: "fimoklei/harness",
+      screen: "harness",
       folder: ".apm/skills/old-skill",
       check: "checking",
       localOnly: false,

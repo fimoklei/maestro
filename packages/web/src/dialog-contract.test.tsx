@@ -81,6 +81,8 @@ const ON_DIALOG: Row[] = [
         skill="research"
         mode={{
           kind: "local",
+          origin: "fimoklei/harness",
+          screen: "harness",
           folder: ".apm/skills/research",
           check: "ready",
           localOnly: false,
