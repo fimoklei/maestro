@@ -31,7 +31,7 @@ anchor tie-breaker and checklist with the short guidance in `copy.md`.
    register leaves out (promotional words, chat phrases, `!`), in shipped
    copy. It lists only words and marks that are wrong in every screen use;
    form, length and style stay with review.
-3. The screen uses the fixed names in `CONTEXT.md`. The glossary continues to
+3. The screen uses the fixed names in `GLOSSARY.md`. The glossary continues to
    govern code terminology and which technical terms the screen keeps.
 4. Every user-facing word belongs in `packages/web`, centralised per feature.
    Author a notice's heading, sentence, `detail` and action label together.

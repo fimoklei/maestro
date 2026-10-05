@@ -128,7 +128,7 @@ standard; whichever one is loaded last decides.
 
 Maestro already does what most skills recommend. `copy.md` has an element
 forms table, outcome-first ordering and a reuse-by-grep step. Its sibling
-tests pin approved strings, `CONTEXT.md` fixes screen nouns, `copy-guard`
+tests pin approved strings, `GLOSSARY.md` fixes screen nouns, `copy-guard`
 blocks retired words, and screens are checked in the browser. The gaps, by
 expected payoff:
 

@@ -101,7 +101,7 @@ Every ADR number Maestro cites exists in `docs/adr/` (27 distinct numbers).
 Every `docs/research/*.md` path cited in code exists. Counted over all `.ts`
 and `.tsx` files in `packages/`, `scripts/` and `tests/`, 255 files cite an
 ADR and 76 cite `docs/research`, `apm-behavior.md`, `LEARNINGS.md` or
-`CONTEXT.md`. The ticket says 259 and 81, probably because it counted more
+`GLOSSARY.md`. The ticket says 259 and 81, probably because it counted more
 file types.
 
 ## Agent rule files on comments

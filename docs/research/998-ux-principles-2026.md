@@ -222,7 +222,7 @@ if your user research shows there's a need for them." GOV.UK
 [Complete multiple tasks](https://design-system.service.gov.uk/patterns/complete-multiple-tasks/)
 ships five: Completed, Incomplete, Cannot start yet, Not yet started, In
 progress. NN/g Color: "Limit your palette to three colors." Maestro: the
-proposal states in `CONTEXT.md` are the whole vocabulary; a new chip word is a
+proposal states in `GLOSSARY.md` are the whole vocabulary; a new chip word is a
 glossary change, not a UI tweak.
 
 **P21. The resting state is plain text; colour marks what needs action.**

@@ -34,7 +34,7 @@ message:
 Give every surface **one idea**: a screen answers one question, and each band,
 hover card, hint, dialog body and sentence carries one part of it.
 
-Use the screen names in `CONTEXT.md` and the exact labels of controls.
+Use the screen names in `GLOSSARY.md` and the exact labels of controls.
 
 The copy review is complete when every changed user-facing string is accounted
 for and has passed the `writing-clearly-and-concisely` skill. The reader can tell on the first reading whether the action finished, what
@@ -114,8 +114,8 @@ Status chip: the word disagrees with what happened (#889)
 | Notice | A failure or a block, one per band: the one that blocks most. Notices that share an action merge, the parts in `detail`. Outcome heading, what happened, useful cause in `detail`, one action | `Status out of date` |
 | Detail sentence | Useful cause or recovery context in one or two short sentences | `Pull request #45 was closed without merging. Select Reopen proposal to continue it.` |
 | Hover card | The status reason in one sentence, then the read age | `2 of 5 deployed skills changed in v1.4.0.` |
-| Status chip | Two to four words, no verb, from `CONTEXT.md` | `Not yet proposed` |
-| Control label | Verb plus object, from `CONTEXT.md`; a reach beyond the row in words | `Propose change`, `Remove from all 3 targets` |
+| Status chip | Two to four words, no verb, from `GLOSSARY.md` | `Not yet proposed` |
+| Control label | Verb plus object, from `GLOSSARY.md`; a reach beyond the row in words | `Propose change`, `Remove from all 3 targets` |
 | Blocked control | Label, em dash, cause in five words or fewer | `Update target — no GitHub origin` |
 | Group header meta | The fact, no routine read age | `Compared with main` |
 | Empty state | `No {things} yet`, then one sentence saying what appears here | `No changes yet` |

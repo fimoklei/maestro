@@ -106,7 +106,7 @@ The gaps #929 measured, and the rule for each:
 
 ## Consequences
 
-- `CONTEXT.md` gains **Target release** and **Selection**; **Version drift**
+- `GLOSSARY.md` gains **Target release** and **Selection**; **Version drift**
   and **Behind** become target readings; **Older tag** retires; **Bundle**
   keeps Maestro's meaning with an *Avoid* line for APM's.
 - ADR-0019 §1 is amended (the consumer pins the Harness, not a skill) and §7
@@ -115,7 +115,7 @@ The gaps #929 measured, and the rule for each:
   ADR-0028 keeps its row reading; the action moves to the target.
 - Migrating a target that still holds per-skill dependencies is its own
   decision (#933).
-- `CONTEXT.md` gains **Pending release**, **Manifest not recognised** and
+- `GLOSSARY.md` gains **Pending release**, **Manifest not recognised** and
   **Extra files deployed**. **Removal incomplete** and **Retry removal** stay:
   the last removal does empty the target, and a blocked uninstall leaves files
   behind whatever apm's exit code says. **Deploy incomplete** and **Retry

@@ -252,11 +252,11 @@ a `role="status"` count pill (`inventory-source-view.tsx:88`) and an
 `aria-busy="true"` skeleton (`inventory-source-view.tsx:141-145`). No other
 screen announces a read.
 
-## 6. Where practice contradicts `CONTEXT.md`
+## 6. Where practice contradicts `GLOSSARY.md`
 
 Flat list, no ruling — #893 decides.
 
-1. **`CONTEXT.md` contradicts itself on the failed read, and the code follows
+1. **`GLOSSARY.md` contradicts itself on the failed read, and the code follows
    the weaker rule.** The *Harness re-read* row calls **Retry check** "the
    single action in every failed-read notice" on the Harness view; the *Read
    failure* row makes **Reload the page** the way out. `harnessStateNotice`
@@ -267,10 +267,10 @@ Flat list, no ruling — #893 decides.
    offers **Re-read Inventory** in place (`inventory-panel.tsx:33-36`); a failed
    deploy-state, registry or global-targets read offers **Reload the page**
    (`deploy-state-panel.tsx:53`, `deploy-state-view.tsx:96`,
-   `global-targets.tsx:58`). `CONTEXT.md` sanctions only the second.
+   `global-targets.tsx:58`). `GLOSSARY.md` sanctions only the second.
 3. **A page reload is the recovery no source recommends**, and every one of
    those three regions has a `refetch` available that would cost one request.
-   `CONTEXT.md` fixes the expensive answer as the rule.
+   `GLOSSARY.md` fixes the expensive answer as the rule.
 4. **"Refresh" is retired but still on screen.** "Maestro tagged {tag} but could
    not refresh Inventory. Re-read Inventory to see the published skills."
    (`harness/notice-copy.ts:512`) — *Refresh* in a sentence, which the *Harness
@@ -278,9 +278,9 @@ Flat list, no ruling — #893 decides.
 5. **Two busy forms for the same act.** The Harness puts the busy word in a
    status slot (`Reading GitHub…`, `harness-view-model.ts:52`); the Harness
    location screen puts it on the button label (`Re-reading Inventory…`,
-   `inventory-source-view.tsx:115-116`). `CONTEXT.md` names only the first, and
+   `inventory-source-view.tsx:115-116`). `GLOSSARY.md` names only the first, and
    Material asks for one form per process across the product.
-6. **The freshness vocabulary stops at the Harness.** `CONTEXT.md` calls
+6. **The freshness vocabulary stops at the Harness.** `GLOSSARY.md` calls
    **Read** "the one word for reading the Harness, on every surface" and gives
    no word for any other screen's age. Drift genuinely ages (five minutes) and
    states nothing; Inventory and deploy-state state nothing.
@@ -297,7 +297,7 @@ Flat list, no ruling — #893 decides.
    back") and the pending case defeats it.
 9. **The cockpit re-reads without being asked, and no word covers it.**
    `refetchOnWindowFocus: true` by default (`main.tsx:18`) plus the Harness
-   view's own `focus` listener (`harness-view.tsx:196-208`). `CONTEXT.md`
+   view's own `focus` listener (`harness-view.tsx:196-208`). `GLOSSARY.md`
    describes only reads the author asks for.
 
 ## Sources

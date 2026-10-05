@@ -13,7 +13,7 @@ Maestro shipped consumer-only: connect a local clone of the central inventory,
 deploy skills out of it. Two statements were bound on the strength of that, and
 the authoring route breaks both.
 
-- `CONTEXT.md` → *Inventory source*: **"Read-only; Maestro never writes back to
+- `GLOSSARY.md` → *Inventory source*: **"Read-only; Maestro never writes back to
   it."**
 - ADR-0015 point 2 puts the same no-write promise on the connect gate's success
   state and calls that the product's strongest moment.
@@ -49,14 +49,14 @@ consumers deploy only from the released state.**
    included. Maestro writes here, and only here. It carries no quality promise.
 2. **Released harness** — the harness at its latest published tag. The only
    thing consumers deploy from, and the only state the curated bar applies to.
-3. **The curated bar moves, it does not disappear.** `CONTEXT.md`'s
+3. **The curated bar moves, it does not disappear.** `GLOSSARY.md`'s
    *Curated / Production-ready* rule now attaches to the released harness.
    "Central" keeps meaning curated, because a consumer never sees anything else.
 4. **The harness shape is `.apm/skills/<name>`**, and a harness is recognised by
    `apm.yml` in the repo root — APM's own marker, never a skills directory.
    Grounds and rejected alternatives are in #360.
 5. **"Harness" is this repo's name**, in the glossary as well as on the screen.
-   `CONTEXT.md` gains it as a term with an *Avoid* line naming APM's opposite
+   `GLOSSARY.md` gains it as a term with an *Avoid* line naming APM's opposite
    meaning. This resolves ADR-0019 §4 from drift to a decision.
 6. **`Harness` and `Central inventory` both stand.** They are the same repo seen
    from two sides — the author's and the consumer's. Neither is renamed.
@@ -133,7 +133,7 @@ consumers deploy only from the released state.**
   connect-gate copy and its tests, which is build work, and this ticket's own
   terms forbid deciding build questions here.
 - **New nouns for the two states — `draft` / `catalogue`, or `published`.**
-  Rejected on two counts: `CONTEXT.md` already lists "published" under *Avoid*,
+  Rejected on two counts: `GLOSSARY.md` already lists "published" under *Avoid*,
   and #347 put a **release** button on the screen. The screen word wins. Two
   adjectives on one noun also add no vocabulary at all.
 - **A third drift facet for unreleased work.** It collapses two questions that

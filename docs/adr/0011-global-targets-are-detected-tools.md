@@ -9,7 +9,7 @@ A global deploy is meant to make a primitive available across all of a user's
 work in their AI coding tools. Until now the cockpit modelled "Global" as a
 single opaque target and every global deploy ran `apm install -g -t
 claude,codex` — **always both tools**, per the earlier decision recorded in
-`CONTEXT.md` ("every deploy targets both Claude Code and Codex; no per-tool
+`GLOSSARY.md` ("every deploy targets both Claude Code and Codex; no per-tool
 choice", roadmap 01.2).
 
 Two problems surfaced in dogfood (issue #111):
@@ -74,7 +74,7 @@ tools".
 
 ## Consequences
 
-- Reverses roadmap 01.2's "always both tools". `CONTEXT.md`'s *Global deploy* /
+- Reverses roadmap 01.2's "always both tools". `GLOSSARY.md`'s *Global deploy* /
   *Global target* definitions and its "Resolved" note on tool targeting are
   updated to match.
 - Implementation is **blocked by the detection spike**: apm's behaviour when a

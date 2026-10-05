@@ -24,8 +24,8 @@ temporary consuming repo and temporary global targets, then clean up on stop.
 ## Decision
 
 Smoke is a **dev-tooling harness** (`scripts/`), not product behaviour. No code
-in `core`/`server`/`web` changes; `CONTEXT.md` is untouched (this adds no domain
-term — "where Maestro runs" is not a Target, per CONTEXT.md).
+in `core`/`server`/`web` changes; `GLOSSARY.md` is untouched (this adds no domain
+term — "where Maestro runs" is not a Target, per GLOSSARY.md).
 
 - **`pnpm smoke` is always ephemeral.** The persistent-playground mode is
   dropped. It wipes `.maestro-sandbox` on start (a crash-safety net) and on stop
@@ -95,7 +95,7 @@ register, and the states those produce. What it seeds:
 - **Ephemerality is unchanged.** Wipe-and-reseed per run stands; only a
   prohibitive seeding cost could overturn it, and half a second is not that.
 
-`CONTEXT.md` stays untouched for the same reason as the original decision:
+`GLOSSARY.md` stays untouched for the same reason as the original decision:
 sandbox seeding is dev tooling, not domain vocabulary.
 
 ## Amendment — rehearsing the flows vs. verifying a change
