@@ -7,7 +7,7 @@ import { LIST_TOKENS, STATUS_TOKENS, type StatusFamily } from "./status-family";
 // preflight in the same legend, edge and row style. A failed group holds what
 // cannot run.
 
-export type GroupedListRow = {
+type GroupedListRow = {
   /** What the checked set holds for this row. */
   key: string;
   name: string;
