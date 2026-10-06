@@ -116,6 +116,7 @@ export class PromoteSkill {
       root,
       name,
       second.head,
+      second.kind,
     );
     switch (push) {
       case "pushed":

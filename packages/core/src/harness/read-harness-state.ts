@@ -3,6 +3,7 @@ import { parseGitOrigin } from "../deploy/git-origin";
 import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
+import type { ProposalKind } from "./proposal-request";
 import {
   proposeReleaseVersion,
   type SemverStep,
@@ -125,6 +126,7 @@ export interface HarnessGitPort {
     root: string,
     name: string,
     baseCommit: string,
+    kind: Exclude<ProposalKind, "deletion">,
   ): Promise<PromoteSkillOutcome>;
   pushSkillDeletion(
     root: string,

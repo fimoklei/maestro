@@ -98,8 +98,9 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
       pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
     });
 
+    // GitHub's compare page titles a one-commit request by its subject.
     expect(await promoted("tdd", "log", "-1", "--format=%s")).toBe(
-      "Promote skill: tdd",
+      "Edit skill: tdd",
     );
     const files = await promoted("tdd", "ls-tree", "-r", "--name-only");
     expect(files.split("\n").sort()).toEqual([
@@ -155,6 +156,9 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
       ".apm/skills/tdd/SKILL.md",
       "README.md",
     ]);
+    expect(await promoted("jobs", "log", "-1", "--format=%s")).toBe(
+      "Add skill: jobs",
+    );
   });
 
   it("runs none of the clone's own hooks, which are the author's and not this push's", async () => {
@@ -438,9 +442,9 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     const git2 = new HarnessGitAdapter();
     const head = (await git(remote, "rev-parse", "main")).stdout.trim();
     await writeSkill("tdd", "first edit");
-    await expect(git2.pushSkillPromotion(root, "tdd", head)).resolves.toBe(
-      "pushed",
-    );
+    await expect(
+      git2.pushSkillPromotion(root, "tdd", head, "edit"),
+    ).resolves.toBe("pushed");
     const first = await promoted("tdd", "rev-parse");
 
     const other = join(base, "other");
@@ -459,9 +463,9 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
 
     await writeSkill("tdd", "first edit");
 
-    await expect(git2.pushSkillPromotion(root, "tdd", head)).resolves.toBe(
-      "pushed",
-    );
+    await expect(
+      git2.pushSkillPromotion(root, "tdd", head, "edit"),
+    ).resolves.toBe("pushed");
 
     expect(await promoted("tdd", "rev-parse")).not.toBe(concurrent);
     expect(

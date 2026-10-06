@@ -25,11 +25,16 @@ const TITLE_PREFIX: Record<ProposalKind, string> = {
 // counts as Maestro's own words (#1399).
 const OWN_PREFIXES = [...Object.values(TITLE_PREFIX), "Promote skill:"];
 
+// Also the subject of the commit a push lands: GitHub's compare page titles a
+// one-commit request by it, where no request is opened for the author.
+export const proposalTitle = (name: string, kind: ProposalKind): string =>
+  `${TITLE_PREFIX[kind]} ${name}`;
+
 const proposalText = (
   name: string,
   kind: ProposalKind,
 ): { title: string; body: string } => ({
-  title: `${TITLE_PREFIX[kind]} ${name}`,
+  title: proposalTitle(name, kind),
   body:
     kind === "deletion"
       ? `Deletes ${name} from the Harness. Targets keep the skill until each one runs Update target after the next release.`

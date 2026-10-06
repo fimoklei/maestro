@@ -167,9 +167,9 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
     await git(root, "remote", "remove", "origin");
 
-    await expect(adapter().pushSkillPromotion(root, "tdd", head)).resolves.toBe(
-      "push-elsewhere",
-    );
+    await expect(
+      adapter().pushSkillPromotion(root, "tdd", head, "edit"),
+    ).resolves.toBe("push-elsewhere");
   });
 
   // `LC_ALL=C` stands in for the whole options object: the timeout cannot be
