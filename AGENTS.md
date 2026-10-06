@@ -29,35 +29,17 @@ above it (ADR-0001).
   `~/.maestro/config.json`). Edit the inventory repo directly only for a task
   about the inventory itself: bundles or APM manifests.
 
-## Commands
-
-Run from the repo root.
-
-- `pnpm dev` — server and web for this worktree, on its own pair of ports
-  (kills this worktree's previous run first; `pnpm cockpit:url` prints the
-  address).
-- `pnpm smoke` — `dev` against an isolated sandbox config
-  (`MAESTRO_HOME=.maestro-sandbox`).
-  `pnpm smoke:stop` stops it when you are done.
-- `pnpm test:affected` — the coding loop: only tests the uncommitted work
-  reaches. `pnpm test` runs the whole suite.
-- One test file, for TDD red/green:
-  `./node_modules/.bin/vitest run <path-from-repo-root>`, without `--root`.
-- `pnpm verify` — lint, typecheck and test, one summary. Reuses a passing run
-  on an unchanged tree (ignored files do not count); `--force` reruns.
-- After a full run, read its output in `.logs/`; never re-run it with a
-  narrower filter to see more.
-
 ## Rules by task
 
 Read the file before starting the task.
 
 - Touching package boundaries (core/server/web), or designing a module, port or interface → `.claude/rules/architecture.md`; for a design, also the `codebase-design` skill
-- Writing tests → `.claude/rules/testing.md`
+- Writing or running tests, or `pnpm verify` → `.claude/rules/testing.md`
 - Writing or trimming a code comment → `.claude/rules/comments.md`
 - Starting a process, using a path from input, parsing an external file or adding an HTTP endpoint → `.claude/rules/security.md`
 - React component or client-side data access → `.claude/rules/frontend.md`
 - Designing a screen, dialog or use case, or changing what `packages/web` renders → `.claude/rules/design.md`
+- Running the cockpit (`pnpm dev`, `pnpm smoke`) → `.claude/rules/design.md` → `Verify before "done"`
 - Drafting or proposing user-facing copy — in code, a spec, a ticket or a grill option → `.claude/rules/copy.md`, and complete its copy review
 - Driving `apm` or parsing its lockfile/output → `.claude/rules/apm-driver.md`
 - Driving `gh` or parsing its output → `.claude/rules/gh-driver.md`
@@ -70,21 +52,11 @@ Read the file before starting the task.
   error codes) → `docs/agents/codebase-map.md`.
 - Before measuring anything → `docs/research/`.
 - Domain terms → `GLOSSARY.md`; decisions → `docs/adr/` (`docs/agents/domain.md`).
-- `LEARNINGS.md` — read at session start. Apply `## Active` as rules;
-  `## Tentative` is consider-only.
+- Read `LEARNINGS.md` at session start.
 
 ## Workflow
 
-- Starting a grill, picking the next job, creating a spec issue, or closing a
-  job → the `jobs` skill; the Legend in `docs/jobs.md` holds the rules.
 - Committing → `workflow-commit`. Shipping → `workflow-ship`.
-- Issues live in GitHub Issues for `fimoklei/maestro`, via `gh`. Before
-  publishing a ticket →
-  `docs/agents/issue-tracker.md` (sub-issue and blocked-by recipe). Labels →
-  `docs/agents/triage-labels.md`.
-- Screenshots and measurements of this cockpit against a `pnpm smoke` run →
-  `agent-browser`. Researching a live third-party site → the Chrome browser
-  tools, which drive the operator's own logged-in profile.
-- Cloud routine instructions: `Dead-code sweep (1 PR/day)` →
-  `docs/agents/dead-code-sweep.md`; `Code-scanning fix (1 PR/day)` →
-  `docs/agents/code-scanning-fix.md`.
+- Publishing an issue (job, spec or ticket) → `docs/agents/issue-tracker.md`.
+- Researching a live third-party site → the Chrome browser tools, which drive
+  the operator's own logged-in profile.
