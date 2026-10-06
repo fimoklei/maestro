@@ -15,7 +15,7 @@ export const stageRow = (
   stage,
   skill,
   status,
-  deletion: false,
+  change: "edit",
   requests: [],
   reviewers: [],
   comparison: stage === "pending-proposal" ? { kind: "default-branch" } : null,

@@ -20,7 +20,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-review" as HarnessStage,
   skill: "tdd",
   status: "waiting-for-review" as StageStatus,
-  deletion: false,
+  change: "edit",
   requests: [pullRequest(45)],
   reviewers: [],
   comparison: null,
@@ -113,8 +113,8 @@ describe("rowItems", () => {
     it("never offers it on a row that is already deleted locally", () => {
       const items = rowItems(
         proposal({
-          status: "deleted-locally",
-          deletion: true,
+          status: "not-yet-proposed",
+          change: "deletion",
           remoteTree: "remote-tdd",
           folderOnDisk: false,
         }),
@@ -129,7 +129,7 @@ describe("rowItems", () => {
       const items = rowItems(
         row({
           stage: "pending-release",
-          status: "changed",
+          status: "not-yet-released",
           folderOnDisk: true,
         }),
         handlers,
@@ -144,8 +144,8 @@ describe("rowItems", () => {
       const items = rowItems(
         row({
           stage: "pending-release",
-          status: "deleted",
-          deletion: true,
+          status: "not-yet-released",
+          change: "deletion",
           folderOnDisk: false,
         }),
         handlers,
@@ -227,14 +227,9 @@ describe("rowItems", () => {
 
     it.each([
       ["behind an open proposal", { status: "new-local-work" as const }],
-      ["that proposes a deletion", { deletion: true, folderOnDisk: false }],
       [
-        "deleted locally",
-        {
-          status: "deleted-locally" as const,
-          deletion: true,
-          folderOnDisk: false,
-        },
+        "that proposes a deletion",
+        { change: "deletion" as const, folderOnDisk: false },
       ],
     ])("never offers it on a row %s", (_what, over) => {
       const items = rowItems(unproposed(over), handlers, true);
@@ -327,7 +322,7 @@ describe("rowItems", () => {
     const items = rowItems(
       row({
         status: "proposal-closed",
-        deletion: true,
+        change: "deletion",
         folderOnDisk: false,
         restorable: true,
       }),
@@ -344,7 +339,11 @@ describe("rowItems", () => {
 
   it("offers no Reopen proposal on a closed deletion once the folder is restored", () => {
     const items = rowItems(
-      row({ status: "proposal-closed", deletion: true, folderOnDisk: true }),
+      row({
+        status: "proposal-closed",
+        change: "deletion",
+        folderOnDisk: true,
+      }),
       handlers,
       true,
     );
@@ -389,7 +388,7 @@ describe("rowItems", () => {
 
   it("offers only the link on merged work, which has no undo here", () => {
     const items = rowItems(
-      row({ stage: "pending-release", status: "changed" }),
+      row({ stage: "pending-release", status: "not-yet-released" }),
       handlers,
       true,
     );
@@ -413,7 +412,7 @@ describe("rowItems", () => {
     // one stage where they differ (#1384); its own tests above cover it.
     const every = (
       [
-        ["pending-proposal", "deleted-locally"],
+        ["pending-proposal", "not-yet-proposed"],
         ["pending-proposal", "new-local-work"],
         ["pending-review", "draft"],
         ["pending-review", "waiting-for-review"],
@@ -422,12 +421,12 @@ describe("rowItems", () => {
         ["pending-review", "pull-request-missing"],
         ["pending-review", "proposal-merged"],
         ["pending-review", "multiple-pull-requests"],
-        ["pending-release", "deleted"],
+        ["pending-release", "not-yet-released"],
       ] as [HarnessStage, StageStatus][]
     ).flatMap(([stage, status]) => {
       const asChange = labels(rowItems(row({ stage, status }), handlers, true));
       const asDeletion = labels(
-        rowItems(row({ stage, status, deletion: true }), handlers, true),
+        rowItems(row({ stage, status, change: "deletion" }), handlers, true),
       );
       expect(asDeletion, status).toEqual(asChange);
       return asDeletion;
@@ -443,7 +442,6 @@ describe("rowItems", () => {
       [
         ["pending-proposal", "not-yet-proposed"],
         ["pending-proposal", "new-local-work"],
-        ["pending-proposal", "deleted-locally"],
         ["pending-review", "draft"],
         ["pending-review", "waiting-for-review"],
         ["pending-review", "changes-requested"],
@@ -452,8 +450,7 @@ describe("rowItems", () => {
         ["pending-review", "proposal-merged"],
         ["pending-review", "proposal-closed"],
         ["pending-review", "multiple-pull-requests"],
-        ["pending-release", "added"],
-        ["pending-release", "deleted"],
+        ["pending-release", "not-yet-released"],
       ] as [HarnessStage, StageStatus][]
     ).flatMap(([stage, status]) =>
       disabled(rowItems(row({ stage, status }), handlers, true)),
@@ -472,7 +469,11 @@ describe("rowItems", () => {
 
     it("closes every menu that carries it, last of all", () => {
       const items = rowItems(
-        restorable({ stage: "pending-proposal", status: "deleted-locally" }),
+        restorable({
+          stage: "pending-proposal",
+          status: "not-yet-proposed",
+          change: "deletion",
+        }),
         handlers,
         true,
         open,

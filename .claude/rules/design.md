@@ -234,7 +234,8 @@ Mandatory for any change that alters what `packages/web` renders:
      `global-leftover` (a global Remove with an Other copies row). It exits
      non-zero when the cockpit does not show the scenario's reading.
    - Verifying a Harness authoring state → `--scenario harness-outcomes`: one
-     restorable **Deleted locally** skill and one unreleased change to release.
+     restorable **Deletion** in Pending proposal and one unreleased **Edit** to
+     release.
      `harness-offline` leaves the Harness unreachable until the next run.
 2. Screenshot the changed UI with `agent-browser`, in each theme.
 3. Read changed copy at a narrow width and at 200% zoom, in one theme.

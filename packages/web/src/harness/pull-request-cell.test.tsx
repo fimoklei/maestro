@@ -8,7 +8,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-review",
   skill: "code-review",
   status: "changes-requested",
-  deletion: false,
+  change: "edit",
   requests: [pullRequest(47, "code-review")],
   reviewers: [
     { kind: "user", login: "sanne" },

@@ -7,6 +7,7 @@ import { CONCURRENT_CHANGE_NOTICE } from "./notice-copy";
 import { PullRequestCell } from "./pull-request-cell";
 import {
   alsoInWords,
+  CHANGE_WORDS,
   crossStageLine,
   deployedCopiesLine,
   detailSentence,
@@ -47,6 +48,7 @@ export function StageDetailPane({
       facts={[
         { label: "Type", value: TYPE_WORD.skill },
         { label: "Stage", value: STAGE_NAMES[row.stage] },
+        { label: "Change", value: CHANGE_WORDS[row.change] },
         { label: "Status", value: <StatusBadge reading={row.reading} /> },
         { label: "Pull request", value: <PullRequestCell row={row} /> },
         alsoIn === "" ? null : { label: "Also in", value: alsoIn },

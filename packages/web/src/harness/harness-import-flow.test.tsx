@@ -26,7 +26,7 @@ const IMPORTED_ROW: HarnessStageRow = {
   stage: "pending-proposal",
   skill: "code-review",
   status: "not-yet-proposed",
-  deletion: false,
+  change: "edit",
   requests: [],
   reviewers: [],
   comparison: { kind: "default-branch" },
@@ -75,7 +75,7 @@ const IN_EVERY_STAGE: HarnessState = {
     release: {
       outcome: "read",
       bound: null,
-      rows: [remoteRow("pending-release", "changed")],
+      rows: [remoteRow("pending-release", "not-yet-released")],
     },
   },
 };

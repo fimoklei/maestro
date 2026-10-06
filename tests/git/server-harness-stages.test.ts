@@ -41,7 +41,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       { skill: "tdd", status: "waiting-for-review" },
     ]);
     expect(rowsOf(state.stages.release)).toMatchObject([
-      { skill: "tdd", status: "changed" },
+      { skill: "tdd", status: "not-yet-released", change: "edit" },
     ]);
     expect(rowsOf(state.stages.proposal)[0]?.requests).toEqual([
       {
@@ -254,10 +254,10 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     const state = await refresh(app);
 
     expect(rowsOf(state.stages.proposal)).toMatchObject([
-      { skill: "tdd", status: "deleted-locally", deletion: true },
+      { skill: "tdd", status: "not-yet-proposed", change: "deletion" },
     ]);
     expect(rowsOf(state.stages.release)).toMatchObject([
-      { skill: "tdd", status: "changed", deletion: false },
+      { skill: "tdd", status: "not-yet-released", change: "edit" },
     ]);
   });
 

@@ -125,6 +125,7 @@ export type {
   ReviewWriteOutcome,
 } from "./harness/harness-review-port";
 export type {
+  HarnessChange,
   HarnessStage,
   HarnessStageRead,
   HarnessStageRow,

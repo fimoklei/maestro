@@ -12,7 +12,7 @@ import { InventoryPanel } from "./inventory-panel";
 
 const DELETED: HarnessState = withStages(RELEASED, {
   proposal: [
-    row("pending-proposal", "tdd", "deleted-locally", { deletion: true }),
+    row("pending-proposal", "tdd", "not-yet-proposed", { change: "deletion" }),
   ],
 });
 
@@ -111,7 +111,7 @@ describe("Inventory — Delete skill", () => {
     );
   });
 
-  it("opens the Harness view with the Deleted locally row once step 1 lands", async () => {
+  it("opens the Harness view with the Deletion row once step 1 lands", async () => {
     const deletions = stubServer({});
     renderInventory();
     const menu = await openRowMenu();
@@ -142,7 +142,8 @@ describe("Inventory — Delete skill", () => {
     const pane = await screen.findByRole("complementary", {
       name: "tdd detail",
     });
-    expect(within(pane).getByText("Deleted locally")).toBeInTheDocument();
+    expect(within(pane).getByText("Deletion")).toBeInTheDocument();
+    expect(within(pane).getByText("Not yet proposed")).toBeInTheDocument();
     expect(deletions).toEqual([{ name: "tdd", seenWorkingTree: "tree-1" }]);
   });
 

@@ -29,6 +29,9 @@ const RETIRED = [
   /\breload the view\b/i,
   /\bslugs?\b/i,
   /\bImport local edits…/i,
+  // A status states where a change stands; the Change column names it (#1399).
+  /\bDeleted locally\b/i,
+  /\bDeletion (?:in draft|waiting for review|changes requested|approved|merged)\b/i,
   // A control is selected: never clicked or tapped, never `Press Close`.
   /\b(?:click|tap)(?:s|ped|ping|ed|ing)?\b/i,
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,

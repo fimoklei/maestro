@@ -283,7 +283,11 @@ describe("Harness freshness and failed reads", () => {
             release: {
               outcome: "read",
               bound: null,
-              rows: [row("pending-release", "research", "added")],
+              rows: [
+                row("pending-release", "research", "not-yet-released", {
+                  change: "addition",
+                }),
+              ],
             },
           },
         },
@@ -295,7 +299,7 @@ describe("Harness freshness and failed reads", () => {
       await screen.findByText("Review status unavailable"),
     ).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-      "Added",
+      "Addition",
     );
   });
 

@@ -94,7 +94,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     }
     const stage = result.state.stages.release;
     return stage.outcome === "read"
-      ? stage.rows.map((row) => `${row.skill}:${row.status}`)
+      ? stage.rows.map((row) => `${row.skill}:${row.change}`)
       : [stage.outcome];
   };
 
@@ -288,7 +288,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       await commitAll(root, "sharpen tdd");
       await git(root, "push", "origin", "HEAD:main");
 
-      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:changed"]);
+      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:edit"]);
     });
 
     it("awaits release for every skill on the default branch before the first release", async () => {
@@ -299,18 +299,18 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       await git(root, "push", "origin", "HEAD:main");
 
       await expect(releaseStageOf(root)).resolves.toEqual([
-        "research:added",
-        "tdd:added",
+        "research:addition",
+        "tdd:addition",
       ]);
     });
 
-    it("reads a deletion on the default branch as a deleted row", async () => {
+    it("reads a deletion on the default branch as a deletion row", async () => {
       const { root } = await buildHarness("stage-deleted");
       await rm(join(root, ".apm", "skills", "tdd"), { recursive: true });
       await commitAll(root, "retire tdd");
       await git(root, "push", "origin", "HEAD:main");
 
-      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:deleted"]);
+      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:deletion"]);
     });
 
     it("never reads a proposal branch's content as released work", async () => {
@@ -334,7 +334,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       await git(root, "push", "origin", "HEAD:maestro/tdd");
       await git(root, "checkout", "main");
 
-      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:changed"]);
+      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:edit"]);
     });
   });
 });

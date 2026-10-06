@@ -24,8 +24,8 @@ describe("Harness deletion proposal", () => {
   // so a remote that moved under it refuses rather than removes (#580).
   const DELETED: HarnessState = withStages(ON_DISK, {
     proposal: [
-      row("pending-proposal", "old-skill", "deleted-locally", {
-        deletion: true,
+      row("pending-proposal", "old-skill", "not-yet-proposed", {
+        change: "deletion",
         remoteTree: "abc123",
       }),
       row("pending-proposal", "code-review", "not-yet-proposed"),
@@ -75,8 +75,8 @@ describe("Harness deletion proposal", () => {
   it("names who opened the open pull request the deletion replaces", async () => {
     const overOpenRequest = withStages(ON_DISK, {
       proposal: [
-        row("pending-proposal", "old-skill", "deleted-locally", {
-          deletion: true,
+        row("pending-proposal", "old-skill", "not-yet-proposed", {
+          change: "deletion",
           remoteTree: "abc123",
           requests: [pullRequest(45, "old-skill")],
         }),
@@ -145,7 +145,7 @@ describe("Harness deletion proposal", () => {
         afterPromote: withStages(DELETED, {
           review: [
             row("pending-review", "old-skill", "pull-request-missing", {
-              deletion: true,
+              change: "deletion",
             }),
           ],
         }),
@@ -183,7 +183,7 @@ describe("Harness deletion proposal", () => {
           ],
           review: [
             row("pending-review", "old-skill", "waiting-for-review", {
-              deletion: true,
+              change: "deletion",
               requests: [request],
             }),
           ],

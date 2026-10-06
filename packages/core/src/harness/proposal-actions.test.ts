@@ -56,6 +56,7 @@ function build(overrides?: {
   review?: HarnessReviewRead;
   write?: ReviewWriteOutcome;
   promoteTree?: HarnessSkillTree[] | null;
+  remoteTree?: HarnessSkillTree[] | null;
 }) {
   const calls: Calls = { created: [], reopened: [], closed: [], refsRead: [] };
   const write = overrides?.write ?? ({ ok: true } as ReviewWriteOutcome);
@@ -66,6 +67,11 @@ function build(overrides?: {
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
       readSkillTrees: async (_root, ref) => {
         calls.refsRead.push(ref);
+        if (ref === FACTS.defaultBranchCommit) {
+          return overrides && "remoteTree" in overrides
+            ? (overrides.remoteTree ?? null)
+            : PROMOTE_TREE;
+        }
         return overrides && "promoteTree" in overrides
           ? (overrides.promoteTree ?? null)
           : PROMOTE_TREE;
@@ -92,26 +98,32 @@ function build(overrides?: {
 }
 
 describe("ProposalActions · create", () => {
-  it("opens a request over the prepared branch, without pushing anything", async () => {
-    const { actions, calls } = build();
+  it.each<[string, HarnessSkillTree[], string]>([
+    ["holds", PROMOTE_TREE, "Edit skill: tdd"],
+    ["lacks", [], "Add skill: tdd"],
+  ])(
+    "opens a request over the prepared branch for a skill the default branch %s, without pushing anything",
+    async (_, remoteTree, title) => {
+      const { actions, calls } = build({ remoteTree });
 
-    expect(await actions.create("tdd")).toEqual({ ok: true });
-    expect(calls.created).toEqual([
-      {
-        head: "maestro/tdd",
-        base: "main",
-        title: "Promote skill: tdd",
-        body: "Proposed from the Maestro cockpit.",
-      },
-    ]);
-  });
+      expect(await actions.create("tdd")).toEqual({ ok: true });
+      expect(calls.created).toEqual([
+        {
+          head: "maestro/tdd",
+          base: "main",
+          title,
+          body: "Proposed from the Maestro cockpit.",
+        },
+      ]);
+    },
+  );
 
-  it("reads only the skill's own pushed branch, never the clone", async () => {
+  it("reads only the skill's pushed branch and the default branch, never the clone", async () => {
     const { actions, calls } = build();
 
     await actions.create("tdd");
 
-    expect(calls.refsRead).toEqual(["refs/remotes/origin/maestro/tdd"]);
+    expect(calls.refsRead).toEqual(["refs/remotes/origin/maestro/tdd", "head"]);
   });
 
   it("titles the request Delete skill when the pushed branch deletes the skill", async () => {
@@ -133,6 +145,20 @@ describe("ProposalActions · create", () => {
   // An unfetched or unreadable branch names no kind; guessing one would mistitle it.
   it("opens nothing when the skill's pushed branch could not be read", async () => {
     const { actions, calls } = build({ promoteTree: null });
+
+    expect(await actions.create("tdd")).toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+    expect(calls.created).toEqual([]);
+  });
+
+  // Addition or edit is judged against the default branch; unread, it names neither.
+  it.each([
+    ["could not be read", { remoteTree: null }],
+    ["has no known tip", { facts: { defaultBranchCommit: null } }],
+  ])("opens nothing when the default branch %s", async (_, over) => {
+    const { actions, calls } = build(over);
 
     expect(await actions.create("tdd")).toEqual({
       ok: false,

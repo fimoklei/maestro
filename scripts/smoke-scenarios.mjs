@@ -348,14 +348,14 @@ function stageRow(stage, skill) {
 export function harnessMismatch({ releaseState, stages }) {
   const problems = [];
   const deletion = stageRow(stages.proposal, DELETED_LOCALLY);
-  if (deletion.status !== "deleted-locally" || !deletion.restorable)
+  if (deletion.change !== "deletion" || !deletion.restorable)
     problems.push(
-      `${DELETED_LOCALLY} expected a restorable "deleted-locally" row in the proposal stage, got ${deletion.missing ?? `"${deletion.status}"${deletion.restorable ? "" : ", not restorable"}`}`,
+      `${DELETED_LOCALLY} expected a restorable "deletion" row in the proposal stage, got ${deletion.missing ?? `"${deletion.change}"${deletion.restorable ? "" : ", not restorable"}`}`,
     );
-  const change = stageRow(stages.release, UNRELEASED);
-  if (change.status !== "changed")
+  const edit = stageRow(stages.release, UNRELEASED);
+  if (edit.change !== "edit")
     problems.push(
-      `${UNRELEASED} expected a "changed" row in the release stage, got ${change.missing ?? `"${change.status}"`}`,
+      `${UNRELEASED} expected an "edit" row in the release stage, got ${edit.missing ?? `"${edit.change}"`}`,
     );
   if (releaseState !== "pending-release")
     problems.push(

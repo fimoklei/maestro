@@ -189,9 +189,17 @@ describe("ReadHarnessState", () => {
           release: {
             outcome: "read",
             rows: [
-              { skill: "grilling", status: "deleted", deletion: true },
-              { skill: "research", status: "added" },
-              { skill: "tdd", status: "changed" },
+              {
+                skill: "grilling",
+                status: "not-yet-released",
+                change: "deletion",
+              },
+              {
+                skill: "research",
+                status: "not-yet-released",
+                change: "addition",
+              },
+              { skill: "tdd", status: "not-yet-released", change: "edit" },
             ],
           },
         },
@@ -389,7 +397,11 @@ describe("ReadHarnessState stages", () => {
         stages: {
           review: {
             rows: [
-              { skill: "tdd", status: "pull-request-missing", deletion: true },
+              {
+                skill: "tdd",
+                status: "pull-request-missing",
+                change: "deletion",
+              },
             ],
           },
         },
@@ -412,7 +424,9 @@ describe("ReadHarnessState stages", () => {
       state: {
         stages: {
           proposal: {
-            rows: [{ skill: "tdd", status: "deleted-locally", deletion: true }],
+            rows: [
+              { skill: "tdd", status: "not-yet-proposed", change: "deletion" },
+            ],
           },
         },
       },
@@ -439,9 +453,13 @@ describe("ReadHarnessState stages", () => {
               {
                 skill: "new-name",
                 status: "not-yet-proposed",
-                deletion: false,
+                change: "addition",
               },
-              { skill: "old-name", status: "deleted-locally", deletion: true },
+              {
+                skill: "old-name",
+                status: "not-yet-proposed",
+                change: "deletion",
+              },
             ],
           },
         },

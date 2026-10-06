@@ -5,7 +5,7 @@ import type {
   NewReviewRequest,
   ReviewRequest,
 } from "./harness-review-port";
-import { beforeProposalPush } from "./proposal-request";
+import { beforeProposalPush, type ProposalKind } from "./proposal-request";
 
 const TARGET = {
   origin: { host: "github.com", ownerRepo: "fimoklei/agent-harness" },
@@ -59,27 +59,33 @@ function reviewWith(read: HarnessReviewRead) {
 }
 
 describe("beforeProposalPush", () => {
-  it("opens a request after the push when GitHub said there is none", async () => {
-    const { review, created } = reviewWith(readOf([]));
+  it.each<[ProposalKind, string]>([
+    ["addition", "Add skill: tdd"],
+    ["edit", "Edit skill: tdd"],
+  ])(
+    "opens a request titled for the %s after the push when GitHub said there is none",
+    async (kind, title) => {
+      const { review, created } = reviewWith(readOf([]));
 
-    const step = await beforeProposalPush(review, TARGET, "change");
-    if (!step.ok) throw new Error("refused");
-    await step.afterPush();
+      const step = await beforeProposalPush(review, TARGET, kind);
+      if (!step.ok) throw new Error("refused");
+      await step.afterPush();
 
-    expect(created).toEqual([
-      {
-        head: "maestro/tdd",
-        base: "main",
-        title: "Promote skill: tdd",
-        body: "Proposed from the Maestro cockpit.",
-      },
-    ]);
-  });
+      expect(created).toEqual([
+        {
+          head: "maestro/tdd",
+          base: "main",
+          title,
+          body: "Proposed from the Maestro cockpit.",
+        },
+      ]);
+    },
+  );
 
   it("opens none when one request is already open", async () => {
     const { review, created } = reviewWith(readOf([request(45)]));
 
-    const step = await beforeProposalPush(review, TARGET, "change");
+    const step = await beforeProposalPush(review, TARGET, "edit");
     if (!step.ok) throw new Error("refused");
     await step.afterPush();
 
@@ -89,7 +95,7 @@ describe("beforeProposalPush", () => {
   it("refuses before the push when more than one request is open", async () => {
     const { review } = reviewWith(readOf([request(45), request(46)]));
 
-    expect(await beforeProposalPush(review, TARGET, "change")).toEqual({
+    expect(await beforeProposalPush(review, TARGET, "edit")).toEqual({
       ok: false,
       error: "extra-requests",
     });
@@ -102,7 +108,7 @@ describe("beforeProposalPush", () => {
   ])("opens none after a %s read: unknown is never none", async (_, read) => {
     const { review, created } = reviewWith(read);
 
-    const step = await beforeProposalPush(review, TARGET, "change");
+    const step = await beforeProposalPush(review, TARGET, "edit");
     if (!step.ok) throw new Error("refused");
     await step.afterPush();
 
@@ -126,34 +132,31 @@ describe("beforeProposalPush", () => {
     ]);
   });
 
-  it("retitles an open change request after a deletion push", async () => {
-    const { review, edited } = reviewWith(
-      readOf([request(45, "Promote skill: tdd (v2)")]),
-    );
+  // Promote skill: is the prefix Maestro used before the kinds (#1399).
+  it.each<[string, ProposalKind, string]>([
+    ["Promote skill: tdd (v2)", "deletion", "Delete skill: tdd"],
+    ["Promote skill: tdd", "edit", "Edit skill: tdd"],
+    ["Promote skill: tdd", "addition", "Add skill: tdd"],
+    ["Delete skill: tdd", "edit", "Edit skill: tdd"],
+    ["Add skill: tdd", "edit", "Edit skill: tdd"],
+    ["Edit skill: tdd", "deletion", "Delete skill: tdd"],
+  ])(
+    "retitles an open request titled %s after pushing the %s",
+    async (title, kind, retitled) => {
+      const { review, edited } = reviewWith(readOf([request(45, title)]));
 
-    const step = await beforeProposalPush(review, TARGET, "deletion");
-    if (!step.ok) throw new Error("refused");
-    await step.afterPush();
+      const step = await beforeProposalPush(review, TARGET, kind);
+      if (!step.ok) throw new Error("refused");
+      await step.afterPush();
 
-    expect(edited).toEqual([{ number: 45, title: "Delete skill: tdd" }]);
-  });
+      expect(edited).toEqual([{ number: 45, title: retitled }]);
+    },
+  );
 
-  it("retitles an open deletion request after a change push", async () => {
-    const { review, edited } = reviewWith(
-      readOf([request(45, "Delete skill: tdd")]),
-    );
-
-    const step = await beforeProposalPush(review, TARGET, "change");
-    if (!step.ok) throw new Error("refused");
-    await step.afterPush();
-
-    expect(edited).toEqual([{ number: 45, title: "Promote skill: tdd" }]);
-  });
-
-  it.each<[string, string, "change" | "deletion"]>([
+  it.each<[string, string, ProposalKind]>([
     ["a custom title", "Rework tdd for the new runner", "deletion"],
     ["a push that keeps the kind", "Delete skill: tdd", "deletion"],
-    ["a change push over a change title", "Promote skill: tdd (v2)", "change"],
+    ["an edit push over an edit title", "Edit skill: tdd (v2)", "edit"],
   ])("edits nothing for %s", async (_, title, kind) => {
     const { review, edited } = reviewWith(readOf([request(45, title)]));
 

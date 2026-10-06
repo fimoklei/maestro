@@ -59,8 +59,8 @@ meaning stays with review.
   its label constant. Add its screen when the control sits on another screen.
 - Name the external place when the cockpit has no control for the next action
   (`Merge it on GitHub.`).
-- A deletion reads as its own status (`Deletion in draft`), never as a chip or
-  clause beside another status.
+- The Change column states what a change does; the Status states only where it
+  stands.
 - Before writing a sentence, grep `packages/web/src` for the control or status
   it names and reuse the form you find. Same meaning, same words.
 - Approved sentences live in the copy module's sibling test as exact strings.

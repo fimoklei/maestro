@@ -66,7 +66,7 @@ export interface HarnessRead {
     "proposal" | "release",
     | {
         outcome: "read";
-        rows: { skill: string; status: string; restorable: boolean }[];
+        rows: { skill: string; change: string; restorable: boolean }[];
       }
     | { outcome: "unknown" | "unavailable" }
   >;
