@@ -10,6 +10,7 @@ import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
 import {
@@ -174,6 +175,7 @@ export function BulkDeployRun({
     return (
       <UpdateTargetAction
         targetName={isGlobal ? toolNameList(globalTools ?? []) : chosenLabel}
+        updateLabel={UPDATE_TARGET}
         target={target}
         update={update}
         add={updateFor}

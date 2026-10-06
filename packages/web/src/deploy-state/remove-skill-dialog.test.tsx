@@ -135,12 +135,20 @@ describe("RemoveSkillDialog", () => {
       );
     });
 
-    it("introduces the ledger with one lead-in line", () => {
+    it("states what stays and how to add the skill back", () => {
       renderDialog();
 
       expect(
-        screen.getByText("Skill will be removed from:"),
+        screen.getByText(
+          "The Harness keeps the skill. To add it back, select Deploy skill.",
+        ),
       ).toBeInTheDocument();
+    });
+
+    it("introduces the ledger with one lead-in line", () => {
+      renderDialog();
+
+      expect(screen.getByText("Removes the skill from:")).toBeInTheDocument();
     });
 
     // No per-tool remove: apm's uninstall has no -t, so rows have nothing to press.
@@ -465,7 +473,7 @@ describe("RemoveSkillDialog", () => {
           name: "Removed from 1 of 2 targets",
         }),
       ).toBeInTheDocument();
-      expect(screen.queryByText("Skill will be removed from:")).toBeNull();
+      expect(screen.queryByText("Removes the skill from:")).toBeNull();
     });
 
     it("puts each target under its outcome, the failed one first", () => {
@@ -781,9 +789,9 @@ describe("RemoveSkillDialog", () => {
     it("sets the lead-in as prose, because it is the sentence over the data", () => {
       renderDialog();
 
-      expect(
-        screen.getByText("Skill will be removed from:").className,
-      ).toContain("font-ui");
+      expect(screen.getByText("Removes the skill from:").className).toContain(
+        "font-ui",
+      );
     });
 
     it("sets a row's status as prose, because it is a sentence about the data", () => {
@@ -797,7 +805,7 @@ describe("RemoveSkillDialog", () => {
     it("steps the ledger above the lead-in that introduces it", () => {
       renderDialog();
 
-      const leadIn = screen.getByText("Skill will be removed from:");
+      const leadIn = screen.getByText("Removes the skill from:");
       expect(screen.getAllByRole("listitem")).toHaveLength(1);
       const name = screen.getByText("/Users/me/project");
       expect(stepOf(name)).toBeGreaterThanOrEqual(0);
@@ -836,7 +844,7 @@ describe("RemoveSkillDialog", () => {
     it("reads the lead-in and then every target it would remove from", () => {
       renderDialog();
 
-      expect(describedBy()).toContain("Skill will be removed from:");
+      expect(describedBy()).toContain("Removes the skill from:");
       expect(describedBy()).toContain(REPO_TARGET.repoPath);
     });
 
@@ -902,7 +910,7 @@ describe("RemoveSkillDialog", () => {
     it("drops the lead-in that introduced the ledger", () => {
       renderDialog({ preflight: refused });
 
-      expect(screen.queryByText("Skill will be removed from:")).toBeNull();
+      expect(screen.queryByText("Removes the skill from:")).toBeNull();
     });
 
     it("offers no confirm control at all, not even a disabled one", () => {

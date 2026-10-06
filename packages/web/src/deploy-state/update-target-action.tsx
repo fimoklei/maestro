@@ -13,6 +13,7 @@ import type { useUpdateTarget } from "./use-update-target";
 // The caller owns the mutation, so the outcome outlives the control (#980).
 export function UpdateTargetAction({
   targetName,
+  updateLabel,
   target,
   update,
   add,
@@ -20,6 +21,8 @@ export function UpdateTargetAction({
   defaultOpen = false,
 }: {
   targetName: string;
+  /** The label of the control that opened it, which its notices name. */
+  updateLabel: string;
   target: DeployTarget;
   add?: string;
   update: ReturnType<typeof useUpdateTarget>;
@@ -50,7 +53,9 @@ export function UpdateTargetAction({
     show: "row",
     name: () => null,
     failure: (error) =>
-      updateOutcomeRows(error) === null ? updateNotice(error) : null,
+      updateOutcomeRows(error) === null
+        ? updateNotice(error, updateLabel)
+        : null,
   });
   const outcome = update.data?.outcome ?? updateOutcomeRows(update.error);
 
@@ -83,7 +88,7 @@ export function UpdateTargetAction({
           error={
             retry.failure(target) ??
             (preflight.isError
-              ? updatePreviewNotice(preflight.error)
+              ? updatePreviewNotice(preflight.error, updateLabel)
               : updateWrite.failure)
           }
           onCancel={close}

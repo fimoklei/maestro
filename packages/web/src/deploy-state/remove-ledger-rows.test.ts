@@ -305,11 +305,11 @@ describe("removeLedgerRows", () => {
 
   describe("removeLedgerLeadIn", () => {
     it("asks the question while nothing has been attempted", () => {
-      expect(removeLedgerLeadIn("skill")).toBe("Skill will be removed from:");
+      expect(removeLedgerLeadIn("skill")).toBe("Removes the skill from:");
     });
 
     it("names the type being removed, not the category it belongs to", () => {
-      expect(removeLedgerLeadIn("mcp")).toBe("MCP will be removed from:");
+      expect(removeLedgerLeadIn("mcp")).toBe("Removes the MCP server from:");
     });
   });
 

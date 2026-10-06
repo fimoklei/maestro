@@ -546,11 +546,23 @@ describe("update preview notices", () => {
   ];
 
   it.each(cases)("states %s", (code, expected) => {
-    expect(updatePreviewNotice(refusal(code))).toEqual(expected);
+    expect(updatePreviewNotice(refusal(code), "Update target")).toEqual(
+      expected,
+    );
+  });
+
+  it("names the control by the label the target's row gives it", () => {
+    const label = "Update Claude Code and Codex";
+    expect(updatePreviewNotice(new Error("offline"), label).message).toBe(
+      "Nothing was changed. Wait a moment, then select Update Claude Code and Codex again.",
+    );
+    expect(updateNotice(refusal("status-out-of-date"), label).message).toBe(
+      "Nothing was changed. The target changed after the preview. Select Update Claude Code and Codex again.",
+    );
   });
 
   it("names a failure it has no code for", () => {
-    expect(updatePreviewNotice(new Error("offline"))).toEqual({
+    expect(updatePreviewNotice(new Error("offline"), "Update target")).toEqual({
       label: "Preview outcome unknown",
       message:
         "Nothing was changed. Wait a moment, then select Update target again.",
@@ -562,7 +574,9 @@ describe("update preview notices", () => {
 
 describe("update notices", () => {
   it("states a target that changed after the preview", () => {
-    expect(updateNotice(refusal("status-out-of-date"))).toEqual({
+    expect(
+      updateNotice(refusal("status-out-of-date"), "Update target"),
+    ).toEqual({
       label: "Status out of date",
       message:
         "Nothing was changed. The target changed after the preview. Select Update target again.",
@@ -581,7 +595,10 @@ describe("update notices for a linked skill folder", () => {
   ])("spells out the rm for the path the server read (%s)", (_, notice) => {
     expect(
       readNotice(
-        notice(linked({ error: "destination-symlinked", linkedPath: LINKED })),
+        notice(
+          linked({ error: "destination-symlinked", linkedPath: LINKED }),
+          "Update target",
+        ),
       ),
     ).toEqual({
       label: "Linked skill folder",
@@ -595,7 +612,9 @@ describe("update notices for a linked skill folder", () => {
     ["preview", updatePreviewNotice],
     ["run", updateNotice],
   ])("names the folder in general when no path came back (%s)", (_, notice) => {
-    expect(notice(linked({ error: "destination-symlinked" }))).toEqual({
+    expect(
+      notice(linked({ error: "destination-symlinked" }), "Update target"),
+    ).toEqual({
       label: "Linked skill folder",
       message:
         "Nothing was written. Delete the linked skill folder in the target, then select Update target again.",
@@ -653,9 +672,12 @@ describe("deploy notice for a linked skill folder", () => {
 describe("notices that send the reader to the target", () => {
   it.each([
     ["remove, unfinished", removeNotice(refusal("operation-unfinished"))],
-    ["update, unfinished", updateNotice(refusal("operation-unfinished"))],
-    ["update, failed", updateNotice(refusal("update-failed"))],
-    ["update, unknown", updateNotice(new Error("offline"))],
+    [
+      "update, unfinished",
+      updateNotice(refusal("operation-unfinished"), "Update target"),
+    ],
+    ["update, failed", updateNotice(refusal("update-failed"), "Update target")],
+    ["update, unknown", updateNotice(new Error("offline"), "Update target")],
   ])("names the Deploy-state screen (%s)", (_, notice) => {
     expect(notice.message).toContain("on the Deploy-state screen");
     expect(notice.message).not.toContain("target card");

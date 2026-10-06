@@ -11,13 +11,6 @@ import type {
 } from "./remove-preflight-view";
 import { toolDisplayName } from "./tool-presentation";
 
-const TYPE_LABEL: Record<PrimitiveType, string> = {
-  skill: "Skill",
-  hook: "Hook",
-  mcp: "MCP",
-  bundle: "Bundle",
-};
-
 export type RemoveDialogTarget =
   | { kind: "repo"; repoPath: string }
   | { kind: "global"; tools: string[] };
@@ -69,9 +62,20 @@ function statusFor(warning: RemoveRowWarning | null): {
     : { status: WARNING_STATUS[warning], drift: true };
 }
 
+const REMOVED_THING: Record<PrimitiveType, string> = {
+  skill: "skill",
+  hook: "hook",
+  mcp: "MCP server",
+  bundle: "bundle",
+};
+
 export function removeLedgerLeadIn(type: PrimitiveType): string {
-  return `${TYPE_LABEL[type]} will be removed from:`;
+  return `Removes the ${REMOVED_THING[type]} from:`;
 }
+
+// What a removal leaves alone, and the way back (copy.md → Dialog).
+export const REMOVE_KEEPS =
+  "The Harness keeps the skill. To add it back, select Deploy skill.";
 
 const OUTCOME_GROUPS: {
   state: RemoveTargetState;
