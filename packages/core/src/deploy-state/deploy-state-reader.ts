@@ -26,7 +26,7 @@ import {
   groupPrimitivesByTool,
   type ToolDeployState,
 } from "./group-primitives-by-tool";
-import { harnessPages, perSkillPage } from "./harness-pages";
+import { harnessPages, latestReleasePage, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import type { ReleaseHeadReader } from "./release-head";
 import {
@@ -48,6 +48,8 @@ type DeployStateResult =
       github?: GitHubPage;
       // The release's page in the connected Harness; absent where nothing links.
       releaseGitHub?: GitHubPage;
+      // The latest release's page, where the target is behind it.
+      latestReleaseGitHub?: GitHubPage;
     }
   | { ok: false; error: "malformed" };
 
@@ -210,6 +212,7 @@ export class DeployStateReader {
       ...(pendingOperation === undefined ? {} : { pendingOperation }),
       ...(await github),
       ...(pages === undefined ? {} : { releaseGitHub: pages.release }),
+      ...latestPageField(pages?.release, releaseHead),
     };
   }
 
@@ -338,6 +341,10 @@ export class GlobalDeployStateReader extends DeployStateReader {
           group.primitives.map((primitive) => primitive.name),
         );
       }
+      Object.assign(
+        group,
+        latestPageField(group.releaseGitHub, group.releaseHead),
+      );
       await this.markCopies(
         group.primitives,
         { kind: "global" },
@@ -354,4 +361,14 @@ export class GlobalDeployStateReader extends DeployStateReader {
       ...(pendingOperation === undefined ? {} : { pendingOperation }),
     };
   }
+}
+
+// Spread, never a null key (#416).
+function latestPageField(
+  release: GitHubPage | undefined,
+  head: ReleaseHead | undefined,
+): { latestReleaseGitHub?: GitHubPage } {
+  const page =
+    head === undefined ? undefined : latestReleasePage(release, head);
+  return page === undefined ? {} : { latestReleaseGitHub: page };
 }

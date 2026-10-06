@@ -20,6 +20,7 @@ type DeployStateResponse = {
   github?: GitHubPage;
   // Absent where the release has no page on GitHub (#1181).
   releaseGitHub?: GitHubPage;
+  latestReleaseGitHub?: GitHubPage;
 };
 
 // Shared so every reader uses the same key and fetch; diverging would make two

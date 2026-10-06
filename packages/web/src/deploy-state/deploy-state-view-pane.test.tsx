@@ -102,6 +102,20 @@ describe("Deploy-state pane — facts", () => {
     expect(fact(pane, "Release")).toBe("v0.3.2");
   });
 
+  it("links the Latest release fact to that release's page on GitHub", async () => {
+    const url = "https://github.com/fimoklei/agent-harness/releases/tag/v0.3.4";
+    repoWith({
+      releaseHead: BEHIND,
+      latestReleaseGitHub: { kind: "link", url },
+    });
+    renderDeployState();
+    const pane = await openPane(LABEL);
+
+    expect(
+      within(pane).getByRole("link", { name: "v0.3.4 on GitHub" }),
+    ).toHaveAttribute("href", url);
+  });
+
   it("links a global tool's Release fact to its release page on GitHub", async () => {
     const url = "https://github.com/fimoklei/agent-harness/releases/tag/v0.3.2";
     stubServer(() => ({

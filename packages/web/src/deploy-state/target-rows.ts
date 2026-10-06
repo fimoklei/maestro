@@ -76,6 +76,8 @@ export type TargetRow = {
   github?: GitHubPage;
   /** The Release fact's page on GitHub; absent where none exists. */
   releaseGitHub?: GitHubPage;
+  /** The Latest release fact's page on GitHub; absent where none exists. */
+  latestReleaseGitHub?: GitHubPage;
 };
 
 // A row's id, which another screen names to open that row's pane.
@@ -157,6 +159,9 @@ export function globalRows(
       skills: group.primitives.length,
       ...(group.releaseHead ? { head: group.releaseHead } : {}),
       ...(group.releaseGitHub ? { releaseGitHub: group.releaseGitHub } : {}),
+      ...(group.latestReleaseGitHub
+        ? { latestReleaseGitHub: group.latestReleaseGitHub }
+        : {}),
       ...(group.pinnedPerSkill ? { pinned: group.pinnedPerSkill } : {}),
       ...(pending ? { pending } : {}),
       primitives: group.primitives,
@@ -184,6 +189,7 @@ type RepoRead = {
         pendingOperation?: PendingOperation;
         github?: GitHubPage;
         releaseGitHub?: GitHubPage;
+        latestReleaseGitHub?: GitHubPage;
       }
     | undefined;
   isError: boolean;
@@ -232,6 +238,9 @@ export function repoRow(
     behind,
     ...(data?.github ? { github: data.github } : {}),
     ...(data?.releaseGitHub ? { releaseGitHub: data.releaseGitHub } : {}),
+    ...(data?.latestReleaseGitHub
+      ? { latestReleaseGitHub: data.latestReleaseGitHub }
+      : {}),
   };
 }
 

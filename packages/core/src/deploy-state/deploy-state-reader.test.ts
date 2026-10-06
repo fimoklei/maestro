@@ -1217,6 +1217,20 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
     });
   });
 
+  it("links the latest release to its page beside the current one", async () => {
+    const result = await new DeployStateReader({
+      fs: repoAt("v0.3.2"),
+      harnessPage: async () => ({ kind: "link", url: HARNESS }),
+      releaseHead: latestIs("v0.3.4"),
+    }).read(REPO);
+    expect(result).toMatchObject({
+      latestReleaseGitHub: {
+        kind: "link",
+        url: `${HARNESS}/releases/tag/v0.3.4`,
+      },
+    });
+  });
+
   it("links nothing on a root package from another repository", async () => {
     const result = await read(repoAt("v0.3.2"), async () => ({
       kind: "link",

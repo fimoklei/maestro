@@ -159,7 +159,12 @@ export function TargetDetailPane({
             ? null
             : {
                 label: "Latest release",
-                value: latestRelease,
+                value: (
+                  <GitHubFactLink
+                    page={row.latestReleaseGitHub}
+                    value={latestRelease}
+                  />
+                ),
                 machine: true,
                 action: update ?? undefined,
               },
