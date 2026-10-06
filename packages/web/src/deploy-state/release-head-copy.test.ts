@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { machineValues, readNotice } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
+  behindLine,
   behindReason,
   changedFact,
   comparedFact,
@@ -34,7 +35,7 @@ describe("behindReason", () => {
       "2 of 5 deployed skills changed in v0.3.4.",
     );
     expect(plainText(behindReason(head({ changed: 0 })))).toBe(
-      "0 of 5 deployed skills changed in v0.3.4.",
+      "None of the 5 deployed skills changed in v0.3.4.",
     );
   });
 
@@ -48,6 +49,20 @@ describe("behindReason", () => {
     expect(plainText(behindReason(head({ release: "v0.3.4" })))).toBe(
       "Another tool's skills are behind v0.3.4.",
     );
+  });
+});
+
+describe("behindLine", () => {
+  it("names the update control after the reason", () => {
+    expect(plainText(behindLine(head(), "Update target"))).toBe(
+      "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+    );
+  });
+
+  it("names no control while the latest release is unknown", () => {
+    expect(
+      plainText(behindLine(head({ latestRelease: null }), "Update target")),
+    ).toBe("Latest release could not be read.");
   });
 });
 

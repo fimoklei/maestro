@@ -103,7 +103,8 @@ const SCENARIOS = [
   },
   {
     name: "import-edits",
-    // Both edited on a v1.1.0 deploy; only code-review moved in v2.0.0.
+    // Both edited on a v1.1.0 deploy; only code-review moved in v2.0.0. Also
+    // behind, so Update target shows its consent rows.
     atV1: (s, repo) => s.deploy(repo, AT_V1),
     atV2: (_s, repo) => {
       editByHand(repo, "code-review");
@@ -126,15 +127,18 @@ const SCENARIOS = [
 ];
 
 // Seeds the global target: deployed while both tools were installed, then
-// Claude Code's marker goes, so its copy is left behind.
+// Claude Code's marker goes, so its copy is left behind and a global Remove
+// shows an Other copies row.
 const GLOBAL_SCENARIO = "global-leftover";
 const LEFTOVER_SKILL = "code-review";
-// Seed the Harness itself, not a consuming repository. No import scenario
+// Seed the Harness itself, not a consuming repository: one restorable Deletion
+// in Pending proposal and one unreleased Edit to release. No import scenario
 // edits DELETED_LOCALLY, whose copies would read as another Harness's, and
 // import-edits' unmoved skill is never UNRELEASED.
 const HARNESS_SCENARIO = "harness-outcomes";
 const DELETED_LOCALLY = "test-plan";
 const UNRELEASED = "code-review";
+// Leaves the Harness unreachable until the next `pnpm smoke` run.
 const OFFLINE_SCENARIO = "harness-offline";
 // Port 1 refuses every connection, so git reports "Failed to connect".
 const UNREACHABLE_ORIGIN = "http://127.0.0.1:1/";

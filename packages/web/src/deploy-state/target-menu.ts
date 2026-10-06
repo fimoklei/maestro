@@ -6,6 +6,7 @@ import { VIEW_REPOSITORY_ON_GITHUB } from "./deploy-state-copy";
 import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
 import { RETRY_LABELS } from "./release-head-copy";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";
+import { updateLabel } from "./update-target-copy";
 
 export type MenuFacts = Pick<
   TargetRow,
@@ -48,18 +49,22 @@ type MenuItem = TargetTableRow["actions"][number];
 
 // One ⋮ item as a control, for the menu and the pane.
 export const targetRowItem = (
-  row: Pick<TargetTableRow, "updateName">,
+  row: Pick<TargetTableRow, "name" | "updateName">,
   item: MenuItem,
   onSelect: (action: TargetAction) => void,
-): FootItem => ({
-  label: item.label,
-  // Update target names the target it moves (#954).
-  ...(item.action === "update" && !item.disabled
-    ? { name: `${UPDATE_TARGET} ${row.updateName}` }
-    : {}),
-  disabled: item.disabled,
-  onSelect: () => onSelect(item.action),
-});
+): FootItem => {
+  const control = {
+    disabled: item.disabled,
+    onSelect: () => onSelect(item.action),
+  };
+  if (item.action !== "update" || item.disabled) {
+    return { label: item.label, ...control };
+  }
+  const label = updateLabel(row);
+  return label === UPDATE_TARGET
+    ? { label, name: `${UPDATE_TARGET} ${row.updateName}`, ...control }
+    : { label, ...control };
+};
 
 // One row's items, as its ⋮ menu offers them.
 export const targetRowItems = (

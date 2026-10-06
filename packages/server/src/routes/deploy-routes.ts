@@ -88,6 +88,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       ...cardReadingFields(result),
       ...githubPageField("github", result.github),
       ...githubPageField("releaseGitHub", result.releaseGitHub),
+      ...githubPageField("latestReleaseGitHub", result.latestReleaseGitHub),
     });
   });
 
@@ -104,6 +105,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           pinnedPerSkill,
           extraFiles,
           releaseGitHub,
+          latestReleaseGitHub,
           primitives,
           ...group
         }) => ({
@@ -111,6 +113,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           primitives: checkedPrimitives(primitives),
           ...cardReadingFields({ releaseHead, pinnedPerSkill, extraFiles }),
           ...githubPageField("releaseGitHub", releaseGitHub),
+          ...githubPageField("latestReleaseGitHub", latestReleaseGitHub),
         }),
       ),
       skipped: result.skipped,

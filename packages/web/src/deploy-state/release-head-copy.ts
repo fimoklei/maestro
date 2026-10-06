@@ -23,9 +23,20 @@ export function behindReason(head: ReleaseHead): Copy {
   if (head.latestRelease === head.release) {
     return phrase`Another tool's skills are behind ${latest}.`;
   }
-  return head.changed === null
-    ? phrase`Changes in ${latest} could not be read.`
+  if (head.changed === null) {
+    return phrase`Changes in ${latest} could not be read.`;
+  }
+  return head.changed === 0
+    ? phrase`None of the ${head.selected} deployed skills changed in ${latest}.`
     : phrase`${head.changed} of ${head.selected} deployed skills changed in ${latest}.`;
+}
+
+// The reason, then the control that moves the target (design.md → Disclosure).
+export function behindLine(head: ReleaseHead, updateLabel: string): Copy {
+  const reason = behindReason(head);
+  return head.latestRelease === null
+    ? reason
+    : phrase`${reason} Select ${updateLabel} to move this target to ${machine(head.latestRelease)}.`;
 }
 
 export const ON_LATEST_RELEASE = "On the latest release.";

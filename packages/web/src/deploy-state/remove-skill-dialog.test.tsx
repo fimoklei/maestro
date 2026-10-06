@@ -92,7 +92,7 @@ describe("RemoveSkillDialog", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("tdd");
-    expect(dialog).toHaveTextContent("/Users/me/project");
+    expect(dialog).toHaveTextContent("…/me/project");
   });
 
   it("names the version being removed in the question it asks", () => {
@@ -118,29 +118,36 @@ describe("RemoveSkillDialog", () => {
   });
 
   describe("its ledger of targets", () => {
-    it("holds the repo path in a single row on the repo scope", () => {
+    it("names the repository in a single row, as the table does", () => {
       renderDialog();
 
       expect(screen.getAllByRole("listitem").map((r) => r.textContent)).toEqual(
-        [REPO_TARGET.repoPath],
+        ["…/me/project"],
       );
     });
 
-    it("wraps a long path mid-token rather than pushing the panel wider", () => {
-      // A repo path has no spaces to break at; without this it widens the panel.
+    it("keeps the repository on one line, its full path on hover", () => {
       renderDialog();
 
-      expect(screen.getByText(REPO_TARGET.repoPath).className).toContain(
-        "break-all",
-      );
+      const name = screen.getByText("…/me/project");
+      expect(name).toHaveClass("truncate");
+      expect(name).toHaveAttribute("title", REPO_TARGET.repoPath);
+    });
+
+    it("states what stays and how to add the skill back", () => {
+      renderDialog();
+
+      expect(
+        screen.getByText(
+          "The Harness keeps the skill. To add it back, select Deploy skill.",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("introduces the ledger with one lead-in line", () => {
       renderDialog();
 
-      expect(
-        screen.getByText("Skill will be removed from:"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Removes the skill from:")).toBeInTheDocument();
     });
 
     // No per-tool remove: apm's uninstall has no -t, so rows have nothing to press.
@@ -465,7 +472,7 @@ describe("RemoveSkillDialog", () => {
           name: "Removed from 1 of 2 targets",
         }),
       ).toBeInTheDocument();
-      expect(screen.queryByText("Skill will be removed from:")).toBeNull();
+      expect(screen.queryByText("Removes the skill from:")).toBeNull();
     });
 
     it("puts each target under its outcome, the failed one first", () => {
@@ -484,7 +491,7 @@ describe("RemoveSkillDialog", () => {
         outcome: { scope: "repo", state: "unknown" },
       });
 
-      expect(groupOf(REPO_TARGET.repoPath)).toBe("⚠Outcome unknown1");
+      expect(groupOf("…/me/project")).toBe("⚠Outcome unknown1");
     });
 
     it("renders the error block alone when the failure proved nothing", () => {
@@ -759,10 +766,10 @@ describe("RemoveSkillDialog", () => {
   });
 
   describe("its typography", () => {
-    it("sets the path it would delete from in mono", () => {
+    it("sets the repository's name in Geist, because a name is not a machine value", () => {
       renderDialog();
 
-      expect(screen.getByText(REPO_TARGET.repoPath).className).toContain(
+      expect(screen.getByText("…/me/project").className).not.toContain(
         "font-mono",
       );
     });
@@ -781,9 +788,9 @@ describe("RemoveSkillDialog", () => {
     it("sets the lead-in as prose, because it is the sentence over the data", () => {
       renderDialog();
 
-      expect(
-        screen.getByText("Skill will be removed from:").className,
-      ).toContain("font-ui");
+      expect(screen.getByText("Removes the skill from:").className).toContain(
+        "font-ui",
+      );
     });
 
     it("sets a row's status as prose, because it is a sentence about the data", () => {
@@ -797,9 +804,9 @@ describe("RemoveSkillDialog", () => {
     it("steps the ledger above the lead-in that introduces it", () => {
       renderDialog();
 
-      const leadIn = screen.getByText("Skill will be removed from:");
+      const leadIn = screen.getByText("Removes the skill from:");
       expect(screen.getAllByRole("listitem")).toHaveLength(1);
-      const name = screen.getByText("/Users/me/project");
+      const name = screen.getByText("…/me/project");
       expect(stepOf(name)).toBeGreaterThanOrEqual(0);
       expect(stepOf(name)).toBeLessThan(stepOf(leadIn));
       expect(leadIn.className).toContain("text-gray-11");
@@ -836,8 +843,8 @@ describe("RemoveSkillDialog", () => {
     it("reads the lead-in and then every target it would remove from", () => {
       renderDialog();
 
-      expect(describedBy()).toContain("Skill will be removed from:");
-      expect(describedBy()).toContain(REPO_TARGET.repoPath);
+      expect(describedBy()).toContain("Removes the skill from:");
+      expect(describedBy()).toContain("…/me/project");
     });
 
     it("carries the whole tool set on the global path", () => {
@@ -902,7 +909,7 @@ describe("RemoveSkillDialog", () => {
     it("drops the lead-in that introduced the ledger", () => {
       renderDialog({ preflight: refused });
 
-      expect(screen.queryByText("Skill will be removed from:")).toBeNull();
+      expect(screen.queryByText("Removes the skill from:")).toBeNull();
     });
 
     it("offers no confirm control at all, not even a disabled one", () => {

@@ -5,6 +5,7 @@ import { LocalDeletionDialog } from "../harness/harness-dialogs";
 import { localDeletionNotice } from "../harness/local-deletion-copy";
 import { useDeleteLocalSkill } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployRun } from "./bulk-deploy-action";
 import { BulkRemoveRun } from "./bulk-remove-skill-action";
@@ -106,6 +107,7 @@ function PaneUpdate({
   return (
     <UpdateTargetAction
       targetName={deployment.updateName}
+      updateLabel={UPDATE_TARGET}
       target={deployment.target}
       update={update}
       // Priced with this skill, as the Inventory's entrance always was (#955).

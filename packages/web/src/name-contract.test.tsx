@@ -35,6 +35,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`${UPDATE_TARGET} ${row.updateName}`": "menu item",
   },
   "deploy-state/update-target-copy.ts": {
+    "`Update ${row.updateName}`": "control label",
     "`Update ${target}`": "dialog title",
     "`${row.name} in ${toolDisplayName(row.tool)}`": "checkbox label",
   },

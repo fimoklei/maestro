@@ -76,8 +76,8 @@ the new pattern to this section before building it.
 - Give a fact at most one action button beside its value, and only for an
   action that changes that fact.
 - Choose the pane's one primary by state, not position: an unfinished
-  operation's retry in its notice, else Update target on a behind target, else
-  Import local edits on Local edits, else none. A pane whose ⋮ order already
+  operation's retry in its notice, else Import local edits on Local edits,
+  else Update target on a behind target, else none. A pane whose ⋮ order already
   leads with the next step (Inventory, Harness) makes its first enabled item
   primary.
 - At 1100px and below, show the pane as a full-height sheet over the table's
@@ -221,24 +221,12 @@ Pick the form from this table. Add no other form, and no banner.
 
 Mandatory for any change that alters what `packages/web` renders:
 
-1. Start `pnpm smoke` in the background: `pnpm dev` (server and web on this
-   worktree's own pair of ports, replacing its previous run) against the sandbox
-   config `MAESTRO_HOME=.maestro-sandbox`. It seeds the sandbox HOME and connects
-   nothing (ADR-0010), so the cockpit comes up on the connect gate.
-   - Verifying a first-run screen → stop here; that is the state you need.
-   - Verifying anything the cockpit shows once connected → run `pnpm smoke:ready`,
-     which waits for the cockpit, connects the inventory, fetches its releases and registers one repo.
-   - Verifying a deploy state → `pnpm smoke:ready --scenario <name>[,<name>]` or
-     `all`: `empty`, `in-sync`, `behind`, `mixed-releases`, `local-edits`,
-     `unverified`, `pinned-per-skill`, `unfinished-operation`, `import-edits`
-     (both Import local edits groups; also behind, so Update target shows its
-     consent rows), `unreadable` (Deploy-state not read),
-     `global-leftover` (a global Remove with an Other copies row). It exits
-     non-zero when the cockpit does not show the scenario's reading.
-   - Verifying a Harness authoring state → `--scenario harness-outcomes`: one
-     restorable **Deletion** in Pending proposal and one unreleased **Edit** to
-     release.
-     `harness-offline` leaves the Harness unreachable until the next run.
+1. Start `pnpm smoke` in the background: this worktree's own ports, sandbox
+   config, connect gate (ADR-0010).
+   - A first-run screen → stop here.
+   - A connected screen → `pnpm smoke:ready`; a deploy or Harness state →
+     `--scenario <name>[,<name>]` (each scenario and what it seeds:
+     `scripts/smoke-scenarios.mjs`).
 2. Screenshot the changed UI with `agent-browser`, in each theme.
 3. Read changed copy at a narrow width and at 200% zoom, in one theme.
 4. Compare against the design source; on mismatch, fix before claiming done.

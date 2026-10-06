@@ -13,7 +13,7 @@ import type { Copy } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
 import {
   GLOBAL,
-  localEditsReason,
+  localEditsLine,
   NO_REPOSITORIES,
   NO_TOOL_DETECTED,
   otherOriginLine,
@@ -27,7 +27,7 @@ import {
   withOtherOrigins,
 } from "./deployed-view";
 import {
-  behindReason,
+  behindLine,
   comparedFact,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
@@ -42,6 +42,7 @@ import {
 } from "./skipped-entry-text";
 import { targetStatus } from "./target-status";
 import { toolNameList, toolPresentation } from "./tool-presentation";
+import { updateLabel } from "./update-target-copy";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
 // One Deploy-state row per target: a detected tool or a registered repository.
@@ -75,6 +76,8 @@ export type TargetRow = {
   github?: GitHubPage;
   /** The Release fact's page on GitHub; absent where none exists. */
   releaseGitHub?: GitHubPage;
+  /** The Latest release fact's page on GitHub; absent where none exists. */
+  latestReleaseGitHub?: GitHubPage;
 };
 
 // A row's id, which another screen names to open that row's pane.
@@ -156,6 +159,9 @@ export function globalRows(
       skills: group.primitives.length,
       ...(group.releaseHead ? { head: group.releaseHead } : {}),
       ...(group.releaseGitHub ? { releaseGitHub: group.releaseGitHub } : {}),
+      ...(group.latestReleaseGitHub
+        ? { latestReleaseGitHub: group.latestReleaseGitHub }
+        : {}),
       ...(group.pinnedPerSkill ? { pinned: group.pinnedPerSkill } : {}),
       ...(pending ? { pending } : {}),
       primitives: group.primitives,
@@ -183,6 +189,7 @@ type RepoRead = {
         pendingOperation?: PendingOperation;
         github?: GitHubPage;
         releaseGitHub?: GitHubPage;
+        latestReleaseGitHub?: GitHubPage;
       }
     | undefined;
   isError: boolean;
@@ -231,6 +238,9 @@ export function repoRow(
     behind,
     ...(data?.github ? { github: data.github } : {}),
     ...(data?.releaseGitHub ? { releaseGitHub: data.releaseGitHub } : {}),
+    ...(data?.latestReleaseGitHub
+      ? { latestReleaseGitHub: data.latestReleaseGitHub }
+      : {}),
   };
 }
 
@@ -262,7 +272,7 @@ export type StatusCard = { reason: Copy | null; readAge: string | null };
 function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
   const edited = editedSkills(row.primitives);
-  if (!row.readFailed && edited.length > 0) return localEditsReason(edited);
+  if (!row.readFailed && edited.length > 0) return localEditsLine(edited);
   if (row.pinned) return pinnedTagsLine(row.pinned);
   if (row.readFailed) return REPO_NOT_READ.label;
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {
@@ -273,7 +283,9 @@ function statusReason(row: TargetRow): Copy | null {
   if (row.status?.family === "unknown") return UNREACHED_HINT;
   if (!row.head) return null;
   if (row.head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
-  return row.behind ? behindReason(row.head) : ON_LATEST_RELEASE;
+  return row.behind
+    ? behindLine(row.head, updateLabel(row))
+    : ON_LATEST_RELEASE;
 }
 
 export function statusCard(row: TargetRow, now: Date): StatusCard {

@@ -157,7 +157,9 @@ describe("SelectedSkills marks", () => {
       }),
     );
 
-    expect(screen.getByText(/not deployed here/i)).toHaveTextContent(/foo/);
+    expect(screen.getByText(/^Package also behind/)).toHaveTextContent(
+      "Package also behind, not a skill: foo.",
+    );
     expect(screen.getByText("foo").tagName).toBe("B");
   });
 });

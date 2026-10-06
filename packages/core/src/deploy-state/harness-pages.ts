@@ -5,6 +5,7 @@ import { type GitHubPage, UNKNOWN_PAGE } from "../git/github-page";
 import { RELEASE_TAG_PATTERN } from "../harness/release-tag";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { LockfileEntry } from "../lockfile/lockfile";
+import type { ReleaseHead } from "./deploy-state-types";
 
 export type HarnessPages = {
   release: GitHubPage;
@@ -40,6 +41,31 @@ export function harnessPages(
           }
         : undefined,
   };
+}
+
+// The latest release's page beside the current one's: the same page at the
+// newer tag. Undefined where the target is on it or nothing links.
+export function latestReleasePage(
+  release: GitHubPage | undefined,
+  head: Pick<ReleaseHead, "release" | "latestRelease">,
+): GitHubPage | undefined {
+  const latest = head.latestRelease;
+  if (
+    release === undefined ||
+    latest === null ||
+    latest === head.release ||
+    !RELEASE_TAG_PATTERN.test(latest)
+  ) {
+    return undefined;
+  }
+  if (release.kind === "unknown") return release;
+  const current = `/releases/tag/${head.release}`;
+  return release.url.endsWith(current)
+    ? {
+        kind: "link",
+        url: `${release.url.slice(0, -current.length)}/releases/tag/${latest}`,
+      }
+    : undefined;
 }
 
 // A per-skill dependency from before the root-package model links to its own

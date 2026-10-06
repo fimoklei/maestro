@@ -21,10 +21,9 @@ const linkSchema = z.object({
 });
 
 // Spread into a response body: absent where there is no page, never null.
-export function githubPageField<K extends "github" | "releaseGitHub">(
-  key: K,
-  page: GitHubPage | undefined,
-): Partial<Record<K, GitHubPage>> {
+export function githubPageField<
+  K extends "github" | "releaseGitHub" | "latestReleaseGitHub",
+>(key: K, page: GitHubPage | undefined): Partial<Record<K, GitHubPage>> {
   if (page === undefined) return {};
   const link = linkSchema.safeParse(page);
   return { [key]: link.success ? link.data : UNKNOWN_PAGE } as Record<

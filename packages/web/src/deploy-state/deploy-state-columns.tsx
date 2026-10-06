@@ -9,9 +9,11 @@ import { GitHubMarkLink } from "../ui/github-mark-link";
 import { HoverCard } from "../ui/hover-card";
 import { MachineValue } from "../ui/machine-value";
 import { PhraseText } from "../ui/phrase-text";
+import { Skeleton } from "../ui/skeleton";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
 import { useNow } from "../ui/use-now";
+import { useReadSkeleton } from "../ui/use-read-skeleton";
 import {
   ACTIONS_COLUMN_LABEL,
   ORIGIN_NOT_READ,
@@ -31,11 +33,21 @@ export type TargetTableRow = TargetRow & {
 
 const unranked = Number.MAX_SAFE_INTEGER;
 
+// The drift check is slow; past 1.3 s its cell shows a placeholder (design.md).
+function StatusReading() {
+  const { visible } = useReadSkeleton(true);
+  return (
+    <span aria-busy="true" className="block">
+      {visible ? <Skeleton className="w-16" /> : null}
+    </span>
+  );
+}
+
 function StatusCard({ row }: { row: TargetTableRow }) {
   const active = useDataTableRowActive();
   const now = useNow();
   if (row.status === null) {
-    return null;
+    return <StatusReading />;
   }
   const { reason, readAge } = statusCard(row, now);
   return (
@@ -88,7 +100,11 @@ function ReleaseValue({
       <span className="text-gray-11">
         <MachineValue>{release.current}</MachineValue>
       </span>
-      <span className="text-gray-11"> → </span>
+      <span aria-hidden="true" className="text-gray-11">
+        {" "}
+        →{" "}
+      </span>
+      <span className="sr-only">to </span>
       <MachineValue>{release.latest}</MachineValue>
     </span>
   );

@@ -102,6 +102,20 @@ describe("Deploy-state pane — facts", () => {
     expect(fact(pane, "Release")).toBe("v0.3.2");
   });
 
+  it("links the Latest release fact to that release's page on GitHub", async () => {
+    const url = "https://github.com/fimoklei/agent-harness/releases/tag/v0.3.4";
+    repoWith({
+      releaseHead: BEHIND,
+      latestReleaseGitHub: { kind: "link", url },
+    });
+    renderDeployState();
+    const pane = await openPane(LABEL);
+
+    expect(
+      within(pane).getByRole("link", { name: "v0.3.4 on GitHub" }),
+    ).toHaveAttribute("href", url);
+  });
+
   it("links a global tool's Release fact to its release page on GitHub", async () => {
     const url = "https://github.com/fimoklei/agent-harness/releases/tag/v0.3.2";
     stubServer(() => ({
@@ -767,7 +781,7 @@ describe("Deploy-state pane — where each action sits", () => {
     }
   });
 
-  it("puts Update target beside Latest release as the primary, the rest quiet at the foot", async () => {
+  it("puts Update target beside Latest release, and makes Import local edits the primary it would otherwise discard", async () => {
     repoWith({ primitives: [edited("tdd")], releaseHead: BEHIND });
     renderDeployState();
 
@@ -777,15 +791,29 @@ describe("Deploy-state pane — where each action sits", () => {
         "button",
         { name: `Update target ${LABEL}` },
       ),
-    ).toHaveClass("bg-gray-12");
+    ).not.toHaveClass("bg-gray-12");
     expect(footLabels(pane)).toEqual(["Import local edits", "Deploy skill"]);
-    for (const button of within(footOf(pane)).getAllByRole("button")) {
-      expect(button).not.toHaveClass("bg-gray-12");
-    }
+    expect(
+      within(footOf(pane)).getByRole("button", { name: "Import local edits" }),
+    ).toHaveClass("bg-gray-12");
     expect(
       within(pane).getByText(
         sentence(
           "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("explains a plain behind target and names the control that moves it", async () => {
+    repoWith({ primitives: [skill("tdd", "v0.3.2")], releaseHead: BEHIND });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(
+      within(pane).getByText(
+        sentence(
+          "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
         ),
       ),
     ).toBeInTheDocument();

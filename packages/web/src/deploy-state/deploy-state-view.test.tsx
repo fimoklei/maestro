@@ -190,6 +190,15 @@ describe("Deploy-state — Release, Status and Skills", () => {
       ]),
     );
     expect(cellsOf("…/me/b").slice(1)).toEqual(["v0.3.4", "In sync", "1"]);
+    // The arrow is drawn; a screen reader hears the word.
+    const release = within(rowOf("…/me/a")).getAllByRole(
+      "gridcell",
+    )[1] as HTMLElement;
+    expect(within(release).getByText("→")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(within(release).getByText("to")).toHaveClass("sr-only");
   });
 
   it("reads an empty target as Empty, with a dash for its release and skills", async () => {
@@ -436,12 +445,17 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
 
     const reason = await screen.findByText(
-      sentence("2 of 5 deployed skills changed in v0.3.4."),
+      sentence(
+        "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+      ),
     );
     const card = reason.parentElement as HTMLElement;
     expect(
       Array.from(card.querySelectorAll("p"), (line) => line.textContent),
-    ).toEqual(["2 of 5 deployed skills changed in v0.3.4.", "Read just now"]);
+    ).toEqual([
+      "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+      "Read just now",
+    ]);
   });
 });
 
@@ -545,6 +559,25 @@ describe("Deploy-state — Re-read and freshness", () => {
     expect(grid()).not.toHaveAttribute("aria-busy");
   });
 
+  it("marks a status still being read as busy, with a placeholder past 1.3 s", async () => {
+    stubServer(() => ({
+      global: TWO_TOOLS,
+      drift: { global: new Promise(() => {}) },
+    }));
+    renderDeployState();
+    await findRow("Claude Code");
+    const status = within(rowOf("Claude Code")).getAllByRole(
+      "gridcell",
+    )[3] as HTMLElement;
+
+    expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
+    expect(
+      status.querySelector(".animate-pulse, [class*='animate-pulse']"),
+    ).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(status.querySelector("[class*='animate-pulse']")).not.toBeNull();
+  });
+
   it("re-reads every target and bypasses the 5-minute Behind cache", async () => {
     const fetchMock = stubServer(() => ({
       repos: ["/Users/me/a"],
@@ -592,7 +625,9 @@ describe("Deploy-state — Re-read and freshness", () => {
       await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
       const card = (
         await screen.findByText(
-          sentence("2 of 5 deployed skills changed in v0.3.4."),
+          sentence(
+            "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+          ),
         )
       ).parentElement as HTMLElement;
       expect(within(card).getByText("Read just now")).toBeInTheDocument();
