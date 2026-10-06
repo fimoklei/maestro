@@ -216,6 +216,16 @@ describe("letter-spacing", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  it("no component sets a label in spaced capitals", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      [...source.matchAll(/\buppercase\b/g)].map(
+        (match) => `${path.slice(SRC_DIR.length)}: ${match[0]}`,
+      ),
+    );
+
+    expect(offenders).toEqual([]);
+  });
 });
 
 describe("focus ring colour", () => {
