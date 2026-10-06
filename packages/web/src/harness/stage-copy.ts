@@ -81,6 +81,10 @@ export const statusReading = (row: HarnessStageRow): StatusReading => {
   );
 };
 
+/** The default branch as a sentence names it: its name set apart, else words. */
+export const defaultBranchCopy = (defaultBranch: string | null) =>
+  defaultBranch === null ? "the default branch" : machine(defaultBranch);
+
 // The facts a sentence substitutes into: both come from the same read the rows
 // did, so a Detail never names a branch or release the rows were not read from.
 export type StageContext = {
@@ -106,19 +110,19 @@ export function detailSentence(
   row: HarnessStageRow,
   { defaultBranch, releasedVersion }: StageContext,
 ): Copy {
-  const branch = defaultBranch ?? "the default branch";
-  const release = releasedVersion;
+  const branch = defaultBranchCopy(defaultBranch);
+  const release = releasedVersion === null ? null : machine(releasedVersion);
   const publish = `Select ${CREATE_RELEASE} to publish it.`;
   // One next action; Restore skill stays in the row menu (#1396).
-  const deleteLocally = `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
+  const deleteLocally = phrase`This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
   switch (row.status) {
     case "not-yet-proposed":
       if (row.deletion) {
         return deleteLocally;
       }
       return offersDiscard(row)
-        ? `Your local copy differs from ${branch}. Select Propose change to send it for review, or Discard change to match ${branch} again.`
-        : `Your local copy differs from ${branch}. Select Propose change to send it for review.`;
+        ? phrase`Your local copy differs from ${branch}. Select Propose change to send it for review, or Discard change to match ${branch} again.`
+        : phrase`Your local copy differs from ${branch}. Select Propose change to send it for review.`;
     case "deleted-locally":
       return deleteLocally;
     case "new-local-work":
@@ -161,20 +165,20 @@ export function detailSentence(
       } Open the extra pull requests on GitHub and close them.`;
     case "added":
       return release === null
-        ? `This skill is on ${branch} and in no release yet. ${publish}`
-        : `This skill was added to ${branch} after release ${release}. ${publish}`;
+        ? phrase`This skill is on ${branch} and in no release yet. ${publish}`
+        : phrase`This skill was added to ${branch} after release ${release}. ${publish}`;
     case "changed":
       return release === null
-        ? `This skill is on ${branch} and in no release yet. ${publish}`
-        : `This skill changed on ${branch} after release ${release}. ${publish}`;
+        ? phrase`This skill is on ${branch} and in no release yet. ${publish}`
+        : phrase`This skill changed on ${branch} after release ${release}. ${publish}`;
     case "renamed":
       return row.previousName === null
-        ? `This skill was renamed on ${branch}. ${publish}`
-        : phrase`This skill was renamed from ${named(row.previousName)} on ${defaultBranch === null ? branch : machine(defaultBranch)}. ${publish}`;
+        ? phrase`This skill was renamed on ${branch}. ${publish}`
+        : phrase`This skill was renamed from ${named(row.previousName)} on ${branch}. ${publish}`;
     case "deleted":
       return release === null
-        ? `This skill is no longer on ${branch}. Select ${CREATE_RELEASE} to publish the deletion.`
-        : `This skill was deleted from ${branch} after release ${release}. Select ${CREATE_RELEASE} to publish the deletion.`;
+        ? phrase`This skill is no longer on ${branch}. Select ${CREATE_RELEASE} to publish the deletion.`
+        : phrase`This skill was deleted from ${branch} after release ${release}. Select ${CREATE_RELEASE} to publish the deletion.`;
   }
 }
 

@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { DiscardDialog } from "./discard-dialog";
 
@@ -51,7 +52,9 @@ describe("DiscardDialog", () => {
 
     expect(
       screen.getByText(
-        "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. Deployed copies remain unchanged.",
+        sentence(
+          "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. Deployed copies remain unchanged.",
+        ),
       ),
     ).toBeInTheDocument();
   });
@@ -60,9 +63,25 @@ describe("DiscardDialog", () => {
     renderDialog();
 
     expect(screen.getByText(".apm/skills/research")).toBeInTheDocument();
-    expect(screen.getByText("main")).toHaveAccessibleDescription(
+    expect(
+      screen.getByText("main", { selector: "dd" }),
+    ).toHaveAccessibleDescription(
       "If main moves before you confirm, nothing is discarded.",
     );
+  });
+
+  it("sets the branch in its sentences apart", () => {
+    renderDialog();
+
+    for (const text of [
+      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. Deployed copies remain unchanged.",
+      "If main moves before you confirm, nothing is discarded.",
+    ]) {
+      const line = screen.getByText(sentence(text));
+      expect(
+        within(line).getByText("main", { selector: ".font-mono" }),
+      ).toBeInTheDocument();
+    }
   });
 
   it("names the default branch generically where it could not be read", () => {

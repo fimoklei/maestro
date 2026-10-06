@@ -1,5 +1,7 @@
 import { useId } from "react";
 import { cn } from "./cn";
+import type { Copy } from "./phrase";
+import { PhraseText } from "./phrase-text";
 
 // A label over its value, inside the caller's own <dl>.
 export function Fact({
@@ -15,7 +17,7 @@ export function Fact({
   /** For a value with no break in it — a full commit or tree hash. */
   wrap?: boolean;
   /** What a label cannot say — read as the value's description, not beside it. */
-  hint?: string;
+  hint?: Copy;
   /** The whole value on hover, where the visible one is shortened. */
   title?: string;
   /** False for a plain word, which Geist Mono never sets. */
@@ -39,7 +41,7 @@ export function Fact({
       </dd>
       {hint ? (
         <p className="m-0 mt-1.5 font-ui text-meta text-gray-11" id={hintId}>
-          {hint}
+          <PhraseText copy={hint} />
         </p>
       ) : null}
     </div>

@@ -1,7 +1,8 @@
-import { type ReactNode, useId } from "react";
+import { isValidElement, type ReactElement, useId } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 import type { NoticeCopy } from "./notice";
+import type { Copy } from "./phrase";
 import { PhraseText } from "./phrase-text";
 import {
   STATUS_TOKENS,
@@ -18,7 +19,7 @@ type ReportRow = {
   /** The name is a path, set in mono. */
   mono?: boolean;
   /** Why this row reads the way it does, in one or two short sentences. */
-  detail?: ReactNode;
+  detail?: Copy | ReactElement;
   /** A refusal or failure, stated as the same notice a single action shows. */
   notice?: NoticeCopy;
   /** How many primitives the row stands for, where one reason hit several. */
@@ -129,7 +130,13 @@ export function Report({
                       {row.name}
                     </span>
                     {row.detail === undefined ? null : (
-                      <span className="text-gray-11">{row.detail}</span>
+                      <span className="text-gray-11">
+                        {isValidElement(row.detail) ? (
+                          row.detail
+                        ) : (
+                          <PhraseText copy={row.detail} />
+                        )}
+                      </span>
                     )}
                     {row.notice === undefined ? null : (
                       <span className="text-gray-12">{row.notice.label}</span>

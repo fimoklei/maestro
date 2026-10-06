@@ -3,7 +3,7 @@ import { focusManager } from "@tanstack/react-query";
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse } from "../test-utils";
+import { jsonResponse, sentence } from "../test-utils";
 import {
   findRow,
   openPane,
@@ -309,7 +309,9 @@ describe("Deploy-state — Update target on the global target", () => {
     expect(failed.getByText("tdd in Codex")).toBeInTheDocument();
     expect(
       failed.getByText(
-        "Still at v0.3.4. Select Retry update to run the same release again.",
+        sentence(
+          "Still at v0.3.4. Select Retry update to run the same release again.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(within(dialog).getByText("Update incomplete")).toBeInTheDocument();

@@ -20,7 +20,7 @@ import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { REREAD_HARNESS, UPDATE_SKILL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
-import { named, phrase } from "../ui/phrase";
+import { machine, named, phrase } from "../ui/phrase";
 
 // A new code in core fails typecheck here until it has a row.
 
@@ -690,7 +690,7 @@ export const releasePublishedNotice = (
 ): NoticeContent => ({
   level: "warning",
   label: "Release published",
-  message: `Maestro tagged ${tag}, but Inventory was not read. Select ${REREAD_INVENTORY} to see the published skills.`,
+  message: phrase`Maestro tagged ${machine(tag)}, but Inventory was not read. Select ${REREAD_INVENTORY} to see the published skills.`,
   detail: "A release cannot change after publication.",
   action: { label: REREAD_INVENTORY, onClick: onReread },
 });

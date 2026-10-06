@@ -118,6 +118,27 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
 };
 
+// The same rule for a version, tag, branch, path, ref, hash or command. The
+// scan knows a value by its identifier's words only: a release held in a
+// variable named `latest`, or a file name written into the words, escapes it.
+const PLAIN_MACHINE: Record<string, Record<string, string>> = {
+  "deploy-state/selected-skills.tsx": {
+    "`${primitive.version} → ${latest}`": "sub-list value, set in mono",
+  },
+  "deploy-state/skipped-entry-text.ts": {
+    "`${entry.reason}:${entry.virtualPath ?? index}`": "key",
+  },
+  "deploy-state/target-rows.ts": {
+    "`repo:${repoPath}`": "key",
+  },
+  "deploy-state/use-global-deploy-state.ts": {
+    "`${primitive.name}@${primitive.version}`": "key",
+  },
+  "ui/dialog.tsx": {
+    "`${title} ${version}`": "accessible name",
+  },
+};
+
 const NAME =
   /\b(\w*Name|name|names|skill|target|targetLabel|repo|bundle|origin|origins|author|scope)\b/;
 
@@ -128,7 +149,9 @@ function templates(text: string): Template[] {
   const found: Template[] = [];
   let open = text.indexOf("`");
   while (open !== -1) {
-    const tagged = /phrase\s*$/.test(text.slice(Math.max(0, open - 8), open));
+    const tagged = /(phrase|machine\()\s*$/.test(
+      text.slice(Math.max(0, open - 9), open),
+    );
     const exprs: string[] = [];
     let at = open + 1;
     for (; at < text.length && text[at] !== "`"; at++) {
@@ -186,6 +209,70 @@ const plainNames = sources.flatMap((file) =>
     .map(({ source }) => ({ file, source: source.replace(/\n\s*/g, " ") })),
 );
 
+const MACHINE_WORDS = new Set(
+  "release releases released tag version versions branch path ref hash commit command".split(
+    " ",
+  ),
+);
+
+// True when a word of an identifier, split at camelCase, names a machine value.
+const machineShaped = (expr: string) =>
+  (withoutLiterals(expr).match(/[A-Za-z]+/g) ?? [])
+    .flatMap((word) => word.split(/(?=[A-Z])/))
+    .some((word) => MACHINE_WORDS.has(word.toLowerCase()));
+
+const plainMachineValues = sources.flatMap((file) =>
+  templates(readFileSync(join(SRC, file), "utf8"))
+    .filter(({ tagged, exprs }) => !tagged && exprs.some(machineShaped))
+    .map(({ source }) => ({ file, source: source.replace(/\n\s*/g, " ") })),
+);
+
+// Each `{…}` JSX child that sits between words and holds a name or a machine
+// value, outside `InlineName` and `InlineMachineValue`. A child alone on its
+// line, as a heading, label or cell holds it, is not a sentence and stays.
+function bareJsxValues(text: string): string[] {
+  return [...text.matchAll(/\{([^{}\s][^{}]*)\}/g)]
+    .filter((match) => {
+      const [whole, expr = ""] = match;
+      const start = match.index;
+      const line = text.slice(text.lastIndexOf("\n", start) + 1, start);
+      const after = text.slice(start + whole.length);
+      const wordBefore = /[A-Za-z,.;:!?)] $/.test(line);
+      const wordAfter =
+        /^( [a-z]|[.,;:](\s|$))/.test(after) && /(^\s*|>)$/.test(line);
+      return (
+        !expr.startsWith("...") &&
+        (wordBefore || wordAfter) &&
+        (NAME.test(withoutLiterals(expr)) || machineShaped(expr))
+      );
+    })
+    .map(([whole]) => whole);
+}
+
+describe("a machine value in a visible sentence", () => {
+  it("is a phrase, or plain text for a listed reason", () => {
+    const unlisted = plainMachineValues.filter(
+      ({ file, source }) => PLAIN_MACHINE[file]?.[source] === undefined,
+    );
+
+    expect(unlisted).toEqual([]);
+  });
+
+  it("lists no plain text that is gone", () => {
+    const listed = Object.entries(PLAIN_MACHINE).flatMap(([file, rows]) =>
+      Object.keys(rows).map((source) => ({ file, source })),
+    );
+    const stale = listed.filter(
+      (row) =>
+        !plainMachineValues.some(
+          ({ file, source }) => file === row.file && source === row.source,
+        ),
+    );
+
+    expect(stale).toEqual([]);
+  });
+});
+
 describe("a name in a visible sentence", () => {
   it("is a phrase, or plain text for a listed reason", () => {
     const unlisted = plainNames.filter(
@@ -207,6 +294,36 @@ describe("a name in a visible sentence", () => {
     );
 
     expect(stale).toEqual([]);
+  });
+});
+
+describe("a name or machine value written straight into JSX text", () => {
+  it("is found by the scan", () => {
+    expect(
+      bareJsxValues(
+        "<p>\n  This removes the {skill} folder on {branch}.\n  {skill} exists.\n</p>",
+      ),
+    ).toEqual(["{skill}", "{branch}", "{skill}"]);
+  });
+
+  it("leaves set-apart values, attributes and spreads alone", () => {
+    expect(
+      bareJsxValues(
+        '<p className="x">\n  Removes <InlineName>{skill}</InlineName> from <InlineMachineValue>{branch}</InlineMachineValue>.\n  <Row {...skill} />\n  <Fact label="Skill" value={skill} />\n</p>',
+      ),
+    ).toEqual([]);
+  });
+
+  it("is never bare in a visible sentence", () => {
+    const bare = sources
+      .filter((file) => file.endsWith(".tsx"))
+      .flatMap((file) =>
+        bareJsxValues(readFileSync(join(SRC, file), "utf8")).map(
+          (expr) => `${file}: ${expr}`,
+        ),
+      );
+
+    expect(bare).toEqual([]);
   });
 });
 

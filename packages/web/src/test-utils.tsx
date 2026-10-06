@@ -59,3 +59,11 @@ export const sentence = (text: string | RegExp) => {
     reads(element) &&
     [...element.children].every((child) => !reads(child));
 };
+
+/** The machine values a sentence sets apart, in reading order. */
+export const machineValues = (copy: Copy): string[] =>
+  typeof copy === "string"
+    ? []
+    : copy.parts.flatMap((part) =>
+        typeof part !== "string" && part.kind === "machine" ? [part.text] : [],
+      );

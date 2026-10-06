@@ -1,5 +1,7 @@
 import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { describe, expect, it } from "vitest";
+import { machineValues } from "../test-utils";
+import { plainText } from "../ui/phrase";
 import {
   harnessAnnouncement,
   releaseEnabled,
@@ -73,8 +75,12 @@ describe("stageSections", () => {
     previousName: null,
   });
 
-  const metaOf = (built: HarnessState, stage: string) =>
+  const sectionMeta = (built: HarnessState, stage: string) =>
     stageSections(built).find((section) => section.stage === stage)?.meta;
+  const metaOf = (built: HarnessState, stage: string) => {
+    const meta = sectionMeta(built, stage);
+    return meta === null || meta === undefined ? meta : plainText(meta);
+  };
 
   it("puts the three stages in journey order", () => {
     expect(stageSections(state({})).map((each) => each.title)).toEqual([
@@ -149,6 +155,36 @@ describe("stageSections", () => {
     expect(
       metaOf(state({ review: { outcome: "unavailable" } }), "pending-review"),
     ).toBe("Review status unavailable");
+  });
+
+  it("sets the branch and release a stage was compared with apart", () => {
+    const proposal = state({
+      proposal: {
+        outcome: "read",
+        bound: null,
+        rows: [row({ kind: "default-branch" })],
+      },
+    });
+    const mixed = state({
+      proposal: {
+        outcome: "read",
+        bound: null,
+        rows: [
+          row({ kind: "proposal", number: 412 }),
+          row({ kind: "default-branch" }),
+        ],
+      },
+    });
+
+    expect(
+      machineValues(sectionMeta(proposal, "pending-proposal") ?? ""),
+    ).toEqual(["main"]);
+    expect(machineValues(sectionMeta(mixed, "pending-proposal") ?? "")).toEqual(
+      ["main"],
+    );
+    expect(
+      machineValues(sectionMeta(state({}), "pending-release") ?? ""),
+    ).toEqual(["v1.4.0"]);
   });
 
   it("names the release Pending release was compared with", () => {

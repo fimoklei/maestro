@@ -5,14 +5,15 @@ import type {
   HarnessState,
 } from "@maestro/core";
 import { freshnessLine } from "../ui/freshness";
-import { STAGE_NAMES } from "./stage-copy";
+import { type Copy, machine, phrase } from "../ui/phrase";
+import { defaultBranchCopy, STAGE_NAMES } from "./stage-copy";
 
 // The stage header's meta slot carries at most one reading, never two (#838),
 // and never a routine read age: null where a successful read has nothing to name (#1218).
 export type StageSection = {
   stage: HarnessStage;
   title: string;
-  meta: string | null;
+  meta: Copy | null;
   read: HarnessStageRead;
 };
 
@@ -22,7 +23,7 @@ export type StageSection = {
 const proposalMeta = (
   read: HarnessStageRead,
   state: HarnessState,
-): string | null => {
+): Copy | null => {
   if (read.outcome !== "read") {
     return "Status unknown";
   }
@@ -42,9 +43,13 @@ const proposalMeta = (
     ),
   );
   const [only] = [...refs];
-  return refs.size === 1 && typeof only === "string"
-    ? `Compared with ${only}`
-    : `Compared with each skill's proposal or ${branch}`;
+  const branchValue = defaultBranchCopy(state.defaultBranch);
+  if (refs.size === 1 && typeof only === "string") {
+    return only === branch
+      ? phrase`Compared with ${branchValue}`
+      : `Compared with ${only}`;
+  }
+  return phrase`Compared with each skill's proposal or ${branchValue}`;
 };
 
 const reviewMeta = (read: HarnessStageRead): string | null => {
@@ -60,13 +65,13 @@ const reviewMeta = (read: HarnessStageRead): string | null => {
     : `Read the ${read.bound} most recent pull requests`;
 };
 
-const releaseMeta = (read: HarnessStageRead, state: HarnessState): string => {
+const releaseMeta = (read: HarnessStageRead, state: HarnessState): Copy => {
   if (read.outcome !== "read") {
     return "Status unknown";
   }
   return state.releasedVersion === null
     ? "Nothing released yet"
-    : `Compared with ${state.releasedVersion}`;
+    : phrase`Compared with ${machine(state.releasedVersion)}`;
 };
 
 // The three stages in journey order. A confirmed empty stage still comes back;

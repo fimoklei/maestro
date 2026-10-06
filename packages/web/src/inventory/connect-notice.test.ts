@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { machineValues } from "../test-utils";
+import { plainText } from "../ui/phrase";
 import {
   connectNotice,
   scaffoldNotice,
@@ -157,9 +159,14 @@ describe("connectNotice", () => {
 
   it("names the offer's folder and its one action, busy while it runs", () => {
     const onAccept = () => {};
-    expect(
-      scaffoldOfferExtras("/repos/harness", { pending: false, onAccept }),
-    ).toEqual({
+    const offer = scaffoldOfferExtras("/repos/harness", {
+      pending: false,
+      onAccept,
+    });
+    expect({
+      ...offer,
+      detail: plainText(offer.detail ?? ""),
+    }).toEqual({
       detail: "Maestro would scaffold it into /repos/harness.",
       action: {
         label: "Scaffold the Harness",
@@ -171,6 +178,15 @@ describe("connectNotice", () => {
       scaffoldOfferExtras("/repos/harness", { pending: true, onAccept }).action,
     ).toEqual({ label: "Scaffolding…", disabled: true, onClick: onAccept });
     expect(scaffoldOfferExtras(null, { pending: false, onAccept })).toEqual({});
+  });
+
+  it("sets the offer's folder apart", () => {
+    const offer = scaffoldOfferExtras("/repos/harness", {
+      pending: false,
+      onAccept: () => {},
+    });
+
+    expect(machineValues(offer.detail ?? "")).toEqual(["/repos/harness"]);
   });
 
   it("refuses a remote address where only a folder path is taken", () => {
