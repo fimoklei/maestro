@@ -94,6 +94,8 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
 // A proposed change and a deletion share a heading wherever they share a code —
 // the same thing goes wrong — but each states its own way through, so the
 // sentences differ where the two ways through differ (#686).
+const ONE_CONTRIBUTOR = "Only one contributor proposes to a skill at a time.";
+
 export const promoteHeadings: NoticeTable<PromoteSkillError> = {
   ...harnessHeadings,
   "invalid-skill": {
@@ -137,6 +139,13 @@ export const promoteHeadings: NoticeTable<PromoteSkillError> = {
     message:
       "Nothing was pushed. Select a View pull request link to close the extras, then Propose change again.",
     detail: "More than one open pull request matches this skill's branch.",
+  },
+  "proposed-by-other": {
+    level: "error",
+    label: "Another contributor's pull request is open",
+    message:
+      "Nothing was pushed. Wait until it is merged or closed, then Propose change again.",
+    detail: ONE_CONTRIBUTOR,
   },
   "promote-failed": {
     level: "error",
@@ -182,6 +191,11 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
     ...promoteHeadings["extra-requests"],
     message:
       "Nothing was pushed. Select a View pull request link to close the extras, then Delete skill again.",
+  },
+  "proposed-by-other": {
+    ...promoteHeadings["proposed-by-other"],
+    message:
+      "Nothing was pushed. Wait until it is merged or closed, then Delete skill again.",
   },
   "confirmation-stale": {
     level: "error",
@@ -447,6 +461,13 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
     message:
       "Select a View pull request link to close the extras, then select Re-read Harness.",
     detail: "More than one open pull request matches this skill's branch.",
+  },
+  "proposed-by-other": {
+    level: "error",
+    label: "Another contributor's pull request",
+    message:
+      "Only its author can change it. Select Re-read Harness to read GitHub again.",
+    detail: ONE_CONTRIBUTOR,
   },
   "request-exists": {
     level: "error",

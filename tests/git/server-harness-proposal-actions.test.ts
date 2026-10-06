@@ -144,6 +144,34 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       ).resolves.toContain("edited on disk");
     });
 
+    it("makes a teammate wait on another contributor's open proposal, on screen and at the server", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      const prepared = await branchTree("tdd");
+      answer([request({ author: "teammate" })]);
+      await writeSkill("tdd", "a further edit");
+
+      const state = await refresh(app);
+      const update = await promote(app, "tdd");
+      const withdrawal = await proposalAction(app, "withdraw", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(rowsOf(state.stages.review)).toMatchObject([
+        { status: "proposed-by-other", waitingOn: "teammate" },
+      ]);
+      expect(rowsOf(state.stages.proposal)).toMatchObject([
+        { status: "new-local-work", waitingOn: "teammate" },
+      ]);
+      expect(update.status).toBe(409);
+      expect(await update.json()).toEqual({ error: "proposed-by-other" });
+      expect(await withdrawal.json()).toEqual({ error: "proposed-by-other" });
+      expect(await branchTree("tdd")).toBe(prepared);
+      expect(stages.review.closed).toEqual([]);
+    });
+
     it("blocks update and withdrawal while two requests match the branch", async () => {
       const app = makeApp();
       await writeSkill("tdd", "edited on disk");

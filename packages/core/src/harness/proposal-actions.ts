@@ -2,8 +2,11 @@
 import { isValidSkillSlug } from "../deploy/package-ref";
 import {
   type HarnessReviewPort,
+  isOthers,
   matchesProposal,
   type ReviewRequest,
+  type ViewerRead,
+  waitingOn,
 } from "./harness-review-port";
 import { promoteBranch } from "./promote-branch";
 import {
@@ -28,6 +31,7 @@ export type ProposalActionError =
   | "request-gone"
   | "extra-requests"
   | "request-exists"
+  | "proposed-by-other"
   | "action-failed";
 
 export type ProposalActionResult =
@@ -42,6 +46,9 @@ type Ready = {
   target: ProposalTarget;
   matching: ReviewRequest[];
   open: ReviewRequest[];
+  viewer: ViewerRead;
+  // The contributor whose open request holds the branch; null where none does.
+  waiting: string | null;
 };
 
 type CheckedFacts = Ready | { ok: false; error: ProposalActionError };
@@ -62,6 +69,9 @@ export class ProposalActions {
     const checked = await this.checkedFacts(name);
     if (!checked.ok) {
       return checked;
+    }
+    if (checked.waiting !== null) {
+      return { ok: false, error: "proposed-by-other" };
     }
     if (checked.open.length > 0) {
       return { ok: false, error: "request-exists" };
@@ -111,11 +121,14 @@ export class ProposalActions {
     if (checked.open.length > 1) {
       return { ok: false, error: "extra-requests" };
     }
-    const closed = checked.matching.some(
+    const closed = checked.matching.find(
       (request) => request.state === "closed" && request.number === number,
     );
-    if (!closed) {
+    if (closed === undefined) {
       return { ok: false, error: "request-gone" };
+    }
+    if (checked.waiting !== null || isOthers(closed, checked.viewer)) {
+      return { ok: false, error: "proposed-by-other" };
     }
     return settle(
       await this.deps.review.reopenRequest(checked.target.origin, number),
@@ -133,6 +146,9 @@ export class ProposalActions {
     }
     if (checked.open[0]?.number !== number) {
       return { ok: false, error: "request-gone" };
+    }
+    if (checked.waiting !== null) {
+      return { ok: false, error: "proposed-by-other" };
     }
     return settle(
       await this.deps.review.closeRequest(checked.target.origin, number),
@@ -161,6 +177,8 @@ export class ProposalActions {
     }
     const branch = promoteBranch(name);
     const target = { origin, base, name };
+    const open = openProposals(review.requests, target);
+    const viewer = await this.deps.review.readViewer(origin);
     return {
       ok: true,
       root,
@@ -169,7 +187,9 @@ export class ProposalActions {
       matching: review.requests.filter((request) =>
         matchesProposal(request, { ownerRepo: origin.ownerRepo, branch, base }),
       ),
-      open: openProposals(review.requests, target),
+      open,
+      viewer,
+      waiting: waitingOn(open, viewer),
     };
   }
 }

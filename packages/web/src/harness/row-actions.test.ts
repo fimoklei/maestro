@@ -26,6 +26,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   comparison: null,
   alsoIn: null,
   concurrentChange: false,
+  waitingOn: null,
   localOnly: false,
   remoteTree: null,
   restorable: false,
@@ -273,6 +274,70 @@ describe("rowItems", () => {
 
     // The next step leads the menu; the way to GitHub follows (#1045).
     expect(labels(items)).toEqual(["Update proposal", "View pull request"]);
+  });
+
+  describe("another contributor's open proposal", () => {
+    const theirs = { ...pullRequest(45), author: "teammate", byOther: true };
+
+    it("offers no write to their request, only its link", () => {
+      const items = rowItems(
+        row({
+          status: "proposed-by-other",
+          requests: [theirs],
+          waitingOn: "teammate",
+        }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).toEqual(["View pull request"]);
+    });
+
+    it("keeps local work local: no Propose change, but Discard and Delete stay", () => {
+      const items = rowItems(
+        row({
+          stage: "pending-proposal",
+          status: "not-yet-proposed",
+          requests: [theirs],
+          waitingOn: "teammate",
+          remoteTree: "remote-tdd",
+          folderOnDisk: true,
+        }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).toEqual([
+        "View pull request",
+        "Discard change",
+        "Delete skill",
+      ]);
+    });
+
+    it("offers no Update proposal on local work behind their request", () => {
+      const items = rowItems(
+        row({
+          stage: "pending-proposal",
+          status: "new-local-work",
+          requests: [theirs],
+          waitingOn: "teammate",
+        }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).toEqual(["View pull request"]);
+    });
+
+    it("offers no Reopen proposal on their closed request, but Propose change stays", () => {
+      const items = rowItems(
+        row({ status: "proposal-closed", requests: [theirs] }),
+        handlers,
+        true,
+      );
+
+      expect(labels(items)).toEqual(["View pull request", "Propose change"]);
+    });
   });
 
   it("offers Withdraw proposal beside the link on an open request", () => {

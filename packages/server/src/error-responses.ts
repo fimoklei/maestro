@@ -212,6 +212,7 @@ export const promoteErrorResponses: ErrorTable<PromoteSkillError> = {
   "source-changed": { status: 409 },
   "concurrent-change": { status: 409 },
   "extra-requests": { status: 409 },
+  "proposed-by-other": { status: 409 },
   "promote-failed": { status: 502 },
   "promote-in-progress": { status: 409 },
 };
@@ -225,6 +226,7 @@ export const proposalErrorResponses: ErrorTable<ProposalActionError> = {
   "request-gone": { status: 409 },
   "extra-requests": { status: 409 },
   "request-exists": { status: 409 },
+  "proposed-by-other": { status: 409 },
   "action-failed": { status: 502 },
 };
 
@@ -242,6 +244,7 @@ export const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
   "push-elsewhere": promoteErrorResponses["push-elsewhere"],
   "source-changed": { status: 409 },
   "extra-requests": promoteErrorResponses["extra-requests"],
+  "proposed-by-other": promoteErrorResponses["proposed-by-other"],
   "promote-failed": { status: 502 },
   "promote-in-progress": promoteErrorResponses["promote-in-progress"],
 };

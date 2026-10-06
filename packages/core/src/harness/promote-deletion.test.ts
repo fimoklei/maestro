@@ -113,6 +113,7 @@ function buildDeletion(overrides?: {
     },
     review: {
       readReviews: async () => overrides?.review ?? EMPTY_REVIEW,
+      readViewer: async () => ({ outcome: "read", login: "fimoklei" }),
       createRequest: async (_origin, made) => {
         overrides?.onCreate?.(made);
         return { ok: true };
@@ -184,6 +185,23 @@ describe("PromoteSkillDeletion", () => {
       ok: true,
       branch: "maestro/tdd",
     });
+  });
+
+  it("refuses while another contributor's request is open on the branch", async () => {
+    const pushed: string[] = [];
+    const deletion = buildDeletion({
+      review: {
+        ...EMPTY_REVIEW,
+        requests: [openRequest({ author: "teammate" })],
+      },
+      onPush: (root) => pushed.push(root),
+    });
+
+    await expect(deletion.execute("tdd", SEEN, AT)).resolves.toEqual({
+      ok: false,
+      error: "proposed-by-other",
+    });
+    expect(pushed).toEqual([]);
   });
 
   it("refuses while more than one open request matches the branch", async () => {

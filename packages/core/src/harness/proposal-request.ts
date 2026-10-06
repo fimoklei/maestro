@@ -5,6 +5,7 @@ import {
   matchesProposal,
   type ReviewRequest,
   type ReviewWriteOutcome,
+  waitingOn,
 } from "./harness-review-port";
 import type { HarnessChange } from "./harness-stages";
 import { promoteBranch } from "./promote-branch";
@@ -116,7 +117,7 @@ export const beforeProposalPush = async (
   kind: ProposalKind,
 ): Promise<
   | { ok: true; afterPush: () => Promise<void> }
-  | { ok: false; error: "extra-requests" }
+  | { ok: false; error: "extra-requests" | "proposed-by-other" }
 > => {
   const read = await review.readReviews(target.origin);
   // Null is "unknown", never "none": it blocks no push and opens no request.
@@ -126,6 +127,12 @@ export const beforeProposalPush = async (
       : null;
   if (open !== null && open.length > 1) {
     return { ok: false, error: "extra-requests" };
+  }
+  if (
+    open?.length === 1 &&
+    waitingOn(open, await review.readViewer(target.origin)) !== null
+  ) {
+    return { ok: false, error: "proposed-by-other" };
   }
   return {
     ok: true,

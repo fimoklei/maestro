@@ -1,7 +1,7 @@
 // No git stdout, stderr, or remote text reaches this use-case, so none can reach a response.
 import { parseGitOrigin } from "../deploy/git-origin";
 import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
-import type { HarnessReviewPort } from "./harness-review-port";
+import type { HarnessReviewPort, ViewerRead } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
 import type { ProposalKind } from "./proposal-request";
 import {
@@ -215,7 +215,7 @@ export class ReadHarnessState {
     freshness: HarnessFreshnessPort;
     // A failed review read degrades one stage, never the others. Read half
     // only: a Harness read must never change a proposal.
-    review: Pick<HarnessReviewPort, "readReviews">;
+    review: Pick<HarnessReviewPort, "readReviews" | "readViewer">;
   };
 
   // One fetch per harness at a time: two fetches race over the same git refs.
@@ -369,6 +369,11 @@ export class ReadHarnessState {
       head === null ? null : await this.skillTreesAtMergeBase(root, head);
     // One batched read for the whole Harness, never one per skill.
     const review = await this.deps.review.readReviews(origin);
+    // Without requests there is nobody to compare the sign-in with.
+    const viewer: ViewerRead =
+      review.outcome === "read"
+        ? await this.deps.review.readViewer(origin)
+        : { outcome: "unavailable" };
     return {
       ok: true,
       state: {
@@ -389,6 +394,7 @@ export class ReadHarnessState {
           trees,
           atMergeBase,
           review,
+          viewer,
           release: movements,
         }),
       },
