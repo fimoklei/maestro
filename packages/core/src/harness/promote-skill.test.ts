@@ -133,6 +133,7 @@ function buildPromote(overrides?: {
     },
     review: {
       readReviews: async () => overrides?.review ?? EMPTY_REVIEW,
+      readViewer: async () => ({ outcome: "read", login: "fimoklei" }),
       createRequest: async (_origin, made) => {
         overrides?.onCreate?.(made);
         return overrides?.createOutcome ?? { ok: true };
@@ -227,6 +228,23 @@ describe("PromoteSkill", () => {
       ok: true,
     });
     expect(edited).toEqual([[45, "Add skill: tdd"]]);
+  });
+
+  it("refuses while another contributor's request is open on the branch", async () => {
+    const pushed: string[] = [];
+    const promote = buildPromote({
+      review: {
+        ...EMPTY_REVIEW,
+        requests: [openRequest({ author: "teammate" })],
+      },
+      onPush: (root) => pushed.push(root),
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "proposed-by-other",
+    });
+    expect(pushed).toEqual([]);
   });
 
   it("refuses while more than one open request matches the branch", async () => {

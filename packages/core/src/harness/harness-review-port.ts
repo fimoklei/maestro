@@ -44,6 +44,12 @@ export type HarnessReviewRead =
   | { outcome: "failed" }
   | { outcome: "unavailable" };
 
+// Who `gh` is signed in as, with the same three outcomes as a review read.
+export type ViewerRead =
+  | { outcome: "read"; login: string }
+  | { outcome: "failed" }
+  | { outcome: "unavailable" };
+
 // `failed` is GitHub refusing. Nothing GitHub said crosses.
 export type ReviewWriteOutcome =
   | { ok: true }
@@ -60,6 +66,7 @@ export type NewReviewRequest = {
 export interface HarnessReviewPort {
   // One call for the whole Harness, never one per skill.
   readReviews(origin: GitOrigin): Promise<HarnessReviewRead>;
+  readViewer(origin: GitOrigin): Promise<ViewerRead>;
   createRequest(
     origin: GitOrigin,
     request: NewReviewRequest,
@@ -86,4 +93,21 @@ export const matchesProposal = (
     request.headBranch === target.branch &&
     request.baseBranch === target.base
   );
+};
+
+// GitHub logins ignore case. An unknown sign-in makes no request another's.
+export const isOthers = (request: ReviewRequest, viewer: ViewerRead): boolean =>
+  viewer.outcome === "read" &&
+  request.author.toLowerCase() !== viewer.login.toLowerCase();
+
+// Another contributor's sole open request holds the branch: everyone else
+// waits for it (#1373). Takes only open requests from a complete read.
+export const waitingOn = (
+  open: ReviewRequest[],
+  viewer: ViewerRead,
+): string | null => {
+  const [sole, ...rest] = open;
+  return sole !== undefined && rest.length === 0 && isOthers(sole, viewer)
+    ? sole.author
+    : null;
 };

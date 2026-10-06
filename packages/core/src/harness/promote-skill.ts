@@ -28,6 +28,7 @@ export type PromoteSkillError =
   // Recomputed after a fresh fetch, never from what the cockpit showed (#579).
   | "concurrent-change"
   | "extra-requests"
+  | "proposed-by-other"
   | "promote-failed"
   | "promote-in-progress";
 

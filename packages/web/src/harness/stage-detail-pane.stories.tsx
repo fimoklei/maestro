@@ -96,33 +96,73 @@ export const LocalOnly: Story = {
 };
 
 const noop = () => {};
-const closedDeletion = (folderOnDisk: boolean) => {
-  const row = stageRow("pending-review", "wizard", "proposal-closed", {
-    change: "deletion",
-    requests: [pullRequest(52, "wizard")],
-    folderOnDisk,
-    restorable: !folderOnDisk,
-  });
-  return {
-    ...tableRow(
+const withMenu = (row: ReturnType<typeof stageRow>) =>
+  tableRow(
+    row,
+    rowItems(
       row,
-      rowItems(
-        row,
-        {
-          promote: noop,
-          create: noop,
-          reopen: noop,
-          withdraw: noop,
-          deleteLocal: noop,
-          discard: noop,
-          restore: noop,
-        },
-        true,
-        { enabled: true, commit: "local-head" },
-      ),
+      {
+        promote: noop,
+        create: noop,
+        reopen: noop,
+        withdraw: noop,
+        deleteLocal: noop,
+        discard: noop,
+        restore: noop,
+      },
+      true,
+      { enabled: true, commit: "local-head" },
     ),
-    group: "Pending review",
-  };
+  );
+
+const closedDeletion = (folderOnDisk: boolean) => ({
+  ...withMenu(
+    stageRow("pending-review", "wizard", "proposal-closed", {
+      change: "deletion",
+      requests: [pullRequest(52, "wizard")],
+      folderOnDisk,
+      restorable: !folderOnDisk,
+    }),
+  ),
+  group: "Pending review",
+});
+
+const theirs = {
+  ...pullRequest(47, "code-review"),
+  author: "sanne",
+  byOther: true,
+};
+
+// Another contributor's open request: only its link, and a wait (#1373).
+export const ProposedByOther: Story = {
+  args: {
+    row: {
+      ...withMenu(
+        stageRow("pending-review", "code-review", "proposed-by-other", {
+          requests: [theirs],
+          waitingOn: "sanne",
+          alsoIn: ["pending-proposal"],
+        }),
+      ),
+      group: "Pending review",
+    },
+  },
+};
+
+// Local work behind it stays local: Delete skill remains.
+export const WaitingLocalWork: Story = {
+  args: {
+    row: withMenu(
+      stageRow("pending-proposal", "code-review", "new-local-work", {
+        comparison: { kind: "proposal", number: 47 },
+        requests: [theirs],
+        waitingOn: "sanne",
+        remoteTree: "remote-code-review",
+        folderOnDisk: true,
+        alsoIn: ["pending-review"],
+      }),
+    ),
+  },
 };
 
 // A closed deletion: Reopen proposal while the folder is still deleted (#1384).

@@ -123,6 +123,7 @@ export type {
   RequestedReviewer,
   ReviewRequest,
   ReviewWriteOutcome,
+  ViewerRead,
 } from "./harness/harness-review-port";
 export type {
   HarnessChange,

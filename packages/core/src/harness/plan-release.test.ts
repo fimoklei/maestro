@@ -99,6 +99,7 @@ function buildRead(overrides?: {
           complete: true,
           limit: 100,
         }) as const,
+      readViewer: async () => ({ outcome: "read", login: "fimoklei" }) as const,
     },
     freshness: {
       read: async () => overrides?.freshness ?? FETCHED,

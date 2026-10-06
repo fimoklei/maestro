@@ -39,6 +39,7 @@ const row = (
   comparison: null,
   alsoIn: [],
   concurrentChange: false,
+  waitingOn: null,
   localOnly: false,
   remoteTree: null,
   restorable: false,
@@ -58,6 +59,7 @@ const ALL_STATUSES: StageStatus[] = [
   "proposal-merged",
   "proposal-closed",
   "multiple-pull-requests",
+  "proposed-by-other",
   "not-yet-released",
 ];
 
@@ -113,6 +115,14 @@ describe("status readings", () => {
         glyph: "⚠",
       });
     }
+  });
+
+  it("names the contributor a proposal waits on, in the neutral family", () => {
+    expect(
+      statusReading(
+        row("pending-review", "proposed-by-other", { waitingOn: "teammate" }),
+      ),
+    ).toMatchObject({ word: "Proposed by teammate", family: "neutral" });
   });
 
   it("reads an approved proposal as good", () => {
@@ -355,6 +365,54 @@ describe("Detail sentences", () => {
         ),
       ).toBe(
         "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+      );
+    },
+  );
+
+  // Both rows say the same: neither offers a write while the request is open.
+  it.each<[HarnessStage, StageStatus]>([
+    ["pending-review", "proposed-by-other"],
+    ["pending-proposal", "new-local-work"],
+    ["pending-proposal", "not-yet-proposed"],
+  ])(
+    "tells the author to wait on another contributor's request in %s, %s",
+    (stage, status) => {
+      expect(
+        plainText(
+          detailSentence(
+            row(stage, status, {
+              requests: [{ ...request, author: "teammate", byOther: true }],
+              waitingOn: "teammate",
+            }),
+            CONTEXT,
+          ),
+        ),
+      ).toBe(
+        "teammate has pull request #45 open for this skill. Wait until it is merged or closed.",
+      );
+    },
+  );
+
+  // Their request is theirs to reopen, so the sentence names the author's own way on.
+  it.each([
+    ["an edit", "edit" as const, true],
+    ["a deletion whose folder is gone", "deletion" as const, false],
+  ])(
+    "names no reopen on another contributor's closed request for %s",
+    (_, change, folderOnDisk) => {
+      expect(
+        plainText(
+          detailSentence(
+            row("pending-review", "proposal-closed", {
+              requests: [{ ...request, author: "teammate", byOther: true }],
+              change,
+              folderOnDisk,
+            }),
+            CONTEXT,
+          ),
+        ),
+      ).toBe(
+        "teammate's pull request #45 was closed without merging. Select Propose change to send your own change.",
       );
     },
   );
@@ -648,6 +706,7 @@ describe("pull request words", () => {
       ["changes-requested", "Open"],
       ["approved-awaiting-merge", "Open"],
       ["multiple-pull-requests", "Open"],
+      ["proposed-by-other", "Open"],
       ["proposal-merged", "Merged"],
       ["proposal-closed", "Closed"],
     ];

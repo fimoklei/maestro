@@ -24,6 +24,7 @@ export type PromoteDeletionError =
   | "push-elsewhere"
   | "source-changed"
   | "extra-requests"
+  | "proposed-by-other"
   | "promote-failed";
 
 export type PromoteDeletionResult =

@@ -390,6 +390,13 @@ All four take `{<number> | <url> | <branch>}`; Maestro passes the number it
 matched itself. Exit codes and the offline phrase are §3's, unchanged: a write
 classifies the same way a read does, and its stdout is never parsed.
 
+### The signed-in login (measured 2026-10-06, `gh` 2.101.0, #1373)
+
+`gh api --hostname github.com user --jq '{login}'` prints `{"login":"fimoklei"}`
+and exits 0. Without a sign-in it prints the `gh auth login` hint and exits
+**4**, as in §3. `--hostname` keeps the call on github.com whatever host `gh`
+defaults to; `--jq` keeps every other profile field out of the process.
+
 ## Commands, for re-running
 
 ```sh
@@ -411,6 +418,8 @@ gh api "repos/fimoklei/harness/pulls?head=fimoklei:maestro/agent-native-cli&stat
 gh api repos/fimoklei/harness/compare/main...maestro/app-creator --jq '{status,ahead_by,behind_by}'
 gh api "repos/fimoklei/harness/contents/.apm/skills?ref=main"
 gh api rate_limit
+gh api --hostname github.com user --jq '{login}'
+GH_CONFIG_DIR=$(mktemp -d) GH_TOKEN= GITHUB_TOKEN= gh api --hostname github.com user --jq '{login}'   # exit 4
 git ls-remote https://github.com/fimoklei/harness.git 'refs/heads/maestro/*'
 
 # §6 — help output only, no live write

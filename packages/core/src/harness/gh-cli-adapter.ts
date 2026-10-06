@@ -13,6 +13,7 @@ import type {
   ReviewDecision,
   ReviewRequest,
   ReviewWriteOutcome,
+  ViewerRead,
 } from "./harness-review-port";
 
 const defaultRun = promisify(execFile);
@@ -81,6 +82,11 @@ const loginSchema = z
   .string()
   .regex(/^(?:(?:app\/)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})|app\/)$/)
   .transform((login) => (login === "app/" ? "ghost" : login));
+
+// A signed-in user is never an app, so no `app/` form is accepted here.
+const viewerSchema = z.object({
+  login: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/),
+});
 
 const reviewerSchema = z.discriminatedUnion("__typename", [
   z.object({ __typename: z.literal("User"), login: z.string() }),
@@ -167,6 +173,29 @@ export class GhCliAdapter implements HarnessReviewPort {
       complete: rows.data.length < REVIEW_READ_LIMIT,
       limit: REVIEW_READ_LIMIT,
     };
+  }
+
+  async readViewer(origin: GitOrigin): Promise<ViewerRead> {
+    if (origin.host !== "github.com") {
+      return { outcome: "unavailable" };
+    }
+    let stdout: string;
+    try {
+      ({ stdout } = await this.run(
+        "gh",
+        ["api", "--hostname", "github.com", "user", "--jq", "{login}"],
+        {
+          env: { ...process.env, ...NON_INTERACTIVE },
+          timeout: GH_TIMEOUT_MS,
+        },
+      ));
+    } catch (error) {
+      return { outcome: noAnswerPossible(error) ? "unavailable" : "failed" };
+    }
+    const viewer = viewerSchema.safeParse(parseJson(stdout));
+    return viewer.success
+      ? { outcome: "read", login: viewer.data.login }
+      : { outcome: "failed" };
   }
 
   // `--head` stops gh pushing or offering a fork (gh 2.86.0).

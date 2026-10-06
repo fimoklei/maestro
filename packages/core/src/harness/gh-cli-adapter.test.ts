@@ -645,3 +645,80 @@ describe("GhCliAdapter", () => {
     expect(JSON.stringify(result)).not.toContain("api.github.com");
   });
 });
+
+describe("GhCliAdapter.readViewer", () => {
+  // Captured verbatim from `gh api --hostname github.com user --jq '{login}'`
+  // (gh 2.101.0).
+  const viewerCapture = '{"login":"fimoklei"}\n';
+
+  it("reads the signed-in login in one call to github.com", async () => {
+    const { calls, run } = fakeRun(viewerCapture);
+
+    const result = await new GhCliAdapter({ run }).readViewer(origin);
+
+    expect(result).toEqual({ outcome: "read", login: "fimoklei" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.file).toBe("gh");
+    expect(calls[0]?.args).toEqual([
+      "api",
+      "--hostname",
+      "github.com",
+      "user",
+      "--jq",
+      "{login}",
+    ]);
+    expect(calls[0]?.env.GH_PROMPT_DISABLED).toBe("1");
+    expect(calls[0]?.timeout).toBeGreaterThan(0);
+  });
+
+  it("never asks a host other than github.com", async () => {
+    const { calls, run } = fakeRun(viewerCapture);
+
+    const result = await new GhCliAdapter({ run }).readViewer({
+      host: "gitlab.com",
+      ownerRepo: "fimoklei/harness",
+    });
+
+    expect(result).toEqual({ outcome: "unavailable" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("fails the read on a login GitHub could not have issued", async () => {
+    const { run } = fakeRun('{"login":"not a login"}');
+
+    const result = await new GhCliAdapter({ run }).readViewer(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
+  });
+
+  it("fails the read on output that is not JSON", async () => {
+    const { run } = fakeRun("fimoklei\n");
+
+    const result = await new GhCliAdapter({ run }).readViewer(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
+  });
+
+  it("reports an unauthenticated gh as an unavailable capability", async () => {
+    const { run } = failingRun(
+      exitError(
+        4,
+        "To get started with GitHub CLI, please run:  gh auth login",
+      ),
+    );
+
+    const result = await new GhCliAdapter({ run }).readViewer(origin);
+
+    expect(result).toEqual({ outcome: "unavailable" });
+  });
+
+  it("reports a rejected credential as a failed read", async () => {
+    const { run } = failingRun(
+      exitError(1, "HTTP 401: Bad credentials (https://api.github.com/user)"),
+    );
+
+    const result = await new GhCliAdapter({ run }).readViewer(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
+  });
+});

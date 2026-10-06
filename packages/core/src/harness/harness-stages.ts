@@ -3,9 +3,12 @@ import type { GitOrigin } from "../deploy/git-origin";
 import { isConcurrentlyChanged, isLocalDeletion } from "./classify-movement";
 import {
   type HarnessReviewRead,
+  isOthers,
   matchesProposal,
   type RequestedReviewer,
   type ReviewRequest,
+  type ViewerRead,
+  waitingOn,
 } from "./harness-review-port";
 import { promoteBranch } from "./promote-branch";
 import type { HarnessSkillTrees } from "./read-harness-state";
@@ -32,7 +35,8 @@ export type ReviewStatus =
   | "pull-request-missing"
   | "proposal-merged"
   | "proposal-closed"
-  | "multiple-pull-requests";
+  | "multiple-pull-requests"
+  | "proposed-by-other";
 
 type ReleaseStatus = "not-yet-released";
 
@@ -49,6 +53,8 @@ export type ReviewRequestLink = {
   headBranch: string;
   baseBranch: string;
   author: string;
+  // Opened by someone other than the signed-in user; false while unknown.
+  byOther: boolean;
 };
 
 // `number` is null for a prepared branch nobody opened a request for.
@@ -68,6 +74,9 @@ export type HarnessStageRow = {
   // Null where any membership is unknown: an unknown must never read as "only here".
   alsoIn: HarnessStage[] | null;
   concurrentChange: boolean;
+  // The other contributor whose open request every write to this skill's
+  // branch waits for; null where nothing waits.
+  waitingOn: string | null;
   // Only in the working tree, so a deletion is made on disk (#798).
   localOnly: boolean;
   // The token a deletion confirmation is given against (#580).
@@ -114,6 +123,7 @@ export type StageInput = {
   trees: HarnessSkillTrees | null;
   atMergeBase: Record<string, string> | null;
   review: HarnessReviewRead;
+  viewer: ViewerRead;
   release: SkillMovement[] | null;
 };
 
@@ -171,13 +181,27 @@ const everySkill = (
   return [...names].sort();
 };
 
-const link = (request: ReviewRequest): ReviewRequestLink => ({
-  number: request.number,
-  url: request.url,
-  headBranch: request.headBranch,
-  baseBranch: request.baseBranch,
-  author: request.author,
-});
+const linkFor =
+  (viewer: ViewerRead) =>
+  (request: ReviewRequest): ReviewRequestLink => ({
+    number: request.number,
+    url: request.url,
+    headBranch: request.headBranch,
+    baseBranch: request.baseBranch,
+    author: request.author,
+    byOther: isOthers(request, viewer),
+  });
+
+const openOf = (matches: SkillMatches, skill: string): ReviewRequest[] =>
+  (matches.get(skill) ?? []).filter((request) => request.state === "open");
+
+// A bounded read may hide a second open request, so it holds nothing.
+const waitFor = (
+  { review, viewer }: StageInput,
+  matches: SkillMatches,
+  skill: string,
+): string | null =>
+  isCompleteRead(review) ? waitingOn(openOf(matches, skill), viewer) : null;
 
 const blankRow = (
   stage: HarnessStage,
@@ -194,6 +218,7 @@ const blankRow = (
   comparison: null,
   alsoIn: null,
   concurrentChange: false,
+  waitingOn: null,
   localOnly: false,
   remoteTree: null,
   restorable: false,
@@ -273,9 +298,11 @@ const isCompleteRead = (review: HarnessReviewRead): boolean =>
   review.outcome === "read" && review.complete;
 
 const proposalStage = (
-  { trees, atMergeBase, review }: StageInput,
+  input: StageInput,
   matches: SkillMatches,
 ): HarnessStageRead => {
+  const { trees, atMergeBase, review } = input;
+  const link = linkFor(input.viewer);
   if (trees === null) {
     return { outcome: "unknown" };
   }
@@ -299,9 +326,7 @@ const proposalStage = (
     if (!waiting) {
       continue;
     }
-    const open = (matches.get(skill) ?? []).filter(
-      (request) => request.state === "open",
-    );
+    const open = openOf(matches, skill);
     // With several open requests, linking one would be arbitrary.
     const sole = open.length === 1 ? open[0] : undefined;
     rows.push({
@@ -322,6 +347,7 @@ const proposalStage = (
         hashes,
         atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),
       ),
+      waitingOn: waitFor(input, matches, skill),
       localOnly:
         hashes.remote === null && hashes.local === null && branch === undefined,
       remoteTree: hashes.remote,
@@ -353,9 +379,11 @@ const ENDED = [
 ])[];
 
 const reviewStage = (
-  { trees, review }: StageInput,
+  input: StageInput,
   matches: SkillMatches,
 ): HarnessStageRead => {
+  const { trees, review } = input;
+  const link = linkFor(input.viewer);
   if (review.outcome === "unavailable") {
     return { outcome: "unavailable" };
   }
@@ -387,11 +415,18 @@ const reviewStage = (
     }
     const sole = open.length === 1 ? open[0] : undefined;
     if (sole !== undefined) {
+      const waiting = waitFor(input, matches, skill);
       rows.push({
-        ...blankRow("pending-review", skill, openStatus(sole), change),
+        ...blankRow(
+          "pending-review",
+          skill,
+          waiting === null ? openStatus(sole) : "proposed-by-other",
+          change,
+        ),
         ...local,
         requests: [link(sole)],
         reviewers: sole.reviewers,
+        waitingOn: waiting,
       });
       continue;
     }

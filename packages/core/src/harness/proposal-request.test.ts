@@ -4,6 +4,7 @@ import type {
   HarnessReviewRead,
   NewReviewRequest,
   ReviewRequest,
+  ViewerRead,
 } from "./harness-review-port";
 import { beforeProposalPush, type ProposalKind } from "./proposal-request";
 
@@ -39,11 +40,15 @@ const readOf = (requests: ReviewRequest[]): HarnessReviewRead => ({
   limit: 100,
 });
 
-function reviewWith(read: HarnessReviewRead) {
+function reviewWith(
+  read: HarnessReviewRead,
+  viewer: ViewerRead = { outcome: "read", login: "fimoklei" },
+) {
   const created: NewReviewRequest[] = [];
   const edited: { number: number; title: string }[] = [];
   const review: HarnessReviewPort = {
     readReviews: async () => read,
+    readViewer: async () => viewer,
     createRequest: async (_origin, made) => {
       created.push(made);
       return { ok: true };
@@ -99,6 +104,29 @@ describe("beforeProposalPush", () => {
       ok: false,
       error: "extra-requests",
     });
+  });
+
+  it("refuses before the push while another contributor's request is open", async () => {
+    const theirs = { ...request(45), author: "teammate" };
+    const { review, edited } = reviewWith(readOf([theirs]));
+
+    expect(await beforeProposalPush(review, TARGET, "deletion")).toEqual({
+      ok: false,
+      error: "proposed-by-other",
+    });
+    expect(edited).toEqual([]);
+  });
+
+  it.each<[string, ViewerRead]>([
+    ["unavailable", { outcome: "unavailable" }],
+    ["failed", { outcome: "failed" }],
+  ])("lets the push through when the sign-in read is %s", async (_, viewer) => {
+    const theirs = { ...request(45), author: "teammate" };
+    const { review } = reviewWith(readOf([theirs]), viewer);
+
+    const step = await beforeProposalPush(review, TARGET, "edit");
+
+    expect(step.ok).toBe(true);
   });
 
   it.each<[string, HarnessReviewRead]>([
