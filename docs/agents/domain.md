@@ -16,9 +16,7 @@ Single-context repo (this repo):
 ```
 /
 ├── GLOSSARY.md
-├── docs/adr/
-│   ├── 0001-apm-is-the-engine-maestro-is-the-cockpit.md
-│   └── 0002-local-first-client-server-web-app.md
+├── docs/adr/        ← one NNNN-<decision>.md per decision
 └── packages/
 ```
 

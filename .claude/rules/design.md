@@ -221,7 +221,9 @@ Pick the form from this table. Add no other form, and no banner.
 
 Mandatory for any change that alters what `packages/web` renders:
 
-1. Start `pnpm smoke` in the background. It seeds the sandbox HOME and connects
+1. Start `pnpm smoke` in the background: `pnpm dev` (server and web on this
+   worktree's own pair of ports, replacing its previous run) against the sandbox
+   config `MAESTRO_HOME=.maestro-sandbox`. It seeds the sandbox HOME and connects
    nothing (ADR-0010), so the cockpit comes up on the connect gate.
    - Verifying a first-run screen → stop here; that is the state you need.
    - Verifying anything the cockpit shows once connected → run `pnpm smoke:ready`,
@@ -243,5 +245,6 @@ Mandatory for any change that alters what `packages/web` renders:
 5. Run the `verify-in-smoke` checks before treating the screenshot as proof.
 6. Record the evidence in the commit body: every absolute screenshot path and the
    cockpit URL from `pnpm cockpit:url`.
+7. Stop the run with `pnpm smoke:stop`.
 
 Only a screenshot proves visual fidelity — the vitest/happy-dom suite renders without CSS.

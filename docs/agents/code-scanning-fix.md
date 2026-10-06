@@ -10,8 +10,8 @@ outcome.
 
 ## Steps
 
-1. Run `pnpm install` from the repo root, then read `AGENTS.md` and
-   `.claude/rules/security.md`.
+1. Run `pnpm install` from the repo root, then read `AGENTS.md`,
+   `CODING_STANDARDS.md` and `.claude/rules/security.md`.
 2. Read the open alerts. The routine's GitHub access cannot list
    code-scanning alerts, so the `code-scanning-alerts.yml` workflow prints
    them:

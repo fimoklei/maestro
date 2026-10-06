@@ -11,6 +11,8 @@ Issues and PRDs for this repo live as GitHub issues on `fimoklei/maestro`. Use t
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
+Triage label names: `docs/agents/triage-labels.md`.
+
 Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
 
 ## Pull requests
