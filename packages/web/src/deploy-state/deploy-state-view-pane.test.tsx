@@ -791,6 +791,20 @@ describe("Deploy-state pane — where each action sits", () => {
     ).toBeInTheDocument();
   });
 
+  it("explains a plain behind target and names the control that moves it", async () => {
+    repoWith({ primitives: [skill("tdd", "v0.3.2")], releaseHead: BEHIND });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(
+      within(pane).getByText(
+        sentence(
+          "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("makes Import local edits the primary at the foot when the target is not behind", async () => {
     repoWith({ primitives: [edited("tdd")] });
     renderDeployState();

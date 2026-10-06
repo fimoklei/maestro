@@ -436,12 +436,17 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
 
     const reason = await screen.findByText(
-      sentence("2 of 5 deployed skills changed in v0.3.4."),
+      sentence(
+        "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+      ),
     );
     const card = reason.parentElement as HTMLElement;
     expect(
       Array.from(card.querySelectorAll("p"), (line) => line.textContent),
-    ).toEqual(["2 of 5 deployed skills changed in v0.3.4.", "Read just now"]);
+    ).toEqual([
+      "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+      "Read just now",
+    ]);
   });
 });
 
@@ -592,7 +597,9 @@ describe("Deploy-state — Re-read and freshness", () => {
       await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
       const card = (
         await screen.findByText(
-          sentence("2 of 5 deployed skills changed in v0.3.4."),
+          sentence(
+            "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+          ),
         )
       ).parentElement as HTMLElement;
       expect(within(card).getByText("Read just now")).toBeInTheDocument();

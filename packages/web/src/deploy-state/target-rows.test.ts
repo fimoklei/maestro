@@ -66,7 +66,8 @@ describe("statusCard", () => {
   it("counts the changed skills in the newer release on a behind target", () => {
     const head = { ...ON_LATEST, release: "v0.3.2", changed: 1, selected: 3 };
     expect(readCard(statusCard(row({ head, behind: true }), NOW))).toEqual({
-      reason: "1 of 3 deployed skills changed in v0.3.4.",
+      reason:
+        "1 of 3 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
       readAge: "Read just now",
     });
   });
@@ -74,7 +75,8 @@ describe("statusCard", () => {
   it("says the changes of a newer release could not be read", () => {
     const head = { ...ON_LATEST, release: "v0.3.2", changed: null };
     expect(readCard(statusCard(row({ head, behind: true }), NOW))).toEqual({
-      reason: "Changes in v0.3.4 could not be read.",
+      reason:
+        "Changes in v0.3.4 could not be read. Select Update target to move this target to v0.3.4.",
       readAge: "Read just now",
     });
   });
@@ -140,9 +142,29 @@ describe("statusCard", () => {
         statusCard(row({ group: GLOBAL, head: ON_LATEST, behind: true }), NOW),
       ),
     ).toEqual({
-      reason: "Another tool's skills are behind v0.3.4.",
+      reason:
+        "Another tool's skills are behind v0.3.4. Select Update target to move this target to v0.3.4.",
       readAge: "Read just now",
     });
+  });
+
+  it("names the control that moves every tool on a global tool row", () => {
+    expect(
+      readCard(
+        statusCard(
+          row({
+            group: GLOBAL,
+            name: "Claude Code",
+            updateName: "Claude Code and Codex",
+            head: ON_LATEST,
+            behind: true,
+          }),
+          NOW,
+        ),
+      ).reason,
+    ).toBe(
+      "Another tool's skills are behind v0.3.4. Select Update Claude Code and Codex to move this target to v0.3.4.",
+    );
   });
 
   it("claims no latest release from a read that failed", () => {
@@ -173,7 +195,7 @@ describe("statusCard", () => {
     });
   });
 
-  it("names the edited skills without the import action", () => {
+  it("names the edited skills and Import local edits as the next step", () => {
     expect(
       readCard(
         readCard(
@@ -192,7 +214,7 @@ describe("statusCard", () => {
       ),
     ).toEqual({
       reason:
-        "2 skills have changes that are not in the latest release: tdd and review.",
+        "2 skills have changes that are not in the latest release: tdd and review. Select Import local edits to keep them.",
       readAge: "Read just now",
     });
   });

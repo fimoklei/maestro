@@ -14,6 +14,7 @@ import {
 } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
+  behindLine,
   changedFact,
   comparedFact,
   extraFilesFact,
@@ -30,6 +31,7 @@ import {
   type TargetPaneActions,
 } from "./target-pane-actions";
 import { editedSkills, type TargetRow } from "./target-rows";
+import { updateLabel } from "./update-target-copy";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
 // Update target as `update`, and the dialogs they open as `dialogs`.
@@ -99,6 +101,10 @@ export function TargetDetailPane({
   const why = [
     // Its sentence names Import local edits, which an operation withholds.
     ...(edited.length === 0 || row.pending ? [] : [localEditsLine(edited)]),
+    // A plain behind target still says why, and which control moves it.
+    ...(head && row.behind && edited.length === 0 && !row.pending && !row.pinned
+      ? [behindLine(head, updateLabel(row))]
+      : []),
     ...(row.pinned ? [pinnedTagsLine(row.pinned), RELEASE_NOT_ADOPTED] : []),
     ...(row.primitives.length === 0 && row.otherOrigins.length > 0
       ? [otherOriginLine(row.otherOrigins)]

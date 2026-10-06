@@ -6,6 +6,7 @@ import { VIEW_REPOSITORY_ON_GITHUB } from "./deploy-state-copy";
 import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
 import { RETRY_LABELS } from "./release-head-copy";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";
+import { updateLabel } from "./update-target-copy";
 
 export type MenuFacts = Pick<
   TargetRow,
@@ -59,14 +60,10 @@ export const targetRowItem = (
   if (item.action !== "update" || item.disabled) {
     return { label: item.label, ...control };
   }
-  // An update that moves more than this row says so in its label (copy.md).
-  return row.updateName === row.name
-    ? {
-        label: item.label,
-        name: `${UPDATE_TARGET} ${row.updateName}`,
-        ...control,
-      }
-    : { label: `Update ${row.updateName}`, ...control };
+  const label = updateLabel(row);
+  return label === UPDATE_TARGET
+    ? { label, name: `${UPDATE_TARGET} ${row.updateName}`, ...control }
+    : { label, ...control };
 };
 
 // One row's items, as its ⋮ menu offers them.
