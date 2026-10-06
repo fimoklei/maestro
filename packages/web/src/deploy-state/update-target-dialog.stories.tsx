@@ -1,6 +1,7 @@
 import type { UpdatePreview } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { HttpError } from "../api/http";
+import { UPDATE_TARGET } from "../ui/control-labels";
 import { updatePreviewNotice } from "./notice-copy";
 import { UpdateTargetDialog } from "./update-target-dialog";
 
@@ -103,7 +104,10 @@ export const AddedByThisDeploy: Story = {
 export const Refused: Story = {
   args: {
     preview: null,
-    error: updatePreviewNotice(new HttpError(404, "unused", "not-deployed")),
+    error: updatePreviewNotice(
+      new HttpError(404, "unused", "not-deployed"),
+      UPDATE_TARGET,
+    ),
   },
 };
 

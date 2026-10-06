@@ -323,11 +323,17 @@ describe("DetailPane primary", () => {
     }
   });
 
-  it("makes Update target primary over Import local edits", () => {
+  it("makes Import local edits primary over Update target, which would discard the edits", () => {
     renderPane(steps);
 
+    expect(button("Import local edits")).toHaveClass(PRIMARY);
+    expect(button("Update target")).not.toHaveClass(PRIMARY);
+  });
+
+  it("makes Update target primary where nothing reads Local edits", () => {
+    renderPane({ facts: steps.facts, foot: [{ label: "Deploy skill" }] });
+
     expect(button("Update target")).toHaveClass(PRIMARY);
-    expect(button("Import local edits")).not.toHaveClass(PRIMARY);
   });
 
   it("makes Import local edits primary where nothing is behind", () => {

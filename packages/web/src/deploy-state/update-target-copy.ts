@@ -88,7 +88,12 @@ export const RETRY_UPDATE = "Retry update";
 
 const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.`;
 
-export const UPDATE_AGAIN = `then select ${UPDATE_TARGET} again.`;
+// An update that moves more than its row says so in its label (copy.md).
+export const updateLabel = (row: { name: string; updateName: string }) =>
+  row.updateName === row.name ? UPDATE_TARGET : `Update ${row.updateName}`;
+
+export const updateAgain = (label: string) => `then select ${label} again.`;
+export const UPDATE_AGAIN = updateAgain(UPDATE_TARGET);
 
 export type UnlandedState = Exclude<UpdateSkillState, "updated" | "removed">;
 

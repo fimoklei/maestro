@@ -144,13 +144,16 @@ export function SelectedSkills({
         <p
           className={`mt-inline text-meta ${STATUS_TOKENS.attention.ink} [&_b]:text-inherit`}
         >
-          Reported behind, not deployed here:{" "}
+          {orphans.length === 1
+            ? "Package also behind, not a skill:"
+            : "Packages also behind, not skills:"}{" "}
           {orphans.map((orphan, index) => (
             <Fragment key={orphan}>
               {index > 0 ? ", " : null}
               <InlineName>{orphan}</InlineName>
             </Fragment>
           ))}
+          .
         </p>
       )}
     </section>

@@ -38,4 +38,5 @@ above it (ADR-0001).
   (`docs/agents/domain.md`). Read `LEARNINGS.md` at session start.
 - Committing → `workflow-commit`. Shipping → `workflow-ship`. Publishing an
   issue (job, spec or ticket) → `docs/agents/issue-tracker.md`.
-- A live third-party site → the Chrome tools (the operator's logged-in profile).
+- Browser: the cockpit → `agent-browser` (`.claude/rules/design.md` → Verify);
+  a live third-party site → the Chrome tools (the operator's logged-in profile).

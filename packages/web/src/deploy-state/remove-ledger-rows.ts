@@ -4,19 +4,13 @@ import type {
   RemoveTargetState,
 } from "@maestro/core";
 import type { PrimitiveType } from "../inventory/type-filter";
+import { targetLabel } from "../shell/target-label";
 import type { ReportGroup } from "../ui/report";
 import type {
   RemoveCheckState,
   RemoveRowWarning,
 } from "./remove-preflight-view";
 import { toolDisplayName } from "./tool-presentation";
-
-const TYPE_LABEL: Record<PrimitiveType, string> = {
-  skill: "Skill",
-  hook: "Hook",
-  mcp: "MCP",
-  bundle: "Bundle",
-};
 
 export type RemoveDialogTarget =
   | { kind: "repo"; repoPath: string }
@@ -69,9 +63,20 @@ function statusFor(warning: RemoveRowWarning | null): {
     : { status: WARNING_STATUS[warning], drift: true };
 }
 
+const REMOVED_THING: Record<PrimitiveType, string> = {
+  skill: "skill",
+  hook: "hook",
+  mcp: "MCP server",
+  bundle: "bundle",
+};
+
 export function removeLedgerLeadIn(type: PrimitiveType): string {
-  return `${TYPE_LABEL[type]} will be removed from:`;
+  return `Removes the ${REMOVED_THING[type]} from:`;
 }
+
+// What a removal leaves alone, and the way back (copy.md → Dialog).
+export const REMOVE_KEEPS =
+  "The Harness keeps the skill. To add it back, select Deploy skill.";
 
 const OUTCOME_GROUPS: {
   state: RemoveTargetState;
@@ -110,7 +115,7 @@ export function removeOutcomeReport(
         .filter((entry) => entry.state === state)
         .map((entry) =>
           target.kind === "repo"
-            ? { name: target.repoPath, mono: true }
+            ? { name: targetLabel(target.repoPath) }
             : {
                 name:
                   targets.find((each) => each.tool === entry.tool)?.name ??
@@ -128,7 +133,7 @@ const rank = (onScreen: readonly string[], tool: string) => {
 
 const targetsOf = (target: RemoveDialogTarget) =>
   target.kind === "repo"
-    ? [{ tool: target.repoPath, name: target.repoPath }]
+    ? [{ tool: target.repoPath, name: targetLabel(target.repoPath) }]
     : target.tools.map((tool) => ({ tool, name: toolDisplayName(tool) }));
 
 export function removeLedgerRows(

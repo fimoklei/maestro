@@ -26,6 +26,8 @@ export type ToolDeployState = {
   extraFiles?: number;
   // The release's page in the connected Harness; absent where nothing links.
   releaseGitHub?: GitHubPage;
+  // The latest release's page, where the tool is behind it.
+  latestReleaseGitHub?: GitHubPage;
 };
 
 const SKILLS_DIR_PREFIX = new Map<SupportedTool, string>(

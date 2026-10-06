@@ -7,7 +7,13 @@ import type { TargetRow } from "./target-rows";
 
 export type PaneRow = Pick<
   TargetTableRow,
-  "actions" | "updateName" | "head" | "pending" | "readFailed" | "group"
+  | "actions"
+  | "name"
+  | "updateName"
+  | "head"
+  | "pending"
+  | "readFailed"
+  | "group"
 >;
 
 // A repository's failed read takes the notice, so no retry shows there.

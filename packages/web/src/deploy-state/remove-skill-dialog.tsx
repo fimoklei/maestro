@@ -7,6 +7,7 @@ import { Report } from "../ui/report";
 import { REMOVE_SKILL } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
+  REMOVE_KEEPS,
   type RemoveDialogTarget,
   type RemoveLedgerRow,
   removeLedgerLeadIn,
@@ -30,8 +31,8 @@ const ledgerGroup = (
     rows: rows.map((row) => ({
       key: row.key,
       name: row.name,
-      // A repo target is named by its path; a tool by its name.
-      mono: target.kind === "repo",
+      // Named as the table names it; the full path on hover.
+      ...(target.kind === "repo" ? { title: target.repoPath } : {}),
       value: row.path ?? undefined,
       sentence: row.status ?? undefined,
       tone: row.drift ? "attention" : undefined,
@@ -125,6 +126,7 @@ export function RemoveSkillDialog({
               live="Other copies"
             />
           ) : null}
+          <p className="m-0 font-ui text-gray-11 text-meta">{REMOVE_KEEPS}</p>
         </div>
         {/* Amber: nothing failed or was deleted, the price went up. It carries
             the confirm, so the footer offers none. */}

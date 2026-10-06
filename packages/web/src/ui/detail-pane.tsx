@@ -41,10 +41,10 @@ export type PaneNotice = {
   retry?: boolean;
 };
 
-const STEPS = ["update", "import"] as const;
+const STEPS = ["import", "update"] as const;
 
-// The one primary by state: a notice's retry, else Update target, else Import
-// local edits, else none; a pane whose ⋮ order leads with the next step makes
+// The one primary by state: a notice's retry, else Import local edits, which
+// Update target would discard, else Update target, else none; a pane whose ⋮ order leads with the next step makes
 // its first enabled item primary.
 function choosePrimary(
   notices: readonly PaneNotice[],

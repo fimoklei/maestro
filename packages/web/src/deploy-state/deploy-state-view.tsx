@@ -38,6 +38,7 @@ import {
 } from "./target-rows";
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
+import { updateLabel } from "./update-target-copy";
 import { deployStateQueryOptions } from "./use-deploy-state";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
@@ -326,6 +327,7 @@ function TargetActions({
       update.isError ? (
         <UpdateTargetAction
           targetName={row.updateName}
+          updateLabel={updateLabel(row)}
           target={row.wire}
           update={update}
           defaultOpen={openUpdate}

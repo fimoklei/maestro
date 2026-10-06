@@ -16,7 +16,11 @@ import { requestShapeNotice } from "../ui/notice-table";
 import { machine, phrase } from "../ui/phrase";
 import { REMOVE_SKILL, REREAD_LABEL } from "./deploy-state-copy";
 import { RETRY_LABELS, unfinishedOperationNotice } from "./release-head-copy";
-import { UPDATE_AGAIN, UPDATE_INCOMPLETE_SENTENCE } from "./update-target-copy";
+import {
+  UPDATE_AGAIN,
+  UPDATE_INCOMPLETE_SENTENCE,
+  updateAgain,
+} from "./update-target-copy";
 
 // One table over the three unions: a code shared by deploy and remove reads the
 // same in both. The path-shape codes live in `inventory/connect-notice.ts`.
@@ -450,22 +454,42 @@ export function deployNotice(error: unknown): DeployStateNotice {
     : noticeFor(DEPLOY, error, UNKNOWN_DEPLOY);
 }
 
-/** The whole notice for a refused Update preview. */
-export function updatePreviewNotice(error: unknown): DeployStateNotice {
+/** The whole notice for a refused Update preview, naming the control by `label`. */
+export function updatePreviewNotice(
+  error: unknown,
+  label: string,
+): DeployStateNotice {
   return withLinkedPath(
-    noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE),
+    namingUpdate(noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE), label),
     error,
-    UPDATE_AGAIN,
+    updateAgain(label),
   );
 }
 
-/** The whole notice for a refused or failed Update. */
-export function updateNotice(error: unknown): DeployStateNotice {
+/** The whole notice for a refused or failed Update, naming the control by `label`. */
+export function updateNotice(error: unknown, label: string): DeployStateNotice {
   return withLinkedPath(
-    noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN),
+    namingUpdate(noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN), label),
     error,
-    UPDATE_AGAIN,
+    updateAgain(label),
   );
+}
+
+// The tables name Update target; a row whose update moves more names its own
+// label instead, so the notice points at the control the reader sees.
+function namingUpdate(
+  notice: DeployStateNotice,
+  label: string,
+): DeployStateNotice {
+  const { message } = notice;
+  return label === UPDATE_TARGET || typeof message !== "string"
+    ? notice
+    : {
+        ...notice,
+        message: message
+          .replace(UPDATE_AGAIN, updateAgain(label))
+          .replace(`Select ${UPDATE_TARGET} again.`, `Select ${label} again.`),
+      };
 }
 
 // The path the server read from disk replaces the general instruction.
