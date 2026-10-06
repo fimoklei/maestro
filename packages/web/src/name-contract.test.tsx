@@ -33,6 +33,7 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "deploy-state/target-menu.ts": {
     "`${UPDATE_TARGET} ${row.updateName}`": "menu item",
+    "`Update ${row.updateName}`": "control label",
   },
   "deploy-state/update-target-copy.ts": {
     "`Update ${target}`": "dialog title",

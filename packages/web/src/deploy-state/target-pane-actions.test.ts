@@ -22,6 +22,7 @@ const facts = (
   extra: Partial<PaneRow> = {},
 ): PaneRow => ({
   actions: actions.map((action) => ({ action, label: LABELS[action] })),
+  name: "snapper",
   updateName: "snapper",
   readFailed: false,
   group: "Repositories",
@@ -38,7 +39,8 @@ const placed = (paneFacts: PaneRow) => {
   const named = (label: string | undefined, step: string | undefined) =>
     step === undefined ? label : `${label} (${step})`;
   return {
-    update: update === null ? null : named(update.name, update.step),
+    update:
+      update === null ? null : named(update.name ?? update.label, update.step),
     foot: foot.map((item) => named(item.label, item.step)),
   };
 };
@@ -85,6 +87,19 @@ describe("targetPaneActions", () => {
       update: null,
       foot: ["Deploy skill", "Update target (update)"],
     });
+  });
+
+  // A global tool row's update moves every detected tool, so its label says so.
+  it("labels Update by every target it moves where that reaches beyond the row", () => {
+    const { update } = targetPaneActions(
+      facts(["deploy", "update"], {
+        name: "Claude Code",
+        updateName: "Claude Code and Codex",
+      }),
+      () => {},
+    );
+    expect(update).toMatchObject({ label: "Update Claude Code and Codex" });
+    expect(update?.name).toBeUndefined();
   });
 
   it("runs the row's action when a placed item is selected", () => {

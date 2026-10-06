@@ -76,8 +76,8 @@ the new pattern to this section before building it.
 - Give a fact at most one action button beside its value, and only for an
   action that changes that fact.
 - Choose the pane's one primary by state, not position: an unfinished
-  operation's retry in its notice, else Update target on a behind target, else
-  Import local edits on Local edits, else none. A pane whose ⋮ order already
+  operation's retry in its notice, else Import local edits on Local edits,
+  else Update target on a behind target, else none. A pane whose ⋮ order already
   leads with the next step (Inventory, Harness) makes its first enabled item
   primary.
 - At 1100px and below, show the pane as a full-height sheet over the table's

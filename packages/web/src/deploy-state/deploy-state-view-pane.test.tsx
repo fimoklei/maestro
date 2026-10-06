@@ -767,7 +767,7 @@ describe("Deploy-state pane — where each action sits", () => {
     }
   });
 
-  it("puts Update target beside Latest release as the primary, the rest quiet at the foot", async () => {
+  it("puts Update target beside Latest release, and makes Import local edits the primary it would otherwise discard", async () => {
     repoWith({ primitives: [edited("tdd")], releaseHead: BEHIND });
     renderDeployState();
 
@@ -777,11 +777,11 @@ describe("Deploy-state pane — where each action sits", () => {
         "button",
         { name: `Update target ${LABEL}` },
       ),
-    ).toHaveClass("bg-gray-12");
+    ).not.toHaveClass("bg-gray-12");
     expect(footLabels(pane)).toEqual(["Import local edits", "Deploy skill"]);
-    for (const button of within(footOf(pane)).getAllByRole("button")) {
-      expect(button).not.toHaveClass("bg-gray-12");
-    }
+    expect(
+      within(footOf(pane)).getByRole("button", { name: "Import local edits" }),
+    ).toHaveClass("bg-gray-12");
     expect(
       within(pane).getByText(
         sentence(

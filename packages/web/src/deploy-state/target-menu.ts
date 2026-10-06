@@ -48,18 +48,26 @@ type MenuItem = TargetTableRow["actions"][number];
 
 // One ⋮ item as a control, for the menu and the pane.
 export const targetRowItem = (
-  row: Pick<TargetTableRow, "updateName">,
+  row: Pick<TargetTableRow, "name" | "updateName">,
   item: MenuItem,
   onSelect: (action: TargetAction) => void,
-): FootItem => ({
-  label: item.label,
-  // Update target names the target it moves (#954).
-  ...(item.action === "update" && !item.disabled
-    ? { name: `${UPDATE_TARGET} ${row.updateName}` }
-    : {}),
-  disabled: item.disabled,
-  onSelect: () => onSelect(item.action),
-});
+): FootItem => {
+  const control = {
+    disabled: item.disabled,
+    onSelect: () => onSelect(item.action),
+  };
+  if (item.action !== "update" || item.disabled) {
+    return { label: item.label, ...control };
+  }
+  // An update that moves more than this row says so in its label (copy.md).
+  return row.updateName === row.name
+    ? {
+        label: item.label,
+        name: `${UPDATE_TARGET} ${row.updateName}`,
+        ...control,
+      }
+    : { label: `Update ${row.updateName}`, ...control };
+};
 
 // One row's items, as its ⋮ menu offers them.
 export const targetRowItems = (

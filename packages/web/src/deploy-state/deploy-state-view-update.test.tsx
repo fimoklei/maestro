@@ -257,7 +257,7 @@ describe("Deploy-state — Update target on the global target", () => {
     ).toBeInTheDocument();
   });
 
-  it("names every detected tool it covers", async () => {
+  it("labels Update by every detected tool it covers", async () => {
     stubServer(() => ({
       global: {
         tools: [toolAt("v0.3.4"), { ...toolAt("v0.3.4"), tool: "codex" }],
@@ -269,7 +269,7 @@ describe("Deploy-state — Update target on the global target", () => {
     const pane = await openPane("Codex");
     expect(
       within(pane).getByRole("button", {
-        name: "Update target Claude Code and Codex",
+        name: "Update Claude Code and Codex",
       }),
     ).toBeInTheDocument();
   });
