@@ -6,8 +6,8 @@ paths:
 
 # `gh` driver rules (project-specific for Maestro)
 
-Imperatives for reading GitHub through the `gh` CLI — rules only. The observed
-behavior behind them is in `docs/research/806-gh-pull-request-status.md`
+Imperatives for reading and writing GitHub through the `gh` CLI — rules only.
+The observed behavior behind them is in `docs/research/806-gh-pull-request-status.md`
 (measured against `gh` 2.86.0). The decision is ADR-0029; the host gate is
 ADR-0014; the field carve-out is ADR-0018.
 
