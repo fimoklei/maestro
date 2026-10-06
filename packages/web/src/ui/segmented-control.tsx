@@ -1,7 +1,7 @@
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-export interface Segment<V extends string> {
+interface Segment<V extends string> {
   value: V;
   label: string;
 }
