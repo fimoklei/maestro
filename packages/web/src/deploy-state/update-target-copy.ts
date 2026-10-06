@@ -1,7 +1,7 @@
 // Every word the Update target control and its preview show.
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
 import { UPDATE_TARGET } from "../ui/control-labels";
-import { machine, named, type Phrase, phrase } from "../ui/phrase";
+import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
 
 // An origin-less Harness cannot attribute the target's release, so no update
@@ -98,16 +98,16 @@ export function outcomeDetail(
   state: UnlandedState,
   releases: { from: string; to: string },
   retry: boolean,
-): string {
+): Copy {
   if (state === "unknown") {
     return "Maestro could not read this skill back. Check its state on the Deploy-state screen.";
   }
   const fact = {
-    "not-updated": `Still at ${releases.from}.`,
+    "not-updated": phrase`Still at ${machine(releases.from)}.`,
     missing: "Not deployed.",
-    "not-removed": `Still deployed, though ${releases.to} drops it.`,
+    "not-removed": phrase`Still deployed, though ${machine(releases.to)} drops it.`,
   }[state];
-  return `${fact} ${retry ? RETRY_UPDATE_STEP : `Check the target on the Deploy-state screen, ${UPDATE_AGAIN}`}`;
+  return phrase`${fact} ${retry ? RETRY_UPDATE_STEP : `Check the target on the Deploy-state screen, ${UPDATE_AGAIN}`}`;
 }
 
 export const UPDATE_INCOMPLETE = "Update incomplete";

@@ -237,8 +237,13 @@ describe("Deploy-state — Import local edits on a repository", () => {
     });
     const box = within(flagged).getByRole("checkbox", { name: "tdd" });
     expect(box).not.toBeChecked();
-    expect(box).toHaveAccessibleDescription(
-      "Deployed from release v0.3.5. Importing undoes newer Harness changes to this skill.",
+    // happy-dom spaces a set-apart value from the full stop in a computed
+    // description, so this reads the sentence the box is described by.
+    const description = document.getElementById(
+      box.getAttribute("aria-describedby") ?? "",
+    );
+    expect(description).toHaveTextContent(
+      /^Deployed from release v0\.3\.5\. Importing undoes newer Harness changes to this skill\.$/,
     );
     expect(
       within(dialog).getByRole("group", { name: "Can be imported · 1" }),

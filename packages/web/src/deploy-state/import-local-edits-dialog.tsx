@@ -5,6 +5,7 @@ import { Dialog } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
+import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { StatusLine } from "../ui/status-line";
 import {
@@ -169,7 +170,7 @@ export function ImportLocalEditsDialog({
               rows: flagged.map(({ name, release }) => ({
                 key: name,
                 name,
-                sentence: undoesNewerLine(release),
+                sentence: <PhraseText copy={undoesNewerLine(release)} />,
               })),
             },
             {

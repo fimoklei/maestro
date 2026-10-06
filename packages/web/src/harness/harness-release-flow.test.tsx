@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { describe, expect, it } from "vitest";
 import { useInventory } from "../inventory/use-inventory";
-import { renderWithQuery } from "../test-utils";
+import { renderWithQuery, sentence } from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import {
   installHarnessHooks,
@@ -14,6 +14,17 @@ import {
   stubHarnessServer,
 } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
+
+// The version under the Releasing as label.
+const releasingAs = () => {
+  const value = screen.getByText("Releasing as").nextElementSibling;
+  if (value === null) throw new Error("Releasing as has no value");
+  return value;
+};
+const releasingAsLoaded = async () => {
+  await screen.findByText("Releasing as");
+  return releasingAs();
+};
 
 // Holds the Inventory query open beside the Harness view, so a test can state
 // whether publishing a release made it read again.
@@ -70,9 +81,11 @@ describe("Harness release", () => {
     await userEvent.click(release);
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("v1.3.0")).toBeInTheDocument();
+    expect(releasingAs()).toHaveTextContent(/^v1\.3\.0$/);
     expect(
-      within(dialog).getByText(/Suggested: v1\.3\.0\. A skill was added\./),
+      within(dialog).getByText(
+        sentence(/Suggested: v1\.3\.0\. A skill was added\./),
+      ),
     ).toBeInTheDocument();
     // The advisory finding shows without disabling anything (#519).
     expect(within(dialog).getByText(/broken/)).toBeInTheDocument();
@@ -117,7 +130,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
+    expect(await releasingAsLoaded()).toHaveTextContent(/^v1\.3\.0$/);
 
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
     await userEvent.click(release);
@@ -151,7 +164,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
 
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
@@ -191,7 +204,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
@@ -226,7 +239,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
@@ -271,7 +284,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
@@ -282,7 +295,9 @@ describe("Harness release", () => {
     expect(await screen.findByText("Release published")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+        sentence(
+          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(
@@ -320,7 +335,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
@@ -356,14 +371,16 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
 
     expect(
       await screen.findByText(
-        "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+        sentence(
+          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+        ),
       ),
     ).toBeInTheDocument();
   });
@@ -387,7 +404,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
 
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
@@ -426,7 +443,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
@@ -459,7 +476,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
@@ -471,8 +488,10 @@ describe("Harness release", () => {
       ),
     ).toBeInTheDocument();
     // The numbers the refusal replaced them with, and none of the old ones.
-    expect(within(dialog).getByText("v1.3.1")).toBeInTheDocument();
-    expect(within(dialog).getByText("v1.3.0")).toBeInTheDocument();
+    expect(releasingAs()).toHaveTextContent(/^v1\.3\.1$/);
+    expect(
+      within(dialog).getByText("v1.3.0", { selector: "dd" }),
+    ).toBeInTheDocument();
     expect(within(dialog).queryByText(PLAN.revision)).not.toBeInTheDocument();
   });
 
@@ -498,7 +517,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(screen.getByRole("button", { name: /^major$/i }));
     expect(await screen.findByText("v2.0.0")).toBeInTheDocument();
 
@@ -507,7 +526,7 @@ describe("Harness release", () => {
     );
 
     // Back on the recomputed plan's own proposal, not the old choice's v2.0.0.
-    expect(await screen.findByText("v1.3.1")).toBeInTheDocument();
+    await waitFor(() => expect(releasingAs()).toHaveTextContent(/^v1\.3\.1$/));
     expect(screen.queryByText("v2.0.0")).not.toBeInTheDocument();
   });
 
@@ -537,11 +556,11 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
-    await screen.findByText("v1.3.1");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.1\./));
 
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
@@ -578,7 +597,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
@@ -615,7 +634,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );
@@ -645,7 +664,7 @@ describe("Harness release", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
 
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),

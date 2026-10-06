@@ -276,7 +276,9 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    const tags = within(pane).getByText("1 skill at v0.3.1, 1 at v0.3.0.");
+    const tags = within(pane).getByText(
+      sentence("1 skill at v0.3.1, 1 at v0.3.0."),
+    );
     const way = within(pane).getByText(
       "Release not adopted. Select Remove skill for each, then Deploy skill.",
     );
@@ -336,7 +338,9 @@ describe("Deploy-state pane — facts", () => {
     ).toBeInTheDocument();
     expect(
       within(pane).getByText(
-        "skills/jobs is deployed as hybrid, not as a skill. Fix the skill in the Harness. Select Create a release on the Harness screen, then deploy again.",
+        sentence(
+          "skills/jobs is deployed as hybrid, not as a skill. Fix the skill in the Harness. Select Create a release on the Harness screen, then deploy again.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
@@ -372,7 +376,7 @@ describe("Deploy-state pane — facts", () => {
 
     const pane = await openPane(LABEL);
     expect(
-      within(pane).getByText(/skills\/tdd is deployed as hybrid/i),
+      within(pane).getByText(sentence(/skills\/tdd is deployed as hybrid/i)),
     ).toBeInTheDocument();
     expect(
       within(pane).getByText(/Select Create a release on the Harness screen/),
@@ -621,7 +625,9 @@ describe("Deploy-state pane — an unfinished operation", () => {
     ).toBeInTheDocument();
     expect(
       within(pane).getByText(
-        "Update to v0.3.4 incomplete: 1 of 2 skills now use this release.",
+        sentence(
+          "Update to v0.3.4 incomplete: 1 of 2 skills now use this release.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(
@@ -641,7 +647,9 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(within(pane).getByText("Deploy incomplete")).toBeInTheDocument();
     expect(
       within(pane).getByText(
-        "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+        sentence(
+          "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+        ),
       ),
     ).toBeInTheDocument();
   });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { machineValues } from "../test-utils";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import {
@@ -145,20 +146,30 @@ describe("Update target copy", () => {
 
   it("states each failure's cause and next step, from what was read back", () => {
     const releases = { from: "v0.3.2", to: "v0.3.4" };
-    expect(outcomeDetail("not-updated", releases, true)).toBe(
+    expect(plainText(outcomeDetail("not-updated", releases, true))).toBe(
       "Still at v0.3.2. Select Retry update to run the same release again.",
     );
-    expect(outcomeDetail("missing", releases, true)).toBe(
+    expect(plainText(outcomeDetail("missing", releases, true))).toBe(
       "Not deployed. Select Retry update to run the same release again.",
     );
-    expect(outcomeDetail("not-removed", releases, true)).toBe(
+    expect(plainText(outcomeDetail("not-removed", releases, true))).toBe(
       "Still deployed, though v0.3.4 drops it. Select Retry update to run the same release again.",
     );
-    expect(outcomeDetail("not-updated", releases, false)).toBe(
+    expect(plainText(outcomeDetail("not-updated", releases, false))).toBe(
       "Still at v0.3.2. Check the target on the Deploy-state screen, then select Update target again.",
     );
-    expect(outcomeDetail("unknown", releases, false)).toBe(
+    expect(plainText(outcomeDetail("unknown", releases, false))).toBe(
       "Maestro could not read this skill back. Check its state on the Deploy-state screen.",
+    );
+  });
+
+  it("sets the release a failed skill stays at or loses apart", () => {
+    const releases = { from: "v0.3.2", to: "v0.3.4" };
+    expect(machineValues(outcomeDetail("not-updated", releases, true))).toEqual(
+      ["v0.3.2"],
+    );
+    expect(machineValues(outcomeDetail("not-removed", releases, true))).toEqual(
+      ["v0.3.4"],
     );
   });
 

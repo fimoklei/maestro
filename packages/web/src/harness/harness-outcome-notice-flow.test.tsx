@@ -61,7 +61,7 @@ describe("Harness outcome notices", () => {
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
-    await screen.findByText("v1.3.0");
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
     await userEvent.click(
       screen.getByRole("button", { name: /^publish release$/i }),
     );

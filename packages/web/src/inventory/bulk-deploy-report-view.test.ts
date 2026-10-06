@@ -1,6 +1,7 @@
 import type { BulkDeployReport } from "@maestro/core";
 import { describe, expect, it, vi } from "vitest";
 import { deployNoticeFor } from "../deploy-state/notice-copy";
+import { readNotice } from "../test-utils";
 import {
   type BulkDeployReportView,
   bulkDeployReportGroups,
@@ -245,7 +246,7 @@ describe("bulkDeployReportGroups", () => {
       force: noForce,
     });
 
-    expect(rowsOf(groups, "Failed")[0]?.notice).toEqual({
+    expect(readNotice(rowsOf(groups, "Failed")[0]?.notice ?? null)).toEqual({
       label: "Linked skill folder",
       message:
         "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",

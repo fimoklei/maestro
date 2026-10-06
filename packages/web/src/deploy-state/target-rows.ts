@@ -245,7 +245,7 @@ export function emptyGroupLines(
     global: { tools: number; skipped: readonly SkippedEntry[] } | null;
     repositories: number | null;
   },
-): string[] | null {
+): Copy[] | null {
   if (facts.filtered) return null;
   if (group === GLOBAL) {
     // With no tool row to open, the line also names each skipped entry.

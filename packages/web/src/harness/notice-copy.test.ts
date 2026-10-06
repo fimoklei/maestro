@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
-import { readNotice } from "../test-utils";
+import { machineValues, readNotice } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
@@ -1231,7 +1231,7 @@ describe("releasePublishedNotice", () => {
   // A full publish is a toast; only the half outcome stays in the band, because
   // it needs an action. The tag is atomic, so only the Inventory read fails (#849).
   it("warns that the Inventory was not read after the tag was pushed", () => {
-    expect(releasePublishedNotice("v1.5.0", reread)).toEqual({
+    expect(readNotice(releasePublishedNotice("v1.5.0", reread))).toEqual({
       level: "warning",
       label: "Release published",
       message:
@@ -1239,6 +1239,12 @@ describe("releasePublishedNotice", () => {
       detail: "A release cannot change after publication.",
       action: { label: "Re-read Inventory", onClick: reread },
     });
+  });
+
+  it("sets the tag apart", () => {
+    const notice = releasePublishedNotice("v1.5.0", reread);
+
+    expect(machineValues(notice.message)).toEqual(["v1.5.0"]);
   });
 });
 

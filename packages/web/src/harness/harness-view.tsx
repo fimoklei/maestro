@@ -9,6 +9,7 @@ import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { Icon } from "../ui/icon";
 import { Notice, type NoticeContent } from "../ui/notice";
+import { plainText } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
@@ -428,16 +429,22 @@ function BandFact({
 function groupMeta(section: StageSection | undefined) {
   if (section === undefined) return null;
   return section.read.outcome === "read" ? (
-    section.meta
+    section.meta === null ? null : (
+      <PhraseText copy={section.meta} />
+    )
   ) : (
-    <StatusBadge reading={reading(section.meta ?? "", "unknown")} />
+    <StatusBadge reading={reading(plainText(section.meta ?? ""), "unknown")} />
   );
 }
 
 // Unknown is never drawn as empty (#848, #866).
 function groupMessage(section: StageSection | undefined, reread: () => void) {
   if (section === undefined || section.read.outcome === "read") return null;
-  const notice = stageReadNotice(section.read, section.meta ?? "", reread);
+  const notice = stageReadNotice(
+    section.read,
+    plainText(section.meta ?? ""),
+    reread,
+  );
   return notice === null ? null : (
     <>
       <span className="font-medium text-gray-12">

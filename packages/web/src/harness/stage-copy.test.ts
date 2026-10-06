@@ -1,5 +1,6 @@
 import type { HarnessStage, HarnessStageRow, StageStatus } from "@maestro/core";
 import { describe, expect, it } from "vitest";
+import { machineValues } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
   alsoInWords,
@@ -420,6 +421,34 @@ describe("Detail sentences", () => {
         detailSentence(row("pending-proposal", "not-yet-proposed"), CONTEXT),
       ),
     ).toContain("main");
+  });
+
+  it.each([
+    ["pending-proposal", "deleted-locally", ["main"]],
+    ["pending-proposal", "not-yet-proposed", ["main"]],
+    ["pending-release", "added", ["main", "v1.4.0"]],
+    ["pending-release", "changed", ["main", "v1.4.0"]],
+    ["pending-release", "renamed", ["main"]],
+    ["pending-release", "deleted", ["main", "v1.4.0"]],
+  ] as const)(
+    "sets the branch and release apart in %s %s",
+    (stage, status, values) => {
+      const sentence = detailSentence(
+        row(stage, status, { previousName: "testing" }),
+        CONTEXT,
+      );
+
+      expect(machineValues(sentence)).toEqual(values);
+    },
+  );
+
+  it("keeps the fallback branch words in plain text", () => {
+    const sentence = detailSentence(row("pending-release", "added"), {
+      defaultBranch: null,
+      releasedVersion: "v1.4.0",
+    });
+
+    expect(machineValues(sentence)).toEqual(["v1.4.0"]);
   });
 
   it("keeps every sentence within two sentences of fifteen words", () => {
