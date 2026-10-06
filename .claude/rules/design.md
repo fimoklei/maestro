@@ -43,7 +43,7 @@ the new pattern to this section before building it.
   such as a toast, the name keeps that ink and gains weight only.
 - Use Geist Mono only for what the user types or copies: a version, tag,
   path, ref, hash or command. In running text, set it with
-  `InlineMachineValue`, on `gray-3`.
+  `InlineMachineValue`, tinted `gray-12` at 8% so it shades any surface.
 - Make an action a button or link, never bold text.
 - Use colour only for status. Use blue only for focus, selection and links.
   Keep the primary action neutral (slate 12).
