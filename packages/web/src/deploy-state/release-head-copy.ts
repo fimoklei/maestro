@@ -6,6 +6,7 @@ import type {
   ReleaseHead,
 } from "@maestro/core";
 import { ago, NOT_READ_YET } from "../ui/freshness";
+import { type Copy, machine, type Phrase, phrase } from "../ui/phrase";
 import { joinNames } from "./join-names";
 import {
   RETRY_UPDATE,
@@ -16,25 +17,26 @@ import {
 
 // A behind target's reason; this tool's own release can already be the latest
 // when another tool on the one global target is behind (#951).
-export function behindReason(head: ReleaseHead): string {
-  const latest = head.latestRelease;
-  if (latest === head.release) {
-    return `Another tool's skills are behind ${latest}.`;
+export function behindReason(head: ReleaseHead): Copy {
+  if (head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
+  const latest = machine(head.latestRelease);
+  if (head.latestRelease === head.release) {
+    return phrase`Another tool's skills are behind ${latest}.`;
   }
   return head.changed === null
-    ? `Changes in ${latest} could not be read.`
-    : `${head.changed} of ${head.selected} deployed skills changed in ${latest}.`;
+    ? phrase`Changes in ${latest} could not be read.`
+    : phrase`${head.changed} of ${head.selected} deployed skills changed in ${latest}.`;
 }
 
 export const ON_LATEST_RELEASE = "On the latest release.";
 export const LATEST_RELEASE_UNKNOWN = "Latest release could not be read.";
 
-export function pinnedTagsLine(pinned: PinnedPerSkill): string {
+export function pinnedTagsLine(pinned: PinnedPerSkill): Phrase {
   const groups = pinned.map((group, index) => {
     const skills = index === 0 ? ` skill${group.skills === 1 ? "" : "s"}` : "";
-    return `${group.skills}${skills} at ${group.release}`;
+    return phrase`${group.skills}${skills} at ${machine(group.release)}`;
   });
-  return `${groups.join(", ")}.`;
+  return phrase`${groups.reduce((line, group) => phrase`${line}, ${group}`)}.`;
 }
 
 export const RELEASE_NOT_ADOPTED =
@@ -63,7 +65,7 @@ export function unfinishedOperationNotice(
     desired?: readonly string[];
   },
   primitives: readonly DeployedPrimitive[] = [],
-): { level: "warning"; label: string; message: string; detail?: string } {
+): { level: "warning"; label: string; message: Copy; detail?: Copy } {
   if (pending.kind === "update") {
     const desired = pending.desired ?? [];
     const landed = desired.filter((name) =>
@@ -79,7 +81,7 @@ export function unfinishedOperationNotice(
       ...(desired.length === 0
         ? {}
         : {
-            detail: `Update to ${pending.release} incomplete: ${landed} of ${desired.length} skills now use this release.`,
+            detail: phrase`Update to ${machine(pending.release)} incomplete: ${landed} of ${desired.length} skills now use this release.`,
           }),
     };
   }
@@ -87,7 +89,7 @@ export function unfinishedOperationNotice(
     ? {
         level: "warning",
         label: "Deploy incomplete",
-        message: `${UNFINISHED_REASONS.deploy} Select ${RETRY_DEPLOY} to install release ${pending.release} again.`,
+        message: phrase`${UNFINISHED_REASONS.deploy} Select ${RETRY_DEPLOY} to install release ${machine(pending.release)} again.`,
       }
     : {
         level: "warning",

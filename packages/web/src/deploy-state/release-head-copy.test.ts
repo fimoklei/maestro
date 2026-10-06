@@ -1,5 +1,7 @@
 import type { ReleaseHead } from "@maestro/core";
 import { describe, expect, it } from "vitest";
+import { machineValues, readNotice } from "../test-utils";
+import { plainText } from "../ui/phrase";
 import {
   behindReason,
   changedFact,
@@ -28,23 +30,31 @@ const head = (over: Partial<ReleaseHead> = {}): ReleaseHead => ({
 
 describe("behindReason", () => {
   it("counts the changed skills in the newer release", () => {
-    expect(behindReason(head())).toBe(
+    expect(plainText(behindReason(head()))).toBe(
       "2 of 5 deployed skills changed in v0.3.4.",
     );
-    expect(behindReason(head({ changed: 0 }))).toBe(
+    expect(plainText(behindReason(head({ changed: 0 })))).toBe(
       "0 of 5 deployed skills changed in v0.3.4.",
     );
   });
 
   it("says the changes could not be read rather than counting them", () => {
-    expect(behindReason(head({ changed: null }))).toBe(
+    expect(plainText(behindReason(head({ changed: null })))).toBe(
       "Changes in v0.3.4 could not be read.",
     );
   });
 
   it("names another tool when this tool is already on the newer release", () => {
-    expect(behindReason(head({ release: "v0.3.4" }))).toBe(
+    expect(plainText(behindReason(head({ release: "v0.3.4" })))).toBe(
       "Another tool's skills are behind v0.3.4.",
+    );
+  });
+});
+
+describe("behindReason without a latest release", () => {
+  it("says the latest release could not be read", () => {
+    expect(behindReason(head({ latestRelease: null }))).toBe(
+      "Latest release could not be read.",
     );
   });
 });
@@ -77,23 +87,25 @@ describe("copyChipText", () => {
 
 describe("pinnedTagsLine", () => {
   it("counts the skills a target still pins one at a time", () => {
-    expect(pinnedTagsLine([{ release: "v0.3.1", skills: 3 }])).toBe(
+    expect(plainText(pinnedTagsLine([{ release: "v0.3.1", skills: 3 }]))).toBe(
       "3 skills at v0.3.1.",
     );
   });
 
   it("names one skill as one", () => {
-    expect(pinnedTagsLine([{ release: "v0.3.1", skills: 1 }])).toBe(
+    expect(plainText(pinnedTagsLine([{ release: "v0.3.1", skills: 1 }]))).toBe(
       "1 skill at v0.3.1.",
     );
   });
 
   it("lists disagreeing tags after the biggest group", () => {
     expect(
-      pinnedTagsLine([
-        { release: "v0.3.1", skills: 3 },
-        { release: "v0.3.0", skills: 1 },
-      ]),
+      plainText(
+        pinnedTagsLine([
+          { release: "v0.3.1", skills: 3 },
+          { release: "v0.3.0", skills: 1 },
+        ]),
+      ),
     ).toBe("3 skills at v0.3.1, 1 at v0.3.0.");
   });
 });
@@ -166,7 +178,9 @@ describe("comparedFact", () => {
 describe("unfinishedOperationNotice", () => {
   it("names the release a retried deploy would install again", () => {
     expect(
-      unfinishedOperationNotice({ kind: "deploy", release: "v0.3.4" }),
+      readNotice(
+        unfinishedOperationNotice({ kind: "deploy", release: "v0.3.4" }),
+      ),
     ).toEqual({
       level: "warning",
       label: "Deploy incomplete",
@@ -177,7 +191,9 @@ describe("unfinishedOperationNotice", () => {
 
   it("states an unfinished removal from what is still on disk", () => {
     expect(
-      unfinishedOperationNotice({ kind: "remove", release: "v0.3.4" }),
+      readNotice(
+        unfinishedOperationNotice({ kind: "remove", release: "v0.3.4" }),
+      ),
     ).toEqual({
       level: "warning",
       label: "Removal incomplete",
@@ -188,19 +204,21 @@ describe("unfinishedOperationNotice", () => {
 
   it("counts what a half-landed update landed", () => {
     expect(
-      unfinishedOperationNotice(
-        {
-          kind: "update",
-          release: "v0.3.4",
-          desired: ["tdd", "grill", "jobs", "brief", "review"],
-        },
-        [
-          { type: "skill", name: "tdd", version: "v0.3.4" },
-          { type: "skill", name: "grill", version: "v0.3.4" },
-          { type: "skill", name: "jobs", version: "v0.3.4" },
-          { type: "skill", name: "brief", version: "v0.3.2" },
-          { type: "skill", name: "review", version: "v0.3.2" },
-        ],
+      readNotice(
+        unfinishedOperationNotice(
+          {
+            kind: "update",
+            release: "v0.3.4",
+            desired: ["tdd", "grill", "jobs", "brief", "review"],
+          },
+          [
+            { type: "skill", name: "tdd", version: "v0.3.4" },
+            { type: "skill", name: "grill", version: "v0.3.4" },
+            { type: "skill", name: "jobs", version: "v0.3.4" },
+            { type: "skill", name: "brief", version: "v0.3.2" },
+            { type: "skill", name: "review", version: "v0.3.2" },
+          ],
+        ),
       ),
     ).toEqual({
       level: "warning",
@@ -210,6 +228,43 @@ describe("unfinishedOperationNotice", () => {
       detail:
         "Update to v0.3.4 incomplete: 3 of 5 skills now use this release.",
     });
+  });
+});
+
+describe("a release in these sentences", () => {
+  it("is set apart in the behind reason", () => {
+    expect(machineValues(behindReason(head()))).toEqual(["v0.3.4"]);
+    expect(machineValues(behindReason(head({ changed: null })))).toEqual([
+      "v0.3.4",
+    ]);
+    expect(machineValues(behindReason(head({ release: "v0.3.4" })))).toEqual([
+      "v0.3.4",
+    ]);
+  });
+
+  it("is set apart in the pinned tags line", () => {
+    expect(
+      machineValues(
+        pinnedTagsLine([
+          { release: "v0.3.1", skills: 2 },
+          { release: "v0.3.2", skills: 1 },
+        ]),
+      ),
+    ).toEqual(["v0.3.1", "v0.3.2"]);
+  });
+
+  it("is set apart in an unfinished deploy and update", () => {
+    expect(
+      machineValues(
+        unfinishedOperationNotice({ kind: "deploy", release: "v0.3.4" })
+          .message,
+      ),
+    ).toEqual(["v0.3.4"]);
+    const update = unfinishedOperationNotice(
+      { kind: "update", release: "v0.3.4", desired: ["tdd"] },
+      [],
+    );
+    expect(machineValues(update.detail ?? "")).toEqual(["v0.3.4"]);
   });
 });
 

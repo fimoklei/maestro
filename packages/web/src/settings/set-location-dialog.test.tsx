@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse } from "../test-utils";
+import { jsonResponse, sentence } from "../test-utils";
 import { renderPage, stubServer } from "./harness-location-test-helpers";
 
 afterEach(() => {
@@ -240,7 +240,7 @@ describe("Set Harness location", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Maestro would scaffold it into /home/me/empty-repo.",
+        sentence("Maestro would scaffold it into /home/me/empty-repo."),
       ),
     ).toBeInTheDocument();
 

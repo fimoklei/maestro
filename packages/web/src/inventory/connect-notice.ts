@@ -9,6 +9,7 @@ import {
   type NoticeTable,
   noticeFromTable,
 } from "../ui/notice-table";
+import { machine, phrase } from "../ui/phrase";
 
 // The four path-shape failures both surfaces share. The heading names the
 // subject, so each sentence starts at the recovery (#465).
@@ -251,7 +252,7 @@ export function scaffoldOfferExtras(
 ): NoticeExtras {
   if (offerPath === null) return {};
   return {
-    detail: `Maestro would scaffold it into ${offerPath}.`,
+    detail: phrase`Maestro would scaffold it into ${machine(offerPath)}.`,
     action: {
       label: pending ? ACTIONS.scaffold.busy : "Scaffold the Harness",
       disabled: pending,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { machineValues } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
   cannotBeImportedLegend,
@@ -33,9 +34,10 @@ describe("Import local edits copy", () => {
 
   it("names the group that undoes newer Harness changes and its release", () => {
     expect(undoesNewerLegend(2)).toBe("▲ Undoes newer Harness changes · 2");
-    expect(undoesNewerLine("v1.4.0")).toBe(
+    expect(plainText(undoesNewerLine("v1.4.0"))).toBe(
       "Deployed from release v1.4.0. Importing undoes newer Harness changes to this skill.",
     );
+    expect(machineValues(undoesNewerLine("v1.4.0"))).toEqual(["v1.4.0"]);
   });
 
   it("heads a partial run with what landed of what was asked", () => {

@@ -383,7 +383,9 @@ describe("UpdateTargetDialog outcome", () => {
     expect(failed.getByText("grill in Codex")).toBeInTheDocument();
     expect(
       failed.getByText(
-        "Still at v0.3.2. Check the target on the Deploy-state screen, then select Update target again.",
+        sentence(
+          "Still at v0.3.2. Check the target on the Deploy-state screen, then select Update target again.",
+        ),
       ),
     ).toBeInTheDocument();
   });
@@ -398,7 +400,9 @@ describe("UpdateTargetDialog outcome", () => {
     expect(screen.getByText("Update incomplete")).toBeInTheDocument();
     expect(
       within(reportGroup("Failed")).getByText(
-        "Still at v0.3.2. Select Retry update to run the same release again.",
+        sentence(
+          "Still at v0.3.2. Select Retry update to run the same release again.",
+        ),
       ),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Retry update" }));

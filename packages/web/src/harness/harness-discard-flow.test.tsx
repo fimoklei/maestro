@@ -66,7 +66,7 @@ describe("Harness discard", () => {
     const dialog = await openDiscard();
 
     expect(within(dialog).getByText(".apm/skills/code-review")).toBeVisible();
-    expect(within(dialog).getByText("main")).toBeVisible();
+    expect(within(dialog).getByText("main", { selector: "dd" })).toBeVisible();
     expect(discards).toEqual([]);
   });
 

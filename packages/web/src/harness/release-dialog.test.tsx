@@ -2,8 +2,16 @@ import type { ReleasePlan } from "@maestro/core";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { ReleaseDialog } from "./release-dialog";
+
+// The version under the Releasing as label.
+const releasingAs = () => {
+  const value = screen.getByText("Releasing as").nextElementSibling;
+  if (value === null) throw new Error("Releasing as has no value");
+  return value;
+};
 
 const PLAN: ReleasePlan = {
   delta: [
@@ -54,9 +62,18 @@ describe("ReleaseDialog", () => {
   it("names the version it would release and why Maestro suggested it", () => {
     renderReady();
 
-    expect(screen.getByText("v1.3.0")).toBeInTheDocument();
+    expect(releasingAs()).toHaveTextContent(/^v1\.3\.0$/);
     expect(
-      screen.getByText(/Suggested: v1\.3\.0\. A skill was added\./),
+      screen.getByText(sentence(/Suggested: v1\.3\.0\. A skill was added\./)),
+    ).toBeInTheDocument();
+  });
+
+  it("sets the suggested version apart", () => {
+    renderReady();
+
+    const line = screen.getByText(sentence(/^Suggested: v1\.3\.0\./));
+    expect(
+      within(line).getByText("v1.3.0", { selector: ".font-mono" }),
     ).toBeInTheDocument();
   });
 
@@ -67,7 +84,7 @@ describe("ReleaseDialog", () => {
     expect(label).toHaveClass("font-ui");
     expect(label).not.toHaveClass("font-mono");
     expect(label).not.toHaveClass("uppercase");
-    expect(screen.getByText("v1.3.0")).toHaveClass("font-mono");
+    expect(releasingAs()).toHaveClass("font-mono");
   });
 
   it("names the previous tag, default branch, and exact revision", () => {
@@ -108,7 +125,7 @@ describe("ReleaseDialog", () => {
     expect(screen.getByText("v2.0.0")).toBeInTheDocument();
     // The proposal is a fact about the delta, not about the author's pick.
     expect(
-      screen.getByText(/Suggested: v1\.3\.0\. A skill was added\./),
+      screen.getByText(sentence(/Suggested: v1\.3\.0\. A skill was added\./)),
     ).toBeInTheDocument();
   });
 

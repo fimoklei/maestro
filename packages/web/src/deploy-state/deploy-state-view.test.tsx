@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import {
   cellsOf,
   findRow,
@@ -435,7 +436,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
 
     const reason = await screen.findByText(
-      "2 of 5 deployed skills changed in v0.3.4.",
+      sentence("2 of 5 deployed skills changed in v0.3.4."),
     );
     const card = reason.parentElement as HTMLElement;
     expect(
@@ -524,7 +525,7 @@ describe("Deploy-state — failed reads", () => {
     await screen.findByText(/install claude code or codex/i);
     // With no tool row to open, the Global group's line names them.
     expect(
-      within(grid()).getByText(/hooks\/pre-commit is deployed as/i),
+      within(grid()).getByText(sentence(/hooks\/pre-commit is deployed as/i)),
     ).toBeInTheDocument();
   });
 });
@@ -590,7 +591,9 @@ describe("Deploy-state — Re-read and freshness", () => {
       expect(await screen.findByText("Read just now")).toBeInTheDocument();
       await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
       const card = (
-        await screen.findByText("2 of 5 deployed skills changed in v0.3.4.")
+        await screen.findByText(
+          sentence("2 of 5 deployed skills changed in v0.3.4."),
+        )
       ).parentElement as HTMLElement;
       expect(within(card).getByText("Read just now")).toBeInTheDocument();
       const reads = fetchMock.mock.calls.length;

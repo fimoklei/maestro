@@ -5,7 +5,8 @@ import { Card } from "../ui/card";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
-import { named, phrase } from "../ui/phrase";
+import { machine, named, phrase } from "../ui/phrase";
+import { PhraseText } from "../ui/phrase-text";
 import { SegmentedControl } from "../ui/segmented-control";
 import {
   FINDING_TEXT,
@@ -160,7 +161,9 @@ function PlanBody({
             {/* Maestro's proposal is a fact about the delta, so it stands
                 unchanged beside whatever the author picks. */}
             <span className="font-ui text-meta text-gray-11">
-              {`Suggested: ${plan.versions[plan.proposedStep]}. ${plan.reason}`}
+              <PhraseText
+                copy={phrase`Suggested: ${machine(plan.versions[plan.proposedStep])}. ${plan.reason}`}
+              />
             </span>
           </div>
           <SegmentedControl

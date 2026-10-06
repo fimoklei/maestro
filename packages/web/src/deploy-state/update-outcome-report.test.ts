@@ -1,8 +1,16 @@
 import type { UpdateOutcomeRow } from "@maestro/core";
+import { isValidElement, type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
+import { type Copy, plainText } from "../ui/phrase";
 import { updateOutcomeReport } from "./update-outcome-report";
 
 const RELEASES = { from: "v0.3.2", to: "v0.3.4" };
+
+// A report row as read: its detail sentence in plain text.
+const readRow = <R extends { detail?: Copy | ReactElement }>(row: R) =>
+  row.detail === undefined || isValidElement(row.detail)
+    ? row
+    : { ...row, detail: plainText(row.detail) };
 
 const report = (rows: UpdateOutcomeRow[], retry = true) =>
   updateOutcomeReport({ rows, releases: RELEASES, retry });
@@ -38,7 +46,7 @@ describe("update outcome report", () => {
     ]);
 
     expect(heading).toBe("Not every skill reached v0.3.4");
-    expect(groups[0]?.rows).toStrictEqual([
+    expect(groups[0]?.rows.map(readRow)).toStrictEqual([
       {
         name: "grill",
         detail:
@@ -55,7 +63,7 @@ describe("update outcome report", () => {
           "Still deployed, though v0.3.4 drops it. Select Retry update to run the same release again.",
       },
     ]);
-    expect(groups[1]?.rows).toStrictEqual([
+    expect(groups[1]?.rows.map(readRow)).toStrictEqual([
       {
         name: "spec",
         detail:
@@ -79,7 +87,7 @@ describe("update outcome report", () => {
       false,
     );
 
-    expect(groups[0]?.rows[0]?.detail).toBe(
+    expect(groups[0]?.rows.map(readRow)[0]?.detail).toBe(
       "Still at v0.3.2. Check the target on the Deploy-state screen, then select Update target again.",
     );
   });

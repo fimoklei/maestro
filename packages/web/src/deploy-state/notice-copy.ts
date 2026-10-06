@@ -13,6 +13,7 @@ import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
+import { machine, phrase } from "../ui/phrase";
 import { REMOVE_SKILL, REREAD_LABEL } from "./deploy-state-copy";
 import { RETRY_LABELS, unfinishedOperationNotice } from "./release-head-copy";
 import { UPDATE_AGAIN, UPDATE_INCOMPLETE_SENTENCE } from "./update-target-copy";
@@ -41,7 +42,7 @@ const deleteLinkedFolder = (again: string) =>
 
 // No comma after the path: a reader copying the command would paste it.
 const removeLink = (path: string, again: string) =>
-  `Run rm ${path} and ${again}`;
+  phrase`Run ${machine(`rm ${path}`)} and ${again}`;
 
 const DELETE_LINKED_FOLDER = deleteLinkedFolder(DEPLOY_AGAIN);
 
@@ -498,7 +499,7 @@ function withRm(
 ): DeployStateNotice {
   return {
     ...notice,
-    message: `Nothing was written. ${removeLink(linkedPath, again)}`,
+    message: phrase`Nothing was written. ${removeLink(linkedPath, again)}`,
   };
 }
 

@@ -1,6 +1,7 @@
 import type { DeploySkillError } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { machineValues, readNotice } from "../test-utils";
 import {
   type DeployStateNotice,
   deployNotice,
@@ -579,7 +580,9 @@ describe("update notices for a linked skill folder", () => {
     ["run", updateNotice],
   ])("spells out the rm for the path the server read (%s)", (_, notice) => {
     expect(
-      notice(linked({ error: "destination-symlinked", linkedPath: LINKED })),
+      readNotice(
+        notice(linked({ error: "destination-symlinked", linkedPath: LINKED })),
+      ),
     ).toEqual({
       label: "Linked skill folder",
       message: `Nothing was written. Run rm ${LINKED} and then select Update target again.`,
@@ -605,7 +608,12 @@ describe("update notices for a linked skill folder", () => {
 describe("deploy notice for a linked skill folder", () => {
   it("spells out the rm for the path a bulk run carries", () => {
     expect(
-      deployNoticeFor("destination-symlinked", "/Users/dev/.claude/skills/tdd"),
+      readNotice(
+        deployNoticeFor(
+          "destination-symlinked",
+          "/Users/dev/.claude/skills/tdd",
+        ),
+      ),
     ).toEqual({
       label: "Linked skill folder",
       message:
@@ -621,13 +629,24 @@ describe("deploy notice for a linked skill folder", () => {
       linkedPath: "/Users/dev/.claude/skills/tdd",
     });
 
-    expect(deployNotice(error)).toEqual({
+    expect(readNotice(deployNotice(error))).toEqual({
       label: "Linked skill folder",
       message:
         "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",
       detail:
         "This removes the link only. The folder it points at remains on disk.",
     });
+  });
+
+  it("sets the rm command apart, path included", () => {
+    const notice = deployNoticeFor(
+      "destination-symlinked",
+      "/Users/dev/.claude/skills/tdd",
+    );
+
+    expect(machineValues(notice.message)).toEqual([
+      "rm /Users/dev/.claude/skills/tdd",
+    ]);
   });
 });
 
@@ -737,7 +756,7 @@ describe("retry notices", () => {
   ];
 
   it.each(cases)("states %s", (code, notice) => {
-    expect(retryNotice(refusal(code), deploy)).toEqual(notice);
+    expect(readNotice(retryNotice(refusal(code), deploy))).toEqual(notice);
   });
 
   it("states a retry that never answered", () => {

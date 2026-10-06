@@ -6,6 +6,8 @@ import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import { type DeployTarget, sameTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { freshnessLine } from "../ui/freshness";
+import { type Copy, plainText } from "../ui/phrase";
+import { PhraseText } from "../ui/phrase-text";
 import { TableScreen } from "../ui/table-screen";
 import { useNow } from "../ui/use-now";
 import { useTableScreen } from "../ui/use-table-screen";
@@ -284,12 +286,12 @@ export function DeployStateView() {
   );
 }
 
-function blockLines(lines: string[] | null) {
+function blockLines(lines: Copy[] | null) {
   return lines === null
     ? null
     : lines.map((line) => (
-        <span key={line} className="block">
-          {line}
+        <span key={plainText(line)} className="block">
+          <PhraseText copy={line} />
         </span>
       ));
 }

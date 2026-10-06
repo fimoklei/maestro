@@ -2,6 +2,9 @@ import { Card } from "../ui/card";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
+import { phrase } from "../ui/phrase";
+import { PhraseText } from "../ui/phrase-text";
+import { defaultBranchCopy } from "./stage-copy";
 
 // The confirmation a discard takes before the edited folder is replaced
 // (#1375). Presentational — the host owns the mutation and what the row said.
@@ -23,7 +26,7 @@ export function DiscardDialog({
   discarding: boolean;
   discardError: NoticeContent | null;
 }) {
-  const branch = defaultBranch ?? "the default branch";
+  const branch = defaultBranchCopy(defaultBranch);
   return (
     <Dialog
       title={`Discard change for ${skill}`}
@@ -45,8 +48,9 @@ export function DiscardDialog({
       onClose={onClose}
     >
       <p className="m-0">
-        This replaces the skill folder in your clone with its copy on {branch}.
-        You cannot recover your changes. Deployed copies remain unchanged.
+        <PhraseText
+          copy={phrase`This replaces the skill folder in your clone with its copy on ${branch}. You cannot recover your changes. Deployed copies remain unchanged.`}
+        />
       </p>
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
@@ -57,7 +61,7 @@ export function DiscardDialog({
             value={defaultBranch ?? "Unknown"}
             wrap
             machine={defaultBranch !== null}
-            hint={`If ${branch} moves before you confirm, nothing is discarded.`}
+            hint={phrase`If ${branch} moves before you confirm, nothing is discarded.`}
           />
         </dl>
       </Card>

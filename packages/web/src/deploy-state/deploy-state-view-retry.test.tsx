@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse } from "../test-utils";
+import { jsonResponse, sentence } from "../test-utils";
 import {
   findRow,
   openPane,
@@ -77,7 +77,9 @@ describe("Deploy-state pane — a failed retry", () => {
     ).toBeInTheDocument();
     expect(
       within(notice).getByText(
-        "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+        sentence(
+          "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+        ),
       ),
     ).toBeInTheDocument();
     expect(within(pane).queryByText("Deploy incomplete")).toBeNull();
