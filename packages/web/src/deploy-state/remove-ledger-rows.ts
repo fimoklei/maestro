@@ -4,6 +4,7 @@ import type {
   RemoveTargetState,
 } from "@maestro/core";
 import type { PrimitiveType } from "../inventory/type-filter";
+import { targetLabel } from "../shell/target-label";
 import type { ReportGroup } from "../ui/report";
 import type {
   RemoveCheckState,
@@ -114,7 +115,7 @@ export function removeOutcomeReport(
         .filter((entry) => entry.state === state)
         .map((entry) =>
           target.kind === "repo"
-            ? { name: target.repoPath, mono: true }
+            ? { name: targetLabel(target.repoPath) }
             : {
                 name:
                   targets.find((each) => each.tool === entry.tool)?.name ??
@@ -132,7 +133,7 @@ const rank = (onScreen: readonly string[], tool: string) => {
 
 const targetsOf = (target: RemoveDialogTarget) =>
   target.kind === "repo"
-    ? [{ tool: target.repoPath, name: target.repoPath }]
+    ? [{ tool: target.repoPath, name: targetLabel(target.repoPath) }]
     : target.tools.map((tool) => ({ tool, name: toolDisplayName(tool) }));
 
 export function removeLedgerRows(

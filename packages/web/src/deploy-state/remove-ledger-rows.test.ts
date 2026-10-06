@@ -30,8 +30,8 @@ describe("removeLedgerRows", () => {
       ),
     ).toEqual([
       {
-        key: "target:/Users/me/project",
-        name: "/Users/me/project",
+        key: "target:…/me/project",
+        name: "…/me/project",
         path: null,
         status: null,
         drift: false,
@@ -253,20 +253,17 @@ describe("removeLedgerRows", () => {
         { scope: "repo", state: "unknown" },
       );
 
-      expect(namesIn(report, "Outcome unknown")).toEqual(["/Users/me/project"]);
+      expect(namesIn(report, "Outcome unknown")).toEqual(["…/me/project"]);
       expect(namesIn(report, "Removed")).toEqual([]);
     });
 
-    it("sets the repo path in mono, because it is a path", () => {
+    it("names the repository as the table does, never in mono", () => {
       const report = removeOutcomeReport(
         { kind: "repo", repoPath: "/Users/me/project" },
         { scope: "repo", state: "not-removed" },
       );
 
-      expect(report.groups[0]?.rows[0]).toEqual({
-        name: "/Users/me/project",
-        mono: true,
-      });
+      expect(report.groups[0]?.rows[0]).toEqual({ name: "…/me/project" });
     });
 
     it("counts the targets the removal came off in its heading", () => {

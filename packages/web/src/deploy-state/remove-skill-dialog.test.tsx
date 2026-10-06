@@ -92,7 +92,7 @@ describe("RemoveSkillDialog", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("tdd");
-    expect(dialog).toHaveTextContent("/Users/me/project");
+    expect(dialog).toHaveTextContent("…/me/project");
   });
 
   it("names the version being removed in the question it asks", () => {
@@ -118,21 +118,20 @@ describe("RemoveSkillDialog", () => {
   });
 
   describe("its ledger of targets", () => {
-    it("holds the repo path in a single row on the repo scope", () => {
+    it("names the repository in a single row, as the table does", () => {
       renderDialog();
 
       expect(screen.getAllByRole("listitem").map((r) => r.textContent)).toEqual(
-        [REPO_TARGET.repoPath],
+        ["…/me/project"],
       );
     });
 
-    it("wraps a long path mid-token rather than pushing the panel wider", () => {
-      // A repo path has no spaces to break at; without this it widens the panel.
+    it("keeps the repository on one line, its full path on hover", () => {
       renderDialog();
 
-      expect(screen.getByText(REPO_TARGET.repoPath).className).toContain(
-        "break-all",
-      );
+      const name = screen.getByText("…/me/project");
+      expect(name).toHaveClass("truncate");
+      expect(name).toHaveAttribute("title", REPO_TARGET.repoPath);
     });
 
     it("states what stays and how to add the skill back", () => {
@@ -492,7 +491,7 @@ describe("RemoveSkillDialog", () => {
         outcome: { scope: "repo", state: "unknown" },
       });
 
-      expect(groupOf(REPO_TARGET.repoPath)).toBe("⚠Outcome unknown1");
+      expect(groupOf("…/me/project")).toBe("⚠Outcome unknown1");
     });
 
     it("renders the error block alone when the failure proved nothing", () => {
@@ -767,10 +766,10 @@ describe("RemoveSkillDialog", () => {
   });
 
   describe("its typography", () => {
-    it("sets the path it would delete from in mono", () => {
+    it("sets the repository's name in Geist, because a name is not a machine value", () => {
       renderDialog();
 
-      expect(screen.getByText(REPO_TARGET.repoPath).className).toContain(
+      expect(screen.getByText("…/me/project").className).not.toContain(
         "font-mono",
       );
     });
@@ -807,7 +806,7 @@ describe("RemoveSkillDialog", () => {
 
       const leadIn = screen.getByText("Removes the skill from:");
       expect(screen.getAllByRole("listitem")).toHaveLength(1);
-      const name = screen.getByText("/Users/me/project");
+      const name = screen.getByText("…/me/project");
       expect(stepOf(name)).toBeGreaterThanOrEqual(0);
       expect(stepOf(name)).toBeLessThan(stepOf(leadIn));
       expect(leadIn.className).toContain("text-gray-11");
@@ -845,7 +844,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog();
 
       expect(describedBy()).toContain("Removes the skill from:");
-      expect(describedBy()).toContain(REPO_TARGET.repoPath);
+      expect(describedBy()).toContain("…/me/project");
     });
 
     it("carries the whole tool set on the global path", () => {

@@ -1,5 +1,6 @@
 import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { targetLabel } from "../shell/target-label";
 import {
   CONFIRM,
   clearToasts,
@@ -41,7 +42,7 @@ describe("removing a deployed skill from a row", () => {
     const dialog = await openRemoveDialog();
 
     expect(dialog).toHaveTextContent("tdd");
-    expect(dialog).toHaveTextContent(REPO);
+    expect(dialog).toHaveTextContent(targetLabel(REPO));
   });
 
   it("carries the row's version into the question the confirmation asks", async () => {

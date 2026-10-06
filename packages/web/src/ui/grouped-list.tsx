@@ -11,8 +11,8 @@ type GroupedListRow = {
   /** What the checked set holds for this row. */
   key: string;
   name: string;
-  /** The name is a path, set in mono. */
-  mono?: boolean;
+  /** The full text a shortened name stands for, on hover. */
+  title?: string;
   value?: string;
   /** Its cost or reason, under the name. */
   sentence?: ReactNode;
@@ -143,10 +143,7 @@ function Group({
                 {LIST_TOKENS[tone].glyph}
               </span>
             ) : null;
-          const nameClass = cn(
-            "min-w-0 text-gray-12 text-row",
-            row.mono ? "break-all font-mono" : "truncate",
-          );
+          const nameClass = "min-w-0 truncate text-gray-12 text-row";
           return (
             <li
               key={row.key}
@@ -165,11 +162,14 @@ function Group({
                 <label
                   htmlFor={boxId}
                   className={cn(nameClass, !refused && "cursor-pointer")}
+                  title={row.title}
                 >
                   {row.name}
                 </label>
               ) : (
-                <span className={nameClass}>{row.name}</span>
+                <span className={nameClass} title={row.title}>
+                  {row.name}
+                </span>
               )}
               <span className="break-all text-right text-gray-11 text-meta">
                 {row.value === undefined ? null : (

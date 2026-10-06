@@ -31,8 +31,8 @@ const ledgerGroup = (
     rows: rows.map((row) => ({
       key: row.key,
       name: row.name,
-      // A repo target is named by its path; a tool by its name.
-      mono: target.kind === "repo",
+      // Named as the table names it; the full path on hover.
+      ...(target.kind === "repo" ? { title: target.repoPath } : {}),
       value: row.path ?? undefined,
       sentence: row.status ?? undefined,
       tone: row.drift ? "attention" : undefined,
