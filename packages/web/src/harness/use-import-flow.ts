@@ -7,7 +7,7 @@ import {
   useImportSkill,
 } from "./use-harness";
 
-// Import skill…'s UI-state: the folder, the name, and the check both are sent
+// Import skill's UI-state: the folder, the name, and the check both are sent
 // to. Every refusal comes from the server's check, so nothing here decides
 // one (#576).
 export function useImportFlow(

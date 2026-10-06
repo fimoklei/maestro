@@ -1,6 +1,6 @@
 // Every word the Update target control and its preview show.
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
-import { UPDATE_TARGET } from "../ui/control-labels";
+import { UPDATE_TARGET, UPDATE_TARGETS } from "../ui/control-labels";
 import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
 
@@ -90,7 +90,7 @@ const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.
 
 // An update that moves more than its row says so in its label (copy.md).
 export const updateLabel = (row: { name: string; updateName: string }) =>
-  row.updateName === row.name ? UPDATE_TARGET : `Update ${row.updateName}`;
+  row.updateName === row.name ? UPDATE_TARGET : UPDATE_TARGETS;
 
 export const updateAgain = (label: string) => `then select ${label} again.`;
 export const UPDATE_AGAIN = updateAgain(UPDATE_TARGET);

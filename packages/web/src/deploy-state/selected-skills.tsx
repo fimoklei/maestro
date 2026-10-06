@@ -58,7 +58,7 @@ export function SelectedSkills({
         tabIndex={-1}
         className={`m-0 mb-inline font-normal text-gray-11 text-meta ${FOCUS_RING}`}
       >
-        Selected skills{" "}
+        Deployed skills{" "}
         <span className="text-gray-12 tabular-nums">{primitives.length}</span>
       </h3>
       <ul className="m-0 list-none border-divider border-t p-0">

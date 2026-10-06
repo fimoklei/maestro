@@ -61,9 +61,7 @@ export const targetRowItem = (
     return { label: item.label, ...control };
   }
   const label = updateLabel(row);
-  return label === UPDATE_TARGET
-    ? { label, name: `${UPDATE_TARGET} ${row.updateName}`, ...control }
-    : { label, ...control };
+  return { label, name: `${label} ${row.updateName}`, ...control };
 };
 
 // One row's items, as its ⋮ menu offers them.

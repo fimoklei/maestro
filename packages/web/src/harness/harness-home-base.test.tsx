@@ -464,9 +464,9 @@ describe("Harness home base", () => {
         "Skills you import or edit in your clone will appear here.",
       ),
     ).toBeInTheDocument();
-    // The empty state repeats Import skill… from band 1 (#994).
+    // The empty state repeats Import skill from band 1 (#994).
     expect(
-      screen.getAllByRole("button", { name: "Import skill…" }),
+      screen.getAllByRole("button", { name: "Import skill" }),
     ).toHaveLength(2);
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });

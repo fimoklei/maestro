@@ -80,7 +80,7 @@ describe("SelectedSkills marks", () => {
     renderList(upToDate, [tdd, { ...tdd, name: "grill", version: "v0.4.0" }]);
 
     expect(
-      screen.getByRole("heading", { level: 3, name: "Selected skills 2" }),
+      screen.getByRole("heading", { level: 3, name: "Deployed skills 2" }),
     ).toBeInTheDocument();
     expect(screen.getByText("grill")).toBeInTheDocument();
     expect(screen.getByText("v0.4.0")).toBeInTheDocument();

@@ -91,10 +91,7 @@ function Group({
     <fieldset id={group.id} className="m-0 flex min-w-0 flex-col gap-tight">
       {group.legend === null ? null : (
         <legend
-          className={cn(
-            "font-mono text-meta uppercase tracking-mono",
-            STATUS_TOKENS[group.tone].ink,
-          )}
+          className={cn("font-ui text-meta", STATUS_TOKENS[group.tone].ink)}
         >
           {group.legend}
         </legend>

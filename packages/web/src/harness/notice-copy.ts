@@ -489,7 +489,7 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
 const importHeadings: NoticeTable<ImportSkillError> = {
   "not-configured": {
     ...harnessHeadings["not-configured"],
-    message: `${CHANGE_LOCATION_STEP}, then select Import skill… again.`,
+    message: `${CHANGE_LOCATION_STEP}, then select Import skill again.`,
   },
   "source-unreadable": {
     level: "error",
@@ -806,7 +806,7 @@ export function copiesDiffer<T>(
   folders: Record<"claude" | "codex", T>,
 ): [string, T, string, T, string] {
   return [
-    "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one: ",
+    "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ",
     folders.claude,
     " or ",
     folders.codex,
@@ -817,7 +817,7 @@ export function copiesDiffer<T>(
 // Import skill's sentences where they work from this dialog, retried with
 // Import local edits. Where Import skill says to pick a folder, this dialog
 // has none, so the way through is the manual copy or the deployed copy itself.
-// Import skill… refuses another Harness and an unproven origin too, so its
+// Import skill refuses another Harness and an unproven origin too, so its
 // route is no way through for either.
 const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
   "not-configured": `${CHANGE_LOCATION_STEP}, then select Import local edits again.`,
@@ -873,7 +873,7 @@ const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
   unverified:
     "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
   "copies-differ":
-    "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one.",
+    "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one.",
   "no-local-edits": "No local edits left in this copy. Nothing was imported.",
   "undoes-newer-changes":
     "The Harness changed this skill after the check, so it was not imported. Select Import local edits again to choose whether to undo that change.",
