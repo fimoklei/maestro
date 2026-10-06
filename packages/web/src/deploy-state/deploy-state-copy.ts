@@ -61,14 +61,16 @@ export const otherOriginLine = (origins: readonly string[]) =>
   phrase`Holds skills, hooks and MCP servers deployed from ${namedList(origins)}.`;
 
 const KEEP_LOCAL_EDITS = "Select Import local edits to keep them.";
+const KEEP_BEFORE_UPDATE =
+  "To keep them, select Import local edits before you update.";
 
 export const localEditsReason = (names: readonly string[]) =>
   names.length === 1
     ? phrase`1 skill has changes that are not in the latest release: ${namedList(names)}.`
     : phrase`${names.length} skills have changes that are not in the latest release: ${namedList(names)}.`;
 
-export const localEditsLine = (names: readonly string[]) =>
-  phrase`${localEditsReason(names)} ${KEEP_LOCAL_EDITS}`;
+export const localEditsLine = (names: readonly string[], behind: boolean) =>
+  phrase`${localEditsReason(names)} ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
 
 // A skill row's mark carries its reading's hint as its tooltip: one fact, no action.
 export const NO_LONGER_RELEASED_HINT = "Not in the latest release.";

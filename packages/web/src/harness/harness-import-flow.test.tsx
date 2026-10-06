@@ -140,7 +140,7 @@ afterEach(() => {
 async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
   // Band 1's, first; an empty Harness repeats it in its empty state.
   const [importSkill] = await screen.findAllByRole("button", {
-    name: "Import skill…",
+    name: "Import skill",
   });
   await user.click(importSkill as HTMLElement);
   await user.click(await screen.findByRole("button", { name: "Browse" }));
@@ -316,7 +316,7 @@ describe("Harness import flow", () => {
     renderWithQuery(<HarnessView openSkill={null} />);
 
     const [importSkill] = await screen.findAllByRole("button", {
-      name: "Import skill…",
+      name: "Import skill",
     });
     await user.click(importSkill as HTMLElement);
     await user.type(

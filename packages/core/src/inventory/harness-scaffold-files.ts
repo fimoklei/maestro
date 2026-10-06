@@ -104,7 +104,7 @@ const contributing = (ownerRepo: string) => `# Contributing
 
 1. Write it and try it out in \`~/.claude/skills/\` on your own machine — this
    is your personal, ungated set of skills; nothing here is shared yet.
-2. Once it works, press **Import skill…** in Maestro's Harness view. That puts
+2. Once it works, press **Import skill** in Maestro's Harness view. That puts
    it in the **Working harness**: this repository's checked-out copy, ahead of
    what anyone has installed.
 3. Press **Propose change** on its row. Maestro pushes the skill to a branch of

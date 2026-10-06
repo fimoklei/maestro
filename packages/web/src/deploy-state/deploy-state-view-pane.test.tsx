@@ -346,7 +346,7 @@ describe("Deploy-state pane — facts", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
+          "1 skill has changes that are not in the latest release: tdd. To keep them, select Import local edits before you update.",
         ),
       ),
     ).toBeInTheDocument();
@@ -454,7 +454,7 @@ describe("Deploy-state pane — facts", () => {
   });
 });
 
-describe("Deploy-state pane — Selected skills", () => {
+describe("Deploy-state pane — Deployed skills", () => {
   it("lists each deployed skill with its version and one mark", async () => {
     repoWith(
       {
@@ -573,7 +573,7 @@ describe("Deploy-state pane — Selected skills", () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
-  it("moves focus to Selected skills once a removed row is gone", async () => {
+  it("moves focus to Deployed skills once a removed row is gone", async () => {
     let removed = false;
     stubServer(() => ({
       repos: [REPO],
@@ -613,7 +613,7 @@ describe("Deploy-state pane — Selected skills", () => {
     );
     await waitFor(() =>
       expect(
-        screen.getByRole("heading", { level: 3, name: /Selected skills/ }),
+        screen.getByRole("heading", { level: 3, name: /Deployed skills/ }),
       ).toHaveFocus(),
     );
   });
@@ -799,7 +799,7 @@ describe("Deploy-state pane — where each action sits", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "1 skill has changes that are not in the latest release: tdd. Select Import local edits to keep them.",
+          "1 skill has changes that are not in the latest release: tdd. To keep them, select Import local edits before you update.",
         ),
       ),
     ).toBeInTheDocument();

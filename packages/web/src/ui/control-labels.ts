@@ -6,3 +6,4 @@ export const REREAD_HARNESS = "Re-read Harness";
 export const RESTORE_SKILL = "Restore skill";
 export const UPDATE_SKILL = "Update skill";
 export const UPDATE_TARGET = "Update target";
+export const UPDATE_TARGETS = "Update targets";

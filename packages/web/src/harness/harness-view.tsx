@@ -266,7 +266,7 @@ export function HarnessView({
               className="max-lg:w-8 max-lg:justify-center max-lg:px-0"
             >
               <Icon of={FolderInput} className="lg:hidden" />
-              <span className="max-lg:sr-only">Import skill…</span>
+              <span className="max-lg:sr-only">Import skill</span>
             </Button>
             {/* Closed while the remote's answer is unknown — an offline or
                 failed fetch — and while a re-read is still rewriting the refs
@@ -333,7 +333,7 @@ export function HarnessView({
         description: JOURNEY_EMPTY.body,
         action: (
           <Button variant="quiet" onClick={importFlow.start}>
-            Import skill…
+            Import skill
           </Button>
         ),
       }}

@@ -118,15 +118,21 @@ describe("Deploy-state copy", () => {
 
   it("names every skill with local edits and how to keep them", () => {
     const keep = "Select Import local edits to keep them.";
-    expect(plainText(localEditsLine(["tdd"]))).toBe(
+    expect(plainText(localEditsLine(["tdd"], false))).toBe(
       `1 skill has changes that are not in the latest release: tdd. ${keep}`,
     );
-    expect(plainText(localEditsLine(["tdd", "grill", "review"]))).toBe(
+    expect(plainText(localEditsLine(["tdd", "grill", "review"], false))).toBe(
       `3 skills have changes that are not in the latest release: tdd, grill and review. ${keep}`,
     );
     const long = "write-a-very-long-skill-name-that-keeps-going-on-and-on";
-    expect(plainText(localEditsLine([long, "tdd"]))).toBe(
+    expect(plainText(localEditsLine([long, "tdd"], false))).toBe(
       `2 skills have changes that are not in the latest release: ${long} and tdd. ${keep}`,
+    );
+  });
+
+  it("advises importing local edits before a behind target updates", () => {
+    expect(plainText(localEditsLine(["tdd", "review"], true))).toBe(
+      "2 skills have changes that are not in the latest release: tdd and review. To keep them, select Import local edits before you update.",
     );
   });
 });

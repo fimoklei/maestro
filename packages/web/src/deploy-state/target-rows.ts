@@ -272,7 +272,8 @@ export type StatusCard = { reason: Copy | null; readAge: string | null };
 function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
   const edited = editedSkills(row.primitives);
-  if (!row.readFailed && edited.length > 0) return localEditsLine(edited);
+  if (!row.readFailed && edited.length > 0)
+    return localEditsLine(edited, row.behind);
   if (row.pinned) return pinnedTagsLine(row.pinned);
   if (row.readFailed) return REPO_NOT_READ.label;
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {

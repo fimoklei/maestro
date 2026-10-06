@@ -163,7 +163,7 @@ describe("statusCard", () => {
         ),
       ).reason,
     ).toBe(
-      "Another tool's skills are behind v0.3.4. Select Update Claude Code and Codex to move this target to v0.3.4.",
+      "Another tool's skills are behind v0.3.4. Select Update targets to move this target to v0.3.4.",
     );
   });
 
