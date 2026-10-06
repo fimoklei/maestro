@@ -65,7 +65,7 @@ The person who keeps the Harness: reviews every **Proposal** on GitHub, merges i
 _Avoid_: owner, admin, maintainer.
 
 **Contributor**:
-A person who uses the Harness's skills and proposes changes to it, deletions included. A contributor starts a change; only the **Curator**'s review lands it (#1336). Several contributors may propose the same skill; they share its one proposal branch (#1370).
+A person who uses the Harness's skills and proposes changes to it, deletions included. A contributor starts a change; only the **Curator**'s review lands it (#1336). Several contributors may propose the same skill; they share its one proposal branch (#1370). While one contributor's pull request on it is open, only that contributor proposes to it; the others wait until it is merged or closed (#1373).
 _Avoid_: author (the Harness screen's role label, not a person), consumer (that names a repository).
 
 **Bundle**:
@@ -192,6 +192,7 @@ details may name the exact APM mechanism or file.
 | Proposal without a pull request | **Pull request missing** | A prepared proposal has no matching pull request, confirmed by a complete check. It is not Pending review. |
 | Merged proposal, default branch not yet read | **Proposal merged** | GitHub merged the pull request and the Harness default branch has not been read since. It is the normal end of a review, so it carries no amber marking; the row leaves Pending review on the next read. Never **Pull request missing**, which claims no request ever existed. |
 | Closed unmerged proposal | **Proposal closed** | A closed proposal still holds work not incorporated into the default branch. Keep it visible outside Pending review. |
+| Another contributor's open proposal | **Proposed by {login}** | An open pull request on the skill's proposal branch whose author is not the signed-in `gh` user. Every action that writes to that branch or request waits until it is merged or closed; local edits do not. Without a complete pull-request check, nothing waits. |
 | Ambiguous open proposal | **Multiple pull requests** | Several matching open pull requests remain; show their links without choosing one. |
 | Stale Harness status | **Status out of date** | Previously verified information whose re-read failed; never present it as current. |
 | Unknown Harness status | **Status unknown** / **Review status unknown** | No verified status is available; use the review-specific name when only review status is unknown. Unknown is not empty. |
