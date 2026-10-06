@@ -22,7 +22,6 @@ Runner: **Vitest**, all lanes (ADR-0002).
   matchers, and adding `.skip` or conditional exclusion are never fixes for
   production code.
 - **Layout is proven in a browser, not happy-dom.** happy-dom measures nothing — verify a CSS/layout change with an `agent-browser` measurement.
-- Never chain `lint && typecheck && test` — run `pnpm verify`. The full output of the last run is on disk in `.logs/`; read it instead of re-running with a different filter.
 - Repeat the mutation audit only after a bug reaches `main` that the suite should have caught; `docs/research/739-mutation-audit.md` records how to run it.
 - A composition root (`main.tsx`, `server.ts`) is covered as far as it is reachable without a subprocess; the remainder is deliberately uncovered and `pnpm smoke` is its proof (ADR-0010), so `packages/server`'s function coverage is a decision, not an oversight.
 
@@ -33,9 +32,16 @@ Runner: **Vitest**, all lanes (ADR-0002).
 - **Integration** (`pnpm test:integration`) — `tests/integration/`, a journey across modules with real I/O. Anything that drives APM or reads real lockfiles is integration.
 - **Git** (`pnpm test:git`) — `tests/git/`. Choose it on one checkable fact: does this test create a real repository? If yes, it lands here and stays out of the coding loop.
 
-`pnpm test:affected` is the coding loop: the tests of the three cheap lanes that the uncommitted work reaches, selected as the commit gate selects them. `pnpm test:loop` runs those three lanes whole; `pnpm test` runs all four.
-
 Storybook stories are **not** a lane: documentation, not coverage. Behaviour is tested in the sibling `.test.tsx` (`frontend.md`).
+
+## Running tests
+
+Run from the repo root.
+
+- `pnpm test:affected` is the coding loop: the tests of the three cheap lanes that the uncommitted work reaches, selected as the commit gate selects them. `pnpm test:loop` runs those three lanes whole; `pnpm test` runs all four.
+- One file, for TDD red/green: `./node_modules/.bin/vitest run <path-from-repo-root>`, without `--root` (it breaks the root config's project globs); `--reporter=verbose` prints per-test names.
+- `pnpm verify` is the gate: lint, typecheck and test in one summary. It reuses a passing run on an unchanged tree (ignored files do not count); `--force` reruns.
+- A full run leaves its output in `.logs/`; read it there rather than re-running with a narrower filter.
 
 ## When to write which test
 
