@@ -50,6 +50,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
         headBranch: "maestro/tdd",
         baseBranch: "main",
         author: "fimoklei",
+        byOther: false,
       },
     ]);
     expect(rowsOf(state.stages.proposal)[0]?.alsoIn).toEqual([

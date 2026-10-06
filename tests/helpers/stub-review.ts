@@ -3,12 +3,15 @@ import type {
   HarnessReviewRead,
   NewReviewRequest,
   ReviewWriteOutcome,
+  ViewerRead,
 } from "@maestro/core";
 
 // GitHub's answers are set by the test, not a live account (#827).
 export type StubReview = HarnessReviewPort & {
   /** What the next read answers. */
   answer: (read: HarnessReviewRead) => void;
+  /** Who the next sign-in read names. `fimoklei` by default. */
+  answerViewer: (viewer: ViewerRead) => void;
   /** What the next write answers. Success by default. */
   answerWrite: (outcome: ReviewWriteOutcome) => void;
   /** Each origin the port was asked about, in order. */
@@ -30,6 +33,7 @@ const EMPTY: HarnessReviewRead = {
 export const stubReview = (initial: HarnessReviewRead = EMPTY): StubReview => {
   let current = initial;
   let write: ReviewWriteOutcome = { ok: true };
+  let viewer: ViewerRead = { outcome: "read", login: "fimoklei" };
   const asked: string[] = [];
   const created: NewReviewRequest[] = [];
   const reopened: number[] = [];
@@ -44,6 +48,9 @@ export const stubReview = (initial: HarnessReviewRead = EMPTY): StubReview => {
     answer: (read) => {
       current = read;
     },
+    answerViewer: (read) => {
+      viewer = read;
+    },
     answerWrite: (outcome) => {
       write = outcome;
     },
@@ -51,6 +58,7 @@ export const stubReview = (initial: HarnessReviewRead = EMPTY): StubReview => {
       asked.push(origin.ownerRepo);
       return current;
     },
+    readViewer: async () => viewer,
     createRequest: async (_origin, request) => {
       created.push(request);
       return write;

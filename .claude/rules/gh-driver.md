@@ -63,8 +63,9 @@ ADR-0014; the field carve-out is ADR-0018.
   fails the whole read.
 - Let only shape-checked named fields cross — request number, URL, state, draft
   flag, review decision, requested users and teams, head and base branch,
-  author login, and the title, which stays in `core`. Accept an app's
-  `app/<slug>` login, and read gh's slugless `app/` (no author) as `ghost`.
+  author login, the signed-in login, and the title, which stays in `core`.
+  Accept an app's `app/<slug>` login, and read gh's slugless `app/` (no
+  author) as `ghost`.
 - Refuse a branch name `git check-ref-format` would refuse.
 - Never put `gh` prose in an HTTP response, a notice or a log.
 - Sort matching requests explicitly; never take `[0]`. One branch can carry

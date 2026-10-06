@@ -4,6 +4,7 @@ import type {
   NewReviewRequest,
   ReviewRequest,
   ReviewWriteOutcome,
+  ViewerRead,
 } from "./harness-review-port";
 import { ProposalActions } from "./proposal-actions";
 import type { HarnessFacts } from "./read-harness-state";
@@ -54,6 +55,7 @@ function build(overrides?: {
   root?: string | undefined;
   facts?: Partial<HarnessFacts>;
   review?: HarnessReviewRead;
+  viewer?: ViewerRead;
   write?: ReviewWriteOutcome;
   promoteTree?: HarnessSkillTree[] | null;
   remoteTree?: HarnessSkillTree[] | null;
@@ -79,6 +81,8 @@ function build(overrides?: {
     },
     review: {
       readReviews: async () => overrides?.review ?? readOf([]),
+      readViewer: async () =>
+        overrides?.viewer ?? { outcome: "read", login: "fimoklei" },
       createRequest: async (_origin, made) => {
         calls.created.push(made);
         return write;
@@ -293,6 +297,72 @@ describe("ProposalActions · withdraw", () => {
       error: "request-gone",
     });
     expect(calls.closed).toEqual([]);
+  });
+});
+
+describe("ProposalActions · another contributor's proposal", () => {
+  const theirs = request({ author: "teammate" });
+
+  it("refuses to withdraw another contributor's open request", async () => {
+    const { actions, calls } = build({ review: readOf([theirs]) });
+
+    expect(await actions.withdraw("tdd", 45)).toEqual({
+      ok: false,
+      error: "proposed-by-other",
+    });
+    expect(calls.closed).toEqual([]);
+  });
+
+  it("refuses to create a request while another contributor's is open", async () => {
+    const { actions, calls } = build({ review: readOf([theirs]) });
+
+    expect(await actions.create("tdd")).toEqual({
+      ok: false,
+      error: "proposed-by-other",
+    });
+    expect(calls.created).toEqual([]);
+  });
+
+  it("refuses to reopen another contributor's closed request", async () => {
+    const closed = request({ state: "closed", author: "teammate" });
+    const { actions, calls } = build({ review: readOf([closed]) });
+
+    expect(await actions.reopen("tdd", 45)).toEqual({
+      ok: false,
+      error: "proposed-by-other",
+    });
+    expect(calls.reopened).toEqual([]);
+  });
+
+  it("refuses to reopen the author's own request over another's open one", async () => {
+    const { actions, calls } = build({
+      review: readOf([theirs, request({ number: 40, state: "closed" })]),
+    });
+
+    expect(await actions.reopen("tdd", 40)).toEqual({
+      ok: false,
+      error: "proposed-by-other",
+    });
+    expect(calls.reopened).toEqual([]);
+  });
+
+  it("withdraws the author's own request as before", async () => {
+    const { actions, calls } = build({
+      review: readOf([request({ author: "FimoKlei" })]),
+    });
+
+    expect(await actions.withdraw("tdd", 45)).toEqual({ ok: true });
+    expect(calls.closed).toEqual([45]);
+  });
+
+  it("refuses nothing when the sign-in cannot be read", async () => {
+    const { actions, calls } = build({
+      review: readOf([theirs]),
+      viewer: { outcome: "unavailable" },
+    });
+
+    expect(await actions.withdraw("tdd", 45)).toEqual({ ok: true });
+    expect(calls.closed).toEqual([45]);
   });
 });
 

@@ -71,6 +71,7 @@ function buildRead(overrides?: {
   // Defaults to a complete read that found no request.
   review?: HarnessReviewRead;
   readReviews?: HarnessReviewPort["readReviews"];
+  readViewer?: HarnessReviewPort["readViewer"];
   catchUp?: () => Promise<void>;
   readCloneSync?: () => Promise<CloneSync>;
 }) {
@@ -133,6 +134,9 @@ function buildRead(overrides?: {
             complete: true,
             limit: 100,
           }),
+      readViewer:
+        overrides?.readViewer ??
+        (async () => ({ outcome: "read", login: "fimoklei" })),
     },
   });
 }
@@ -621,6 +625,77 @@ describe("ReadHarnessState stages", () => {
     expect(seen).toEqual(["fimoklei/agent-harness"]);
   });
 
+  it("reads another contributor's open request as the one the skill waits on", async () => {
+    const seen: string[] = [];
+    const read = buildRead({
+      movementTrees: {
+        remote: { tdd: "same" },
+        promote: { tdd: onBranch("theirs") },
+        local: { tdd: "same" },
+        working: { tdd: "same" },
+      },
+      review: {
+        outcome: "read",
+        requests: [
+          {
+            number: 45,
+            url: "https://github.com/fimoklei/agent-harness/pull/45",
+            state: "open",
+            draft: false,
+            decision: null,
+            reviewers: [],
+            headOwner: "fimoklei",
+            headRepo: "agent-harness",
+            headBranch: "maestro/tdd",
+            headCommit: "3d0f1a9c5b7e2846f0a1c3d5e7b9081726354adf",
+            baseBranch: "main",
+            author: "teammate",
+            title: "Edit skill: tdd",
+          },
+        ],
+        complete: true,
+        limit: 100,
+      },
+      readViewer: async (origin) => {
+        seen.push(origin.ownerRepo);
+        return { outcome: "read", login: "fimoklei" };
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        stages: {
+          review: {
+            rows: [
+              {
+                skill: "tdd",
+                status: "proposed-by-other",
+                waitingOn: "teammate",
+              },
+            ],
+          },
+        },
+      },
+    });
+    expect(seen).toEqual(["fimoklei/agent-harness"]);
+  });
+
+  it("asks nobody who is signed in when no review read came back", async () => {
+    let asked = false;
+    const read = buildRead({
+      review: { outcome: "unavailable" },
+      readViewer: async () => {
+        asked = true;
+        return { outcome: "unavailable" };
+      },
+    });
+
+    await read.execute();
+
+    expect(asked).toBe(false);
+  });
+
   it("leaves the local stages readable when the review check is unavailable", async () => {
     const read = buildRead({
       review: { outcome: "unavailable" },
@@ -749,6 +824,7 @@ describe("ReadHarnessState refresh", () => {
           complete: true,
           limit: 100,
         }),
+        readViewer: async () => ({ outcome: "read", login: "fimoklei" }),
       },
     });
 

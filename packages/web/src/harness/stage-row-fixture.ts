@@ -21,6 +21,7 @@ export const stageRow = (
   comparison: stage === "pending-proposal" ? { kind: "default-branch" } : null,
   alsoIn: [],
   concurrentChange: false,
+  waitingOn: null,
   localOnly: false,
   remoteTree: null,
   restorable: false,
@@ -38,4 +39,5 @@ export const pullRequest = (
   headBranch: `maestro/${skill}`,
   baseBranch: "main",
   author: "fimoklei",
+  byOther: false,
 });

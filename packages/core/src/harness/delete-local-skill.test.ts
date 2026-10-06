@@ -56,6 +56,7 @@ function build(overrides?: {
   };
   const review: HarnessReviewPort = {
     readReviews: record("review", "readReviews"),
+    readViewer: record("review", "readViewer"),
     createRequest: record("review", "createRequest"),
     reopenRequest: record("review", "reopenRequest"),
     closeRequest: record("review", "closeRequest"),

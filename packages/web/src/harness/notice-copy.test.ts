@@ -235,6 +235,16 @@ const suites: [
         },
       ],
       [
+        "proposed-by-other",
+        {
+          level: "error",
+          label: "Another contributor's pull request is open",
+          message:
+            "Nothing was pushed. Wait until it is merged or closed, then Propose change again.",
+          detail: "Only one contributor proposes to a skill at a time.",
+        },
+      ],
+      [
         "source-changed",
         {
           level: "error",
@@ -322,6 +332,16 @@ const suites: [
             "Nothing was pushed. Select a View pull request link to close the extras, then Delete skill again.",
           detail:
             "More than one open pull request matches this skill's branch.",
+        },
+      ],
+      [
+        "proposed-by-other",
+        {
+          level: "error",
+          label: "Another contributor's pull request is open",
+          message:
+            "Nothing was pushed. Wait until it is merged or closed, then Delete skill again.",
+          detail: "Only one contributor proposes to a skill at a time.",
         },
       ],
       [
@@ -749,6 +769,16 @@ const suites: [
             "Select a View pull request link to close the extras, then select Re-read Harness.",
           detail:
             "More than one open pull request matches this skill's branch.",
+        },
+      ],
+      [
+        "proposed-by-other",
+        {
+          level: "error",
+          label: "Another contributor's pull request",
+          message:
+            "Only its author can change it. Select Re-read Harness to read GitHub again.",
+          detail: "Only one contributor proposes to a skill at a time.",
         },
       ],
     ],
@@ -1199,6 +1229,7 @@ describe("the deletion vocabulary", () => {
       "promote-in-progress",
       "promote-failed",
       "extra-requests",
+      "proposed-by-other",
       "confirmation-stale",
       "not-deleted",
       "sparse-checkout",

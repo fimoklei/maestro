@@ -36,11 +36,14 @@ const FAMILIES: Record<StageStatus, StatusFamily> = {
   "proposal-merged": "neutral",
   "proposal-closed": "attention",
   "multiple-pull-requests": "attention",
+  // Nothing for the author to fix: the wait ends on GitHub (#1373).
+  "proposed-by-other": "neutral",
   "not-yet-released": "neutral",
 };
 
 // Where a change stands only: the Change column names what it does (#1399).
-const READINGS: Record<StageStatus, string> = {
+// Proposed by {login} carries a name, so `statusReading` builds it.
+const READINGS: Record<Exclude<StageStatus, "proposed-by-other">, string> = {
   "not-yet-proposed": "Not yet proposed",
   "new-local-work": "New local work",
   draft: "Draft",
@@ -58,7 +61,9 @@ const READINGS: Record<StageStatus, string> = {
 export const statusReading = (row: HarnessStageRow): StatusReading => {
   const family = FAMILIES[row.status];
   return reading(
-    READINGS[row.status],
+    row.status === "proposed-by-other"
+      ? `Proposed by ${row.waitingOn ?? "another contributor"}`
+      : READINGS[row.status],
     family,
     family === "attention" ? "⚠" : undefined,
   );
@@ -117,6 +122,9 @@ const listOf = (parts: string[]): string => {
 
 const first = (row: HarnessStageRow): string => requestNumbers(row)[0] ?? "";
 
+const waitSentence = (row: HarnessStageRow, login: string): Copy =>
+  phrase`${named(login)} has pull request ${first(row)} open for this skill. Wait until it is merged or closed.`;
+
 // Cause first, then `Select {control} to {result}` with the row's own control
 // (#838). A status with no cockpit control names the place instead.
 export function detailSentence(
@@ -129,6 +137,10 @@ export function detailSentence(
   const deletion = row.change === "deletion";
   // One next action; Restore skill stays in the row menu (#1396).
   const deleteLocally = phrase`This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
+  // Local work behind another contributor's request offers no Propose change.
+  if (row.waitingOn !== null) {
+    return waitSentence(row, row.waitingOn);
+  }
   switch (row.status) {
     case "not-yet-proposed":
       if (deletion) {
@@ -166,10 +178,16 @@ export function detailSentence(
       return deletion
         ? `Pull request ${first(row)} merged the deletion. Select Re-read Harness to read GitHub again.`
         : `Pull request ${first(row)} was merged. Select Re-read Harness to read GitHub again.`;
-    case "proposal-closed":
-      return deletion && row.folderOnDisk
-        ? `Pull request ${first(row)} was closed without merging. The folder is back in your clone, so the skill stays in the Harness.`
+    case "proposal-closed": {
+      if (deletion && row.folderOnDisk) {
+        return `Pull request ${first(row)} was closed without merging. The folder is back in your clone, so the skill stays in the Harness.`;
+      }
+      // Only its author reopens it, so the menu offers no Reopen proposal.
+      const [closed] = row.requests;
+      return closed?.byOther === true
+        ? phrase`${named(closed.author)}'s pull request ${first(row)} was closed without merging. Select Propose change to send your own change.`
         : `Pull request ${first(row)} was closed without merging. Select Reopen proposal to continue it.`;
+    }
     case "multiple-pull-requests":
       // The row's own link labels are numbered here, so the sentence names
       // one that exists rather than a bare View pull request (#883).
@@ -178,6 +196,8 @@ export function detailSentence(
           ? `Pull requests ${listOf(requestNumbers(row))} both match this branch.`
           : "Several pull requests match this branch."
       } Open the extra pull requests on GitHub and close them.`;
+    case "proposed-by-other":
+      return `Another contributor has pull request ${first(row)} open for this skill. Wait until it is merged or closed.`;
     case "not-yet-released":
       return releaseSentence(row, branch, release, publish);
   }
@@ -241,6 +261,7 @@ const REQUEST_STATES: Partial<Record<StageStatus, string>> = {
   "changes-requested": "Open",
   "approved-awaiting-merge": "Open",
   "multiple-pull-requests": "Open",
+  "proposed-by-other": "Open",
   "proposal-merged": "Merged",
   "proposal-closed": "Closed",
 };

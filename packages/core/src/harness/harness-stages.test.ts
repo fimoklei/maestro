@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { GitOrigin } from "../deploy/git-origin";
-import type { HarnessReviewRead, ReviewRequest } from "./harness-review-port";
+import type {
+  HarnessReviewRead,
+  ReviewRequest,
+  ViewerRead,
+} from "./harness-review-port";
 import {
   buildStages,
   type HarnessStageRead,
@@ -60,6 +64,7 @@ const stages = (over: Partial<StageInput> = {}) =>
     trees: SETTLED,
     atMergeBase: null,
     review: EMPTY_READ,
+    viewer: { outcome: "read", login: "fimoklei" },
     release: [],
     ...over,
   });
@@ -259,6 +264,7 @@ describe("Pending proposal membership", () => {
         headBranch: "maestro/tdd",
         baseBranch: "main",
         author: "fimoklei",
+        byOther: false,
       },
     ]);
   });
@@ -326,6 +332,7 @@ describe("Pending review membership", () => {
         headBranch: "maestro/tdd",
         baseBranch: "main",
         author: "fimoklei",
+        byOther: false,
       },
     ]);
   });
@@ -384,6 +391,7 @@ describe("Pending review membership", () => {
         headBranch: "maestro/tdd",
         baseBranch: "main",
         author: "fimoklei",
+        byOther: false,
       },
     ]);
   });
@@ -938,5 +946,87 @@ describe("The change a row carries", () => {
     });
     expect(statuses(built.proposal)).toEqual(["tdd:not-yet-proposed"]);
     expect(statuses(built.release)).toEqual(["a:not-yet-released"]);
+  });
+});
+
+describe("Another contributor's open proposal", () => {
+  // The local copy differs from the branch, so the skill sits in both stages.
+  const trees: HarnessSkillTrees = {
+    remote: { tdd: "remote" },
+    promote: { tdd: onBranch("theirs") },
+    local: { tdd: "remote" },
+    working: { tdd: "mine" },
+  };
+  const theirs = reviewOf([request({ author: "teammate" })]);
+
+  it("reads the review row as proposed by the request's author", () => {
+    const read = stages({ trees, review: theirs });
+    const row = oneRow(read.review);
+    expect(row.status).toBe("proposed-by-other");
+    expect(row.waitingOn).toBe("teammate");
+  });
+
+  it("makes the local row wait too, keeping it pending proposal", () => {
+    const row = oneRow(stages({ trees, review: theirs }).proposal);
+    expect(row.status).toBe("new-local-work");
+    expect(row.waitingOn).toBe("teammate");
+  });
+
+  it("compares logins without regard to case, as GitHub does", () => {
+    const own = reviewOf([request({ author: "FimoKlei" })]);
+    const read = stages({ trees, review: own });
+    expect(oneRow(read.review).status).toBe("waiting-for-review");
+    expect(oneRow(read.review).waitingOn).toBeNull();
+    expect(oneRow(read.proposal).waitingOn).toBeNull();
+  });
+
+  it.each<[string, Partial<StageInput>]>([
+    ["gh is unavailable", { viewer: { outcome: "unavailable" } }],
+    ["the sign-in read failed", { viewer: { outcome: "failed" } }],
+    [
+      "the review read filled its bound",
+      { review: reviewOf([request({ author: "teammate" })], false) },
+    ],
+    [
+      "several open requests match",
+      {
+        review: reviewOf([
+          request({ author: "teammate" }),
+          request({ number: 46, author: "teammate" }),
+        ]),
+      },
+    ],
+  ])("makes nothing wait when %s", (_, over) => {
+    const read = stages({ trees, review: theirs, ...over });
+    for (const row of [...rowsOf(read.proposal), ...rowsOf(read.review)]) {
+      expect(row.status).not.toBe("proposed-by-other");
+      expect(row.waitingOn).toBeNull();
+    }
+  });
+
+  it("never waits on another contributor's closed request", () => {
+    const closed = reviewOf([request({ state: "closed", author: "teammate" })]);
+    const read = stages({ trees, review: closed });
+    expect(oneRow(read.review).status).toBe("proposal-closed");
+    expect(oneRow(read.review).waitingOn).toBeNull();
+    expect(oneRow(read.proposal).waitingOn).toBeNull();
+  });
+
+  it("marks each linked request another contributor opened", () => {
+    const closed = reviewOf([
+      request({ state: "closed", author: "teammate" }),
+      request({ number: 40, state: "closed", author: "fimoklei" }),
+    ]);
+    const links = oneRow(stages({ trees, review: closed }).review).requests;
+    expect(links.map((link) => [link.number, link.byOther])).toEqual([
+      [45, true],
+      [40, false],
+    ]);
+  });
+
+  it("marks no link another contributor's while the sign-in is unknown", () => {
+    const viewer: ViewerRead = { outcome: "unavailable" };
+    const read = stages({ trees, review: theirs, viewer });
+    expect(oneRow(read.review).requests[0]?.byOther).toBe(false);
   });
 });

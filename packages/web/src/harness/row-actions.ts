@@ -95,15 +95,21 @@ function stageItems(
 
   if (row.stage === "pending-proposal") {
     return [
-      {
-        // First, so the next step is one press away (#1045).
-        label:
-          row.status === "new-local-work"
-            ? "Update proposal"
-            : "Propose change",
-        disabled: !enabled,
-        onSelect: () => handlers.promote(row),
-      },
+      // Another contributor's open request holds the branch: local work
+      // waits for it to end (#1373).
+      ...(row.waitingOn === null
+        ? [
+            {
+              // First, so the next step is one press away (#1045).
+              label:
+                row.status === "new-local-work"
+                  ? "Update proposal"
+                  : "Propose change",
+              disabled: !enabled,
+              onSelect: () => handlers.promote(row),
+            },
+          ]
+        : []),
       ...links,
       ...(offersDiscard(row)
         ? [
@@ -147,11 +153,13 @@ function stageItems(
         },
       ];
     case "proposal-closed": {
-      const reopens = row.requests.map((request) => ({
-        label: named("Reopen proposal", request, many),
-        disabled: !enabled,
-        onSelect: () => handlers.reopen(row.skill, request.number),
-      }));
+      const reopens = row.requests
+        .filter((request) => !request.byOther)
+        .map((request) => ({
+          label: named("Reopen proposal", request, many),
+          disabled: !enabled,
+          onSelect: () => handlers.reopen(row.skill, request.number),
+        }));
       // A deletion opens no proposal dialog, and reopening it once the folder
       // is restored would propose deleting a skill the author kept (#1384).
       if (row.change === "deletion") {
@@ -170,6 +178,7 @@ function stageItems(
       ];
     }
     case "multiple-pull-requests":
+    case "proposed-by-other":
       return links;
     default:
       return sole === undefined
