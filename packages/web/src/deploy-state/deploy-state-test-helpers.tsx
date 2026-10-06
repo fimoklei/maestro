@@ -136,7 +136,14 @@ export function cellsOf(name: string): string[] {
     .getAllByRole("gridcell")
     .filter((_, index) => index !== GITHUB_CELL)
     .slice(0, 4)
-    .map((cell) => cell.textContent ?? "");
+    .map(visibleText);
+}
+
+// What a sighted reader sees: a word only a screen reader hears is left out.
+function visibleText(cell: HTMLElement): string {
+  const copy = cell.cloneNode(true) as HTMLElement;
+  for (const hidden of copy.querySelectorAll(".sr-only")) hidden.remove();
+  return copy.textContent ?? "";
 }
 
 export async function findRow(name: string): Promise<HTMLElement> {
