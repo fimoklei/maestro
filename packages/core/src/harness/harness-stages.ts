@@ -22,7 +22,7 @@ const STAGE_ORDER = [
   "pending-release",
 ] as const satisfies readonly HarnessStage[];
 
-type ProposalStatus = "not-yet-proposed" | "new-local-work" | "deleted-locally";
+type ProposalStatus = "not-yet-proposed" | "new-local-work";
 
 export type ReviewStatus =
   | "draft"
@@ -34,7 +34,12 @@ export type ReviewStatus =
   | "proposal-closed"
   | "multiple-pull-requests";
 
-export type ReleaseStatus = "added" | "changed" | "renamed" | "deleted";
+type ReleaseStatus = "not-yet-released";
+
+// What merging the row's change does to the Harness, judged against its
+// default branch. A rename is one change only once merged; before that its
+// folders read as an addition and a deletion.
+export type HarnessChange = "addition" | "edit" | "deletion" | "rename";
 
 export type StageStatus = ProposalStatus | ReviewStatus | ReleaseStatus;
 
@@ -55,8 +60,8 @@ export type HarnessStageRow = {
   stage: HarnessStage;
   skill: string;
   status: StageStatus;
-  // This stage's own deletion fact. Never read across stages.
-  deletion: boolean;
+  // This stage's own change. Never read across stages.
+  change: HarnessChange;
   requests: ReviewRequestLink[];
   reviewers: RequestedReviewer[];
   comparison: ProposalComparison | null;
@@ -88,11 +93,18 @@ export type HarnessStages = {
   release: HarnessStageRead;
 };
 
-const RELEASE_STATUS: Record<SkillMovement["kind"], ReleaseStatus> = {
-  added: "added",
-  changed: "changed",
-  renamed: "renamed",
-  removed: "deleted",
+const RELEASE_CHANGE: Record<SkillMovement["kind"], HarnessChange> = {
+  added: "addition",
+  changed: "edit",
+  renamed: "rename",
+  removed: "deletion",
+};
+
+const changeOf = (deletion: boolean, remote: string | null): HarnessChange => {
+  if (deletion) {
+    return "deletion";
+  }
+  return remote === null ? "addition" : "edit";
 };
 
 export type StageInput = {
@@ -171,11 +183,12 @@ const blankRow = (
   stage: HarnessStage,
   skill: string,
   status: StageStatus,
+  change: HarnessChange,
 ): HarnessStageRow => ({
   stage,
   skill,
   status,
-  deletion: false,
+  change,
   requests: [],
   reviewers: [],
   comparison: null,
@@ -214,9 +227,9 @@ const releaseStage = (
       ...blankRow(
         "pending-release",
         movement.name,
-        RELEASE_STATUS[movement.kind],
+        "not-yet-released",
+        RELEASE_CHANGE[movement.kind],
       ),
-      deletion: movement.kind === "removed",
       folderOnDisk: isOnDisk(trees, movement.name),
       previousName: movement.previousName ?? null,
     })),
@@ -295,13 +308,9 @@ const proposalStage = (
       ...blankRow(
         "pending-proposal",
         skill,
-        isLocalDeletion(hashes)
-          ? "deleted-locally"
-          : proposal === null
-            ? "not-yet-proposed"
-            : "new-local-work",
+        proposal === null ? "not-yet-proposed" : "new-local-work",
+        changeOf(isLocalDeletion(hashes), hashes.remote),
       ),
-      deletion: isLocalDeletion(hashes),
       restorable: isRestorable(trees, skill),
       folderOnDisk: isOnDisk(trees, skill),
       requests: sole === undefined ? [] : [link(sole)],
@@ -360,14 +369,17 @@ const reviewStage = (
     const open = matching.filter((request) => request.state === "open");
     const proposal = currentProposal(trees, skill, matches, complete);
     // The branch's deletion fact and the disk's can disagree, so both travel.
+    const change = changeOf(
+      proposal !== null && proposal.tree === null,
+      trees.remote[skill] ?? null,
+    );
     const local = {
-      deletion: proposal !== null && proposal.tree === null,
       restorable: isRestorable(trees, skill),
       folderOnDisk: isOnDisk(trees, skill),
     };
     if (open.length > 1) {
       rows.push({
-        ...blankRow("pending-review", skill, "multiple-pull-requests"),
+        ...blankRow("pending-review", skill, "multiple-pull-requests", change),
         ...local,
         requests: open.map(link),
       });
@@ -376,7 +388,7 @@ const reviewStage = (
     const sole = open.length === 1 ? open[0] : undefined;
     if (sole !== undefined) {
       rows.push({
-        ...blankRow("pending-review", skill, openStatus(sole)),
+        ...blankRow("pending-review", skill, openStatus(sole), change),
         ...local,
         requests: [link(sole)],
         reviewers: sole.reviewers,
@@ -394,7 +406,7 @@ const reviewStage = (
     })[0];
     if (settled !== undefined) {
       rows.push({
-        ...blankRow("pending-review", skill, settled.status),
+        ...blankRow("pending-review", skill, settled.status, change),
         ...local,
         requests: settled.requests.map(link),
       });
@@ -403,7 +415,7 @@ const reviewStage = (
     // A bounded read cannot prove a request absent.
     if (review.complete) {
       rows.push({
-        ...blankRow("pending-review", skill, "pull-request-missing"),
+        ...blankRow("pending-review", skill, "pull-request-missing", change),
         ...local,
       });
     }

@@ -1,9 +1,16 @@
-import type { HarnessStage, HarnessStageRow, StageStatus } from "@maestro/core";
+import type {
+  HarnessChange,
+  HarnessStage,
+  HarnessStageRow,
+  StageStatus,
+} from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { machineValues } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
   alsoInWords,
+  CHANGE_WORDS,
+  changeSentence,
   crossStageLine,
   deployedCopiesLine,
   detailSentence,
@@ -26,7 +33,7 @@ const row = (
   stage,
   skill: "tdd",
   status,
-  deletion: false,
+  change: "edit",
   requests: [],
   reviewers: [],
   comparison: null,
@@ -43,7 +50,6 @@ const row = (
 const ALL_STATUSES: StageStatus[] = [
   "not-yet-proposed",
   "new-local-work",
-  "deleted-locally",
   "draft",
   "waiting-for-review",
   "changes-requested",
@@ -52,13 +58,14 @@ const ALL_STATUSES: StageStatus[] = [
   "proposal-merged",
   "proposal-closed",
   "multiple-pull-requests",
-  "added",
-  "changed",
-  "renamed",
-  "deleted",
+  "not-yet-released",
 ];
 
-const CONTEXT = { defaultBranch: "main", releasedVersion: "v1.4.0" };
+const CONTEXT = {
+  defaultBranch: "main",
+  releasedVersion: "v1.4.0",
+  origin: "github.com/fimoklei/agent-harness",
+};
 const request = pullRequest(45);
 
 describe("the empty journey", () => {
@@ -76,14 +83,10 @@ describe("status readings", () => {
     for (const [stage, status] of [
       ["pending-proposal", "not-yet-proposed"],
       ["pending-proposal", "new-local-work"],
-      ["pending-proposal", "deleted-locally"],
       ["pending-review", "draft"],
       ["pending-review", "waiting-for-review"],
       ["pending-review", "proposal-merged"],
-      ["pending-release", "added"],
-      ["pending-release", "changed"],
-      ["pending-release", "renamed"],
-      ["pending-release", "deleted"],
+      ["pending-release", "not-yet-released"],
     ] as [HarnessStage, StageStatus][]) {
       expect(statusReading(row(stage, status)).family).toBe("neutral");
     }
@@ -122,7 +125,6 @@ describe("status readings", () => {
     const readings: [StageStatus, string][] = [
       ["not-yet-proposed", "Not yet proposed"],
       ["new-local-work", "New local work"],
-      ["deleted-locally", "Deleted locally"],
       ["waiting-for-review", "Waiting for review"],
       ["draft", "Draft"],
       ["changes-requested", "Changes requested"],
@@ -131,166 +133,187 @@ describe("status readings", () => {
       ["proposal-merged", "Proposal merged"],
       ["proposal-closed", "Proposal closed"],
       ["multiple-pull-requests", "Multiple pull requests"],
-      ["added", "Added"],
-      ["changed", "Changed"],
-      ["renamed", "Renamed"],
-      ["deleted", "Deleted"],
+      ["not-yet-released", "Not yet released"],
     ];
     for (const [status, word] of readings) {
       expect(statusReading(row("pending-review", status)).word).toBe(word);
     }
   });
 
-  it("gives a deletion one reading in each stage of the journey", () => {
-    // The six readings of #847, each in the stage that carries it.
-    const six: [HarnessStage, StageStatus, string][] = [
-      ["pending-proposal", "deleted-locally", "Deleted locally"],
-      ["pending-review", "draft", "Deletion in draft"],
-      ["pending-review", "waiting-for-review", "Deletion waiting for review"],
-      ["pending-review", "changes-requested", "Deletion changes requested"],
-      [
-        "pending-review",
-        "approved-awaiting-merge",
-        "Deletion approved, awaiting merge",
-      ],
-      ["pending-release", "deleted", "Deleted"],
-      ["pending-review", "proposal-merged", "Deletion merged"],
-    ];
-    for (const [stage, status, word] of six) {
-      expect(statusReading(row(stage, status, { deletion: true })).word).toBe(
-        word,
-      );
+  // The Change column names the kind, so a status never does (#1399).
+  it("reads a deletion's status as any other row's", () => {
+    for (const change of ["addition", "edit", "deletion", "rename"] as const) {
+      for (const status of ALL_STATUSES) {
+        expect(
+          statusReading(row("pending-review", status, { change })),
+        ).toEqual(statusReading(row("pending-review", status)));
+      }
     }
   });
+});
 
-  it("keeps a deletion's family with its status", () => {
-    expect(
-      statusReading(
-        row("pending-review", "changes-requested", { deletion: true }),
-      ),
-    ).toEqual({
-      word: "Deletion changes requested",
-      family: "attention",
-      glyph: "⚠",
+// What merging the row's change does to the Harness (#1399).
+describe("the Change column", () => {
+  it("names each change as its word", () => {
+    expect(CHANGE_WORDS).toEqual({
+      addition: "Addition",
+      edit: "Edit",
+      deletion: "Deletion",
+      rename: "Rename",
     });
+  });
+
+  it.each<[HarnessChange, string]>([
+    ["addition", "This change adds tdd to github.com/fimoklei/agent-harness."],
+    ["edit", "This change edits tdd in github.com/fimoklei/agent-harness."],
+    [
+      "deletion",
+      "This change deletes tdd from github.com/fimoklei/agent-harness.",
+    ],
+    [
+      "rename",
+      "This change renames testing to tdd in github.com/fimoklei/agent-harness.",
+    ],
+  ])("states what the %s does to the Harness", (change, sentence) => {
+    const copy = changeSentence(
+      row("pending-release", "not-yet-released", {
+        change,
+        previousName: "testing",
+      }),
+      CONTEXT,
+    );
+    expect(plainText(copy)).toBe(sentence);
+    expect(machineValues(copy)).toEqual(["github.com/fimoklei/agent-harness"]);
+  });
+
+  // The release read can miss the old name; the sentence never invents one.
+  it("states a rename without the old name when the read has none", () => {
+    expect(
+      plainText(
+        changeSentence(
+          row("pending-release", "not-yet-released", { change: "rename" }),
+          CONTEXT,
+        ),
+      ),
+    ).toBe("This change renames tdd in github.com/fimoklei/agent-harness.");
   });
 });
 
 describe("Detail sentences", () => {
   // Cause first, then `Select {control} to {result}` naming the row's own
   // control (#838). A status with no cockpit control names the place instead.
-  const approved: [StageStatus, boolean, string][] = [
+  const approved: [StageStatus, HarnessChange, string][] = [
     [
       "not-yet-proposed",
-      false,
+      "edit",
       "Your local copy differs from main. Select Propose change to send it for review.",
     ],
     [
       "not-yet-proposed",
-      true,
-      "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+      "addition",
+      "This skill is not on main yet. Select Propose change to send it for review.",
     ],
     [
-      "deleted-locally",
-      true,
+      "not-yet-proposed",
+      "deletion",
       "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
     ],
     [
       "new-local-work",
-      false,
+      "edit",
       "You edited this skill after pull request #45. Select Update proposal to send the edits.",
     ],
     [
       "draft",
-      false,
+      "edit",
       "Pull request #45 is a draft. Select View pull request to mark it ready for review.",
     ],
     [
       "draft",
-      true,
+      "deletion",
       "Pull request #45 proposes deleting this skill and is still a draft. Select View pull request to mark it ready for review.",
     ],
     [
       "waiting-for-review",
-      false,
+      "edit",
       "Pull request #45 is open and waiting for a reviewer.",
     ],
     [
       "waiting-for-review",
-      true,
+      "deletion",
       "Pull request #45 proposes deleting this skill and is waiting for a reviewer.",
     ],
     [
       "changes-requested",
-      false,
+      "edit",
       "A reviewer asked for changes on pull request #45. Select Update proposal to send your changes.",
     ],
     [
       "changes-requested",
-      true,
+      "deletion",
       "A reviewer asked for changes on the deletion in pull request #45. Select Update proposal to send your changes.",
     ],
     [
       "approved-awaiting-merge",
-      false,
+      "edit",
       "Pull request #45 is approved. Select View pull request to merge it.",
     ],
     [
       "approved-awaiting-merge",
-      true,
+      "deletion",
       "Pull request #45 proposes deleting this skill and is approved. Select View pull request to merge it.",
     ],
     [
       "pull-request-missing",
-      false,
+      "edit",
       "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
     ],
     [
       "proposal-merged",
-      false,
+      "edit",
       "Pull request #45 was merged. Select Re-read Harness to read GitHub again.",
     ],
     [
       "proposal-merged",
-      true,
+      "deletion",
       "Pull request #45 merged the deletion. Select Re-read Harness to read GitHub again.",
     ],
     [
       "proposal-closed",
-      false,
+      "edit",
       "Pull request #45 was closed without merging. Select Reopen proposal to continue it.",
     ],
     [
-      "added",
-      false,
+      "not-yet-released",
+      "addition",
       "This skill was added to main after release v1.4.0. Select Create a release to publish it.",
     ],
     [
-      "changed",
-      false,
+      "not-yet-released",
+      "edit",
       "This skill changed on main after release v1.4.0. Select Create a release to publish it.",
     ],
     [
-      "renamed",
-      false,
+      "not-yet-released",
+      "rename",
       "This skill was renamed from testing on main. Select Create a release to publish it.",
     ],
     [
-      "deleted",
-      false,
+      "not-yet-released",
+      "deletion",
       "This skill was deleted from main after release v1.4.0. Select Create a release to publish the deletion.",
     ],
   ];
 
   it.each(approved)(
-    "states the approved sentence for %s (deletion: %s)",
-    (status, deletion, sentence) => {
+    "states the approved sentence for %s (change: %s)",
+    (status, change, sentence) => {
       expect(
         plainText(
           detailSentence(
             row("pending-review", status, {
               requests: [request],
-              deletion,
+              change,
               previousName: "testing",
             }),
             CONTEXT,
@@ -317,14 +340,14 @@ describe("Detail sentences", () => {
   });
 
   // One next action: Restore skill stays in the row menu (#1396).
-  it.each(["not-yet-proposed", "deleted-locally"] as const)(
+  it.each(["not-yet-proposed"] as const)(
     "names Propose change alone on a restorable %s row",
     (status) => {
       expect(
         plainText(
           detailSentence(
             row("pending-proposal", status, {
-              deletion: true,
+              change: "deletion",
               restorable: true,
             }),
             CONTEXT,
@@ -343,7 +366,7 @@ describe("Detail sentences", () => {
         detailSentence(
           row("pending-review", "proposal-closed", {
             requests: [request],
-            deletion: true,
+            change: "deletion",
             folderOnDisk: true,
           }),
           CONTEXT,
@@ -355,19 +378,34 @@ describe("Detail sentences", () => {
   });
 
   it("names the next step when nothing is released yet", () => {
-    const unreleased = { defaultBranch: "main", releasedVersion: null };
+    const unreleased = { ...CONTEXT, releasedVersion: null };
     expect(
-      plainText(detailSentence(row("pending-release", "added"), unreleased)),
+      plainText(
+        detailSentence(
+          row("pending-release", "not-yet-released", { change: "addition" }),
+          unreleased,
+        ),
+      ),
     ).toBe(
       "This skill is on main and in no release yet. Select Create a release to publish it.",
     );
     expect(
-      plainText(detailSentence(row("pending-release", "deleted"), unreleased)),
+      plainText(
+        detailSentence(
+          row("pending-release", "not-yet-released", { change: "deletion" }),
+          unreleased,
+        ),
+      ),
     ).toBe(
       "This skill is no longer on main. Select Create a release to publish the deletion.",
     );
     expect(
-      plainText(detailSentence(row("pending-release", "renamed"), unreleased)),
+      plainText(
+        detailSentence(
+          row("pending-release", "not-yet-released", { change: "rename" }),
+          unreleased,
+        ),
+      ),
     ).toBe(
       "This skill was renamed on main. Select Create a release to publish it.",
     );
@@ -424,17 +462,18 @@ describe("Detail sentences", () => {
   });
 
   it.each([
-    ["pending-proposal", "deleted-locally", ["main"]],
-    ["pending-proposal", "not-yet-proposed", ["main"]],
-    ["pending-release", "added", ["main", "v1.4.0"]],
-    ["pending-release", "changed", ["main", "v1.4.0"]],
-    ["pending-release", "renamed", ["main"]],
-    ["pending-release", "deleted", ["main", "v1.4.0"]],
+    ["pending-proposal", "not-yet-proposed", "deletion", ["main"]],
+    ["pending-proposal", "not-yet-proposed", "addition", ["main"]],
+    ["pending-proposal", "not-yet-proposed", "edit", ["main"]],
+    ["pending-release", "not-yet-released", "addition", ["main", "v1.4.0"]],
+    ["pending-release", "not-yet-released", "edit", ["main", "v1.4.0"]],
+    ["pending-release", "not-yet-released", "rename", ["main"]],
+    ["pending-release", "not-yet-released", "deletion", ["main", "v1.4.0"]],
   ] as const)(
-    "sets the branch and release apart in %s %s",
-    (stage, status, values) => {
+    "sets the branch and release apart in %s %s (%s)",
+    (stage, status, change, values) => {
       const sentence = detailSentence(
-        row(stage, status, { previousName: "testing" }),
+        row(stage, status, { change, previousName: "testing" }),
         CONTEXT,
       );
 
@@ -443,10 +482,10 @@ describe("Detail sentences", () => {
   );
 
   it("keeps the fallback branch words in plain text", () => {
-    const sentence = detailSentence(row("pending-release", "added"), {
-      defaultBranch: null,
-      releasedVersion: "v1.4.0",
-    });
+    const sentence = detailSentence(
+      row("pending-release", "not-yet-released", { change: "addition" }),
+      { ...CONTEXT, defaultBranch: null },
+    );
 
     expect(machineValues(sentence)).toEqual(["v1.4.0"]);
   });
@@ -455,7 +494,6 @@ describe("Detail sentences", () => {
     const statuses = [
       "not-yet-proposed",
       "new-local-work",
-      "deleted-locally",
       "draft",
       "waiting-for-review",
       "changes-requested",
@@ -463,17 +501,19 @@ describe("Detail sentences", () => {
       "pull-request-missing",
       "proposal-merged",
       "proposal-closed",
-      "added",
-      "changed",
-      "renamed",
-      "deleted",
+      "not-yet-released",
     ] as const;
     for (const status of statuses) {
-      for (const deletion of [false, true]) {
+      for (const change of [
+        "addition",
+        "edit",
+        "deletion",
+        "rename",
+      ] as const) {
         const sentence = detailSentence(
           row("pending-review", status, {
             requests: [request],
-            deletion,
+            change,
             previousName: "testing",
           }),
           CONTEXT,
@@ -557,16 +597,18 @@ describe("deployed copies line", () => {
 
   it("says nothing for a skill the default branch does not hold", () => {
     expect(
-      deployedCopiesLine(row("pending-proposal", "not-yet-proposed")),
+      deployedCopiesLine(
+        row("pending-proposal", "not-yet-proposed", { change: "addition" }),
+      ),
     ).toBeNull();
   });
 
   it("says nothing for a local deletion", () => {
     expect(
       deployedCopiesLine(
-        row("pending-proposal", "deleted-locally", {
+        row("pending-proposal", "not-yet-proposed", {
           remoteTree: "abc",
-          deletion: true,
+          change: "deletion",
         }),
       ),
     ).toBeNull();
@@ -575,7 +617,7 @@ describe("deployed copies line", () => {
   it("says nothing outside Pending proposal", () => {
     expect(
       deployedCopiesLine(
-        row("pending-release", "changed", { remoteTree: "abc" }),
+        row("pending-release", "not-yet-released", { remoteTree: "abc" }),
       ),
     ).toBeNull();
   });

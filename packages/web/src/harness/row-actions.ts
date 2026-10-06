@@ -25,7 +25,9 @@ export type RowActionHandlers = {
 export const offersDiscard = (
   row: HarnessStageRow,
 ): row is HarnessStageRow & { remoteTree: string } =>
-  row.status === "not-yet-proposed" && !row.deletion && row.remoteTree !== null;
+  row.status === "not-yet-proposed" &&
+  row.change !== "deletion" &&
+  row.remoteTree !== null;
 
 // A null commit takes the item off the menu: there is nothing to confirm.
 export type RestoreGate = { enabled: boolean; commit: string | null };
@@ -152,7 +154,7 @@ function stageItems(
       }));
       // A deletion opens no proposal dialog, and reopening it once the folder
       // is restored would propose deleting a skill the author kept (#1384).
-      if (row.deletion) {
+      if (row.change === "deletion") {
         return [...links, ...(row.folderOnDisk ? [] : reopens)];
       }
       return [

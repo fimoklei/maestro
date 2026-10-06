@@ -7,11 +7,15 @@ import {
   useDataTableRowActive,
 } from "../ui/data-table";
 import { HoverCard } from "../ui/hover-card";
+import { type Copy, plainText } from "../ui/phrase";
+import { PhraseText } from "../ui/phrase-text";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
+import { ChangeCard } from "./change-card";
 import { PullRequestCell } from "./pull-request-cell";
 import {
   alsoInWords,
+  changeSentence,
   crossStageLine,
   detailSentence,
   reviewerLine,
@@ -48,11 +52,14 @@ function StatusCard({
   freshness: string;
 }) {
   const active = useDataTableRowActive();
+  // The keyboard opens this card alone, so it also says what the Change card
+  // says (#1399).
   const lines = [
     detailSentence(row, context),
+    changeSentence(row, context),
     reviewerLine(row),
     crossStageLine(row),
-  ].filter((line): line is string => line !== null);
+  ].filter((line): line is Copy => line !== null);
   return (
     <HoverCard
       focused={active}
@@ -62,8 +69,8 @@ function StatusCard({
             <StatusBadge reading={row.reading} />
           </span>
           {lines.map((line) => (
-            <p key={line} className="m-0 text-gray-12">
-              {line}
+            <p key={plainText(line)} className="m-0 text-gray-12">
+              <PhraseText copy={line} />
             </p>
           ))}
           <p className="m-0 border-divider border-t pt-inline text-gray-11">
@@ -103,6 +110,13 @@ export const harnessColumns = ({
       ),
       meta: { width: 58 },
     }),
+    helper.accessor("change", {
+      header: "Change",
+      cell: ({ row }) => <ChangeCard row={row.original} context={context} />,
+      // The longest word, Addition or Deletion, fits. Hidden after Pull
+      // request: the pane names the change too.
+      meta: { width: 20, priority: 4 },
+    }),
     helper.accessor("reading", {
       header: "Status",
       cell: ({ row }) => (
@@ -114,7 +128,7 @@ export const harnessColumns = ({
       ),
       sortFn: (a, b) =>
         readingRank(a.original.reading) - readingRank(b.original.reading),
-      // The longest reading, Deletion approved, awaiting merge, fits (#994).
+      // The longest reading, Approved, awaiting merge, fits (#994).
       meta: { width: 62 },
     }),
     helper.display({

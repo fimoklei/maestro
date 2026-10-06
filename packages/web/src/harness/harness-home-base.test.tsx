@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import {
   harnessRegion,
   installHarnessHooks,
@@ -46,7 +47,11 @@ describe("Harness home base", () => {
         body: withStages(RELEASED, {
           proposal: [row("pending-proposal", "tdd", "not-yet-proposed")],
           review: [row("pending-review", "lint-rules", "waiting-for-review")],
-          release: [row("pending-release", "research", "added")],
+          release: [
+            row("pending-release", "research", "not-yet-released", {
+              change: "addition",
+            }),
+          ],
         }),
       },
     });
@@ -71,9 +76,13 @@ describe("Harness home base", () => {
             row("pending-review", "research", "waiting-for-review"),
           ],
           release: [
-            row("pending-release", "tdd", "changed"),
-            row("pending-release", "lint-rules", "added"),
-            row("pending-release", "research", "added"),
+            row("pending-release", "tdd", "not-yet-released"),
+            row("pending-release", "lint-rules", "not-yet-released", {
+              change: "addition",
+            }),
+            row("pending-release", "research", "not-yet-released", {
+              change: "addition",
+            }),
           ],
         }),
       },
@@ -261,8 +270,10 @@ describe("Harness home base", () => {
           { ...RELEASED, releaseState: "pending-release" },
           {
             release: [
-              row("pending-release", "research", "added"),
-              row("pending-release", "tdd", "changed"),
+              row("pending-release", "research", "not-yet-released", {
+                change: "addition",
+              }),
+              row("pending-release", "tdd", "not-yet-released"),
             ],
           },
         ),
@@ -271,12 +282,10 @@ describe("Harness home base", () => {
     renderHarness();
 
     expect(await stageHeader("Pending release")).toBeInTheDocument();
-    expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-      "Added",
-    );
-    expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent(
-      "Changed",
-    );
+    const research = screen.getByRole("row", { name: /research/ });
+    expect(research).toHaveTextContent("Addition");
+    expect(research).toHaveTextContent("Not yet released");
+    expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent("Edit");
   });
 
   it("holds offline apart from a read that failed, and dates both", async () => {
@@ -479,7 +488,7 @@ describe("Harness home base", () => {
             }),
           ],
           release: [
-            row("pending-release", "tdd", "changed", {
+            row("pending-release", "tdd", "not-yet-released", {
               alsoIn: ["pending-proposal", "pending-review"],
             }),
           ],
@@ -491,7 +500,7 @@ describe("Harness home base", () => {
     expect(await screen.findAllByText("tdd")).toHaveLength(3);
     expect(screen.getByText("New local work")).toBeInTheDocument();
     expect(screen.getByText("Waiting for review")).toBeInTheDocument();
-    expect(screen.getByText("Changed")).toBeInTheDocument();
+    expect(screen.getByText("Not yet released")).toBeInTheDocument();
     // The Also in column names the other stages; the pane says it in full.
     expect(
       screen.getByText("Pending review, Pending release"),
@@ -765,5 +774,109 @@ describe("Harness home base", () => {
       ).toMatch(/No Harness connected/i),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  // What a row's change does to the Harness, apart from where it stands (#1399).
+  describe("the Change column", () => {
+    const stubbed = () =>
+      stubHarnessServer({
+        read: {
+          body: withStages(RELEASED, {
+            proposal: [
+              row("pending-proposal", "tdd", "not-yet-proposed", {
+                change: "addition",
+              }),
+            ],
+            review: [
+              row("pending-review", "lint-rules", "waiting-for-review", {
+                change: "deletion",
+                requests: [pullRequest(45, "lint-rules")],
+              }),
+            ],
+            release: [
+              row("pending-release", "research", "not-yet-released", {
+                change: "rename",
+                previousName: "explore",
+              }),
+            ],
+          }),
+        },
+      });
+
+    it("sits between Name and Status", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      const headers = screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent);
+      expect(headers.indexOf("Change")).toBe(headers.indexOf("Name") + 1);
+      expect(headers.indexOf("Status")).toBe(headers.indexOf("Change") + 1);
+    });
+
+    it("names each row's change in every stage group", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent(
+        "Addition",
+      );
+      const lintRules = screen.getByRole("row", { name: /lint-rules/ });
+      expect(lintRules).toHaveTextContent("Deletion");
+      expect(lintRules).toHaveTextContent("Waiting for review");
+      expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
+        "Rename",
+      );
+    });
+
+    it("states what the change does when the pointer rests on it", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      await userEvent.hover(
+        within(screen.getByRole("row", { name: /research/ })).getByText(
+          "Rename",
+        ),
+      );
+
+      expect(
+        await screen.findByText(
+          sentence(
+            "This change renames explore to research in github.com/fimoklei/agent-harness.",
+          ),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    // One card per row on the keyboard: the Status card carries the sentence.
+    it("states what the change does in the card the keyboard opens", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      act(() => (screen.getByRole("grid") as HTMLElement).focus());
+
+      expect(
+        await screen.findByText(
+          sentence(
+            "This change adds tdd to github.com/fimoklei/agent-harness.",
+          ),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("names the change in the detail pane", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      const pane = await openPane("tdd");
+
+      expect(within(pane).getByText("Change")).toBeInTheDocument();
+      expect(within(pane).getByText("Addition")).toBeInTheDocument();
+    });
   });
 });

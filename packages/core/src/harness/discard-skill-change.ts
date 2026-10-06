@@ -93,7 +93,7 @@ export class DiscardSkillChange {
     if (row?.status === "new-local-work" || (row === undefined && inReview)) {
       return { ok: false, error: "already-proposed" };
     }
-    if (row?.status !== "not-yet-proposed" || row.deletion) {
+    if (row?.status !== "not-yet-proposed" || row.change === "deletion") {
       return { ok: false, error: "nothing-to-discard" };
     }
     if (row.remoteTree !== seenRemoteTree) {

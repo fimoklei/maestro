@@ -6,7 +6,11 @@ import { isValidSkillSlug } from "../deploy/package-ref";
 import { isConcurrentlyChanged } from "./classify-movement";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { promoteBranch, promoteCompareUrl } from "./promote-branch";
-import { beforeProposalPush, readOriginFacts } from "./proposal-request";
+import {
+  beforeProposalPush,
+  type ProposalKind,
+  readOriginFacts,
+} from "./proposal-request";
 import type {
   HarnessFreshnessPort,
   HarnessGitPort,
@@ -37,6 +41,7 @@ type Checked =
       origin: GitOrigin;
       head: string;
       base: string;
+      kind: Exclude<ProposalKind, "deletion">;
     }
   | { ok: false; error: PromoteSkillError };
 
@@ -101,7 +106,7 @@ export class PromoteSkill {
         base: second.base,
         name,
       },
-      "change",
+      second.kind,
     );
     if (!request.ok) {
       return request;
@@ -111,6 +116,7 @@ export class PromoteSkill {
       root,
       name,
       second.head,
+      second.kind,
     );
     switch (push) {
       case "pushed":
@@ -173,6 +179,9 @@ export class PromoteSkill {
     if (concurrentChange) {
       return { ok: false, error: "concurrent-change" };
     }
-    return { ok: true, origin, head, base };
+    const kind = remoteTrees.some((tree) => tree.name === name)
+      ? "edit"
+      : "addition";
+    return { ok: true, origin, head, base, kind };
   }
 }

@@ -164,22 +164,40 @@ describe("PromoteSkill", () => {
     expect(pushed).toEqual(["/harness", "tdd", "head"]);
   });
 
-  it("opens the pull request the pushed branch has no proposal for", async () => {
-    const created: NewReviewRequest[] = [];
-    const promote = buildPromote({ onCreate: (made) => created.push(made) });
-
-    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
-      ok: true,
-    });
-    expect(created).toEqual([
+  // Decided against the default branch just fetched, never the cockpit's read.
+  it.each<[string, Record<string, HarnessSkillTree[]>, string]>([
+    ["lacks", {}, "Add skill: tdd"],
+    [
+      "holds",
       {
-        head: "maestro/tdd",
-        base: "main",
-        title: "Promote skill: tdd",
-        body: "Proposed from the Maestro cockpit.",
+        head: [{ name: "tdd", treeHash: "t1" }],
+        HEAD: [{ name: "tdd", treeHash: "t1" }],
+        base: [{ name: "tdd", treeHash: "t1" }],
       },
-    ]);
-  });
+      "Edit skill: tdd",
+    ],
+  ])(
+    "opens the pull request for a skill the default branch %s, titled by its kind",
+    async (_, trees, title) => {
+      const created: NewReviewRequest[] = [];
+      const promote = buildPromote({
+        trees,
+        onCreate: (made) => created.push(made),
+      });
+
+      await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+        ok: true,
+      });
+      expect(created).toEqual([
+        {
+          head: "maestro/tdd",
+          base: "main",
+          title,
+          body: "Proposed from the Maestro cockpit.",
+        },
+      ]);
+    },
+  );
 
   it("sends an update to the open proposal without touching the request", async () => {
     // Leaving the request alone keeps GitHub's review verdict standing (#827).
@@ -208,7 +226,7 @@ describe("PromoteSkill", () => {
     await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
       ok: true,
     });
-    expect(edited).toEqual([[45, "Promote skill: tdd"]]);
+    expect(edited).toEqual([[45, "Add skill: tdd"]]);
   });
 
   it("refuses while more than one open request matches the branch", async () => {

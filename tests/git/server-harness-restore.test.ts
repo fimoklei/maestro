@@ -230,9 +230,9 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       state.stages.proposal.outcome === "read"
         ? state.stages.proposal.rows
         : [];
-    expect(
-      rows.map((row) => [row.skill, row.deletion, row.restorable]),
-    ).toEqual([["tdd", true, true]]);
+    expect(rows.map((row) => [row.skill, row.change, row.restorable])).toEqual([
+      ["tdd", "deletion", true],
+    ]);
   });
 
   it("writes back the local commit's own copy, and none of the other three", async () => {

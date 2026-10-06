@@ -14,7 +14,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-proposal",
   skill: "tdd",
   status: "not-yet-proposed",
-  deletion: false,
+  change: "edit",
   requests: [],
   reviewers: [],
   comparison: { kind: "default-branch" },
@@ -185,7 +185,7 @@ describe("DiscardSkillChange", () => {
     ["no row waits for a proposal", stagesWith([])],
     [
       "the folder is deleted by now",
-      stagesWith([row({ status: "deleted-locally", deletion: true })]),
+      stagesWith([row({ status: "not-yet-proposed", change: "deletion" })]),
     ],
   ])("has nothing to discard when %s", async (_, stages) => {
     const { discard, moved } = build({ stages });

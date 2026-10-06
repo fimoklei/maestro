@@ -26,7 +26,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
         {
           head: "maestro/tdd",
           base: "main",
-          title: "Promote skill: tdd",
+          title: "Edit skill: tdd",
           body: "Proposed from the Maestro cockpit.",
         },
       ]);
@@ -68,7 +68,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
         {
           head: "maestro/tdd",
           base: "main",
-          title: "Promote skill: tdd",
+          title: "Edit skill: tdd",
           body: "Proposed from the Maestro cockpit.",
         },
       ]);

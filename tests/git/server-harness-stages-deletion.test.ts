@@ -65,8 +65,8 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       const proposed = await proposeDeletion(app);
 
       expect(proposed).toMatchObject({
-        status: "deleted-locally",
-        deletion: true,
+        status: "not-yet-proposed",
+        change: "deletion",
       });
       expect(stages.review.created).toEqual([
         {
@@ -79,7 +79,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       const state = await refresh(app);
       expect(rowsOf(state.stages.proposal)).toEqual([]);
       expect(rowsOf(state.stages.review)).toMatchObject([
-        { skill: "tdd", status: "waiting-for-review", deletion: true },
+        { skill: "tdd", status: "waiting-for-review", change: "deletion" },
       ]);
     });
 
@@ -117,7 +117,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
       const waiting = await refresh(app);
       expect(rowsOf(waiting.stages.proposal)).toMatchObject([
-        { skill: "tdd", status: "new-local-work", deletion: false },
+        { skill: "tdd", status: "new-local-work", change: "edit" },
       ]);
 
       expect((await promote(app, "tdd")).status).toBe(200);
@@ -126,7 +126,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       const state = await refresh(app);
       expect(rowsOf(state.stages.proposal)).toEqual([]);
       expect(rowsOf(state.stages.review)).toMatchObject([
-        { skill: "tdd", status: "waiting-for-review", deletion: false },
+        { skill: "tdd", status: "waiting-for-review", change: "edit" },
       ]);
     });
 
@@ -189,7 +189,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
       const merged = await refresh(app);
       expect(rowsOf(merged.stages.release)).toMatchObject([
-        { skill: "tdd", status: "deleted", deletion: true },
+        { skill: "tdd", status: "not-yet-released", change: "deletion" },
       ]);
       // Merged is not released.
       expect(await primitiveNames(app)).toEqual(["tdd"]);

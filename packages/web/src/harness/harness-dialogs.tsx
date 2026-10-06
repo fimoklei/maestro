@@ -275,11 +275,11 @@ function deletionMode(
   row: HarnessStageRow | null,
   origin: string,
 ): Extract<DeletionMode, { kind: "propose" }> | null {
-  if (row === null || !row.deletion || row.remoteTree === null) {
+  if (row === null || row.change !== "deletion" || row.remoteTree === null) {
     return null;
   }
   // A proposal row links only a sole open request, and any open request on a
-  // Deleted locally row proposes changes.
+  // Pending proposal Deletion row proposes changes.
   const open = row.requests[0];
   return {
     kind: "propose",

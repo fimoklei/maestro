@@ -6,28 +6,35 @@ import {
   type ReviewRequest,
   type ReviewWriteOutcome,
 } from "./harness-review-port";
+import type { HarnessChange } from "./harness-stages";
 import { promoteBranch } from "./promote-branch";
 import type { HarnessFacts } from "./read-harness-state";
 
 export type ProposalTarget = { origin: GitOrigin; base: string; name: string };
 
-export type ProposalKind = "change" | "deletion";
+// Before merge a rename is an addition and a deletion, so no proposal is one.
+export type ProposalKind = Exclude<HarnessChange, "rename">;
 
 const TITLE_PREFIX: Record<ProposalKind, string> = {
-  change: "Promote skill:",
+  addition: "Add skill:",
+  edit: "Edit skill:",
   deletion: "Delete skill:",
 };
 
-const OTHER_KIND: Record<ProposalKind, ProposalKind> = {
-  change: "deletion",
-  deletion: "change",
-};
+// Every prefix Maestro ever wrote, so a title from before the kinds still
+// counts as Maestro's own words (#1399).
+const OWN_PREFIXES = [...Object.values(TITLE_PREFIX), "Promote skill:"];
+
+// Also the subject of the commit a push lands: GitHub's compare page titles a
+// one-commit request by it, where no request is opened for the author.
+export const proposalTitle = (name: string, kind: ProposalKind): string =>
+  `${TITLE_PREFIX[kind]} ${name}`;
 
 const proposalText = (
   name: string,
   kind: ProposalKind,
 ): { title: string; body: string } => ({
-  title: `${TITLE_PREFIX[kind]} ${name}`,
+  title: proposalTitle(name, kind),
   body:
     kind === "deletion"
       ? `Deletes ${name} from the Harness. Targets keep the skill until each one runs Update target after the next release.`
@@ -84,14 +91,16 @@ export const requestProposal = (
     ...proposalText(target.name, kind),
   });
 
-// Only a title of the other kind changes: any other title is someone's words.
+// Only Maestro's own title of another kind changes: any other title is
+// someone's words.
 const retitle = async (
   review: HarnessReviewPort,
   target: ProposalTarget,
   kind: ProposalKind,
   request: ReviewRequest,
 ): Promise<void> => {
-  if (!request.title.startsWith(TITLE_PREFIX[OTHER_KIND[kind]])) {
+  const own = OWN_PREFIXES.some((prefix) => request.title.startsWith(prefix));
+  if (!own || request.title.startsWith(TITLE_PREFIX[kind])) {
     return;
   }
   // A failed retitle is not reported: the pushed branch is the truth.

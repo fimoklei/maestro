@@ -8,11 +8,13 @@ import {
 import { promoteBranch } from "./promote-branch";
 import {
   openProposals,
+  type ProposalKind,
   type ProposalTarget,
   readOriginFacts,
   requestProposal,
 } from "./proposal-request";
 import type { HarnessGitPort } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 export type ProposalActionError =
   | "not-configured"
@@ -35,6 +37,8 @@ export type ProposalActionResult =
 type Ready = {
   ok: true;
   root: string;
+  // The fetched default-branch tip; null where it could not be read.
+  head: string | null;
   target: ProposalTarget;
   matching: ReviewRequest[];
   open: ReviewRequest[];
@@ -70,12 +74,32 @@ export class ProposalActions {
     if (pushed === null) {
       return { ok: false, error: "no-answer" };
     }
-    const kind = pushed.some((skill) => skill.name === name)
-      ? "change"
-      : "deletion";
+    const kind = await this.kindOf(checked, pushed);
+    if (kind === null) {
+      return { ok: false, error: "no-answer" };
+    }
     return settle(
       await requestProposal(this.deps.review, checked.target, kind),
     );
+  }
+
+  // Judged against the default branch, as the Change column is.
+  private async kindOf(
+    checked: Ready,
+    pushed: HarnessSkillTree[],
+  ): Promise<ProposalKind | null> {
+    const { name } = checked.target;
+    if (!pushed.some((skill) => skill.name === name)) {
+      return "deletion";
+    }
+    const remote =
+      checked.head === null
+        ? null
+        : await this.deps.git.readSkillTrees(checked.root, checked.head);
+    if (remote === null) {
+      return null;
+    }
+    return remote.some((skill) => skill.name === name) ? "edit" : "addition";
   }
 
   async reopen(name: string, number: number): Promise<ProposalActionResult> {
@@ -127,7 +151,7 @@ export class ProposalActions {
     if (!facts.ok) {
       return facts;
     }
-    const { origin, base } = facts;
+    const { origin, base, head } = facts;
     const review = await this.deps.review.readReviews(origin);
     if (review.outcome === "unavailable") {
       return { ok: false, error: "review-unavailable" };
@@ -140,6 +164,7 @@ export class ProposalActions {
     return {
       ok: true,
       root,
+      head,
       target,
       matching: review.requests.filter((request) =>
         matchesProposal(request, { ownerRepo: origin.ownerRepo, branch, base }),

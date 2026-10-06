@@ -137,7 +137,7 @@ describe("Harness promotion", () => {
             }),
           ],
           release: [
-            row("pending-release", "lint-rules", "changed", {
+            row("pending-release", "lint-rules", "not-yet-released", {
               requests: [request],
             }),
           ],
@@ -149,7 +149,7 @@ describe("Harness promotion", () => {
             }),
           ],
           release: [
-            row("pending-release", "lint-rules", "changed", {
+            row("pending-release", "lint-rules", "not-yet-released", {
               requests: [request],
             }),
           ],
@@ -241,7 +241,7 @@ describe("Harness promotion", () => {
           review: [
             row("pending-review", "lint-rules", "pull-request-missing"),
             row("pending-review", "old-skill", "pull-request-missing", {
-              deletion: true,
+              change: "deletion",
             }),
           ],
         }),

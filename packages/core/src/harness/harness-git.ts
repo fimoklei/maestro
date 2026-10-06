@@ -22,6 +22,7 @@ import {
   writeSkillTreeInto as writeSkillTree,
 } from "./harness-git-restore";
 import { PROMOTE_NAMESPACE, promoteBranch } from "./promote-branch";
+import { type ProposalKind, proposalTitle } from "./proposal-request";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
   HarnessFacts,
@@ -51,9 +52,6 @@ const PROMOTE_BRANCHES = `refs/remotes/origin/${PROMOTE_NAMESPACE}`;
 
 // Tab-separated so a name containing spaces stays one field.
 const PROMOTE_FORMAT = `%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})\t%(objectname)`;
-
-const PROMOTE_SUBJECT = "Promote skill: ";
-const REMOVE_SUBJECT = "Remove skill: ";
 
 // The third field is the commit an annotated tag points at; empty for a lightweight tag.
 const TAG_FORMAT = `%(refname:lstrip=${MAESTRO_TAGS.split("/").length})\t%(objectname)\t%(*objectname)`;
@@ -151,6 +149,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     name: string,
     base: string,
+    kind: Exclude<ProposalKind, "deletion">,
   ): Promise<PromoteSkillOutcome> {
     const subpath = harnessSkillSubpath(name);
     if (!(await pathExists(join(root, subpath)))) {
@@ -196,7 +195,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         base,
         existingTip ?? base,
         indexDir,
-        `${PROMOTE_SUBJECT}${name}`,
+        proposalTitle(name, kind),
       );
       // A save halfway through `git add` mixes two revisions: refuse a tree
       // that moved, since a pushed branch cannot be taken back.
@@ -250,7 +249,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         base,
         existingTip ?? base,
         indexDir,
-        `${REMOVE_SUBJECT}${name}`,
+        proposalTitle(name, "deletion"),
       );
       // Reappeared since the guard: refuse, a pushed branch cannot be taken back.
       if (await pathExists(join(root, subpath))) {

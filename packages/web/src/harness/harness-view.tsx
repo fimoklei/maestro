@@ -164,6 +164,7 @@ export function HarnessView({
   const context = {
     defaultBranch: state?.defaultBranch ?? null,
     releasedVersion: state?.releasedVersion ?? null,
+    origin: state?.origin ?? "",
   };
   const columns = useMemo(
     () =>
@@ -171,10 +172,11 @@ export function HarnessView({
         context: {
           defaultBranch: context.defaultBranch,
           releasedVersion: context.releasedVersion,
+          origin: context.origin,
         },
         freshness: freshness ?? "",
       }),
-    [context.defaultBranch, context.releasedVersion, freshness],
+    [context.defaultBranch, context.releasedVersion, context.origin, freshness],
   );
 
   // What every row press shares: a read in flight is moving the rows a press

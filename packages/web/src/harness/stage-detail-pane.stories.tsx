@@ -33,7 +33,11 @@ const meta = {
         { label: "View pull request", href: pullRequest(47).url },
       ],
     ),
-    context: { defaultBranch: "main", releasedVersion: "v1.4.0" },
+    context: {
+      defaultBranch: "main",
+      releasedVersion: "v1.4.0",
+      origin: "github.com/fimoklei/agent-harness",
+    },
     failure: null,
     position: { index: 1, count: 16 },
     onPage: () => {},
@@ -94,7 +98,7 @@ export const LocalOnly: Story = {
 const noop = () => {};
 const closedDeletion = (folderOnDisk: boolean) => {
   const row = stageRow("pending-review", "wizard", "proposal-closed", {
-    deletion: true,
+    change: "deletion",
     requests: [pullRequest(52, "wizard")],
     folderOnDisk,
     restorable: !folderOnDisk,

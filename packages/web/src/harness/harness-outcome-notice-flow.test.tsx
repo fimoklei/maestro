@@ -19,8 +19,8 @@ installHarnessHooks();
 describe("Harness outcome notices", () => {
   const DELETED_ROW: HarnessState = withStages(ON_DISK, {
     proposal: [
-      row("pending-proposal", "old-skill", "deleted-locally", {
-        deletion: true,
+      row("pending-proposal", "old-skill", "not-yet-proposed", {
+        change: "deletion",
         restorable: true,
       }),
     ],

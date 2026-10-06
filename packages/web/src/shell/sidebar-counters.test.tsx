@@ -181,8 +181,10 @@ describe("Harness counter", () => {
           stageRow("pending-review", "review", "draft"),
         ]),
         release: read([
-          stageRow("pending-release", "review", "changed"),
-          stageRow("pending-release", "ship", "added"),
+          stageRow("pending-release", "review", "not-yet-released"),
+          stageRow("pending-release", "ship", "not-yet-released", {
+            change: "addition",
+          }),
         ]),
       },
     });

@@ -105,6 +105,9 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
       ".apm/skills/jobs/SKILL.md",
       "README.md",
     ]);
+    expect(await promoted("tdd", "log", "-1", "--format=%s")).toBe(
+      "Delete skill: tdd",
+    );
   });
 
   it("moves the skill into Pending review, so a refresh reads it back", async () => {

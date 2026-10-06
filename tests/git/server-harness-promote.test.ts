@@ -226,7 +226,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     ).json()) as HarnessState;
     expect(promoted.stages.review).toMatchObject({
       outcome: "read",
-      rows: [{ skill: "tdd", status: "pull-request-missing", deletion: false }],
+      rows: [{ skill: "tdd", status: "pull-request-missing", change: "edit" }],
     });
     expect(promoted.stages.proposal).toMatchObject({
       outcome: "read",
@@ -246,7 +246,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(merged.stages.proposal).toMatchObject({ outcome: "read", rows: [] });
     expect(merged.stages.release).toMatchObject({
       outcome: "read",
-      rows: [{ skill: "tdd", status: "changed" }],
+      rows: [{ skill: "tdd", status: "not-yet-released", change: "edit" }],
     });
     expect(merged.releaseState).toBe("pending-release");
   });
@@ -336,7 +336,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         {
           skill: "tdd",
           status: "not-yet-proposed",
-          deletion: false,
+          change: "edit",
           concurrentChange: true,
           remoteTree: expect.any(String),
         },
@@ -358,7 +358,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         {
           skill: "tdd",
           status: "not-yet-proposed",
-          deletion: false,
+          change: "edit",
           concurrentChange: false,
           remoteTree: expect.any(String),
         },
@@ -576,7 +576,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(reviewed.stages.review).toMatchObject({
         outcome: "read",
         rows: [
-          { skill: "tdd", status: "pull-request-missing", deletion: true },
+          { skill: "tdd", status: "pull-request-missing", change: "deletion" },
         ],
       });
       expect(seen).toEqual(expect.any(String));
@@ -594,7 +594,9 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(merged.releaseState).toBe("pending-release");
       expect(merged.stages.release).toMatchObject({
         outcome: "read",
-        rows: [{ skill: "tdd", status: "deleted", deletion: true }],
+        rows: [
+          { skill: "tdd", status: "not-yet-released", change: "deletion" },
+        ],
       });
     });
 

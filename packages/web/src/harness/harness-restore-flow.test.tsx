@@ -22,8 +22,8 @@ describe("Harness restore", () => {
   // here reaches GitHub, so nothing GitHub says may take the way back (#915).
   const DELETED_ROW: HarnessState = withStages(ON_DISK, {
     proposal: [
-      row("pending-proposal", "old-skill", "deleted-locally", {
-        deletion: true,
+      row("pending-proposal", "old-skill", "not-yet-proposed", {
+        change: "deletion",
         restorable: true,
       }),
       row("pending-proposal", "code-review", "not-yet-proposed"),
@@ -68,7 +68,7 @@ describe("Harness restore", () => {
         body: withStages(ON_DISK, {
           review: [
             row("pending-review", "old-skill", "waiting-for-review", {
-              deletion: true,
+              change: "deletion",
               restorable: true,
               requests: [pullRequest(45)],
             }),
@@ -235,8 +235,8 @@ describe("Harness restore", () => {
   it("says the open proposal is untouched before the restore", async () => {
     const proposed = withStages(ON_DISK, {
       proposal: [
-        row("pending-proposal", "old-skill", "deleted-locally", {
-          deletion: true,
+        row("pending-proposal", "old-skill", "not-yet-proposed", {
+          change: "deletion",
           restorable: true,
           requests: [pullRequest(45)],
         }),

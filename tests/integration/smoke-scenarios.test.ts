@@ -226,9 +226,9 @@ describe("scenarioMismatch", () => {
 });
 
 describe("harnessMismatch", () => {
-  const row = (skill: string, status: string, restorable = false) => ({
+  const row = (skill: string, change: string, restorable = false) => ({
     skill,
-    status,
+    change,
     restorable,
   });
   const harness = (
@@ -247,8 +247,8 @@ describe("harnessMismatch", () => {
     expect(
       harnessMismatch(
         harness(
-          [row("test-plan", "deleted-locally", true)],
-          [row("code-review", "changed")],
+          [row("test-plan", "deletion", true)],
+          [row("code-review", "edit")],
         ),
       ),
     ).toBeNull();
@@ -258,31 +258,31 @@ describe("harnessMismatch", () => {
     expect(
       harnessMismatch(
         harness(
-          [row("test-plan", "deleted-locally", false)],
-          [row("code-review", "changed")],
+          [row("test-plan", "deletion", false)],
+          [row("code-review", "edit")],
         ),
       ),
     ).toBe(
-      'scenario "harness-outcomes": test-plan expected a restorable "deleted-locally" row in the proposal stage, got "deleted-locally", not restorable',
+      'scenario "harness-outcomes": test-plan expected a restorable "deletion" row in the proposal stage, got "deletion", not restorable',
     );
   });
 
   it("names unreleased work the release stage does not show", () => {
     expect(
       harnessMismatch(
-        harness([row("test-plan", "deleted-locally", true)], [], "released"),
+        harness([row("test-plan", "deletion", true)], [], "released"),
       ),
     ).toBe(
-      'scenario "harness-outcomes": code-review expected a "changed" row in the release stage, got none; release state expected "pending-release", got "released"',
+      'scenario "harness-outcomes": code-review expected an "edit" row in the release stage, got none; release state expected "pending-release", got "released"',
     );
   });
 
   it("names a stage the cockpit could not read", () => {
-    const state = harness([], [row("code-review", "changed")]);
+    const state = harness([], [row("code-review", "edit")]);
     state.stages.proposal = { outcome: "unknown" };
 
     expect(harnessMismatch(state)).toMatch(
-      /test-plan expected a restorable "deleted-locally" row in the proposal stage, got a stage read as "unknown"/,
+      /test-plan expected a restorable "deletion" row in the proposal stage, got a stage read as "unknown"/,
     );
   });
 });

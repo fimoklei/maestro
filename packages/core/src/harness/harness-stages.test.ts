@@ -149,11 +149,11 @@ describe("Pending proposal membership", () => {
     expect(statuses(stages({ trees }).proposal)).toEqual([]);
   });
 
-  it("reads a skill deleted on disk as deleted locally", () => {
+  it("reads a skill deleted on disk as a deletion not yet proposed", () => {
     const trees = { ...SETTLED, working: {} };
     const row = oneRow(stages({ trees }).proposal);
-    expect(row.status).toBe("deleted-locally");
-    expect(row.deletion).toBe(true);
+    expect(row.status).toBe("not-yet-proposed");
+    expect(row.change).toBe("deletion");
   });
 
   it("reads a skill restored after a proposed deletion as work to send", () => {
@@ -168,7 +168,7 @@ describe("Pending proposal membership", () => {
       stages({ trees: restored, review: reviewOf([request()]) }).proposal,
     );
     expect(row.status).toBe("new-local-work");
-    expect(row.deletion).toBe(false);
+    expect(row.change).not.toBe("deletion");
   });
 
   it("keeps local edits visible after a proposal, instead of hiding them behind it", () => {
@@ -480,7 +480,7 @@ describe("Pending review membership", () => {
     };
     const review = reviewOf([request()]);
     const row = oneRow(stages({ trees: deleting, review }).review);
-    expect(row.deletion).toBe(true);
+    expect(row.change).toBe("deletion");
   });
 
   it("keeps the deletion fact under every reading a review can take", () => {
@@ -507,7 +507,7 @@ describe("Pending review membership", () => {
         stages({ trees: deleting, review: reviewOf(requests) }).review,
       );
       expect(row.status).toBe(status);
-      expect(row.deletion, status).toBe(true);
+      expect(row.change, status).toBe("deletion");
     }
   });
 
@@ -636,7 +636,10 @@ describe("Pending release membership", () => {
         { kind: "removed", name: "old" },
       ],
     });
-    expect(statuses(built.release)).toEqual(["tdd:added", "old:deleted"]);
+    expect(statuses(built.release)).toEqual([
+      "tdd:not-yet-released",
+      "old:not-yet-released",
+    ]);
   });
 
   it("carries the name a renamed skill moved from", () => {
@@ -668,7 +671,7 @@ describe("stage memberships are independent", () => {
     const built = busy();
     expect(statuses(built.proposal)).toEqual(["tdd:new-local-work"]);
     expect(statuses(built.review)).toEqual(["tdd:waiting-for-review"]);
-    expect(statuses(built.release)).toEqual(["tdd:changed"]);
+    expect(statuses(built.release)).toEqual(["tdd:not-yet-released"]);
   });
 
   it("names the other stages a row's skill occupies, in journey order", () => {
@@ -705,9 +708,9 @@ describe("stage memberships are independent", () => {
       },
       release: [{ kind: "changed", name: "tdd" }],
     });
-    expect(oneRow(built.proposal).deletion).toBe(true);
-    expect(oneRow(built.release).deletion).toBe(false);
-    expect(oneRow(built.release).status).toBe("changed");
+    expect(oneRow(built.proposal).change).toBe("deletion");
+    expect(oneRow(built.release).change).toBe("edit");
+    expect(oneRow(built.release).status).toBe("not-yet-released");
   });
 });
 
@@ -759,7 +762,7 @@ describe("Local restoration eligibility", () => {
     const row = oneRow(
       stages({ trees: restored, review: reviewOf([request()]) }).review,
     );
-    expect(row.deletion).toBe(true);
+    expect(row.change).toBe("deletion");
     expect(row.restorable).toBe(false);
   });
 
@@ -817,5 +820,123 @@ describe("Folder on disk", () => {
       release: [{ kind: "changed", name: "tdd" }],
     });
     expect(oneRow(built.release).folderOnDisk).toBe(false);
+  });
+});
+
+// Judged against the default branch in every stage (#1399).
+describe("The change a row carries", () => {
+  it.each([
+    [
+      "a skill the default branch lacks",
+      { remote: {}, promote: {}, local: {}, working: { tdd: "new" } },
+      "addition",
+    ],
+    [
+      "an edit to a skill the default branch holds",
+      { ...SETTLED, working: { tdd: "edited" } },
+      "edit",
+    ],
+    ["a folder deleted on disk", { ...SETTLED, working: {} }, "deletion"],
+    [
+      "new local work on a skill the default branch lacks",
+      {
+        remote: {},
+        promote: { tdd: onBranch("pushed") },
+        local: {},
+        working: { tdd: "edited" },
+      },
+      "addition",
+    ],
+  ])("reads %s in Pending proposal as %s", (_, trees, change) => {
+    expect(oneRow(stages({ trees }).proposal).change).toBe(change);
+  });
+
+  it("judges new local work against the default branch, not its proposal", () => {
+    const trees = {
+      remote: {},
+      promote: { tdd: onBranch("pushed") },
+      local: {},
+      working: { tdd: "edited" },
+    };
+    const row = oneRow(stages({ trees }).proposal);
+    expect(row.status).toBe("new-local-work");
+    expect(row.change).toBe("addition");
+  });
+
+  it.each([
+    [
+      "a branch adding a skill the default branch lacks",
+      {
+        remote: {},
+        promote: { tdd: onBranch("pushed") },
+        local: {},
+        working: { tdd: "pushed" },
+      },
+      "addition",
+    ],
+    [
+      "a branch editing a skill the default branch holds",
+      {
+        remote: { tdd: "same" },
+        promote: { tdd: onBranch("pushed") },
+        local: { tdd: "same" },
+        working: { tdd: "pushed" },
+      },
+      "edit",
+    ],
+    [
+      "a branch deleting a skill",
+      {
+        remote: { tdd: "same" },
+        promote: { tdd: onBranch(null) },
+        local: { tdd: "same" },
+        working: {},
+      },
+      "deletion",
+    ],
+  ])("reads %s in Pending review as %s", (_, trees, change) => {
+    const review = reviewOf([request()]);
+    expect(oneRow(stages({ trees, review }).review).change).toBe(change);
+  });
+
+  it("reads each merged movement in Pending release as its change", () => {
+    const built = stages({
+      release: [
+        { kind: "added", name: "a" },
+        { kind: "changed", name: "b" },
+        { kind: "renamed", name: "c", previousName: "old-c" },
+        { kind: "removed", name: "d" },
+      ],
+    });
+    expect(rowsOf(built.release).map((row) => row.change)).toEqual([
+      "addition",
+      "edit",
+      "rename",
+      "deletion",
+    ]);
+  });
+
+  // Before merge a rename is two folders: one new, one gone.
+  it("reads a renamed folder before merge as one addition and one deletion", () => {
+    const trees = {
+      remote: { testing: "same" },
+      promote: {},
+      local: { testing: "same" },
+      working: { tdd: "same" },
+    };
+    expect(
+      rowsOf(stages({ trees }).proposal).map(
+        (row) => `${row.skill}:${row.change}`,
+      ),
+    ).toEqual(["tdd:addition", "testing:deletion"]);
+  });
+
+  it("states where every row stands without naming its change", () => {
+    const built = stages({
+      trees: { ...SETTLED, working: {} },
+      release: [{ kind: "added", name: "a" }],
+    });
+    expect(statuses(built.proposal)).toEqual(["tdd:not-yet-proposed"]);
+    expect(statuses(built.release)).toEqual(["a:not-yet-released"]);
   });
 });

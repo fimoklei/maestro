@@ -78,7 +78,7 @@ export function useHarnessPresses(
   const pendingDeletion =
     proposalRows(state).find((row) => row.skill === confirming) ?? null;
   // Frozen at the press: two stages carry Delete skill, and the row it came
-  // from turns into Deleted locally once the folder is gone.
+  // from turns into a Deletion once the folder is gone.
   const [localDeletion, setLocalDeletion] =
     useState<LocalDeletionTarget | null>(null);
 
@@ -165,7 +165,7 @@ export function useHarnessPresses(
   const handlers: RowActionHandlers = {
     promote: (row) => {
       setPromotedFrom(row.stage);
-      if (row.deletion) {
+      if (row.change === "deletion") {
         deletion.reset();
         setConfirming(row.skill);
         return;
