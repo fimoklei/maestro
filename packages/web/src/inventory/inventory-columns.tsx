@@ -17,6 +17,8 @@ export type InventoryRow = Primitive & {
   /** What the hover card expands the Status and Targets cells into. */
   deployments: SkillDeployment[];
   unreadable: boolean;
+  /** The hover card's footer; null where no target was compared. */
+  readAge: string | null;
   /** The ⋮ menu's items, in order. */
   actions: {
     action: RowAction;
@@ -47,7 +49,7 @@ const reachCard = {
               unreadable={row.unreadable}
             />,
           ],
-          readAge: null,
+          readAge: row.readAge,
         },
 };
 

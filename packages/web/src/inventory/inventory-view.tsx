@@ -10,6 +10,7 @@ import { Icon } from "../ui/icon";
 import { Notice } from "../ui/notice";
 import { SelectionBar } from "../ui/selection-bar";
 import { TableScreen } from "../ui/table-screen";
+import { useNow } from "../ui/use-now";
 import { type ReadFailure, useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions } from "../ui/use-view-options";
 import { BulkDeployAction } from "./bulk-deploy-action";
@@ -41,7 +42,11 @@ import {
   stageRowLabel,
 } from "./inventory-copy";
 import type { RowAction } from "./row-menu";
-import { type SkillDeployment, skillDeployments } from "./skill-deployments";
+import {
+  type SkillDeployment,
+  skillDeployments,
+  skillReadAge,
+} from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
 import { type PaneDialog, SkillPaneDialog } from "./skill-pane-dialogs";
 import {
@@ -175,6 +180,7 @@ export function InventoryView({
   );
   const listHeading = useRef<HTMLHeadingElement>(null);
 
+  const now = useNow();
   const all = primitives ?? [];
   const rows: InventoryRow[] = all.map((primitive) => {
     const rollup = rollUpDeployment(primitive.name, targets);
@@ -186,6 +192,7 @@ export function InventoryView({
       targets: status === null ? null : rollup.targetCount,
       deployments,
       unreadable: Boolean(rollup.unreadable),
+      readAge: skillReadAge(primitive.name, targets, now),
       // The pane's foot holds these same items (#1065). The removal is offered only
       // from two targets, or it would repeat a target row's own (#422).
       actions: [

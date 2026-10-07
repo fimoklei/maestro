@@ -1,4 +1,4 @@
-import type { ReadDriftEntry } from "@maestro/core";
+import type { ReadDriftEntry, ReleaseHead } from "@maestro/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
@@ -1346,6 +1346,73 @@ describe("InventoryView — hover card", () => {
       (badge as HTMLElement).compareDocumentPosition(reach) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).not.toBe(0);
+  });
+
+  it("dates the card by its oldest-read target", async () => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      now: new Date("2026-09-12T11:00:00.000Z"),
+    });
+    stubPendingFetch();
+    const fresh = onRepo("/projects/alpha", ["tdd"], ["tdd"]);
+    renderView({
+      targets: [
+        {
+          ...fresh,
+          releaseHead: {
+            ...(fresh.releaseHead as ReleaseHead),
+            comparedAt: "2026-09-12T10:45:00.000Z",
+          },
+        },
+        onRepo("/projects/beta", ["tdd"], ["tdd"]),
+      ],
+    });
+
+    await userEvent.hover(within(grid()).getByText("Behind"));
+
+    const reach = await screen.findByText(sentence("Deployed to 2 targets"));
+    const card = reach.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    expect(within(card).getByText("Read 1 h ago")).toBeInTheDocument();
+  });
+
+  it("states a never-read target in the card's read age", async () => {
+    stubPendingFetch();
+    const beta = onRepo("/projects/beta", ["tdd"], ["tdd"]);
+    renderView({
+      targets: [
+        onRepo("/projects/alpha", ["tdd"], ["tdd"]),
+        {
+          ...beta,
+          releaseHead: {
+            ...(beta.releaseHead as ReleaseHead),
+            comparedAt: null,
+          },
+        },
+      ],
+    });
+
+    await userEvent.hover(within(grid()).getByText("Behind"));
+
+    const reach = await screen.findByText(sentence("Deployed to 2 targets"));
+    const card = reach.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    expect(within(card).getByText("Not read yet")).toBeInTheDocument();
+  });
+
+  it("shows no read age where no target carries a read time", async () => {
+    stubPendingFetch();
+    renderView({ targets: [deployedTo(["tdd"])] });
+
+    await userEvent.hover(within(grid()).getByText("Up to date"));
+
+    const reach = await screen.findByText(sentence("Deployed to 1 target"));
+    const card = reach.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    expect(within(card).queryByText(/^Read |Not read yet/)).toBeNull();
   });
 
   it("opens the Targets card for the keyboard's row while Display hides Status", async () => {

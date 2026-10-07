@@ -1,6 +1,8 @@
 // The skill detail pane's "deployed to" lens: a per-primitive slice of the
 // targets the deployed column rolls up, so the two can't diverge.
 
+import type { ReleaseHead } from "@maestro/core";
+import { comparedFact } from "../deploy-state/release-head-copy";
 import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
 import { globalRowId, repoRowId } from "../deploy-state/target-rows";
 import { toolNameList } from "../deploy-state/tool-presentation";
@@ -30,6 +32,41 @@ export type SkillDeployment = {
   updatable: boolean;
 };
 
+// Unreadable/loading is unknown, not "not deployed" — left out.
+function deployedTargets(skillName: string, targets: DeploymentTarget[]) {
+  return targets.flatMap((target) => {
+    const deployed =
+      target.deployed.status === "ready"
+        ? target.primitives.find((primitive) => primitive.name === skillName)
+        : undefined;
+    return deployed === undefined ? [] : [{ target, deployed }];
+  });
+}
+
+// A never-read or unparsable time is the oldest of all.
+const readAt = (head: ReleaseHead): number => {
+  const at =
+    head.comparedAt === null ? Number.NaN : Date.parse(head.comparedAt);
+  return Number.isNaN(at) ? Number.NEGATIVE_INFINITY : at;
+};
+
+/** The read age of the skill's oldest-read target; null where none was compared. */
+export function skillReadAge(
+  skillName: string,
+  targets: DeploymentTarget[],
+  now: Date,
+): string | null {
+  const heads = deployedTargets(skillName, targets).flatMap(({ target }) =>
+    target.releaseHead === undefined ? [] : [target.releaseHead],
+  );
+  const oldest = heads.reduce<ReleaseHead | null>(
+    (stalest, head) =>
+      stalest === null || readAt(head) < readAt(stalest) ? head : stalest,
+    null,
+  );
+  return oldest === null ? null : comparedFact(oldest, now);
+}
+
 export function skillDeployments(
   skillName: string,
   targets: DeploymentTarget[],
@@ -40,18 +77,7 @@ export function skillDeployments(
     target.tool === undefined ? [] : [target.tool],
   );
 
-  for (const target of targets) {
-    // Unreadable/loading is unknown, not "not deployed" — left out.
-    if (target.deployed.status !== "ready") {
-      continue;
-    }
-    const deployed = target.primitives.find(
-      (primitive) => primitive.name === skillName,
-    );
-    if (deployed === undefined) {
-      continue;
-    }
-
+  for (const { target, deployed } of deployedTargets(skillName, targets)) {
     const wire = target.target;
     const status = skillReading(target, skillName);
     rows.push({
