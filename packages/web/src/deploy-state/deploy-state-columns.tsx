@@ -4,15 +4,13 @@ import {
   createDataTableColumns,
   useDataTableRowActive,
 } from "../ui/data-table";
+import type { DataTableCardContent } from "../ui/data-table-card";
 import { GITHUB_COLUMN } from "../ui/github-link-copy";
 import { GitHubMarkLink } from "../ui/github-mark-link";
-import { HoverCard } from "../ui/hover-card";
 import { MachineValue } from "../ui/machine-value";
-import { PhraseText } from "../ui/phrase-text";
 import { Skeleton } from "../ui/skeleton";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
-import { useNow } from "../ui/use-now";
 import { useReadSkeleton } from "../ui/use-read-skeleton";
 import {
   ACTIONS_COLUMN_LABEL,
@@ -43,36 +41,18 @@ function StatusReading() {
   );
 }
 
-function StatusCard({ row }: { row: TargetTableRow }) {
-  const active = useDataTableRowActive();
-  const now = useNow();
-  if (row.status === null) {
-    return <StatusReading />;
-  }
+function statusCardContent(
+  row: TargetTableRow,
+  now: Date,
+): DataTableCardContent | null {
+  if (row.status === null) return null;
   const { reason, readAge } = statusCard(row, now);
-  return (
-    <HoverCard
-      focused={active}
-      content={
-        <div className="flex flex-col gap-inline">
-          <div className="flex items-center gap-inline">
-            <StatusBadge reading={row.status} />
-            {row.release ? <ReleaseValue release={row.release} /> : null}
-          </div>
-          {reason ? (
-            <p className="m-0 text-gray-11">
-              <PhraseText copy={reason} />
-            </p>
-          ) : null}
-          {readAge ? <p className="m-0 text-gray-11">{readAge}</p> : null}
-        </div>
-      }
-    >
-      <span className="inline-flex align-middle">
-        <StatusBadge reading={row.status} />
-      </span>
-    </HoverCard>
-  );
+  return {
+    reading: row.status,
+    value: row.release ? <ReleaseValue release={row.release} /> : undefined,
+    body: reason ? [reason] : [],
+    readAge: readAge ?? undefined,
+  };
 }
 
 // The GitHub cell: its Unknown card opens with the active row, as Status does.
@@ -148,14 +128,22 @@ export const deployStateColumns = ({
       // Drops out first on a narrow panel; the ⋮ menu keeps the same link.
       meta: { width: 28, priority: 1 },
     }),
-    helper.accessor("status", {
-      header: "Status",
-      cell: ({ row }) => <StatusCard row={row.original} />,
-      sortFn: (a, b) =>
-        (a.original.status ? readingRank(a.original.status) : unranked) -
-        (b.original.status ? readingRank(b.original.status) : unranked),
-      meta: { width: 41 },
-    }),
+    {
+      ...helper.accessor("status", {
+        header: "Status",
+        cell: ({ row }) =>
+          row.original.status === null ? (
+            <StatusReading />
+          ) : (
+            <StatusBadge reading={row.original.status} />
+          ),
+        sortFn: (a, b) =>
+          (a.original.status ? readingRank(a.original.status) : unranked) -
+          (b.original.status ? readingRank(b.original.status) : unranked),
+        meta: { width: 41 },
+      }),
+      card: { keyboard: true, content: statusCardContent },
+    },
     helper.accessor("skills", {
       header: "Skills",
       cell: ({ row }) => {

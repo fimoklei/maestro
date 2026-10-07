@@ -48,12 +48,11 @@ describe("HoverCard", () => {
     expect(card()).not.toBeInTheDocument();
   });
 
-  it("opens while its owner reports focus, and closes when focus moves on", () => {
+  it("opens at once while its owner reports focus, and closes when focus moves on", () => {
     // A grid holds focus itself, so the row tells the card it is focused.
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { rerender } = renderCard({ focused: true });
 
-    act(() => vi.advanceTimersByTime(400));
     expect(card()).toBeInTheDocument();
 
     rerender(

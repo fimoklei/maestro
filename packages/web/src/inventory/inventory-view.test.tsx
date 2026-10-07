@@ -873,8 +873,10 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
 
     await openRow("tdd");
 
+    // The press focuses the grid, so the row's card is open beside the pane.
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
     expect(
-      screen.getByText(/Not deployed to any target\./i),
+      within(pane).getByText(/Not deployed to any target\./i),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /remove from all/i }),
