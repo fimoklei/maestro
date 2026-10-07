@@ -7,10 +7,10 @@ import type { DataTableCardContent } from "../ui/data-table-card";
 import type { Copy } from "../ui/phrase";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
-import { ChangeCard } from "./change-card";
-import { PullRequestCell } from "./pull-request-cell";
+import { PullRequestLinks, pullRequestCard } from "./pull-request-cell";
 import {
   alsoInWords,
+  CHANGE_WORDS,
   changeSentence,
   crossStageLine,
   detailSentence,
@@ -76,13 +76,24 @@ export const harnessColumns = ({
       ),
       meta: { width: 58 },
     }),
-    helper.accessor("change", {
-      header: "Change",
-      cell: ({ row }) => <ChangeCard row={row.original} context={context} />,
-      // The longest word, Addition or Deletion, fits. Hidden after Pull
-      // request: the pane names the change too.
-      meta: { width: 20, priority: 4 },
-    }),
+    {
+      ...helper.accessor("change", {
+        header: "Change",
+        cell: ({ row }) => (
+          <span className="text-gray-12">
+            {CHANGE_WORDS[row.original.change]}
+          </span>
+        ),
+        // The longest word, Addition or Deletion, fits. Hidden after Pull
+        // request: the pane names the change too.
+        meta: { width: 20, priority: 4 },
+      }),
+      // Pointer only: the Status card carries the same sentence (#1399).
+      card: {
+        keyboard: false,
+        content: (row) => ({ body: [changeSentence(row, context)] }),
+      },
+    },
     {
       ...helper.accessor("reading", {
         header: "Status",
@@ -94,12 +105,16 @@ export const harnessColumns = ({
       }),
       card: { keyboard: true, content: statusCardContent(context, freshness) },
     },
-    helper.display({
-      id: "pull-request",
-      header: "Pull request",
-      cell: ({ row }) => <PullRequestCell row={row.original} />,
-      meta: { width: 28, priority: 3 },
-    }),
+    {
+      ...helper.display({
+        id: "pull-request",
+        header: "Pull request",
+        cell: ({ row }) => <PullRequestLinks row={row.original} />,
+        meta: { width: 28, priority: 3 },
+      }),
+      // Pointer only: the Status card names the review and its reviewers.
+      card: { keyboard: false, content: pullRequestCard },
+    },
     helper.display({
       id: "also-in",
       header: "Also in",

@@ -41,3 +41,41 @@ export const WithoutReadAge: Story = {
     content: { ...meta.args.content, readAge: undefined },
   },
 };
+
+// A secondary column's card: no badge, a sentence alone.
+export const WithoutReading: Story = {
+  args: {
+    content: {
+      body: [
+        "This change adds release-notes to github.com/fimoklei/agent-harness.",
+      ],
+    },
+    children: <span>Addition</span>,
+  },
+};
+
+export const WithFacts: Story = {
+  args: {
+    content: {
+      value: (
+        <>
+          <MachineValue>#47</MachineValue>
+          <span className="rounded-chip border border-gray-7 px-tight text-gray-12">
+            Open
+          </span>
+        </>
+      ),
+      body: [],
+      facts: [
+        { label: "Review", value: "Changes requested" },
+        { label: "Requested", value: "@sanne, @joris" },
+        {
+          label: "Branch",
+          value: <MachineValue>maestro/code-review → main</MachineValue>,
+          wrap: true,
+        },
+      ],
+    },
+    children: <MachineValue>#47</MachineValue>,
+  },
+};

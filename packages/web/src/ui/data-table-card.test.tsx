@@ -175,4 +175,52 @@ describe("DataTable — a declared card", () => {
 
     expect(screen.queryByText("The apple is Green.")).toBeNull();
   });
+
+  it("draws a card without a reading as its body alone, then its facts", () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderSeeds({
+      columns: createDataTableColumns<Seed>((helper) => [
+        helper.accessor("name", { header: "Name" }),
+        {
+          ...helper.display({
+            id: "box",
+            header: "Box",
+            cell: () => "Crate",
+          }),
+          card: {
+            keyboard: false,
+            content: (seed: Seed) => ({
+              body: [`The ${seed.name} ships in a crate.`],
+              facts: [
+                { label: "Weight", value: "2 kg" },
+                { label: "Route", value: "orchard/north → market" },
+              ],
+            }),
+          },
+        },
+      ]),
+    });
+
+    fireEvent.pointerEnter(within(rowOf("pear")).getByText("Crate"), {
+      pointerType: "mouse",
+    });
+    act(() => vi.advanceTimersByTime(400));
+
+    const body = screen.getByText("The pear ships in a crate.");
+    const card = body.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    expect(card.textContent?.startsWith("The pear ships")).toBe(true);
+    const labels = within(card).getAllByRole("term");
+    expect(labels.map((label) => label.textContent)).toEqual([
+      "Weight",
+      "Route",
+    ]);
+    expect(follows(body, labels[0] as HTMLElement)).toBe(true);
+    expect(
+      within(card)
+        .getAllByRole("definition")
+        .map((value) => value.textContent),
+    ).toEqual(["2 kg", "orchard/north → market"]);
+  });
 });

@@ -1,9 +1,6 @@
 import { rowActionsLabel } from "../inventory/inventory-copy";
 import { RowItemsMenu } from "../inventory/row-menu";
-import {
-  createDataTableColumns,
-  useDataTableRowActive,
-} from "../ui/data-table";
+import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import { GITHUB_COLUMN } from "../ui/github-link-copy";
 import { GitHubMarkLink } from "../ui/github-mark-link";
@@ -50,22 +47,14 @@ function statusCardContent(
   return {
     reading: row.status,
     value: row.release ? <ReleaseValue release={row.release} /> : undefined,
-    body: reason ? [reason] : [],
+    // The keyboard opens this card alone, so it also says what the GitHub
+    // column's Unknown card says.
+    body: [
+      ...(reason ? [reason] : []),
+      ...(row.github?.kind === "unknown" ? [ORIGIN_NOT_READ] : []),
+    ],
     readAge: readAge ?? undefined,
   };
-}
-
-// The GitHub cell: its Unknown card opens with the active row, as Status does.
-function GitHubCell({ row }: { row: TargetTableRow }) {
-  const active = useDataTableRowActive();
-  return (
-    <GitHubMarkLink
-      page={row.github}
-      name={row.name}
-      unknownCause={ORIGIN_NOT_READ}
-      focused={active}
-    />
-  );
 }
 
 function ReleaseValue({
@@ -124,7 +113,14 @@ export const deployStateColumns = ({
     helper.display({
       id: "github",
       header: GITHUB_COLUMN,
-      cell: ({ row }) => <GitHubCell row={row.original} />,
+      // Its Unknown card opens to the pointer only; Status carries the cause.
+      cell: ({ row }) => (
+        <GitHubMarkLink
+          page={row.original.github}
+          name={row.original.name}
+          unknownCause={ORIGIN_NOT_READ}
+        />
+      ),
       // Drops out first on a narrow panel; the ⋮ menu keeps the same link.
       meta: { width: 28, priority: 1 },
     }),

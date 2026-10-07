@@ -4,7 +4,7 @@ import type { NoticeContent } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import type { HarnessTableRow } from "./harness-columns";
 import { CONCURRENT_CHANGE_NOTICE } from "./notice-copy";
-import { PullRequestCell } from "./pull-request-cell";
+import { PullRequestFact } from "./pull-request-cell";
 import {
   alsoInWords,
   CHANGE_WORDS,
@@ -50,7 +50,7 @@ export function StageDetailPane({
         { label: "Stage", value: STAGE_NAMES[row.stage] },
         { label: "Change", value: CHANGE_WORDS[row.change] },
         { label: "Status", value: <StatusBadge reading={row.reading} /> },
-        { label: "Pull request", value: <PullRequestCell row={row} /> },
+        { label: "Pull request", value: <PullRequestFact row={row} /> },
         alsoIn === "" ? null : { label: "Also in", value: alsoIn },
       ]}
       paragraph={[

@@ -1,7 +1,7 @@
 import type { HarnessStageRow } from "@maestro/core";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PullRequestCell } from "./pull-request-cell";
+import { PullRequestFact } from "./pull-request-cell";
 import { pullRequest } from "./stage-row-fixture";
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
@@ -30,9 +30,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("PullRequestCell", () => {
+describe("PullRequestFact", () => {
   it("links the number to the pull request on GitHub, in a new tab", () => {
-    render(<PullRequestCell row={row()} />);
+    render(<PullRequestFact row={row()} />);
 
     const link = screen.getByRole("link", {
       name: "Pull request #47, opens in a new tab",
@@ -47,7 +47,7 @@ describe("PullRequestCell", () => {
 
   it("gives every matching request its own link", () => {
     render(
-      <PullRequestCell
+      <PullRequestFact
         row={row({
           status: "multiple-pull-requests",
           requests: [pullRequest(51), pullRequest(52)],
@@ -62,13 +62,13 @@ describe("PullRequestCell", () => {
 
   it("stays out of the grid's one Tab stop", () => {
     // The detail pane's View pull request is the keyboard's way to GitHub.
-    render(<PullRequestCell row={row()} />);
+    render(<PullRequestFact row={row()} />);
 
     expect(screen.getByRole("link")).toHaveAttribute("tabindex", "-1");
   });
 
   it("shows a dash where the row has no pull request", () => {
-    render(<PullRequestCell row={row({ requests: [] })} />);
+    render(<PullRequestFact row={row({ requests: [] })} />);
 
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe("PullRequestCell", () => {
 
   it("sums the request up in its own hover card", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    render(<PullRequestCell row={row()} />);
+    render(<PullRequestFact row={row()} />);
 
     fireEvent.pointerEnter(screen.getByRole("link"), { pointerType: "mouse" });
     act(() => vi.advanceTimersByTime(400));
@@ -93,7 +93,7 @@ describe("PullRequestCell", () => {
     // The row's status is the local work's, not the request's (#1076).
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(
-      <PullRequestCell
+      <PullRequestFact
         row={row({
           stage: "pending-proposal",
           status: "new-local-work",
@@ -112,7 +112,7 @@ describe("PullRequestCell", () => {
 
   it("names the branch the request carries and the branch it goes into", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    render(<PullRequestCell row={row()} />);
+    render(<PullRequestFact row={row()} />);
 
     fireEvent.pointerEnter(screen.getByRole("link"), { pointerType: "mouse" });
     act(() => vi.advanceTimersByTime(400));

@@ -15,6 +15,7 @@ export function FactRow({
   machine = false,
   fullValue,
   action,
+  wrap = false,
   children,
 }: {
   label: string;
@@ -24,6 +25,8 @@ export function FactRow({
   fullValue?: string;
   /** One control beside the value, for an action that changes this fact. */
   action?: ReactNode;
+  /** A value that is the fact itself, such as a branch: it wraps. */
+  wrap?: boolean;
   children: ReactNode;
 }) {
   const value =
@@ -47,7 +50,9 @@ export function FactRow({
         className={cn(
           "m-0 min-w-0 text-gray-12",
           // The tooltip trigger shortens itself, so its focus ring is not clipped.
-          fullValue === undefined && action === undefined && "truncate",
+          wrap
+            ? "break-words"
+            : fullValue === undefined && action === undefined && "truncate",
           machine ? "font-mono" : "font-ui",
         )}
       >

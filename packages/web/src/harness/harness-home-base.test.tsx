@@ -900,4 +900,89 @@ describe("Harness home base", () => {
       expect(within(pane).getByText("Addition")).toBeInTheDocument();
     });
   });
+
+  // design.md → Disclosure: every card shares the frame; the keyboard opens
+  // the Status card alone (#1445).
+  describe("the Change and Pull request cards", () => {
+    const CARD = "[data-radix-popper-content-wrapper]";
+    const cardOf = (text: HTMLElement) => text.closest(CARD) as HTMLElement;
+    const stubbed = () =>
+      stubHarnessServer({
+        read: {
+          body: withStages(RELEASED, {
+            review: [
+              row("pending-review", "code-review", "changes-requested", {
+                requests: [pullRequest(47, "code-review")],
+                reviewers: [
+                  { kind: "user", login: "sanne" },
+                  { kind: "user", login: "joris" },
+                ],
+              }),
+            ],
+          }),
+        },
+      });
+
+    it("opens the Change card to the pointer with its sentence alone", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending review");
+
+      await userEvent.hover(
+        within(screen.getByRole("row", { name: /code-review/ })).getByText(
+          "Edit",
+        ),
+      );
+
+      const line = await screen.findByText(
+        sentence(
+          "This change edits code-review in github.com/fimoklei/agent-harness.",
+        ),
+      );
+      expect(cardOf(line).textContent).toBe(line.textContent);
+    });
+
+    it("lays out the Pull request card's facts as the detail pane does", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending review");
+
+      await userEvent.hover(
+        screen.getByRole("link", {
+          name: "Pull request #47, opens in a new tab",
+        }),
+      );
+
+      const card = cardOf(await screen.findByText("@sanne, @joris"));
+      expect(card).toHaveTextContent(/^#47Open/);
+      expect(
+        within(card)
+          .getAllByRole("term")
+          .map((label) => label.textContent),
+      ).toEqual(["Review", "Requested", "Branch"]);
+      expect(
+        within(card)
+          .getAllByRole("definition")
+          .map((value) => value.textContent),
+      ).toEqual([
+        "Changes requested",
+        "@sanne, @joris",
+        "maestro/code-review →into main",
+      ]);
+    });
+
+    it("opens one card on the keyboard's active row, the Status card", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending review");
+
+      act(() => (screen.getByRole("grid") as HTMLElement).focus());
+
+      const status = await screen.findByText(
+        "Review requested from @sanne, @joris",
+      );
+      expect(cardOf(status)).toHaveTextContent(/^Changes requested/);
+      expect(document.querySelectorAll(CARD)).toHaveLength(1);
+    });
+  });
 });

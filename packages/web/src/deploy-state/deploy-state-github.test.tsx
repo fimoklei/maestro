@@ -125,19 +125,42 @@ describe("Deploy-state — GitHub column", () => {
     ).toBeInTheDocument();
   });
 
-  // design.md → Disclosure: a hover card opens on focus as well as hover.
-  it("opens the Unknown badge's cause when the grid's active row is the repository", async () => {
+  // design.md → Disclosure: the active row opens one card, the Status card,
+  // and it carries the Unknown badge's cause.
+  it("opens the Status card alone on the repository's row, with the origin's cause", async () => {
     serve({ kind: "unknown" });
     renderDeployState();
     await findRow(NAME);
+    await waitFor(() => expect(cellsOf(NAME)[2]).toBe("Empty"));
 
     act(() => screen.getByRole("grid").focus());
     await userEvent.keyboard("{ArrowDown}");
 
+    const cause = await screen.findByText(
+      "The origin of this repository could not be read. Select Re-read Deploy-state to read it again.",
+    );
+    const card = cause.closest("[data-radix-popper-content-wrapper]");
+    expect(card).toHaveTextContent(/^Empty/);
+    // The row the cursor left closes its card 150 ms later.
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll("[data-radix-popper-content-wrapper]"),
+      ).toHaveLength(1),
+    );
+  });
+
+  it("opens the Unknown badge's own cause to the pointer", async () => {
+    serve({ kind: "unknown" });
+    renderDeployState();
+    await findRow(NAME);
+
+    await userEvent.hover(within(githubCell(NAME)).getByText("Unknown"));
+
+    const cause = await screen.findByText(
+      /The origin of this repository could not be read/,
+    );
     expect(
-      await screen.findByText(
-        /The origin of this repository could not be read/,
-      ),
-    ).toBeInTheDocument();
+      cause.closest("[data-radix-popper-content-wrapper]"),
+    ).not.toHaveTextContent("Empty");
   });
 });

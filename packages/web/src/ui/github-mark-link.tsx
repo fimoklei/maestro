@@ -16,14 +16,11 @@ export function GitHubMarkLink({
   page,
   name,
   unknownCause,
-  focused = false,
   focusable = false,
 }: {
   name: string;
   /** Outside a grid, where no ⋮ menu offers the same page to the keyboard. */
   focusable?: boolean;
-  /** The grid's active row, which opens the Unknown hover card as focus would. */
-  focused?: boolean;
 } & (
   | {
       page: GitHubPage | undefined;
@@ -35,10 +32,7 @@ export function GitHubMarkLink({
   if (page === undefined) return null;
   if (page.kind === "unknown") {
     return (
-      <HoverCard
-        focused={focused}
-        content={<p className="m-0 text-gray-11">{unknownCause}</p>}
-      >
+      <HoverCard content={<p className="m-0 text-gray-11">{unknownCause}</p>}>
         <span className="inline-flex align-middle">
           <StatusBadge reading={UNKNOWN} />
         </span>
