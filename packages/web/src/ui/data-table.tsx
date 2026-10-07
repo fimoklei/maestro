@@ -29,6 +29,7 @@ import {
 import { Checkbox } from "./checkbox";
 import { cn } from "./cn";
 import { DataTableCard, type DataTableCardColumn } from "./data-table-card";
+import { DataTableName } from "./data-table-name";
 import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { Skeleton } from "./skeleton";
@@ -56,6 +57,8 @@ type Features = typeof dataTableFeatures;
 type DataTableColumn<T extends RowData> = ColumnDef<Features, T, any> & {
   /** The cell's hover card, declared as content: the table draws it. */
   card?: DataTableCardColumn<T>;
+  /** The row's name, a string the table draws on one line. */
+  name?: true;
 };
 
 const columnIdOf = <T extends RowData>(column: DataTableColumn<T>) =>
@@ -205,6 +208,8 @@ export function DataTable<T extends RowData>({
       column.card === undefined ? [] : [[columnIdOf(column), column.card]],
     ),
   );
+  const named = columns.find((column) => column.name);
+  const nameColumn = named === undefined ? undefined : columnIdOf(named);
   // The active row opens one card: the first shown column's that says so.
   const keyboardCard = leafColumns.find(
     (column) => cards.get(column.id)?.keyboard,
@@ -376,7 +381,12 @@ export function DataTable<T extends RowData>({
           {row.getVisibleCells().map((cell) => {
             const meta = cell.column.columnDef.meta;
             const card = cards.get(cell.column.id);
-            const value = <table.FlexRender cell={cell} />;
+            const value =
+              cell.column.id === nameColumn ? (
+                <DataTableName name={String(cell.getValue())} />
+              ) : (
+                <table.FlexRender cell={cell} />
+              );
             return (
               <GridCell
                 key={cell.id}

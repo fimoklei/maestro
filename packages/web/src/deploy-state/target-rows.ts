@@ -51,8 +51,6 @@ export type TargetRow = {
   group: typeof GLOBAL | typeof REPOSITORIES;
   name: string;
   path: string;
-  /** The whole path where `name` shortens it (#211). */
-  title?: string;
   target: RemoveDialogTarget;
   /** What an update or retry sends; every tool row names the one global target. */
   wire: DeployTarget;
@@ -212,7 +210,6 @@ export function repoRow(
     group: REPOSITORIES,
     name: label,
     path: repoPath,
-    title: repoPath,
     target: { kind: "repo", repoPath },
     wire: { kind: "repo", repoPath },
     updateName: label,

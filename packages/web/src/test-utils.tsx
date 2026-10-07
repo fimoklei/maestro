@@ -1,6 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { vi } from "vitest";
 import { createQueryClient } from "./api/query-client";
 import type { NoticeCopy } from "./ui/notice";
 import { type Copy, plainText } from "./ui/phrase";
@@ -67,3 +68,13 @@ export const machineValues = (copy: Copy): string[] =>
     : copy.parts.flatMap((part) =>
         typeof part !== "string" && part.kind === "machine" ? [part.text] : [],
       );
+
+/** Every element reports these widths; happy-dom lays nothing out. */
+export function measureAs(scrollWidth: number, clientWidth: number) {
+  vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(
+    scrollWidth,
+  );
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(
+    clientWidth,
+  );
+}

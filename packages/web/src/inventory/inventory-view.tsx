@@ -220,14 +220,12 @@ export function InventoryView({
     unavailable: NO_SKILLS_YET,
   });
 
-  const cardColumn = view.hidden.has("status") ? "targets" : "status";
   const columns = useMemo(
     () =>
       inventoryColumns({
-        cardColumn,
         onAction: (row, action) => openFromMenu(row.name, action),
       }),
-    [cardColumn, openFromMenu],
+    [openFromMenu],
   );
 
   const matched = new Set(filterByName(rows, query).map((row) => row.name));

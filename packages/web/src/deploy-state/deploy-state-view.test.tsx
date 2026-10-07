@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { measureAs, sentence } from "../test-utils";
 import {
   cellsOf,
   findRow,
@@ -16,6 +16,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 const skill = (name: string, version = "v0.5.0") => ({
@@ -66,7 +67,7 @@ describe("Deploy-state — one table of every target", () => {
     expect(cellsOf("Codex")[0]).toBe("Codex");
   });
 
-  it("keeps two repositories that share a prefix apart, full path as the title", async () => {
+  it("keeps two repositories that share a prefix apart", async () => {
     stubServer(() => ({
       repos: [
         "/Users/me/clientA/repos/agent-harness",
@@ -81,9 +82,20 @@ describe("Deploy-state — one table of every target", () => {
     expect(
       screen.getByText("…/clientB/repos/agent-harness"),
     ).toBeInTheDocument();
+  });
+
+  it("reveals a shortened target name through the tooltip, not a native title", async () => {
+    measureAs(300, 100);
+    stubServer(() => ({ repos: ["/Users/me/clientA/repos/agent-harness"] }));
+    renderDeployState();
+
+    const name = await screen.findByText("…/repos/agent-harness");
+    await userEvent.hover(name);
+
     expect(
-      screen.getByTitle("/Users/me/clientA/repos/agent-harness"),
-    ).toBeInTheDocument();
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("…/repos/agent-harness");
+    expect(name).not.toHaveAttribute("title");
   });
 
   it("counts the targets once both reads have landed", async () => {
@@ -155,7 +167,7 @@ describe("Deploy-state — one table of every target", () => {
     stubServer(() => ({ repos: ["/Users/me/a"] }));
     renderDeployState();
 
-    expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
+    expect(await findRow("…/me/a")).toBeInTheDocument();
     expect(
       screen.queryByText(/no repositories registered yet\./i),
     ).not.toBeInTheDocument();

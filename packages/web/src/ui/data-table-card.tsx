@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { FactList, FactRow } from "./fact-list";
 import { HoverCard } from "./hover-card";
 import { type Copy, plainText } from "./phrase";
@@ -12,7 +12,8 @@ export type DataTableCardContent = {
   reading?: StatusReading;
   /** A machine value beside the badge, such as the row's release. */
   value?: ReactNode;
-  body: readonly Copy[];
+  /** Sentences, or an element for a body that is not one, such as a list. */
+  body: readonly (Copy | ReactElement)[];
   /** Label/value facts after the body, laid out as in the detail pane. */
   facts?: readonly DataTableCardFact[];
   /** How fresh the reading is; none: no footer. */
@@ -57,11 +58,16 @@ export function DataTableCard({
               {content.value}
             </div>
           )}
-          {content.body.map((line) => (
-            <p key={plainText(line)} className="m-0 text-gray-12">
-              <PhraseText copy={line} />
-            </p>
-          ))}
+          {content.body.map((line, index) =>
+            isValidElement(line) ? (
+              // biome-ignore lint/suspicious/noArrayIndexKey: the body's order is fixed per card.
+              <div key={index}>{line}</div>
+            ) : (
+              <p key={plainText(line)} className="m-0 text-gray-12">
+                <PhraseText copy={line} />
+              </p>
+            ),
+          )}
           {content.facts === undefined ? null : (
             <FactList>
               {content.facts.map((fact) => (

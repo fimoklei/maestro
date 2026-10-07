@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  jsonResponse,
+  measureAs,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";
 import type { Primitive } from "./use-inventory";
@@ -66,6 +71,7 @@ const primitives: Primitive[] = [
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 function stubPendingFetch() {
@@ -111,6 +117,21 @@ describe("InventoryView — the table", () => {
     expect(
       screen.getByRole("gridcell", { name: "Test-driven development." }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("gridcell", { name: "caveman" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reveals a shortened skill name through the tooltip, said once", async () => {
+    measureAs(300, 100);
+    stubPendingFetch();
+    renderView();
+
+    await userEvent.hover(within(grid()).getByText("caveman"));
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("caveman");
     expect(
       screen.getByRole("gridcell", { name: "caveman" }),
     ).toBeInTheDocument();
@@ -1310,6 +1331,39 @@ describe("InventoryView — hover card", () => {
     expect(row).toHaveTextContent("Behind");
   });
 
+  it("opens with the status badge, then the reach list", async () => {
+    stubPendingFetch();
+    renderView({ targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])] });
+
+    await userEvent.hover(within(grid()).getByText("Behind"));
+
+    const reach = await screen.findByText(sentence("Deployed to 1 target"));
+    const card = reach.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    const [badge] = within(card).getAllByText("Behind");
+    expect(
+      (badge as HTMLElement).compareDocumentPosition(reach) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+  });
+
+  it("opens the Targets card for the keyboard's row while Display hides Status", async () => {
+    stubPendingFetch();
+    renderView({ targets: [onRepo("/projects/beta", ["tdd"])] });
+    await userEvent.click(screen.getByRole("button", { name: "Display" }));
+    await userEvent.click(
+      await screen.findByRole("menuitemcheckbox", { name: "Status" }),
+    );
+    await userEvent.keyboard("{Escape}");
+
+    act(() => grid().focus());
+
+    expect(
+      await screen.findAllByText(sentence("Deployed to 1 target")),
+    ).toHaveLength(1);
+  });
+
   it("expands the Targets number into its targets on hover", async () => {
     stubPendingFetch();
     renderView({
@@ -1333,8 +1387,8 @@ describe("InventoryView — hover card", () => {
     act(() => grid().focus());
 
     expect(
-      await screen.findByText(sentence("Deployed to 1 target")),
-    ).toBeInTheDocument();
+      await screen.findAllByText(sentence("Deployed to 1 target")),
+    ).toHaveLength(1);
   });
 });
 

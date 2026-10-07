@@ -1,9 +1,5 @@
-import type { ReactNode } from "react";
-import {
-  createDataTableColumns,
-  useDataTableRowActive,
-} from "../ui/data-table";
-import { HoverCard } from "../ui/hover-card";
+import { createDataTableColumns } from "../ui/data-table";
+import type { DataTableCardContent } from "../ui/data-table-card";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
 import { ACTIONS_COLUMN_LABEL } from "./inventory-copy";
@@ -32,39 +28,29 @@ export type InventoryRow = Primitive & {
 
 const unranked = Number.MAX_SAFE_INTEGER;
 
-// The hover card over a cell. The row the keyboard is on opens one card only:
+// The Status and Targets cells open the same card. The keyboard's row opens
 // the Status cell's, or the Targets cell's while Display hides Status.
-function Reach({
-  row,
-  keyboard,
-  children,
-}: {
-  row: InventoryRow;
-  keyboard: boolean;
-  children: ReactNode;
-}) {
-  const active = useDataTableRowActive();
-  return (
-    <HoverCard
-      focused={keyboard && active}
-      content={
-        <ReachCard
-          count={row.targets ?? 0}
-          deployments={row.deployments}
-          unreadable={row.unreadable}
-        />
-      }
-    >
-      <span className="inline-flex align-middle">{children}</span>
-    </HoverCard>
-  );
-}
+const reachCard = {
+  keyboard: true,
+  content: (row: InventoryRow): DataTableCardContent | null =>
+    row.status === null
+      ? null
+      : {
+          reading: row.status,
+          body: [
+            <ReachCard
+              key="reach"
+              count={row.targets ?? 0}
+              deployments={row.deployments}
+              unreadable={row.unreadable}
+            />,
+          ],
+        },
+};
 
 export const inventoryColumns = ({
-  cardColumn,
   onAction,
 }: {
-  cardColumn: "status" | "targets";
   onAction: (row: InventoryRow, action: RowAction) => void;
 }) =>
   createDataTableColumns<InventoryRow>((helper) => [
@@ -73,48 +59,47 @@ export const inventoryColumns = ({
       cell: ({ row }) => TYPE_WORD[row.original.type],
       meta: { className: "text-gray-11", width: 16, priority: 2 },
     }),
-    helper.accessor("name", {
-      header: "Name",
-      meta: { className: "font-medium text-gray-12", width: 55 },
-    }),
+    {
+      ...helper.accessor("name", { header: "Name", meta: { width: 55 } }),
+      name: true,
+    },
     helper.accessor("description", {
       header: "Description",
       // Drops out first on a narrow window (#992).
       meta: { className: "text-gray-11", priority: 1 },
     }),
-    helper.accessor("status", {
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.original.status;
-        return status === null ? null : (
-          <Reach row={row.original} keyboard={cardColumn === "status"}>
-            <StatusBadge reading={status} />
-          </Reach>
-        );
-      },
-      sortFn: (a, b) =>
-        (a.original.status ? readingRank(a.original.status) : unranked) -
-        (b.original.status ? readingRank(b.original.status) : unranked),
-      meta: { width: 33 },
-    }),
-    helper.accessor("targets", {
-      header: "Targets",
-      cell: ({ row }) => {
-        const targets = row.original.targets;
-        return targets === null ? null : (
-          <Reach row={row.original} keyboard={cardColumn === "targets"}>
-            {targets === 0 ? "—" : targets}
-          </Reach>
-        );
-      },
-      sortFn: (a, b) => (a.original.targets ?? -1) - (b.original.targets ?? -1),
-      meta: {
-        className: "tabular-nums text-gray-12",
-        width: 18,
-        priority: 3,
-        align: "end",
-      },
-    }),
+    {
+      ...helper.accessor("status", {
+        header: "Status",
+        cell: ({ row }) => {
+          const status = row.original.status;
+          return status === null ? null : <StatusBadge reading={status} />;
+        },
+        sortFn: (a, b) =>
+          (a.original.status ? readingRank(a.original.status) : unranked) -
+          (b.original.status ? readingRank(b.original.status) : unranked),
+        meta: { width: 33 },
+      }),
+      card: reachCard,
+    },
+    {
+      ...helper.accessor("targets", {
+        header: "Targets",
+        cell: ({ row }) => {
+          const targets = row.original.targets;
+          return targets === null ? null : targets === 0 ? "—" : targets;
+        },
+        sortFn: (a, b) =>
+          (a.original.targets ?? -1) - (b.original.targets ?? -1),
+        meta: {
+          className: "tabular-nums text-gray-12",
+          width: 18,
+          priority: 3,
+          align: "end",
+        },
+      }),
+      card: reachCard,
+    },
     helper.display({
       id: "actions",
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
