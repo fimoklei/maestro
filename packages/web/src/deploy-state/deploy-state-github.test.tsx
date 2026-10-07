@@ -162,5 +162,7 @@ describe("Deploy-state — GitHub column", () => {
     expect(
       cause.closest("[data-radix-popper-content-wrapper]"),
     ).not.toHaveTextContent("Empty");
+    // A declared card's body: full strength, as on every table card.
+    expect(cause.closest("p")).toHaveClass("text-gray-12");
   });
 });

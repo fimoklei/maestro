@@ -107,6 +107,32 @@ describe("lint rules", () => {
     );
   });
 
+  it("allows a component prop named title in a table cell", () => {
+    expect(
+      lint(
+        "packages/web/src/harness/probe-cell.tsx",
+        "export const c = (name: string) => <Pane title={name} />;\n",
+      ),
+    ).not.toContain("Mark the column name: true");
+  });
+
+  it("refuses the data table's card outside the shared building blocks and allows its types", () => {
+    const message = "Only the data table draws";
+
+    expect(
+      lint(
+        "packages/web/src/harness/probe.tsx",
+        'import { DataTableCard } from "../ui/data-table-card";\nexport const h = DataTableCard;\n',
+      ),
+    ).toContain(message);
+    expect(
+      lint(
+        "packages/web/src/harness/probe.tsx",
+        'import type { DataTableCardContent } from "../ui/data-table-card";\nexport type H = DataTableCardContent;\n',
+      ),
+    ).not.toContain(message);
+  });
+
   it("refuses a file name that is not kebab-case", () => {
     expect(
       lint("packages/web/src/HarnessView.tsx", "export const a = 1;\n"),

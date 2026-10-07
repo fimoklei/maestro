@@ -3,7 +3,7 @@ import { RowItemsMenu } from "../inventory/row-menu";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import { GITHUB_COLUMN } from "../ui/github-link-copy";
-import { GitHubMarkLink } from "../ui/github-mark-link";
+import { GITHUB_UNKNOWN, GitHubMarkLink } from "../ui/github-mark-link";
 import { MachineValue } from "../ui/machine-value";
 import { Skeleton } from "../ui/skeleton";
 import { StatusBadge } from "../ui/status-badge";
@@ -46,14 +46,14 @@ function statusCardContent(
   const { reason, readAge } = statusCard(row, now);
   return {
     reading: row.status,
-    value: row.release ? <ReleaseValue release={row.release} /> : undefined,
+    value: row.release ? <ReleaseValue release={row.release} /> : null,
     // The keyboard opens this card alone, so it also says what the GitHub
     // column's Unknown card says.
     body: [
       ...(reason ? [reason] : []),
       ...(row.github?.kind === "unknown" ? [ORIGIN_NOT_READ] : []),
     ],
-    readAge: readAge ?? undefined,
+    readAge,
   };
 }
 
@@ -88,7 +88,7 @@ export const deployStateColumns = ({
     {
       // The name only; the path is a fact in the detail pane (#1180).
       ...helper.accessor("name", { header: TARGET_LABEL }),
-      name: true,
+      name: (row) => row.name,
     },
     helper.accessor("release", {
       header: "Release",
@@ -103,20 +103,31 @@ export const deployStateColumns = ({
         ),
       meta: { width: 43, priority: 3 },
     }),
-    helper.display({
-      id: "github",
-      header: GITHUB_COLUMN,
-      // Its Unknown card opens to the pointer only; Status carries the cause.
-      cell: ({ row }) => (
-        <GitHubMarkLink
-          page={row.original.github}
-          name={row.original.name}
-          unknownCause={ORIGIN_NOT_READ}
-        />
-      ),
-      // Drops out first on a narrow panel; the ⋮ menu keeps the same link.
-      meta: { width: 28, priority: 1 },
-    }),
+    {
+      ...helper.display({
+        id: "github",
+        header: GITHUB_COLUMN,
+        cell: ({ row }) =>
+          row.original.github?.kind === "unknown" ? (
+            <StatusBadge reading={GITHUB_UNKNOWN} />
+          ) : (
+            <GitHubMarkLink
+              page={row.original.github}
+              name={row.original.name}
+            />
+          ),
+        // Drops out first on a narrow panel; the ⋮ menu keeps the same link.
+        meta: { width: 28, priority: 1 },
+      }),
+      // Pointer only: the Status card carries the same cause.
+      card: {
+        keyboard: false,
+        content: (row) =>
+          row.github?.kind === "unknown"
+            ? { body: [ORIGIN_NOT_READ], readAge: null }
+            : null,
+      },
+    },
     {
       ...helper.accessor("status", {
         header: "Status",

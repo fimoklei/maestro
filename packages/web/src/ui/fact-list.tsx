@@ -2,9 +2,21 @@ import type { ReactNode } from "react";
 import { cn } from "./cn";
 import { Tooltip } from "./tooltip";
 
-export function FactList({ children }: { children: ReactNode }) {
+export function FactList({
+  size,
+  children,
+}: {
+  /** The text size of the surface: `row` in the detail pane, `meta` in a card. */
+  size: "row" | "meta";
+  children: ReactNode;
+}) {
   return (
-    <dl className="m-0 grid grid-cols-[auto_1fr] items-center gap-x-panel gap-y-inline text-row">
+    <dl
+      className={cn(
+        "m-0 grid grid-cols-[auto_1fr] items-center gap-x-panel gap-y-inline",
+        size === "row" ? "text-row" : "text-meta",
+      )}
+    >
       {children}
     </dl>
   );

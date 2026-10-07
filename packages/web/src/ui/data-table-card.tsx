@@ -13,25 +13,21 @@ export type DataTableCardContent = {
   /** A machine value beside the badge, such as the row's release. */
   value?: ReactNode;
   /** Sentences, or an element for a body that is not one, such as a list. */
-  body: readonly (Copy | ReactElement)[];
+  body?: readonly (Copy | ReactElement)[];
   /** Label/value facts after the body, laid out as in the detail pane. */
   facts?: readonly DataTableCardFact[];
-  /** How fresh the reading is; none: no footer. */
-  readAge?: string;
+  /** How fresh the reading is; null: no footer. */
+  readAge: string | null;
 };
 
-export type DataTableCardFact = {
-  label: string;
-  value: ReactNode;
-  /** A value that is the fact itself, such as a branch: it wraps. */
-  wrap?: boolean;
-};
+/** A card's fact: its value wraps, since the card is where it shows whole. */
+export type DataTableCardFact = { label: string; value: ReactNode };
 
 /** A column's hover card, declared beside its TanStack column definition. */
 export type DataTableCardColumn<T> = {
   /** Null: the cell draws no card for this row. */
   content: (row: T, now: Date) => DataTableCardContent | null;
-  /** The active row opens the first shown column whose card says so. */
+  /** The active row opens the first shown column whose card says so, in column order. */
   keyboard: boolean;
 };
 
@@ -58,7 +54,7 @@ export function DataTableCard({
               {content.value}
             </div>
           )}
-          {content.body.map((line, index) =>
+          {content.body?.map((line, index) =>
             isValidElement(line) ? (
               // biome-ignore lint/suspicious/noArrayIndexKey: the body's order is fixed per card.
               <div key={index}>{line}</div>
@@ -69,15 +65,16 @@ export function DataTableCard({
             ),
           )}
           {content.facts === undefined ? null : (
-            <FactList>
-              {content.facts.map((fact) => (
-                <FactRow key={fact.label} label={fact.label} wrap={fact.wrap}>
+            <FactList size="meta">
+              {content.facts.map((fact, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: a label repeats, one Branch per pull request, and the order is fixed per card.
+                <FactRow key={index} label={fact.label} wrap>
                   {fact.value}
                 </FactRow>
               ))}
             </FactList>
           )}
-          {content.readAge === undefined ? null : (
+          {content.readAge === null ? null : (
             <p className="m-0 border-divider border-t pt-inline text-gray-11">
               {content.readAge}
             </p>

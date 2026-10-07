@@ -29,7 +29,9 @@ export type InventoryRow = Primitive & {
 const unranked = Number.MAX_SAFE_INTEGER;
 
 // The Status and Targets cells open the same card. The keyboard's row opens
-// the Status cell's, or the Targets cell's while Display hides Status.
+// the first shown keyboard card, so Status must stay before Targets: then it
+// opens the Status cell's, and the Targets cell's only while Display hides
+// Status.
 const reachCard = {
   keyboard: true,
   content: (row: InventoryRow): DataTableCardContent | null =>
@@ -45,6 +47,7 @@ const reachCard = {
               unreadable={row.unreadable}
             />,
           ],
+          readAge: null,
         },
 };
 
@@ -61,7 +64,7 @@ export const inventoryColumns = ({
     }),
     {
       ...helper.accessor("name", { header: "Name", meta: { width: 55 } }),
-      name: true,
+      name: (row) => row.name,
     },
     helper.accessor("description", {
       header: "Description",

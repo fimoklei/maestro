@@ -5,7 +5,8 @@ import { HoverCard } from "./hover-card";
 import { StatusBadge } from "./status-badge";
 import { reading } from "./status-reading";
 
-const UNKNOWN = reading("Unknown", "unknown");
+/** The GitHub column's badge where the page could not be read. */
+export const GITHUB_UNKNOWN = reading("Unknown", "unknown");
 
 type GitHubLink = Extract<GitHubPage, { kind: "link" }>;
 
@@ -34,7 +35,7 @@ export function GitHubMarkLink({
     return (
       <HoverCard content={<p className="m-0 text-gray-11">{unknownCause}</p>}>
         <span className="inline-flex align-middle">
-          <StatusBadge reading={UNKNOWN} />
+          <StatusBadge reading={GITHUB_UNKNOWN} />
         </span>
       </HoverCard>
     );

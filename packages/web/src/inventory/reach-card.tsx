@@ -28,7 +28,7 @@ export function ReachCard({
   const more = deployments.length - SHOWN;
   return (
     <>
-      <p className="m-0 text-gray-11">{deployedToLine(count)}</p>
+      <p className="m-0 text-gray-12">{deployedToLine(count)}</p>
       {deployments.length > 0 ? (
         <ul className="m-0 mt-inline list-none p-0">
           {deployments.slice(0, SHOWN).map((deployment) => (
@@ -37,10 +37,10 @@ export function ReachCard({
         </ul>
       ) : null}
       {more > 0 ? (
-        <p className="m-0 mt-inline text-gray-11">{moreTargetsLine(more)}</p>
+        <p className="m-0 mt-inline text-gray-12">{moreTargetsLine(more)}</p>
       ) : null}
       {unreadable ? (
-        <p className="m-0 mt-inline text-gray-11">{SOME_TARGETS_NOT_READ}</p>
+        <p className="m-0 mt-inline text-gray-12">{SOME_TARGETS_NOT_READ}</p>
       ) : null}
     </>
   );

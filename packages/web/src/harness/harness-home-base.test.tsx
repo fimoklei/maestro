@@ -926,6 +926,12 @@ describe("Harness home base", () => {
           }),
         },
       });
+    const hoverRequest = (number: number) =>
+      userEvent.hover(
+        screen.getByRole("link", {
+          name: `Pull request #${number}, opens in a new tab`,
+        }),
+      );
 
     it("opens the Change card to the pointer with its sentence alone", async () => {
       stubbed();
@@ -973,6 +979,92 @@ describe("Harness home base", () => {
         "@sanne, @joris",
         "maestro/code-review →into main",
       ]);
+      // The link's own name already says where it goes (#1076).
+      expect(within(card).queryByRole("link")).toBeNull();
+    });
+
+    it("sets the branches in mono, heard as one branch into the other", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending review");
+
+      await hoverRequest(47);
+
+      const card = cardOf(await screen.findByText("@sanne, @joris"));
+      const branch = within(card).getByText("Branch")
+        .nextElementSibling as HTMLElement;
+      expect(within(branch).getByText("maestro/code-review")).toHaveClass(
+        "font-mono",
+      );
+      expect(within(branch).getByText("main")).toHaveClass("font-mono");
+      expect(within(branch).getByText("→")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+      expect(within(branch).getByText("into")).toHaveClass("sr-only");
+    });
+
+    it("keeps every pull request's branch in the card", async () => {
+      stubHarnessServer({
+        read: {
+          body: withStages(RELEASED, {
+            review: [
+              row("pending-review", "code-review", "multiple-pull-requests", {
+                requests: [
+                  pullRequest(51, "code-review"),
+                  {
+                    ...pullRequest(52, "code-review"),
+                    headBranch: "fix/other",
+                  },
+                ],
+              }),
+            ],
+          }),
+        },
+      });
+      renderHarness();
+      await stageHeader("Pending review");
+
+      await hoverRequest(51);
+
+      const card = cardOf(await screen.findByText("fix/other"));
+      expect(
+        within(card)
+          .getAllByRole("definition")
+          .map((value) => value.textContent),
+      ).toEqual([
+        "#51 maestro/code-review →into main",
+        "#52 fix/other →into main",
+      ]);
+    });
+
+    it("shows only the number and branch on a Pending proposal row", async () => {
+      // The row's status is the local work's, not the request's (#1076).
+      stubHarnessServer({
+        read: {
+          body: withStages(RELEASED, {
+            proposal: [
+              row("pending-proposal", "code-review", "new-local-work", {
+                requests: [pullRequest(47, "code-review")],
+                comparison: { kind: "proposal", number: 47 },
+              }),
+            ],
+          }),
+        },
+      });
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      await hoverRequest(47);
+
+      const card = await waitFor(() => {
+        const open = document.querySelector<HTMLElement>(CARD);
+        if (open === null) throw new Error("No card is open yet");
+        return open;
+      });
+      expect(card).toHaveTextContent(/^#47Branch/);
+      expect(within(card).queryByText("Open")).toBeNull();
+      expect(within(card).queryByText("Review")).toBeNull();
     });
 
     it("opens one card on the keyboard's active row, the Status card", async () => {

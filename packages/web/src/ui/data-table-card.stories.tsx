@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Chip } from "./chip";
 import { DataTableCard } from "./data-table-card";
 import { MachineValue } from "./machine-value";
 import { StatusBadge } from "./status-badge";
@@ -32,13 +33,13 @@ export const WithValueAndReadAge: Story = {};
 
 export const WithoutValue: Story = {
   args: {
-    content: { ...meta.args.content, value: undefined },
+    content: { ...meta.args.content, value: null },
   },
 };
 
 export const WithoutReadAge: Story = {
   args: {
-    content: { ...meta.args.content, readAge: undefined },
+    content: { ...meta.args.content, readAge: null },
   },
 };
 
@@ -49,6 +50,7 @@ export const WithoutReading: Story = {
       body: [
         "This change adds release-notes to github.com/fimoklei/agent-harness.",
       ],
+      readAge: null,
     },
     children: <span>Addition</span>,
   },
@@ -60,21 +62,18 @@ export const WithFacts: Story = {
       value: (
         <>
           <MachineValue>#47</MachineValue>
-          <span className="rounded-chip border border-gray-7 px-tight text-gray-12">
-            Open
-          </span>
+          <Chip>Open</Chip>
         </>
       ),
-      body: [],
       facts: [
         { label: "Review", value: "Changes requested" },
         { label: "Requested", value: "@sanne, @joris" },
         {
           label: "Branch",
           value: <MachineValue>maestro/code-review → main</MachineValue>,
-          wrap: true,
         },
       ],
+      readAge: null,
     },
     children: <MachineValue>#47</MachineValue>,
   },

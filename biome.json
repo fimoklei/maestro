@@ -80,7 +80,10 @@
     },
     {
       "includes": ["packages/web/src/**", "!packages/web/src/ui/**"],
-      "plugins": ["./biome-plugins/hover-card-in-ui-only.grit"]
+      "plugins": [
+        "./biome-plugins/hover-card-in-ui-only.grit",
+        "./biome-plugins/data-table-card-in-ui-only.grit"
+      ]
     },
     {
       "includes": [

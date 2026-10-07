@@ -1390,6 +1390,30 @@ describe("InventoryView — hover card", () => {
       await screen.findAllByText(sentence("Deployed to 1 target")),
     ).toHaveLength(1);
   });
+
+  it("opens the Status cell's card for the keyboard's row while Status and Targets both show", async () => {
+    stubPendingFetch();
+    renderView({ targets: [onRepo("/projects/beta", ["tdd"])] });
+    const headers = within(grid())
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent);
+    const cellOf = (column: string) => {
+      const row = within(grid())
+        .getAllByRole("row")
+        .find((each) => within(each).queryByText("tdd") !== null);
+      return within(row as HTMLElement).getAllByRole("gridcell")[
+        headers.indexOf(column)
+      ] as HTMLElement;
+    };
+
+    act(() => grid().focus());
+    await screen.findByText(sentence("Deployed to 1 target"));
+
+    const triggerOf = (column: string) =>
+      cellOf(column).querySelector("[data-state]");
+    expect(triggerOf("Status")).toHaveAttribute("data-state", "open");
+    expect(triggerOf("Targets")).toHaveAttribute("data-state", "closed");
+  });
 });
 
 describe("InventoryView — paging the pane", () => {

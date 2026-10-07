@@ -748,7 +748,10 @@ describe("DataTable column priority", () => {
 
 describe("DataTable name column", () => {
   const named = createDataTableColumns<Fruit>((helper) => [
-    { ...helper.accessor("name", { header: "Name" }), name: true },
+    {
+      ...helper.accessor("name", { header: "Name" }),
+      name: (fruit) => fruit.name,
+    },
     helper.accessor("colour", { header: "Colour" }),
   ]);
 

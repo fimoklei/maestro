@@ -63,6 +63,26 @@ describe("ReachCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("sets its lines at full strength, as every card body", () => {
+    render(
+      <ReachCard
+        count={5}
+        deployments={["a", "b", "c", "d", "e"].map((label) =>
+          deployment(label),
+        )}
+        unreadable
+      />,
+    );
+
+    for (const line of [
+      screen.getByText(sentence("Deployed to 5 targets")).closest("p"),
+      screen.getByText("And 2 more."),
+      screen.getByText("Some targets could not be read."),
+    ]) {
+      expect(line).toHaveClass("text-gray-12");
+    }
+  });
+
   it("holds no control", () => {
     const { container } = render(
       <ReachCard

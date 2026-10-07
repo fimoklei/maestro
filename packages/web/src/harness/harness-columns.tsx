@@ -7,7 +7,8 @@ import type { DataTableCardContent } from "../ui/data-table-card";
 import type { Copy } from "../ui/phrase";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
-import { PullRequestLinks, pullRequestCard } from "./pull-request-cell";
+import { pullRequestCard } from "./pull-request-card";
+import { PullRequestLinks } from "./pull-request-links";
 import {
   alsoInWords,
   CHANGE_WORDS,
@@ -49,7 +50,7 @@ const statusCardContent =
       reviewerLine(row),
       crossStageLine(row),
     ].filter((line): line is Copy => line !== null),
-    readAge: freshness ?? undefined,
+    readAge: freshness,
   });
 
 export const harnessColumns = ({
@@ -69,7 +70,7 @@ export const harnessColumns = ({
     }),
     {
       ...helper.accessor("skill", { header: "Name", meta: { width: 58 } }),
-      name: true,
+      name: (row) => row.skill,
     },
     {
       ...helper.accessor("change", {
@@ -86,7 +87,10 @@ export const harnessColumns = ({
       // Pointer only: the Status card carries the same sentence (#1399).
       card: {
         keyboard: false,
-        content: (row) => ({ body: [changeSentence(row, context)] }),
+        content: (row) => ({
+          body: [changeSentence(row, context)],
+          readAge: null,
+        }),
       },
     },
     {

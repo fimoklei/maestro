@@ -55,6 +55,7 @@ function seedColumns({
         content: (seed: Seed) => ({
           reading: statusOf(seed),
           body: [`The ${seed.name} grew in the orchard.`],
+          readAge: null,
         }),
       },
     },
@@ -143,6 +144,24 @@ describe("DataTable — a declared card", () => {
     expect(screen.queryByText("The apple is Green.")).toBeNull();
   });
 
+  it("opens the keyboard card on the active row only while the grid holds focus, and moves it with the row", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderSeeds();
+    expect(screen.queryByText("The pear is Ripe.")).toBeNull();
+
+    act(() => grid().focus());
+    expect(screen.getByText("The pear is Ripe.")).toBeInTheDocument();
+
+    fireEvent.keyDown(grid(), { key: "ArrowDown" });
+    act(() => vi.advanceTimersByTime(150));
+    expect(screen.getByText("The apple is Green.")).toBeInTheDocument();
+    expect(screen.queryByText("The pear is Ripe.")).toBeNull();
+
+    act(() => grid().blur());
+    act(() => vi.advanceTimersByTime(150));
+    expect(screen.queryByText("The apple is Green.")).toBeNull();
+  });
+
   it("opens the next keyboard card while the first one's column is hidden", () => {
     renderSeeds({ columnVisibility: { status: false } });
 
@@ -195,6 +214,7 @@ describe("DataTable — a declared card", () => {
                 { label: "Weight", value: "2 kg" },
                 { label: "Route", value: "orchard/north → market" },
               ],
+              readAge: null,
             }),
           },
         },

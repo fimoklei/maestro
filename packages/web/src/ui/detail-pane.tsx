@@ -167,7 +167,7 @@ export function DetailPane({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-panel">
         {shown.length > 0 ? (
-          <FactList>
+          <FactList size="row">
             {shown.map((fact) => (
               <FactRow
                 key={fact.label}
