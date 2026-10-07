@@ -174,7 +174,7 @@ export function HarnessView({
           releasedVersion: context.releasedVersion,
           origin: context.origin,
         },
-        freshness: freshness ?? "",
+        freshness,
       }),
     [context.defaultBranch, context.releasedVersion, context.origin, freshness],
   );

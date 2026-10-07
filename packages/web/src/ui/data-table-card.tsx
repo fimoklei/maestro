@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { HoverCard } from "./hover-card";
 import { type Copy, plainText } from "./phrase";
 import { PhraseText } from "./phrase-text";
@@ -10,7 +10,8 @@ export type DataTableCardContent = {
   reading: StatusReading;
   /** A machine value beside the badge, such as the row's release. */
   value?: ReactNode;
-  body: readonly Copy[];
+  /** Sentences, or an element for a body that is not one, such as a list. */
+  body: readonly (Copy | ReactElement)[];
   /** How fresh the reading is; none: no footer. */
   readAge?: string;
 };
@@ -41,11 +42,16 @@ export function DataTableCard({
             <StatusBadge reading={content.reading} />
             {content.value}
           </div>
-          {content.body.map((line) => (
-            <p key={plainText(line)} className="m-0 text-gray-12">
-              <PhraseText copy={line} />
-            </p>
-          ))}
+          {content.body.map((line, index) =>
+            isValidElement(line) ? (
+              // biome-ignore lint/suspicious/noArrayIndexKey: the body's order is fixed per card.
+              <div key={index}>{line}</div>
+            ) : (
+              <p key={plainText(line)} className="m-0 text-gray-12">
+                <PhraseText copy={line} />
+              </p>
+            ),
+          )}
           {content.readAge === undefined ? null : (
             <p className="m-0 border-divider border-t pt-inline text-gray-11">
               {content.readAge}

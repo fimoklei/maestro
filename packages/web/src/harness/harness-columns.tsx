@@ -2,13 +2,9 @@ import type { HarnessStageRow } from "@maestro/core";
 import { RowItemsMenu } from "../inventory/row-menu";
 import { TYPE_WORD } from "../inventory/type-filter";
 import type { ActionsMenuProps } from "../ui/actions-menu";
-import {
-  createDataTableColumns,
-  useDataTableRowActive,
-} from "../ui/data-table";
-import { HoverCard } from "../ui/hover-card";
-import { type Copy, plainText } from "../ui/phrase";
-import { PhraseText } from "../ui/phrase-text";
+import { createDataTableColumns } from "../ui/data-table";
+import type { DataTableCardContent } from "../ui/data-table-card";
+import type { Copy } from "../ui/phrase";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
 import { ChangeCard } from "./change-card";
@@ -41,57 +37,27 @@ const rowMenuLabel = (row: HarnessStageRow) =>
   `Actions for ${row.skill} in ${STAGE_NAMES[row.stage]}`;
 
 // The Status cell's hover card: the row's sentences in short, and in full in
-// the pane (#994). Never a control.
-function StatusCard({
-  row,
-  context,
-  freshness,
-}: {
-  row: HarnessTableRow;
-  context: StageContext;
-  freshness: string;
-}) {
-  const active = useDataTableRowActive();
-  // The keyboard opens this card alone, so it also says what the Change card
-  // says (#1399).
-  const lines = [
-    detailSentence(row, context),
-    changeSentence(row, context),
-    reviewerLine(row),
-    crossStageLine(row),
-  ].filter((line): line is Copy => line !== null);
-  return (
-    <HoverCard
-      focused={active}
-      content={
-        <div className="flex flex-col gap-inline">
-          <span className="inline-flex">
-            <StatusBadge reading={row.reading} />
-          </span>
-          {lines.map((line) => (
-            <p key={plainText(line)} className="m-0 text-gray-12">
-              <PhraseText copy={line} />
-            </p>
-          ))}
-          <p className="m-0 border-divider border-t pt-inline text-gray-11">
-            {freshness}
-          </p>
-        </div>
-      }
-    >
-      <span className="inline-flex align-middle">
-        <StatusBadge reading={row.reading} />
-      </span>
-    </HoverCard>
-  );
-}
+// the pane (#994). The keyboard opens this card alone, so it also says what
+// the Change card says (#1399).
+const statusCardContent =
+  (context: StageContext, freshness: string | null) =>
+  (row: HarnessTableRow): DataTableCardContent => ({
+    reading: row.reading,
+    body: [
+      detailSentence(row, context),
+      changeSentence(row, context),
+      reviewerLine(row),
+      crossStageLine(row),
+    ].filter((line): line is Copy => line !== null),
+    readAge: freshness ?? undefined,
+  });
 
 export const harnessColumns = ({
   context,
   freshness,
 }: {
   context: StageContext;
-  freshness: string;
+  freshness: string | null;
 }) =>
   createDataTableColumns<HarnessTableRow>((helper) => [
     helper.display({
@@ -112,20 +78,17 @@ export const harnessColumns = ({
       // request: the pane names the change too.
       meta: { width: 20, priority: 4 },
     }),
-    helper.accessor("reading", {
-      header: "Status",
-      cell: ({ row }) => (
-        <StatusCard
-          row={row.original}
-          context={context}
-          freshness={freshness}
-        />
-      ),
-      sortFn: (a, b) =>
-        readingRank(a.original.reading) - readingRank(b.original.reading),
-      // The longest reading, Approved, awaiting merge, fits (#994).
-      meta: { width: 62 },
-    }),
+    {
+      ...helper.accessor("reading", {
+        header: "Status",
+        cell: ({ row }) => <StatusBadge reading={row.original.reading} />,
+        sortFn: (a, b) =>
+          readingRank(a.original.reading) - readingRank(b.original.reading),
+        // The longest reading, Approved, awaiting merge, fits (#994).
+        meta: { width: 62 },
+      }),
+      card: { keyboard: true, content: statusCardContent(context, freshness) },
+    },
     helper.display({
       id: "pull-request",
       header: "Pull request",
