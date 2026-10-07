@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { measureAs, sentence } from "../test-utils";
 import {
   harnessRegion,
   installHarnessHooks,
@@ -19,6 +19,10 @@ import {
 import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 // Band 2: Origin, Released and Branch, then the freshness line (#994).
 const band2 = async () =>
@@ -878,5 +882,25 @@ describe("Harness home base", () => {
       expect(within(pane).getByText("Change")).toBeInTheDocument();
       expect(within(pane).getByText("Addition")).toBeInTheDocument();
     });
+  });
+
+  it("reveals a shortened skill name through the tooltip, not a native title", async () => {
+    measureAs(300, 100);
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [row("pending-proposal", "lint-rules", "not-yet-proposed")],
+        }),
+      },
+    });
+    renderHarness();
+
+    const name = await screen.findByText("lint-rules");
+    await userEvent.hover(name);
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("lint-rules");
+    expect(name).not.toHaveAttribute("title");
   });
 });

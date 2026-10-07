@@ -96,18 +96,11 @@ export const deployStateColumns = ({
   onAction: (row: TargetTableRow, action: TargetAction) => void;
 }) =>
   createDataTableColumns<TargetTableRow>((helper) => [
-    helper.accessor("name", {
-      header: TARGET_LABEL,
+    {
       // The name only; the path is a fact in the detail pane (#1180).
-      cell: ({ row }) => (
-        <span
-          title={row.original.title}
-          className="block truncate font-medium text-gray-12"
-        >
-          {row.original.name}
-        </span>
-      ),
-    }),
+      ...helper.accessor("name", { header: TARGET_LABEL }),
+      name: true,
+    },
     helper.accessor("release", {
       header: "Release",
       enableSorting: false,

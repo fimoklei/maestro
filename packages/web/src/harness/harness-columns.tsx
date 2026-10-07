@@ -101,15 +101,10 @@ export const harnessColumns = ({
       cell: () => <span className="text-gray-11">{TYPE_WORD.skill}</span>,
       meta: { width: 14, priority: 1 },
     }),
-    helper.accessor("skill", {
-      header: "Name",
-      cell: ({ row }) => (
-        <span title={row.original.skill} className="font-medium text-gray-12">
-          {row.original.skill}
-        </span>
-      ),
-      meta: { width: 58 },
-    }),
+    {
+      ...helper.accessor("skill", { header: "Name", meta: { width: 58 } }),
+      name: true,
+    },
     helper.accessor("change", {
       header: "Change",
       cell: ({ row }) => <ChangeCard row={row.original} context={context} />,

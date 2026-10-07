@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  jsonResponse,
+  measureAs,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";
 import type { Primitive } from "./use-inventory";
@@ -66,6 +71,7 @@ const primitives: Primitive[] = [
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 function stubPendingFetch() {
@@ -111,6 +117,21 @@ describe("InventoryView — the table", () => {
     expect(
       screen.getByRole("gridcell", { name: "Test-driven development." }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("gridcell", { name: "caveman" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reveals a shortened skill name through the tooltip, said once", async () => {
+    measureAs(300, 100);
+    stubPendingFetch();
+    renderView();
+
+    await userEvent.hover(within(grid()).getByText("caveman"));
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("caveman");
     expect(
       screen.getByRole("gridcell", { name: "caveman" }),
     ).toBeInTheDocument();

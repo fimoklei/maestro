@@ -73,10 +73,10 @@ export const inventoryColumns = ({
       cell: ({ row }) => TYPE_WORD[row.original.type],
       meta: { className: "text-gray-11", width: 16, priority: 2 },
     }),
-    helper.accessor("name", {
-      header: "Name",
-      meta: { className: "font-medium text-gray-12", width: 55 },
-    }),
+    {
+      ...helper.accessor("name", { header: "Name", meta: { width: 55 } }),
+      name: true,
+    },
     helper.accessor("description", {
       header: "Description",
       // Drops out first on a narrow window (#992).
