@@ -868,6 +868,27 @@ describe("Harness home base", () => {
       ).toBeInTheDocument();
     });
 
+    it("opens the Status card on the keyboard: badge, sentences, then freshness", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      act(() => (screen.getByRole("grid") as HTMLElement).focus());
+
+      const change = await screen.findByText(
+        sentence("This change adds tdd to github.com/fimoklei/agent-harness."),
+      );
+      const card = change.parentElement as HTMLElement;
+      expect(card.firstElementChild).toHaveTextContent("Not yet proposed");
+      expect(
+        Array.from(card.querySelectorAll("p"), (line) => line.textContent),
+      ).toEqual([
+        "This skill is not on main yet. Select Propose change to send it for review.",
+        "This change adds tdd to github.com/fimoklei/agent-harness.",
+        "Not read yet",
+      ]);
+    });
+
     it("names the change in the detail pane", async () => {
       stubbed();
       renderHarness();
