@@ -98,8 +98,10 @@ describe("targetPaneActions", () => {
       }),
       () => {},
     );
-    expect(update).toMatchObject({ label: "Update Claude Code and Codex" });
-    expect(update?.name).toBeUndefined();
+    expect(update).toMatchObject({
+      label: "Update targets",
+      name: "Update targets Claude Code and Codex",
+    });
   });
 
   it("runs the row's action when a placed item is selected", () => {

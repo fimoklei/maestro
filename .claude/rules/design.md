@@ -142,7 +142,7 @@ Pick the form from this table. Add no other form, and no banner.
   no "add another" control. Show the new row in its natural place with its
   status. On a screen with a detail pane, select the row and open its pane.
 - Build a checklist in a dialog as a 640px form. Give each group a
-  `fieldset`: a mono uppercase legend with its count over a bordered list of
+  `fieldset`: a legend in `meta` with its count over a bordered list of
   32px rows, each a native checkbox plus the name. Check what can run by
   default; put a row that runs at a cost in an amber group, unchecked, with
   its cost under it. Show a row that cannot run with an `aria-disabled` checkbox, still

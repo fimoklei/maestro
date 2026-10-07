@@ -100,7 +100,9 @@ export function TargetDetailPane({
   const edited = editedSkills(row.primitives);
   const why = [
     // Its sentence names Import local edits, which an operation withholds.
-    ...(edited.length === 0 || row.pending ? [] : [localEditsLine(edited)]),
+    ...(edited.length === 0 || row.pending
+      ? []
+      : [localEditsLine(edited, row.behind)]),
     // A plain behind target still says why, and which control moves it.
     ...(head && row.behind && edited.length === 0 && !row.pending && !row.pinned
       ? [behindLine(head, updateLabel(row))]

@@ -282,8 +282,7 @@ only. Both are self-hosted; no runtime CDN fetch.
   marks the row identifier and nothing else.
 - **Meta** (400, 12px, 16px line): meta line, chip, column header, hint.
 - **Mono label** (Geist Mono 400, 12px, uppercase, 0.08em): a card's kind
-  label or a small section header. A fact label or a dialog group legend
-  widens to 0.12em (`tracking-mono-wide`).
+  label.
 
 ### Named Rules
 

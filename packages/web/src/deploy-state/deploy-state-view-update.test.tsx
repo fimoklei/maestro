@@ -269,7 +269,7 @@ describe("Deploy-state — Update target on the global target", () => {
     const pane = await openPane("Codex");
     expect(
       within(pane).getByRole("button", {
-        name: "Update Claude Code and Codex",
+        name: "Update targets Claude Code and Codex",
       }),
     ).toBeInTheDocument();
   });

@@ -552,12 +552,12 @@ describe("update preview notices", () => {
   });
 
   it("names the control by the label the target's row gives it", () => {
-    const label = "Update Claude Code and Codex";
+    const label = "Update targets";
     expect(updatePreviewNotice(new Error("offline"), label).message).toBe(
-      "Nothing was changed. Wait a moment, then select Update Claude Code and Codex again.",
+      "Nothing was changed. Wait a moment, then select Update targets again.",
     );
     expect(updateNotice(refusal("status-out-of-date"), label).message).toBe(
-      "Nothing was changed. The target changed after the preview. Select Update Claude Code and Codex again.",
+      "Nothing was changed. The target changed after the preview. Select Update targets again.",
     );
   });
 

@@ -506,7 +506,7 @@ const suites: [
           level: "error",
           label: "No Harness connected",
           message:
-            "Select Change Harness location in Settings, then select Import skill… again.",
+            "Select Change Harness location in Settings, then select Import skill again.",
         },
       ],
       [
@@ -1415,7 +1415,7 @@ describe("localEditsRefusal", () => {
     ],
     [
       "copies-differ",
-      "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one.",
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one.",
     ],
     [
       "no-local-edits",
@@ -1439,7 +1439,7 @@ describe("localEditsRefusal", () => {
         },
       }),
     ).toBe(
-      "The Claude Code and Codex copies differ. Select Import skill… on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
     );
   });
 });

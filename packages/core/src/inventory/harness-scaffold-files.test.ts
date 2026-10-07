@@ -127,7 +127,7 @@ describe("CONTRIBUTING.md", () => {
 
   it("names every cockpit control the reader has to press, verbatim", () => {
     for (const label of [
-      "**Import skill…**",
+      "**Import skill**",
       "**Propose change**",
       "**Pull request →**",
       "**Refresh**",

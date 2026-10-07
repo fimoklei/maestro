@@ -60,7 +60,7 @@ function SectionHeading({
   return (
     <h3
       className={cn(
-        "font-mono text-meta uppercase tracking-mono",
+        "font-ui text-meta",
         inline ? "inline text-inherit" : "text-gray-11",
       )}
     >
@@ -82,7 +82,7 @@ function Section({
     <section className="grid grid-cols-1 gap-x-panel gap-y-tight py-cell sm:grid-cols-[10.5rem_1fr]">
       <h3
         className={cn(
-          "font-mono text-meta uppercase leading-5 tracking-mono",
+          "font-ui text-meta leading-5",
           signal ? STATUS_TOKENS.attention.ink : "text-gray-11",
         )}
       >
@@ -109,10 +109,10 @@ function FoldedSection({
 }) {
   return (
     <details className="flex flex-col gap-tight">
-      <summary className="cursor-pointer font-mono text-gray-11 text-meta hover:text-gray-12 motion-safe:transition-colors">
+      <summary className="cursor-pointer font-ui text-gray-11 text-meta hover:text-gray-12 motion-safe:transition-colors">
         <SectionHeading inline>{foldedHeading(heading, count)}</SectionHeading>
         {note === null ? null : (
-          <span className="font-mono text-meta">
+          <span className="font-ui text-meta">
             <span aria-hidden="true"> · </span>
             <span>{note}</span>
           </span>
