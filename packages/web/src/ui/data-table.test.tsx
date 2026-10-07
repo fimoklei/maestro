@@ -2,11 +2,8 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  createDataTableColumns,
-  DataTable,
-  useDataTableRowActive,
-} from "./data-table";
+import { measureAs } from "../test-utils";
+import { createDataTableColumns, DataTable } from "./data-table";
 
 type Fruit = { name: string; colour: string };
 
@@ -490,34 +487,6 @@ describe("DataTable", () => {
     expect(activeRowName()).toBe("cherry");
   });
 
-  it("tells a cell whether its row is the active one while the grid holds focus", async () => {
-    function Marker() {
-      return useDataTableRowActive() ? "active" : "idle";
-    }
-    const marked = createDataTableColumns<Fruit>((helper) => [
-      helper.accessor("name", { header: "Name" }),
-      helper.display({ id: "mark", header: "Mark", cell: () => <Marker /> }),
-    ]);
-    render(
-      <DataTable
-        label="Fruit table"
-        columns={marked}
-        data={fruits}
-        getRowId={(fruit) => fruit.name}
-      />,
-    );
-
-    expect(screen.queryByText("active")).toBeNull();
-    act(() => grid().focus());
-    expect(screen.getAllByText("active")).toHaveLength(1);
-    await userEvent.keyboard("{ArrowDown}");
-    expect(
-      within(within(grid()).getAllByRole("row")[2] as HTMLElement).getByText(
-        "active",
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("ignores a click or a key from a menu a cell opened outside the table", async () => {
     // React bubbles a portal's events through the cell that rendered it.
     const onRowOpen = vi.fn();
@@ -774,5 +743,47 @@ describe("DataTable column priority", () => {
     expect(width("Origin")).not.toBe("");
     act(() => reportWidth(416));
     expect(width("Status")).not.toBe("");
+  });
+});
+
+describe("DataTable name column", () => {
+  const named = createDataTableColumns<Fruit>((helper) => [
+    {
+      ...helper.accessor("name", { header: "Name" }),
+      name: (fruit) => fruit.name,
+    },
+    helper.accessor("colour", { header: "Colour" }),
+  ]);
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("reveals a shortened name in full through the tooltip, said once", async () => {
+    measureAs(300, 100);
+    renderTable({ columns: named });
+
+    const name = within(grid()).getByText("cherry");
+    await userEvent.hover(name);
+
+    const tooltip = await screen.findByRole("tooltip", { hidden: true });
+    expect(tooltip).toHaveTextContent("cherry");
+    expect(name).not.toHaveAttribute("title");
+    expect(name).not.toHaveAccessibleDescription();
+    expect(
+      within(grid()).getByRole("gridcell", { name: "cherry" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no tooltip for a name that fits", async () => {
+    measureAs(100, 100);
+    renderTable({ columns: named });
+
+    const name = within(grid()).getByText("cherry");
+    await userEvent.hover(name);
+    await act(() => new Promise((done) => setTimeout(done, 500)));
+
+    expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull();
+    expect(name).not.toHaveAttribute("title");
   });
 });

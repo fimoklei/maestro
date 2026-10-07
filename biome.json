@@ -77,6 +77,20 @@
     {
       "includes": ["packages/web/src/**"],
       "plugins": ["./biome-plugins/web-core-types-only.grit"]
+    },
+    {
+      "includes": ["packages/web/src/**", "!packages/web/src/ui/**"],
+      "plugins": [
+        "./biome-plugins/hover-card-in-ui-only.grit",
+        "./biome-plugins/data-table-card-in-ui-only.grit"
+      ]
+    },
+    {
+      "includes": [
+        "packages/web/src/**/*-columns.tsx",
+        "packages/web/src/**/*-cell.tsx"
+      ],
+      "plugins": ["./biome-plugins/no-title-in-table-cell.grit"]
     }
   ],
   "plugins": ["./biome-plugins/no-shell-true.grit"]

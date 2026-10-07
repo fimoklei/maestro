@@ -1,0 +1,6 @@
+language js
+
+`import $_ from $source` as $import where {
+  $source <: r".*/hover-card[\"']",
+  register_diagnostic(span=$import, message="Only the shared table building blocks import HoverCard. Declare a card on the column instead.")
+}

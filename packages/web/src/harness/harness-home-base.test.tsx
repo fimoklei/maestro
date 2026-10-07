@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { measureAs, sentence } from "../test-utils";
 import {
   harnessRegion,
   installHarnessHooks,
@@ -19,6 +19,10 @@ import {
 import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 // Band 2: Origin, Released and Branch, then the freshness line (#994).
 const band2 = async () =>
@@ -868,6 +872,27 @@ describe("Harness home base", () => {
       ).toBeInTheDocument();
     });
 
+    it("opens the Status card on the keyboard: badge, sentences, then freshness", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      act(() => (screen.getByRole("grid") as HTMLElement).focus());
+
+      const change = await screen.findByText(
+        sentence("This change adds tdd to github.com/fimoklei/agent-harness."),
+      );
+      const card = change.parentElement as HTMLElement;
+      expect(card.firstElementChild).toHaveTextContent("Not yet proposed");
+      expect(
+        Array.from(card.querySelectorAll("p"), (line) => line.textContent),
+      ).toEqual([
+        "This skill is not on main yet. Select Propose change to send it for review.",
+        "This change adds tdd to github.com/fimoklei/agent-harness.",
+        "Not read yet",
+      ]);
+    });
+
     it("names the change in the detail pane", async () => {
       stubbed();
       renderHarness();
@@ -878,5 +903,202 @@ describe("Harness home base", () => {
       expect(within(pane).getByText("Change")).toBeInTheDocument();
       expect(within(pane).getByText("Addition")).toBeInTheDocument();
     });
+  });
+
+  // design.md → Disclosure: every card shares the frame; the keyboard opens
+  // the Status card alone (#1445).
+  describe("the Change and Pull request cards", () => {
+    const CARD = "[data-radix-popper-content-wrapper]";
+    const cardOf = (text: HTMLElement) => text.closest(CARD) as HTMLElement;
+    const stubbed = () =>
+      stubHarnessServer({
+        read: {
+          body: withStages(RELEASED, {
+            review: [
+              row("pending-review", "code-review", "changes-requested", {
+                requests: [pullRequest(47, "code-review")],
+                reviewers: [
+                  { kind: "user", login: "sanne" },
+                  { kind: "user", login: "joris" },
+                ],
+              }),
+            ],
+          }),
+        },
+      });
+    const hoverRequest = (number: number) =>
+      userEvent.hover(
+        screen.getByRole("link", {
+          name: `Pull request #${number}, opens in a new tab`,
+        }),
+      );
+
+    it("opens the Change card to the pointer with its sentence alone", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending review");
+
+      await userEvent.hover(
+        within(screen.getByRole("row", { name: /code-review/ })).getByText(
+          "Edit",
+        ),
+      );
+
+      const line = await screen.findByText(
+        sentence(
+          "This change edits code-review in github.com/fimoklei/agent-harness.",
+        ),
+      );
+      expect(cardOf(line).textContent).toBe(line.textContent);
+    });
+
+    it("lays out the Pull request card's facts as the detail pane does", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending review");
+
+      await userEvent.hover(
+        screen.getByRole("link", {
+          name: "Pull request #47, opens in a new tab",
+        }),
+      );
+
+      const card = cardOf(await screen.findByText("@sanne, @joris"));
+      expect(card).toHaveTextContent(/^#47Open/);
+      expect(
+        within(card)
+          .getAllByRole("term")
+          .map((label) => label.textContent),
+      ).toEqual(["Review", "Requested", "Branch"]);
+      expect(
+        within(card)
+          .getAllByRole("definition")
+          .map((value) => value.textContent),
+      ).toEqual([
+        "Changes requested",
+        "@sanne, @joris",
+        "maestro/code-review →into main",
+      ]);
+      // The link's own name already says where it goes (#1076).
+      expect(within(card).queryByRole("link")).toBeNull();
+    });
+
+    it("sets the branches in mono, heard as one branch into the other", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending review");
+
+      await hoverRequest(47);
+
+      const card = cardOf(await screen.findByText("@sanne, @joris"));
+      const branch = within(card).getByText("Branch")
+        .nextElementSibling as HTMLElement;
+      expect(within(branch).getByText("maestro/code-review")).toHaveClass(
+        "font-mono",
+      );
+      expect(within(branch).getByText("main")).toHaveClass("font-mono");
+      expect(within(branch).getByText("→")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+      expect(within(branch).getByText("into")).toHaveClass("sr-only");
+    });
+
+    it("keeps every pull request's branch in the card", async () => {
+      stubHarnessServer({
+        read: {
+          body: withStages(RELEASED, {
+            review: [
+              row("pending-review", "code-review", "multiple-pull-requests", {
+                requests: [
+                  pullRequest(51, "code-review"),
+                  {
+                    ...pullRequest(52, "code-review"),
+                    headBranch: "fix/other",
+                  },
+                ],
+              }),
+            ],
+          }),
+        },
+      });
+      renderHarness();
+      await stageHeader("Pending review");
+
+      await hoverRequest(51);
+
+      const card = cardOf(await screen.findByText("fix/other"));
+      expect(
+        within(card)
+          .getAllByRole("definition")
+          .map((value) => value.textContent),
+      ).toEqual([
+        "#51 maestro/code-review →into main",
+        "#52 fix/other →into main",
+      ]);
+    });
+
+    it("shows only the number and branch on a Pending proposal row", async () => {
+      // The row's status is the local work's, not the request's (#1076).
+      stubHarnessServer({
+        read: {
+          body: withStages(RELEASED, {
+            proposal: [
+              row("pending-proposal", "code-review", "new-local-work", {
+                requests: [pullRequest(47, "code-review")],
+                comparison: { kind: "proposal", number: 47 },
+              }),
+            ],
+          }),
+        },
+      });
+      renderHarness();
+      await stageHeader("Pending proposal");
+
+      await hoverRequest(47);
+
+      const card = await waitFor(() => {
+        const open = document.querySelector<HTMLElement>(CARD);
+        if (open === null) throw new Error("No card is open yet");
+        return open;
+      });
+      expect(card).toHaveTextContent(/^#47Branch/);
+      expect(within(card).queryByText("Open")).toBeNull();
+      expect(within(card).queryByText("Review")).toBeNull();
+    });
+
+    it("opens one card on the keyboard's active row, the Status card", async () => {
+      stubbed();
+      renderHarness();
+      await stageHeader("Pending review");
+
+      act(() => (screen.getByRole("grid") as HTMLElement).focus());
+
+      const status = await screen.findByText(
+        "Review requested from @sanne, @joris",
+      );
+      expect(cardOf(status)).toHaveTextContent(/^Changes requested/);
+      expect(document.querySelectorAll(CARD)).toHaveLength(1);
+    });
+  });
+
+  it("reveals a shortened skill name through the tooltip, not a native title", async () => {
+    measureAs(300, 100);
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [row("pending-proposal", "lint-rules", "not-yet-proposed")],
+        }),
+      },
+    });
+    renderHarness();
+
+    const name = await screen.findByText("lint-rules");
+    await userEvent.hover(name);
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("lint-rules");
+    expect(name).not.toHaveAttribute("title");
   });
 });

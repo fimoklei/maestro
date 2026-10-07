@@ -1,0 +1,7 @@
+language js
+
+`import $_ from $source` as $import where {
+  $source <: r".*/data-table-card[\"']",
+  not $import <: r"import\s+type\s[\s\S]*",
+  register_diagnostic(span=$import, message="Only the data table draws a DataTableCard. Declare a card on the column instead.")
+}

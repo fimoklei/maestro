@@ -15,11 +15,9 @@ import {
   useTable,
 } from "@tanstack/react-table";
 import {
-  createContext,
   Fragment,
   type ReactNode,
   type Ref,
-  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -28,9 +26,12 @@ import {
 } from "react";
 import { Checkbox } from "./checkbox";
 import { cn } from "./cn";
+import { DataTableCard, type DataTableCardColumn } from "./data-table-card";
+import { DataTableName } from "./data-table-name";
 import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { Skeleton } from "./skeleton";
+import { useNow } from "./use-now";
 
 type DataTableColumnMeta = {
   className?: string;
@@ -51,7 +52,15 @@ const dataTableFeatures = tableFeatures({
 
 type Features = typeof dataTableFeatures;
 // biome-ignore lint/suspicious/noExplicitAny: a column's value type differs per column, as TanStack's own ColumnDef arrays do
-type DataTableColumn<T extends RowData> = ColumnDef<Features, T, any>;
+type DataTableColumn<T extends RowData> = ColumnDef<Features, T, any> & {
+  /** The cell's hover card, declared as content: the table draws it. */
+  card?: DataTableCardColumn<T>;
+  /** The row's name, which the table draws on one line in this column. */
+  name?: (row: T) => string;
+};
+
+const columnIdOf = <T extends RowData>(column: DataTableColumn<T>) =>
+  column.id ?? ("accessorKey" in column ? String(column.accessorKey) : "");
 
 /** Build a screen's columns against the table's own feature set. */
 export function createDataTableColumns<T extends RowData>(
@@ -108,10 +117,6 @@ export interface DataTableProps<T extends RowData> {
   ref?: Ref<HTMLTableElement>;
 }
 
-const RowActiveContext = createContext(false);
-
-export const useDataTableRowActive = () => useContext(RowActiveContext);
-
 const INTERACTIVE = "a,button,input,select,textarea,label";
 
 export function DataTable<T extends RowData>({
@@ -135,7 +140,7 @@ export function DataTable<T extends RowData>({
   const fit = fitColumns(
     columns
       .map((column) => ({
-        id: column.id ?? (column as { accessorKey?: string }).accessorKey ?? "",
+        id: columnIdOf(column),
         width: column.meta?.width,
         priority: column.meta?.priority,
       }))
@@ -192,6 +197,18 @@ export function DataTable<T extends RowData>({
   const rows =
     blocks === undefined ? sortedRows : blocks.flatMap((b) => b.rows);
   const leafColumns = table.getVisibleLeafColumns();
+  const cards = new Map(
+    columns.flatMap((column) =>
+      column.card === undefined ? [] : [[columnIdOf(column), column.card]],
+    ),
+  );
+  const named = columns.find((column) => column.name !== undefined);
+  const nameColumn = named === undefined ? undefined : columnIdOf(named);
+  const nameOf = named?.name;
+  // The active row opens one card: the first shown column's that says so.
+  const keyboardCard = leafColumns.find(
+    (column) => cards.get(column.id)?.keyboard,
+  )?.id;
   const gridId = useId();
   const rowDomId = (index: number) => `${gridId}-row-${index}`;
 
@@ -336,42 +353,61 @@ export function DataTable<T extends RowData>({
           HOVER_TRANSITION,
         )}
       >
-        <RowActiveContext value={gridFocused && index === active}>
-          {selection ? (
-            <GridCell className="px-inline">
-              {/* The padding lifts the 16px box to the 24px pointer floor. */}
-              {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
-              <label className="-m-1 flex w-fit cursor-pointer p-1">
-                <Checkbox
-                  tabIndex={-1}
-                  checked={isSelected}
-                  onClick={(event) => {
-                    // Radix toggles on click; the row's state is
-                    // the caller's, so the click is taken here.
-                    event.preventDefault();
-                    toggleRow(index, event.shiftKey);
-                  }}
-                  aria-label={selection.rowLabel(row.original)}
-                />
-              </label>
-            </GridCell>
-          ) : null}
-          {row.getVisibleCells().map((cell) => {
-            const meta = cell.column.columnDef.meta;
-            return (
-              <GridCell
-                key={cell.id}
-                className={cn(
-                  "truncate px-inline",
-                  meta?.align === "end" && "text-right",
-                  meta?.className,
-                )}
-              >
-                <table.FlexRender cell={cell} />
-              </GridCell>
+        {selection ? (
+          <GridCell className="px-inline">
+            {/* The padding lifts the 16px box to the 24px pointer floor. */}
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
+            <label className="-m-1 flex w-fit cursor-pointer p-1">
+              <Checkbox
+                tabIndex={-1}
+                checked={isSelected}
+                onClick={(event) => {
+                  // Radix toggles on click; the row's state is
+                  // the caller's, so the click is taken here.
+                  event.preventDefault();
+                  toggleRow(index, event.shiftKey);
+                }}
+                aria-label={selection.rowLabel(row.original)}
+              />
+            </label>
+          </GridCell>
+        ) : null}
+        {row.getVisibleCells().map((cell) => {
+          const meta = cell.column.columnDef.meta;
+          const card = cards.get(cell.column.id);
+          const value =
+            cell.column.id === nameColumn && nameOf !== undefined ? (
+              <DataTableName name={nameOf(row.original)} />
+            ) : (
+              <table.FlexRender cell={cell} />
             );
-          })}
-        </RowActiveContext>
+          return (
+            <GridCell
+              key={cell.id}
+              className={cn(
+                "truncate px-inline",
+                meta?.align === "end" && "text-right",
+                meta?.className,
+              )}
+            >
+              {card === undefined ? (
+                value
+              ) : (
+                <CardCell
+                  card={card}
+                  row={row.original}
+                  focused={
+                    gridFocused &&
+                    index === active &&
+                    cell.column.id === keyboardCard
+                  }
+                >
+                  {value}
+                </CardCell>
+              )}
+            </GridCell>
+          );
+        })}
       </tr>
     );
   };
@@ -619,6 +655,28 @@ function useAvailableRem(headRow: React.RefObject<HTMLTableRowElement | null>) {
     return () => observer.disconnect();
   }, [headRow]);
   return available;
+}
+
+function CardCell<T>({
+  card,
+  row,
+  focused,
+  children,
+}: {
+  card: DataTableCardColumn<T>;
+  row: T;
+  focused: boolean;
+  children: ReactNode;
+}) {
+  const now = useNow();
+  const content = card.content(row, now);
+  return content === null ? (
+    children
+  ) : (
+    <DataTableCard content={content} focused={focused}>
+      {children}
+    </DataTableCard>
+  );
 }
 
 // jsdom maps a td to "cell" even inside a grid, so the role is stated here once.

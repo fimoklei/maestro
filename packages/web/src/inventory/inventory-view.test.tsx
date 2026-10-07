@@ -1,10 +1,15 @@
-import type { ReadDriftEntry } from "@maestro/core";
+import type { ReadDriftEntry, ReleaseHead } from "@maestro/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  jsonResponse,
+  measureAs,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";
 import type { Primitive } from "./use-inventory";
@@ -66,6 +71,7 @@ const primitives: Primitive[] = [
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 function stubPendingFetch() {
@@ -111,6 +117,21 @@ describe("InventoryView — the table", () => {
     expect(
       screen.getByRole("gridcell", { name: "Test-driven development." }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("gridcell", { name: "caveman" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reveals a shortened skill name through the tooltip, said once", async () => {
+    measureAs(300, 100);
+    stubPendingFetch();
+    renderView();
+
+    await userEvent.hover(within(grid()).getByText("caveman"));
+
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent("caveman");
     expect(
       screen.getByRole("gridcell", { name: "caveman" }),
     ).toBeInTheDocument();
@@ -873,8 +894,10 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
 
     await openRow("tdd");
 
+    // The press focuses the grid, so the row's card is open beside the pane.
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
     expect(
-      screen.getByText(/Not deployed to any target\./i),
+      within(pane).getByText(/Not deployed to any target\./i),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /remove from all/i }),
@@ -1308,6 +1331,106 @@ describe("InventoryView — hover card", () => {
     expect(row).toHaveTextContent("Behind");
   });
 
+  it("opens with the status badge, then the reach list", async () => {
+    stubPendingFetch();
+    renderView({ targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])] });
+
+    await userEvent.hover(within(grid()).getByText("Behind"));
+
+    const reach = await screen.findByText(sentence("Deployed to 1 target"));
+    const card = reach.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    const [badge] = within(card).getAllByText("Behind");
+    expect(
+      (badge as HTMLElement).compareDocumentPosition(reach) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+  });
+
+  it("dates the card by its oldest-read target", async () => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      now: new Date("2026-09-12T11:00:00.000Z"),
+    });
+    stubPendingFetch();
+    const fresh = onRepo("/projects/alpha", ["tdd"], ["tdd"]);
+    renderView({
+      targets: [
+        {
+          ...fresh,
+          releaseHead: {
+            ...(fresh.releaseHead as ReleaseHead),
+            comparedAt: "2026-09-12T10:45:00.000Z",
+          },
+        },
+        onRepo("/projects/beta", ["tdd"], ["tdd"]),
+      ],
+    });
+
+    await userEvent.hover(within(grid()).getByText("Behind"));
+
+    const reach = await screen.findByText(sentence("Deployed to 2 targets"));
+    const card = reach.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    expect(within(card).getByText("Read 1 h ago")).toBeInTheDocument();
+  });
+
+  it("states a never-read target in the card's read age", async () => {
+    stubPendingFetch();
+    const beta = onRepo("/projects/beta", ["tdd"], ["tdd"]);
+    renderView({
+      targets: [
+        onRepo("/projects/alpha", ["tdd"], ["tdd"]),
+        {
+          ...beta,
+          releaseHead: {
+            ...(beta.releaseHead as ReleaseHead),
+            comparedAt: null,
+          },
+        },
+      ],
+    });
+
+    await userEvent.hover(within(grid()).getByText("Behind"));
+
+    const reach = await screen.findByText(sentence("Deployed to 2 targets"));
+    const card = reach.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    expect(within(card).getByText("Not read yet")).toBeInTheDocument();
+  });
+
+  it("shows no read age where no target carries a read time", async () => {
+    stubPendingFetch();
+    renderView({ targets: [deployedTo(["tdd"])] });
+
+    await userEvent.hover(within(grid()).getByText("Up to date"));
+
+    const reach = await screen.findByText(sentence("Deployed to 1 target"));
+    const card = reach.closest(
+      "[data-radix-popper-content-wrapper]",
+    ) as HTMLElement;
+    expect(within(card).queryByText(/^Read |Not read yet/)).toBeNull();
+  });
+
+  it("opens the Targets card for the keyboard's row while Display hides Status", async () => {
+    stubPendingFetch();
+    renderView({ targets: [onRepo("/projects/beta", ["tdd"])] });
+    await userEvent.click(screen.getByRole("button", { name: "Display" }));
+    await userEvent.click(
+      await screen.findByRole("menuitemcheckbox", { name: "Status" }),
+    );
+    await userEvent.keyboard("{Escape}");
+
+    act(() => grid().focus());
+
+    expect(
+      await screen.findAllByText(sentence("Deployed to 1 target")),
+    ).toHaveLength(1);
+  });
+
   it("expands the Targets number into its targets on hover", async () => {
     stubPendingFetch();
     renderView({
@@ -1331,8 +1454,32 @@ describe("InventoryView — hover card", () => {
     act(() => grid().focus());
 
     expect(
-      await screen.findByText(sentence("Deployed to 1 target")),
-    ).toBeInTheDocument();
+      await screen.findAllByText(sentence("Deployed to 1 target")),
+    ).toHaveLength(1);
+  });
+
+  it("opens the Status cell's card for the keyboard's row while Status and Targets both show", async () => {
+    stubPendingFetch();
+    renderView({ targets: [onRepo("/projects/beta", ["tdd"])] });
+    const headers = within(grid())
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent);
+    const cellOf = (column: string) => {
+      const row = within(grid())
+        .getAllByRole("row")
+        .find((each) => within(each).queryByText("tdd") !== null);
+      return within(row as HTMLElement).getAllByRole("gridcell")[
+        headers.indexOf(column)
+      ] as HTMLElement;
+    };
+
+    act(() => grid().focus());
+    await screen.findByText(sentence("Deployed to 1 target"));
+
+    const triggerOf = (column: string) =>
+      cellOf(column).querySelector("[data-state]");
+    expect(triggerOf("Status")).toHaveAttribute("data-state", "open");
+    expect(triggerOf("Targets")).toHaveAttribute("data-state", "closed");
   });
 });
 

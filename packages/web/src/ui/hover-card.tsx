@@ -20,11 +20,13 @@ export function HoverCard({
   const [pointerOpen, setPointerOpen] = useState(false);
   const [focusOpen, setFocusOpen] = useState(false);
 
+  // Focus opens the card at once; only the pointer waits.
   useEffect(() => {
-    const timer = setTimeout(
-      () => setFocusOpen(focused),
-      focused ? OPEN_DELAY : CLOSE_DELAY,
-    );
+    if (focused) {
+      setFocusOpen(true);
+      return;
+    }
+    const timer = setTimeout(() => setFocusOpen(false), CLOSE_DELAY);
     return () => clearTimeout(timer);
   }, [focused]);
 

@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { PullRequestCell } from "./pull-request-cell";
+import { PullRequestLinks } from "./pull-request-links";
 import { pullRequest, stageRow } from "./stage-row-fixture";
 
 const meta = {
-  title: "Harness/PullRequestCell",
-  component: PullRequestCell,
+  title: "Harness/PullRequestLinks",
+  component: PullRequestLinks,
   args: {
     row: stageRow("pending-review", "code-review", "changes-requested", {
       requests: [pullRequest(47, "code-review")],
@@ -14,7 +14,7 @@ const meta = {
       ],
     }),
   },
-} satisfies Meta<typeof PullRequestCell>;
+} satisfies Meta<typeof PullRequestLinks>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

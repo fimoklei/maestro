@@ -62,7 +62,12 @@ the new pattern to this section before building it.
 **Disclosure.**
 - Keep a row to one line. Put the summary in the hover card and the rest in
   the 360px detail pane.
-- Open a hover card on focus as well as hover. Put no control in it.
+- Build a table's hover card in one order: the status badge, with the row's
+  machine value beside it; the body in `text-gray-12`; the read age in
+  `text-gray-11` behind a divider, only when known. Declare it on the column;
+  the data table draws it. Open it on hover; on the keyboard's active row open
+  one card only: the Status card, or the table's named fallback (such as
+  Targets) while Display hides Status. Put no control in it.
 - List in a row's ⋮ menu and pane foot only the actions its state calls for;
   omit the rest. The Status hover card states that state and names the next
   action.

@@ -6,6 +6,7 @@ const meta = {
   title: "Core/FactList",
   component: FactList,
   args: {
+    size: "row",
     children: (
       <>
         <FactRow label="Target">Repository</FactRow>

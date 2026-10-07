@@ -1,0 +1,11 @@
+language js
+
+jsx_attribute(name=$name) as $attribute where {
+  $name <: "title",
+  $attribute <: within or {
+    jsx_opening_element(name=$tag),
+    jsx_self_closing_element(name=$tag)
+  } ,
+  $tag <: r"[a-z][a-zA-Z0-9]*",
+  register_diagnostic(span=$attribute, message="A table cell reveals its name through the data table. Mark the column name: true instead of a native title.")
+}
