@@ -45,7 +45,7 @@ export type CopyFinding = {
 };
 
 // A deploy's receipt never licenses a removal.
-export type LocalCopyWrite = "deploy" | "remove" | "update";
+type LocalCopyWrite = "deploy" | "remove" | "update";
 
 export type LocalCopyScope = {
   write: LocalCopyWrite;
