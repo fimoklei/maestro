@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/no-title-in-table-cell: Repositories has no declared name cell yet; #1433 left it out of scope, so its native title stays.
 import { RowMenu } from "../inventory/row-menu";
 import { createDataTableColumns } from "../ui/data-table";
 import { MachineValue } from "../ui/machine-value";

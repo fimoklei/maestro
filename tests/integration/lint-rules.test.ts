@@ -70,6 +70,43 @@ describe("lint rules", () => {
     expect(output).toContain("Remove shell: true.");
   });
 
+  it("refuses the hover card outside the shared building blocks", () => {
+    const source =
+      'import { HoverCard } from "../ui/hover-card";\nexport const h = HoverCard;\n';
+
+    expect(lint("packages/web/src/harness/probe.tsx", source)).toContain(
+      "Declare a card on the column",
+    );
+    expect(
+      lint(
+        "packages/web/src/ui/probe.tsx",
+        'import { HoverCard } from "./hover-card";\nexport const h = HoverCard;\n',
+      ),
+    ).not.toContain("Declare a card on the column");
+  });
+
+  it("refuses a native title in a table cell and allows it elsewhere", () => {
+    const cell =
+      "export const c = (name: string) => <span title={name}>{name}</span>;\n";
+    const message = "Mark the column name: true";
+
+    expect(lint("packages/web/src/harness/probe-columns.tsx", cell)).toContain(
+      message,
+    );
+    expect(lint("packages/web/src/harness/probe-cell.tsx", cell)).toContain(
+      message,
+    );
+    expect(
+      lint(
+        "packages/web/src/harness/probe-columns.tsx",
+        "export const c = (name: string) => <span>{name}</span>;\n",
+      ),
+    ).not.toContain(message);
+    expect(lint("packages/web/src/harness/probe-pane.tsx", cell)).not.toContain(
+      message,
+    );
+  });
+
   it("refuses a file name that is not kebab-case", () => {
     expect(
       lint("packages/web/src/HarnessView.tsx", "export const a = 1;\n"),

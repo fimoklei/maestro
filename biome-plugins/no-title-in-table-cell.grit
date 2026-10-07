@@ -1,0 +1,6 @@
+language js
+
+jsx_attribute(name=$name) as $attribute where {
+  $name <: "title",
+  register_diagnostic(span=$attribute, message="A table cell reveals its name through the data table. Mark the column name: true instead of a native title.")
+}
