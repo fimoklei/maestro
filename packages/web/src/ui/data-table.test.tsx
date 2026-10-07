@@ -3,11 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { measureAs } from "../test-utils";
-import {
-  createDataTableColumns,
-  DataTable,
-  useDataTableRowActive,
-} from "./data-table";
+import { createDataTableColumns, DataTable } from "./data-table";
 
 type Fruit = { name: string; colour: string };
 
@@ -489,34 +485,6 @@ describe("DataTable", () => {
     act(() => grid().focus());
 
     expect(activeRowName()).toBe("cherry");
-  });
-
-  it("tells a cell whether its row is the active one while the grid holds focus", async () => {
-    function Marker() {
-      return useDataTableRowActive() ? "active" : "idle";
-    }
-    const marked = createDataTableColumns<Fruit>((helper) => [
-      helper.accessor("name", { header: "Name" }),
-      helper.display({ id: "mark", header: "Mark", cell: () => <Marker /> }),
-    ]);
-    render(
-      <DataTable
-        label="Fruit table"
-        columns={marked}
-        data={fruits}
-        getRowId={(fruit) => fruit.name}
-      />,
-    );
-
-    expect(screen.queryByText("active")).toBeNull();
-    act(() => grid().focus());
-    expect(screen.getAllByText("active")).toHaveLength(1);
-    await userEvent.keyboard("{ArrowDown}");
-    expect(
-      within(within(grid()).getAllByRole("row")[2] as HTMLElement).getByText(
-        "active",
-      ),
-    ).toBeInTheDocument();
   });
 
   it("ignores a click or a key from a menu a cell opened outside the table", async () => {

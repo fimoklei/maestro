@@ -15,11 +15,9 @@ import {
   useTable,
 } from "@tanstack/react-table";
 import {
-  createContext,
   Fragment,
   type ReactNode,
   type Ref,
-  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -118,10 +116,6 @@ export interface DataTableProps<T extends RowData> {
   onRowOrderChange?: (ids: string[]) => void;
   ref?: Ref<HTMLTableElement>;
 }
-
-const RowActiveContext = createContext(false);
-
-export const useDataTableRowActive = () => useContext(RowActiveContext);
 
 const INTERACTIVE = "a,button,input,select,textarea,label";
 
@@ -358,63 +352,61 @@ export function DataTable<T extends RowData>({
           HOVER_TRANSITION,
         )}
       >
-        <RowActiveContext value={gridFocused && index === active}>
-          {selection ? (
-            <GridCell className="px-inline">
-              {/* The padding lifts the 16px box to the 24px pointer floor. */}
-              {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
-              <label className="-m-1 flex w-fit cursor-pointer p-1">
-                <Checkbox
-                  tabIndex={-1}
-                  checked={isSelected}
-                  onClick={(event) => {
-                    // Radix toggles on click; the row's state is
-                    // the caller's, so the click is taken here.
-                    event.preventDefault();
-                    toggleRow(index, event.shiftKey);
-                  }}
-                  aria-label={selection.rowLabel(row.original)}
-                />
-              </label>
-            </GridCell>
-          ) : null}
-          {row.getVisibleCells().map((cell) => {
-            const meta = cell.column.columnDef.meta;
-            const card = cards.get(cell.column.id);
-            const value =
-              cell.column.id === nameColumn ? (
-                <DataTableName name={String(cell.getValue())} />
-              ) : (
-                <table.FlexRender cell={cell} />
-              );
-            return (
-              <GridCell
-                key={cell.id}
-                className={cn(
-                  "truncate px-inline",
-                  meta?.align === "end" && "text-right",
-                  meta?.className,
-                )}
-              >
-                {card === undefined ? (
-                  value
-                ) : (
-                  <CardCell
-                    card={card}
-                    row={row.original}
-                    focused={
-                      gridFocused &&
-                      index === active &&
-                      cell.column.id === keyboardCard
-                    }
-                  >
-                    {value}
-                  </CardCell>
-                )}
-              </GridCell>
+        {selection ? (
+          <GridCell className="px-inline">
+            {/* The padding lifts the 16px box to the 24px pointer floor. */}
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
+            <label className="-m-1 flex w-fit cursor-pointer p-1">
+              <Checkbox
+                tabIndex={-1}
+                checked={isSelected}
+                onClick={(event) => {
+                  // Radix toggles on click; the row's state is
+                  // the caller's, so the click is taken here.
+                  event.preventDefault();
+                  toggleRow(index, event.shiftKey);
+                }}
+                aria-label={selection.rowLabel(row.original)}
+              />
+            </label>
+          </GridCell>
+        ) : null}
+        {row.getVisibleCells().map((cell) => {
+          const meta = cell.column.columnDef.meta;
+          const card = cards.get(cell.column.id);
+          const value =
+            cell.column.id === nameColumn ? (
+              <DataTableName name={String(cell.getValue())} />
+            ) : (
+              <table.FlexRender cell={cell} />
             );
-          })}
-        </RowActiveContext>
+          return (
+            <GridCell
+              key={cell.id}
+              className={cn(
+                "truncate px-inline",
+                meta?.align === "end" && "text-right",
+                meta?.className,
+              )}
+            >
+              {card === undefined ? (
+                value
+              ) : (
+                <CardCell
+                  card={card}
+                  row={row.original}
+                  focused={
+                    gridFocused &&
+                    index === active &&
+                    cell.column.id === keyboardCard
+                  }
+                >
+                  {value}
+                </CardCell>
+              )}
+            </GridCell>
+          );
+        })}
       </tr>
     );
   };
