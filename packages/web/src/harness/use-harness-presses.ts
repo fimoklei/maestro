@@ -57,7 +57,7 @@ export function useHarnessPresses(
   const deletion = usePromoteDeletion();
   const deletionWrite = useWriteAction(deletion, {
     report,
-    action: "propose",
+    action: "delete",
     show: "row",
     name: skillName,
     failure: deletionNotice,
