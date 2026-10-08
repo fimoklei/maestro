@@ -8,7 +8,7 @@ import type {
 } from "@maestro/core";
 import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
 import { type Copy, machine, named, phrase } from "../ui/phrase";
-import type { StatusFamily } from "../ui/status-family";
+import { type StatusFamily, WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { offersDiscard } from "./row-actions";
 
@@ -65,7 +65,7 @@ export const statusReading = (row: HarnessStageRow): StatusReading => {
       ? `Proposed by ${row.waitingOn ?? "another contributor"}`
       : READINGS[row.status],
     family,
-    family === "attention" ? "⚠" : undefined,
+    family === "attention" ? WARNING_GLYPH : undefined,
   );
 };
 

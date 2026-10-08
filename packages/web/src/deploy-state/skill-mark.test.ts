@@ -6,9 +6,9 @@ const words = (mark: ReturnType<typeof skillMark>) =>
 
 describe("skillMark", () => {
   it("puts local edits ahead of every drift reading", () => {
-    expect(words(skillMark("local-edits", "behind"))).toBe("✎ Local edits");
+    expect(words(skillMark("local-edits", "behind"))).toBe("⚠ Local edits");
     expect(words(skillMark("local-edits", "no-longer-released"))).toBe(
-      "✎ Local edits",
+      "⚠ Local edits",
     );
   });
 

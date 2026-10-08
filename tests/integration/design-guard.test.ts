@@ -88,6 +88,23 @@ describe("design guard", () => {
       '<Icon of={X} className="size-3" />',
       "icon styled by hand: use Icon (ui/icon) for the standard size and stroke",
     ],
+    [
+      "<span>✎ Local edits</span>",
+      "status glyph outside ui: take it from STATUS_TOKENS, LIST_TOKENS or WARNING_GLYPH (ui/status-family)",
+    ],
+    [
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the planted source is a template
+      "`▲ Loses work · ${1}`",
+      "status glyph outside ui: take it from STATUS_TOKENS, LIST_TOKENS or WARNING_GLYPH (ui/status-family)",
+    ],
+    [
+      'reading("Pinned per skill", "neutral", "•")',
+      "status glyph outside ui: take it from STATUS_TOKENS, LIST_TOKENS or WARNING_GLYPH (ui/status-family)",
+    ],
+    [
+      'reading("Attention", "attention", "⚠")',
+      "status glyph outside ui: take it from STATUS_TOKENS, LIST_TOKENS or WARNING_GLYPH (ui/status-family)",
+    ],
   ])("fails %s and names the shared module", (jsx, message) => {
     plant(
       "packages/web/src/feature/b.tsx",
@@ -174,7 +191,7 @@ describe("design guard", () => {
     plant(
       "packages/web/src/feature/f.tsx",
       [
-        "// Amber: text-amber-12 is the attention ink.",
+        "// Amber: text-amber-12 is the attention ink, ↑ its glyph.",
         'export const f = "A red-1 release";',
         "",
       ].join("\n"),

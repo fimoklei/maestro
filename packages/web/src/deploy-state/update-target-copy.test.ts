@@ -64,7 +64,10 @@ describe("Update target copy", () => {
   });
 
   it("names the release the target leaves and the one it adopts", () => {
-    expect(releaseMoveLine("v0.3.2", "v0.3.4")).toBe("release v0.3.2 → v0.3.4");
+    const move = releaseMoveLine("v0.3.2", "v0.3.4");
+    expect(plainText(move)).toBe("release v0.3.2 → v0.3.4");
+    // #1458: the versions are the machine values; the words stay Geist.
+    expect(machineValues(move)).toEqual(["v0.3.2", "v0.3.4"]);
   });
 
   it("heads the six sections in one fixed order", () => {

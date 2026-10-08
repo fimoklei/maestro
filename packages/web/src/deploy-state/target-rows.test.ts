@@ -273,7 +273,7 @@ describe("local edits on a target", () => {
     });
     const edited = [skill("tdd", "local-edits"), skill("grill")];
     expect(words(repoRow("/me/a", [], read(edited), syncedDrift))).toBe(
-      "✎ Local edits",
+      "⚠ Local edits",
     );
     expect(words(repoRow("/me/a", [], read([skill("tdd")]), syncedDrift))).toBe(
       "✓ In sync",
@@ -328,7 +328,7 @@ describe("local edits on a target", () => {
       syncedDrift,
       false,
     );
-    expect(rows.map(words)).toEqual(["✎ Local edits", "✓ In sync"]);
+    expect(rows.map(words)).toEqual(["⚠ Local edits", "✓ In sync"]);
   });
 });
 

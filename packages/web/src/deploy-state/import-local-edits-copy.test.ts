@@ -33,7 +33,7 @@ describe("Import local edits copy", () => {
   });
 
   it("names the group that undoes newer Harness changes and its release", () => {
-    expect(undoesNewerLegend(2)).toBe("▲ Undoes newer Harness changes · 2");
+    expect(undoesNewerLegend(2)).toBe("⚠ Undoes newer Harness changes · 2");
     expect(plainText(undoesNewerLine("v1.4.0"))).toBe(
       "Deployed from release v1.4.0. Importing undoes newer Harness changes to this skill.",
     );

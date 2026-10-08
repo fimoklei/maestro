@@ -15,16 +15,14 @@ export function SubListRow({
   value,
   menuLabel,
   items,
-  link = null,
 }: {
   /** Null while the reading has not answered: no status before the server. */
   mark: RowMark | null;
   name: string;
   value: ReactNode;
   menuLabel: string;
+  /** A page elsewhere, such as GitHub, is an item here: the row has no link cell. */
   items: readonly ActionsMenuItem[];
-  /** The row's own page elsewhere, such as a GitHub link cell. */
-  link?: ReactNode;
 }) {
   return (
     <li className="group/row flex h-row items-center gap-inline border-divider border-b text-row">
@@ -33,7 +31,6 @@ export function SubListRow({
       <span className="text-gray-11">
         <MachineValue>{value}</MachineValue>
       </span>
-      {link}
       {items.length === 0 ? null : (
         <RowMenu label={menuLabel} items={items} returnFocus tabStop />
       )}

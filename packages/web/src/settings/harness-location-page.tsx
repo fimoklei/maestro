@@ -65,11 +65,11 @@ export function HarnessLocationPage() {
     notice: readNotice,
     busy: dialog.busy ? ACTIONS.setLocation.busy : null,
   });
-  const release =
-    harnessMetaLine(
-      harness.isSuccess ? harness.data.releasedVersion : undefined,
-      inventory.data?.primitives.length,
-    ) ?? NOT_READ_YET;
+  const meta = harnessMetaLine(
+    harness.isSuccess ? harness.data.releasedVersion : undefined,
+    inventory.data?.primitives.length,
+  );
+  const release = meta === null ? NOT_READ_YET : plainText(meta);
   const github = config.data?.githubRepository ?? null;
 
   const fact = (

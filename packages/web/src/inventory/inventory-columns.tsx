@@ -1,5 +1,6 @@
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
+import { NoValue } from "../ui/no-value";
 import { RowMenu } from "../ui/row-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
@@ -94,7 +95,11 @@ export const inventoryColumns = ({
         header: "Targets",
         cell: ({ row }) => {
           const targets = row.original.targets;
-          return targets === null ? null : targets === 0 ? "—" : targets;
+          return targets === null ? null : targets === 0 ? (
+            <NoValue />
+          ) : (
+            targets
+          );
         },
         sortFn: (a, b) =>
           (a.original.targets ?? -1) - (b.original.targets ?? -1),

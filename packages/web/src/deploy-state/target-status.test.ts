@@ -20,7 +20,7 @@ describe("targetStatus", () => {
 
   it("reads a target pinned per skill as a neutral fact over any drift", () => {
     const status = targetStatus({ indicator: "drift", pinnedPerSkill: true });
-    expect(words(status)).toBe("• Pinned per skill");
+    expect(words(status)).toBe("– Pinned per skill");
     expect(status?.family).toBe("neutral");
   });
 
@@ -41,7 +41,7 @@ describe("targetStatus", () => {
   it("reads an empty target and a foreign one as neutral facts", () => {
     expect(words(targetStatus({ indicator: "empty" }))).toBe("– Empty");
     expect(words(targetStatus({ indicator: "foreign" }))).toBe(
-      "• Other origin",
+      "– Other origin",
     );
   });
 
@@ -58,7 +58,7 @@ describe("targetStatus", () => {
       targetStatus({ indicator: "drift", localEdits: true }),
       targetStatus({ indicator: "ok", pinnedPerSkill: true, localEdits: true }),
     ]) {
-      expect(words(status)).toBe("✎ Local edits");
+      expect(words(status)).toBe("⚠ Local edits");
       expect(status?.family).toBe("attention");
     }
   });

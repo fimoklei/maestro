@@ -1,15 +1,16 @@
 import type { TargetDriftIndicator } from "../drift/drift-view-model";
+import { WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { MIXED_RELEASES } from "./update-target-copy";
 
-const MIXED = reading(MIXED_RELEASES, "attention", "⚠");
-const ATTENTION = reading("Attention", "attention", "⚠");
-export const LOCAL_EDITS = reading("Local edits", "attention", "✎");
+const MIXED = reading(MIXED_RELEASES, "attention", WARNING_GLYPH);
+const ATTENTION = reading("Attention", "attention", WARNING_GLYPH);
+export const LOCAL_EDITS = reading("Local edits", "attention", WARNING_GLYPH);
 const BEHIND = reading("Behind", "attention");
 const UNKNOWN = reading("Unknown", "unknown");
 const IN_SYNC = reading("In sync", "good");
-const PINNED = reading("Pinned per skill", "neutral", "•");
-const OTHER_ORIGIN = reading("Other origin", "neutral", "•");
+const PINNED = reading("Pinned per skill", "neutral");
+const OTHER_ORIGIN = reading("Other origin", "neutral");
 const EMPTY = reading("Empty", "neutral");
 
 /** Every word the badge can read, worst first, as Filter offers them. */

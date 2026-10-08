@@ -172,12 +172,11 @@ describe("SelectedSkills GitHub links", () => {
     github: { kind: "link", url: FOLDER },
   };
 
-  it("links a row to its skill folder, and offers the same page in its menu", async () => {
+  // #1458: the page is a ⋮ item, never a link cell in the row.
+  it("offers the skill folder in the row's menu, with no link cell", async () => {
     renderList(upToDate, [linked]);
 
-    expect(
-      screen.getByRole("link", { name: "View tdd on GitHub" }),
-    ).toHaveAttribute("href", FOLDER);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Actions for tdd" }),
     );
@@ -199,10 +198,15 @@ describe("SelectedSkills GitHub links", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows an Unknown badge where the Harness origin could not be read", () => {
+  it("offers no menu item where the Harness origin could not be read", async () => {
     renderList(upToDate, [{ ...tdd, github: { kind: "unknown" } }]);
 
-    expect(screen.getByText("Unknown")).toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for tdd" }),
+    );
+    await screen.findByRole("menuitem", { name: "Remove skill" });
+    expect(
+      screen.queryByRole("menuitem", { name: "View skill on GitHub" }),
+    ).not.toBeInTheDocument();
   });
 });

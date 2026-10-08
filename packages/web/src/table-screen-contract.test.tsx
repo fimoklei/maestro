@@ -69,7 +69,7 @@ const renderInventoryRow = () => {
       registryReady
       targets={[
         {
-          label: "",
+          label: "Claude Code",
           target: { kind: "global" },
           deployed: {
             status: "ready",
@@ -89,6 +89,61 @@ const renderInventoryRow = () => {
     />,
   );
 };
+
+/** A pane whose sub-list the row-shape check opens. */
+type PaneSubList = {
+  file: string;
+  render: () => void;
+  /** The table row whose pane holds the sub-list. */
+  row: string;
+  heading: string;
+  item: string;
+  value: string;
+  /** The ⋮ item that carries the row's GitHub page, where it has one. */
+  githubItem: string | null;
+};
+
+const PANE_SUB_LISTS: PaneSubList[] = [
+  {
+    file: "deploy-state/deploy-state-view.tsx",
+    render: () => {
+      stubServer(() => ({
+        repos: ["/Users/me/a"],
+        repo: {
+          "/Users/me/a": {
+            primitives: [
+              {
+                type: "skill",
+                name: "tdd",
+                version: "v0.3.2",
+                github: {
+                  kind: "link",
+                  url: "https://github.com/acme/harness/tree/v0.3.2/skills/tdd",
+                },
+              },
+            ],
+            skipped: [],
+          },
+        },
+      }));
+      renderDeployState();
+    },
+    row: "…/me/a",
+    heading: "Deployed skills 1",
+    item: "tdd",
+    value: "v0.3.2",
+    githubItem: "View skill on GitHub",
+  },
+  {
+    file: "inventory/inventory-view.tsx",
+    render: renderInventoryRow,
+    row: "tdd",
+    heading: "Deployed to 1",
+    item: "Claude Code",
+    value: "v1.0.0",
+    githubItem: null,
+  },
+];
 
 const ON_TABLE_SCREEN: Row[] = [
   {
@@ -314,6 +369,15 @@ describe("every table screen", () => {
     expect(triggers).toEqual(["ui/row-menu.tsx"]);
   });
 
+  // #1458: one muted ink for an empty cell, whichever column holds it.
+  it("draws the zero dash only in ui/no-value", () => {
+    const dashes = sources
+      .filter(({ text }) => />\s*—\s*<|["'`]—["'`]/.test(text))
+      .map(({ file }) => file);
+
+    expect(dashes).toEqual(["ui/no-value.tsx"]);
+  });
+
   describe.each(ON_TABLE_SCREEN)("$file", (row) => {
     it("has one Re-read control in band 2 and one status region", async () => {
       row.render();
@@ -374,6 +438,51 @@ describe("every table screen", () => {
         within(await screen.findByRole("complementary")).getAllByRole("button"),
         actions.destructive,
       );
+    });
+  });
+
+  // #1458: mark, name, machine value, ⋮; the GitHub page is a ⋮ item.
+  describe.each(PANE_SUB_LISTS)("$file pane sub-list", (subList) => {
+    it("counts its rows and reads each as mark, name, machine value, ⋮", async () => {
+      subList.render();
+      const [name] = await within(
+        await screen.findByRole("grid"),
+      ).findAllByText(subList.row);
+      await userEvent.click(
+        within(name?.closest("tr") as HTMLElement).getAllByRole(
+          "gridcell",
+        )[0] as HTMLElement,
+      );
+      const pane = await screen.findByRole("complementary");
+
+      const heading = await within(pane).findByRole("heading", {
+        level: 3,
+        name: subList.heading,
+      });
+      const row = within(heading.closest("section") as HTMLElement)
+        .getAllByRole("listitem")
+        .find((item) => item.textContent?.includes(subList.item));
+      if (row === undefined) throw new Error(`no row ${subList.item}`);
+      const parts = [
+        await within(row).findByRole("img"),
+        within(row).getByText(subList.item),
+        within(row).getByText(subList.value),
+        within(row).getByRole("button", {
+          name: `Actions for ${subList.item}`,
+        }),
+      ];
+      expect(row.children).toHaveLength(parts.length);
+      parts.forEach((part, index) => {
+        expect(row.children[index]).toContainElement(part);
+      });
+      expect(within(row).getByText(subList.value)).toHaveClass("font-mono");
+      expect(within(row).queryByRole("link")).toBeNull();
+
+      if (subList.githubItem === null) return;
+      await userEvent.click(parts[3] as HTMLElement);
+      expect(
+        await screen.findByRole("menuitem", { name: subList.githubItem }),
+      ).toHaveAttribute("href");
     });
   });
 

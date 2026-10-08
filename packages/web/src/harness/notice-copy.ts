@@ -20,7 +20,7 @@ import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { REREAD_HARNESS, UPDATE_SKILL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
-import { machine, named, phrase } from "../ui/phrase";
+import { machine, named, type Phrase, phrase, plainText } from "../ui/phrase";
 
 // A new code in core fails typecheck here until it has a row.
 
@@ -801,18 +801,10 @@ export const importBlockerNotice = (
     ? importHeadings[blocker]
     : { ...importHeadings[blocker], message };
 
-// The folders are paths the dialog sets in mono, so the parts stay apart.
-export function copiesDiffer<T>(
-  folders: Record<"claude" | "codex", T>,
-): [string, T, string, T, string] {
-  return [
-    "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ",
-    folders.claude,
-    " or ",
-    folders.codex,
-    ".",
-  ];
-}
+export const copiesDiffer = (
+  folders: Record<"claude" | "codex", string>,
+): Phrase =>
+  phrase`The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ${machine(folders.claude)} or ${machine(folders.codex)}.`;
 
 // Import skill's sentences where they work from this dialog, retried with
 // Import local edits. Where Import skill says to pick a folder, this dialog
@@ -886,5 +878,5 @@ export function localEditsRefusal({
 }: Pick<LocalEditsSkill, "folders"> & { refusal: LocalEditsRefusal }): string {
   return folders === undefined
     ? LOCAL_EDITS_REFUSALS[refusal]
-    : copiesDiffer(folders).join("");
+    : plainText(copiesDiffer(folders));
 }

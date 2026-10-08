@@ -17,10 +17,14 @@ const COLOUR =
   "colour class outside ui: pass a status family to STATUS_TOKENS (ui/status-family); a focus ring is FOCUS_RING (ui/focus-ring)";
 const ICON =
   "icon styled by hand: use Icon (ui/icon) for the standard size and stroke";
+const GLYPH =
+  "status glyph outside ui: take it from STATUS_TOKENS, LIST_TOKENS or WARNING_GLYPH (ui/status-family)";
 
 const GENERIC_REGION = /(?:^|\/)ui\/(?:use-)?status-region$/;
 const COLOUR_CLASS = /(?:^|\s|:)[a-z]+(?:-[a-z]+)*-(?:red|amber|green|blue)-\d/;
 const SIZE_CLASS = /(?:^|\s|:)(?:size|w|h)-\d/;
+// The family glyphs, plus the retired ▲, ✎ and •.
+const STATUS_GLYPH = /[✓↑⚠✕–▲✎•]/;
 const NOT_FEATURE =
   /\.(?:test|stories)\.tsx?$|test-helpers|test-utils|-fixture\.|(?:^|\/)node_modules\//;
 
@@ -116,6 +120,14 @@ function* offencesIn(path, text) {
       yield { line: lineOf(node), message: ICON };
     } else if (ts.isStringLiteralLike(node) && COLOUR_CLASS.test(node.text)) {
       yield { line: lineOf(node), message: COLOUR };
+    }
+    if (
+      (ts.isStringLiteralLike(node) ||
+        ts.isTemplateLiteralToken(node) ||
+        ts.isJsxText(node)) &&
+      STATUS_GLYPH.test(node.text)
+    ) {
+      yield { line: lineOf(node), message: GLYPH };
     }
   }
 }

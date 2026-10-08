@@ -134,7 +134,7 @@ describe("Deploy-state — Import local edits on a skill row", () => {
 
     const dialog = await openSkillDialog(pane, "tdd", ROW);
     const flagged = await within(dialog).findByRole("group", {
-      name: "▲ Undoes newer Harness changes · 1",
+      name: "⚠ Undoes newer Harness changes · 1",
     });
 
     expect(

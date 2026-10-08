@@ -1,8 +1,8 @@
 import type { Ref } from "react";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import { DetailPane } from "../ui/detail-pane";
-import { FOCUS_RING } from "../ui/focus-ring";
 import type { FootItem } from "../ui/foot-actions";
+import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow } from "../ui/sub-list-row";
 import { NOT_DEPLOYED_ANYWHERE, rowActionsLabel } from "./inventory-copy";
 import type { SkillDeployment } from "./skill-deployments";
@@ -66,13 +66,11 @@ export function SkillDetailPane({
       leadsWithNextStep
       subList={
         <section>
-          <h3
-            ref={listHeadingRef}
-            tabIndex={-1}
-            className={`m-0 mb-inline font-normal text-gray-11 text-meta ${FOCUS_RING}`}
-          >
-            Deployed to
-          </h3>
+          <SubListHeading
+            label="Deployed to"
+            count={unconfirmed ? null : deployments.length}
+            headingRef={listHeadingRef}
+          />
           {deployments.length > 0 ? (
             <>
               <ul className="m-0 list-none border-divider border-t p-0">

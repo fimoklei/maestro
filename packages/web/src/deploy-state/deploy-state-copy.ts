@@ -49,9 +49,8 @@ export const REPO_NOT_READ = {
 export const VIEW_REPOSITORY_ON_GITHUB = "View repository on GitHub";
 export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${REREAD_LABEL} to read it again.`;
 
-// A selected skill's folder on GitHub: its menu item, and its Unknown's cause.
+// A selected skill's folder on GitHub, as its ⋮ item.
 export const VIEW_SKILL_ON_GITHUB = "View skill on GitHub";
-export const HARNESS_ORIGIN_NOT_READ = `The origin of the Harness could not be read. Select ${REREAD_LABEL} to read it again.`;
 
 // The Global group's line while no supported tool is detected.
 export const NO_TOOL_DETECTED =

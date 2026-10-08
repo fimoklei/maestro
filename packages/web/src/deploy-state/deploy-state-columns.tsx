@@ -4,6 +4,7 @@ import type { DataTableCardContent } from "../ui/data-table-card";
 import { GITHUB_COLUMN } from "../ui/github-link-copy";
 import { GITHUB_UNKNOWN, GitHubMarkLink } from "../ui/github-mark-link";
 import { MachineValue } from "../ui/machine-value";
+import { NoValue } from "../ui/no-value";
 import { RowMenu } from "../ui/row-menu";
 import { Skeleton } from "../ui/skeleton";
 import { StatusBadge } from "../ui/status-badge";
@@ -95,7 +96,7 @@ export const deployStateColumns = ({
       enableSorting: false,
       cell: ({ row }) =>
         row.original.release === null ? (
-          <span className="text-gray-11">—</span>
+          <NoValue />
         ) : (
           <span className="text-gray-12">
             <ReleaseValue release={row.original.release} />
@@ -149,7 +150,7 @@ export const deployStateColumns = ({
       cell: ({ row }) => {
         const skills = row.original.skills;
         return skills === null ? null : skills === 0 ? (
-          <span className="text-gray-11">—</span>
+          <NoValue />
         ) : (
           <span className="text-gray-12">{skills}</span>
         );
