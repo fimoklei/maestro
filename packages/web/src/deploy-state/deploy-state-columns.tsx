@@ -1,10 +1,10 @@
 import { rowActionsLabel } from "../inventory/inventory-copy";
-import { RowItemsMenu } from "../inventory/row-menu";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import { GITHUB_COLUMN } from "../ui/github-link-copy";
 import { GITHUB_UNKNOWN, GitHubMarkLink } from "../ui/github-mark-link";
 import { MachineValue } from "../ui/machine-value";
+import { RowMenu } from "../ui/row-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
 import { StatusSkeleton } from "../ui/status-skeleton";
@@ -150,9 +150,11 @@ export const deployStateColumns = ({
       id: "actions",
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
-        <RowItemsMenu
+        <RowMenu
           label={rowActionsLabel(row.original.name)}
           items={targetRowItems(row.original, onAction)}
+          returnFocus={false}
+          tabStop={false}
         />
       ),
       meta: { width: 10 },

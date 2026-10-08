@@ -32,7 +32,8 @@ export function InventoryPanel() {
   const harness = useHarness();
   const check = useDeletionCheck();
   // Drift is left out, as on Deploy-state: its apm run is slow, so the rows
-  // never wait for it; the Status cell shows its own skeleton meanwhile.
+  // never wait for it; the Status cell shows its own skeleton meanwhile. The
+  // deletion check is left out too: Delete skill states its own wait.
   const readingDeployState = useIsFetching({ queryKey: ["deploy-state"] }) > 0;
   const repos = registry.data?.repos ?? [];
   // Reuses the existing deploy-state + drift queries — no new server read (#272).
@@ -54,10 +55,7 @@ export function InventoryPanel() {
       targets={targets}
       failure={readFailure(inventory.error)}
       reading={
-        inventory.isFetching ||
-        registry.isFetching ||
-        readingDeployState ||
-        check.isFetching
+        inventory.isFetching || registry.isFetching || readingDeployState
       }
       onReread={invalidate}
       onOpenHarness={() => navigate("/harness")}

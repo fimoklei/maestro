@@ -25,6 +25,7 @@ import {
   DISPLAY_OPTIONS,
   type InventoryRow,
   inventoryColumns,
+  type RowAction,
 } from "./inventory-columns";
 import {
   DEPLOY_SKILL,
@@ -41,7 +42,6 @@ import {
   STAGE_COLUMN_LABEL,
   stageRowLabel,
 } from "./inventory-copy";
-import type { RowAction } from "./row-menu";
 import {
   type SkillDeployment,
   skillDeployments,
