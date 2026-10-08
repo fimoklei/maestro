@@ -1,5 +1,6 @@
 import { EllipsisVertical } from "lucide-react";
 import { ActionsMenu, type ActionsMenuItem } from "./actions-menu";
+import { Spinner } from "./button";
 import { cn } from "./cn";
 import { FOCUS_RING } from "./focus-ring";
 import { Icon } from "./icon";
@@ -12,6 +13,7 @@ export function RowMenu({
   items,
   returnFocus,
   tabStop,
+  busy,
 }: {
   label: string;
   items: readonly ActionsMenuItem[];
@@ -19,6 +21,8 @@ export function RowMenu({
   returnFocus: boolean;
   /** False inside a grid, which keeps one Tab stop. */
   tabStop: boolean;
+  /** A write its row started is running: the spinner stands in for ⋮. */
+  busy: boolean;
 }) {
   return (
     <ActionsMenu
@@ -29,14 +33,15 @@ export function RowMenu({
         <button
           type="button"
           tabIndex={tabStop ? undefined : -1}
+          aria-busy={busy || undefined}
           className={cn(
             // 24×24, the pointer floor (WCAG 2.2 SC 2.5.8).
             "inline-flex size-6 cursor-pointer items-center justify-center rounded-control text-gray-11 hover:bg-gray-4 hover:text-gray-12",
-            "opacity-0 group-hover/row:opacity-100 group-data-[active]/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100",
+            "opacity-0 group-hover/row:opacity-100 group-data-[active]/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100 aria-busy:opacity-100 [@media(hover:none)]:opacity-100",
             FOCUS_RING,
           )}
         >
-          <Icon of={EllipsisVertical} />
+          {busy ? <Spinner /> : <Icon of={EllipsisVertical} />}
         </button>
       }
     />

@@ -170,13 +170,17 @@ describe("connectNotice", () => {
       detail: "Maestro would scaffold it into /repos/harness.",
       action: {
         label: "Scaffold the Harness",
-        disabled: false,
+        busy: undefined,
         onClick: onAccept,
       },
     });
     expect(
       scaffoldOfferExtras("/repos/harness", { pending: true, onAccept }).action,
-    ).toEqual({ label: "Scaffolding…", disabled: true, onClick: onAccept });
+    ).toEqual({
+      label: "Scaffold the Harness",
+      busy: "scaffold",
+      onClick: onAccept,
+    });
     expect(scaffoldOfferExtras(null, { pending: false, onAccept })).toEqual({});
   });
 

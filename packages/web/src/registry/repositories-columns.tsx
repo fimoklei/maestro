@@ -73,6 +73,7 @@ export const repositoriesColumns = ({
           }))}
           returnFocus={false}
           tabStop={false}
+          busy={false}
         />
       ),
       meta: { width: 10 },

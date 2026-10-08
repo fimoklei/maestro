@@ -139,7 +139,7 @@ export function RemoveSkillDialog({
               action: {
                 label: REMOVE_SKILL,
                 onClick: onConfirm,
-                disabled: isRemoving,
+                busy: isRemoving ? "remove" : undefined,
               },
             }}
           />

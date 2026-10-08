@@ -15,6 +15,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
+import { Tooltip } from "../ui/tooltip";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useWriteAction } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
@@ -23,6 +24,7 @@ import { HarnessDialogs } from "./harness-dialogs";
 import {
   harnessAnnouncement,
   releaseEnabled,
+  releaseUnavailable,
   type StageSection,
   stageSections,
 } from "./harness-view-model";
@@ -215,6 +217,7 @@ export function HarnessView({
                         localSettled && presses.restore.isPending === false,
                       commit: state.localHeadCommit,
                     },
+                    presses.running?.id === rowId(row) ? presses.running : null,
                   ),
                 }))
                 // Within a stage, the rows that need the author first (#994).
@@ -271,13 +274,13 @@ export function HarnessView({
             {/* Closed while the remote's answer is unknown — an offline or
                 failed fetch — and while a re-read is still rewriting the refs
                 a plan reads. Advisory findings never gate it (#519). */}
-            <Button
-              variant="primary"
-              disabled={!releaseEnabled(state.freshness) || refresh.isPending}
+            <CreateRelease
+              unavailable={releaseUnavailable(
+                state.freshness,
+                refresh.isPending,
+              )}
               onClick={() => setPlanOpen(true)}
-            >
-              {CREATE_RELEASE}
-            </Button>
+            />
           </>
         )
       }
@@ -389,6 +392,34 @@ export function HarnessView({
         />
       )}
     </TableScreen>
+  );
+}
+
+// One tree whether open or not, so a re-read landing keeps its focus.
+function CreateRelease({
+  unavailable,
+  onClick,
+}: {
+  unavailable: string | null;
+  onClick: () => void;
+}) {
+  const name =
+    unavailable === null
+      ? CREATE_RELEASE
+      : `${CREATE_RELEASE} — ${unavailable}`;
+  return (
+    <Tooltip label={name}>
+      <Button
+        variant="primary"
+        aria-label={name}
+        aria-disabled={unavailable !== null || undefined}
+        // A blocked action reads as a disabled control, never as on offer.
+        className="aria-disabled:border-edge aria-disabled:bg-gray-3 aria-disabled:text-gray-11"
+        onClick={unavailable === null ? onClick : undefined}
+      >
+        {CREATE_RELEASE}
+      </Button>
+    </Tooltip>
   );
 }
 

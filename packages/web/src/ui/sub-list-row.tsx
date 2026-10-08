@@ -35,7 +35,13 @@ export function SubListRow({
       </span>
       {link}
       {items.length === 0 ? null : (
-        <RowMenu label={menuLabel} items={items} returnFocus tabStop />
+        <RowMenu
+          label={menuLabel}
+          items={items}
+          returnFocus
+          tabStop
+          busy={false}
+        />
       )}
     </li>
   );

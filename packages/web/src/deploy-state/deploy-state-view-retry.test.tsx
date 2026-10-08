@@ -21,8 +21,12 @@ const LABEL = "…/me/project";
 type Kind = "deploy" | "remove" | "update";
 
 // The server answers each retry from `answers`, in order; a 200 clears the
-// pending operation, as the server does once disk agrees.
-function stubRetries(kind: Kind, answers: (() => Response)[]) {
+// pending operation, as the server does once disk agrees. A pending promise
+// holds the retry.
+function stubRetries(
+  kind: Kind,
+  answers: (() => Response | Promise<Response>)[],
+) {
   let pending = true;
   const sent: unknown[] = [];
   stubServer(() => ({
@@ -47,7 +51,9 @@ function stubRetries(kind: Kind, answers: (() => Response)[]) {
       sent.push(JSON.parse(String(init?.body)));
       const response = answers[sent.length - 1]?.();
       if (response === undefined) throw new Error("no answer left");
-      if (response.status === 200) pending = false;
+      if (response instanceof Response && response.status === 200) {
+        pending = false;
+      }
       return response;
     },
   }));
@@ -104,6 +110,26 @@ describe("Deploy-state — a successful retry", () => {
     await waitFor(() =>
       expect(announced()).toHaveTextContent(`Removed ${LABEL}.`),
     );
+  });
+});
+
+describe("Deploy-state pane — a running retry", () => {
+  it("keeps focus on the pressed Retry deploy, spinning under its busy label", async () => {
+    stubRetries("deploy", [() => new Promise<Response>(() => {})]);
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    await userEvent.click(
+      within(pane).getByRole("button", { name: "Retry deploy" }),
+    );
+
+    const pressed = await within(pane).findByRole("button", {
+      name: "Deploying…",
+    });
+    expect(pressed).toHaveFocus();
+    expect(pressed).toHaveAttribute("aria-disabled", "true");
+    expect(pressed).toHaveAttribute("aria-busy", "true");
+    expect(pressed).not.toBeDisabled();
   });
 });
 

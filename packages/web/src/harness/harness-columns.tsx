@@ -1,8 +1,8 @@
 import type { HarnessStageRow } from "@maestro/core";
 import { TYPE_WORD } from "../inventory/type-filter";
-import type { ActionsMenuProps } from "../ui/actions-menu";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
+import type { FootItem } from "../ui/foot-actions";
 import type { Copy } from "../ui/phrase";
 import { RowMenu } from "../ui/row-menu";
 import { StatusBadge } from "../ui/status-badge";
@@ -26,7 +26,7 @@ export type HarnessTableRow = HarnessStageRow & {
   id: string;
   group: string;
   reading: StatusReading;
-  items: ActionsMenuProps["items"];
+  items: FootItem[];
 };
 
 export const rowId = (row: Pick<HarnessStageRow, "stage" | "skill">) =>
@@ -131,6 +131,7 @@ export const harnessColumns = ({
           items={row.original.items}
           returnFocus={false}
           tabStop={false}
+          busy={row.original.items.some((item) => item.busy !== undefined)}
         />
       ),
       meta: { width: 10 },

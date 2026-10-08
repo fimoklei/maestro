@@ -119,6 +119,7 @@ export const inventoryColumns = ({
           }))}
           returnFocus={false}
           tabStop={false}
+          busy={false}
         />
       ),
       meta: { width: 10 },

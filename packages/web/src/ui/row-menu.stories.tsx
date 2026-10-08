@@ -9,6 +9,7 @@ const meta = {
     label: "Actions for create-issue",
     returnFocus: false,
     tabStop: false,
+    busy: false,
     items: [
       { label: "Deploy skill", onSelect: () => {} },
       { label: "Update target", onSelect: () => {} },
@@ -33,4 +34,9 @@ export const InTableRow: Story = {};
 // A pane sub-list row is no grid: ⋮ is a Tab stop and gets focus back.
 export const InSubListRow: Story = {
   args: { returnFocus: true, tabStop: true },
+};
+
+// A write its row started is running.
+export const Busy: Story = {
+  args: { busy: true },
 };
