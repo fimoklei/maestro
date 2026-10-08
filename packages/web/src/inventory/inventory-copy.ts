@@ -10,7 +10,7 @@ export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…
 // the call site.
 export const INVENTORY_NOT_READ = {
   level: "error",
-  label: "Could not read Inventory",
+  label: "Inventory not read",
   message: "Select Re-read Inventory to try again.",
 } as const;
 

@@ -70,6 +70,11 @@ describe("copy guard", () => {
     ["Let's deploy the skill.", "Let's"],
     ["Deployed tdd! Select Close.", "!"],
     ["Deployed tdd!", "!"],
+    ["Could not read Inventory", "Could not read"],
+    ["Nothing was installed. Select a skill.", "Nothing was installed"],
+    ["Target held by another operation", "Target held by another operation"],
+    ["Another change is running", "Another change is running"],
+    ["Harness already changing", "Harness already changing"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",

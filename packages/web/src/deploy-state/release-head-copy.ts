@@ -100,7 +100,7 @@ export function unfinishedOperationNotice(
     ? {
         level: "warning",
         label: "Deploy incomplete",
-        message: phrase`${UNFINISHED_REASONS.deploy} Select ${RETRY_DEPLOY} to install release ${machine(pending.release)} again.`,
+        message: phrase`${UNFINISHED_REASONS.deploy} Select ${RETRY_DEPLOY} to deploy release ${machine(pending.release)} again.`,
       }
     : {
         level: "warning",

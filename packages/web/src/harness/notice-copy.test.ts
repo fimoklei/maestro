@@ -182,7 +182,7 @@ const suites: [
         "publish-in-progress",
         {
           level: "error",
-          label: "Release already running",
+          label: "Harness busy",
           message:
             "Wait for that release to finish, then Create a release again.",
           detail: "Maestro publishes one release at a time.",
@@ -266,7 +266,7 @@ const suites: [
         "promote-in-progress",
         {
           level: "error",
-          label: "Change already being proposed",
+          label: "Harness busy",
           message: "Wait for that change to finish, then Propose change again.",
           detail: "Maestro proposes one change at a time.",
         },
@@ -309,7 +309,7 @@ const suites: [
         "promote-in-progress",
         {
           level: "error",
-          label: "Change already being proposed",
+          label: "Harness busy",
           message: "Wait for that change to finish, then Delete skill again.",
           detail: "Maestro proposes one change at a time.",
         },
@@ -483,7 +483,7 @@ const suites: [
         "delete-in-progress",
         {
           level: "error",
-          label: "Harness already changing",
+          label: "Harness busy",
           message: "Wait for that change to finish, then Delete skill again.",
           detail: "Maestro changes one Harness at a time.",
         },
@@ -866,7 +866,7 @@ const suites: [
         "restore-in-progress",
         {
           level: "error",
-          label: "Harness already changing",
+          label: "Harness busy",
           message:
             "Nothing was restored. Wait for that change to finish, then Restore skill again.",
           detail: "Maestro changes one Harness at a time.",
@@ -1037,7 +1037,7 @@ const suites: [
         "discard-in-progress",
         {
           level: "error",
-          label: "Harness already changing",
+          label: "Harness busy",
           message:
             "Nothing was discarded. Wait for that change to finish, then Discard change again.",
           detail: "Maestro changes one Harness at a time.",

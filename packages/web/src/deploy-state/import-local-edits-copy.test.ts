@@ -78,17 +78,17 @@ describe("Import local edits copy", () => {
     ],
     [
       "unfinished-operation",
-      "Change not finished",
+      "Unfinished operation",
       "An earlier change on this target did not finish. Finish it on the Deploy-state screen, then select Import local edits again.",
     ],
     [
       "target-unreadable",
-      "Could not read deployment record",
+      "Deployment record not read",
       "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits again.",
     ],
     [
       "import-in-progress",
-      "Harness already changing",
+      "Harness busy",
       "Wait for that change to finish, then select Import local edits again.",
     ],
   ] as const)(

@@ -198,10 +198,10 @@ describe("Harness location page", () => {
     stubServer({ primitives: failed });
     renderPage();
 
-    const notice = await screen.findByText("Could not read Inventory");
+    const notice = await screen.findByText("Inventory not read");
     const block = notice.closest("[role]");
     expect(block).toHaveTextContent(
-      /^✕Could not read InventorySelect Re-read Inventory to try again\.$/,
+      /^✕Inventory not readSelect Re-read Inventory to try again\.$/,
     );
     expect(block).toHaveClass("border-red-7", "bg-red-3");
     expect(reread()).toBeInTheDocument();
@@ -217,9 +217,7 @@ describe("Harness location page", () => {
     await screen.findByText("v1.4.0 · 2 skills");
     await userEvent.click(reread());
 
-    expect(
-      await screen.findByText("Could not read Inventory"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Inventory not read")).toBeInTheDocument();
     expect(await screen.findByText("v1.4.0 · 2 skills")).toBeInTheDocument();
   });
 
@@ -231,7 +229,7 @@ describe("Harness location page", () => {
     });
     renderPage();
 
-    await screen.findByText("Could not read Inventory");
+    await screen.findByText("Inventory not read");
     await userEvent.click(reread());
     expect(
       await screen.findByText("Loading the Harness location…"),
@@ -242,9 +240,7 @@ describe("Harness location page", () => {
       await screen.findByText("Harness location loaded."),
     ).toBeInTheDocument();
     expect(await screen.findByText("v1.4.0 · 2 skills")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Could not read Inventory"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Inventory not read")).not.toBeInTheDocument();
   });
 
   it("announces the recovery when a retry succeeds after a failed re-read of a shown count", async () => {
@@ -262,7 +258,7 @@ describe("Harness location page", () => {
 
     await screen.findByText("v1.4.0 · 2 skills");
     await userEvent.click(reread());
-    await screen.findByText("Could not read Inventory");
+    await screen.findByText("Inventory not read");
 
     await userEvent.click(reread());
     retry.resolve(skills(5));

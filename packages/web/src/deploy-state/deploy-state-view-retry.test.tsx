@@ -78,7 +78,7 @@ describe("Deploy-state pane — a failed retry", () => {
     expect(
       within(notice).getByText(
         sentence(
-          "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+          "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
         ),
       ),
     ).toBeInTheDocument();

@@ -37,6 +37,13 @@ const RETIRED = [
   // A control is selected: never clicked or tapped, never `Press Close`.
   /\b(?:click|tap)(?:s|ped|ping|ed|ing)?\b/i,
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,
+  // A failed read is `{the thing} not read`; a deploy never installs; a running
+  // operation reads Target busy or Harness busy (#1459).
+  /\bCould not read\b/,
+  /\bNothing was installed\b/i,
+  /\bTarget held by another operation\b/i,
+  /\bAnother change is running\b/i,
+  /\bHarness already changing\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.
   /\b(?:seamless|effortless|supercharge|powerful|magic|unlock|leverage|AI-powered|intelligent|smartly|empower|robust|Oops|Whoops|Let's)/i,
   /!(?=\s|$)/,
