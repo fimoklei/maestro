@@ -232,6 +232,15 @@ describe("every table screen", () => {
     expect(byHand).toEqual([]);
   });
 
+  // #1449: every table row and pane sub-list row opens its ⋮ through RowMenu.
+  it("draws the row ⋮ trigger only in ui/row-menu", () => {
+    const triggers = sources
+      .filter(({ text }) => /\bEllipsisVertical\b/.test(text))
+      .map(({ file }) => file);
+
+    expect(triggers).toEqual(["ui/row-menu.tsx"]);
+  });
+
   describe.each(ON_TABLE_SCREEN)("$file", (row) => {
     it("has one Re-read control in band 2 and one status region", async () => {
       row.render();
