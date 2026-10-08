@@ -16,7 +16,7 @@ import type { DeployedLocation } from "./deployed-location";
 import type { GitOrigin } from "./git-origin";
 import { buildHarnessPackageRef } from "./package-ref";
 
-export type DeployedCopy = { name: string; tool: SupportedTool };
+type DeployedCopy = { name: string; tool: SupportedTool };
 
 // A write must never read an unanswerable lockfile as an empty target (#58).
 export type TargetSelection =
