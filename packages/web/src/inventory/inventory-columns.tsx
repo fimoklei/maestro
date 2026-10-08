@@ -2,6 +2,7 @@ import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
+import { StatusSkeleton } from "../ui/status-skeleton";
 import { ACTIONS_COLUMN_LABEL } from "./inventory-copy";
 import { ReachCard } from "./reach-card";
 import { type RowAction, RowMenu } from "./row-menu";
@@ -78,7 +79,11 @@ export const inventoryColumns = ({
         header: "Status",
         cell: ({ row }) => {
           const status = row.original.status;
-          return status === null ? null : <StatusBadge reading={status} />;
+          return status === null ? (
+            <StatusSkeleton />
+          ) : (
+            <StatusBadge reading={status} />
+          );
         },
         sortFn: (a, b) =>
           (a.original.status ? readingRank(a.original.status) : unranked) -

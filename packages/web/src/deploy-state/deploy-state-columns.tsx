@@ -5,10 +5,9 @@ import type { DataTableCardContent } from "../ui/data-table-card";
 import { GITHUB_COLUMN } from "../ui/github-link-copy";
 import { GITHUB_UNKNOWN, GitHubMarkLink } from "../ui/github-mark-link";
 import { MachineValue } from "../ui/machine-value";
-import { Skeleton } from "../ui/skeleton";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
-import { useReadSkeleton } from "../ui/use-read-skeleton";
+import { StatusSkeleton } from "../ui/status-skeleton";
 import {
   ACTIONS_COLUMN_LABEL,
   ORIGIN_NOT_READ,
@@ -27,16 +26,6 @@ export type TargetTableRow = TargetRow & {
 };
 
 const unranked = Number.MAX_SAFE_INTEGER;
-
-// The drift check is slow; past 1.3 s its cell shows a placeholder (design.md).
-function StatusReading() {
-  const { visible } = useReadSkeleton(true);
-  return (
-    <span aria-busy="true" className="block">
-      {visible ? <Skeleton className="w-16" /> : null}
-    </span>
-  );
-}
 
 function statusCardContent(
   row: TargetTableRow,
@@ -133,7 +122,7 @@ export const deployStateColumns = ({
         header: "Status",
         cell: ({ row }) =>
           row.original.status === null ? (
-            <StatusReading />
+            <StatusSkeleton />
           ) : (
             <StatusBadge reading={row.original.status} />
           ),

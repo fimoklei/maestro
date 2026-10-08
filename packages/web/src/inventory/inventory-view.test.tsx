@@ -510,6 +510,33 @@ describe("InventoryView — detail pane", () => {
     expect(within(pane).getByText("v1.0.0")).toBeInTheDocument();
   });
 
+  // A failed read once held the pane on "Loading more targets…" until the
+  // next re-read.
+  it("states a target whose read failed as a failure, never as loading", async () => {
+    stubPendingFetch();
+    renderView({
+      targets: [
+        deployedTo(["tdd"]),
+        {
+          label: "",
+          target: { kind: "repo", repoPath: "/dev/unread" },
+          deployed: { status: "unknown" },
+          primitives: [],
+          drift: ranDrift([]),
+        },
+      ],
+    });
+
+    await openRow("tdd");
+
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    expect(pane).not.toHaveTextContent(/Loading/);
+    expect(pane.querySelector("[aria-busy='true']")).toBeNull();
+    expect(
+      within(pane).getByText("Some targets could not be read."),
+    ).toBeInTheDocument();
+  });
+
   it("opens the pane when a non-name cell of the row is clicked", async () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });

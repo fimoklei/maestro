@@ -370,7 +370,8 @@ export function InventoryView({
               primitive={row}
               targetCount={row.targets}
               deployments={row.deployments}
-              unconfirmed={Boolean(rollup.pending || rollup.unreadable)}
+              pending={Boolean(rollup.pending)}
+              unreadable={row.unreadable}
               listHeadingRef={listHeading}
               {...frame}
               // A dialog the row's ⋮ opened holds focus itself.
