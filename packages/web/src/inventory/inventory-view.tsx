@@ -299,7 +299,7 @@ export function InventoryView({
           />
         </div>
       }
-      rereading={false}
+      rereading={screen.reading}
       firstReadRows={24}
       rows={rows}
       columns={columns}
