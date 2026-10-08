@@ -1,7 +1,8 @@
 // biome-ignore-all lint/plugin/no-title-in-table-cell: Repositories has no declared name cell yet; #1433 left it out of scope, so its native title stays.
-import { RowMenu } from "../inventory/row-menu";
+import { rowActionsLabel } from "../inventory/inventory-copy";
 import { createDataTableColumns } from "../ui/data-table";
 import { MachineValue } from "../ui/machine-value";
+import { RowMenu } from "../ui/row-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
 import {
@@ -65,9 +66,13 @@ export const repositoriesColumns = ({
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
         <RowMenu
-          name={row.original.name}
-          items={ITEMS}
-          onAction={(action) => onAction(row.original, action)}
+          label={rowActionsLabel(row.original.name)}
+          items={ITEMS.map(({ action, ...item }) => ({
+            ...item,
+            onSelect: () => onAction(row.original, action),
+          }))}
+          returnFocus={false}
+          tabStop={false}
         />
       ),
       meta: { width: 10 },

@@ -1,13 +1,15 @@
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
+import { RowMenu } from "../ui/row-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
-import { ACTIONS_COLUMN_LABEL } from "./inventory-copy";
+import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "./inventory-copy";
 import { ReachCard } from "./reach-card";
-import { type RowAction, RowMenu } from "./row-menu";
 import type { SkillDeployment } from "./skill-deployments";
 import { TYPE_WORD } from "./type-filter";
 import type { Primitive } from "./use-inventory";
+
+export type RowAction = "deploy" | "remove" | "delete";
 
 // The Inventory table's columns, and the columns Display can switch off.
 export type InventoryRow = Primitive & {
@@ -110,9 +112,13 @@ export const inventoryColumns = ({
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
         <RowMenu
-          name={row.original.name}
-          items={row.original.actions}
-          onAction={(action) => onAction(row.original, action)}
+          label={rowActionsLabel(row.original.name)}
+          items={row.original.actions.map(({ action, ...item }) => ({
+            ...item,
+            onSelect: () => onAction(row.original, action),
+          }))}
+          returnFocus={false}
+          tabStop={false}
         />
       ),
       meta: { width: 10 },

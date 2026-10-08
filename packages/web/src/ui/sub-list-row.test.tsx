@@ -42,25 +42,32 @@ describe("SubListRow", () => {
     expect(onSelect).toHaveBeenCalledOnce();
   });
 
-  // #1124: as the table's row menu — hidden at rest, shown on hover, focus,
-  // while open and where nothing hovers. The browser check measures it.
-  it("hides its ⋮ at rest and reveals it on hover, focus or while open", async () => {
+  // #1449: the table's ⋮, revealed by its row as a table row reveals it
+  // (RowMenu's test names the classes). The browser check measures it.
+  it("reveals ⋮ as a table row does and keeps it a Tab stop", async () => {
     renderRow();
 
     const trigger = screen.getByRole("button", {
       name: "Actions for …/me/project",
     });
-    expect(trigger).toHaveClass(
-      "opacity-0",
-      "group-hover/sub:opacity-100",
-      "group-focus-within/sub:opacity-100",
-      "data-[state=open]:opacity-100",
-      "[@media(hover:none)]:opacity-100",
-    );
-    expect(screen.getByRole("listitem")).toHaveClass("group/sub");
+    expect(trigger).toHaveClass("opacity-0", "group-hover/row:opacity-100");
+    expect(screen.getByRole("listitem")).toHaveClass("group/row");
     // Still one Tab stop: a pane is not a grid.
     await userEvent.tab();
     await userEvent.tab();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("returns focus to ⋮ once an item has run", async () => {
+    renderRow();
+
+    const trigger = screen.getByRole("button", {
+      name: "Actions for …/me/project",
+    });
+    await userEvent.click(trigger);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Update target" }),
+    );
     expect(trigger).toHaveFocus();
   });
 
