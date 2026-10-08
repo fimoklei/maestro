@@ -61,6 +61,52 @@ const completed = () =>
     completed: { kind: "deploy", release: "v0.3.4", desired: ["tdd"] },
   });
 
+const announced = () =>
+  screen
+    .getAllByRole("status")
+    .find((region) => region.classList.contains("sr-only"));
+
+describe("Deploy-state — a successful retry", () => {
+  it.each([
+    ["deploy", "Retry deploy", "Deployed"],
+    ["remove", "Retry removal", "Removed"],
+    ["update", "Retry update", "Updated"],
+  ] as const)(
+    "announces a retried %s from the pane with its target",
+    async (kind, control, done) => {
+      stubRetries(kind, [completed]);
+      renderDeployState();
+
+      const pane = await openPane(LABEL);
+      await userEvent.click(
+        within(pane).getByRole("button", { name: control }),
+      );
+
+      await waitFor(() =>
+        expect(announced()).toHaveTextContent(`${done} ${LABEL}.`),
+      );
+    },
+  );
+
+  it("announces a retry from the row's menu with its target", async () => {
+    stubRetries("remove", [completed]);
+    renderDeployState();
+
+    await userEvent.click(
+      within(await findRow(LABEL)).getByRole("button", {
+        name: `Actions for ${LABEL}`,
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Retry removal" }),
+    );
+
+    await waitFor(() =>
+      expect(announced()).toHaveTextContent(`Removed ${LABEL}.`),
+    );
+  });
+});
+
 describe("Deploy-state pane — a failed retry", () => {
   it("states a failed retry in the target's pane, in place of the unfinished notice", async () => {
     stubRetries("deploy", [failed("retry-incomplete")]);

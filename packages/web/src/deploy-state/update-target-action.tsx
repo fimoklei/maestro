@@ -38,6 +38,8 @@ export function UpdateTargetAction({
   );
   const preview = preflight.data?.preview ?? null;
   const report = useScreenReport();
+  // Both writes name nothing: the dialog's Report states the outcome, failed
+  // or not.
   const retry = useRetryOperation(report, () =>
     preview === null
       ? null
@@ -46,7 +48,6 @@ export function UpdateTargetAction({
           name: null,
         },
   );
-  // The dialog's Report states the outcome, failed or not.
   const updateWrite = useWriteAction(update, {
     report,
     action: "update",
