@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useWriteAction } from "../ui/use-write-action";
+import { isImportable } from "./import-view-model";
 import { importNotice } from "./notice-copy";
 import {
   type ImportOutcome,
@@ -46,6 +47,12 @@ export function useImportFlow(
     importSkill.reset();
   };
 
+  const commitSource = (path: string) => {
+    setSource(path);
+    setEditedName(null);
+    importSkill.reset();
+  };
+
   return {
     open,
     source,
@@ -55,14 +62,18 @@ export function useImportFlow(
     importWrite,
     start: () => setOpen(true),
     setSourceText,
-    commitSource: (path: string) => {
-      setSource(path);
-      setEditedName(null);
-      importSkill.reset();
-    },
+    commitSource,
     setEditedName,
+    // Imports only a folder whose check came back clean; any other submit
+    // checks the typed folder, or leaves the refusal beside its field.
     submit: () => {
-      if (source === null) return;
+      const typed = sourceText.trim();
+      if (typed === "") return;
+      if (typed !== source) {
+        commitSource(typed);
+        return;
+      }
+      if (source === null || !isImportable(check.data)) return;
       importWrite.run(
         { source, name },
         {

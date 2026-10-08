@@ -3,7 +3,6 @@ import {
   ADVISORY_TEXT,
   DELETE_UNAVAILABLE,
   FINDING_TEXT,
-  IMPORT_UNAVAILABLE,
   RELEASE_UNAVAILABLE,
   skillChecksNotice,
 } from "./dialog-copy";
@@ -46,16 +45,6 @@ describe("Harness dialog copy", () => {
       loading: "release plan still loading",
       error: "release plan did not load",
       empty: "no changes since last release",
-    });
-  });
-
-  it("states why Import skill cannot run yet", () => {
-    expect(IMPORT_UNAVAILABLE).toEqual({
-      idle: "no folder chosen yet",
-      loading: "folder check still running",
-      error: "folder check did not load",
-      source: "folder cannot be used",
-      name: "name cannot be used",
     });
   });
 

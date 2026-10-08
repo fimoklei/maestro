@@ -8,7 +8,6 @@ import {
   advisoryNotice,
   type ImportCheckLoad,
   importLabels,
-  importUnavailable,
   nameBlockerNotice,
   sourceBlockerNotice,
 } from "./import-view-model";
@@ -53,27 +52,27 @@ export function ImportDialog({
       : sourceBlockerNotice(check?.sourceBlocker ?? null);
   const nameProblem = nameBlockerNotice(check?.nameBlocker ?? null);
   const nameErrorId = "import-name-error";
-  // A click outside must not discard a typed name. Once true it stays true:
-  // the reader's work is on the panel either way.
+  // A click outside must not discard a typed name or path. Once true it
+  // stays true: the reader's work is on the panel either way.
   const [nameTouched, setNameTouched] = useState(false);
 
   return (
     <Dialog
       title={labels.title}
       version={null}
-      width={640}
+      width={480}
       phase={importing ? "running" : "idle"}
       action={{
         label: labels.confirm,
         verb: labels.verb,
         tone: "primary",
-        unavailable: importUnavailable(load),
+        unavailable: null,
         onRun: onImport,
       }}
       failure={importError}
       // Every field states its own hint and its own refusal beside it.
       describedBy={null}
-      fieldsChanged={nameTouched}
+      fieldsChanged={nameTouched || sourceText !== ""}
       onClose={onClose}
     >
       <div className="flex flex-col gap-inline">

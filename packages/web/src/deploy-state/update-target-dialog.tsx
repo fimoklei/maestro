@@ -15,6 +15,7 @@ import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
+import { StatusLine } from "../ui/status-line";
 import { reading } from "../ui/status-reading";
 import type { DeployStateNotice } from "./notice-copy";
 import { updateOutcomeReport } from "./update-outcome-report";
@@ -279,7 +280,7 @@ export function UpdateTargetDialog({
         <Report heading={report.heading} groups={report.groups} />
       ) : preview === null ? (
         isLoading ? (
-          <p className="m-0 text-gray-11">{LOADING_PREVIEW}</p>
+          <StatusLine>{LOADING_PREVIEW}</StatusLine>
         ) : null
       ) : (
         <>

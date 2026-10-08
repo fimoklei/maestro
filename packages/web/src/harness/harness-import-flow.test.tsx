@@ -135,6 +135,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// The dialog's own submit, not band 1's.
+const dialogImport = () =>
+  within(screen.getByRole("dialog")).getByRole("button", {
+    name: "Import skill",
+  });
+
 // Picks the skill folder through Browse, which the stubbed chooser answers,
 // and waits for the check's proposal to fill the name.
 async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
@@ -256,8 +262,8 @@ describe("Harness import flow", () => {
     ).toBeInTheDocument();
   });
 
-  it("states a name clash on the name field and closes Import", async () => {
-    stubImportServer({
+  it("states a name clash on the name field, and imports nothing on submit", async () => {
+    const { imports } = stubImportServer({
       check: { ...CLEAN_CHECK, nameBlocker: "name-taken" },
     });
     const user = userEvent.setup();
@@ -269,11 +275,32 @@ describe("Harness import flow", () => {
     expect(field).toHaveAccessibleDescription(
       /already holds a skill under it/i,
     );
-    expect(
-      screen.getByRole("button", {
-        name: "Import skill — name cannot be used",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    await user.click(dialogImport());
+
+    expect(imports).toEqual([]);
+    expect(field).toHaveAccessibleDescription(
+      /already holds a skill under it/i,
+    );
+  });
+
+  it("checks a typed folder on submit", async () => {
+    const { imports } = stubImportServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openSkill={null} />);
+
+    const [importSkill] = await screen.findAllByRole("button", {
+      name: "Import skill",
+    });
+    await user.click(importSkill as HTMLElement);
+    await user.type(
+      await screen.findByRole("textbox", { name: "Folder path" }),
+      `${SOURCE}{Enter}`,
+    );
+
+    expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
+      "code-review",
+    );
+    expect(imports).toEqual([]);
   });
 
   it("reports the conventions without closing Import", async () => {

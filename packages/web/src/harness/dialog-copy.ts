@@ -34,14 +34,6 @@ export const RELEASE_UNAVAILABLE = {
   empty: "no changes since last release",
 } as const;
 
-export const IMPORT_UNAVAILABLE = {
-  idle: "no folder chosen yet",
-  loading: "folder check still running",
-  error: "folder check did not load",
-  source: "folder cannot be used",
-  name: "name cannot be used",
-} as const;
-
 // Inventory's blocked Delete skill gives the same reasons.
 export const DELETE_UNAVAILABLE = {
   checking: "checking your clone",

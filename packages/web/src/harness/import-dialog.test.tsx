@@ -101,7 +101,7 @@ describe("ImportDialog", () => {
 
   it("closes on a click outside while no field has been touched", async () => {
     const onClose = vi.fn();
-    renderDialog(DEEP, { kind: "ready", check: CHECK }, onClose);
+    renderDialog(null, { kind: "idle" }, onClose);
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -159,25 +159,6 @@ describe("ImportDialog", () => {
     expect(
       screen.queryByRole("button", { name: "Cancel" }),
     ).not.toBeInTheDocument();
-  });
-
-  it("does not import on Enter while the name is refused", async () => {
-    const { onImport } = renderDialog(DEEP, {
-      kind: "ready",
-      check: { ...CHECK, nameBlocker: "name-taken" },
-    });
-
-    await userEvent.type(
-      screen.getByRole("textbox", { name: /name in the harness/i }),
-      "{Enter}",
-    );
-
-    expect(onImport).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole("button", {
-        name: "Import skill — name cannot be used",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("imports on Enter once the check is clean", async () => {
