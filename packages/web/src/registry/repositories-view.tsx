@@ -1,8 +1,9 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { repoRowId } from "../deploy-state/target-rows";
+import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { Icon } from "../ui/icon";
@@ -34,20 +35,34 @@ export function RepositoriesView() {
   const queryClient = useQueryClient();
   const registry = useRegistry();
   const unregister = useUnregisterRepo();
+  const repos = registry.data?.repos ?? [];
+  const paths = repos.map((repo) => repo.path);
+  // The GitHub column reads what Deploy-state reads; only Deploy-state's own
+  // rows re-read on tab return.
+  const deployStates = useQueries({
+    queries: paths.map((path) => ({
+      ...deployStateQueryOptions(path),
+      refetchOnWindowFocus: false,
+    })),
+  });
   const screen = useTableScreen({
     name: SCREEN,
     reading: registry.isFetching,
     settled: registry.isSuccess,
     failure: registry.isError ? REPOS_NOT_READ : null,
-    onReread: () => queryClient.invalidateQueries({ queryKey: REGISTRY_KEY }),
+    onReread: () => {
+      queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
+      for (const path of paths)
+        queryClient.invalidateQueries({
+          queryKey: deployStateQueryOptions(path).queryKey,
+        });
+    },
     openOnArrival: null,
   });
   const { report } = screen;
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
-  const repos = registry.data?.repos ?? [];
-  const paths = repos.map((repo) => repo.path);
   const register = useRegisterDialog({ report });
   const unregisterWrite = useWriteAction(unregister, {
     report,
@@ -57,11 +72,12 @@ export function RepositoriesView() {
     failure: unregisterNotice,
   });
 
-  const rows: RepositoryRow[] = repos.map((repo) => ({
+  const rows: RepositoryRow[] = repos.map((repo, index) => ({
     path: repo.path,
     // Whole set drives each label so shared-prefix repos stay distinct (#211).
     name: targetLabel(repo.path, paths),
     status: STATUS_READINGS[repo.status],
+    github: deployStates[index]?.data?.github,
   }));
 
   const onAction = (row: RepositoryRow, action: RepositoryAction) => {

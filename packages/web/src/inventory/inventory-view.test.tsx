@@ -17,6 +17,12 @@ import type { Primitive } from "./use-inventory";
 const grid = () => screen.getByRole("grid", { name: "Inventory table" });
 
 // Column order: bulk checkbox, Type, Name, Description, Status, Targets, ⋮.
+// The Status cell and the Targets cell beside its secondary columns.
+const statusAndReach = (name: string) => {
+  const cells = cellsOf(name);
+  return [cells[2], cells[5]];
+};
+
 function cellsOf(name: string): string[] {
   const row = within(grid())
     .getAllByRole("row")
@@ -34,7 +40,7 @@ function cellsOf(name: string): string[] {
 function dataRowNames(): string[] {
   const [, ...bodyRows] = within(grid()).getAllByRole("row");
   return bodyRows.map(
-    (row) => within(row).getAllByRole("gridcell")[2]?.textContent ?? "",
+    (row) => within(row).getAllByRole("gridcell")[1]?.textContent ?? "",
   );
 }
 
@@ -141,7 +147,7 @@ describe("InventoryView — the table", () => {
     stubPendingFetch();
     renderView();
 
-    expect(cellsOf("tdd")[1]).toBe("Skill");
+    expect(cellsOf("tdd")[3]).toBe("Skill");
     expect(within(grid()).getAllByText("Skill")).toHaveLength(2);
   });
 
@@ -152,15 +158,15 @@ describe("InventoryView — the table", () => {
       targets: [deployedTo(["tdd"]), deployedTo(["tdd"], [tddBehind])],
     });
 
-    expect(cellsOf("tdd").slice(4, 6)).toEqual(["Behind", "2"]);
-    expect(cellsOf("caveman").slice(4, 6)).toEqual(["Not deployed", "—"]);
+    expect(statusAndReach("tdd")).toEqual(["Behind", "2"]);
+    expect(statusAndReach("caveman")).toEqual(["Not deployed", "—"]);
   });
 
   it("reads Up to date for a skill whose every target is clean", () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });
 
-    expect(cellsOf("tdd").slice(4, 6)).toEqual(["Up to date", "1"]);
+    expect(statusAndReach("tdd")).toEqual(["Up to date", "1"]);
   });
 
   it("shows no status while a target's deploy-state is still being read", () => {
@@ -180,7 +186,7 @@ describe("InventoryView — the table", () => {
 
     // Never a definite "Not deployed" before every read has answered.
     expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
-    expect(cellsOf("tdd")[4]).toBe("");
+    expect(cellsOf("tdd")[2]).toBe("");
   });
 
   it("keeps deploy out of the rows: a row's one control is its ⋮ menu", () => {

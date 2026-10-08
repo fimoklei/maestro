@@ -44,6 +44,8 @@ type Row = {
   render: () => void;
   /** Null for a screen without a hover card. */
   card: StatusCard | null;
+  /** Header names in order: checkbox, name, Status, secondary, GitHub, ⋮. */
+  columns: string[];
 };
 
 const ON_TABLE_SCREEN: Row[] = [
@@ -81,6 +83,7 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "2 of 5 deployed skills changed in v0.3.4.",
       readAge: "Read just now",
     },
+    columns: ["Target", "Status", "Release", "Skills", "GitHub", "Actions"],
   },
   {
     file: "harness/harness-view.tsx",
@@ -107,6 +110,15 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "Your local copy differs from main.",
       readAge: "Not read yet",
     },
+    columns: [
+      "Name",
+      "Status",
+      "Type",
+      "Change",
+      "Pull request",
+      "Also in",
+      "Actions",
+    ],
   },
   {
     file: "inventory/inventory-view.tsx",
@@ -166,6 +178,15 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "Deployed to 1 target",
       readAge: null,
     },
+    columns: [
+      "Select for bulk deploy",
+      "Name",
+      "Status",
+      "Type",
+      "Description",
+      "Targets",
+      "Actions",
+    ],
   },
   {
     file: "registry/repositories-view.tsx",
@@ -175,6 +196,7 @@ const ON_TABLE_SCREEN: Row[] = [
       renderRepositories();
     },
     card: null,
+    columns: ["Repository", "Status", "Folder path", "GitHub", "Actions"],
   },
 ];
 
@@ -248,6 +270,24 @@ describe("every table screen", () => {
           .getAllByRole("status")
           .filter((region) => region.classList.contains("sr-only")),
       ).toHaveLength(1);
+    });
+
+    // design.md → Frame: one column order, the name taking the rest.
+    it("orders its columns checkbox, name, Status, secondary, GitHub, ⋮", async () => {
+      (row.card?.render ?? row.render)();
+
+      const grid = await screen.findByRole("grid");
+      const headers = within(grid).getAllByRole("columnheader");
+      expect(
+        headers.map((header) => header.textContent?.replace(/[↑↓]/g, "")),
+      ).toEqual(row.columns);
+      const name = row.columns.find((column) => !column.startsWith("Select"));
+      expect(
+        headers
+          .filter((header) => header.style.width === "")
+          .map((header) => header.textContent?.replace(/[↑↓]/g, ""))
+          .filter((column) => !column?.startsWith("Select")),
+      ).toEqual([name]);
     });
   });
 

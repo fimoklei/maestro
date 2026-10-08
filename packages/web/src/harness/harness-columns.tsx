@@ -61,6 +61,21 @@ export const harnessColumns = ({
   freshness: string | null;
 }) =>
   createDataTableColumns<HarnessTableRow>((helper) => [
+    {
+      ...helper.accessor("skill", { header: "Name" }),
+      name: (row) => row.skill,
+    },
+    {
+      ...helper.accessor("reading", {
+        header: "Status",
+        cell: ({ row }) => <StatusBadge reading={row.original.reading} />,
+        sortFn: (a, b) =>
+          readingRank(a.original.reading) - readingRank(b.original.reading),
+        // The longest reading, Approved, awaiting merge, fits (#994).
+        meta: { width: 62 },
+      }),
+      card: { keyboard: true, content: statusCardContent(context, freshness) },
+    },
     helper.display({
       id: "type",
       header: "Type",
@@ -68,10 +83,6 @@ export const harnessColumns = ({
       cell: () => <span className="text-gray-11">{TYPE_WORD.skill}</span>,
       meta: { width: 14, priority: 1 },
     }),
-    {
-      ...helper.accessor("skill", { header: "Name", meta: { width: 58 } }),
-      name: (row) => row.skill,
-    },
     {
       ...helper.accessor("change", {
         header: "Change",
@@ -94,17 +105,6 @@ export const harnessColumns = ({
       },
     },
     {
-      ...helper.accessor("reading", {
-        header: "Status",
-        cell: ({ row }) => <StatusBadge reading={row.original.reading} />,
-        sortFn: (a, b) =>
-          readingRank(a.original.reading) - readingRank(b.original.reading),
-        // The longest reading, Approved, awaiting merge, fits (#994).
-        meta: { width: 62 },
-      }),
-      card: { keyboard: true, content: statusCardContent(context, freshness) },
-    },
-    {
       ...helper.display({
         id: "pull-request",
         header: "Pull request",
@@ -120,7 +120,8 @@ export const harnessColumns = ({
       cell: ({ row }) => (
         <span className="text-gray-11">{alsoInWords(row.original)}</span>
       ),
-      meta: { priority: 2 },
+      // Two stage names, Pending proposal, Pending review, fit.
+      meta: { width: 56, priority: 2 },
     }),
     helper.display({
       id: "actions",

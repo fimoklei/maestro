@@ -59,20 +59,10 @@ export const inventoryColumns = ({
   onAction: (row: InventoryRow, action: RowAction) => void;
 }) =>
   createDataTableColumns<InventoryRow>((helper) => [
-    helper.accessor("type", {
-      header: "Type",
-      cell: ({ row }) => TYPE_WORD[row.original.type],
-      meta: { className: "text-gray-11", width: 16, priority: 2 },
-    }),
     {
-      ...helper.accessor("name", { header: "Name", meta: { width: 55 } }),
+      ...helper.accessor("name", { header: "Name" }),
       name: (row) => row.name,
     },
-    helper.accessor("description", {
-      header: "Description",
-      // Drops out first on a narrow window (#992).
-      meta: { className: "text-gray-11", priority: 1 },
-    }),
     {
       ...helper.accessor("status", {
         header: "Status",
@@ -87,6 +77,16 @@ export const inventoryColumns = ({
       }),
       card: reachCard,
     },
+    helper.accessor("type", {
+      header: "Type",
+      cell: ({ row }) => TYPE_WORD[row.original.type],
+      meta: { className: "text-gray-11", width: 16, priority: 2 },
+    }),
+    helper.accessor("description", {
+      header: "Description",
+      // Drops out first on a narrow window (#992).
+      meta: { className: "text-gray-11", width: 128, priority: 1 },
+    }),
     {
       ...helper.accessor("targets", {
         header: "Targets",
@@ -120,8 +120,8 @@ export const inventoryColumns = ({
   ]);
 
 export const DISPLAY_OPTIONS = [
+  { value: "status", label: "Status" },
   { value: "type", label: "Type" },
   { value: "description", label: "Description" },
-  { value: "status", label: "Status" },
   { value: "targets", label: "Targets" },
 ];

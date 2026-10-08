@@ -90,6 +90,22 @@ export const deployStateColumns = ({
       ...helper.accessor("name", { header: TARGET_LABEL }),
       name: (row) => row.name,
     },
+    {
+      ...helper.accessor("status", {
+        header: "Status",
+        cell: ({ row }) =>
+          row.original.status === null ? (
+            <StatusReading />
+          ) : (
+            <StatusBadge reading={row.original.status} />
+          ),
+        sortFn: (a, b) =>
+          (a.original.status ? readingRank(a.original.status) : unranked) -
+          (b.original.status ? readingRank(b.original.status) : unranked),
+        meta: { width: 41 },
+      }),
+      card: { keyboard: true, content: statusCardContent },
+    },
     helper.accessor("release", {
       header: "Release",
       enableSorting: false,
@@ -102,6 +118,19 @@ export const deployStateColumns = ({
           </span>
         ),
       meta: { width: 43, priority: 3 },
+    }),
+    helper.accessor("skills", {
+      header: "Skills",
+      cell: ({ row }) => {
+        const skills = row.original.skills;
+        return skills === null ? null : skills === 0 ? (
+          <span className="text-gray-11">—</span>
+        ) : (
+          <span className="text-gray-12">{skills}</span>
+        );
+      },
+      sortFn: (a, b) => (a.original.skills ?? -1) - (b.original.skills ?? -1),
+      meta: { className: "tabular-nums", width: 18, priority: 2, align: "end" },
     }),
     {
       ...helper.display({
@@ -128,35 +157,6 @@ export const deployStateColumns = ({
             : null,
       },
     },
-    {
-      ...helper.accessor("status", {
-        header: "Status",
-        cell: ({ row }) =>
-          row.original.status === null ? (
-            <StatusReading />
-          ) : (
-            <StatusBadge reading={row.original.status} />
-          ),
-        sortFn: (a, b) =>
-          (a.original.status ? readingRank(a.original.status) : unranked) -
-          (b.original.status ? readingRank(b.original.status) : unranked),
-        meta: { width: 41 },
-      }),
-      card: { keyboard: true, content: statusCardContent },
-    },
-    helper.accessor("skills", {
-      header: "Skills",
-      cell: ({ row }) => {
-        const skills = row.original.skills;
-        return skills === null ? null : skills === 0 ? (
-          <span className="text-gray-11">—</span>
-        ) : (
-          <span className="text-gray-12">{skills}</span>
-        );
-      },
-      sortFn: (a, b) => (a.original.skills ?? -1) - (b.original.skills ?? -1),
-      meta: { className: "tabular-nums", width: 18, priority: 2, align: "end" },
-    }),
     helper.display({
       id: "actions",
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,

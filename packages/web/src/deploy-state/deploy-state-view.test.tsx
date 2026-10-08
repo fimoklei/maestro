@@ -196,16 +196,16 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await findRow("…/me/b");
     await waitFor(() =>
       expect(cellsOf("…/me/a").slice(1)).toEqual([
-        "v0.3.2 → v0.3.4",
         "Behind",
+        "v0.3.2 → v0.3.4",
         "1",
       ]),
     );
-    expect(cellsOf("…/me/b").slice(1)).toEqual(["v0.3.4", "In sync", "1"]);
+    expect(cellsOf("…/me/b").slice(1)).toEqual(["In sync", "v0.3.4", "1"]);
     // The arrow is drawn; a screen reader hears the word.
     const release = within(rowOf("…/me/a")).getAllByRole(
       "gridcell",
-    )[1] as HTMLElement;
+    )[2] as HTMLElement;
     expect(within(release).getByText("→")).toHaveAttribute(
       "aria-hidden",
       "true",
@@ -221,7 +221,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
 
     await findRow("Codex");
     await waitFor(() =>
-      expect(cellsOf("Codex").slice(1)).toEqual(["—", "Empty", "—"]),
+      expect(cellsOf("Codex").slice(1)).toEqual(["Empty", "—", "—"]),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -245,7 +245,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("In sync"));
     expect(screen.queryByText("Empty")).not.toBeInTheDocument();
   });
 
@@ -268,7 +268,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("Attention"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("Attention"));
   });
 
   it("reads every global tool as Attention while a global record needs it", async () => {
@@ -287,7 +287,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("Attention"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Attention"));
   });
 
   it("reads a target with a no-longer-released skill as Attention", async () => {
@@ -312,7 +312,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("Attention"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Attention"));
   });
 
   it("names another origin instead of calling a target empty (#655)", async () => {
@@ -326,7 +326,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("Other origin"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Other origin"));
   });
 
   it("reads a target pinned per skill as a fact, with the release most skills sit on", async () => {
@@ -348,8 +348,8 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await findRow("…/me/project");
     await waitFor(() =>
       expect(cellsOf("…/me/project").slice(1)).toEqual([
-        "v0.3.1",
         "Pinned per skill",
+        "v0.3.1",
         "2",
       ]),
     );
@@ -374,8 +374,8 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("Codex");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("Behind"));
-    expect(cellsOf("Codex")[2]).toBe("Empty");
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Behind"));
+    expect(cellsOf("Codex")[1]).toBe("Empty");
   });
 
   it("does not read Behind when the only behind skill is not deployed here", async () => {
@@ -400,7 +400,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("In sync"));
   });
 
   it("reads a check that could not run as Unknown, never In sync", async () => {
@@ -414,7 +414,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("Unknown"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("Unknown"));
   });
 
   it("claims no reading for a repository whose deploy-state was not read", async () => {
@@ -437,7 +437,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("Unknown"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("Unknown"));
   });
 
   it("holds one reason and the read age in the status hover card", async () => {
@@ -580,7 +580,7 @@ describe("Deploy-state — Re-read and freshness", () => {
     await findRow("Claude Code");
     const status = within(rowOf("Claude Code")).getAllByRole(
       "gridcell",
-    )[3] as HTMLElement;
+    )[1] as HTMLElement;
 
     expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
     expect(
@@ -597,7 +597,7 @@ describe("Deploy-state — Re-read and freshness", () => {
     }));
     renderDeployState();
     await findRow("…/me/a");
-    await waitFor(() => expect(cellsOf("…/me/a")[2]).toBe("Empty"));
+    await waitFor(() => expect(cellsOf("…/me/a")[1]).toBe("Empty"));
     const driftReads = () =>
       fetchMock.mock.calls.filter(([url]) =>
         String(url).startsWith("/api/drift"),
@@ -740,7 +740,7 @@ describe("Deploy-state — rows and their menu", () => {
       repo: { "/Users/me/a": new Promise(() => {}) },
     }));
     renderDeployState();
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("In sync"));
 
     await userEvent.click(screen.getByRole("button", { name: /^Display/ }));
     await userEvent.click(
@@ -764,7 +764,7 @@ describe("Deploy-state — rows and their menu", () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
     await findRow("Codex");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("In sync"));
 
     await userEvent.click(screen.getByRole("button", { name: /^Filter/ }));
     await userEvent.click(

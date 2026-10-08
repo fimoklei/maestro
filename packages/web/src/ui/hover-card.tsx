@@ -1,10 +1,12 @@
 import * as HoverCardPrimitive from "@radix-ui/react-hover-card";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 // Holds no control: the detail pane keeps the full reading.
 
 const OPEN_DELAY = 400;
 const CLOSE_DELAY = 150;
+// px: the inline spacing step, 0.5rem.
+const GUTTER = 8;
 
 export function HoverCard({
   content,
@@ -19,6 +21,13 @@ export function HoverCard({
 }) {
   const [pointerOpen, setPointerOpen] = useState(false);
   const [focusOpen, setFocusOpen] = useState(false);
+  // The card stays inside the panel its trigger sits in, a gutter from its edge.
+  const [panel, setPanel] = useState<Element | null>(null);
+  const findPanel = useCallback(
+    (trigger: HTMLElement | null) =>
+      setPanel(trigger?.closest("[data-panel]") ?? null),
+    [],
+  );
 
   // Focus opens the card at once; only the pointer waits.
   useEffect(() => {
@@ -41,6 +50,7 @@ export function HoverCard({
       closeDelay={CLOSE_DELAY}
     >
       <HoverCardPrimitive.Trigger
+        ref={findPanel}
         asChild
         // Radix ignores touch, so a tap toggles the card here.
         onPointerUp={(event) => {
@@ -54,6 +64,8 @@ export function HoverCard({
           side="bottom"
           align="start"
           sideOffset={6}
+          collisionBoundary={panel}
+          collisionPadding={GUTTER}
           className="z-50 w-72 rounded-float border border-gray-7 bg-gray-2 p-cell font-ui text-gray-12 text-meta shadow-float"
         >
           {content}

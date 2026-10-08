@@ -11,11 +11,13 @@ import { type Copy, plainText } from "./phrase";
 import { PhraseText } from "./phrase-text";
 import { useDetailPaneFocus } from "./use-detail-pane-focus";
 
-// Where a screen puts its pane (#1065): side by side above 1100px; at 1100px
-// and below a full-height sheet over the table's right edge.
+// Where a screen puts its pane (#1065, #1456): beside the table at every
+// width, which hides secondary columns to make room. Below a 44rem panel the
+// name, Status and ⋮ no longer fit beside it, so the pane takes the panel
+// and `TableScreen` hides the table.
 export function DetailPaneSlot({ children }: { children: ReactNode }) {
   return (
-    <div className="absolute inset-y-0 right-0 z-20 max-w-full shadow-float min-[1101px]:static min-[1101px]:shadow-none">
+    <div className="flex flex-none @max-[44rem]:flex-1 @max-[44rem]:*:w-full">
       {children}
     </div>
   );

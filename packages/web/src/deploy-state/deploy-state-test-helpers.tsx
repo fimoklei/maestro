@@ -129,7 +129,7 @@ export function rowOf(name: string): HTMLElement {
   return row;
 }
 
-export const GITHUB_CELL = 2;
+export const GITHUB_CELL = 4;
 
 export function cellsOf(name: string): string[] {
   return within(rowOf(name))

@@ -807,7 +807,8 @@ describe("Harness home base", () => {
         },
       });
 
-    it("sits between Name and Status", async () => {
+    // design.md → Frame: a secondary column, after Status and Type.
+    it("follows Status and Type", async () => {
       stubbed();
       renderHarness();
       await stageHeader("Pending proposal");
@@ -815,8 +816,8 @@ describe("Harness home base", () => {
       const headers = screen
         .getAllByRole("columnheader")
         .map((header) => header.textContent);
-      expect(headers.indexOf("Change")).toBe(headers.indexOf("Name") + 1);
-      expect(headers.indexOf("Status")).toBe(headers.indexOf("Change") + 1);
+      expect(headers.indexOf("Type")).toBe(headers.indexOf("Status") + 1);
+      expect(headers.indexOf("Change")).toBe(headers.indexOf("Type") + 1);
     });
 
     it("names each row's change in every stage group", async () => {
