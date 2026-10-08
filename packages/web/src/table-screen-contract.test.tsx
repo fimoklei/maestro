@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { act, screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +16,7 @@ import {
   stubHarnessServer,
   withStages,
 } from "./harness/harness-flow-fixture";
+import { pullRequest } from "./harness/stage-row-fixture";
 import { InventoryPanel } from "./inventory/inventory-panel";
 import { InventoryView } from "./inventory/inventory-view";
 import {
@@ -25,7 +26,7 @@ import {
 import { jsonResponse, measureAs, renderWithQuery } from "./test-utils";
 
 // Proves each table screen runs on `TableScreen`, not the module itself, and
-// that its Status card and name cell follow design.md → Disclosure.
+// that its Status card, name cell and row actions follow design.md.
 
 /** One row whose Status card and name the checks open. */
 type StatusCard = {
@@ -46,6 +47,49 @@ type Row = {
   card: StatusCard | null;
   /** Header names in order: checkbox, name, Status, secondary, GitHub, ⋮. */
   columns: string[];
+  actions: RowActions;
+};
+
+/** One row whose ⋮ menu, and pane foot where the screen has a pane, the checks open. */
+type RowActions = {
+  render: () => void;
+  name: string;
+  /** Every destructive item the row offers, in ⋮ order. */
+  destructive: string[];
+  pane: boolean;
+};
+
+const renderInventoryRow = () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => new Promise<Response>(() => {})),
+  );
+  renderWithQuery(
+    <InventoryView
+      primitives={[{ type: "skill", name: "tdd", description: "Test first." }]}
+      repos={[]}
+      registryReady
+      targets={[
+        {
+          label: "",
+          target: { kind: "global" },
+          deployed: {
+            status: "ready",
+            names: ["tdd"],
+            skippedCount: 0,
+            attentionCount: 0,
+          },
+          primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+          drift: driftViewModel({ data: { behind: [] }, isError: false }),
+        },
+      ]}
+      failure={null}
+      reading={false}
+      onReread={() => {}}
+      clone={{ kind: "checking" }}
+      onDeleted={() => {}}
+    />,
+  );
 };
 
 const ON_TABLE_SCREEN: Row[] = [
@@ -84,6 +128,16 @@ const ON_TABLE_SCREEN: Row[] = [
       readAge: "Read just now",
     },
     columns: ["Target", "Status", "Release", "Skills", "GitHub", "Actions"],
+    // A target row removes nothing; its skills' removal sits in the pane's sub-list.
+    actions: {
+      render: () => {
+        stubServer(() => ({ repos: ["/Users/me/a"] }));
+        renderDeployState();
+      },
+      name: "…/me/a",
+      destructive: [],
+      pane: true,
+    },
   },
   {
     file: "harness/harness-view.tsx",
@@ -119,6 +173,28 @@ const ON_TABLE_SCREEN: Row[] = [
       "Also in",
       "Actions",
     ],
+    // A proposed deletion in review: withdrawn or undone in the clone.
+    actions: {
+      render: () => {
+        stubHarnessServer({
+          read: {
+            body: withStages(RELEASED, {
+              review: [
+                stageRow("pending-review", "old-skill", "waiting-for-review", {
+                  change: "deletion",
+                  requests: [pullRequest(45, "old-skill")],
+                  restorable: true,
+                }),
+              ],
+            }),
+          },
+        });
+        renderHarness();
+      },
+      name: "old-skill",
+      destructive: ["Withdraw proposal", "Restore skill"],
+      pane: true,
+    },
   },
   {
     file: "inventory/inventory-view.tsx",
@@ -139,40 +215,7 @@ const ON_TABLE_SCREEN: Row[] = [
       );
     },
     card: {
-      render: () => {
-        vi.stubGlobal(
-          "fetch",
-          vi.fn(() => new Promise<Response>(() => {})),
-        );
-        renderWithQuery(
-          <InventoryView
-            primitives={[
-              { type: "skill", name: "tdd", description: "Test first." },
-            ]}
-            repos={[]}
-            registryReady
-            targets={[
-              {
-                label: "",
-                target: { kind: "global" },
-                deployed: {
-                  status: "ready",
-                  names: ["tdd"],
-                  skippedCount: 0,
-                  attentionCount: 0,
-                },
-                primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
-                drift: driftViewModel({ data: { behind: [] }, isError: false }),
-              },
-            ]}
-            failure={null}
-            reading={false}
-            onReread={() => {}}
-            clone={{ kind: "checking" }}
-            onDeleted={() => {}}
-          />,
-        );
-      },
+      render: renderInventoryRow,
       name: "tdd",
       badge: "Up to date",
       body: "Deployed to 1 target",
@@ -187,6 +230,12 @@ const ON_TABLE_SCREEN: Row[] = [
       "Targets",
       "Actions",
     ],
+    actions: {
+      render: renderInventoryRow,
+      name: "tdd",
+      destructive: ["Delete skill"],
+      pane: true,
+    },
   },
   {
     file: "registry/repositories-view.tsx",
@@ -197,8 +246,32 @@ const ON_TABLE_SCREEN: Row[] = [
     },
     card: null,
     columns: ["Repository", "Status", "Folder path", "GitHub", "Actions"],
+    actions: {
+      render: () => {
+        stubRegistry({
+          repos: [{ path: "/home/me/acme-web", status: "ready" }],
+        });
+        renderRepositories();
+      },
+      name: "…/me/acme-web",
+      destructive: ["Unregister"],
+      pane: false,
+    },
   },
 ];
+
+// The labels design.md confirms with a danger button.
+const DESTRUCTIVE = /^(Remove|Delete|Unregister|Withdraw|Restore|Discard)\b/;
+
+function expectDanger(controls: HTMLElement[], destructive: string[]) {
+  const found = controls.filter((control) =>
+    DESTRUCTIVE.test(control.textContent ?? ""),
+  );
+  expect(found.map((control) => control.textContent)).toEqual(
+    destructive.map((label) => expect.stringMatching(new RegExp(`^${label}`))),
+  );
+  for (const control of found) expect(control).toHaveClass("text-red-11");
+}
 
 const CARD = "[data-radix-popper-content-wrapper]";
 
@@ -254,6 +327,15 @@ describe("every table screen", () => {
     expect(byHand).toEqual([]);
   });
 
+  // #1449: every table row and pane sub-list row opens its ⋮ through RowMenu.
+  it("draws the row ⋮ trigger only in ui/row-menu", () => {
+    const triggers = sources
+      .filter(({ text }) => /\bEllipsisVertical\b/.test(text))
+      .map(({ file }) => file);
+
+    expect(triggers).toEqual(["ui/row-menu.tsx"]);
+  });
+
   describe.each(ON_TABLE_SCREEN)("$file", (row) => {
     it("has one Re-read control in band 2 and one status region", async () => {
       row.render();
@@ -288,6 +370,50 @@ describe("every table screen", () => {
           .map((header) => header.textContent?.replace(/[↑↓]/g, ""))
           .filter((column) => !column?.startsWith("Select")),
       ).toEqual([name]);
+    });
+
+    it("spins Re-read while a pressed re-read runs", async () => {
+      row.render();
+      const reread = await screen.findByRole("button", {
+        name: `Re-read ${row.name}`,
+      });
+      await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() => new Promise<Response>(() => {})),
+      );
+
+      await userEvent.click(reread);
+
+      await waitFor(() => expect(reread).toHaveAttribute("aria-busy", "true"));
+    });
+  });
+
+  describe.each(ON_TABLE_SCREEN)("$file row actions", ({ actions }) => {
+    it("marks every destructive ⋮ and foot item danger", async () => {
+      actions.render();
+      const [name] = await within(
+        await screen.findByRole("grid"),
+      ).findAllByText(actions.name);
+      const row = name?.closest("tr") as HTMLElement;
+
+      await userEvent.click(
+        within(row).getByRole("button", { name: /^Actions for / }),
+      );
+      expectDanger(
+        within(await screen.findByRole("menu")).getAllByRole("menuitem"),
+        actions.destructive,
+      );
+      await userEvent.keyboard("{Escape}");
+
+      if (!actions.pane) return;
+      await userEvent.click(
+        within(row).getAllByRole("gridcell")[0] as HTMLElement,
+      );
+      expectDanger(
+        within(await screen.findByRole("complementary")).getAllByRole("button"),
+        actions.destructive,
+      );
     });
   });
 

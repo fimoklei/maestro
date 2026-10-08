@@ -108,7 +108,7 @@ export function RepositoriesView() {
           {REGISTER_REPOSITORY}
         </Button>
       }
-      rereading={false}
+      rereading={screen.reading}
       firstReadRows={8}
       rows={rows}
       columns={columns}

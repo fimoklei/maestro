@@ -55,6 +55,7 @@ export function rowItems(
           {
             label: "Restore skill",
             disabled: !restore.enabled,
+            danger: true,
             onSelect: () => handlers.restore(row, commit),
           },
         ]
@@ -188,6 +189,7 @@ function stageItems(
             {
               label: "Withdraw proposal",
               disabled: !enabled,
+              danger: true,
               onSelect: () => handlers.withdraw(row.skill, sole.number),
             },
           ];

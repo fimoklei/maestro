@@ -2,11 +2,11 @@
 import type { GitHubPage } from "@maestro/core";
 import { VIEW_REPOSITORY_ON_GITHUB } from "../deploy-state/deploy-state-copy";
 import { rowActionsLabel } from "../inventory/inventory-copy";
-import { RowItemsMenu } from "../inventory/row-menu";
 import { createDataTableColumns } from "../ui/data-table";
 import { GITHUB_COLUMN } from "../ui/github-link-copy";
 import { GITHUB_UNKNOWN, GitHubMarkLink } from "../ui/github-mark-link";
 import { MachineValue } from "../ui/machine-value";
+import { RowMenu } from "../ui/row-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
 import {
@@ -90,7 +90,7 @@ export const repositoriesColumns = ({
       id: "actions",
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
-        <RowItemsMenu
+        <RowMenu
           label={rowActionsLabel(row.original.name)}
           items={[
             {
@@ -111,6 +111,8 @@ export const repositoriesColumns = ({
               onSelect: () => onAction(row.original, "unregister"),
             },
           ]}
+          returnFocus={false}
+          tabStop={false}
         />
       ),
       meta: { width: 10 },

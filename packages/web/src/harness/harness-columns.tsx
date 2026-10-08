@@ -1,10 +1,10 @@
 import type { HarnessStageRow } from "@maestro/core";
-import { RowItemsMenu } from "../inventory/row-menu";
 import { TYPE_WORD } from "../inventory/type-filter";
 import type { ActionsMenuProps } from "../ui/actions-menu";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import type { Copy } from "../ui/phrase";
+import { RowMenu } from "../ui/row-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
 import { pullRequestCard } from "./pull-request-card";
@@ -127,9 +127,11 @@ export const harnessColumns = ({
       id: "actions",
       header: () => <span className="sr-only">Actions</span>,
       cell: ({ row }) => (
-        <RowItemsMenu
+        <RowMenu
           label={rowMenuLabel(row.original)}
           items={row.original.items}
+          returnFocus={false}
+          tabStop={false}
         />
       ),
       meta: { width: 10 },
