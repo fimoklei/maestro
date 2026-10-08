@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, sentence } from "../test-utils";
 import {
+  cellsOf,
   factValue,
   findRow,
   grid,
@@ -203,6 +204,42 @@ describe("Deploy-state pane — facts", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // #1454: one screen never dates two readings at once.
+  it("dates the Compared fact and band 2 by the same, oldest reading", async () => {
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60_000).toISOString();
+    repoWith({ releaseHead: { ...BEHIND, comparedAt: threeMinutesAgo } });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(fact(pane, "Compared")).toBe("Read 3 min ago");
+    expect(
+      new Set(screen.getAllByText(/^Read /).map((line) => line.textContent)),
+    ).toEqual(new Set(["Read 3 min ago"]));
+  });
+
+  it("dates the Compared fact by the oldest reading on the screen", async () => {
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60_000).toISOString();
+    stubServer(() => ({
+      repos: [REPO, "/Users/me/other"],
+      repo: {
+        [REPO]: {
+          primitives: [skill("tdd")],
+          skipped: [],
+          releaseHead: BEHIND,
+        },
+        "/Users/me/other": {
+          primitives: [skill("tdd")],
+          skipped: [],
+          releaseHead: { ...BEHIND, comparedAt: twoMinutesAgo },
+        },
+      },
+    }));
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(fact(pane, "Compared")).toBe("Read 2 min ago");
   });
 
   it("states every fact as one label/value row, in the order the pane reads", async () => {
@@ -420,20 +457,26 @@ describe("Deploy-state pane — facts", () => {
     ).toBeInTheDocument();
   });
 
-  it("states a repository's failed read in its pane, with its re-read", async () => {
+  // #1454: an unknown reading is a badge and a paragraph, never a failure notice.
+  it("states a repository's failed read in its pane paragraph, under its Unknown badge", async () => {
     stubServer(() => ({
       repos: [REPO],
       repo: { [REPO]: { status: 422, body: { error: "malformed" } } },
     }));
     renderDeployState();
 
+    await findRow(LABEL);
+    await waitFor(() => expect(cellsOf(LABEL)[2]).toBe("Unknown"));
     const pane = await openPane(LABEL);
-    expect(within(pane).getByRole("status")).toHaveTextContent(
-      "Deploy-state not readSelect Re-read Deploy-state to read this repository's deploy-state again.",
-    );
     expect(
-      within(pane).getByRole("button", { name: "Re-read Deploy-state" }),
+      within(pane).getByText(
+        "Deploy-state not read. Select Re-read Deploy-state to read this repository's deploy-state again.",
+      ),
     ).toBeInTheDocument();
+    expect(within(pane).queryByRole("status")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Re-read Deploy-state" }),
+    ).not.toBeNull();
   });
 
   it("pages through the targets as the table shows them", async () => {
@@ -623,6 +666,30 @@ describe("Deploy-state pane — an unfinished operation", () => {
   const pendingRepo = (pendingOperation: object, primitives = [skill("tdd")]) =>
     repoWith({ primitives, releaseHead: BEHIND, pendingOperation });
 
+  // #1454: the row never reads In sync while its pane reports the operation.
+  it.each([
+    ["deploy", "Deploy incomplete"],
+    ["remove", "Removal incomplete"],
+    ["update", "Update incomplete"],
+  ])(
+    "reads an unfinished %s as its notice's heading, in the row and the pane",
+    async (kind, heading) => {
+      repoWith({
+        primitives: [skill("tdd")],
+        releaseHead: { ...BEHIND, latestRelease: BEHIND.release },
+        pendingOperation: { kind, release: "v0.3.2", desired: ["tdd"] },
+      });
+      renderDeployState();
+
+      await findRow(LABEL);
+      await waitFor(() => expect(cellsOf(LABEL)[2]).toBe(heading));
+      const pane = await openPane(LABEL);
+      expect(
+        within(within(pane).getByRole("status")).getByText(heading),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("states a half-landed update and offers Retry update, not another Update", async () => {
     pendingRepo(
       { kind: "update", release: "v0.3.4", desired: ["tdd", "grill"] },
@@ -650,7 +717,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(
       within(pane).queryByRole("button", { name: /^Update target/ }),
     ).not.toBeInTheDocument();
-    expect(within(grid()).getByText("Mixed releases")).toBeInTheDocument();
+    expect(within(grid()).getByText("Update incomplete")).toBeInTheDocument();
   });
 
   it("names the release an unfinished deploy would install again", async () => {

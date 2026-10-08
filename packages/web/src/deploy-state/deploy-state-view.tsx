@@ -231,6 +231,9 @@ export function DeployStateView() {
         globalDrift.dataUpdatedAt,
         ...repoDeploy.map((query) => query.dataUpdatedAt),
         ...repoDrift.map((query) => query.dataUpdatedAt),
+        // The server keeps a release comparison that later failed, so it can
+        // be older than the read that carried it.
+        ...targets.map((row) => row.head?.comparedAt),
       ],
       outcome: "untracked",
     },
@@ -269,8 +272,7 @@ export function DeployStateView() {
             onRetry={() => retry.run(row.wire)}
             isRetrying={retry.isRetrying(row.wire)}
             retryFailure={retry.failure(row.wire)}
-            onReread={screen.reread}
-            now={now}
+            compared={freshness}
             update={placed.update}
             foot={placed.foot}
             dialogs={

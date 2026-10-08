@@ -26,6 +26,7 @@ const RETIRED = [
   /\bconsuming repo/i,
   /\bprimitives?\b/i,
   /\bRelease head\b/i,
+  /\bMixed releases\b/i,
   /\breload the view\b/i,
   /\bslugs?\b/i,
   /\bImport local edits…/i,

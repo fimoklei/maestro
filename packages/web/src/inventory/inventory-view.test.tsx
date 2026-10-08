@@ -1205,6 +1205,45 @@ describe("InventoryView — a target row in the pane", () => {
     ]);
   });
 
+  // #1454: the mark Deploy-state's pane gives the same target and skill.
+  it("marks a target as Deploy-state's pane does: its unfinished operation, else the skill's own copy", async () => {
+    stubPendingFetch();
+    const alpha = onRepo("/projects/alpha", ["tdd"]);
+    const beta = onRepo("/projects/beta", ["tdd"]);
+    renderView({
+      repos,
+      targets: [
+        { ...alpha, pending: "deploy" },
+        {
+          ...beta,
+          primitives: [
+            {
+              type: "skill",
+              name: "tdd",
+              version: "v0.3.2",
+              copy: "local-edits",
+            },
+          ],
+        },
+      ],
+    });
+    await openRow("tdd");
+
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    const row = (label: string) =>
+      within(pane)
+        .getAllByRole("listitem")
+        .find(
+          (item) => within(item).queryByText(label) !== null,
+        ) as HTMLElement;
+    expect(
+      within(row("alpha")).getByRole("img", { name: "Deploy incomplete" }),
+    ).toBeInTheDocument();
+    expect(
+      within(row("beta")).getByRole("img", { name: "Local edits" }),
+    ).toBeInTheDocument();
+  });
+
   it("names Show in Deploy-state where the screen can open that row", async () => {
     stubPendingFetch();
     const onShowTarget = vi.fn();

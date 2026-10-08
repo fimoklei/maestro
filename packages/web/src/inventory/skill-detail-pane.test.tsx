@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
 import type { FootItem } from "../ui/foot-actions";
 import type { SkillDeployment } from "./skill-deployments";
@@ -21,6 +22,7 @@ const dep = (
   label,
   release,
   status,
+  mark: skillMark(undefined, status),
   version: release,
   target: { kind: "repo", repoPath: `/dev/${label}` },
   removeTarget: { kind: "repo", repoPath: `/dev/${label}` },

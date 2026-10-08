@@ -1,8 +1,14 @@
+import type { PendingOperation } from "@maestro/core";
 import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import { reading, type StatusReading } from "../ui/status-reading";
-import { MIXED_RELEASES } from "./update-target-copy";
+import { UNFINISHED_HEADINGS } from "./release-head-copy";
 
-const MIXED = reading(MIXED_RELEASES, "attention", "⚠");
+/** An unfinished operation's badge: its pane notice's own heading. */
+export const UNFINISHED: Record<PendingOperation["kind"], StatusReading> = {
+  deploy: reading(UNFINISHED_HEADINGS.deploy, "attention", "⚠"),
+  remove: reading(UNFINISHED_HEADINGS.remove, "attention", "⚠"),
+  update: reading(UNFINISHED_HEADINGS.update, "attention", "⚠"),
+};
 const ATTENTION = reading("Attention", "attention", "⚠");
 export const LOCAL_EDITS = reading("Local edits", "attention", "✎");
 const BEHIND = reading("Behind", "attention");
@@ -14,7 +20,9 @@ const EMPTY = reading("Empty", "neutral");
 
 /** Every word the badge can read, worst first, as Filter offers them. */
 export const TARGET_STATUS_WORDS = [
-  MIXED,
+  UNFINISHED.deploy,
+  UNFINISHED.remove,
+  UNFINISHED.update,
   ATTENTION,
   LOCAL_EDITS,
   BEHIND,
@@ -31,17 +39,17 @@ export function targetStatus({
   indicator,
   pinnedPerSkill = false,
   behind = false,
-  mixedReleases = false,
+  pending,
   localEdits = false,
 }: {
   indicator: TargetDriftIndicator;
   pinnedPerSkill?: boolean;
   behind?: boolean;
-  mixedReleases?: boolean;
+  pending?: PendingOperation["kind"];
   // A deployed skill's files changed after deployment: it blocks the next step.
   localEdits?: boolean;
 }): StatusReading | null {
-  if (mixedReleases) return MIXED;
+  if (pending) return UNFINISHED[pending];
   if (localEdits && indicator === "attention") return ATTENTION;
   if (localEdits && indicator !== "pending") return LOCAL_EDITS;
   if (pinnedPerSkill) return PINNED;

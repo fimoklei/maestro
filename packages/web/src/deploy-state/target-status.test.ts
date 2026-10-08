@@ -5,17 +5,22 @@ const words = (value: ReturnType<typeof targetStatus>) =>
   value === null ? null : `${value.glyph} ${value.word}`;
 
 describe("targetStatus", () => {
-  it("reads a half-landed update as Mixed releases ahead of everything", () => {
-    expect(
-      words(
-        targetStatus({
-          indicator: "ok",
-          behind: true,
-          pinnedPerSkill: true,
-          mixedReleases: true,
-        }),
-      ),
-    ).toBe("⚠ Mixed releases");
+  it("reads an unfinished operation as its notice's heading, ahead of everything", () => {
+    for (const [pending, heading] of [
+      ["deploy", "⚠ Deploy incomplete"],
+      ["remove", "⚠ Removal incomplete"],
+      ["update", "⚠ Update incomplete"],
+    ] as const) {
+      const status = targetStatus({
+        indicator: "ok",
+        behind: true,
+        pinnedPerSkill: true,
+        localEdits: true,
+        pending,
+      });
+      expect(words(status)).toBe(heading);
+      expect(status?.family).toBe("attention");
+    }
   });
 
   it("reads a target pinned per skill as a neutral fact over any drift", () => {
@@ -63,16 +68,7 @@ describe("targetStatus", () => {
     }
   });
 
-  it("lets Mixed releases and Attention outrank Local edits", () => {
-    expect(
-      words(
-        targetStatus({
-          indicator: "ok",
-          mixedReleases: true,
-          localEdits: true,
-        }),
-      ),
-    ).toBe("⚠ Mixed releases");
+  it("lets Attention outrank Local edits", () => {
     expect(
       words(targetStatus({ indicator: "attention", localEdits: true })),
     ).toBe("⚠ Attention");
@@ -91,9 +87,11 @@ describe("targetStatus", () => {
     expect(targetStatus({ indicator: "pending", localEdits: true })).toBeNull();
   });
 
-  it("offers Local edits to the Filter between Attention and Behind", () => {
+  it("offers every badge word to the Filter, worst first", () => {
     expect(TARGET_STATUS_WORDS).toEqual([
-      "Mixed releases",
+      "Deploy incomplete",
+      "Removal incomplete",
+      "Update incomplete",
       "Attention",
       "Local edits",
       "Behind",

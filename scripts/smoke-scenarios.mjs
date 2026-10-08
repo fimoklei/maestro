@@ -61,7 +61,7 @@ const SCENARIOS = [
       s.whileUnwritable(join(repo, ".agents/skills/code-review"), () =>
         s.update(repo),
       ),
-    expect: { status: "Mixed releases", notice: "Update incomplete" },
+    expect: { status: "Update incomplete", notice: "Update incomplete" },
   },
   {
     name: "local-edits",
@@ -99,7 +99,7 @@ const SCENARIOS = [
         s.deploy(repo, ["commit-message"], { expectRefusal: true }),
       );
     },
-    expect: { notice: "Deploy incomplete" },
+    expect: { status: "Deploy incomplete", notice: "Deploy incomplete" },
   },
   {
     name: "import-edits",
@@ -220,7 +220,7 @@ function targetStatus({ deployState, drift }) {
     releaseHead.latestRelease !== releaseHead.release &&
     pending === undefined;
 
-  if (pending?.kind === "update") return "Mixed releases";
+  if (pending) return NOTICE[pending.kind];
   if (localEdits && indicator === "attention") return "Attention";
   if (localEdits) return "Local edits";
   if (pinnedPerSkill !== undefined) return "Pinned per skill";

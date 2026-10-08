@@ -8,7 +8,7 @@ import { LOCAL_EDITS } from "./target-status";
 
 // The one mark a skill row in a target's pane carries (#993): a copy that can
 // hold work outranks the drift reading, because it blocks the next step.
-type SkillMark = StatusReading & { hint?: string };
+export type SkillMark = StatusReading & { hint?: string };
 
 const COPY_MARKS = {
   "local-edits": LOCAL_EDITS,

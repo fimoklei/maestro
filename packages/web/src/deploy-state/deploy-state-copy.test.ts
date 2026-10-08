@@ -13,6 +13,7 @@ import {
   ORIGIN_NOT_READ,
   otherOriginLine,
   REPO_NOT_READ,
+  REPO_NOT_READ_LINE,
   REREAD_LABEL,
   TARGET_LABEL,
   targetCount,
@@ -30,12 +31,10 @@ describe("Deploy-state copy", () => {
 
   it("names the screen's one re-read control in every failed read", () => {
     expect(REREAD_LABEL).toBe("Re-read Deploy-state");
-    expect(REPO_NOT_READ).toEqual({
-      level: "error",
-      label: "Deploy-state not read",
-      message:
-        "Select Re-read Deploy-state to read this repository's deploy-state again.",
-    });
+    expect(REPO_NOT_READ).toBe("Deploy-state not read");
+    expect(REPO_NOT_READ_LINE).toBe(
+      "Deploy-state not read. Select Re-read Deploy-state to read this repository's deploy-state again.",
+    );
   });
 
   // #1393: the band's failed reads share one action, so they are one notice.

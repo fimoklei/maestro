@@ -1,6 +1,7 @@
 import { type ReactNode, useRef } from "react";
 import { DetailPane, type PaneNotice } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
+import { NOT_READ_YET } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import {
@@ -8,15 +9,13 @@ import {
   localEditsLine,
   ORIGIN_NOT_READ,
   otherOriginLine,
-  REPO_NOT_READ,
-  REREAD_LABEL,
+  REPO_NOT_READ_LINE,
   TARGET_LABEL,
 } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   behindLine,
   changedFact,
-  comparedFact,
   extraFilesFact,
   latestReleaseFact,
   pinnedTagsLine,
@@ -45,8 +44,7 @@ export function TargetDetailPane({
   onRetry,
   isRetrying,
   retryFailure,
-  onReread,
-  now,
+  compared,
   update,
   foot,
   dialogs,
@@ -61,24 +59,18 @@ export function TargetDetailPane({
   isRetrying: boolean;
   /** The last retry's failure, stated in place of the unfinished operation. */
   retryFailure: DeployStateNotice | null;
-  onReread: () => void;
-  /** The screen's one clock, so the Compared fact ticks with band 2. */
-  now: Date;
+  /** Band 2's freshness line, so the Compared fact dates the same, oldest reading. */
+  compared: string | null;
   update: TargetPaneActions["update"];
   foot: FootItem[];
   /** Mounted beside the pane, so a dialog outlives a re-render of its foot. */
   dialogs: ReactNode;
 }) {
   const skillsHeading = useRef<HTMLHeadingElement>(null);
-  const notice: PaneNotice | null = showsReadFailure(row)
-    ? {
-        content: {
-          ...REPO_NOT_READ,
-          action: { label: REREAD_LABEL, onClick: onReread },
-        },
-        trigger: "load",
-      }
-    : row.pending
+  // A failed read's stale record is not stated as current.
+  const readFailure = showsReadFailure(row);
+  const notice: PaneNotice | null =
+    row.pending && !readFailure
       ? {
           content: {
             ...(retryFailure
@@ -112,6 +104,7 @@ export function TargetDetailPane({
       ? [otherOriginLine(row.otherOrigins)]
       : []),
     ...(row.github?.kind === "unknown" ? [ORIGIN_NOT_READ] : []),
+    ...(readFailure ? [REPO_NOT_READ_LINE] : []),
   ];
 
   return (
@@ -173,7 +166,15 @@ export function TargetDetailPane({
           changed === null
             ? null
             : { label: "Changed", value: changed, fullValue: changed },
-          head ? { label: "Compared", value: comparedFact(head, now) } : null,
+          head
+            ? {
+                label: "Compared",
+                value:
+                  head.comparedAt === null || compared === null
+                    ? NOT_READ_YET
+                    : compared,
+              }
+            : null,
           row.extraFiles
             ? { label: "Extra files", value: extraFilesFact(row.extraFiles) }
             : null,

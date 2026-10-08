@@ -39,11 +39,9 @@ export const deployStateNotRead = (
     message: `Select ${REREAD_LABEL} to read every target again.`,
     detail: `Not read: ${joinNames(parts.map((part) => NOT_READ_PARTS[part]))}.`,
   }) as const;
-export const REPO_NOT_READ = {
-  level: "error",
-  label: NOT_READ_LABEL,
-  message: `Select ${REREAD_LABEL} to read this repository's deploy-state again.`,
-} as const;
+// An unread repository is an Unknown reading: its pane states it in a line, not a notice.
+export const REPO_NOT_READ = NOT_READ_LABEL;
+export const REPO_NOT_READ_LINE = `${NOT_READ_LABEL}. Select ${REREAD_LABEL} to read this repository's deploy-state again.`;
 
 // The GitHub column's keyboard way to the same page, and its Unknown's cause.
 export const VIEW_REPOSITORY_ON_GITHUB = "View repository on GitHub";

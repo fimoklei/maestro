@@ -16,7 +16,8 @@ export type PaneRow = Pick<
   | "group"
 >;
 
-// A repository's failed read takes the notice, so no retry shows there.
+// A repository whose read failed withholds its stale unfinished notice, so its
+// retry stays at the foot.
 export const showsReadFailure = (
   row: Pick<TargetRow, "readFailed" | "group">,
 ) => row.readFailed && row.group !== GLOBAL;

@@ -287,7 +287,15 @@ describe("local edits on a target", () => {
 
   it("reads a failed read as Unknown, whatever its stale rows say", () => {
     const stale = {
-      data: { primitives: [skill("tdd", "local-edits")], skipped: [] },
+      data: {
+        primitives: [skill("tdd", "local-edits")],
+        skipped: [],
+        pendingOperation: {
+          kind: "deploy" as const,
+          release: "v0.3.4",
+          desired: ["tdd"],
+        },
+      },
       isError: true,
     };
     const unknownDrift = {
@@ -301,6 +309,7 @@ describe("local edits on a target", () => {
         primitives: [],
         skipped: [],
         otherOrigins: [],
+        pendingOperation: stale.data.pendingOperation,
       },
       syncedDrift,
       true,

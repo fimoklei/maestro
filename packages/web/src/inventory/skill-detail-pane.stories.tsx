@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
 import type { SkillDeployment } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
@@ -12,6 +13,7 @@ const target = (
   release,
   version: release,
   status,
+  mark: skillMark(undefined, status),
   target: { kind: "repo", repoPath: label },
   removeTarget: { kind: "repo", repoPath: label },
   updateName: label,

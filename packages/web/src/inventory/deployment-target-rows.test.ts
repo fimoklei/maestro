@@ -35,6 +35,22 @@ describe("globalToolTargets", () => {
     ]);
   });
 
+  it("carries the global target's unfinished operation onto every tool row", () => {
+    const rows = globalToolTargets(
+      {
+        tools: [
+          { tool: "claude", primitives: [skill] },
+          { tool: "codex", primitives: [skill] },
+        ],
+        skipped: [],
+        pendingOperation: { kind: "remove", release: "v1.0.0", desired: [] },
+      },
+      drift,
+    );
+
+    expect(rows.map((row) => row.pending)).toEqual(["remove", "remove"]);
+  });
+
   it("puts the section-wide attention count on every tool row", () => {
     const rows = globalToolTargets(
       {
@@ -74,6 +90,28 @@ describe("repoTarget", () => {
       skippedCount: 1,
       attentionCount: 1,
     });
+  });
+
+  it("carries the repository's unfinished operation", () => {
+    const row = repoTarget({
+      label: "acme-web",
+      target,
+      read: {
+        data: {
+          primitives: [skill],
+          skipped: [],
+          pendingOperation: {
+            kind: "update",
+            release: "v1.1.0",
+            desired: ["tdd"],
+          },
+        },
+        isError: false,
+      },
+      drift,
+    });
+
+    expect(row.pending).toBe("update");
   });
 
   it("reads pending before the read lands and unknown after it fails", () => {
