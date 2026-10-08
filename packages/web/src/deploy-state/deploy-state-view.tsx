@@ -127,11 +127,7 @@ export function DeployStateView() {
   const retry = useRetryOperation(screen.report, (target) => {
     const row = pendingOf(target);
     if (row?.pending === undefined) return null;
-    return {
-      operation: row.pending,
-      // A finished deploy or removal shows as the row's new status alone.
-      name: row.pending.kind === "update" ? row.updateName : null,
-    };
+    return { operation: row.pending, name: row.updateName };
   });
 
   const targets: TargetRow[] = [
@@ -255,7 +251,7 @@ export function DeployStateView() {
           <span className="text-gray-11 text-meta">{freshness}</span>
         )
       }
-      rereading={false}
+      rereading={screen.reading}
       firstReadRows={8}
       rows={rows}
       columns={columns}
