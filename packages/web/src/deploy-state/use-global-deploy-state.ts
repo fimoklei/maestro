@@ -28,7 +28,6 @@ export type GlobalDeployStateView = {
   pendingOperation?: PendingOperation;
 };
 
-// The one other query that opts back into refetch on focus (#1037).
 export function globalDeployStateQueryOptions() {
   return {
     queryKey: ["deploy-state", "global"] as const,
@@ -47,7 +46,6 @@ export function globalDeployStateQueryOptions() {
           : {}),
       };
     },
-    refetchOnWindowFocus: true,
   };
 }
 
