@@ -20,7 +20,7 @@ describe("folder chooser notices", () => {
         level: "error",
         label: "Folder chooser already open",
         message:
-          "The field did not change. Pick the folder in the open chooser.",
+          "The field did not change. Choose the folder in the open chooser.",
       },
     ],
     [

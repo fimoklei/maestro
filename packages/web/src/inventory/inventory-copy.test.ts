@@ -66,7 +66,7 @@ describe("Inventory copy", () => {
   });
 
   it("states why a bulk remove cannot run yet", () => {
-    expect(TARGETS_STILL_CHECKING).toBe("checks still running");
+    expect(TARGETS_STILL_CHECKING).toBe("checking for local edits");
     expect(NO_TARGET_REMOVABLE).toBe("no target can be removed");
   });
 

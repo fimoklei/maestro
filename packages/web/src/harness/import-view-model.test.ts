@@ -21,9 +21,18 @@ describe("import refusal text", () => {
     expect(sourceBlockerNotice("missing-manifest")).toEqual({
       level: "error",
       label: "No SKILL.md",
-      message: "Pick the folder that holds the skill's SKILL.md.",
+      message: "Choose the folder that holds the skill's SKILL.md.",
     });
     expect(sourceBlockerNotice(null)).toBeNull();
+  });
+
+  it("sends a broken SKILL.md back to choosing the folder again", () => {
+    expect(sourceBlockerNotice("invalid-frontmatter")?.message).toBe(
+      "Fix the SKILL.md frontmatter, then choose the folder again.",
+    );
+    expect(sourceBlockerNotice("empty-description")?.message).toBe(
+      "Fill in the description in SKILL.md, then choose the folder again.",
+    );
   });
 
   it("names the name's problem", () => {

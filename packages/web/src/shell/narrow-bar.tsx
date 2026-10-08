@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Icon } from "../ui/icon";
 import { Logo } from "../ui/logo";
+import { PhraseText } from "../ui/phrase-text";
 import { SCREENS, SETTINGS } from "./screens";
 import { useHarnessSummary } from "./use-harness-summary";
 
@@ -32,8 +33,8 @@ export function NarrowBar({ className }: { className?: string }) {
             {label}
           </span>
           {meta === null ? null : (
-            <span className="truncate font-mono text-gray-11 text-meta">
-              {meta}
+            <span className="truncate font-ui text-gray-11 text-meta">
+              <PhraseText copy={meta} />
             </span>
           )}
         </span>

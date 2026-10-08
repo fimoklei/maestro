@@ -3,7 +3,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
 import { Sidebar } from "./sidebar";
 
 afterEach(() => {
@@ -97,7 +97,9 @@ describe("Sidebar", () => {
     stubServer();
     renderSidebar();
 
-    expect(await screen.findByText("v0.5.0 · 2 skills")).toBeInTheDocument();
+    expect(
+      await screen.findByText(sentence("v0.5.0 · 2 skills")),
+    ).toBeInTheDocument();
     expect(screen.getByText("…/me/agent-harness")).toHaveAttribute(
       "title",
       "/home/me/agent-harness",
@@ -134,7 +136,7 @@ describe("Sidebar", () => {
     stubServer();
     renderSidebar();
 
-    await screen.findByText("v0.5.0 · 2 skills");
+    await screen.findByText(sentence("v0.5.0 · 2 skills"));
     expect(
       screen.queryByRole("list", { name: /targets/i }),
     ).not.toBeInTheDocument();
@@ -167,7 +169,7 @@ describe("Sidebar", () => {
     renderSidebar();
 
     expect(
-      await screen.findByText("No release · 0 skills"),
+      await screen.findByText("Not released yet · 0 skills"),
     ).toBeInTheDocument();
   });
 });

@@ -38,7 +38,7 @@ export const bulkDeployDidNotRun = (target: string) =>
   `Deploy to ${target} did not run`;
 export const TARGETS_LOADING = "targets still loading";
 export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
-export const TARGETS_STILL_CHECKING = "checks still running";
+export const TARGETS_STILL_CHECKING = "checking for local edits";
 export const NO_TARGET_REMOVABLE = "no target can be removed";
 
 // The bulk-deploy picker's Global option. undefined = not loaded or

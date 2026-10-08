@@ -18,7 +18,7 @@ export const targetCount = (count: number) =>
 // Information, never a control: Register repository on the Repositories screen
 // is the only registration control.
 export const NO_REPOSITORIES =
-  "No repositories registered yet. Select Register repository on the Repositories screen.";
+  "No repositories yet. Select Register repository on the Repositories screen.";
 
 export const NO_FILTER_MATCH =
   "No targets match the filters. Select Filter to show more targets.";

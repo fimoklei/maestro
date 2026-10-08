@@ -4,6 +4,7 @@ import { ActionsMenu } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { Icon } from "../ui/icon";
+import { PhraseText } from "../ui/phrase-text";
 import { SETTINGS } from "./screens";
 import { useHarnessSummary } from "./use-harness-summary";
 
@@ -43,8 +44,8 @@ export function HarnessButton() {
               {label}
             </span>
             {meta === null ? null : (
-              <span className="truncate font-mono text-gray-11 text-meta">
-                {meta}
+              <span className="truncate font-ui text-gray-11 text-meta">
+                <PhraseText copy={meta} />
               </span>
             )}
           </span>

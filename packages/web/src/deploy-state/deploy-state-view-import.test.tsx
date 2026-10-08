@@ -295,7 +295,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
       document.getElementById(box.getAttribute("aria-describedby") ?? "")
         ?.textContent,
     ).toBe(
-      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
     );
     expect(
       within(refused)

@@ -51,17 +51,18 @@ function deployStateCounter(
   return behind === 0 ? null : count(behindCount(behind));
 }
 
-// Skills waiting on the operator: Pending review plus Pending release, each
-// skill once. A change not yet proposed waits on its author, not the operator.
+// The rows the Harness table shows under its three Pending stages: a skill in
+// two stages is two rows.
 function harnessCounter(harness: Read<HarnessState>): NavCounter | null {
   if (harness.isError) return UNKNOWN;
   if (harness.data === undefined) return null;
-  const { review, release } = harness.data.stages;
-  if (review.outcome !== "read" || release.outcome !== "read") return UNKNOWN;
-  const skills = new Set(
-    [...review.rows, ...release.rows].map((row) => row.skill),
+  const stages = Object.values(harness.data.stages);
+  if (stages.some((stage) => stage.outcome !== "read")) return UNKNOWN;
+  const rows = stages.reduce(
+    (sum, stage) => sum + (stage.outcome === "read" ? stage.rows.length : 0),
+    0,
   );
-  return skills.size === 0 ? null : count(pendingCount(skills.size));
+  return rows === 0 ? null : count(pendingCount(rows));
 }
 
 /** Each counter keyed by the screen path it sits beside. */

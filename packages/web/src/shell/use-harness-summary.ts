@@ -1,6 +1,7 @@
 // The Harness name, release and skill count, shared by sidebar and narrow bar.
 import { useHarness } from "../harness/use-harness";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
+import { machine, type Phrase, phrase } from "../ui/phrase";
 import { targetLabel } from "./target-label";
 
 // Each fact has its own read (#841): `undefined` is "not read yet"; `null` is
@@ -8,17 +9,21 @@ import { targetLabel } from "./target-label";
 export function harnessMetaLine(
   release: string | null | undefined,
   skillCount: number | undefined,
-): string | null {
-  const parts: string[] = [];
+): Phrase | null {
+  const parts: Phrase[] = [];
   if (release !== undefined) {
-    // Short on purpose: the line has one 16px row inside a 244px sidebar, and
-    // a longer wording truncates mid-word beside the skill count.
-    parts.push(release === null ? "No release" : release);
+    // The line has one 16px row inside a 244px sidebar: a longer wording
+    // truncates beside the skill count.
+    parts.push(
+      release === null ? phrase`Not released yet` : phrase`${machine(release)}`,
+    );
   }
   if (skillCount !== undefined) {
-    parts.push(`${skillCount} ${skillCount === 1 ? "skill" : "skills"}`);
+    parts.push(phrase`${skillCount} ${skillCount === 1 ? "skill" : "skills"}`);
   }
-  return parts.length === 0 ? null : parts.join(" · ");
+  const [first, second] = parts;
+  if (first === undefined) return null;
+  return second === undefined ? first : phrase`${first} · ${second}`;
 }
 
 interface HarnessSummary {
@@ -26,7 +31,8 @@ interface HarnessSummary {
   path: string | null;
   /** The shortened, identifying label for that path (#211). */
   label: string;
-  meta: string | null;
+  /** The release, set apart as a machine value, and the skill count. */
+  meta: Phrase | null;
 }
 
 export function useHarnessSummary(): HarnessSummary {

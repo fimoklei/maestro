@@ -495,18 +495,18 @@ const importHeadings: NoticeTable<ImportSkillError> = {
     level: "error",
     label: "Unreadable folder",
     message:
-      "Nothing was copied. Make the folder readable, then pick it again.",
+      "Nothing was copied. Make the folder readable, then choose it again.",
   },
   "outside-root": {
     level: "error",
     label: "Folder out of reach",
-    message: "Pick a folder inside your home folder.",
+    message: "Choose a folder inside your home folder.",
     detail: "Maestro reads inside the home folder only.",
   },
   "deployed-copy": {
     level: "error",
     label: "Copy from another Harness",
-    message: "Pick a folder that is not a copy deployed by another Harness.",
+    message: "Choose a folder that is not a copy deployed by another Harness.",
     detail: "Maestro can update only copies deployed by the connected Harness.",
   },
   "origin-unproven": {
@@ -541,7 +541,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "missing-manifest": {
     level: "error",
     label: "No SKILL.md",
-    message: "Pick the folder that holds the skill's SKILL.md.",
+    message: "Choose the folder that holds the skill's SKILL.md.",
   },
   "invalid-frontmatter": {
     level: "error",
@@ -569,12 +569,12 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "not-found": {
     level: "error",
     label: "Folder gone",
-    message: "Nothing was copied. Pick the folder again.",
+    message: "Nothing was copied. Choose the folder again.",
   },
   "not-a-directory": {
     level: "error",
     label: "Not a folder",
-    message: "A skill is a folder with a SKILL.md in it. Pick one of those.",
+    message: "A skill is a folder with a SKILL.md in it. Choose one of those.",
   },
   "destination-exists": {
     level: "error",
@@ -606,13 +606,13 @@ const importHeadings: NoticeTable<ImportSkillError> = {
     level: "error",
     label: "Over 1,000 files",
     message:
-      "Nothing was copied. Pick the skill folder itself, not the repository around it.",
+      "Nothing was copied. Choose the skill folder itself, not the repository around it.",
   },
   "too-large": {
     level: "error",
     label: "Over 50 MiB",
     message:
-      "Nothing was copied. Pick the skill folder itself, not the repository around it.",
+      "Nothing was copied. Choose the skill folder itself, not the repository around it.",
   },
   "source-changed": {
     level: "error",
@@ -806,7 +806,7 @@ export function copiesDiffer<T>(
   folders: Record<"claude" | "codex", T>,
 ): [string, T, string, T, string] {
   return [
-    "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ",
+    "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ",
     folders.claude,
     " or ",
     folders.codex,
@@ -873,7 +873,7 @@ const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
   unverified:
     "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
   "copies-differ":
-    "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one.",
+    "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one.",
   "no-local-edits": "No local edits left in this copy. Nothing was imported.",
   "undoes-newer-changes":
     "The Harness changed this skill after the check, so it was not imported. Select Import local edits again to choose whether to undo that change.",

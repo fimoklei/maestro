@@ -39,7 +39,7 @@ describe("connectNotice", () => {
     expect(connectFor("not-found")).toEqual({
       level: "error",
       label: "No folder at that path",
-      message: "Check the spelling, or select Browse to pick the folder.",
+      message: "Check the spelling, or select Browse to choose the folder.",
       detail: "Nothing is at that path now.",
     });
     expect(connectFor("not-a-directory")).toEqual({

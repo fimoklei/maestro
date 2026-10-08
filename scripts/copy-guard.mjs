@@ -34,6 +34,13 @@ const RETIRED = [
   // A status states where a change stands; the Change column names it (#1399).
   /\bDeleted locally\b/i,
   /\bDeletion (?:in draft|waiting for review|changes requested|approved|merged)\b/i,
+  // One word per concept (#1461): a folder is chosen, a Harness with no
+  // release is not released yet, a remove waits on checking for local edits.
+  /\bpick (?:the|a|it|one)\b/i,
+  /\bNone yet\b/i,
+  /\bNothing released yet\b/i,
+  /\bchecks still running\b/i,
+  /\brepositories registered yet\b/i,
   // A control is selected: never clicked or tapped, never `Press Close`.
   /\b(?:click|tap)(?:s|ped|ping|ed|ing)?\b/i,
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,

@@ -131,7 +131,7 @@ export function TargetDetailPane({
           },
           row.path
             ? {
-                label: "Path",
+                label: "Folder path",
                 value: row.path,
                 machine: true,
                 fullValue: row.path,

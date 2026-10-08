@@ -2,8 +2,10 @@ import type { HarnessStageRead, HarnessState } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { STAGE_TITLES, stageRows } from "../harness/harness-flow-fixture";
 import { stageRow } from "../harness/stage-row-fixture";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import { AppRoutes } from "./app-router";
 import { Sidebar } from "./sidebar";
 
 afterEach(() => {
@@ -146,7 +148,7 @@ describe("Deploy-state counter", () => {
     renderSidebar();
 
     // The Harness read answering means every read of the frame has landed.
-    await screen.findByText("v0.5.0 · 0 skills");
+    await screen.findByText(sentence("v0.5.0 · 0 skills"));
     expect(
       within(screens()).getByRole("button", { name: "Deploy-state" }),
     ).toBeInTheDocument();
@@ -170,55 +172,72 @@ describe("Deploy-state counter", () => {
 });
 
 describe("Harness counter", () => {
-  it("counts each skill in Pending review or Pending release once", async () => {
-    stubServer({
-      harness: {
-        proposal: read([
-          stageRow("pending-proposal", "draft-only", "not-yet-proposed"),
-        ]),
-        review: read([
-          stageRow("pending-review", "tdd", "waiting-for-review"),
-          stageRow("pending-review", "review", "draft"),
-        ]),
-        release: read([
-          stageRow("pending-release", "review", "not-yet-released"),
-          stageRow("pending-release", "ship", "not-yet-released", {
-            change: "addition",
-          }),
-        ]),
-      },
-    });
+  // A skill in two stages is two rows in the Harness table, so it counts twice.
+  const PENDING = {
+    proposal: read([
+      stageRow("pending-proposal", "draft-only", "not-yet-proposed"),
+    ]),
+    review: read([
+      stageRow("pending-review", "tdd", "waiting-for-review"),
+      stageRow("pending-review", "review", "draft"),
+    ]),
+    release: read([
+      stageRow("pending-release", "review", "not-yet-released"),
+      stageRow("pending-release", "ship", "not-yet-released", {
+        change: "addition",
+      }),
+    ]),
+  };
+
+  it("counts every row in the three Pending stages", async () => {
+    stubServer({ harness: PENDING });
     renderSidebar();
 
     expect(
       await within(author()).findByRole("button", {
-        name: "Harness 3 pending",
+        name: "Harness 5 pending",
       }),
     ).toBeInTheDocument();
   });
 
-  it("shows nothing where no skill waits on review or release", async () => {
-    stubServer({
-      harness: {
-        proposal: read([
-          stageRow("pending-proposal", "draft-only", "not-yet-proposed"),
-        ]),
-      },
+  it("states the number of pending rows the Harness table shows", async () => {
+    stubServer({ harness: PENDING });
+    renderWithQuery(
+      <MemoryRouter initialEntries={["/harness"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    const counter = await within(author()).findByRole("button", {
+      name: /^Harness \d+ pending$/,
     });
+    const pendingRows = (
+      await Promise.all(STAGE_TITLES.map((stage) => stageRows(stage)))
+    ).flat().length;
+    expect(counter).toHaveAccessibleName(`Harness ${pendingRows} pending`);
+  });
+
+  it("shows nothing where no row is pending", async () => {
+    stubServer({});
     renderSidebar();
 
-    await screen.findByText("v0.5.0 · 0 skills");
+    await screen.findByText(sentence("v0.5.0 · 0 skills"));
     expect(
       within(author()).getByRole("button", { name: "Harness" }),
     ).toBeInTheDocument();
   });
 
-  it("reads ? where the review stage could not be read", async () => {
-    stubServer({ harness: { review: { outcome: "unavailable" } } });
-    renderSidebar();
+  it.each(["proposal", "review", "release"] as const)(
+    "reads ? where the %s stage could not be read",
+    async (stage) => {
+      stubServer({ harness: { [stage]: { outcome: "unavailable" } } });
+      renderSidebar();
 
-    expect(
-      await within(author()).findByRole("button", { name: "Harness Unknown" }),
-    ).toBeInTheDocument();
-  });
+      expect(
+        await within(author()).findByRole("button", {
+          name: "Harness Unknown",
+        }),
+      ).toBeInTheDocument();
+    },
+  );
 });

@@ -134,7 +134,7 @@ describe("Deploy-state — one table of every target", () => {
     ).toBeInTheDocument();
     expect(
       within(grid()).getByText(
-        "No repositories registered yet. Select Register repository on the Repositories screen.",
+        "No repositories yet. Select Register repository on the Repositories screen.",
       ),
     ).toBeInTheDocument();
   });
@@ -154,7 +154,7 @@ describe("Deploy-state — one table of every target", () => {
 
     await findRow("Codex");
     const hint = within(grid()).getByText(
-      "No repositories registered yet. Select Register repository on the Repositories screen.",
+      "No repositories yet. Select Register repository on the Repositories screen.",
     );
     expect(within(hint).queryByRole("button")).not.toBeInTheDocument();
     expect(within(hint).queryByRole("link")).not.toBeInTheDocument();
@@ -169,7 +169,7 @@ describe("Deploy-state — one table of every target", () => {
 
     expect(await findRow("…/me/a")).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered yet\./i),
+      screen.queryByText(/no repositories yet\./i),
     ).not.toBeInTheDocument();
   });
 });
@@ -495,7 +495,7 @@ describe("Deploy-state — failed reads", () => {
       await screen.findByText("Not read: registered repositories."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered yet\./i),
+      screen.queryByText(/no repositories yet\./i),
     ).not.toBeInTheDocument();
   });
 

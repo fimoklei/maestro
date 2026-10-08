@@ -37,6 +37,7 @@ describe("copy guard", () => {
         'export const a = "Set the Harness location, then select Re-read Inventory.";',
         'export const b = "Read just now";',
         'export const c = "Is it 1 !== 2?";',
+        'export const d = "The Harness already holds a skill under it. Pick another name.";',
         "",
       ].join("\n"),
     );
@@ -70,6 +71,12 @@ describe("copy guard", () => {
     ["Let's deploy the skill.", "Let's"],
     ["Deployed tdd! Select Close.", "!"],
     ["Deployed tdd!", "!"],
+    ["Nothing was copied. Pick the folder again.", "Pick the"],
+    ["Make the folder readable, then pick it again.", "pick it"],
+    ["None yet", "None yet"],
+    ["Nothing released yet", "Nothing released yet"],
+    ["Remove skill — checks still running", "checks still running"],
+    ["No repositories registered yet.", "repositories registered yet"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",
