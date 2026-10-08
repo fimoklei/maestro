@@ -1,6 +1,6 @@
 import * as Radix from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { type ReactNode, useEffect, useId, useRef } from "react";
+import { type ReactNode, useContext, useEffect, useId, useRef } from "react";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
@@ -8,6 +8,7 @@ import { ACTION_STILL_RUNNING, CANCEL, CLOSE } from "./dialog-copy";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
+import { ScreenFocusContext } from "./screen-focus";
 import { Tooltip } from "./tooltip";
 
 // Radix owns the portal, focus trap, focus return and scroll lock (#997); this
@@ -84,6 +85,7 @@ export function Dialog({
   }, [failure]);
 
   const panelRef = useRef<HTMLDivElement>(null);
+  const screenFocus = useContext(ScreenFocusContext);
   // Radix returns focus to its own Trigger, which these dialogs never use.
   const openerRef = useRef<Element | null>(
     typeof document === "undefined" ? null : document.activeElement,
@@ -127,8 +129,18 @@ export function Dialog({
               active === document.body ||
               panelRef.current?.contains(active) === true;
             if (!lost) return;
+            // An opener that left with its row, or never stood (a ⋮ item that
+            // opened a pane and this dialog), leaves it to the screen.
             const opener = openerRef.current;
-            if (opener instanceof HTMLElement) opener.focus();
+            if (
+              opener instanceof HTMLElement &&
+              opener !== document.body &&
+              opener.isConnected
+            ) {
+              opener.focus();
+            } else {
+              screenFocus?.();
+            }
           }}
           onInteractOutside={(event) => {
             // A click outside must not discard typed work.

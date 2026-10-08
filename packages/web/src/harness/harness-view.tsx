@@ -529,9 +529,13 @@ function Notices({
   ];
   const shown = candidates.find((each) => each.notice !== null);
   const clear = shown?.clear;
-  // Focus leaves the control it stood on for the one re-read control.
+  // The next closable notice draws in this one's place, so focus stays on
+  // its ✕; with none to follow, focus goes to Re-read.
   const dismiss = () => {
-    rereadRef.current?.focus();
+    const next = candidates.find(
+      (each) => each !== shown && each.notice !== null,
+    );
+    if (next?.clear === undefined) rereadRef.current?.focus();
     clear?.();
   };
   // The region outlives its content, so a read that failed on open is

@@ -1,6 +1,7 @@
 import { DEPLOY_SKILL } from "../inventory/inventory-copy";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
+import type { RowMenuItem } from "../ui/row-menu";
 import type { TargetAction, TargetTableRow } from "./deploy-state-columns";
 import { VIEW_REPOSITORY_ON_GITHUB } from "./deploy-state-copy";
 import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
@@ -64,13 +65,15 @@ export const targetRowItem = (
   return { label, name: `${label} ${row.updateName}`, ...control };
 };
 
-// One row's items, as its ⋮ menu offers them.
+// One row's items, as its ⋮ menu offers them. Each action opens the pane or
+// leaves the screen, so focus moves on; a link's tab leaves it on ⋮.
 export const targetRowItems = (
   row: TargetTableRow,
   onAction: (row: TargetTableRow, action: TargetAction) => void,
-): FootItem[] => [
-  ...row.actions.map((item) =>
-    targetRowItem(row, item, (action) => onAction(row, action)),
-  ),
-  ...row.links,
+): RowMenuItem[] => [
+  ...row.actions.map((item) => ({
+    ...targetRowItem(row, item, (action) => onAction(row, action)),
+    movesFocus: true,
+  })),
+  ...row.links.map((link) => ({ ...link, movesFocus: false })),
 ];

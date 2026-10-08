@@ -48,7 +48,7 @@ export function RepositoriesView() {
   );
   const repos = registry.data?.repos ?? [];
   const paths = repos.map((repo) => repo.path);
-  const register = useRegisterDialog({ report });
+  const register = useRegisterDialog({ report, onAdded: screen.added });
   const unregisterWrite = useWriteAction(unregister, {
     report,
     action: "unregister",

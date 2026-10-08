@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ImportLocalEditsDialog } from "./deploy-state/import-local-edits-dialog";
 import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
@@ -16,6 +16,10 @@ import { WithdrawDialog } from "./harness/withdraw-dialog";
 import { BulkDeployDialog } from "./inventory/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./inventory/bulk-remove-dialog";
 import { RegisterRepositoryDialog } from "./registry/register-repository-dialog";
+import {
+  renderRepositories,
+  stubRegistry,
+} from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
 import type { FolderChooser } from "./ui/use-folder-chooser";
@@ -339,6 +343,59 @@ describe("every dialog", () => {
       expect(
         screen.getByRole("button", { name: "Close — action still running" }),
       ).toBeInTheDocument();
+    });
+  });
+});
+
+/** A dialog that adds a row, run on its screen up to a successful add. */
+type AddsARow = {
+  file: string;
+  add: () => Promise<void>;
+  /** Text the new row shows. */
+  row: string;
+};
+
+// Import skill opens the new row's pane, which its flow test proves; a screen
+// without a pane focuses the row itself.
+const ADDS_A_ROW: AddsARow[] = [
+  {
+    file: "registry/register-repository-dialog.tsx",
+    add: async () => {
+      stubRegistry({
+        repos: [{ path: "/home/me/payments-api", status: "ready" }],
+      });
+      renderRepositories();
+      const [band1] = await screen.findAllByRole("button", {
+        name: "Register repository",
+      });
+      await userEvent.click(band1 as HTMLElement);
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.type(
+        within(dialog).getByRole("textbox", { name: "Folder path" }),
+        "/home/me/acme-web{Enter}",
+      );
+    },
+    row: "/home/me/acme-web",
+  },
+];
+
+describe.each(ADDS_A_ROW)("$file", ({ add, row }) => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // design.md → Feedback and dialogs: after an add, focus goes to the new row.
+  it("selects and focuses the new row once the add succeeds", async () => {
+    await add();
+
+    await waitFor(() => {
+      const grid = screen.getByRole("grid");
+      expect(grid).toHaveFocus();
+      expect(
+        document.getElementById(
+          grid.getAttribute("aria-activedescendant") ?? "",
+        ),
+      ).toHaveTextContent(row);
     });
   });
 });

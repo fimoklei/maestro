@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { RowMenu } from "./row-menu";
 
 const renderMenu = ({
-  returnFocus,
+  movesFocus,
   tabStop,
   onSelect = () => {},
 }: {
-  returnFocus: boolean;
+  movesFocus: boolean;
   tabStop: boolean;
   onSelect?: () => void;
 }) =>
@@ -17,8 +17,7 @@ const renderMenu = ({
       <button type="button">Before</button>
       <RowMenu
         label="Actions for tdd"
-        items={[{ label: "Update target", onSelect }]}
-        returnFocus={returnFocus}
+        items={[{ label: "Update target", onSelect, movesFocus }]}
         tabStop={tabStop}
       />
     </div>,
@@ -34,7 +33,7 @@ const pick = async (item: string) => {
 describe("RowMenu", () => {
   it("runs the picked item", async () => {
     const onSelect = vi.fn();
-    renderMenu({ returnFocus: true, tabStop: true, onSelect });
+    renderMenu({ movesFocus: false, tabStop: true, onSelect });
 
     await pick("Update target");
 
@@ -42,7 +41,7 @@ describe("RowMenu", () => {
   });
 
   it("stays out of the Tab order inside a grid", async () => {
-    renderMenu({ returnFocus: false, tabStop: false });
+    renderMenu({ movesFocus: true, tabStop: false });
 
     await userEvent.tab();
     await userEvent.tab();
@@ -51,7 +50,7 @@ describe("RowMenu", () => {
   });
 
   it("is a Tab stop outside a grid", async () => {
-    renderMenu({ returnFocus: true, tabStop: true });
+    renderMenu({ movesFocus: false, tabStop: true });
 
     await userEvent.tab();
     await userEvent.tab();
@@ -59,16 +58,16 @@ describe("RowMenu", () => {
     expect(trigger()).toHaveFocus();
   });
 
-  it("returns focus to ⋮ after an item when asked", async () => {
-    renderMenu({ returnFocus: true, tabStop: true });
+  it("returns focus to ⋮ after an item that does not move it", async () => {
+    renderMenu({ movesFocus: false, tabStop: true });
 
     await pick("Update target");
 
     expect(trigger()).toHaveFocus();
   });
 
-  it("leaves focus to the item when focus return is off", async () => {
-    renderMenu({ returnFocus: false, tabStop: false });
+  it("leaves focus to an item that moves it on", async () => {
+    renderMenu({ movesFocus: true, tabStop: false });
 
     await pick("Update target");
 
@@ -79,7 +78,7 @@ describe("RowMenu", () => {
   // hover, on the active row, while open and where nothing hovers. The
   // browser check measures it; happy-dom renders no CSS.
   it("reveals ⋮ on hover or the active row only", () => {
-    renderMenu({ returnFocus: true, tabStop: true });
+    renderMenu({ movesFocus: false, tabStop: true });
 
     expect(trigger()).toHaveClass(
       "opacity-0",

@@ -104,6 +104,8 @@ export interface DataTableProps<T extends RowData> {
   onRowOpen?: (row: T) => void;
   /** The row whose detail is open. */
   openRowId?: string | null;
+  /** Takes the cursor once shown, as a row just added does. */
+  cursorRowId?: string | null;
   columnVisibility?: ColumnVisibilityState;
   /** Skeleton rows in the table's own shape replace the data. */
   loading?: boolean;
@@ -127,6 +129,7 @@ export function DataTable<T extends RowData>({
   selection,
   onRowOpen,
   openRowId = null,
+  cursorRowId = null,
   columnVisibility,
   loading = false,
   skeletonRows = 12,
@@ -221,6 +224,12 @@ export function DataTable<T extends RowData>({
     setCursorFor(openRowId);
     const opened = rows.findIndex((row) => row.id === openRowId);
     if (opened !== -1) setCursor(opened);
+  }
+  const [cursorWent, setCursorWent] = useState<string | null>(null);
+  if (cursorWent !== cursorRowId) {
+    const added = rows.findIndex((row) => row.id === cursorRowId);
+    if (added !== -1 || cursorRowId === null) setCursorWent(cursorRowId);
+    if (added !== -1) setCursor(added);
   }
   const active = Math.min(cursor, Math.max(rows.length - 1, 0));
   // The row last toggled; Shift picks the range from it to the next one.

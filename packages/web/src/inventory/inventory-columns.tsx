@@ -113,11 +113,12 @@ export const inventoryColumns = ({
       cell: ({ row }) => (
         <RowMenu
           label={rowActionsLabel(row.original.name)}
+          // Each opens the pane, which takes focus.
           items={row.original.actions.map(({ action, ...item }) => ({
             ...item,
+            movesFocus: true,
             onSelect: () => onAction(row.original, action),
           }))}
-          returnFocus={false}
           tabStop={false}
         />
       ),

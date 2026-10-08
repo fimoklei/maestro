@@ -10,6 +10,8 @@ export interface ActionsMenuItem {
   disabled?: boolean;
   /** Drops or deletes something: red, last, behind its own divider (#1009). */
   danger?: boolean;
+  /** Moves focus on itself, such as into a pane; else focus returns to the trigger. */
+  movesFocus?: boolean;
 }
 
 export const orderedItems = <T extends ActionsMenuItem>(
@@ -27,8 +29,6 @@ export interface ActionsMenuProps {
   trigger?: ReactNode;
   /** Opens under the trigger at its full width, like Linear's workspace menu. */
   fitTrigger?: boolean;
-  /** False where every item moves focus on; Escape still returns it. */
-  returnFocus?: boolean;
 }
 
 export function ActionsMenu({
@@ -36,12 +36,11 @@ export function ActionsMenu({
   items,
   trigger,
   fitTrigger = false,
-  returnFocus = true,
 }: ActionsMenuProps) {
   // Run once the menu has closed: an open menu traps focus, so an item that
   // moves focus elsewhere would lose it, and a dialog it opens would remember
   // the vanished item as its opener (#1124).
-  const pending = useRef<(() => void) | null>(null);
+  const pending = useRef<ActionsMenuItem | null>(null);
   return (
     <DropdownMenu.Root>
       {trigger ? (
@@ -70,13 +69,13 @@ export function ActionsMenu({
           align={fitTrigger ? "start" : "end"}
           sideOffset={4}
           onCloseAutoFocus={(event) => {
-            const run = pending.current;
+            const item = pending.current;
             pending.current = null;
-            if (run === null) return;
+            if (item?.onSelect === undefined) return;
             // Radix focuses the trigger after this handler, before the action's
             // render (react-focus-scope 1.1.16), so a dialog sees it as opener.
-            if (!returnFocus) event.preventDefault();
-            run();
+            if (item.movesFocus) event.preventDefault();
+            item.onSelect();
           }}
           // bg-gray-2, not gray-3: the highlighted state must read as hover
           // (#388). z-50: above a pane's z-20 (#1124).
@@ -107,7 +106,7 @@ export function ActionsMenu({
                       event.preventDefault();
                       return;
                     }
-                    pending.current = item.onSelect ?? null;
+                    pending.current = item;
                   }}
                   asChild={item.href !== undefined}
                   className={cn(
