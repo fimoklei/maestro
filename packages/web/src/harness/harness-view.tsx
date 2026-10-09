@@ -293,7 +293,7 @@ export function HarnessView({
             />
             <BandFact
               label="Released"
-              value={state.releasedVersion ?? "None yet"}
+              value={state.releasedVersion ?? "Not released yet"}
               machine={state.releasedVersion !== null}
             />
             <BandFact
@@ -436,7 +436,7 @@ function BandFact({
   value: string;
   /** Links the value to its GitHub page. */
   github?: GitHubPage;
-  /** False for a plain word such as None yet, which Geist Mono never sets. */
+  /** False for a plain word such as Not released yet, which Geist Mono never sets. */
   machine?: boolean;
   yields?: keyof typeof YIELDS;
 }) {

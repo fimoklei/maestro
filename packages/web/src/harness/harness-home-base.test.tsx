@@ -352,7 +352,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     // The strip carries the reading now that the summary card is retired.
-    expect(await screen.findByText("None yet")).toBeInTheDocument();
+    expect(await screen.findByText("Not released yet")).toBeInTheDocument();
   });
 
   it("keeps the freshly fetched state when the slower read arrives late", async () => {

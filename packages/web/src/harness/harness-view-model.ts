@@ -70,7 +70,7 @@ const releaseMeta = (read: HarnessStageRead, state: HarnessState): Copy => {
     return "Status unknown";
   }
   return state.releasedVersion === null
-    ? "Nothing released yet"
+    ? "Not released yet"
     : phrase`Compared with ${machine(state.releasedVersion)}`;
 };
 

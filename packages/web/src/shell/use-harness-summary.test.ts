@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { machineValues } from "../test-utils";
-import { type Phrase, plainText } from "../ui/phrase";
+import { plainText } from "../ui/phrase";
 import { harnessMetaLine } from "./use-harness-summary";
 
 const line = (...args: Parameters<typeof harnessMetaLine>) => {
@@ -13,12 +13,11 @@ describe("harnessMetaLine", () => {
     expect(line("v1.4.0", 24)).toBe("v1.4.0 · 24 skills");
   });
 
-  // #1458: only the release is a machine value; the words stay Geist.
-  it("marks the release alone as a machine value", () => {
-    expect(machineValues(harnessMetaLine("v1.4.0", 24) as Phrase)).toEqual([
+  it("sets only the release apart as a machine value", () => {
+    expect(machineValues(harnessMetaLine("v1.4.0", 24) ?? "")).toEqual([
       "v1.4.0",
     ]);
-    expect(machineValues(harnessMetaLine(null, 24) as Phrase)).toEqual([]);
+    expect(machineValues(harnessMetaLine(null, 24) ?? "")).toEqual([]);
   });
 
   it("counts one skill in the singular", () => {
@@ -26,7 +25,7 @@ describe("harnessMetaLine", () => {
   });
 
   it("states a Harness with no release yet, rather than leaving it blank", () => {
-    expect(line(null, 24)).toBe("No release · 24 skills");
+    expect(line(null, 24)).toBe("Not released yet · 24 skills");
   });
 
   it("states the count alone while the release is unread", () => {

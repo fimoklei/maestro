@@ -78,7 +78,7 @@ describe("Deploy-state pane — facts", () => {
       within(pane).getByRole("heading", { level: 2, name: LABEL }),
     ).toBeInTheDocument();
     expect(fact(pane, "Target")).toBe("Repository");
-    expect(fact(pane, "Path")).toBe(REPO);
+    expect(fact(pane, "Folder path")).toBe(REPO);
     expect(fact(pane, "Release")).toBe("v0.3.2");
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
     expect(fact(pane, "Changed")).toBe("2 of 5 skills: tdd and grill");
@@ -253,7 +253,7 @@ describe("Deploy-state pane — facts", () => {
       [...(list?.querySelectorAll("dt") ?? [])].map((dt) => dt.textContent),
     ).toEqual([
       "Target",
-      "Path",
+      "Folder path",
       "Release",
       "Latest release",
       "Changed",

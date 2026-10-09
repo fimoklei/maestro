@@ -12,10 +12,10 @@ export function harnessMetaLine(
 ): Phrase | null {
   const parts: Phrase[] = [];
   if (release !== undefined) {
-    // Short on purpose: the line has one 16px row inside a 244px sidebar, and
-    // a longer wording truncates mid-word beside the skill count.
+    // The line has one 16px row inside a 244px sidebar: a longer wording
+    // truncates beside the skill count.
     parts.push(
-      release === null ? phrase`No release` : phrase`${machine(release)}`,
+      release === null ? phrase`Not released yet` : phrase`${machine(release)}`,
     );
   }
   if (skillCount !== undefined) {
@@ -31,6 +31,7 @@ interface HarnessSummary {
   path: string | null;
   /** The shortened, identifying label for that path (#211). */
   label: string;
+  /** The release, set apart as a machine value, and the skill count. */
   meta: Phrase | null;
 }
 

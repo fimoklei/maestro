@@ -371,7 +371,7 @@ describe("emptyGroupLines", () => {
 
   it("says how to register on an empty Repositories group", () => {
     expect(emptyGroupLines(REPOSITORIES, read)).toEqual([
-      "No repositories registered yet. Select Register repository on the Repositories screen.",
+      "No repositories yet. Select Register repository on the Repositories screen.",
     ]);
   });
 

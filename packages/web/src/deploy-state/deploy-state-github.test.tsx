@@ -76,12 +76,11 @@ describe("Deploy-state — GitHub column", () => {
     await userEvent.keyboard("{Escape}");
 
     const pane = await openPane(NAME);
-    const mark = within(factValue(pane, "Path") as HTMLElement).getByRole(
-      "link",
-      {
-        name: `View ${NAME} on GitHub`,
-      },
-    );
+    const mark = within(
+      factValue(pane, "Folder path") as HTMLElement,
+    ).getByRole("link", {
+      name: `View ${NAME} on GitHub`,
+    });
     expect(mark).toHaveAttribute("href", URL);
     expect(mark).not.toHaveAttribute("tabindex");
     expect(

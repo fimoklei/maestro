@@ -98,7 +98,7 @@ describe("BulkRemoveDialog — while the checks run", () => {
     const { onConfirm } = renderDialog({ view: checking });
 
     const confirm = screen.getByRole("button", {
-      name: "Remove from 3 targets — checks still running",
+      name: "Remove from 3 targets — checking for local edits",
     });
     expect(confirm).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(confirm);

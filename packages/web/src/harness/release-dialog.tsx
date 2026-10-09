@@ -146,7 +146,10 @@ function PlanBody({
 
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact label="Previous tag" value={plan.previousTag ?? "None yet"} />
+          <Fact
+            label="Previous tag"
+            value={plan.previousTag ?? "Not released yet"}
+          />
           <Fact label="Branch" value={plan.defaultBranch} />
           {/* The whole commit: a short hash is not the exact revision, and
               need not be unique in a repository this size (#519). */}

@@ -293,7 +293,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
       box.getAttribute("aria-describedby") ?? "",
     ) as HTMLElement;
     expect(reason.textContent).toBe(
-      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
     );
     // #1458: the shared machine value, not a hand-rolled <code>.
     expect(within(refused).queryAllByRole("code")).toEqual([]);

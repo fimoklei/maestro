@@ -515,7 +515,7 @@ const suites: [
           level: "error",
           label: "Unreadable folder",
           message:
-            "Nothing was copied. Make the folder readable, then pick it again.",
+            "Nothing was copied. Make the folder readable, then choose it again.",
         },
       ],
       [
@@ -523,7 +523,7 @@ const suites: [
         {
           level: "error",
           label: "Folder out of reach",
-          message: "Pick a folder inside your home folder.",
+          message: "Choose a folder inside your home folder.",
           detail: "Maestro reads inside the home folder only.",
         },
       ],
@@ -532,7 +532,7 @@ const suites: [
         {
           level: "error",
           label: "No SKILL.md",
-          message: "Pick the folder that holds the skill's SKILL.md.",
+          message: "Choose the folder that holds the skill's SKILL.md.",
         },
       ],
       [
@@ -569,7 +569,7 @@ const suites: [
         {
           level: "error",
           label: "Folder gone",
-          message: "Nothing was copied. Pick the folder again.",
+          message: "Nothing was copied. Choose the folder again.",
         },
       ],
       [
@@ -578,7 +578,7 @@ const suites: [
           level: "error",
           label: "Not a folder",
           message:
-            "A skill is a folder with a SKILL.md in it. Pick one of those.",
+            "A skill is a folder with a SKILL.md in it. Choose one of those.",
         },
       ],
       [
@@ -626,7 +626,7 @@ const suites: [
           level: "error",
           label: "Over 1,000 files",
           message:
-            "Nothing was copied. Pick the skill folder itself, not the repository around it.",
+            "Nothing was copied. Choose the skill folder itself, not the repository around it.",
         },
       ],
       [
@@ -635,7 +635,7 @@ const suites: [
           level: "error",
           label: "Over 50 MiB",
           message:
-            "Nothing was copied. Pick the skill folder itself, not the repository around it.",
+            "Nothing was copied. Choose the skill folder itself, not the repository around it.",
         },
       ],
       [
@@ -671,7 +671,7 @@ const suites: [
           level: "error",
           label: "Copy from another Harness",
           message:
-            "Pick a folder that is not a copy deployed by another Harness.",
+            "Choose a folder that is not a copy deployed by another Harness.",
           detail:
             "Maestro can update only copies deployed by the connected Harness.",
         },
@@ -1415,7 +1415,7 @@ describe("localEditsRefusal", () => {
     ],
     [
       "copies-differ",
-      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one.",
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one.",
     ],
     [
       "no-local-edits",
@@ -1439,7 +1439,7 @@ describe("localEditsRefusal", () => {
         },
       }),
     ).toBe(
-      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
     );
   });
 });

@@ -99,6 +99,14 @@ describe("ReleaseDialog", () => {
     ).toBeInTheDocument();
   });
 
+  it("states a first release in the release words of every screen", () => {
+    renderReady({ previousTag: null, previousTagCommit: null });
+
+    expect(
+      screen.getByText("Previous tag").nextElementSibling,
+    ).toHaveTextContent("Not released yet");
+  });
+
   it("puts what ships before the step, so the choice follows its consequences", () => {
     renderReady({
       findings: [{ skill: "broken", problem: "missing-manifest" }],

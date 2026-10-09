@@ -63,7 +63,7 @@ describe("Deploy-state copy", () => {
       "Install Claude Code or Codex to deploy skills globally.",
     );
     expect(NO_REPOSITORIES).toBe(
-      "No repositories registered yet. Select Register repository on the Repositories screen.",
+      "No repositories yet. Select Register repository on the Repositories screen.",
     );
     expect(NO_FILTER_MATCH).toBe(
       "No targets match the filters. Select Filter to show more targets.",

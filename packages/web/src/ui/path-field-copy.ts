@@ -11,7 +11,7 @@ const chooserHeadings: NoticeTable<ChooseFolderError> = {
   "chooser-busy": {
     level: "error",
     label: "Folder chooser already open",
-    message: "The field did not change. Pick the folder in the open chooser.",
+    message: "The field did not change. Choose the folder in the open chooser.",
   },
   "chooser-unavailable": {
     level: "error",

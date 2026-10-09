@@ -30,7 +30,7 @@ const repoPathHeadings: NoticeTable<
   "not-found": {
     level: "error",
     label: "No folder at that path",
-    message: "Check the spelling, or select Browse to pick the folder.",
+    message: "Check the spelling, or select Browse to choose the folder.",
     detail: "Nothing is at that path now.",
   },
   "not-a-directory": {

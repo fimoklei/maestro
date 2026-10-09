@@ -21,6 +21,8 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 - Include the visible label's words in the accessible name, in the same order
   and at the start. Name icon-only controls by their action and landmarks by
   their content. Review the name with the control or region it describes.
+  One sanctioned exception: the sidebar's Harness button is named
+  **Harness menu**, as `GLOSSARY.md` defines it.
 - Give fields visible labels; hints supplement them. Show status meaning in
   text as well as colour. Name link destinations in the link text.
 

@@ -21,14 +21,14 @@ export type ImportCheckLoad =
   | { kind: "error"; notice: NoticeContent }
   | { kind: "ready"; check: ImportCheck };
 
-// Beside the picked folder the way through is to pick again, not to import, so
-// only the two rows whose table sentence sends the author to Import skill are
-// written twice. The rest take `notice-copy`'s row as it stands.
+// Beside the chosen folder the way through is to choose again, not to import,
+// so only the two rows whose table sentence sends the author to Import skill
+// are written twice. The rest take `notice-copy`'s row as it stands.
 const SOURCE_BLOCKER_TEXT: Partial<Record<ImportSourceBlocker, string>> = {
   "invalid-frontmatter":
-    "Fix the SKILL.md frontmatter, then pick the folder again.",
+    "Fix the SKILL.md frontmatter, then choose the folder again.",
   "empty-description":
-    "Fill in the description in SKILL.md, then pick the folder again.",
+    "Fill in the description in SKILL.md, then choose the folder again.",
 };
 
 export const sourceBlockerNotice = (

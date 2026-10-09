@@ -328,7 +328,7 @@ describe("BulkRemoveRun", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Remove from 1 targets — checks still running",
+        name: "Remove from 1 targets — checking for local edits",
       }),
     ).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("dialog")).toHaveTextContent(

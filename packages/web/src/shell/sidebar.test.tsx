@@ -170,7 +170,7 @@ describe("Sidebar", () => {
     renderSidebar();
 
     expect(
-      await screen.findByText("No release · 0 skills"),
+      await screen.findByText("Not released yet · 0 skills"),
     ).toBeInTheDocument();
   });
 });
