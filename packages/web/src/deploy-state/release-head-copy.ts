@@ -141,6 +141,15 @@ export function comparedFact(head: ReleaseHead, now: Date): string {
   return since === null ? NOT_READ_YET : `Read ${since}`;
 }
 
+/**
+ * A Deploy-state target's Compared age: the screen's oldest reading, as band 2
+ * dates it, so one screen never shows two ages for one target.
+ */
+export const screenComparedFact = (
+  head: ReleaseHead,
+  compared: string | null,
+) => (head.comparedAt === null || compared === null ? NOT_READ_YET : compared);
+
 const COPY_CHIPS = {
   "local-edits": {
     label: "Local edits",

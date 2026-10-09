@@ -43,7 +43,8 @@ export function RepositoriesView() {
   });
   const screen = useTableScreen({
     name: SCREEN,
-    reading: registry.isFetching,
+    reading:
+      registry.isFetching || deployStates.some((read) => read.isFetching),
     settled: registry.isSuccess,
     failure: registry.isError ? REPOS_NOT_READ : null,
     onReread: () => {
@@ -59,7 +60,11 @@ export function RepositoriesView() {
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
-  const register = useRegisterDialog({ report, onAdded: screen.markAdded });
+  const register = useRegisterDialog({
+    report,
+    onAdded: screen.markAdded,
+    registered: paths,
+  });
   const unregisterWrite = useWriteAction(unregister, {
     report,
     action: "unregister",

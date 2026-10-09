@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useWriteAction } from "../ui/use-write-action";
 import { FOLDER_MISSING } from "./dialog-copy";
@@ -5,6 +6,7 @@ import { isImportable } from "./import-view-model";
 import { importNotice } from "./notice-copy";
 import {
   type ImportOutcome,
+  importCheckQuery,
   useImportCheck,
   useImportSkill,
 } from "./use-harness";
@@ -26,6 +28,7 @@ export function useImportFlow(
   // Null until the author types: Maestro's proposal fills the field until then,
   // and a new folder brings a new proposal.
   const [editedName, setEditedName] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const check = useImportCheck(source, editedName);
   const importSkill = useImportSkill();
   const importWrite = useWriteAction(importSkill, {
@@ -72,9 +75,10 @@ export function useImportFlow(
     },
     commitSource,
     setEditedName,
-    // Imports only a folder whose check came back clean; any other submit
-    // checks the typed folder, or leaves the refusal beside its field.
-    submit: () => {
+    // Imports only a folder whose check came back clean: a check under way is
+    // awaited and a failed one asked again, so a submit is never silent. A new
+    // typed folder is checked; a refusal stays beside its field.
+    submit: async () => {
       const typed = sourceText.trim();
       if (typed === "") {
         setFolderMissing(true);
@@ -84,9 +88,21 @@ export function useImportFlow(
         commitSource(typed);
         return;
       }
-      if (source === null || !isImportable(check.data)) return;
+      // A failed check states itself beside Folder path; so does a refusal.
+      const checked =
+        check.data ??
+        (await queryClient
+          .fetchQuery(importCheckQuery(typed, editedName))
+          .catch(() => undefined));
+      if (checked === undefined || !isImportable(checked)) return;
       importWrite.run(
-        { source, name },
+        {
+          source: typed,
+          name:
+            checked.mode === "update"
+              ? checked.name
+              : (editedName ?? checked.name),
+        },
         {
           onSuccess: (outcome) => {
             close();

@@ -314,4 +314,33 @@ describe("Repositories", () => {
     await rowOf("…/me/acme-web");
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
+
+  // #1448 G3: focus stays visible once the unregistered row has left.
+  it("hands focus to the row now in the unregistered row's place", async () => {
+    stubRegistry(threeRepos());
+    renderRepositories();
+    const grid = await screen.findByRole("grid", {
+      name: "Repositories table",
+    });
+    await rowOf("…/me/old-site");
+    const names = within(grid)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => within(row).getAllByRole("gridcell")[0]?.textContent);
+    const [, gone, next] = names;
+    if (gone == null || next == null) throw new Error("three rows expected");
+
+    const dialog = await chooseUnregister(gone);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Unregister repository" }),
+    );
+
+    await waitFor(() =>
+      expect(within(grid).queryByText(gone)).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(grid).toHaveFocus());
+    expect(
+      document.getElementById(grid.getAttribute("aria-activedescendant") ?? ""),
+    ).toHaveTextContent(next);
+  });
 });

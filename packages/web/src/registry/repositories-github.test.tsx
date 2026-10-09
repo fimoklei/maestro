@@ -103,6 +103,28 @@ describe("Repositories — GitHub column", () => {
     ).toBeInTheDocument();
   });
 
+  // #1448 G7: Re-read also reads the GitHub column again.
+  it("spins Re-read Repositories until the GitHub column is read again", async () => {
+    const state: FakeRegistry = linked();
+    stubRegistry(state);
+    renderRepositories();
+    await within(await githubCell(NAME)).findByRole("link");
+    const reread = screen.getByRole("button", { name: "Re-read Repositories" });
+    await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
+
+    let answer = () => {};
+    state.holdDeployState = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    await userEvent.click(reread);
+    // The registry answers at once; the deploy-state read is still out.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(reread).toHaveAttribute("aria-busy", "true");
+
+    answer();
+    await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
+  });
+
   it("re-reads the GitHub page with Re-read Repositories", async () => {
     const state: FakeRegistry = {
       repos: [{ path: REPO, status: "ready" }],

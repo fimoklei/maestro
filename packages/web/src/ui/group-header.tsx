@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { CountedLabel } from "./counted-label";
 import { Icon } from "./icon";
 
 // Never a stop for the grid's cursor.
@@ -26,7 +27,7 @@ export function GroupHeader({
     <tr className="h-row border-divider border-b bg-gray-2">
       <HeaderCell
         colSpan={columnCount}
-        className="px-inline font-medium text-gray-12 text-meta"
+        className="px-inline text-gray-11 text-meta"
       >
         <span className="flex min-w-0 items-center gap-inline">
           {collapsed === undefined ? null : (
@@ -44,18 +45,10 @@ export function GroupHeader({
             </button>
           )}
           <span className="flex-none">
-            {label}
-            {count === undefined ? null : (
-              <>
-                {" "}
-                <span className="text-gray-11 tabular-nums">{count}</span>
-              </>
-            )}
+            <CountedLabel label={label} count={count ?? null} />
           </span>
           {meta ? (
-            <span className="ml-auto min-w-0 truncate font-normal text-gray-11">
-              {meta}
-            </span>
+            <span className="ml-auto min-w-0 truncate">{meta}</span>
           ) : null}
         </span>
       </HeaderCell>

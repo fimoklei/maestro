@@ -1,7 +1,9 @@
 import type { Ref } from "react";
+import { CountedLabel } from "./counted-label";
 import { FOCUS_RING } from "./focus-ring";
 
-// A pane sub-list's heading, with its row count (#1458).
+// A section's heading with its row count: a pane sub-list, or a section
+// beside a table (#1458).
 export function SubListHeading({
   label,
   count,
@@ -19,13 +21,7 @@ export function SubListHeading({
       tabIndex={-1}
       className={`m-0 mb-inline font-normal text-gray-11 text-meta ${FOCUS_RING}`}
     >
-      {label}
-      {count === null ? null : (
-        <>
-          {" "}
-          <span className="text-gray-12 tabular-nums">{count}</span>
-        </>
-      )}
+      <CountedLabel label={label} count={count} />
     </h3>
   );
 }

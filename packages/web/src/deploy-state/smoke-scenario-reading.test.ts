@@ -244,6 +244,6 @@ describe("readCockpit agrees with the Deploy-state screen", () => {
 
     expect(
       readCockpit({ deployState: null, drift: { ok: false } }).status,
-    ).toBe(statusCard(row, new Date()).reason);
+    ).toBe(statusCard(row, null).reason);
   });
 });

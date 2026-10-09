@@ -185,19 +185,26 @@ type DirectWrite = {
   item: string;
   /** The pane's foot offers it too. */
   foot: boolean;
+  /** Its ⋮ item leaves focus on ⋮, which keeps it once the write settles. */
+  staysOnMenu: boolean;
 };
 
-// Every write the server is sent from here on stays running.
+// Every write the server is sent from here on stays running until released.
 const holdWrites = () => {
   const answer = fetch;
+  let release = () => {};
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   vi.stubGlobal(
     "fetch",
     vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
       (init?.method ?? "GET") === "GET"
         ? answer(input, init)
-        : new Promise<Response>(() => {}),
+        : released.then(() => answer(input, init)),
     ),
   );
+  return release;
 };
 
 // A target behind its latest release: its Status card and its Update target.
@@ -268,6 +275,8 @@ type PaneSubList = {
   value: string;
   /** The ⋮ item that carries the row's GitHub page, where it has one. */
   githubItem: string | null;
+  /** Every destructive item the row's ⋮ offers, in ⋮ order. */
+  destructive: string[];
 };
 
 const PANE_SUB_LISTS: PaneSubList[] = [
@@ -300,6 +309,7 @@ const PANE_SUB_LISTS: PaneSubList[] = [
     item: "tdd",
     value: "v0.3.2",
     githubItem: "View skill on GitHub",
+    destructive: ["Remove skill"],
   },
   {
     file: "inventory/inventory-view.tsx",
@@ -309,6 +319,7 @@ const PANE_SUB_LISTS: PaneSubList[] = [
     item: "Claude Code",
     value: "v1.0.0",
     githubItem: null,
+    destructive: ["Remove from"],
   },
 ];
 
@@ -363,7 +374,6 @@ const ON_TABLE_SCREEN: Row[] = [
       name: "…/me/a",
       destructive: [],
       pane: true,
-      // Its pane offers the retry in the notice, not the foot.
       write: {
         render: () => {
           stubServer(() => ({
@@ -384,7 +394,8 @@ const ON_TABLE_SCREEN: Row[] = [
         },
         name: "…/me/a",
         item: "Retry deploy",
-        foot: false,
+        foot: true,
+        staysOnMenu: false,
       },
       item: { label: "Update target", dialog: true, opensPane: true },
     },
@@ -463,12 +474,20 @@ const ON_TABLE_SCREEN: Row[] = [
                 ],
               }),
             },
+            promote: {
+              body: {
+                branch: "maestro/tdd",
+                pullRequestUrl:
+                  "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
+              },
+            },
           });
           renderHarness();
         },
         name: "tdd",
         item: "Propose change",
         foot: true,
+        staysOnMenu: true,
       },
       item: { label: "Withdraw proposal", dialog: true, opensPane: false },
     },
@@ -884,7 +903,7 @@ describe("every table screen", () => {
       name: `Re-read ${write.screenName}`,
     });
     await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
-    holdWrites();
+    return holdWrites();
   };
 
   // A busy write shows its spinner in the control that started it.
@@ -902,6 +921,30 @@ describe("every table screen", () => {
       );
     });
   });
+
+  // #1448 G2: focus stays visible on the control that started the write.
+  describe.each(writes.filter((write) => write.staysOnMenu))(
+    "$file direct write from ⋮",
+    (write) => {
+      it("leaves focus on ⋮ once the write settles", async () => {
+        const release = await readyToWrite(write);
+        await userEvent.click(menuOf(write));
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: write.item }),
+        );
+        await waitFor(() =>
+          expect(menuOf(write)).toHaveAttribute("aria-busy", "true"),
+        );
+
+        release();
+
+        await waitFor(() =>
+          expect(menuOf(write)).not.toHaveAttribute("aria-busy"),
+        );
+        expect(menuOf(write)).toHaveFocus();
+      });
+    },
+  );
 
   describe.each(writes.filter((write) => write.foot))(
     "$file direct write from the pane foot",
@@ -962,8 +1005,11 @@ describe("every table screen", () => {
       expect(within(row).getByText(subList.value)).toHaveClass("font-mono");
       expect(within(row).queryByRole("link")).toBeNull();
 
-      if (subList.githubItem === null) return;
+      // #1452: a destructive item stays danger in the sub-list's ⋮ too.
       await userEvent.click(htmlElement(parts[3]));
+      expectDanger(await screen.findAllByRole("menuitem"), subList.destructive);
+
+      if (subList.githubItem === null) return;
       expect(
         await screen.findByRole("menuitem", { name: subList.githubItem }),
       ).toHaveAttribute("href");

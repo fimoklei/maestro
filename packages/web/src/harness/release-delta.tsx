@@ -1,6 +1,7 @@
 import type { PendingSkillMovement, SkillMovementKind } from "@maestro/core";
 import { createDataTableColumns, DataTable } from "../ui/data-table";
 import { MachineValue } from "../ui/machine-value";
+import { SubListHeading } from "../ui/sub-list-heading";
 
 // "Deleted", never "Removed": remove belongs to deployed copies alone.
 const KINDS: Record<SkillMovementKind, string> = {
@@ -41,10 +42,11 @@ export function ReleaseDelta({
 }) {
   return (
     <section className="flex flex-col gap-inline">
-      <h3 className="m-0 font-medium text-gray-12 text-row">
-        Pending release{" "}
-        <span className="text-gray-11 tabular-nums">{movements.length}</span>
-      </h3>
+      <SubListHeading
+        label="Pending release"
+        count={movements.length}
+        headingRef={null}
+      />
       <div className="overflow-hidden rounded-control border border-edge">
         <DataTable
           label="Pending release table"

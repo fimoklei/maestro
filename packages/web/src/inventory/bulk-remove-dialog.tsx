@@ -109,13 +109,6 @@ export function BulkRemoveDialog({
         // Stays through the run and beside a failure: it is what the confirm
         // acts on.
         <>
-          {grouped.clean === null ? null : (
-            <Notice
-              trigger="load"
-              id={cleanId}
-              notice={{ level: "success", ...grouped.clean }}
-            />
-          )}
           <GroupedList
             groups={[
               {
@@ -143,6 +136,14 @@ export function BulkRemoveDialog({
             checklist={null}
             live={null}
           />
+          {/* Above the footer, as every dialog's notice sits. */}
+          {grouped.clean === null ? null : (
+            <Notice
+              trigger="load"
+              id={cleanId}
+              notice={{ level: "success", ...grouped.clean }}
+            />
+          )}
         </>
       )}
     </Dialog>

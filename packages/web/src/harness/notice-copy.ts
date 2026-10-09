@@ -233,7 +233,7 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   },
   unreadable: {
     level: "error",
-    label: "Unreadable working tree",
+    label: "Working tree not read",
     message: `Nothing was pushed. Make the Harness folder readable, then select ${DELETE_SKILL} again.`,
   },
 };
@@ -326,7 +326,7 @@ const restorationHeadings = leftAsItWas<RestoreSkillError>(
     // sends the author to their Git tool rather than naming a missing skill.
     "source-unreadable": {
       level: "error",
-      label: "Committed copy unreadable",
+      label: "Committed copy not read",
       message: `Check the Harness clone with your Git tool, then select ${RESTORE_SKILL} again.`,
       detail:
         "Maestro could not read this skill out of your last local commit.",
@@ -508,7 +508,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   },
   "harness-unreadable": {
     level: "error",
-    label: "Unreadable Harness clone",
+    label: "Harness clone not read",
     message: `Nothing was copied. Make the Harness clone readable, then select ${UPDATE_SKILL} again.`,
     detail:
       "Maestro reads the clone's committed state before replacing a skill.",

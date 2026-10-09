@@ -162,11 +162,28 @@ export function DeployStateView() {
       ),
     ),
   ];
+  const freshness = freshnessLine(
+    {
+      readAt: [
+        globalDeploy.dataUpdatedAt,
+        globalDrift.dataUpdatedAt,
+        ...repoDeploy.map((query) => query.dataUpdatedAt),
+        ...repoDrift.map((query) => query.dataUpdatedAt),
+        // The server keeps a release comparison that later failed, so it can
+        // be older than the read that carried it.
+        ...targets.map((row) => row.head?.comparedAt),
+      ],
+      outcome: "untracked",
+    },
+    now,
+  );
+
   const rows: TargetTableRow[] = targets.map((row) => ({
     ...row,
     actions: targetMenuItems(row, retry.isRetrying(row.wire)),
     links: targetLinkItems(row),
     busy: retry.isRetrying(row.wire),
+    compared: freshness,
   }));
   const isColdStart =
     isRead &&
@@ -238,22 +255,6 @@ export function DeployStateView() {
     columns: COLUMN_OPTIONS,
     unavailable: "no targets yet",
   });
-
-  const freshness = freshnessLine(
-    {
-      readAt: [
-        globalDeploy.dataUpdatedAt,
-        globalDrift.dataUpdatedAt,
-        ...repoDeploy.map((query) => query.dataUpdatedAt),
-        ...repoDrift.map((query) => query.dataUpdatedAt),
-        // The server keeps a release comparison that later failed, so it can
-        // be older than the read that carried it.
-        ...targets.map((row) => row.head?.comparedAt),
-      ],
-      outcome: "untracked",
-    },
-    now,
-  );
 
   return (
     <TableScreen

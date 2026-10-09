@@ -1,7 +1,6 @@
 import { type ReactNode, useRef } from "react";
 import { DetailPane, type PaneNotice } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
-import { NOT_READ_YET } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import {
@@ -21,6 +20,7 @@ import {
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
   RETRY_LABELS,
+  screenComparedFact,
   unfinishedOperationNotice,
 } from "./release-head-copy";
 import { SelectedSkills } from "./selected-skills";
@@ -169,10 +169,7 @@ export function TargetDetailPane({
           head
             ? {
                 label: "Compared",
-                value:
-                  head.comparedAt === null || compared === null
-                    ? NOT_READ_YET
-                    : compared,
+                value: screenComparedFact(head, compared),
               }
             : null,
           row.extraFiles

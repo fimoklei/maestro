@@ -334,8 +334,9 @@ export function DataTable<T extends RowData>({
         aria-current={isOpen || undefined}
         data-active={gridFocused && index === active ? true : undefined}
         // The press focuses the grid, so the cursor moves with it; on click
-        // it would ring the previous row until release.
-        onMouseDown={(event) => {
+        // it would ring the previous row until release. Pointer, not mouse: a
+        // ⋮ trigger cancels the mouse events, and its row still takes the cursor.
+        onPointerDown={(event) => {
           if (event.currentTarget.contains(event.target as Node)) {
             setCursor(index);
           }

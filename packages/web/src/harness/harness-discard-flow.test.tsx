@@ -105,6 +105,28 @@ describe("Harness discard", () => {
     expect(screen.queryByText("code-review")).toBeNull();
   });
 
+  // #1448 G3: focus stays visible once the discarded row has left.
+  it("hands focus to Re-read Harness once the last row is discarded", async () => {
+    stubHarnessServer({
+      read: { body: EDITED, afterPromote: GONE },
+      discard: { body: { name: "code-review" } },
+    });
+    renderHarness();
+    const dialog = await openDiscard();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^discard change$/i }),
+    );
+
+    await waitFor(() => expect(screen.queryByText("code-review")).toBeNull());
+    // No row is left, so focus goes to the screen's Re-read.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Re-read Harness" }),
+      ).toHaveFocus(),
+    );
+  });
+
   it("states a refusal in the dialog and keeps the confirmation standing", async () => {
     stubHarnessServer({
       read: { body: EDITED },

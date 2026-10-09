@@ -99,6 +99,8 @@ const CLEAN_CHECK = {
 // folder chooser, the import check, and the import itself.
 function stubImportServer(options: {
   check?: unknown;
+  // Answers to the check in turn, before `check` answers every later one.
+  checkAnswers?: (() => Promise<Response>)[];
   importStatus?: number;
   importBody?: unknown;
   // What the harness read answers once the import has gone through.
@@ -118,7 +120,8 @@ function stubImportServer(options: {
         );
       }
       if (url === "/api/harness/import/check") {
-        return jsonResponse(options.check ?? CLEAN_CHECK);
+        const next = options.checkAnswers?.shift();
+        return next ? next() : jsonResponse(options.check ?? CLEAN_CHECK);
       }
       if (url === "/api/harness/import") {
         imports.push(JSON.parse(String(init?.body)));
@@ -330,6 +333,48 @@ describe("Harness import flow", () => {
       "code-review",
     );
     expect(imports).toEqual([]);
+  });
+
+  // #1448 G12: a submit is never silent.
+  it("imports once the check under way lands clean", async () => {
+    let land = () => {};
+    const landed = new Promise<void>((resolve) => {
+      land = resolve;
+    });
+    const { imports } = stubImportServer({
+      checkAnswers: [() => landed.then(() => jsonResponse(CLEAN_CHECK))],
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openSkill={null} />);
+
+    await openImportWithSource(user);
+    await user.click(dialogImport());
+    expect(imports).toEqual([]);
+
+    land();
+    await waitFor(() =>
+      expect(imports).toEqual([{ source: SOURCE, name: "code-review" }]),
+    );
+  });
+
+  it("checks again on submit after the check failed, then imports", async () => {
+    const { imports, calls } = stubImportServer({
+      checkAnswers: [async () => jsonResponse({}, 500)],
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openSkill={null} />);
+
+    await openImportWithSource(user);
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.endsWith("/api/harness/import/check")),
+      ).toHaveLength(1),
+    );
+    await user.click(dialogImport());
+
+    await waitFor(() =>
+      expect(imports).toEqual([{ source: SOURCE, name: "code-review" }]),
+    );
   });
 
   it("reports the conventions without closing Import", async () => {

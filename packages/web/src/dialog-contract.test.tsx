@@ -609,21 +609,33 @@ const ON_DIALOG: Row[] = [
     loadFailed: null,
     notices: [
       {
+        // Beside a cost and a refusal, so the notice's place is really checked.
         label: "3 clean copies",
         render: () => (
           <BulkRemoveDialog
             skillName="tdd"
-            targetCount={3}
+            targetCount={5}
             view={{
               kind: "grouped",
               clean: {
                 label: "3 clean copies",
                 message: "Only the deployed files are removed.",
               },
-              cost: [],
-              refused: [],
-              removableCount: 3,
-              confirmLabel: "Remove from 3 targets",
+              cost: [
+                {
+                  label: "/dev/acme-api",
+                  version: "v1.0.0",
+                  reason: "Nothing recorded — may lose work",
+                },
+              ],
+              refused: [
+                {
+                  label: "/dev/legacy-etl",
+                  reason: "Repository not registered",
+                },
+              ],
+              removableCount: 4,
+              confirmLabel: "Remove from 4 targets · 1 lose local edits",
             }}
             isRemoving={false}
             report={null}

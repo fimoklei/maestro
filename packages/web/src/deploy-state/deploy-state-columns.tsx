@@ -21,16 +21,15 @@ export type TargetTableRow = TargetRow & {
   links: { label: string; href: string }[];
   /** Its retry is running. */
   busy: boolean;
+  /** Band 2's line, which the Status card's read age repeats. */
+  compared: string | null;
 };
 
 const unranked = Number.MAX_SAFE_INTEGER;
 
-function statusCardContent(
-  row: TargetTableRow,
-  now: Date,
-): DataTableCardContent | null {
+function statusCardContent(row: TargetTableRow): DataTableCardContent | null {
   if (row.status === null) return null;
-  const { reason, readAge } = statusCard(row, now);
+  const { reason, readAge } = statusCard(row, row.compared);
   return {
     reading: row.status,
     value: row.release ? <ReleaseValue release={row.release} /> : null,
