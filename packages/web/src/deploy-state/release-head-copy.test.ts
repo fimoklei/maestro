@@ -128,7 +128,7 @@ describe("pinnedTagsLine", () => {
 describe("RELEASE_NOT_ADOPTED", () => {
   it("names the way to one release in one meta line", () => {
     expect(RELEASE_NOT_ADOPTED).toBe(
-      "Release not adopted. Select Remove skill for each, then Deploy skill.",
+      "Release not adopted. Select Remove skill for each, then select Deploy skill.",
     );
   });
 });

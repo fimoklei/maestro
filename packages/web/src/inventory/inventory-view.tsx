@@ -5,7 +5,12 @@ import { DELETE_UNAVAILABLE } from "../harness/dialog-copy";
 import { folderInClone } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
-import { DELETE_SKILL, UPDATE_TARGET } from "../ui/control-labels";
+import {
+  DELETE_SKILL,
+  DEPLOY_SKILL,
+  UPDATE_TARGET,
+  VIEW_DEPLOY_STATE,
+} from "../ui/control-labels";
 import { Icon } from "../ui/icon";
 import { Notice } from "../ui/notice";
 import { SelectionBar } from "../ui/selection-bar";
@@ -28,7 +33,6 @@ import {
   type RowAction,
 } from "./inventory-columns";
 import {
-  DEPLOY_SKILL,
   NO_FILTER_MATCH,
   NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
@@ -38,7 +42,6 @@ import {
   removeFromToolsLabel,
   SEARCH_LABEL,
   SELECT_ALL_LABEL,
-  SHOW_IN_DEPLOY_STATE,
   STAGE_COLUMN_LABEL,
   stageRowLabel,
 } from "./inventory-copy";
@@ -253,7 +256,7 @@ export function InventoryView({
         ? []
         : [
             {
-              label: SHOW_IN_DEPLOY_STATE,
+              label: VIEW_DEPLOY_STATE,
               onSelect: () => onShowTarget(rowId),
             },
           ]),

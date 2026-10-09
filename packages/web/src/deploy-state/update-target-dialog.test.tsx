@@ -282,7 +282,7 @@ describe("UpdateTargetDialog", () => {
     });
 
     const keep = screen.getByText(
-      "To keep the edits instead, select Cancel, then Import local edits.",
+      "To keep the edits instead, select Cancel, then select Import local edits.",
     );
     // Cause first, then the step: the consent precedes the way out.
     const consent = screen.getByRole("checkbox", {

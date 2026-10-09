@@ -1,10 +1,13 @@
-import { DEPLOY_SKILL } from "../inventory/inventory-copy";
-import { UPDATE_TARGET } from "../ui/control-labels";
+import {
+  DEPLOY_SKILL,
+  IMPORT_LOCAL_EDITS,
+  UPDATE_TARGET,
+} from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
 import type { RowMenuItem } from "../ui/row-menu";
 import type { TargetAction, TargetTableRow } from "./deploy-state-columns";
 import { VIEW_REPOSITORY_ON_GITHUB } from "./deploy-state-copy";
-import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
+
 import { RETRY_LABELS } from "./release-head-copy";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";
 import { updateLabel } from "./update-target-copy";

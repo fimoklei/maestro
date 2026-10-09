@@ -1,7 +1,8 @@
 import type { DeploySkillError } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
-import { machineValues, readNotice } from "../test-utils";
+import { machineValues, readNotice, unselectedControls } from "../test-utils";
+import { localEditsCheckNotice } from "./import-local-edits-copy";
 import {
   type DeployStateNotice,
   deployNotice,
@@ -237,6 +238,15 @@ describe("deploy notices", () => {
     expect(cases).toHaveLength(24);
   });
 
+  it("names every control it points to as select {Control}", () => {
+    for (const [code] of cases) {
+      expect(
+        unselectedControls(deployNotice(refusal(code)).message),
+        code,
+      ).toEqual([]);
+    }
+  });
+
   it.each(cases)("states the whole notice for %s", (code, expected) => {
     expect(deployNoticeFor(code, undefined)).toEqual(expected);
     expect(deployNotice(refusal(code))).toEqual(expected);
@@ -299,7 +309,8 @@ describe("remove notices", () => {
       "repo-not-registered",
       {
         label: "Repository not registered",
-        message: "Register this repository in Maestro, then remove again.",
+        message:
+          "Select Register repository on the Repositories screen, then remove again.",
       },
     ],
     [
@@ -400,6 +411,15 @@ describe("remove notices", () => {
     ],
   ];
 
+  it("names every control it points to as select {Control}", () => {
+    for (const [code] of cases) {
+      expect(
+        unselectedControls(removeNotice(refusal(code)).message),
+        code,
+      ).toEqual([]);
+    }
+  });
+
   it.each(cases)("states the whole notice for %s", (code, expected) => {
     expect(removeNotice(refusal(code))).toEqual(expected);
   });
@@ -446,7 +466,7 @@ describe("update preview notices", () => {
       {
         label: "Repository not registered",
         message:
-          "Register this repository in Maestro, then select Update target again.",
+          "Select Register repository on the Repositories screen, then select Update target again.",
       },
     ],
     [
@@ -546,6 +566,17 @@ describe("update preview notices", () => {
       },
     ],
   ];
+
+  it("names every control it points to as select {Control}", () => {
+    for (const [code] of cases) {
+      expect(
+        unselectedControls(
+          updatePreviewNotice(refusal(code), "Update target").message,
+        ),
+        code,
+      ).toEqual([]);
+    }
+  });
 
   it.each(cases)("states %s", (code, expected) => {
     expect(updatePreviewNotice(refusal(code), "Update target")).toEqual(
@@ -779,6 +810,15 @@ describe("retry notices", () => {
     ],
   ];
 
+  it("names every control it points to as select {Control}", () => {
+    for (const [code] of cases) {
+      expect(
+        unselectedControls(retryNotice(refusal(code), deploy).message),
+        code,
+      ).toEqual([]);
+    }
+  });
+
   it.each(cases)("states %s", (code, notice) => {
     expect(readNotice(retryNotice(refusal(code), deploy))).toEqual(notice);
   });
@@ -832,5 +872,22 @@ describe("retry notices", () => {
     expect(
       retryNotice(refusal("retry-failed"), { kind, release: "v0.3.4" }),
     ).toEqual({ label, message });
+  });
+});
+
+describe("Repository not registered", () => {
+  const STEP = "Select Register repository on the Repositories screen";
+
+  it("names Register repository and its screen in every notice", () => {
+    const deploy = { kind: "deploy", release: "v0.3.4" } as const;
+    for (const notice of [
+      deployNotice(refusal("repo-not-registered")),
+      removeNotice(refusal("repo-not-registered")),
+      updatePreviewNotice(refusal("repo-not-registered"), "Update target"),
+      retryNotice(refusal("repo-not-registered"), deploy),
+      localEditsCheckNotice(refusal("repo-not-registered")),
+    ]) {
+      expect(readNotice(notice)?.message).toContain(STEP);
+    }
   });
 });

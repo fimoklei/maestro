@@ -348,7 +348,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Nothing was imported. Select Close, then Import local edits again.",
+        "Nothing was imported. Select Close, then select Import local edits again.",
       ),
     ).toBeInTheDocument();
   });

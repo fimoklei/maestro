@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { DEPLOY_SKILL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import type { NoticeContent } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
@@ -6,7 +7,6 @@ import { Select, type SelectOption } from "../ui/select";
 import {
   BULK_DEPLOY_TARGET,
   bulkDeployTitle,
-  DEPLOY_SKILL,
   DEPLOY_SKILLS,
 } from "./inventory-copy";
 

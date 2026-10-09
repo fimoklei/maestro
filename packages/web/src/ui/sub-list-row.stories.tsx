@@ -11,7 +11,7 @@ const meta = {
     value: "v1.4.0",
     menuLabel: "Actions for Claude Code",
     items: [
-      { label: "Show in Deploy-state", onSelect: () => {} },
+      { label: "View Deploy-state", onSelect: () => {} },
       { label: "Remove from target", danger: true, onSelect: () => {} },
     ],
   },

@@ -6,6 +6,7 @@ import { repoRowId } from "../deploy-state/target-rows";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
+import { REGISTER_REPOSITORY } from "../ui/control-labels";
 import { Icon } from "../ui/icon";
 import { named, phrase } from "../ui/phrase";
 import { TableScreen } from "../ui/table-screen";
@@ -20,7 +21,6 @@ import {
 import {
   EMPTY_SENTENCE,
   EMPTY_TITLE,
-  REGISTER_REPOSITORY,
   REPOS_NOT_READ,
   SCREEN,
   STATUS_READINGS,

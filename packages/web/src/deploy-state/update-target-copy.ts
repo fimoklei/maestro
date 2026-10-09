@@ -1,6 +1,12 @@
 // Every word the Update target control and its preview show.
+
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
-import { UPDATE_TARGET, UPDATE_TARGETS } from "../ui/control-labels";
+import {
+  IMPORT_LOCAL_EDITS,
+  UPDATE_TARGET,
+  UPDATE_TARGETS,
+} from "../ui/control-labels";
+import { CANCEL } from "../ui/dialog-copy";
 import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
 
@@ -57,8 +63,7 @@ export const BECOMES_EMPTY =
 export const DISCARD_LOCAL_EDITS = "Discard local edits";
 export const OVERWRITE_UNVERIFIED = "Overwrite unverified copy";
 
-export const KEEP_WORK_BY_IMPORTING =
-  "To keep the edits instead, select Cancel, then Import local edits.";
+export const KEEP_WORK_BY_IMPORTING = `To keep the edits instead, select ${CANCEL}, then select ${IMPORT_LOCAL_EDITS}.`;
 
 export const localEditsSentence = (name: string, release: string): Phrase =>
   phrase`${named(name)} has local edits. This update replaces them with release ${machine(release)}.`;

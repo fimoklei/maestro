@@ -1,5 +1,5 @@
 import { Card } from "../ui/card";
-import { DELETE_SKILL } from "../ui/control-labels";
+import { DELETE_SKILL, PROPOSE_CHANGE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { InlineName } from "../ui/inline-name";
@@ -106,8 +106,8 @@ export function DeletionDialog({
             <PhraseText
               copy={
                 mode.screen === "harness"
-                  ? phrase`To also delete it from ${named(mode.origin)}, select Propose change.`
-                  : phrase`To also delete it from ${named(mode.origin)}, go to the Harness screen and select Propose change.`
+                  ? phrase`To also delete it from ${named(mode.origin)}, select ${PROPOSE_CHANGE}.`
+                  : phrase`To also delete it from ${named(mode.origin)}, go to the Harness screen and select ${PROPOSE_CHANGE}.`
               }
             />
           </p>
@@ -118,8 +118,7 @@ export function DeletionDialog({
                 ? {
                     level: "warning",
                     label: `Uncommitted changes in ${skill}`,
-                    message:
-                      "Delete skill discards them. To keep them, commit them in your Git tool first.",
+                    message: `${DELETE_SKILL} discards them. To keep them, commit them in your Git tool first.`,
                     detail: phrase`The skill's files in your clone of ${named(mode.origin)} differ from its last commit.`,
                   }
                 : null
@@ -168,6 +167,6 @@ function openRequestNotice(
     : {
         level: "warning",
         label: `Pull request #${request.number} will delete ${skill} instead`,
-        message: phrase`${named(request.author)} opened it to propose changes to ${named(skill)}. Delete skill replaces those changes with the deletion.`,
+        message: phrase`${named(request.author)} opened it to propose changes to ${named(skill)}. ${DELETE_SKILL} replaces those changes with the deletion.`,
       };
 }

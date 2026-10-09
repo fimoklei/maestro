@@ -1,10 +1,12 @@
 // Every word a target's Release, Status hover card and pane state. Clock-injected.
+
 import type {
   DeployedPrimitive,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
 } from "@maestro/core";
+import { DEPLOY_SKILL, REMOVE_SKILL } from "../ui/control-labels";
 import { ago, NOT_READ_YET } from "../ui/freshness";
 import { type Copy, machine, type Phrase, phrase } from "../ui/phrase";
 import { joinNames } from "./join-names";
@@ -50,11 +52,10 @@ export function pinnedTagsLine(pinned: PinnedPerSkill): Phrase {
   return phrase`${groups.reduce((line, group) => phrase`${line}, ${group}`)}.`;
 }
 
-export const RELEASE_NOT_ADOPTED =
-  "Release not adopted. Select Remove skill for each, then Deploy skill.";
+export const RELEASE_NOT_ADOPTED = `Release not adopted. Select ${REMOVE_SKILL} for each, then select ${DEPLOY_SKILL}.`;
 
-const RETRY_DEPLOY = "Retry deploy";
-const RETRY_REMOVAL = "Retry removal";
+export const RETRY_DEPLOY = "Retry deploy";
+export const RETRY_REMOVAL = "Retry removal";
 export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
   deploy: RETRY_DEPLOY,
   remove: RETRY_REMOVAL,

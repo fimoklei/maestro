@@ -5,7 +5,7 @@ import { useRereadInventory } from "../shell/use-reread-inventory";
 import { BandAction } from "../ui/band-action";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { CREATE_RELEASE } from "../ui/control-labels";
+import { CREATE_RELEASE, IMPORT_SKILL } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { Icon } from "../ui/icon";
@@ -266,7 +266,7 @@ export function HarnessView({
           <>
             <BandAction
               icon={FolderInput}
-              label="Import skill"
+              label={IMPORT_SKILL}
               onClick={importFlow.start}
             />
             {/* Closed while the remote's answer is unknown — an offline or
@@ -334,7 +334,7 @@ export function HarnessView({
         description: JOURNEY_EMPTY.body,
         action: (
           <Button variant="quiet" onClick={importFlow.start}>
-            Import skill
+            {IMPORT_SKILL}
           </Button>
         ),
       }}

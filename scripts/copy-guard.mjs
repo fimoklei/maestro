@@ -52,6 +52,9 @@ const RETIRED = [
   /\bTarget held by another operation\b/i,
   /\bAnother change is running\b/i,
   /\bHarness already changing\b/i,
+  // A control is named exactly, and a dialog is left by its Close (#1460).
+  /\bShow in Deploy-state\b/i,
+  /\bClose this dialog\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.
   /\b(?:seamless|effortless|supercharge|powerful|magic|unlock|leverage|AI-powered|intelligent|smartly|empower|robust|Oops|Whoops|Let's)/i,
   /!(?=\s|$)/,

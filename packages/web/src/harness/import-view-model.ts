@@ -5,6 +5,7 @@ import type {
   ManifestAdvisory,
 } from "@maestro/core";
 import type { ActionKey } from "../ui/busy-copy";
+import { IMPORT_SKILL, UPDATE_SKILL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import {
   ADVISORY_TEXT,
@@ -55,13 +56,13 @@ export const importLabels = (
           check.sourceBlocker === "nothing-to-carry-back"
             ? "No changes to update"
             : "Update a skill",
-        confirm: "Update skill",
+        confirm: UPDATE_SKILL,
         verb: "update",
         hint: "Updating replaces the skill folder in the Harness.",
       }
     : {
         title: "Import a skill",
-        confirm: "Import skill",
+        confirm: IMPORT_SKILL,
         verb: "import",
         hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
       };

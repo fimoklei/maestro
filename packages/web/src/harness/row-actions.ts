@@ -1,7 +1,14 @@
 // What one row's menu holds: every action the stage carries and every
 // pull-request link. An absent action is never a disabled one; the Status
 // hover card names why it is absent (#1125).
+
 import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
+import {
+  DELETE_SKILL,
+  DISCARD_CHANGE,
+  PROPOSE_CHANGE,
+  RESTORE_SKILL,
+} from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
 
 export type RowActionHandlers = {
@@ -61,7 +68,7 @@ export function rowItems(
     ...(row.restorable && commit !== null
       ? [
           {
-            label: "Restore skill",
+            label: RESTORE_SKILL,
             disabled: !restore.enabled,
             danger: true,
             onSelect: () => handlers.restore(row, commit),
@@ -81,7 +88,7 @@ function deleteItem(
   return allowed && row.folderOnDisk
     ? [
         {
-          label: "Delete skill",
+          label: DELETE_SKILL,
           disabled: !enabled,
           danger: true,
           onSelect: () => handlers.deleteLocal(row),
@@ -118,7 +125,7 @@ function stageItems(
               label:
                 row.status === "new-local-work"
                   ? "Update proposal"
-                  : "Propose change",
+                  : PROPOSE_CHANGE,
               disabled: !enabled,
               busy: busy("propose", null),
               onSelect: () => handlers.promote(row),
@@ -129,7 +136,7 @@ function stageItems(
       ...(offersDiscard(row)
         ? [
             {
-              label: "Discard change",
+              label: DISCARD_CHANGE,
               disabled: !enabled,
               danger: true,
               onSelect: () => handlers.discard(row),
@@ -188,7 +195,7 @@ function stageItems(
         // The way on where reopening is unavailable: a new request over the
         // same branch, which the author sends their current content to.
         {
-          label: "Propose change",
+          label: PROPOSE_CHANGE,
           disabled: !enabled,
           busy: busy("propose", null),
           onSelect: () => handlers.promote(row),

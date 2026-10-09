@@ -61,7 +61,7 @@ describe("Import local edits copy", () => {
     expect(localEditsCheckNotice(new HttpError(500, "x"))).toMatchObject({
       label: "Local edits not checked",
       message:
-        "Nothing was imported. Select Close, then Import local edits again.",
+        "Nothing was imported. Select Close, then select Import local edits again.",
     });
   });
 
@@ -74,7 +74,7 @@ describe("Import local edits copy", () => {
     [
       "repo-not-registered",
       "Repository not registered",
-      "Register this repository in Maestro, then select Import local edits again.",
+      "Select Register repository on the Repositories screen, then select Import local edits again.",
     ],
     [
       "unfinished-operation",

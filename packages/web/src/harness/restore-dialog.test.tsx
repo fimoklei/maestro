@@ -102,7 +102,7 @@ describe("RestoreDialog", () => {
         level: "error",
         label: "Skill has staged changes",
         message:
-          "Nothing was restored. Unstage this skill in your Git tool, then Restore skill again.",
+          "Nothing was restored. Unstage this skill in your Git tool, then select Restore skill again.",
       },
     });
 

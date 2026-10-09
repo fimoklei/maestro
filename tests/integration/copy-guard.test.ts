@@ -82,6 +82,8 @@ describe("copy guard", () => {
     ["Target held by another operation", "Target held by another operation"],
     ["Another change is running", "Another change is running"],
     ["Harness already changing", "Harness already changing"],
+    ["Select Show in Deploy-state to open it.", "Show in Deploy-state"],
+    ["Close this dialog, then select Delete skill again.", "Close this dialog"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",

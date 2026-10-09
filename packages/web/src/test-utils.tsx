@@ -3,6 +3,8 @@ import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { vi } from "vitest";
 import { createQueryClient } from "./api/query-client";
+import * as controlLabels from "./ui/control-labels";
+import { CANCEL, CLOSE } from "./ui/dialog-copy";
 import type { NoticeCopy } from "./ui/notice";
 import { type Copy, plainText } from "./ui/phrase";
 import { ScreenReportContext } from "./ui/use-write-action";
@@ -61,6 +63,27 @@ export const sentence = (text: string | RegExp) => {
     element !== null &&
     reads(element) &&
     [...element.children].every((child) => !reads(child));
+};
+
+const NAMED_CONTROLS = [
+  ...Object.values(controlLabels).flatMap((label) =>
+    typeof label === "string" ? [label] : [],
+  ),
+  CANCEL,
+  CLOSE,
+  ...["Deploy-state", "Inventory", "Repositories", "Harness"].map(
+    controlLabels.rereadLabel,
+  ),
+];
+
+/** The shared control labels a sentence names without `select` before them. */
+export const unselectedControls = (copy: Copy): string[] => {
+  const text = plainText(copy);
+  return NAMED_CONTROLS.filter((label) =>
+    new RegExp(
+      `(?<![Ss]elect )(?<![\\w-])${label.replace(/[-.]/g, "\\$&")}(?![\\w-])`,
+    ).test(text),
+  );
 };
 
 /** The machine values a sentence sets apart, in reading order. */

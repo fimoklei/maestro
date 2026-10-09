@@ -1,4 +1,5 @@
 import { Card } from "../ui/card";
+import { DISCARD_CHANGE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
@@ -29,13 +30,13 @@ export function DiscardDialog({
   const branch = defaultBranchCopy(defaultBranch);
   return (
     <Dialog
-      title={`Discard change for ${skill}`}
+      title={`${DISCARD_CHANGE} for ${skill}`}
       version={null}
       width={480}
       phase={discarding ? "running" : "idle"}
       // The edit cannot be recovered: confirmed like a deletion.
       action={{
-        label: "Discard change",
+        label: DISCARD_CHANGE,
         verb: "discard",
         tone: "danger",
         unavailable: null,
