@@ -3,6 +3,7 @@ import {
   toolNameList,
 } from "../deploy-state/tool-presentation";
 import { DEPLOY_SKILL, rereadLabel } from "../ui/control-labels";
+import type { NoticeCopy } from "../ui/notice";
 import { FILTER_LABEL } from "../ui/view-options-copy";
 
 // Shown by both gates while the inventory config read is in flight.
@@ -18,10 +19,9 @@ export const INVENTORY_NOT_READ = {
 
 // Empty is an offer, not a failure: the action is the one step that fills the list.
 export const NO_RELEASED_SKILLS = {
-  level: "info",
-  label: "No released skills yet",
-  message: "Skills from the latest release appear here.",
-} as const;
+  title: "No released skills yet",
+  description: "Skills from the latest release appear here.",
+};
 
 // The Inventory's band 2 and table (#1040).
 export const SEARCH_LABEL = "Search the Inventory";
@@ -42,6 +42,12 @@ export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
 export const TARGETS_STILL_CHECKING = "checking for local edits";
 export const NO_TARGET_REMOVABLE = "no target can be removed";
 
+// The bulk Remove dialog's clean targets: a removal there loses no work.
+export const cleanCopiesNotice = (count: number): NoticeCopy => ({
+  label: `${count} clean ${count === 1 ? "copy" : "copies"}`,
+  message: "Only the deployed files are removed.",
+});
+
 // The bulk-deploy picker's Global option. undefined = not loaded or
 // unreadable → plain "Global"; empty = zero detected tools (#134).
 export function globalOptionLabel(
@@ -56,9 +62,14 @@ export function globalOptionLabel(
   return `Global (${tools.map(toolDisplayName).join(" + ")})`;
 }
 
-export const NO_SEARCH_MATCH =
-  "No skills match the search. Clear the search box to see every skill.";
-export const NO_FILTER_MATCH = `No skills match the filters. Select ${FILTER_LABEL} to show more skills.`;
+export const NO_SEARCH_MATCH = {
+  title: "No skills match the search",
+  description: "Clear the search box to see every skill.",
+};
+export const NO_FILTER_MATCH = {
+  title: "No skills match the filters",
+  description: `Select ${FILTER_LABEL} to show more skills.`,
+};
 
 // The row's hover card and detail pane (#1041).
 export const deployedToLine = (count: number): string =>

@@ -120,8 +120,9 @@ describe("ReleaseDialog", () => {
     expect(
       delta.compareDocumentPosition(step) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // A notice in a dialog sits above the footer.
     expect(
-      advisory.compareDocumentPosition(step) & Node.DOCUMENT_POSITION_FOLLOWING,
+      step.compareDocumentPosition(advisory) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 

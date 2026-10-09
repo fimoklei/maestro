@@ -1,4 +1,5 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LayoutList } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -6,6 +7,7 @@ import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import { type DeployTarget, sameTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { freshnessLine } from "../ui/freshness";
+import { Icon } from "../ui/icon";
 import { type Copy, plainText } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { TableScreen } from "../ui/table-screen";
@@ -21,6 +23,7 @@ import {
   deployStateNotRead,
   GLOBAL,
   NO_FILTER_MATCH,
+  NO_TARGETS,
   NOTHING_DEPLOYED,
   REPOSITORIES,
   TARGET_LABEL,
@@ -161,6 +164,11 @@ export function DeployStateView() {
     links: targetLinkItems(row),
     busy: retry.isRetrying(row.wire),
   }));
+  const isColdStart =
+    isRead &&
+    globalDeploy.data.primitives.length === 0 &&
+    globalDeploy.data.skipped.length === 0 &&
+    repoPaths.length === 0;
 
   const onAction = useCallback(
     (row: TargetTableRow, action: TargetAction) => {
@@ -202,20 +210,23 @@ export function DeployStateView() {
         groups: {
           ...BY_TARGET.groups,
           // An empty group says what fills it; a failed read is the notice's,
-          // and a filtered-out group is No filter match's.
+          // a filtered-out group is No filter match's, and a cold start with no
+          // target at all is the empty state's.
           message: (key: string) =>
-            blockLines(
-              emptyGroupLines(key, {
-                filtered: view.filterCount > 0,
-                global: globalDeploy.isSuccess
-                  ? {
-                      tools: globalDeploy.data.tools.length,
-                      skipped: globalDeploy.data.skipped,
-                    }
-                  : null,
-                repositories: registry.isSuccess ? repoPaths.length : null,
-              }),
-            ),
+            isColdStart && rows.length === 0
+              ? null
+              : blockLines(
+                  emptyGroupLines(key, {
+                    filtered: view.filterCount > 0,
+                    global: globalDeploy.isSuccess
+                      ? {
+                          tools: globalDeploy.data.tools.length,
+                          skipped: globalDeploy.data.skipped,
+                        }
+                      : null,
+                    repositories: registry.isSuccess ? repoPaths.length : null,
+                  }),
+                ),
         },
       },
     ],
@@ -224,11 +235,6 @@ export function DeployStateView() {
     unavailable: "no targets yet",
   });
 
-  const isColdStart =
-    isRead &&
-    globalDeploy.data.primitives.length === 0 &&
-    globalDeploy.data.skipped.length === 0 &&
-    repoPaths.length === 0;
   const freshness = freshnessLine(
     {
       readAt: [
@@ -267,6 +273,7 @@ export function DeployStateView() {
       rowId={(row) => row.id}
       view={view}
       noMatch={NO_FILTER_MATCH}
+      empty={{ ...NO_TARGETS, icon: <Icon of={LayoutList} /> }}
       pane={(row, frame) => {
         const placed = targetPaneActions(row, onAction);
         return (

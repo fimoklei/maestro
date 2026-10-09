@@ -225,7 +225,9 @@ describe("InventoryView — the table", () => {
     const onOpenHarness = vi.fn();
     renderView({ primitives: [], onOpenHarness });
 
-    expect(screen.getByText("No released skills yet")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "No released skills yet" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Skills from the latest release appear here."),
     ).toBeInTheDocument();
@@ -285,10 +287,15 @@ describe("InventoryView — band 2", () => {
     );
 
     expect(
-      screen.getByText(
-        "No skills match the search. Clear the search box to see every skill.",
-      ),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "No skills match the search",
+      }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Clear the search box to see every skill."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
   it("offers a data-driven type filter of all plus the types present", async () => {
@@ -353,9 +360,13 @@ describe("InventoryView — band 2", () => {
     await userEvent.keyboard("{Escape}");
 
     expect(
-      screen.getByText(
-        "No skills match the filters. Select Filter to show more skills.",
-      ),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "No skills match the filters",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Select Filter to show more skills."),
     ).toBeInTheDocument();
   });
 

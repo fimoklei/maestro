@@ -83,10 +83,6 @@ export function DeletionDialog({
             Your targets keep the skill. After the next release, select Update
             target on each target to remove it.
           </p>
-          <Notice
-            trigger="load"
-            notice={openRequestNotice(skill, mode.openRequest)}
-          />
         </>
       ) : mode.localOnly ? (
         // No second sentence: the other modes name what keeps the skill,
@@ -111,19 +107,6 @@ export function DeletionDialog({
               }
             />
           </p>
-          <Notice
-            trigger="load"
-            notice={
-              mode.uncommitted
-                ? {
-                    level: "warning",
-                    label: `Uncommitted changes in ${skill}`,
-                    message: `${DELETE_SKILL} discards them. To keep them, commit them in your Git tool first.`,
-                    detail: phrase`The skill's files in your clone of ${named(mode.origin)} differ from its last commit.`,
-                  }
-                : null
-            }
-          />
         </>
       )}
       <Card padded>
@@ -152,8 +135,27 @@ export function DeletionDialog({
       {mode.kind === "local" && mode.check === "checking" ? (
         <StatusLine>{DELETION_CHECKING}</StatusLine>
       ) : null}
+      <Notice
+        trigger="load"
+        notice={
+          mode.kind === "propose"
+            ? openRequestNotice(skill, mode.openRequest)
+            : mode.uncommitted && !mode.localOnly
+              ? uncommittedNotice(skill, mode.origin)
+              : null
+        }
+      />
     </Dialog>
   );
+}
+
+function uncommittedNotice(skill: string, origin: string): NoticeContent {
+  return {
+    level: "warning",
+    label: `Uncommitted changes in ${skill}`,
+    message: `${DELETE_SKILL} discards them. To keep them, commit them in your Git tool first.`,
+    detail: phrase`The skill's files in your clone of ${named(origin)} differ from its last commit.`,
+  };
 }
 
 // Several Contributors share one proposal branch, so the request may be a

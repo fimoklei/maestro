@@ -4,6 +4,7 @@ import {
   BULK_DEPLOY_TARGET,
   bulkDeployDidNotRun,
   bulkDeployTitle,
+  cleanCopiesNotice,
   DEPLOY_SKILLS,
   deployedToLine,
   globalOptionLabel,
@@ -28,15 +29,17 @@ import {
 // Approved sentences, as exact strings.
 describe("Inventory copy", () => {
   it("says how to see every skill when the search matches none", () => {
-    expect(NO_SEARCH_MATCH).toBe(
-      "No skills match the search. Clear the search box to see every skill.",
-    );
+    expect(NO_SEARCH_MATCH).toEqual({
+      title: "No skills match the search",
+      description: "Clear the search box to see every skill.",
+    });
   });
 
   it("names the Filter control when the filters hide every skill", () => {
-    expect(NO_FILTER_MATCH).toBe(
-      "No skills match the filters. Select Filter to show more skills.",
-    );
+    expect(NO_FILTER_MATCH).toEqual({
+      title: "No skills match the filters",
+      description: "Select Filter to show more skills.",
+    });
   });
 
   it("names a row's checkbox after its skill", () => {
@@ -70,6 +73,15 @@ describe("Inventory copy", () => {
     expect(NO_TARGET_REMOVABLE).toBe("no target can be removed");
   });
 
+  // #1458: the bulk Remove dialog's clean copies, as a success notice.
+  it("counts the clean copies in one and many, with what the removal takes", () => {
+    expect(cleanCopiesNotice(1)).toEqual({
+      label: "1 clean copy",
+      message: "Only the deployed files are removed.",
+    });
+    expect(cleanCopiesNotice(3).label).toBe("3 clean copies");
+  });
+
   it("heads the hover card with the reach, in zero, one and many", () => {
     expect(deployedToLine(0)).toBe("Not deployed to any target.");
     expect(deployedToLine(1)).toBe("Deployed to 1 target.");
@@ -83,9 +95,8 @@ describe("Inventory copy", () => {
 
   it("offers Open Harness from the empty Inventory", () => {
     expect(NO_RELEASED_SKILLS).toEqual({
-      level: "info",
-      label: "No released skills yet",
-      message: "Skills from the latest release appear here.",
+      title: "No released skills yet",
+      description: "Skills from the latest release appear here.",
     });
   });
 

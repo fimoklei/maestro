@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   advisoryNotice,
   importLabels,
-  importUnavailable,
+  isImportable,
   nameBlockerNotice,
   sourceBlockerNotice,
 } from "./import-view-model";
@@ -99,56 +99,35 @@ describe("importLabels", () => {
   });
 });
 
-describe("importUnavailable", () => {
-  const ready = (check: ImportCheck) => ({ kind: "ready" as const, check });
-
-  it("is available on a check that refuses nothing", () => {
-    expect(importUnavailable(ready(clean))).toBeNull();
+describe("isImportable", () => {
+  it("imports a check that refuses nothing", () => {
+    expect(isImportable(clean)).toBe(true);
   });
 
-  it("stays available while conventions are only reported", () => {
-    expect(
-      importUnavailable(ready({ ...clean, advisories: ["long-manifest"] })),
-    ).toBeNull();
-  });
-
-  it("names the missing folder before one is chosen", () => {
-    expect(importUnavailable({ kind: "idle" })).toBe("no folder chosen yet");
-  });
-
-  it("names the check while it runs", () => {
-    expect(importUnavailable({ kind: "loading" })).toBe(
-      "folder check still running",
+  it("still imports while conventions are only reported", () => {
+    expect(isImportable({ ...clean, advisories: ["long-manifest"] })).toBe(
+      true,
     );
   });
 
-  it("names a check that did not come back", () => {
+  it("imports nothing without a check in hand", () => {
+    expect(isImportable(undefined)).toBe(false);
+  });
+
+  it("imports nothing on a source refusal, in either mode", () => {
+    expect(isImportable({ ...clean, sourceBlocker: "deployed-copy" })).toBe(
+      false,
+    );
     expect(
-      importUnavailable({
-        kind: "error",
-        notice: { level: "error", label: "x", message: "y" },
+      isImportable({
+        ...clean,
+        mode: "update",
+        sourceBlocker: "harness-copy-uncommitted",
       }),
-    ).toBe("folder check did not load");
+    ).toBe(false);
   });
 
-  it("names the folder on a source refusal, in either mode", () => {
-    expect(
-      importUnavailable(ready({ ...clean, sourceBlocker: "deployed-copy" })),
-    ).toBe("folder cannot be used");
-    expect(
-      importUnavailable(
-        ready({
-          ...clean,
-          mode: "update",
-          sourceBlocker: "harness-copy-uncommitted",
-        }),
-      ),
-    ).toBe("folder cannot be used");
-  });
-
-  it("names the name on a name refusal", () => {
-    expect(
-      importUnavailable(ready({ ...clean, nameBlocker: "name-taken" })),
-    ).toBe("name cannot be used");
+  it("imports nothing on a name refusal", () => {
+    expect(isImportable({ ...clean, nameBlocker: "name-taken" })).toBe(false);
   });
 });
