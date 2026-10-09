@@ -238,7 +238,7 @@ describe("BulkRemoveRun", () => {
     expect(group).toHaveTextContent("Nothing recorded — may lose work");
     expect(
       screen.getByRole("button", {
-        name: "Remove from 2 targets · 1 loses local edits",
+        name: "Remove from 2 targets · 1 may lose work",
       }),
     ).toBeEnabled();
   });

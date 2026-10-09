@@ -637,7 +637,7 @@ const ON_DIALOG: Row[] = [
               ],
               refusedNote: null,
               removableCount: 4,
-              confirmLabel: "Remove from 4 targets · 1 lose local edits",
+              confirmLabel: "Remove from 4 targets · 1 may lose work",
             }}
             isRemoving={false}
             report={null}

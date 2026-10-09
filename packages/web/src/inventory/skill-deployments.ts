@@ -24,6 +24,8 @@ export type SkillDeployment = {
   version: string;
   // Never up to date for an un-run check.
   status: DriftStatus;
+  /** The deployed copy has Local edits, whatever the mark shows. */
+  edited: boolean;
   /** The row's mark: the target's unfinished operation, else Deploy-state's skill mark. */
   mark: SkillMark | null;
   /** What an update sends; every tool row names the one global target. */
@@ -92,6 +94,7 @@ export function skillDeployments(
       release: target.releaseHead?.release ?? deployed.version,
       version: deployed.version,
       status,
+      edited: deployed.copy === "local-edits",
       mark: target.pending
         ? {
             ...unfinishedReading(target.pending),

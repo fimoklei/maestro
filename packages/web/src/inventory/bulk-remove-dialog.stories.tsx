@@ -65,7 +65,7 @@ export const LosesWork: Story = {
       refused: [],
       refusedNote: null,
       removableCount: 4,
-      confirmLabel: "remove from 4 · 2 lose local edits →",
+      confirmLabel: "Remove from 4 targets · 2 may lose work",
     },
   },
 };
@@ -81,7 +81,7 @@ export const CannotBeRemoved: Story = {
       cost: [],
       refused: [
         { label: "/dev/legacy-etl", reason: "Repository not registered" },
-        { label: "/dev/acme-web", reason: "Local changes in deployed files" },
+        { label: "/dev/acme-web", reason: "Local edits" },
       ],
       refusedNote: LOCAL_CHANGES_NEXT_STEP,
       removableCount: 3,
@@ -134,7 +134,7 @@ export const ReportPartial: Story = {
         {
           label: "/dev/legacy-etl",
           outcome: "refused",
-          reason: "Local changes in deployed files",
+          reason: "Local edits",
         },
       ],
       refusedNote: LOCAL_CHANGES_NEXT_STEP,

@@ -8,9 +8,9 @@ import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 import {
-  bulkRemoveConfirmLabel,
   bulkRemoveTitle,
   NO_TARGET_REMOVABLE,
+  removeFromCountLabel,
   TARGETS_STILL_CHECKING,
 } from "./inventory-copy";
 
@@ -76,8 +76,7 @@ export function BulkRemoveDialog({
       action={
         confirmOffered
           ? {
-              label:
-                grouped?.confirmLabel ?? bulkRemoveConfirmLabel(targetCount, 0),
+              label: grouped?.confirmLabel ?? removeFromCountLabel(targetCount),
               verb: "remove",
               tone: "danger",
               // Nothing to walk is not a run: a refusal never blocks the

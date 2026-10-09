@@ -1,6 +1,7 @@
 import type { SkillDeletionCheck } from "@maestro/core";
 import { Search, Table2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { LOCAL_EDITS } from "../deploy-state/target-status";
 import { DELETE_UNAVAILABLE } from "../harness/dialog-copy";
 import { folderInClone } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
@@ -110,9 +111,13 @@ const rowDialog = (
 };
 
 // Worst first, as the Status sort orders them (#992).
-const STATUS_WORDS = [BEHIND, UNKNOWN, UP_TO_DATE, NOT_DEPLOYED].map(
-  (reading) => reading.word,
-);
+const STATUS_WORDS = [
+  LOCAL_EDITS,
+  BEHIND,
+  UNKNOWN,
+  UP_TO_DATE,
+  NOT_DEPLOYED,
+].map((reading) => reading.word);
 
 const BY_TYPE = {
   value: "type",
@@ -125,6 +130,7 @@ export function InventoryView({
   repos,
   registryReady,
   targets,
+  latestRelease,
   failure,
   reading,
   onReread,
@@ -140,6 +146,8 @@ export function InventoryView({
   // Every deploy target, for the per-row status and reach (#272). Empty until
   // reads resolve — the roll-up treats that as unconfirmed.
   targets: DeploymentTarget[];
+  /** The Harness's latest release: null where none exists, undefined until read. */
+  latestRelease: string | null | undefined;
   /** A failed read; the previous rows stay under it. */
   failure: ReadFailure | null;
   /** A read is running, shown or not. */
@@ -363,10 +371,9 @@ export function InventoryView({
           <>
             <SkillDetailPane
               primitive={row}
-              targetCount={row.targets}
+              rollup={rollup}
+              latestRelease={latestRelease}
               deployments={row.deployments}
-              pending={Boolean(rollup.pending)}
-              unreadable={row.unreadable}
               listHeadingRef={listHeading}
               {...frame}
               // A dialog the row's ⋮ opened holds focus itself.

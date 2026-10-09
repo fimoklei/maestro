@@ -220,6 +220,7 @@ describe("bulkRemoveDialogView — what cannot be removed", () => {
     );
   });
 
+  // A check that could not answer may cost work; it never proves local edits.
   it("carries the cost on the confirm when a cost group exists", () => {
     const view = bulkRemoveDialogView([
       target("global", repoCheck("none")),
@@ -229,7 +230,30 @@ describe("bulkRemoveDialogView — what cannot be removed", () => {
     ]);
 
     expect(view.kind === "grouped" && view.confirmLabel).toBe(
-      "Remove from 3 targets · 2 lose local edits",
+      "Remove from 3 targets · 2 may lose work",
+    );
+  });
+
+  it("names a refused edited copy Local edits, as the detail pane does", () => {
+    const view = bulkRemoveDialogView([
+      target("/dev/acme-web", refused("deployed-diverged-from-lock")),
+      target("/dev/acme-api", refused("deployed-diverged-pinned-per-skill")),
+    ]);
+
+    expect(view.kind === "grouped" && view.refused).toEqual([
+      { label: "/dev/acme-web", reason: "Local edits" },
+      { label: "/dev/acme-api", reason: "Local edits" },
+    ]);
+  });
+
+  it("names one removable target in the singular", () => {
+    const view = bulkRemoveDialogView([
+      target("global", repoCheck("none")),
+      target("/dev/acme-web", refused("deployed-diverged-from-lock")),
+    ]);
+
+    expect(view.kind === "grouped" && view.confirmLabel).toBe(
+      "Remove from 1 target",
     );
   });
 

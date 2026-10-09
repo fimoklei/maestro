@@ -257,6 +257,20 @@ describe("DetailPane slots", () => {
     }
   });
 
+  // A clamp shortens the long last line, never the state above it.
+  it("clamps only the last paragraph line, the lines above it whole and apart", () => {
+    renderPane({
+      paragraph: ["1 of 2 targets has local edits.", "A long description."],
+      clampParagraph: true,
+    });
+
+    const state = screen.getByText("1 of 2 targets has local edits.");
+    expect(state.closest("details")).toBeNull();
+    expect(
+      screen.getByText("A long description.").closest("details"),
+    ).not.toBeNull();
+  });
+
   it("puts a fact's action beside its value", () => {
     renderPane({
       facts: [

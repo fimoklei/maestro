@@ -2,9 +2,16 @@ import {
   toolDisplayName,
   toolNameList,
 } from "../deploy-state/tool-presentation";
-import { DEPLOY_SKILL, rereadLabel } from "../ui/control-labels";
+import {
+  DEPLOY_SKILL,
+  IMPORT_LOCAL_EDITS,
+  rereadLabel,
+  UPDATE_TARGET,
+} from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
+import { type Copy, machine, phrase } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
+import type { SkillState } from "./skill-status";
 
 // Shown by both gates while the inventory config read is in flight.
 export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…";
@@ -48,13 +55,6 @@ const targetCount = (count: number): string =>
 // The bulk Remove dialog and its Report (#1436): every count in one and many.
 export const bulkRemoveTitle = (skillName: string, count: number): string =>
   `Remove ${skillName} from ${targetCount(count)}`;
-export const bulkRemoveConfirmLabel = (
-  removable: number,
-  losing: number,
-): string =>
-  losing === 0
-    ? `Remove from ${targetCount(removable)}`
-    : `Remove from ${targetCount(removable)} · ${losing} ${losing === 1 ? "loses" : "lose"} local edits`;
 export const checkingTargetsLine = (total: number, answered: number): string =>
   `Checking ${targetCount(total)} — ${answered} answered`;
 export const bulkRemoveReportHeading = (
@@ -112,6 +112,42 @@ export const deployedToLine = (count: number): string =>
     : `Deployed to ${count} ${count === 1 ? "target" : "targets"}.`;
 export const moreTargetsLine = (more: number): string => `And ${more} more.`;
 export const SOME_TARGETS_NOT_READ = "Some targets could not be read.";
+export const NOT_RELEASED_YET = "Not released yet";
+
+// The skill detail pane's state sentence: the Status reading and its next step
+// (#1435).
+/** The pane's Behind fact. */
+export const ofTotal = (count: number, total: number) => `${count} of ${total}`;
+const ofTargets = (count: number, total: number) =>
+  `${ofTotal(count, total)} ${total === 1 ? "target" : "targets"}`;
+
+// The skill detail pane's facts (#1065, #1435).
+export const STATUS_FACT = "Status";
+export const LATEST_RELEASE_FACT = "Latest release";
+export const BEHIND_FACT = "Behind";
+
+export function skillStateLine(state: SkillState): Copy {
+  switch (state.kind) {
+    case "local-edits":
+      return `${ofTargets(state.count, state.total)} ${state.count === 1 ? "has" : "have"} local edits. Select ${IMPORT_LOCAL_EDITS} on Deploy-state to keep them.`;
+    case "behind": {
+      const subject = `${ofTargets(state.count, state.total)} ${state.count === 1 ? "follows" : "follow"}`;
+      const lag =
+        state.from === null
+          ? phrase`${subject} an older release.`
+          : phrase`${subject} ${machine(state.from)}.`;
+      if (!state.updatable) return lag;
+      const them = state.count === 1 ? "it" : "them";
+      return state.to === null
+        ? phrase`${lag} Select ${UPDATE_TARGET} to move ${them} to the latest release.`
+        : phrase`${lag} Select ${UPDATE_TARGET} to move ${them} to ${machine(state.to)}.`;
+    }
+    case "unknown":
+      return `Some targets could not be checked. Select ${rereadLabel("Inventory")} to try again.`;
+    case "up-to-date":
+      return "No newer release changes this skill.";
+  }
+}
 export const NOT_DEPLOYED_ANYWHERE = `Not deployed to any target. Select ${DEPLOY_SKILL} to choose a target.`;
 
 // A target row's ⋮ in the pane, and the foot's removal (#1065). The count is
@@ -120,5 +156,8 @@ export const REMOVE_FROM_TARGET = "Remove from target";
 // A global row's removal takes every detected tool.
 export const removeFromToolsLabel = (tools: readonly string[]): string =>
   `Remove from ${toolNameList(tools)}`;
+// The bulk Remove dialog's confirm: the targets it walks.
+export const removeFromCountLabel = (count: number): string =>
+  `Remove from ${count} ${count === 1 ? "target" : "targets"}`;
 export const removeFromAllLabel = (count: number): string =>
   `Remove from all ${count} targets`;
