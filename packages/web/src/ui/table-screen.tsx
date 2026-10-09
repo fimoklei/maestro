@@ -49,9 +49,9 @@ export interface TableScreenProps<T extends RowData> {
   selection?: DataTableProps<T>["selection"];
   /** Floats over the table's foot while rows are chosen. */
   selectionBar?: ReactNode;
-  /** In place of rows when the narrowing leaves none. */
-  noMatch?: string;
-  /** Shown in place of the table once a read answered with no rows; none: nothing. */
+  /** In place of the table when the narrowing leaves no row. */
+  noMatch?: Omit<EmptyStateProps, "headingLevel">;
+  /** In place of the table once a read answered with no rows; none: nothing. */
   empty?: Omit<EmptyStateProps, "headingLevel">;
   /** The open row's pane, built on `DetailPane`; none: rows do not open. */
   pane?: (row: T, frame: PaneFrame) => ReactNode;
@@ -105,7 +105,14 @@ export function TableScreen<T extends RowData>({
     shownGroups?.order?.some(
       (key) => (shownGroups.message?.(key) ?? null) !== null,
     ) ?? false;
-  const showTable = state.skeleton || rows.length > 0 || groupSpeaks;
+  const showTable = state.skeleton || visible.length > 0 || groupSpeaks;
+  // One notice per band: a failed read replaces the empty state.
+  const emptyState =
+    !state.settled || state.notice !== null
+      ? undefined
+      : rows.length > 0
+        ? noMatch
+        : empty;
 
   return (
     <ScreenReportContext.Provider value={state.report}>
@@ -172,7 +179,6 @@ export function TableScreen<T extends RowData>({
                           [...view.hidden].map((id) => [id, false]),
                         )
                   }
-                  empty={noMatch}
                   openRowId={openRow === null ? null : openId}
                   onRowOpen={
                     pane === undefined
@@ -183,9 +189,9 @@ export function TableScreen<T extends RowData>({
                   selection={selection}
                 />
               </div>
-            ) : state.settled && empty !== undefined ? (
-              <EmptyState headingLevel={2} {...empty} />
-            ) : null}
+            ) : emptyState === undefined ? null : (
+              <EmptyState headingLevel={2} {...emptyState} />
+            )}
             {selectionBar}
           </div>
           {openRow !== null && pane !== undefined ? (

@@ -308,6 +308,14 @@ describe("TableScreen", () => {
       expect(screen.queryByText("No fruit yet")).not.toBeInTheDocument();
     });
 
+    // One notice per band: the failure blocks most, so it stands alone.
+    it("shows a failed read in place of the empty state", () => {
+      render(<FruitScreen rows={[]} failed />);
+
+      expect(screen.getByText("Fruit not read")).toBeInTheDocument();
+      expect(screen.queryByText("No fruit yet")).not.toBeInTheDocument();
+    });
+
     it("shows no empty state before a read answers", () => {
       render(<FruitScreen rows={[]} settled={false} reading />);
 
@@ -469,7 +477,10 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
       firstReadRows={8}
       rowId={(row) => row.name}
       view={view}
-      noMatch="No plants match the filters."
+      noMatch={{
+        title: "No plants match the filters",
+        description: "Select Filter to show more plants.",
+      }}
       pane={
         withPane
           ? (row, frame) => (
@@ -531,9 +542,17 @@ describe("TableScreen view options", () => {
     expect(
       screen.getByRole("button", { name: "Filter, 2 active" }),
     ).toBeInTheDocument();
+    // The shared empty state, in place of the table.
     expect(
-      within(garden()).getByText("No plants match the filters."),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "No plants match the filters",
+      }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Select Filter to show more plants."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
   it("groups by status worst first, an unread row last", async () => {

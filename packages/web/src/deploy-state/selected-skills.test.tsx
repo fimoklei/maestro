@@ -1,5 +1,5 @@
 import type { DeployedPrimitive } from "@maestro/core";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
@@ -157,10 +157,11 @@ describe("SelectedSkills marks", () => {
       }),
     );
 
-    expect(screen.getByText(/^Package also behind/)).toHaveTextContent(
-      "Package also behind, not a skill: foo.",
-    );
-    expect(screen.getByText("foo").tagName).toBe("B");
+    // Information, so a notice at info: a status, not an alert.
+    const notice = screen.getByRole("status");
+    expect(notice).toHaveTextContent("Package also behind");
+    expect(notice).toHaveTextContent("foo is not a skill.");
+    expect(within(notice).getByText("foo").tagName).toBe("B");
   });
 });
 
