@@ -3,7 +3,7 @@ import {
   ADVISORY_TEXT,
   DELETE_UNAVAILABLE,
   FINDING_TEXT,
-  IMPORT_UNAVAILABLE,
+  FOLDER_MISSING,
   RELEASE_UNAVAILABLE,
   skillChecksNotice,
 } from "./dialog-copy";
@@ -49,14 +49,8 @@ describe("Harness dialog copy", () => {
     });
   });
 
-  it("states why Import skill cannot run yet", () => {
-    expect(IMPORT_UNAVAILABLE).toEqual({
-      idle: "no folder chosen yet",
-      loading: "folder check still running",
-      error: "folder check did not load",
-      source: "folder cannot be used",
-      name: "name cannot be used",
-    });
+  it("asks for the skill folder when Import skill is submitted without one", () => {
+    expect(FOLDER_MISSING).toBe("Enter the skill folder's absolute path.");
   });
 
   it("states why Delete skill cannot run yet, in screen names", () => {

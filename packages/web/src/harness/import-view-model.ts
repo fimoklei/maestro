@@ -6,11 +6,7 @@ import type {
 } from "@maestro/core";
 import type { ActionKey } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
-import {
-  ADVISORY_TEXT,
-  IMPORT_UNAVAILABLE,
-  skillChecksNotice,
-} from "./dialog-copy";
+import { ADVISORY_TEXT, skillChecksNotice } from "./dialog-copy";
 import { importBlockerNotice } from "./notice-copy";
 
 // The check travels with its loading and error states so the modal stays
@@ -78,14 +74,10 @@ export const advisoryNotice = (
         advisories.map((advisory) => ADVISORY_TEXT[advisory]),
       );
 
-// Available only on a check that came back clean: no check in hand is not a
-// refusal Maestro has made, and pressing on one would import something
+// Only a check that came back clean imports: no check in hand is not a
+// refusal Maestro has made, and importing on one would import something
 // unjudged.
-export function importUnavailable(load: ImportCheckLoad): string | null {
-  if (load.kind === "idle") return IMPORT_UNAVAILABLE.idle;
-  if (load.kind === "loading") return IMPORT_UNAVAILABLE.loading;
-  if (load.kind === "error") return IMPORT_UNAVAILABLE.error;
-  if (load.check.sourceBlocker !== null) return IMPORT_UNAVAILABLE.source;
-  if (load.check.nameBlocker !== null) return IMPORT_UNAVAILABLE.name;
-  return null;
-}
+export const isImportable = (check: ImportCheck | undefined): boolean =>
+  check !== undefined &&
+  check.sourceBlocker === null &&
+  check.nameBlocker === null;

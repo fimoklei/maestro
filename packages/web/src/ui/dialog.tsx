@@ -117,7 +117,8 @@ export function Dialog({
               : "input:not([disabled]), textarea:not([disabled]), select:not([disabled]):not([aria-hidden]), [role=combobox]:not([disabled])";
             const landing =
               panelRef.current?.querySelector<HTMLElement>(target);
-            (landing ?? panelRef.current)?.focus();
+            // Opened by mouse, Cancel would otherwise take focus unseen.
+            (landing ?? panelRef.current)?.focus({ focusVisible: danger });
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
