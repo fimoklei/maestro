@@ -1,5 +1,6 @@
 import { ArrowUpRight } from "lucide-react";
 import { type ActionsMenuItem, orderedItems } from "./actions-menu";
+import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { Icon } from "./icon";
@@ -10,6 +11,8 @@ export type FootItem = ActionsMenuItem & {
   name?: string;
   /** The next step its state names, which ranks it for the pane's primary. */
   step?: "update" | "import";
+  /** Its write is running: picks the busy label from `busy-copy`. */
+  busy?: ActionKey;
 };
 
 // The primary where the ⋮ order already leads with the next step (#1065).
@@ -42,12 +45,11 @@ export function FootActions({
                   : "quiet"
             }
             aria-label={item.name}
-            aria-disabled={item.disabled || undefined}
-            // A blocked item reads as a disabled control, never as on offer.
-            className="aria-disabled:border-edge aria-disabled:bg-gray-3 aria-disabled:text-gray-11"
-            onClick={item.disabled ? undefined : item.onSelect}
+            busy={item.busy !== undefined}
+            blocked={item.disabled}
+            onClick={item.onSelect}
           >
-            {item.label}
+            {item.busy === undefined ? item.label : ACTIONS[item.busy].busy}
           </Button>
         ) : (
           <a

@@ -6,9 +6,15 @@ import type {
   RequestedReviewer,
   StageStatus,
 } from "@maestro/core";
-import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
+import {
+  CREATE_RELEASE,
+  DISCARD_CHANGE,
+  PROPOSE_CHANGE,
+  rereadLabel,
+  UPDATE_TARGET,
+} from "../ui/control-labels";
 import { type Copy, machine, named, phrase } from "../ui/phrase";
-import type { StatusFamily } from "../ui/status-family";
+import { type StatusFamily, WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { offersDiscard } from "./row-actions";
 
@@ -65,7 +71,7 @@ export const statusReading = (row: HarnessStageRow): StatusReading => {
       ? `Proposed by ${row.waitingOn ?? "another contributor"}`
       : READINGS[row.status],
     family,
-    family === "attention" ? "⚠" : undefined,
+    family === "attention" ? WARNING_GLYPH : undefined,
   );
 };
 
@@ -136,7 +142,7 @@ export function detailSentence(
   const publish = `Select ${CREATE_RELEASE} to publish it.`;
   const deletion = row.change === "deletion";
   // One next action; Restore skill stays in the row menu (#1396).
-  const deleteLocally = phrase`This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
+  const deleteLocally = phrase`This skill is deleted in your clone but still on ${branch}. Select ${PROPOSE_CHANGE} to propose the deletion.`;
   // Local work behind another contributor's request offers no Propose change.
   if (row.waitingOn !== null) {
     return waitSentence(row, row.waitingOn);
@@ -147,11 +153,11 @@ export function detailSentence(
         return deleteLocally;
       }
       if (row.change === "addition") {
-        return phrase`This skill is not on ${branch} yet. Select Propose change to send it for review.`;
+        return phrase`This skill is not on ${branch} yet. Select ${PROPOSE_CHANGE} to send it for review.`;
       }
       return offersDiscard(row)
-        ? phrase`Your local copy differs from ${branch}. Select Propose change to send it for review, or Discard change to match ${branch} again.`
-        : phrase`Your local copy differs from ${branch}. Select Propose change to send it for review.`;
+        ? phrase`Your local copy differs from ${branch}. Select ${PROPOSE_CHANGE} to send it for review, or select ${DISCARD_CHANGE} to match ${branch} again.`
+        : phrase`Your local copy differs from ${branch}. Select ${PROPOSE_CHANGE} to send it for review.`;
     case "new-local-work":
       return first(row) === ""
         ? "You edited this skill after preparing its proposal. Select Update proposal to send the edits."
@@ -176,8 +182,8 @@ export function detailSentence(
       return "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.";
     case "proposal-merged":
       return deletion
-        ? `Pull request ${first(row)} merged the deletion. Select Re-read Harness to read GitHub again.`
-        : `Pull request ${first(row)} was merged. Select Re-read Harness to read GitHub again.`;
+        ? `Pull request ${first(row)} merged the deletion. Select ${rereadLabel("Harness")} to read GitHub again.`
+        : `Pull request ${first(row)} was merged. Select ${rereadLabel("Harness")} to read GitHub again.`;
     case "proposal-closed": {
       if (deletion && row.folderOnDisk) {
         return `Pull request ${first(row)} was closed without merging. The folder is back in your clone, so the skill stays in the Harness.`;
@@ -185,7 +191,7 @@ export function detailSentence(
       // Only its author reopens it, so the menu offers no Reopen proposal.
       const [closed] = row.requests;
       return closed?.byOther === true
-        ? phrase`${named(closed.author)}'s pull request ${first(row)} was closed without merging. Select Propose change to send your own change.`
+        ? phrase`${named(closed.author)}'s pull request ${first(row)} was closed without merging. Select ${PROPOSE_CHANGE} to send your own change.`
         : `Pull request ${first(row)} was closed without merging. Select Reopen proposal to continue it.`;
     }
     case "multiple-pull-requests":
@@ -241,7 +247,7 @@ export const requestedReviewers = (row: HarnessStageRow): string | null =>
 
 export const reviewerLine = (row: HarnessStageRow): string | null => {
   const requested = requestedReviewers(row);
-  return requested === null ? null : `Review requested from ${requested}`;
+  return requested === null ? null : `Review requested from ${requested}.`;
 };
 
 export const pullRequestLinkName = (number: number): string =>

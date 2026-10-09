@@ -73,16 +73,16 @@ describe("Repositories", () => {
       within(grid)
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
-    ).toEqual(["Repository", "Folder path", "Status", "Actions"]);
+    ).toEqual(["Repository", "Status", "Folder path", "GitHub", "Actions"]);
 
     expect(await rowOf("…/me/acme-web")).toHaveTextContent(
-      "…/me/acme-web/home/me/acme-webReady",
+      "…/me/acme-webReady/home/me/acme-web",
     );
     expect(await rowOf("…/me/scratch")).toHaveTextContent(
-      "…/me/scratch/home/me/scratchNot a Git repository",
+      "…/me/scratchNot a Git repository/home/me/scratch",
     );
     expect(await rowOf("…/me/old-site")).toHaveTextContent(
-      "…/me/old-site/home/me/old-siteFolder missing",
+      "…/me/old-siteFolder missing/home/me/old-site",
     );
   });
 
@@ -313,5 +313,34 @@ describe("Repositories", () => {
 
     await rowOf("…/me/acme-web");
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  // #1448 G3: focus stays visible once the unregistered row has left.
+  it("hands focus to the row now in the unregistered row's place", async () => {
+    stubRegistry(threeRepos());
+    renderRepositories();
+    const grid = await screen.findByRole("grid", {
+      name: "Repositories table",
+    });
+    await rowOf("…/me/old-site");
+    const names = within(grid)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => within(row).getAllByRole("gridcell")[0]?.textContent);
+    const [, gone, next] = names;
+    if (gone == null || next == null) throw new Error("three rows expected");
+
+    const dialog = await chooseUnregister(gone);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Unregister repository" }),
+    );
+
+    await waitFor(() =>
+      expect(within(grid).queryByText(gone)).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(grid).toHaveFocus());
+    expect(
+      document.getElementById(grid.getAttribute("aria-activedescendant") ?? ""),
+    ).toHaveTextContent(next);
   });
 });

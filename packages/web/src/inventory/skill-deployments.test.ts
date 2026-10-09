@@ -13,6 +13,7 @@ const target = (
   primitives: { name: string; version: string }[],
   behind: ReadDriftEntry[] = [],
 ): DeploymentTarget => ({
+  pending: undefined,
   label,
   target: label.startsWith("/")
     ? { kind: "repo", repoPath: label }
@@ -155,6 +156,7 @@ describe("skillDeployments", () => {
         release: "v1.0.0",
         version: "v1.0.0",
         status: "up-to-date",
+        mark: expect.objectContaining({ word: "Up to date" }),
         target: { kind: "global" },
         removeTarget: { kind: "global", tools: ["claude", "codex"] },
         updateName: "Claude Code and Codex",
@@ -166,6 +168,7 @@ describe("skillDeployments", () => {
         release: "v1.0.0",
         version: "v1.0.0",
         status: "up-to-date",
+        mark: expect.objectContaining({ word: "Up to date" }),
         target: { kind: "global" },
         removeTarget: { kind: "global", tools: ["claude", "codex"] },
         updateName: "Claude Code and Codex",
@@ -177,6 +180,7 @@ describe("skillDeployments", () => {
         release: "v1.1.0",
         version: "v1.1.0",
         status: "up-to-date",
+        mark: expect.objectContaining({ word: "Up to date" }),
         target: { kind: "repo", repoPath: "/dev/acme-web" },
         removeTarget: { kind: "repo", repoPath: "/dev/acme-web" },
         updateName: "/dev/acme-web",
@@ -201,6 +205,7 @@ describe("skillDeployments", () => {
   it("skips targets whose deploy-state has not resolved or could not be read", () => {
     const targets: DeploymentTarget[] = [
       {
+        pending: undefined,
         label: "",
         target: { kind: "global" },
         deployed: { status: "pending" },
@@ -208,6 +213,7 @@ describe("skillDeployments", () => {
         drift: ranDrift(),
       },
       {
+        pending: undefined,
         label: "",
         target: { kind: "global" },
         deployed: { status: "unknown" },

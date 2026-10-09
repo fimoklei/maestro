@@ -193,7 +193,7 @@ describe("BulkDeployAction", () => {
     );
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-      "Another change is running",
+      "Target busy",
     );
   });
 

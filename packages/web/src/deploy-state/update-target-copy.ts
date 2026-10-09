@@ -1,6 +1,12 @@
 // Every word the Update target control and its preview show.
+
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
-import { UPDATE_TARGET, UPDATE_TARGETS } from "../ui/control-labels";
+import {
+  IMPORT_LOCAL_EDITS,
+  UPDATE_TARGET,
+  UPDATE_TARGETS,
+} from "../ui/control-labels";
+import { CANCEL } from "../ui/dialog-copy";
 import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
 
@@ -21,8 +27,8 @@ export function countingSentence(counts: {
   return `Updates ${counts.changed} ${skills}, removes ${counts.removed}, leaves ${counts.unchanged} unchanged.`;
 }
 
-export const releaseMoveLine = (from: string, to: string): string =>
-  `release ${from} → ${to}`;
+export const releaseMoveLine = (from: string, to: string): Phrase =>
+  phrase`release ${machine(from)} → ${machine(to)}`;
 
 // The fixed order the dialog renders; Unchanged and New in this release are folded.
 export const SECTION_HEADINGS = [
@@ -57,8 +63,7 @@ export const BECOMES_EMPTY =
 export const DISCARD_LOCAL_EDITS = "Discard local edits";
 export const OVERWRITE_UNVERIFIED = "Overwrite unverified copy";
 
-export const KEEP_WORK_BY_IMPORTING =
-  "To keep the edits instead, select Cancel, then Import local edits.";
+export const KEEP_WORK_BY_IMPORTING = `To keep the edits instead, select ${CANCEL}, then select ${IMPORT_LOCAL_EDITS}.`;
 
 export const localEditsSentence = (name: string, release: string): Phrase =>
   phrase`${named(name)} has local edits. This update replaces them with release ${machine(release)}.`;
@@ -70,8 +75,6 @@ export const consentRowName = (row: CopyConsentRow): string =>
   row.tool === null ? row.name : `${row.name} in ${toolDisplayName(row.tool)}`;
 
 export const LOADING_PREVIEW = "Loading the update preview…";
-
-export const MIXED_RELEASES = "Mixed releases";
 
 type OutcomeVerdict = "landed" | "failed" | "unconfirmed";
 

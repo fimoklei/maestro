@@ -231,7 +231,7 @@ describe("BulkRemoveRun", () => {
     await openDialog();
 
     const group = await screen.findByRole("group", {
-      name: "▲ Loses work · 1",
+      name: "⚠ Loses work · 1",
     });
     expect(group).toHaveTextContent("/dev/acme-web");
     expect(group).toHaveTextContent("v1.0.0");
@@ -328,7 +328,7 @@ describe("BulkRemoveRun", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Remove from 1 targets — checks still running",
+        name: "Remove from 1 targets — checking for local edits",
       }),
     ).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("dialog")).toHaveTextContent(

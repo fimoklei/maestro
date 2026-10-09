@@ -192,6 +192,12 @@ describe("stageSections", () => {
     expect(metaOf(state({}), "pending-release")).toBe("Compared with v1.4.0");
   });
 
+  it("states a Harness with no release in the release words of every screen", () => {
+    expect(
+      metaOf({ ...state({}), releasedVersion: null }, "pending-release"),
+    ).toBe("Not released yet");
+  });
+
   it("replaces the whole slot when a local stage could not be read", () => {
     expect(
       metaOf(state({ proposal: { outcome: "unknown" } }), "pending-proposal"),

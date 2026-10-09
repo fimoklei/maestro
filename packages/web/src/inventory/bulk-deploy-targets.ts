@@ -26,6 +26,7 @@ export function chosenBulkDeployTargets(params: {
     if (globalState === undefined) {
       return [
         {
+          pending: undefined,
           label: targetLabel,
           target,
           deployed: { status: "pending" },

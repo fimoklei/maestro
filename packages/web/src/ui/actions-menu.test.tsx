@@ -144,9 +144,9 @@ describe("ActionsMenu", () => {
                 label: "Deploy skill",
                 onSelect: () =>
                   document.getElementById("target-picker")?.focus(),
+                movesFocus: true,
               },
             ]}
-            returnFocus={false}
           />
           <select id="target-picker" aria-label="Deploy target" />
         </>

@@ -2,10 +2,12 @@ import type { GitHubPage, ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
+import { BandAction } from "../ui/band-action";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { CREATE_RELEASE } from "../ui/control-labels";
+import { CREATE_RELEASE, IMPORT_SKILL } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
+import { GatedButton } from "../ui/gated-button";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { Icon } from "../ui/icon";
 import { Notice, type NoticeContent } from "../ui/notice";
@@ -23,6 +25,7 @@ import { HarnessDialogs } from "./harness-dialogs";
 import {
   harnessAnnouncement,
   releaseEnabled,
+  releaseUnavailable,
   type StageSection,
   stageSections,
 } from "./harness-view-model";
@@ -215,6 +218,7 @@ export function HarnessView({
                         localSettled && presses.restore.isPending === false,
                       commit: state.localHeadCommit,
                     },
+                    presses.running?.id === rowId(row) ? presses.running : null,
                   ),
                 }))
                 // Within a stage, the rows that need the author first (#994).
@@ -260,24 +264,23 @@ export function HarnessView({
       action={
         state === undefined ? null : (
           <>
-            <Button
-              variant="quiet"
+            <BandAction
+              icon={FolderInput}
+              label={IMPORT_SKILL}
               onClick={importFlow.start}
-              className="max-lg:w-8 max-lg:justify-center max-lg:px-0"
-            >
-              <Icon of={FolderInput} className="lg:hidden" />
-              <span className="max-lg:sr-only">Import skill</span>
-            </Button>
+            />
             {/* Closed while the remote's answer is unknown — an offline or
                 failed fetch — and while a re-read is still rewriting the refs
                 a plan reads. Advisory findings never gate it (#519). */}
-            <Button
+            <GatedButton
               variant="primary"
-              disabled={!releaseEnabled(state.freshness) || refresh.isPending}
+              label={CREATE_RELEASE}
+              unavailable={releaseUnavailable(
+                state.freshness,
+                refresh.isPending,
+              )}
               onClick={() => setPlanOpen(true)}
-            >
-              {CREATE_RELEASE}
-            </Button>
+            />
           </>
         )
       }
@@ -292,7 +295,7 @@ export function HarnessView({
             />
             <BandFact
               label="Released"
-              value={state.releasedVersion ?? "None yet"}
+              value={state.releasedVersion ?? "Not released yet"}
               machine={state.releasedVersion !== null}
             />
             <BandFact
@@ -333,7 +336,7 @@ export function HarnessView({
         description: JOURNEY_EMPTY.body,
         action: (
           <Button variant="quiet" onClick={importFlow.start}>
-            Import skill
+            {IMPORT_SKILL}
           </Button>
         ),
       }}
@@ -392,6 +395,7 @@ export function HarnessView({
   );
 }
 
+// One tree whether open or not, so a re-read landing keeps its focus.
 // Every fact truncates rather than run under the freshness line (#1204); a
 // yielding fact leaves band 2 below its breakpoint.
 const YIELDS = { sm: "max-sm:hidden", lg: "max-lg:hidden" } as const;
@@ -407,7 +411,7 @@ function BandFact({
   value: string;
   /** Links the value to its GitHub page. */
   github?: GitHubPage;
-  /** False for a plain word such as None yet, which Geist Mono never sets. */
+  /** False for a plain word such as Not released yet, which Geist Mono never sets. */
   machine?: boolean;
   yields?: keyof typeof YIELDS;
 }) {
@@ -529,9 +533,13 @@ function Notices({
   ];
   const shown = candidates.find((each) => each.notice !== null);
   const clear = shown?.clear;
-  // Focus leaves the control it stood on for the one re-read control.
+  // The next closable notice draws in this one's place, so focus stays on
+  // its ✕; with none to follow, focus goes to Re-read.
   const dismiss = () => {
-    rereadRef.current?.focus();
+    const next = candidates.find(
+      (each) => each !== shown && each.notice !== null,
+    );
+    if (next?.clear === undefined) rereadRef.current?.focus();
     clear?.();
   };
   // The region outlives its content, so a read that failed on open is

@@ -61,7 +61,7 @@ const SCENARIOS = [
       s.whileUnwritable(join(repo, ".agents/skills/code-review"), () =>
         s.update(repo),
       ),
-    expect: { status: "Mixed releases", notice: "Update incomplete" },
+    expect: { status: "Update incomplete", notice: "Update incomplete" },
   },
   {
     name: "local-edits",
@@ -99,7 +99,7 @@ const SCENARIOS = [
         s.deploy(repo, ["commit-message"], { expectRefusal: true }),
       );
     },
-    expect: { notice: "Deploy incomplete" },
+    expect: { status: "Deploy incomplete", notice: "Deploy incomplete" },
   },
   {
     name: "import-edits",
@@ -122,7 +122,7 @@ const SCENARIOS = [
     name: "unreadable",
     atV2: (_s, repo) =>
       writeFileSync(join(repo, "apm.lock.yaml"), "dependencies: [\n"),
-    expect: { status: "Deploy-state not read" },
+    expect: { status: "Deploy-state not read." },
   },
 ];
 
@@ -220,7 +220,7 @@ function targetStatus({ deployState, drift }) {
     releaseHead.latestRelease !== releaseHead.release &&
     pending === undefined;
 
-  if (pending?.kind === "update") return "Mixed releases";
+  if (pending) return NOTICE[pending.kind];
   if (localEdits && indicator === "attention") return "Attention";
   if (localEdits) return "Local edits";
   if (pinnedPerSkill !== undefined) return "Pinned per skill";
@@ -268,7 +268,7 @@ export function readCockpit(read) {
   // A refused read shows the card's failure notice and nothing else.
   if (read.deployState === null)
     return {
-      status: "Deploy-state not read",
+      status: "Deploy-state not read.",
       release: null,
       notice: null,
       skills: {},

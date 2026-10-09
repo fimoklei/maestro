@@ -1,4 +1,5 @@
 import type { DriftStatus } from "../drift/drift-view-model";
+import { WARNING_GLYPH } from "../ui/status-family";
 import {
   reading,
   type StatusReading,
@@ -26,7 +27,11 @@ export function skillStatus(rollup: DeployedRollup): StatusReading | null {
 }
 
 const UNVERIFIED = reading("Unverified", "unknown");
-const NO_LONGER_RELEASED = reading("No longer released", "attention", "⚠");
+const NO_LONGER_RELEASED = reading(
+  "No longer released",
+  "attention",
+  WARNING_GLYPH,
+);
 
 // One target's own reading. Null while its check runs.
 export function targetReading(status: DriftStatus): StatusReading | null {

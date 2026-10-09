@@ -275,7 +275,7 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     const notice = (
-      await screen.findByText("Could not read Inventory")
+      await screen.findByText("Inventory not read")
     ).closest<HTMLElement>('[role="status"]');
     if (notice === null) throw new Error("the notice is not a status region");
     expect(notice).toHaveTextContent("Select Re-read Inventory to try again.");
@@ -293,7 +293,7 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     expect(
-      (await screen.findByText(/Could not read Inventory/i)).closest(
+      (await screen.findByText(/Inventory not read/i)).closest(
         '[role="status"]',
       ),
     ).not.toBeNull();
@@ -335,7 +335,7 @@ describe("InventoryPanel", () => {
       screen.getByRole("button", { name: "Force re-read" }),
     );
 
-    const heading = await screen.findByText("Could not read Inventory");
+    const heading = await screen.findByText("Inventory not read");
     expect(screen.getByText("tdd")).toBeInTheDocument();
     expect(screen.getByText("1 skill")).toBeInTheDocument();
 
@@ -346,9 +346,7 @@ describe("InventoryPanel", () => {
       within(notice).getByRole("button", { name: "Re-read Inventory" }),
     );
     await waitFor(() =>
-      expect(
-        screen.queryByText("Could not read Inventory"),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByText("Inventory not read")).not.toBeInTheDocument(),
     );
     expect(await screen.findByText("tdd")).toBeInTheDocument();
   });

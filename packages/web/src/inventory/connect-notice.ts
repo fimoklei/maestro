@@ -2,7 +2,6 @@ import type {
   ConnectInventoryError,
   ScaffoldHarnessError,
 } from "@maestro/core";
-import { ACTIONS } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
 import {
   type NoticeExtras,
@@ -31,7 +30,7 @@ const repoPathHeadings: NoticeTable<
   "not-found": {
     level: "error",
     label: "No folder at that path",
-    message: "Check the spelling, or select Browse to pick the folder.",
+    message: "Check the spelling, or select Browse to choose the folder.",
     detail: "Nothing is at that path now.",
   },
   "not-a-directory": {
@@ -254,8 +253,8 @@ export function scaffoldOfferExtras(
   return {
     detail: phrase`Maestro would scaffold it into ${machine(offerPath)}.`,
     action: {
-      label: pending ? ACTIONS.scaffold.busy : "Scaffold the Harness",
-      disabled: pending,
+      label: "Scaffold the Harness",
+      busy: pending ? "scaffold" : undefined,
       onClick: onAccept,
     },
   };

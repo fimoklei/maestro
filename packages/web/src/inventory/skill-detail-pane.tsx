@@ -1,12 +1,13 @@
 import type { Ref } from "react";
 import type { ActionsMenuItem } from "../ui/actions-menu";
+import { cn } from "../ui/cn";
 import { DetailPane } from "../ui/detail-pane";
-import { FOCUS_RING } from "../ui/focus-ring";
 import type { FootItem } from "../ui/foot-actions";
-import { SubListRow } from "../ui/sub-list-row";
-import { NOT_DEPLOYED_ANYWHERE, rowActionsLabel } from "./inventory-copy";
+import { rowActionsLabel } from "../ui/row-menu-copy";
+import { SubListHeading } from "../ui/sub-list-heading";
+import { SubListRow, SubListSkeleton } from "../ui/sub-list-row";
+import { NOT_DEPLOYED_ANYWHERE, SOME_TARGETS_NOT_READ } from "./inventory-copy";
 import type { SkillDeployment } from "./skill-deployments";
-import { targetReading } from "./skill-status";
 import { TYPE_WORD } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
@@ -16,7 +17,8 @@ export function SkillDetailPane({
   primitive,
   targetCount,
   deployments,
-  unconfirmed,
+  pending,
+  unreadable,
   targetItems,
   footItems,
   listHeadingRef,
@@ -32,19 +34,22 @@ export function SkillDetailPane({
   deployments: SkillDeployment[];
   // True while any target's read is pending — an empty list is then "not known
   // yet".
-  unconfirmed: boolean;
+  pending: boolean;
+  /** Some target's read failed, so the list may miss a target. */
+  unreadable: boolean;
   /** One target row's ⋮ items. */
   targetItems: (deployment: SkillDeployment) => readonly ActionsMenuItem[];
   /** The row's ⋮ items, as the foot's buttons. */
   footItems: readonly FootItem[];
   /** Where the owner sends focus once a removed target row is gone. */
-  listHeadingRef?: Ref<HTMLHeadingElement>;
+  listHeadingRef: Ref<HTMLHeadingElement>;
   position?: { index: number; count: number } | null;
   onPage?: (step: -1 | 1) => void;
   initialFocus?: string | null;
   onClose: () => void;
   getTriggerElement: (name: string) => HTMLElement | null;
 }) {
+  const listed = deployments.length > 0 || pending;
   return (
     <DetailPane
       title={primitive.name}
@@ -66,38 +71,39 @@ export function SkillDetailPane({
       leadsWithNextStep
       subList={
         <section>
-          <h3
-            ref={listHeadingRef}
-            tabIndex={-1}
-            className={`m-0 mb-inline font-normal text-gray-11 text-meta ${FOCUS_RING}`}
-          >
-            Deployed to
-          </h3>
-          {deployments.length > 0 ? (
-            <>
-              <ul className="m-0 list-none border-divider border-t p-0">
-                {deployments.map((deployment) => (
-                  <SubListRow
-                    key={deployment.rowId ?? deployment.label}
-                    mark={targetReading(deployment.status)}
-                    name={deployment.label}
-                    value={deployment.release}
-                    menuLabel={rowActionsLabel(deployment.label)}
-                    items={targetItems(deployment)}
-                  />
-                ))}
-              </ul>
-              {unconfirmed ? (
-                <p className="mt-inline text-gray-11 text-meta">
-                  Loading more targets…
-                </p>
-              ) : null}
-            </>
-          ) : unconfirmed ? (
-            <p className="m-0 text-gray-11 text-meta">
-              Loading the Deploy-state…
+          <SubListHeading
+            label="Deployed to"
+            count={pending ? null : deployments.length}
+            headingRef={listHeadingRef}
+          />
+          {listed ? (
+            <ul
+              aria-busy={pending || undefined}
+              className="m-0 list-none border-divider border-t p-0"
+            >
+              {deployments.map((deployment) => (
+                <SubListRow
+                  key={deployment.rowId ?? deployment.label}
+                  mark={deployment.mark}
+                  name={deployment.label}
+                  value={deployment.release}
+                  menuLabel={rowActionsLabel(deployment.label)}
+                  items={targetItems(deployment)}
+                />
+              ))}
+              {pending ? <SubListSkeleton rows={2} /> : null}
+            </ul>
+          ) : null}
+          {unreadable ? (
+            <p
+              className={cn(
+                "m-0 text-gray-11 text-meta",
+                listed && "mt-inline",
+              )}
+            >
+              {SOME_TARGETS_NOT_READ}
             </p>
-          ) : (
+          ) : listed ? null : (
             <p className="m-0 text-gray-11 text-meta">
               {NOT_DEPLOYED_ANYWHERE}
             </p>

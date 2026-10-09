@@ -156,6 +156,21 @@ describe("Register repository", () => {
     expect(statusRegion()).toHaveTextContent("Registered …/me/acme-web.");
   });
 
+  it("announces the new repository wherever the registry lists it", async () => {
+    stubRegistry({
+      repos: [{ path: "/home/me/payments-api", status: "ready" }],
+      storesFirst: true,
+    });
+    renderRepositories();
+    await openDialog();
+
+    await userEvent.type(field(), "/home/me/acme-web{Enter}");
+
+    await waitFor(() =>
+      expect(statusRegion()).toHaveTextContent("Registered …/me/acme-web."),
+    );
+  });
+
   it("registers a typed path, the chooser never opened", async () => {
     const { calls } = stubRegistry({ repos: [] });
     renderRepositories();

@@ -1,6 +1,7 @@
 // Measures, in a real browser, whether each table screen's table fits its
-// panel at a few widths, with and without a detail pane open. happy-dom
-// measures nothing, so only a browser can prove a table fits.
+// panel at a few widths, with and without a detail pane open, and that an
+// open pane covers none of its shown columns. happy-dom measures nothing, so
+// only a browser can prove a table fits.
 import { execFileSync } from "node:child_process";
 
 const TABLE_SCREENS = [
@@ -10,9 +11,9 @@ const TABLE_SCREENS = [
   { screen: "Repositories", path: "/repositories" },
 ];
 
-// 1440 is roomy; 1104 is the narrowest panel a pane sits beside; 1024 folds
-// the sidebar; 440 leaves a panel under 28rem.
-const VIEWPORTS = [1440, 1104, 1024, 768, 440];
+// 1440 is roomy; 1104 is the widest the pane once floated at; 1024 folds the
+// sidebar; 900 is the narrow check of #1456; 440 leaves a panel under 28rem.
+const VIEWPORTS = [1440, 1104, 1024, 900, 768, 440];
 const VIEWPORT_HEIGHT = 900;
 
 // Sub-pixel layout can leave a fitting table a fraction wider than its room.
@@ -42,11 +43,20 @@ export function tableFitReport(measurements) {
       return [
         `${m.screen}, viewport ${m.viewport}px: a row did not open its detail pane, so the table beside it was not measured`,
       ];
-    if (m.tableWidth - m.roomWidth <= TOLERANCE_PX) return [];
     const pane = m.detailOpen ? ", detail pane open" : "";
+    const where = `${m.screen}${pane}, viewport ${m.viewport}px`;
     const overflow = Math.round(m.tableWidth - m.roomWidth);
     return [
-      `${m.screen}${pane}, viewport ${m.viewport}px: the table is ${overflow}px wider than its ${m.roomWidth}px scroll container`,
+      ...(m.tableWidth - m.roomWidth <= TOLERANCE_PX
+        ? []
+        : [
+            `${where}: the table is ${overflow}px wider than its ${m.roomWidth}px scroll container`,
+          ]),
+      ...(m.covered?.length
+        ? [
+            `${where}: the detail pane covers the ${m.covered.join(", ")} columns`,
+          ]
+        : []),
     ];
   });
   return { failures, skipped };
@@ -73,14 +83,33 @@ async function measureScreens(screens, viewport) {
     const table = document.querySelector("main table[role=grid]");
     return table?.querySelector("tbody tr[id]") ? table : null;
   };
+  // The shown header cells an open pane lies over; a hidden table shows none.
+  const coveredBy = (table, pane) => {
+    const over = pane.getBoundingClientRect();
+    return [...table.querySelectorAll("thead th")]
+      .filter((th) => {
+        const cell = th.getBoundingClientRect();
+        return (
+          cell.width > 0 &&
+          Math.min(cell.right, over.right) - Math.max(cell.left, over.left) >
+            1 &&
+          Math.min(cell.bottom, over.bottom) - Math.max(cell.top, over.top) > 0
+        );
+      })
+      .map((th) => th.textContent.trim() || "checkbox");
+  };
   const widths = (table, detailOpen) => {
     let room = table.parentElement;
     while (room && getComputedStyle(room).overflowX === "visible")
       room = room.parentElement;
+    const pane = detailOpen
+      ? document.querySelector("main aside[aria-label$=' detail']")
+      : null;
     return {
       detailOpen,
       tableWidth: table.getBoundingClientRect().width,
       roomWidth: room.clientWidth,
+      ...(pane === null ? {} : { covered: coveredBy(table, pane) }),
     };
   };
   // A narrowed panel hides columns a render after it resizes, so read the

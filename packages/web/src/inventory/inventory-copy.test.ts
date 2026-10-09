@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { VIEW_DEPLOY_STATE } from "../ui/control-labels";
 import {
   BULK_DEPLOY_TARGET,
   bulkDeployDidNotRun,
   bulkDeployTitle,
+  cleanCopiesNotice,
   DEPLOY_SKILLS,
   deployedToLine,
   globalOptionLabel,
@@ -16,9 +18,7 @@ import {
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
-  rowActionsLabel,
   SELECT_ALL_LABEL,
-  SHOW_IN_DEPLOY_STATE,
   SOME_TARGETS_NOT_READ,
   stageRowLabel,
   TARGETS_LOADING,
@@ -28,15 +28,17 @@ import {
 // Approved sentences, as exact strings.
 describe("Inventory copy", () => {
   it("says how to see every skill when the search matches none", () => {
-    expect(NO_SEARCH_MATCH).toBe(
-      "No skills match the search. Clear the search box to see every skill.",
-    );
+    expect(NO_SEARCH_MATCH).toEqual({
+      title: "No skills match the search",
+      description: "Clear the search box to see every skill.",
+    });
   });
 
   it("names the Filter control when the filters hide every skill", () => {
-    expect(NO_FILTER_MATCH).toBe(
-      "No skills match the filters. Select Filter to show more skills.",
-    );
+    expect(NO_FILTER_MATCH).toEqual({
+      title: "No skills match the filters",
+      description: "Select Filter to show more skills.",
+    });
   });
 
   it("names a row's checkbox after its skill", () => {
@@ -66,14 +68,23 @@ describe("Inventory copy", () => {
   });
 
   it("states why a bulk remove cannot run yet", () => {
-    expect(TARGETS_STILL_CHECKING).toBe("checks still running");
+    expect(TARGETS_STILL_CHECKING).toBe("checking for local edits");
     expect(NO_TARGET_REMOVABLE).toBe("no target can be removed");
+  });
+
+  // #1458: the bulk Remove dialog's clean copies, as a success notice.
+  it("counts the clean copies in one and many, with what the removal takes", () => {
+    expect(cleanCopiesNotice(1)).toEqual({
+      label: "1 clean copy",
+      message: "Only the deployed files are removed.",
+    });
+    expect(cleanCopiesNotice(3).label).toBe("3 clean copies");
   });
 
   it("heads the hover card with the reach, in zero, one and many", () => {
     expect(deployedToLine(0)).toBe("Not deployed to any target.");
-    expect(deployedToLine(1)).toBe("Deployed to 1 target");
-    expect(deployedToLine(12)).toBe("Deployed to 12 targets");
+    expect(deployedToLine(1)).toBe("Deployed to 1 target.");
+    expect(deployedToLine(12)).toBe("Deployed to 12 targets.");
   });
 
   // A hover card holds facts only, never an action.
@@ -83,9 +94,8 @@ describe("Inventory copy", () => {
 
   it("offers Open Harness from the empty Inventory", () => {
     expect(NO_RELEASED_SKILLS).toEqual({
-      level: "info",
-      label: "No released skills yet",
-      message: "Skills from the latest release appear here.",
+      title: "No released skills yet",
+      description: "Skills from the latest release appear here.",
     });
   });
 
@@ -103,7 +113,7 @@ describe("Inventory copy", () => {
   // A target row's ⋮ and the pane's foot (#1065).
   it("names a target row's actions and the foot's removal", () => {
     expect(REMOVE_FROM_TARGET).toBe("Remove from target");
-    expect(SHOW_IN_DEPLOY_STATE).toBe("Show in Deploy-state");
+    expect(VIEW_DEPLOY_STATE).toBe("View Deploy-state");
     expect(removeFromAllLabel(3)).toBe("Remove from all 3 targets");
     expect(removeFromAllLabel(2)).toBe("Remove from all 2 targets");
   });
@@ -114,10 +124,6 @@ describe("Inventory copy", () => {
       "Remove from Claude Code and Codex",
     );
     expect(removeFromToolsLabel(["claude"])).toBe("Remove from Claude Code");
-  });
-
-  it("names a row's menu after its skill", () => {
-    expect(rowActionsLabel("tdd")).toBe("Actions for tdd");
   });
 });
 

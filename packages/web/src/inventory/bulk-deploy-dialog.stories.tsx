@@ -91,7 +91,7 @@ export const PartialReport: Story = {
               notice: {
                 label: "No GitHub access",
                 message:
-                  "Nothing was installed. Set up GitHub access in git, then deploy again.",
+                  "Nothing was deployed. Set up GitHub access in git, then deploy again.",
                 detail: "GitHub refused the download.",
               },
             },

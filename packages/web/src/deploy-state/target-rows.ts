@@ -28,10 +28,10 @@ import {
 } from "./deployed-view";
 import {
   behindLine,
-  comparedFact,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
   pinnedTagsLine,
+  screenComparedFact,
   UNFINISHED_REASONS,
 } from "./release-head-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
@@ -151,7 +151,8 @@ export function globalRows(
         indicator,
         pinnedPerSkill: group.pinnedPerSkill !== undefined,
         behind,
-        mixedReleases: pending?.kind === "update",
+        // A failed read's stale record never outranks its Unknown.
+        pending: readFailed ? undefined : pending?.kind,
         localEdits: !readFailed && editedSkills(group.primitives).length > 0,
       }),
       skills: group.primitives.length,
@@ -161,7 +162,8 @@ export function globalRows(
         ? { latestReleaseGitHub: group.latestReleaseGitHub }
         : {}),
       ...(group.pinnedPerSkill ? { pinned: group.pinnedPerSkill } : {}),
-      ...(pending ? { pending } : {}),
+      // A failed read's stale record offers no retry: Re-read is the way back.
+      ...(pending && !readFailed ? { pending } : {}),
       primitives: group.primitives,
       drift: toolDrift,
       // A skipped entry or a foreign origin names no tool, so every tool carries them.
@@ -218,14 +220,14 @@ export function repoRow(
       indicator: drift.targetIndicator(toDeployedView(read)),
       pinnedPerSkill: pinned !== undefined,
       behind,
-      mixedReleases: pending?.kind === "update",
+      pending: read.isError ? undefined : pending?.kind,
       localEdits:
         !read.isError && editedSkills(data?.primitives ?? []).length > 0,
     }),
     skills: data === undefined ? null : data.primitives.length,
     ...(head ? { head } : {}),
     ...(pinned ? { pinned } : {}),
-    ...(pending ? { pending } : {}),
+    ...(pending && !read.isError ? { pending } : {}),
     primitives: data?.primitives ?? [],
     drift,
     skipped: data?.skipped ?? [],
@@ -272,7 +274,7 @@ function statusReason(row: TargetRow): Copy | null {
   if (!row.readFailed && edited.length > 0)
     return localEditsLine(edited, row.behind);
   if (row.pinned) return pinnedTagsLine(row.pinned);
-  if (row.readFailed) return REPO_NOT_READ.label;
+  if (row.readFailed) return REPO_NOT_READ;
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {
     return otherOriginLine(row.otherOrigins);
   }
@@ -286,12 +288,16 @@ function statusReason(row: TargetRow): Copy | null {
     : ON_LATEST_RELEASE;
 }
 
-export function statusCard(row: TargetRow, now: Date): StatusCard {
+/** `compared` is band 2's line, the screen's oldest reading. */
+export function statusCard(
+  row: TargetRow,
+  compared: string | null,
+): StatusCard {
   if (row.readFailed && row.group === REPOSITORIES) {
-    return { reason: REPO_NOT_READ.label, readAge: null };
+    return { reason: REPO_NOT_READ, readAge: null };
   }
   return {
     reason: statusReason(row),
-    readAge: row.head ? comparedFact(row.head, now) : null,
+    readAge: row.head ? screenComparedFact(row.head, compared) : null,
   };
 }

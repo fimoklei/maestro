@@ -128,7 +128,7 @@ describe("pinnedTagsLine", () => {
 describe("RELEASE_NOT_ADOPTED", () => {
   it("names the way to one release in one meta line", () => {
     expect(RELEASE_NOT_ADOPTED).toBe(
-      "Release not adopted. Select Remove skill for each, then Deploy skill.",
+      "Release not adopted. Select Remove skill for each, then select Deploy skill.",
     );
   });
 });
@@ -200,7 +200,7 @@ describe("unfinishedOperationNotice", () => {
       level: "warning",
       label: "Deploy incomplete",
       message:
-        "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+        "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
     });
   });
 

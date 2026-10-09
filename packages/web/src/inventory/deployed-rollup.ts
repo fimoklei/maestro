@@ -1,7 +1,11 @@
 // The deployed column's pivot: per-target deploy-state + drift folded onto one
 // row per skill (#272).
 
-import type { DeployedPrimitive, ReleaseHead } from "@maestro/core";
+import type {
+  DeployedPrimitive,
+  PendingOperation,
+  ReleaseHead,
+} from "@maestro/core";
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DriftStatus, DriftViewModel } from "../drift/drift-view-model";
 import type { DeployTarget } from "./use-deploy-skill";
@@ -21,6 +25,8 @@ export type DeploymentTarget = {
   // The one release this target follows. Absent where it follows none — pinned
   // per skill, or its read has not landed.
   releaseHead?: ReleaseHead;
+  /** The operation that never finished on this target; absent where none stands. */
+  pending: PendingOperation["kind"] | undefined;
 };
 
 // The Selection where the target follows one release; what is on disk where it

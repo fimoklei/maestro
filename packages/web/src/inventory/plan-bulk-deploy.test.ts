@@ -12,6 +12,7 @@ function target(
   behind: ReadDriftEntry[],
 ): DeploymentTarget {
   return {
+    pending: undefined,
     label,
     target: { kind: "global" },
     deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },

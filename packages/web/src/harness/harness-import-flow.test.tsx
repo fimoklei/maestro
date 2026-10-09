@@ -2,7 +2,12 @@ import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  htmlElement,
+  jsonResponse,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import { harnessRegion } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 import { pullRequest } from "./stage-row-fixture";
@@ -94,6 +99,8 @@ const CLEAN_CHECK = {
 // folder chooser, the import check, and the import itself.
 function stubImportServer(options: {
   check?: unknown;
+  // Answers to the check in turn, before `check` answers every later one.
+  checkAnswers?: (() => Promise<Response>)[];
   importStatus?: number;
   importBody?: unknown;
   // What the harness read answers once the import has gone through.
@@ -113,7 +120,8 @@ function stubImportServer(options: {
         );
       }
       if (url === "/api/harness/import/check") {
-        return jsonResponse(options.check ?? CLEAN_CHECK);
+        const next = options.checkAnswers?.shift();
+        return next ? next() : jsonResponse(options.check ?? CLEAN_CHECK);
       }
       if (url === "/api/harness/import") {
         imports.push(JSON.parse(String(init?.body)));
@@ -135,6 +143,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// The dialog's own submit, not band 1's.
+const dialogImport = () =>
+  within(screen.getByRole("dialog")).getByRole("button", {
+    name: "Import skill",
+  });
+
 // Picks the skill folder through Browse, which the stubbed chooser answers,
 // and waits for the check's proposal to fill the name.
 async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
@@ -142,7 +156,7 @@ async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
   const [importSkill] = await screen.findAllByRole("button", {
     name: "Import skill",
   });
-  await user.click(importSkill as HTMLElement);
+  await user.click(htmlElement(importSkill));
   await user.click(await screen.findByRole("button", { name: "Browse" }));
   await waitFor(() =>
     expect(screen.getByRole("textbox", { name: "Folder path" })).toHaveValue(
@@ -256,8 +270,8 @@ describe("Harness import flow", () => {
     ).toBeInTheDocument();
   });
 
-  it("states a name clash on the name field and closes Import", async () => {
-    stubImportServer({
+  it("states a name clash on the name field, and imports nothing on submit", async () => {
+    const { imports } = stubImportServer({
       check: { ...CLEAN_CHECK, nameBlocker: "name-taken" },
     });
     const user = userEvent.setup();
@@ -269,11 +283,98 @@ describe("Harness import flow", () => {
     expect(field).toHaveAccessibleDescription(
       /already holds a skill under it/i,
     );
+    await user.click(dialogImport());
+
+    expect(imports).toEqual([]);
+    expect(field).toHaveAccessibleDescription(
+      /already holds a skill under it/i,
+    );
+  });
+
+  it("states a missing folder under its field on submit", async () => {
+    const { calls } = stubImportServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openSkill={null} />);
+
+    const [importSkill] = await screen.findAllByRole("button", {
+      name: "Import skill",
+    });
+    await user.click(htmlElement(importSkill));
+    await user.click(dialogImport());
+
+    const folder = screen.getByRole("textbox", { name: "Folder path" });
+    expect(folder).toBeInvalid();
+    expect(folder).toHaveAccessibleDescription(
+      /Enter the skill folder's absolute path\./,
+    );
     expect(
-      screen.getByRole("button", {
-        name: "Import skill — name cannot be used",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+      calls.filter((call) => call.includes("/api/harness/import")),
+    ).toEqual([]);
+
+    await user.type(folder, "/");
+    expect(folder).toBeValid();
+  });
+
+  it("checks a typed folder on submit", async () => {
+    const { imports } = stubImportServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openSkill={null} />);
+
+    const [importSkill] = await screen.findAllByRole("button", {
+      name: "Import skill",
+    });
+    await user.click(htmlElement(importSkill));
+    await user.type(
+      await screen.findByRole("textbox", { name: "Folder path" }),
+      `${SOURCE}{Enter}`,
+    );
+
+    expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
+      "code-review",
+    );
+    expect(imports).toEqual([]);
+  });
+
+  // #1448 G12: a submit is never silent.
+  it("imports once the check under way lands clean", async () => {
+    let land = () => {};
+    const landed = new Promise<void>((resolve) => {
+      land = resolve;
+    });
+    const { imports } = stubImportServer({
+      checkAnswers: [() => landed.then(() => jsonResponse(CLEAN_CHECK))],
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openSkill={null} />);
+
+    await openImportWithSource(user);
+    await user.click(dialogImport());
+    expect(imports).toEqual([]);
+
+    land();
+    await waitFor(() =>
+      expect(imports).toEqual([{ source: SOURCE, name: "code-review" }]),
+    );
+  });
+
+  it("checks again on submit after the check failed, then imports", async () => {
+    const { imports, calls } = stubImportServer({
+      checkAnswers: [async () => jsonResponse({}, 500)],
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openSkill={null} />);
+
+    await openImportWithSource(user);
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.endsWith("/api/harness/import/check")),
+      ).toHaveLength(1),
+    );
+    await user.click(dialogImport());
+
+    await waitFor(() =>
+      expect(imports).toEqual([{ source: SOURCE, name: "code-review" }]),
+    );
   });
 
   it("reports the conventions without closing Import", async () => {
@@ -318,7 +419,7 @@ describe("Harness import flow", () => {
     const [importSkill] = await screen.findAllByRole("button", {
       name: "Import skill",
     });
-    await user.click(importSkill as HTMLElement);
+    await user.click(htmlElement(importSkill));
     await user.type(
       await screen.findByRole("textbox", { name: "Folder path" }),
       SOURCE,

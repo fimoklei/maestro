@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, sentence } from "../test-utils";
 import {
+  cellsOf,
   factValue,
   findRow,
   grid,
@@ -77,7 +78,7 @@ describe("Deploy-state pane — facts", () => {
       within(pane).getByRole("heading", { level: 2, name: LABEL }),
     ).toBeInTheDocument();
     expect(fact(pane, "Target")).toBe("Repository");
-    expect(fact(pane, "Path")).toBe(REPO);
+    expect(fact(pane, "Folder path")).toBe(REPO);
     expect(fact(pane, "Release")).toBe("v0.3.2");
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
     expect(fact(pane, "Changed")).toBe("2 of 5 skills: tdd and grill");
@@ -205,6 +206,42 @@ describe("Deploy-state pane — facts", () => {
     }
   });
 
+  // #1454: one screen never dates two readings at once.
+  it("dates the Compared fact and band 2 by the same, oldest reading", async () => {
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60_000).toISOString();
+    repoWith({ releaseHead: { ...BEHIND, comparedAt: threeMinutesAgo } });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(fact(pane, "Compared")).toBe("Read 3 min ago");
+    expect(
+      new Set(screen.getAllByText(/^Read /).map((line) => line.textContent)),
+    ).toEqual(new Set(["Read 3 min ago"]));
+  });
+
+  it("dates the Compared fact by the oldest reading on the screen", async () => {
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60_000).toISOString();
+    stubServer(() => ({
+      repos: [REPO, "/Users/me/other"],
+      repo: {
+        [REPO]: {
+          primitives: [skill("tdd")],
+          skipped: [],
+          releaseHead: BEHIND,
+        },
+        "/Users/me/other": {
+          primitives: [skill("tdd")],
+          skipped: [],
+          releaseHead: { ...BEHIND, comparedAt: twoMinutesAgo },
+        },
+      },
+    }));
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(fact(pane, "Compared")).toBe("Read 2 min ago");
+  });
+
   it("states every fact as one label/value row, in the order the pane reads", async () => {
     repoWith({ releaseHead: BEHIND, extraFiles: 2 });
     renderDeployState();
@@ -216,7 +253,7 @@ describe("Deploy-state pane — facts", () => {
       [...(list?.querySelectorAll("dt") ?? [])].map((dt) => dt.textContent),
     ).toEqual([
       "Target",
-      "Path",
+      "Folder path",
       "Release",
       "Latest release",
       "Changed",
@@ -294,7 +331,7 @@ describe("Deploy-state pane — facts", () => {
       sentence("1 skill at v0.3.1, 1 at v0.3.0."),
     );
     const way = within(pane).getByText(
-      "Release not adopted. Select Remove skill for each, then Deploy skill.",
+      "Release not adopted. Select Remove skill for each, then select Deploy skill.",
     );
     expect(tags.closest("p")).toBe(way.closest("p"));
     expect(within(pane).queryByRole("status")).not.toBeInTheDocument();
@@ -311,7 +348,7 @@ describe("Deploy-state pane — facts", () => {
     expect(within(grid()).queryByText("Pinned per skill")).toBeNull();
     expect(
       within(pane).queryByText(
-        "Release not adopted. Select Remove skill for each, then Deploy skill.",
+        "Release not adopted. Select Remove skill for each, then select Deploy skill.",
       ),
     ).not.toBeInTheDocument();
   });
@@ -420,20 +457,26 @@ describe("Deploy-state pane — facts", () => {
     ).toBeInTheDocument();
   });
 
-  it("states a repository's failed read in its pane, with its re-read", async () => {
+  // #1454: an unknown reading is a badge and a paragraph, never a failure notice.
+  it("states a repository's failed read in its pane paragraph, under its Unknown badge", async () => {
     stubServer(() => ({
       repos: [REPO],
       repo: { [REPO]: { status: 422, body: { error: "malformed" } } },
     }));
     renderDeployState();
 
+    await findRow(LABEL);
+    await waitFor(() => expect(cellsOf(LABEL)[1]).toBe("Unknown"));
     const pane = await openPane(LABEL);
-    expect(within(pane).getByRole("status")).toHaveTextContent(
-      "Deploy-state not readSelect Re-read Deploy-state to read this repository's deploy-state again.",
-    );
     expect(
-      within(pane).getByRole("button", { name: "Re-read Deploy-state" }),
+      within(pane).getByText(
+        "Deploy-state not read. Select Re-read Deploy-state to read this repository's deploy-state again.",
+      ),
     ).toBeInTheDocument();
+    expect(within(pane).queryByRole("status")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Re-read Deploy-state" }),
+    ).not.toBeNull();
   });
 
   it("pages through the targets as the table shows them", async () => {
@@ -623,6 +666,30 @@ describe("Deploy-state pane — an unfinished operation", () => {
   const pendingRepo = (pendingOperation: object, primitives = [skill("tdd")]) =>
     repoWith({ primitives, releaseHead: BEHIND, pendingOperation });
 
+  // #1454: the row never reads In sync while its pane reports the operation.
+  it.each([
+    ["deploy", "Deploy incomplete"],
+    ["remove", "Removal incomplete"],
+    ["update", "Update incomplete"],
+  ])(
+    "reads an unfinished %s as its notice's heading, in the row and the pane",
+    async (kind, heading) => {
+      repoWith({
+        primitives: [skill("tdd")],
+        releaseHead: { ...BEHIND, latestRelease: BEHIND.release },
+        pendingOperation: { kind, release: "v0.3.2", desired: ["tdd"] },
+      });
+      renderDeployState();
+
+      await findRow(LABEL);
+      await waitFor(() => expect(cellsOf(LABEL)[1]).toBe(heading));
+      const pane = await openPane(LABEL);
+      expect(
+        within(within(pane).getByRole("status")).getByText(heading),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("states a half-landed update and offers Retry update, not another Update", async () => {
     pendingRepo(
       { kind: "update", release: "v0.3.4", desired: ["tdd", "grill"] },
@@ -650,7 +717,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(
       within(pane).queryByRole("button", { name: /^Update target/ }),
     ).not.toBeInTheDocument();
-    expect(within(grid()).getByText("Mixed releases")).toBeInTheDocument();
+    expect(within(grid()).getByText("Update incomplete")).toBeInTheDocument();
   });
 
   it("names the release an unfinished deploy would install again", async () => {
@@ -662,7 +729,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+          "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
         ),
       ),
     ).toBeInTheDocument();
@@ -715,13 +782,15 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(retries).toEqual([
       JSON.stringify({ target: { kind: "repo", repoPath: REPO } }),
     ]);
-    await waitFor(() =>
-      expect(
-        within(notice).getByRole("button", { name: "Retry deploy" }),
-      ).toBeDisabled(),
-    );
+    const running = await within(notice).findByRole("button", {
+      name: "Deploying…",
+    });
+    expect(running).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(running);
     expect(
-      within(pane).getAllByRole("button", { name: /^Retry deploy/ }),
+      within(pane).getAllByRole("button", {
+        name: /^(Retry deploy|Deploying…)/,
+      }),
     ).toHaveLength(1);
     await userEvent.click(
       within(await findRow(LABEL)).getByRole("button", {

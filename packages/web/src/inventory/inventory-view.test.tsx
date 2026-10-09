@@ -5,6 +5,7 @@ import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import {
+  htmlElement,
   jsonResponse,
   measureAs,
   renderWithQuery,
@@ -17,6 +18,12 @@ import type { Primitive } from "./use-inventory";
 const grid = () => screen.getByRole("grid", { name: "Inventory table" });
 
 // Column order: bulk checkbox, Type, Name, Description, Status, Targets, ⋮.
+// The Status cell and the Targets cell beside its secondary columns.
+const statusAndReach = (name: string) => {
+  const cells = cellsOf(name);
+  return [cells[2], cells[5]];
+};
+
 function cellsOf(name: string): string[] {
   const row = within(grid())
     .getAllByRole("row")
@@ -34,7 +41,7 @@ function cellsOf(name: string): string[] {
 function dataRowNames(): string[] {
   const [, ...bodyRows] = within(grid()).getAllByRole("row");
   return bodyRows.map(
-    (row) => within(row).getAllByRole("gridcell")[2]?.textContent ?? "",
+    (row) => within(row).getAllByRole("gridcell")[1]?.textContent ?? "",
   );
 }
 
@@ -45,6 +52,7 @@ const deployedTo = (
   names: string[],
   behind: ReadDriftEntry[] = [],
 ): DeploymentTarget => ({
+  pending: undefined,
   label: "",
   target: { kind: "global" },
   deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
@@ -141,7 +149,7 @@ describe("InventoryView — the table", () => {
     stubPendingFetch();
     renderView();
 
-    expect(cellsOf("tdd")[1]).toBe("Skill");
+    expect(cellsOf("tdd")[3]).toBe("Skill");
     expect(within(grid()).getAllByText("Skill")).toHaveLength(2);
   });
 
@@ -152,15 +160,15 @@ describe("InventoryView — the table", () => {
       targets: [deployedTo(["tdd"]), deployedTo(["tdd"], [tddBehind])],
     });
 
-    expect(cellsOf("tdd").slice(4, 6)).toEqual(["Behind", "2"]);
-    expect(cellsOf("caveman").slice(4, 6)).toEqual(["Not deployed", "—"]);
+    expect(statusAndReach("tdd")).toEqual(["Behind", "2"]);
+    expect(statusAndReach("caveman")).toEqual(["Not deployed", "—"]);
   });
 
   it("reads Up to date for a skill whose every target is clean", () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });
 
-    expect(cellsOf("tdd").slice(4, 6)).toEqual(["Up to date", "1"]);
+    expect(statusAndReach("tdd")).toEqual(["Up to date", "1"]);
   });
 
   it("shows no status while a target's deploy-state is still being read", () => {
@@ -169,6 +177,7 @@ describe("InventoryView — the table", () => {
       targets: [
         deployedTo(["tdd"]),
         {
+          pending: undefined,
           label: "",
           target: { kind: "repo", repoPath: "/dev/unread" },
           deployed: { status: "pending" },
@@ -180,7 +189,7 @@ describe("InventoryView — the table", () => {
 
     // Never a definite "Not deployed" before every read has answered.
     expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
-    expect(cellsOf("tdd")[4]).toBe("");
+    expect(cellsOf("tdd")[2]).toBe("");
   });
 
   it("keeps deploy out of the rows: a row's one control is its ⋮ menu", () => {
@@ -219,7 +228,9 @@ describe("InventoryView — the table", () => {
     const onOpenHarness = vi.fn();
     renderView({ primitives: [], onOpenHarness });
 
-    expect(screen.getByText("No released skills yet")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "No released skills yet" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Skills from the latest release appear here."),
     ).toBeInTheDocument();
@@ -236,12 +247,12 @@ describe("InventoryView — the table", () => {
       onOpenHarness: vi.fn(),
       failure: {
         level: "error",
-        label: "Could not read Inventory",
+        label: "Inventory not read",
         message: "Select Re-read Inventory to try again.",
       },
     });
 
-    expect(screen.getByText("Could not read Inventory")).toBeInTheDocument();
+    expect(screen.getByText("Inventory not read")).toBeInTheDocument();
     expect(
       screen.queryByText("No released skills yet"),
     ).not.toBeInTheDocument();
@@ -279,10 +290,15 @@ describe("InventoryView — band 2", () => {
     );
 
     expect(
-      screen.getByText(
-        "No skills match the search. Clear the search box to see every skill.",
-      ),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "No skills match the search",
+      }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Clear the search box to see every skill."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
   it("offers a data-driven type filter of all plus the types present", async () => {
@@ -347,9 +363,13 @@ describe("InventoryView — band 2", () => {
     await userEvent.keyboard("{Escape}");
 
     expect(
-      screen.getByText(
-        "No skills match the filters. Select Filter to show more skills.",
-      ),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "No skills match the filters",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Select Filter to show more skills."),
     ).toBeInTheDocument();
   });
 
@@ -508,6 +528,32 @@ describe("InventoryView — detail pane", () => {
     ).toBeInTheDocument();
     // The per-target release lens: tdd is deployed to the one target (#956).
     expect(within(pane).getByText("v1.0.0")).toBeInTheDocument();
+  });
+
+  it("states a target whose read failed as a failure, never as loading", async () => {
+    stubPendingFetch();
+    renderView({
+      targets: [
+        deployedTo(["tdd"]),
+        {
+          pending: undefined,
+          label: "",
+          target: { kind: "repo", repoPath: "/dev/unread" },
+          deployed: { status: "unknown" },
+          primitives: [],
+          drift: ranDrift([]),
+        },
+      ],
+    });
+
+    await openRow("tdd");
+
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    expect(pane).not.toHaveTextContent(/Loading/);
+    expect(pane.querySelector("[aria-busy='true']")).toBeNull();
+    expect(
+      within(pane).getByText("Some targets could not be read."),
+    ).toBeInTheDocument();
   });
 
   it("opens the pane when a non-name cell of the row is clicked", async () => {
@@ -961,6 +1007,7 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
       onTarget({ kind: "global" }, ["tdd"]),
       onTarget({ kind: "repo", repoPath: "/dev/acme-web" }, ["tdd"]),
       {
+        pending: undefined,
         label: "",
         target: { kind: "repo", repoPath: "/dev/unread" },
         deployed: { status: "pending" },
@@ -1019,15 +1066,15 @@ describe("InventoryView — reading", () => {
       onReread,
       failure: {
         level: "error",
-        label: "Could not read Inventory",
+        label: "Inventory not read",
         message: "Select Re-read Inventory to try again.",
       },
     });
 
-    expect(screen.getByText("Could not read Inventory")).toBeInTheDocument();
+    expect(screen.getByText("Inventory not read")).toBeInTheDocument();
     expect(screen.getByRole("gridcell", { name: "tdd" })).toBeInTheDocument();
     const notice = screen
-      .getByText("Could not read Inventory")
+      .getByText("Inventory not read")
       .closest<HTMLElement>('[role="status"]');
     if (notice === null) throw new Error("the notice is not a status region");
     await userEvent.click(
@@ -1044,6 +1091,7 @@ const onRepo = (
   names: string[],
   changed: string[] = [],
 ): DeploymentTarget => ({
+  pending: undefined,
   label: repoPath.split("/").at(-1) ?? repoPath,
   target: { kind: "repo", repoPath },
   deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
@@ -1205,7 +1253,46 @@ describe("InventoryView — a target row in the pane", () => {
     ]);
   });
 
-  it("names Show in Deploy-state where the screen can open that row", async () => {
+  // #1454: the mark Deploy-state's pane gives the same target and skill.
+  it("marks a target as Deploy-state's pane does: its unfinished operation, else the skill's own copy", async () => {
+    stubPendingFetch();
+    const alpha = onRepo("/projects/alpha", ["tdd"]);
+    const beta = onRepo("/projects/beta", ["tdd"]);
+    renderView({
+      repos,
+      targets: [
+        { ...alpha, pending: "deploy" },
+        {
+          ...beta,
+          primitives: [
+            {
+              type: "skill",
+              name: "tdd",
+              version: "v0.3.2",
+              copy: "local-edits",
+            },
+          ],
+        },
+      ],
+    });
+    await openRow("tdd");
+
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    const row = (label: string) =>
+      htmlElement(
+        within(pane)
+          .getAllByRole("listitem")
+          .find((item) => within(item).queryByText(label) !== null),
+      );
+    expect(
+      within(row("alpha")).getByRole("img", { name: "Deploy incomplete" }),
+    ).toBeInTheDocument();
+    expect(
+      within(row("beta")).getByRole("img", { name: "Local edits" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names View Deploy-state where the screen can open that row", async () => {
     stubPendingFetch();
     const onShowTarget = vi.fn();
     renderView({
@@ -1217,11 +1304,11 @@ describe("InventoryView — a target row in the pane", () => {
 
     const menu = await targetMenu("beta");
     expect(menuItems(menu)).toEqual([
-      "Show in Deploy-state",
+      "View Deploy-state",
       "Remove from target",
     ]);
     await userEvent.click(
-      within(menu).getByRole("menuitem", { name: "Show in Deploy-state" }),
+      within(menu).getByRole("menuitem", { name: "View Deploy-state" }),
     );
     expect(onShowTarget).toHaveBeenCalledWith("repo:/projects/beta");
   });
@@ -1324,7 +1411,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const card = await screen.findByText(sentence("Deployed to 1 target"));
+    const card = await screen.findByText(sentence("Deployed to 1 target."));
     const row = within(card.parentElement as HTMLElement).getByRole("listitem");
     expect(row).toHaveTextContent("beta");
     expect(row).toHaveTextContent("v0.3.2");
@@ -1337,7 +1424,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const reach = await screen.findByText(sentence("Deployed to 1 target"));
+    const reach = await screen.findByText(sentence("Deployed to 1 target."));
     const card = reach.closest(
       "[data-radix-popper-content-wrapper]",
     ) as HTMLElement;
@@ -1370,7 +1457,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const reach = await screen.findByText(sentence("Deployed to 2 targets"));
+    const reach = await screen.findByText(sentence("Deployed to 2 targets."));
     const card = reach.closest(
       "[data-radix-popper-content-wrapper]",
     ) as HTMLElement;
@@ -1395,7 +1482,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const reach = await screen.findByText(sentence("Deployed to 2 targets"));
+    const reach = await screen.findByText(sentence("Deployed to 2 targets."));
     const card = reach.closest(
       "[data-radix-popper-content-wrapper]",
     ) as HTMLElement;
@@ -1408,7 +1495,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Up to date"));
 
-    const reach = await screen.findByText(sentence("Deployed to 1 target"));
+    const reach = await screen.findByText(sentence("Deployed to 1 target."));
     const card = reach.closest(
       "[data-radix-popper-content-wrapper]",
     ) as HTMLElement;
@@ -1427,7 +1514,7 @@ describe("InventoryView — hover card", () => {
     act(() => grid().focus());
 
     expect(
-      await screen.findAllByText(sentence("Deployed to 1 target")),
+      await screen.findAllByText(sentence("Deployed to 1 target.")),
     ).toHaveLength(1);
   });
 
@@ -1443,7 +1530,7 @@ describe("InventoryView — hover card", () => {
     await userEvent.hover(within(grid()).getByText("2"));
 
     expect(
-      await screen.findByText(sentence("Deployed to 2 targets")),
+      await screen.findByText(sentence("Deployed to 2 targets.")),
     ).toBeInTheDocument();
   });
 
@@ -1454,7 +1541,7 @@ describe("InventoryView — hover card", () => {
     act(() => grid().focus());
 
     expect(
-      await screen.findAllByText(sentence("Deployed to 1 target")),
+      await screen.findAllByText(sentence("Deployed to 1 target.")),
     ).toHaveLength(1);
   });
 
@@ -1474,7 +1561,7 @@ describe("InventoryView — hover card", () => {
     };
 
     act(() => grid().focus());
-    await screen.findByText(sentence("Deployed to 1 target"));
+    await screen.findByText(sentence("Deployed to 1 target."));
 
     const triggerOf = (column: string) =>
       cellOf(column).querySelector("[data-state]");

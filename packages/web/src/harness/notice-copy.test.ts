@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
-import { machineValues, readNotice } from "../test-utils";
+import { machineValues, readNotice, unselectedControls } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
@@ -60,7 +60,7 @@ const CONCURRENT_CHANGE: NoticeContent = {
   level: "error",
   label: "Newer change from a teammate",
   message:
-    "Their version still stands. Pull it into the Harness clone, then Propose change again.",
+    "Their version still stands. Pull it into the Harness clone, then select Propose change again.",
 };
 
 const suites: [
@@ -114,7 +114,8 @@ const suites: [
         {
           level: "error",
           label: "GitHub did not respond",
-          message: "Select Re-read Harness, then Create a release again.",
+          message:
+            "Select Re-read Harness, then select Create a release again.",
           detail: "A release plan is measured against what GitHub holds.",
         },
       ],
@@ -127,7 +128,7 @@ const suites: [
       level: "error",
       label: "Release not published",
       message:
-        "The Maestro server did not answer, and no tag was pushed. Publish release again.",
+        "The Maestro server did not answer, and no tag was pushed. Select Publish release again.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -138,7 +139,7 @@ const suites: [
           level: "error",
           label: "GitHub did not respond",
           message:
-            "Nothing was published. Select Re-read Harness, then Publish release again.",
+            "Nothing was published. Select Re-read Harness, then select Publish release again.",
         },
       ],
       [
@@ -156,7 +157,7 @@ const suites: [
           level: "error",
           label: "Release already exists",
           message:
-            "Maestro rebuilt the plan against the newest release. Check it, then Publish release.",
+            "Maestro rebuilt the plan against the newest release. Check it, then select Publish release.",
         },
       ],
       [
@@ -165,7 +166,7 @@ const suites: [
           level: "error",
           label: "Release plan changed",
           message:
-            "Nothing was published. Maestro rebuilt the plan, so check it, then Publish release.",
+            "Nothing was published. Maestro rebuilt the plan, so check it, then select Publish release.",
           detail: "GitHub moved while this dialog was open.",
         },
       ],
@@ -175,16 +176,16 @@ const suites: [
           level: "error",
           label: "Release not published",
           message:
-            "The Harness is as it was. Publish release again once GitHub is reachable.",
+            "The Harness is as it was. Select Publish release again once GitHub is reachable.",
         },
       ],
       [
         "publish-in-progress",
         {
           level: "error",
-          label: "Release already running",
+          label: "Harness busy",
           message:
-            "Wait for that release to finish, then Create a release again.",
+            "Wait for that release to finish, then select Create a release again.",
           detail: "Maestro publishes one release at a time.",
         },
       ],
@@ -197,7 +198,7 @@ const suites: [
       level: "error",
       label: "Change not proposed",
       message:
-        "The Maestro server did not answer, and nothing was pushed. Propose change again.",
+        "The Maestro server did not answer, and nothing was pushed. Select Propose change again.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -211,7 +212,7 @@ const suites: [
           level: "error",
           label: "GitHub did not respond",
           message:
-            "Nothing was pushed. Select Re-read Harness, then Propose change again.",
+            "Nothing was pushed. Select Re-read Harness, then select Propose change again.",
         },
       ],
       [
@@ -229,7 +230,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Nothing was pushed. Select a View pull request link to close the extras, then Propose change again.",
+            "Nothing was pushed. Select a View pull request link to close the extras, then select Propose change again.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },
@@ -240,7 +241,7 @@ const suites: [
           level: "error",
           label: "Another contributor's pull request is open",
           message:
-            "Nothing was pushed. Wait until it is merged or closed, then Propose change again.",
+            "Nothing was pushed. Wait until it is merged or closed, then select Propose change again.",
           detail: "Only one contributor proposes to a skill at a time.",
         },
       ],
@@ -250,7 +251,7 @@ const suites: [
           level: "error",
           label: "Files changed during the check",
           message:
-            "Nothing was pushed. Let the edit on disk finish, then Propose change again.",
+            "Nothing was pushed. Let the edit on disk finish, then select Propose change again.",
         },
       ],
       [
@@ -259,15 +260,16 @@ const suites: [
           level: "error",
           label: "Change not proposed",
           message:
-            "The Harness is as it was. Propose change again once GitHub is reachable.",
+            "The Harness is as it was. Select Propose change again once GitHub is reachable.",
         },
       ],
       [
         "promote-in-progress",
         {
           level: "error",
-          label: "Change already being proposed",
-          message: "Wait for that change to finish, then Propose change again.",
+          label: "Harness busy",
+          message:
+            "Wait for that change to finish, then select Propose change again.",
           detail: "Maestro proposes one change at a time.",
         },
       ],
@@ -280,7 +282,7 @@ const suites: [
       level: "error",
       label: "Deletion not proposed",
       message:
-        "The Maestro server did not answer, and nothing was pushed. Delete skill again.",
+        "The Maestro server did not answer, and nothing was pushed. Select Delete skill again.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -293,7 +295,7 @@ const suites: [
           level: "error",
           label: "GitHub did not respond",
           message:
-            "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
+            "Nothing was pushed. Select Re-read Harness, then select Delete skill again.",
         },
       ],
       [
@@ -309,8 +311,9 @@ const suites: [
         "promote-in-progress",
         {
           level: "error",
-          label: "Change already being proposed",
-          message: "Wait for that change to finish, then Delete skill again.",
+          label: "Harness busy",
+          message:
+            "Wait for that change to finish, then select Delete skill again.",
           detail: "Maestro proposes one change at a time.",
         },
       ],
@@ -320,7 +323,7 @@ const suites: [
           level: "error",
           label: "Deletion not proposed",
           message:
-            "The Harness is as it was. Delete skill again once GitHub is reachable.",
+            "The Harness is as it was. Select Delete skill again once GitHub is reachable.",
         },
       ],
       [
@@ -329,7 +332,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Nothing was pushed. Select a View pull request link to close the extras, then Delete skill again.",
+            "Nothing was pushed. Select a View pull request link to close the extras, then select Delete skill again.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },
@@ -340,7 +343,7 @@ const suites: [
           level: "error",
           label: "Another contributor's pull request is open",
           message:
-            "Nothing was pushed. Wait until it is merged or closed, then Delete skill again.",
+            "Nothing was pushed. Wait until it is merged or closed, then select Delete skill again.",
           detail: "Only one contributor proposes to a skill at a time.",
         },
       ],
@@ -350,7 +353,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
+            "Nothing was pushed. Select Re-read Harness, then select Delete skill again.",
           detail:
             "The copy on the default branch moved after this confirmation.",
         },
@@ -382,7 +385,7 @@ const suites: [
           level: "error",
           label: "Unfinished merge",
           message:
-            "Nothing was pushed. Finish or abort the merge, then Delete skill again.",
+            "Nothing was pushed. Finish or abort the merge, then select Delete skill again.",
           detail: "A half-merged working tree does not state what should go.",
         },
       ],
@@ -392,7 +395,7 @@ const suites: [
           level: "error",
           label: "Unfinished rebase",
           message:
-            "Nothing was pushed. Finish or abort the rebase, then Delete skill again.",
+            "Nothing was pushed. Finish or abort the rebase, then select Delete skill again.",
           detail: "A half-rebased working tree does not state what should go.",
         },
       ],
@@ -402,7 +405,7 @@ const suites: [
           level: "error",
           label: "Unresolved conflicts",
           message:
-            "Nothing was pushed. Resolve the conflicts, then Delete skill again.",
+            "Nothing was pushed. Resolve the conflicts, then select Delete skill again.",
           detail: "A conflicted working tree does not state what should go.",
         },
       ],
@@ -410,9 +413,9 @@ const suites: [
         "unreadable",
         {
           level: "error",
-          label: "Unreadable working tree",
+          label: "Working tree not read",
           message:
-            "Nothing was pushed. Make the Harness folder readable, then Delete skill again.",
+            "Nothing was pushed. Make the Harness folder readable, then select Delete skill again.",
         },
       ],
     ],
@@ -424,7 +427,7 @@ const suites: [
       level: "error",
       label: "Skill not deleted",
       message:
-        "The Maestro server did not answer, and the Harness is as it was. Delete skill again.",
+        "The Maestro server did not answer, and the Harness is as it was. Select Delete skill again.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -455,7 +458,7 @@ const suites: [
           level: "error",
           label: "Clone not read",
           message:
-            "Nothing was deleted. Close this dialog, then select Delete skill again.",
+            "Nothing was deleted. Select Close, then select Delete skill again.",
           detail: "Git could not read your clone.",
         },
       ],
@@ -465,7 +468,7 @@ const suites: [
           level: "error",
           label: "Folder outside the Harness",
           message:
-            "Nothing was deleted. Replace the link with a real folder, then Delete skill again.",
+            "Nothing was deleted. Replace the link with a real folder, then select Delete skill again.",
           detail:
             "The skill folder resolves outside the Harness skills folder.",
         },
@@ -476,15 +479,16 @@ const suites: [
           level: "error",
           label: "Skill not deleted",
           message:
-            "The Harness is as it was. Make the folder writable, then Delete skill again.",
+            "The Harness is as it was. Make the folder writable, then select Delete skill again.",
         },
       ],
       [
         "delete-in-progress",
         {
           level: "error",
-          label: "Harness already changing",
-          message: "Wait for that change to finish, then Delete skill again.",
+          label: "Harness busy",
+          message:
+            "Wait for that change to finish, then select Delete skill again.",
           detail: "Maestro changes one Harness at a time.",
         },
       ],
@@ -497,7 +501,7 @@ const suites: [
       level: "error",
       label: "Skill not imported",
       message:
-        "The Maestro server did not answer, and nothing reached the Harness. Import skill again.",
+        "The Maestro server did not answer, and nothing reached the Harness. Select Import skill again.",
     },
     [
       [
@@ -513,9 +517,9 @@ const suites: [
         "source-unreadable",
         {
           level: "error",
-          label: "Unreadable folder",
+          label: "Folder not read",
           message:
-            "Nothing was copied. Make the folder readable, then pick it again.",
+            "Nothing was copied. Make the folder readable, then choose it again.",
         },
       ],
       [
@@ -523,7 +527,7 @@ const suites: [
         {
           level: "error",
           label: "Folder out of reach",
-          message: "Pick a folder inside your home folder.",
+          message: "Choose a folder inside your home folder.",
           detail: "Maestro reads inside the home folder only.",
         },
       ],
@@ -532,7 +536,7 @@ const suites: [
         {
           level: "error",
           label: "No SKILL.md",
-          message: "Pick the folder that holds the skill's SKILL.md.",
+          message: "Choose the folder that holds the skill's SKILL.md.",
         },
       ],
       [
@@ -540,7 +544,8 @@ const suites: [
         {
           level: "error",
           label: "Unreadable frontmatter",
-          message: "Fix the SKILL.md frontmatter, then Import skill again.",
+          message:
+            "Fix the SKILL.md frontmatter, then select Import skill again.",
           detail: "Maestro cannot read the skill's name or description.",
         },
       ],
@@ -550,7 +555,7 @@ const suites: [
           level: "error",
           label: "Empty description",
           message:
-            "Fill in the description in SKILL.md, then Import skill again.",
+            "Fill in the description in SKILL.md, then select Import skill again.",
           detail: "The description tells an agent when to reach for the skill.",
         },
       ],
@@ -569,7 +574,7 @@ const suites: [
         {
           level: "error",
           label: "Folder gone",
-          message: "Nothing was copied. Pick the folder again.",
+          message: "Nothing was copied. Choose the folder again.",
         },
       ],
       [
@@ -578,7 +583,7 @@ const suites: [
           level: "error",
           label: "Not a folder",
           message:
-            "A skill is a folder with a SKILL.md in it. Pick one of those.",
+            "A skill is a folder with a SKILL.md in it. Choose one of those.",
         },
       ],
       [
@@ -596,7 +601,7 @@ const suites: [
           level: "error",
           label: "Symbolic link inside",
           message:
-            "Nothing was copied. Replace the link with a real file, then Import skill again.",
+            "Nothing was copied. Replace the link with a real file, then select Import skill again.",
           detail: "Maestro will not follow one into somewhere else on disk.",
         },
       ],
@@ -606,7 +611,7 @@ const suites: [
           level: "error",
           label: "Shared file inside",
           message:
-            "Nothing was copied. Replace it with a plain copy, then Import skill again.",
+            "Nothing was copied. Replace it with a plain copy, then select Import skill again.",
           detail: "Copying it would tie the Harness to a file it does not own.",
         },
       ],
@@ -616,7 +621,7 @@ const suites: [
           level: "error",
           label: "Special file inside",
           message:
-            "Nothing was copied. Take it out of the folder, then Import skill again.",
+            "Nothing was copied. Take it out of the folder, then select Import skill again.",
           detail: "Maestro carries plain files and folders only.",
         },
       ],
@@ -626,7 +631,7 @@ const suites: [
           level: "error",
           label: "Over 1,000 files",
           message:
-            "Nothing was copied. Pick the skill folder itself, not the repository around it.",
+            "Nothing was copied. Choose the skill folder itself, not the repository around it.",
         },
       ],
       [
@@ -635,7 +640,7 @@ const suites: [
           level: "error",
           label: "Over 50 MiB",
           message:
-            "Nothing was copied. Pick the skill folder itself, not the repository around it.",
+            "Nothing was copied. Choose the skill folder itself, not the repository around it.",
         },
       ],
       [
@@ -644,7 +649,7 @@ const suites: [
           level: "error",
           label: "Folder changed during import",
           message:
-            "The skill was not imported. Let the folder change finish, then Import skill again.",
+            "The skill was not imported. Let the folder change finish, then select Import skill again.",
         },
       ],
       [
@@ -653,7 +658,7 @@ const suites: [
           level: "error",
           label: "Skill not imported",
           message:
-            "The skill was not imported. Free up disk space, then Import skill again.",
+            "The skill was not imported. Free up disk space, then select Import skill again.",
         },
       ],
       [
@@ -671,7 +676,7 @@ const suites: [
           level: "error",
           label: "Copy from another Harness",
           message:
-            "Pick a folder that is not a copy deployed by another Harness.",
+            "Choose a folder that is not a copy deployed by another Harness.",
           detail:
             "Maestro can update only copies deployed by the connected Harness.",
         },
@@ -699,9 +704,9 @@ const suites: [
         "harness-unreadable",
         {
           level: "error",
-          label: "Unreadable Harness clone",
+          label: "Harness clone not read",
           message:
-            "Nothing was copied. Make the Harness clone readable, then Update skill again.",
+            "Nothing was copied. Make the Harness clone readable, then select Update skill again.",
           detail:
             "Maestro reads the clone's committed state before replacing a skill.",
         },
@@ -790,7 +795,7 @@ const suites: [
       level: "error",
       label: "Skill not restored",
       message:
-        "Nothing was restored. The Maestro server did not answer. Restore skill again.",
+        "Nothing was restored. The Maestro server did not answer. Select Restore skill again.",
     },
     [
       [
@@ -817,7 +822,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was restored. Select Re-read Harness, then Restore skill again.",
+            "Nothing was restored. Select Re-read Harness, then select Restore skill again.",
           detail: "Your clone's last commit moved after this confirmation.",
         },
       ],
@@ -827,7 +832,7 @@ const suites: [
           level: "error",
           label: "Skill has staged changes",
           message:
-            "Nothing was restored. Unstage this skill in your Git tool, then Restore skill again.",
+            "Nothing was restored. Unstage this skill in your Git tool, then select Restore skill again.",
           detail: "Maestro never changes what you staged.",
         },
       ],
@@ -847,7 +852,7 @@ const suites: [
           level: "error",
           label: "Folder already there",
           message:
-            "Nothing was restored. Move the folder in the Harness clone, then Restore skill again.",
+            "Nothing was restored. Move the folder in the Harness clone, then select Restore skill again.",
           detail: "Something already sits where this skill folder belongs.",
         },
       ],
@@ -857,7 +862,7 @@ const suites: [
           level: "error",
           label: "Folder outside the Harness",
           message:
-            "Nothing was restored. Replace the link with a real folder, then Restore skill again.",
+            "Nothing was restored. Replace the link with a real folder, then select Restore skill again.",
           detail:
             "The skill folder resolves outside the Harness skills folder.",
         },
@@ -866,9 +871,9 @@ const suites: [
         "restore-in-progress",
         {
           level: "error",
-          label: "Harness already changing",
+          label: "Harness busy",
           message:
-            "Nothing was restored. Wait for that change to finish, then Restore skill again.",
+            "Nothing was restored. Wait for that change to finish, then select Restore skill again.",
           detail: "Maestro changes one Harness at a time.",
         },
       ],
@@ -878,7 +883,7 @@ const suites: [
           level: "error",
           label: "Skill not restored",
           message:
-            "Nothing was restored. Make the Harness skills folder writable, then Restore skill again.",
+            "Nothing was restored. Make the Harness skills folder writable, then select Restore skill again.",
         },
       ],
       [
@@ -898,7 +903,7 @@ const suites: [
           level: "error",
           label: "Unfinished merge",
           message:
-            "Nothing was restored. Finish or abort the merge, then Restore skill again.",
+            "Nothing was restored. Finish or abort the merge, then select Restore skill again.",
           detail: "A half-merged working tree does not state what is missing.",
         },
       ],
@@ -908,7 +913,7 @@ const suites: [
           level: "error",
           label: "Unfinished rebase",
           message:
-            "Nothing was restored. Finish or abort the rebase, then Restore skill again.",
+            "Nothing was restored. Finish or abort the rebase, then select Restore skill again.",
           detail: "A half-rebased working tree does not state what is missing.",
         },
       ],
@@ -918,7 +923,7 @@ const suites: [
           level: "error",
           label: "Unresolved conflicts",
           message:
-            "Nothing was restored. Resolve the conflicts, then Restore skill again.",
+            "Nothing was restored. Resolve the conflicts, then select Restore skill again.",
           detail: "A conflicted working tree does not state what is missing.",
         },
       ],
@@ -926,18 +931,18 @@ const suites: [
         "unreadable",
         {
           level: "error",
-          label: "Unreadable working tree",
+          label: "Working tree not read",
           message:
-            "Nothing was restored. Make the Harness folder readable, then Restore skill again.",
+            "Nothing was restored. Make the Harness folder readable, then select Restore skill again.",
         },
       ],
       [
         "source-unreadable",
         {
           level: "error",
-          label: "Committed copy unreadable",
+          label: "Committed copy not read",
           message:
-            "Nothing was restored. Check the Harness clone with your Git tool, then Restore skill again.",
+            "Nothing was restored. Check the Harness clone with your Git tool, then select Restore skill again.",
           detail:
             "Maestro could not read this skill out of your last local commit.",
         },
@@ -948,7 +953,7 @@ const suites: [
           level: "error",
           label: "Skills folder missing",
           message:
-            "Nothing was restored. Put the .apm/skills folder back in the Harness clone, then Restore skill again.",
+            "Nothing was restored. Put the .apm/skills folder back in the Harness clone, then select Restore skill again.",
           detail: "Maestro could not read the Harness skills folder.",
         },
       ],
@@ -961,7 +966,7 @@ const suites: [
       level: "error",
       label: "Change not discarded",
       message:
-        "Nothing was discarded. The Maestro server did not answer. Discard change again.",
+        "Nothing was discarded. The Maestro server did not answer. Select Discard change again.",
     },
     [
       [
@@ -988,7 +993,7 @@ const suites: [
           level: "error",
           label: "Clone not read",
           message:
-            "Nothing was discarded. Close this dialog, then select Discard change again.",
+            "Nothing was discarded. Select Close, then select Discard change again.",
           detail: "Git could not read your clone.",
         },
       ],
@@ -1018,7 +1023,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was discarded. Select Re-read Harness, then Discard change again.",
+            "Nothing was discarded. Select Re-read Harness, then select Discard change again.",
           detail: "The default branch moved after this confirmation.",
         },
       ],
@@ -1028,7 +1033,7 @@ const suites: [
           level: "error",
           label: "Folder outside the Harness",
           message:
-            "Nothing was discarded. Replace the link with a real folder, then Discard change again.",
+            "Nothing was discarded. Replace the link with a real folder, then select Discard change again.",
           detail:
             "The skill folder resolves outside the Harness skills folder.",
         },
@@ -1037,9 +1042,9 @@ const suites: [
         "discard-in-progress",
         {
           level: "error",
-          label: "Harness already changing",
+          label: "Harness busy",
           message:
-            "Nothing was discarded. Wait for that change to finish, then Discard change again.",
+            "Nothing was discarded. Wait for that change to finish, then select Discard change again.",
           detail: "Maestro changes one Harness at a time.",
         },
       ],
@@ -1049,7 +1054,7 @@ const suites: [
           level: "error",
           label: "Change not discarded",
           message:
-            "Nothing was discarded. Make the Harness skills folder writable, then Discard change again.",
+            "Nothing was discarded. Make the Harness skills folder writable, then select Discard change again.",
         },
       ],
       [
@@ -1068,7 +1073,7 @@ const suites: [
           level: "error",
           label: "Unfinished merge",
           message:
-            "Nothing was discarded. Finish or abort the merge, then Discard change again.",
+            "Nothing was discarded. Finish or abort the merge, then select Discard change again.",
           detail: "A half-merged working tree does not state what changed.",
         },
       ],
@@ -1078,7 +1083,7 @@ const suites: [
           level: "error",
           label: "Unfinished rebase",
           message:
-            "Nothing was discarded. Finish or abort the rebase, then Discard change again.",
+            "Nothing was discarded. Finish or abort the rebase, then select Discard change again.",
           detail: "A half-rebased working tree does not state what changed.",
         },
       ],
@@ -1088,7 +1093,7 @@ const suites: [
           level: "error",
           label: "Unresolved conflicts",
           message:
-            "Nothing was discarded. Resolve the conflicts, then Discard change again.",
+            "Nothing was discarded. Resolve the conflicts, then select Discard change again.",
           detail: "A conflicted working tree does not state what changed.",
         },
       ],
@@ -1096,9 +1101,9 @@ const suites: [
         "unreadable",
         {
           level: "error",
-          label: "Unreadable working tree",
+          label: "Working tree not read",
           message:
-            "Nothing was discarded. Make the Harness folder readable, then Discard change again.",
+            "Nothing was discarded. Make the Harness folder readable, then select Discard change again.",
         },
       ],
     ],
@@ -1112,6 +1117,16 @@ describe.each(suites)("%s", (_name, read, fallback, cases) => {
 
   it("states its own cost when no row covers the failure", () => {
     expect(notice(read, "a-code-this-build-predates")).toEqual(fallback);
+  });
+
+  it("names every control it points to as select {Control}", () => {
+    for (const code of [
+      ...cases.map(([code]) => code),
+      "a-code-this-build-predates",
+    ]) {
+      const message = notice(read, code)?.message ?? "";
+      expect(unselectedControls(message), code).toEqual([]);
+    }
   });
 
   it("shows nothing without an error", () => {
@@ -1367,11 +1382,11 @@ describe("localEditsRefusal", () => {
     ],
     [
       "not-found",
-      "Nothing was copied. The deployed folder is gone. Select Close, then Import local edits again.",
+      "Nothing was copied. The deployed folder is gone. Select Close, then select Import local edits again.",
     ],
     [
       "not-a-directory",
-      "Nothing was copied. The deployed copy is no longer a folder. Select Close, then Import local edits again.",
+      "Nothing was copied. The deployed copy is no longer a folder. Select Close, then select Import local edits again.",
     ],
     [
       "destination-exists",
@@ -1415,7 +1430,7 @@ describe("localEditsRefusal", () => {
     ],
     [
       "copies-differ",
-      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one.",
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one.",
     ],
     [
       "no-local-edits",
@@ -1439,7 +1454,7 @@ describe("localEditsRefusal", () => {
         },
       }),
     ).toBe(
-      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
     );
   });
 });

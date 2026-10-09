@@ -1,5 +1,5 @@
 import { Card } from "../ui/card";
-import { DELETE_SKILL } from "../ui/control-labels";
+import { DELETE_SKILL, PROPOSE_CHANGE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { InlineName } from "../ui/inline-name";
@@ -83,10 +83,6 @@ export function DeletionDialog({
             Your targets keep the skill. After the next release, select Update
             target on each target to remove it.
           </p>
-          <Notice
-            trigger="load"
-            notice={openRequestNotice(skill, mode.openRequest)}
-          />
         </>
       ) : mode.localOnly ? (
         // No second sentence: the other modes name what keeps the skill,
@@ -106,25 +102,11 @@ export function DeletionDialog({
             <PhraseText
               copy={
                 mode.screen === "harness"
-                  ? phrase`To also delete it from ${named(mode.origin)}, select Propose change.`
-                  : phrase`To also delete it from ${named(mode.origin)}, go to the Harness screen and select Propose change.`
+                  ? phrase`To also delete it from ${named(mode.origin)}, select ${PROPOSE_CHANGE}.`
+                  : phrase`To also delete it from ${named(mode.origin)}, go to the Harness screen and select ${PROPOSE_CHANGE}.`
               }
             />
           </p>
-          <Notice
-            trigger="load"
-            notice={
-              mode.uncommitted
-                ? {
-                    level: "warning",
-                    label: `Uncommitted changes in ${skill}`,
-                    message:
-                      "Delete skill discards them. To keep them, commit them in your Git tool first.",
-                    detail: phrase`The skill's files in your clone of ${named(mode.origin)} differ from its last commit.`,
-                  }
-                : null
-            }
-          />
         </>
       )}
       <Card padded>
@@ -153,8 +135,27 @@ export function DeletionDialog({
       {mode.kind === "local" && mode.check === "checking" ? (
         <StatusLine>{DELETION_CHECKING}</StatusLine>
       ) : null}
+      <Notice
+        trigger="load"
+        notice={
+          mode.kind === "propose"
+            ? openRequestNotice(skill, mode.openRequest)
+            : mode.uncommitted && !mode.localOnly
+              ? uncommittedNotice(skill, mode.origin)
+              : null
+        }
+      />
     </Dialog>
   );
+}
+
+function uncommittedNotice(skill: string, origin: string): NoticeContent {
+  return {
+    level: "warning",
+    label: `Uncommitted changes in ${skill}`,
+    message: `${DELETE_SKILL} discards them. To keep them, commit them in your Git tool first.`,
+    detail: phrase`The skill's files in your clone of ${named(origin)} differ from its last commit.`,
+  };
 }
 
 // Several Contributors share one proposal branch, so the request may be a
@@ -168,6 +169,6 @@ function openRequestNotice(
     : {
         level: "warning",
         label: `Pull request #${request.number} will delete ${skill} instead`,
-        message: phrase`${named(request.author)} opened it to propose changes to ${named(skill)}. Delete skill replaces those changes with the deletion.`,
+        message: phrase`${named(request.author)} opened it to propose changes to ${named(skill)}. ${DELETE_SKILL} replaces those changes with the deletion.`,
       };
 }

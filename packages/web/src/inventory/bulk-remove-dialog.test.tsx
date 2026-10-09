@@ -1,13 +1,17 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { htmlElement } from "../test-utils";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",
-  cleanLine: "3 clean copies — nothing but the deployed files goes",
+  clean: {
+    label: "3 clean copies",
+    message: "Only the deployed files are removed.",
+  },
   cost: [],
   refused: [],
   removableCount: 3,
@@ -16,7 +20,10 @@ const allClean: BulkRemoveDialogView = {
 
 const withCost: BulkRemoveDialogView = {
   kind: "grouped",
-  cleanLine: "1 clean copies",
+  clean: {
+    label: "1 clean copy",
+    message: "Only the deployed files are removed.",
+  },
   cost: [
     {
       label: "/dev/acme-api",
@@ -42,7 +49,7 @@ const partial: BulkRemoveReportView = {
     {
       label: "/dev/acme-api",
       outcome: "failed",
-      reason: "Target held by another operation",
+      reason: "Target busy",
     },
     {
       label: "/dev/legacy-etl",
@@ -98,7 +105,7 @@ describe("BulkRemoveDialog — while the checks run", () => {
     const { onConfirm } = renderDialog({ view: checking });
 
     const confirm = screen.getByRole("button", {
-      name: "Remove from 3 targets — checks still running",
+      name: "Remove from 3 targets — checking for local edits",
     });
     expect(confirm).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(confirm);
@@ -130,8 +137,19 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     renderDialog();
 
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent(
-      "3 clean copies — nothing but the deployed files goes",
+    // #1458: the shared Notice at success, not a hand-rolled bar.
+    const clean = within(dialog)
+      .getAllByRole("status")
+      .find((region) => region.textContent?.includes("3 clean copies"));
+    expect(clean).toHaveTextContent(
+      "3 clean copiesOnly the deployed files are removed.",
+    );
+    expect(within(htmlElement(clean)).getByText("✓")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(dialog).toHaveAccessibleDescription(
+      /3 clean copies\s*Only the deployed files are removed\./,
     );
     expect(screen.queryByText(/Loses work/)).toBeNull();
     expect(screen.queryByText(/Cannot be removed/)).toBeNull();
@@ -143,7 +161,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
   it("groups what the removal costs, with each target's version and reason", () => {
     renderDialog({ view: withCost });
 
-    const cost = screen.getByRole("group", { name: "▲ Loses work · 2" });
+    const cost = screen.getByRole("group", { name: "⚠ Loses work · 2" });
     expect(cost).toHaveTextContent("/dev/acme-api");
     expect(cost).toHaveTextContent("v1.0.0");
     expect(cost).toHaveTextContent("Nothing recorded — may lose work");
@@ -178,7 +196,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     renderDialog({
       view: {
         kind: "grouped",
-        cleanLine: null,
+        clean: null,
         cost: [],
         refused: [
           { label: "/dev/legacy-etl", reason: "Repository not registered" },
@@ -197,10 +215,10 @@ describe("BulkRemoveDialog — once the checks answer", () => {
 
   it("renders no clean line when nothing is clean", () => {
     renderDialog({
-      view: { ...withCost, cleanLine: null },
+      view: { ...withCost, clean: null },
     });
 
-    expect(screen.queryByText(/clean copies/)).toBeNull();
+    expect(screen.queryByText(/clean cop/)).toBeNull();
   });
 
   // Nothing in a destructive dialog may look like a button.
@@ -235,7 +253,7 @@ describe("BulkRemoveDialog — during the run", () => {
   it("keeps what it weighed in view while the confirm says Removing…", () => {
     renderDialog(running);
 
-    expect(screen.getByText("▲ Loses work · 2")).toBeInTheDocument();
+    expect(screen.getByText("⚠ Loses work · 2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Removing…/ })).toHaveAttribute(
       "aria-busy",
       "true",
@@ -275,7 +293,7 @@ describe("BulkRemoveDialog — during the run", () => {
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent("Run not started");
-    expect(screen.getByText("▲ Loses work · 2")).toBeInTheDocument();
+    expect(screen.getByText("⚠ Loses work · 2")).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: /^remove from/i }),
     );
@@ -314,9 +332,7 @@ describe("BulkRemoveDialog — once the run reports", () => {
       .map((heading) => heading.textContent);
     expect(groups).toEqual(["✕Failed1", "✕Refused1", "✓Removed1"]);
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent(
-      "/dev/acme-apiTarget held by another operation",
-    );
+    expect(dialog).toHaveTextContent("/dev/acme-apiTarget busy");
     expect(dialog).toHaveTextContent(
       "/dev/legacy-etlRepository not registered",
     );

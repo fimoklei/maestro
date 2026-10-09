@@ -16,7 +16,7 @@ const SRC = join(import.meta.dirname);
 
 const PLAIN: Record<string, Record<string, string>> = {
   "deploy-state/import-local-edits-copy.ts": {
-    "`Import local edits from ${target}`": "dialog title",
+    "`${IMPORT_LOCAL_EDITS} from ${target}`": "dialog title",
   },
   "deploy-state/notice-copy.ts": {
     "`${name} still incomplete`": "notice heading",
@@ -60,7 +60,7 @@ const PLAIN: Record<string, Record<string, string>> = {
       "notice heading",
   },
   "harness/discard-dialog.tsx": {
-    "`Discard change for ${skill}`": "dialog title",
+    "`${DISCARD_CHANGE} for ${skill}`": "dialog title",
   },
   "harness/harness-columns.tsx": {
     "`${row.stage}:${row.skill}`": "key",
@@ -76,7 +76,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`${movement.kind}:${movement.name}`": "key",
   },
   "harness/release-dialog.tsx": {
-    "`Publish release for ${origin}`": "dialog title",
+    "`${PUBLISH_RELEASE} for ${origin}`": "dialog title",
   },
   "harness/restore-dialog.tsx": {
     "`Restore ${skill}`": "dialog title",
@@ -97,7 +97,6 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Select ${name} for bulk deploy`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",
     '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",
-    "`Actions for ${name}`": "menu label",
   },
   "registry/repositories-copy.ts": {
     "`${UNREGISTER} ${name}`": "dialog title",
@@ -109,12 +108,11 @@ const PLAIN: Record<string, Record<string, string>> = {
   "ui/github-link-copy.ts": {
     "`View ${name} on GitHub`": "link label",
   },
-  "ui/table-screen.tsx": {
-    "`Re-read ${state.name}`": "button label",
-    "`${state.name} table`": "accessible name",
+  "ui/row-menu-copy.ts": {
+    "`Actions for ${name}`": "menu label",
   },
-  "ui/use-table-screen.ts": {
-    "`Re-read ${name}`": "button label",
+  "ui/table-screen.tsx": {
+    "`${state.name} table`": "accessible name",
   },
 };
 

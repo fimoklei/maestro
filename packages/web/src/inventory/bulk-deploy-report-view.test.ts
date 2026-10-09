@@ -224,8 +224,8 @@ describe("bulkDeployReportGroups", () => {
     expect(rowsOf(groups, "Failed")[0]?.notice).toEqual({
       label: "No supported tool",
       message:
-        "Nothing was installed. Install Claude Code or Codex, then deploy again.",
-      detail: "A global deploy installs into Claude Code or Codex.",
+        "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
+      detail: "A global deploy puts skills into Claude Code or Codex.",
     });
   });
 

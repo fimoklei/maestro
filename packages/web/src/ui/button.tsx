@@ -8,10 +8,12 @@ export interface ButtonProps extends ComponentPropsWithRef<"button"> {
   size?: "sm" | "md" | "lg" | "icon";
   /** A write is running: children are its busy label; focus is never lost. */
   busy?: boolean;
+  /** Unavailable: stays focusable, runs nothing, and reads as disabled. */
+  blocked?: boolean;
 }
 
 // The one thing that moves under reduced motion, so no motion-safe guard.
-function Spinner() {
+export function Spinner() {
   return (
     <svg
       data-spinner=""
@@ -60,6 +62,7 @@ export function Button({
   size = "md",
   type = "button",
   busy = false,
+  blocked = false,
   className,
   children,
   onClick,
@@ -69,8 +72,8 @@ export function Button({
     <button
       type={type}
       aria-busy={busy || undefined}
-      aria-disabled={busy || undefined}
-      onClick={busy ? undefined : onClick}
+      aria-disabled={busy || blocked || undefined}
+      onClick={busy || blocked ? undefined : onClick}
       className={cn(
         "inline-flex cursor-pointer items-center gap-inline rounded-control border font-medium font-ui text-row",
         // cn concatenates, so two whitespace utilities would leave the base one
@@ -83,6 +86,10 @@ export function Button({
         "aria-disabled:cursor-not-allowed",
         variantClasses[variant],
         sizeClasses[size],
+        // Never offered: a busy button keeps its variant behind the spinner.
+        blocked &&
+          !busy &&
+          "aria-disabled:border-edge aria-disabled:bg-gray-3 aria-disabled:text-gray-11",
         className,
       )}
       {...rest}

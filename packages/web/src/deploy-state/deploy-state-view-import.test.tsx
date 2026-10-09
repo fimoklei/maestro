@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, sentence } from "../test-utils";
+import { htmlElement, jsonResponse, sentence } from "../test-utils";
 import {
   findRow,
   importRoutes,
@@ -233,7 +233,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
     const flagged = await within(dialog).findByRole("group", {
-      name: "▲ Undoes newer Harness changes · 1",
+      name: "⚠ Undoes newer Harness changes · 1",
     });
     const box = within(flagged).getByRole("checkbox", { name: "tdd" });
     expect(box).not.toBeChecked();
@@ -289,19 +289,18 @@ describe("Deploy-state — Import local edits on a repository", () => {
     });
 
     const box = within(refused).getByRole("checkbox", { name: "tdd" });
-    // textContent, not the computed description: jsdom pads a <code> with
-    // spaces no browser adds.
-    expect(
-      document.getElementById(box.getAttribute("aria-describedby") ?? "")
-        ?.textContent,
-    ).toBe(
-      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+    const reason = htmlElement(
+      document.getElementById(box.getAttribute("aria-describedby") ?? ""),
     );
-    expect(
-      within(refused)
-        .getAllByRole("code")
-        .map((path) => path.textContent),
-    ).toEqual(["~/.claude/skills/tdd", "~/.agents/skills/tdd"]);
+    expect(reason.textContent).toBe(
+      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
+    );
+    // #1458: the shared machine value, not a hand-rolled <code>.
+    expect(within(refused).queryAllByRole("code")).toEqual([]);
+    expect(reason).not.toHaveClass("font-mono");
+    for (const path of ["~/.claude/skills/tdd", "~/.agents/skills/tdd"]) {
+      expect(within(reason).getByText(path)).toHaveClass("font-mono");
+    }
   });
 
   it("blocks the confirm when no skill qualifies", async () => {
@@ -349,7 +348,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Nothing was imported. Select Close, then Import local edits again.",
+        "Nothing was imported. Select Close, then select Import local edits again.",
       ),
     ).toBeInTheDocument();
   });
@@ -422,9 +421,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
       await within(dialog).findByRole("button", { name: "Import 1 skill" }),
     );
 
-    expect(
-      await within(dialog).findByText("Harness already changing"),
-    ).toBeInTheDocument();
+    expect(await within(dialog).findByText("Harness busy")).toBeInTheDocument();
     expect(
       within(dialog).getByText(
         "Wait for that change to finish, then select Import local edits again.",

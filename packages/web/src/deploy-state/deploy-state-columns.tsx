@@ -1,19 +1,14 @@
-import { rowActionsLabel } from "../inventory/inventory-copy";
-import { RowItemsMenu } from "../inventory/row-menu";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
-import { GITHUB_COLUMN } from "../ui/github-link-copy";
-import { GITHUB_UNKNOWN, GitHubMarkLink } from "../ui/github-mark-link";
+import { githubColumn } from "../ui/github-column";
 import { MachineValue } from "../ui/machine-value";
-import { Skeleton } from "../ui/skeleton";
+import { NoValue } from "../ui/no-value";
+import { RowMenu } from "../ui/row-menu";
+import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
-import { useReadSkeleton } from "../ui/use-read-skeleton";
-import {
-  ACTIONS_COLUMN_LABEL,
-  ORIGIN_NOT_READ,
-  TARGET_LABEL,
-} from "./deploy-state-copy";
+import { StatusSkeleton } from "../ui/status-skeleton";
+import { ORIGIN_NOT_READ, TARGET_LABEL } from "./deploy-state-copy";
 import { targetRowItems } from "./target-menu";
 import { statusCard, type TargetRow } from "./target-rows";
 
@@ -24,26 +19,17 @@ export type TargetTableRow = TargetRow & {
   actions: { action: TargetAction; label: string; disabled?: boolean }[];
   /** Pages elsewhere, after the actions in the menu and at the foot. */
   links: { label: string; href: string }[];
+  /** Its retry is running. */
+  busy: boolean;
+  /** Band 2's line, which the Status card's read age repeats. */
+  compared: string | null;
 };
 
 const unranked = Number.MAX_SAFE_INTEGER;
 
-// The drift check is slow; past 1.3 s its cell shows a placeholder (design.md).
-function StatusReading() {
-  const { visible } = useReadSkeleton(true);
-  return (
-    <span aria-busy="true" className="block">
-      {visible ? <Skeleton className="w-16" /> : null}
-    </span>
-  );
-}
-
-function statusCardContent(
-  row: TargetTableRow,
-  now: Date,
-): DataTableCardContent | null {
+function statusCardContent(row: TargetTableRow): DataTableCardContent | null {
   if (row.status === null) return null;
-  const { reason, readAge } = statusCard(row, now);
+  const { reason, readAge } = statusCard(row, row.compared);
   return {
     reading: row.status,
     value: row.release ? <ReleaseValue release={row.release} /> : null,
@@ -90,50 +76,12 @@ export const deployStateColumns = ({
       ...helper.accessor("name", { header: TARGET_LABEL }),
       name: (row) => row.name,
     },
-    helper.accessor("release", {
-      header: "Release",
-      enableSorting: false,
-      cell: ({ row }) =>
-        row.original.release === null ? (
-          <span className="text-gray-11">—</span>
-        ) : (
-          <span className="text-gray-12">
-            <ReleaseValue release={row.original.release} />
-          </span>
-        ),
-      meta: { width: 43, priority: 3 },
-    }),
-    {
-      ...helper.display({
-        id: "github",
-        header: GITHUB_COLUMN,
-        cell: ({ row }) =>
-          row.original.github?.kind === "unknown" ? (
-            <StatusBadge reading={GITHUB_UNKNOWN} />
-          ) : (
-            <GitHubMarkLink
-              page={row.original.github}
-              name={row.original.name}
-            />
-          ),
-        // Drops out first on a narrow panel; the ⋮ menu keeps the same link.
-        meta: { width: 28, priority: 1 },
-      }),
-      // Pointer only: the Status card carries the same cause.
-      card: {
-        keyboard: false,
-        content: (row) =>
-          row.github?.kind === "unknown"
-            ? { body: [ORIGIN_NOT_READ], readAge: null }
-            : null,
-      },
-    },
     {
       ...helper.accessor("status", {
         header: "Status",
         cell: ({ row }) =>
           row.original.status === null ? (
-            <StatusReading />
+            <StatusSkeleton />
           ) : (
             <StatusBadge reading={row.original.status} />
           ),
@@ -144,12 +92,25 @@ export const deployStateColumns = ({
       }),
       card: { keyboard: true, content: statusCardContent },
     },
+    helper.accessor("release", {
+      header: "Release",
+      enableSorting: false,
+      cell: ({ row }) =>
+        row.original.release === null ? (
+          <NoValue />
+        ) : (
+          <span className="text-gray-12">
+            <ReleaseValue release={row.original.release} />
+          </span>
+        ),
+      meta: { width: 43, priority: 3 },
+    }),
     helper.accessor("skills", {
       header: "Skills",
       cell: ({ row }) => {
         const skills = row.original.skills;
         return skills === null ? null : skills === 0 ? (
-          <span className="text-gray-11">—</span>
+          <NoValue />
         ) : (
           <span className="text-gray-12">{skills}</span>
         );
@@ -157,13 +118,16 @@ export const deployStateColumns = ({
       sortFn: (a, b) => (a.original.skills ?? -1) - (b.original.skills ?? -1),
       meta: { className: "tabular-nums", width: 18, priority: 2, align: "end" },
     }),
+    githubColumn<TargetTableRow>("Deploy-state"),
     helper.display({
       id: "actions",
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
-        <RowItemsMenu
+        <RowMenu
           label={rowActionsLabel(row.original.name)}
           items={targetRowItems(row.original, onAction)}
+          tabStop={false}
+          busy={row.original.busy}
         />
       ),
       meta: { width: 10 },

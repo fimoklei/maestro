@@ -1,23 +1,24 @@
 import { describe, expect, it } from "vitest";
+import { rereadLabel } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import {
   deployStateNotRead,
-  HARNESS_ORIGIN_NOT_READ,
   localEditsLine,
   localEditsReason,
   NO_FILTER_MATCH,
   NO_LONGER_RELEASED_HINT,
   NO_REPOSITORIES,
+  NO_TARGETS,
   NO_TOOL_DETECTED,
   NOTHING_DEPLOYED,
   ORIGIN_NOT_READ,
   otherOriginLine,
+  packageBehindNotice,
   REPO_NOT_READ,
-  REREAD_LABEL,
+  REPO_NOT_READ_LINE,
   TARGET_LABEL,
   targetCount,
   UNREACHED_HINT,
-  VIEW_REPOSITORY_ON_GITHUB,
   VIEW_SKILL_ON_GITHUB,
 } from "./deploy-state-copy";
 
@@ -29,13 +30,12 @@ describe("Deploy-state copy", () => {
   });
 
   it("names the screen's one re-read control in every failed read", () => {
-    expect(REREAD_LABEL).toBe("Re-read Deploy-state");
-    expect(REPO_NOT_READ).toEqual({
-      level: "error",
-      label: "Deploy-state not read",
-      message:
-        "Select Re-read Deploy-state to read this repository's deploy-state again.",
-    });
+    expect(rereadLabel("Deploy-state")).toBe("Re-read Deploy-state");
+    // A Status hover card sentence, so it ends in a full stop.
+    expect(REPO_NOT_READ).toBe("Deploy-state not read.");
+    expect(REPO_NOT_READ_LINE).toBe(
+      "Deploy-state not read. Select Re-read Deploy-state to read this repository's deploy-state again.",
+    );
   });
 
   // #1393: the band's failed reads share one action, so they are one notice.
@@ -65,27 +65,43 @@ describe("Deploy-state copy", () => {
       "Install Claude Code or Codex to deploy skills globally.",
     );
     expect(NO_REPOSITORIES).toBe(
-      "No repositories registered yet. Select Register repository on the Repositories screen.",
+      "No repositories yet. Select Register repository on the Repositories screen.",
     );
-    expect(NO_FILTER_MATCH).toBe(
-      "No targets match the filters. Select Filter to show more targets.",
-    );
+    expect(NO_FILTER_MATCH).toEqual({
+      title: "No targets match the filters",
+      description: "Select Filter to show more targets.",
+    });
+    expect(NO_TARGETS).toEqual({
+      title: "No targets yet",
+      description:
+        "Claude Code, Codex and registered repositories appear here as targets.",
+    });
   });
 
-  // #1180: the GitHub column's menu item and its Unknown badge's cause.
-  it("keeps the GitHub column's sentences", () => {
-    expect(VIEW_REPOSITORY_ON_GITHUB).toBe("View repository on GitHub");
+  it("names the packages that are behind but are not skills", () => {
+    const one = packageBehindNotice(["foo"]);
+    expect([one.level, one.label, plainText(one.message)]).toEqual([
+      "info",
+      "Package also behind",
+      "foo is not a skill.",
+    ]);
+    const two = packageBehindNotice(["foo", "bar"]);
+    expect([two.label, plainText(two.message)]).toEqual([
+      "Packages also behind",
+      "foo and bar are not skills.",
+    ]);
+  });
+
+  // #1180: the GitHub column's Unknown badge's cause.
+  it("keeps the GitHub column's cause", () => {
     expect(ORIGIN_NOT_READ).toBe(
       "The origin of this repository could not be read. Select Re-read Deploy-state to read it again.",
     );
   });
 
   // #1181: a skill row's menu item and its Unknown badge's cause.
-  it("keeps the skill sub-list's GitHub sentences", () => {
+  it("keeps the skill sub-list's GitHub item", () => {
     expect(VIEW_SKILL_ON_GITHUB).toBe("View skill on GitHub");
-    expect(HARNESS_ORIGIN_NOT_READ).toBe(
-      "The origin of the Harness could not be read. Select Re-read Deploy-state to read it again.",
-    );
   });
 
   it("counts targets for one and many", () => {

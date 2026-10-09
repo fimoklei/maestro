@@ -357,7 +357,7 @@ describe("RemoveSkillDialog", () => {
       expect(alert.className).toContain("amber");
       expect(alert.className).not.toContain("-red-");
       expect(alert).toHaveTextContent("⚠");
-      expect(alert).toHaveTextContent(/Nothing removed/);
+      expect(alert).toHaveTextContent(/Removal not confirmed/);
     });
 
     it("keeps the ledger, stating the cost it found this time", () => {

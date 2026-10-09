@@ -7,6 +7,7 @@ const meta = {
   args: {
     source: "/Users/me/work/Code Review",
     sourceText: "/Users/me/work/Code Review",
+    sourceError: undefined,
     onSourceChange: () => {},
     onSourceCommit: () => {},
     chooser: {

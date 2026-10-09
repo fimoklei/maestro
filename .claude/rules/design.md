@@ -21,6 +21,8 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 - Include the visible label's words in the accessible name, in the same order
   and at the start. Name icon-only controls by their action and landmarks by
   their content. Review the name with the control or region it describes.
+  One sanctioned exception: the sidebar's Harness button is named
+  **Harness menu**, as `GLOSSARY.md` defines it.
 - Give fields visible labels; hints supplement them. Show status meaning in
   text as well as colour. Name link destinations in the link text.
 
@@ -67,7 +69,8 @@ the new pattern to this section before building it.
   `text-gray-11` behind a divider, only when known. Declare it on the column;
   the data table draws it. Open it on hover; on the keyboard's active row open
   one card only: the Status card, or the table's named fallback (such as
-  Targets) while Display hides Status. Put no control in it.
+  Targets) while Display hides Status. Put no control in it. Keep it inside
+  the panel, an inline gutter from its edge.
 - List in a row's ⋮ menu and pane foot only the actions its state calls for;
   omit the rest. The Status hover card states that state and names the next
   action.
@@ -85,8 +88,9 @@ the new pattern to this section before building it.
   else Update target on a behind target, else none. A pane whose ⋮ order already
   leads with the next step (Inventory, Harness) makes its first enabled item
   primary.
-- At 1100px and below, show the pane as a full-height sheet over the table's
-  right side, `min(360px, 100%)` wide.
+- Show the pane beside the table at every width, never over it; the table
+  hides secondary columns to make room. On a panel under 44rem, too narrow
+  for the name, Status and ⋮ beside the pane, the pane takes the table's place.
 - Close the pane on Esc, ✕ or a press outside it; a press on a table row or in
   an open menu or dialog keeps it open. Return focus to the row, unless the
   press landed on another control.
@@ -200,10 +204,14 @@ Pick the form from this table. Add no other form, and no banner.
 - Put the primary action in band 1, right of the title; Re-read, Filter and
   Display in band 2, icon-only; a row's actions in its ⋮ menu and at the foot
   of its detail pane; actions on a selection in the floating selection bar.
+  Below 1024px a band-1 action beside the primary shows its icon alone
+  (`BandAction`); the primary keeps its label.
 - Put no button in a table row. A link to an external page may sit in one.
 - Link a row's own GitHub page from a `GitHub` column: GitHub's mark in slate
   11, named `View {name} on GitHub`, mouse only; the same destination is a ⋮
   item for the keyboard. No GitHub page: empty cell. In a fact, link the value.
+- Order a table's columns: checkbox, name, Status, secondary columns,
+  GitHub, ⋮.
 - Fit a table to its panel at every width; never scroll it sideways. On a
   narrow panel hide secondary columns, least important first, at the latest
   at the width of the columns still shown plus 8rem. Keep the name,

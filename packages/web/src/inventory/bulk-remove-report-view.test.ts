@@ -104,7 +104,7 @@ describe("bulkRemoveReportView — a partial run", () => {
         {
           label: "/dev/acme-web",
           outcome: "failed",
-          reason: "Target held by another operation",
+          reason: "Target busy",
         },
         {
           label: "/dev/legacy-etl",
@@ -133,14 +133,14 @@ describe("bulkRemoveReportView — a partial run", () => {
 
     expect(
       probed({ scope: "repo", state: "removed" }).leftAlone[0]?.reason,
-    ).toBe("Removal not completed by apm — gone anyway");
+    ).toBe("Removal outcome unknown — gone anyway");
     expect(
       probed({ scope: "repo", state: "not-removed" }).leftAlone[0]?.reason,
-    ).toBe("Removal not completed by apm — still there");
+    ).toBe("Removal outcome unknown — still there");
     // A probe that could not answer proves nothing, so it says nothing.
     expect(
       probed({ scope: "repo", state: "unknown" }).leftAlone[0]?.reason,
-    ).toBe("Removal not completed by apm");
+    ).toBe("Removal outcome unknown");
   });
 
   // apm removes for every tool at once, so one tool still holding a copy means
@@ -165,7 +165,7 @@ describe("bulkRemoveReportView — a partial run", () => {
     }) as { leftAlone: { reason: string }[] };
 
     expect(mixed.leftAlone[0]?.reason).toBe(
-      "Removal not completed by apm — still there",
+      "Removal outcome unknown — still there",
     );
   });
 

@@ -8,20 +8,19 @@ import {
   localEditsLine,
   ORIGIN_NOT_READ,
   otherOriginLine,
-  REPO_NOT_READ,
-  REREAD_LABEL,
+  REPO_NOT_READ_LINE,
   TARGET_LABEL,
 } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   behindLine,
   changedFact,
-  comparedFact,
   extraFilesFact,
   latestReleaseFact,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
   RETRY_LABELS,
+  screenComparedFact,
   unfinishedOperationNotice,
 } from "./release-head-copy";
 import { SelectedSkills } from "./selected-skills";
@@ -45,8 +44,7 @@ export function TargetDetailPane({
   onRetry,
   isRetrying,
   retryFailure,
-  onReread,
-  now,
+  compared,
   update,
   foot,
   dialogs,
@@ -61,24 +59,18 @@ export function TargetDetailPane({
   isRetrying: boolean;
   /** The last retry's failure, stated in place of the unfinished operation. */
   retryFailure: DeployStateNotice | null;
-  onReread: () => void;
-  /** The screen's one clock, so the Compared fact ticks with band 2. */
-  now: Date;
+  /** Band 2's freshness line, so the Compared fact dates the same, oldest reading. */
+  compared: string | null;
   update: TargetPaneActions["update"];
   foot: FootItem[];
   /** Mounted beside the pane, so a dialog outlives a re-render of its foot. */
   dialogs: ReactNode;
 }) {
   const skillsHeading = useRef<HTMLHeadingElement>(null);
-  const notice: PaneNotice | null = showsReadFailure(row)
-    ? {
-        content: {
-          ...REPO_NOT_READ,
-          action: { label: REREAD_LABEL, onClick: onReread },
-        },
-        trigger: "load",
-      }
-    : row.pending
+  // A failed read's stale record is not stated as current.
+  const readFailure = showsReadFailure(row);
+  const notice: PaneNotice | null =
+    row.pending && !readFailure
       ? {
           content: {
             ...(retryFailure
@@ -87,7 +79,7 @@ export function TargetDetailPane({
             action: {
               label: RETRY_LABELS[row.pending.kind],
               onClick: onRetry,
-              disabled: isRetrying,
+              busy: isRetrying ? row.pending.kind : undefined,
             },
           },
           trigger: retryFailure ? "user-action" : "load",
@@ -112,6 +104,7 @@ export function TargetDetailPane({
       ? [otherOriginLine(row.otherOrigins)]
       : []),
     ...(row.github?.kind === "unknown" ? [ORIGIN_NOT_READ] : []),
+    ...(readFailure ? [REPO_NOT_READ_LINE] : []),
   ];
 
   return (
@@ -131,7 +124,7 @@ export function TargetDetailPane({
           },
           row.path
             ? {
-                label: "Path",
+                label: "Folder path",
                 value: row.path,
                 machine: true,
                 fullValue: row.path,
@@ -173,7 +166,12 @@ export function TargetDetailPane({
           changed === null
             ? null
             : { label: "Changed", value: changed, fullValue: changed },
-          head ? { label: "Compared", value: comparedFact(head, now) } : null,
+          head
+            ? {
+                label: "Compared",
+                value: screenComparedFact(head, compared),
+              }
+            : null,
           row.extraFiles
             ? { label: "Extra files", value: extraFilesFact(row.extraFiles) }
             : null,

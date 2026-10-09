@@ -1,8 +1,10 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { htmlElement } from "../test-utils";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
+import { Dialog } from "./dialog";
 import { TableScreen, type TableScreenProps } from "./table-screen";
 import { type TableScreenState, useTableScreen } from "./use-table-screen";
 import { useViewOptions } from "./use-view-options";
@@ -47,6 +49,8 @@ type ScreenProps = {
     | "firstReadRows"
     | "selection"
     | "selectionBar"
+    | "columns"
+    | "children"
   >
 >;
 
@@ -308,6 +312,14 @@ describe("TableScreen", () => {
       expect(screen.queryByText("No fruit yet")).not.toBeInTheDocument();
     });
 
+    // One notice per band: the failure blocks most, so it stands alone.
+    it("shows a failed read in place of the empty state", () => {
+      render(<FruitScreen rows={[]} failed />);
+
+      expect(screen.getByText("Fruit not read")).toBeInTheDocument();
+      expect(screen.queryByText("No fruit yet")).not.toBeInTheDocument();
+    });
+
     it("shows no empty state before a read answers", () => {
       render(<FruitScreen rows={[]} settled={false} reading />);
 
@@ -417,6 +429,111 @@ describe("TableScreen", () => {
       expect(pane("pear")).not.toBeInTheDocument();
     });
   });
+
+  describe("focus after a row leaves", () => {
+    const PEELS = createDataTableColumns<Fruit>((helper) => [
+      helper.accessor("name", { header: "Name" }),
+      helper.display({
+        id: "peel",
+        header: "Peel",
+        cell: ({ row }) => (
+          <button type="button">Peel {row.original.name}</button>
+        ),
+      }),
+    ]);
+    const peel = (name: string) =>
+      screen.getByRole("button", { name: `Peel ${name}` });
+    const activeRow = () =>
+      document.getElementById(
+        grid().getAttribute("aria-activedescendant") ?? "",
+      );
+
+    it("lands on the next row", async () => {
+      const { rerender } = render(<FruitScreen columns={PEELS} />);
+      await userEvent.click(peel("pear"));
+
+      rerender(<FruitScreen columns={PEELS} rows={FRUIT.slice(1)} />);
+
+      expect(grid()).toHaveFocus();
+      expect(activeRow()).toHaveTextContent("apple");
+    });
+
+    it("lands on the previous row when the last one leaves", async () => {
+      const { rerender } = render(<FruitScreen columns={PEELS} />);
+      await userEvent.click(peel("cherry"));
+
+      rerender(<FruitScreen columns={PEELS} rows={FRUIT.slice(0, 2)} />);
+
+      expect(grid()).toHaveFocus();
+      expect(activeRow()).toHaveTextContent("apple");
+    });
+
+    it("lands on Re-read when no row is left", async () => {
+      const { rerender } = render(
+        <FruitScreen columns={PEELS} rows={FRUIT.slice(0, 1)} />,
+      );
+      await userEvent.click(peel("pear"));
+
+      rerender(<FruitScreen columns={PEELS} rows={[]} />);
+
+      expect(reread()).toHaveFocus();
+    });
+
+    it("leaves focus that stands elsewhere", async () => {
+      const { rerender } = render(<FruitScreen columns={PEELS} />);
+      await userEvent.click(peel("pear"));
+      await userEvent.click(
+        htmlElement(
+          screen.getAllByRole("button", {
+            name: "Plant fruit",
+          })[0],
+        ),
+      );
+
+      rerender(<FruitScreen columns={PEELS} rows={FRUIT.slice(1)} />);
+
+      expect(
+        screen.getAllByRole("button", { name: "Plant fruit" })[0],
+      ).toHaveFocus();
+    });
+
+    it("lands on the next row when a dialog's opener left with its row", async () => {
+      const dialog = (open: boolean) =>
+        open ? (
+          <Dialog
+            title="Peel pear"
+            version={null}
+            width={480}
+            phase="idle"
+            action={null}
+            failure={null}
+            describedBy={null}
+            fieldsChanged={false}
+            onClose={() => {}}
+          >
+            {null}
+          </Dialog>
+        ) : null;
+      const { rerender } = render(<FruitScreen columns={PEELS} />);
+      await userEvent.click(peel("pear"));
+      rerender(<FruitScreen columns={PEELS}>{dialog(true)}</FruitScreen>);
+      await screen.findByRole("dialog");
+
+      rerender(
+        <FruitScreen columns={PEELS} rows={FRUIT.slice(1)}>
+          {dialog(true)}
+        </FruitScreen>,
+      );
+      rerender(
+        <FruitScreen columns={PEELS} rows={FRUIT.slice(1)}>
+          {dialog(false)}
+        </FruitScreen>,
+      );
+
+      await waitFor(() => expect(grid()).toHaveFocus());
+      expect(activeRow()).toHaveTextContent("apple");
+    });
+  });
 });
 
 type Plant = { name: string; kind: string; status: string | null };
@@ -469,7 +586,10 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
       firstReadRows={8}
       rowId={(row) => row.name}
       view={view}
-      noMatch="No plants match the filters."
+      noMatch={{
+        title: "No plants match the filters",
+        description: "Select Filter to show more plants.",
+      }}
       pane={
         withPane
           ? (row, frame) => (
@@ -531,9 +651,17 @@ describe("TableScreen view options", () => {
     expect(
       screen.getByRole("button", { name: "Filter, 2 active" }),
     ).toBeInTheDocument();
+    // The shared empty state, in place of the table.
     expect(
-      within(garden()).getByText("No plants match the filters."),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "No plants match the filters",
+      }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Select Filter to show more plants."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
   it("groups by status worst first, an unread row last", async () => {

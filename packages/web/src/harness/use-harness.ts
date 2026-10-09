@@ -20,7 +20,7 @@ import {
 export const HARNESS_QUERIES = ["harness"] as const;
 const HARNESS_KEY = ["harness", "state"] as const;
 const RELEASE_PLAN_KEY = ["harness", "release-plan"] as const;
-const DELETION_CHECK_KEY = ["harness", "deletion-check"] as const;
+export const DELETION_CHECK_KEY = ["harness", "deletion-check"] as const;
 
 // Gated for callers without a connected Harness yet — the endpoint 409s until
 // one is set, and the sidebar reads it on every screen.
@@ -168,19 +168,26 @@ const fetchHarnessState = () =>
   requestJson<HarnessState>("/api/harness/refresh", { method: "POST" });
 
 // Re-asked whenever the folder or name changes: the server owns every refusal.
-export function useImportCheck(source: string | null, name: string | null) {
-  return useQuery({
+/** One folder's import check, shared by the dialog's read and its submit. */
+export function importCheckQuery(source: string | null, name: string | null) {
+  return {
     queryKey: ["harness", "import-check", source, name] as const,
     queryFn: () =>
       requestJson<ImportCheck>("/api/harness/import/check", {
         method: "POST",
         body: JSON.stringify(name === null ? { source } : { source, name }),
       }),
-    enabled: source !== null,
     // A check is a snapshot of the disk at one moment, and the disk is the
     // author's to change while the dialog is open.
     staleTime: 0,
     gcTime: 0,
+  };
+}
+
+export function useImportCheck(source: string | null, name: string | null) {
+  return useQuery({
+    ...importCheckQuery(source, name),
+    enabled: source !== null,
   });
 }
 

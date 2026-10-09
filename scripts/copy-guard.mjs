@@ -26,6 +26,7 @@ const RETIRED = [
   /\bconsuming repo/i,
   /\bprimitives?\b/i,
   /\bRelease head\b/i,
+  /\bMixed releases\b/i,
   /\breload the view\b/i,
   /\bslugs?\b/i,
   /\bImport local edits…/i,
@@ -34,9 +35,28 @@ const RETIRED = [
   // A status states where a change stands; the Change column names it (#1399).
   /\bDeleted locally\b/i,
   /\bDeletion (?:in draft|waiting for review|changes requested|approved|merged)\b/i,
+  // One word per concept (#1461): a folder is chosen, a Harness with no
+  // release is not released yet, a remove waits on checking for local edits.
+  /\bpick (?:the|a|it|one)\b/i,
+  /\bNone yet\b/i,
+  /\bNothing released yet\b/i,
+  /\bchecks still running\b/i,
+  /\brepositories registered yet\b/i,
   // A control is selected: never clicked or tapped, never `Press Close`.
   /\b(?:click|tap)(?:s|ped|ping|ed|ing)?\b/i,
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,
+  // A failed read is `{the thing} not read`; a deploy never installs; a running
+  // operation reads Target busy or Harness busy (#1459).
+  /\bCould not read\b/,
+  /\bCommitted copy unreadable\b/i,
+  /\bUnreadable (?:working tree|Harness clone|folder)\b/i,
+  /\bNothing was installed\b/i,
+  /\bTarget held by another operation\b/i,
+  /\bAnother change is running\b/i,
+  /\bHarness already changing\b/i,
+  // A control is named exactly, and a dialog is left by its Close (#1460).
+  /\bShow in Deploy-state\b/i,
+  /\bClose this dialog\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.
   /\b(?:seamless|effortless|supercharge|powerful|magic|unlock|leverage|AI-powered|intelligent|smartly|empower|robust|Oops|Whoops|Let's)/i,
   /!(?=\s|$)/,

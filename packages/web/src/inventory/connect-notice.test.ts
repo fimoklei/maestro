@@ -39,7 +39,7 @@ describe("connectNotice", () => {
     expect(connectFor("not-found")).toEqual({
       level: "error",
       label: "No folder at that path",
-      message: "Check the spelling, or select Browse to pick the folder.",
+      message: "Check the spelling, or select Browse to choose the folder.",
       detail: "Nothing is at that path now.",
     });
     expect(connectFor("not-a-directory")).toEqual({
@@ -170,13 +170,17 @@ describe("connectNotice", () => {
       detail: "Maestro would scaffold it into /repos/harness.",
       action: {
         label: "Scaffold the Harness",
-        disabled: false,
+        busy: undefined,
         onClick: onAccept,
       },
     });
     expect(
       scaffoldOfferExtras("/repos/harness", { pending: true, onAccept }).action,
-    ).toEqual({ label: "Scaffolding…", disabled: true, onClick: onAccept });
+    ).toEqual({
+      label: "Scaffold the Harness",
+      busy: "scaffold",
+      onClick: onAccept,
+    });
     expect(scaffoldOfferExtras(null, { pending: false, onAccept })).toEqual({});
   });
 

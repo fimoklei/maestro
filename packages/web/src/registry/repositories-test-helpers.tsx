@@ -1,4 +1,4 @@
-import type { RepoStatus } from "@maestro/core";
+import type { GitHubPage, RepoStatus } from "@maestro/core";
 import { screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { vi } from "vitest";
@@ -23,6 +23,12 @@ export type FakeRegistry = {
   /** A registration that never answers until resolved. */
   holdRegister?: Promise<void>;
   holdUnregister?: Promise<void>;
+  /** Each repository's GitHub page, as its deploy-state read answers it. */
+  github?: Record<string, GitHubPage>;
+  /** The registry stores a new repository first, as a sorted list would. */
+  storesFirst?: boolean;
+  /** Every deploy-state read waits for this before it answers. */
+  holdDeployState?: Promise<void>;
 };
 
 export function stubRegistry(state: FakeRegistry) {
@@ -33,6 +39,16 @@ export function stubRegistry(state: FakeRegistry) {
       const body = init?.body
         ? (JSON.parse(String(init.body)) as { path: string })
         : undefined;
+      if (url.startsWith("/api/deploy-state?repo=")) {
+        const repo = new URL(url, "http://cockpit").searchParams.get("repo");
+        await state.holdDeployState;
+        const github = repo === null ? undefined : state.github?.[repo];
+        return jsonResponse({
+          primitives: [],
+          skipped: [],
+          ...(github === undefined ? {} : { github }),
+        });
+      }
       if (url === "/api/folder-chooser") {
         return method === "POST"
           ? jsonResponse({ path: state.pick ?? null })
@@ -48,7 +64,10 @@ export function stubRegistry(state: FakeRegistry) {
         await state.holdRegister;
         const refusal = state.refusals?.[body.path];
         if (refusal) return jsonResponse({ error: refusal }, 400);
-        state.repos = [...state.repos, { path: body.path, status: "ready" }];
+        const added = { path: body.path, status: "ready" as const };
+        state.repos = state.storesFirst
+          ? [added, ...state.repos]
+          : [...state.repos, added];
         return jsonResponse(
           { repos: state.repos.map(({ path }) => ({ path })) },
           201,

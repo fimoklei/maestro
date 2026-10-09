@@ -352,7 +352,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     // The strip carries the reading now that the summary card is retired.
-    expect(await screen.findByText("None yet")).toBeInTheDocument();
+    expect(await screen.findByText("Not released yet")).toBeInTheDocument();
   });
 
   it("keeps the freshly fetched state when the slower read arrives late", async () => {
@@ -707,7 +707,7 @@ describe("Harness home base", () => {
     const pane = await openPane("tdd", "Pending review");
     expect(
       within(pane).getByText(
-        "Review requested from @ada, @bo, @fimoklei/reviewers",
+        "Review requested from @ada, @bo, @fimoklei/reviewers.",
       ),
     ).toBeInTheDocument();
   });
@@ -807,7 +807,7 @@ describe("Harness home base", () => {
         },
       });
 
-    it("sits between Name and Status", async () => {
+    it("follows Status and Type", async () => {
       stubbed();
       renderHarness();
       await stageHeader("Pending proposal");
@@ -815,8 +815,8 @@ describe("Harness home base", () => {
       const headers = screen
         .getAllByRole("columnheader")
         .map((header) => header.textContent);
-      expect(headers.indexOf("Change")).toBe(headers.indexOf("Name") + 1);
-      expect(headers.indexOf("Status")).toBe(headers.indexOf("Change") + 1);
+      expect(headers.indexOf("Type")).toBe(headers.indexOf("Status") + 1);
+      expect(headers.indexOf("Change")).toBe(headers.indexOf("Type") + 1);
     });
 
     it("names each row's change in every stage group", async () => {
@@ -905,8 +905,8 @@ describe("Harness home base", () => {
     });
   });
 
-  // design.md → Disclosure: every card shares the frame; the keyboard opens
-  // the Status card alone (#1445).
+  // Every card shares the frame; the keyboard opens the Status card alone
+  // (#1445).
   describe("the Change and Pull request cards", () => {
     const CARD = "[data-radix-popper-content-wrapper]";
     const cardOf = (text: HTMLElement) => text.closest(CARD) as HTMLElement;
@@ -1075,7 +1075,7 @@ describe("Harness home base", () => {
       act(() => (screen.getByRole("grid") as HTMLElement).focus());
 
       const status = await screen.findByText(
-        "Review requested from @sanne, @joris",
+        "Review requested from @sanne, @joris.",
       );
       expect(cardOf(status)).toHaveTextContent(/^Changes requested/);
       expect(document.querySelectorAll(CARD)).toHaveLength(1);

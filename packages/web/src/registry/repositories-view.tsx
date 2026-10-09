@@ -1,10 +1,12 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { repoRowId } from "../deploy-state/target-rows";
+import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
+import { REGISTER_REPOSITORY } from "../ui/control-labels";
 import { Icon } from "../ui/icon";
 import { named, phrase } from "../ui/phrase";
 import { TableScreen } from "../ui/table-screen";
@@ -19,7 +21,6 @@ import {
 import {
   EMPTY_SENTENCE,
   EMPTY_TITLE,
-  REGISTER_REPOSITORY,
   REPOS_NOT_READ,
   SCREEN,
   STATUS_READINGS,
@@ -34,21 +35,36 @@ export function RepositoriesView() {
   const queryClient = useQueryClient();
   const registry = useRegistry();
   const unregister = useUnregisterRepo();
+  const repos = registry.data?.repos ?? [];
+  const paths = repos.map((repo) => repo.path);
+  // The GitHub column reads what Deploy-state reads.
+  const deployStates = useQueries({
+    queries: paths.map(deployStateQueryOptions),
+  });
   const screen = useTableScreen({
     name: SCREEN,
-    reading: registry.isFetching,
+    reading:
+      registry.isFetching || deployStates.some((read) => read.isFetching),
     settled: registry.isSuccess,
     failure: registry.isError ? REPOS_NOT_READ : null,
-    onReread: () => queryClient.invalidateQueries({ queryKey: REGISTRY_KEY }),
+    onReread: () => {
+      queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
+      for (const path of paths)
+        queryClient.invalidateQueries({
+          queryKey: deployStateQueryOptions(path).queryKey,
+        });
+    },
     openOnArrival: null,
   });
   const { report } = screen;
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
-  const repos = registry.data?.repos ?? [];
-  const paths = repos.map((repo) => repo.path);
-  const register = useRegisterDialog({ report });
+  const register = useRegisterDialog({
+    report,
+    onAdded: screen.markAdded,
+    registered: paths,
+  });
   const unregisterWrite = useWriteAction(unregister, {
     report,
     action: "unregister",
@@ -57,11 +73,12 @@ export function RepositoriesView() {
     failure: unregisterNotice,
   });
 
-  const rows: RepositoryRow[] = repos.map((repo) => ({
+  const rows: RepositoryRow[] = repos.map((repo, index) => ({
     path: repo.path,
     // Whole set drives each label so shared-prefix repos stay distinct (#211).
     name: targetLabel(repo.path, paths),
     status: STATUS_READINGS[repo.status],
+    github: deployStates[index]?.data?.github,
   }));
 
   const onAction = (row: RepositoryRow, action: RepositoryAction) => {
@@ -92,7 +109,7 @@ export function RepositoriesView() {
           {REGISTER_REPOSITORY}
         </Button>
       }
-      rereading={false}
+      rereading={screen.reading}
       firstReadRows={8}
       rows={rows}
       columns={columns}

@@ -1,15 +1,20 @@
+import { HARNESS_BUSY } from "../ui/busy-copy";
 // Every word the Import local edits control and its dialog show.
+
 import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
+import { IMPORT_LOCAL_EDITS, PROPOSE_CHANGE } from "../ui/control-labels";
+import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, named, type Phrase, phrase } from "../ui/phrase";
-
-export const IMPORT_LOCAL_EDITS = "Import local edits";
+import { LIST_TOKENS } from "../ui/status-family";
+import { REGISTER_STEP } from "./deploy-state-copy";
+import { REASON } from "./reason-copy";
 
 export const importLocalEditsTitle = (target: string): string =>
-  `Import local edits from ${target}`;
+  `${IMPORT_LOCAL_EDITS} from ${target}`;
 
 export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
 
@@ -17,7 +22,7 @@ export const canBeImportedLegend = (count: number): string =>
   `Can be imported · ${count}`;
 
 export const cannotBeImportedLegend = (count: number): string =>
-  `✕ Cannot be imported · ${count}`;
+  `${LIST_TOKENS.failed.glyph} Cannot be imported · ${count}`;
 
 const IMPORT_SKILLS = "Import skills";
 export const NONE_SELECTED = "none selected";
@@ -29,7 +34,7 @@ export const noLocalEditsLine = (target: string): Phrase =>
   phrase`No skill on ${named(target)} changed after deployment.`;
 
 export const undoesNewerLegend = (count: number): string =>
-  `▲ Undoes newer Harness changes · ${count}`;
+  `${LIST_TOKENS.attention.glyph} Undoes newer Harness changes · ${count}`;
 
 export const undoesNewerLine = (release: string): Phrase =>
   phrase`Deployed from release ${machine(release)}. Importing undoes newer Harness changes to this skill.`;
@@ -48,18 +53,16 @@ export const importReportHeading = (landed: number, asked: number): string =>
 
 export const NOT_IMPORTED = "Not imported";
 export const IMPORTED = "Imported";
-export const IMPORTED_NEXT_STEP =
-  "Each is now a Pending proposal on the Harness screen. Select Propose change there.";
+export const IMPORTED_NEXT_STEP = `Each is now a Pending proposal on the Harness screen. Select ${PROPOSE_CHANGE} there.`;
 
 const NOT_CHECKED = {
   label: "Local edits not checked",
-  message: "Nothing was imported. Select Close, then Import local edits again.",
+  message: `Nothing was imported. Select ${CLOSE}, then select ${IMPORT_LOCAL_EDITS} again.`,
 };
 
 const NOT_CONFIRMED = {
   label: "Import not confirmed",
-  message:
-    "The Maestro server did not answer, so some skills may have landed. Select Close, then check the Harness screen.",
+  message: `The Maestro server did not answer, so some skills may have landed. Select ${CLOSE}, then check the Harness screen.`,
 };
 
 // Headings shared with the other surfaces that meet the same block.
@@ -67,30 +70,27 @@ const LOCAL_EDITS_ERRORS: NoticeTable<LocalEditsError> = {
   "not-configured": {
     level: "error",
     label: "No Harness connected",
-    message: `${CHANGE_LOCATION_STEP}, then select Import local edits again.`,
+    message: `${CHANGE_LOCATION_STEP}, then select ${IMPORT_LOCAL_EDITS} again.`,
   },
   "repo-not-registered": {
     level: "error",
     label: "Repository not registered",
-    message:
-      "Register this repository in Maestro, then select Import local edits again.",
+    message: `${REGISTER_STEP}, then select ${IMPORT_LOCAL_EDITS} again.`,
   },
   "unfinished-operation": {
     level: "error",
-    label: "Change not finished",
+    label: REASON["operation-unfinished"],
     message: `An earlier change on this target did not finish. Finish it on the Deploy-state screen, then select ${IMPORT_LOCAL_EDITS} again.`,
   },
   "target-unreadable": {
     level: "error",
-    label: "Could not read deployment record",
-    message:
-      "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits again.",
+    label: REASON["lockfile-malformed"],
+    message: `Nothing was imported. Repair or delete apm.lock.yaml in the target, then select ${IMPORT_LOCAL_EDITS} again.`,
   },
   "import-in-progress": {
     level: "error",
-    label: "Harness already changing",
-    message:
-      "Wait for that change to finish, then select Import local edits again.",
+    label: HARNESS_BUSY,
+    message: `Wait for that change to finish, then select ${IMPORT_LOCAL_EDITS} again.`,
   },
 };
 

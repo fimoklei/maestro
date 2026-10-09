@@ -12,7 +12,6 @@ import {
   KEEP_WORK_BY_IMPORTING,
   LOADING_PREVIEW,
   localEditsSentence,
-  MIXED_RELEASES,
   NO_CONTENT_CHANGES,
   NO_GITHUB_ORIGIN,
   NOT_ADDED,
@@ -64,7 +63,10 @@ describe("Update target copy", () => {
   });
 
   it("names the release the target leaves and the one it adopts", () => {
-    expect(releaseMoveLine("v0.3.2", "v0.3.4")).toBe("release v0.3.2 → v0.3.4");
+    const move = releaseMoveLine("v0.3.2", "v0.3.4");
+    expect(plainText(move)).toBe("release v0.3.2 → v0.3.4");
+    // #1458: the versions are the machine values; the words stay Geist.
+    expect(machineValues(move)).toEqual(["v0.3.2", "v0.3.4"]);
   });
 
   it("heads the six sections in one fixed order", () => {
@@ -102,7 +104,7 @@ describe("Update target copy", () => {
   it("names both consents by the effect each one allows", () => {
     expect(DISCARD_LOCAL_EDITS).toBe("Discard local edits");
     expect(KEEP_WORK_BY_IMPORTING).toBe(
-      "To keep the edits instead, select Cancel, then Import local edits.",
+      "To keep the edits instead, select Cancel, then select Import local edits.",
     );
     expect(OVERWRITE_UNVERIFIED).toBe("Overwrite unverified copy");
   });
@@ -128,10 +130,6 @@ describe("Update target copy", () => {
 
   it("names what is loading by the screen it is for", () => {
     expect(LOADING_PREVIEW).toBe("Loading the update preview…");
-  });
-
-  it("names a half-landed update on the card", () => {
-    expect(MIXED_RELEASES).toBe("Mixed releases");
   });
 
   it("heads the outcome by whether every skill reached the release", () => {

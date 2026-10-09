@@ -1,11 +1,17 @@
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LayoutList } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
-import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
+import {
+  DRIFT_KEY,
+  driftQueryOptions,
+  useGlobalDrift,
+} from "../drift/use-drift";
 import { type DeployTarget, sameTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { freshnessLine } from "../ui/freshness";
+import { Icon } from "../ui/icon";
 import { type Copy, plainText } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { TableScreen } from "../ui/table-screen";
@@ -21,6 +27,7 @@ import {
   deployStateNotRead,
   GLOBAL,
   NO_FILTER_MATCH,
+  NO_TARGETS,
   NOTHING_DEPLOYED,
   REPOSITORIES,
   TARGET_LABEL,
@@ -39,8 +46,8 @@ import {
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { updateLabel } from "./update-target-copy";
-import { deployStateQueryOptions } from "./use-deploy-state";
-import { useGlobalDeployState } from "./use-global-deploy-state";
+import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
+import { globalDeployStateQueryOptions } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdateTarget } from "./use-update-target";
 
@@ -66,11 +73,19 @@ export function DeployStateView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const registry = useRegistry();
-  const globalDeploy = useGlobalDeployState();
+  // Only these rows re-read on tab return; every other reader of the same
+  // queries opts out (#1037).
+  const globalDeploy = useQuery({
+    ...globalDeployStateQueryOptions(),
+    refetchOnWindowFocus: true,
+  });
   const globalDrift = useGlobalDrift();
   const repoPaths = (registry.data?.repos ?? []).map((repo) => repo.path);
   const repoDeploy = useQueries({
-    queries: repoPaths.map(deployStateQueryOptions),
+    queries: repoPaths.map((repo) => ({
+      ...deployStateQueryOptions(repo),
+      refetchOnWindowFocus: true,
+    })),
   });
   const repoDrift = useQueries({ queries: repoPaths.map(driftQueryOptions) });
   const location = useLocation();
@@ -93,8 +108,8 @@ export function DeployStateView() {
     // cache, so a pressed re-read is really fresh.
     onReread: () => {
       queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
-      queryClient.invalidateQueries({ queryKey: ["deploy-state"] });
-      queryClient.invalidateQueries({ queryKey: ["drift"] });
+      queryClient.invalidateQueries({ queryKey: DEPLOY_STATE_KEY });
+      queryClient.invalidateQueries({ queryKey: DRIFT_KEY });
     },
     openOnArrival:
       (location.state as { openTarget?: string } | null)?.openTarget ?? null,
@@ -127,11 +142,7 @@ export function DeployStateView() {
   const retry = useRetryOperation(screen.report, (target) => {
     const row = pendingOf(target);
     if (row?.pending === undefined) return null;
-    return {
-      operation: row.pending,
-      // A finished deploy or removal shows as the row's new status alone.
-      name: row.pending.kind === "update" ? row.updateName : null,
-    };
+    return { operation: row.pending, name: row.updateName };
   });
 
   const targets: TargetRow[] = [
@@ -151,11 +162,34 @@ export function DeployStateView() {
       ),
     ),
   ];
+  const freshness = freshnessLine(
+    {
+      readAt: [
+        globalDeploy.dataUpdatedAt,
+        globalDrift.dataUpdatedAt,
+        ...repoDeploy.map((query) => query.dataUpdatedAt),
+        ...repoDrift.map((query) => query.dataUpdatedAt),
+        // The server keeps a release comparison that later failed, so it can
+        // be older than the read that carried it.
+        ...targets.map((row) => row.head?.comparedAt),
+      ],
+      outcome: "untracked",
+    },
+    now,
+  );
+
   const rows: TargetTableRow[] = targets.map((row) => ({
     ...row,
     actions: targetMenuItems(row, retry.isRetrying(row.wire)),
     links: targetLinkItems(row),
+    busy: retry.isRetrying(row.wire),
+    compared: freshness,
   }));
+  const isColdStart =
+    isRead &&
+    globalDeploy.data.primitives.length === 0 &&
+    globalDeploy.data.skipped.length === 0 &&
+    repoPaths.length === 0;
 
   const onAction = useCallback(
     (row: TargetTableRow, action: TargetAction) => {
@@ -197,20 +231,23 @@ export function DeployStateView() {
         groups: {
           ...BY_TARGET.groups,
           // An empty group says what fills it; a failed read is the notice's,
-          // and a filtered-out group is No filter match's.
+          // a filtered-out group is No filter match's, and a cold start with no
+          // target at all is the empty state's.
           message: (key: string) =>
-            blockLines(
-              emptyGroupLines(key, {
-                filtered: view.filterCount > 0,
-                global: globalDeploy.isSuccess
-                  ? {
-                      tools: globalDeploy.data.tools.length,
-                      skipped: globalDeploy.data.skipped,
-                    }
-                  : null,
-                repositories: registry.isSuccess ? repoPaths.length : null,
-              }),
-            ),
+            isColdStart && rows.length === 0
+              ? null
+              : blockLines(
+                  emptyGroupLines(key, {
+                    filtered: view.filterCount > 0,
+                    global: globalDeploy.isSuccess
+                      ? {
+                          tools: globalDeploy.data.tools.length,
+                          skipped: globalDeploy.data.skipped,
+                        }
+                      : null,
+                    repositories: registry.isSuccess ? repoPaths.length : null,
+                  }),
+                ),
         },
       },
     ],
@@ -218,24 +255,6 @@ export function DeployStateView() {
     columns: COLUMN_OPTIONS,
     unavailable: "no targets yet",
   });
-
-  const isColdStart =
-    isRead &&
-    globalDeploy.data.primitives.length === 0 &&
-    globalDeploy.data.skipped.length === 0 &&
-    repoPaths.length === 0;
-  const freshness = freshnessLine(
-    {
-      readAt: [
-        globalDeploy.dataUpdatedAt,
-        globalDrift.dataUpdatedAt,
-        ...repoDeploy.map((query) => query.dataUpdatedAt),
-        ...repoDrift.map((query) => query.dataUpdatedAt),
-      ],
-      outcome: "untracked",
-    },
-    now,
-  );
 
   return (
     <TableScreen
@@ -252,13 +271,14 @@ export function DeployStateView() {
           <span className="text-gray-11 text-meta">{freshness}</span>
         )
       }
-      rereading={false}
+      rereading={screen.reading}
       firstReadRows={8}
       rows={rows}
       columns={columns}
       rowId={(row) => row.id}
       view={view}
       noMatch={NO_FILTER_MATCH}
+      empty={{ ...NO_TARGETS, icon: <Icon of={LayoutList} /> }}
       pane={(row, frame) => {
         const placed = targetPaneActions(row, onAction);
         return (
@@ -269,8 +289,7 @@ export function DeployStateView() {
             onRetry={() => retry.run(row.wire)}
             isRetrying={retry.isRetrying(row.wire)}
             retryFailure={retry.failure(row.wire)}
-            onReread={screen.reread}
-            now={now}
+            compared={freshness}
             update={placed.update}
             foot={placed.foot}
             dialogs={

@@ -18,12 +18,13 @@ const pair = (name: string): ReadDriftEntry => ({
 });
 
 // Spread this so the targets stay focused on what the count reads.
-const paneFields: Pick<DeploymentTarget, "label" | "target"> & {
+const paneFields: Pick<DeploymentTarget, "label" | "target" | "pending"> & {
   primitives: [];
 } = {
   label: "",
   target: { kind: "global" },
   primitives: [],
+  pending: undefined,
 };
 
 // A cleanly read target with the given names and drift's behind set.
@@ -100,7 +101,11 @@ describe("rollUpDeployment — target count", () => {
 
   it("does not count a target whose deploy-state has not resolved yet", () => {
     const targets: DeploymentTarget[] = [
-      { ...paneFields, deployed: { status: "pending" }, drift: ranDrift([]) },
+      {
+        ...paneFields,
+        deployed: { status: "pending" },
+        drift: ranDrift([]),
+      },
       deployedTarget(["tdd"]),
     ];
     expect(rollUpDeployment("tdd", targets).targetCount).toBe(1);
@@ -108,7 +113,11 @@ describe("rollUpDeployment — target count", () => {
 
   it("does not count a target whose deploy-state could not be read", () => {
     const targets: DeploymentTarget[] = [
-      { ...paneFields, deployed: { status: "unknown" }, drift: ranDrift([]) },
+      {
+        ...paneFields,
+        deployed: { status: "unknown" },
+        drift: ranDrift([]),
+      },
       deployedTarget(["tdd"]),
     ];
     expect(rollUpDeployment("tdd", targets).targetCount).toBe(1);
@@ -120,7 +129,11 @@ describe("rollUpDeployment — pending keeps a zero reach honest", () => {
     // A 0 count while any local read is in flight is unconfirmed, not "deployed
     // nowhere".
     const targets: DeploymentTarget[] = [
-      { ...paneFields, deployed: { status: "pending" }, drift: ranDrift([]) },
+      {
+        ...paneFields,
+        deployed: { status: "pending" },
+        drift: ranDrift([]),
+      },
       deployedTarget(["caveman"]),
     ];
     expect(rollUpDeployment("tdd", targets).pending).toBe(true);
@@ -134,7 +147,11 @@ describe("rollUpDeployment — pending keeps a zero reach honest", () => {
   it("flags the roll-up unreadable when a target's deploy-state read failed", () => {
     // A failed read leaves the reach unconfirmed, as a still-loading read does.
     const targets: DeploymentTarget[] = [
-      { ...paneFields, deployed: { status: "unknown" }, drift: ranDrift([]) },
+      {
+        ...paneFields,
+        deployed: { status: "unknown" },
+        drift: ranDrift([]),
+      },
       deployedTarget(["caveman"]),
     ];
     expect(rollUpDeployment("tdd", targets).unreadable).toBe(true);
@@ -146,7 +163,7 @@ describe("rollUpDeployment — pending keeps a zero reach honest", () => {
   });
 });
 
-describe("rollUpDeployment — behind count (▲N)", () => {
+describe("rollUpDeployment — behind count", () => {
   it("counts targets where the deployed skill is confirmed behind", () => {
     const targets = [
       deployedTarget(["tdd"], [pair("tdd")]),

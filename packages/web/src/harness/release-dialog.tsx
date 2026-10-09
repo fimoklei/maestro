@@ -2,12 +2,14 @@ import type { ReleasePlan, SemverStep } from "@maestro/core";
 import { useState } from "react";
 import { loadingText } from "../ui/busy-copy";
 import { Card } from "../ui/card";
+import { PUBLISH_RELEASE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { machine, named, phrase } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { SegmentedControl } from "../ui/segmented-control";
+import { StatusLine } from "../ui/status-line";
 import {
   FINDING_TEXT,
   RELEASE_UNAVAILABLE,
@@ -63,13 +65,13 @@ export function ReleaseDialog({
 
   return (
     <Dialog
-      title={`Publish release for ${origin}`}
+      title={`${PUBLISH_RELEASE} for ${origin}`}
       version={null}
-      width={640}
+      width={480}
       phase={publishing ? "running" : "idle"}
       // It pushes a tag to GitHub, so it is confirmed like a deletion.
       action={{
-        label: "Publish release",
+        label: PUBLISH_RELEASE,
         verb: "publish",
         tone: "danger",
         unavailable: unavailableCause(load),
@@ -77,20 +79,14 @@ export function ReleaseDialog({
           load.kind === "ready" &&
           onPublish(chosenStep ?? load.plan.proposedStep, load.plan),
       }}
-      failure={publishError}
+      failure={publishError ?? (load.kind === "error" ? load.notice : null)}
       // The plan is the body, and it arrives after the panel is announced.
       describedBy={null}
       fieldsChanged={chosenStep !== null}
       onClose={onClose}
     >
-      {/* The plan is the answer to the click that opened this dialog, so
-          its failure is a user-action, not a panel that failed on load. */}
-      <Notice
-        trigger="user-action"
-        notice={load.kind === "error" ? load.notice : null}
-      />
       {load.kind === "loading" ? (
-        <p className="m-0 text-gray-11">{loadingText("release plan")}</p>
+        <StatusLine>{loadingText("release plan")}</StatusLine>
       ) : load.kind === "ready" ? (
         <PlanBody
           plan={load.plan}
@@ -129,24 +125,12 @@ function PlanBody({
         <ReleaseDelta movements={plan.delta} />
       )}
 
-      <Notice
-        trigger="load"
-        notice={
-          plan.findings.length === 0
-            ? null
-            : skillChecksNotice(
-                "publish",
-                plan.findings.map(
-                  (finding) =>
-                    phrase`${named(finding.skill)} ${FINDING_TEXT[finding.problem]}`,
-                ),
-              )
-        }
-      />
-
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact label="Previous tag" value={plan.previousTag ?? "None yet"} />
+          <Fact
+            label="Previous tag"
+            value={plan.previousTag ?? "Not released yet"}
+          />
           <Fact label="Branch" value={plan.defaultBranch} />
           {/* The whole commit: a short hash is not the exact revision, and
               need not be unique in a repository this size (#519). */}
@@ -174,6 +158,20 @@ function PlanBody({
           />
         </div>
       </Card>
+      <Notice
+        trigger="load"
+        notice={
+          plan.findings.length === 0
+            ? null
+            : skillChecksNotice(
+                "publish",
+                plan.findings.map(
+                  (finding) =>
+                    phrase`${named(finding.skill)} ${FINDING_TEXT[finding.problem]}`,
+                ),
+              )
+        }
+      />
     </>
   );
 }

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { plainText } from "../ui/phrase";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
+import { targetMenuItems } from "./target-menu";
 import {
   emptyGroupLines,
   globalRows,
@@ -16,7 +17,8 @@ import {
   type TargetRow,
 } from "./target-rows";
 
-const NOW = new Date("2026-09-24T10:00:00Z");
+// Band 2's line, which every Status card repeats.
+const COMPARED = "Read just now";
 
 const ON_LATEST: ReleaseHead = {
   release: "v0.3.4",
@@ -57,7 +59,7 @@ const readCard = (card: StatusCard) => ({
 // The Status hover card: one reason sentence, then the read age (copy.md).
 describe("statusCard", () => {
   it("states that a target on the latest release is on it", () => {
-    expect(readCard(statusCard(row({ head: ON_LATEST }), NOW))).toEqual({
+    expect(readCard(statusCard(row({ head: ON_LATEST }), COMPARED))).toEqual({
       reason: "On the latest release.",
       readAge: "Read just now",
     });
@@ -65,26 +67,33 @@ describe("statusCard", () => {
 
   it("counts the changed skills in the newer release on a behind target", () => {
     const head = { ...ON_LATEST, release: "v0.3.2", changed: 1, selected: 3 };
-    expect(readCard(statusCard(row({ head, behind: true }), NOW))).toEqual({
-      reason:
-        "1 of 3 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
-      readAge: "Read just now",
-    });
+    expect(readCard(statusCard(row({ head, behind: true }), COMPARED))).toEqual(
+      {
+        reason:
+          "1 of 3 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+        readAge: "Read just now",
+      },
+    );
   });
 
   it("says the changes of a newer release could not be read", () => {
     const head = { ...ON_LATEST, release: "v0.3.2", changed: null };
-    expect(readCard(statusCard(row({ head, behind: true }), NOW))).toEqual({
-      reason:
-        "Changes in v0.3.4 could not be read. Select Update target to move this target to v0.3.4.",
-      readAge: "Read just now",
-    });
+    expect(readCard(statusCard(row({ head, behind: true }), COMPARED))).toEqual(
+      {
+        reason:
+          "Changes in v0.3.4 could not be read. Select Update target to move this target to v0.3.4.",
+        readAge: "Read just now",
+      },
+    );
   });
 
   it("states that the latest release could not be read", () => {
     expect(
       readCard(
-        statusCard(row({ head: { ...ON_LATEST, latestRelease: null } }), NOW),
+        statusCard(
+          row({ head: { ...ON_LATEST, latestRelease: null } }),
+          COMPARED,
+        ),
       ),
     ).toEqual({
       reason: "Latest release could not be read.",
@@ -102,7 +111,7 @@ describe("statusCard", () => {
               { release: "v0.3.0", skills: 1 },
             ],
           }),
-          NOW,
+          COMPARED,
         ),
       ),
     ).toEqual({ reason: "2 skills at v0.3.1, 1 at v0.3.0.", readAge: null });
@@ -116,7 +125,7 @@ describe("statusCard", () => {
             head: ON_LATEST,
             pending: { kind: "deploy", release: "v0.3.4", desired: ["tdd"] },
           }),
-          NOW,
+          COMPARED,
         ),
       ),
     ).toEqual({
@@ -130,7 +139,7 @@ describe("statusCard", () => {
             head: ON_LATEST,
             pending: { kind: "update", release: "v0.3.4", desired: ["tdd"] },
           }),
-          NOW,
+          COMPARED,
         ),
       ).reason,
     ).toBe("The update is incomplete.");
@@ -139,7 +148,10 @@ describe("statusCard", () => {
   it("names another tool as behind on a global tool already on the latest release", () => {
     expect(
       readCard(
-        statusCard(row({ group: GLOBAL, head: ON_LATEST, behind: true }), NOW),
+        statusCard(
+          row({ group: GLOBAL, head: ON_LATEST, behind: true }),
+          COMPARED,
+        ),
       ),
     ).toEqual({
       reason:
@@ -159,7 +171,7 @@ describe("statusCard", () => {
             head: ON_LATEST,
             behind: true,
           }),
-          NOW,
+          COMPARED,
         ),
       ).reason,
     ).toBe(
@@ -172,16 +184,16 @@ describe("statusCard", () => {
       readCard(
         statusCard(
           row({ group: GLOBAL, head: ON_LATEST, readFailed: true }),
-          NOW,
+          COMPARED,
         ),
       ),
-    ).toEqual({ reason: "Deploy-state not read", readAge: "Read just now" });
+    ).toEqual({ reason: "Deploy-state not read.", readAge: "Read just now" });
   });
 
   it("explains an Unknown reading as the update check that did not run", () => {
     const unknown = { word: "Unknown", family: "unknown", glyph: "?" } as const;
     expect(
-      readCard(statusCard(row({ head: ON_LATEST, status: unknown }), NOW)),
+      readCard(statusCard(row({ head: ON_LATEST, status: unknown }), COMPARED)),
     ).toEqual({
       reason: "Update check did not run.",
       readAge: "Read just now",
@@ -189,8 +201,8 @@ describe("statusCard", () => {
   });
 
   it("states a repository's failed read alone", () => {
-    expect(readCard(statusCard(row({ readFailed: true }), NOW))).toEqual({
-      reason: "Deploy-state not read",
+    expect(readCard(statusCard(row({ readFailed: true }), COMPARED))).toEqual({
+      reason: "Deploy-state not read.",
       readAge: null,
     });
   });
@@ -208,7 +220,7 @@ describe("statusCard", () => {
                 skill("review", "local-edits"),
               ],
             }),
-            NOW,
+            COMPARED,
           ),
         ),
       ),
@@ -233,7 +245,7 @@ describe("statusCard", () => {
               },
             ],
           }),
-          NOW,
+          COMPARED,
         ),
       ).reason,
     ).toBe("The deploy of skills/tdd landed no files.");
@@ -241,8 +253,9 @@ describe("statusCard", () => {
 
   it("names the other origin of a target with no skill of its own", () => {
     expect(
-      readCard(statusCard(row({ otherOrigins: ["a/b"], primitives: [] }), NOW))
-        .reason,
+      readCard(
+        statusCard(row({ otherOrigins: ["a/b"], primitives: [] }), COMPARED),
+      ).reason,
     ).toBe("Holds skills, hooks and MCP servers deployed from a/b.");
   });
 });
@@ -273,7 +286,7 @@ describe("local edits on a target", () => {
     });
     const edited = [skill("tdd", "local-edits"), skill("grill")];
     expect(words(repoRow("/me/a", [], read(edited), syncedDrift))).toBe(
-      "✎ Local edits",
+      "⚠ Local edits",
     );
     expect(words(repoRow("/me/a", [], read([skill("tdd")]), syncedDrift))).toBe(
       "✓ In sync",
@@ -287,7 +300,15 @@ describe("local edits on a target", () => {
 
   it("reads a failed read as Unknown, whatever its stale rows say", () => {
     const stale = {
-      data: { primitives: [skill("tdd", "local-edits")], skipped: [] },
+      data: {
+        primitives: [skill("tdd", "local-edits")],
+        skipped: [],
+        pendingOperation: {
+          kind: "deploy" as const,
+          release: "v0.3.4",
+          desired: ["tdd"],
+        },
+      },
       isError: true,
     };
     const unknownDrift = {
@@ -301,11 +322,47 @@ describe("local edits on a target", () => {
         primitives: [],
         skipped: [],
         otherOrigins: [],
+        pendingOperation: stale.data.pendingOperation,
       },
       syncedDrift,
       true,
     );
     expect(rows.map(words)).toEqual(["? Unknown"]);
+  });
+
+  it("offers no retry on a target whose read failed: Re-read is the way back", () => {
+    const pendingOperation = {
+      kind: "deploy" as const,
+      release: "v0.3.4",
+      desired: ["tdd"],
+    };
+    const repo = repoRow(
+      "/me/a",
+      [],
+      {
+        data: { primitives: [], skipped: [], pendingOperation },
+        isError: true,
+      },
+      syncedDrift,
+    );
+    const [tool] = globalRows(
+      {
+        tools: [{ tool: "claude", primitives: [] }],
+        detectedTools: ["claude"],
+        primitives: [],
+        skipped: [],
+        otherOrigins: [],
+        pendingOperation,
+      },
+      syncedDrift,
+      true,
+    );
+    if (tool === undefined) throw new Error("no tool row");
+    for (const unread of [repo, tool]) {
+      expect(targetMenuItems(unread, false).map((item) => item.action)).toEqual(
+        ["deploy"],
+      );
+    }
   });
 
   it("reads only the tool whose copy was edited as Local edits", () => {
@@ -328,7 +385,7 @@ describe("local edits on a target", () => {
       syncedDrift,
       false,
     );
-    expect(rows.map(words)).toEqual(["✎ Local edits", "✓ In sync"]);
+    expect(rows.map(words)).toEqual(["⚠ Local edits", "✓ In sync"]);
   });
 });
 
@@ -362,7 +419,7 @@ describe("emptyGroupLines", () => {
 
   it("says how to register on an empty Repositories group", () => {
     expect(emptyGroupLines(REPOSITORIES, read)).toEqual([
-      "No repositories registered yet. Select Register repository on the Repositories screen.",
+      "No repositories yet. Select Register repository on the Repositories screen.",
     ]);
   });
 

@@ -3,6 +3,8 @@ import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { vi } from "vitest";
 import { createQueryClient } from "./api/query-client";
+import * as controlLabels from "./ui/control-labels";
+import { CANCEL, CLOSE } from "./ui/dialog-copy";
 import type { NoticeCopy } from "./ui/notice";
 import { type Copy, plainText } from "./ui/phrase";
 import { ScreenReportContext } from "./ui/use-write-action";
@@ -19,7 +21,7 @@ export function jsonResponse(body: unknown, status = 200) {
 // without its table screen reports into nothing; a screen brings its region.
 export function renderWithQuery(ui: ReactNode) {
   const queryClient = createQueryClient();
-  return render(ui, {
+  const rendered = render(ui, {
     wrapper: ({ children }) => (
       <QueryClientProvider client={queryClient}>
         <ScreenReportContext.Provider value={ignoreReport}>
@@ -28,9 +30,19 @@ export function renderWithQuery(ui: ReactNode) {
       </QueryClientProvider>
     ),
   });
+  // The client, so a test can re-read without moving focus to Re-read.
+  return { ...rendered, queryClient };
 }
 
 const ignoreReport = () => {};
+
+/** The element a query found, or a failed test where it found none. */
+export function htmlElement(element: Element | null | undefined): HTMLElement {
+  if (!(element instanceof HTMLElement)) {
+    throw new Error(`Expected an HTML element, found ${String(element)}.`);
+  }
+  return element;
+}
 
 /** A notice as read: every sentence in plain text. */
 export function readNotice<T extends NoticeCopy & { items?: readonly Copy[] }>(
@@ -59,6 +71,27 @@ export const sentence = (text: string | RegExp) => {
     element !== null &&
     reads(element) &&
     [...element.children].every((child) => !reads(child));
+};
+
+const NAMED_CONTROLS = [
+  ...Object.values(controlLabels).flatMap((label) =>
+    typeof label === "string" ? [label] : [],
+  ),
+  CANCEL,
+  CLOSE,
+  ...["Deploy-state", "Inventory", "Repositories", "Harness"].map(
+    controlLabels.rereadLabel,
+  ),
+];
+
+/** The shared control labels a sentence names without `select` before them. */
+export const unselectedControls = (copy: Copy): string[] => {
+  const text = plainText(copy);
+  return NAMED_CONTROLS.filter((label) =>
+    new RegExp(
+      `(?<![Ss]elect )(?<![\\w-])${label.replace(/[\\^$.*+?()[\]{}|-]/g, "\\$&")}(?![\\w-])`,
+    ).test(text),
+  );
 };
 
 /** The machine values a sentence sets apart, in reading order. */

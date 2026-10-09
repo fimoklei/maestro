@@ -15,6 +15,7 @@ import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
+import { StatusLine } from "../ui/status-line";
 import { reading } from "../ui/status-reading";
 import type { DeployStateNotice } from "./notice-copy";
 import { updateOutcomeReport } from "./update-outcome-report";
@@ -238,7 +239,11 @@ export function UpdateTargetDialog({
               label: UPDATE_INCOMPLETE,
               message: UPDATE_INCOMPLETE_SENTENCE,
             }),
-        action: { label: RETRY_UPDATE, onClick: onRetry, disabled: isRunning },
+        action: {
+          label: RETRY_UPDATE,
+          onClick: onRetry,
+          busy: isRunning ? "update" : undefined,
+        },
       }
     : error && { ...error, level: "error" };
   const unavailable = blocked ?? (consentComplete ? null : CONSENT_NOT_GIVEN);
@@ -267,8 +272,10 @@ export function UpdateTargetDialog({
     >
       {preview !== null && report === null ? (
         <div className="flex items-center justify-between gap-inline">
-          <p className="m-0 font-mono text-gray-11 text-meta">
-            {releaseMoveLine(preview.release, preview.chosenRelease)}
+          <p className="m-0 font-ui text-gray-11 text-meta">
+            <PhraseText
+              copy={releaseMoveLine(preview.release, preview.chosenRelease)}
+            />
           </p>
           {noContentChanges ? (
             <StatusBadge reading={reading(NO_CONTENT_CHANGES, "neutral")} />
@@ -279,7 +286,7 @@ export function UpdateTargetDialog({
         <Report heading={report.heading} groups={report.groups} />
       ) : preview === null ? (
         isLoading ? (
-          <p className="m-0 text-gray-11">{LOADING_PREVIEW}</p>
+          <StatusLine>{LOADING_PREVIEW}</StatusLine>
         ) : null
       ) : (
         <>

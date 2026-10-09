@@ -1,8 +1,12 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useWriteAction } from "../ui/use-write-action";
+import { FOLDER_MISSING } from "./dialog-copy";
+import { isImportable } from "./import-view-model";
 import { importNotice } from "./notice-copy";
 import {
   type ImportOutcome,
+  importCheckQuery,
   useImportCheck,
   useImportSkill,
 } from "./use-harness";
@@ -19,9 +23,12 @@ export function useImportFlow(
   // What the Folder path field holds, and the folder last sent to the check.
   const [sourceText, setSourceText] = useState("");
   const [source, setSource] = useState<string | null>(null);
+  // Set by a submit with no folder; any edit of the field clears it.
+  const [folderMissing, setFolderMissing] = useState(false);
   // Null until the author types: Maestro's proposal fills the field until then,
   // and a new folder brings a new proposal.
   const [editedName, setEditedName] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const check = useImportCheck(source, editedName);
   const importSkill = useImportSkill();
   const importWrite = useWriteAction(importSkill, {
@@ -42,6 +49,13 @@ export function useImportFlow(
     setOpen(false);
     setSource(null);
     setSourceText("");
+    setFolderMissing(false);
+    setEditedName(null);
+    importSkill.reset();
+  };
+
+  const commitSource = (path: string) => {
+    setSource(path);
     setEditedName(null);
     importSkill.reset();
   };
@@ -50,21 +64,45 @@ export function useImportFlow(
     open,
     source,
     sourceText,
+    sourceError: folderMissing ? FOLDER_MISSING : undefined,
     name,
     check,
     importWrite,
     start: () => setOpen(true),
-    setSourceText,
-    commitSource: (path: string) => {
-      setSource(path);
-      setEditedName(null);
-      importSkill.reset();
+    setSourceText: (text: string) => {
+      setFolderMissing(false);
+      setSourceText(text);
     },
+    commitSource,
     setEditedName,
-    submit: () => {
-      if (source === null) return;
+    // Imports only a folder whose check came back clean: a check under way is
+    // awaited and a failed one asked again, so a submit is never silent. A new
+    // typed folder is checked; a refusal stays beside its field.
+    submit: async () => {
+      const typed = sourceText.trim();
+      if (typed === "") {
+        setFolderMissing(true);
+        return;
+      }
+      if (typed !== source) {
+        commitSource(typed);
+        return;
+      }
+      // A failed check states itself beside Folder path; so does a refusal.
+      const checked =
+        check.data ??
+        (await queryClient
+          .fetchQuery(importCheckQuery(typed, editedName))
+          .catch(() => undefined));
+      if (checked === undefined || !isImportable(checked)) return;
       importWrite.run(
-        { source, name },
+        {
+          source: typed,
+          name:
+            checked.mode === "update"
+              ? checked.name
+              : (editedName ?? checked.name),
+        },
         {
           onSuccess: (outcome) => {
             close();

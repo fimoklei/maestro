@@ -1,10 +1,10 @@
 import type { HarnessStageRow } from "@maestro/core";
-import { RowItemsMenu } from "../inventory/row-menu";
 import { TYPE_WORD } from "../inventory/type-filter";
-import type { ActionsMenuProps } from "../ui/actions-menu";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
+import type { FootItem } from "../ui/foot-actions";
 import type { Copy } from "../ui/phrase";
+import { RowMenu } from "../ui/row-menu";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
 import { pullRequestCard } from "./pull-request-card";
@@ -26,7 +26,7 @@ export type HarnessTableRow = HarnessStageRow & {
   id: string;
   group: string;
   reading: StatusReading;
-  items: ActionsMenuProps["items"];
+  items: FootItem[];
 };
 
 export const rowId = (row: Pick<HarnessStageRow, "stage" | "skill">) =>
@@ -61,6 +61,21 @@ export const harnessColumns = ({
   freshness: string | null;
 }) =>
   createDataTableColumns<HarnessTableRow>((helper) => [
+    {
+      ...helper.accessor("skill", { header: "Name" }),
+      name: (row) => row.skill,
+    },
+    {
+      ...helper.accessor("reading", {
+        header: "Status",
+        cell: ({ row }) => <StatusBadge reading={row.original.reading} />,
+        sortFn: (a, b) =>
+          readingRank(a.original.reading) - readingRank(b.original.reading),
+        // The longest reading, Approved, awaiting merge, fits (#994).
+        meta: { width: 62 },
+      }),
+      card: { keyboard: true, content: statusCardContent(context, freshness) },
+    },
     helper.display({
       id: "type",
       header: "Type",
@@ -68,10 +83,6 @@ export const harnessColumns = ({
       cell: () => <span className="text-gray-11">{TYPE_WORD.skill}</span>,
       meta: { width: 14, priority: 1 },
     }),
-    {
-      ...helper.accessor("skill", { header: "Name", meta: { width: 58 } }),
-      name: (row) => row.skill,
-    },
     {
       ...helper.accessor("change", {
         header: "Change",
@@ -94,17 +105,6 @@ export const harnessColumns = ({
       },
     },
     {
-      ...helper.accessor("reading", {
-        header: "Status",
-        cell: ({ row }) => <StatusBadge reading={row.original.reading} />,
-        sortFn: (a, b) =>
-          readingRank(a.original.reading) - readingRank(b.original.reading),
-        // The longest reading, Approved, awaiting merge, fits (#994).
-        meta: { width: 62 },
-      }),
-      card: { keyboard: true, content: statusCardContent(context, freshness) },
-    },
-    {
       ...helper.display({
         id: "pull-request",
         header: "Pull request",
@@ -120,15 +120,22 @@ export const harnessColumns = ({
       cell: ({ row }) => (
         <span className="text-gray-11">{alsoInWords(row.original)}</span>
       ),
-      meta: { priority: 2 },
+      // Two stage names, Pending proposal, Pending review, fit.
+      meta: { width: 56, priority: 2 },
     }),
     helper.display({
       id: "actions",
       header: () => <span className="sr-only">Actions</span>,
       cell: ({ row }) => (
-        <RowItemsMenu
+        <RowMenu
           label={rowMenuLabel(row.original)}
-          items={row.original.items}
+          // Dialogs and writes, never the pane: focus comes back to ⋮.
+          items={row.original.items.map((item) => ({
+            ...item,
+            movesFocus: false,
+          }))}
+          tabStop={false}
+          busy={row.original.items.some((item) => item.busy !== undefined)}
         />
       ),
       meta: { width: 10 },

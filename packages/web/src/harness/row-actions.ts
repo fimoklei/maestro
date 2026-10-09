@@ -1,8 +1,15 @@
 // What one row's menu holds: every action the stage carries and every
 // pull-request link. An absent action is never a disabled one; the Status
 // hover card names why it is absent (#1125).
+
 import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
-import type { ActionsMenuProps } from "../ui/actions-menu";
+import {
+  DELETE_SKILL,
+  DISCARD_CHANGE,
+  PROPOSE_CHANGE,
+  RESTORE_SKILL,
+} from "../ui/control-labels";
+import type { FootItem } from "../ui/foot-actions";
 
 export type RowActionHandlers = {
   // Takes the row, not the name: two stages carry the press, and a refusal
@@ -29,6 +36,13 @@ export const offersDiscard = (
   row.change !== "deletion" &&
   row.remoteTree !== null;
 
+/** A press of this row that writes at once, from ⋮ or the foot, while it runs. */
+export type RunningPress = {
+  action: "propose" | "create" | "reopen";
+  /** The pull request a reopen names; null for the others. */
+  number: number | null;
+};
+
 // A null commit takes the item off the menu: there is nothing to confirm.
 export type RestoreGate = { enabled: boolean; commit: string | null };
 
@@ -44,17 +58,19 @@ export function rowItems(
   // Its own gate: `enabled` closes on the remote's silence, and recovery from
   // the clone's own commit must stay open exactly then (#915).
   restore: RestoreGate,
-): ActionsMenuProps["items"] {
+  running: RunningPress | null,
+): FootItem[] {
   const commit = restore.commit;
   return [
-    ...stageItems(row, handlers, enabled),
+    ...stageItems(row, handlers, enabled, running),
     // Last of every menu that carries it. A row that cannot come back shows no
     // item at all, not a disabled one: there is nothing for the author to fix.
     ...(row.restorable && commit !== null
       ? [
           {
-            label: "Restore skill",
+            label: RESTORE_SKILL,
             disabled: !restore.enabled,
+            danger: true,
             onSelect: () => handlers.restore(row, commit),
           },
         ]
@@ -68,11 +84,11 @@ function deleteItem(
   handlers: RowActionHandlers,
   enabled: boolean,
   allowed: boolean,
-): ActionsMenuProps["items"] {
+): FootItem[] {
   return allowed && row.folderOnDisk
     ? [
         {
-          label: "Delete skill",
+          label: DELETE_SKILL,
           disabled: !enabled,
           danger: true,
           onSelect: () => handlers.deleteLocal(row),
@@ -85,7 +101,12 @@ function stageItems(
   row: HarnessStageRow,
   handlers: RowActionHandlers,
   enabled: boolean,
-): ActionsMenuProps["items"] {
+  running: RunningPress | null,
+): FootItem[] {
+  const busy = (action: RunningPress["action"], number: number | null) =>
+    running?.action === action && running.number === number
+      ? action
+      : undefined;
   const many = row.requests.length > 1;
   const links = row.requests.map((request) => ({
     label: named("View pull request", request, many),
@@ -104,8 +125,9 @@ function stageItems(
               label:
                 row.status === "new-local-work"
                   ? "Update proposal"
-                  : "Propose change",
+                  : PROPOSE_CHANGE,
               disabled: !enabled,
+              busy: busy("propose", null),
               onSelect: () => handlers.promote(row),
             },
           ]
@@ -114,7 +136,7 @@ function stageItems(
       ...(offersDiscard(row)
         ? [
             {
-              label: "Discard change",
+              label: DISCARD_CHANGE,
               disabled: !enabled,
               danger: true,
               onSelect: () => handlers.discard(row),
@@ -149,6 +171,7 @@ function stageItems(
         {
           label: "Create pull request",
           disabled: !enabled,
+          busy: busy("create", null),
           onSelect: () => handlers.create(row.skill),
         },
       ];
@@ -158,6 +181,7 @@ function stageItems(
         .map((request) => ({
           label: named("Reopen proposal", request, many),
           disabled: !enabled,
+          busy: busy("reopen", request.number),
           onSelect: () => handlers.reopen(row.skill, request.number),
         }));
       // A deletion opens no proposal dialog, and reopening it once the folder
@@ -171,8 +195,9 @@ function stageItems(
         // The way on where reopening is unavailable: a new request over the
         // same branch, which the author sends their current content to.
         {
-          label: "Propose change",
+          label: PROPOSE_CHANGE,
           disabled: !enabled,
+          busy: busy("propose", null),
           onSelect: () => handlers.promote(row),
         },
       ];
@@ -188,6 +213,7 @@ function stageItems(
             {
               label: "Withdraw proposal",
               disabled: !enabled,
+              danger: true,
               onSelect: () => handlers.withdraw(row.skill, sole.number),
             },
           ];

@@ -92,6 +92,7 @@ export function stubHarnessServer(options: {
   deletion?: {
     body: unknown;
     status?: number;
+    heldUntil?: Promise<void>;
     retry?: { body: unknown; status?: number };
   };
   deletions?: Record<string, unknown>[];
@@ -170,6 +171,7 @@ export function stubHarnessServer(options: {
         const answered =
           deletionCalls > 0 && first.retry !== undefined ? first.retry : first;
         deletionCalls += 1;
+        await ("heldUntil" in answered ? answered.heldUntil : undefined);
         if ((answered.status ?? 200) < 400) {
           promoted = true;
         }

@@ -1,7 +1,14 @@
 import type { RowData } from "@tanstack/react-table";
 import { RefreshCw } from "lucide-react";
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "./cn";
+import { rereadLabel } from "./control-labels";
 import { DataTable, type DataTableProps } from "./data-table";
 import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
@@ -10,6 +17,7 @@ import { IconButton } from "./icon-button";
 import { Notice } from "./notice";
 import { OptionMenu } from "./option-menu";
 import { Panel } from "./panel";
+import { ScreenFocusContext } from "./screen-focus";
 import { StatusRegion } from "./status-region";
 import type { TableScreenState } from "./use-table-screen";
 import type { ViewOptions } from "./use-view-options";
@@ -49,9 +57,9 @@ export interface TableScreenProps<T extends RowData> {
   selection?: DataTableProps<T>["selection"];
   /** Floats over the table's foot while rows are chosen. */
   selectionBar?: ReactNode;
-  /** In place of rows when the narrowing leaves none. */
-  noMatch?: string;
-  /** Shown in place of the table once a read answered with no rows; none: nothing. */
+  /** In place of the table when the narrowing leaves no row. */
+  noMatch?: Omit<EmptyStateProps, "headingLevel">;
+  /** In place of the table once a read answered with no rows; none: nothing. */
   empty?: Omit<EmptyStateProps, "headingLevel">;
   /** The open row's pane, built on `DetailPane`; none: rows do not open. */
   pane?: (row: T, frame: PaneFrame) => ReactNode;
@@ -105,105 +113,165 @@ export function TableScreen<T extends RowData>({
     shownGroups?.order?.some(
       (key) => (shownGroups.message?.(key) ?? null) !== null,
     ) ?? false;
-  const showTable = state.skeleton || rows.length > 0 || groupSpeaks;
+  const showTable = state.skeleton || visible.length > 0 || groupSpeaks;
+  // One notice per band: a failed read replaces the empty state.
+  const emptyState =
+    !state.settled || state.notice !== null
+      ? undefined
+      : rows.length > 0
+        ? noMatch
+        : empty;
+
+  // Focus whose row left goes to the row now in its place, which the grid's
+  // cursor keeps, else Re-read; focus whose opener left goes to the pane first.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const focusInTable = useRef(false);
+  const toRow = useRef(() => {});
+  toRow.current = () =>
+    (showTable && visible.length > 0
+      ? gridRef.current
+      : state.rereadRef.current
+    )?.focus();
+  const refocus = useCallback(() => {
+    const heading = frameRef.current?.querySelector<HTMLElement>(
+      "[data-pane-heading]",
+    );
+    if (heading) heading.focus();
+    else toRow.current();
+  }, []);
+  const shownIds = visible.map(rowId).join("\n");
+  // An added row is selected and focused once a read shows it.
+  const addedShown =
+    state.addedId !== null &&
+    visible.some((row) => rowId(row) === state.addedId);
+  useEffect(() => {
+    if (!addedShown) return;
+    gridRef.current?.focus();
+    state.markAdded(null);
+  }, [addedShown, state.markAdded]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fires when the shown rows change
+  useEffect(() => {
+    if (!focusInTable.current) return;
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
+    focusInTable.current = false;
+    toRow.current();
+  }, [shownIds, showTable]);
 
   return (
     <ScreenReportContext.Provider value={state.report}>
-      <Panel
-        title={state.name}
-        meta={meta}
-        action={action}
-        band2={
-          <>
-            {lead}
-            <div className="ml-auto flex flex-none items-center gap-inline">
-              {freshness}
-              <IconButton
-                ref={state.rereadRef}
-                label={`Re-read ${state.name}`}
-                busy={rereading}
-                onClick={state.reread}
-              >
-                <Icon of={RefreshCw} />
-              </IconButton>
-              {view?.menus.map((menu) => (
-                <OptionMenu key={menu.label} {...menu} />
-              ))}
+      <ScreenFocusContext.Provider value={refocus}>
+        <Panel
+          title={state.name}
+          meta={meta}
+          action={action}
+          band2={
+            <>
+              {lead}
+              <div className="ml-auto flex flex-none items-center gap-inline">
+                {freshness}
+                <IconButton
+                  ref={state.rereadRef}
+                  label={rereadLabel(state.name)}
+                  busy={rereading}
+                  onClick={state.reread}
+                >
+                  <Icon of={RefreshCw} />
+                </IconButton>
+                {view?.menus.map((menu) => (
+                  <OptionMenu key={menu.label} {...menu} />
+                ))}
+              </div>
+            </>
+          }
+        >
+          {/* Mounted before any read, so its first announcement is heard. */}
+          <StatusRegion>{state.announcement}</StatusRegion>
+          {/* Side by side; under 44rem an open pane takes the table's place. */}
+          <div ref={frameRef} className="relative flex h-[100cqh]">
+            <div
+              className={cn(
+                "relative flex min-h-0 min-w-0 flex-1 flex-col",
+                openRow !== null && "@max-[44rem]:hidden",
+              )}
+            >
+              {notice ?? (
+                // Mounted before a failure is, so it is announced (#465); the
+                // padding comes only with the notice.
+                <div className={state.notice === null ? undefined : "p-panel"}>
+                  <Notice trigger="load" notice={state.notice} />
+                </div>
+              )}
+              {showTable ? (
+                // biome-ignore lint/a11y/noStaticElementInteractions: it only notes where focus stands; the grid inside is the control
+                <div
+                  aria-busy={state.reading || undefined}
+                  onFocus={() => {
+                    focusInTable.current = true;
+                  }}
+                  onBlur={(event) => {
+                    // A removed element blurs toward nothing; that focus is lost.
+                    if (event.relatedTarget !== null)
+                      focusInTable.current = false;
+                  }}
+                  // Room under the last row while the selection bar floats over
+                  // it: bar height plus its offset (section + page + inline).
+                  className={cn(
+                    "min-h-0 flex-1 overflow-auto",
+                    selectionBar != null &&
+                      "pb-[calc(var(--spacing-section)+var(--spacing-page)+var(--spacing-inline))]",
+                  )}
+                >
+                  <DataTable
+                    ref={gridRef}
+                    label={`${state.name} table`}
+                    columns={columns}
+                    data={visible}
+                    getRowId={rowId}
+                    loading={state.skeleton}
+                    skeletonRows={Math.min(rows.length || firstReadRows, 30)}
+                    groups={shownGroups}
+                    columnVisibility={
+                      view === undefined
+                        ? undefined
+                        : Object.fromEntries(
+                            [...view.hidden].map((id) => [id, false]),
+                          )
+                    }
+                    openRowId={openRow === null ? null : openId}
+                    cursorRowId={state.addedId}
+                    onRowOpen={
+                      pane === undefined
+                        ? undefined
+                        : (row) =>
+                            open(openId === rowId(row) ? null : rowId(row))
+                    }
+                    onRowOrderChange={setOrder}
+                    selection={selection}
+                  />
+                </div>
+              ) : emptyState === undefined ? null : (
+                <EmptyState headingLevel={2} {...emptyState} />
+              )}
+              {selectionBar}
             </div>
-          </>
-        }
-      >
-        {/* Mounted before any read, so its first announcement is heard. */}
-        <StatusRegion>{state.announcement}</StatusRegion>
-        {/* Side by side from 1100px; narrower, the pane floats over the table. */}
-        <div className="relative flex h-[100cqh]">
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-            {notice ?? (
-              // Mounted before a failure is, so it is announced (#465); the
-              // padding comes only with the notice.
-              <div className={state.notice === null ? undefined : "p-panel"}>
-                <Notice trigger="load" notice={state.notice} />
-              </div>
-            )}
-            {showTable ? (
-              <div
-                aria-busy={state.reading || undefined}
-                // Room under the last row while the selection bar floats over
-                // it: bar height plus its offset (section + page + inline).
-                className={cn(
-                  "min-h-0 flex-1 overflow-auto",
-                  selectionBar != null &&
-                    "pb-[calc(var(--spacing-section)+var(--spacing-page)+var(--spacing-inline))]",
-                )}
-              >
-                <DataTable
-                  ref={gridRef}
-                  label={`${state.name} table`}
-                  columns={columns}
-                  data={visible}
-                  getRowId={rowId}
-                  loading={state.skeleton}
-                  skeletonRows={Math.min(rows.length || firstReadRows, 30)}
-                  groups={shownGroups}
-                  columnVisibility={
-                    view === undefined
-                      ? undefined
-                      : Object.fromEntries(
-                          [...view.hidden].map((id) => [id, false]),
-                        )
-                  }
-                  empty={noMatch}
-                  openRowId={openRow === null ? null : openId}
-                  onRowOpen={
-                    pane === undefined
-                      ? undefined
-                      : (row) => open(openId === rowId(row) ? null : rowId(row))
-                  }
-                  onRowOrderChange={setOrder}
-                  selection={selection}
-                />
-              </div>
-            ) : state.settled && empty !== undefined ? (
-              <EmptyState headingLevel={2} {...empty} />
+            {openRow !== null && pane !== undefined ? (
+              <DetailPaneSlot>
+                {pane(openRow, {
+                  position:
+                    openIndex === -1
+                      ? null
+                      : { index: openIndex, count: order.length },
+                  onPage: (step) => open(order[openIndex + step] ?? openId),
+                  onClose: () => open(null),
+                  getTriggerElement,
+                })}
+              </DetailPaneSlot>
             ) : null}
-            {selectionBar}
           </div>
-          {openRow !== null && pane !== undefined ? (
-            <DetailPaneSlot>
-              {pane(openRow, {
-                position:
-                  openIndex === -1
-                    ? null
-                    : { index: openIndex, count: order.length },
-                onPage: (step) => open(order[openIndex + step] ?? openId),
-                onClose: () => open(null),
-                getTriggerElement,
-              })}
-            </DetailPaneSlot>
-          ) : null}
-        </div>
-        {children}
-      </Panel>
+          {children}
+        </Panel>
+      </ScreenFocusContext.Provider>
     </ScreenReportContext.Provider>
   );
 }

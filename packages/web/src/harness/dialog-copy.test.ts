@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVISORY_TEXT,
+  CREATE_RELEASE_UNAVAILABLE,
   DELETE_UNAVAILABLE,
   FINDING_TEXT,
-  IMPORT_UNAVAILABLE,
+  FOLDER_MISSING,
   RELEASE_UNAVAILABLE,
   skillChecksNotice,
 } from "./dialog-copy";
@@ -41,6 +42,13 @@ describe("Harness dialog copy", () => {
     });
   });
 
+  it("states why Create a release cannot open its plan", () => {
+    expect(CREATE_RELEASE_UNAVAILABLE).toEqual({
+      rereading: "re-reading Harness",
+      notRead: "GitHub not read",
+    });
+  });
+
   it("states why Publish release cannot run yet", () => {
     expect(RELEASE_UNAVAILABLE).toEqual({
       loading: "release plan still loading",
@@ -49,14 +57,8 @@ describe("Harness dialog copy", () => {
     });
   });
 
-  it("states why Import skill cannot run yet", () => {
-    expect(IMPORT_UNAVAILABLE).toEqual({
-      idle: "no folder chosen yet",
-      loading: "folder check still running",
-      error: "folder check did not load",
-      source: "folder cannot be used",
-      name: "name cannot be used",
-    });
+  it("asks for the skill folder when Import skill is submitted without one", () => {
+    expect(FOLDER_MISSING).toBe("Enter the skill folder's absolute path.");
   });
 
   it("states why Delete skill cannot run yet, in screen names", () => {

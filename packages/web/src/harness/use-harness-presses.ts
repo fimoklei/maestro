@@ -21,7 +21,11 @@ import {
   proposalNotice,
   restoreNotice,
 } from "./notice-copy";
-import { offersDiscard, type RowActionHandlers } from "./row-actions";
+import {
+  offersDiscard,
+  type RowActionHandlers,
+  type RunningPress,
+} from "./row-actions";
 import {
   useDeleteLocalSkill,
   useDiscardSkillChange,
@@ -57,7 +61,7 @@ export function useHarnessPresses(
   const deletion = usePromoteDeletion();
   const deletionWrite = useWriteAction(deletion, {
     report,
-    action: "propose",
+    action: "delete",
     show: "row",
     name: skillName,
     failure: deletionNotice,
@@ -150,6 +154,26 @@ export function useHarnessPresses(
     return null;
   };
 
+  // The row whose press is writing, so its ⋮ and foot button spin. A
+  // withdrawal runs from its dialog, which shows its own.
+  const proposing = proposalAction.variables;
+  const running: (RunningPress & { id: string }) | null =
+    promote.isPending && promotedSkill !== null && promotedFrom !== null
+      ? {
+          id: rowId({ stage: promotedFrom, skill: promotedSkill }),
+          action: "propose",
+          number: null,
+        }
+      : proposalAction.isPending &&
+          proposing !== undefined &&
+          proposing.action !== "withdraw"
+        ? {
+            id: rowId({ stage: "pending-review", skill: proposing.name }),
+            action: proposing.action,
+            number: proposing.number ?? null,
+          }
+        : null;
+
   // The row a landed push moved to. It always lands in Pending review,
   // whichever stage it was pressed in — the branch is now ahead (#581, #865).
   const movedSkill = promote.isSuccess
@@ -213,6 +237,7 @@ export function useHarnessPresses(
     discardWrite,
     proposalWrite,
     handlers,
+    running,
     failure,
     movedTo,
     pendingDeletion,

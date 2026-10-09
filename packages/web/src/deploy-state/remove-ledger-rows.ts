@@ -5,6 +5,7 @@ import type {
 } from "@maestro/core";
 import type { PrimitiveType } from "../inventory/type-filter";
 import { targetLabel } from "../shell/target-label";
+import { DEPLOY_SKILL } from "../ui/control-labels";
 import type { ReportGroup } from "../ui/report";
 import type {
   RemoveCheckState,
@@ -75,8 +76,7 @@ export function removeLedgerLeadIn(type: PrimitiveType): string {
 }
 
 // What a removal leaves alone, and the way back (copy.md → Dialog).
-export const REMOVE_KEEPS =
-  "The Harness keeps the skill. To add it back, select Deploy skill.";
+export const REMOVE_KEEPS = `The Harness keeps the skill. To add it back, select ${DEPLOY_SKILL}.`;
 
 const OUTCOME_GROUPS: {
   state: RemoveTargetState;

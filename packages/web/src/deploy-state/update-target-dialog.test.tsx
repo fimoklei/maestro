@@ -71,7 +71,10 @@ describe("UpdateTargetDialog", () => {
   it("names the release the target moves to", () => {
     show();
 
-    expect(screen.getByText("release v0.3.2 → v0.3.4")).toBeTruthy();
+    const move = screen.getByText(sentence("release v0.3.2 → v0.3.4"));
+    // #1458: only the versions are mono; the words stay Geist.
+    expect(move).not.toHaveClass("font-mono");
+    expect(within(move).getByText("v0.3.4")).toHaveClass("font-mono");
   });
 
   it("renders the sections it has, in the fixed order", () => {
@@ -279,7 +282,7 @@ describe("UpdateTargetDialog", () => {
     });
 
     const keep = screen.getByText(
-      "To keep the edits instead, select Cancel, then Import local edits.",
+      "To keep the edits instead, select Cancel, then select Import local edits.",
     );
     // Cause first, then the step: the consent precedes the way out.
     const consent = screen.getByRole("checkbox", {

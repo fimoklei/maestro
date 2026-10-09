@@ -99,6 +99,14 @@ describe("ReleaseDialog", () => {
     ).toBeInTheDocument();
   });
 
+  it("states a first release in the release words of every screen", () => {
+    renderReady({ previousTag: null, previousTagCommit: null });
+
+    expect(
+      screen.getByText("Previous tag").nextElementSibling,
+    ).toHaveTextContent("Not released yet");
+  });
+
   it("puts what ships before the step, so the choice follows its consequences", () => {
     renderReady({
       findings: [{ skill: "broken", problem: "missing-manifest" }],
@@ -112,8 +120,9 @@ describe("ReleaseDialog", () => {
     expect(
       delta.compareDocumentPosition(step) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // A notice in a dialog sits above the footer.
     expect(
-      advisory.compareDocumentPosition(step) & Node.DOCUMENT_POSITION_FOLLOWING,
+      step.compareDocumentPosition(advisory) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 

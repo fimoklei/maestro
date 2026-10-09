@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
@@ -17,7 +18,8 @@ export type NoticeLevel = "info" | "success" | "warning" | "error";
 export type NoticeAction = {
   label: string;
   onClick: () => void;
-  disabled?: boolean;
+  /** Its write is running: picks the busy label from `busy-copy`. */
+  busy?: ActionKey;
   /** The pane's one primary action, where its notice names the next step. */
   primary?: boolean;
 };
@@ -155,10 +157,12 @@ export function Notice({
             // cost in a sentence, and that pushed the notice 12px out of the
             // 291px detail pane (#615).
             className="self-start whitespace-normal text-left"
-            disabled={action.disabled}
+            busy={action.busy !== undefined}
             onClick={action.onClick}
           >
-            {action.label}
+            {action.busy === undefined
+              ? action.label
+              : ACTIONS[action.busy].busy}
           </Button>
         )}
       </div>

@@ -1,10 +1,11 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { useId } from "react";
+import { REMOVE_SKILL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
-import { REMOVE_SKILL } from "./deploy-state-copy";
+
 import type { DeployStateNotice } from "./notice-copy";
 import {
   REMOVE_KEEPS,
@@ -139,7 +140,7 @@ export function RemoveSkillDialog({
               action: {
                 label: REMOVE_SKILL,
                 onClick: onConfirm,
-                disabled: isRemoving,
+                busy: isRemoving ? "remove" : undefined,
               },
             }}
           />

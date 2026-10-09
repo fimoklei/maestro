@@ -177,7 +177,8 @@ function Group({
                 <p
                   id={sentenceId}
                   className={cn(
-                    "col-span-2 m-0 font-ui text-meta",
+                    // A path in the sentence has no break point of its own.
+                    "col-span-2 m-0 font-ui text-meta wrap-anywhere",
                     lead !== null && "col-start-2",
                     LIST_TOKENS[tone].sentence,
                   )}

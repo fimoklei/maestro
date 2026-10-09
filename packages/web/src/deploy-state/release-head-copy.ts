@@ -1,10 +1,12 @@
 // Every word a target's Release, Status hover card and pane state. Clock-injected.
+
 import type {
   DeployedPrimitive,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
 } from "@maestro/core";
+import { DEPLOY_SKILL, REMOVE_SKILL } from "../ui/control-labels";
 import { ago, NOT_READ_YET } from "../ui/freshness";
 import { type Copy, machine, type Phrase, phrase } from "../ui/phrase";
 import { joinNames } from "./join-names";
@@ -50,15 +52,21 @@ export function pinnedTagsLine(pinned: PinnedPerSkill): Phrase {
   return phrase`${groups.reduce((line, group) => phrase`${line}, ${group}`)}.`;
 }
 
-export const RELEASE_NOT_ADOPTED =
-  "Release not adopted. Select Remove skill for each, then Deploy skill.";
+export const RELEASE_NOT_ADOPTED = `Release not adopted. Select ${REMOVE_SKILL} for each, then select ${DEPLOY_SKILL}.`;
 
-const RETRY_DEPLOY = "Retry deploy";
-const RETRY_REMOVAL = "Retry removal";
+export const RETRY_DEPLOY = "Retry deploy";
+export const RETRY_REMOVAL = "Retry removal";
 export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
   deploy: RETRY_DEPLOY,
   remove: RETRY_REMOVAL,
   update: RETRY_UPDATE,
+};
+
+/** An unfinished operation's notice heading, which is also its row's badge. */
+export const UNFINISHED_HEADINGS: Record<PendingOperation["kind"], string> = {
+  deploy: "Deploy incomplete",
+  remove: "Removal incomplete",
+  update: UPDATE_INCOMPLETE,
 };
 
 /** What an unfinished operation left, without its retry. */
@@ -87,7 +95,7 @@ export function unfinishedOperationNotice(
     ).length;
     return {
       level: "warning",
-      label: UPDATE_INCOMPLETE,
+      label: UNFINISHED_HEADINGS.update,
       message: UPDATE_INCOMPLETE_SENTENCE,
       ...(desired.length === 0
         ? {}
@@ -99,12 +107,12 @@ export function unfinishedOperationNotice(
   return pending.kind === "deploy"
     ? {
         level: "warning",
-        label: "Deploy incomplete",
-        message: phrase`${UNFINISHED_REASONS.deploy} Select ${RETRY_DEPLOY} to install release ${machine(pending.release)} again.`,
+        label: UNFINISHED_HEADINGS.deploy,
+        message: phrase`${UNFINISHED_REASONS.deploy} Select ${RETRY_DEPLOY} to deploy release ${machine(pending.release)} again.`,
       }
     : {
         level: "warning",
-        label: "Removal incomplete",
+        label: UNFINISHED_HEADINGS.remove,
         message: `${UNFINISHED_REASONS.remove} Select ${RETRY_REMOVAL} to run the same removal again.`,
       };
 }
@@ -132,6 +140,15 @@ export function comparedFact(head: ReleaseHead, now: Date): string {
   const since = head.comparedAt === null ? null : ago(head.comparedAt, now);
   return since === null ? NOT_READ_YET : `Read ${since}`;
 }
+
+/**
+ * A Deploy-state target's Compared age: the screen's oldest reading, as band 2
+ * dates it, so one screen never shows two ages for one target.
+ */
+export const screenComparedFact = (
+  head: ReleaseHead,
+  compared: string | null,
+) => (head.comparedAt === null || compared === null ? NOT_READ_YET : compared);
 
 const COPY_CHIPS = {
   "local-edits": {

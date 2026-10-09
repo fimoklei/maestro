@@ -1,14 +1,15 @@
 import * as Radix from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { type ReactNode, useEffect, useId, useRef } from "react";
+import { type ReactNode, useContext, useEffect, useId, useRef } from "react";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { ACTION_STILL_RUNNING, CANCEL, CLOSE } from "./dialog-copy";
+import { GatedButton } from "./gated-button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
-import { Tooltip } from "./tooltip";
+import { ScreenFocusContext } from "./screen-focus";
 
 // Radix owns the portal, focus trap, focus return and scroll lock (#997); this
 // module owns the frame, and derives the rest from the phase and the action.
@@ -84,6 +85,7 @@ export function Dialog({
   }, [failure]);
 
   const panelRef = useRef<HTMLDivElement>(null);
+  const screenFocus = useContext(ScreenFocusContext);
   // Radix returns focus to its own Trigger, which these dialogs never use.
   const openerRef = useRef<Element | null>(
     typeof document === "undefined" ? null : document.activeElement,
@@ -115,7 +117,8 @@ export function Dialog({
               : "input:not([disabled]), textarea:not([disabled]), select:not([disabled]):not([aria-hidden]), [role=combobox]:not([disabled])";
             const landing =
               panelRef.current?.querySelector<HTMLElement>(target);
-            (landing ?? panelRef.current)?.focus();
+            // Opened by mouse, Cancel would otherwise take focus unseen.
+            (landing ?? panelRef.current)?.focus({ focusVisible: danger });
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
@@ -127,8 +130,18 @@ export function Dialog({
               active === document.body ||
               panelRef.current?.contains(active) === true;
             if (!lost) return;
+            // An opener that left with its row, or never stood (a ⋮ item that
+            // opened a pane and this dialog), leaves it to the screen.
             const opener = openerRef.current;
-            if (opener instanceof HTMLElement) opener.focus();
+            if (
+              opener instanceof HTMLElement &&
+              opener !== document.body &&
+              opener.isConnected
+            ) {
+              opener.focus();
+            } else {
+              screenFocus?.();
+            }
           }}
           onInteractOutside={(event) => {
             // A click outside must not discard typed work.
@@ -232,19 +245,12 @@ function ActionButton({
       </Button>
     );
   }
-  const name = `${action.label} — ${action.unavailable}`;
   return (
-    <Tooltip label={name}>
-      <Button
-        type="submit"
-        variant={variant}
-        aria-label={name}
-        aria-disabled
-        // A blocked action reads as a disabled control, never as on offer.
-        className="aria-disabled:border-edge aria-disabled:bg-gray-3 aria-disabled:text-gray-11"
-      >
-        {action.label}
-      </Button>
-    </Tooltip>
+    <GatedButton
+      type="submit"
+      variant={variant}
+      label={action.label}
+      unavailable={action.unavailable}
+    />
   );
 }

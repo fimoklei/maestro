@@ -8,7 +8,6 @@ import {
   advisoryNotice,
   type ImportCheckLoad,
   importLabels,
-  importUnavailable,
   nameBlockerNotice,
   sourceBlockerNotice,
 } from "./import-view-model";
@@ -16,6 +15,7 @@ import {
 export function ImportDialog({
   source,
   sourceText,
+  sourceError,
   onSourceChange,
   onSourceCommit,
   chooser,
@@ -30,6 +30,8 @@ export function ImportDialog({
   /** The folder the check was asked about; null until one is chosen. */
   source: string | null;
   sourceText: string;
+  /** The field error a submit left on Folder path. */
+  sourceError: string | undefined;
   onSourceChange: (text: string) => void;
   /** A folder to check: picked through Browse, or typed and left. */
   onSourceCommit: (path: string) => void;
@@ -53,27 +55,27 @@ export function ImportDialog({
       : sourceBlockerNotice(check?.sourceBlocker ?? null);
   const nameProblem = nameBlockerNotice(check?.nameBlocker ?? null);
   const nameErrorId = "import-name-error";
-  // A click outside must not discard a typed name. Once true it stays true:
-  // the reader's work is on the panel either way.
+  // A click outside must not discard a typed name or path. Once true it
+  // stays true: the reader's work is on the panel either way.
   const [nameTouched, setNameTouched] = useState(false);
 
   return (
     <Dialog
       title={labels.title}
       version={null}
-      width={640}
+      width={480}
       phase={importing ? "running" : "idle"}
       action={{
         label: labels.confirm,
         verb: labels.verb,
         tone: "primary",
-        unavailable: importUnavailable(load),
+        unavailable: null,
         onRun: onImport,
       }}
       failure={importError}
       // Every field states its own hint and its own refusal beside it.
       describedBy={null}
-      fieldsChanged={nameTouched}
+      fieldsChanged={nameTouched || sourceText !== ""}
       onClose={onClose}
     >
       <div className="flex flex-col gap-inline">
@@ -92,6 +94,7 @@ export function ImportDialog({
             if (typed !== "" && typed !== source) onSourceCommit(typed);
           }}
           chooser={chooser}
+          error={sourceError}
           disabled={importing}
         />
         <Notice trigger="user-action" notice={sourceProblem} />

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { act, screen, within } from "@testing-library/react";
+import type { QueryClient } from "@tanstack/react-query";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -16,16 +17,23 @@ import {
   stubHarnessServer,
   withStages,
 } from "./harness/harness-flow-fixture";
+import { pullRequest } from "./harness/stage-row-fixture";
 import { InventoryPanel } from "./inventory/inventory-panel";
 import { InventoryView } from "./inventory/inventory-view";
 import {
+  type FakeRegistry,
   renderRepositories,
   stubRegistry,
 } from "./registry/repositories-test-helpers";
-import { jsonResponse, measureAs, renderWithQuery } from "./test-utils";
+import {
+  htmlElement,
+  jsonResponse,
+  measureAs,
+  renderWithQuery,
+} from "./test-utils";
 
 // Proves each table screen runs on `TableScreen`, not the module itself, and
-// that its Status card and name cell follow design.md → Disclosure.
+// that its Status card, name cell and row actions follow the shared rules.
 
 /** One row whose Status card and name the checks open. */
 type StatusCard = {
@@ -37,57 +45,375 @@ type StatusCard = {
   readAge: string | null;
 };
 
+/** One row whose Status is still being read. */
+type StatusStillReading = { render: () => void; name: string };
+
 type Row = {
   /** The screen's source, from `packages/web/src`. */
   file: string;
   name: string;
   render: () => void;
+  /** A read that answers with no rows, and the empty state's title. */
+  empty: { render: () => void; title: string };
   /** Null for a screen without a hover card. */
   card: StatusCard | null;
+  /** Null for a screen whose Status is never read apart from its rows. */
+  reading: StatusStillReading | null;
+  /** Header names in order: checkbox, name, Status, secondary, GitHub, ⋮. */
+  columns: string[];
+  actions: RowActions;
+  leaves: RowLeaves;
 };
+
+/** Two rows, the first of which a later read no longer holds. */
+type RowLeaves = {
+  render: () => { queryClient: QueryClient };
+  first: string;
+  /** The row that takes the first one's place. */
+  next: string;
+  /** The server stops holding the first row. */
+  drop: () => void;
+};
+
+const deployStateLeaves = (): RowLeaves => {
+  let repos = ["/Users/me/a", "/Users/me/b"];
+  return {
+    render: () => {
+      stubServer(() => ({ repos }));
+      return renderDeployState();
+    },
+    first: "…/me/a",
+    next: "…/me/b",
+    drop: () => {
+      repos = ["/Users/me/b"];
+    },
+  };
+};
+
+const harnessLeaves = (): RowLeaves => {
+  const proposal = (skills: string[]) =>
+    withStages(RELEASED, {
+      proposal: skills.map((skill) =>
+        stageRow("pending-proposal", skill, "not-yet-proposed"),
+      ),
+    });
+  const read = { body: proposal(["alpha", "beta"]) };
+  return {
+    render: () => {
+      stubHarnessServer({ read });
+      return renderHarness();
+    },
+    first: "alpha",
+    next: "beta",
+    drop: () => {
+      read.body = proposal(["beta"]);
+    },
+  };
+};
+
+const inventoryLeaves = (): RowLeaves => {
+  let names = ["alpha", "beta"];
+  return {
+    render: () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).startsWith("/api/registry")
+            ? jsonResponse({ repos: [] })
+            : String(input) === "/api/inventory/primitives"
+              ? jsonResponse({
+                  primitives: names.map((name) => ({
+                    type: "skill",
+                    name,
+                    description: "A skill.",
+                  })),
+                })
+              : new Promise<Response>(() => {}),
+        ),
+      );
+      return renderWithQuery(
+        <MemoryRouter>
+          <InventoryPanel />
+        </MemoryRouter>,
+      );
+    },
+    first: "alpha",
+    next: "beta",
+    drop: () => {
+      names = ["beta"];
+    },
+  };
+};
+
+const repositoriesLeaves = (): RowLeaves => {
+  const registry: FakeRegistry = {
+    repos: [
+      { path: "/home/me/acme-api", status: "ready" },
+      { path: "/home/me/acme-web", status: "ready" },
+    ],
+  };
+  return {
+    render: () => {
+      stubRegistry(registry);
+      return renderRepositories();
+    },
+    first: "…/me/acme-api",
+    next: "…/me/acme-web",
+    drop: () => {
+      registry.repos = registry.repos.slice(1);
+    },
+  };
+};
+
+/** One row whose ⋮ menu, and pane foot where the screen has a pane, the checks open. */
+type RowActions = {
+  render: () => void;
+  name: string;
+  /** Every destructive item the row offers, in ⋮ order. */
+  destructive: string[];
+  pane: boolean;
+  /** Null where every ⋮ item opens a dialog or another screen. */
+  write: DirectWrite | null;
+  /** One ⋮ item: whether it opens a dialog, and whether it opens the pane. */
+  item: { label: string; dialog: boolean; opensPane: boolean };
+};
+
+/** A ⋮ item that runs its write at once, with no dialog of its own. */
+type DirectWrite = {
+  render: () => void;
+  name: string;
+  item: string;
+  /** The pane's foot offers it too. */
+  foot: boolean;
+  /** Its ⋮ item leaves focus on ⋮, which keeps it once the write settles. */
+  staysOnMenu: boolean;
+};
+
+// Every write the server is sent from here on stays running until released.
+const holdWrites = () => {
+  const answer = fetch;
+  let release = () => {};
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
+      (init?.method ?? "GET") === "GET"
+        ? answer(input, init)
+        : released.then(() => answer(input, init)),
+    ),
+  );
+  return release;
+};
+
+// A target behind its latest release: its Status card and its Update target.
+const renderBehindTarget = () => {
+  stubServer(() => ({
+    repos: ["/Users/me/a"],
+    repo: {
+      "/Users/me/a": {
+        primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+        skipped: [],
+        releaseHead: {
+          release: "v0.3.2",
+          latestRelease: "v0.3.4",
+          changed: 2,
+          changedSkills: ["tdd"],
+          selection: ["tdd"],
+          selected: 5,
+          comparedAt: new Date().toISOString(),
+        },
+      },
+    },
+  }));
+  renderDeployState();
+};
+
+const renderInventoryRow = () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => new Promise<Response>(() => {})),
+  );
+  renderWithQuery(
+    <InventoryView
+      primitives={[TDD]}
+      repos={[]}
+      registryReady
+      targets={[
+        {
+          pending: undefined,
+          label: "Claude Code",
+          target: { kind: "global" },
+          deployed: {
+            status: "ready",
+            names: ["tdd"],
+            skippedCount: 0,
+            attentionCount: 0,
+          },
+          primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+          drift: driftViewModel({ data: { behind: [] }, isError: false }),
+        },
+      ]}
+      failure={null}
+      reading={false}
+      onReread={() => {}}
+      clone={{ kind: "checking" }}
+      onDeleted={() => {}}
+    />,
+  );
+};
+
+/** A pane whose sub-list the row-shape check opens. */
+type PaneSubList = {
+  file: string;
+  render: () => void;
+  /** The table row whose pane holds the sub-list. */
+  row: string;
+  heading: string;
+  item: string;
+  value: string;
+  /** The ⋮ item that carries the row's GitHub page, where it has one. */
+  githubItem: string | null;
+  /** Every destructive item the row's ⋮ offers, in ⋮ order. */
+  destructive: string[];
+};
+
+const PANE_SUB_LISTS: PaneSubList[] = [
+  {
+    file: "deploy-state/deploy-state-view.tsx",
+    render: () => {
+      stubServer(() => ({
+        repos: ["/Users/me/a"],
+        repo: {
+          "/Users/me/a": {
+            primitives: [
+              {
+                type: "skill",
+                name: "tdd",
+                version: "v0.3.2",
+                github: {
+                  kind: "link",
+                  url: "https://github.com/acme/harness/tree/v0.3.2/skills/tdd",
+                },
+              },
+            ],
+            skipped: [],
+          },
+        },
+      }));
+      renderDeployState();
+    },
+    row: "…/me/a",
+    heading: "Deployed skills 1",
+    item: "tdd",
+    value: "v0.3.2",
+    githubItem: "View skill on GitHub",
+    destructive: ["Remove skill"],
+  },
+  {
+    file: "inventory/inventory-view.tsx",
+    render: renderInventoryRow,
+    row: "tdd",
+    heading: "Deployed to 1",
+    item: "Claude Code",
+    value: "v1.0.0",
+    githubItem: null,
+    destructive: ["Remove from"],
+  },
+];
+
+const TDD = { type: "skill" as const, name: "tdd", description: "Test first." };
 
 const ON_TABLE_SCREEN: Row[] = [
   {
     file: "deploy-state/deploy-state-view.tsx",
     name: "Deploy-state",
+    leaves: deployStateLeaves(),
     render: () => {
       stubServer(() => ({ repos: ["/Users/me/a"] }));
       renderDeployState();
     },
-    card: {
+    empty: {
       render: () => {
-        stubServer(() => ({
-          repos: ["/Users/me/a"],
-          repo: {
-            "/Users/me/a": {
-              primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
-              skipped: [],
-              releaseHead: {
-                release: "v0.3.2",
-                latestRelease: "v0.3.4",
-                changed: 2,
-                changedSkills: ["tdd"],
-                selection: ["tdd"],
-                selected: 5,
-                comparedAt: new Date().toISOString(),
-              },
-            },
-          },
-        }));
+        stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
         renderDeployState();
       },
+      title: "No targets yet",
+    },
+    card: {
+      render: renderBehindTarget,
       name: "…/me/a",
       badge: "Behind",
       body: "2 of 5 deployed skills changed in v0.3.4.",
       readAge: "Read just now",
     },
+    reading: {
+      render: () => {
+        stubServer(() => ({
+          global: {
+            tools: [
+              {
+                tool: "claude",
+                primitives: [{ type: "skill", name: "tdd", version: "v1" }],
+              },
+            ],
+            skipped: [],
+          },
+          drift: { global: new Promise(() => {}) },
+        }));
+        renderDeployState();
+      },
+      name: "Claude Code",
+    },
+    columns: ["Target", "Status", "Release", "Skills", "GitHub", "Actions"],
+    // A target row removes nothing; its skills' removal sits in the pane's
+    // sub-list. Every item that stays on the screen opens the pane.
+    actions: {
+      render: renderBehindTarget,
+      name: "…/me/a",
+      destructive: [],
+      pane: true,
+      write: {
+        render: () => {
+          stubServer(() => ({
+            repos: ["/Users/me/a"],
+            repo: {
+              "/Users/me/a": {
+                primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+                skipped: [],
+                pendingOperation: {
+                  kind: "deploy",
+                  release: "v0.3.4",
+                  desired: ["tdd"],
+                },
+              },
+            },
+          }));
+          renderDeployState();
+        },
+        name: "…/me/a",
+        item: "Retry deploy",
+        foot: true,
+        staysOnMenu: false,
+      },
+      item: { label: "Update target", dialog: true, opensPane: true },
+    },
   },
   {
     file: "harness/harness-view.tsx",
     name: "Harness",
+    leaves: harnessLeaves(),
     render: () => {
       stubHarnessServer({ read: { body: RELEASED } });
       renderHarness();
+    },
+    empty: {
+      render: () => {
+        stubHarnessServer({ read: { body: RELEASED } });
+        renderHarness();
+      },
+      title: "No changes yet",
     },
     card: {
       render: () => {
@@ -107,10 +433,69 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "Your local copy differs from main.",
       readAge: "Not read yet",
     },
+    reading: null,
+    columns: [
+      "Name",
+      "Status",
+      "Type",
+      "Change",
+      "Pull request",
+      "Also in",
+      "Actions",
+    ],
+    // A proposed deletion in review: withdrawn or undone in the clone.
+    actions: {
+      render: () => {
+        stubHarnessServer({
+          read: {
+            body: withStages(RELEASED, {
+              review: [
+                stageRow("pending-review", "old-skill", "waiting-for-review", {
+                  change: "deletion",
+                  requests: [pullRequest(45, "old-skill")],
+                  restorable: true,
+                }),
+              ],
+            }),
+          },
+        });
+        renderHarness();
+      },
+      name: "old-skill",
+      destructive: ["Withdraw proposal", "Restore skill"],
+      pane: true,
+      write: {
+        render: () => {
+          stubHarnessServer({
+            read: {
+              body: withStages(RELEASED, {
+                proposal: [
+                  stageRow("pending-proposal", "tdd", "not-yet-proposed"),
+                ],
+              }),
+            },
+            promote: {
+              body: {
+                branch: "maestro/tdd",
+                pullRequestUrl:
+                  "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
+              },
+            },
+          });
+          renderHarness();
+        },
+        name: "tdd",
+        item: "Propose change",
+        foot: true,
+        staysOnMenu: true,
+      },
+      item: { label: "Withdraw proposal", dialog: true, opensPane: false },
+    },
   },
   {
     file: "inventory/inventory-view.tsx",
     name: "Inventory",
+    leaves: inventoryLeaves(),
     render: () => {
       vi.stubGlobal(
         "fetch",
@@ -126,7 +511,32 @@ const ON_TABLE_SCREEN: Row[] = [
         </MemoryRouter>,
       );
     },
+    empty: {
+      render: () => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async (input: RequestInfo | URL) =>
+            String(input).startsWith("/api/registry")
+              ? jsonResponse({ repos: [] })
+              : jsonResponse({ primitives: [] }),
+          ),
+        );
+        renderWithQuery(
+          <MemoryRouter>
+            <InventoryPanel />
+          </MemoryRouter>,
+        );
+      },
+      title: "No released skills yet",
+    },
     card: {
+      render: renderInventoryRow,
+      name: "tdd",
+      badge: "Up to date",
+      body: "Deployed to 1 target.",
+      readAge: null,
+    },
+    reading: {
       render: () => {
         vi.stubGlobal(
           "fetch",
@@ -134,22 +544,16 @@ const ON_TABLE_SCREEN: Row[] = [
         );
         renderWithQuery(
           <InventoryView
-            primitives={[
-              { type: "skill", name: "tdd", description: "Test first." },
-            ]}
+            primitives={[TDD]}
             repos={[]}
             registryReady
             targets={[
               {
+                pending: undefined,
                 label: "",
                 target: { kind: "global" },
-                deployed: {
-                  status: "ready",
-                  names: ["tdd"],
-                  skippedCount: 0,
-                  attentionCount: 0,
-                },
-                primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+                deployed: { status: "pending" },
+                primitives: [],
                 drift: driftViewModel({ data: { behind: [] }, isError: false }),
               },
             ]}
@@ -162,23 +566,90 @@ const ON_TABLE_SCREEN: Row[] = [
         );
       },
       name: "tdd",
-      badge: "Up to date",
-      body: "Deployed to 1 target",
-      readAge: null,
+    },
+    columns: [
+      "Select for bulk deploy",
+      "Name",
+      "Status",
+      "Type",
+      "Description",
+      "Targets",
+      "Actions",
+    ],
+    actions: {
+      render: renderInventoryRow,
+      name: "tdd",
+      destructive: ["Delete skill"],
+      pane: true,
+      write: null,
+      item: { label: "Deploy skill", dialog: true, opensPane: true },
     },
   },
   {
     file: "registry/repositories-view.tsx",
     name: "Repositories",
+    leaves: repositoriesLeaves(),
     render: () => {
       stubRegistry({ repos: [{ path: "/home/me/acme-web", status: "ready" }] });
       renderRepositories();
     },
+    empty: {
+      render: () => {
+        stubRegistry({ repos: [] });
+        renderRepositories();
+      },
+      title: "No repositories yet",
+    },
     card: null,
+    reading: null,
+    columns: ["Repository", "Status", "Folder path", "GitHub", "Actions"],
+    actions: {
+      render: () => {
+        stubRegistry({
+          repos: [{ path: "/home/me/acme-web", status: "ready" }],
+        });
+        renderRepositories();
+      },
+      name: "…/me/acme-web",
+      destructive: ["Unregister"],
+      pane: false,
+      write: null,
+      item: { label: "Unregister", dialog: true, opensPane: false },
+    },
   },
 ];
 
+// The labels a danger button confirms.
+const DESTRUCTIVE = /^(Remove|Delete|Unregister|Withdraw|Restore|Discard)\b/;
+
+function expectDanger(controls: HTMLElement[], destructive: string[]) {
+  const found = controls.filter((control) =>
+    DESTRUCTIVE.test(control.textContent ?? ""),
+  );
+  expect(found.map((control) => control.textContent)).toEqual(
+    destructive.map((label) => expect.stringMatching(new RegExp(`^${label}`))),
+  );
+  for (const control of found) expect(control).toHaveClass("text-red-11");
+}
+
 const CARD = "[data-radix-popper-content-wrapper]";
+
+// The named row's Status cell, found by its column header.
+async function statusCell(name: string): Promise<HTMLElement> {
+  const grid = await screen.findByRole("grid");
+  const row = (await within(grid).findAllByRole("row")).find((each) =>
+    within(each)
+      .queryAllByRole("gridcell")
+      .some((cell) => cell.textContent === name),
+  );
+  if (row === undefined) throw new Error(`no row for ${name}`);
+  const column = within(grid)
+    .getAllByRole("columnheader")
+    .findIndex((header) => /^Status/.test(header.textContent ?? ""));
+  const cell = within(row).getAllByRole("gridcell")[column];
+  if (cell === undefined) throw new Error("no Status cell");
+  return cell;
+}
 
 // Badge first, then the body, then the read age last when known.
 async function expectOneStatusCard(card: StatusCard) {
@@ -232,6 +703,24 @@ describe("every table screen", () => {
     expect(byHand).toEqual([]);
   });
 
+  // #1449: every table row and pane sub-list row opens its ⋮ through RowMenu.
+  it("draws the row ⋮ trigger only in ui/row-menu", () => {
+    const triggers = sources
+      .filter(({ text }) => /\bEllipsisVertical\b/.test(text))
+      .map(({ file }) => file);
+
+    expect(triggers).toEqual(["ui/row-menu.tsx"]);
+  });
+
+  // #1458: one muted ink for an empty cell, whichever column holds it.
+  it("draws the zero dash only in ui/no-value", () => {
+    const dashes = sources
+      .filter(({ text }) => />\s*—\s*<|["'`]—["'`]/.test(text))
+      .map(({ file }) => file);
+
+    expect(dashes).toEqual(["ui/no-value.tsx"]);
+  });
+
   describe.each(ON_TABLE_SCREEN)("$file", (row) => {
     it("has one Re-read control in band 2 and one status region", async () => {
       row.render();
@@ -248,6 +737,282 @@ describe("every table screen", () => {
           .getAllByRole("status")
           .filter((region) => region.classList.contains("sr-only")),
       ).toHaveLength(1);
+    });
+
+    it("states an empty table with the shared empty state", async () => {
+      row.empty.render();
+
+      expect(
+        await screen.findByRole("heading", {
+          level: 2,
+          name: row.empty.title,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    });
+
+    it("orders its columns checkbox, name, Status, secondary, GitHub, ⋮", async () => {
+      (row.card?.render ?? row.render)();
+
+      const grid = await screen.findByRole("grid");
+      const headers = within(grid).getAllByRole("columnheader");
+      expect(
+        headers.map((header) => header.textContent?.replace(/[↑↓]/g, "")),
+      ).toEqual(row.columns);
+      const name = row.columns.find((column) => !column.startsWith("Select"));
+      expect(
+        headers
+          .filter((header) => header.style.width === "")
+          .map((header) => header.textContent?.replace(/[↑↓]/g, ""))
+          .filter((column) => !column?.startsWith("Select")),
+      ).toEqual([name]);
+    });
+
+    it("spins Re-read while a pressed re-read runs", async () => {
+      row.render();
+      const reread = await screen.findByRole("button", {
+        name: `Re-read ${row.name}`,
+      });
+      await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() => new Promise<Response>(() => {})),
+      );
+
+      await userEvent.click(reread);
+
+      await waitFor(() => expect(reread).toHaveAttribute("aria-busy", "true"));
+    });
+  });
+
+  describe.each(ON_TABLE_SCREEN)("$file rows", ({ leaves }) => {
+    it("hands focus to the row now in a left row's place", async () => {
+      const { queryClient } = leaves.render();
+      const grid = await screen.findByRole("grid");
+      const [name] = await within(grid).findAllByText(leaves.first);
+      const row = htmlElement(name?.closest("tr"));
+      // Escape hands focus back to ⋮, in the row about to leave.
+      await userEvent.click(
+        within(row).getByRole("button", { name: /^Actions for / }),
+      );
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(
+          within(row).getByRole("button", { name: /^Actions for / }),
+        ).toHaveFocus(),
+      );
+
+      leaves.drop();
+      // Not awaited: a read that never answers would hold the test.
+      act(() => {
+        void queryClient.invalidateQueries();
+      });
+
+      await waitFor(() => expect(row).not.toBeInTheDocument());
+      const now = screen.getByRole("grid");
+      expect(now).toHaveFocus();
+      expect(
+        document.getElementById(
+          now.getAttribute("aria-activedescendant") ?? "",
+        ),
+      ).toHaveTextContent(leaves.next);
+    });
+  });
+
+  describe.each(ON_TABLE_SCREEN)("$file row actions", ({ actions }) => {
+    const findRow = async () => {
+      const [name] = await within(
+        await screen.findByRole("grid"),
+      ).findAllByText(actions.name);
+      return htmlElement(name?.closest("tr"));
+    };
+
+    it("hands focus to the pane, or back to ⋮, once a ⋮ item's dialog closes", async () => {
+      actions.render();
+      const trigger = within(await findRow()).getByRole("button", {
+        name: /^Actions for /,
+      });
+
+      await userEvent.click(trigger);
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: actions.item.label }),
+      );
+      if (actions.item.dialog) {
+        await screen.findByRole("dialog");
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() =>
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+        );
+      }
+
+      await waitFor(() => {
+        if (actions.item.opensPane) {
+          expect(screen.getByRole("complementary")).toContainElement(
+            htmlElement(document.activeElement),
+          );
+        } else {
+          expect(trigger).toHaveFocus();
+        }
+      });
+    });
+
+    it("marks every destructive ⋮ and foot item danger", async () => {
+      actions.render();
+      const row = await findRow();
+
+      await userEvent.click(
+        within(row).getByRole("button", { name: /^Actions for / }),
+      );
+      expectDanger(
+        within(await screen.findByRole("menu")).getAllByRole("menuitem"),
+        actions.destructive,
+      );
+      await userEvent.keyboard("{Escape}");
+
+      if (!actions.pane) return;
+      await userEvent.click(
+        htmlElement(within(row).getAllByRole("gridcell")[0]),
+      );
+      expectDanger(
+        within(await screen.findByRole("complementary")).getAllByRole("button"),
+        actions.destructive,
+      );
+    });
+  });
+
+  const writes = ON_TABLE_SCREEN.flatMap(({ file, name, actions }) =>
+    actions.write === null
+      ? []
+      : [{ file, screenName: name, ...actions.write }],
+  );
+  type Write = (typeof writes)[number];
+
+  const rowOf = (write: Write) =>
+    htmlElement(
+      within(screen.getByRole("grid"))
+        .getAllByText(write.name)[0]
+        ?.closest("tr"),
+    );
+  const menuOf = (write: Write) =>
+    within(rowOf(write)).getByRole("button", { name: /^Actions for / });
+  // Writes are held once the screen's own reads have landed.
+  const readyToWrite = async (write: Write) => {
+    write.render();
+    await within(await screen.findByRole("grid")).findAllByText(write.name);
+    const reread = screen.getByRole("button", {
+      name: `Re-read ${write.screenName}`,
+    });
+    await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
+    return holdWrites();
+  };
+
+  // A busy write shows its spinner in the control that started it.
+  describe.each(writes)("$file direct write", (write) => {
+    it("spins the row's ⋮ while a write its ⋮ started runs", async () => {
+      await readyToWrite(write);
+
+      await userEvent.click(menuOf(write));
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: write.item }),
+      );
+
+      await waitFor(() =>
+        expect(menuOf(write)).toHaveAttribute("aria-busy", "true"),
+      );
+    });
+  });
+
+  // #1448 G2: focus stays visible on the control that started the write.
+  describe.each(writes.filter((write) => write.staysOnMenu))(
+    "$file direct write from ⋮",
+    (write) => {
+      it("leaves focus on ⋮ once the write settles", async () => {
+        const release = await readyToWrite(write);
+        await userEvent.click(menuOf(write));
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: write.item }),
+        );
+        await waitFor(() =>
+          expect(menuOf(write)).toHaveAttribute("aria-busy", "true"),
+        );
+
+        release();
+
+        await waitFor(() =>
+          expect(menuOf(write)).not.toHaveAttribute("aria-busy"),
+        );
+        expect(menuOf(write)).toHaveFocus();
+      });
+    },
+  );
+
+  describe.each(writes.filter((write) => write.foot))(
+    "$file direct write from the pane foot",
+    (write) => {
+      it("spins the pressed foot button and keeps focus on it", async () => {
+        await readyToWrite(write);
+        await userEvent.click(
+          htmlElement(within(rowOf(write)).getAllByRole("gridcell")[0]),
+        );
+        const pane = await screen.findByRole("complementary");
+
+        await userEvent.click(
+          within(pane).getByRole("button", { name: write.item }),
+        );
+
+        await waitFor(() =>
+          expect(document.activeElement).toHaveAttribute("aria-busy", "true"),
+        );
+        expect(pane).toContainElement(htmlElement(document.activeElement));
+      });
+    },
+  );
+
+  // #1458: mark, name, machine value, ⋮; the GitHub page is a ⋮ item.
+  describe.each(PANE_SUB_LISTS)("$file pane sub-list", (subList) => {
+    it("counts its rows and reads each as mark, name, machine value, ⋮", async () => {
+      subList.render();
+      const [name] = await within(
+        await screen.findByRole("grid"),
+      ).findAllByText(subList.row);
+      await userEvent.click(
+        htmlElement(
+          within(htmlElement(name?.closest("tr"))).getAllByRole("gridcell")[0],
+        ),
+      );
+      const pane = await screen.findByRole("complementary");
+
+      const heading = await within(pane).findByRole("heading", {
+        level: 3,
+        name: subList.heading,
+      });
+      const row = within(htmlElement(heading.closest("section")))
+        .getAllByRole("listitem")
+        .find((item) => item.textContent?.includes(subList.item));
+      if (row === undefined) throw new Error(`no row ${subList.item}`);
+      const parts = [
+        await within(row).findByRole("img"),
+        within(row).getByText(subList.item),
+        within(row).getByText(subList.value),
+        within(row).getByRole("button", {
+          name: `Actions for ${subList.item}`,
+        }),
+      ];
+      expect(row.children).toHaveLength(parts.length);
+      parts.forEach((part, index) => {
+        expect(row.children[index]).toContainElement(part);
+      });
+      expect(within(row).getByText(subList.value)).toHaveClass("font-mono");
+      expect(within(row).queryByRole("link")).toBeNull();
+
+      // #1452: a destructive item stays danger in the sub-list's ⋮ too.
+      await userEvent.click(htmlElement(parts[3]));
+      expectDanger(await screen.findAllByRole("menuitem"), subList.destructive);
+
+      if (subList.githubItem === null) return;
+      expect(
+        await screen.findByRole("menuitem", { name: subList.githubItem }),
+      ).toHaveAttribute("href");
     });
   });
 
@@ -276,6 +1041,22 @@ describe("every table screen", () => {
       await expectOneStatusCard(card);
     });
 
+    it("ends every sentence in a full stop, the read age aside", async () => {
+      card.render();
+      await userEvent.hover(
+        await within(await screen.findByRole("grid")).findByText(card.badge),
+      );
+      await expectOneStatusCard(card);
+
+      const sentences = [
+        ...(document.querySelector(CARD)?.querySelectorAll("p") ?? []),
+      ]
+        .map((line) => line.textContent ?? "")
+        .filter((line) => line !== card.readAge);
+      expect(sentences.length).toBeGreaterThan(0);
+      for (const line of sentences) expect(line).toMatch(/\.$/);
+    });
+
     it("reveals a shortened name through the tooltip, not a native title", async () => {
       measureAs(300, 100);
       card.render();
@@ -289,6 +1070,22 @@ describe("every table screen", () => {
         await screen.findByRole("tooltip", { hidden: true }),
       ).toHaveTextContent(card.name);
       expect(name).not.toHaveAttribute("title");
+    });
+  });
+
+  const reading = ON_TABLE_SCREEN.flatMap(({ file, reading }) =>
+    reading === null ? [] : [{ file, reading }],
+  );
+
+  describe.each(reading)("$file Status cell", ({ reading }) => {
+    it("marks a status still being read as busy, with a skeleton past 1.3 s", async () => {
+      reading.render();
+      const status = await statusCell(reading.name);
+
+      expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
+      expect(status.querySelector("[class*='animate-pulse']")).toBeNull();
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      expect(status.querySelector("[class*='animate-pulse']")).not.toBeNull();
     });
   });
 });

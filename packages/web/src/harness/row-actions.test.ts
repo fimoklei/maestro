@@ -14,7 +14,7 @@ const rowItems = (
   handlers: RowActionHandlers,
   enabled: boolean,
   restore: RestoreGate = { enabled, commit: "local-head" },
-) => buildItems(row, handlers, enabled, restore);
+) => buildItems(row, handlers, enabled, restore, null);
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-review" as HarnessStage,

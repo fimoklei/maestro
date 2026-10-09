@@ -1,5 +1,7 @@
+import { useIsFetching } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
+import { DEPLOY_STATE_KEY } from "../deploy-state/use-deploy-state";
 import { harnessHeadings } from "../harness/notice-copy";
 import { useDeletionCheck, useHarness } from "../harness/use-harness";
 import { useRegistry } from "../registry/use-registry";
@@ -30,6 +32,10 @@ export function InventoryPanel() {
   const navigate = useNavigate();
   const harness = useHarness();
   const check = useDeletionCheck();
+  // Drift is left out, as on Deploy-state: its apm run is slow, so the rows
+  // never wait for it; the Status cell shows its own skeleton meanwhile. The
+  // deletion check is left out too: Delete skill states its own wait.
+  const readingDeployState = useIsFetching({ queryKey: DEPLOY_STATE_KEY }) > 0;
   const repos = registry.data?.repos ?? [];
   // Reuses the existing deploy-state + drift queries — no new server read (#272).
   const targets = useDeploymentTargets(
@@ -49,7 +55,9 @@ export function InventoryPanel() {
       registryReady={registry.isSuccess}
       targets={targets}
       failure={readFailure(inventory.error)}
-      reading={inventory.isFetching}
+      reading={
+        inventory.isFetching || registry.isFetching || readingDeployState
+      }
       onReread={invalidate}
       onOpenHarness={() => navigate("/harness")}
       // Deploy-state is the index route; it opens the row it is sent (#1065).

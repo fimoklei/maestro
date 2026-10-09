@@ -1,11 +1,11 @@
 import { useId } from "react";
+import { REGISTER_REPOSITORY } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { PathField } from "../ui/path-field";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 import {
   FOLDER_HINT,
   FOLDER_LABEL,
-  REGISTER_REPOSITORY,
   REGISTER_TITLE,
   WRITE_PROMISE,
 } from "./repositories-copy";

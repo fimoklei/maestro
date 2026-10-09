@@ -102,7 +102,9 @@ describe("Harness freshness and failed reads", () => {
     });
     renderHarness();
 
-    await screen.findByRole("button", { name: /^create a release$/i });
+    await screen.findByRole("button", {
+      name: "Create a release — re-reading Harness",
+    });
     expect(
       screen.queryByText("Harness clone not updated"),
     ).not.toBeInTheDocument();
@@ -116,6 +118,31 @@ describe("Harness freshness and failed reads", () => {
     expect(
       screen.queryByText("Harness clone not updated"),
     ).not.toBeInTheDocument();
+  });
+
+  it("names Create a release unavailable while a re-read runs, and keeps it focusable", async () => {
+    let release = () => {};
+    const heldUntil = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    stubHarnessServer({
+      read: { body: RELEASED },
+      refresh: { body: RELEASED, heldUntil },
+    });
+    renderHarness();
+
+    const held = await screen.findByRole("button", {
+      name: "Create a release — re-reading Harness",
+    });
+    expect(held).toHaveAttribute("aria-disabled", "true");
+    expect(held).not.toBeDisabled();
+    await userEvent.click(held);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    release();
+    expect(
+      await screen.findByRole("button", { name: "Create a release" }),
+    ).not.toHaveAttribute("aria-disabled");
   });
 
   it("states one Status out of date notice over a previous read", async () => {
@@ -136,11 +163,11 @@ describe("Harness freshness and failed reads", () => {
     stubHarnessServer({ read: { body: STALE } });
     renderHarness();
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /^create a release$/i }),
-      ).toBeDisabled(),
-    );
+    const release = await screen.findByRole("button", {
+      name: "Create a release — GitHub not read",
+    });
+    expect(release).toHaveAttribute("aria-disabled", "true");
+    expect(release).not.toBeDisabled();
     await userEvent.click(
       screen.getByRole("button", {
         name: "Actions for tdd in Pending proposal",

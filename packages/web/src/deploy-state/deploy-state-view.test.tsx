@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { measureAs, sentence } from "../test-utils";
+import { htmlElement, measureAs, sentence } from "../test-utils";
 import {
   cellsOf,
   findRow,
@@ -126,17 +126,16 @@ describe("Deploy-state — one table of every target", () => {
     renderDeployState();
 
     expect(await screen.findByText("Nothing deployed yet")).toBeInTheDocument();
-    // Each empty group still says what fills it.
+    // With no target at all, the shared empty state says what fills the table.
     expect(
-      within(grid()).getByText(
-        "Install Claude Code or Codex to deploy skills globally.",
-      ),
+      screen.getByRole("heading", { level: 2, name: "No targets yet" }),
     ).toBeInTheDocument();
     expect(
-      within(grid()).getByText(
-        "No repositories registered yet. Select Register repository on the Repositories screen.",
+      screen.getByText(
+        "Claude Code, Codex and registered repositories appear here as targets.",
       ),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
   it("titles the screen with one h1", async () => {
@@ -154,7 +153,7 @@ describe("Deploy-state — one table of every target", () => {
 
     await findRow("Codex");
     const hint = within(grid()).getByText(
-      "No repositories registered yet. Select Register repository on the Repositories screen.",
+      "No repositories yet. Select Register repository on the Repositories screen.",
     );
     expect(within(hint).queryByRole("button")).not.toBeInTheDocument();
     expect(within(hint).queryByRole("link")).not.toBeInTheDocument();
@@ -169,7 +168,7 @@ describe("Deploy-state — one table of every target", () => {
 
     expect(await findRow("…/me/a")).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered yet\./i),
+      screen.queryByText(/no repositories yet\./i),
     ).not.toBeInTheDocument();
   });
 });
@@ -196,16 +195,16 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await findRow("…/me/b");
     await waitFor(() =>
       expect(cellsOf("…/me/a").slice(1)).toEqual([
-        "v0.3.2 → v0.3.4",
         "Behind",
+        "v0.3.2 → v0.3.4",
         "1",
       ]),
     );
-    expect(cellsOf("…/me/b").slice(1)).toEqual(["v0.3.4", "In sync", "1"]);
+    expect(cellsOf("…/me/b").slice(1)).toEqual(["In sync", "v0.3.4", "1"]);
     // The arrow is drawn; a screen reader hears the word.
-    const release = within(rowOf("…/me/a")).getAllByRole(
-      "gridcell",
-    )[1] as HTMLElement;
+    const release = htmlElement(
+      within(rowOf("…/me/a")).getAllByRole("gridcell")[2],
+    );
     expect(within(release).getByText("→")).toHaveAttribute(
       "aria-hidden",
       "true",
@@ -221,7 +220,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
 
     await findRow("Codex");
     await waitFor(() =>
-      expect(cellsOf("Codex").slice(1)).toEqual(["—", "Empty", "—"]),
+      expect(cellsOf("Codex").slice(1)).toEqual(["Empty", "—", "—"]),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -245,7 +244,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("In sync"));
     expect(screen.queryByText("Empty")).not.toBeInTheDocument();
   });
 
@@ -268,7 +267,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("Attention"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("Attention"));
   });
 
   it("reads every global tool as Attention while a global record needs it", async () => {
@@ -287,7 +286,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("Attention"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Attention"));
   });
 
   it("reads a target with a no-longer-released skill as Attention", async () => {
@@ -312,7 +311,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("Attention"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Attention"));
   });
 
   it("names another origin instead of calling a target empty (#655)", async () => {
@@ -326,7 +325,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("Other origin"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Other origin"));
   });
 
   it("reads a target pinned per skill as a fact, with the release most skills sit on", async () => {
@@ -348,8 +347,8 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await findRow("…/me/project");
     await waitFor(() =>
       expect(cellsOf("…/me/project").slice(1)).toEqual([
-        "v0.3.1",
         "Pinned per skill",
+        "v0.3.1",
         "2",
       ]),
     );
@@ -374,8 +373,8 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("Codex");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("Behind"));
-    expect(cellsOf("Codex")[2]).toBe("Empty");
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Behind"));
+    expect(cellsOf("Codex")[1]).toBe("Empty");
   });
 
   it("does not read Behind when the only behind skill is not deployed here", async () => {
@@ -400,7 +399,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("In sync"));
   });
 
   it("reads a check that could not run as Unknown, never In sync", async () => {
@@ -414,7 +413,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("Unknown"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("Unknown"));
   });
 
   it("claims no reading for a repository whose deploy-state was not read", async () => {
@@ -437,7 +436,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/project");
-    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("Unknown"));
+    await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("Unknown"));
   });
 
   it("holds one reason and the read age in the status hover card", async () => {
@@ -469,6 +468,47 @@ describe("Deploy-state — Release, Status and Skills", () => {
       "Read just now",
     ]);
   });
+
+  // #1448 G22: one screen never shows two ages for one target.
+  it("dates the status hover card by the same oldest reading as band 2", async () => {
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    stubServer(() => ({
+      repos: ["/Users/me/a", "/Users/me/b"],
+      repo: {
+        "/Users/me/a": {
+          primitives: [skill("tdd", "v0.3.2")],
+          skipped: [],
+          releaseHead: { ...head("v0.3.2", "v0.3.4", 2), selected: 5 },
+        },
+        "/Users/me/b": {
+          primitives: [skill("tdd", "v0.3.2")],
+          skipped: [],
+          releaseHead: {
+            ...head("v0.3.2", "v0.3.4", 2),
+            selected: 5,
+            comparedAt: hourAgo,
+          },
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/a");
+    expect(await screen.findByText("Read 1 h ago")).toBeInTheDocument();
+    await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
+
+    const reason = await screen.findByText(
+      sentence(
+        "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+      ),
+    );
+    expect(
+      Array.from(
+        htmlElement(reason.parentElement).querySelectorAll("p"),
+        (line) => line.textContent,
+      ),
+    ).toContain("Read 1 h ago");
+  });
 });
 
 describe("Deploy-state — failed reads", () => {
@@ -495,7 +535,7 @@ describe("Deploy-state — failed reads", () => {
       await screen.findByText("Not read: registered repositories."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered yet\./i),
+      screen.queryByText(/no repositories yet\./i),
     ).not.toBeInTheDocument();
   });
 
@@ -578,9 +618,9 @@ describe("Deploy-state — Re-read and freshness", () => {
     }));
     renderDeployState();
     await findRow("Claude Code");
-    const status = within(rowOf("Claude Code")).getAllByRole(
-      "gridcell",
-    )[3] as HTMLElement;
+    const status = htmlElement(
+      within(rowOf("Claude Code")).getAllByRole("gridcell")[1],
+    );
 
     expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
     expect(
@@ -597,7 +637,7 @@ describe("Deploy-state — Re-read and freshness", () => {
     }));
     renderDeployState();
     await findRow("…/me/a");
-    await waitFor(() => expect(cellsOf("…/me/a")[2]).toBe("Empty"));
+    await waitFor(() => expect(cellsOf("…/me/a")[1]).toBe("Empty"));
     const driftReads = () =>
       fetchMock.mock.calls.filter(([url]) =>
         String(url).startsWith("/api/drift"),
@@ -737,10 +777,12 @@ describe("Deploy-state — rows and their menu", () => {
     stubServer(() => ({
       repos: ["/Users/me/a", "/Users/me/b"],
       global: TWO_TOOLS,
-      repo: { "/Users/me/a": new Promise(() => {}) },
+      repo: { "/Users/me/a": { primitives: [skill("tdd")], skipped: [] } },
+      // A Behind check that never answers: no skeleton waits on it.
+      drift: { "/Users/me/a": new Promise(() => {}) },
     }));
     renderDeployState();
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("In sync"));
 
     await userEvent.click(screen.getByRole("button", { name: /^Display/ }));
     await userEvent.click(
@@ -764,7 +806,7 @@ describe("Deploy-state — rows and their menu", () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
     await findRow("Codex");
-    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("In sync"));
 
     await userEvent.click(screen.getByRole("button", { name: /^Filter/ }));
     await userEvent.click(
@@ -773,9 +815,13 @@ describe("Deploy-state — rows and their menu", () => {
     await userEvent.keyboard("{Escape}");
 
     expect(
-      await screen.findByText(
-        "No targets match the filters. Select Filter to show more targets.",
-      ),
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "No targets match the filters",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Select Filter to show more targets."),
     ).toBeInTheDocument();
   });
 });

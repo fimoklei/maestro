@@ -138,6 +138,34 @@ describe("Harness deletion proposal", () => {
     );
   });
 
+  it("announces the deletion with the delete verb, busy and done", async () => {
+    let answer = () => {};
+    const held = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    stubHarnessServer({
+      read: { body: DELETED },
+      deletion: { body: REMOVED, heldUntil: held },
+    });
+    renderHarness();
+    const dialog = await openDeletionConfirmation();
+    // The open dialog hides the page, its status region included.
+    const announced = () =>
+      screen
+        .getAllByRole("status", { hidden: true })
+        .find((region) => region.classList.contains("sr-only"));
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^delete skill$/i }),
+    );
+
+    await waitFor(() => expect(announced()).toHaveTextContent("Deleting…"));
+    answer();
+    await waitFor(() =>
+      expect(announced()).toHaveTextContent("Deleted old-skill."),
+    );
+  });
+
   it("moves the confirmed row to Pending review as a deletion", async () => {
     stubHarnessServer({
       read: {
@@ -214,7 +242,7 @@ describe("Harness deletion proposal", () => {
         body: {
           error: "confirmation-stale",
           message:
-            "The copy on the default branch moved after this confirmation. Nothing was pushed — select Retry check, then Delete skill again.",
+            "The copy on the default branch moved after this confirmation. Nothing was pushed — select Retry check, then select Delete skill again.",
         },
         status: 409,
         retry: { body: REMOVED },

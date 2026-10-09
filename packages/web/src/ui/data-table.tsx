@@ -52,7 +52,7 @@ const dataTableFeatures = tableFeatures({
 
 type Features = typeof dataTableFeatures;
 // biome-ignore lint/suspicious/noExplicitAny: a column's value type differs per column, as TanStack's own ColumnDef arrays do
-type DataTableColumn<T extends RowData> = ColumnDef<Features, T, any> & {
+export type DataTableColumn<T extends RowData> = ColumnDef<Features, T, any> & {
   /** The cell's hover card, declared as content: the table draws it. */
   card?: DataTableCardColumn<T>;
   /** The row's name, which the table draws on one line in this column. */
@@ -104,12 +104,12 @@ export interface DataTableProps<T extends RowData> {
   onRowOpen?: (row: T) => void;
   /** The row whose detail is open. */
   openRowId?: string | null;
+  /** Takes the cursor once shown, as a row just added does. */
+  cursorRowId?: string | null;
   columnVisibility?: ColumnVisibilityState;
   /** Skeleton rows in the table's own shape replace the data. */
   loading?: boolean;
   skeletonRows?: number;
-  /** Shown in place of rows when there are none. */
-  empty?: ReactNode;
   /** Rows under a header per group, each header naming its count. */
   groups?: DataTableGroups<T>;
   /** The row ids in the order shown, after sorting and grouping. */
@@ -127,10 +127,10 @@ export function DataTable<T extends RowData>({
   selection,
   onRowOpen,
   openRowId = null,
+  cursorRowId = null,
   columnVisibility,
   loading = false,
   skeletonRows = 12,
-  empty,
   groups,
   onRowOrderChange,
   ref,
@@ -221,6 +221,12 @@ export function DataTable<T extends RowData>({
     setCursorFor(openRowId);
     const opened = rows.findIndex((row) => row.id === openRowId);
     if (opened !== -1) setCursor(opened);
+  }
+  const [appliedCursorRow, setAppliedCursorRow] = useState<string | null>(null);
+  if (appliedCursorRow !== cursorRowId) {
+    const added = rows.findIndex((row) => row.id === cursorRowId);
+    if (added !== -1 || cursorRowId === null) setAppliedCursorRow(cursorRowId);
+    if (added !== -1) setCursor(added);
   }
   const active = Math.min(cursor, Math.max(rows.length - 1, 0));
   // The row last toggled; Shift picks the range from it to the next one.
@@ -328,8 +334,9 @@ export function DataTable<T extends RowData>({
         aria-current={isOpen || undefined}
         data-active={gridFocused && index === active ? true : undefined}
         // The press focuses the grid, so the cursor moves with it; on click
-        // it would ring the previous row until release.
-        onMouseDown={(event) => {
+        // it would ring the previous row until release. Pointer, not mouse: a
+        // ⋮ trigger cancels the mouse events, and its row still takes the cursor.
+        onPointerDown={(event) => {
           if (event.currentTarget.contains(event.target as Node)) {
             setCursor(index);
           }
@@ -518,66 +525,65 @@ export function DataTable<T extends RowData>({
         ))}
       </thead>
       <tbody>
-        {loading ? (
-          Array.from({ length: skeletonRows }, (_, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows have no identity but their place
-            <tr key={index} className="h-row border-divider border-b">
-              {selection ? (
-                <GridCell className="px-inline">
-                  <Skeleton className="size-4" />
-                </GridCell>
-              ) : null}
-              {leafColumns.map((column, columnIndex) => (
-                <GridCell
-                  key={column.id}
-                  className={cn("px-inline", column.columnDef.meta?.className)}
-                >
-                  {/* Varied widths, as Spectrum's, so the rows read as rows. */}
-                  <Skeleton
-                    style={{
-                      width: `${40 + ((index * 17 + columnIndex * 23) % 45)}%`,
-                    }}
-                  />
-                </GridCell>
-              ))}
-            </tr>
-          ))
-        ) : blocks !== undefined && blocks.length > 0 ? (
-          blocks.map((block) => (
-            <Fragment key={block.key}>
-              <GroupHeader
-                label={block.key}
-                count={block.all.length === 0 ? undefined : block.all.length}
-                meta={groups?.meta?.(block.key)}
-                columnCount={spanCount}
-                collapsed={
-                  block.all.length === 0 ? undefined : collapsed.has(block.key)
-                }
-                onToggle={() => toggleGroup(block.key)}
-              />
-              {block.all.length === 0 ? (
-                <tr className="h-row border-divider border-b">
-                  <GridCell
-                    colSpan={spanCount}
-                    className="px-inline py-tight text-gray-11"
-                  >
-                    {groups?.message?.(block.key)}
+        {loading
+          ? Array.from({ length: skeletonRows }, (_, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows have no identity but their place
+              <tr key={index} className="h-row border-divider border-b">
+                {selection ? (
+                  <GridCell className="px-inline">
+                    <Skeleton className="size-4" />
                   </GridCell>
-                </tr>
-              ) : (
-                block.rows.map((row) => renderRow(row, rows.indexOf(row)))
-              )}
-            </Fragment>
-          ))
-        ) : rows.length === 0 ? (
-          <tr className="h-row">
-            <GridCell colSpan={spanCount} className="px-inline text-gray-11">
-              {empty}
-            </GridCell>
-          </tr>
-        ) : (
-          rows.map((row, index) => renderRow(row, index))
-        )}
+                ) : null}
+                {leafColumns.map((column, columnIndex) => (
+                  <GridCell
+                    key={column.id}
+                    className={cn(
+                      "px-inline",
+                      column.columnDef.meta?.className,
+                    )}
+                  >
+                    {/* Varied widths, as Spectrum's, so the rows read as rows. */}
+                    <Skeleton
+                      style={{
+                        width: `${40 + ((index * 17 + columnIndex * 23) % 45)}%`,
+                      }}
+                    />
+                  </GridCell>
+                ))}
+              </tr>
+            ))
+          : blocks !== undefined && blocks.length > 0
+            ? blocks.map((block) => (
+                <Fragment key={block.key}>
+                  <GroupHeader
+                    label={block.key}
+                    count={
+                      block.all.length === 0 ? undefined : block.all.length
+                    }
+                    meta={groups?.meta?.(block.key)}
+                    columnCount={spanCount}
+                    collapsed={
+                      block.all.length === 0
+                        ? undefined
+                        : collapsed.has(block.key)
+                    }
+                    onToggle={() => toggleGroup(block.key)}
+                  />
+                  {block.all.length === 0 ? (
+                    <tr className="h-row border-divider border-b">
+                      <GridCell
+                        colSpan={spanCount}
+                        className="px-inline py-tight text-gray-11"
+                      >
+                        {groups?.message?.(block.key)}
+                      </GridCell>
+                    </tr>
+                  ) : (
+                    block.rows.map((row) => renderRow(row, rows.indexOf(row)))
+                  )}
+                </Fragment>
+              ))
+            : rows.map((row, index) => renderRow(row, index))}
       </tbody>
     </table>
   );

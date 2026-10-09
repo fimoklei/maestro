@@ -21,8 +21,12 @@ const LABEL = "…/me/project";
 type Kind = "deploy" | "remove" | "update";
 
 // The server answers each retry from `answers`, in order; a 200 clears the
-// pending operation, as the server does once disk agrees.
-function stubRetries(kind: Kind, answers: (() => Response)[]) {
+// pending operation, as the server does once disk agrees. A pending promise
+// holds the retry.
+function stubRetries(
+  kind: Kind,
+  answers: (() => Response | Promise<Response>)[],
+) {
   let pending = true;
   const sent: unknown[] = [];
   stubServer(() => ({
@@ -47,7 +51,9 @@ function stubRetries(kind: Kind, answers: (() => Response)[]) {
       sent.push(JSON.parse(String(init?.body)));
       const response = answers[sent.length - 1]?.();
       if (response === undefined) throw new Error("no answer left");
-      if (response.status === 200) pending = false;
+      if (response instanceof Response && response.status === 200) {
+        pending = false;
+      }
       return response;
     },
   }));
@@ -60,6 +66,72 @@ const completed = () =>
   jsonResponse({
     completed: { kind: "deploy", release: "v0.3.4", desired: ["tdd"] },
   });
+
+const announced = () =>
+  screen
+    .getAllByRole("status")
+    .find((region) => region.classList.contains("sr-only"));
+
+describe("Deploy-state — a successful retry", () => {
+  it.each([
+    ["deploy", "Retry deploy", "Deployed"],
+    ["remove", "Retry removal", "Removed"],
+    ["update", "Retry update", "Updated"],
+  ] as const)(
+    "announces a retried %s from the pane with its target",
+    async (kind, control, done) => {
+      stubRetries(kind, [completed]);
+      renderDeployState();
+
+      const pane = await openPane(LABEL);
+      await userEvent.click(
+        within(pane).getByRole("button", { name: control }),
+      );
+
+      await waitFor(() =>
+        expect(announced()).toHaveTextContent(`${done} ${LABEL}.`),
+      );
+    },
+  );
+
+  it("announces a retry from the row's menu with its target", async () => {
+    stubRetries("remove", [completed]);
+    renderDeployState();
+
+    await userEvent.click(
+      within(await findRow(LABEL)).getByRole("button", {
+        name: `Actions for ${LABEL}`,
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Retry removal" }),
+    );
+
+    await waitFor(() =>
+      expect(announced()).toHaveTextContent(`Removed ${LABEL}.`),
+    );
+  });
+});
+
+describe("Deploy-state pane — a running retry", () => {
+  it("keeps focus on the pressed Retry deploy, spinning under its busy label", async () => {
+    stubRetries("deploy", [() => new Promise<Response>(() => {})]);
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    await userEvent.click(
+      within(pane).getByRole("button", { name: "Retry deploy" }),
+    );
+
+    const pressed = await within(pane).findByRole("button", {
+      name: "Deploying…",
+    });
+    expect(pressed).toHaveFocus();
+    expect(pressed).toHaveAttribute("aria-disabled", "true");
+    expect(pressed).toHaveAttribute("aria-busy", "true");
+    expect(pressed).not.toBeDisabled();
+  });
+});
 
 describe("Deploy-state pane — a failed retry", () => {
   it("states a failed retry in the target's pane, in place of the unfinished notice", async () => {
@@ -78,7 +150,7 @@ describe("Deploy-state pane — a failed retry", () => {
     expect(
       within(notice).getByText(
         sentence(
-          "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+          "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
         ),
       ),
     ).toBeInTheDocument();

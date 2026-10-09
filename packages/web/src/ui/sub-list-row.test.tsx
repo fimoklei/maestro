@@ -26,7 +26,7 @@ describe("SubListRow", () => {
     const mark = screen.getByRole("img", { name: "Behind" });
     expect(row.firstElementChild).toContainElement(mark);
     expect(screen.getByText("…/me/project")).toBeInTheDocument();
-    expect(screen.getByText("v0.3.2")).toHaveClass("font-mono");
+    expect(screen.getByText("v0.3.2")).toBeInTheDocument();
   });
 
   it("carries the row's actions behind its ⋮ menu", async () => {
@@ -42,25 +42,29 @@ describe("SubListRow", () => {
     expect(onSelect).toHaveBeenCalledOnce();
   });
 
-  // #1124: as the table's row menu — hidden at rest, shown on hover, focus,
-  // while open and where nothing hovers. The browser check measures it.
-  it("hides its ⋮ at rest and reveals it on hover, focus or while open", async () => {
+  // #1449: a pane is not a grid, so the keyboard reaches ⋮ by Tab, after the
+  // mark. Its hover reveal is styling, which the browser check measures.
+  it("keeps ⋮ a Tab stop after the mark", async () => {
+    renderRow();
+
+    await userEvent.tab();
+    expect(screen.getByRole("img", { name: "Behind" })).toHaveFocus();
+    await userEvent.tab();
+    expect(
+      screen.getByRole("button", { name: "Actions for …/me/project" }),
+    ).toHaveFocus();
+  });
+
+  it("returns focus to ⋮ once an item has run", async () => {
     renderRow();
 
     const trigger = screen.getByRole("button", {
       name: "Actions for …/me/project",
     });
-    expect(trigger).toHaveClass(
-      "opacity-0",
-      "group-hover/sub:opacity-100",
-      "group-focus-within/sub:opacity-100",
-      "data-[state=open]:opacity-100",
-      "[@media(hover:none)]:opacity-100",
+    await userEvent.click(trigger);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Update target" }),
     );
-    expect(screen.getByRole("listitem")).toHaveClass("group/sub");
-    // Still one Tab stop: a pane is not a grid.
-    await userEvent.tab();
-    await userEvent.tab();
     expect(trigger).toHaveFocus();
   });
 

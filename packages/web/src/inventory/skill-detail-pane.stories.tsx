@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
 import type { SkillDeployment } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
@@ -12,6 +13,7 @@ const target = (
   release,
   version: release,
   status,
+  mark: skillMark(undefined, status),
   target: { kind: "repo", repoPath: label },
   removeTarget: { kind: "repo", repoPath: label },
   updateName: label,
@@ -30,12 +32,14 @@ const meta = {
         'Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.',
     },
     targetCount: 3,
-    unconfirmed: false,
+    pending: false,
+    unreadable: false,
+    listHeadingRef: null,
     targetItems: (deployment) => [
       ...(deployment.updatable
         ? [{ label: "Update target", onSelect: () => {} }]
         : []),
-      { label: "Show in Deploy-state", onSelect: () => {} },
+      { label: "View Deploy-state", onSelect: () => {} },
       { label: "Remove from target", danger: true, onSelect: () => {} },
     ],
     footItems: [
@@ -77,7 +81,17 @@ export const NotDeployed: Story = {
 export const PartialReach: Story = {
   args: {
     targetCount: null,
-    unconfirmed: true,
+    pending: true,
+    footItems: [{ label: "Deploy skill", onSelect: () => {} }],
+    deployments: [target("Claude Code", "v1.4.0", "up-to-date")],
+  },
+};
+
+// A target's read failed: the list may miss a target, and says so.
+export const SomeTargetsNotRead: Story = {
+  args: {
+    targetCount: 1,
+    unreadable: true,
     footItems: [{ label: "Deploy skill", onSelect: () => {} }],
     deployments: [target("Claude Code", "v1.4.0", "up-to-date")],
   },

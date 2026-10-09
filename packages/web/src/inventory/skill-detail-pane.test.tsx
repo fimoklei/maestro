@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
 import type { FootItem } from "../ui/foot-actions";
 import type { SkillDeployment } from "./skill-deployments";
@@ -21,6 +22,7 @@ const dep = (
   label,
   release,
   status,
+  mark: skillMark(undefined, status),
   version: release,
   target: { kind: "repo", repoPath: `/dev/${label}` },
   removeTarget: { kind: "repo", repoPath: `/dev/${label}` },
@@ -34,7 +36,8 @@ const DEPLOY: FootItem = { label: "Deploy skill", onSelect: () => {} };
 function renderPane(overrides: {
   deployments?: SkillDeployment[];
   targetCount?: number | null;
-  unconfirmed?: boolean;
+  pending?: boolean;
+  unreadable?: boolean;
   footItems?: FootItem[];
   targetItems?: ComponentProps["targetItems"];
   onClose?: () => void;
@@ -49,11 +52,13 @@ function renderPane(overrides: {
           : overrides.targetCount
       }
       deployments={overrides.deployments ?? []}
-      unconfirmed={overrides.unconfirmed ?? false}
+      pending={overrides.pending ?? false}
+      unreadable={overrides.unreadable ?? false}
       targetItems={overrides.targetItems ?? (() => [])}
       footItems={overrides.footItems ?? [DEPLOY]}
       onClose={overrides.onClose ?? (() => {})}
       getTriggerElement={overrides.getTriggerElement ?? (() => null)}
+      listHeadingRef={null}
     />,
   );
 }
@@ -103,7 +108,7 @@ describe("SkillDetailPane", () => {
   });
 
   it("claims no Targets count before every read has answered", () => {
-    renderPane({ targetCount: null, unconfirmed: true });
+    renderPane({ targetCount: null, pending: true });
 
     expect(fact("Targets")).toBeNull();
   });
@@ -179,27 +184,55 @@ describe("SkillDetailPane", () => {
     ).toBeInTheDocument();
   });
 
-  it("holds off on 'Not deployed' while the reach is still unconfirmed", () => {
-    // Every read is pending or unreadable, so an empty list is "not known yet",
-    // never "deployed nowhere".
-    renderPane({ deployments: [], unconfirmed: true });
+  // The target list, busy while a read behind it runs.
+  const targetList = () =>
+    screen.getByText("Deployed to").parentElement?.querySelector("ul") ?? null;
+
+  it("holds off on 'Not deployed' while a read is pending, with no read words", () => {
+    // An empty list is then "not known yet", never "deployed nowhere".
+    renderPane({ deployments: [], pending: true });
 
     expect(
       screen.queryByText(/Not deployed to any target\./i),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Loading the Deploy-state…")).toBeInTheDocument();
+    expect(targetList()).toHaveAttribute("aria-busy", "true");
+    expect(pane()).not.toHaveTextContent(/Loading/);
   });
 
-  it("warns the reach is incomplete when a target is still unconfirmed alongside known deployments", () => {
-    // One read succeeded while another is pending: the known target shows, but the
-    // pane still warns more targets may exist.
+  it("keeps the known targets while another read is pending, with no read words", () => {
     renderPane({
       deployments: [dep("Claude Code", "v1.0.0", "up-to-date")],
-      unconfirmed: true,
+      pending: true,
     });
 
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
-    expect(screen.getByText(/Loading more targets…/i)).toBeInTheDocument();
+    expect(targetList()).toHaveAttribute("aria-busy", "true");
+    expect(pane()).not.toHaveTextContent(/Loading/);
+  });
+
+  it("states a failed read as a failure, never as loading", () => {
+    renderPane({
+      deployments: [dep("Claude Code", "v1.0.0", "up-to-date")],
+      unreadable: true,
+    });
+
+    expect(targetList()).not.toHaveAttribute("aria-busy");
+    expect(pane()).not.toHaveTextContent(/Loading/);
+    expect(
+      screen.getByText("Some targets could not be read."),
+    ).toBeInTheDocument();
+  });
+
+  it("claims no 'Not deployed' when every read failed", () => {
+    renderPane({ deployments: [], unreadable: true });
+
+    expect(
+      screen.queryByText(/Not deployed to any target\./i),
+    ).not.toBeInTheDocument();
+    expect(pane()).not.toHaveTextContent(/Loading/);
+    expect(
+      screen.getByText("Some targets could not be read."),
+    ).toBeInTheDocument();
   });
 
   it("closes when the close control is activated", async () => {

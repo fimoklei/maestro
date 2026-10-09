@@ -1,7 +1,9 @@
 import { useId } from "react";
 import { Dialog } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
+import { Notice } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
+import { LIST_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
@@ -10,20 +12,6 @@ import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
 // The bulk remove's confirmation (#422, #423) and the Report that replaces it
 // (#424). Presentational — the host owns the checks, the request and the
 // in-flight flag.
-
-function CleanLine({ id, children }: { id: string; children: string }) {
-  return (
-    <p
-      id={id}
-      className="m-0 flex items-center gap-inline rounded-control border border-edge bg-gray-3 px-cell py-inline font-mono text-meta text-gray-12"
-    >
-      <span aria-hidden="true" className="text-gray-11">
-        ✓
-      </span>
-      <span>{children}</span>
-    </p>
-  );
-}
 
 export function BulkRemoveDialog({
   skillName,
@@ -67,7 +55,7 @@ export function BulkRemoveDialog({
     grouped === null || done !== null
       ? ""
       : [
-          grouped.cleanLine === null ? null : cleanId,
+          grouped.clean === null ? null : cleanId,
           grouped.cost.length === 0 ? null : costId,
           grouped.refused.length === 0 ? null : refusedId,
         ]
@@ -121,14 +109,11 @@ export function BulkRemoveDialog({
         // Stays through the run and beside a failure: it is what the confirm
         // acts on.
         <>
-          {grouped.cleanLine === null ? null : (
-            <CleanLine id={cleanId}>{grouped.cleanLine}</CleanLine>
-          )}
           <GroupedList
             groups={[
               {
                 tone: "attention",
-                legend: `▲ Loses work · ${grouped.cost.length}`,
+                legend: `${LIST_TOKENS.attention.glyph} Loses work · ${grouped.cost.length}`,
                 id: costId,
                 rows: grouped.cost.map((row) => ({
                   key: row.label,
@@ -139,7 +124,7 @@ export function BulkRemoveDialog({
               },
               {
                 tone: "failed",
-                legend: `✕ Cannot be removed · ${grouped.refused.length}`,
+                legend: `${LIST_TOKENS.failed.glyph} Cannot be removed · ${grouped.refused.length}`,
                 id: refusedId,
                 rows: grouped.refused.map((row) => ({
                   key: row.label,
@@ -151,6 +136,14 @@ export function BulkRemoveDialog({
             checklist={null}
             live={null}
           />
+          {/* Above the footer, as every dialog's notice sits. */}
+          {grouped.clean === null ? null : (
+            <Notice
+              trigger="load"
+              id={cleanId}
+              notice={{ level: "success", ...grouped.clean }}
+            />
+          )}
         </>
       )}
     </Dialog>

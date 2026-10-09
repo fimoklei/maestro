@@ -27,6 +27,20 @@ describe("Button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it("stays focusable but runs nothing while blocked", async () => {
+    const onClick = vi.fn();
+    render(
+      <Button blocked onClick={onClick}>
+        go
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "go" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).not.toBeDisabled();
+    await userEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
   it("leaves the focus ring to the one rule every control shares", () => {
     // The ring is one :focus-visible rule in theme.css; a per-button outline
     // utility would override it, outline-none would kill it.
