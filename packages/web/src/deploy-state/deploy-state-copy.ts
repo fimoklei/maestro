@@ -1,3 +1,4 @@
+import type { NoticeContent } from "../ui/notice";
 import { namedList, phrase } from "../ui/phrase";
 import { joinNames } from "./join-names";
 
@@ -20,8 +21,32 @@ export const targetCount = (count: number) =>
 export const NO_REPOSITORIES =
   "No repositories yet. Select Register repository on the Repositories screen.";
 
-export const NO_FILTER_MATCH =
-  "No targets match the filters. Select Filter to show more targets.";
+export const NO_FILTER_MATCH = {
+  title: "No targets match the filters",
+  description: "Select Filter to show more targets.",
+};
+
+export const NO_TARGETS = {
+  title: "No targets yet",
+  description:
+    "Claude Code, Codex and registered repositories appear here as targets.",
+};
+
+/** The pane's line for behind names that are no deployed skill. */
+export const packageBehindNotice = (
+  names: readonly string[],
+): NoticeContent => ({
+  level: "info",
+  ...(names.length === 1
+    ? {
+        label: "Package also behind",
+        message: phrase`${namedList(names)} is not a skill.`,
+      }
+    : {
+        label: "Packages also behind",
+        message: phrase`${namedList(names)} are not skills.`,
+      }),
+});
 
 const NOT_READ_LABEL = "Deploy-state not read";
 const NOT_READ_PARTS = {

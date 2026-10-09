@@ -48,6 +48,8 @@ type Row = {
   file: string;
   name: string;
   render: () => void;
+  /** A read that answers with no rows, and the empty state's title. */
+  empty: { render: () => void; title: string };
   /** Null for a screen without a hover card. */
   card: StatusCard | null;
   /** Null for a screen whose Status is never read apart from its rows. */
@@ -315,6 +317,13 @@ const ON_TABLE_SCREEN: Row[] = [
       stubServer(() => ({ repos: ["/Users/me/a"] }));
       renderDeployState();
     },
+    empty: {
+      render: () => {
+        stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
+        renderDeployState();
+      },
+      title: "No targets yet",
+    },
     card: {
       render: renderBehindTarget,
       name: "…/me/a",
@@ -381,6 +390,13 @@ const ON_TABLE_SCREEN: Row[] = [
     render: () => {
       stubHarnessServer({ read: { body: RELEASED } });
       renderHarness();
+    },
+    empty: {
+      render: () => {
+        stubHarnessServer({ read: { body: RELEASED } });
+        renderHarness();
+      },
+      title: "No changes yet",
     },
     card: {
       render: () => {
@@ -470,6 +486,24 @@ const ON_TABLE_SCREEN: Row[] = [
         </MemoryRouter>,
       );
     },
+    empty: {
+      render: () => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async (input: RequestInfo | URL) =>
+            String(input).startsWith("/api/registry")
+              ? jsonResponse({ repos: [] })
+              : jsonResponse({ primitives: [] }),
+          ),
+        );
+        renderWithQuery(
+          <MemoryRouter>
+            <InventoryPanel />
+          </MemoryRouter>,
+        );
+      },
+      title: "No released skills yet",
+    },
     card: {
       render: renderInventoryRow,
       name: "tdd",
@@ -532,6 +566,13 @@ const ON_TABLE_SCREEN: Row[] = [
     render: () => {
       stubRegistry({ repos: [{ path: "/home/me/acme-web", status: "ready" }] });
       renderRepositories();
+    },
+    empty: {
+      render: () => {
+        stubRegistry({ repos: [] });
+        renderRepositories();
+      },
+      title: "No repositories yet",
     },
     card: null,
     reading: null,
@@ -670,6 +711,18 @@ describe("every table screen", () => {
           .getAllByRole("status")
           .filter((region) => region.classList.contains("sr-only")),
       ).toHaveLength(1);
+    });
+
+    it("states an empty table with the shared empty state", async () => {
+      row.empty.render();
+
+      expect(
+        await screen.findByRole("heading", {
+          level: 2,
+          name: row.empty.title,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("grid")).not.toBeInTheDocument();
     });
 
     // design.md → Frame: one column order, the name taking the rest.

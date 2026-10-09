@@ -126,17 +126,16 @@ describe("Deploy-state — one table of every target", () => {
     renderDeployState();
 
     expect(await screen.findByText("Nothing deployed yet")).toBeInTheDocument();
-    // Each empty group still says what fills it.
+    // With no target at all, the shared empty state says what fills the table.
     expect(
-      within(grid()).getByText(
-        "Install Claude Code or Codex to deploy skills globally.",
-      ),
+      screen.getByRole("heading", { level: 2, name: "No targets yet" }),
     ).toBeInTheDocument();
     expect(
-      within(grid()).getByText(
-        "No repositories yet. Select Register repository on the Repositories screen.",
+      screen.getByText(
+        "Claude Code, Codex and registered repositories appear here as targets.",
       ),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
   it("titles the screen with one h1", async () => {
@@ -775,9 +774,13 @@ describe("Deploy-state — rows and their menu", () => {
     await userEvent.keyboard("{Escape}");
 
     expect(
-      await screen.findByText(
-        "No targets match the filters. Select Filter to show more targets.",
-      ),
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "No targets match the filters",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Select Filter to show more targets."),
     ).toBeInTheDocument();
   });
 });

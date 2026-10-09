@@ -1,10 +1,13 @@
-import { Fragment, type Ref, useEffect, useState } from "react";
+import { type Ref, useEffect, useState } from "react";
 import { lagsPin } from "../drift/drift-view-model";
-import { InlineName } from "../ui/inline-name";
-import { STATUS_TOKENS } from "../ui/status-family";
+import { Notice } from "../ui/notice";
 import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow } from "../ui/sub-list-row";
-import { REMOVE_SKILL, VIEW_SKILL_ON_GITHUB } from "./deploy-state-copy";
+import {
+  packageBehindNotice,
+  REMOVE_SKILL,
+  VIEW_SKILL_ON_GITHUB,
+} from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
 import { RemoveSkillFlow } from "./remove-skill-flow";
@@ -124,21 +127,9 @@ export function SelectedSkills({
         />
       ) : null}
       {orphans.length > 0 && (
-        // A name keeps the line's attention ink; only its weight sets it apart.
-        <p
-          className={`mt-inline text-meta ${STATUS_TOKENS.attention.ink} [&_b]:text-inherit`}
-        >
-          {orphans.length === 1
-            ? "Package also behind, not a skill:"
-            : "Packages also behind, not skills:"}{" "}
-          {orphans.map((orphan, index) => (
-            <Fragment key={orphan}>
-              {index > 0 ? ", " : null}
-              <InlineName>{orphan}</InlineName>
-            </Fragment>
-          ))}
-          .
-        </p>
+        <div className="mt-inline">
+          <Notice trigger="load" notice={packageBehindNotice(orphans)} />
+        </div>
       )}
     </section>
   );

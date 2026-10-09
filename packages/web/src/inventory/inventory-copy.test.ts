@@ -28,15 +28,17 @@ import {
 // Approved sentences, as exact strings.
 describe("Inventory copy", () => {
   it("says how to see every skill when the search matches none", () => {
-    expect(NO_SEARCH_MATCH).toBe(
-      "No skills match the search. Clear the search box to see every skill.",
-    );
+    expect(NO_SEARCH_MATCH).toEqual({
+      title: "No skills match the search",
+      description: "Clear the search box to see every skill.",
+    });
   });
 
   it("names the Filter control when the filters hide every skill", () => {
-    expect(NO_FILTER_MATCH).toBe(
-      "No skills match the filters. Select Filter to show more skills.",
-    );
+    expect(NO_FILTER_MATCH).toEqual({
+      title: "No skills match the filters",
+      description: "Select Filter to show more skills.",
+    });
   });
 
   it("names a row's checkbox after its skill", () => {
@@ -83,9 +85,8 @@ describe("Inventory copy", () => {
 
   it("offers Open Harness from the empty Inventory", () => {
     expect(NO_RELEASED_SKILLS).toEqual({
-      level: "info",
-      label: "No released skills yet",
-      message: "Skills from the latest release appear here.",
+      title: "No released skills yet",
+      description: "Skills from the latest release appear here.",
     });
   });
 

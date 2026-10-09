@@ -7,10 +7,12 @@ import {
   NO_FILTER_MATCH,
   NO_LONGER_RELEASED_HINT,
   NO_REPOSITORIES,
+  NO_TARGETS,
   NO_TOOL_DETECTED,
   NOTHING_DEPLOYED,
   ORIGIN_NOT_READ,
   otherOriginLine,
+  packageBehindNotice,
   REPO_NOT_READ,
   REPO_NOT_READ_LINE,
   REREAD_LABEL,
@@ -65,9 +67,29 @@ describe("Deploy-state copy", () => {
     expect(NO_REPOSITORIES).toBe(
       "No repositories yet. Select Register repository on the Repositories screen.",
     );
-    expect(NO_FILTER_MATCH).toBe(
-      "No targets match the filters. Select Filter to show more targets.",
-    );
+    expect(NO_FILTER_MATCH).toEqual({
+      title: "No targets match the filters",
+      description: "Select Filter to show more targets.",
+    });
+    expect(NO_TARGETS).toEqual({
+      title: "No targets yet",
+      description:
+        "Claude Code, Codex and registered repositories appear here as targets.",
+    });
+  });
+
+  it("names the packages that are behind but are not skills", () => {
+    const one = packageBehindNotice(["foo"]);
+    expect([one.level, one.label, plainText(one.message)]).toEqual([
+      "info",
+      "Package also behind",
+      "foo is not a skill.",
+    ]);
+    const two = packageBehindNotice(["foo", "bar"]);
+    expect([two.label, plainText(two.message)]).toEqual([
+      "Packages also behind",
+      "foo and bar are not skills.",
+    ]);
   });
 
   // #1180: the GitHub column's menu item and its Unknown badge's cause.

@@ -16,10 +16,9 @@ export const INVENTORY_NOT_READ = {
 
 // Empty is an offer, not a failure: the action is the one step that fills the list.
 export const NO_RELEASED_SKILLS = {
-  level: "info",
-  label: "No released skills yet",
-  message: "Skills from the latest release appear here.",
-} as const;
+  title: "No released skills yet",
+  description: "Skills from the latest release appear here.",
+};
 
 // The Inventory's band 2 and table (#1040).
 export const SEARCH_LABEL = "Search the Inventory";
@@ -55,10 +54,14 @@ export function globalOptionLabel(
   return `Global (${tools.map(toolDisplayName).join(" + ")})`;
 }
 
-export const NO_SEARCH_MATCH =
-  "No skills match the search. Clear the search box to see every skill.";
-export const NO_FILTER_MATCH =
-  "No skills match the filters. Select Filter to show more skills.";
+export const NO_SEARCH_MATCH = {
+  title: "No skills match the search",
+  description: "Clear the search box to see every skill.",
+};
+export const NO_FILTER_MATCH = {
+  title: "No skills match the filters",
+  description: "Select Filter to show more skills.",
+};
 
 // The row's hover card and detail pane (#1041).
 export const deployedToLine = (count: number): string =>
