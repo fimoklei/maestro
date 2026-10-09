@@ -88,15 +88,15 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "inventory-origin-unavailable": {
     message:
       "Nothing was deployed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
-    detail: "A deploy installs from a GitHub tag, over https or ssh.",
+    detail: "A deploy takes the skill from a GitHub tag, over https or ssh.",
   },
   "no-published-tag": {
     message: `Nothing was deployed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
-    detail: "A deploy installs from a published tag.",
+    detail: "A deploy takes the skill from a published tag.",
   },
   "local-diverged-from-tag": {
     message: `Nothing was deployed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
-    detail: "A deploy installs the latest release, not the Harness copy.",
+    detail: "A deploy takes the latest release, not the Harness copy.",
   },
   "deployed-diverged-from-lock": {
     message: "Deploy again to replace the local edits with the latest release.",
@@ -153,7 +153,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "no-supported-tool": {
     message:
       "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
-    detail: "A global deploy installs into Claude Code or Codex.",
+    detail: "A global deploy puts skills into Claude Code or Codex.",
   },
   "auth-required": {
     message:
@@ -166,7 +166,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   },
   "deploy-failed": {
     message:
-      "The target may hold a partial install. Check the target on the Deploy-state screen, then deploy again.",
+      "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
   },
 };
 
@@ -309,7 +309,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
   },
   "inventory-origin-unavailable": {
     message: `Point the Harness clone's origin at its GitHub repository, ${UPDATE_AGAIN}`,
-    detail: "An update installs from a GitHub tag, over https or ssh.",
+    detail: "An update takes the skill from a GitHub tag, over https or ssh.",
   },
   "ref-unresolvable": {
     message: `Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, ${UPDATE_AGAIN}`,

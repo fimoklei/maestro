@@ -225,7 +225,7 @@ describe("bulkDeployReportGroups", () => {
       label: "No supported tool",
       message:
         "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
-      detail: "A global deploy installs into Claude Code or Codex.",
+      detail: "A global deploy puts skills into Claude Code or Codex.",
     });
   });
 

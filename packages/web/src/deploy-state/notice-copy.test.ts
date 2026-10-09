@@ -74,7 +74,8 @@ describe("deploy notices", () => {
         label: "No GitHub origin",
         message:
           "Nothing was deployed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
-        detail: "A deploy installs from a GitHub tag, over https or ssh.",
+        detail:
+          "A deploy takes the skill from a GitHub tag, over https or ssh.",
       },
     ],
     [
@@ -83,7 +84,7 @@ describe("deploy notices", () => {
         label: "Not in any release",
         message:
           "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
-        detail: "A deploy installs from a published tag.",
+        detail: "A deploy takes the skill from a published tag.",
       },
     ],
     [
@@ -92,7 +93,7 @@ describe("deploy notices", () => {
         label: "Harness copy unreleased",
         message:
           "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
-        detail: "A deploy installs the latest release, not the Harness copy.",
+        detail: "A deploy takes the latest release, not the Harness copy.",
       },
     ],
     [
@@ -200,7 +201,7 @@ describe("deploy notices", () => {
         label: "No supported tool",
         message:
           "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
-        detail: "A global deploy installs into Claude Code or Codex.",
+        detail: "A global deploy puts skills into Claude Code or Codex.",
       },
     ],
     [
@@ -227,7 +228,7 @@ describe("deploy notices", () => {
       {
         label: "Deploy did not finish",
         message:
-          "The target may hold a partial install. Check the target on the Deploy-state screen, then deploy again.",
+          "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
       },
     ],
   ];
@@ -523,7 +524,8 @@ describe("update preview notices", () => {
         label: "No GitHub origin",
         message:
           "Point the Harness clone's origin at its GitHub repository, then select Update target again.",
-        detail: "An update installs from a GitHub tag, over https or ssh.",
+        detail:
+          "An update takes the skill from a GitHub tag, over https or ssh.",
       },
     ],
     [
