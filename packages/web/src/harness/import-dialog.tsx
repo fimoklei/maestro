@@ -15,6 +15,7 @@ import {
 export function ImportDialog({
   source,
   sourceText,
+  sourceError,
   onSourceChange,
   onSourceCommit,
   chooser,
@@ -29,6 +30,8 @@ export function ImportDialog({
   /** The folder the check was asked about; null until one is chosen. */
   source: string | null;
   sourceText: string;
+  /** The field error a submit left on Folder path. */
+  sourceError: string | undefined;
   onSourceChange: (text: string) => void;
   /** A folder to check: picked through Browse, or typed and left. */
   onSourceCommit: (path: string) => void;
@@ -91,6 +94,7 @@ export function ImportDialog({
             if (typed !== "" && typed !== source) onSourceCommit(typed);
           }}
           chooser={chooser}
+          error={sourceError}
           disabled={importing}
         />
         <Notice trigger="user-action" notice={sourceProblem} />

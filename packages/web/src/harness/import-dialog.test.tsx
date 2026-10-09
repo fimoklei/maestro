@@ -70,6 +70,7 @@ function SourceHost({
     <ImportDialog
       source={source}
       sourceText={text}
+      sourceError={undefined}
       onSourceChange={setText}
       onSourceCommit={onSourceCommit}
       chooser={chooser}

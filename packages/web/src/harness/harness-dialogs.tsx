@@ -77,6 +77,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
         <ImportDialogHost
           source={props.importFlow.source}
           sourceText={props.importFlow.sourceText}
+          sourceError={props.importFlow.sourceError}
           onSourceChange={props.importFlow.setSourceText}
           onSourceCommit={props.importFlow.commitSource}
           name={props.importFlow.name}

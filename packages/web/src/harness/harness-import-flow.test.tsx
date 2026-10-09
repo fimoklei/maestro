@@ -283,6 +283,30 @@ describe("Harness import flow", () => {
     );
   });
 
+  it("states a missing folder under its field on submit", async () => {
+    const { calls } = stubImportServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openSkill={null} />);
+
+    const [importSkill] = await screen.findAllByRole("button", {
+      name: "Import skill",
+    });
+    await user.click(importSkill as HTMLElement);
+    await user.click(dialogImport());
+
+    const folder = screen.getByRole("textbox", { name: "Folder path" });
+    expect(folder).toBeInvalid();
+    expect(folder).toHaveAccessibleDescription(
+      /Enter the skill folder's absolute path\./,
+    );
+    expect(
+      calls.filter((call) => call.includes("/api/harness/import")),
+    ).toEqual([]);
+
+    await user.type(folder, "/");
+    expect(folder).toBeValid();
+  });
+
   it("checks a typed folder on submit", async () => {
     const { imports } = stubImportServer({});
     const user = userEvent.setup();

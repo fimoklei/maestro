@@ -3,6 +3,7 @@ import {
   ADVISORY_TEXT,
   DELETE_UNAVAILABLE,
   FINDING_TEXT,
+  FOLDER_MISSING,
   RELEASE_UNAVAILABLE,
   skillChecksNotice,
 } from "./dialog-copy";
@@ -46,6 +47,10 @@ describe("Harness dialog copy", () => {
       error: "release plan did not load",
       empty: "no changes since last release",
     });
+  });
+
+  it("asks for the skill folder when Import skill is submitted without one", () => {
+    expect(FOLDER_MISSING).toBe("Enter the skill folder's absolute path.");
   });
 
   it("states why Delete skill cannot run yet, in screen names", () => {

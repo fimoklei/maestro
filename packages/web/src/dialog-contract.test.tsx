@@ -166,6 +166,7 @@ const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
   <ImportDialog
     source={null}
     sourceText=""
+    sourceError={undefined}
     onSourceChange={vi.fn()}
     onSourceCommit={vi.fn()}
     chooser={NO_CHOOSER}
