@@ -4,10 +4,22 @@ import { cn } from "../ui/cn";
 import { DetailPane } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
 import { rowActionsLabel } from "../ui/row-menu-copy";
+import { StatusBadge } from "../ui/status-badge";
 import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow, SubListSkeleton } from "../ui/sub-list-row";
-import { NOT_DEPLOYED_ANYWHERE, SOME_TARGETS_NOT_READ } from "./inventory-copy";
+import type { DeployedRollup } from "./deployed-rollup";
+import {
+  BEHIND_FACT,
+  LATEST_RELEASE_FACT,
+  NOT_DEPLOYED_ANYWHERE,
+  NOT_RELEASED_YET,
+  ofTotal,
+  SOME_TARGETS_NOT_READ,
+  STATUS_FACT,
+  skillStateLine,
+} from "./inventory-copy";
 import type { SkillDeployment } from "./skill-deployments";
+import { skillState, skillStatus } from "./skill-status";
 import { TYPE_WORD } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
@@ -15,10 +27,9 @@ import type { Primitive } from "./use-inventory";
 // the row's ⋮ at the foot. Presentational: rows arrive folded, actions as items.
 export function SkillDetailPane({
   primitive,
-  targetCount,
+  rollup,
+  latestRelease,
   deployments,
-  pending,
-  unreadable,
   targetItems,
   footItems,
   listHeadingRef,
@@ -29,14 +40,11 @@ export function SkillDetailPane({
   getTriggerElement,
 }: {
   primitive: Primitive;
-  /** The Targets column's number; null until every read has answered. */
-  targetCount: number | null;
+  /** The row's roll-up, which the Status and Targets columns read. */
+  rollup: DeployedRollup;
+  /** The Harness's latest release: null where none exists, undefined until read. */
+  latestRelease: string | null | undefined;
   deployments: SkillDeployment[];
-  // True while any target's read is pending — an empty list is then "not known
-  // yet".
-  pending: boolean;
-  /** Some target's read failed, so the list may miss a target. */
-  unreadable: boolean;
   /** One target row's ⋮ items. */
   targetItems: (deployment: SkillDeployment) => readonly ActionsMenuItem[];
   /** The row's ⋮ items, as the foot's buttons. */
@@ -49,6 +57,12 @@ export function SkillDetailPane({
   onClose: () => void;
   getTriggerElement: (name: string) => HTMLElement | null;
 }) {
+  // A pending read makes an empty list "not known yet"; a failed one means the
+  // list may miss a target.
+  const pending = Boolean(rollup.pending);
+  const unreadable = Boolean(rollup.unreadable);
+  const status = skillStatus(rollup);
+  const state = skillState(rollup, deployments, latestRelease);
   const listed = deployments.length > 0 || pending;
   return (
     <DetailPane
@@ -61,11 +75,33 @@ export function SkillDetailPane({
       getTriggerElement={getTriggerElement}
       facts={[
         { label: "Type", value: TYPE_WORD[primitive.type] },
-        targetCount === null ? null : { label: "Targets", value: targetCount },
+        status === null
+          ? null
+          : { label: STATUS_FACT, value: <StatusBadge reading={status} /> },
+        latestRelease === undefined
+          ? null
+          : {
+              label: LATEST_RELEASE_FACT,
+              value: latestRelease ?? NOT_RELEASED_YET,
+              machine: latestRelease !== null,
+            },
+        status === null
+          ? null
+          : { label: "Targets", value: rollup.targetCount },
+        status === null || rollup.targetCount === 0
+          ? null
+          : {
+              label: BEHIND_FACT,
+              value: ofTotal(rollup.behindCount, rollup.targetCount),
+            },
       ]}
-      // Trigger-phrase descriptions run for paragraphs. Three lines identify
-      // the skill; the rest opens on ask.
-      paragraph={[primitive.description]}
+      // The state comes first: trigger-phrase descriptions run for
+      // paragraphs, and three lines show before the rest opens on ask.
+      paragraph={
+        state === null
+          ? [primitive.description]
+          : [skillStateLine(state), primitive.description]
+      }
       clampParagraph
       foot={footItems}
       leadsWithNextStep

@@ -6,14 +6,13 @@ import {
   SOME_TARGETS_NOT_READ,
 } from "./inventory-copy";
 import type { SkillDeployment } from "./skill-deployments";
-import { targetReading } from "./skill-status";
 
 // The row's hover card: the Status and Targets cells expanded. It never holds
 // the only copy — the detail pane lists every target (#992).
 const SHOWN = 3;
 
-// What a card row reads: the target, its release, its own reading.
-type TargetReading = Pick<SkillDeployment, "label" | "release" | "status">;
+// What a card row reads: the target, its release, the detail pane's mark.
+type TargetReading = Pick<SkillDeployment, "label" | "release" | "mark">;
 
 export function ReachCard({
   count,
@@ -46,16 +45,15 @@ export function ReachCard({
   );
 }
 
-// One target: its name, the release it follows, its own reading.
+// One target: its name, the release it follows, its mark.
 function TargetReadingRow({ deployment }: { deployment: TargetReading }) {
-  const reading = targetReading(deployment.status);
   return (
     <li className="flex h-row items-center gap-inline">
       <span className="min-w-0 flex-1 truncate text-gray-12">
         {deployment.label}
       </span>
       <MachineValue>{deployment.release}</MachineValue>
-      {reading ? <StatusBadge reading={reading} /> : null}
+      {deployment.mark ? <StatusBadge reading={deployment.mark} /> : null}
     </li>
   );
 }

@@ -162,6 +162,7 @@ describe("skillDeployments", () => {
         updateName: "Claude Code and Codex",
         rowId: "global:claude",
         updatable: false,
+        edited: false,
       },
       {
         label: "Codex",
@@ -174,6 +175,7 @@ describe("skillDeployments", () => {
         updateName: "Claude Code and Codex",
         rowId: "global:codex",
         updatable: false,
+        edited: false,
       },
       {
         label: "/dev/acme-web",
@@ -186,6 +188,7 @@ describe("skillDeployments", () => {
         updateName: "/dev/acme-web",
         rowId: "repo:/dev/acme-web",
         updatable: false,
+        edited: false,
       },
     ]);
   });

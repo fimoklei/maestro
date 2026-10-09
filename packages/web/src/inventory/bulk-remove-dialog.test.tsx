@@ -38,7 +38,7 @@ const withCost: BulkRemoveDialogView = {
   ],
   refused: [{ label: "/dev/legacy-etl", reason: "Repository not registered" }],
   removableCount: 3,
-  confirmLabel: "Remove from 3 targets · 2 lose local edits",
+  confirmLabel: "Remove from 3 targets · 2 may lose work",
 };
 
 const partial: BulkRemoveReportView = {
@@ -186,7 +186,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
 
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Remove from 3 targets · 2 lose local edits",
+        name: "Remove from 3 targets · 2 may lose work",
       }),
     );
     expect(onConfirm).toHaveBeenCalledTimes(1);
@@ -227,7 +227,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
 
     expect(footerLabels()).toEqual([
       "Cancel",
-      "Remove from 3 targets · 2 lose local edits",
+      "Remove from 3 targets · 2 may lose work",
     ]);
     expect(screen.queryByRole("link")).toBeNull();
   });

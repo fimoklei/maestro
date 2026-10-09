@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
+import { sentence } from "../test-utils";
 import type { FootItem } from "../ui/foot-actions";
 import type { SkillDeployment } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
@@ -23,6 +24,7 @@ const dep = (
   release,
   status,
   mark: skillMark(undefined, status),
+  edited: false,
   version: release,
   target: { kind: "repo", repoPath: `/dev/${label}` },
   removeTarget: { kind: "repo", repoPath: `/dev/${label}` },
@@ -36,6 +38,10 @@ const DEPLOY: FootItem = { label: "Deploy skill", onSelect: () => {} };
 function renderPane(overrides: {
   deployments?: SkillDeployment[];
   targetCount?: number | null;
+  behindCount?: number;
+  localEditsCount?: number;
+  unknownCount?: number;
+  latestRelease?: string | null;
   pending?: boolean;
   unreadable?: boolean;
   footItems?: FootItem[];
@@ -43,17 +49,25 @@ function renderPane(overrides: {
   onClose?: () => void;
   getTriggerElement?: (name: string) => HTMLElement | null;
 }) {
+  const deployments = overrides.deployments ?? [];
+  // A null count is a read still in flight.
+  const targetCount =
+    overrides.targetCount === undefined
+      ? deployments.length
+      : overrides.targetCount;
   return render(
     <SkillDetailPane
       primitive={tdd}
-      targetCount={
-        overrides.targetCount === undefined
-          ? (overrides.deployments?.length ?? 0)
-          : overrides.targetCount
-      }
-      deployments={overrides.deployments ?? []}
-      pending={overrides.pending ?? false}
-      unreadable={overrides.unreadable ?? false}
+      rollup={{
+        targetCount: targetCount ?? 0,
+        behindCount: overrides.behindCount ?? 0,
+        unknownCount: overrides.unknownCount ?? 0,
+        localEditsCount: overrides.localEditsCount ?? 0,
+        pending: overrides.pending ?? targetCount === null,
+        unreadable: overrides.unreadable ?? false,
+      }}
+      latestRelease={overrides.latestRelease}
+      deployments={deployments}
       targetItems={overrides.targetItems ?? (() => [])}
       footItems={overrides.footItems ?? [DEPLOY]}
       onClose={overrides.onClose ?? (() => {})}
@@ -75,6 +89,17 @@ const targetRow = (label: string) =>
 const fact = (label: string) =>
   screen.queryAllByText(label).find((element) => element.tagName === "DT")
     ?.nextElementSibling?.textContent ?? null;
+
+// The paragraph's first sentence: the description runs on after it.
+const opening =
+  (text: string) => (_content: string, element: Element | null) => {
+    const opens = (node: Element) => (node.textContent ?? "").startsWith(text);
+    return (
+      element !== null &&
+      opens(element) &&
+      [...element.children].every((child) => !opens(child))
+    );
+  };
 
 const pane = () => screen.getByRole("complementary", { name: "tdd detail" });
 
@@ -102,9 +127,91 @@ describe("SkillDetailPane", () => {
     expect(list).toHaveClass("grid-cols-[auto_1fr]");
     expect(
       list.compareDocumentPosition(
-        screen.getByText("Test-driven development."),
+        // The state sentence opens the paragraph; the description ends it.
+        screen.getByText(sentence(/Test-driven development\.$/)),
       ) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  // #1435: the pane states the skill's state without the sidebar or the table.
+  it("states Status, the latest release and how many targets are behind", () => {
+    renderPane({
+      deployments: [
+        dep("Claude Code", "v1.3.2", "behind"),
+        dep("Codex", "v1.3.2", "behind"),
+        dep("acme-web", "v1.4.0", "up-to-date"),
+      ],
+      behindCount: 2,
+      latestRelease: "v1.4.0",
+    });
+
+    expect(fact("Status")).toBe("Behind");
+    expect(fact("Latest release")).toBe("v1.4.0");
+    expect(fact("Behind")).toBe("2 of 3");
+  });
+
+  it("says when the Harness has no release yet", () => {
+    renderPane({ latestRelease: null });
+
+    expect(fact("Latest release")).toBe("Not released yet");
+  });
+
+  it("states the edited copy and the step that keeps it, first in the paragraph", () => {
+    renderPane({
+      deployments: [
+        {
+          ...dep("Codex", "v1.3.2", "behind"),
+          edited: true,
+          mark: skillMark("local-edits", "behind"),
+        },
+        dep("acme-web", "v1.4.0", "up-to-date"),
+      ],
+      localEditsCount: 1,
+      latestRelease: "v1.4.0",
+    });
+
+    expect(fact("Status")).toBe("Local edits");
+    expect(
+      screen.getByText(
+        opening(
+          "1 of 2 targets has local edits. Select Import local edits on Deploy-state to keep them.",
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("names the release the behind targets follow and the one Update target moves them to", () => {
+    renderPane({
+      deployments: [
+        { ...dep("Claude Code", "v1.3.2", "behind"), updatable: true },
+        { ...dep("Codex", "v1.3.2", "behind"), updatable: true },
+        dep("acme-web", "v1.4.0", "up-to-date"),
+      ],
+      behindCount: 2,
+      latestRelease: "v1.4.0",
+    });
+
+    expect(
+      screen.getByText(
+        opening(
+          "2 of 3 targets follow v1.3.2. Select Update target to move them to v1.4.0.",
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // The list's own line names the unread target; no sentence calls it clean.
+  it("states no clean skill while a target's read failed", () => {
+    renderPane({
+      deployments: [dep("Claude Code", "v1.4.0", "up-to-date")],
+      unreadable: true,
+    });
+
+    expect(fact("Status")).toBe("Unknown");
+    expect(
+      screen.queryByText(opening("No newer release changes this skill.")),
+    ).toBeNull();
+    expect(screen.getByText("Test-driven development.")).toBeInTheDocument();
   });
 
   it("claims no Targets count before every read has answered", () => {

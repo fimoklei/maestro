@@ -1,6 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
+import { skillMark } from "../deploy-state/skill-mark";
+import type { DriftStatus } from "../drift/drift-view-model";
 import { sentence } from "../test-utils";
 import { ReachCard } from "./reach-card";
 
@@ -8,8 +10,12 @@ type Deployment = ComponentProps<typeof ReachCard>["deployments"][number];
 
 const deployment = (
   label: string,
-  status: Deployment["status"] = "up-to-date",
-): Deployment => ({ label, release: "v1.4.0", status });
+  status: DriftStatus = "up-to-date",
+): Deployment => ({
+  label,
+  release: "v1.4.0",
+  mark: skillMark(undefined, status),
+});
 
 describe("ReachCard", () => {
   it("expands the Targets number into each target, its release and its reading", () => {
@@ -29,6 +35,26 @@ describe("ReachCard", () => {
     expect(global).toHaveTextContent("v1.4.0");
     expect(global).toHaveTextContent("Up to date");
     expect(maestro).toHaveTextContent("Behind");
+  });
+
+  it("reads Local edits for an edited copy, as the detail pane does", () => {
+    render(
+      <ReachCard
+        count={1}
+        deployments={[
+          {
+            label: "maestro",
+            release: "v1.3.2",
+            mark: skillMark("local-edits", "behind"),
+          },
+        ]}
+        unreadable={false}
+      />,
+    );
+
+    const [maestro] = screen.getAllByRole("listitem");
+    expect(maestro).toHaveTextContent("Local edits");
+    expect(maestro).not.toHaveTextContent("Behind");
   });
 
   it("lists three targets and counts the rest", () => {

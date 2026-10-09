@@ -70,6 +70,8 @@ export type DeployedRollup = {
   targetCount: number;
   behindCount: number;
   unknownCount: number;
+  // Counted apart from behind and unknown: an edited copy holds work.
+  localEditsCount: number;
   // True while any read is in flight — zero is then "unconfirmed", not
   // "deployed nowhere". Absent treated as resolved.
   pending?: boolean;
@@ -86,6 +88,7 @@ export function rollUpDeployment(
   let targetCount = 0;
   let behindCount = 0;
   let unknownCount = 0;
+  let localEditsCount = 0;
   let pending = false;
   let unreadable = false;
   let checking = false;
@@ -106,6 +109,13 @@ export function rollUpDeployment(
     }
     targetCount++;
 
+    const copy = target.primitives.find(
+      (primitive) => primitive.name === skillName,
+    )?.copy;
+    if (copy === "local-edits") {
+      localEditsCount++;
+      continue;
+    }
     const status = skillReading(target, skillName);
     if (status === "behind") {
       behindCount++;
@@ -120,6 +130,7 @@ export function rollUpDeployment(
     targetCount,
     behindCount,
     unknownCount,
+    localEditsCount,
     pending,
     unreadable,
     checking,

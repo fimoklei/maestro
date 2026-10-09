@@ -1,7 +1,8 @@
 import { X } from "lucide-react";
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { orderedItems } from "./actions-menu";
 import { Button } from "./button";
+import { cn } from "./cn";
 import { FactList, FactRow } from "./fact-list";
 import { FootActions, type FootItem, firstEnabled } from "./foot-actions";
 import { Icon } from "./icon";
@@ -100,7 +101,7 @@ export function DetailPane({
   facts?: readonly (Fact | null)[];
   /** The sentences that explain the subject's state. */
   paragraph?: readonly Copy[];
-  /** Three lines of a long paragraph, the rest opening on ask. */
+  /** Three lines of the long last line, the rest opening on ask; the lines above stay whole. */
   clampParagraph?: boolean;
   notices?: readonly PaneNotice[];
   subList?: ReactNode;
@@ -110,6 +111,8 @@ export function DetailPane({
   leadsWithNextStep?: boolean;
 }) {
   const shown = facts.filter((fact) => fact !== null);
+  const clamped = clampParagraph ? (paragraph.at(-1) ?? null) : null;
+  const whole = clamped === null ? paragraph : paragraph.slice(0, -1);
   const primary = choosePrimary(
     notices,
     [...shown.flatMap((fact) => (fact.action ? [fact.action] : [])), ...foot],
@@ -196,17 +199,26 @@ export function DetailPane({
             ))}
           </FactList>
         ) : null}
-        {paragraph.length === 0 ? null : clampParagraph ? (
-          <details className="group mt-section">
+        {whole.length === 0 ? null : (
+          <p className="m-0 mt-section flex flex-col gap-tight text-gray-12 text-prose">
+            {whole.map((line, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: two lines may read alike
+              <span key={`${index}:${plainText(line)}`}>
+                <PhraseText copy={line} />
+              </span>
+            ))}
+          </p>
+        )}
+        {clamped === null ? null : (
+          <details
+            className={cn(
+              "group",
+              whole.length > 0 ? "mt-tight" : "mt-section",
+            )}
+          >
             <summary className="cursor-pointer list-none text-gray-12 text-prose focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
               <span className="line-clamp-3 group-open:line-clamp-none">
-                {paragraph.map((line, index) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: two lines may read alike
-                  <Fragment key={`${index}:${plainText(line)}`}>
-                    {index > 0 ? " " : null}
-                    <PhraseText copy={line} />
-                  </Fragment>
-                ))}
+                <PhraseText copy={clamped} />
               </span>
               <span className="mt-tight inline-block text-gray-11 text-meta hover:text-gray-12">
                 <span className="group-open:hidden">More ›</span>
@@ -214,15 +226,6 @@ export function DetailPane({
               </span>
             </summary>
           </details>
-        ) : (
-          <p className="m-0 mt-section flex flex-col gap-tight text-gray-12 text-prose">
-            {paragraph.map((line, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: two lines may read alike
-              <span key={`${index}:${plainText(line)}`}>
-                <PhraseText copy={line} />
-              </span>
-            ))}
-          </p>
         )}
         {notices.length > 0 ? (
           <div className="mt-cell flex flex-col gap-cell">
