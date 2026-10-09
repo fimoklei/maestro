@@ -14,7 +14,7 @@ import type { OutdatedResult, VersionDrift } from "./parse-outdated";
 // "behind" claims a newer release exists and this skill moved in it;
 // "older-tag" claims the same release with the skill's content unchanged;
 // "no-longer-released" proves this deployed name vanished from the release.
-export type DriftReading = "behind" | "older-tag" | "no-longer-released";
+type DriftReading = "behind" | "older-tag" | "no-longer-released";
 
 export type ReadDriftEntry = VersionDrift & { reading: DriftReading };
 
