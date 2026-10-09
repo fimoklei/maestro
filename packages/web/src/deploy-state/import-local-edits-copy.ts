@@ -1,11 +1,13 @@
 // Every word the Import local edits control and its dialog show.
 import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { HARNESS_BUSY } from "../harness/notice-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, named, type Phrase, phrase } from "../ui/phrase";
 import { LIST_TOKENS } from "../ui/status-family";
+import { REASON } from "./reason-copy";
 
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 
@@ -78,18 +80,18 @@ const LOCAL_EDITS_ERRORS: NoticeTable<LocalEditsError> = {
   },
   "unfinished-operation": {
     level: "error",
-    label: "Change not finished",
+    label: REASON["operation-unfinished"],
     message: `An earlier change on this target did not finish. Finish it on the Deploy-state screen, then select ${IMPORT_LOCAL_EDITS} again.`,
   },
   "target-unreadable": {
     level: "error",
-    label: "Could not read deployment record",
+    label: REASON["lockfile-malformed"],
     message:
       "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits again.",
   },
   "import-in-progress": {
     level: "error",
-    label: "Harness already changing",
+    label: HARNESS_BUSY,
     message:
       "Wait for that change to finish, then select Import local edits again.",
   },

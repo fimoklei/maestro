@@ -1,6 +1,7 @@
 // What the bulk remove's confirmation states, grouped by cost (#423): a clean
 // target is a number, a costly or untouchable one is a row with its reason.
 
+import { REASON } from "../deploy-state/reason-copy";
 import type {
   RefusalCode,
   RemovePreflightView,
@@ -50,20 +51,9 @@ const COST_ORDER: Exclude<RemoveRowWarning, "none">[] = [
   "check-failed",
 ];
 
-// Terse where the server's sentence is prose; an unrecognised code falls back
-// to itself.
 export const REFUSAL_REASON: Record<RefusalCode, string> = {
-  "repo-not-registered": "Repository not registered",
-  "no-supported-tool": "No supported tool here",
-  "invalid-name": "Unusable skill name",
-  "unsupported-primitive-type": "Type cannot be removed",
-  "deployed-diverged-from-lock": "Local changes in deployed files",
-  "deployed-diverged-pinned-per-skill": "Local changes in deployed files",
+  ...REASON,
   "invalid-body": "Malformed request",
-  // Never a refusal — a check that could not run leaves the removal on offer,
-  // and its target is priced under cost instead. Listed so a new code in
-  // core's union is a type error here rather than a blank row.
-  "preflight-failed": COST_REASON["check-failed"],
 };
 
 // What this target costs, or null when the check found nothing to lose. A

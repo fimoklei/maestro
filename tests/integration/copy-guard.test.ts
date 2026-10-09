@@ -77,6 +77,11 @@ describe("copy guard", () => {
     ["Nothing released yet", "Nothing released yet"],
     ["Remove skill — checks still running", "checks still running"],
     ["No repositories registered yet.", "repositories registered yet"],
+    ["Could not read Inventory", "Could not read"],
+    ["Nothing was installed. Select a skill.", "Nothing was installed"],
+    ["Target held by another operation", "Target held by another operation"],
+    ["Another change is running", "Another change is running"],
+    ["Harness already changing", "Harness already changing"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",

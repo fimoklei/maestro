@@ -2,7 +2,7 @@ import type { DeleteLocalSkillError } from "@maestro/core";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { named, phrase } from "../ui/phrase";
-import { harnessHeadings, promoteHeadings } from "./notice-copy";
+import { HARNESS_BUSY, harnessHeadings, promoteHeadings } from "./notice-copy";
 
 /** Delete skill opens from the Harness view and from Inventory. */
 export type LocalDeletionContext = {
@@ -59,7 +59,7 @@ const localDeletionHeadings = ({
   },
   "delete-in-progress": {
     level: "error",
-    label: "Harness already changing",
+    label: HARNESS_BUSY,
     message: "Wait for that change to finish, then Delete skill again.",
     detail: "Maestro changes one Harness at a time.",
   },

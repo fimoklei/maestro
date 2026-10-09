@@ -22,7 +22,7 @@ describe("deploy notices", () => {
       {
         label: "Skills only",
         message:
-          "Nothing was installed. Maestro deploys skills only. Select a skill, then deploy again.",
+          "Nothing was deployed. Maestro deploys skills only. Select a skill, then deploy again.",
         detail: "Hooks and MCP servers stay in the Harness.",
       },
     ],
@@ -31,7 +31,7 @@ describe("deploy notices", () => {
       {
         label: "Unusable skill name",
         message:
-          "Nothing was installed. Rename the skill in the Harness, then deploy again.",
+          "Nothing was deployed. Rename the skill in the Harness, then deploy again.",
         detail:
           "A skill name uses lowercase letters, digits and single hyphens.",
       },
@@ -41,7 +41,7 @@ describe("deploy notices", () => {
       {
         label: "Skill not in the Inventory",
         message:
-          "Nothing was installed. Select Re-read Inventory, then select the skill again.",
+          "Nothing was deployed. Select Re-read Inventory, then select the skill again.",
       },
     ],
     [
@@ -49,15 +49,15 @@ describe("deploy notices", () => {
       {
         label: "No Harness connected",
         message:
-          "Nothing was installed. Select Change Harness location in Settings, then deploy again.",
+          "Nothing was deployed. Select Change Harness location in Settings, then deploy again.",
       },
     ],
     [
       "inventory-unreadable",
       {
-        label: "Could not read Inventory",
+        label: "Inventory not read",
         message:
-          "Nothing was installed. Select Re-read Inventory, then deploy again.",
+          "Nothing was deployed. Select Re-read Inventory, then deploy again.",
       },
     ],
     [
@@ -65,7 +65,7 @@ describe("deploy notices", () => {
       {
         label: "Repository not registered",
         message:
-          "Nothing was installed. Select Register repository on the Repositories screen, then deploy again.",
+          "Nothing was deployed. Select Register repository on the Repositories screen, then deploy again.",
       },
     ],
     [
@@ -73,8 +73,9 @@ describe("deploy notices", () => {
       {
         label: "No GitHub origin",
         message:
-          "Nothing was installed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
-        detail: "A deploy installs from a GitHub tag, over https or ssh.",
+          "Nothing was deployed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
+        detail:
+          "A deploy takes the skill from a GitHub tag, over https or ssh.",
       },
     ],
     [
@@ -82,8 +83,8 @@ describe("deploy notices", () => {
       {
         label: "Not in any release",
         message:
-          "Nothing was installed. Select Create a release on the Harness screen, then deploy again.",
-        detail: "A deploy installs from a published tag.",
+          "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
+        detail: "A deploy takes the skill from a published tag.",
       },
     ],
     [
@@ -91,8 +92,8 @@ describe("deploy notices", () => {
       {
         label: "Harness copy unreleased",
         message:
-          "Nothing was installed. Select Create a release on the Harness screen, then deploy again.",
-        detail: "A deploy installs the latest release, not the Harness copy.",
+          "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
+        detail: "A deploy takes the latest release, not the Harness copy.",
       },
     ],
     [
@@ -116,18 +117,18 @@ describe("deploy notices", () => {
     [
       "deployed-unreadable",
       {
-        label: "Deployed copy unreadable",
+        label: "Deployed copy not read",
         message:
-          "Nothing was installed. Make the deployed copy readable, then deploy again.",
+          "Nothing was deployed. Make the deployed copy readable, then deploy again.",
         detail: "Its permissions or its shape blocked the check.",
       },
     ],
     [
       "lockfile-malformed",
       {
-        label: "Could not read deployment record",
+        label: "Deployment record not read",
         message:
-          "Nothing was installed. Repair or delete apm.lock.yaml in the target, then deploy again.",
+          "Nothing was deployed. Repair or delete apm.lock.yaml in the target, then deploy again.",
         detail:
           "The file is present but does not parse, so the target's state is unknown.",
       },
@@ -135,17 +136,17 @@ describe("deploy notices", () => {
     [
       "deploy-in-progress",
       {
-        label: "Another change is running",
+        label: "Target busy",
         message:
-          "Nothing was installed. Wait for the running deploy on this target to finish, then deploy again.",
+          "Nothing was deployed. Wait for the running deploy on this target to finish, then deploy again.",
       },
     ],
     [
       "ref-unresolvable",
       {
-        label: "Cannot identify deployed skill",
+        label: "Deployed version unknown",
         message:
-          "Nothing was installed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
+          "Nothing was deployed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
         detail: "The target's record names more than one, or names no release.",
       },
     ],
@@ -154,7 +155,7 @@ describe("deploy notices", () => {
       {
         label: "Not in this release",
         message:
-          "Nothing was installed. Select Update target on the Deploy-state screen to move this target to a release that holds the skill.",
+          "Nothing was deployed. Select Update target on the Deploy-state screen to move this target to a release that holds the skill.",
         detail: "This skill is not in the release this target follows.",
       },
     ],
@@ -163,25 +164,25 @@ describe("deploy notices", () => {
       {
         label: "Pinned per skill",
         message:
-          "Nothing was installed. Select Remove skill for each skill on the Deploy-state screen. Then select Deploy skill to put them on one release.",
+          "Nothing was deployed. Select Remove skill for each skill on the Deploy-state screen. Then select Deploy skill to put them on one release.",
         detail: "This target holds skills from separate deployments.",
       },
     ],
     [
       "manifest-not-recognised",
       {
-        label: "Unsupported apm.yml",
+        label: "Manifest not recognised",
         message:
-          "Nothing was installed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
+          "Nothing was deployed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
         detail: "Maestro edits that list only, and it found another shape.",
       },
     ],
     [
       "operation-unfinished",
       {
-        label: "Change not finished",
+        label: "Unfinished operation",
         message:
-          "Nothing was installed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
+          "Nothing was deployed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
         detail: "An earlier change on this target did not finish.",
       },
     ],
@@ -199,8 +200,8 @@ describe("deploy notices", () => {
       {
         label: "No supported tool",
         message:
-          "Nothing was installed. Install Claude Code or Codex, then deploy again.",
-        detail: "A global deploy installs into Claude Code or Codex.",
+          "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
+        detail: "A global deploy puts skills into Claude Code or Codex.",
       },
     ],
     [
@@ -208,7 +209,7 @@ describe("deploy notices", () => {
       {
         label: "No GitHub access",
         message:
-          "Nothing was installed. Set up GitHub access in git, then deploy again.",
+          "Nothing was deployed. Set up GitHub access in git, then deploy again.",
         detail: "GitHub refused the download.",
       },
     ],
@@ -227,7 +228,7 @@ describe("deploy notices", () => {
       {
         label: "Deploy did not finish",
         message:
-          "The target may hold a partial install. Check the target on the Deploy-state screen, then deploy again.",
+          "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
       },
     ],
   ];
@@ -320,7 +321,7 @@ describe("remove notices", () => {
     [
       "lockfile-malformed",
       {
-        label: "Could not read deployment record",
+        label: "Deployment record not read",
         message:
           "Repair or delete apm.lock.yaml in the target, then remove again.",
         detail:
@@ -330,7 +331,7 @@ describe("remove notices", () => {
     [
       "ref-unresolvable",
       {
-        label: "Cannot identify deployed skill",
+        label: "Deployed version unknown",
         message:
           "A removal could delete the wrong package. Deploy the skill again to restore a readable entry.",
         detail:
@@ -340,7 +341,7 @@ describe("remove notices", () => {
     [
       "deployed-unreadable",
       {
-        label: "Deployed copy unreadable",
+        label: "Deployed copy not read",
         message:
           "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
       },
@@ -358,7 +359,7 @@ describe("remove notices", () => {
     [
       "cost-not-acknowledged",
       {
-        label: "Nothing removed",
+        label: "Removal not confirmed",
         message:
           "Nothing was removed. A copy changed after the check. Read the list again, then select Remove skill.",
       },
@@ -366,7 +367,7 @@ describe("remove notices", () => {
     [
       "remove-in-progress",
       {
-        label: "Another change is running",
+        label: "Target busy",
         message:
           "A removal is still running on this target. Wait for it to finish.",
       },
@@ -392,7 +393,7 @@ describe("remove notices", () => {
     [
       "preflight-failed",
       {
-        label: "Could not check deployed files",
+        label: "Deployed files not checked",
         message:
           "Make the deployed copy readable, then start the removal again.",
       },
@@ -467,7 +468,7 @@ describe("update preview notices", () => {
     [
       "lockfile-malformed",
       {
-        label: "Could not read deployment record",
+        label: "Deployment record not read",
         message:
           "Repair or delete apm.lock.yaml in the target, then select Update target again.",
         detail:
@@ -477,7 +478,7 @@ describe("update preview notices", () => {
     [
       "deployed-unreadable",
       {
-        label: "Deployed copy unreadable",
+        label: "Deployed copy not read",
         message:
           "Nothing was changed. Make the deployed copy readable, then select Update target again.",
         detail: "Its permissions or its shape blocked the check.",
@@ -494,7 +495,7 @@ describe("update preview notices", () => {
     [
       "inventory-unreadable",
       {
-        label: "Could not read Inventory",
+        label: "Inventory not read",
         message:
           "Select Re-read Inventory on the Harness location screen, then select Update target again.",
       },
@@ -523,13 +524,14 @@ describe("update preview notices", () => {
         label: "No GitHub origin",
         message:
           "Point the Harness clone's origin at its GitHub repository, then select Update target again.",
-        detail: "An update installs from a GitHub tag, over https or ssh.",
+        detail:
+          "An update takes the skill from a GitHub tag, over https or ssh.",
       },
     ],
     [
       "ref-unresolvable",
       {
-        label: "Cannot identify deployed skill",
+        label: "Deployed version unknown",
         message:
           "Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, then select Update target again.",
         detail: "The target's record names more than one, or names no release.",
@@ -706,7 +708,7 @@ describe("retry notices", () => {
     [
       "retry-in-progress",
       {
-        label: "Another change is running",
+        label: "Target busy",
         message:
           "Nothing was changed. Wait for the running change to finish, then select Retry deploy again.",
       },
@@ -733,7 +735,7 @@ describe("retry notices", () => {
     [
       "deployed-unreadable",
       {
-        label: "Deployed copy unreadable",
+        label: "Deployed copy not read",
         message:
           "Nothing was changed. Make the deployed copy readable, then select Retry deploy again.",
         detail: "Its permissions or its shape blocked the check.",
@@ -742,7 +744,7 @@ describe("retry notices", () => {
     [
       "lockfile-malformed",
       {
-        label: "Could not read deployment record",
+        label: "Deployment record not read",
         message:
           "Nothing was changed. Repair or delete apm.lock.yaml in the target, then select Retry deploy again.",
         detail:
@@ -752,7 +754,7 @@ describe("retry notices", () => {
     [
       "manifest-not-recognised",
       {
-        label: "Unsupported apm.yml",
+        label: "Manifest not recognised",
         message:
           "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Retry deploy again.",
         detail: "Maestro edits that list only, and it found another shape.",
@@ -763,7 +765,7 @@ describe("retry notices", () => {
       {
         label: "Deploy still incomplete",
         message:
-          "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+          "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
         detail: "apm reported success, but some files are missing.",
       },
     ],

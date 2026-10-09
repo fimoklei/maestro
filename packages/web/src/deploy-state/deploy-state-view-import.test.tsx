@@ -421,9 +421,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
       await within(dialog).findByRole("button", { name: "Import 1 skill" }),
     );
 
-    expect(
-      await within(dialog).findByText("Harness already changing"),
-    ).toBeInTheDocument();
+    expect(await within(dialog).findByText("Harness busy")).toBeInTheDocument();
     expect(
       within(dialog).getByText(
         "Wait for that change to finish, then select Import local edits again.",

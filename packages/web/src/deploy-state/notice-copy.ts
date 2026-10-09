@@ -15,21 +15,13 @@ import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
 import { machine, phrase } from "../ui/phrase";
 import { REMOVE_SKILL, REREAD_LABEL } from "./deploy-state-copy";
+import { REASON, type ReasonCode, TARGET_BUSY } from "./reason-copy";
 import { RETRY_LABELS, unfinishedOperationNotice } from "./release-head-copy";
 import {
   UPDATE_AGAIN,
   UPDATE_INCOMPLETE_SENTENCE,
   updateAgain,
 } from "./update-target-copy";
-
-// One table over the three unions: a code shared by deploy and remove reads the
-// same in both. The path-shape codes live in `inventory/connect-notice.ts`.
-type DeployStateCode =
-  | DeploySkillError
-  | RemoveDeployedSkillError
-  | RemovePreflightError
-  | UpdatePreviewError
-  | UpdateRunError;
 
 export type DeployStateNotice = NoticeCopy;
 
@@ -65,88 +57,46 @@ const LINK_TARGET_SURVIVES =
 
 type Body = { message: string; detail?: string };
 
-const LABELS: Record<DeployStateCode, string> = {
-  "unsupported-primitive-type": "Skills only",
-  "invalid-name": "Unusable skill name",
-  "unknown-skill": "Skill not in the Inventory",
-  "inventory-not-configured": "No Harness connected",
-  "inventory-unreadable": "Could not read Inventory",
-  "repo-not-registered": "Repository not registered",
-  "inventory-origin-unavailable": "No GitHub origin",
-  "no-published-tag": "Not in any release",
-  "local-diverged-from-tag": "Harness copy unreleased",
-  "deployed-diverged-from-lock": "Local changes in deployed files",
-  "deployed-diverged-pinned-per-skill": "Local changes in deployed files",
-  "deployed-unverifiable": "Local edits unverifiable",
-  "deployed-unreadable": "Deployed copy unreadable",
-  "lockfile-malformed": "Could not read deployment record",
-  "deploy-in-progress": "Another change is running",
-  "not-at-target-release": "Not in this release",
-  "skill-not-in-release": "Not in the latest release",
-  "target-pinned-per-skill": "Pinned per skill",
-  "manifest-not-recognised": "Unsupported apm.yml",
-  "operation-unfinished": "Change not finished",
-  "deploy-incomplete": "Deploy incomplete",
-  "remove-incomplete": "Removal incomplete",
-  "no-supported-tool": "No supported tool",
-  "auth-required": "No GitHub access",
-  "destination-symlinked": "Linked skill folder",
-  "deploy-failed": "Deploy did not finish",
-  "not-deployed": "Nothing deployed here",
-  "ref-unresolvable": "Cannot identify deployed skill",
-  "cost-not-acknowledged": "Nothing removed",
-  "remove-in-progress": "Another change is running",
-  "remove-failed": "Removal outcome unknown",
-  "preflight-failed": "Could not check deployed files",
-  "preview-failed": "Preview did not run",
-  // "Status out of date" covers both a release and a copy that moved after the
-  // preview read them.
-  "status-out-of-date": "Status out of date",
-  "update-in-progress": "Another change is running",
-  "update-incomplete": "Update incomplete",
-  "update-failed": "Update outcome unknown",
-};
-
-// Kept apart from LABELS because codes shared by deploy and removal state
+// Kept apart from REASON because codes shared by deploy and removal state
 // their own way through (#684). Keyed by core's unions, so a new code fails typecheck.
 const DEPLOY: Record<DeploySkillError, Body> = {
   "unsupported-primitive-type": {
     message:
-      "Nothing was installed. Maestro deploys skills only. Select a skill, then deploy again.",
+      "Nothing was deployed. Maestro deploys skills only. Select a skill, then deploy again.",
     detail: "Hooks and MCP servers stay in the Harness.",
   },
   "invalid-name": {
     message:
-      "Nothing was installed. Rename the skill in the Harness, then deploy again.",
+      "Nothing was deployed. Rename the skill in the Harness, then deploy again.",
     detail: "A skill name uses lowercase letters, digits and single hyphens.",
   },
   "unknown-skill": {
     message:
-      "Nothing was installed. Select Re-read Inventory, then select the skill again.",
+      "Nothing was deployed. Select Re-read Inventory, then select the skill again.",
   },
   "inventory-not-configured": {
-    message: `Nothing was installed. ${CHANGE_LOCATION_STEP}, ${DEPLOY_AGAIN}`,
+    message: `Nothing was deployed. ${CHANGE_LOCATION_STEP}, ${DEPLOY_AGAIN}`,
   },
   "inventory-unreadable": {
     message:
-      "Nothing was installed. Select Re-read Inventory, then deploy again.",
+      "Nothing was deployed. Select Re-read Inventory, then deploy again.",
   },
   "repo-not-registered": {
     message:
-      "Nothing was installed. Select Register repository on the Repositories screen, then deploy again.",
+      "Nothing was deployed. Select Register repository on the Repositories screen, then deploy again.",
   },
   "inventory-origin-unavailable": {
     message:
-      "Nothing was installed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
-    detail: "A deploy installs from a GitHub tag, over https or ssh.",
+      "Nothing was deployed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
+    detail: "A deploy takes the skill from a GitHub tag, over https or ssh.",
   },
   "no-published-tag": {
-    message: `Nothing was installed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
-    detail: "A deploy installs from a published tag.",
+    message: `Nothing was deployed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
+    detail: "A deploy takes the skill from a published tag.",
   },
   "local-diverged-from-tag": {
-    message: `Nothing was installed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
-    detail: "A deploy installs the latest release, not the Harness copy.",
+    message: `Nothing was deployed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
+    detail: "A deploy takes the latest release, not the Harness copy.",
   },
   "deployed-diverged-from-lock": {
     message: "Deploy again to replace the local edits with the latest release.",
@@ -159,40 +109,40 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   },
   "deployed-unreadable": {
     message:
-      "Nothing was installed. Make the deployed copy readable, then deploy again.",
+      "Nothing was deployed. Make the deployed copy readable, then deploy again.",
     detail: "Its permissions or its shape blocked the check.",
   },
   "lockfile-malformed": {
     message:
-      "Nothing was installed. Repair or delete apm.lock.yaml in the target, then deploy again.",
+      "Nothing was deployed. Repair or delete apm.lock.yaml in the target, then deploy again.",
     detail:
       "The file is present but does not parse, so the target's state is unknown.",
   },
   "deploy-in-progress": {
     message:
-      "Nothing was installed. Wait for the running deploy on this target to finish, then deploy again.",
+      "Nothing was deployed. Wait for the running deploy on this target to finish, then deploy again.",
   },
   "ref-unresolvable": {
     message:
-      "Nothing was installed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
+      "Nothing was deployed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
     detail: "The target's record names more than one, or names no release.",
   },
   "not-at-target-release": {
-    message: `Nothing was installed. Select ${UPDATE_TARGET} on the Deploy-state screen to move this target to a release that holds the skill.`,
+    message: `Nothing was deployed. Select ${UPDATE_TARGET} on the Deploy-state screen to move this target to a release that holds the skill.`,
     detail: "This skill is not in the release this target follows.",
   },
   "target-pinned-per-skill": {
-    message: `Nothing was installed. Select ${REMOVE_SKILL} for each skill on the Deploy-state screen. Then select ${DEPLOY_SKILL} to put them on one release.`,
+    message: `Nothing was deployed. Select ${REMOVE_SKILL} for each skill on the Deploy-state screen. Then select ${DEPLOY_SKILL} to put them on one release.`,
     detail: "This target holds skills from separate deployments.",
   },
   "manifest-not-recognised": {
     message:
-      "Nothing was installed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
+      "Nothing was deployed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
     detail: MANIFEST_OTHER_SHAPE,
   },
   "operation-unfinished": {
     message:
-      "Nothing was installed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
+      "Nothing was deployed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
     detail: "An earlier change on this target did not finish.",
   },
   "deploy-incomplete": {
@@ -202,12 +152,12 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   },
   "no-supported-tool": {
     message:
-      "Nothing was installed. Install Claude Code or Codex, then deploy again.",
-    detail: "A global deploy installs into Claude Code or Codex.",
+      "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
+    detail: "A global deploy puts skills into Claude Code or Codex.",
   },
   "auth-required": {
     message:
-      "Nothing was installed. Set up GitHub access in git, then deploy again.",
+      "Nothing was deployed. Set up GitHub access in git, then deploy again.",
     detail: "GitHub refused the download.",
   },
   "destination-symlinked": {
@@ -216,7 +166,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   },
   "deploy-failed": {
     message:
-      "The target may hold a partial install. Check the target on the Deploy-state screen, then deploy again.",
+      "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
   },
 };
 
@@ -359,7 +309,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
   },
   "inventory-origin-unavailable": {
     message: `Point the Harness clone's origin at its GitHub repository, ${UPDATE_AGAIN}`,
-    detail: "An update installs from a GitHub tag, over https or ssh.",
+    detail: "An update takes the skill from a GitHub tag, over https or ssh.",
   },
   "ref-unresolvable": {
     message: `Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, ${UPDATE_AGAIN}`,
@@ -429,7 +379,7 @@ function noticeFor(
     const { level: _level, ...notice } = requestShape;
     return notice;
   }
-  const label = LABELS[error.code as DeployStateCode];
+  const label = REASON[error.code as ReasonCode];
   const body = bodies[error.code];
   return label === undefined || body === undefined
     ? fallback
@@ -441,7 +391,7 @@ export function deployNoticeFor(
   code: DeploySkillError,
   linkedPath: string | undefined,
 ): DeployStateNotice {
-  const notice = { label: LABELS[code], ...DEPLOY[code] };
+  const notice = { label: REASON[code], ...DEPLOY[code] };
   return code === "destination-symlinked" && linkedPath !== undefined
     ? withRm(notice, linkedPath, DEPLOY_AGAIN)
     : notice;
@@ -551,7 +501,7 @@ function retryCopy(
   const again = `then select ${retry} again.`;
   return {
     "repo-not-registered": {
-      label: LABELS["repo-not-registered"],
+      label: REASON["repo-not-registered"],
       message: `Nothing was changed. Select Register repository on the Repositories screen, ${again}`,
     },
     "nothing-to-retry": {
@@ -560,32 +510,32 @@ function retryCopy(
         "Nothing was changed. The earlier change on this target already finished.",
     },
     "retry-in-progress": {
-      label: "Another change is running",
+      label: TARGET_BUSY,
       message: `Nothing was changed. Wait for the running change to finish, ${again}`,
     },
     "deployed-diverged-from-lock": {
-      label: LABELS["deployed-diverged-from-lock"],
+      label: REASON["deployed-diverged-from-lock"],
       message: `Nothing was changed. Undo the local edits in the deployed files, ${again}`,
       detail: EDITS_OUTSIDE_HARNESS,
     },
     "deployed-unverifiable": {
-      label: LABELS["deployed-unverifiable"],
+      label: REASON["deployed-unverifiable"],
       message: `Nothing was changed. Delete the unverified copies in the target, ${again}`,
       detail: COPIES_PREDATE_TRACKING,
     },
     "deployed-unreadable": {
-      label: LABELS["deployed-unreadable"],
+      label: REASON["deployed-unreadable"],
       message: `Nothing was changed. Make the deployed copy readable, ${again}`,
       detail: "Its permissions or its shape blocked the check.",
     },
     "lockfile-malformed": {
-      label: LABELS["lockfile-malformed"],
+      label: REASON["lockfile-malformed"],
       message: `Nothing was changed. Repair or delete apm.lock.yaml in the target, ${again}`,
       detail:
         "The file is present but does not parse, so the target's state is unknown.",
     },
     "manifest-not-recognised": {
-      label: LABELS["manifest-not-recognised"],
+      label: REASON["manifest-not-recognised"],
       message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${again}`,
       detail: MANIFEST_OTHER_SHAPE,
     },

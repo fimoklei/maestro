@@ -24,6 +24,9 @@ import { machine, named, type Phrase, phrase, plainText } from "../ui/phrase";
 
 // A new code in core fails typecheck here until it has a row.
 
+/** Every refusal of a Harness write while another one runs. */
+export const HARNESS_BUSY = "Harness busy";
+
 // The state read's two refusals ride in every other table below: a plan, a
 // release and a proposed change all read the same harness first.
 export const harnessHeadings: NoticeTable<HarnessStateError> = {
@@ -85,7 +88,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   },
   "publish-in-progress": {
     level: "error",
-    label: "Release already running",
+    label: HARNESS_BUSY,
     message: "Wait for that release to finish, then Create a release again.",
     detail: "Maestro publishes one release at a time.",
   },
@@ -155,7 +158,7 @@ export const promoteHeadings: NoticeTable<PromoteSkillError> = {
   },
   "promote-in-progress": {
     level: "error",
-    label: "Change already being proposed",
+    label: HARNESS_BUSY,
     message: "Wait for that change to finish, then Propose change again.",
     detail: "Maestro proposes one change at a time.",
   },
@@ -296,7 +299,7 @@ const restorationHeadings = leftAsItWas<RestoreSkillError>(
     },
     "restore-in-progress": {
       level: "error",
-      label: "Harness already changing",
+      label: HARNESS_BUSY,
       message: "Wait for that change to finish, then Restore skill again.",
       detail: "Maestro changes one Harness at a time.",
     },
@@ -389,7 +392,7 @@ const discardHeadings = (skill: string) =>
     },
     "discard-in-progress": {
       level: "error",
-      label: "Harness already changing",
+      label: HARNESS_BUSY,
       message: "Wait for that change to finish, then Discard change again.",
       detail: "Maestro changes one Harness at a time.",
     },

@@ -147,7 +147,7 @@ describe("Report", () => {
                 notice: {
                   label: "No GitHub access",
                   message:
-                    "Nothing was installed. Set up GitHub access in git, then deploy again.",
+                    "Nothing was deployed. Set up GitHub access in git, then deploy again.",
                   detail: "GitHub refused the download.",
                 },
               },
@@ -161,7 +161,7 @@ describe("Report", () => {
     expect(within(row).getByText("No GitHub access")).toBeVisible();
     expect(
       within(row).getByText(
-        "Nothing was installed. Set up GitHub access in git, then deploy again.",
+        "Nothing was deployed. Set up GitHub access in git, then deploy again.",
       ),
     ).toBeVisible();
     expect(within(row).getByText("GitHub refused the download.")).toBeVisible();

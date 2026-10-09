@@ -729,7 +729,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+          "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
         ),
       ),
     ).toBeInTheDocument();

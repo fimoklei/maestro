@@ -200,7 +200,7 @@ describe("unfinishedOperationNotice", () => {
       level: "warning",
       label: "Deploy incomplete",
       message:
-        "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+        "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
     });
   });
 

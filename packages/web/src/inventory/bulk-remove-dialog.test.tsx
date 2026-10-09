@@ -42,7 +42,7 @@ const partial: BulkRemoveReportView = {
     {
       label: "/dev/acme-api",
       outcome: "failed",
-      reason: "Target held by another operation",
+      reason: "Target busy",
     },
     {
       label: "/dev/legacy-etl",
@@ -314,9 +314,7 @@ describe("BulkRemoveDialog — once the run reports", () => {
       .map((heading) => heading.textContent);
     expect(groups).toEqual(["✕Failed1", "✕Refused1", "✓Removed1"]);
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent(
-      "/dev/acme-apiTarget held by another operation",
-    );
+    expect(dialog).toHaveTextContent("/dev/acme-apiTarget busy");
     expect(dialog).toHaveTextContent(
       "/dev/legacy-etlRepository not registered",
     );

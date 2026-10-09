@@ -126,7 +126,7 @@ describe("Notice", () => {
         trigger="user-action"
         notice={{
           level: "error",
-          label: "Could not read Inventory",
+          label: "Inventory not read",
           message: "Select Re-read Inventory to try again.",
         }}
       />,
@@ -143,7 +143,7 @@ describe("Notice", () => {
           trigger="user-action"
           notice={{
             level: "error",
-            label: "Could not read Inventory",
+            label: "Inventory not read",
             message: "Select Re-read Inventory to try again.",
           }}
         />,
@@ -151,9 +151,7 @@ describe("Notice", () => {
 
       vi.advanceTimersByTime(60_000);
 
-      expect(screen.getByRole("alert")).toHaveTextContent(
-        "Could not read Inventory",
-      );
+      expect(screen.getByRole("alert")).toHaveTextContent("Inventory not read");
     } finally {
       vi.useRealTimers();
     }
