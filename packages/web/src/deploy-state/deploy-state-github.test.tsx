@@ -49,11 +49,8 @@ describe("Deploy-state — GitHub column", () => {
     await findRow(NAME);
 
     expect(
-      screen
-        .getAllByRole("columnheader")
-        .map((header) => header.textContent)
-        .slice(0, 4),
-    ).toEqual(["Target", "Release", "GitHub", "Status"]);
+      screen.getAllByRole("columnheader").map((header) => header.textContent),
+    ).toEqual(["Target", "Status", "Release", "Skills", "GitHub", "Actions"]);
     const link = await within(githubCell(NAME)).findByRole("link", {
       name: `View ${NAME} on GitHub`,
     });
@@ -115,7 +112,7 @@ describe("Deploy-state — GitHub column", () => {
     renderDeployState();
     await findRow(NAME);
 
-    await waitFor(() => expect(cellsOf(NAME)[2]).toBe("Empty"));
+    await waitFor(() => expect(cellsOf(NAME)[1]).toBe("Empty"));
     expect(githubCell(NAME)).toHaveTextContent("Unknown");
     expect(within(githubCell(NAME)).queryByRole("link")).toBeNull();
 
@@ -131,7 +128,7 @@ describe("Deploy-state — GitHub column", () => {
     serve({ kind: "unknown" });
     renderDeployState();
     await findRow(NAME);
-    await waitFor(() => expect(cellsOf(NAME)[2]).toBe("Empty"));
+    await waitFor(() => expect(cellsOf(NAME)[1]).toBe("Empty"));
 
     act(() => screen.getByRole("grid").focus());
     await userEvent.keyboard("{ArrowDown}");

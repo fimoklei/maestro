@@ -35,6 +35,9 @@ export const STATUS_READINGS: Record<RepoStatus, StatusReading> = {
   "not-a-git-repo": reading("Not a Git repository", "attention", "⚠"),
 };
 
+// Deploy-state's sentence, recovered by this screen's own Re-read.
+export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${REREAD_LABEL} to read it again.`;
+
 export const REPOS_NOT_READ = {
   level: "error",
   label: "Registered repositories not read",

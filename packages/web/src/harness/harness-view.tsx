@@ -2,6 +2,7 @@ import type { GitHubPage, ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
+import { BandAction } from "../ui/band-action";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { CREATE_RELEASE } from "../ui/control-labels";
@@ -263,14 +264,11 @@ export function HarnessView({
       action={
         state === undefined ? null : (
           <>
-            <Button
-              variant="quiet"
+            <BandAction
+              icon={FolderInput}
+              label="Import skill"
               onClick={importFlow.start}
-              className="max-lg:w-8 max-lg:justify-center max-lg:px-0"
-            >
-              <Icon of={FolderInput} className="lg:hidden" />
-              <span className="max-lg:sr-only">Import skill</span>
-            </Button>
+            />
             {/* Closed while the remote's answer is unknown — an offline or
                 failed fetch — and while a re-read is still rewriting the refs
                 a plan reads. Advisory findings never gate it (#519). */}

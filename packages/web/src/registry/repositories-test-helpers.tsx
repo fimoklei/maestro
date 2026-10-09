@@ -1,4 +1,4 @@
-import type { RepoStatus } from "@maestro/core";
+import type { GitHubPage, RepoStatus } from "@maestro/core";
 import { screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { vi } from "vitest";
@@ -23,6 +23,8 @@ export type FakeRegistry = {
   /** A registration that never answers until resolved. */
   holdRegister?: Promise<void>;
   holdUnregister?: Promise<void>;
+  /** Each repository's GitHub page, as its deploy-state read answers it. */
+  github?: Record<string, GitHubPage>;
 };
 
 export function stubRegistry(state: FakeRegistry) {
@@ -33,6 +35,15 @@ export function stubRegistry(state: FakeRegistry) {
       const body = init?.body
         ? (JSON.parse(String(init.body)) as { path: string })
         : undefined;
+      if (url.startsWith("/api/deploy-state?repo=")) {
+        const repo = new URL(url, "http://cockpit").searchParams.get("repo");
+        const github = repo === null ? undefined : state.github?.[repo];
+        return jsonResponse({
+          primitives: [],
+          skipped: [],
+          ...(github === undefined ? {} : { github }),
+        });
+      }
       if (url === "/api/folder-chooser") {
         return method === "POST"
           ? jsonResponse({ path: state.pick ?? null })

@@ -37,6 +37,27 @@ describe("tableFitReport", () => {
     ]);
   });
 
+  it("names each shown column an open detail pane covers", () => {
+    expect(
+      tableFitReport([
+        {
+          ...fits,
+          viewport: 900,
+          detailOpen: true,
+          covered: ["Status", "Actions"],
+        },
+      ]).failures,
+    ).toEqual([
+      "Inventory, detail pane open, viewport 900px: the detail pane covers the Status, Actions columns",
+    ]);
+  });
+
+  it("passes a detail pane that covers no shown column", () => {
+    expect(
+      tableFitReport([{ ...fits, detailOpen: true, covered: [] }]).failures,
+    ).toEqual([]);
+  });
+
   it("fails a screen whose detail pane did not open", () => {
     expect(
       tableFitReport([

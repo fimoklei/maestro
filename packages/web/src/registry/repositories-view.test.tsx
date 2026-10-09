@@ -73,16 +73,16 @@ describe("Repositories", () => {
       within(grid)
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
-    ).toEqual(["Repository", "Folder path", "Status", "Actions"]);
+    ).toEqual(["Repository", "Status", "Folder path", "GitHub", "Actions"]);
 
     expect(await rowOf("…/me/acme-web")).toHaveTextContent(
-      "…/me/acme-web/home/me/acme-webReady",
+      "…/me/acme-webReady/home/me/acme-web",
     );
     expect(await rowOf("…/me/scratch")).toHaveTextContent(
-      "…/me/scratch/home/me/scratchNot a Git repository",
+      "…/me/scratchNot a Git repository/home/me/scratch",
     );
     expect(await rowOf("…/me/old-site")).toHaveTextContent(
-      "…/me/old-site/home/me/old-siteFolder missing",
+      "…/me/old-siteFolder missing/home/me/old-site",
     );
   });
 

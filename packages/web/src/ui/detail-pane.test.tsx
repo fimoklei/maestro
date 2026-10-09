@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DetailPane, DetailPaneSlot, type PaneNotice } from "./detail-pane";
+import { DetailPane, type PaneNotice } from "./detail-pane";
 import { named, phrase } from "./phrase";
 
 type Props = ComponentProps<typeof DetailPane>;
@@ -40,23 +40,6 @@ const RETRY: PaneNotice = {
 
 const pane = () => screen.getByRole("complementary", { name: "tdd detail" });
 const heading = () => screen.getByRole("heading", { level: 2, name: "tdd" });
-
-describe("DetailPaneSlot", () => {
-  it("floats as a sheet up to 1100px and sits beside the table above it", () => {
-    render(
-      <DetailPaneSlot>
-        <p>pane</p>
-      </DetailPaneSlot>,
-    );
-
-    expect(screen.getByText("pane").parentElement).toHaveClass(
-      "absolute",
-      "inset-y-0",
-      "right-0",
-      "min-[1101px]:static",
-    );
-  });
-});
 
 describe("DetailPane", () => {
   it("is a landmark named for its subject, headed by that subject", () => {

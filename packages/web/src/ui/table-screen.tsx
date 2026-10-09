@@ -179,9 +179,14 @@ export function TableScreen<T extends RowData>({
         >
           {/* Mounted before any read, so its first announcement is heard. */}
           <StatusRegion>{state.announcement}</StatusRegion>
-          {/* Side by side from 1100px; narrower, the pane floats over the table. */}
+          {/* Side by side; under 44rem an open pane takes the table's place. */}
           <div ref={frameRef} className="relative flex h-[100cqh]">
-            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+            <div
+              className={cn(
+                "relative flex min-h-0 min-w-0 flex-1 flex-col",
+                openRow !== null && "@max-[44rem]:hidden",
+              )}
+            >
               {notice ?? (
                 // Mounted before a failure is, so it is announced (#465); the
                 // padding comes only with the notice.

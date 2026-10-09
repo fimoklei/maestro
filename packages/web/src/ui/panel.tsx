@@ -16,7 +16,11 @@ export interface PanelProps {
 
 export function Panel({ title, meta, action, band2, children }: PanelProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-control border border-edge bg-gray-1">
+    // data-panel: the edge a hover card keeps inside.
+    <div
+      data-panel=""
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-control border border-edge bg-gray-1"
+    >
       <div
         data-band="1"
         className="flex h-12 shrink-0 items-center gap-inline border-edge border-b px-panel"

@@ -47,6 +47,8 @@ type Row = {
   render: () => void;
   /** Null for a screen without a hover card. */
   card: StatusCard | null;
+  /** Header names in order: checkbox, name, Status, secondary, GitHub, ⋮. */
+  columns: string[];
   actions: RowActions;
   leaves: RowLeaves;
 };
@@ -258,6 +260,7 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "2 of 5 deployed skills changed in v0.3.4.",
       readAge: "Read just now",
     },
+    columns: ["Target", "Status", "Release", "Skills", "GitHub", "Actions"],
     // A target row removes nothing; its skills' removal sits in the pane's
     // sub-list. Every item that stays on the screen opens the pane.
     actions: {
@@ -317,6 +320,15 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "Your local copy differs from main.",
       readAge: "Not read yet",
     },
+    columns: [
+      "Name",
+      "Status",
+      "Type",
+      "Change",
+      "Pull request",
+      "Also in",
+      "Actions",
+    ],
     // A proposed deletion in review: withdrawn or undone in the clone.
     actions: {
       render: () => {
@@ -384,6 +396,15 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "Deployed to 1 target",
       readAge: null,
     },
+    columns: [
+      "Select for bulk deploy",
+      "Name",
+      "Status",
+      "Type",
+      "Description",
+      "Targets",
+      "Actions",
+    ],
     actions: {
       render: renderInventoryRow,
       name: "tdd",
@@ -402,6 +423,7 @@ const ON_TABLE_SCREEN: Row[] = [
       renderRepositories();
     },
     card: null,
+    columns: ["Repository", "Status", "Folder path", "GitHub", "Actions"],
     actions: {
       render: () => {
         stubRegistry({
@@ -510,6 +532,24 @@ describe("every table screen", () => {
           .getAllByRole("status")
           .filter((region) => region.classList.contains("sr-only")),
       ).toHaveLength(1);
+    });
+
+    // design.md → Frame: one column order, the name taking the rest.
+    it("orders its columns checkbox, name, Status, secondary, GitHub, ⋮", async () => {
+      (row.card?.render ?? row.render)();
+
+      const grid = await screen.findByRole("grid");
+      const headers = within(grid).getAllByRole("columnheader");
+      expect(
+        headers.map((header) => header.textContent?.replace(/[↑↓]/g, "")),
+      ).toEqual(row.columns);
+      const name = row.columns.find((column) => !column.startsWith("Select"));
+      expect(
+        headers
+          .filter((header) => header.style.width === "")
+          .map((header) => header.textContent?.replace(/[↑↓]/g, ""))
+          .filter((column) => !column?.startsWith("Select")),
+      ).toEqual([name]);
     });
 
     it("spins Re-read while a pressed re-read runs", async () => {
