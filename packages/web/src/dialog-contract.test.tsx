@@ -606,7 +606,32 @@ const ON_DIALOG: Row[] = [
       ),
     },
     loadFailed: null,
-    notices: [],
+    notices: [
+      {
+        label: "3 clean copies",
+        render: () => (
+          <BulkRemoveDialog
+            skillName="tdd"
+            targetCount={3}
+            view={{
+              kind: "grouped",
+              clean: {
+                label: "3 clean copies",
+                message: "Only the deployed files are removed.",
+              },
+              cost: [],
+              refused: [],
+              removableCount: 3,
+              confirmLabel: "Remove from 3 targets",
+            }}
+            isRemoving={false}
+            report={null}
+            onCancel={vi.fn()}
+            onConfirm={vi.fn()}
+          />
+        ),
+      },
+    ],
   },
   {
     file: "deploy-state/import-local-edits-dialog.tsx",
