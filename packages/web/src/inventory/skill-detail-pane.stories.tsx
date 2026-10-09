@@ -34,6 +34,7 @@ const meta = {
     targetCount: 3,
     pending: false,
     unreadable: false,
+    listHeadingRef: null,
     targetItems: (deployment) => [
       ...(deployment.updatable
         ? [{ label: "Update target", onSelect: () => {} }]

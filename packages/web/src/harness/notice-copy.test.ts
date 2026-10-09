@@ -413,7 +413,7 @@ const suites: [
         "unreadable",
         {
           level: "error",
-          label: "Unreadable working tree",
+          label: "Working tree not read",
           message:
             "Nothing was pushed. Make the Harness folder readable, then select Delete skill again.",
         },
@@ -704,7 +704,7 @@ const suites: [
         "harness-unreadable",
         {
           level: "error",
-          label: "Unreadable Harness clone",
+          label: "Harness clone not read",
           message:
             "Nothing was copied. Make the Harness clone readable, then select Update skill again.",
           detail:
@@ -931,7 +931,7 @@ const suites: [
         "unreadable",
         {
           level: "error",
-          label: "Unreadable working tree",
+          label: "Working tree not read",
           message:
             "Nothing was restored. Make the Harness folder readable, then select Restore skill again.",
         },
@@ -940,7 +940,7 @@ const suites: [
         "source-unreadable",
         {
           level: "error",
-          label: "Committed copy unreadable",
+          label: "Committed copy not read",
           message:
             "Nothing was restored. Check the Harness clone with your Git tool, then select Restore skill again.",
           detail:
@@ -1101,7 +1101,7 @@ const suites: [
         "unreadable",
         {
           level: "error",
-          label: "Unreadable working tree",
+          label: "Working tree not read",
           message:
             "Nothing was discarded. Make the Harness folder readable, then select Discard change again.",
         },

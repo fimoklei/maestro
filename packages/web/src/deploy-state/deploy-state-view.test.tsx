@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { measureAs, sentence } from "../test-utils";
+import { htmlElement, measureAs, sentence } from "../test-utils";
 import {
   cellsOf,
   findRow,
@@ -202,9 +202,9 @@ describe("Deploy-state — Release, Status and Skills", () => {
     );
     expect(cellsOf("…/me/b").slice(1)).toEqual(["In sync", "v0.3.4", "1"]);
     // The arrow is drawn; a screen reader hears the word.
-    const release = within(rowOf("…/me/a")).getAllByRole(
-      "gridcell",
-    )[2] as HTMLElement;
+    const release = htmlElement(
+      within(rowOf("…/me/a")).getAllByRole("gridcell")[2],
+    );
     expect(within(release).getByText("→")).toHaveAttribute(
       "aria-hidden",
       "true",
@@ -468,6 +468,47 @@ describe("Deploy-state — Release, Status and Skills", () => {
       "Read just now",
     ]);
   });
+
+  // #1448 G22: one screen never shows two ages for one target.
+  it("dates the status hover card by the same oldest reading as band 2", async () => {
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    stubServer(() => ({
+      repos: ["/Users/me/a", "/Users/me/b"],
+      repo: {
+        "/Users/me/a": {
+          primitives: [skill("tdd", "v0.3.2")],
+          skipped: [],
+          releaseHead: { ...head("v0.3.2", "v0.3.4", 2), selected: 5 },
+        },
+        "/Users/me/b": {
+          primitives: [skill("tdd", "v0.3.2")],
+          skipped: [],
+          releaseHead: {
+            ...head("v0.3.2", "v0.3.4", 2),
+            selected: 5,
+            comparedAt: hourAgo,
+          },
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/a");
+    expect(await screen.findByText("Read 1 h ago")).toBeInTheDocument();
+    await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
+
+    const reason = await screen.findByText(
+      sentence(
+        "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+      ),
+    );
+    expect(
+      Array.from(
+        htmlElement(reason.parentElement).querySelectorAll("p"),
+        (line) => line.textContent,
+      ),
+    ).toContain("Read 1 h ago");
+  });
 });
 
 describe("Deploy-state — failed reads", () => {
@@ -577,9 +618,9 @@ describe("Deploy-state — Re-read and freshness", () => {
     }));
     renderDeployState();
     await findRow("Claude Code");
-    const status = within(rowOf("Claude Code")).getAllByRole(
-      "gridcell",
-    )[1] as HTMLElement;
+    const status = htmlElement(
+      within(rowOf("Claude Code")).getAllByRole("gridcell")[1],
+    );
 
     expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
     expect(

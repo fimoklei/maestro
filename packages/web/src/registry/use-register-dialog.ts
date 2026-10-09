@@ -11,12 +11,21 @@ import { useCheckRepo, useRegisterRepo } from "./use-registry";
 export function useRegisterDialog({
   report,
   onAdded,
+  registered,
 }: {
   /** Into the screen's status region. */
   report: (write: string) => void;
   /** The stored path of the new registration, for its row to take focus. */
   onAdded: (path: string) => void;
+  /** The paths registered before, which tell the new entry apart. */
+  registered: readonly string[];
 }) {
+  // Realpath may have changed the stored path from the sent one, so the new
+  // entry is the sent path, else the one that was not there before.
+  const addedPath = (repos: readonly { path: string }[], sent: string) =>
+    repos.find((repo) => repo.path === sent)?.path ??
+    repos.find((repo) => !registered.includes(repo.path))?.path ??
+    sent;
   const [open, setOpen] = useState(false);
   const [path, setPath] = useState("");
   const [refusal, setRefusal] = useState<{
@@ -30,12 +39,11 @@ export function useRegisterDialog({
     report,
     action: "register",
     show: "row",
-    // Realpath may have changed the stored path from the sent one. The server
-    // appends, so the new entry is the last one.
-    name: ({ repos }, sent) => {
-      const paths = repos.map((repo) => repo.path);
-      return targetLabel(paths[paths.length - 1] ?? sent, paths);
-    },
+    name: ({ repos }, sent) =>
+      targetLabel(
+        addedPath(repos, sent),
+        repos.map((repo) => repo.path),
+      ),
     // The refusal under the field says it.
     failure: () => null,
   });
@@ -67,7 +75,7 @@ export function useRegisterDialog({
         register.run(sent, {
           onSuccess: ({ repos }) => {
             setOpen(false);
-            onAdded(repos[repos.length - 1]?.path ?? sent);
+            onAdded(addedPath(repos, sent));
           },
           onError: refuse(sent),
         });

@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { htmlElement } from "../test-utils";
 import {
   type FakeRegistry,
   renderRepositories,
@@ -25,13 +26,13 @@ const githubCell = async (name: string) => {
     .map((header) => header.textContent);
   const row = (await within(grid).findByText(name)).closest("tr");
   if (row === null) throw new Error(`no row for ${name}`);
-  return within(row).getAllByRole("gridcell")[
-    headers.indexOf("GitHub")
-  ] as HTMLElement;
+  return htmlElement(
+    within(row).getAllByRole("gridcell")[headers.indexOf("GitHub")],
+  );
 };
 
 const openMenu = async (name: string) => {
-  const row = (await screen.findByText(name)).closest("tr") as HTMLElement;
+  const row = htmlElement((await screen.findByText(name)).closest("tr"));
   await userEvent.click(
     within(row).getByRole("button", { name: `Actions for ${name}` }),
   );
@@ -100,6 +101,28 @@ describe("Repositories — GitHub column", () => {
         "The origin of this repository could not be read. Select Re-read Repositories to read it again.",
       ),
     ).toBeInTheDocument();
+  });
+
+  // #1448 G7: Re-read also reads the GitHub column again.
+  it("spins Re-read Repositories until the GitHub column is read again", async () => {
+    const state: FakeRegistry = linked();
+    stubRegistry(state);
+    renderRepositories();
+    await within(await githubCell(NAME)).findByRole("link");
+    const reread = screen.getByRole("button", { name: "Re-read Repositories" });
+    await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
+
+    let answer = () => {};
+    state.holdDeployState = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    await userEvent.click(reread);
+    // The registry answers at once; the deploy-state read is still out.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(reread).toHaveAttribute("aria-busy", "true");
+
+    answer();
+    await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
   });
 
   it("re-reads the GitHub page with Re-read Repositories", async () => {

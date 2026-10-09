@@ -88,7 +88,3 @@ export const removeFromToolsLabel = (tools: readonly string[]): string =>
   `Remove from ${toolNameList(tools)}`;
 export const removeFromAllLabel = (count: number): string =>
   `Remove from all ${count} targets`;
-
-// The row's ⋮ menu (#992).
-export const ACTIONS_COLUMN_LABEL = "Actions";
-export const rowActionsLabel = (name: string) => `Actions for ${name}`;

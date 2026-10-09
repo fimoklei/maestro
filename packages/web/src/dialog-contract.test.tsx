@@ -30,6 +30,7 @@ import {
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
+import { htmlElement } from "./test-utils";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
 
@@ -608,21 +609,33 @@ const ON_DIALOG: Row[] = [
     loadFailed: null,
     notices: [
       {
+        // Beside a cost and a refusal, so the notice's place is really checked.
         label: "3 clean copies",
         render: () => (
           <BulkRemoveDialog
             skillName="tdd"
-            targetCount={3}
+            targetCount={5}
             view={{
               kind: "grouped",
               clean: {
                 label: "3 clean copies",
                 message: "Only the deployed files are removed.",
               },
-              cost: [],
-              refused: [],
-              removableCount: 3,
-              confirmLabel: "Remove from 3 targets",
+              cost: [
+                {
+                  label: "/dev/acme-api",
+                  version: "v1.0.0",
+                  reason: "Nothing recorded — may lose work",
+                },
+              ],
+              refused: [
+                {
+                  label: "/dev/legacy-etl",
+                  reason: "Repository not registered",
+                },
+              ],
+              removableCount: 4,
+              confirmLabel: "Remove from 4 targets · 1 lose local edits",
             }}
             isRemoving={false}
             report={null}
@@ -867,7 +880,8 @@ describe("every dialog", () => {
     it.runIf(row.loadFailed !== null)(
       "offers Close, not Cancel, once its read failed",
       () => {
-        render(row.loadFailed?.() as ReactElement);
+        if (row.loadFailed === null) throw new Error("runIf skips this row");
+        render(row.loadFailed());
 
         expect(
           screen.queryByRole("button", { name: "Cancel" }),
@@ -887,7 +901,7 @@ describe("every dialog", () => {
           .getByText(label)
           .closest('[role="alert"], [role="status"]');
         expect(notice).not.toBeNull();
-        expect(bodyTextAfter(notice as Element)).toEqual([]);
+        expect(bodyTextAfter(htmlElement(notice))).toEqual([]);
       },
     );
   });
@@ -914,7 +928,7 @@ const ADDS_A_ROW: AddsARow[] = [
       const [band1] = await screen.findAllByRole("button", {
         name: "Register repository",
       });
-      await userEvent.click(band1 as HTMLElement);
+      await userEvent.click(htmlElement(band1));
       const dialog = await screen.findByRole("dialog");
       await userEvent.type(
         within(dialog).getByRole("textbox", { name: "Folder path" }),
@@ -930,7 +944,6 @@ describe.each(ADDS_A_ROW)("$file", ({ add, row }) => {
     vi.unstubAllGlobals();
   });
 
-  // design.md → Feedback and dialogs: after an add, focus goes to the new row.
   it("selects and focuses the new row once the add succeeds", async () => {
     await add();
 

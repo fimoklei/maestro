@@ -37,17 +37,14 @@ export function RepositoriesView() {
   const unregister = useUnregisterRepo();
   const repos = registry.data?.repos ?? [];
   const paths = repos.map((repo) => repo.path);
-  // The GitHub column reads what Deploy-state reads; only Deploy-state's own
-  // rows re-read on tab return.
+  // The GitHub column reads what Deploy-state reads.
   const deployStates = useQueries({
-    queries: paths.map((path) => ({
-      ...deployStateQueryOptions(path),
-      refetchOnWindowFocus: false,
-    })),
+    queries: paths.map(deployStateQueryOptions),
   });
   const screen = useTableScreen({
     name: SCREEN,
-    reading: registry.isFetching,
+    reading:
+      registry.isFetching || deployStates.some((read) => read.isFetching),
     settled: registry.isSuccess,
     failure: registry.isError ? REPOS_NOT_READ : null,
     onReread: () => {
@@ -63,7 +60,11 @@ export function RepositoriesView() {
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
-  const register = useRegisterDialog({ report, onAdded: screen.added });
+  const register = useRegisterDialog({
+    report,
+    onAdded: screen.markAdded,
+    registered: paths,
+  });
   const unregisterWrite = useWriteAction(unregister, {
     report,
     action: "unregister",

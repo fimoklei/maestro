@@ -4,7 +4,7 @@ import { SubListHeading } from "./sub-list-heading";
 const meta = {
   title: "Core/SubListHeading",
   component: SubListHeading,
-  args: { label: "Deployed to", count: 3 },
+  args: { label: "Deployed to", count: 3, headingRef: null },
 } satisfies Meta<typeof SubListHeading>;
 
 export default meta;

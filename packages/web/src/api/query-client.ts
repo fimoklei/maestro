@@ -1,5 +1,5 @@
-// No retries and no re-read on window focus (#1037). Deploy-state's rows opt
-// back into focus in their own query options.
+// No retries and no re-read on window focus (#1037). Deploy-state's view opts
+// its own rows back in where it reads them.
 import { QueryClient } from "@tanstack/react-query";
 
 export function createQueryClient() {

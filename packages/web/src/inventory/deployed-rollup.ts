@@ -26,7 +26,7 @@ export type DeploymentTarget = {
   // per skill, or its read has not landed.
   releaseHead?: ReleaseHead;
   /** The operation that never finished on this target; absent where none stands. */
-  pending?: PendingOperation["kind"];
+  pending: PendingOperation["kind"] | undefined;
 };
 
 // The Selection where the target follows one release; what is on disk where it

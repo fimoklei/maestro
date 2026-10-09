@@ -1,8 +1,8 @@
+import { HARNESS_BUSY } from "../ui/busy-copy";
 // Every word the Import local edits control and its dialog show.
 
 import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
-import { HARNESS_BUSY } from "../harness/notice-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { IMPORT_LOCAL_EDITS, PROPOSE_CHANGE } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";

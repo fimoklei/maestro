@@ -380,6 +380,8 @@ function noticeFor(
     const { level: _level, ...notice } = requestShape;
     return notice;
   }
+  // The server's code as sent: one this build cannot name reads undefined
+  // and takes the fallback below.
   const label = REASON[error.code as ReasonCode];
   const body = bodies[error.code];
   return label === undefined || body === undefined

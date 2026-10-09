@@ -11,7 +11,6 @@ import {
   updateNotice,
   updatePreviewNotice,
 } from "./notice-copy";
-import type { RefusalCode } from "./remove-preflight-view";
 
 // The approved reason per server code (#1459). Every surface that names one of
 // these codes reads the same words.
@@ -62,6 +61,8 @@ function reportReason(code: string): string | undefined {
     name: "tdd",
     removed: [],
     refused: [],
+    // The report carries the server's code as sent, so any approved code
+    // stands in; the table it reads is the one every surface shares.
     failed: [{ target, reason: code as RemoveDeployedSkillError }],
   };
   const view = bulkRemoveReportView({
@@ -73,6 +74,8 @@ function reportReason(code: string): string | undefined {
   return reason === code ? undefined : reason;
 }
 
+const REFUSAL_REASONS = new Map(Object.entries(REFUSAL_REASON));
+
 describe("one reason per server code", () => {
   it.each(Object.entries(APPROVED))(
     "%s reads %j on every surface that names it",
@@ -80,7 +83,7 @@ describe("one reason per server code", () => {
       const seen = [
         ...noticeLabels(code),
         reportReason(code),
-        REFUSAL_REASON[code as RefusalCode],
+        REFUSAL_REASONS.get(code),
       ].filter((reason) => reason !== undefined);
 
       expect(seen.length).toBeGreaterThan(0);

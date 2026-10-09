@@ -6,6 +6,7 @@ import type {
 } from "@maestro/core";
 import { freshnessLine } from "../ui/freshness";
 import { type Copy, machine, phrase } from "../ui/phrase";
+import { CREATE_RELEASE_UNAVAILABLE } from "./dialog-copy";
 import { defaultBranchCopy, STAGE_NAMES } from "./stage-copy";
 
 // The stage header's meta slot carries at most one reading, never two (#838),
@@ -129,7 +130,7 @@ export const releaseUnavailable = (
   rereading: boolean,
 ): string | null =>
   rereading
-    ? "re-reading Harness"
+    ? CREATE_RELEASE_UNAVAILABLE.rereading
     : releaseEnabled(freshness)
       ? null
-      : "GitHub not read";
+      : CREATE_RELEASE_UNAVAILABLE.notRead;

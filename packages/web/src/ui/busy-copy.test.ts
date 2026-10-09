@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { ACTIONS, doneSentence, loadedText, loadingText } from "./busy-copy";
+import {
+  ACTIONS,
+  doneSentence,
+  HARNESS_BUSY,
+  loadedText,
+  loadingText,
+} from "./busy-copy";
 import { plainText } from "./phrase";
 
 describe("busy labels", () => {
@@ -69,5 +75,11 @@ describe("read announcements", () => {
 
   it("ends the read with the screen name", () => {
     expect(loadedText("Inventory")).toBe("Inventory loaded.");
+  });
+});
+
+describe("HARNESS_BUSY", () => {
+  it("heads every refusal of a Harness write while another runs", () => {
+    expect(HARNESS_BUSY).toBe("Harness busy");
   });
 });

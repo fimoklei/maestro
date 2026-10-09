@@ -7,6 +7,7 @@ import type {
 } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
+import { DEPLOY_STATE_KEY } from "./use-deploy-state";
 
 // Not Zod-validated here: `tools` is defaulted once in `select`. Present-but-empty
 // means "detected zero tools"; absent means "not read yet".
@@ -30,7 +31,7 @@ export type GlobalDeployStateView = {
 
 export function globalDeployStateQueryOptions() {
   return {
-    queryKey: ["deploy-state", "global"] as const,
+    queryKey: [...DEPLOY_STATE_KEY, "global"] as const,
     queryFn: () =>
       requestJson<GlobalDeployStateResponse>("/api/deploy-state/global"),
     select: (data: GlobalDeployStateResponse): GlobalDeployStateView => {

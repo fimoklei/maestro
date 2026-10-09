@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
+import { DEPLOY_STATE_KEY } from "../deploy-state/use-deploy-state";
 
 // Mirrors core's DeployTarget: a repo carries a path; global carries none.
 export type DeployTarget =
@@ -29,7 +30,7 @@ export function invalidateTarget(
   target: DeployTarget,
 ): void {
   const key = targetQueryKey(target);
-  queryClient.invalidateQueries({ queryKey: ["deploy-state", key] });
+  queryClient.invalidateQueries({ queryKey: [...DEPLOY_STATE_KEY, key] });
   queryClient.invalidateQueries({ queryKey: ["drift", key] });
 }
 

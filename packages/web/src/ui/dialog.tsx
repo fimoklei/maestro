@@ -5,11 +5,11 @@ import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { ACTION_STILL_RUNNING, CANCEL, CLOSE } from "./dialog-copy";
+import { GatedButton } from "./gated-button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
 import { ScreenFocusContext } from "./screen-focus";
-import { Tooltip } from "./tooltip";
 
 // Radix owns the portal, focus trap, focus return and scroll lock (#997); this
 // module owns the frame, and derives the rest from the phase and the action.
@@ -245,19 +245,12 @@ function ActionButton({
       </Button>
     );
   }
-  const name = `${action.label} — ${action.unavailable}`;
   return (
-    <Tooltip label={name}>
-      <Button
-        type="submit"
-        variant={variant}
-        aria-label={name}
-        aria-disabled
-        // A blocked action reads as a disabled control, never as on offer.
-        className="aria-disabled:border-edge aria-disabled:bg-gray-3 aria-disabled:text-gray-11"
-      >
-        {action.label}
-      </Button>
-    </Tooltip>
+    <GatedButton
+      type="submit"
+      variant={variant}
+      label={action.label}
+      unavailable={action.unavailable}
+    />
   );
 }

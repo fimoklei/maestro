@@ -13,6 +13,7 @@ const target = (
   primitives: { name: string; version: string }[],
   behind: ReadDriftEntry[] = [],
 ): DeploymentTarget => ({
+  pending: undefined,
   label,
   target: label.startsWith("/")
     ? { kind: "repo", repoPath: label }
@@ -204,6 +205,7 @@ describe("skillDeployments", () => {
   it("skips targets whose deploy-state has not resolved or could not be read", () => {
     const targets: DeploymentTarget[] = [
       {
+        pending: undefined,
         label: "",
         target: { kind: "global" },
         deployed: { status: "pending" },
@@ -211,6 +213,7 @@ describe("skillDeployments", () => {
         drift: ranDrift(),
       },
       {
+        pending: undefined,
         label: "",
         target: { kind: "global" },
         deployed: { status: "unknown" },

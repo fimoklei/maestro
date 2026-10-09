@@ -25,10 +25,15 @@ import {
   renderRepositories,
   stubRegistry,
 } from "./registry/repositories-test-helpers";
-import { jsonResponse, measureAs, renderWithQuery } from "./test-utils";
+import {
+  htmlElement,
+  jsonResponse,
+  measureAs,
+  renderWithQuery,
+} from "./test-utils";
 
 // Proves each table screen runs on `TableScreen`, not the module itself, and
-// that its Status card, name cell and row actions follow design.md.
+// that its Status card, name cell and row actions follow the shared rules.
 
 /** One row whose Status card and name the checks open. */
 type StatusCard = {
@@ -180,19 +185,26 @@ type DirectWrite = {
   item: string;
   /** The pane's foot offers it too. */
   foot: boolean;
+  /** Its ⋮ item leaves focus on ⋮, which keeps it once the write settles. */
+  staysOnMenu: boolean;
 };
 
-// Every write the server is sent from here on stays running.
+// Every write the server is sent from here on stays running until released.
 const holdWrites = () => {
   const answer = fetch;
+  let release = () => {};
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   vi.stubGlobal(
     "fetch",
     vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
       (init?.method ?? "GET") === "GET"
         ? answer(input, init)
-        : new Promise<Response>(() => {}),
+        : released.then(() => answer(input, init)),
     ),
   );
+  return release;
 };
 
 // A target behind its latest release: its Status card and its Update target.
@@ -230,6 +242,7 @@ const renderInventoryRow = () => {
       registryReady
       targets={[
         {
+          pending: undefined,
           label: "Claude Code",
           target: { kind: "global" },
           deployed: {
@@ -262,6 +275,8 @@ type PaneSubList = {
   value: string;
   /** The ⋮ item that carries the row's GitHub page, where it has one. */
   githubItem: string | null;
+  /** Every destructive item the row's ⋮ offers, in ⋮ order. */
+  destructive: string[];
 };
 
 const PANE_SUB_LISTS: PaneSubList[] = [
@@ -294,6 +309,7 @@ const PANE_SUB_LISTS: PaneSubList[] = [
     item: "tdd",
     value: "v0.3.2",
     githubItem: "View skill on GitHub",
+    destructive: ["Remove skill"],
   },
   {
     file: "inventory/inventory-view.tsx",
@@ -303,6 +319,7 @@ const PANE_SUB_LISTS: PaneSubList[] = [
     item: "Claude Code",
     value: "v1.0.0",
     githubItem: null,
+    destructive: ["Remove from"],
   },
 ];
 
@@ -357,7 +374,6 @@ const ON_TABLE_SCREEN: Row[] = [
       name: "…/me/a",
       destructive: [],
       pane: true,
-      // Its pane offers the retry in the notice, not the foot.
       write: {
         render: () => {
           stubServer(() => ({
@@ -378,7 +394,8 @@ const ON_TABLE_SCREEN: Row[] = [
         },
         name: "…/me/a",
         item: "Retry deploy",
-        foot: false,
+        foot: true,
+        staysOnMenu: false,
       },
       item: { label: "Update target", dialog: true, opensPane: true },
     },
@@ -457,12 +474,20 @@ const ON_TABLE_SCREEN: Row[] = [
                 ],
               }),
             },
+            promote: {
+              body: {
+                branch: "maestro/tdd",
+                pullRequestUrl:
+                  "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
+              },
+            },
           });
           renderHarness();
         },
         name: "tdd",
         item: "Propose change",
         foot: true,
+        staysOnMenu: true,
       },
       item: { label: "Withdraw proposal", dialog: true, opensPane: false },
     },
@@ -524,6 +549,7 @@ const ON_TABLE_SCREEN: Row[] = [
             registryReady
             targets={[
               {
+                pending: undefined,
                 label: "",
                 target: { kind: "global" },
                 deployed: { status: "pending" },
@@ -593,7 +619,7 @@ const ON_TABLE_SCREEN: Row[] = [
   },
 ];
 
-// The labels design.md confirms with a danger button.
+// The labels a danger button confirms.
 const DESTRUCTIVE = /^(Remove|Delete|Unregister|Withdraw|Restore|Discard)\b/;
 
 function expectDanger(controls: HTMLElement[], destructive: string[]) {
@@ -725,7 +751,6 @@ describe("every table screen", () => {
       expect(screen.queryByRole("grid")).not.toBeInTheDocument();
     });
 
-    // design.md → Frame: one column order, the name taking the rest.
     it("orders its columns checkbox, name, Status, secondary, GitHub, ⋮", async () => {
       (row.card?.render ?? row.render)();
 
@@ -761,12 +786,11 @@ describe("every table screen", () => {
   });
 
   describe.each(ON_TABLE_SCREEN)("$file rows", ({ leaves }) => {
-    // design.md → Keyboard: focus stays visible on something at all times.
     it("hands focus to the row now in a left row's place", async () => {
       const { queryClient } = leaves.render();
       const grid = await screen.findByRole("grid");
       const [name] = await within(grid).findAllByText(leaves.first);
-      const row = name?.closest("tr") as HTMLElement;
+      const row = htmlElement(name?.closest("tr"));
       // Escape hands focus back to ⋮, in the row about to leave.
       await userEvent.click(
         within(row).getByRole("button", { name: /^Actions for / }),
@@ -800,10 +824,9 @@ describe("every table screen", () => {
       const [name] = await within(
         await screen.findByRole("grid"),
       ).findAllByText(actions.name);
-      return name?.closest("tr") as HTMLElement;
+      return htmlElement(name?.closest("tr"));
     };
 
-    // design.md → Keyboard: focus stays visible on something at all times.
     it("hands focus to the pane, or back to ⋮, once a ⋮ item's dialog closes", async () => {
       actions.render();
       const trigger = within(await findRow()).getByRole("button", {
@@ -825,7 +848,7 @@ describe("every table screen", () => {
       await waitFor(() => {
         if (actions.item.opensPane) {
           expect(screen.getByRole("complementary")).toContainElement(
-            document.activeElement as HTMLElement,
+            htmlElement(document.activeElement),
           );
         } else {
           expect(trigger).toHaveFocus();
@@ -848,7 +871,7 @@ describe("every table screen", () => {
 
       if (!actions.pane) return;
       await userEvent.click(
-        within(row).getAllByRole("gridcell")[0] as HTMLElement,
+        htmlElement(within(row).getAllByRole("gridcell")[0]),
       );
       expectDanger(
         within(await screen.findByRole("complementary")).getAllByRole("button"),
@@ -865,9 +888,11 @@ describe("every table screen", () => {
   type Write = (typeof writes)[number];
 
   const rowOf = (write: Write) =>
-    within(screen.getByRole("grid"))
-      .getAllByText(write.name)[0]
-      ?.closest("tr") as HTMLElement;
+    htmlElement(
+      within(screen.getByRole("grid"))
+        .getAllByText(write.name)[0]
+        ?.closest("tr"),
+    );
   const menuOf = (write: Write) =>
     within(rowOf(write)).getByRole("button", { name: /^Actions for / });
   // Writes are held once the screen's own reads have landed.
@@ -878,7 +903,7 @@ describe("every table screen", () => {
       name: `Re-read ${write.screenName}`,
     });
     await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
-    holdWrites();
+    return holdWrites();
   };
 
   // A busy write shows its spinner in the control that started it.
@@ -897,13 +922,37 @@ describe("every table screen", () => {
     });
   });
 
+  // #1448 G2: focus stays visible on the control that started the write.
+  describe.each(writes.filter((write) => write.staysOnMenu))(
+    "$file direct write from ⋮",
+    (write) => {
+      it("leaves focus on ⋮ once the write settles", async () => {
+        const release = await readyToWrite(write);
+        await userEvent.click(menuOf(write));
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: write.item }),
+        );
+        await waitFor(() =>
+          expect(menuOf(write)).toHaveAttribute("aria-busy", "true"),
+        );
+
+        release();
+
+        await waitFor(() =>
+          expect(menuOf(write)).not.toHaveAttribute("aria-busy"),
+        );
+        expect(menuOf(write)).toHaveFocus();
+      });
+    },
+  );
+
   describe.each(writes.filter((write) => write.foot))(
     "$file direct write from the pane foot",
     (write) => {
       it("spins the pressed foot button and keeps focus on it", async () => {
         await readyToWrite(write);
         await userEvent.click(
-          within(rowOf(write)).getAllByRole("gridcell")[0] as HTMLElement,
+          htmlElement(within(rowOf(write)).getAllByRole("gridcell")[0]),
         );
         const pane = await screen.findByRole("complementary");
 
@@ -914,7 +963,7 @@ describe("every table screen", () => {
         await waitFor(() =>
           expect(document.activeElement).toHaveAttribute("aria-busy", "true"),
         );
-        expect(pane).toContainElement(document.activeElement as HTMLElement);
+        expect(pane).toContainElement(htmlElement(document.activeElement));
       });
     },
   );
@@ -927,9 +976,9 @@ describe("every table screen", () => {
         await screen.findByRole("grid"),
       ).findAllByText(subList.row);
       await userEvent.click(
-        within(name?.closest("tr") as HTMLElement).getAllByRole(
-          "gridcell",
-        )[0] as HTMLElement,
+        htmlElement(
+          within(htmlElement(name?.closest("tr"))).getAllByRole("gridcell")[0],
+        ),
       );
       const pane = await screen.findByRole("complementary");
 
@@ -937,7 +986,7 @@ describe("every table screen", () => {
         level: 3,
         name: subList.heading,
       });
-      const row = within(heading.closest("section") as HTMLElement)
+      const row = within(htmlElement(heading.closest("section")))
         .getAllByRole("listitem")
         .find((item) => item.textContent?.includes(subList.item));
       if (row === undefined) throw new Error(`no row ${subList.item}`);
@@ -956,8 +1005,11 @@ describe("every table screen", () => {
       expect(within(row).getByText(subList.value)).toHaveClass("font-mono");
       expect(within(row).queryByRole("link")).toBeNull();
 
+      // #1452: a destructive item stays danger in the sub-list's ⋮ too.
+      await userEvent.click(htmlElement(parts[3]));
+      expectDanger(await screen.findAllByRole("menuitem"), subList.destructive);
+
       if (subList.githubItem === null) return;
-      await userEvent.click(parts[3] as HTMLElement);
       expect(
         await screen.findByRole("menuitem", { name: subList.githubItem }),
       ).toHaveAttribute("href");

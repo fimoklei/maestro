@@ -41,6 +41,7 @@ function renderList(
         name: "…/me/project",
         updateName: "…/me/project",
       }}
+      headingRef={null}
     />,
   );
 }

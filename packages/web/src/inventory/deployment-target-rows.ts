@@ -25,9 +25,7 @@ export function globalToolTargets(
       // Under one release, this tool's own Release head answers the per-skill
       // reading; the drift model is the fallback where there is none (#956).
       ...(tool.releaseHead ? { releaseHead: tool.releaseHead } : {}),
-      ...(state.pendingOperation
-        ? { pending: state.pendingOperation.kind }
-        : {}),
+      pending: state.pendingOperation?.kind,
     };
   });
 }
@@ -46,8 +44,6 @@ export function repoTarget(params: {
     primitives: read.data?.primitives ?? [],
     drift,
     ...(read.data?.releaseHead ? { releaseHead: read.data.releaseHead } : {}),
-    ...(read.data?.pendingOperation
-      ? { pending: read.data.pendingOperation.kind }
-      : {}),
+    pending: read.data?.pendingOperation?.kind,
   };
 }

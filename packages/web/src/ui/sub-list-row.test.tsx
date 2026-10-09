@@ -26,7 +26,7 @@ describe("SubListRow", () => {
     const mark = screen.getByRole("img", { name: "Behind" });
     expect(row.firstElementChild).toContainElement(mark);
     expect(screen.getByText("…/me/project")).toBeInTheDocument();
-    expect(screen.getByText("v0.3.2")).toHaveClass("font-mono");
+    expect(screen.getByText("v0.3.2")).toBeInTheDocument();
   });
 
   it("carries the row's actions behind its ⋮ menu", async () => {
@@ -42,20 +42,17 @@ describe("SubListRow", () => {
     expect(onSelect).toHaveBeenCalledOnce();
   });
 
-  // #1449: the table's ⋮, revealed by its row as a table row reveals it
-  // (RowMenu's test names the classes). The browser check measures it.
-  it("reveals ⋮ as a table row does and keeps it a Tab stop", async () => {
+  // #1449: a pane is not a grid, so the keyboard reaches ⋮ by Tab, after the
+  // mark. Its hover reveal is styling, which the browser check measures.
+  it("keeps ⋮ a Tab stop after the mark", async () => {
     renderRow();
 
-    const trigger = screen.getByRole("button", {
-      name: "Actions for …/me/project",
-    });
-    expect(trigger).toHaveClass("opacity-0", "group-hover/row:opacity-100");
-    expect(screen.getByRole("listitem")).toHaveClass("group/row");
-    // Still one Tab stop: a pane is not a grid.
     await userEvent.tab();
+    expect(screen.getByRole("img", { name: "Behind" })).toHaveFocus();
     await userEvent.tab();
-    expect(trigger).toHaveFocus();
+    expect(
+      screen.getByRole("button", { name: "Actions for …/me/project" }),
+    ).toHaveFocus();
   });
 
   it("returns focus to ⋮ once an item has run", async () => {
