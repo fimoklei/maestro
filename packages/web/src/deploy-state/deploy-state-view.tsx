@@ -1,4 +1,4 @@
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -40,7 +40,7 @@ import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { updateLabel } from "./update-target-copy";
 import { deployStateQueryOptions } from "./use-deploy-state";
-import { useGlobalDeployState } from "./use-global-deploy-state";
+import { globalDeployStateQueryOptions } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdateTarget } from "./use-update-target";
 
@@ -66,11 +66,19 @@ export function DeployStateView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const registry = useRegistry();
-  const globalDeploy = useGlobalDeployState();
+  // Only these rows re-read on tab return; every other reader of the same
+  // queries opts out (#1037).
+  const globalDeploy = useQuery({
+    ...globalDeployStateQueryOptions(),
+    refetchOnWindowFocus: true,
+  });
   const globalDrift = useGlobalDrift();
   const repoPaths = (registry.data?.repos ?? []).map((repo) => repo.path);
   const repoDeploy = useQueries({
-    queries: repoPaths.map(deployStateQueryOptions),
+    queries: repoPaths.map((repo) => ({
+      ...deployStateQueryOptions(repo),
+      refetchOnWindowFocus: true,
+    })),
   });
   const repoDrift = useQueries({ queries: repoPaths.map(driftQueryOptions) });
   const location = useLocation();

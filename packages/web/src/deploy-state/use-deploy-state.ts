@@ -24,7 +24,7 @@ type DeployStateResponse = {
 };
 
 // Shared so every reader uses the same key and fetch; diverging would make two
-// screens cache-miss each other. The one query that opts back into focus (#1037).
+// screens cache-miss each other.
 export function deployStateQueryOptions(repo: string) {
   return {
     queryKey: ["deploy-state", repo] as const,
@@ -32,7 +32,6 @@ export function deployStateQueryOptions(repo: string) {
       requestJson<DeployStateResponse>(
         `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
       ),
-    refetchOnWindowFocus: true,
   };
 }
 

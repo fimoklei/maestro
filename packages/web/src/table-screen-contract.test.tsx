@@ -40,6 +40,9 @@ type StatusCard = {
   readAge: string | null;
 };
 
+/** One row whose Status is still being read. */
+type StatusStillReading = { render: () => void; name: string };
+
 type Row = {
   /** The screen's source, from `packages/web/src`. */
   file: string;
@@ -47,6 +50,8 @@ type Row = {
   render: () => void;
   /** Null for a screen without a hover card. */
   card: StatusCard | null;
+  /** Null for a screen whose Status is never read apart from its rows. */
+  reading: StatusStillReading | null;
   /** Header names in order: checkbox, name, Status, secondary, GitHub, ⋮. */
   columns: string[];
   actions: RowActions;
@@ -218,7 +223,7 @@ const renderInventoryRow = () => {
   );
   renderWithQuery(
     <InventoryView
-      primitives={[{ type: "skill", name: "tdd", description: "Test first." }]}
+      primitives={[TDD]}
       repos={[]}
       registryReady
       targets={[
@@ -244,6 +249,8 @@ const renderInventoryRow = () => {
   );
 };
 
+const TDD = { type: "skill" as const, name: "tdd", description: "Test first." };
+
 const ON_TABLE_SCREEN: Row[] = [
   {
     file: "deploy-state/deploy-state-view.tsx",
@@ -259,6 +266,24 @@ const ON_TABLE_SCREEN: Row[] = [
       badge: "Behind",
       body: "2 of 5 deployed skills changed in v0.3.4.",
       readAge: "Read just now",
+    },
+    reading: {
+      render: () => {
+        stubServer(() => ({
+          global: {
+            tools: [
+              {
+                tool: "claude",
+                primitives: [{ type: "skill", name: "tdd", version: "v1" }],
+              },
+            ],
+            skipped: [],
+          },
+          drift: { global: new Promise(() => {}) },
+        }));
+        renderDeployState();
+      },
+      name: "Claude Code",
     },
     columns: ["Target", "Status", "Release", "Skills", "GitHub", "Actions"],
     // A target row removes nothing; its skills' removal sits in the pane's
@@ -320,6 +345,7 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "Your local copy differs from main.",
       readAge: "Not read yet",
     },
+    reading: null,
     columns: [
       "Name",
       "Status",
@@ -396,6 +422,36 @@ const ON_TABLE_SCREEN: Row[] = [
       body: "Deployed to 1 target",
       readAge: null,
     },
+    reading: {
+      render: () => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(() => new Promise<Response>(() => {})),
+        );
+        renderWithQuery(
+          <InventoryView
+            primitives={[TDD]}
+            repos={[]}
+            registryReady
+            targets={[
+              {
+                label: "",
+                target: { kind: "global" },
+                deployed: { status: "pending" },
+                primitives: [],
+                drift: driftViewModel({ data: { behind: [] }, isError: false }),
+              },
+            ]}
+            failure={null}
+            reading={false}
+            onReread={() => {}}
+            clone={{ kind: "checking" }}
+            onDeleted={() => {}}
+          />,
+        );
+      },
+      name: "tdd",
+    },
     columns: [
       "Select for bulk deploy",
       "Name",
@@ -423,6 +479,7 @@ const ON_TABLE_SCREEN: Row[] = [
       renderRepositories();
     },
     card: null,
+    reading: null,
     columns: ["Repository", "Status", "Folder path", "GitHub", "Actions"],
     actions: {
       render: () => {
@@ -454,6 +511,23 @@ function expectDanger(controls: HTMLElement[], destructive: string[]) {
 }
 
 const CARD = "[data-radix-popper-content-wrapper]";
+
+// The named row's Status cell, found by its column header.
+async function statusCell(name: string): Promise<HTMLElement> {
+  const grid = await screen.findByRole("grid");
+  const row = (await within(grid).findAllByRole("row")).find((each) =>
+    within(each)
+      .queryAllByRole("gridcell")
+      .some((cell) => cell.textContent === name),
+  );
+  if (row === undefined) throw new Error(`no row for ${name}`);
+  const column = within(grid)
+    .getAllByRole("columnheader")
+    .findIndex((header) => /^Status/.test(header.textContent ?? ""));
+  const cell = within(row).getAllByRole("gridcell")[column];
+  if (cell === undefined) throw new Error("no Status cell");
+  return cell;
+}
 
 // Badge first, then the body, then the read age last when known.
 async function expectOneStatusCard(card: StatusCard) {
@@ -766,6 +840,22 @@ describe("every table screen", () => {
         await screen.findByRole("tooltip", { hidden: true }),
       ).toHaveTextContent(card.name);
       expect(name).not.toHaveAttribute("title");
+    });
+  });
+
+  const reading = ON_TABLE_SCREEN.flatMap(({ file, reading }) =>
+    reading === null ? [] : [{ file, reading }],
+  );
+
+  describe.each(reading)("$file Status cell", ({ reading }) => {
+    it("marks a status still being read as busy, with a skeleton past 1.3 s", async () => {
+      reading.render();
+      const status = await statusCell(reading.name);
+
+      expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
+      expect(status.querySelector("[class*='animate-pulse']")).toBeNull();
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      expect(status.querySelector("[class*='animate-pulse']")).not.toBeNull();
     });
   });
 });

@@ -3,8 +3,10 @@ import type { ActionsMenuItem } from "./actions-menu";
 import { cn } from "./cn";
 import { MachineValue } from "./machine-value";
 import { RowMenu } from "./row-menu";
+import { Skeleton } from "./skeleton";
 import type { StatusReading } from "./status-reading";
 import { Tooltip } from "./tooltip";
+import { useReadSkeleton } from "./use-read-skeleton";
 
 // Inside the pane a row carries a mark, never a badge (#1065).
 type RowMark = StatusReading & { hint?: string };
@@ -45,6 +47,27 @@ export function SubListRow({
       )}
     </li>
   );
+}
+
+// Rows still being read, in the row's shape, past 1.3 s.
+export function SubListSkeleton({ rows }: { rows: number }) {
+  const { visible } = useReadSkeleton(true);
+  if (!visible) return null;
+  return Array.from({ length: rows }, (_, index) => (
+    <li
+      // biome-ignore lint/suspicious/noArrayIndexKey: placeholders carry no identity
+      key={index}
+      aria-hidden="true"
+      className="flex h-row items-center gap-inline border-divider border-b"
+    >
+      <span className="inline-flex w-6 flex-none justify-center">
+        <Skeleton className="size-3" />
+      </span>
+      <Skeleton className="w-28" />
+      <Skeleton className="ml-auto w-12" />
+      <span className="w-6 flex-none" />
+    </li>
+  ));
 }
 
 // A shape, so the reading survives without colour; its word is its name.

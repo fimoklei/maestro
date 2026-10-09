@@ -20,7 +20,7 @@ import {
 export const HARNESS_QUERIES = ["harness"] as const;
 const HARNESS_KEY = ["harness", "state"] as const;
 const RELEASE_PLAN_KEY = ["harness", "release-plan"] as const;
-const DELETION_CHECK_KEY = ["harness", "deletion-check"] as const;
+export const DELETION_CHECK_KEY = ["harness", "deletion-check"] as const;
 
 // Gated for callers without a connected Harness yet — the endpoint 409s until
 // one is set, and the sidebar reads it on every screen.

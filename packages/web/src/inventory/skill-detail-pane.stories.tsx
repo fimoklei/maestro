@@ -30,7 +30,8 @@ const meta = {
         'Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.',
     },
     targetCount: 3,
-    unconfirmed: false,
+    pending: false,
+    unreadable: false,
     targetItems: (deployment) => [
       ...(deployment.updatable
         ? [{ label: "Update target", onSelect: () => {} }]
@@ -77,7 +78,17 @@ export const NotDeployed: Story = {
 export const PartialReach: Story = {
   args: {
     targetCount: null,
-    unconfirmed: true,
+    pending: true,
+    footItems: [{ label: "Deploy skill", onSelect: () => {} }],
+    deployments: [target("Claude Code", "v1.4.0", "up-to-date")],
+  },
+};
+
+// A target's read failed: the list may miss a target, and says so.
+export const SomeTargetsNotRead: Story = {
+  args: {
+    targetCount: 1,
+    unreadable: true,
     footItems: [{ label: "Deploy skill", onSelect: () => {} }],
     deployments: [target("Claude Code", "v1.4.0", "up-to-date")],
   },

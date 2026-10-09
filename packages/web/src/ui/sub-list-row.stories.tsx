@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { reading } from "./status-reading";
-import { SubListRow } from "./sub-list-row";
+import { SubListRow, SubListSkeleton } from "./sub-list-row";
 
 const meta = {
   title: "Core/SubListRow",
@@ -46,4 +46,9 @@ export const Behind: Story = {
 // No status before the server answers: the row carries no mark.
 export const Unread: Story = {
   args: { mark: null },
+};
+
+// Rows still being read; the placeholders appear 1.3 s after the story opens.
+export const Reading: Story = {
+  render: () => <SubListSkeleton rows={2} />,
 };
