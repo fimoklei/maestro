@@ -1,15 +1,12 @@
 import { type Ref, useEffect, useState } from "react";
 import { lagsPin } from "../drift/drift-view-model";
+import { IMPORT_LOCAL_EDITS, REMOVE_SKILL } from "../ui/control-labels";
 import { Notice } from "../ui/notice";
 import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow } from "../ui/sub-list-row";
-import {
-  packageBehindNotice,
-  REMOVE_SKILL,
-  VIEW_SKILL_ON_GITHUB,
-} from "./deploy-state-copy";
+import { packageBehindNotice, VIEW_SKILL_ON_GITHUB } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
-import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
+
 import { RemoveSkillFlow } from "./remove-skill-flow";
 import { skillMark } from "./skill-mark";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";

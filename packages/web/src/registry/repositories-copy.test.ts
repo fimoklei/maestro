@@ -130,7 +130,8 @@ describe("unregisterNotice", () => {
     expect(unregisterNotice(new TypeError("network down"))).toEqual({
       level: "error",
       label: "Repository not unregistered",
-      message: "The list did not change. Select Unregister to try again.",
+      message:
+        "The list did not change. Select Unregister repository to try again.",
     });
   });
 });

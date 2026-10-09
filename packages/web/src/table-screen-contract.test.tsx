@@ -508,7 +508,7 @@ const ON_TABLE_SCREEN: Row[] = [
       render: renderInventoryRow,
       name: "tdd",
       badge: "Up to date",
-      body: "Deployed to 1 target",
+      body: "Deployed to 1 target.",
       readAge: null,
     },
     reading: {
@@ -987,6 +987,22 @@ describe("every table screen", () => {
       act(() => grid.focus());
 
       await expectOneStatusCard(card);
+    });
+
+    it("ends every sentence in a full stop, the read age aside", async () => {
+      card.render();
+      await userEvent.hover(
+        await within(await screen.findByRole("grid")).findByText(card.badge),
+      );
+      await expectOneStatusCard(card);
+
+      const sentences = [
+        ...(document.querySelector(CARD)?.querySelectorAll("p") ?? []),
+      ]
+        .map((line) => line.textContent ?? "")
+        .filter((line) => line !== card.readAge);
+      expect(sentences.length).toBeGreaterThan(0);
+      for (const line of sentences) expect(line).toMatch(/\.$/);
     });
 
     it("reveals a shortened name through the tooltip, not a native title", async () => {

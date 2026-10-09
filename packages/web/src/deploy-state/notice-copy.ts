@@ -8,15 +8,26 @@ import type {
   UpdateRunError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
-import { DEPLOY_SKILL } from "../inventory/inventory-copy";
+
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
-import { CREATE_RELEASE, UPDATE_TARGET } from "../ui/control-labels";
+import {
+  CREATE_RELEASE,
+  DEPLOY_SKILL,
+  REMOVE_SKILL,
+  rereadLabel,
+  UPDATE_TARGET,
+} from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
 import { machine, phrase } from "../ui/phrase";
-import { REMOVE_SKILL, REREAD_LABEL } from "./deploy-state-copy";
+import { REGISTER_STEP } from "./deploy-state-copy";
 import { REASON, type ReasonCode, TARGET_BUSY } from "./reason-copy";
-import { RETRY_LABELS, unfinishedOperationNotice } from "./release-head-copy";
+import {
+  RETRY_DEPLOY,
+  RETRY_LABELS,
+  RETRY_REMOVAL,
+  unfinishedOperationNotice,
+} from "./release-head-copy";
 import {
   UPDATE_AGAIN,
   UPDATE_INCOMPLETE_SENTENCE,
@@ -71,19 +82,16 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "A skill name uses lowercase letters, digits and single hyphens.",
   },
   "unknown-skill": {
-    message:
-      "Nothing was deployed. Select Re-read Inventory, then select the skill again.",
+    message: `Nothing was deployed. Select ${rereadLabel("Inventory")}, then select the skill again.`,
   },
   "inventory-not-configured": {
     message: `Nothing was deployed. ${CHANGE_LOCATION_STEP}, ${DEPLOY_AGAIN}`,
   },
   "inventory-unreadable": {
-    message:
-      "Nothing was deployed. Select Re-read Inventory, then deploy again.",
+    message: `Nothing was deployed. Select ${rereadLabel("Inventory")}, then deploy again.`,
   },
   "repo-not-registered": {
-    message:
-      "Nothing was deployed. Select Register repository on the Repositories screen, then deploy again.",
+    message: `Nothing was deployed. ${REGISTER_STEP}, then deploy again.`,
   },
   "inventory-origin-unavailable": {
     message:
@@ -146,8 +154,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "An earlier change on this target did not finish.",
   },
   "deploy-incomplete": {
-    message:
-      "Part of the selection is not on disk. Open the target on the Deploy-state screen and select Retry deploy.",
+    message: `Part of the selection is not on disk. Open the target on the Deploy-state screen and select ${RETRY_DEPLOY}.`,
     detail: FILES_MISSING,
   },
   "no-supported-tool": {
@@ -180,14 +187,14 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
       "Nothing was removed. A skill name uses lowercase letters, digits and single hyphens.",
   },
   "repo-not-registered": {
-    message: "Register this repository in Maestro, then remove again.",
+    message: `${REGISTER_STEP}, then remove again.`,
   },
   "no-supported-tool": {
     message:
       "Neither Claude Code nor Codex is on this machine. There is nothing here to remove.",
   },
   "not-deployed": {
-    message: `Nothing was removed. Select ${REREAD_LABEL} on the Deploy-state screen to read the list again.`,
+    message: `Nothing was removed. Select ${rereadLabel("Deploy-state")} on the Deploy-state screen to read the list again.`,
   },
   "lockfile-malformed": {
     message: "Repair or delete apm.lock.yaml in the target, then remove again.",
@@ -212,8 +219,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   },
   "deployed-diverged-pinned-per-skill": {
     message: "The skill was not removed. Its files changed after deployment.",
-    detail:
-      "Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select Remove skill again.",
+    detail: `Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select ${REMOVE_SKILL} again.`,
   },
   "cost-not-acknowledged": {
     message: `Nothing was removed. A copy changed after the check. Read the list again, then select ${REMOVE_SKILL}.`,
@@ -232,8 +238,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
       "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
   },
   "remove-incomplete": {
-    message:
-      "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+    message: `The skill's files are still on disk. Select ${RETRY_REMOVAL} to run the same removal again.`,
     detail: FILES_MISSING,
   },
   "remove-failed": {
@@ -278,15 +283,14 @@ const UNKNOWN_UPDATE_RUN: DeployStateNotice = {
 
 const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
   "repo-not-registered": {
-    message: `Register this repository in Maestro, ${UPDATE_AGAIN}`,
+    message: `${REGISTER_STEP}, ${UPDATE_AGAIN}`,
   },
   "no-supported-tool": {
     message:
       "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
   },
   "not-deployed": {
-    message:
-      "This target follows no release. Select Deploy skill in the Inventory to put one on it.",
+    message: `This target follows no release. Select ${DEPLOY_SKILL} in the Inventory to put one on it.`,
   },
   "lockfile-malformed": {
     message: `Repair or delete apm.lock.yaml in the target, ${UPDATE_AGAIN}`,
@@ -301,7 +305,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     message: `${CHANGE_LOCATION_STEP}, ${UPDATE_AGAIN}`,
   },
   "inventory-unreadable": {
-    message: `Select Re-read Inventory on the Harness location screen, ${UPDATE_AGAIN}`,
+    message: `Select ${rereadLabel("Inventory")} on the Harness location screen, ${UPDATE_AGAIN}`,
   },
   "no-published-tag": {
     message: `${CREATE_RELEASE_STEP}, ${UPDATE_AGAIN}`,
@@ -338,17 +342,14 @@ const UPDATE: Record<UpdateRunError, Body> = {
       "An update is still running on this target. Wait for it to finish.",
   },
   "operation-unfinished": {
-    message:
-      "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then select Update target again.",
+    message: `An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then select ${UPDATE_TARGET} again.`,
   },
   "deployed-diverged-from-lock": {
-    message:
-      "Nothing was changed. Select Update target again to review the local edits before updating.",
+    message: `Nothing was changed. Select ${UPDATE_TARGET} again to review the local edits before updating.`,
     detail: EDITS_OUTSIDE_HARNESS,
   },
   "deployed-unverifiable": {
-    message:
-      "Nothing was changed. Select Update target again to review the unverified copies before updating.",
+    message: `Nothing was changed. Select ${UPDATE_TARGET} again to review the unverified copies before updating.`,
     detail: COPIES_PREDATE_TRACKING,
   },
   "manifest-not-recognised": {
@@ -502,7 +503,7 @@ function retryCopy(
   return {
     "repo-not-registered": {
       label: REASON["repo-not-registered"],
-      message: `Nothing was changed. Select Register repository on the Repositories screen, ${again}`,
+      message: `Nothing was changed. ${REGISTER_STEP}, ${again}`,
     },
     "nothing-to-retry": {
       label: "Change already finished",

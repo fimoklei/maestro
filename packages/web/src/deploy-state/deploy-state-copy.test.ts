@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { rereadLabel } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import {
   deployStateNotRead,
@@ -15,7 +16,6 @@ import {
   packageBehindNotice,
   REPO_NOT_READ,
   REPO_NOT_READ_LINE,
-  REREAD_LABEL,
   TARGET_LABEL,
   targetCount,
   UNREACHED_HINT,
@@ -31,8 +31,9 @@ describe("Deploy-state copy", () => {
   });
 
   it("names the screen's one re-read control in every failed read", () => {
-    expect(REREAD_LABEL).toBe("Re-read Deploy-state");
-    expect(REPO_NOT_READ).toBe("Deploy-state not read");
+    expect(rereadLabel("Deploy-state")).toBe("Re-read Deploy-state");
+    // A Status hover card sentence, so it ends in a full stop.
+    expect(REPO_NOT_READ).toBe("Deploy-state not read.");
     expect(REPO_NOT_READ_LINE).toBe(
       "Deploy-state not read. Select Re-read Deploy-state to read this repository's deploy-state again.",
     );

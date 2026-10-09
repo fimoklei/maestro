@@ -707,7 +707,7 @@ describe("Harness home base", () => {
     const pane = await openPane("tdd", "Pending review");
     expect(
       within(pane).getByText(
-        "Review requested from @ada, @bo, @fimoklei/reviewers",
+        "Review requested from @ada, @bo, @fimoklei/reviewers.",
       ),
     ).toBeInTheDocument();
   });
@@ -1076,7 +1076,7 @@ describe("Harness home base", () => {
       act(() => (screen.getByRole("grid") as HTMLElement).focus());
 
       const status = await screen.findByText(
-        "Review requested from @sanne, @joris",
+        "Review requested from @sanne, @joris.",
       );
       expect(cardOf(status)).toHaveTextContent(/^Changes requested/);
       expect(document.querySelectorAll(CARD)).toHaveLength(1);

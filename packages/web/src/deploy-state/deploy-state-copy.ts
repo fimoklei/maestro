@@ -1,11 +1,15 @@
+import {
+  IMPORT_LOCAL_EDITS,
+  REGISTER_REPOSITORY,
+  rereadLabel,
+} from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { namedList, phrase } from "../ui/phrase";
+import { FILTER_LABEL } from "../ui/view-options-copy";
 import { joinNames } from "./join-names";
 
 // Every word the Deploy-state screen shows outside its dialogs.
 
-export const REREAD_LABEL = "Re-read Deploy-state";
-export const REMOVE_SKILL = "Remove skill";
 export const TARGET_LABEL = "Target";
 export const ACTIONS_COLUMN_LABEL = "Actions";
 
@@ -16,14 +20,16 @@ export const NOTHING_DEPLOYED = "Nothing deployed yet";
 export const targetCount = (count: number) =>
   `${count} ${count === 1 ? "target" : "targets"}`;
 
-// Information, never a control: Register repository on the Repositories screen
-// is the only registration control.
-export const NO_REPOSITORIES =
-  "No repositories yet. Select Register repository on the Repositories screen.";
+// Register repository on the Repositories screen is the only registration
+// control, so every sentence that needs one names both.
+export const REGISTER_STEP = `Select ${REGISTER_REPOSITORY} on the Repositories screen`;
+
+// Information, never a control.
+export const NO_REPOSITORIES = `No repositories yet. ${REGISTER_STEP}.`;
 
 export const NO_FILTER_MATCH = {
   title: "No targets match the filters",
-  description: "Select Filter to show more targets.",
+  description: `Select ${FILTER_LABEL} to show more targets.`,
 };
 
 export const NO_TARGETS = {
@@ -61,16 +67,16 @@ export const deployStateNotRead = (
   ({
     level: "error",
     label: NOT_READ_LABEL,
-    message: `Select ${REREAD_LABEL} to read every target again.`,
+    message: `Select ${rereadLabel("Deploy-state")} to read every target again.`,
     detail: `Not read: ${joinNames(parts.map((part) => NOT_READ_PARTS[part]))}.`,
   }) as const;
 // An unread repository is an Unknown reading: its pane states it in a line, not a notice.
-export const REPO_NOT_READ = NOT_READ_LABEL;
-export const REPO_NOT_READ_LINE = `${NOT_READ_LABEL}. Select ${REREAD_LABEL} to read this repository's deploy-state again.`;
+export const REPO_NOT_READ = `${NOT_READ_LABEL}.`;
+export const REPO_NOT_READ_LINE = `${NOT_READ_LABEL}. Select ${rereadLabel("Deploy-state")} to read this repository's deploy-state again.`;
 
 // The GitHub column's keyboard way to the same page, and its Unknown's cause.
 export const VIEW_REPOSITORY_ON_GITHUB = "View repository on GitHub";
-export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${REREAD_LABEL} to read it again.`;
+export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${rereadLabel("Deploy-state")} to read it again.`;
 
 // A selected skill's folder on GitHub, as its ⋮ item.
 export const VIEW_SKILL_ON_GITHUB = "View skill on GitHub";
@@ -82,9 +88,8 @@ export const NO_TOOL_DETECTED =
 export const otherOriginLine = (origins: readonly string[]) =>
   phrase`Holds skills, hooks and MCP servers deployed from ${namedList(origins)}.`;
 
-const KEEP_LOCAL_EDITS = "Select Import local edits to keep them.";
-const KEEP_BEFORE_UPDATE =
-  "To keep them, select Import local edits before you update.";
+const KEEP_LOCAL_EDITS = `Select ${IMPORT_LOCAL_EDITS} to keep them.`;
+const KEEP_BEFORE_UPDATE = `To keep them, select ${IMPORT_LOCAL_EDITS} before you update.`;
 
 export const localEditsReason = (names: readonly string[]) =>
   names.length === 1

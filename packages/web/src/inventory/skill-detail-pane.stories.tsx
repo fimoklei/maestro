@@ -38,7 +38,7 @@ const meta = {
       ...(deployment.updatable
         ? [{ label: "Update target", onSelect: () => {} }]
         : []),
-      { label: "Show in Deploy-state", onSelect: () => {} },
+      { label: "View Deploy-state", onSelect: () => {} },
       { label: "Remove from target", danger: true, onSelect: () => {} },
     ],
     footItems: [

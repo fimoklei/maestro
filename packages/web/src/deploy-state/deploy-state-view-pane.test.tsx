@@ -331,7 +331,7 @@ describe("Deploy-state pane — facts", () => {
       sentence("1 skill at v0.3.1, 1 at v0.3.0."),
     );
     const way = within(pane).getByText(
-      "Release not adopted. Select Remove skill for each, then Deploy skill.",
+      "Release not adopted. Select Remove skill for each, then select Deploy skill.",
     );
     expect(tags.closest("p")).toBe(way.closest("p"));
     expect(within(pane).queryByRole("status")).not.toBeInTheDocument();
@@ -348,7 +348,7 @@ describe("Deploy-state pane — facts", () => {
     expect(within(grid()).queryByText("Pinned per skill")).toBeNull();
     expect(
       within(pane).queryByText(
-        "Release not adopted. Select Remove skill for each, then Deploy skill.",
+        "Release not adopted. Select Remove skill for each, then select Deploy skill.",
       ),
     ).not.toBeInTheDocument();
   });

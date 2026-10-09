@@ -104,7 +104,7 @@ describe("Update target copy", () => {
   it("names both consents by the effect each one allows", () => {
     expect(DISCARD_LOCAL_EDITS).toBe("Discard local edits");
     expect(KEEP_WORK_BY_IMPORTING).toBe(
-      "To keep the edits instead, select Cancel, then Import local edits.",
+      "To keep the edits instead, select Cancel, then select Import local edits.",
     );
     expect(OVERWRITE_UNVERIFIED).toBe("Overwrite unverified copy");
   });

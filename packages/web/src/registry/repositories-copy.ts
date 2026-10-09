@@ -1,5 +1,6 @@
 import type { RegisterError, RepoStatus } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { REGISTER_REPOSITORY, rereadLabel } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import {
   type NoticeTable,
@@ -11,11 +12,8 @@ import { WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 
 export const SCREEN = "Repositories";
-export const REGISTER_REPOSITORY = "Register repository";
 export const REGISTER_TITLE = "Register a repository";
 export const UNREGISTER = "Unregister";
-export const VIEW_DEPLOY_STATE = "View Deploy-state";
-const REREAD_LABEL = "Re-read Repositories";
 export const ACTIONS_COLUMN_LABEL = "Actions";
 export const COLUMNS = {
   repository: "Repository",
@@ -37,12 +35,12 @@ export const STATUS_READINGS: Record<RepoStatus, StatusReading> = {
 };
 
 // Deploy-state's sentence, recovered by this screen's own Re-read.
-export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${REREAD_LABEL} to read it again.`;
+export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${rereadLabel("Repositories")} to read it again.`;
 
 export const REPOS_NOT_READ = {
   level: "error",
   label: "Registered repositories not read",
-  message: `Select ${REREAD_LABEL} to read the registered repositories again.`,
+  message: `Select ${rereadLabel("Repositories")} to read the registered repositories again.`,
 } as const;
 
 // One line under the field, so each sentence names its own subject.
@@ -82,14 +80,14 @@ const unregisterHeadings: NoticeTable<"not-registered"> = {
   "not-registered": {
     level: "info",
     label: "Repository already unregistered",
-    message: `Select ${REREAD_LABEL} to read the list again.`,
+    message: `Select ${rereadLabel("Repositories")} to read the list again.`,
   },
 };
 
 export function unregisterNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(unregisterHeadings, error, {
     label: "Repository not unregistered",
-    message: `The list did not change. Select ${UNREGISTER} to try again.`,
+    message: `The list did not change. Select ${UNREGISTER_REPOSITORY} to try again.`,
   });
 }
 

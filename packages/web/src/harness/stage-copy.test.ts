@@ -345,7 +345,7 @@ describe("Detail sentences", () => {
         ),
       ),
     ).toBe(
-      "Your local copy differs from main. Select Propose change to send it for review, or Discard change to match main again.",
+      "Your local copy differs from main. Select Propose change to send it for review, or select Discard change to match main again.",
     );
   });
 
@@ -600,7 +600,7 @@ describe("the reviewer and cross-stage lines", () => {
           ],
         }),
       ),
-    ).toBe("Review requested from @ada, @fimoklei/reviewers");
+    ).toBe("Review requested from @ada, @fimoklei/reviewers.");
   });
 
   it("omits the reviewer line when nobody is requested", () => {

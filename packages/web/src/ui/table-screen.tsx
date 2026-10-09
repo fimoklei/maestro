@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { cn } from "./cn";
+import { rereadLabel } from "./control-labels";
 import { DataTable, type DataTableProps } from "./data-table";
 import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
@@ -171,7 +172,7 @@ export function TableScreen<T extends RowData>({
                 {freshness}
                 <IconButton
                   ref={state.rereadRef}
-                  label={`Re-read ${state.name}`}
+                  label={rereadLabel(state.name)}
                   busy={rereading}
                   onClick={state.reread}
                 >

@@ -1,4 +1,5 @@
 import { type RefObject, useRef, useState } from "react";
+import { rereadLabel } from "./control-labels";
 import type { NoticeContent } from "./notice";
 import { useScreenStatus } from "./screen-status";
 
@@ -57,7 +58,7 @@ export function useTableScreen({
   const notice =
     failure === null
       ? null
-      : { ...failure, action: { label: `Re-read ${name}`, onClick: reread } };
+      : { ...failure, action: { label: rereadLabel(name), onClick: reread } };
   const status = useScreenStatus({ name, reading, notice, busy: null });
   return {
     name,

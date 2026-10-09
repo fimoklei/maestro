@@ -1,4 +1,5 @@
 import type { CloneSync } from "@maestro/core";
+import { rereadLabel } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 
 // Where the clone stands after a check could not move it to GitHub's default
@@ -9,29 +10,24 @@ const cloneSyncCauses: Record<
   { message: string; detail: string }
 > = {
   behind: {
-    message:
-      "The clone is behind the default branch. Select Re-read Harness to update it.",
+    message: `The clone is behind the default branch. Select ${rereadLabel("Harness")} to update it.`,
     detail: "The last check could not move it forward.",
   },
   "local-changes": {
-    message:
-      "Your local changes are as they were. Commit or undo them in your Git tool, then select Re-read Harness.",
+    message: `Your local changes are as they were. Commit or undo them in your Git tool, then select ${rereadLabel("Harness")}.`,
     detail:
       "They differ from the default branch on GitHub, so Maestro left the clone alone.",
   },
   diverged: {
-    message:
-      "Your local commits are as they were. Pull the default branch into the Harness clone, then select Re-read Harness.",
+    message: `Your local commits are as they were. Pull the default branch into the Harness clone, then select ${rereadLabel("Harness")}.`,
     detail: "The clone and GitHub each hold commits the other does not.",
   },
   "no-upstream": {
-    message:
-      "Set an upstream branch in your Git tool, then select Re-read Harness.",
+    message: `Set an upstream branch in your Git tool, then select ${rereadLabel("Harness")}.`,
     detail: "The checked-out branch does not follow a branch on GitHub.",
   },
   unreadable: {
-    message:
-      "Check the Harness clone with your Git tool, then select Re-read Harness.",
+    message: `Check the Harness clone with your Git tool, then select ${rereadLabel("Harness")}.`,
     detail: "Maestro could not read where the clone stands.",
   },
 };
@@ -46,5 +42,5 @@ export const cloneSyncNotice = (
         level: "warning",
         label: "Harness clone not updated",
         ...cloneSyncCauses[sync],
-        action: { label: "Re-read Harness", onClick: onRetry },
+        action: { label: rereadLabel("Harness"), onClick: onRetry },
       };

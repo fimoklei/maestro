@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { VIEW_DEPLOY_STATE } from "../ui/control-labels";
 import {
   BULK_DEPLOY_TARGET,
   bulkDeployDidNotRun,
@@ -19,7 +20,6 @@ import {
   removeFromToolsLabel,
   rowActionsLabel,
   SELECT_ALL_LABEL,
-  SHOW_IN_DEPLOY_STATE,
   SOME_TARGETS_NOT_READ,
   stageRowLabel,
   TARGETS_LOADING,
@@ -84,8 +84,8 @@ describe("Inventory copy", () => {
 
   it("heads the hover card with the reach, in zero, one and many", () => {
     expect(deployedToLine(0)).toBe("Not deployed to any target.");
-    expect(deployedToLine(1)).toBe("Deployed to 1 target");
-    expect(deployedToLine(12)).toBe("Deployed to 12 targets");
+    expect(deployedToLine(1)).toBe("Deployed to 1 target.");
+    expect(deployedToLine(12)).toBe("Deployed to 12 targets.");
   });
 
   // A hover card holds facts only, never an action.
@@ -114,7 +114,7 @@ describe("Inventory copy", () => {
   // A target row's ⋮ and the pane's foot (#1065).
   it("names a target row's actions and the foot's removal", () => {
     expect(REMOVE_FROM_TARGET).toBe("Remove from target");
-    expect(SHOW_IN_DEPLOY_STATE).toBe("Show in Deploy-state");
+    expect(VIEW_DEPLOY_STATE).toBe("View Deploy-state");
     expect(removeFromAllLabel(3)).toBe("Remove from all 3 targets");
     expect(removeFromAllLabel(2)).toBe("Remove from all 2 targets");
   });

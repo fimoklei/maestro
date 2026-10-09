@@ -15,9 +15,20 @@ import type {
   ReleasePlanError,
   RestoreSkillError,
 } from "@maestro/core";
-import { REREAD_LABEL as REREAD_INVENTORY } from "../inventory/inventory-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
-import { REREAD_HARNESS, UPDATE_SKILL } from "../ui/control-labels";
+import {
+  CREATE_RELEASE,
+  DELETE_SKILL,
+  DISCARD_CHANGE,
+  IMPORT_LOCAL_EDITS,
+  IMPORT_SKILL,
+  PROPOSE_CHANGE,
+  PUBLISH_RELEASE,
+  RESTORE_SKILL,
+  rereadLabel,
+  UPDATE_SKILL,
+} from "../ui/control-labels";
+import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, named, type Phrase, phrase, plainText } from "../ui/phrase";
@@ -48,7 +59,7 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   "no-answer": {
     level: "error",
     label: "GitHub did not respond",
-    message: "Select Re-read Harness, then Create a release again.",
+    message: `Select ${rereadLabel("Harness")}, then select ${CREATE_RELEASE} again.`,
     detail: "A release plan is measured against what GitHub holds.",
   },
 };
@@ -58,8 +69,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   "no-answer": {
     level: "error",
     label: "GitHub did not respond",
-    message:
-      "Nothing was published. Select Re-read Harness, then Publish release again.",
+    message: `Nothing was published. Select ${rereadLabel("Harness")}, then select ${PUBLISH_RELEASE} again.`,
   },
   "empty-delta": {
     level: "error",
@@ -70,26 +80,23 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   "already-released": {
     level: "error",
     label: "Release already exists",
-    message:
-      "Maestro rebuilt the plan against the newest release. Check it, then Publish release.",
+    message: `Maestro rebuilt the plan against the newest release. Check it, then select ${PUBLISH_RELEASE}.`,
   },
   "plan-changed": {
     level: "error",
     label: "Release plan changed",
-    message:
-      "Nothing was published. Maestro rebuilt the plan, so check it, then Publish release.",
+    message: `Nothing was published. Maestro rebuilt the plan, so check it, then select ${PUBLISH_RELEASE}.`,
     detail: "GitHub moved while this dialog was open.",
   },
   "publish-failed": {
     level: "error",
     label: "Release not published",
-    message:
-      "The Harness is as it was. Publish release again once GitHub is reachable.",
+    message: `The Harness is as it was. Select ${PUBLISH_RELEASE} again once GitHub is reachable.`,
   },
   "publish-in-progress": {
     level: "error",
     label: HARNESS_BUSY,
-    message: "Wait for that release to finish, then Create a release again.",
+    message: `Wait for that release to finish, then select ${CREATE_RELEASE} again.`,
     detail: "Maestro publishes one release at a time.",
   },
 };
@@ -110,13 +117,12 @@ export const promoteHeadings: NoticeTable<PromoteSkillError> = {
   "no-answer": {
     level: "error",
     label: "GitHub did not respond",
-    message:
-      "Nothing was pushed. Select Re-read Harness, then Propose change again.",
+    message: `Nothing was pushed. Select ${rereadLabel("Harness")}, then select ${PROPOSE_CHANGE} again.`,
   },
   "skill-missing": {
     level: "error",
     label: "Skill no longer in the Harness",
-    message: `Nothing was pushed. Select ${REREAD_HARNESS} to read the list again.`,
+    message: `Nothing was pushed. Select ${rereadLabel("Harness")} to read the list again.`,
   },
   "push-elsewhere": {
     level: "error",
@@ -127,39 +133,34 @@ export const promoteHeadings: NoticeTable<PromoteSkillError> = {
   "source-changed": {
     level: "error",
     label: "Files changed during the check",
-    message:
-      "Nothing was pushed. Let the edit on disk finish, then Propose change again.",
+    message: `Nothing was pushed. Let the edit on disk finish, then select ${PROPOSE_CHANGE} again.`,
   },
   "concurrent-change": {
     level: "error",
     label: "Newer change from a teammate",
-    message:
-      "Their version still stands. Pull it into the Harness clone, then Propose change again.",
+    message: `Their version still stands. Pull it into the Harness clone, then select ${PROPOSE_CHANGE} again.`,
   },
   "extra-requests": {
     level: "error",
     label: "Multiple pull requests",
-    message:
-      "Nothing was pushed. Select a View pull request link to close the extras, then Propose change again.",
+    message: `Nothing was pushed. Select a View pull request link to close the extras, then select ${PROPOSE_CHANGE} again.`,
     detail: "More than one open pull request matches this skill's branch.",
   },
   "proposed-by-other": {
     level: "error",
     label: "Another contributor's pull request is open",
-    message:
-      "Nothing was pushed. Wait until it is merged or closed, then Propose change again.",
+    message: `Nothing was pushed. Wait until it is merged or closed, then select ${PROPOSE_CHANGE} again.`,
     detail: ONE_CONTRIBUTOR,
   },
   "promote-failed": {
     level: "error",
     label: "Change not proposed",
-    message:
-      "The Harness is as it was. Propose change again once GitHub is reachable.",
+    message: `The Harness is as it was. Select ${PROPOSE_CHANGE} again once GitHub is reachable.`,
   },
   "promote-in-progress": {
     level: "error",
     label: HARNESS_BUSY,
-    message: "Wait for that change to finish, then Propose change again.",
+    message: `Wait for that change to finish, then select ${PROPOSE_CHANGE} again.`,
     detail: "Maestro proposes one change at a time.",
   },
 };
@@ -173,38 +174,33 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "push-elsewhere": promoteHeadings["push-elsewhere"],
   "no-answer": {
     ...promoteHeadings["no-answer"],
-    message:
-      "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
+    message: `Nothing was pushed. Select ${rereadLabel("Harness")}, then select ${DELETE_SKILL} again.`,
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message: `Nothing was pushed. Select ${REREAD_HARNESS} to read the list again.`,
+    message: `Nothing was pushed. Select ${rereadLabel("Harness")} to read the list again.`,
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
-    message: "Wait for that change to finish, then Delete skill again.",
+    message: `Wait for that change to finish, then select ${DELETE_SKILL} again.`,
   },
   "promote-failed": {
     ...promoteHeadings["promote-failed"],
     label: "Deletion not proposed",
-    message:
-      "The Harness is as it was. Delete skill again once GitHub is reachable.",
+    message: `The Harness is as it was. Select ${DELETE_SKILL} again once GitHub is reachable.`,
   },
   "extra-requests": {
     ...promoteHeadings["extra-requests"],
-    message:
-      "Nothing was pushed. Select a View pull request link to close the extras, then Delete skill again.",
+    message: `Nothing was pushed. Select a View pull request link to close the extras, then select ${DELETE_SKILL} again.`,
   },
   "proposed-by-other": {
     ...promoteHeadings["proposed-by-other"],
-    message:
-      "Nothing was pushed. Wait until it is merged or closed, then Delete skill again.",
+    message: `Nothing was pushed. Wait until it is merged or closed, then select ${DELETE_SKILL} again.`,
   },
   "confirmation-stale": {
     level: "error",
     label: "Confirmation out of date",
-    message:
-      "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
+    message: `Nothing was pushed. Select ${rereadLabel("Harness")}, then select ${DELETE_SKILL} again.`,
     detail: "The copy on the default branch moved after this confirmation.",
   },
   "not-deleted": {
@@ -222,29 +218,25 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "merge-in-progress": {
     level: "error",
     label: "Unfinished merge",
-    message:
-      "Nothing was pushed. Finish or abort the merge, then Delete skill again.",
+    message: `Nothing was pushed. Finish or abort the merge, then select ${DELETE_SKILL} again.`,
     detail: "A half-merged working tree does not state what should go.",
   },
   "rebase-in-progress": {
     level: "error",
     label: "Unfinished rebase",
-    message:
-      "Nothing was pushed. Finish or abort the rebase, then Delete skill again.",
+    message: `Nothing was pushed. Finish or abort the rebase, then select ${DELETE_SKILL} again.`,
     detail: "A half-rebased working tree does not state what should go.",
   },
   "unresolved-conflicts": {
     level: "error",
     label: "Unresolved conflicts",
-    message:
-      "Nothing was pushed. Resolve the conflicts, then Delete skill again.",
+    message: `Nothing was pushed. Resolve the conflicts, then select ${DELETE_SKILL} again.`,
     detail: "A conflicted working tree does not state what should go.",
   },
   unreadable: {
     level: "error",
     label: "Unreadable working tree",
-    message:
-      "Nothing was pushed. Make the Harness folder readable, then Delete skill again.",
+    message: `Nothing was pushed. Make the Harness folder readable, then select ${DELETE_SKILL} again.`,
   },
 };
 
@@ -269,13 +261,13 @@ const restorationHeadings = leftAsItWas<RestoreSkillError>(
     "head-moved": {
       level: "error",
       label: "Confirmation out of date",
-      message: "Select Re-read Harness, then Restore skill again.",
+      message: `Select ${rereadLabel("Harness")}, then select ${RESTORE_SKILL} again.`,
       detail: "Your clone's last commit moved after this confirmation.",
     },
     "staged-changes": {
       level: "error",
       label: "Skill has staged changes",
-      message: "Unstage this skill in your Git tool, then Restore skill again.",
+      message: `Unstage this skill in your Git tool, then select ${RESTORE_SKILL} again.`,
       detail: "Maestro never changes what you staged.",
     },
     "not-in-commit": {
@@ -287,27 +279,25 @@ const restorationHeadings = leftAsItWas<RestoreSkillError>(
     "destination-exists": {
       level: "error",
       label: "Folder already there",
-      message:
-        "Move the folder in the Harness clone, then Restore skill again.",
+      message: `Move the folder in the Harness clone, then select ${RESTORE_SKILL} again.`,
       detail: "Something already sits where this skill folder belongs.",
     },
     "destination-unsafe": {
       level: "error",
       label: "Folder outside the Harness",
-      message: "Replace the link with a real folder, then Restore skill again.",
+      message: `Replace the link with a real folder, then select ${RESTORE_SKILL} again.`,
       detail: "The skill folder resolves outside the Harness skills folder.",
     },
     "restore-in-progress": {
       level: "error",
       label: HARNESS_BUSY,
-      message: "Wait for that change to finish, then Restore skill again.",
+      message: `Wait for that change to finish, then select ${RESTORE_SKILL} again.`,
       detail: "Maestro changes one Harness at a time.",
     },
     "restore-failed": {
       level: "error",
       label: "Skill not restored",
-      message:
-        "Make the Harness skills folder writable, then Restore skill again.",
+      message: `Make the Harness skills folder writable, then select ${RESTORE_SKILL} again.`,
     },
     // A working tree mid-operation does not say what is missing, so the same
     // headings a deletion refuses under stand here, with the way on rewritten.
@@ -317,38 +307,36 @@ const restorationHeadings = leftAsItWas<RestoreSkillError>(
     },
     "merge-in-progress": {
       ...deletionHeadings["merge-in-progress"],
-      message: "Finish or abort the merge, then Restore skill again.",
+      message: `Finish or abort the merge, then select ${RESTORE_SKILL} again.`,
       detail: "A half-merged working tree does not state what is missing.",
     },
     "rebase-in-progress": {
       ...deletionHeadings["rebase-in-progress"],
-      message: "Finish or abort the rebase, then Restore skill again.",
+      message: `Finish or abort the rebase, then select ${RESTORE_SKILL} again.`,
       detail: "A half-rebased working tree does not state what is missing.",
     },
     "unresolved-conflicts": {
       ...deletionHeadings["unresolved-conflicts"],
-      message: "Resolve the conflicts, then Restore skill again.",
+      message: `Resolve the conflicts, then select ${RESTORE_SKILL} again.`,
       detail: "A conflicted working tree does not state what is missing.",
     },
     unreadable: {
       ...deletionHeadings.unreadable,
-      message: "Make the Harness folder readable, then Restore skill again.",
+      message: `Make the Harness folder readable, then select ${RESTORE_SKILL} again.`,
     },
     // A read that failed is never proof the copy is absent, so the sentence
     // sends the author to their Git tool rather than naming a missing skill.
     "source-unreadable": {
       level: "error",
       label: "Committed copy unreadable",
-      message:
-        "Check the Harness clone with your Git tool, then Restore skill again.",
+      message: `Check the Harness clone with your Git tool, then select ${RESTORE_SKILL} again.`,
       detail:
         "Maestro could not read this skill out of your last local commit.",
     },
     "destination-unreadable": {
       level: "error",
       label: "Skills folder missing",
-      message:
-        "Put the .apm/skills folder back in the Harness clone, then Restore skill again.",
+      message: `Put the .apm/skills folder back in the Harness clone, then select ${RESTORE_SKILL} again.`,
       detail: "Maestro could not read the Harness skills folder.",
     },
   },
@@ -362,45 +350,43 @@ const discardHeadings = (skill: string) =>
     "no-answer": {
       level: "error",
       label: "Clone not read",
-      message: "Close this dialog, then select Discard change again.",
+      message: `Select ${CLOSE}, then select ${DISCARD_CHANGE} again.`,
       detail: "Git could not read your clone.",
     },
     "already-proposed": {
       level: "error",
       label: "Change already proposed",
-      message: "Select Re-read Harness to see the skill as it is now.",
+      message: `Select ${rereadLabel("Harness")} to see the skill as it is now.`,
       detail: phrase`${named(skill)} now has a proposal branch or pull request.`,
     },
     "nothing-to-discard": {
       level: "error",
       label: "Nothing to discard",
-      message: "Select Re-read Harness to see the skill as it is now.",
+      message: `Select ${rereadLabel("Harness")} to see the skill as it is now.`,
       detail: phrase`${named(skill)} has no change that waits for a proposal.`,
     },
     "confirmation-stale": {
       level: "error",
       label: "Confirmation out of date",
-      message: "Select Re-read Harness, then Discard change again.",
+      message: `Select ${rereadLabel("Harness")}, then select ${DISCARD_CHANGE} again.`,
       detail: "The default branch moved after this confirmation.",
     },
     "destination-unsafe": {
       level: "error",
       label: "Folder outside the Harness",
-      message:
-        "Replace the link with a real folder, then Discard change again.",
+      message: `Replace the link with a real folder, then select ${DISCARD_CHANGE} again.`,
       detail: "The skill folder resolves outside the Harness skills folder.",
     },
     "discard-in-progress": {
       level: "error",
       label: HARNESS_BUSY,
-      message: "Wait for that change to finish, then Discard change again.",
+      message: `Wait for that change to finish, then select ${DISCARD_CHANGE} again.`,
       detail: "Maestro changes one Harness at a time.",
     },
     "discard-failed": {
       level: "error",
       label: "Change not discarded",
-      message:
-        "Make the Harness skills folder writable, then Discard change again.",
+      message: `Make the Harness skills folder writable, then select ${DISCARD_CHANGE} again.`,
     },
     "sparse-checkout": {
       ...deletionHeadings["sparse-checkout"],
@@ -409,22 +395,22 @@ const discardHeadings = (skill: string) =>
     },
     "merge-in-progress": {
       ...deletionHeadings["merge-in-progress"],
-      message: "Finish or abort the merge, then Discard change again.",
+      message: `Finish or abort the merge, then select ${DISCARD_CHANGE} again.`,
       detail: "A half-merged working tree does not state what changed.",
     },
     "rebase-in-progress": {
       ...deletionHeadings["rebase-in-progress"],
-      message: "Finish or abort the rebase, then Discard change again.",
+      message: `Finish or abort the rebase, then select ${DISCARD_CHANGE} again.`,
       detail: "A half-rebased working tree does not state what changed.",
     },
     "unresolved-conflicts": {
       ...deletionHeadings["unresolved-conflicts"],
-      message: "Resolve the conflicts, then Discard change again.",
+      message: `Resolve the conflicts, then select ${DISCARD_CHANGE} again.`,
       detail: "A conflicted working tree does not state what changed.",
     },
     unreadable: {
       ...deletionHeadings.unreadable,
-      message: "Make the Harness folder readable, then Discard change again.",
+      message: `Make the Harness folder readable, then select ${DISCARD_CHANGE} again.`,
     },
   });
 
@@ -436,46 +422,44 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
   "no-answer": {
     level: "error",
     label: "GitHub did not respond",
-    message: "Nothing changed on GitHub. Select Re-read Harness.",
+    message: `Nothing changed on GitHub. Select ${rereadLabel("Harness")}.`,
     detail:
       "Maestro could not read the branch this proposal is opened against.",
   },
   "review-unavailable": {
     level: "error",
     label: "Review status unavailable",
-    message: "Sign in with gh auth login, then select Re-read Harness.",
+    message: `Sign in with gh auth login, then select ${rereadLabel("Harness")}.`,
     detail: "Maestro reads pull requests through your own gh sign-in.",
   },
   "review-unknown": {
     level: "error",
     label: "Review status unknown",
-    message: "Select Re-read Harness to read GitHub again.",
+    message: `Select ${rereadLabel("Harness")} to read GitHub again.`,
     detail: "GitHub gave no answer Maestro can act on.",
   },
   "request-gone": {
     level: "error",
     label: "Pull request moved on",
-    message: "Select Re-read Harness to read what GitHub holds now.",
+    message: `Select ${rereadLabel("Harness")} to read what GitHub holds now.`,
     detail: "This pull request is no longer the one open over this skill.",
   },
   "extra-requests": {
     level: "error",
     label: "Multiple pull requests",
-    message:
-      "Select a View pull request link to close the extras, then select Re-read Harness.",
+    message: `Select a View pull request link to close the extras, then select ${rereadLabel("Harness")}.`,
     detail: "More than one open pull request matches this skill's branch.",
   },
   "proposed-by-other": {
     level: "error",
     label: "Another contributor's pull request",
-    message:
-      "Only its author can change it. Select Re-read Harness to read GitHub again.",
+    message: `Only its author can change it. Select ${rereadLabel("Harness")} to read GitHub again.`,
     detail: ONE_CONTRIBUTOR,
   },
   "request-exists": {
     level: "error",
     label: "Pull request already open",
-    message: "Select Re-read Harness to read the open pull request.",
+    message: `Select ${rereadLabel("Harness")} to read the open pull request.`,
     detail: "GitHub already holds an open request over this skill's branch.",
   },
   "action-failed": {
@@ -492,7 +476,7 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
 const importHeadings: NoticeTable<ImportSkillError> = {
   "not-configured": {
     ...harnessHeadings["not-configured"],
-    message: `${CHANGE_LOCATION_STEP}, then select Import skill again.`,
+    message: `${CHANGE_LOCATION_STEP}, then select ${IMPORT_SKILL} again.`,
   },
   "source-unreadable": {
     level: "error",
@@ -527,8 +511,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "harness-unreadable": {
     level: "error",
     label: "Unreadable Harness clone",
-    message:
-      "Nothing was copied. Make the Harness clone readable, then Update skill again.",
+    message: `Nothing was copied. Make the Harness clone readable, then select ${UPDATE_SKILL} again.`,
     detail:
       "Maestro reads the clone's committed state before replacing a skill.",
   },
@@ -537,8 +520,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "nothing-to-carry-back": {
     level: "info",
     label: "Folder already matches",
-    message:
-      "This folder already matches the skill in the Harness. Select Close.",
+    message: `This folder already matches the skill in the Harness. Select ${CLOSE}.`,
     detail: "Choose a folder with changes to update the skill.",
   },
   "missing-manifest": {
@@ -549,13 +531,13 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "invalid-frontmatter": {
     level: "error",
     label: "Unreadable frontmatter",
-    message: "Fix the SKILL.md frontmatter, then Import skill again.",
+    message: `Fix the SKILL.md frontmatter, then select ${IMPORT_SKILL} again.`,
     detail: "Maestro cannot read the skill's name or description.",
   },
   "empty-description": {
     level: "error",
     label: "Empty description",
-    message: "Fill in the description in SKILL.md, then Import skill again.",
+    message: `Fill in the description in SKILL.md, then select ${IMPORT_SKILL} again.`,
     detail: "The description tells an agent when to reach for the skill.",
   },
   "invalid-name": {
@@ -587,22 +569,19 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "unsafe-link": {
     level: "error",
     label: "Symbolic link inside",
-    message:
-      "Nothing was copied. Replace the link with a real file, then Import skill again.",
+    message: `Nothing was copied. Replace the link with a real file, then select ${IMPORT_SKILL} again.`,
     detail: "Maestro will not follow one into somewhere else on disk.",
   },
   "hard-linked-file": {
     level: "error",
     label: "Shared file inside",
-    message:
-      "Nothing was copied. Replace it with a plain copy, then Import skill again.",
+    message: `Nothing was copied. Replace it with a plain copy, then select ${IMPORT_SKILL} again.`,
     detail: "Copying it would tie the Harness to a file it does not own.",
   },
   "special-file": {
     level: "error",
     label: "Special file inside",
-    message:
-      "Nothing was copied. Take it out of the folder, then Import skill again.",
+    message: `Nothing was copied. Take it out of the folder, then select ${IMPORT_SKILL} again.`,
     detail: "Maestro carries plain files and folders only.",
   },
   "too-many-files": {
@@ -620,14 +599,12 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "source-changed": {
     level: "error",
     label: "Folder changed during import",
-    message:
-      "The skill was not imported. Let the folder change finish, then Import skill again.",
+    message: `The skill was not imported. Let the folder change finish, then select ${IMPORT_SKILL} again.`,
   },
   "copy-failed": {
     level: "error",
     label: "Skill not imported",
-    message:
-      "The skill was not imported. Free up disk space, then Import skill again.",
+    message: `The skill was not imported. Free up disk space, then select ${IMPORT_SKILL} again.`,
   },
   "destination-unsafe": {
     level: "error",
@@ -649,15 +626,13 @@ export const CONCURRENT_CHANGE_NOTICE: NoticeContent = {
 export const harnessStateNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "Harness not read",
-    message:
-      "The Maestro server did not answer. Select Re-read Harness to read the Harness again.",
+    message: `The Maestro server did not answer. Select ${rereadLabel("Harness")} to read the Harness again.`,
   });
 
 export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "GitHub not read",
-    message:
-      "The Maestro server did not answer, so the Harness is as it was. Select Re-read Harness.",
+    message: `The Maestro server did not answer, so the Harness is as it was. Select ${rereadLabel("Harness")}.`,
   });
 
 // Null before any read has ever succeeded: nothing is out of date yet (#848).
@@ -674,12 +649,12 @@ export const staleStatusNotice = (
   return {
     level: "warning",
     label: "Status out of date",
-    message: "Select Re-read Harness to read GitHub again.",
+    message: `Select ${rereadLabel("Harness")} to read GitHub again.`,
     detail:
       freshness.outcome === "offline"
         ? "Maestro could not reach GitHub, so these rows are from the last read."
         : "GitHub gave no answer, so these rows are from the last read.",
-    action: { label: "Re-read Harness", onClick: onRetry },
+    action: { label: rereadLabel("Harness"), onClick: onRetry },
   };
 };
 
@@ -702,7 +677,7 @@ export const stageReadNotice = (
     label,
     message: cause.message,
     detail: cause.detail,
-    action: { label: "Re-read Harness", onClick: onRetry },
+    action: { label: rereadLabel("Harness"), onClick: onRetry },
   };
 };
 
@@ -714,9 +689,9 @@ export const releasePublishedNotice = (
 ): NoticeContent => ({
   level: "warning",
   label: "Release published",
-  message: phrase`Maestro tagged ${machine(tag)}, but Inventory was not read. Select ${REREAD_INVENTORY} to see the published skills.`,
+  message: phrase`Maestro tagged ${machine(tag)}, but Inventory was not read. Select ${rereadLabel("Inventory")} to see the published skills.`,
   detail: "A release cannot change after publication.",
-  action: { label: REREAD_INVENTORY, onClick: onReread },
+  action: { label: rereadLabel("Inventory"), onClick: onReread },
 });
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
@@ -729,29 +704,25 @@ export const releasePlanNotice = (error: unknown): NoticeContent | null =>
 export const publishReleaseNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(publishReleaseHeadings, error, {
     label: "Release not published",
-    message:
-      "The Maestro server did not answer, and no tag was pushed. Publish release again.",
+    message: `The Maestro server did not answer, and no tag was pushed. Select ${PUBLISH_RELEASE} again.`,
   });
 
 export const promoteNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(promoteHeadings, error, {
     label: "Change not proposed",
-    message:
-      "The Maestro server did not answer, and nothing was pushed. Propose change again.",
+    message: `The Maestro server did not answer, and nothing was pushed. Select ${PROPOSE_CHANGE} again.`,
   });
 
 export const deletionNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(deletionHeadings, error, {
     label: "Deletion not proposed",
-    message:
-      "The Maestro server did not answer, and nothing was pushed. Delete skill again.",
+    message: `The Maestro server did not answer, and nothing was pushed. Select ${DELETE_SKILL} again.`,
   });
 
 export const restoreNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(restorationHeadings, error, {
     label: "Skill not restored",
-    message:
-      "Nothing was restored. The Maestro server did not answer. Restore skill again.",
+    message: `Nothing was restored. The Maestro server did not answer. Select ${RESTORE_SKILL} again.`,
   });
 
 export const discardNotice = (
@@ -760,8 +731,7 @@ export const discardNotice = (
 ): NoticeContent | null =>
   noticeFromTable(discardHeadings(skill), error, {
     label: "Change not discarded",
-    message:
-      "Nothing was discarded. The Maestro server did not answer. Discard change again.",
+    message: `Nothing was discarded. The Maestro server did not answer. Select ${DISCARD_CHANGE} again.`,
   });
 
 // A full restore is a toast. The local half is final either way, so only a
@@ -772,11 +742,11 @@ export const skillRestoredNotice = (
 ): NoticeContent => ({
   level: "warning",
   label: "Skill restored",
-  message: `The skill folder is back, but the status is out of date. Select ${REREAD_HARNESS} to read GitHub again.`,
+  message: `The skill folder is back, but the status is out of date. Select ${rereadLabel("Harness")} to read GitHub again.`,
   detail: hasRequest
     ? "Your proposal remains unchanged."
     : "Maestro could not read GitHub after the restore.",
-  action: { label: REREAD_HARNESS, onClick: onRetry },
+  action: { label: rereadLabel("Harness"), onClick: onRetry },
 });
 
 export const proposalNotice = (error: unknown): NoticeContent | null =>
@@ -789,8 +759,7 @@ export const proposalNotice = (error: unknown): NoticeContent | null =>
 export const importNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(importHeadings, error, {
     label: "Skill not imported",
-    message:
-      "The Maestro server did not answer, and nothing reached the Harness. Import skill again.",
+    message: `The Maestro server did not answer, and nothing reached the Harness. Select ${IMPORT_SKILL} again.`,
   });
 
 // The check's refusals never travel as an HTTP failure — they come back in a
@@ -807,7 +776,7 @@ export const importBlockerNotice = (
 export const copiesDiffer = (
   folders: Record<"claude" | "codex", string>,
 ): Phrase =>
-  phrase`The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ${machine(folders.claude)} or ${machine(folders.codex)}.`;
+  phrase`The Claude Code and Codex copies differ. Select ${IMPORT_SKILL} on the Harness screen and choose one: ${machine(folders.claude)} or ${machine(folders.codex)}.`;
 
 // Import skill's sentences where they work from this dialog, retried with
 // Import local edits. Where Import skill says to pick a folder, this dialog
@@ -815,63 +784,45 @@ export const copiesDiffer = (
 // Import skill refuses another Harness and an unproven origin too, so its
 // route is no way through for either.
 const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
-  "not-configured": `${CHANGE_LOCATION_STEP}, then select Import local edits again.`,
-  "destination-unsafe":
-    "Nothing was copied. Make the clone's skills folder a real folder inside it, then select Import local edits again.",
-  "source-unreadable":
-    "Nothing was copied. Make the folder readable, then select Import local edits again.",
+  "not-configured": `${CHANGE_LOCATION_STEP}, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "destination-unsafe": `Nothing was copied. Make the clone's skills folder a real folder inside it, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "source-unreadable": `Nothing was copied. Make the folder readable, then select ${IMPORT_LOCAL_EDITS} again.`,
   "outside-root":
     "Maestro reads only inside your home folder, and this copy is outside it. Copy the changed files into the Harness clone yourself.",
   "deployed-copy":
     "Deployed by another Harness. Make the change in that Harness.",
   "origin-unproven":
     "The deployment record does not name this copy's Harness. Copy the changed files into the Harness clone yourself.",
-  "missing-manifest":
-    "This copy has no SKILL.md. Put it back, then select Import local edits again.",
-  "invalid-frontmatter":
-    "Fix the SKILL.md frontmatter, then select Import local edits again.",
-  "empty-description":
-    "Fill in the description in SKILL.md, then select Import local edits again.",
-  "harness-copy-uncommitted":
-    "The Harness clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
-  "harness-unreadable":
-    "Nothing was copied. Make the Harness clone readable, then select Import local edits again.",
+  "missing-manifest": `This copy has no SKILL.md. Put it back, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "invalid-frontmatter": `Fix the SKILL.md frontmatter, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "empty-description": `Fill in the description in SKILL.md, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "harness-copy-uncommitted": `The Harness clone has uncommitted changes to this skill. Undo them, or select ${PROPOSE_CHANGE}, merge on GitHub and pull first.`,
+  "harness-unreadable": `Nothing was copied. Make the Harness clone readable, then select ${IMPORT_LOCAL_EDITS} again.`,
   "nothing-to-carry-back":
     "The Harness already has these changes. See the skill on the Harness screen.",
   "invalid-name":
     "The deployment record gives this skill a name the Harness cannot use. Copy the changed files into the Harness clone yourself.",
   "name-taken":
     "The Harness already holds a skill under this name. Copy the changed files into the Harness clone yourself.",
-  "not-found":
-    "Nothing was copied. The deployed folder is gone. Select Close, then Import local edits again.",
-  "not-a-directory":
-    "Nothing was copied. The deployed copy is no longer a folder. Select Close, then Import local edits again.",
+  "not-found": `Nothing was copied. The deployed folder is gone. Select ${CLOSE}, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "not-a-directory": `Nothing was copied. The deployed copy is no longer a folder. Select ${CLOSE}, then select ${IMPORT_LOCAL_EDITS} again.`,
   "destination-exists":
     "The Harness already holds a folder under this name. Copy the changed files into the Harness clone yourself.",
-  "unsafe-link":
-    "Nothing was copied. Replace the symbolic link in the skill folder with a real file, then select Import local edits again.",
-  "hard-linked-file":
-    "Nothing was copied. Replace the shared file in the skill folder with a plain copy, then select Import local edits again.",
-  "special-file":
-    "Nothing was copied. Take the special file out of the skill folder, then select Import local edits again.",
-  "too-many-files":
-    "Nothing was copied. This copy holds over 1,000 files. Remove the files the skill does not need, then select Import local edits again.",
-  "too-large":
-    "Nothing was copied. This copy is over 50 MiB. Remove the files the skill does not need, then select Import local edits again.",
-  "source-changed":
-    "The skill was not imported. Let the folder change finish, then select Import local edits again.",
-  "copy-failed":
-    "The skill was not imported. Free up disk space, then select Import local edits again.",
+  "unsafe-link": `Nothing was copied. Replace the symbolic link in the skill folder with a real file, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "hard-linked-file": `Nothing was copied. Replace the shared file in the skill folder with a plain copy, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "special-file": `Nothing was copied. Take the special file out of the skill folder, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "too-many-files": `Nothing was copied. This copy holds over 1,000 files. Remove the files the skill does not need, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "too-large": `Nothing was copied. This copy is over 50 MiB. Remove the files the skill does not need, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "source-changed": `The skill was not imported. Let the folder change finish, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "copy-failed": `The skill was not imported. Free up disk space, then select ${IMPORT_LOCAL_EDITS} again.`,
   // A record may name this Harness and still not list the folder.
   "not-an-update":
     "The deployment record does not list this folder, so Maestro cannot tell which skill it updates. Copy the changed files into the Harness clone yourself.",
   unverified:
     "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
-  "copies-differ":
-    "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one.",
+  "copies-differ": `The Claude Code and Codex copies differ. Select ${IMPORT_SKILL} on the Harness screen and choose one.`,
   "no-local-edits": "No local edits left in this copy. Nothing was imported.",
-  "undoes-newer-changes":
-    "The Harness changed this skill after the check, so it was not imported. Select Import local edits again to choose whether to undo that change.",
+  "undoes-newer-changes": `The Harness changed this skill after the check, so it was not imported. Select ${IMPORT_LOCAL_EDITS} again to choose whether to undo that change.`,
 };
 
 // One sentence under a skill Import local edits did not carry back.

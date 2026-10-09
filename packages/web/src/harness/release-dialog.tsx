@@ -2,6 +2,7 @@ import type { ReleasePlan, SemverStep } from "@maestro/core";
 import { useState } from "react";
 import { loadingText } from "../ui/busy-copy";
 import { Card } from "../ui/card";
+import { PUBLISH_RELEASE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
@@ -64,13 +65,13 @@ export function ReleaseDialog({
 
   return (
     <Dialog
-      title={`Publish release for ${origin}`}
+      title={`${PUBLISH_RELEASE} for ${origin}`}
       version={null}
       width={480}
       phase={publishing ? "running" : "idle"}
       // It pushes a tag to GitHub, so it is confirmed like a deletion.
       action={{
-        label: "Publish release",
+        label: PUBLISH_RELEASE,
         verb: "publish",
         tone: "danger",
         unavailable: unavailableCause(load),

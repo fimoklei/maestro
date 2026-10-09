@@ -1,13 +1,14 @@
 import type { GitHubPage } from "@maestro/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHarness } from "../harness/use-harness";
-import { INVENTORY_NOT_READ, REREAD_LABEL } from "../inventory/inventory-copy";
+import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
 import { refreshInventoryReads } from "../inventory/use-connect-inventory";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { targetLabel } from "../shell/target-label";
 import { harnessMetaLine } from "../shell/use-harness-summary";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
+import { rereadLabel } from "../ui/control-labels";
 import { NOT_READ_YET } from "../ui/freshness";
 import { Notice } from "../ui/notice";
 import { plainText } from "../ui/phrase";
@@ -99,7 +100,7 @@ export function HarnessLocationPage() {
         busy={reading}
         action={
           <Button variant="quiet" onClick={reread}>
-            {REREAD_LABEL}
+            {rereadLabel("Inventory")}
           </Button>
         }
       >

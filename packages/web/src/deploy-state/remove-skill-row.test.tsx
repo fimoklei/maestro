@@ -180,7 +180,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
 
       expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-        /Register this repository in Maestro/,
+        /Select Register repository on the Repositories screen, then remove again./,
       );
       expect(dialog).not.toHaveTextContent(/may lose work/i);
     });

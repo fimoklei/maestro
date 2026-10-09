@@ -1288,7 +1288,7 @@ describe("InventoryView — a target row in the pane", () => {
     ).toBeInTheDocument();
   });
 
-  it("names Show in Deploy-state where the screen can open that row", async () => {
+  it("names View Deploy-state where the screen can open that row", async () => {
     stubPendingFetch();
     const onShowTarget = vi.fn();
     renderView({
@@ -1300,11 +1300,11 @@ describe("InventoryView — a target row in the pane", () => {
 
     const menu = await targetMenu("beta");
     expect(menuItems(menu)).toEqual([
-      "Show in Deploy-state",
+      "View Deploy-state",
       "Remove from target",
     ]);
     await userEvent.click(
-      within(menu).getByRole("menuitem", { name: "Show in Deploy-state" }),
+      within(menu).getByRole("menuitem", { name: "View Deploy-state" }),
     );
     expect(onShowTarget).toHaveBeenCalledWith("repo:/projects/beta");
   });
@@ -1407,7 +1407,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const card = await screen.findByText(sentence("Deployed to 1 target"));
+    const card = await screen.findByText(sentence("Deployed to 1 target."));
     const row = within(card.parentElement as HTMLElement).getByRole("listitem");
     expect(row).toHaveTextContent("beta");
     expect(row).toHaveTextContent("v0.3.2");
@@ -1420,7 +1420,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const reach = await screen.findByText(sentence("Deployed to 1 target"));
+    const reach = await screen.findByText(sentence("Deployed to 1 target."));
     const card = reach.closest(
       "[data-radix-popper-content-wrapper]",
     ) as HTMLElement;
@@ -1453,7 +1453,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const reach = await screen.findByText(sentence("Deployed to 2 targets"));
+    const reach = await screen.findByText(sentence("Deployed to 2 targets."));
     const card = reach.closest(
       "[data-radix-popper-content-wrapper]",
     ) as HTMLElement;
@@ -1478,7 +1478,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Behind"));
 
-    const reach = await screen.findByText(sentence("Deployed to 2 targets"));
+    const reach = await screen.findByText(sentence("Deployed to 2 targets."));
     const card = reach.closest(
       "[data-radix-popper-content-wrapper]",
     ) as HTMLElement;
@@ -1491,7 +1491,7 @@ describe("InventoryView — hover card", () => {
 
     await userEvent.hover(within(grid()).getByText("Up to date"));
 
-    const reach = await screen.findByText(sentence("Deployed to 1 target"));
+    const reach = await screen.findByText(sentence("Deployed to 1 target."));
     const card = reach.closest(
       "[data-radix-popper-content-wrapper]",
     ) as HTMLElement;
@@ -1510,7 +1510,7 @@ describe("InventoryView — hover card", () => {
     act(() => grid().focus());
 
     expect(
-      await screen.findAllByText(sentence("Deployed to 1 target")),
+      await screen.findAllByText(sentence("Deployed to 1 target.")),
     ).toHaveLength(1);
   });
 
@@ -1526,7 +1526,7 @@ describe("InventoryView — hover card", () => {
     await userEvent.hover(within(grid()).getByText("2"));
 
     expect(
-      await screen.findByText(sentence("Deployed to 2 targets")),
+      await screen.findByText(sentence("Deployed to 2 targets.")),
     ).toBeInTheDocument();
   });
 
@@ -1537,7 +1537,7 @@ describe("InventoryView — hover card", () => {
     act(() => grid().focus());
 
     expect(
-      await screen.findAllByText(sentence("Deployed to 1 target")),
+      await screen.findAllByText(sentence("Deployed to 1 target.")),
     ).toHaveLength(1);
   });
 
@@ -1557,7 +1557,7 @@ describe("InventoryView — hover card", () => {
     };
 
     act(() => grid().focus());
-    await screen.findByText(sentence("Deployed to 1 target"));
+    await screen.findByText(sentence("Deployed to 1 target."));
 
     const triggerOf = (column: string) =>
       cellOf(column).querySelector("[data-state]");
