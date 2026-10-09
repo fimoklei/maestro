@@ -2,9 +2,14 @@
 // targets the deployed column rolls up, so the two can't diverge.
 
 import type { ReleaseHead } from "@maestro/core";
-import { comparedFact } from "../deploy-state/release-head-copy";
+import {
+  comparedFact,
+  UNFINISHED_REASONS,
+} from "../deploy-state/release-head-copy";
 import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
+import { type SkillMark, skillMark } from "../deploy-state/skill-mark";
 import { globalRowId, repoRowId } from "../deploy-state/target-rows";
+import { UNFINISHED } from "../deploy-state/target-status";
 import { toolNameList } from "../deploy-state/tool-presentation";
 import type { DriftStatus } from "../drift/drift-view-model";
 import { type DeploymentTarget, skillReading } from "./deployed-rollup";
@@ -19,6 +24,8 @@ export type SkillDeployment = {
   version: string;
   // Never up to date for an un-run check.
   status: DriftStatus;
+  /** The row's mark: the target's unfinished operation, else Deploy-state's skill mark. */
+  mark: SkillMark | null;
   /** What an update sends; every tool row names the one global target. */
   target: DeployTarget;
   /** What a removal names: a global one covers every detected tool. */
@@ -85,6 +92,12 @@ export function skillDeployments(
       release: target.releaseHead?.release ?? deployed.version,
       version: deployed.version,
       status,
+      mark: target.pending
+        ? {
+            ...UNFINISHED[target.pending],
+            hint: UNFINISHED_REASONS[target.pending],
+          }
+        : skillMark(deployed.copy, status),
       target: wire,
       removeTarget:
         wire.kind === "repo" ? wire : { kind: "global", tools: [...tools] },

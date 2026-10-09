@@ -71,8 +71,6 @@ export const consentRowName = (row: CopyConsentRow): string =>
 
 export const LOADING_PREVIEW = "Loading the update preview…";
 
-export const MIXED_RELEASES = "Mixed releases";
-
 type OutcomeVerdict = "landed" | "failed" | "unconfirmed";
 
 export function outcomeHeading(to: string, verdict: OutcomeVerdict): string {

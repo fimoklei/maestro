@@ -9,7 +9,7 @@ import type { DeployTarget } from "./use-deploy-skill";
 // A global entry apm could not manage names no tool, so every tool row carries
 // the section-wide attention count (#358).
 export function globalToolTargets(
-  state: Pick<GlobalDeployStateView, "tools" | "skipped">,
+  state: Pick<GlobalDeployStateView, "tools" | "skipped" | "pendingOperation">,
   drift: DriftViewModel,
 ): DeploymentTarget[] {
   return state.tools.map((tool) => {
@@ -25,6 +25,9 @@ export function globalToolTargets(
       // Under one release, this tool's own Release head answers the per-skill
       // reading; the drift model is the fallback where there is none (#956).
       ...(tool.releaseHead ? { releaseHead: tool.releaseHead } : {}),
+      ...(state.pendingOperation
+        ? { pending: state.pendingOperation.kind }
+        : {}),
     };
   });
 }
@@ -43,5 +46,8 @@ export function repoTarget(params: {
     primitives: read.data?.primitives ?? [],
     drift,
     ...(read.data?.releaseHead ? { releaseHead: read.data.releaseHead } : {}),
+    ...(read.data?.pendingOperation
+      ? { pending: read.data.pendingOperation.kind }
+      : {}),
   };
 }

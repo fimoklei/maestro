@@ -12,7 +12,6 @@ import {
   KEEP_WORK_BY_IMPORTING,
   LOADING_PREVIEW,
   localEditsSentence,
-  MIXED_RELEASES,
   NO_CONTENT_CHANGES,
   NO_GITHUB_ORIGIN,
   NOT_ADDED,
@@ -128,10 +127,6 @@ describe("Update target copy", () => {
 
   it("names what is loading by the screen it is for", () => {
     expect(LOADING_PREVIEW).toBe("Loading the update preview…");
-  });
-
-  it("names a half-landed update on the card", () => {
-    expect(MIXED_RELEASES).toBe("Mixed releases");
   });
 
   it("heads the outcome by whether every skill reached the release", () => {

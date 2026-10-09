@@ -198,7 +198,9 @@ describe("Deploy-state — Update target on a repository", () => {
       focusManager.setFocused(false);
       focusManager.setFocused(true);
     });
-    await screen.findByText("Mixed releases");
+    await within(
+      screen.getByRole("grid", { name: "Deploy-state table", hidden: true }),
+    ).findAllByText("Update incomplete");
 
     expect(dialog).toBeInTheDocument();
     update.resolve(
@@ -432,7 +434,9 @@ describe("Deploy-state — Update target on the global target", () => {
       focusManager.setFocused(false);
       focusManager.setFocused(true);
     });
-    await screen.findByText("Mixed releases");
+    await within(
+      screen.getByRole("grid", { name: "Deploy-state table", hidden: true }),
+    ).findAllByText("Update incomplete");
 
     expect(dialog).toBeInTheDocument();
     for (const button of screen.queryAllByRole("button")) {

@@ -11,7 +11,6 @@ import {
   SOME_TARGETS_NOT_READ,
 } from "./inventory-copy";
 import type { SkillDeployment } from "./skill-deployments";
-import { targetReading } from "./skill-status";
 import { TYPE_WORD } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
@@ -90,7 +89,7 @@ export function SkillDetailPane({
               {deployments.map((deployment) => (
                 <SubListRow
                   key={deployment.rowId ?? deployment.label}
-                  mark={targetReading(deployment.status)}
+                  mark={deployment.mark}
                   name={deployment.label}
                   value={deployment.release}
                   menuLabel={rowActionsLabel(deployment.label)}

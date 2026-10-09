@@ -737,7 +737,9 @@ describe("Deploy-state — rows and their menu", () => {
     stubServer(() => ({
       repos: ["/Users/me/a", "/Users/me/b"],
       global: TWO_TOOLS,
-      repo: { "/Users/me/a": new Promise(() => {}) },
+      repo: { "/Users/me/a": { primitives: [skill("tdd")], skipped: [] } },
+      // A Behind check that never answers: no skeleton waits on it.
+      drift: { "/Users/me/a": new Promise(() => {}) },
     }));
     renderDeployState();
     await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("In sync"));

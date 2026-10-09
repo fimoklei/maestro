@@ -1,5 +1,6 @@
 import type {
   DeployedPrimitive,
+  PendingOperation,
   ReleaseHead,
   SkippedEntry,
 } from "@maestro/core";
@@ -47,6 +48,7 @@ export type DeployStateRead = Pick<
     primitives: DeployedPrimitive[];
     skipped: SkippedEntry[];
     releaseHead?: ReleaseHead;
+    pendingOperation?: PendingOperation;
   }>,
   "data" | "isError"
 >;

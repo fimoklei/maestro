@@ -115,7 +115,7 @@ describe("targetPaneActions", () => {
     expect(selected).toEqual(["update", "import", "deploy"]);
   });
 
-  // The notice then offers Re-read, so the retry stays at the foot.
+  // Its stale unfinished notice is withheld, so the retry stays at the foot.
   it("keeps the retry at the foot of a repository whose read failed", () => {
     expect(placed(facts(["retry", "deploy"], { readFailed: true }))).toEqual({
       update: null,

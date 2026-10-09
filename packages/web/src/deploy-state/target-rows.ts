@@ -151,7 +151,8 @@ export function globalRows(
         indicator,
         pinnedPerSkill: group.pinnedPerSkill !== undefined,
         behind,
-        mixedReleases: pending?.kind === "update",
+        // A failed read's stale record never outranks its Unknown.
+        ...(pending && !readFailed ? { pending: pending.kind } : {}),
         localEdits: !readFailed && editedSkills(group.primitives).length > 0,
       }),
       skills: group.primitives.length,
@@ -218,7 +219,7 @@ export function repoRow(
       indicator: drift.targetIndicator(toDeployedView(read)),
       pinnedPerSkill: pinned !== undefined,
       behind,
-      mixedReleases: pending?.kind === "update",
+      ...(pending && !read.isError ? { pending: pending.kind } : {}),
       localEdits:
         !read.isError && editedSkills(data?.primitives ?? []).length > 0,
     }),
@@ -272,7 +273,7 @@ function statusReason(row: TargetRow): Copy | null {
   if (!row.readFailed && edited.length > 0)
     return localEditsLine(edited, row.behind);
   if (row.pinned) return pinnedTagsLine(row.pinned);
-  if (row.readFailed) return REPO_NOT_READ.label;
+  if (row.readFailed) return REPO_NOT_READ;
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {
     return otherOriginLine(row.otherOrigins);
   }
@@ -288,7 +289,7 @@ function statusReason(row: TargetRow): Copy | null {
 
 export function statusCard(row: TargetRow, now: Date): StatusCard {
   if (row.readFailed && row.group === REPOSITORIES) {
-    return { reason: REPO_NOT_READ.label, readAge: null };
+    return { reason: REPO_NOT_READ, readAge: null };
   }
   return {
     reason: statusReason(row),

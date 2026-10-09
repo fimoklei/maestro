@@ -61,6 +61,13 @@ export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
   update: RETRY_UPDATE,
 };
 
+/** An unfinished operation's notice heading, which is also its row's badge. */
+export const UNFINISHED_HEADINGS: Record<PendingOperation["kind"], string> = {
+  deploy: "Deploy incomplete",
+  remove: "Removal incomplete",
+  update: UPDATE_INCOMPLETE,
+};
+
 /** What an unfinished operation left, without its retry. */
 export const UNFINISHED_REASONS: Record<PendingOperation["kind"], string> = {
   deploy: "Part of the selection is not on disk.",
@@ -87,7 +94,7 @@ export function unfinishedOperationNotice(
     ).length;
     return {
       level: "warning",
-      label: UPDATE_INCOMPLETE,
+      label: UNFINISHED_HEADINGS.update,
       message: UPDATE_INCOMPLETE_SENTENCE,
       ...(desired.length === 0
         ? {}
@@ -99,12 +106,12 @@ export function unfinishedOperationNotice(
   return pending.kind === "deploy"
     ? {
         level: "warning",
-        label: "Deploy incomplete",
+        label: UNFINISHED_HEADINGS.deploy,
         message: phrase`${UNFINISHED_REASONS.deploy} Select ${RETRY_DEPLOY} to install release ${machine(pending.release)} again.`,
       }
     : {
         level: "warning",
-        label: "Removal incomplete",
+        label: UNFINISHED_HEADINGS.remove,
         message: `${UNFINISHED_REASONS.remove} Select ${RETRY_REMOVAL} to run the same removal again.`,
       };
 }
