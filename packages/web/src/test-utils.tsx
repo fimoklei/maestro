@@ -89,7 +89,7 @@ export const unselectedControls = (copy: Copy): string[] => {
   const text = plainText(copy);
   return NAMED_CONTROLS.filter((label) =>
     new RegExp(
-      `(?<![Ss]elect )(?<![\\w-])${label.replace(/[-.]/g, "\\$&")}(?![\\w-])`,
+      `(?<![Ss]elect )(?<![\\w-])${label.replace(/[\\^$.*+?()[\]{}|-]/g, "\\$&")}(?![\\w-])`,
     ).test(text),
   );
 };
