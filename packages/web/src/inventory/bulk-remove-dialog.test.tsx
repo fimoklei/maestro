@@ -7,7 +7,10 @@ import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",
-  cleanLine: "3 clean copies — nothing but the deployed files goes",
+  clean: {
+    label: "3 clean copies",
+    message: "Only the deployed files are removed.",
+  },
   cost: [],
   refused: [],
   removableCount: 3,
@@ -16,7 +19,10 @@ const allClean: BulkRemoveDialogView = {
 
 const withCost: BulkRemoveDialogView = {
   kind: "grouped",
-  cleanLine: "1 clean copies",
+  clean: {
+    label: "1 clean copy",
+    message: "Only the deployed files are removed.",
+  },
   cost: [
     {
       label: "/dev/acme-api",
@@ -130,8 +136,19 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     renderDialog();
 
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent(
-      "3 clean copies — nothing but the deployed files goes",
+    // #1458: the shared Notice at success, not a hand-rolled bar.
+    const clean = within(dialog)
+      .getAllByRole("status")
+      .find((region) => region.textContent?.includes("3 clean copies"));
+    expect(clean).toHaveTextContent(
+      "3 clean copiesOnly the deployed files are removed.",
+    );
+    expect(within(clean as HTMLElement).getByText("✓")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(dialog).toHaveAccessibleDescription(
+      /3 clean copies\s*Only the deployed files are removed\./,
     );
     expect(screen.queryByText(/Loses work/)).toBeNull();
     expect(screen.queryByText(/Cannot be removed/)).toBeNull();
@@ -178,7 +195,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     renderDialog({
       view: {
         kind: "grouped",
-        cleanLine: null,
+        clean: null,
         cost: [],
         refused: [
           { label: "/dev/legacy-etl", reason: "Repository not registered" },
@@ -197,10 +214,10 @@ describe("BulkRemoveDialog — once the checks answer", () => {
 
   it("renders no clean line when nothing is clean", () => {
     renderDialog({
-      view: { ...withCost, cleanLine: null },
+      view: { ...withCost, clean: null },
     });
 
-    expect(screen.queryByText(/clean copies/)).toBeNull();
+    expect(screen.queryByText(/clean cop/)).toBeNull();
   });
 
   // Nothing in a destructive dialog may look like a button.

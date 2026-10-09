@@ -1,8 +1,9 @@
 import { useId } from "react";
 import { Dialog } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
+import { Notice } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
-import { LIST_TOKENS, STATUS_TOKENS } from "../ui/status-family";
+import { LIST_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
@@ -11,20 +12,6 @@ import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
 // The bulk remove's confirmation (#422, #423) and the Report that replaces it
 // (#424). Presentational — the host owns the checks, the request and the
 // in-flight flag.
-
-function CleanLine({ id, children }: { id: string; children: string }) {
-  return (
-    <p
-      id={id}
-      className="m-0 flex items-center gap-inline rounded-control border border-edge bg-gray-3 px-cell py-inline font-ui text-gray-12 text-meta"
-    >
-      <span aria-hidden="true" className={STATUS_TOKENS.good.mark}>
-        {STATUS_TOKENS.good.glyph}
-      </span>
-      <span>{children}</span>
-    </p>
-  );
-}
 
 export function BulkRemoveDialog({
   skillName,
@@ -68,7 +55,7 @@ export function BulkRemoveDialog({
     grouped === null || done !== null
       ? ""
       : [
-          grouped.cleanLine === null ? null : cleanId,
+          grouped.clean === null ? null : cleanId,
           grouped.cost.length === 0 ? null : costId,
           grouped.refused.length === 0 ? null : refusedId,
         ]
@@ -122,8 +109,12 @@ export function BulkRemoveDialog({
         // Stays through the run and beside a failure: it is what the confirm
         // acts on.
         <>
-          {grouped.cleanLine === null ? null : (
-            <CleanLine id={cleanId}>{grouped.cleanLine}</CleanLine>
+          {grouped.clean === null ? null : (
+            <Notice
+              trigger="load"
+              id={cleanId}
+              notice={{ level: "success", ...grouped.clean }}
+            />
           )}
           <GroupedList
             groups={[

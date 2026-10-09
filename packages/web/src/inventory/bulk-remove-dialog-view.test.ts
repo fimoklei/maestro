@@ -84,7 +84,10 @@ describe("bulkRemoveDialogView — the clean summary", () => {
 
     expect(view).toEqual({
       kind: "grouped",
-      cleanLine: "2 clean copies — only the deployed files go",
+      clean: {
+        label: "2 clean copies",
+        message: "Only the deployed files are removed.",
+      },
       cost: [],
       refused: [],
       removableCount: 2,
@@ -92,13 +95,16 @@ describe("bulkRemoveDialogView — the clean summary", () => {
     });
   });
 
-  it("counts the clean copies plainly once a group sits beside them", () => {
+  it("counts one clean copy in the singular beside a group", () => {
     const view = bulkRemoveDialogView([
       target("global", repoCheck("none")),
       target("/dev/acme-web", repoCheck("cannot-verify")),
     ]);
 
-    expect(view.kind === "grouped" && view.cleanLine).toBe("1 clean copies");
+    expect(view.kind === "grouped" && view.clean).toEqual({
+      label: "1 clean copy",
+      message: "Only the deployed files are removed.",
+    });
   });
 
   it("renders no clean line at all when nothing is clean", () => {
@@ -106,7 +112,7 @@ describe("bulkRemoveDialogView — the clean summary", () => {
       target("/dev/acme-web", repoCheck("cannot-verify")),
     ]);
 
-    expect(view.kind === "grouped" && view.cleanLine).toBeNull();
+    expect(view.kind === "grouped" && view.clean).toBeNull();
   });
 });
 
@@ -145,7 +151,7 @@ describe("bulkRemoveDialogView — what the removal costs", () => {
         reason: "Check did not run",
       },
     ]);
-    expect(view.kind === "grouped" && view.cleanLine).toBeNull();
+    expect(view.kind === "grouped" && view.clean).toBeNull();
   });
 
   // One removal covers every tool, so the row states the most certain loss
