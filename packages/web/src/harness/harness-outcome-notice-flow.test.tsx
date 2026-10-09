@@ -203,7 +203,6 @@ describe("Harness outcome notices", () => {
     expect(await screen.findByText("Skill restored")).toBeInTheDocument();
   });
 
-  // design.md → Failures: the next closable notice's ✕, else Re-read.
   it("hands focus to the next outcome's ✕ when one is dismissed", async () => {
     stubHarnessServer({
       read: { body: DELETED_ROW },

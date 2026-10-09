@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { htmlElement } from "../test-utils";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
@@ -429,7 +430,6 @@ describe("TableScreen", () => {
     });
   });
 
-  // design.md → Keyboard: focus stays visible on something at all times.
   describe("focus after a row leaves", () => {
     const PEELS = createDataTableColumns<Fruit>((helper) => [
       helper.accessor("name", { header: "Name" }),
@@ -483,9 +483,11 @@ describe("TableScreen", () => {
       const { rerender } = render(<FruitScreen columns={PEELS} />);
       await userEvent.click(peel("pear"));
       await userEvent.click(
-        screen.getAllByRole("button", {
-          name: "Plant fruit",
-        })[0] as HTMLElement,
+        htmlElement(
+          screen.getAllByRole("button", {
+            name: "Plant fruit",
+          })[0],
+        ),
       );
 
       rerender(<FruitScreen columns={PEELS} rows={FRUIT.slice(1)} />);

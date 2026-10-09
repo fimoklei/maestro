@@ -97,7 +97,6 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Select ${name} for bulk deploy`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",
     '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",
-    "`Actions for ${name}`": "menu label",
   },
   "registry/repositories-copy.ts": {
     "`${UNREGISTER} ${name}`": "dialog title",
@@ -108,6 +107,9 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "ui/github-link-copy.ts": {
     "`View ${name} on GitHub`": "link label",
+  },
+  "ui/row-menu-copy.ts": {
+    "`Actions for ${name}`": "menu label",
   },
   "ui/table-screen.tsx": {
     "`${state.name} table`": "accessible name",

@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { measureAs, sentence } from "../test-utils";
+import { htmlElement, measureAs, sentence } from "../test-utils";
 import {
   cellsOf,
   findRow,
@@ -202,9 +202,9 @@ describe("Deploy-state — Release, Status and Skills", () => {
     );
     expect(cellsOf("…/me/b").slice(1)).toEqual(["In sync", "v0.3.4", "1"]);
     // The arrow is drawn; a screen reader hears the word.
-    const release = within(rowOf("…/me/a")).getAllByRole(
-      "gridcell",
-    )[2] as HTMLElement;
+    const release = htmlElement(
+      within(rowOf("…/me/a")).getAllByRole("gridcell")[2],
+    );
     expect(within(release).getByText("→")).toHaveAttribute(
       "aria-hidden",
       "true",
@@ -577,9 +577,9 @@ describe("Deploy-state — Re-read and freshness", () => {
     }));
     renderDeployState();
     await findRow("Claude Code");
-    const status = within(rowOf("Claude Code")).getAllByRole(
-      "gridcell",
-    )[1] as HTMLElement;
+    const status = htmlElement(
+      within(rowOf("Claude Code")).getAllByRole("gridcell")[1],
+    );
 
     expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
     expect(

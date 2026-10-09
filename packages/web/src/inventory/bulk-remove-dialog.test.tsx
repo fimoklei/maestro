@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { htmlElement } from "../test-utils";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
@@ -143,7 +144,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     expect(clean).toHaveTextContent(
       "3 clean copiesOnly the deployed files are removed.",
     );
-    expect(within(clean as HTMLElement).getByText("✓")).toHaveAttribute(
+    expect(within(htmlElement(clean)).getByText("✓")).toHaveAttribute(
       "aria-hidden",
       "true",
     );

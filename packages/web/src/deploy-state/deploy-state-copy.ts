@@ -3,6 +3,7 @@ import {
   REGISTER_REPOSITORY,
   rereadLabel,
 } from "../ui/control-labels";
+import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
 import { namedList, phrase } from "../ui/phrase";
 import { FILTER_LABEL } from "../ui/view-options-copy";
@@ -11,7 +12,6 @@ import { joinNames } from "./join-names";
 // Every word the Deploy-state screen shows outside its dialogs.
 
 export const TARGET_LABEL = "Target";
-export const ACTIONS_COLUMN_LABEL = "Actions";
 
 export const GLOBAL = "Global";
 export const REPOSITORIES = "Repositories";
@@ -74,9 +74,8 @@ export const deployStateNotRead = (
 export const REPO_NOT_READ = `${NOT_READ_LABEL}.`;
 export const REPO_NOT_READ_LINE = `${NOT_READ_LABEL}. Select ${rereadLabel("Deploy-state")} to read this repository's deploy-state again.`;
 
-// The GitHub column's keyboard way to the same page, and its Unknown's cause.
-export const VIEW_REPOSITORY_ON_GITHUB = "View repository on GitHub";
-export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${rereadLabel("Deploy-state")} to read it again.`;
+// The GitHub column's Unknown cause, also said in the Status card and the pane.
+export const ORIGIN_NOT_READ = originNotRead("Deploy-state");
 
 // A selected skill's folder on GitHub, as its ⋮ item.
 export const VIEW_SKILL_ON_GITHUB = "View skill on GitHub";

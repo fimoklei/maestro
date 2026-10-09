@@ -58,6 +58,7 @@ function renderPane(overrides: {
       footItems={overrides.footItems ?? [DEPLOY]}
       onClose={overrides.onClose ?? (() => {})}
       getTriggerElement={overrides.getTriggerElement ?? (() => null)}
+      listHeadingRef={null}
     />,
   );
 }
@@ -209,8 +210,6 @@ describe("SkillDetailPane", () => {
     expect(pane()).not.toHaveTextContent(/Loading/);
   });
 
-  // A failed read once read as loading for good: the pane said "Loading more
-  // targets…" until the next re-read.
   it("states a failed read as a failure, never as loading", () => {
     renderPane({
       deployments: [dep("Claude Code", "v1.0.0", "up-to-date")],

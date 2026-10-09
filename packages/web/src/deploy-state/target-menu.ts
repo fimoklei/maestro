@@ -4,9 +4,9 @@ import {
   UPDATE_TARGET,
 } from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
+import { VIEW_REPOSITORY_ON_GITHUB } from "../ui/github-link-copy";
 import type { RowMenuItem } from "../ui/row-menu";
 import type { TargetAction, TargetTableRow } from "./deploy-state-columns";
-import { VIEW_REPOSITORY_ON_GITHUB } from "./deploy-state-copy";
 
 import { RETRY_LABELS } from "./release-head-copy";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";

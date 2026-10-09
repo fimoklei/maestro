@@ -45,6 +45,7 @@ const target = (
   behind: string[] = [],
   unknown = false,
 ): DeploymentTarget => ({
+  pending: undefined,
   label: "Global",
   target: { kind: "global" },
   deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },

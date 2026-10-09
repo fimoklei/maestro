@@ -25,10 +25,15 @@ import {
   renderRepositories,
   stubRegistry,
 } from "./registry/repositories-test-helpers";
-import { jsonResponse, measureAs, renderWithQuery } from "./test-utils";
+import {
+  htmlElement,
+  jsonResponse,
+  measureAs,
+  renderWithQuery,
+} from "./test-utils";
 
 // Proves each table screen runs on `TableScreen`, not the module itself, and
-// that its Status card, name cell and row actions follow design.md.
+// that its Status card, name cell and row actions follow the shared rules.
 
 /** One row whose Status card and name the checks open. */
 type StatusCard = {
@@ -230,6 +235,7 @@ const renderInventoryRow = () => {
       registryReady
       targets={[
         {
+          pending: undefined,
           label: "Claude Code",
           target: { kind: "global" },
           deployed: {
@@ -524,6 +530,7 @@ const ON_TABLE_SCREEN: Row[] = [
             registryReady
             targets={[
               {
+                pending: undefined,
                 label: "",
                 target: { kind: "global" },
                 deployed: { status: "pending" },
@@ -593,7 +600,7 @@ const ON_TABLE_SCREEN: Row[] = [
   },
 ];
 
-// The labels design.md confirms with a danger button.
+// The labels a danger button confirms.
 const DESTRUCTIVE = /^(Remove|Delete|Unregister|Withdraw|Restore|Discard)\b/;
 
 function expectDanger(controls: HTMLElement[], destructive: string[]) {
@@ -725,7 +732,6 @@ describe("every table screen", () => {
       expect(screen.queryByRole("grid")).not.toBeInTheDocument();
     });
 
-    // design.md → Frame: one column order, the name taking the rest.
     it("orders its columns checkbox, name, Status, secondary, GitHub, ⋮", async () => {
       (row.card?.render ?? row.render)();
 
@@ -761,12 +767,11 @@ describe("every table screen", () => {
   });
 
   describe.each(ON_TABLE_SCREEN)("$file rows", ({ leaves }) => {
-    // design.md → Keyboard: focus stays visible on something at all times.
     it("hands focus to the row now in a left row's place", async () => {
       const { queryClient } = leaves.render();
       const grid = await screen.findByRole("grid");
       const [name] = await within(grid).findAllByText(leaves.first);
-      const row = name?.closest("tr") as HTMLElement;
+      const row = htmlElement(name?.closest("tr"));
       // Escape hands focus back to ⋮, in the row about to leave.
       await userEvent.click(
         within(row).getByRole("button", { name: /^Actions for / }),
@@ -800,10 +805,9 @@ describe("every table screen", () => {
       const [name] = await within(
         await screen.findByRole("grid"),
       ).findAllByText(actions.name);
-      return name?.closest("tr") as HTMLElement;
+      return htmlElement(name?.closest("tr"));
     };
 
-    // design.md → Keyboard: focus stays visible on something at all times.
     it("hands focus to the pane, or back to ⋮, once a ⋮ item's dialog closes", async () => {
       actions.render();
       const trigger = within(await findRow()).getByRole("button", {
@@ -825,7 +829,7 @@ describe("every table screen", () => {
       await waitFor(() => {
         if (actions.item.opensPane) {
           expect(screen.getByRole("complementary")).toContainElement(
-            document.activeElement as HTMLElement,
+            htmlElement(document.activeElement),
           );
         } else {
           expect(trigger).toHaveFocus();
@@ -848,7 +852,7 @@ describe("every table screen", () => {
 
       if (!actions.pane) return;
       await userEvent.click(
-        within(row).getAllByRole("gridcell")[0] as HTMLElement,
+        htmlElement(within(row).getAllByRole("gridcell")[0]),
       );
       expectDanger(
         within(await screen.findByRole("complementary")).getAllByRole("button"),
@@ -865,9 +869,11 @@ describe("every table screen", () => {
   type Write = (typeof writes)[number];
 
   const rowOf = (write: Write) =>
-    within(screen.getByRole("grid"))
-      .getAllByText(write.name)[0]
-      ?.closest("tr") as HTMLElement;
+    htmlElement(
+      within(screen.getByRole("grid"))
+        .getAllByText(write.name)[0]
+        ?.closest("tr"),
+    );
   const menuOf = (write: Write) =>
     within(rowOf(write)).getByRole("button", { name: /^Actions for / });
   // Writes are held once the screen's own reads have landed.
@@ -903,7 +909,7 @@ describe("every table screen", () => {
       it("spins the pressed foot button and keeps focus on it", async () => {
         await readyToWrite(write);
         await userEvent.click(
-          within(rowOf(write)).getAllByRole("gridcell")[0] as HTMLElement,
+          htmlElement(within(rowOf(write)).getAllByRole("gridcell")[0]),
         );
         const pane = await screen.findByRole("complementary");
 
@@ -914,7 +920,7 @@ describe("every table screen", () => {
         await waitFor(() =>
           expect(document.activeElement).toHaveAttribute("aria-busy", "true"),
         );
-        expect(pane).toContainElement(document.activeElement as HTMLElement);
+        expect(pane).toContainElement(htmlElement(document.activeElement));
       });
     },
   );
@@ -927,9 +933,9 @@ describe("every table screen", () => {
         await screen.findByRole("grid"),
       ).findAllByText(subList.row);
       await userEvent.click(
-        within(name?.closest("tr") as HTMLElement).getAllByRole(
-          "gridcell",
-        )[0] as HTMLElement,
+        htmlElement(
+          within(htmlElement(name?.closest("tr"))).getAllByRole("gridcell")[0],
+        ),
       );
       const pane = await screen.findByRole("complementary");
 
@@ -937,7 +943,7 @@ describe("every table screen", () => {
         level: 3,
         name: subList.heading,
       });
-      const row = within(heading.closest("section") as HTMLElement)
+      const row = within(htmlElement(heading.closest("section")))
         .getAllByRole("listitem")
         .find((item) => item.textContent?.includes(subList.item));
       if (row === undefined) throw new Error(`no row ${subList.item}`);
@@ -957,7 +963,7 @@ describe("every table screen", () => {
       expect(within(row).queryByRole("link")).toBeNull();
 
       if (subList.githubItem === null) return;
-      await userEvent.click(parts[3] as HTMLElement);
+      await userEvent.click(htmlElement(parts[3]));
       expect(
         await screen.findByRole("menuitem", { name: subList.githubItem }),
       ).toHaveAttribute("href");

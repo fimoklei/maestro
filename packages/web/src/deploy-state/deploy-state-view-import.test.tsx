@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, sentence } from "../test-utils";
+import { htmlElement, jsonResponse, sentence } from "../test-utils";
 import {
   findRow,
   importRoutes,
@@ -289,9 +289,9 @@ describe("Deploy-state — Import local edits on a repository", () => {
     });
 
     const box = within(refused).getByRole("checkbox", { name: "tdd" });
-    const reason = document.getElementById(
-      box.getAttribute("aria-describedby") ?? "",
-    ) as HTMLElement;
+    const reason = htmlElement(
+      document.getElementById(box.getAttribute("aria-describedby") ?? ""),
+    );
     expect(reason.textContent).toBe(
       "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
     );

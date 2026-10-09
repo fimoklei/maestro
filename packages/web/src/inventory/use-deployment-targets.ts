@@ -35,6 +35,7 @@ export function useDeploymentTargets(
   // no primitives; the count reads their status, the pane skips them.
   if (registry.isLoading) {
     targets.push({
+      pending: undefined,
       label: "",
       target: unresolvedTarget,
       deployed: { status: "pending" },
@@ -43,6 +44,7 @@ export function useDeploymentTargets(
     });
   } else if (registry.isError) {
     targets.push({
+      pending: undefined,
       label: "",
       target: unresolvedTarget,
       deployed: { status: "unknown" },
@@ -55,6 +57,7 @@ export function useDeploymentTargets(
   // reads as still-resolving, not "deployed nowhere".
   if (globalDeploy.isLoading) {
     targets.push({
+      pending: undefined,
       label: "",
       target: { kind: "global" },
       deployed: { status: "pending" },
@@ -64,6 +67,7 @@ export function useDeploymentTargets(
   } else if (globalDeploy.isError) {
     // Unknown, not empty. Stale cached tools dropped, never presented as current.
     targets.push({
+      pending: undefined,
       label: "",
       target: { kind: "global" },
       deployed: { status: "unknown" },

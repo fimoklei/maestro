@@ -24,44 +24,82 @@ describe("targetStatus", () => {
   });
 
   it("reads a target pinned per skill as a neutral fact over any drift", () => {
-    const status = targetStatus({ indicator: "drift", pinnedPerSkill: true });
+    const status = targetStatus({
+      pending: undefined,
+      indicator: "drift",
+      pinnedPerSkill: true,
+    });
     expect(words(status)).toBe("– Pinned per skill");
     expect(status?.family).toBe("neutral");
   });
 
   it("reads a target whose release lags as Behind, never In sync", () => {
-    expect(words(targetStatus({ indicator: "ok", behind: true }))).toBe(
-      "↑ Behind",
+    expect(
+      words(
+        targetStatus({ pending: undefined, indicator: "ok", behind: true }),
+      ),
+    ).toBe("↑ Behind");
+    expect(
+      words(targetStatus({ pending: undefined, indicator: "drift" })),
+    ).toBe("↑ Behind");
+    expect(words(targetStatus({ pending: undefined, indicator: "ok" }))).toBe(
+      "✓ In sync",
     );
-    expect(words(targetStatus({ indicator: "drift" }))).toBe("↑ Behind");
-    expect(words(targetStatus({ indicator: "ok" }))).toBe("✓ In sync");
   });
 
   it("reads a record that needs the reader as Attention", () => {
-    expect(words(targetStatus({ indicator: "attention", behind: true }))).toBe(
-      "⚠ Attention",
-    );
+    expect(
+      words(
+        targetStatus({
+          pending: undefined,
+          indicator: "attention",
+          behind: true,
+        }),
+      ),
+    ).toBe("⚠ Attention");
   });
 
   it("reads an empty target and a foreign one as neutral facts", () => {
-    expect(words(targetStatus({ indicator: "empty" }))).toBe("– Empty");
-    expect(words(targetStatus({ indicator: "foreign" }))).toBe(
-      "– Other origin",
-    );
+    expect(
+      words(targetStatus({ pending: undefined, indicator: "empty" })),
+    ).toBe("– Empty");
+    expect(
+      words(targetStatus({ pending: undefined, indicator: "foreign" })),
+    ).toBe("– Other origin");
   });
 
   it("reads a check that could not answer as ?, and a running one as nothing", () => {
-    expect(words(targetStatus({ indicator: "unknown" }))).toBe("? Unknown");
-    expect(words(targetStatus({ indicator: "unverified" }))).toBe("? Unknown");
-    expect(targetStatus({ indicator: "pending" })).toBeNull();
+    expect(
+      words(targetStatus({ pending: undefined, indicator: "unknown" })),
+    ).toBe("? Unknown");
+    expect(
+      words(targetStatus({ pending: undefined, indicator: "unverified" })),
+    ).toBe("? Unknown");
+    expect(
+      targetStatus({ pending: undefined, indicator: "pending" }),
+    ).toBeNull();
   });
 
   it("reads a target holding a local edit as Local edits over Behind, In sync and Pinned per skill", () => {
     for (const status of [
-      targetStatus({ indicator: "ok", localEdits: true }),
-      targetStatus({ indicator: "ok", behind: true, localEdits: true }),
-      targetStatus({ indicator: "drift", localEdits: true }),
-      targetStatus({ indicator: "ok", pinnedPerSkill: true, localEdits: true }),
+      targetStatus({ pending: undefined, indicator: "ok", localEdits: true }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        behind: true,
+        localEdits: true,
+      }),
+      targetStatus({
+        pending: undefined,
+        indicator: "drift",
+        localEdits: true,
+      }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        pinnedPerSkill: true,
+        localEdits: true,
+      }),
     ]) {
       expect(words(status)).toBe("⚠ Local edits");
       expect(status?.family).toBe("attention");
@@ -70,11 +108,18 @@ describe("targetStatus", () => {
 
   it("lets Attention outrank Local edits", () => {
     expect(
-      words(targetStatus({ indicator: "attention", localEdits: true })),
+      words(
+        targetStatus({
+          pending: undefined,
+          indicator: "attention",
+          localEdits: true,
+        }),
+      ),
     ).toBe("⚠ Attention");
     expect(
       words(
         targetStatus({
+          pending: undefined,
           indicator: "attention",
           pinnedPerSkill: true,
           localEdits: true,
@@ -84,7 +129,13 @@ describe("targetStatus", () => {
   });
 
   it("shows no Local edits before the drift check has answered", () => {
-    expect(targetStatus({ indicator: "pending", localEdits: true })).toBeNull();
+    expect(
+      targetStatus({
+        pending: undefined,
+        indicator: "pending",
+        localEdits: true,
+      }),
+    ).toBeNull();
   });
 
   it("offers every badge word to the Filter, worst first", () => {

@@ -152,7 +152,7 @@ export function globalRows(
         pinnedPerSkill: group.pinnedPerSkill !== undefined,
         behind,
         // A failed read's stale record never outranks its Unknown.
-        ...(pending && !readFailed ? { pending: pending.kind } : {}),
+        pending: readFailed ? undefined : pending?.kind,
         localEdits: !readFailed && editedSkills(group.primitives).length > 0,
       }),
       skills: group.primitives.length,
@@ -219,7 +219,7 @@ export function repoRow(
       indicator: drift.targetIndicator(toDeployedView(read)),
       pinnedPerSkill: pinned !== undefined,
       behind,
-      ...(pending && !read.isError ? { pending: pending.kind } : {}),
+      pending: read.isError ? undefined : pending?.kind,
       localEdits:
         !read.isError && editedSkills(data?.primitives ?? []).length > 0,
     }),

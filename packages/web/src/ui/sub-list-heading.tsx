@@ -11,7 +11,7 @@ export function SubListHeading({
   /** Null while the rows are not all read: a partial count would mislead. */
   count: number | null;
   /** Where the owner sends focus once a removed row is gone. */
-  headingRef?: Ref<HTMLHeadingElement>;
+  headingRef: Ref<HTMLHeadingElement>;
 }) {
   return (
     <h3

@@ -19,7 +19,6 @@ import {
   TARGET_LABEL,
   targetCount,
   UNREACHED_HINT,
-  VIEW_REPOSITORY_ON_GITHUB,
   VIEW_SKILL_ON_GITHUB,
 } from "./deploy-state-copy";
 
@@ -93,9 +92,8 @@ describe("Deploy-state copy", () => {
     ]);
   });
 
-  // #1180: the GitHub column's menu item and its Unknown badge's cause.
-  it("keeps the GitHub column's sentences", () => {
-    expect(VIEW_REPOSITORY_ON_GITHUB).toBe("View repository on GitHub");
+  // #1180: the GitHub column's Unknown badge's cause.
+  it("keeps the GitHub column's cause", () => {
     expect(ORIGIN_NOT_READ).toBe(
       "The origin of this repository could not be read. Select Re-read Deploy-state to read it again.",
     );

@@ -16,6 +16,7 @@ import type {
   RestoreSkillError,
 } from "@maestro/core";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
+import { HARNESS_BUSY } from "../ui/busy-copy";
 import {
   CREATE_RELEASE,
   DELETE_SKILL,
@@ -34,9 +35,6 @@ import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, named, type Phrase, phrase, plainText } from "../ui/phrase";
 
 // A new code in core fails typecheck here until it has a row.
-
-/** Every refusal of a Harness write while another one runs. */
-export const HARNESS_BUSY = "Harness busy";
 
 // The state read's two refusals ride in every other table below: a plan, a
 // release and a proposed change all read the same harness first.

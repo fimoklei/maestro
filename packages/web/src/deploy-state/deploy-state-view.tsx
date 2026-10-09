@@ -3,7 +3,11 @@ import { LayoutList } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
-import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
+import {
+  DRIFT_KEY,
+  driftQueryOptions,
+  useGlobalDrift,
+} from "../drift/use-drift";
 import { type DeployTarget, sameTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { freshnessLine } from "../ui/freshness";
@@ -42,7 +46,7 @@ import {
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { updateLabel } from "./update-target-copy";
-import { deployStateQueryOptions } from "./use-deploy-state";
+import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
 import { globalDeployStateQueryOptions } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdateTarget } from "./use-update-target";
@@ -104,8 +108,8 @@ export function DeployStateView() {
     // cache, so a pressed re-read is really fresh.
     onReread: () => {
       queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
-      queryClient.invalidateQueries({ queryKey: ["deploy-state"] });
-      queryClient.invalidateQueries({ queryKey: ["drift"] });
+      queryClient.invalidateQueries({ queryKey: DEPLOY_STATE_KEY });
+      queryClient.invalidateQueries({ queryKey: DRIFT_KEY });
     },
     openOnArrival:
       (location.state as { openTarget?: string } | null)?.openTarget ?? null,

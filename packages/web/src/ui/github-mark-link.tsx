@@ -1,45 +1,23 @@
 // Adapted from Octicons (MIT)
 import type { GitHubPage } from "@maestro/core";
 import { viewOnGitHub } from "./github-link-copy";
-import { HoverCard } from "./hover-card";
-import { StatusBadge } from "./status-badge";
-import { reading } from "./status-reading";
-
-/** The GitHub column's badge where the page could not be read. */
-export const GITHUB_UNKNOWN = reading("Unknown", "unknown");
 
 type GitHubLink = Extract<GitHubPage, { kind: "link" }>;
 
-// A row's own GitHub page (design.md → Frame): GitHub's mark as a mouse-only
-// link, since the grid is one Tab stop and the ⋮ menu is the keyboard's way.
-// Nothing where there is no page; its own Unknown badge where the read failed.
+// A row's own GitHub page: GitHub's mark as a mouse-only link, since the grid
+// is one Tab stop and the ⋮ menu is the keyboard's way. Nothing where there is
+// no page.
 export function GitHubMarkLink({
   page,
   name,
-  unknownCause,
   focusable = false,
 }: {
+  page: GitHubLink | undefined;
   name: string;
   /** Outside a grid, where no ⋮ menu offers the same page to the keyboard. */
   focusable?: boolean;
-} & (
-  | {
-      page: GitHubPage | undefined;
-      /** The hover card's sentence when the page could not be read. */
-      unknownCause: string;
-    }
-  | { page: GitHubLink | undefined; unknownCause?: never }
-)) {
+}) {
   if (page === undefined) return null;
-  if (page.kind === "unknown") {
-    return (
-      <HoverCard content={<p className="m-0 text-gray-11">{unknownCause}</p>}>
-        <span className="inline-flex align-middle">
-          <StatusBadge reading={GITHUB_UNKNOWN} />
-        </span>
-      </HoverCard>
-    );
-  }
   return (
     <a
       href={page.url}

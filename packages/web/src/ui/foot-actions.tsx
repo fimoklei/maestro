@@ -46,16 +46,8 @@ export function FootActions({
             }
             aria-label={item.name}
             busy={item.busy !== undefined}
-            aria-disabled={
-              item.disabled || item.busy !== undefined || undefined
-            }
-            // A blocked item reads as a disabled control, never as on offer.
-            className={
-              item.busy === undefined
-                ? "aria-disabled:border-edge aria-disabled:bg-gray-3 aria-disabled:text-gray-11"
-                : undefined
-            }
-            onClick={item.disabled ? undefined : item.onSelect}
+            blocked={item.disabled}
+            onClick={item.onSelect}
           >
             {item.busy === undefined ? item.label : ACTIONS[item.busy].busy}
           </Button>

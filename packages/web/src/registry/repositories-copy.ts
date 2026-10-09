@@ -14,7 +14,6 @@ import { reading, type StatusReading } from "../ui/status-reading";
 export const SCREEN = "Repositories";
 export const REGISTER_TITLE = "Register a repository";
 export const UNREGISTER = "Unregister";
-export const ACTIONS_COLUMN_LABEL = "Actions";
 export const COLUMNS = {
   repository: "Repository",
   path: "Folder path",
@@ -33,9 +32,6 @@ export const STATUS_READINGS: Record<RepoStatus, StatusReading> = {
   "folder-missing": reading("Folder missing", "failed"),
   "not-a-git-repo": reading("Not a Git repository", "attention", WARNING_GLYPH),
 };
-
-// Deploy-state's sentence, recovered by this screen's own Re-read.
-export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${rereadLabel("Repositories")} to read it again.`;
 
 export const REPOS_NOT_READ = {
   level: "error",

@@ -30,6 +30,7 @@ import {
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
+import { htmlElement } from "./test-utils";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
 
@@ -867,7 +868,8 @@ describe("every dialog", () => {
     it.runIf(row.loadFailed !== null)(
       "offers Close, not Cancel, once its read failed",
       () => {
-        render(row.loadFailed?.() as ReactElement);
+        if (row.loadFailed === null) throw new Error("runIf skips this row");
+        render(row.loadFailed());
 
         expect(
           screen.queryByRole("button", { name: "Cancel" }),
@@ -887,7 +889,7 @@ describe("every dialog", () => {
           .getByText(label)
           .closest('[role="alert"], [role="status"]');
         expect(notice).not.toBeNull();
-        expect(bodyTextAfter(notice as Element)).toEqual([]);
+        expect(bodyTextAfter(htmlElement(notice))).toEqual([]);
       },
     );
   });
@@ -914,7 +916,7 @@ const ADDS_A_ROW: AddsARow[] = [
       const [band1] = await screen.findAllByRole("button", {
         name: "Register repository",
       });
-      await userEvent.click(band1 as HTMLElement);
+      await userEvent.click(htmlElement(band1));
       const dialog = await screen.findByRole("dialog");
       await userEvent.type(
         within(dialog).getByRole("textbox", { name: "Folder path" }),
@@ -930,7 +932,6 @@ describe.each(ADDS_A_ROW)("$file", ({ add, row }) => {
     vi.unstubAllGlobals();
   });
 
-  // design.md → Feedback and dialogs: after an add, focus goes to the new row.
   it("selects and focuses the new row once the add succeeds", async () => {
     await add();
 

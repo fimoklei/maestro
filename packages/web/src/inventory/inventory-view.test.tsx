@@ -5,6 +5,7 @@ import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import {
+  htmlElement,
   jsonResponse,
   measureAs,
   renderWithQuery,
@@ -51,6 +52,7 @@ const deployedTo = (
   names: string[],
   behind: ReadDriftEntry[] = [],
 ): DeploymentTarget => ({
+  pending: undefined,
   label: "",
   target: { kind: "global" },
   deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
@@ -175,6 +177,7 @@ describe("InventoryView — the table", () => {
       targets: [
         deployedTo(["tdd"]),
         {
+          pending: undefined,
           label: "",
           target: { kind: "repo", repoPath: "/dev/unread" },
           deployed: { status: "pending" },
@@ -527,14 +530,13 @@ describe("InventoryView — detail pane", () => {
     expect(within(pane).getByText("v1.0.0")).toBeInTheDocument();
   });
 
-  // A failed read once held the pane on "Loading more targets…" until the
-  // next re-read.
   it("states a target whose read failed as a failure, never as loading", async () => {
     stubPendingFetch();
     renderView({
       targets: [
         deployedTo(["tdd"]),
         {
+          pending: undefined,
           label: "",
           target: { kind: "repo", repoPath: "/dev/unread" },
           deployed: { status: "unknown" },
@@ -1005,6 +1007,7 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
       onTarget({ kind: "global" }, ["tdd"]),
       onTarget({ kind: "repo", repoPath: "/dev/acme-web" }, ["tdd"]),
       {
+        pending: undefined,
         label: "",
         target: { kind: "repo", repoPath: "/dev/unread" },
         deployed: { status: "pending" },
@@ -1088,6 +1091,7 @@ const onRepo = (
   names: string[],
   changed: string[] = [],
 ): DeploymentTarget => ({
+  pending: undefined,
   label: repoPath.split("/").at(-1) ?? repoPath,
   target: { kind: "repo", repoPath },
   deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
@@ -1275,11 +1279,11 @@ describe("InventoryView — a target row in the pane", () => {
 
     const pane = screen.getByRole("complementary", { name: "tdd detail" });
     const row = (label: string) =>
-      within(pane)
-        .getAllByRole("listitem")
-        .find(
-          (item) => within(item).queryByText(label) !== null,
-        ) as HTMLElement;
+      htmlElement(
+        within(pane)
+          .getAllByRole("listitem")
+          .find((item) => within(item).queryByText(label) !== null),
+      );
     expect(
       within(row("alpha")).getByRole("img", { name: "Deploy incomplete" }),
     ).toBeInTheDocument();

@@ -18,7 +18,6 @@ import {
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
-  rowActionsLabel,
   SELECT_ALL_LABEL,
   SOME_TARGETS_NOT_READ,
   stageRowLabel,
@@ -125,10 +124,6 @@ describe("Inventory copy", () => {
       "Remove from Claude Code and Codex",
     );
     expect(removeFromToolsLabel(["claude"])).toBe("Remove from Claude Code");
-  });
-
-  it("names a row's menu after its skill", () => {
-    expect(rowActionsLabel("tdd")).toBe("Actions for tdd");
   });
 });
 

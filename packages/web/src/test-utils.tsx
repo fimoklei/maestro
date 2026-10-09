@@ -36,6 +36,14 @@ export function renderWithQuery(ui: ReactNode) {
 
 const ignoreReport = () => {};
 
+/** The element a query found, or a failed test where it found none. */
+export function htmlElement(element: Element | null | undefined): HTMLElement {
+  if (!(element instanceof HTMLElement)) {
+    throw new Error(`Expected an HTML element, found ${String(element)}.`);
+  }
+  return element;
+}
+
 /** A notice as read: every sentence in plain text. */
 export function readNotice<T extends NoticeCopy & { items?: readonly Copy[] }>(
   notice: T | null,

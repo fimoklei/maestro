@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { htmlElement } from "../test-utils";
 import {
   type FakeRegistry,
   renderRepositories,
@@ -25,13 +26,13 @@ const githubCell = async (name: string) => {
     .map((header) => header.textContent);
   const row = (await within(grid).findByText(name)).closest("tr");
   if (row === null) throw new Error(`no row for ${name}`);
-  return within(row).getAllByRole("gridcell")[
-    headers.indexOf("GitHub")
-  ] as HTMLElement;
+  return htmlElement(
+    within(row).getAllByRole("gridcell")[headers.indexOf("GitHub")],
+  );
 };
 
 const openMenu = async (name: string) => {
-  const row = (await screen.findByText(name)).closest("tr") as HTMLElement;
+  const row = htmlElement((await screen.findByText(name)).closest("tr"));
   await userEvent.click(
     within(row).getByRole("button", { name: `Actions for ${name}` }),
   );

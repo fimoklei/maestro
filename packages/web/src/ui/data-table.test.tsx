@@ -331,12 +331,6 @@ describe("DataTable", () => {
     expect(screen.queryByText("pear")).not.toBeInTheDocument();
   });
 
-  it("shows its empty message in place of rows", () => {
-    renderTable({ data: [], empty: "Nothing grows here." });
-
-    expect(screen.getByText("Nothing grows here.")).toBeInTheDocument();
-  });
-
   it("puts rows under a header per group, naming the group and its count", () => {
     renderTable({
       groups: {
@@ -372,10 +366,9 @@ describe("DataTable", () => {
     expect(screen.queryByText("Yellow")).not.toBeInTheDocument();
   });
 
-  it("draws its message groups in place of the empty message when no row is shown", () => {
+  it("draws its message groups when no row is shown", () => {
     renderTable({
       data: [],
-      empty: "Nothing grows here.",
       groups: {
         key: (fruit) => fruit.colour,
         order: ["Blue"],
@@ -384,7 +377,6 @@ describe("DataTable", () => {
     });
 
     expect(screen.getByText("No blue fruit yet.")).toBeInTheDocument();
-    expect(screen.queryByText("Nothing grows here.")).not.toBeInTheDocument();
   });
 
   it("collapses a group from its header, and the cursor skips its rows", async () => {

@@ -807,7 +807,6 @@ describe("Harness home base", () => {
         },
       });
 
-    // design.md → Frame: a secondary column, after Status and Type.
     it("follows Status and Type", async () => {
       stubbed();
       renderHarness();
@@ -906,8 +905,8 @@ describe("Harness home base", () => {
     });
   });
 
-  // design.md → Disclosure: every card shares the frame; the keyboard opens
-  // the Status card alone (#1445).
+  // Every card shares the frame; the keyboard opens the Status card alone
+  // (#1445).
   describe("the Change and Pull request cards", () => {
     const CARD = "[data-radix-popper-content-wrapper]";
     const cardOf = (text: HTMLElement) => text.closest(CARD) as HTMLElement;

@@ -147,8 +147,8 @@ export function TableScreen<T extends RowData>({
   useEffect(() => {
     if (!addedShown) return;
     gridRef.current?.focus();
-    state.added(null);
-  }, [addedShown, state.added]);
+    state.markAdded(null);
+  }, [addedShown, state.markAdded]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: fires when the shown rows change
   useEffect(() => {
     if (!focusInTable.current) return;

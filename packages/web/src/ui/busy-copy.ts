@@ -42,6 +42,9 @@ export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
   setLocation: { busy: "Setting…", done: "Set" },
 };
 
+/** Every refusal of a Harness write while another one runs, on any screen. */
+export const HARNESS_BUSY = "Harness busy";
+
 /** What the screen's status region says once a write lands. */
 export function doneSentence(action: ActionKey, name: Copy): Phrase {
   return phrase`${ACTIONS[action].done} ${name}.`;

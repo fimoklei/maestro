@@ -2,7 +2,12 @@ import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  htmlElement,
+  jsonResponse,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import { harnessRegion } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 import { pullRequest } from "./stage-row-fixture";
@@ -148,7 +153,7 @@ async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
   const [importSkill] = await screen.findAllByRole("button", {
     name: "Import skill",
   });
-  await user.click(importSkill as HTMLElement);
+  await user.click(htmlElement(importSkill));
   await user.click(await screen.findByRole("button", { name: "Browse" }));
   await waitFor(() =>
     expect(screen.getByRole("textbox", { name: "Folder path" })).toHaveValue(
@@ -291,7 +296,7 @@ describe("Harness import flow", () => {
     const [importSkill] = await screen.findAllByRole("button", {
       name: "Import skill",
     });
-    await user.click(importSkill as HTMLElement);
+    await user.click(htmlElement(importSkill));
     await user.click(dialogImport());
 
     const folder = screen.getByRole("textbox", { name: "Folder path" });
@@ -315,7 +320,7 @@ describe("Harness import flow", () => {
     const [importSkill] = await screen.findAllByRole("button", {
       name: "Import skill",
     });
-    await user.click(importSkill as HTMLElement);
+    await user.click(htmlElement(importSkill));
     await user.type(
       await screen.findByRole("textbox", { name: "Folder path" }),
       `${SOURCE}{Enter}`,
@@ -369,7 +374,7 @@ describe("Harness import flow", () => {
     const [importSkill] = await screen.findAllByRole("button", {
       name: "Import skill",
     });
-    await user.click(importSkill as HTMLElement);
+    await user.click(htmlElement(importSkill));
     await user.type(
       await screen.findByRole("textbox", { name: "Folder path" }),
       SOURCE,

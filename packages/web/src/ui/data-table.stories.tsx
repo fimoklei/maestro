@@ -67,7 +67,3 @@ export const Grouped: Story = {
 };
 
 export const Loading: Story = { args: { loading: true, skeletonRows: 6 } };
-
-export const Empty: Story = {
-  args: { data: [], empty: "No rows match the search." },
-};

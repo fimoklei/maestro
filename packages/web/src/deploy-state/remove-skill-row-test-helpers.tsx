@@ -97,6 +97,7 @@ export function renderRow({
           updateName: REPO_NAME,
         }}
         onRemoved={onRemoved}
+        headingRef={null}
       />
       <ToastHost />
     </>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVISORY_TEXT,
+  CREATE_RELEASE_UNAVAILABLE,
   DELETE_UNAVAILABLE,
   FINDING_TEXT,
   FOLDER_MISSING,
@@ -38,6 +39,13 @@ describe("Harness dialog copy", () => {
     expect(ADVISORY_TEXT).toEqual({
       "long-manifest": "SKILL.md is over 500 lines.",
       "long-description": "The description is over 1,024 characters.",
+    });
+  });
+
+  it("states why Create a release cannot open its plan", () => {
+    expect(CREATE_RELEASE_UNAVAILABLE).toEqual({
+      rereading: "re-reading Harness",
+      notRead: "GitHub not read",
     });
   });
 

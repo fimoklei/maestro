@@ -28,6 +28,12 @@ export const ADVISORY_TEXT: Record<ManifestAdvisory, string> = {
   "long-description": "The description is over 1,024 characters.",
 };
 
+/** Why band 1's Create a release cannot open its plan. */
+export const CREATE_RELEASE_UNAVAILABLE = {
+  rereading: "re-reading Harness",
+  notRead: "GitHub not read",
+} as const;
+
 export const RELEASE_UNAVAILABLE = {
   loading: "release plan still loading",
   error: "release plan did not load",

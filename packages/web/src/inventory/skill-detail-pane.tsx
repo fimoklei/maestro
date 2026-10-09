@@ -3,13 +3,10 @@ import type { ActionsMenuItem } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { DetailPane } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
+import { rowActionsLabel } from "../ui/row-menu-copy";
 import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow, SubListSkeleton } from "../ui/sub-list-row";
-import {
-  NOT_DEPLOYED_ANYWHERE,
-  rowActionsLabel,
-  SOME_TARGETS_NOT_READ,
-} from "./inventory-copy";
+import { NOT_DEPLOYED_ANYWHERE, SOME_TARGETS_NOT_READ } from "./inventory-copy";
 import type { SkillDeployment } from "./skill-deployments";
 import { TYPE_WORD } from "./type-filter";
 import type { Primitive } from "./use-inventory";
@@ -45,7 +42,7 @@ export function SkillDetailPane({
   /** The row's ⋮ items, as the foot's buttons. */
   footItems: readonly FootItem[];
   /** Where the owner sends focus once a removed target row is gone. */
-  listHeadingRef?: Ref<HTMLHeadingElement>;
+  listHeadingRef: Ref<HTMLHeadingElement>;
   position?: { index: number; count: number } | null;
   onPage?: (step: -1 | 1) => void;
   initialFocus?: string | null;

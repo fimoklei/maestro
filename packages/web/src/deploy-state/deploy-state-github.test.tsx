@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { htmlElement } from "../test-utils";
 import {
   cellsOf,
   factValue,
@@ -76,11 +77,12 @@ describe("Deploy-state — GitHub column", () => {
     await userEvent.keyboard("{Escape}");
 
     const pane = await openPane(NAME);
-    const mark = within(
-      factValue(pane, "Folder path") as HTMLElement,
-    ).getByRole("link", {
-      name: `View ${NAME} on GitHub`,
-    });
+    const mark = within(htmlElement(factValue(pane, "Folder path"))).getByRole(
+      "link",
+      {
+        name: `View ${NAME} on GitHub`,
+      },
+    );
     expect(mark).toHaveAttribute("href", URL);
     expect(mark).not.toHaveAttribute("tabindex");
     expect(

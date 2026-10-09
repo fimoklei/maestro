@@ -1,10 +1,11 @@
 import type { DeleteLocalSkillError } from "@maestro/core";
+import { HARNESS_BUSY } from "../ui/busy-copy";
 import { DELETE_SKILL, rereadLabel } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { named, phrase } from "../ui/phrase";
-import { HARNESS_BUSY, harnessHeadings, promoteHeadings } from "./notice-copy";
+import { harnessHeadings, promoteHeadings } from "./notice-copy";
 
 /** Delete skill opens from the Harness view and from Inventory. */
 export type LocalDeletionContext = {

@@ -7,6 +7,7 @@ import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { CREATE_RELEASE, IMPORT_SKILL } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
+import { GatedButton } from "../ui/gated-button";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { Icon } from "../ui/icon";
 import { Notice, type NoticeContent } from "../ui/notice";
@@ -16,7 +17,6 @@ import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
-import { Tooltip } from "../ui/tooltip";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useWriteAction } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
@@ -272,7 +272,9 @@ export function HarnessView({
             {/* Closed while the remote's answer is unknown — an offline or
                 failed fetch — and while a re-read is still rewriting the refs
                 a plan reads. Advisory findings never gate it (#519). */}
-            <CreateRelease
+            <GatedButton
+              variant="primary"
+              label={CREATE_RELEASE}
               unavailable={releaseUnavailable(
                 state.freshness,
                 refresh.isPending,
@@ -394,33 +396,6 @@ export function HarnessView({
 }
 
 // One tree whether open or not, so a re-read landing keeps its focus.
-function CreateRelease({
-  unavailable,
-  onClick,
-}: {
-  unavailable: string | null;
-  onClick: () => void;
-}) {
-  const name =
-    unavailable === null
-      ? CREATE_RELEASE
-      : `${CREATE_RELEASE} — ${unavailable}`;
-  return (
-    <Tooltip label={name}>
-      <Button
-        variant="primary"
-        aria-label={name}
-        aria-disabled={unavailable !== null || undefined}
-        // A blocked action reads as a disabled control, never as on offer.
-        className="aria-disabled:border-edge aria-disabled:bg-gray-3 aria-disabled:text-gray-11"
-        onClick={unavailable === null ? onClick : undefined}
-      >
-        {CREATE_RELEASE}
-      </Button>
-    </Tooltip>
-  );
-}
-
 // Every fact truncates rather than run under the freshness line (#1204); a
 // yielding fact leaves band 2 below its breakpoint.
 const YIELDS = { sm: "max-sm:hidden", lg: "max-lg:hidden" } as const;

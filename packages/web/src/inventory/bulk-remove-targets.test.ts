@@ -12,6 +12,7 @@ const ready = (
   label = "",
   version = "v1.0.0",
 ): DeploymentTarget => ({
+  pending: undefined,
   label,
   target,
   deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
@@ -27,6 +28,7 @@ const unread = (
   target: DeployTarget,
   status: "pending" | "unknown",
 ): DeploymentTarget => ({
+  pending: undefined,
   label: "",
   target,
   deployed: { status },

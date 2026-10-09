@@ -9,7 +9,7 @@ import {
 import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
 import { type SkillMark, skillMark } from "../deploy-state/skill-mark";
 import { globalRowId, repoRowId } from "../deploy-state/target-rows";
-import { UNFINISHED } from "../deploy-state/target-status";
+import { unfinishedReading } from "../deploy-state/target-status";
 import { toolNameList } from "../deploy-state/tool-presentation";
 import type { DriftStatus } from "../drift/drift-view-model";
 import { type DeploymentTarget, skillReading } from "./deployed-rollup";
@@ -94,7 +94,7 @@ export function skillDeployments(
       status,
       mark: target.pending
         ? {
-            ...UNFINISHED[target.pending],
+            ...unfinishedReading(target.pending),
             hint: UNFINISHED_REASONS[target.pending],
           }
         : skillMark(deployed.copy, status),

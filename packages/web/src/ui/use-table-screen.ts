@@ -19,7 +19,7 @@ export type TableScreenState = {
   open: (id: string | null) => void;
   /** The row to select and focus once shown, after an add on a screen without a pane; null once done. */
   addedId: string | null;
-  added: (id: string | null) => void;
+  markAdded: (id: string | null) => void;
   reading: boolean;
   settled: boolean;
   skeleton: boolean;
@@ -68,7 +68,7 @@ export function useTableScreen({
     openId,
     open: setOpenId,
     addedId,
-    added: setAddedId,
+    markAdded: setAddedId,
     reading,
     settled,
     skeleton: status.skeleton,

@@ -27,7 +27,7 @@ export function SelectedSkills({
   // Called after the dialog is gone: a successful removal destroys the trigger
   // the modal's own focus-restore would aim at.
   onRemoved?: () => void;
-  headingRef?: Ref<HTMLHeadingElement>;
+  headingRef: Ref<HTMLHeadingElement>;
 }) {
   const { primitives, drift } = row;
   const [open, setOpen] = useState<OpenDialog | null>(null);
