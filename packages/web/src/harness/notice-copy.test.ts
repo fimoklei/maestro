@@ -517,7 +517,7 @@ const suites: [
         "source-unreadable",
         {
           level: "error",
-          label: "Unreadable folder",
+          label: "Folder not read",
           message:
             "Nothing was copied. Make the folder readable, then choose it again.",
         },
