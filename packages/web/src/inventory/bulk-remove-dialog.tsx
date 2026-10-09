@@ -7,7 +7,11 @@ import { LIST_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
-import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
+import {
+  NO_TARGET_REMOVABLE,
+  removeFromCountLabel,
+  TARGETS_STILL_CHECKING,
+} from "./inventory-copy";
 
 // The bulk remove's confirmation (#422, #423) and the Report that replaces it
 // (#424). Presentational — the host owns the checks, the request and the
@@ -71,8 +75,7 @@ export function BulkRemoveDialog({
       action={
         confirmOffered
           ? {
-              label:
-                grouped?.confirmLabel ?? `Remove from ${targetCount} targets`,
+              label: grouped?.confirmLabel ?? removeFromCountLabel(targetCount),
               verb: "remove",
               tone: "danger",
               // Nothing to walk is not a run: a refusal never blocks the

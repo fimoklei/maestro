@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { VIEW_DEPLOY_STATE } from "../ui/control-labels";
+import { plainText } from "../ui/phrase";
 import {
   BULK_DEPLOY_TARGET,
   bulkDeployDidNotRun,
@@ -20,6 +21,7 @@ import {
   removeFromToolsLabel,
   SELECT_ALL_LABEL,
   SOME_TARGETS_NOT_READ,
+  skillStateLine,
   stageRowLabel,
   TARGETS_LOADING,
   TARGETS_STILL_CHECKING,
@@ -145,5 +147,67 @@ describe("globalOptionLabel", () => {
   it("falls back to plain Global while the tool set is unknown", () => {
     // Loading or unreadable: never claim a tool set we cannot prove.
     expect(globalOptionLabel(undefined)).toBe("Global");
+  });
+});
+
+// The skill detail pane's state sentence (#1435).
+describe("skillStateLine", () => {
+  const line = (state: Parameters<typeof skillStateLine>[0]) =>
+    plainText(skillStateLine(state));
+  const behind = {
+    kind: "behind" as const,
+    count: 2,
+    total: 3,
+    from: "v1.3.2",
+    to: "v1.4.0",
+    updatable: true,
+  };
+
+  it("names the edited copies and the control that keeps them", () => {
+    expect(line({ kind: "local-edits", count: 1, total: 3 })).toBe(
+      "1 of 3 targets has local edits. Select Import local edits on Deploy-state to keep them.",
+    );
+    expect(line({ kind: "local-edits", count: 2, total: 2 })).toBe(
+      "2 of 2 targets have local edits. Select Import local edits on Deploy-state to keep them.",
+    );
+  });
+
+  it("names the release the behind targets follow and where Update target moves them", () => {
+    expect(line(behind)).toBe(
+      "2 of 3 targets follow v1.3.2. Select Update target to move them to v1.4.0.",
+    );
+    expect(line({ ...behind, count: 1, total: 1 })).toBe(
+      "1 of 1 target follows v1.3.2. Select Update target to move it to v1.4.0.",
+    );
+  });
+
+  it("says an older release where the behind targets follow different ones", () => {
+    expect(line({ ...behind, from: null })).toBe(
+      "2 of 3 targets follow an older release. Select Update target to move them to v1.4.0.",
+    );
+  });
+
+  it("names the latest release in words while its tag is not read", () => {
+    expect(line({ ...behind, to: null })).toBe(
+      "2 of 3 targets follow v1.3.2. Select Update target to move them to the latest release.",
+    );
+  });
+
+  it("names no Update target where no behind target offers it", () => {
+    expect(line({ ...behind, updatable: false })).toBe(
+      "2 of 3 targets follow v1.3.2.",
+    );
+  });
+
+  it("names Re-read Inventory where a check could not answer", () => {
+    expect(line({ kind: "unknown" })).toBe(
+      "Some targets could not be checked. Select Re-read Inventory to try again.",
+    );
+  });
+
+  it("says no newer release changes an up-to-date skill", () => {
+    expect(line({ kind: "up-to-date" })).toBe(
+      "No newer release changes this skill.",
+    );
   });
 });

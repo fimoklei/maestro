@@ -54,6 +54,9 @@ export function InventoryPanel() {
       repos={repos}
       registryReady={registry.isSuccess}
       targets={targets}
+      latestRelease={
+        harness.isSuccess ? harness.data.releasedVersion : undefined
+      }
       failure={readFailure(inventory.error)}
       reading={
         inventory.isFetching || registry.isFetching || readingDeployState

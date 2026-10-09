@@ -62,7 +62,7 @@ export const LosesWork: Story = {
       ],
       refused: [],
       removableCount: 4,
-      confirmLabel: "remove from 4 · 2 lose local edits →",
+      confirmLabel: "Remove from 4 targets · 2 may lose work",
     },
   },
 };

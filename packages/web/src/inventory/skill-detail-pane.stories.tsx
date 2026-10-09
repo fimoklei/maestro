@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
+import type { DeployedRollup } from "./deployed-rollup";
 import type { SkillDeployment } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
 
@@ -14,11 +15,20 @@ const target = (
   version: release,
   status,
   mark: skillMark(undefined, status),
+  edited: false,
   target: { kind: "repo", repoPath: label },
   removeTarget: { kind: "repo", repoPath: label },
   updateName: label,
   rowId: `repo:${label}`,
   updatable: status === "behind",
+});
+
+const rollup = (counts: Partial<DeployedRollup>): DeployedRollup => ({
+  targetCount: 0,
+  behindCount: 0,
+  unknownCount: 0,
+  localEditsCount: 0,
+  ...counts,
 });
 
 const meta = {
@@ -31,9 +41,8 @@ const meta = {
       description:
         'Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.',
     },
-    targetCount: 3,
-    pending: false,
-    unreadable: false,
+    rollup: rollup({ targetCount: 3, behindCount: 1 }),
+    latestRelease: "v1.4.0",
     listHeadingRef: null,
     targetItems: (deployment) => [
       ...(deployment.updatable
@@ -70,9 +79,25 @@ type Story = StoryObj<typeof meta>;
 
 export const Deployed: Story = {};
 
+// An edited copy outranks the behind one: Update target would discard it.
+export const LocalEdits: Story = {
+  args: {
+    rollup: rollup({ targetCount: 3, localEditsCount: 1 }),
+    deployments: [
+      target("Claude Code", "v1.4.0", "up-to-date"),
+      {
+        ...target("Codex", "v1.3.2", "behind"),
+        edited: true,
+        mark: skillMark("local-edits", "behind"),
+      },
+      target("maestro", "v1.4.0", "up-to-date"),
+    ],
+  },
+};
+
 export const NotDeployed: Story = {
   args: {
-    targetCount: 0,
+    rollup: rollup({}),
     deployments: [],
     footItems: [{ label: "Deploy skill", onSelect: () => {} }],
   },
@@ -80,8 +105,7 @@ export const NotDeployed: Story = {
 
 export const PartialReach: Story = {
   args: {
-    targetCount: null,
-    pending: true,
+    rollup: rollup({ targetCount: 1, pending: true }),
     footItems: [{ label: "Deploy skill", onSelect: () => {} }],
     deployments: [target("Claude Code", "v1.4.0", "up-to-date")],
   },
@@ -90,8 +114,7 @@ export const PartialReach: Story = {
 // A target's read failed: the list may miss a target, and says so.
 export const SomeTargetsNotRead: Story = {
   args: {
-    targetCount: 1,
-    unreadable: true,
+    rollup: rollup({ targetCount: 1, unreadable: true }),
     footItems: [{ label: "Deploy skill", onSelect: () => {} }],
     deployments: [target("Claude Code", "v1.4.0", "up-to-date")],
   },

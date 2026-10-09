@@ -308,3 +308,20 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     expect(rollup.targetCount).toBe(1);
   });
 });
+
+describe("rollUpDeployment — local edits", () => {
+  // A behind release with an edited copy: the copy holds work an update would
+  // discard, so it counts once, as Local edits.
+  it("counts an edited copy as Local edits, never as behind or clean", () => {
+    const edited: DeploymentTarget = {
+      ...onRelease(["tdd"], ["tdd"]),
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.2", copy: "local-edits" },
+      ],
+    };
+    const rollup = rollUpDeployment("tdd", [edited, onRelease(["tdd"], [])]);
+    expect(rollup.localEditsCount).toBe(1);
+    expect(rollup.behindCount).toBe(0);
+    expect(rollup.targetCount).toBe(2);
+  });
+});

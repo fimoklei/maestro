@@ -7,8 +7,9 @@ import type {
   RemovePreflightView,
   RemoveRowWarning,
 } from "../deploy-state/remove-preflight-view";
+import { LOCAL_EDITS } from "../deploy-state/target-status";
 import type { NoticeCopy } from "../ui/notice";
-import { cleanCopiesNotice } from "./inventory-copy";
+import { cleanCopiesNotice, removeFromCountLabel } from "./inventory-copy";
 
 export type BulkRemoveCheckedTarget = {
   label: string;
@@ -53,8 +54,11 @@ const COST_ORDER: Exclude<RemoveRowWarning, "none">[] = [
   "check-failed",
 ];
 
+// An edited copy reads as the detail pane and hover card mark it.
 export const REFUSAL_REASON: Record<RefusalCode, string> = {
   ...REASON,
+  "deployed-diverged-from-lock": LOCAL_EDITS.word,
+  "deployed-diverged-pinned-per-skill": LOCAL_EDITS.word,
   "invalid-body": "Malformed request",
 };
 
@@ -123,6 +127,7 @@ export function bulkRemoveDialogView(
   }
 
   const removableCount = targets.length - refused.length;
+  const removeFrom = removeFromCountLabel(removableCount);
   return {
     kind: "grouped",
     clean: cleanCount === 0 ? null : cleanCopiesNotice(cleanCount),
@@ -131,7 +136,7 @@ export function bulkRemoveDialogView(
     removableCount,
     confirmLabel:
       cost.length === 0
-        ? `Remove from ${removableCount} targets`
-        : `Remove from ${removableCount} targets · ${cost.length} lose local edits`,
+        ? removeFrom
+        : `${removeFrom} · ${cost.length} may lose work`,
   };
 }

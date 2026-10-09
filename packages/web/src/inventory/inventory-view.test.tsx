@@ -95,6 +95,7 @@ const baseProps: Props = {
   primitives,
   repos: [],
   registryReady: true,
+  latestRelease: "v1.4.0",
   targets: [],
   failure: null,
   reading: false,
@@ -349,6 +350,24 @@ describe("InventoryView — band 2", () => {
     expect(
       screen.getByRole("button", { name: "Filter, 1 active" }),
     ).toBeInTheDocument();
+    expect(dataRowNames()).toEqual(["tdd"]);
+  });
+
+  it("filters by Local edits, the reading an edited copy gives its row", async () => {
+    stubPendingFetch();
+    const edited = deployedTo(["tdd", "caveman"]);
+    edited.primitives = [
+      { type: "skill", name: "tdd", version: "v1.0.0", copy: "local-edits" },
+      { type: "skill", name: "caveman", version: "v1.0.0" },
+    ];
+    renderView({ targets: [edited] });
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+    await userEvent.click(
+      await screen.findByRole("menuitemcheckbox", { name: "Local edits" }),
+    );
+    await userEvent.keyboard("{Escape}");
+
     expect(dataRowNames()).toEqual(["tdd"]);
   });
 

@@ -74,6 +74,7 @@ const meta = {
     primitives,
     repos: [{ path: "/Users/me/dev/acme-web" }],
     registryReady: true,
+    latestRelease: "v1.4.0",
     targets: [
       target(
         ["audit-dependencies", "create-issue", "diagnose", "tdd"],
