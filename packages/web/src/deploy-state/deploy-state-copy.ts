@@ -6,7 +6,7 @@ import {
 import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
 import { namedList, phrase } from "../ui/phrase";
-import { FILTER_LABEL } from "../ui/view-options-copy";
+import { CLEAR_FILTERS } from "../ui/view-options-copy";
 import { joinNames } from "./join-names";
 
 // Every word the Deploy-state screen shows outside its dialogs.
@@ -29,7 +29,7 @@ export const NO_REPOSITORIES = `No repositories yet. ${REGISTER_STEP}.`;
 
 export const NO_FILTER_MATCH = {
   title: "No targets match the filters",
-  description: `Select ${FILTER_LABEL} to show more targets.`,
+  description: `Select ${CLEAR_FILTERS} to see every target.`,
 };
 
 export const NO_TARGETS = {

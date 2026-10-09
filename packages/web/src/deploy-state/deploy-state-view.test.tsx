@@ -821,7 +821,12 @@ describe("Deploy-state — rows and their menu", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Select Filter to show more targets."),
+      screen.getByText("Select Clear filters to see every target."),
     ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear filters" }),
+    );
+    expect(await findRow("Codex")).toBeInTheDocument();
   });
 });

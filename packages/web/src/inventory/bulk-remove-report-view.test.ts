@@ -98,6 +98,10 @@ describe("bulkRemoveReportView — a partial run", () => {
     });
   });
 
+  it("adds no next step when no target was left alone for local changes", () => {
+    expect(partial).toMatchObject({ refusedNote: null, failedNote: null });
+  });
+
   it("carries each left-alone target's class and its own reason", () => {
     expect(partial).toMatchObject({
       leftAlone: [
@@ -274,5 +278,49 @@ describe("bulkRemoveReportView — the request itself failed", () => {
     for (const error of [new HttpError(500, "Boom."), new TypeError("x")]) {
       expect(view({ error })).not.toHaveProperty("removed");
     }
+  });
+});
+
+// #1436: the Report names the way out for a target left alone with local changes.
+describe("bulkRemoveReportView — local changes", () => {
+  const withLocalChanges = view({
+    report: report({
+      removed: [
+        { target: TARGETS[0]?.target ?? { kind: "global" }, version: "v1.0.0" },
+      ],
+      refused: [
+        {
+          target: TARGETS[1]?.target ?? { kind: "global" },
+          reason: "deployed-diverged-from-lock",
+        },
+      ],
+      failed: [
+        {
+          target: TARGETS[2]?.target ?? { kind: "global" },
+          reason: "deployed-diverged-pinned-per-skill",
+        },
+      ],
+    }),
+  });
+
+  it("names the next step for each group that holds local changes", () => {
+    expect(withLocalChanges).toMatchObject({
+      heading: "Removed from 1 of 3 targets",
+      refusedNote:
+        "Select Deploy skill to restore the released files. Then remove the skill.",
+      failedNote:
+        "Save the changes. Restore the files from the skill's deployed version in the Harness clone. Then remove the skill.",
+    });
+  });
+
+  it("heads a one-target run in the singular", () => {
+    expect(
+      view({
+        targets: TARGETS.slice(0, 1),
+        report: report({
+          removed: [{ target: { kind: "global" }, version: "v1.0.0" }],
+        }),
+      }),
+    ).toMatchObject({ heading: "Removed from 1 target" });
   });
 });

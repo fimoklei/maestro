@@ -164,6 +164,27 @@ describe("GroupedList read-only", () => {
     expect(document.querySelector("[tabindex]")).toBeNull();
   });
 
+  it("states a group's note inside that group", () => {
+    render(
+      <GroupedList
+        groups={[
+          {
+            tone: "failed",
+            legend: "Cannot be removed · 1",
+            note: "Register it.",
+            rows: [{ key: "etl", name: "legacy-etl" }],
+          },
+        ]}
+        checklist={null}
+        live={null}
+      />,
+    );
+
+    expect(
+      screen.getByRole("group", { name: "Cannot be removed · 1" }),
+    ).toHaveTextContent("Register it.");
+  });
+
   it("draws a group the dialog already names without a legend", () => {
     render(
       <GroupedList

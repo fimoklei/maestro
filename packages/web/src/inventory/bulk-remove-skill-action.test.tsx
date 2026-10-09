@@ -332,7 +332,7 @@ describe("BulkRemoveRun", () => {
       }),
     ).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("dialog")).toHaveTextContent(
-      "Checking 1 targets — 0 answered",
+      "Checking 1 target — 0 answered",
     );
   });
 

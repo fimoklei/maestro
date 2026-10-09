@@ -206,7 +206,7 @@ describe("removing a deployed skill from a row", () => {
         /The skill was not removed. Its files changed after deployment/,
       );
       expect(dialog).toHaveTextContent(
-        /Deploy again to restore the released files. Then remove the skill/,
+        /Select Deploy skill to restore the released files. Then remove the skill/,
       );
       expect(screen.queryByRole("button", { name: CONFIRM })).toBeNull();
       expect(removeCalls(fetchMock)).toEqual([]);

@@ -588,7 +588,7 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
       view={view}
       noMatch={{
         title: "No plants match the filters",
-        description: "Select Filter to show more plants.",
+        description: "Select Clear filters to see every plant.",
       }}
       pane={
         withPane
@@ -659,9 +659,16 @@ describe("TableScreen view options", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Select Filter to show more plants."),
+      screen.getByText("Select Clear filters to see every plant."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+
+    // #1436: the empty state carries the way back to every row.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear filters" }),
+    );
+    expect(lines()).toHaveLength(PLANTS.length);
+    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
   });
 
   it("groups by status worst first, an unread row last", async () => {

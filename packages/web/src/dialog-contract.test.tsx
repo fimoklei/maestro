@@ -576,11 +576,12 @@ const ON_DIALOG: Row[] = [
         view={{
           kind: "grouped",
           clean: {
-            label: "3 clean copies",
+            label: "3 targets without local edits",
             message: "Only the deployed files are removed.",
           },
           cost: [],
           refused: [],
+          refusedNote: null,
           removableCount: 3,
           confirmLabel: "Remove from 3 targets",
         }}
@@ -610,7 +611,7 @@ const ON_DIALOG: Row[] = [
     notices: [
       {
         // Beside a cost and a refusal, so the notice's place is really checked.
-        label: "3 clean copies",
+        label: "3 targets without local edits",
         render: () => (
           <BulkRemoveDialog
             skillName="tdd"
@@ -618,7 +619,7 @@ const ON_DIALOG: Row[] = [
             view={{
               kind: "grouped",
               clean: {
-                label: "3 clean copies",
+                label: "3 targets without local edits",
                 message: "Only the deployed files are removed.",
               },
               cost: [
@@ -634,6 +635,7 @@ const ON_DIALOG: Row[] = [
                   reason: "Repository not registered",
                 },
               ],
+              refusedNote: null,
               removableCount: 4,
               confirmLabel: "Remove from 4 targets · 1 may lose work",
             }}

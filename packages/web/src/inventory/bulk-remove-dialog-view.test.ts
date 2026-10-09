@@ -89,24 +89,25 @@ describe("bulkRemoveDialogView — the clean summary", () => {
     expect(view).toEqual({
       kind: "grouped",
       clean: {
-        label: "2 clean copies",
+        label: "2 targets without local edits",
         message: "Only the deployed files are removed.",
       },
       cost: [],
       refused: [],
+      refusedNote: null,
       removableCount: 2,
       confirmLabel: "Remove from 2 targets",
     });
   });
 
-  it("counts one clean copy in the singular beside a group", () => {
+  it("counts one target without local edits in the singular beside a group", () => {
     const view = bulkRemoveDialogView([
       target("global", repoCheck("none")),
       target("/dev/acme-web", repoCheck("cannot-verify")),
     ]);
 
     expect(view.kind === "grouped" && view.clean).toEqual({
-      label: "1 clean copy",
+      label: "1 target without local edits",
       message: "Only the deployed files are removed.",
     });
   });
@@ -262,5 +263,36 @@ describe("bulkRemoveDialogView — what cannot be removed", () => {
     ]);
 
     expect(view.kind === "grouped" && view.removableCount).toBe(0);
+  });
+
+  // #1436: a target left alone with local changes names its way out.
+  it("names the next step under targets refused for local changes", () => {
+    const view = bulkRemoveDialogView([
+      target("global", repoCheck("none")),
+      target("/dev/acme-web", refused("deployed-diverged-from-lock")),
+    ]);
+
+    expect(view.kind === "grouped" && view.refusedNote).toBe(
+      "Select Deploy skill to restore the released files. Then remove the skill.",
+    );
+  });
+
+  it("names both next steps when a pinned target also refused", () => {
+    const view = bulkRemoveDialogView([
+      target("/dev/acme-web", refused("deployed-diverged-from-lock")),
+      target("/dev/acme-api", refused("deployed-diverged-pinned-per-skill")),
+    ]);
+
+    expect(view.kind === "grouped" && view.refusedNote).toBe(
+      "Select Deploy skill to restore the released files. Then remove the skill. Save the changes. Restore the files from the skill's deployed version in the Harness clone. Then remove the skill.",
+    );
+  });
+
+  it("adds no next step for a refusal without local changes", () => {
+    const view = bulkRemoveDialogView([
+      target("/dev/legacy-etl", refused("repo-not-registered")),
+    ]);
+
+    expect(view.kind === "grouped" && view.refusedNote).toBeNull();
   });
 });

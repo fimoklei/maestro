@@ -69,7 +69,7 @@ describe("Deploy-state copy", () => {
     );
     expect(NO_FILTER_MATCH).toEqual({
       title: "No targets match the filters",
-      description: "Select Filter to show more targets.",
+      description: "Select Clear filters to see every target.",
     });
     expect(NO_TARGETS).toEqual({
       title: "No targets yet",

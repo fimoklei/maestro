@@ -5,8 +5,9 @@
 import type { BulkRemoveReport, RemoveOutcome } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { REASON } from "../deploy-state/reason-copy";
-import { REFUSAL_REASON } from "./bulk-remove-dialog-view";
+import { localChangesNote, REFUSAL_REASON } from "./bulk-remove-dialog-view";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
+import { bulkRemoveReportHeading } from "./inventory-copy";
 import { targetQueryKey } from "./use-deploy-skill";
 
 // Never "nothing was removed": a lost answer does not prove the walk never ran,
@@ -29,6 +30,9 @@ export type BulkRemoveReportView =
       // Target labels, in the confirmation's order.
       removed: string[];
       leftAlone: BulkRemoveLeftAloneRow[];
+      // The way out for each left-alone group, where one exists.
+      refusedNote: string | null;
+      failedNote: string | null;
     }
   // The server answered before the walk began, so nothing was removed and the
   // same attempt can simply be made again.
@@ -75,16 +79,15 @@ export function bulkRemoveReportView(input: {
 
   return {
     kind: "report",
-    heading:
-      leftAlone.length === 0
-        ? `Removed from ${total} targets`
-        : `Removed from ${report.removed.length} of ${total} targets`,
+    heading: bulkRemoveReportHeading(report.removed.length, total),
     // The server walks in the order it was sent: the confirmation's.
     removed: report.removed.map((row) => {
       const key = targetQueryKey(row.target);
       return labels.get(key) ?? key;
     }),
     leftAlone,
+    refusedNote: localChangesNote(report.refused.map((row) => row.reason)),
+    failedNote: localChangesNote(report.failed.map((row) => row.reason)),
   };
 }
 

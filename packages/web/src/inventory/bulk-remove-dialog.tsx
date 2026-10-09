@@ -8,6 +8,7 @@ import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 import {
+  bulkRemoveTitle,
   NO_TARGET_REMOVABLE,
   removeFromCountLabel,
   TARGETS_STILL_CHECKING,
@@ -68,7 +69,7 @@ export function BulkRemoveDialog({
 
   return (
     <Dialog
-      title={`Remove ${skillName} from ${targetCount} targets`}
+      title={bulkRemoveTitle(skillName, targetCount)}
       version={null}
       width={640}
       phase={isRemoving ? "running" : confirmOffered ? "idle" : "outcome"}
@@ -128,6 +129,9 @@ export function BulkRemoveDialog({
               {
                 tone: "failed",
                 legend: `${LIST_TOKENS.failed.glyph} Cannot be removed · ${grouped.refused.length}`,
+                ...(grouped.refusedNote === null
+                  ? {}
+                  : { note: grouped.refusedNote }),
                 id: refusedId,
                 rows: grouped.refused.map((row) => ({
                   key: row.label,
@@ -161,9 +165,20 @@ function reportGroups(
     report.leftAlone
       .filter((row) => row.outcome === outcome)
       .map((row) => ({ name: row.label, detail: row.reason }));
+  const note = (text: string | null) => (text === null ? {} : { note: text });
   return [
-    { tone: "failed", label: "Failed", rows: leftAlone("failed") },
-    { tone: "failed", label: "Refused", rows: leftAlone("refused") },
+    {
+      tone: "failed",
+      label: "Failed",
+      ...note(report.failedNote),
+      rows: leftAlone("failed"),
+    },
+    {
+      tone: "failed",
+      label: "Refused",
+      ...note(report.refusedNote),
+      rows: leftAlone("refused"),
+    },
     {
       tone: "good",
       label: "Removed",

@@ -322,6 +322,16 @@ describe("remove notices", () => {
       },
     ],
     [
+      "deployed-diverged-from-lock",
+      {
+        label: "Local changes in deployed files",
+        message:
+          "The skill was not removed. Its files changed after deployment.",
+        detail:
+          "Select Deploy skill to restore the released files. Then remove the skill. Reset any copy under Other copies manually.",
+      },
+    ],
+    [
       "not-deployed",
       {
         label: "Nothing deployed here",
