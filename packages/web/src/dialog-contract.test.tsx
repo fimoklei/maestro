@@ -252,7 +252,10 @@ const ON_DIALOG: Row[] = [
         targetCount={3}
         view={{
           kind: "grouped",
-          cleanLine: "3 clean copies",
+          clean: {
+            label: "3 clean copies",
+            message: "Only the deployed files are removed.",
+          },
           cost: [],
           refused: [],
           removableCount: 3,

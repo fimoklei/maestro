@@ -2,6 +2,7 @@ import {
   toolDisplayName,
   toolNameList,
 } from "../deploy-state/tool-presentation";
+import type { NoticeCopy } from "../ui/notice";
 
 // Shown by both gates while the inventory config read is in flight.
 export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…";
@@ -40,6 +41,12 @@ export const TARGETS_LOADING = "targets still loading";
 export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
 export const TARGETS_STILL_CHECKING = "checking for local edits";
 export const NO_TARGET_REMOVABLE = "no target can be removed";
+
+// The bulk Remove dialog's clean targets: a removal there loses no work.
+export const cleanCopiesNotice = (count: number): NoticeCopy => ({
+  label: `${count} clean ${count === 1 ? "copy" : "copies"}`,
+  message: "Only the deployed files are removed.",
+});
 
 // The bulk-deploy picker's Global option. undefined = not loaded or
 // unreadable → plain "Global"; empty = zero detected tools (#134).

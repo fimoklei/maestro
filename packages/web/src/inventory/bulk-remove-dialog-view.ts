@@ -6,6 +6,8 @@ import type {
   RemovePreflightView,
   RemoveRowWarning,
 } from "../deploy-state/remove-preflight-view";
+import type { NoticeCopy } from "../ui/notice";
+import { cleanCopiesNotice } from "./inventory-copy";
 
 export type BulkRemoveCheckedTarget = {
   label: string;
@@ -28,7 +30,7 @@ export type BulkRemoveDialogView =
   | {
       kind: "grouped";
       // Null when nothing is clean: an empty block is absent.
-      cleanLine: string | null;
+      clean: NoticeCopy | null;
       cost: BulkRemoveCostRow[];
       refused: BulkRemoveRefusalRow[];
       // Refused targets are skipped, so the control names only what it walks.
@@ -131,18 +133,9 @@ export function bulkRemoveDialogView(
   }
 
   const removableCount = targets.length - refused.length;
-  // Only when nothing costs and nothing refused: "nothing else goes" is then
-  // a statement about the whole panel, not about one block in it.
-  const nothingElse = cost.length === 0 && refused.length === 0;
-
   return {
     kind: "grouped",
-    cleanLine:
-      cleanCount === 0
-        ? null
-        : nothingElse
-          ? `${cleanCount} clean copies — only the deployed files go`
-          : `${cleanCount} clean copies`,
+    clean: cleanCount === 0 ? null : cleanCopiesNotice(cleanCount),
     cost,
     refused,
     removableCount,

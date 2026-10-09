@@ -4,7 +4,10 @@ import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",
-  cleanLine: "4 clean copies — nothing but the deployed files goes",
+  clean: {
+    label: "4 clean copies",
+    message: "Only the deployed files are removed.",
+  },
   cost: [],
   refused: [],
   removableCount: 4,
@@ -41,7 +44,10 @@ export const LosesWork: Story = {
   args: {
     view: {
       kind: "grouped",
-      cleanLine: "2 clean copies",
+      clean: {
+        label: "2 clean copies",
+        message: "Only the deployed files are removed.",
+      },
       cost: [
         {
           label: "/dev/acme-api",
@@ -65,7 +71,10 @@ export const CannotBeRemoved: Story = {
   args: {
     view: {
       kind: "grouped",
-      cleanLine: "3 clean copies",
+      clean: {
+        label: "3 clean copies",
+        message: "Only the deployed files are removed.",
+      },
       cost: [],
       refused: [
         { label: "/dev/legacy-etl", reason: "Repository not registered" },

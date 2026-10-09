@@ -3,6 +3,7 @@ import {
   BULK_DEPLOY_TARGET,
   bulkDeployDidNotRun,
   bulkDeployTitle,
+  cleanCopiesNotice,
   DEPLOY_SKILLS,
   deployedToLine,
   globalOptionLabel,
@@ -68,6 +69,15 @@ describe("Inventory copy", () => {
   it("states why a bulk remove cannot run yet", () => {
     expect(TARGETS_STILL_CHECKING).toBe("checking for local edits");
     expect(NO_TARGET_REMOVABLE).toBe("no target can be removed");
+  });
+
+  // #1458: the bulk Remove dialog's clean copies, as a success notice.
+  it("counts the clean copies in one and many, with what the removal takes", () => {
+    expect(cleanCopiesNotice(1)).toEqual({
+      label: "1 clean copy",
+      message: "Only the deployed files are removed.",
+    });
+    expect(cleanCopiesNotice(3).label).toBe("3 clean copies");
   });
 
   it("heads the hover card with the reach, in zero, one and many", () => {
