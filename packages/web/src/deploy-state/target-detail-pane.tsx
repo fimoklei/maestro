@@ -87,7 +87,7 @@ export function TargetDetailPane({
             action: {
               label: RETRY_LABELS[row.pending.kind],
               onClick: onRetry,
-              disabled: isRetrying,
+              busy: isRetrying ? row.pending.kind : undefined,
             },
           },
           trigger: retryFailure ? "user-action" : "load",

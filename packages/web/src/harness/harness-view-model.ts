@@ -122,3 +122,14 @@ export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
 // publish a delta that has already moved (#519).
 export const releaseEnabled = (freshness: HarnessFreshness): boolean =>
   freshness.outcome !== "offline" && freshness.outcome !== "fetch-failed";
+
+/** Why Create a release cannot open its plan now; null when it can. */
+export const releaseUnavailable = (
+  freshness: HarnessFreshness,
+  rereading: boolean,
+): string | null =>
+  rereading
+    ? "re-reading Harness"
+    : releaseEnabled(freshness)
+      ? null
+      : "GitHub not read";

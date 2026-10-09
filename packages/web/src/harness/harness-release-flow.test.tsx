@@ -63,11 +63,12 @@ describe("Harness release", () => {
     });
     renderHarness();
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /^create a release$/i }),
-      ).toBeDisabled(),
-    );
+    const release = await screen.findByRole("button", {
+      name: "Create a release — GitHub not read",
+    });
+    expect(release).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(release);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("opens a consequences-first plan when the author asks to release", async () => {
@@ -105,13 +106,18 @@ describe("Harness release", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^create a release$/i,
+      name: "Create a release — re-reading Harness",
     });
-    await waitFor(() => expect(release).toBeDisabled());
+    expect(release).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(release);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     finishRefresh();
 
-    await waitFor(() => expect(release).toBeEnabled());
+    await waitFor(() =>
+      expect(release).toHaveAccessibleName("Create a release"),
+    );
+    expect(release).not.toHaveAttribute("aria-disabled");
   });
 
   it("never stands the last plan in for the one being fetched again", async () => {

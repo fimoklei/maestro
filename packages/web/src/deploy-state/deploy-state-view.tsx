@@ -151,6 +151,7 @@ export function DeployStateView() {
     ...row,
     actions: targetMenuItems(row, retry.isRetrying(row.wire)),
     links: targetLinkItems(row),
+    busy: retry.isRetrying(row.wire),
   }));
 
   const onAction = useCallback(

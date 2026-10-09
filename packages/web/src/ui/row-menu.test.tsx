@@ -20,6 +20,7 @@ const renderMenu = ({
         items={[{ label: "Update target", onSelect }]}
         returnFocus={returnFocus}
         tabStop={tabStop}
+        busy={false}
       />
     </div>,
   );

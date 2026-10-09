@@ -715,13 +715,15 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(retries).toEqual([
       JSON.stringify({ target: { kind: "repo", repoPath: REPO } }),
     ]);
-    await waitFor(() =>
-      expect(
-        within(notice).getByRole("button", { name: "Retry deploy" }),
-      ).toBeDisabled(),
-    );
+    const running = await within(notice).findByRole("button", {
+      name: "Deploying…",
+    });
+    expect(running).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(running);
     expect(
-      within(pane).getAllByRole("button", { name: /^Retry deploy/ }),
+      within(pane).getAllByRole("button", {
+        name: /^(Retry deploy|Deploying…)/,
+      }),
     ).toHaveLength(1);
     await userEvent.click(
       within(await findRow(LABEL)).getByRole("button", {

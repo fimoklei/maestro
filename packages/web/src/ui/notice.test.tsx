@@ -195,7 +195,7 @@ describe("Notice", () => {
       expect(onClick).toHaveBeenCalledTimes(1);
     });
 
-    it("stays inert while it is disabled", async () => {
+    it("stays inert and focusable under its busy label while its write runs", async () => {
       const onClick = vi.fn();
       render(
         <Notice
@@ -204,13 +204,15 @@ describe("Notice", () => {
             level: "error",
             label: "the removal failed",
             message: "apm did not confirm the removal.",
-            action: { label: "retry", onClick, disabled: true },
+            action: { label: "retry", onClick, busy: "remove" },
           }}
         />,
       );
 
-      const button = screen.getByRole("button", { name: "retry" });
-      expect(button).toBeDisabled();
+      const button = screen.getByRole("button", { name: "Removing…" });
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      expect(button).toHaveAttribute("aria-busy", "true");
+      expect(button).not.toBeDisabled();
       await userEvent.click(button);
       expect(onClick).not.toHaveBeenCalled();
     });

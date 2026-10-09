@@ -11,7 +11,7 @@ export interface ButtonProps extends ComponentPropsWithRef<"button"> {
 }
 
 // The one thing that moves under reduced motion, so no motion-safe guard.
-function Spinner() {
+export function Spinner() {
   return (
     <svg
       data-spinner=""

@@ -294,18 +294,22 @@ describe("ConnectForm", () => {
     expect(onAccept).toHaveBeenCalledOnce();
   });
 
-  it("locks the offer while the scaffold is running", () => {
+  it("locks the offer while the scaffold is running", async () => {
+    const onClick = vi.fn();
     renderForm({
       notice: {
         level: "info",
         label: "Harness scaffold available",
         message: "That GitHub repository has no apm.yml.",
-        action: { label: "Scaffolding…", onClick: vi.fn(), disabled: true },
+        action: { label: "Scaffold the Harness", onClick, busy: "scaffold" },
       },
       submitDisabled: true,
     });
 
-    expect(screen.getByRole("button", { name: "Scaffolding…" })).toBeDisabled();
+    const busy = screen.getByRole("button", { name: "Scaffolding…" });
+    expect(busy).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(busy);
+    expect(onClick).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("button", { name: "Scaffold the Harness" }),
     ).not.toBeInTheDocument();

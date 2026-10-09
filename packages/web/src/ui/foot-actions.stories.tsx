@@ -36,3 +36,14 @@ export const NoPrimary: Story = {
     primary: null,
   },
 };
+
+// Propose change's write is running; its row's other presses wait.
+export const Busy: Story = {
+  args: {
+    items: [
+      { label: "Propose change", busy: "propose", disabled: true },
+      { label: "Discard change", danger: true, disabled: true },
+    ],
+    primary: null,
+  },
+};

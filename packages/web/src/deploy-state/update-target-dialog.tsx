@@ -238,7 +238,11 @@ export function UpdateTargetDialog({
               label: UPDATE_INCOMPLETE,
               message: UPDATE_INCOMPLETE_SENTENCE,
             }),
-        action: { label: RETRY_UPDATE, onClick: onRetry, disabled: isRunning },
+        action: {
+          label: RETRY_UPDATE,
+          onClick: onRetry,
+          busy: isRunning ? "update" : undefined,
+        },
       }
     : error && { ...error, level: "error" };
   const unavailable = blocked ?? (consentComplete ? null : CONSENT_NOT_GIVEN);

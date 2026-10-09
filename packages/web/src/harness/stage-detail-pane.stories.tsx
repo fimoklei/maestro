@@ -112,6 +112,7 @@ const withMenu = (row: ReturnType<typeof stageRow>) =>
       },
       true,
       { enabled: true, commit: "local-head" },
+      null,
     ),
   );
 

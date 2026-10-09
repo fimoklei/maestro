@@ -24,6 +24,8 @@ export type TargetTableRow = TargetRow & {
   actions: { action: TargetAction; label: string; disabled?: boolean }[];
   /** Pages elsewhere, after the actions in the menu and at the foot. */
   links: { label: string; href: string }[];
+  /** Its retry is running. */
+  busy: boolean;
 };
 
 const unranked = Number.MAX_SAFE_INTEGER;
@@ -166,6 +168,7 @@ export const deployStateColumns = ({
           items={targetRowItems(row.original, onAction)}
           returnFocus={false}
           tabStop={false}
+          busy={row.original.busy}
         />
       ),
       meta: { width: 10 },

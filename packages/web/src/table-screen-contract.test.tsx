@@ -55,6 +55,30 @@ type RowActions = {
   /** Every destructive item the row offers, in ⋮ order. */
   destructive: string[];
   pane: boolean;
+  /** Null where every ⋮ item opens a dialog or another screen. */
+  write: DirectWrite | null;
+};
+
+/** A ⋮ item that runs its write at once, with no dialog of its own. */
+type DirectWrite = {
+  render: () => void;
+  name: string;
+  item: string;
+  /** The pane's foot offers it too. */
+  foot: boolean;
+};
+
+// Every write the server is sent from here on stays running.
+const holdWrites = () => {
+  const answer = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
+      (init?.method ?? "GET") === "GET"
+        ? answer(input, init)
+        : new Promise<Response>(() => {}),
+    ),
+  );
 };
 
 const renderInventoryRow = () => {
@@ -134,6 +158,29 @@ const ON_TABLE_SCREEN: Row[] = [
       name: "…/me/a",
       destructive: [],
       pane: true,
+      // Its pane offers the retry in the notice, not the foot.
+      write: {
+        render: () => {
+          stubServer(() => ({
+            repos: ["/Users/me/a"],
+            repo: {
+              "/Users/me/a": {
+                primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+                skipped: [],
+                pendingOperation: {
+                  kind: "deploy",
+                  release: "v0.3.4",
+                  desired: ["tdd"],
+                },
+              },
+            },
+          }));
+          renderDeployState();
+        },
+        name: "…/me/a",
+        item: "Retry deploy",
+        foot: false,
+      },
     },
   },
   {
@@ -182,6 +229,23 @@ const ON_TABLE_SCREEN: Row[] = [
       name: "old-skill",
       destructive: ["Withdraw proposal", "Restore skill"],
       pane: true,
+      write: {
+        render: () => {
+          stubHarnessServer({
+            read: {
+              body: withStages(RELEASED, {
+                proposal: [
+                  stageRow("pending-proposal", "tdd", "not-yet-proposed"),
+                ],
+              }),
+            },
+          });
+          renderHarness();
+        },
+        name: "tdd",
+        item: "Propose change",
+        foot: true,
+      },
     },
   },
   {
@@ -214,6 +278,7 @@ const ON_TABLE_SCREEN: Row[] = [
       name: "tdd",
       destructive: ["Delete skill"],
       pane: true,
+      write: null,
     },
   },
   {
@@ -234,6 +299,7 @@ const ON_TABLE_SCREEN: Row[] = [
       name: "…/me/acme-web",
       destructive: ["Unregister"],
       pane: false,
+      write: null,
     },
   },
 ];
@@ -376,6 +442,68 @@ describe("every table screen", () => {
       );
     });
   });
+
+  const writes = ON_TABLE_SCREEN.flatMap(({ file, name, actions }) =>
+    actions.write === null
+      ? []
+      : [{ file, screenName: name, ...actions.write }],
+  );
+  type Write = (typeof writes)[number];
+
+  const rowOf = (write: Write) =>
+    within(screen.getByRole("grid"))
+      .getAllByText(write.name)[0]
+      ?.closest("tr") as HTMLElement;
+  const menuOf = (write: Write) =>
+    within(rowOf(write)).getByRole("button", { name: /^Actions for / });
+  // Writes are held once the screen's own reads have landed.
+  const readyToWrite = async (write: Write) => {
+    write.render();
+    await within(await screen.findByRole("grid")).findAllByText(write.name);
+    const reread = screen.getByRole("button", {
+      name: `Re-read ${write.screenName}`,
+    });
+    await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
+    holdWrites();
+  };
+
+  // A busy write shows its spinner in the control that started it.
+  describe.each(writes)("$file direct write", (write) => {
+    it("spins the row's ⋮ while a write its ⋮ started runs", async () => {
+      await readyToWrite(write);
+
+      await userEvent.click(menuOf(write));
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: write.item }),
+      );
+
+      await waitFor(() =>
+        expect(menuOf(write)).toHaveAttribute("aria-busy", "true"),
+      );
+    });
+  });
+
+  describe.each(writes.filter((write) => write.foot))(
+    "$file direct write from the pane foot",
+    (write) => {
+      it("spins the pressed foot button and keeps focus on it", async () => {
+        await readyToWrite(write);
+        await userEvent.click(
+          within(rowOf(write)).getAllByRole("gridcell")[0] as HTMLElement,
+        );
+        const pane = await screen.findByRole("complementary");
+
+        await userEvent.click(
+          within(pane).getByRole("button", { name: write.item }),
+        );
+
+        await waitFor(() =>
+          expect(document.activeElement).toHaveAttribute("aria-busy", "true"),
+        );
+        expect(pane).toContainElement(document.activeElement as HTMLElement);
+      });
+    },
+  );
 
   const carded = ON_TABLE_SCREEN.flatMap(({ file, card }) =>
     card === null ? [] : [{ file, card }],
