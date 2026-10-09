@@ -10,9 +10,12 @@ import { useCheckRepo, useRegisterRepo } from "./use-registry";
 // edit clears it and a late answer for an older path never lands.
 export function useRegisterDialog({
   report,
+  onAdded,
 }: {
   /** Into the screen's status region. */
   report: (write: string) => void;
+  /** The stored path of the new registration, for its row to take focus. */
+  onAdded: (path: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [path, setPath] = useState("");
@@ -62,7 +65,10 @@ export function useRegisterDialog({
       onRegister() {
         const sent = path;
         register.run(sent, {
-          onSuccess: () => setOpen(false),
+          onSuccess: ({ repos }) => {
+            setOpen(false);
+            onAdded(repos[repos.length - 1]?.path ?? sent);
+          },
           onError: refuse(sent),
         });
       },

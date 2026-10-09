@@ -7,13 +7,17 @@ const meta = {
   component: RowMenu,
   args: {
     label: "Actions for create-issue",
-    returnFocus: false,
     tabStop: false,
     busy: false,
     items: [
-      { label: "Deploy skill", onSelect: () => {} },
-      { label: "Update target", onSelect: () => {} },
-      { label: "Remove skill", danger: true, onSelect: () => {} },
+      { label: "Deploy skill", onSelect: () => {}, movesFocus: true },
+      { label: "Update target", onSelect: () => {}, movesFocus: true },
+      {
+        label: "Remove skill",
+        danger: true,
+        onSelect: () => {},
+        movesFocus: false,
+      },
     ],
   },
   decorators: [
@@ -31,9 +35,9 @@ type Story = StoryObj<typeof meta>;
 
 export const InTableRow: Story = {};
 
-// A pane sub-list row is no grid: ⋮ is a Tab stop and gets focus back.
+// A pane sub-list row is no grid: ⋮ is a Tab stop.
 export const InSubListRow: Story = {
-  args: { returnFocus: true, tabStop: true },
+  args: { tabStop: true },
 };
 
 // A write its row started is running.

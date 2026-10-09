@@ -16,6 +16,9 @@ export type TableScreenState = {
   /** The row whose detail pane is open. */
   openId: string | null;
   open: (id: string | null) => void;
+  /** The row to select and focus once shown, after an add on a screen without a pane; null once done. */
+  addedId: string | null;
+  added: (id: string | null) => void;
   reading: boolean;
   settled: boolean;
   skeleton: boolean;
@@ -45,6 +48,7 @@ export function useTableScreen({
   openOnArrival: string | null;
 }): TableScreenState {
   const [openId, setOpenId] = useState(openOnArrival);
+  const [addedId, setAddedId] = useState<string | null>(null);
   const rereadRef = useRef<HTMLButtonElement>(null);
   const reread = () => {
     status.press();
@@ -62,6 +66,8 @@ export function useTableScreen({
     report: status.report,
     openId,
     open: setOpenId,
+    addedId,
+    added: setAddedId,
     reading,
     settled,
     skeleton: status.skeleton,

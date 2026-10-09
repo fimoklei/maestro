@@ -128,8 +128,11 @@ export const harnessColumns = ({
       cell: ({ row }) => (
         <RowMenu
           label={rowMenuLabel(row.original)}
-          items={row.original.items}
-          returnFocus={false}
+          // Dialogs and writes, never the pane: focus comes back to ⋮.
+          items={row.original.items.map((item) => ({
+            ...item,
+            movesFocus: false,
+          }))}
           tabStop={false}
           busy={row.original.items.some((item) => item.busy !== undefined)}
         />

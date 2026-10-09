@@ -166,7 +166,6 @@ export const deployStateColumns = ({
         <RowMenu
           label={rowActionsLabel(row.original.name)}
           items={targetRowItems(row.original, onAction)}
-          returnFocus={false}
           tabStop={false}
           busy={row.original.busy}
         />

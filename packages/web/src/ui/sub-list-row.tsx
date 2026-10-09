@@ -37,8 +37,8 @@ export function SubListRow({
       {items.length === 0 ? null : (
         <RowMenu
           label={menuLabel}
-          items={items}
-          returnFocus
+          // In the pane already: no item moves focus into it.
+          items={items.map((item) => ({ ...item, movesFocus: false }))}
           tabStop
           busy={false}
         />

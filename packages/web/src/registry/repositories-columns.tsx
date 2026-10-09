@@ -24,9 +24,15 @@ export type RepositoryRow = {
   status: StatusReading;
 };
 
+// View Deploy-state leaves the screen; Unregister's dialog hands focus back.
 const ITEMS = [
-  { action: "view" as const, label: VIEW_DEPLOY_STATE },
-  { action: "unregister" as const, label: UNREGISTER, danger: true },
+  { action: "view" as const, label: VIEW_DEPLOY_STATE, movesFocus: true },
+  {
+    action: "unregister" as const,
+    label: UNREGISTER,
+    danger: true,
+    movesFocus: false,
+  },
 ];
 
 export const repositoriesColumns = ({
@@ -71,7 +77,6 @@ export const repositoriesColumns = ({
             ...item,
             onSelect: () => onAction(row.original, action),
           }))}
-          returnFocus={false}
           tabStop={false}
           busy={false}
         />

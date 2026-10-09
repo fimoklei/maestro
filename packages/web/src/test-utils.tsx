@@ -19,7 +19,7 @@ export function jsonResponse(body: unknown, status = 200) {
 // without its table screen reports into nothing; a screen brings its region.
 export function renderWithQuery(ui: ReactNode) {
   const queryClient = createQueryClient();
-  return render(ui, {
+  const rendered = render(ui, {
     wrapper: ({ children }) => (
       <QueryClientProvider client={queryClient}>
         <ScreenReportContext.Provider value={ignoreReport}>
@@ -28,6 +28,8 @@ export function renderWithQuery(ui: ReactNode) {
       </QueryClientProvider>
     ),
   });
+  // The client, so a test can re-read without moving focus to Re-read.
+  return { ...rendered, queryClient };
 }
 
 const ignoreReport = () => {};

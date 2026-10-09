@@ -5,20 +5,20 @@ import { cn } from "./cn";
 import { FOCUS_RING } from "./focus-ring";
 import { Icon } from "./icon";
 
+/** A row item declares where focus goes: on, such as into the pane, or back to ⋮. */
+export type RowMenuItem = ActionsMenuItem & { movesFocus: boolean };
+
 // The one ⋮ of a table row or pane sub-list row (#1449). Its row carries
 // `group/row`; ⋮ shows on hover, on the row the keyboard is on, while open and
 // always where nothing hovers.
 export function RowMenu({
   label,
   items,
-  returnFocus,
   tabStop,
   busy,
 }: {
   label: string;
-  items: readonly ActionsMenuItem[];
-  /** False where every item moves focus on, such as into the pane. */
-  returnFocus: boolean;
+  items: readonly RowMenuItem[];
   /** False inside a grid, which keeps one Tab stop. */
   tabStop: boolean;
   /** A write its row started is running: the spinner stands in for ⋮. */
@@ -27,7 +27,6 @@ export function RowMenu({
   return (
     <ActionsMenu
       label={label}
-      returnFocus={returnFocus}
       items={items}
       trigger={
         <button

@@ -203,6 +203,31 @@ describe("Harness outcome notices", () => {
     expect(await screen.findByText("Skill restored")).toBeInTheDocument();
   });
 
+  // design.md → Failures: the next closable notice's ✕, else Re-read.
+  it("hands focus to the next outcome's ✕ when one is dismissed", async () => {
+    stubHarnessServer({
+      read: { body: DELETED_ROW },
+      refresh: { body: DELETED_ROW, retry: { body: UNREAD_REVIEW } },
+      restore: { body: { name: "old-skill", commit: "local-head" } },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+      inventory: { afterPublish: { body: {}, status: 500 } },
+    });
+    renderHarness();
+    await restore();
+    await screen.findByText("Skill restored");
+    await publish();
+    await screen.findByText("Release published");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close Release published" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Close Skill restored" }),
+    ).toHaveFocus();
+  });
+
   it("offers no close control on a notice raised on load", async () => {
     const offline: HarnessState = {
       ...ON_DISK,

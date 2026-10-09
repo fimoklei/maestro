@@ -143,6 +143,7 @@ export function DetailPane({
         <h2
           ref={headingRef}
           tabIndex={-1}
+          data-pane-heading=""
           className="m-0 min-w-0 flex-1 truncate font-semibold text-gray-12 text-heading tracking-heading focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
         >
           {title}
