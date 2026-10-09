@@ -1,21 +1,22 @@
 import type { PendingOperation } from "@maestro/core";
 import type { TargetDriftIndicator } from "../drift/drift-view-model";
+import { WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { UNFINISHED_HEADINGS } from "./release-head-copy";
 
 /** An unfinished operation's badge: its pane notice's own heading. */
 export const UNFINISHED: Record<PendingOperation["kind"], StatusReading> = {
-  deploy: reading(UNFINISHED_HEADINGS.deploy, "attention", "⚠"),
-  remove: reading(UNFINISHED_HEADINGS.remove, "attention", "⚠"),
-  update: reading(UNFINISHED_HEADINGS.update, "attention", "⚠"),
+  deploy: reading(UNFINISHED_HEADINGS.deploy, "attention", WARNING_GLYPH),
+  remove: reading(UNFINISHED_HEADINGS.remove, "attention", WARNING_GLYPH),
+  update: reading(UNFINISHED_HEADINGS.update, "attention", WARNING_GLYPH),
 };
-const ATTENTION = reading("Attention", "attention", "⚠");
-export const LOCAL_EDITS = reading("Local edits", "attention", "✎");
+const ATTENTION = reading("Attention", "attention", WARNING_GLYPH);
+export const LOCAL_EDITS = reading("Local edits", "attention", WARNING_GLYPH);
 const BEHIND = reading("Behind", "attention");
 const UNKNOWN = reading("Unknown", "unknown");
 const IN_SYNC = reading("In sync", "good");
-const PINNED = reading("Pinned per skill", "neutral", "•");
-const OTHER_ORIGIN = reading("Other origin", "neutral", "•");
+const PINNED = reading("Pinned per skill", "neutral");
+const OTHER_ORIGIN = reading("Other origin", "neutral");
 const EMPTY = reading("Empty", "neutral");
 
 /** Every word the badge can read, worst first, as Filter offers them. */

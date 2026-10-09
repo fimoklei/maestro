@@ -1,6 +1,10 @@
 // A status is a word, then a glyph, then a colour.
 
-import { STATUS_TOKENS, type StatusFamily } from "./status-family";
+import {
+  STATUS_TOKENS,
+  type StatusFamily,
+  type WARNING_GLYPH,
+} from "./status-family";
 
 export type StatusReading = {
   word: string;
@@ -20,9 +24,10 @@ const RANK: readonly StatusFamily[] = [
 export function reading(
   word: string,
   family: StatusFamily,
-  glyph: string = STATUS_TOKENS[family].glyph,
+  /** Attention's warning glyph in place of the family's own; no other. */
+  glyph?: typeof WARNING_GLYPH,
 ): StatusReading {
-  return { word, family, glyph };
+  return { word, family, glyph: glyph ?? STATUS_TOKENS[family].glyph };
 }
 
 export function worstReading(

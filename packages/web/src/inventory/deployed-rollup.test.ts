@@ -146,7 +146,7 @@ describe("rollUpDeployment — pending keeps a zero reach honest", () => {
   });
 });
 
-describe("rollUpDeployment — behind count (▲N)", () => {
+describe("rollUpDeployment — behind count", () => {
   it("counts targets where the deployed skill is confirmed behind", () => {
     const targets = [
       deployedTarget(["tdd"], [pair("tdd")]),

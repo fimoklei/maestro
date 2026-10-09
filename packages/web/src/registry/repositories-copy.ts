@@ -7,6 +7,7 @@ import {
   requestShapeNotice,
 } from "../ui/notice-table";
 import { plainText } from "../ui/phrase";
+import { WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 
 export const SCREEN = "Repositories";
@@ -32,7 +33,7 @@ export const EMPTY_SENTENCE =
 export const STATUS_READINGS: Record<RepoStatus, StatusReading> = {
   ready: reading("Ready", "good"),
   "folder-missing": reading("Folder missing", "failed"),
-  "not-a-git-repo": reading("Not a Git repository", "attention", "⚠"),
+  "not-a-git-repo": reading("Not a Git repository", "attention", WARNING_GLYPH),
 };
 
 // Deploy-state's sentence, recovered by this screen's own Re-read.

@@ -5,6 +5,7 @@ import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, named, type Phrase, phrase } from "../ui/phrase";
+import { LIST_TOKENS } from "../ui/status-family";
 
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 
@@ -17,7 +18,7 @@ export const canBeImportedLegend = (count: number): string =>
   `Can be imported · ${count}`;
 
 export const cannotBeImportedLegend = (count: number): string =>
-  `✕ Cannot be imported · ${count}`;
+  `${LIST_TOKENS.failed.glyph} Cannot be imported · ${count}`;
 
 const IMPORT_SKILLS = "Import skills";
 export const NONE_SELECTED = "none selected";
@@ -29,7 +30,7 @@ export const noLocalEditsLine = (target: string): Phrase =>
   phrase`No skill on ${named(target)} changed after deployment.`;
 
 export const undoesNewerLegend = (count: number): string =>
-  `▲ Undoes newer Harness changes · ${count}`;
+  `${LIST_TOKENS.attention.glyph} Undoes newer Harness changes · ${count}`;
 
 export const undoesNewerLine = (release: string): Phrase =>
   phrase`Deployed from release ${machine(release)}. Importing undoes newer Harness changes to this skill.`;

@@ -1,15 +1,10 @@
 import { Fragment, type Ref, useEffect, useState } from "react";
 import { lagsPin } from "../drift/drift-view-model";
-import { FOCUS_RING } from "../ui/focus-ring";
-import { GitHubMarkLink } from "../ui/github-mark-link";
 import { InlineName } from "../ui/inline-name";
 import { STATUS_TOKENS } from "../ui/status-family";
+import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow } from "../ui/sub-list-row";
-import {
-  HARNESS_ORIGIN_NOT_READ,
-  REMOVE_SKILL,
-  VIEW_SKILL_ON_GITHUB,
-} from "./deploy-state-copy";
+import { REMOVE_SKILL, VIEW_SKILL_ON_GITHUB } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { IMPORT_LOCAL_EDITS } from "./import-local-edits-copy";
 import { RemoveSkillFlow } from "./remove-skill-flow";
@@ -53,14 +48,11 @@ export function SelectedSkills({
 
   return (
     <section>
-      <h3
-        ref={headingRef}
-        tabIndex={-1}
-        className={`m-0 mb-inline font-normal text-gray-11 text-meta ${FOCUS_RING}`}
-      >
-        Deployed skills{" "}
-        <span className="text-gray-12 tabular-nums">{primitives.length}</span>
-      </h3>
+      <SubListHeading
+        label="Deployed skills"
+        count={primitives.length}
+        headingRef={headingRef}
+      />
       <ul className="m-0 list-none border-divider border-t p-0">
         {primitives.map((primitive) => {
           const status = drift.skillStatus(primitive.name);
@@ -76,15 +68,7 @@ export function SelectedSkills({
                   : primitive.version
               }
               menuLabel={`Actions for ${primitive.name}`}
-              link={
-                <GitHubMarkLink
-                  page={primitive.github}
-                  name={primitive.name}
-                  unknownCause={HARNESS_ORIGIN_NOT_READ}
-                />
-              }
               items={[
-                // The link cell is mouse only; this is the keyboard's way.
                 ...(primitive.github?.kind === "link"
                   ? [
                       {

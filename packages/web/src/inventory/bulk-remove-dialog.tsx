@@ -2,6 +2,7 @@ import { useId } from "react";
 import { Dialog } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Report, type ReportGroup } from "../ui/report";
+import { LIST_TOKENS, STATUS_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
@@ -15,10 +16,10 @@ function CleanLine({ id, children }: { id: string; children: string }) {
   return (
     <p
       id={id}
-      className="m-0 flex items-center gap-inline rounded-control border border-edge bg-gray-3 px-cell py-inline font-mono text-meta text-gray-12"
+      className="m-0 flex items-center gap-inline rounded-control border border-edge bg-gray-3 px-cell py-inline font-ui text-gray-12 text-meta"
     >
-      <span aria-hidden="true" className="text-gray-11">
-        ✓
+      <span aria-hidden="true" className={STATUS_TOKENS.good.mark}>
+        {STATUS_TOKENS.good.glyph}
       </span>
       <span>{children}</span>
     </p>
@@ -128,7 +129,7 @@ export function BulkRemoveDialog({
             groups={[
               {
                 tone: "attention",
-                legend: `▲ Loses work · ${grouped.cost.length}`,
+                legend: `${LIST_TOKENS.attention.glyph} Loses work · ${grouped.cost.length}`,
                 id: costId,
                 rows: grouped.cost.map((row) => ({
                   key: row.label,
@@ -139,7 +140,7 @@ export function BulkRemoveDialog({
               },
               {
                 tone: "failed",
-                legend: `✕ Cannot be removed · ${grouped.refused.length}`,
+                legend: `${LIST_TOKENS.failed.glyph} Cannot be removed · ${grouped.refused.length}`,
                 id: refusedId,
                 rows: grouped.refused.map((row) => ({
                   key: row.label,

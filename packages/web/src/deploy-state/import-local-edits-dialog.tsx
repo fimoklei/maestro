@@ -191,7 +191,7 @@ export function ImportLocalEditsDialog({
   );
 }
 
-// The differing copies' folders are paths: mono, wrapping inside the row.
+// The differing copies' folders are paths, set as machine values.
 function RefusalSentence(
   skill: Pick<LocalEditsSkill, "folders"> & {
     refusal: NonNullable<LocalEditsSkill["refusal"]>;
@@ -201,18 +201,5 @@ function RefusalSentence(
   if (folders === undefined) {
     return <>{localEditsRefusal(skill)}</>;
   }
-  const path = "break-all font-mono";
-  const [lead, claude, or, codex, end] = copiesDiffer({
-    claude: <code className={path}>{folders.claude}</code>,
-    codex: <code className={path}>{folders.codex}</code>,
-  });
-  return (
-    <>
-      {lead}
-      {claude}
-      {or}
-      {codex}
-      {end}
-    </>
-  );
+  return <PhraseText copy={copiesDiffer(folders)} />;
 }

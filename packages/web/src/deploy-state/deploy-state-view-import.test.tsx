@@ -233,7 +233,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
     const flagged = await within(dialog).findByRole("group", {
-      name: "▲ Undoes newer Harness changes · 1",
+      name: "⚠ Undoes newer Harness changes · 1",
     });
     const box = within(flagged).getByRole("checkbox", { name: "tdd" });
     expect(box).not.toBeChecked();
@@ -289,19 +289,18 @@ describe("Deploy-state — Import local edits on a repository", () => {
     });
 
     const box = within(refused).getByRole("checkbox", { name: "tdd" });
-    // textContent, not the computed description: jsdom pads a <code> with
-    // spaces no browser adds.
-    expect(
-      document.getElementById(box.getAttribute("aria-describedby") ?? "")
-        ?.textContent,
-    ).toBe(
+    const reason = document.getElementById(
+      box.getAttribute("aria-describedby") ?? "",
+    ) as HTMLElement;
+    expect(reason.textContent).toBe(
       "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and pick one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
     );
-    expect(
-      within(refused)
-        .getAllByRole("code")
-        .map((path) => path.textContent),
-    ).toEqual(["~/.claude/skills/tdd", "~/.agents/skills/tdd"]);
+    // #1458: the shared machine value, not a hand-rolled <code>.
+    expect(within(refused).queryAllByRole("code")).toEqual([]);
+    expect(reason).not.toHaveClass("font-mono");
+    for (const path of ["~/.claude/skills/tdd", "~/.agents/skills/tdd"]) {
+      expect(within(reason).getByText(path)).toHaveClass("font-mono");
+    }
   });
 
   it("blocks the confirm when no skill qualifies", async () => {

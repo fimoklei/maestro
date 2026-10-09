@@ -21,8 +21,8 @@ export function countingSentence(counts: {
   return `Updates ${counts.changed} ${skills}, removes ${counts.removed}, leaves ${counts.unchanged} unchanged.`;
 }
 
-export const releaseMoveLine = (from: string, to: string): string =>
-  `release ${from} → ${to}`;
+export const releaseMoveLine = (from: string, to: string): Phrase =>
+  phrase`release ${machine(from)} → ${machine(to)}`;
 
 // The fixed order the dialog renders; Unchanged and New in this release are folded.
 export const SECTION_HEADINGS = [

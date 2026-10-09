@@ -231,7 +231,7 @@ describe("BulkRemoveRun", () => {
     await openDialog();
 
     const group = await screen.findByRole("group", {
-      name: "▲ Loses work · 1",
+      name: "⚠ Loses work · 1",
     });
     expect(group).toHaveTextContent("/dev/acme-web");
     expect(group).toHaveTextContent("v1.0.0");

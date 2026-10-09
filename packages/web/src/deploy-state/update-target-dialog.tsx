@@ -271,8 +271,10 @@ export function UpdateTargetDialog({
     >
       {preview !== null && report === null ? (
         <div className="flex items-center justify-between gap-inline">
-          <p className="m-0 font-mono text-gray-11 text-meta">
-            {releaseMoveLine(preview.release, preview.chosenRelease)}
+          <p className="m-0 font-ui text-gray-11 text-meta">
+            <PhraseText
+              copy={releaseMoveLine(preview.release, preview.chosenRelease)}
+            />
           </p>
           {noContentChanges ? (
             <StatusBadge reading={reading(NO_CONTENT_CHANGES, "neutral")} />

@@ -31,7 +31,7 @@ export const Checklist: Story = {
       },
       {
         tone: "attention",
-        legend: "▲ Undoes newer Harness changes · 1",
+        legend: "⚠ Undoes newer Harness changes · 1",
         rows: [
           {
             key: "grill",
@@ -69,7 +69,7 @@ export const ReadOnly: Story = {
     groups: [
       {
         tone: "attention",
-        legend: "▲ Loses work · 1",
+        legend: "⚠ Loses work · 1",
         rows: [
           {
             key: "acme-api",

@@ -143,7 +143,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
   it("groups what the removal costs, with each target's version and reason", () => {
     renderDialog({ view: withCost });
 
-    const cost = screen.getByRole("group", { name: "▲ Loses work · 2" });
+    const cost = screen.getByRole("group", { name: "⚠ Loses work · 2" });
     expect(cost).toHaveTextContent("/dev/acme-api");
     expect(cost).toHaveTextContent("v1.0.0");
     expect(cost).toHaveTextContent("Nothing recorded — may lose work");
@@ -235,7 +235,7 @@ describe("BulkRemoveDialog — during the run", () => {
   it("keeps what it weighed in view while the confirm says Removing…", () => {
     renderDialog(running);
 
-    expect(screen.getByText("▲ Loses work · 2")).toBeInTheDocument();
+    expect(screen.getByText("⚠ Loses work · 2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Removing…/ })).toHaveAttribute(
       "aria-busy",
       "true",
@@ -275,7 +275,7 @@ describe("BulkRemoveDialog — during the run", () => {
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent("Run not started");
-    expect(screen.getByText("▲ Loses work · 2")).toBeInTheDocument();
+    expect(screen.getByText("⚠ Loses work · 2")).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: /^remove from/i }),
     );

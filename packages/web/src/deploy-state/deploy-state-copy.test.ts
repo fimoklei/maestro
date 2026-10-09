@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { plainText } from "../ui/phrase";
 import {
   deployStateNotRead,
-  HARNESS_ORIGIN_NOT_READ,
   localEditsLine,
   localEditsReason,
   NO_FILTER_MATCH,
@@ -80,11 +79,8 @@ describe("Deploy-state copy", () => {
   });
 
   // #1181: a skill row's menu item and its Unknown badge's cause.
-  it("keeps the skill sub-list's GitHub sentences", () => {
+  it("keeps the skill sub-list's GitHub item", () => {
     expect(VIEW_SKILL_ON_GITHUB).toBe("View skill on GitHub");
-    expect(HARNESS_ORIGIN_NOT_READ).toBe(
-      "The origin of the Harness could not be read. Select Re-read Deploy-state to read it again.",
-    );
   });
 
   it("counts targets for one and many", () => {
