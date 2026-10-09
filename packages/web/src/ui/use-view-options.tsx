@@ -40,6 +40,8 @@ export type ViewOptions<T extends RowData> = {
   groups: Groups<T> | undefined;
   hidden: ReadonlySet<string>;
   filterCount: number;
+  /** Sets every filter back to All, so each row shows again. */
+  clearFilters: () => void;
   /** Filter, then Display, for band 2. */
   menus: readonly [OptionMenuProps, OptionMenuProps];
 };
@@ -87,6 +89,10 @@ export function useViewOptions<T extends RowData>(
     groups: groupings.find((each) => each.value === grouping)?.groups,
     hidden,
     filterCount,
+    clearFilters: () => {
+      setKind("all");
+      setStatuses(new Set());
+    },
     menus: [
       {
         label: FILTER_LABEL,

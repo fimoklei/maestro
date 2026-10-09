@@ -90,10 +90,8 @@ const PLAIN: Record<string, Record<string, string>> = {
       "report heading",
     "`Deploy ${name} again`": "button label",
   },
-  "inventory/bulk-remove-dialog.tsx": {
-    "`Remove ${skillName} from ${targetCount} targets`": "dialog title",
-  },
   "inventory/inventory-copy.ts": {
+    "`Remove ${skillName} from ${targetCount(count)}`": "dialog title",
     "`Select ${name} for bulk deploy`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",
     '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",

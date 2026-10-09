@@ -298,6 +298,7 @@ describe("InventoryView — band 2", () => {
     expect(
       screen.getByText("Clear the search box to see every skill."),
     ).toBeInTheDocument();
+    expect(screen.getByText("0 of 2 skills")).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
@@ -369,8 +370,17 @@ describe("InventoryView — band 2", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Select Filter to show more skills."),
+      screen.getByText("Select Clear filters to see every skill."),
     ).toBeInTheDocument();
+    expect(screen.getByText("0 of 2 skills")).toBeInTheDocument();
+
+    // #1436: the empty state carries the way back to every skill.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear filters" }),
+    );
+    expect(dataRowNames()).toEqual(["tdd", "caveman"]);
+    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
+    expect(screen.getByText("2 skills")).toBeInTheDocument();
   });
 
   it("switches a column off and on from Display", async () => {
@@ -950,9 +960,9 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
     ).toBeNull();
   });
 
-  // #1066: a global deploy is one target per detected tool, so the pane lists
-  // each tool and the foot counts the same targets.
-  it("counts the targets the pane lists, each global tool among them", async () => {
+  // #1066 lists each global tool as a target; #1436: the foot counts the
+  // targets the removal covers, and one global removal takes every tool.
+  it("counts global once in the foot, as the removal does", async () => {
     viewWith([
       {
         ...onTarget({ kind: "global" }, ["tdd"]),
@@ -976,7 +986,7 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
         .map((row) => row.textContent?.replace(/v1\.0\.0.*$/, "")),
     ).toHaveLength(3);
     expect(
-      within(pane).getByRole("button", { name: "Remove from all 3 targets" }),
+      within(pane).getByRole("button", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 

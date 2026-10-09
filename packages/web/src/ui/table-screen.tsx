@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Button } from "./button";
 import { cn } from "./cn";
 import { rereadLabel } from "./control-labels";
 import { DataTable, type DataTableProps } from "./data-table";
@@ -22,6 +23,7 @@ import { StatusRegion } from "./status-region";
 import type { TableScreenState } from "./use-table-screen";
 import type { ViewOptions } from "./use-view-options";
 import { ScreenReportContext } from "./use-write-action";
+import { CLEAR_FILTERS } from "./view-options-copy";
 
 /** What a screen's pane spreads onto its `DetailPane`. */
 type PaneFrame = {
@@ -57,7 +59,7 @@ export interface TableScreenProps<T extends RowData> {
   selection?: DataTableProps<T>["selection"];
   /** Floats over the table's foot while rows are chosen. */
   selectionBar?: ReactNode;
-  /** In place of the table when the narrowing leaves no row. */
+  /** In place of the table when the narrowing leaves no row; an active filter adds Clear filters. */
   noMatch?: Omit<EmptyStateProps, "headingLevel">;
   /** In place of the table once a read answered with no rows; none: nothing. */
   empty?: Omit<EmptyStateProps, "headingLevel">;
@@ -119,7 +121,16 @@ export function TableScreen<T extends RowData>({
     !state.settled || state.notice !== null
       ? undefined
       : rows.length > 0
-        ? noMatch
+        ? view === undefined || view.filterCount === 0 || noMatch === undefined
+          ? noMatch
+          : {
+              ...noMatch,
+              action: (
+                <Button variant="quiet" onClick={view.clearFilters}>
+                  {CLEAR_FILTERS}
+                </Button>
+              ),
+            }
         : empty;
 
   // Focus whose row left goes to the row now in its place, which the grid's

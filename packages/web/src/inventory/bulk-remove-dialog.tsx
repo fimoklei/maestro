@@ -7,7 +7,12 @@ import { LIST_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
-import { NO_TARGET_REMOVABLE, TARGETS_STILL_CHECKING } from "./inventory-copy";
+import {
+  bulkRemoveConfirmLabel,
+  bulkRemoveTitle,
+  NO_TARGET_REMOVABLE,
+  TARGETS_STILL_CHECKING,
+} from "./inventory-copy";
 
 // The bulk remove's confirmation (#422, #423) and the Report that replaces it
 // (#424). Presentational — the host owns the checks, the request and the
@@ -64,7 +69,7 @@ export function BulkRemoveDialog({
 
   return (
     <Dialog
-      title={`Remove ${skillName} from ${targetCount} targets`}
+      title={bulkRemoveTitle(skillName, targetCount)}
       version={null}
       width={640}
       phase={isRemoving ? "running" : confirmOffered ? "idle" : "outcome"}
@@ -72,7 +77,7 @@ export function BulkRemoveDialog({
         confirmOffered
           ? {
               label:
-                grouped?.confirmLabel ?? `Remove from ${targetCount} targets`,
+                grouped?.confirmLabel ?? bulkRemoveConfirmLabel(targetCount, 0),
               verb: "remove",
               tone: "danger",
               // Nothing to walk is not a run: a refusal never blocks the
@@ -125,6 +130,9 @@ export function BulkRemoveDialog({
               {
                 tone: "failed",
                 legend: `${LIST_TOKENS.failed.glyph} Cannot be removed · ${grouped.refused.length}`,
+                ...(grouped.refusedNote === null
+                  ? {}
+                  : { note: grouped.refusedNote }),
                 id: refusedId,
                 rows: grouped.refused.map((row) => ({
                   key: row.label,
@@ -158,9 +166,20 @@ function reportGroups(
     report.leftAlone
       .filter((row) => row.outcome === outcome)
       .map((row) => ({ name: row.label, detail: row.reason }));
+  const note = (text: string | null) => (text === null ? {} : { note: text });
   return [
-    { tone: "failed", label: "Failed", rows: leftAlone("failed") },
-    { tone: "failed", label: "Refused", rows: leftAlone("refused") },
+    {
+      tone: "failed",
+      label: "Failed",
+      ...note(report.failedNote),
+      rows: leftAlone("failed"),
+    },
+    {
+      tone: "failed",
+      label: "Refused",
+      ...note(report.refusedNote),
+      rows: leftAlone("refused"),
+    },
     {
       tone: "good",
       label: "Removed",

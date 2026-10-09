@@ -1,15 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
+import { LOCAL_CHANGES_NEXT_STEP } from "./inventory-copy";
 
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",
   clean: {
-    label: "4 clean copies",
+    label: "4 targets without local edits",
     message: "Only the deployed files are removed.",
   },
   cost: [],
   refused: [],
+  refusedNote: null,
   removableCount: 4,
   confirmLabel: "remove from 4 →",
 };
@@ -45,7 +47,7 @@ export const LosesWork: Story = {
     view: {
       kind: "grouped",
       clean: {
-        label: "2 clean copies",
+        label: "2 targets without local edits",
         message: "Only the deployed files are removed.",
       },
       cost: [
@@ -61,6 +63,7 @@ export const LosesWork: Story = {
         },
       ],
       refused: [],
+      refusedNote: null,
       removableCount: 4,
       confirmLabel: "remove from 4 · 2 lose local edits →",
     },
@@ -72,13 +75,15 @@ export const CannotBeRemoved: Story = {
     view: {
       kind: "grouped",
       clean: {
-        label: "3 clean copies",
+        label: "3 targets without local edits",
         message: "Only the deployed files are removed.",
       },
       cost: [],
       refused: [
         { label: "/dev/legacy-etl", reason: "Repository not registered" },
+        { label: "/dev/acme-web", reason: "Local changes in deployed files" },
       ],
+      refusedNote: LOCAL_CHANGES_NEXT_STEP,
       removableCount: 3,
       confirmLabel: "remove from 3 →",
     },
@@ -108,6 +113,8 @@ export const ReportClean: Story = {
       heading: "Removed from 4 targets",
       removed: ["global", "/dev/acme-web", "/dev/acme-api", "/dev/legacy-etl"],
       leftAlone: [],
+      refusedNote: null,
+      failedNote: null,
     },
   },
 };
@@ -127,9 +134,11 @@ export const ReportPartial: Story = {
         {
           label: "/dev/legacy-etl",
           outcome: "refused",
-          reason: "Repository not registered",
+          reason: "Local changes in deployed files",
         },
       ],
+      refusedNote: LOCAL_CHANGES_NEXT_STEP,
+      failedNote: null,
     },
   },
 };

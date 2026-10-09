@@ -8,7 +8,7 @@ import type {
   UpdateRunError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
-
+import { LOCAL_CHANGES_NEXT_STEP } from "../inventory/inventory-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import {
   CREATE_RELEASE,
@@ -211,11 +211,10 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
     message:
       "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
   },
-  // Global copies under Other copies have no Deploy again control, hence the detail.
+  // Global copies under Other copies have no control that restores them, hence the detail.
   "deployed-diverged-from-lock": {
     message: "The skill was not removed. Its files changed after deployment.",
-    detail:
-      "Deploy again to restore the released files. Then remove the skill. Reset any copy under Other copies manually.",
+    detail: `${LOCAL_CHANGES_NEXT_STEP} Reset any copy under Other copies manually.`,
   },
   "deployed-diverged-pinned-per-skill": {
     message: "The skill was not removed. Its files changed after deployment.",

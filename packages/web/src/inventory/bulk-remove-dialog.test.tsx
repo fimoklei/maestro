@@ -9,11 +9,12 @@ import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",
   clean: {
-    label: "3 clean copies",
+    label: "3 targets without local edits",
     message: "Only the deployed files are removed.",
   },
   cost: [],
   refused: [],
+  refusedNote: null,
   removableCount: 3,
   confirmLabel: "remove from 3 →",
 };
@@ -21,7 +22,7 @@ const allClean: BulkRemoveDialogView = {
 const withCost: BulkRemoveDialogView = {
   kind: "grouped",
   clean: {
-    label: "1 clean copy",
+    label: "1 target without local edits",
     message: "Only the deployed files are removed.",
   },
   cost: [
@@ -37,6 +38,7 @@ const withCost: BulkRemoveDialogView = {
     },
   ],
   refused: [{ label: "/dev/legacy-etl", reason: "Repository not registered" }],
+  refusedNote: null,
   removableCount: 3,
   confirmLabel: "Remove from 3 targets · 2 lose local edits",
 };
@@ -57,6 +59,8 @@ const partial: BulkRemoveReportView = {
       reason: "Repository not registered",
     },
   ],
+  refusedNote: null,
+  failedNote: null,
 };
 
 function renderDialog(
@@ -140,16 +144,18 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     // #1458: the shared Notice at success, not a hand-rolled bar.
     const clean = within(dialog)
       .getAllByRole("status")
-      .find((region) => region.textContent?.includes("3 clean copies"));
+      .find((region) =>
+        region.textContent?.includes("3 targets without local edits"),
+      );
     expect(clean).toHaveTextContent(
-      "3 clean copiesOnly the deployed files are removed.",
+      "3 targets without local editsOnly the deployed files are removed.",
     );
     expect(within(htmlElement(clean)).getByText("✓")).toHaveAttribute(
       "aria-hidden",
       "true",
     );
     expect(dialog).toHaveAccessibleDescription(
-      /3 clean copies\s*Only the deployed files are removed\./,
+      /3 targets without local edits\s*Only the deployed files are removed\./,
     );
     expect(screen.queryByText(/Loses work/)).toBeNull();
     expect(screen.queryByText(/Cannot be removed/)).toBeNull();
@@ -198,6 +204,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
         kind: "grouped",
         clean: null,
         cost: [],
+        refusedNote: null,
         refused: [
           { label: "/dev/legacy-etl", reason: "Repository not registered" },
         ],
@@ -218,7 +225,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
       view: { ...withCost, clean: null },
     });
 
-    expect(screen.queryByText(/clean cop/)).toBeNull();
+    expect(screen.queryByText(/without local edits/)).toBeNull();
   });
 
   // Nothing in a destructive dialog may look like a button.
@@ -345,6 +352,63 @@ describe("BulkRemoveDialog — once the run reports", () => {
     expect(footerLabels()).toEqual(["Close"]);
     await userEvent.click(footerCloseButton());
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+// #1436: counts in the singular, and a way out for local changes.
+describe("BulkRemoveDialog — one target and local changes", () => {
+  it("titles a one-target removal in the singular while the check runs", () => {
+    renderDialog({
+      targetCount: 1,
+      view: { kind: "checking", line: "Checking 1 target — 0 answered" },
+    });
+
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Remove tdd from 1 target",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Remove from 1 target —/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("names the next step under the targets refused for local changes", () => {
+    renderDialog({
+      view: {
+        ...withCost,
+        refused: [
+          { label: "/dev/acme-web", reason: "Local changes in deployed files" },
+        ],
+        refusedNote:
+          "Select Deploy skill to restore the released files. Then remove the skill.",
+      },
+    });
+
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "Select Deploy skill to restore the released files. Then remove the skill.",
+    );
+  });
+
+  it("names the next step in the Report for each group that holds local changes", () => {
+    renderDialog({
+      report: {
+        ...partial,
+        refusedNote:
+          "Select Deploy skill to restore the released files. Then remove the skill.",
+        failedNote:
+          "Save the changes. Restore the files from the skill's deployed version in the Harness clone. Then remove the skill.",
+      },
+    });
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(
+      "Select Deploy skill to restore the released files. Then remove the skill.",
+    );
+    expect(dialog).toHaveTextContent(
+      "Save the changes. Restore the files from the skill's deployed version in the Harness clone. Then remove the skill.",
+    );
   });
 });
 

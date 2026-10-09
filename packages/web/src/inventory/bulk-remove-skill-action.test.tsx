@@ -174,7 +174,7 @@ describe("BulkRemoveRun", () => {
     await openDialog();
 
     const confirm = await screen.findByRole("button", {
-      name: "Remove from 1 targets",
+      name: "Remove from 1 target",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
@@ -238,7 +238,7 @@ describe("BulkRemoveRun", () => {
     expect(group).toHaveTextContent("Nothing recorded — may lose work");
     expect(
       screen.getByRole("button", {
-        name: "Remove from 2 targets · 1 lose local edits",
+        name: "Remove from 2 targets · 1 loses local edits",
       }),
     ).toBeEnabled();
   });
@@ -287,7 +287,7 @@ describe("BulkRemoveRun", () => {
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Open removal" }));
     const confirm = await screen.findByRole("button", {
-      name: "Remove from 1 targets",
+      name: "Remove from 1 target",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
@@ -320,7 +320,7 @@ describe("BulkRemoveRun", () => {
     await openIt();
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Remove from 1 targets" }),
+        screen.getByRole("button", { name: "Remove from 1 target" }),
       ).toBeEnabled(),
     );
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -328,11 +328,11 @@ describe("BulkRemoveRun", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Remove from 1 targets — checking for local edits",
+        name: "Remove from 1 target — checking for local edits",
       }),
     ).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("dialog")).toHaveTextContent(
-      "Checking 1 targets — 0 answered",
+      "Checking 1 target — 0 answered",
     );
   });
 
@@ -380,7 +380,7 @@ describe("BulkRemoveRun", () => {
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Open removal" }));
     const confirm = await screen.findByRole("button", {
-      name: "Remove from 1 targets",
+      name: "Remove from 1 target",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
@@ -405,7 +405,7 @@ describe("BulkRemoveRun", () => {
     renderAction([ACME_WEB]);
     await userEvent.click(screen.getByRole("button", { name: "Open removal" }));
     const confirm = await screen.findByRole("button", {
-      name: "Remove from 1 targets",
+      name: "Remove from 1 target",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
@@ -415,7 +415,7 @@ describe("BulkRemoveRun", () => {
     );
     expect(screen.queryByRole("heading", { name: /^Removed from/ })).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Remove from 1 targets" }),
+      screen.getByRole("button", { name: "Remove from 1 target" }),
     ).toBeEnabled();
   });
 

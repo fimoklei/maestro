@@ -43,6 +43,7 @@ import {
   SEARCH_LABEL,
   SELECT_ALL_LABEL,
   STAGE_COLUMN_LABEL,
+  shownSkillsMeta,
   stageRowLabel,
 } from "./inventory-copy";
 import {
@@ -189,6 +190,7 @@ export function InventoryView({
     const rollup = rollUpDeployment(primitive.name, targets);
     const status = skillStatus(rollup);
     const deployments = skillDeployments(primitive.name, targets);
+    const removable = bulkRemoveTargets(primitive.name, targets).length;
     return {
       ...primitive,
       status,
@@ -197,14 +199,15 @@ export function InventoryView({
       unreadable: Boolean(rollup.unreadable),
       readAge: skillReadAge(primitive.name, targets, now),
       // The pane's foot holds these same items (#1065). The removal is offered only
-      // from two targets, or it would repeat a target row's own (#422).
+      // from two targets, or it would repeat a target row's own (#422). It counts
+      // what the removal covers: global is one target, whatever its tools (#1436).
       actions: [
         { action: "deploy", label: DEPLOY_SKILL },
-        ...(bulkRemoveTargets(primitive.name, targets).length >= 2
+        ...(removable >= 2
           ? [
               {
                 action: "remove" as const,
-                label: removeFromAllLabel(deployments.length),
+                label: removeFromAllLabel(removable),
                 danger: true,
               },
             ]
@@ -277,7 +280,10 @@ export function InventoryView({
       meta={
         primitives === undefined
           ? undefined
-          : `${all.length} ${all.length === 1 ? "skill" : "skills"}`
+          : shownSkillsMeta(
+              rows.filter((row) => searched(row) && view.shown(row)).length,
+              all.length,
+            )
       }
       lead={
         <div className="relative min-w-0 max-w-60 flex-1">

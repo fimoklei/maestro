@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { VIEW_DEPLOY_STATE } from "../ui/control-labels";
+import { CLEAR_FILTERS } from "../ui/view-options-copy";
 import {
   BULK_DEPLOY_TARGET,
   bulkDeployDidNotRun,
   bulkDeployTitle,
-  cleanCopiesNotice,
+  bulkRemoveConfirmLabel,
+  bulkRemoveReportHeading,
+  bulkRemoveTitle,
+  checkingTargetsLine,
   DEPLOY_SKILLS,
   deployedToLine,
   globalOptionLabel,
+  LOCAL_CHANGES_NEXT_STEP,
   moreTargetsLine,
   NO_FILTER_MATCH,
   NO_RELEASED_SKILLS,
@@ -15,14 +20,17 @@ import {
   NO_TARGET_REMOVABLE,
   NO_TOOL_DETECTED_CAUSE,
   NOT_DEPLOYED_ANYWHERE,
+  PINNED_LOCAL_CHANGES_NEXT_STEP,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
   SELECT_ALL_LABEL,
   SOME_TARGETS_NOT_READ,
+  shownSkillsMeta,
   stageRowLabel,
   TARGETS_LOADING,
   TARGETS_STILL_CHECKING,
+  targetsWithoutLocalEditsNotice,
 } from "./inventory-copy";
 
 // Approved sentences, as exact strings.
@@ -34,11 +42,19 @@ describe("Inventory copy", () => {
     });
   });
 
-  it("names the Filter control when the filters hide every skill", () => {
+  it("offers Clear filters when the filters hide every skill", () => {
+    expect(CLEAR_FILTERS).toBe("Clear filters");
     expect(NO_FILTER_MATCH).toEqual({
       title: "No skills match the filters",
-      description: "Select Filter to show more skills.",
+      description: "Select Clear filters to see every skill.",
     });
+  });
+
+  it("counts the skills a search or filter shows against all of them", () => {
+    expect(shownSkillsMeta(34, 34)).toBe("34 skills");
+    expect(shownSkillsMeta(1, 1)).toBe("1 skill");
+    expect(shownSkillsMeta(0, 34)).toBe("0 of 34 skills");
+    expect(shownSkillsMeta(1, 34)).toBe("1 of 34 skills");
   });
 
   it("names a row's checkbox after its skill", () => {
@@ -72,13 +88,53 @@ describe("Inventory copy", () => {
     expect(NO_TARGET_REMOVABLE).toBe("no target can be removed");
   });
 
-  // #1458: the bulk Remove dialog's clean copies, as a success notice.
-  it("counts the clean copies in one and many, with what the removal takes", () => {
-    expect(cleanCopiesNotice(1)).toEqual({
-      label: "1 clean copy",
+  // #1458, #1436: the bulk Remove dialog's targets that lose no work.
+  it("counts the targets without local edits, with what the removal takes", () => {
+    expect(targetsWithoutLocalEditsNotice(1)).toEqual({
+      label: "1 target without local edits",
       message: "Only the deployed files are removed.",
     });
-    expect(cleanCopiesNotice(3).label).toBe("3 clean copies");
+    expect(targetsWithoutLocalEditsNotice(3).label).toBe(
+      "3 targets without local edits",
+    );
+  });
+
+  // #1436: every bulk Remove count in one and many.
+  it("titles the bulk Remove dialog by its targets, in one and many", () => {
+    expect(bulkRemoveTitle("tdd", 1)).toBe("Remove tdd from 1 target");
+    expect(bulkRemoveTitle("tdd", 3)).toBe("Remove tdd from 3 targets");
+  });
+
+  it("names what the bulk Remove confirm acts on, in one and many", () => {
+    expect(bulkRemoveConfirmLabel(1, 0)).toBe("Remove from 1 target");
+    expect(bulkRemoveConfirmLabel(3, 0)).toBe("Remove from 3 targets");
+    expect(bulkRemoveConfirmLabel(1, 1)).toBe(
+      "Remove from 1 target · 1 loses local edits",
+    );
+    expect(bulkRemoveConfirmLabel(3, 2)).toBe(
+      "Remove from 3 targets · 2 lose local edits",
+    );
+  });
+
+  it("counts the bulk Remove checks that answered, in one and many", () => {
+    expect(checkingTargetsLine(1, 0)).toBe("Checking 1 target — 0 answered");
+    expect(checkingTargetsLine(3, 1)).toBe("Checking 3 targets — 1 answered");
+  });
+
+  it("heads the bulk Remove Report, in one and many", () => {
+    expect(bulkRemoveReportHeading(1, 1)).toBe("Removed from 1 target");
+    expect(bulkRemoveReportHeading(3, 3)).toBe("Removed from 3 targets");
+    expect(bulkRemoveReportHeading(0, 1)).toBe("Removed from 0 of 1 target");
+    expect(bulkRemoveReportHeading(1, 3)).toBe("Removed from 1 of 3 targets");
+  });
+
+  it("names the next step for a target left alone with local changes", () => {
+    expect(LOCAL_CHANGES_NEXT_STEP).toBe(
+      "Select Deploy skill to restore the released files. Then remove the skill.",
+    );
+    expect(PINNED_LOCAL_CHANGES_NEXT_STEP).toBe(
+      "Save the changes. Restore the files from the skill's deployed version in the Harness clone. Then remove the skill.",
+    );
   });
 
   it("heads the hover card with the reach, in zero, one and many", () => {

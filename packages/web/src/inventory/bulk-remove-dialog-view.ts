@@ -1,6 +1,7 @@
 // What the bulk remove's confirmation states, grouped by cost (#423): a clean
 // target is a number, a costly or untouchable one is a row with its reason.
 
+import type { RemoveDeployedSkillError } from "@maestro/core";
 import { REASON } from "../deploy-state/reason-copy";
 import type {
   RefusalCode,
@@ -8,7 +9,13 @@ import type {
   RemoveRowWarning,
 } from "../deploy-state/remove-preflight-view";
 import type { NoticeCopy } from "../ui/notice";
-import { cleanCopiesNotice } from "./inventory-copy";
+import {
+  bulkRemoveConfirmLabel,
+  checkingTargetsLine,
+  LOCAL_CHANGES_NEXT_STEP,
+  PINNED_LOCAL_CHANGES_NEXT_STEP,
+  targetsWithoutLocalEditsNotice,
+} from "./inventory-copy";
 
 export type BulkRemoveCheckedTarget = {
   label: string;
@@ -34,6 +41,8 @@ export type BulkRemoveDialogView =
       clean: NoticeCopy | null;
       cost: BulkRemoveCostRow[];
       refused: BulkRemoveRefusalRow[];
+      // The way out for the refused targets, where one exists.
+      refusedNote: string | null;
       // Refused targets are skipped, so the control names only what it walks.
       removableCount: number;
       confirmLabel: string;
@@ -57,6 +66,22 @@ export const REFUSAL_REASON: Record<RefusalCode, string> = {
   ...REASON,
   "invalid-body": "Malformed request",
 };
+
+// Only local changes have a way out the reader can take here and now.
+const NEXT_STEP: Partial<Record<RefusalCode, string>> = {
+  "deployed-diverged-from-lock": LOCAL_CHANGES_NEXT_STEP,
+  "deployed-diverged-pinned-per-skill": PINNED_LOCAL_CHANGES_NEXT_STEP,
+};
+
+/** The next step for the targets left alone with these refusal codes, or null. */
+export function localChangesNote(
+  codes: readonly (RefusalCode | RemoveDeployedSkillError)[],
+): string | null {
+  const steps = Object.entries(NEXT_STEP)
+    .filter(([code]) => codes.some((each) => each === code))
+    .map(([, step]) => step);
+  return steps.length === 0 ? null : steps.join(" ");
+}
 
 // What this target costs, or null when the check found nothing to lose. A
 // target nobody could check is a cost, never a clean copy.
@@ -98,16 +123,18 @@ export function bulkRemoveDialogView(
   if (answeredCount < targets.length) {
     return {
       kind: "checking",
-      line: `Checking ${targets.length} targets — ${answeredCount} answered`,
+      line: checkingTargetsLine(targets.length, answeredCount),
     };
   }
 
   const cost: BulkRemoveCostRow[] = [];
   const refused: BulkRemoveRefusalRow[] = [];
+  const refusedCodes: RefusalCode[] = [];
   let cleanCount = 0;
 
   for (const entry of targets) {
     if (entry.preflight.kind === "refused") {
+      refusedCodes.push(entry.preflight.code);
       refused.push({
         label: entry.label,
         reason: REFUSAL_REASON[entry.preflight.code],
@@ -125,13 +152,11 @@ export function bulkRemoveDialogView(
   const removableCount = targets.length - refused.length;
   return {
     kind: "grouped",
-    clean: cleanCount === 0 ? null : cleanCopiesNotice(cleanCount),
+    clean: cleanCount === 0 ? null : targetsWithoutLocalEditsNotice(cleanCount),
     cost,
     refused,
+    refusedNote: localChangesNote(refusedCodes),
     removableCount,
-    confirmLabel:
-      cost.length === 0
-        ? `Remove from ${removableCount} targets`
-        : `Remove from ${removableCount} targets · ${cost.length} lose local edits`,
+    confirmLabel: bulkRemoveConfirmLabel(removableCount, cost.length),
   };
 }

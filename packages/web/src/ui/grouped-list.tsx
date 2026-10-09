@@ -27,6 +27,8 @@ export type GroupedListGroup = {
   /** The group's name with its count; null where the dialog already names it. */
   legend: string | null;
   rows: readonly GroupedListRow[];
+  /** One sentence for the whole group, such as its next step. */
+  note?: string;
   /** For a dialog that reads the group out with its question. */
   id?: string;
 };
@@ -95,6 +97,9 @@ function Group({
         >
           {group.legend}
         </legend>
+      )}
+      {group.note === undefined ? null : (
+        <p className="m-0 font-ui text-gray-11 text-meta">{group.note}</p>
       )}
       <ul
         className={cn(
