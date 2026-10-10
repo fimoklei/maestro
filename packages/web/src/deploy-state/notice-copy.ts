@@ -571,3 +571,12 @@ export function retryNotice(
   }
   return { ...copy["retry-failed"], detail: UNKNOWN_DETAIL };
 }
+
+/** Every code each notice table words, for the test that pins a case to each. */
+export const NOTICE_CODES = {
+  deploy: Object.keys(DEPLOY),
+  remove: Object.keys(REMOVE),
+  updatePreview: Object.keys(UPDATE_PREVIEW),
+  update: Object.keys(UPDATE),
+  retry: Object.keys(retryCopy({ kind: "deploy", release: "" })),
+};

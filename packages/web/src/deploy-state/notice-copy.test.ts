@@ -7,6 +7,7 @@ import {
   type DeployStateNotice,
   deployNotice,
   deployNoticeFor,
+  NOTICE_CODES,
   removeNotice,
   retryNotice,
   updateNotice,
@@ -15,6 +16,10 @@ import {
 
 // Pins the finished notice per code as data, never measuring the prose itself.
 const refusal = (code: string) => new HttpError(422, "unused", code);
+
+// A code a table words but no case pins would ship unapproved copy.
+const codesWithoutCase = (table: string[], cases: [string, unknown][]) =>
+  table.filter((code) => !cases.some(([covered]) => covered === code));
 
 describe("deploy notices", () => {
   const cases: [DeploySkillError, DeployStateNotice][] = [
@@ -234,8 +239,8 @@ describe("deploy notices", () => {
     ],
   ];
 
-  it("covers every deploy code", () => {
-    expect(cases).toHaveLength(24);
+  it("pins a case for every deploy code", () => {
+    expect(codesWithoutCase(NOTICE_CODES.deploy, cases)).toEqual([]);
   });
 
   it("names every control it points to as select {Control}", () => {
@@ -419,6 +424,23 @@ describe("remove notices", () => {
           "Make the deployed copy readable, then start the removal again.",
       },
     ],
+    [
+      "manifest-not-recognised",
+      {
+        label: "Manifest not recognised",
+        message:
+          "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
+        detail: "Maestro edits that list only, and it found another shape.",
+      },
+    ],
+    [
+      "operation-unfinished",
+      {
+        label: "Unfinished operation",
+        message:
+          "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
+      },
+    ],
   ];
 
   it("names every control it points to as select {Control}", () => {
@@ -428,6 +450,10 @@ describe("remove notices", () => {
         code,
       ).toEqual([]);
     }
+  });
+
+  it("pins a case for every remove code", () => {
+    expect(codesWithoutCase(NOTICE_CODES.remove, cases)).toEqual([]);
   });
 
   it.each(cases)("states the whole notice for %s", (code, expected) => {
@@ -575,6 +601,16 @@ describe("update preview notices", () => {
           "Nothing was changed. Wait a moment, then select Update target again.",
       },
     ],
+    [
+      "destination-symlinked",
+      {
+        label: "Linked skill folder",
+        message:
+          "Nothing was written. Delete the linked skill folder in the target, then select Update target again.",
+        detail:
+          "This removes the link only. The folder it points at remains on disk.",
+      },
+    ],
   ];
 
   it("names every control it points to as select {Control}", () => {
@@ -586,6 +622,10 @@ describe("update preview notices", () => {
         code,
       ).toEqual([]);
     }
+  });
+
+  it("pins a case for every update preview code", () => {
+    expect(codesWithoutCase(NOTICE_CODES.updatePreview, cases)).toEqual([]);
   });
 
   it.each(cases)("states %s", (code, expected) => {
@@ -616,14 +656,98 @@ describe("update preview notices", () => {
 });
 
 describe("update notices", () => {
-  it("states a target that changed after the preview", () => {
-    expect(
-      updateNotice(refusal("status-out-of-date"), "Update target"),
-    ).toEqual({
-      label: "Status out of date",
-      message:
-        "Nothing was changed. The target changed after the preview. Select Update target again.",
-    });
+  const cases: [string, DeployStateNotice][] = [
+    [
+      "status-out-of-date",
+      {
+        label: "Status out of date",
+        message:
+          "Nothing was changed. The target changed after the preview. Select Update target again.",
+      },
+    ],
+    [
+      "update-in-progress",
+      {
+        label: "Target busy",
+        message:
+          "An update is still running on this target. Wait for it to finish.",
+      },
+    ],
+    [
+      "operation-unfinished",
+      {
+        label: "Unfinished operation",
+        message:
+          "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then select Update target again.",
+      },
+    ],
+    [
+      "deployed-diverged-from-lock",
+      {
+        label: "Local changes in deployed files",
+        message:
+          "Nothing was changed. Select Update target again to review the local edits before updating.",
+        detail: "The edits never went through the Harness.",
+      },
+    ],
+    [
+      "deployed-unverifiable",
+      {
+        label: "Local edits unverifiable",
+        message:
+          "Nothing was changed. Select Update target again to review the unverified copies before updating.",
+        detail:
+          "These copies predate content tracking, so any change in them is invisible.",
+      },
+    ],
+    [
+      "manifest-not-recognised",
+      {
+        label: "Manifest not recognised",
+        message:
+          "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Update target again.",
+        detail: "Maestro edits that list only, and it found another shape.",
+      },
+    ],
+    [
+      "update-incomplete",
+      {
+        label: "Update incomplete",
+        message:
+          "The update is incomplete. Select Retry update to run the same release again.",
+        detail: "apm reported success, but some files are missing.",
+      },
+    ],
+    [
+      "update-failed",
+      {
+        label: "Update outcome unknown",
+        message:
+          "Nothing proved the update finished. Check the target on the Deploy-state screen, then select Update target again.",
+      },
+    ],
+  ];
+
+  it("pins a case for every update code the preview does not word", () => {
+    const runOnly = NOTICE_CODES.update.filter(
+      (code) => !NOTICE_CODES.updatePreview.includes(code),
+    );
+    expect(codesWithoutCase(runOnly, cases)).toEqual([]);
+  });
+
+  it("names every control it points to as select {Control}", () => {
+    for (const [code] of cases) {
+      expect(
+        unselectedControls(
+          updateNotice(refusal(code), "Update target").message,
+        ),
+        code,
+      ).toEqual([]);
+    }
+  });
+
+  it.each(cases)("states %s", (code, expected) => {
+    expect(updateNotice(refusal(code), "Update target")).toEqual(expected);
   });
 });
 
@@ -827,6 +951,10 @@ describe("retry notices", () => {
         code,
       ).toEqual([]);
     }
+  });
+
+  it("pins a case for every retry code", () => {
+    expect(codesWithoutCase(NOTICE_CODES.retry, cases)).toEqual([]);
   });
 
   it.each(cases)("states %s", (code, notice) => {

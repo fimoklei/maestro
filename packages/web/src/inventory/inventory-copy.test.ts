@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { unselectedControls } from "../test-utils";
 import { VIEW_DEPLOY_STATE } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
+import * as inventoryCopy from "./inventory-copy";
 import {
   BULK_DEPLOY_TARGET,
   bulkDeployDidNotRun,
@@ -254,4 +256,22 @@ describe("skillStateLine", () => {
       "No newer release changes this skill.",
     );
   });
+});
+
+describe("Inventory copy that names a control", () => {
+  const sentences: [string, string][] = [];
+  for (const [name, value] of Object.entries(inventoryCopy)) {
+    if (typeof value === "string") sentences.push([name, value]);
+    else if (typeof value === "object")
+      for (const [field, text] of Object.entries(value))
+        if (typeof text === "string")
+          sentences.push([`${name}.${field}`, text]);
+  }
+
+  it.each(sentences)(
+    "names every control in %s as select {Control}",
+    (_name, text) => {
+      expect(unselectedControls(text)).toEqual([]);
+    },
+  );
 });
