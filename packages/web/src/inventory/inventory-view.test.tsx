@@ -5,6 +5,7 @@ import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import {
+  chooseDeployTarget,
   htmlElement,
   jsonResponse,
   measureAs,
@@ -706,6 +707,7 @@ describe("InventoryView — detail pane", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Deploy 1 skill",
     });
+    await chooseDeployTarget(dialog, /^Global/);
     await userEvent.click(
       await within(dialog).findByRole("button", { name: "Deploy skill" }),
     );
@@ -764,6 +766,7 @@ describe("InventoryView — detail pane", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Deploy 1 skill",
     });
+    await chooseDeployTarget(dialog, /^Global/);
     const run = within(dialog).getByRole("button", { name: /^Deploy skill/ });
     await waitFor(() => expect(run).toBeEnabled());
     await userEvent.click(run);

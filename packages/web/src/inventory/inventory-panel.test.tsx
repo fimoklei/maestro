@@ -139,12 +139,15 @@ describe("InventoryPanel", () => {
     const dialog = await openDeployDialog("tdd");
 
     expect(
+      await dialog.findByRole("button", {
+        name: "Deploy skill — no target",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(dialog.getByRole("combobox", { name: "Target" }));
+    await userEvent.click(await screen.findByRole("option", { name: /alpha/ }));
+    expect(
       await dialog.findByRole("button", { name: "Deploy skill" }),
     ).not.toHaveAttribute("aria-disabled");
-    await userEvent.click(dialog.getByRole("combobox", { name: "Target" }));
-    expect(
-      await screen.findByRole("option", { name: /alpha/ }),
-    ).toBeInTheDocument();
   });
 
   it("disables the deploy action while the registry is still loading", async () => {

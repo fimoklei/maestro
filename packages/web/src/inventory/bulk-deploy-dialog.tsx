@@ -1,12 +1,14 @@
 import { useId } from "react";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
+import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
 import { Select, type SelectOption } from "../ui/select";
 import {
   BULK_DEPLOY_TARGET,
   bulkDeployTitle,
+  CHOOSE_A_TARGET,
   DEPLOY_SKILLS,
 } from "./inventory-copy";
 
@@ -17,6 +19,7 @@ export function BulkDeployDialog({
   count,
   targets,
   selected,
+  skills,
   onSelect,
   unavailable,
   fieldsChanged,
@@ -29,7 +32,10 @@ export function BulkDeployDialog({
 }: {
   count: number;
   targets: SelectOption[];
-  selected: string;
+  /** `null` until the reader chooses; the dialog never chooses for them. */
+  selected: string | null;
+  /** The staged skills, grouped by what the deploy will do with them. */
+  skills: readonly GroupedListGroup[];
   onSelect: (value: string) => void;
   /** Why the chosen target cannot take a deploy yet; `null` when it can. */
   unavailable: string | null;
@@ -72,17 +78,21 @@ export function BulkDeployDialog({
       onClose={onClose}
     >
       {report === null ? (
-        <div className="flex flex-col gap-tight">
-          <span id={labelId} className="font-medium text-row">
-            {BULK_DEPLOY_TARGET}
-          </span>
-          <Select
-            labelledBy={labelId}
-            value={selected}
-            options={targets}
-            disabled={busy}
-            onValueChange={onSelect}
-          />
+        <div className="flex flex-col gap-cell">
+          <div className="flex flex-col gap-tight">
+            <span id={labelId} className="font-medium text-row">
+              {BULK_DEPLOY_TARGET}
+            </span>
+            <Select
+              labelledBy={labelId}
+              value={selected}
+              placeholder={CHOOSE_A_TARGET}
+              options={targets}
+              disabled={busy}
+              onValueChange={onSelect}
+            />
+          </div>
+          <GroupedList groups={skills} checklist={null} live={null} />
         </div>
       ) : (
         <Report heading={report.heading} groups={report.groups} />

@@ -3,7 +3,11 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import {
+  chooseDeployTarget,
+  jsonResponse,
+  renderWithQuery,
+} from "../test-utils";
 import { BulkDeployAction } from "./bulk-deploy-action";
 
 afterEach(() => {
@@ -84,6 +88,7 @@ async function refusedDeploy(
   );
   await userEvent.click(screen.getByRole("button", { name: "Deploy skills" }));
   const dialog = screen.getByRole("dialog");
+  await chooseDeployTarget(dialog, /projects\/alpha$/);
   const button = within(dialog).getByRole("button", {
     name: /deploy skill|loading targets/i,
   });

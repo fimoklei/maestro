@@ -80,6 +80,40 @@ describe("Select", () => {
     ).toHaveAttribute("aria-disabled", "true");
   });
 
+  it("shows its placeholder while no value is chosen, then the chosen one", async () => {
+    function Unchosen() {
+      const [value, setValue] = useState<string | null>(null);
+      return (
+        <div>
+          <span id="target-name">Target</span>
+          <Select
+            labelledBy="target-name"
+            value={value}
+            placeholder="Choose a target"
+            options={[
+              { value: "global", label: "Global" },
+              { value: "repo", label: "maestro" },
+            ]}
+            disabled={false}
+            onValueChange={setValue}
+          />
+        </div>
+      );
+    }
+    render(<Unchosen />);
+    const select = screen.getByRole("combobox", { name: "Target" });
+    expect(select).toHaveTextContent("Choose a target");
+
+    select.focus();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.click(
+      await screen.findByRole("option", { name: "maestro" }),
+    );
+
+    expect(select).toHaveTextContent("maestro");
+    expect(select).not.toHaveTextContent("Choose a target");
+  });
+
   it("is disabled while its dialog runs", async () => {
     render(
       <div>

@@ -18,11 +18,13 @@ import {
   bulkDeployReportView,
   bulkDeploySummary,
 } from "./bulk-deploy-report-view";
+import { bulkDeploySkillGroups } from "./bulk-deploy-skill-groups";
 import { chosenBulkDeployTargets } from "./bulk-deploy-targets";
 import {
   bulkDeployDidNotRun,
   DEPLOY_SKILLS,
   globalOptionLabel,
+  NO_TARGET_CHOSEN,
   NO_TOOL_DETECTED_CAUSE,
   TARGETS_LOADING,
 } from "./inventory-copy";
@@ -100,25 +102,29 @@ export function BulkDeployRun({
 
   const isKnown =
     chosen === GLOBAL_VALUE || repos.some((repo) => repo.path === chosen);
-  const selected = isKnown
-    ? (chosen as string)
-    : (repos[0]?.path ?? GLOBAL_VALUE);
+  const selected = isKnown ? chosen : null;
   const isGlobal = selected === GLOBAL_VALUE;
-  const target: DeployTarget = isGlobal
-    ? { kind: "global" }
-    : { kind: "repo", repoPath: selected };
   // Shortened like every other target name in the cockpit (#211).
   const repoPaths = repos.map((repo) => repo.path);
-  const chosenLabel = isGlobal ? "Global" : targetLabel(selected, repoPaths);
+  const repoSelected = selected !== null && !isGlobal;
+  const chosenRun: { target: DeployTarget; label: string } | null =
+    selected === null
+      ? null
+      : isGlobal
+        ? { target: { kind: "global" }, label: "Global" }
+        : {
+            target: { kind: "repo", repoPath: selected },
+            label: targetLabel(selected, repoPaths),
+          };
 
   const repoDeployState = useDeployState(
-    isGlobal ? "" : selected,
-    registryReady && !isGlobal,
+    repoSelected ? selected : "",
+    registryReady && repoSelected,
   );
   const globalDeployState = useGlobalDeployState(registryReady);
   const repoDrift = useDrift(
-    isGlobal ? "" : selected,
-    registryReady && !isGlobal,
+    repoSelected ? selected : "",
+    registryReady && repoSelected,
   );
   const globalDrift = useGlobalDrift(registryReady && isGlobal);
   const deployState = isGlobal ? globalDeployState : repoDeployState;
@@ -127,56 +133,65 @@ export function BulkDeployRun({
   // The plan waits rather than guessing, or every skill reads "not deployed" and
   // gets a pointless reinstall.
   const targetLoading =
+    chosenRun !== null &&
     registryReady &&
     (deployState.data === undefined || rawDrift.data === undefined);
 
   const globalTools = globalDeployState.data?.detectedTools;
   const globalDisabled = globalTools !== undefined && globalTools.length === 0;
 
-  const chosenTargets = chosenBulkDeployTargets({
-    isGlobal,
-    targetLabel: chosenLabel,
-    target,
-    globalState: globalDeployState.data,
-    repoRead: repoDeployState,
-    drift,
-  });
+  // The one plan the dialog shows and the run follows, so they cannot disagree.
+  const preview =
+    chosenRun === null || targetLoading
+      ? null
+      : planBulkDeploy(
+          stagedNames,
+          chosenBulkDeployTargets({
+            isGlobal,
+            targetLabel: chosenRun.label,
+            target: chosenRun.target,
+            globalState: globalDeployState.data,
+            repoRead: repoDeployState,
+            drift,
+          }),
+        );
 
   const onDeploy = () => {
-    if (targetLoading) return;
+    if (chosenRun === null || preview === null) return;
     bulk.reset();
-    const next = planBulkDeploy(stagedNames, chosenTargets);
-    setPlan(next);
-    if (next.toDeploy.length > 0) {
-      bulkWrite.run({ names: next.toDeploy, target });
+    setPlan(preview);
+    if (preview.toDeploy.length > 0) {
+      bulkWrite.run({ names: preview.toDeploy, target: chosenRun.target });
     }
   };
 
   // Empty until bulk.data lands, so the skipped-clean plan still shows. A
   // failed request never falls back to this shape — it takes the error branch.
   const view =
-    plan === null || bulk.isPending
+    plan === null || chosenRun === null || bulk.isPending
       ? null
       : bulkDeployReportView({
           report: bulk.data ?? {
-            target,
+            target: chosenRun.target,
             deployed: [],
             attention: [],
             failed: [],
           },
           skippedClean: plan.skippedClean,
-          targetLabel: chosenLabel,
+          targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
         });
 
   const close = () => onClose(plan !== null && !bulk.isError);
 
-  if (updateFor !== null) {
+  if (updateFor !== null && chosenRun !== null) {
     return (
       <UpdateTargetAction
-        targetName={isGlobal ? toolNameList(globalTools ?? []) : chosenLabel}
+        targetName={
+          isGlobal ? toolNameList(globalTools ?? []) : chosenRun.label
+        }
         updateLabel={UPDATE_TARGET}
-        target={target}
+        target={chosenRun.target}
         update={update}
         add={updateFor}
         defaultOpen
@@ -200,6 +215,7 @@ export function BulkDeployRun({
         })),
       ]}
       selected={selected}
+      skills={bulkDeploySkillGroups(stagedNames, preview)}
       onSelect={(value) => {
         bulk.reset();
         setPlan(null);
@@ -208,9 +224,11 @@ export function BulkDeployRun({
       unavailable={
         !registryReady || targetLoading
           ? TARGETS_LOADING
-          : isGlobal && globalDisabled
-            ? NO_TOOL_DETECTED_CAUSE
-            : null
+          : selected === null
+            ? NO_TARGET_CHOSEN
+            : isGlobal && globalDisabled
+              ? NO_TOOL_DETECTED_CAUSE
+              : null
       }
       fieldsChanged={chosen !== null}
       busy={bulkWrite.phase === "running" || forceWrite.phase === "running"}
@@ -224,7 +242,7 @@ export function BulkDeployRun({
           : null
       }
       report={
-        view === null || view.tone === "error"
+        view === null || chosenRun === null || view.tone === "error"
           ? null
           : {
               heading: bulkDeploySummary({
@@ -238,7 +256,7 @@ export function BulkDeployRun({
                     forceWrite.run({
                       type: "skill",
                       name,
-                      target,
+                      target: chosenRun.target,
                       confirmedCopyReceipt,
                     }),
                   running: forceDeploy.isPending
