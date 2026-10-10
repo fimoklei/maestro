@@ -7,6 +7,7 @@ import { githubColumn } from "../ui/github-column";
 import { VIEW_REPOSITORY_ON_GITHUB } from "../ui/github-link-copy";
 import { MachineValue } from "../ui/machine-value";
 import { RowMenu } from "../ui/row-menu";
+import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
@@ -59,7 +60,7 @@ export const repositoriesColumns = ({
     }),
     githubColumn<RepositoryRow>(SCREEN),
     helper.display({
-      id: "actions",
+      id: ACTIONS_COLUMN_ID,
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
         <RowMenu

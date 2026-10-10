@@ -2,6 +2,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Fragment, type ReactNode, useRef } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
+import type { RowMenuControl } from "./row-menu-control";
 
 export interface ActionsMenuItem {
   label: string;
@@ -29,6 +30,8 @@ export interface ActionsMenuProps {
   trigger?: ReactNode;
   /** Opens under the trigger at its full width, like Linear's workspace menu. */
   fitTrigger?: boolean;
+  /** A grid holds the open state, to open a menu by key. */
+  control?: RowMenuControl | null;
 }
 
 export function ActionsMenu({
@@ -36,13 +39,17 @@ export function ActionsMenu({
   items,
   trigger,
   fitTrigger = false,
+  control,
 }: ActionsMenuProps) {
   // Run once the menu has closed: an open menu traps focus, so an item that
   // moves focus elsewhere would lose it, and a dialog it opens would remember
   // the vanished item as its opener (#1124).
   const pending = useRef<ActionsMenuItem | null>(null);
   return (
-    <DropdownMenu.Root>
+    <DropdownMenu.Root
+      open={control?.open}
+      onOpenChange={control?.onOpenChange}
+    >
       {trigger ? (
         <DropdownMenu.Trigger asChild aria-label={label}>
           {trigger}
@@ -71,6 +78,7 @@ export function ActionsMenu({
           onCloseAutoFocus={(event) => {
             const item = pending.current;
             pending.current = null;
+            if (control?.restoreFocus()) event.preventDefault();
             if (item?.onSelect === undefined) return;
             // Radix focuses the trigger after this handler, before the action's
             // render (react-focus-scope 1.1.16), so a dialog sees it as opener.

@@ -264,11 +264,62 @@ describe("DetailPane slots", () => {
       clampParagraph: true,
     });
 
-    const state = screen.getByText("1 of 2 targets has local edits.");
-    expect(state.closest("details")).toBeNull();
-    expect(
-      screen.getByText("A long description.").closest("details"),
-    ).not.toBeNull();
+    const toggled = document.getElementById(
+      screen
+        .getByRole("button", { name: "More" })
+        .getAttribute("aria-controls") ?? "",
+    );
+    expect(toggled).toHaveTextContent("A long description.");
+    expect(toggled).not.toHaveTextContent("1 of 2 targets has local edits.");
+  });
+
+  it("shows the next subject's long line clamped again", async () => {
+    const props = {
+      paragraph: ["1 of 2 targets has local edits.", "A long description."],
+      clampParagraph: true,
+    };
+    const { rerender } = renderPane(props);
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+
+    rerender(
+      <DetailPane
+        title="jobs"
+        activeKey="jobs"
+        onClose={() => {}}
+        getTriggerElement={() => null}
+        {...props}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("opens the clamped line from a More button and closes it from Less", async () => {
+    renderPane({
+      paragraph: ["1 of 2 targets has local edits.", "A long description."],
+      clampParagraph: true,
+    });
+    const line = screen.getByText("A long description.");
+    const more = screen.getByRole("button", { name: "More" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    expect(line).toHaveClass("line-clamp-3");
+
+    await userEvent.click(more);
+
+    const less = screen.getByRole("button", { name: "Less" });
+    expect(less).toHaveAttribute("aria-expanded", "true");
+    expect(line).not.toHaveClass("line-clamp-3");
+
+    await userEvent.click(less);
+
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(line).toHaveClass("line-clamp-3");
   });
 
   it("puts a fact's action beside its value", () => {

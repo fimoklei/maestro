@@ -10,11 +10,13 @@ import { HarnessLocationPage } from "../settings/harness-location-page";
 import { HARNESS_LOCATION_PAGE } from "../settings/settings-pages";
 import { SettingsShell } from "../settings/settings-shell";
 import { AppShell } from "./app-shell";
+import { useDocumentTitle } from "./document-title";
 import { GateShell } from "./gate-shell";
 
 // Unmatched URLs go to the landing route, where the first-run gate decides
 // cockpit vs connect gate.
 export function AppRoutes() {
+  useDocumentTitle();
   return (
     <Routes>
       <Route element={<GateShell />}>

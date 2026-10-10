@@ -27,9 +27,15 @@ import {
 import { Checkbox } from "./checkbox";
 import { cn } from "./cn";
 import { DataTableCard, type DataTableCardColumn } from "./data-table-card";
+import { keyHint } from "./data-table-copy";
 import { DataTableName } from "./data-table-name";
 import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
+import {
+  ACTIONS_COLUMN_ID,
+  type RowMenuControl,
+  RowMenuControlContext,
+} from "./row-menu-control";
 import { Skeleton } from "./skeleton";
 import { useNow } from "./use-now";
 
@@ -212,6 +218,22 @@ export function DataTable<T extends RowData>({
   const gridId = useId();
   const rowDomId = (index: number) => `${gridId}-row-${index}`;
 
+  const [menuRow, setMenuRow] = useState<string | null>(null);
+  const menuOpenedByKey = useRef(false);
+  const restoreFocus = () => {
+    if (!menuOpenedByKey.current) return false;
+    menuOpenedByKey.current = false;
+    document.getElementById(gridId)?.focus();
+    return true;
+  };
+  const openActiveMenu = () => {
+    const id = rows[active]?.id;
+    if (!showRows || id === undefined) return false;
+    menuOpenedByKey.current = true;
+    setMenuRow(id);
+    return true;
+  };
+
   // One Tab stop: the arrows move this cursor, not focus.
   const [cursor, setCursor] = useState(0);
   const [gridFocused, setGridFocused] = useState(false);
@@ -292,6 +314,12 @@ export function DataTable<T extends RowData>({
         return move(0);
       case "End":
         return move(rows.length - 1);
+      case "ContextMenu":
+        if (openActiveMenu()) event.preventDefault();
+        return;
+      case "F10":
+        if (event.shiftKey && openActiveMenu()) event.preventDefault();
+        return;
       case "Enter":
         if (row === undefined || onRowOpen === undefined) return;
         event.preventDefault();
@@ -326,266 +354,306 @@ export function DataTable<T extends RowData>({
     const id = row.id;
     const isSelected = selection?.selected.has(id) ?? false;
     const isOpen = id === openRowId;
+    const menu: RowMenuControl = {
+      open: menuRow === id,
+      onOpenChange: (open) => {
+        if (open) menuOpenedByKey.current = false;
+        setMenuRow(open ? id : null);
+      },
+      restoreFocus,
+    };
     return (
-      <tr
-        key={id}
-        id={rowDomId(index)}
-        aria-selected={selection ? isSelected : undefined}
-        aria-current={isOpen || undefined}
-        data-active={gridFocused && index === active ? true : undefined}
-        // The press focuses the grid, so the cursor moves with it; on click
-        // it would ring the previous row until release. Pointer, not mouse: a
-        // ⋮ trigger cancels the mouse events, and its row still takes the cursor.
-        onPointerDown={(event) => {
-          if (event.currentTarget.contains(event.target as Node)) {
-            setCursor(index);
-          }
-        }}
-        onClick={(event) => {
-          if (!event.currentTarget.contains(event.target as Node)) {
-            return;
-          }
-          if ((event.target as HTMLElement).closest(INTERACTIVE)) {
-            return;
-          }
-          onRowOpen?.(row.original);
-        }}
-        className={cn(
-          "group/row h-row border-divider border-b",
-          onRowOpen && "cursor-pointer",
-          isOpen ? "bg-gray-5" : "hover:bg-gray-3",
-          gridFocused &&
-            index === active &&
-            "outline-2 outline-blue-9 -outline-offset-2 outline",
-          HOVER_TRANSITION,
-        )}
-      >
-        {selection ? (
-          <GridCell className="px-inline">
-            {/* The padding lifts the 16px box to the 24px pointer floor. */}
-            {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
-            <label className="-m-1 flex w-fit cursor-pointer p-1">
-              <Checkbox
-                tabIndex={-1}
-                checked={isSelected}
-                onClick={(event) => {
-                  // Radix toggles on click; the row's state is
-                  // the caller's, so the click is taken here.
-                  event.preventDefault();
-                  toggleRow(index, event.shiftKey);
-                }}
-                aria-label={selection.rowLabel(row.original)}
-              />
-            </label>
-          </GridCell>
-        ) : null}
-        {row.getVisibleCells().map((cell) => {
-          const meta = cell.column.columnDef.meta;
-          const card = cards.get(cell.column.id);
-          const value =
-            cell.column.id === nameColumn && nameOf !== undefined ? (
-              <DataTableName name={nameOf(row.original)} />
-            ) : (
-              <table.FlexRender cell={cell} />
-            );
-          return (
-            <GridCell
-              key={cell.id}
-              className={cn(
-                "truncate px-inline",
-                meta?.align === "end" && "text-right",
-                meta?.className,
-              )}
-            >
-              {card === undefined ? (
-                value
-              ) : (
-                <CardCell
-                  card={card}
-                  row={row.original}
-                  focused={
-                    gridFocused &&
-                    index === active &&
-                    cell.column.id === keyboardCard
-                  }
-                >
-                  {value}
-                </CardCell>
-              )}
+      <RowMenuControlContext.Provider key={id} value={menu}>
+        <tr
+          id={rowDomId(index)}
+          aria-selected={selection ? isSelected : undefined}
+          aria-current={isOpen || undefined}
+          data-active={gridFocused && index === active ? true : undefined}
+          // The press focuses the grid, so the cursor moves with it; on click
+          // it would ring the previous row until release. Pointer, not mouse: a
+          // ⋮ trigger cancels the mouse events, and its row still takes the cursor.
+          onPointerDown={(event) => {
+            if (event.currentTarget.contains(event.target as Node)) {
+              setCursor(index);
+            }
+          }}
+          onClick={(event) => {
+            if (!event.currentTarget.contains(event.target as Node)) {
+              return;
+            }
+            if ((event.target as HTMLElement).closest(INTERACTIVE)) {
+              return;
+            }
+            onRowOpen?.(row.original);
+          }}
+          className={cn(
+            "group/row h-row border-divider border-b",
+            onRowOpen && "cursor-pointer",
+            isOpen ? "bg-gray-5" : "hover:bg-gray-3",
+            gridFocused &&
+              index === active &&
+              "outline-2 outline-blue-9 -outline-offset-2 outline",
+            HOVER_TRANSITION,
+          )}
+        >
+          {selection ? (
+            <GridCell className="px-inline">
+              {/* The padding lifts the 16px box to the 24px pointer floor. */}
+              {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
+              <label className="-m-1 flex w-fit cursor-pointer p-1">
+                <Checkbox
+                  tabIndex={-1}
+                  checked={isSelected}
+                  onClick={(event) => {
+                    // Radix toggles on click; the row's state is
+                    // the caller's, so the click is taken here.
+                    event.preventDefault();
+                    toggleRow(index, event.shiftKey);
+                  }}
+                  aria-label={selection.rowLabel(row.original)}
+                />
+              </label>
             </GridCell>
-          );
-        })}
-      </tr>
+          ) : null}
+          {row.getVisibleCells().map((cell) => {
+            const meta = cell.column.columnDef.meta;
+            const card = cards.get(cell.column.id);
+            const value =
+              cell.column.id === nameColumn && nameOf !== undefined ? (
+                <DataTableName name={nameOf(row.original)} />
+              ) : (
+                <table.FlexRender cell={cell} />
+              );
+            return (
+              <GridCell
+                key={cell.id}
+                className={cn(
+                  "truncate px-inline",
+                  meta?.align === "end" && "text-right",
+                  meta?.className,
+                )}
+              >
+                {card === undefined ? (
+                  value
+                ) : (
+                  <CardCell
+                    card={card}
+                    row={row.original}
+                    focused={
+                      gridFocused &&
+                      index === active &&
+                      cell.column.id === keyboardCard
+                    }
+                  >
+                    {value}
+                  </CardCell>
+                )}
+              </GridCell>
+            );
+          })}
+        </tr>
+      </RowMenuControlContext.Provider>
     );
   };
 
+  const hint = showRows
+    ? keyHint({
+        checksRows: selection !== undefined,
+        checksAll: selection?.onSetSelected !== undefined,
+        opensMenu: columns.some(
+          (column) => columnIdOf(column) === ACTIONS_COLUMN_ID,
+        ),
+      })
+    : null;
+  const hintId = `${gridId}-keys`;
+
   return (
-    <table
-      ref={ref}
-      // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA's grid pattern builds on a table; the role gives it one Tab stop and arrow keys
-      role="grid"
-      aria-label={label}
-      aria-multiselectable={selection ? true : undefined}
-      aria-busy={loading || undefined}
-      tabIndex={0}
-      aria-activedescendant={
-        gridFocused && showRows ? rowDomId(active) : undefined
-      }
-      onKeyDown={onKeyDown}
-      onFocus={(event) => {
-        if (event.target === event.currentTarget) setGridFocused(true);
-      }}
-      onBlur={(event) => {
-        if (event.target === event.currentTarget) setGridFocused(false);
-      }}
-      // The grid draws its own ring on the active row, not around itself.
-      className="w-full table-fixed border-collapse text-row outline-none"
-    >
-      <thead className="sticky top-0 z-10 bg-gray-1">
-        {table.getHeaderGroups().map((group) => (
-          <tr
-            key={group.id}
-            ref={headRow}
-            className="h-row border-divider border-b"
-          >
-            {selection ? (
-              <th scope="col" className="w-8 px-inline">
-                <span className="sr-only">{selection.label}</span>
-                {selection.allLabel === undefined ? null : (
-                  // biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps
-                  <label className="-m-1 flex w-fit cursor-pointer p-1">
-                    <Checkbox
-                      tabIndex={-1}
-                      disabled={!showRows}
-                      checked={
-                        allShownChosen
-                          ? true
-                          : chosenShown > 0
-                            ? "indeterminate"
-                            : false
-                      }
-                      onCheckedChange={() =>
-                        selection.onSetSelected?.(
-                          rows.map((row) => row.original),
-                          !allShownChosen,
-                        )
-                      }
-                      aria-label={selection.allLabel}
-                    />
-                  </label>
-                )}
-              </th>
-            ) : null}
-            {group.headers.map((header) => {
-              const meta = header.column.columnDef.meta;
-              const sorted = header.column.getIsSorted();
-              const canSort = header.column.getCanSort();
-              return (
-                <th
-                  key={header.id}
-                  scope="col"
-                  style={{ width: widthOf(header.column.id, meta?.width) }}
-                  aria-sort={
-                    !canSort
-                      ? undefined
-                      : sorted === "asc"
-                        ? "ascending"
-                        : sorted === "desc"
-                          ? "descending"
-                          : "none"
-                  }
-                  className={cn(
-                    "px-inline text-left font-normal text-gray-11 text-meta",
-                    meta?.align === "end" && "text-right",
-                    meta?.className,
-                  )}
-                >
-                  {header.isPlaceholder ? null : canSort ? (
-                    <button
-                      type="button"
-                      onClick={header.column.getToggleSortingHandler()}
-                      className={cn(
-                        "inline-flex h-6 cursor-pointer items-center gap-tight rounded-control text-inherit hover:text-gray-12",
-                        meta?.align === "end" && "flex-row-reverse",
-                        HOVER_TRANSITION,
-                      )}
-                    >
-                      <table.FlexRender header={header} />
-                      <span aria-hidden="true">
-                        {sorted === "asc" ? "↑" : sorted === "desc" ? "↓" : ""}
-                      </span>
-                    </button>
-                  ) : (
-                    <table.FlexRender header={header} />
+    <>
+      <table
+        ref={ref}
+        id={gridId}
+        aria-describedby={hint === null ? undefined : hintId}
+        // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA's grid pattern builds on a table; the role gives it one Tab stop and arrow keys
+        role="grid"
+        aria-label={label}
+        aria-multiselectable={selection ? true : undefined}
+        aria-busy={loading || undefined}
+        tabIndex={0}
+        aria-activedescendant={
+          gridFocused && showRows ? rowDomId(active) : undefined
+        }
+        onKeyDown={onKeyDown}
+        onContextMenu={(event) => {
+          // The context-menu key and a screen reader's own gesture arrive here,
+          // aimed at the grid; a pointer's right click lands on a cell.
+          if (event.target === event.currentTarget && openActiveMenu()) {
+            event.preventDefault();
+          }
+        }}
+        onFocus={(event) => {
+          if (event.target === event.currentTarget) setGridFocused(true);
+        }}
+        onBlur={(event) => {
+          if (event.target === event.currentTarget) setGridFocused(false);
+        }}
+        // The grid draws its own ring on the active row, not around itself.
+        className="w-full table-fixed border-collapse text-row outline-none"
+      >
+        <thead className="sticky top-0 z-10 bg-gray-1">
+          {table.getHeaderGroups().map((group) => (
+            <tr
+              key={group.id}
+              ref={headRow}
+              className="h-row border-divider border-b"
+            >
+              {selection ? (
+                <th scope="col" className="w-8 px-inline">
+                  <span className="sr-only">{selection.label}</span>
+                  {selection.allLabel === undefined ? null : (
+                    // biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps
+                    <label className="-m-1 flex w-fit cursor-pointer p-1">
+                      <Checkbox
+                        tabIndex={-1}
+                        disabled={!showRows}
+                        checked={
+                          allShownChosen
+                            ? true
+                            : chosenShown > 0
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={() =>
+                          selection.onSetSelected?.(
+                            rows.map((row) => row.original),
+                            !allShownChosen,
+                          )
+                        }
+                        aria-label={selection.allLabel}
+                      />
+                    </label>
                   )}
                 </th>
-              );
-            })}
-          </tr>
-        ))}
-      </thead>
-      <tbody>
-        {loading
-          ? Array.from({ length: skeletonRows }, (_, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows have no identity but their place
-              <tr key={index} className="h-row border-divider border-b">
-                {selection ? (
-                  <GridCell className="px-inline">
-                    <Skeleton className="size-4" />
-                  </GridCell>
-                ) : null}
-                {leafColumns.map((column, columnIndex) => (
-                  <GridCell
-                    key={column.id}
+              ) : null}
+              {group.headers.map((header) => {
+                const meta = header.column.columnDef.meta;
+                const sorted = header.column.getIsSorted();
+                const canSort = header.column.getCanSort();
+                return (
+                  <th
+                    key={header.id}
+                    scope="col"
+                    style={{ width: widthOf(header.column.id, meta?.width) }}
+                    aria-sort={
+                      !canSort
+                        ? undefined
+                        : sorted === "asc"
+                          ? "ascending"
+                          : sorted === "desc"
+                            ? "descending"
+                            : "none"
+                    }
                     className={cn(
-                      "px-inline",
-                      column.columnDef.meta?.className,
+                      "px-inline text-left font-normal text-gray-11 text-meta",
+                      meta?.align === "end" && "text-right",
+                      meta?.className,
                     )}
                   >
-                    {/* Varied widths, as Spectrum's, so the rows read as rows. */}
-                    <Skeleton
-                      style={{
-                        width: `${40 + ((index * 17 + columnIndex * 23) % 45)}%`,
-                      }}
-                    />
-                  </GridCell>
-                ))}
-              </tr>
-            ))
-          : blocks !== undefined && blocks.length > 0
-            ? blocks.map((block) => (
-                <Fragment key={block.key}>
-                  <GroupHeader
-                    label={block.key}
-                    count={
-                      block.all.length === 0 ? undefined : block.all.length
-                    }
-                    meta={groups?.meta?.(block.key)}
-                    columnCount={spanCount}
-                    collapsed={
-                      block.all.length === 0
-                        ? undefined
-                        : collapsed.has(block.key)
-                    }
-                    onToggle={() => toggleGroup(block.key)}
-                  />
-                  {block.all.length === 0 ? (
-                    <tr className="h-row border-divider border-b">
-                      <GridCell
-                        colSpan={spanCount}
-                        className="px-inline py-tight text-gray-11"
+                    {header.isPlaceholder ? null : canSort ? (
+                      <button
+                        type="button"
+                        onClick={header.column.getToggleSortingHandler()}
+                        className={cn(
+                          "inline-flex h-6 cursor-pointer items-center gap-tight rounded-control text-inherit hover:text-gray-12",
+                          meta?.align === "end" && "flex-row-reverse",
+                          HOVER_TRANSITION,
+                        )}
                       >
-                        {groups?.message?.(block.key)}
-                      </GridCell>
-                    </tr>
-                  ) : (
-                    block.rows.map((row) => renderRow(row, rows.indexOf(row)))
-                  )}
-                </Fragment>
+                        <table.FlexRender header={header} />
+                        <span aria-hidden="true">
+                          {sorted === "asc"
+                            ? "↑"
+                            : sorted === "desc"
+                              ? "↓"
+                              : ""}
+                        </span>
+                      </button>
+                    ) : (
+                      <table.FlexRender header={header} />
+                    )}
+                  </th>
+                );
+              })}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {loading
+            ? Array.from({ length: skeletonRows }, (_, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows have no identity but their place
+                <tr key={index} className="h-row border-divider border-b">
+                  {selection ? (
+                    <GridCell className="px-inline">
+                      <Skeleton className="size-4" />
+                    </GridCell>
+                  ) : null}
+                  {leafColumns.map((column, columnIndex) => (
+                    <GridCell
+                      key={column.id}
+                      className={cn(
+                        "px-inline",
+                        column.columnDef.meta?.className,
+                      )}
+                    >
+                      {/* Varied widths, as Spectrum's, so the rows read as rows. */}
+                      <Skeleton
+                        style={{
+                          width: `${40 + ((index * 17 + columnIndex * 23) % 45)}%`,
+                        }}
+                      />
+                    </GridCell>
+                  ))}
+                </tr>
               ))
-            : rows.map((row, index) => renderRow(row, index))}
-      </tbody>
-    </table>
+            : blocks !== undefined && blocks.length > 0
+              ? blocks.map((block) => (
+                  <Fragment key={block.key}>
+                    <GroupHeader
+                      label={block.key}
+                      count={
+                        block.all.length === 0 ? undefined : block.all.length
+                      }
+                      meta={groups?.meta?.(block.key)}
+                      columnCount={spanCount}
+                      collapsed={
+                        block.all.length === 0
+                          ? undefined
+                          : collapsed.has(block.key)
+                      }
+                      onToggle={() => toggleGroup(block.key)}
+                    />
+                    {block.all.length === 0 ? (
+                      <tr className="h-row border-divider border-b">
+                        <GridCell
+                          colSpan={spanCount}
+                          className="px-inline py-tight text-gray-11"
+                        >
+                          {groups?.message?.(block.key)}
+                        </GridCell>
+                      </tr>
+                    ) : (
+                      block.rows.map((row) => renderRow(row, rows.indexOf(row)))
+                    )}
+                  </Fragment>
+                ))
+              : rows.map((row, index) => renderRow(row, index))}
+        </tbody>
+      </table>
+      {hint === null ? null : (
+        <p id={hintId} className="sr-only">
+          {hint}
+        </p>
+      )}
+    </>
   );
 }
 

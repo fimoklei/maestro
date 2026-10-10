@@ -123,7 +123,11 @@ export function SkillDetailPane({
                   mark={deployment.mark}
                   name={deployment.label}
                   value={deployment.release}
-                  menuLabel={rowActionsLabel(deployment.label)}
+                  menuLabel={rowActionsLabel(
+                    deployment.target.kind === "repo"
+                      ? deployment.target.repoPath
+                      : deployment.label,
+                  )}
                   items={targetItems(deployment)}
                 />
               ))}
