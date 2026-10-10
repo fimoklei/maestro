@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { type Band, BandRow } from "./band";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { rereadLabel } from "./control-labels";
@@ -43,10 +44,10 @@ export interface TableScreenProps<T extends RowData> {
   columns: DataTableProps<T>["columns"];
   rowId: (row: T) => string;
   groups?: DataTableProps<T>["groups"];
-  /** Band 2's left side, such as the screen's facts. */
+  /** Band 2's facts and Read, which narrow with the band. */
+  band?: Band;
+  /** Band 2's left side where the screen has no `band` yet. */
   lead?: ReactNode;
-  /** The freshness line, just before Re-read. */
-  freshness?: ReactNode;
   /** The screen's own re-read is running: Re-read spins. */
   rereading: boolean;
   /** Skeleton rows on a first read, before any row is known. */
@@ -82,8 +83,8 @@ export function TableScreen<T extends RowData>({
   columns,
   rowId,
   groups,
+  band,
   lead,
-  freshness,
   rereading,
   firstReadRows,
   shown,
@@ -177,10 +178,8 @@ export function TableScreen<T extends RowData>({
           meta={meta}
           action={action}
           band2={
-            <>
-              {lead}
+            <BandRow band={band} lead={lead}>
               <div className="ml-auto flex flex-none items-center gap-inline">
-                {freshness}
                 <IconButton
                   ref={state.rereadRef}
                   label={rereadLabel(state.name)}
@@ -193,7 +192,7 @@ export function TableScreen<T extends RowData>({
                   <OptionMenu key={menu.label} {...menu} />
                 ))}
               </div>
-            </>
+            </BandRow>
           }
         >
           {/* Mounted before any read, so its first announcement is heard. */}

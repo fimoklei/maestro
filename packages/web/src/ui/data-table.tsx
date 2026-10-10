@@ -20,7 +20,6 @@ import {
   type Ref,
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -38,6 +37,7 @@ import {
 } from "./row-menu-control";
 import { Skeleton } from "./skeleton";
 import { useNow } from "./use-now";
+import { useWidthRem } from "./use-width-rem";
 
 type DataTableColumnMeta = {
   className?: string;
@@ -142,7 +142,10 @@ export function DataTable<T extends RowData>({
   ref,
 }: DataTableProps<T>) {
   const headRow = useRef<HTMLTableRowElement>(null);
-  const available = useAvailableRem(headRow);
+  const available = useWidthRem(
+    headRow,
+    (row) => row.closest("table")?.parentElement,
+  );
   const fit = fitColumns(
     columns
       .map((column) => ({
@@ -709,26 +712,6 @@ function fitColumns(
     freed.push(column.id);
   }
   return { hidden, fluid: filler === null ? freed : [filler, ...freed] };
-}
-
-// The width the table's container offers, in rem; null until measured.
-function useAvailableRem(headRow: React.RefObject<HTMLTableRowElement | null>) {
-  const [available, setAvailable] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    const container = headRow.current?.closest("table")?.parentElement;
-    if (container == null) return;
-    const rem =
-      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const report = (px: number) => setAvailable(px > 0 ? px / rem : null);
-    report(container.getBoundingClientRect().width);
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry !== undefined) report(entry.contentRect.width);
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [headRow]);
-  return available;
 }
 
 function CardCell<T>({

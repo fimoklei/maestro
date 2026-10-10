@@ -206,6 +206,9 @@ Pick the form from this table. Add no other form, and no banner.
   of its detail pane; actions on a selection in the floating selection bar.
   Below 1024px a band-1 action beside the primary shows its icon alone
   (`BandAction`); the primary keeps its label.
+- Build band 2 on `BandRow`: the screen's facts, then the freshness line, on
+  the left; its controls on the right. On a narrow band drop whole facts in
+  the screen's order; never drop the freshness line.
 - Put no button in a table row. A link to an external page may sit in one.
 - Link a row's own GitHub page from a `GitHub` column: GitHub's mark in slate
   11, named `View {name} on GitHub`, mouse only; the same destination is a ⋮

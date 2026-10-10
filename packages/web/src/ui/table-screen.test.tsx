@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { htmlElement } from "../test-utils";
+import type { Band } from "./band";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
@@ -43,8 +44,7 @@ type ScreenProps = {
     | "shown"
     | "notice"
     | "groups"
-    | "lead"
-    | "freshness"
+    | "band"
     | "rereading"
     | "firstReadRows"
     | "selection"
@@ -113,8 +113,36 @@ const region = () =>
 const grid = () => screen.getByRole("grid", { name: "Fruit table" });
 const reread = () => screen.getByRole("button", { name: "Re-read Fruit" });
 
+let reportWidth: (px: number) => void = () => {};
+
+// Every observer hears the width; the table's own column fitting is not read here.
+function stubResizeObserver() {
+  const callbacks: (() => void)[] = [];
+  let width = 0;
+  reportWidth = (px) => {
+    width = px;
+    for (const each of callbacks) each();
+  };
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        callbacks.push(() =>
+          callback(
+            [{ contentRect: { width } } as ResizeObserverEntry],
+            this as unknown as ResizeObserver,
+          ),
+        );
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
+}
+
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("TableScreen", () => {
@@ -138,25 +166,121 @@ describe("TableScreen", () => {
     expect(within(grid()).queryByText("pear")).not.toBeInTheDocument();
   });
 
-  it("puts the screen's facts and freshness line in band 2, before Re-read", () => {
-    render(
-      <FruitScreen
-        lead={<dl aria-label="Orchard facts" />}
-        freshness="Read 4 min ago"
-      />,
-    );
+  describe("band 2", () => {
+    // Harness's drop rules: Branch first, then Origin, then Released.
+    const ORCHARD: Band = {
+      facts: [
+        {
+          label: "Origin",
+          value: "orchard/fruit",
+          machine: true,
+          drop: { rank: 2, belowRem: 36 },
+        },
+        {
+          label: "Released",
+          value: "v1.4.0",
+          machine: true,
+          drop: { rank: 3, belowRem: 24 },
+        },
+        {
+          label: "Branch",
+          value: "main",
+          machine: true,
+          drop: { rank: 1, belowRem: 44 },
+        },
+        { label: "Trees", value: "12", machine: false },
+      ],
+      read: { sentence: "Read 4 min ago", attention: false },
+    };
+    const band2 = () => reread().closest("[data-band='2']") as HTMLElement;
+    // The label of each fact shown, in reading order, then Read where it
+    // follows them.
+    const shown = () => {
+      const labels = Array.from(
+        band2().querySelectorAll("dt"),
+        (each) => each.textContent,
+      );
+      const read = within(band2()).queryByText("Read 4 min ago");
+      const last = band2().querySelector("dl");
+      return read !== null &&
+        last !== null &&
+        last.compareDocumentPosition(read) & Node.DOCUMENT_POSITION_FOLLOWING
+        ? [...labels, read.textContent]
+        : labels;
+    };
 
-    const band2 = reread().closest("[data-band='2']") as HTMLElement;
-    const facts = within(band2).getByLabelText("Orchard facts");
-    const freshness = within(band2).getByText("Read 4 min ago");
-    expect(
-      facts.compareDocumentPosition(freshness) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      freshness.compareDocumentPosition(reread()) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    it("states the facts in order, then Read, before Re-read", () => {
+      render(<FruitScreen band={ORCHARD} />);
+
+      expect(shown()).toEqual([
+        "Origin",
+        "Released",
+        "Branch",
+        "Trees",
+        "Read 4 min ago",
+      ]);
+      expect(within(band2()).getByText("orchard/fruit")).toBeInTheDocument();
+      const read = within(band2()).getByText("Read 4 min ago");
+      expect(
+        read.compareDocumentPosition(reread()) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("drops whole facts in rank order as the band narrows, Read and unruled facts kept", () => {
+      stubResizeObserver();
+      render(<FruitScreen band={ORCHARD} />);
+
+      act(() => reportWidth(50 * 16));
+      expect(shown()).toEqual([
+        "Origin",
+        "Released",
+        "Branch",
+        "Trees",
+        "Read 4 min ago",
+      ]);
+      act(() => reportWidth(40 * 16));
+      expect(shown()).toEqual([
+        "Origin",
+        "Released",
+        "Trees",
+        "Read 4 min ago",
+      ]);
+      act(() => reportWidth(30 * 16));
+      expect(shown()).toEqual(["Released", "Trees", "Read 4 min ago"]);
+      act(() => reportWidth(20 * 16));
+      expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+      expect(within(band2()).queryByText("orchard/fruit")).toBeNull();
+    });
+
+    it("never drops a fact before one of a lower rank", () => {
+      stubResizeObserver();
+      render(
+        <FruitScreen
+          band={{
+            facts: [
+              {
+                label: "Pears",
+                value: "3",
+                machine: false,
+                drop: { rank: 1, belowRem: 20 },
+              },
+              {
+                label: "Apples",
+                value: "5",
+                machine: false,
+                drop: { rank: 2, belowRem: 30 },
+              },
+            ],
+            read: ORCHARD.read,
+          }}
+        />,
+      );
+
+      act(() => reportWidth(25 * 16));
+
+      expect(shown()).toEqual(["Read 4 min ago"]);
+    });
   });
 
   it("spins Re-read while the screen re-reads", () => {

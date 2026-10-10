@@ -2,6 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { STATUS_TOKENS } from "../ui/status-family";
 import {
   harnessGrid,
   installHarnessHooks,
@@ -143,6 +144,22 @@ describe("Harness freshness and failed reads", () => {
     expect(
       await screen.findByRole("button", { name: "Create a release" }),
     ).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("marks an out-of-date Read amber in band 2, after the Harness facts", async () => {
+    stubHarnessServer({ read: { body: STALE } });
+    renderHarness();
+
+    const read = await screen.findByText("Read failed — last read 4 min ago");
+    expect(read).toHaveClass(STATUS_TOKENS.attention.ink);
+    const band = read.closest('[data-band="2"]') as HTMLElement;
+    expect(
+      Array.from(band.querySelectorAll("dt"), (label) => label.textContent),
+    ).toEqual(["Origin", "Released", "Branch"]);
+    expect(
+      within(band).getByText("Branch").compareDocumentPosition(read) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("states one Status out of date notice over a previous read", async () => {
