@@ -32,3 +32,7 @@ type Story = StoryObj<typeof meta>;
 export const Closed: Story = {};
 
 export const Disabled: Story = { args: { disabled: true } };
+
+export const Unchosen: Story = {
+  args: { value: null, placeholder: "Choose a target" },
+};

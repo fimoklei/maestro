@@ -10,7 +10,18 @@ const meta = {
       { value: "global", label: "Global (Claude Code, Codex)" },
       { value: "/Users/m/Projects/maestro", label: "maestro" },
     ],
-    selected: "/Users/m/Projects/maestro",
+    selected: null,
+    skills: [
+      {
+        tone: "neutral",
+        legend: "Skills · 3",
+        rows: [
+          { key: "grilling", name: "grilling" },
+          { key: "prototype", name: "prototype" },
+          { key: "wayfinder", name: "wayfinder" },
+        ],
+      },
+    ],
     onSelect: () => {},
     unavailable: null,
     fieldsChanged: false,
@@ -27,7 +38,31 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const PickTarget: Story = {};
+export const PickTarget: Story = {
+  args: { unavailable: "no target" },
+};
+
+export const TargetChosen: Story = {
+  args: {
+    selected: "/Users/m/Projects/maestro",
+    skills: [
+      {
+        tone: "neutral",
+        legend: "To deploy · 2",
+        rows: [
+          { key: "grilling", name: "grilling" },
+          { key: "prototype", name: "prototype" },
+        ],
+      },
+      {
+        tone: "neutral",
+        legend: "Already up to date · 1",
+        note: "Deploy skips these skills.",
+        rows: [{ key: "wayfinder", name: "wayfinder" }],
+      },
+    ],
+  },
+};
 
 export const LoadingTargets: Story = {
   args: { unavailable: "targets still loading" },
@@ -99,5 +134,27 @@ export const PartialReport: Story = {
         },
       ],
     },
+  },
+};
+
+export const LongList: Story = {
+  args: {
+    selected: "/Users/m/Projects/maestro",
+    skills: [
+      {
+        tone: "neutral",
+        legend: "To deploy · 12",
+        rows: Array.from({ length: 12 }, (_, index) => ({
+          key: `skill-${index}`,
+          name: `a-skill-with-a-long-name-${index + 1}`,
+        })),
+      },
+      {
+        tone: "neutral",
+        legend: "Already up to date · 1",
+        note: "Deploy skips these skills.",
+        rows: [{ key: "wayfinder", name: "wayfinder" }],
+      },
+    ],
   },
 };

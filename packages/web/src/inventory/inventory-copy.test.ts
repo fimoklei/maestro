@@ -8,6 +8,7 @@ import {
   bulkDeployTitle,
   bulkRemoveReportHeading,
   bulkRemoveTitle,
+  CHOOSE_A_TARGET,
   checkingTargetsLine,
   DEPLOY_SKILLS,
   deployedToLine,
@@ -17,6 +18,7 @@ import {
   NO_FILTER_MATCH,
   NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
+  NO_TARGET_CHOSEN,
   NO_TARGET_REMOVABLE,
   NO_TOOL_DETECTED_CAUSE,
   NOT_DEPLOYED_ANYWHERE,
@@ -32,6 +34,9 @@ import {
   TARGETS_LOADING,
   TARGETS_STILL_CHECKING,
   targetsWithoutLocalEditsNotice,
+  toDeployLegend,
+  UP_TO_DATE_NOTE,
+  upToDateLegend,
 } from "./inventory-copy";
 
 // Approved sentences, as exact strings.
@@ -81,7 +86,18 @@ describe("Inventory copy", () => {
 
   it("states why a bulk deploy cannot run yet", () => {
     expect(TARGETS_LOADING).toBe("targets still loading");
+    expect(NO_TARGET_CHOSEN).toBe("no target");
     expect(NO_TOOL_DETECTED_CAUSE).toBe("no tool detected");
+  });
+
+  it("asks the reader to choose the bulk deploy target", () => {
+    expect(CHOOSE_A_TARGET).toBe("Choose a target");
+  });
+
+  it("counts the skills the bulk deploy lists, by what it does with them", () => {
+    expect(toDeployLegend(2)).toBe("To deploy · 2");
+    expect(upToDateLegend(1)).toBe("Already up to date · 1");
+    expect(UP_TO_DATE_NOTE).toBe("Deploy skips these skills.");
   });
 
   it("states why a bulk remove cannot run yet", () => {

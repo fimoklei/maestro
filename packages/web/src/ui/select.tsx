@@ -12,7 +12,9 @@ export interface SelectOption {
 export interface SelectProps {
   /** The id of the visible label that names this control. */
   labelledBy: string;
-  value: string;
+  /** `null` while the reader has not chosen; the trigger then shows `placeholder`. */
+  value: string | null;
+  placeholder?: string;
   options: readonly SelectOption[];
   /** Locked while the action it feeds runs. */
   disabled: boolean;
@@ -22,13 +24,14 @@ export interface SelectProps {
 export function Select({
   labelledBy,
   value,
+  placeholder,
   options,
   disabled,
   onValueChange,
 }: SelectProps) {
   return (
     <RadixSelect.Root
-      value={value}
+      value={value ?? ""}
       disabled={disabled}
       onValueChange={onValueChange}
     >
@@ -40,7 +43,7 @@ export function Select({
           "hover:bg-gray-3 data-[state=open]:bg-gray-3 disabled:cursor-not-allowed disabled:text-gray-11 disabled:hover:bg-transparent",
         )}
       >
-        <RadixSelect.Value />
+        <RadixSelect.Value placeholder={placeholder} />
         <RadixSelect.Icon className="text-gray-11">
           <ChevronDown aria-hidden="true" className="size-4" />
         </RadixSelect.Icon>

@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { vi } from "vitest";
 import { createQueryClient } from "./api/query-client";
@@ -35,6 +36,17 @@ export function renderWithQuery(ui: ReactNode) {
 }
 
 const ignoreReport = () => {};
+
+/** Picks a target in the bulk deploy dialog, which never chooses for the reader. */
+export async function chooseDeployTarget(
+  dialog: HTMLElement,
+  name: string | RegExp,
+) {
+  await userEvent.click(
+    within(dialog).getByRole("combobox", { name: "Target" }),
+  );
+  await userEvent.click(await screen.findByRole("option", { name }));
+}
 
 /** The element a query found, or a failed test where it found none. */
 export function htmlElement(element: Element | null | undefined): HTMLElement {

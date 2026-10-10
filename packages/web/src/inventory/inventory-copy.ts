@@ -42,9 +42,15 @@ export const DEPLOY_SKILLS = "Deploy skills";
 export const bulkDeployTitle = (count: number): string =>
   `Deploy ${count} ${count === 1 ? "skill" : "skills"}`;
 export const BULK_DEPLOY_TARGET = "Target";
+export const CHOOSE_A_TARGET = "Choose a target";
 export const bulkDeployDidNotRun = (target: string) =>
   `Deploy to ${target} did not run`;
 export const TARGETS_LOADING = "targets still loading";
+export const NO_TARGET_CHOSEN = "no target";
+export const toDeployLegend = (count: number): string => `To deploy · ${count}`;
+export const upToDateLegend = (count: number): string =>
+  `Already up to date · ${count}`;
+export const UP_TO_DATE_NOTE = "Deploy skips these skills.";
 export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
 export const TARGETS_STILL_CHECKING = "checking for local edits";
 export const NO_TARGET_REMOVABLE = "no target can be removed";
