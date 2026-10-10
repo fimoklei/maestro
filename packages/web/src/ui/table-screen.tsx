@@ -46,8 +46,6 @@ export interface TableScreenProps<T extends RowData> {
   groups?: DataTableProps<T>["groups"];
   /** Band 2's facts and Read, which narrow with the band. */
   band?: Band;
-  /** Band 2's left edge, before the band's facts and Read. */
-  lead?: ReactNode;
   /** The screen's own re-read is running: Re-read spins. */
   rereading: boolean;
   /** Skeleton rows on a first read, before any row is known. */
@@ -84,7 +82,6 @@ export function TableScreen<T extends RowData>({
   rowId,
   groups,
   band,
-  lead,
   rereading,
   firstReadRows,
   shown,
@@ -178,20 +175,18 @@ export function TableScreen<T extends RowData>({
           meta={meta}
           action={action}
           band2={
-            <BandRow band={band} lead={lead}>
-              <div className="ml-auto flex flex-none items-center gap-inline">
-                <IconButton
-                  ref={state.rereadRef}
-                  label={rereadLabel(state.name)}
-                  busy={rereading}
-                  onClick={state.reread}
-                >
-                  <Icon of={RefreshCw} />
-                </IconButton>
-                {view?.menus.map((menu) => (
-                  <OptionMenu key={menu.label} {...menu} />
-                ))}
-              </div>
+            <BandRow band={band}>
+              <IconButton
+                ref={state.rereadRef}
+                label={rereadLabel(state.name)}
+                busy={rereading}
+                onClick={state.reread}
+              >
+                <Icon of={RefreshCw} />
+              </IconButton>
+              {view?.menus.map((menu) => (
+                <OptionMenu key={menu.label} {...menu} />
+              ))}
             </BandRow>
           }
         >

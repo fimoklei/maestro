@@ -31,6 +31,7 @@ import {
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
+  SEARCH_LABEL,
   SELECT_ALL_LABEL,
   SKILLS_FACT,
   SOME_TARGETS_NOT_READ,
@@ -48,6 +49,11 @@ import {
 
 // Approved sentences, as exact strings.
 describe("Inventory copy", () => {
+  // The field's name and placeholder, and the narrow band's icon.
+  it("names the search field and its icon by their action", () => {
+    expect(SEARCH_LABEL).toBe("Search the Inventory");
+  });
+
   it("says how to see every skill when the search matches none", () => {
     expect(NO_SEARCH_MATCH).toEqual({
       title: "No skills match the search",

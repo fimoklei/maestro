@@ -1,5 +1,5 @@
 import type { GitHubPage, SkillDeletionCheck } from "@maestro/core";
-import { Search, Table2 } from "lucide-react";
+import { Table2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import { DELETE_UNAVAILABLE } from "../harness/dialog-copy";
@@ -147,9 +147,10 @@ const readFreshness = (reads: readonly Reading[]): Freshness => {
 };
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: Origin drops first, then
-// Released; Skills and Read never drop.
-const ORIGIN_DROP = { rank: 1, belowRem: 61 } as const;
-const RELEASED_DROP = { rank: 2, belowRem: 42 } as const;
+// Released, then the search becomes an icon; Skills and Read never drop.
+const ORIGIN_DROP = { rank: 1, belowRem: 59 } as const;
+const RELEASED_DROP = { rank: 2, belowRem: 39 } as const;
+const SEARCH_ICON_BELOW_REM = 31;
 
 const BY_TYPE = {
   value: "type",
@@ -360,23 +361,13 @@ export function InventoryView({
           sentence: freshnessLine(readFreshness(reads), now) ?? NOT_READ_YET,
           attention: false,
         },
+        search: {
+          label: SEARCH_LABEL,
+          value: query,
+          onChange: setQuery,
+          iconBelowRem: SEARCH_ICON_BELOW_REM,
+        },
       }}
-      lead={
-        <div className="relative min-w-0 max-w-60 flex-1">
-          <Icon
-            of={Search}
-            className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-inline text-gray-11"
-          />
-          <input
-            type="search"
-            aria-label={SEARCH_LABEL}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={SEARCH_LABEL}
-            className="h-control w-full rounded-control border border-gray-9 bg-gray-1 pr-inline pl-7 font-ui text-gray-12 text-row placeholder:text-gray-11"
-          />
-        </div>
-      }
       rereading={screen.reading}
       firstReadRows={24}
       rows={rows}

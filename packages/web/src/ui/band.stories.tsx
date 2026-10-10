@@ -40,12 +40,10 @@ function Row({ band, width }: { band: Band; width: number }) {
       style={{ width }}
       className="flex h-12 items-center gap-inline border border-edge px-panel"
     >
-      <BandRow band={band} lead={null}>
-        <div className="ml-auto flex flex-none items-center gap-inline">
-          <IconButton label="Re-read Harness">
-            <Icon of={RefreshCw} />
-          </IconButton>
-        </div>
+      <BandRow band={band}>
+        <IconButton label="Re-read Harness">
+          <Icon of={RefreshCw} />
+        </IconButton>
       </BandRow>
     </div>
   );
