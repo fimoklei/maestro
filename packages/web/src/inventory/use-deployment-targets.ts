@@ -9,7 +9,7 @@ import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
-import type { Reading } from "./inventory-view";
+import { queryReading, type Reading } from "./inventory-band";
 import type { DeployTarget } from "./use-deploy-skill";
 
 export function useDeploymentTargets(
@@ -107,12 +107,12 @@ export function useDeploymentTargets(
     globalDriftRead,
     ...repoDeploy,
     ...repoDrift,
-  ].map((query) => ({ at: query.dataUpdatedAt, failed: query.isError }));
+  ].map(queryReading);
   // A comparison the server could not run keeps its last answer's time; one
   // never run dates nothing, and its skills read Unknown.
   for (const target of targets) {
     const at = target.releaseHead?.comparedAt;
-    if (at != null) reads.push({ at, failed: false });
+    if (at != null) reads.push({ at: Date.parse(at), failed: false });
   }
   return { targets, reads };
 }

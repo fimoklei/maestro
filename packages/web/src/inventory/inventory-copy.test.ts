@@ -24,10 +24,7 @@ import {
   NO_TARGET_REMOVABLE,
   NO_TOOL_DETECTED_CAUSE,
   NOT_DEPLOYED_ANYWHERE,
-  NOT_RELEASED_YET,
-  ORIGIN_FACT,
   PINNED_LOCAL_CHANGES_NEXT_STEP,
-  RELEASED_FACT,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
@@ -42,7 +39,6 @@ import {
   TARGETS_STILL_CHECKING,
   targetsWithoutLocalEditsNotice,
   toDeployLegend,
-  UNKNOWN_FACT_VALUE,
   UP_TO_DATE_NOTE,
   upToDateLegend,
 } from "./inventory-copy";
@@ -74,12 +70,6 @@ describe("Inventory copy", () => {
     expect(skillsFactValue(34, 34)).toBe("34");
     expect(skillsFactValue(0, 34)).toBe("0 of 34");
     expect(skillsFactValue(1, 34)).toBe("1 of 34");
-  });
-
-  it("names the Harness facts in band 2 and says what is not known", () => {
-    expect([ORIGIN_FACT, RELEASED_FACT]).toEqual(["Origin", "Released"]);
-    expect(UNKNOWN_FACT_VALUE).toBe("Unknown");
-    expect(NOT_RELEASED_YET).toBe("Not released yet");
   });
 
   it("names a row's checkbox after its skill", () => {

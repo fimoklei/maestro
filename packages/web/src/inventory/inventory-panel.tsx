@@ -7,6 +7,7 @@ import { useDeletionCheck, useHarness } from "../harness/use-harness";
 import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import type { ReadFailure } from "../ui/use-table-screen";
+import { queryReading } from "./inventory-band";
 import { INVENTORY_NOT_READ } from "./inventory-copy";
 import { type CloneReading, InventoryView } from "./inventory-view";
 import { useDeploymentTargets } from "./use-deployment-targets";
@@ -66,13 +67,7 @@ export function InventoryPanel() {
             : undefined
       }
       // The registry read decides which targets there are, so it is one too.
-      reads={[
-        ...[inventory, registry].map((query) => ({
-          at: query.dataUpdatedAt,
-          failed: query.isError,
-        })),
-        ...reads,
-      ]}
+      reads={[...[inventory, registry].map(queryReading), ...reads]}
       failure={readFailure(inventory.error)}
       reading={
         inventory.isFetching || registry.isFetching || readingDeployState

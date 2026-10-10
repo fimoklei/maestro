@@ -208,8 +208,9 @@ Pick the form from this table. Add no other form, and no banner.
   (`BandAction`); the primary keeps its label.
 - Build band 2 on `BandRow`: the screen's facts, then the freshness line, on
   the left; an optional search first, then its controls, on the right. On a
-  narrow band shrink the search from 15rem to 12rem, then drop whole facts in
-  the screen's order, then turn the search into an icon named by its action.
+  narrow band shrink the search from 15rem to 12rem, then drop whole facts by
+  the screen's own drop ranks, lowest first, then turn the search into an icon
+  named by its action.
   Never drop the freshness line.
 - Put no button in a table row. A link to an external page may sit in one.
 - Link a row's own GitHub page from a `GitHub` column: GitHub's mark in slate

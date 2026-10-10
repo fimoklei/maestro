@@ -166,7 +166,7 @@ describe("TableScreen", () => {
       ],
       read: { sentence: "Read 4 min ago", attention: false },
     };
-    const band2 = () => reread().closest("[data-band='2']") as HTMLElement;
+    const band2 = () => htmlElement(reread().closest("[data-band='2']"));
     // The label of each fact shown, in reading order, then Read where it
     // follows them.
     const shown = () => {
@@ -327,7 +327,7 @@ describe("TableScreen", () => {
         render(<SearchedFruit />);
         act(() => reportWidth(17 * 16));
 
-        (icon() as HTMLElement).focus();
+        htmlElement(icon()).focus();
         await userEvent.keyboard("{Enter}");
         expect(field()).toHaveFocus();
         await userEvent.keyboard("ch");

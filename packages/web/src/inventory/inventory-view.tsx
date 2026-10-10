@@ -1,4 +1,4 @@
-import type { GitHubPage, SkillDeletionCheck } from "@maestro/core";
+import type { SkillDeletionCheck } from "@maestro/core";
 import { Table2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
@@ -6,6 +6,12 @@ import { DELETE_UNAVAILABLE } from "../harness/dialog-copy";
 import { folderInClone } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
+import {
+  NOT_RELEASED_YET,
+  ORIGIN_FACT,
+  RELEASED_FACT,
+  UNKNOWN_FACT_VALUE,
+} from "../ui/band-copy";
 import { Button } from "../ui/button";
 import {
   DELETE_SKILL,
@@ -13,7 +19,7 @@ import {
   UPDATE_TARGET,
   VIEW_DEPLOY_STATE,
 } from "../ui/control-labels";
-import { type Freshness, freshnessLine, NOT_READ_YET } from "../ui/freshness";
+import { freshnessLine, NOT_READ_YET } from "../ui/freshness";
 import { Icon } from "../ui/icon";
 import { SelectionBar } from "../ui/selection-bar";
 import { TableScreen } from "../ui/table-screen";
@@ -29,6 +35,14 @@ import {
 } from "./bulk-selection";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 import {
+  type HarnessFacts,
+  ORIGIN_DROP,
+  RELEASED_DROP,
+  type Reading,
+  readFreshness,
+  SEARCH_ICON_BELOW_REM,
+} from "./inventory-band";
+import {
   DISPLAY_OPTIONS,
   type InventoryRow,
   inventoryColumns,
@@ -39,9 +53,6 @@ import {
   NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
   NO_SKILLS_YET,
-  NOT_RELEASED_YET,
-  ORIGIN_FACT,
-  RELEASED_FACT,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
@@ -51,7 +62,6 @@ import {
   STAGE_COLUMN_LABEL,
   skillsFactValue,
   stageRowLabel,
-  UNKNOWN_FACT_VALUE,
 } from "./inventory-copy";
 import {
   type SkillDeployment,
@@ -124,33 +134,6 @@ const STATUS_WORDS = [
   UP_TO_DATE,
   NOT_DEPLOYED,
 ].map((reading) => reading.word);
-
-/** The connected Harness's facts band 2 states. */
-export type HarnessFacts = {
-  origin: string;
-  github?: GitHubPage;
-  /** Null where the Harness has no release. */
-  latestRelease: string | null;
-};
-
-/** One reading behind the rows: when it last answered (0 or null: never), and whether its latest attempt failed. */
-export type Reading = { at: number | string | null; failed: boolean };
-
-// The oldest reading dates the line, and one that never answered is the
-// oldest of all; a failed reading turns it into the failed-read words.
-const readFreshness = (reads: readonly Reading[]): Freshness => {
-  const ats = reads.map((each) => each.at);
-  return {
-    readAt: ats.some((at) => !at) ? [] : ats,
-    outcome: reads.some((each) => each.failed) ? "fetch-failed" : "fetched",
-  };
-};
-
-// Band 2 widths in rem, tuned in `pnpm smoke`: Origin drops first, then
-// Released, then the search becomes an icon; Skills and Read never drop.
-const ORIGIN_DROP = { rank: 1, belowRem: 59 } as const;
-const RELEASED_DROP = { rank: 2, belowRem: 39 } as const;
-const SEARCH_ICON_BELOW_REM = 31;
 
 const BY_TYPE = {
   value: "type",

@@ -580,7 +580,7 @@ describe("InventoryView — band 2 facts", () => {
         read([
           { at: minutesAgo(2), failed: false },
           { at: minutesAgo(9), failed: false },
-          { at: new Date(minutesAgo(5)).toISOString(), failed: false },
+          { at: minutesAgo(5), failed: false },
         ]).getByText("Read 9 min ago"),
       ).toBeInTheDocument();
     });
@@ -589,7 +589,7 @@ describe("InventoryView — band 2 facts", () => {
       expect(
         read([
           { at: minutesAgo(2), failed: false },
-          { at: 0, failed: false },
+          { at: null, failed: false },
         ]).getByText("Not read yet"),
       ).toBeInTheDocument();
     });
@@ -598,7 +598,7 @@ describe("InventoryView — band 2 facts", () => {
       expect(
         read([
           { at: minutesAgo(2), failed: false },
-          { at: 0, failed: true },
+          { at: null, failed: true },
         ]).getByText("Read failed — never read"),
       ).toBeInTheDocument();
     });

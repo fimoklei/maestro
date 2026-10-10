@@ -6,11 +6,16 @@ import { STATUS_TOKENS } from "./status-family";
 import { useWidthRem } from "./use-width-rem";
 
 /** Drops the fact while band 2 is narrower than `belowRem`; rank 1 drops first. */
-type DropRule = { rank: number; belowRem: number };
+type FactDrop = { rank: 1 | 2 | 3; belowRem: number };
+
+// The search's rule ranks above every fact rank, so it applies last.
+type DropRule = { rank: FactDrop["rank"] | "search"; belowRem: number };
+const order = (rank: DropRule["rank"]) =>
+  rank === "search" ? Number.POSITIVE_INFINITY : rank;
 
 type BandFactItem = BandFactProps & {
   /** None: the fact never drops. */
-  drop?: DropRule & { rank: 1 | 2 | 3 };
+  drop?: FactDrop;
 };
 
 /** Band 2's search, first on the right; it narrows to 12rem, then becomes an icon last. */
@@ -31,8 +36,7 @@ export type Band = {
 };
 
 // A rule applies while the band is narrower than it, and also while any rule of
-// its rank or higher applies, so the order holds whatever the widths say. The
-// search icon ranks above every fact: it comes last.
+// its rank or higher applies, so the order holds whatever the widths say.
 const applies = (
   rule: DropRule | undefined,
   rules: readonly DropRule[],
@@ -40,7 +44,9 @@ const applies = (
 ) =>
   width !== null &&
   rule !== undefined &&
-  rules.some((other) => other.rank >= rule.rank && width < other.belowRem);
+  rules.some(
+    (other) => order(other.rank) >= order(rule.rank) && width < other.belowRem,
+  );
 
 /** Band 2: facts and Read on the left; the search, then the screen's controls, on the right. */
 export function BandRow({
@@ -54,11 +60,11 @@ export function BandRow({
   const ref = useRef<HTMLDivElement>(null);
   // The band's own width, not the window's: the sidebar takes its share.
   const width = useWidthRem(ref, (element) => element);
-  const searchRule =
+  const searchRule: DropRule | undefined =
     band?.search === undefined
       ? undefined
-      : { rank: 4, belowRem: band.search.iconBelowRem };
-  const rules = [
+      : { rank: "search", belowRem: band.search.iconBelowRem };
+  const rules: DropRule[] = [
     ...(band?.facts ?? []).flatMap((fact) =>
       fact.drop === undefined ? [] : [fact.drop],
     ),

@@ -130,16 +130,18 @@ export function stubResizeObserver(): (px: number) => void {
   let width = 0;
   vi.stubGlobal(
     "ResizeObserver",
-    class {
+    class implements ResizeObserver {
       constructor(callback: ResizeObserverCallback) {
         callbacks.push(() =>
           callback(
+            // A partial entry: `useWidthRem` reads `contentRect.width` alone.
             [{ contentRect: { width } } as ResizeObserverEntry],
-            this as unknown as ResizeObserver,
+            this,
           ),
         );
       }
       observe() {}
+      unobserve() {}
       disconnect() {}
     },
   );

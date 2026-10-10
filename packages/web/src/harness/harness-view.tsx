@@ -3,6 +3,13 @@ import { FolderGit2, FolderInput } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { BandAction } from "../ui/band-action";
+import {
+  BRANCH_FACT,
+  NOT_RELEASED_YET,
+  ORIGIN_FACT,
+  RELEASED_FACT,
+  UNKNOWN_FACT_VALUE,
+} from "../ui/band-copy";
 import { Button } from "../ui/button";
 import { CREATE_RELEASE, IMPORT_SKILL } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
@@ -287,21 +294,21 @@ export function HarnessView({
           : {
               facts: [
                 {
-                  label: "Origin",
+                  label: ORIGIN_FACT,
                   value: state.origin,
                   github: state.github,
                   machine: true,
                   drop: { rank: 2, belowRem: 48 },
                 },
                 {
-                  label: "Released",
-                  value: state.releasedVersion ?? "Not released yet",
+                  label: RELEASED_FACT,
+                  value: state.releasedVersion ?? NOT_RELEASED_YET,
                   machine: state.releasedVersion !== null,
                   drop: { rank: 3, belowRem: 24 },
                 },
                 {
-                  label: "Branch",
-                  value: state.defaultBranch ?? "Unknown",
+                  label: BRANCH_FACT,
+                  value: state.defaultBranch ?? UNKNOWN_FACT_VALUE,
                   machine: state.defaultBranch !== null,
                   drop: { rank: 1, belowRem: 54 },
                 },
