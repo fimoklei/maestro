@@ -107,7 +107,7 @@ describe("deploy notices", () => {
       {
         label: "Local changes in deployed files",
         message:
-          "Deploy again to replace the local edits with the latest release.",
+          "Deploy this skill again to replace the local edits with the latest release.",
         detail: "The edits never went through the Harness.",
       },
     ],
@@ -115,7 +115,8 @@ describe("deploy notices", () => {
       "deployed-unverifiable",
       {
         label: "Local edits unverifiable",
-        message: "Deploy again to replace this copy with the latest release.",
+        message:
+          "Deploy this skill again to replace this copy with the latest release.",
         detail:
           "This copy predates content tracking, so any change in it is invisible.",
       },
@@ -261,7 +262,7 @@ describe("deploy notices", () => {
     expect(deployNotice(refusal("cost-not-acknowledged"))).toEqual({
       label: "Deploy outcome unknown",
       message:
-        "Nothing confirmed the deploy. Deploy again to re-check the target.",
+        "Nothing confirmed the deploy. Deploy to this target again to re-check it.",
       detail:
         "A dropped connection, or a failure this version of Maestro does not name.",
     });

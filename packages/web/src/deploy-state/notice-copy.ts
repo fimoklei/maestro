@@ -36,7 +36,7 @@ import {
 
 export type DeployStateNotice = NoticeCopy;
 
-const RECHECK_TARGET = "Deploy again to re-check the target.";
+const RECHECK_TARGET = "Deploy to this target again to re-check it.";
 
 const DEPLOY_AGAIN = "then deploy again.";
 
@@ -107,11 +107,13 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "A deploy takes the latest release, not the Harness copy.",
   },
   "deployed-diverged-from-lock": {
-    message: "Deploy again to replace the local edits with the latest release.",
+    message:
+      "Deploy this skill again to replace the local edits with the latest release.",
     detail: EDITS_OUTSIDE_HARNESS,
   },
   "deployed-unverifiable": {
-    message: "Deploy again to replace this copy with the latest release.",
+    message:
+      "Deploy this skill again to replace this copy with the latest release.",
     detail:
       "This copy predates content tracking, so any change in it is invisible.",
   },
