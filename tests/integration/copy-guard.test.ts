@@ -38,6 +38,8 @@ describe("copy guard", () => {
         'export const b = "Read just now";',
         'export const c = "Is it 1 !== 2?";',
         'export const d = "The Harness already holds a skill under it. Pick another name.";',
+        'export const e = "Fix the skill, then deploy again.";',
+        'export const f = "Deploy tdd again";',
         "",
       ].join("\n"),
     );
@@ -84,6 +86,8 @@ describe("copy guard", () => {
     ["Harness already changing", "Harness already changing"],
     ["Select Show in Deploy-state to open it.", "Show in Deploy-state"],
     ["Close this dialog, then select Delete skill again.", "Close this dialog"],
+    ["Deploy again to re-check the target.", "Deploy again"],
+    ["Select Deploy again to overwrite it.", "Deploy again"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",

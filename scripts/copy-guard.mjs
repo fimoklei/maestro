@@ -59,6 +59,8 @@ const RETIRED = [
   /\bClose this dialog\b/i,
   // A target that loses no work has no local edits (#1436).
   /\bclean cop(?:y|ies)\b/i,
+  // The Deploy-state row has no bare Deploy again; the bulk Report's is `Deploy {name} again` (#1468).
+  /\bDeploy again\b/,
   // Copy is level: no promotional words, no chat phrases, no exclamation.
   /\b(?:seamless|effortless|supercharge|powerful|magic|unlock|leverage|AI-powered|intelligent|smartly|empower|robust|Oops|Whoops|Let's)/i,
   /!(?=\s|$)/,

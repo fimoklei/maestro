@@ -43,7 +43,7 @@ export const Partial: Story = {
             notice: {
               label: "Local changes in deployed files",
               message:
-                "Deploy again to replace the local edits with the latest release.",
+                "Deploy this skill again to replace the local edits with the latest release.",
               detail: "The edits never went through the Harness.",
             },
             action: { label: "Deploy tdd again", onClick: () => {} },
