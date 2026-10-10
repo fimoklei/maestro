@@ -15,7 +15,7 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 
-export type CopyEntryKind = "file" | "directory" | "symlink" | "other";
+type CopyEntryKind = "file" | "directory" | "symlink" | "other";
 
 export type CopyEntryFacts = {
   kind: CopyEntryKind;
