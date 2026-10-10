@@ -2,6 +2,7 @@ import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import { NoValue } from "../ui/no-value";
 import { RowMenu } from "../ui/row-menu";
+import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
@@ -118,7 +119,7 @@ export const inventoryColumns = ({
       card: reachCard,
     },
     helper.display({
-      id: "actions",
+      id: ACTIONS_COLUMN_ID,
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
         <RowMenu

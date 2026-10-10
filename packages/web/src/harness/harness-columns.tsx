@@ -5,6 +5,7 @@ import type { DataTableCardContent } from "../ui/data-table-card";
 import type { FootItem } from "../ui/foot-actions";
 import type { Copy } from "../ui/phrase";
 import { RowMenu } from "../ui/row-menu";
+import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
 import { pullRequestCard } from "./pull-request-card";
@@ -124,7 +125,7 @@ export const harnessColumns = ({
       meta: { width: 56, priority: 2 },
     }),
     helper.display({
-      id: "actions",
+      id: ACTIONS_COLUMN_ID,
       header: () => <span className="sr-only">Actions</span>,
       cell: ({ row }) => (
         <RowMenu

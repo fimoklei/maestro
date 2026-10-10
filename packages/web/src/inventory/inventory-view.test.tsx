@@ -1258,8 +1258,9 @@ describe("InventoryView — row menu", () => {
 describe("InventoryView — a target row in the pane", () => {
   const targetMenu = async (label: string) => {
     const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    const named = label === "Claude Code" ? label : `/projects/${label}`;
     await userEvent.click(
-      within(pane).getByRole("button", { name: `Actions for ${label}` }),
+      within(pane).getByRole("button", { name: `Actions for ${named}` }),
     );
     return screen.findByRole("menu");
   };

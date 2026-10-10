@@ -1,9 +1,10 @@
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { orderedItems } from "./actions-menu";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { FactList, FactRow } from "./fact-list";
+import { FOCUS_RING } from "./focus-ring";
 import { FootActions, type FootItem, firstEnabled } from "./foot-actions";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
@@ -110,6 +111,10 @@ export function DetailPane({
   /** The ⋮ order already leads with the next step, so its first item is primary. */
   leadsWithNextStep?: boolean;
 }) {
+  const clampedId = useId();
+  // Open for one subject only: the next one starts clamped.
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const expanded = expandedKey === activeKey;
   const shown = facts.filter((fact) => fact !== null);
   const clamped = clampParagraph ? (paragraph.at(-1) ?? null) : null;
   const whole = clamped === null ? paragraph : paragraph.slice(0, -1);
@@ -210,22 +215,32 @@ export function DetailPane({
           </p>
         )}
         {clamped === null ? null : (
-          <details
+          <div
             className={cn(
-              "group",
+              "text-gray-12 text-prose",
               whole.length > 0 ? "mt-tight" : "mt-section",
             )}
           >
-            <summary className="cursor-pointer list-none text-gray-12 text-prose focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
-              <span className="line-clamp-3 group-open:line-clamp-none">
-                <PhraseText copy={clamped} />
-              </span>
-              <span className="mt-tight inline-block text-gray-11 text-meta hover:text-gray-12">
-                <span className="group-open:hidden">More ›</span>
-                <span className="hidden group-open:inline">Less ‹</span>
-              </span>
-            </summary>
-          </details>
+            <span
+              id={clampedId}
+              className={cn("block", !expanded && "line-clamp-3")}
+            >
+              <PhraseText copy={clamped} />
+            </span>
+            <button
+              type="button"
+              aria-expanded={expanded}
+              aria-controls={clampedId}
+              onClick={() => setExpandedKey(expanded ? null : activeKey)}
+              className={cn(
+                "mt-tight inline-block cursor-pointer rounded-control text-gray-11 text-meta hover:text-gray-12",
+                FOCUS_RING,
+              )}
+            >
+              {expanded ? "Less" : "More"}
+              <span aria-hidden="true">{expanded ? " ‹" : " ›"}</span>
+            </button>
+          </div>
         )}
         {notices.length > 0 ? (
           <div className="mt-cell flex flex-col gap-cell">

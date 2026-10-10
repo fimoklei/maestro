@@ -4,6 +4,7 @@ import { githubColumn } from "../ui/github-column";
 import { MachineValue } from "../ui/machine-value";
 import { NoValue } from "../ui/no-value";
 import { RowMenu } from "../ui/row-menu";
+import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
@@ -120,7 +121,7 @@ export const deployStateColumns = ({
     }),
     githubColumn<TargetTableRow>("Deploy-state"),
     helper.display({
-      id: "actions",
+      id: ACTIONS_COLUMN_ID,
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
         <RowMenu

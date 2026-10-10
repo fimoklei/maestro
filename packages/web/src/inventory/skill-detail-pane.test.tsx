@@ -272,13 +272,32 @@ describe("SkillDetailPane", () => {
 
     await userEvent.click(
       within(targetRow("acme-web")).getByRole("button", {
-        name: "Actions for acme-web",
+        name: "Actions for /dev/acme-web",
       }),
     );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Update target" }),
     );
     expect(onSelect).toHaveBeenCalledWith("acme-web");
+  });
+
+  it("names a repo target's ⋮ by its whole path, never the shortened label", () => {
+    renderPane({
+      deployments: [
+        {
+          ...dep("…/me/project", "v1.0.0", "behind"),
+          target: { kind: "repo", repoPath: "/Users/me/project" },
+        },
+      ],
+      targetItems: () => [{ label: "Update target", onSelect: () => {} }],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Actions for /Users/me/project" }),
+    ).toBeInTheDocument();
+    for (const named of screen.getAllByRole("button")) {
+      expect(named).not.toHaveAccessibleName(/…/);
+    }
   });
 
   it("states the skill is deployed nowhere when it has no targets", () => {

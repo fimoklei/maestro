@@ -1,9 +1,11 @@
 import { EllipsisVertical } from "lucide-react";
+import { useContext } from "react";
 import { ActionsMenu, type ActionsMenuItem } from "./actions-menu";
 import { Spinner } from "./button";
 import { cn } from "./cn";
 import { FOCUS_RING } from "./focus-ring";
 import { Icon } from "./icon";
+import { RowMenuControlContext } from "./row-menu-control";
 
 /** A row item declares where focus goes: on, such as into the pane, or back to ⋮. */
 export type RowMenuItem = ActionsMenuItem & { movesFocus: boolean };
@@ -24,10 +26,12 @@ export function RowMenu({
   /** A write its row started is running: the spinner stands in for ⋮. */
   busy: boolean;
 }) {
+  const grid = useContext(RowMenuControlContext);
   return (
     <ActionsMenu
       label={label}
       items={items}
+      control={grid}
       trigger={
         <button
           type="button"
