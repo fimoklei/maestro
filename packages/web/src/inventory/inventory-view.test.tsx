@@ -11,6 +11,7 @@ import {
   measureAs,
   renderWithQuery,
   sentence,
+  stubResizeObserver,
 } from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";
@@ -96,7 +97,12 @@ const baseProps: Props = {
   primitives,
   repos: [],
   registryReady: true,
-  latestRelease: "v1.4.0",
+  harness: {
+    origin: "github.com/acme/harness",
+    github: { kind: "link", url: "https://github.com/acme/harness" },
+    latestRelease: "v1.4.0",
+  },
+  reads: [],
   targets: [],
   failure: null,
   reading: false,
@@ -300,7 +306,7 @@ describe("InventoryView — band 2", () => {
     expect(
       screen.getByText("Clear the search box to see every skill."),
     ).toBeInTheDocument();
-    expect(screen.getByText("0 of 2 skills")).toBeInTheDocument();
+    expect(screen.getByText("0 of 2")).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
@@ -392,7 +398,7 @@ describe("InventoryView — band 2", () => {
     expect(
       screen.getByText("Select Clear filters to see every skill."),
     ).toBeInTheDocument();
-    expect(screen.getByText("0 of 2 skills")).toBeInTheDocument();
+    expect(screen.getByText("0 of 2")).toBeInTheDocument();
 
     // #1436: the empty state carries the way back to every skill.
     await userEvent.click(
@@ -400,7 +406,7 @@ describe("InventoryView — band 2", () => {
     );
     expect(dataRowNames()).toEqual(["tdd", "caveman"]);
     expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
-    expect(screen.getByText("2 skills")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
   });
 
   it("switches a column off and on from Display", async () => {
@@ -478,6 +484,133 @@ describe("InventoryView — band 2", () => {
     );
 
     expect(onReread).toHaveBeenCalledOnce();
+  });
+});
+
+describe("InventoryView — band 2 facts", () => {
+  const band2 = () =>
+    htmlElement(
+      screen
+        .getByRole("button", { name: "Re-read Inventory" })
+        .closest("[data-band='2']"),
+    );
+  // Each fact as `label value`, in reading order.
+  const facts = () =>
+    Array.from(
+      band2().querySelectorAll("dl > div"),
+      (fact) =>
+        `${fact.querySelector("dt")?.textContent} ${fact.querySelector("dd")?.textContent}`,
+    );
+  const NOW = new Date("2026-10-10T12:00:00.000Z");
+  const minutesAgo = (minutes: number) => NOW.getTime() - minutes * 60_000;
+
+  it("reads Origin, Released, Skills and Read, with Origin linked to the Harness on GitHub", () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    stubPendingFetch();
+    renderView({ reads: [{ at: minutesAgo(4), failed: false }] });
+
+    expect(facts()).toEqual([
+      "Origin github.com/acme/harness",
+      "Released v1.4.0",
+      "Skills 2",
+    ]);
+    expect(
+      within(band2()).getByRole("link", { name: /github\.com\/acme\/harness/ }),
+    ).toHaveAttribute("href", "https://github.com/acme/harness");
+    expect(within(band2()).getByText("Read 4 min ago")).toBeInTheDocument();
+    // The count left band 1, which keeps the title alone.
+    expect(screen.queryByText("2 skills")).not.toBeInTheDocument();
+  });
+
+  it("counts the skills a search leaves as X of N", async () => {
+    stubPendingFetch();
+    renderView();
+
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: "Search the Inventory" }),
+      "cave",
+    );
+
+    expect(facts()).toContain("Skills 1 of 2");
+  });
+
+  it("reads Unknown for an unreadable Harness, and Not released yet where it has no release", () => {
+    stubPendingFetch();
+    const view = renderView({ harness: null });
+    expect(facts()).toEqual(["Origin Unknown", "Released Unknown", "Skills 2"]);
+
+    view.rerender(
+      <InventoryView
+        {...baseProps}
+        harness={{ origin: "github.com/acme/harness", latestRelease: null }}
+      />,
+    );
+    expect(facts()).toEqual([
+      "Origin github.com/acme/harness",
+      "Released Not released yet",
+      "Skills 2",
+    ]);
+  });
+
+  it("drops Origin, then Released, on a narrow band; Skills and Read stay", () => {
+    stubPendingFetch();
+    const reportWidth = stubResizeObserver();
+    renderView();
+    const labels = () => facts().map((fact) => fact.split(" ")[0]);
+
+    act(() => reportWidth(70 * 16));
+    expect(labels()).toEqual(["Origin", "Released", "Skills"]);
+    act(() => reportWidth(50 * 16));
+    expect(labels()).toEqual(["Released", "Skills"]);
+    act(() => reportWidth(30 * 16));
+    expect(labels()).toEqual(["Skills"]);
+    expect(within(band2()).getByText("Not read yet")).toBeInTheDocument();
+  });
+
+  describe("Read", () => {
+    const read = (reads: Props["reads"]) => {
+      vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+      stubPendingFetch();
+      renderView({ reads });
+      return within(band2());
+    };
+
+    it("dates the oldest of the skills read and the target reads", () => {
+      expect(
+        read([
+          { at: minutesAgo(2), failed: false },
+          { at: minutesAgo(9), failed: false },
+          { at: new Date(minutesAgo(5)).toISOString(), failed: false },
+        ]).getByText("Read 9 min ago"),
+      ).toBeInTheDocument();
+    });
+
+    it("says Not read yet while any reading has not answered", () => {
+      expect(
+        read([
+          { at: minutesAgo(2), failed: false },
+          { at: 0, failed: false },
+        ]).getByText("Not read yet"),
+      ).toBeInTheDocument();
+    });
+
+    it("says Read failed — never read where a failed reading never answered", () => {
+      expect(
+        read([
+          { at: minutesAgo(2), failed: false },
+          { at: 0, failed: true },
+        ]).getByText("Read failed — never read"),
+      ).toBeInTheDocument();
+    });
+
+    it("dates a failed reading's last answer", () => {
+      expect(
+        read([
+          { at: minutesAgo(2), failed: false },
+          { at: minutesAgo(30), failed: true },
+        ]).getByText("Read failed — last read 30 min ago"),
+      ).toBeInTheDocument();
+    });
   });
 });
 

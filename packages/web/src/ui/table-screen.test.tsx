@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { htmlElement } from "../test-utils";
+import { htmlElement, stubResizeObserver } from "../test-utils";
 import type { Band } from "./band";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
@@ -113,33 +113,6 @@ const region = () =>
 const grid = () => screen.getByRole("grid", { name: "Fruit table" });
 const reread = () => screen.getByRole("button", { name: "Re-read Fruit" });
 
-let reportWidth: (px: number) => void = () => {};
-
-// Every observer hears the width; the table's own column fitting is not read here.
-function stubResizeObserver() {
-  const callbacks: (() => void)[] = [];
-  let width = 0;
-  reportWidth = (px) => {
-    width = px;
-    for (const each of callbacks) each();
-  };
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      constructor(callback: ResizeObserverCallback) {
-        callbacks.push(() =>
-          callback(
-            [{ contentRect: { width } } as ResizeObserverEntry],
-            this as unknown as ResizeObserver,
-          ),
-        );
-      }
-      observe() {}
-      disconnect() {}
-    },
-  );
-}
-
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -228,7 +201,7 @@ describe("TableScreen", () => {
     });
 
     it("drops whole facts in rank order as the band narrows, Read and unruled facts kept", () => {
-      stubResizeObserver();
+      const reportWidth = stubResizeObserver();
       render(<FruitScreen band={ORCHARD} />);
 
       act(() => reportWidth(50 * 16));
@@ -254,7 +227,7 @@ describe("TableScreen", () => {
     });
 
     it("never drops a fact before one of a lower rank", () => {
-      stubResizeObserver();
+      const reportWidth = stubResizeObserver();
       render(
         <FruitScreen
           band={{

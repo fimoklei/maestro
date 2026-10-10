@@ -24,19 +24,24 @@ import {
   NO_TARGET_REMOVABLE,
   NO_TOOL_DETECTED_CAUSE,
   NOT_DEPLOYED_ANYWHERE,
+  NOT_RELEASED_YET,
+  ORIGIN_FACT,
   PINNED_LOCAL_CHANGES_NEXT_STEP,
+  RELEASED_FACT,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
   SELECT_ALL_LABEL,
+  SKILLS_FACT,
   SOME_TARGETS_NOT_READ,
-  shownSkillsMeta,
   skillStateLine,
+  skillsFactValue,
   stageRowLabel,
   TARGETS_LOADING,
   TARGETS_STILL_CHECKING,
   targetsWithoutLocalEditsNotice,
   toDeployLegend,
+  UNKNOWN_FACT_VALUE,
   UP_TO_DATE_NOTE,
   upToDateLegend,
 } from "./inventory-copy";
@@ -58,11 +63,17 @@ describe("Inventory copy", () => {
     });
   });
 
-  it("counts the skills a search or filter shows against all of them", () => {
-    expect(shownSkillsMeta(34, 34)).toBe("34 skills");
-    expect(shownSkillsMeta(1, 1)).toBe("1 skill");
-    expect(shownSkillsMeta(0, 34)).toBe("0 of 34 skills");
-    expect(shownSkillsMeta(1, 34)).toBe("1 of 34 skills");
+  it("counts the skills a search or filter shows against all of them in band 2's Skills fact", () => {
+    expect(SKILLS_FACT).toBe("Skills");
+    expect(skillsFactValue(34, 34)).toBe("34");
+    expect(skillsFactValue(0, 34)).toBe("0 of 34");
+    expect(skillsFactValue(1, 34)).toBe("1 of 34");
+  });
+
+  it("names the Harness facts in band 2 and says what is not known", () => {
+    expect([ORIGIN_FACT, RELEASED_FACT]).toEqual(["Origin", "Released"]);
+    expect(UNKNOWN_FACT_VALUE).toBe("Unknown");
+    expect(NOT_RELEASED_YET).toBe("Not released yet");
   });
 
   it("names a row's checkbox after its skill", () => {

@@ -43,7 +43,7 @@ export function BandRow({
   children,
 }: {
   band: Band | undefined;
-  /** In place of the facts and Read on a screen without a band. */
+  /** Before the facts and Read, such as Inventory's search. */
   lead: ReactNode;
   /** The controls, right-aligned. */
   children: ReactNode;
@@ -54,9 +54,8 @@ export function BandRow({
   return (
     // One tree with or without a band, so Re-read keeps its focus.
     <div ref={ref} className="flex min-w-0 flex-1 items-center gap-panel">
-      {band === undefined ? (
-        lead
-      ) : (
+      {lead}
+      {band === undefined ? null : (
         <>
           {/* Hidden once empty, so it takes no gap before Read. */}
           <dl className="m-0 flex min-w-0 items-center gap-panel text-row empty:hidden">

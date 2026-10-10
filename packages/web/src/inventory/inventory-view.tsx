@@ -1,4 +1,4 @@
-import type { SkillDeletionCheck } from "@maestro/core";
+import type { GitHubPage, SkillDeletionCheck } from "@maestro/core";
 import { Search, Table2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
@@ -13,6 +13,7 @@ import {
   UPDATE_TARGET,
   VIEW_DEPLOY_STATE,
 } from "../ui/control-labels";
+import { type Freshness, freshnessLine, NOT_READ_YET } from "../ui/freshness";
 import { Icon } from "../ui/icon";
 import { SelectionBar } from "../ui/selection-bar";
 import { TableScreen } from "../ui/table-screen";
@@ -38,14 +39,19 @@ import {
   NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
   NO_SKILLS_YET,
+  NOT_RELEASED_YET,
+  ORIGIN_FACT,
+  RELEASED_FACT,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
   SEARCH_LABEL,
   SELECT_ALL_LABEL,
+  SKILLS_FACT,
   STAGE_COLUMN_LABEL,
-  shownSkillsMeta,
+  skillsFactValue,
   stageRowLabel,
+  UNKNOWN_FACT_VALUE,
 } from "./inventory-copy";
 import {
   type SkillDeployment,
@@ -119,6 +125,32 @@ const STATUS_WORDS = [
   NOT_DEPLOYED,
 ].map((reading) => reading.word);
 
+/** The connected Harness's facts band 2 states. */
+export type HarnessFacts = {
+  origin: string;
+  github?: GitHubPage;
+  /** Null where the Harness has no release. */
+  latestRelease: string | null;
+};
+
+/** One reading behind the rows: when it last answered (0 or null: never), and whether its latest attempt failed. */
+export type Reading = { at: number | string | null; failed: boolean };
+
+// The oldest reading dates the line, and one that never answered is the
+// oldest of all; a failed reading turns it into the failed-read words.
+const readFreshness = (reads: readonly Reading[]): Freshness => {
+  const ats = reads.map((each) => each.at);
+  return {
+    readAt: ats.some((at) => !at) ? [] : ats,
+    outcome: reads.some((each) => each.failed) ? "fetch-failed" : "fetched",
+  };
+};
+
+// Band 2 widths in rem, tuned in `pnpm smoke`: Origin drops first, then
+// Released; Skills and Read never drop.
+const ORIGIN_DROP = { rank: 1, belowRem: 61 } as const;
+const RELEASED_DROP = { rank: 2, belowRem: 42 } as const;
+
 const BY_TYPE = {
   value: "type",
   label: "Type",
@@ -130,7 +162,8 @@ export function InventoryView({
   repos,
   registryReady,
   targets,
-  latestRelease,
+  harness,
+  reads,
   failure,
   reading,
   onReread,
@@ -146,8 +179,10 @@ export function InventoryView({
   // Every deploy target, for the per-row status and reach (#272). Empty until
   // reads resolve — the roll-up treats that as unconfirmed.
   targets: DeploymentTarget[];
-  /** The Harness's latest release: null where none exists, undefined until read. */
-  latestRelease: string | null | undefined;
+  /** The connected Harness: undefined until read, null where its read failed. */
+  harness: HarnessFacts | null | undefined;
+  /** Every reading the skills and their Status rest on: the skills read and each target read. */
+  reads: readonly Reading[];
   /** A failed read; the previous rows stay under it. */
   failure: ReadFailure | null;
   /** A read is running, shown or not. */
@@ -251,6 +286,10 @@ export function InventoryView({
 
   const matched = new Set(filterByName(rows, query).map((row) => row.name));
   const searched = (row: InventoryRow) => matched.has(row.name);
+  const shownNames = rows
+    .filter((row) => searched(row) && view.shown(row))
+    .map((row) => row.name);
+  const latestRelease = harness?.latestRelease;
 
   const targetItems = (deployment: SkillDeployment): ActionsMenuItem[] => {
     const { rowId } = deployment;
@@ -285,14 +324,43 @@ export function InventoryView({
   return (
     <TableScreen
       state={state}
-      meta={
-        primitives === undefined
-          ? undefined
-          : shownSkillsMeta(
-              rows.filter((row) => searched(row) && view.shown(row)).length,
-              all.length,
-            )
-      }
+      band={{
+        facts: [
+          ...(harness === undefined
+            ? []
+            : [
+                {
+                  label: ORIGIN_FACT,
+                  value: harness?.origin ?? UNKNOWN_FACT_VALUE,
+                  github: harness?.github,
+                  machine: harness !== null,
+                  drop: ORIGIN_DROP,
+                },
+                {
+                  label: RELEASED_FACT,
+                  value:
+                    harness === null
+                      ? UNKNOWN_FACT_VALUE
+                      : (harness.latestRelease ?? NOT_RELEASED_YET),
+                  machine: harness?.latestRelease != null,
+                  drop: RELEASED_DROP,
+                },
+              ]),
+          ...(primitives === undefined
+            ? []
+            : [
+                {
+                  label: SKILLS_FACT,
+                  value: skillsFactValue(shownNames.length, all.length),
+                  machine: false,
+                },
+              ]),
+        ],
+        read: {
+          sentence: freshnessLine(readFreshness(reads), now) ?? NOT_READ_YET,
+          attention: false,
+        },
+      }}
       lead={
         <div className="relative min-w-0 max-w-60 flex-1">
           <Icon
@@ -348,12 +416,7 @@ export function InventoryView({
         staged.size > 0 ? (
           <SelectionBar
             count={staged.size}
-            hiddenCount={hiddenStagedCount(
-              staged,
-              rows
-                .filter((row) => searched(row) && view.shown(row))
-                .map((row) => row.name),
-            )}
+            hiddenCount={hiddenStagedCount(staged, shownNames)}
             onClear={() => setStaged(new Set())}
           >
             <BulkDeployAction

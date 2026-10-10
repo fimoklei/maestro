@@ -46,7 +46,7 @@ export interface TableScreenProps<T extends RowData> {
   groups?: DataTableProps<T>["groups"];
   /** Band 2's facts and Read, which narrow with the band. */
   band?: Band;
-  /** Band 2's left side where the screen has no `band` yet. */
+  /** Band 2's left edge, before the band's facts and Read. */
   lead?: ReactNode;
   /** The screen's own re-read is running: Re-read spins. */
   rereading: boolean;

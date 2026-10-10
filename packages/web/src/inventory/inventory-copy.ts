@@ -105,11 +105,14 @@ export const NO_FILTER_MATCH = {
   description: `Select ${CLEAR_FILTERS} to see every skill.`,
 };
 
-// Band 1's count once a search or filter hides a skill.
-export const shownSkillsMeta = (shown: number, total: number): string => {
-  const skills = `${total} ${total === 1 ? "skill" : "skills"}`;
-  return shown === total ? skills : `${shown} of ${skills}`;
-};
+// Band 2's facts (#1480): the Harness the skills come from, and their count.
+export const ORIGIN_FACT = "Origin";
+export const RELEASED_FACT = "Released";
+export const SKILLS_FACT = "Skills";
+export const UNKNOWN_FACT_VALUE = "Unknown";
+/** The Skills fact: `X of N` once a search or filter hides a skill. */
+export const skillsFactValue = (shown: number, total: number): string =>
+  shown === total ? `${total}` : ofTotal(shown, total);
 
 // The row's hover card and detail pane (#1041).
 export const deployedToLine = (count: number): string =>
