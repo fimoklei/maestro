@@ -49,6 +49,8 @@ Confirmed patterns. Apply as rules. Newest on top.
 
 Single observations. Consider but do not auto-apply. Promote to Active on reconfirmation.
 
+- **2026-10-11 · tooling/path-scoped-rules-load-on-touch** — A `.claude/rules` file with `paths:` loads the first time a Read *or* Write touches a matching file, with no read instruction (Claude Code 2.1.296): `app.tsx` → `comments`, `copy`, `frontend`, `design`; `app.test.tsx` adds `testing`; `deploy/apm-cli-driver.ts` → `comments`, `apm-driver`; `scripts/bootstrap.mjs` → `comments`, `scripts`. Proof is the transcript's `nested_memory` attachments, not the agent's self-report. Codex loads none of them. → Never tell Claude Code to read a rule file; keep the task pointers in `CODING_STANDARDS.md` for Codex.
+
 - **2026-10-05 · web/split-sentence-escapes-getbytext** — Once a name renders in its own element (`InlineName`), `getByText("whole sentence")` finds nothing, and `queryByText` of it passes vacuously. → Query a sentence with `sentence("…")` from `test-utils.tsx`; never leave a negative `queryByText` on a split sentence.
 - **2026-09-26 · web/svg-use-needs-a-file-url** — Vite inlined the small logo SVG as a data URL; Chrome rendered `<use href="data:…#mark">` as an empty mark while component tests passed. → Import an external SVG referenced by `<use>` with `?no-inline` and verify the mark in a browser.
 - **2026-09-22 · tooling/agent-browser-default-session-is-shared** — Every worktree drives the same default `agent-browser` browser; another session moved the tab to its cockpit mid-check, and `pnpm smoke:check` stayed green. → Use `agent-browser --session <worktree-name>`; check `get url` names this worktree's port before each screenshot.

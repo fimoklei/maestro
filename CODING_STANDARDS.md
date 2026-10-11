@@ -8,7 +8,10 @@ The entrypoint for writing and reviewing code. The standards live in
 
 ## Rule files by task
 
-Read the file before starting the task.
+Claude Code loads these files by itself: `architecture.md` and `security.md` at
+launch, every other file once you read or write a file its `paths:` matches. Do
+not read them again. In a tool without that loading, such as Codex, read the
+file for the task before starting it.
 
 - Touching package boundaries (core/server/web), or designing a module, port or interface → `architecture.md`; for a design, also the `codebase-design` skill
 - Writing or running tests, or `pnpm verify` → `testing.md`
