@@ -323,6 +323,47 @@ describe("a name or machine value written straight into JSX text", () => {
   });
 });
 
+// A `<Fact>` whose value is a bare name is set in the UI font: a fact is mono
+// unless told otherwise. A composite value (`maestro/${skill}`) is a machine value.
+const bareNameFacts = (text: string) =>
+  [...text.matchAll(/<Fact\b[^>]*?\bvalue=\{([^{}]*)\}[^>]*?\/?>/gs)]
+    .filter(
+      ([whole, expr = ""]) =>
+        /^[\w.]+$/.test(expr) &&
+        NAME.test(expr) &&
+        !machineShaped(expr) &&
+        !whole.includes("machine={false}"),
+    )
+    .map(([whole]) => whole.replace(/\s+/g, " "));
+
+describe("a name shown as a fact's value", () => {
+  it("is found by the scan", () => {
+    expect(
+      bareNameFacts('<Fact label="Skill" value={skill} wrap />'),
+    ).toHaveLength(1);
+  });
+
+  it("leaves set-in-UI-font names and machine values alone", () => {
+    expect(
+      bareNameFacts(
+        `<Fact label="Skill" value={skill} wrap machine={false} />\n<Fact label="Branch" value={\`maestro/\${skill}\`} />\n<Fact label="Folder" value={folder} />`,
+      ),
+    ).toEqual([]);
+  });
+
+  it("is never set in mono", () => {
+    const mono = sources
+      .filter((file) => file.endsWith(".tsx"))
+      .flatMap((file) =>
+        bareNameFacts(readFileSync(join(SRC, file), "utf8")).map(
+          (fact) => `${file}: ${fact}`,
+        ),
+      );
+
+    expect(mono).toEqual([]);
+  });
+});
+
 const deletionDialog = (
   mode: ComponentProps<typeof DeletionDialog>["mode"],
 ) => (
