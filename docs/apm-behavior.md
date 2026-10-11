@@ -307,6 +307,9 @@ shape unchanged since 0.26.0:
 
 - Tag-pinned, newer tag exists → row `Current v0.5.0 | Latest v0.6.0 |
   Status outdated | Source git tags`.
+- Root package (repository-root ref) → one row for the whole package, named
+  by the repository's last segment (`maestro-fixture-harness`); never a row
+  per selected skill (0.32.0, `pnpm smoke:ready --scenario behind`).
 - Local-path dep → `No remote dependencies to check` (drift impossible —
   ADR-0003's reason to forbid local paths).
 - Git unpinned → `All dependencies are up-to-date` (tracks the branch, not

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
+import { readyView } from "../test-utils";
 import { bulkRemoveTargets } from "./bulk-remove-targets";
 import type { DeploymentTarget } from "./deployed-rollup";
 import type { DeployTarget } from "./use-deploy-skill";
@@ -15,7 +16,7 @@ const ready = (
   pending: undefined,
   label,
   target,
-  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+  deployed: readyView(names),
   primitives: names.map((name) => ({
     type: "skill" as const,
     name,

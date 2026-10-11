@@ -26,6 +26,7 @@ const target = (
     names: [name],
     skippedCount: 0,
     attentionCount: 0,
+    followsRelease: false,
   },
   primitives: [{ type: "skill", name, version: "v1.0.0", copy }],
   drift,

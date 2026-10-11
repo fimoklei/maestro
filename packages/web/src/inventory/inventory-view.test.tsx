@@ -10,6 +10,7 @@ import {
   jsonResponse,
   measureAs,
   openFootMenu,
+  readyView,
   renderWithQuery,
   sentence,
   stubResizeObserver,
@@ -58,7 +59,7 @@ const deployedTo = (
   pending: undefined,
   label: "",
   target: { kind: "global" },
-  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+  deployed: readyView(names),
   primitives: names.map((name) => ({
     type: "skill" as const,
     name,
@@ -1317,7 +1318,7 @@ const onRepo = (
   pending: undefined,
   label: repoPath.split("/").at(-1) ?? repoPath,
   target: { kind: "repo", repoPath },
-  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+  deployed: readyView(names),
   primitives: names.map((name) => ({
     type: "skill" as const,
     name,

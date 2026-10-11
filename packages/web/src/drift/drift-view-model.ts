@@ -132,10 +132,13 @@ function fromDriftView(view: DriftView): DriftViewModel {
             return { state: "unknown", behindCount: 0 };
           case "ready": {
             const names = new Set(deployed.names);
-            const hasNoLongerReleased = view.behind.some(
-              (entry) =>
-                entry.reading === "no-longer-released" && names.has(entry.name),
-            );
+            const hasNoLongerReleased =
+              !deployed.followsRelease &&
+              view.behind.some(
+                (entry) =>
+                  entry.reading === "no-longer-released" &&
+                  names.has(entry.name),
+              );
             if (hasNoLongerReleased) {
               return { state: "attention", behindCount: 0 };
             }

@@ -1,6 +1,7 @@
 import type { ReadDriftEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
+import { readyView } from "../test-utils";
 import { chosenBulkDeployTargets } from "./bulk-deploy-targets";
 
 function drift(behind: ReadDriftEntry[] = []) {
@@ -52,20 +53,10 @@ describe("chosenBulkDeployTargets", () => {
 
     expect(targets).toHaveLength(2);
     expect(targets[0]).toMatchObject({
-      deployed: {
-        status: "ready",
-        names: ["tdd"],
-        skippedCount: 0,
-        attentionCount: 0,
-      },
+      deployed: readyView(["tdd"]),
     });
     expect(targets[1]).toMatchObject({
-      deployed: {
-        status: "ready",
-        names: [],
-        skippedCount: 0,
-        attentionCount: 0,
-      },
+      deployed: readyView([]),
     });
   });
 
@@ -175,12 +166,7 @@ describe("chosenBulkDeployTargets", () => {
       {
         label: "/repo",
         target: { kind: "repo", repoPath: "/dev/acme-web" },
-        deployed: {
-          status: "ready",
-          names: ["tdd"],
-          skippedCount: 0,
-          attentionCount: 0,
-        },
+        deployed: readyView(["tdd"]),
         primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
         drift: d,
       },

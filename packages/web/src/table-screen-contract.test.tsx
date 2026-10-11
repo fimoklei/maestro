@@ -29,6 +29,7 @@ import {
   htmlElement,
   jsonResponse,
   measureAs,
+  readyView,
   renderWithQuery,
 } from "./test-utils";
 
@@ -247,12 +248,7 @@ const renderInventoryRow = () => {
           pending: undefined,
           label: "Claude Code",
           target: { kind: "global" },
-          deployed: {
-            status: "ready",
-            names: ["tdd"],
-            skippedCount: 0,
-            attentionCount: 0,
-          },
+          deployed: readyView(["tdd"]),
           primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
           drift: driftViewModel({ data: { behind: [] }, isError: false }),
         },

@@ -135,7 +135,9 @@ export function globalRows(
     const indicator = readFailed
       ? "unknown"
       : withOtherOrigins(
-          toolDrift.targetIndicator(globalToolView(names, data.skipped)),
+          toolDrift.targetIndicator(
+            globalToolView(names, data.skipped, group.releaseHead),
+          ),
           data.otherOrigins,
         );
     return {

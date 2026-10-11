@@ -18,17 +18,22 @@ export type DeployedView =
       names: string[];
       skippedCount: number;
       attentionCount: number;
+      // Update target removes a dropped skill from a target that follows one
+      // release, so No longer released needs no hand there.
+      followsRelease: boolean;
     };
 
 export function globalToolView(
   names: string[],
   skipped: readonly SkippedEntry[],
+  releaseHead: ReleaseHead | undefined,
 ): DeployedView {
   return {
     status: "ready",
     names,
     skippedCount: 0,
     attentionCount: skipped.filter(skippedNeedsAttention).length,
+    followsRelease: releaseHead !== undefined,
   };
 }
 
@@ -66,5 +71,6 @@ export function toDeployedView(deployState: DeployStateRead): DeployedView {
     skippedCount: deployState.data.skipped.length,
     attentionCount: deployState.data.skipped.filter(skippedNeedsAttention)
       .length,
+    followsRelease: deployState.data.releaseHead !== undefined,
   };
 }

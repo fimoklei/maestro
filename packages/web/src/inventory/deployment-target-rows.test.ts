@@ -28,6 +28,7 @@ describe("globalToolTargets", () => {
           names: ["tdd"],
           skippedCount: 0,
           attentionCount: 0,
+          followsRelease: false,
         },
         primitives: [skill],
         drift: expect.anything(),
@@ -89,6 +90,7 @@ describe("repoTarget", () => {
       names: ["tdd"],
       skippedCount: 1,
       attentionCount: 1,
+      followsRelease: false,
     });
   });
 

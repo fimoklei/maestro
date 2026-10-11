@@ -1,8 +1,16 @@
-import type { DeployedPrimitive, SkippedEntry } from "@maestro/core";
+import type {
+  DeployedPrimitive,
+  ReleaseHead,
+  SkippedEntry,
+} from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { toDeployedView } from "./deployed-view";
 
-type Response = { primitives: DeployedPrimitive[]; skipped: SkippedEntry[] };
+type Response = {
+  primitives: DeployedPrimitive[];
+  skipped: SkippedEntry[];
+  releaseHead?: ReleaseHead;
+};
 
 const query = (state: {
   data?: Response;
@@ -35,7 +43,29 @@ describe("toDeployedView", () => {
       names: ["tdd"],
       skippedCount: 0,
       attentionCount: 0,
+      followsRelease: false,
     });
+  });
+
+  it("marks a target with a release head as following one release", () => {
+    expect(
+      toDeployedView(
+        query({
+          data: {
+            primitives: [skill("tdd")],
+            skipped: [],
+            releaseHead: {
+              release: "v1.1.0",
+              latestRelease: "v2.0.0",
+              selection: ["tdd"],
+              selected: 1,
+              changed: null,
+              comparedAt: null,
+            },
+          },
+        }),
+      ),
+    ).toMatchObject({ followsRelease: true });
   });
 
   it("maps an empty deployment to ready with no names, not pending", () => {
@@ -46,6 +76,7 @@ describe("toDeployedView", () => {
       names: [],
       skippedCount: 0,
       attentionCount: 0,
+      followsRelease: false,
     });
   });
 
@@ -61,6 +92,7 @@ describe("toDeployedView", () => {
       names: [],
       skippedCount: 1,
       attentionCount: 0,
+      followsRelease: false,
     });
   });
 

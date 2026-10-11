@@ -157,6 +157,28 @@ describe("readCockpit agrees with the Deploy-state screen", () => {
       },
     ],
     [
+      "pinned per skill, local edits beside a skill no longer released",
+      {
+        deployState: {
+          primitives: [
+            skill("code-review", { copy: "local-edits" }),
+            skill("release-notes"),
+          ],
+          skipped: [],
+          pinnedPerSkill: [{ release: "v1.1.0", skills: 2 }],
+        },
+        drift: {
+          behind: [
+            {
+              name: "release-notes",
+              latest: "v2.0.0",
+              reading: "no-longer-released",
+            },
+          ],
+        },
+      },
+    ],
+    [
       "unverified copy",
       {
         deployState: {
