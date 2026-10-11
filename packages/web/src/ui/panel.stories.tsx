@@ -28,14 +28,12 @@ export const OneBand: Story = {};
 
 export const WithPrimaryAction: Story = {
   args: {
-    meta: "12 targets",
     action: <Button variant="primary">Deploy skill</Button>,
   },
 };
 
 export const TwoBands: Story = {
   args: {
-    meta: "12 targets",
     action: <Button variant="primary">Deploy skill</Button>,
     band2: (
       <>

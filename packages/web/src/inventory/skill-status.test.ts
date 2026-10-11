@@ -3,7 +3,13 @@ import { skillMark } from "../deploy-state/skill-mark";
 import { unfinishedReading } from "../deploy-state/target-status";
 import type { DeployedRollup } from "./deployed-rollup";
 import type { SkillDeployment } from "./skill-deployments";
-import { skillState, skillStatus, targetReading } from "./skill-status";
+import {
+  SKILL_CHIPS,
+  skillState,
+  skillStatus,
+  targetReading,
+  UP_TO_DATE,
+} from "./skill-status";
 
 const rollup = (over: Partial<DeployedRollup>): DeployedRollup => ({
   targetCount: 0,
@@ -197,5 +203,16 @@ describe("skillState", () => {
     expect(
       skillState(rollup({ targetCount: 1, unreadable: true }), [], "v1.4.0"),
     ).toBeNull();
+  });
+});
+
+describe("SKILL_CHIPS", () => {
+  it("offers Unknown as failed, then Local edits and Behind as attention, worst first", () => {
+    expect(SKILL_CHIPS).toEqual([
+      { word: "Unknown", family: "failed", covers: ["Unknown"] },
+      { word: "Local edits", family: "attention", covers: ["Local edits"] },
+      { word: "Behind", family: "attention", covers: ["Behind"] },
+    ]);
+    expect(UP_TO_DATE.word).toBe("Up to date");
   });
 });

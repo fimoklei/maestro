@@ -1,19 +1,24 @@
+import { Clock, X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
+import { READ_AGE_NAME } from "./band-copy";
 import { BandFact, type BandFactProps } from "./band-fact";
+import { type BandSummaryInput, bandSummary } from "./band-summary";
 import { cn } from "./cn";
 import { SearchBox } from "./search-box";
+import { Separator } from "./separator";
 import { STATUS_TOKENS } from "./status-family";
+import { useNow } from "./use-now";
 import { useWidthRem } from "./use-width-rem";
 
 /** Drops the fact while band 2 is narrower than `belowRem`; rank 1 drops first. */
 type FactDrop = { rank: 1 | 2 | 3; belowRem: number };
 
-// The search's rule ranks above every fact rank, so it applies last.
-type DropRule = { rank: FactDrop["rank"] | "search"; belowRem: number };
-const order = (rank: DropRule["rank"]) =>
-  rank === "search" ? Number.POSITIVE_INFINITY : rank;
+// The order band 2 gives way in: labels, facts by rank, the search, then the counts.
+const ORDER = { labels: 0, 1: 1, 2: 2, 3: 3, search: 4, counts: 5 } as const;
+type DropRule = { rank: keyof typeof ORDER; belowRem: number };
+const order = (rank: DropRule["rank"]) => ORDER[rank];
 
-type BandFactItem = BandFactProps & {
+type BandFactItem = Omit<BandFactProps, "labelHidden"> & {
   /** None: the fact never drops. */
   drop?: FactDrop;
 };
@@ -27,12 +32,15 @@ type BandSearch = {
   iconBelowRem: number;
 };
 
-/** Band 2: the facts in order, then Read, which never drops; an optional search on the right. */
+/** Band 2: the summary, the facts in order, then the read age; an optional search on the right. */
 export type Band = {
+  summary: BandSummaryInput;
   facts: readonly BandFactItem[];
-  /** The freshness line; `attention` marks it amber. */
-  read: { sentence: string; attention: boolean };
   search?: BandSearch;
+  /** Band width in rem below which the facts show icon and value only. */
+  labelsBelowRem: number;
+  /** Band width in rem below which the counts hide; the dot and read age stay. */
+  countsBelowRem: number;
 };
 
 // A rule applies while the band is narrower than it, and also while any rule of
@@ -48,7 +56,7 @@ const applies = (
     (other) => order(other.rank) >= order(rule.rank) && width < other.belowRem,
   );
 
-/** Band 2: facts and Read on the left; the search, then the screen's controls, on the right. */
+/** Band 2: summary, facts and read age on the left; the search, then the screen's controls, on the right. */
 export function BandRow({
   band,
   children,
@@ -60,39 +68,107 @@ export function BandRow({
   const ref = useRef<HTMLDivElement>(null);
   // The band's own width, not the window's: the sidebar takes its share.
   const width = useWidthRem(ref, (element) => element);
-  const searchRule: DropRule | undefined =
-    band?.search === undefined
-      ? undefined
-      : { rank: "search", belowRem: band.search.iconBelowRem };
-  const rules: DropRule[] = [
-    ...(band?.facts ?? []).flatMap((fact) =>
-      fact.drop === undefined ? [] : [fact.drop],
-    ),
-    ...(searchRule === undefined ? [] : [searchRule]),
-  ];
+  const now = useNow();
+  const summary = band === undefined ? null : bandSummary(band.summary, now);
+  const searchRule: DropRule | undefined = band?.search && {
+    rank: "search",
+    belowRem: band.search.iconBelowRem,
+  };
+  const labelsRule: DropRule | undefined = band && {
+    rank: "labels",
+    belowRem: band.labelsBelowRem,
+  };
+  const countsRule: DropRule | undefined = band && {
+    rank: "counts",
+    belowRem: band.countsBelowRem,
+  };
+  const rules = [
+    labelsRule,
+    countsRule,
+    ...(band?.facts ?? []).map((fact) => fact.drop),
+    searchRule,
+  ].filter((rule): rule is DropRule => rule !== undefined);
+  const facts = (band?.facts ?? []).filter(
+    (fact) => !applies(fact.drop, rules, width),
+  );
+  const labelHidden = applies(labelsRule, rules, width);
+  const countsHidden = applies(countsRule, rules, width);
   return (
     // One tree with or without a band, so Re-read keeps its focus.
     <div ref={ref} className="flex min-w-0 flex-1 items-center gap-panel">
-      {band === undefined ? null : (
+      {summary === null ? null : (
         <>
-          {/* Hidden once empty, so it takes no gap before Read. */}
-          <dl className="m-0 flex min-w-0 items-center gap-panel text-row empty:hidden">
-            {band.facts
-              .filter((fact) => !applies(fact.drop, rules, width))
-              .map(({ drop: _drop, ...fact }) => (
-                <BandFact key={fact.label} {...fact} />
-              ))}
-          </dl>
-          <span
-            className={cn(
-              "flex-none whitespace-nowrap text-meta",
-              band.read.attention
-                ? STATUS_TOKENS.attention.ink
-                : "text-gray-11",
+          <span className="flex flex-none items-center gap-inline whitespace-nowrap text-row text-gray-11">
+            <span
+              aria-hidden="true"
+              className={cn(
+                "size-2 flex-none rounded-full",
+                STATUS_TOKENS[summary.family].dot,
+              )}
+            />
+            {summary.word === null ? null : <span>{summary.word}</span>}
+            {summary.counts.map(({ word, count, filter }) =>
+              // A hidden count stays for screen readers, never as an unseen button.
+              countsHidden || filter === undefined ? (
+                <span
+                  key={word}
+                  data-count
+                  className={cn(countsHidden && "sr-only")}
+                >{`${word} ${count}`}</span>
+              ) : (
+                <button
+                  key={word}
+                  data-count
+                  type="button"
+                  aria-pressed={filter.pressed}
+                  onClick={filter.onToggle}
+                  className={cn(
+                    "flex items-center gap-tight rounded-chip border px-1.5",
+                    filter.pressed
+                      ? "border-gray-7 bg-gray-5"
+                      : "border-transparent bg-gray-3 hover:bg-gray-4",
+                  )}
+                >
+                  {`${word} ${count}`}
+                  {filter.pressed ? (
+                    <X
+                      aria-hidden="true"
+                      strokeWidth={1.5}
+                      className="size-3"
+                    />
+                  ) : null}
+                </button>
+              ),
             )}
-          >
-            {band.read.sentence}
           </span>
+          {facts.length === 0 ? null : (
+            <>
+              <Separator />
+              <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
+                {facts.map(({ drop: _drop, ...fact }) => (
+                  <BandFact
+                    key={fact.label}
+                    {...fact}
+                    labelHidden={labelHidden}
+                  />
+                ))}
+              </dl>
+            </>
+          )}
+          {summary.age === null ? null : (
+            <>
+              <Separator />
+              <span className="flex flex-none items-center gap-tight whitespace-nowrap text-gray-11 text-meta">
+                <Clock
+                  role="img"
+                  aria-label={READ_AGE_NAME}
+                  strokeWidth={1.5}
+                  className="size-3"
+                />
+                {summary.age}
+              </span>
+            </>
+          )}
         </>
       )}
       {/* The search sits in this row, not a group, so it gives way before a fact is cut. */}

@@ -24,7 +24,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Band 2: Origin, Released and Branch, then the freshness line (#994).
+// Band 2: Origin, Release and Branch, then the freshness line (#994).
 const band2 = async () =>
   (await screen.findByRole("button", { name: "Re-read Harness" })).closest(
     '[data-band="2"]',
@@ -179,7 +179,7 @@ describe("Harness home base", () => {
 
     await waitFor(async () =>
       expect(
-        within(await stripFacts()).getByText("Read 4 min ago"),
+        within(await stripFacts()).getByText("4 min ago"),
       ).toBeInTheDocument(),
     );
     await waitFor(() =>
@@ -257,7 +257,7 @@ describe("Harness home base", () => {
     release();
     await waitFor(async () =>
       expect(
-        within(await stripFacts()).getByText("Read 4 min ago"),
+        within(await stripFacts()).getByText("4 min ago"),
       ).toBeInTheDocument(),
     );
     await waitFor(() =>
@@ -307,10 +307,15 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(
-      await screen.findByText("Offline — last read 1 h ago"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("last read 1 h ago")).toBeInTheDocument();
     expect(screen.queryByText(/read failed/i)).not.toBeInTheDocument();
+  });
+
+  it("reads Read failed in band 2 when the first read fails", async () => {
+    stubHarnessServer({ read: { body: {}, status: 500 } });
+    renderHarness();
+
+    expect(await band2()).toHaveTextContent("Read failed");
   });
 
   it("never turns a failed read into a permission gate", async () => {
@@ -325,9 +330,7 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(
-      await screen.findByText("Read failed — never read"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Read failed")).toBeInTheDocument();
     expect(
       screen.queryByText(/permission|not allowed|access denied/i),
     ).not.toBeInTheDocument();
@@ -378,13 +381,13 @@ describe("Harness home base", () => {
 
     await waitFor(async () =>
       expect(
-        within(await stripFacts()).getByText("Read 4 min ago"),
+        within(await stripFacts()).getByText("4 min ago"),
       ).toBeInTheDocument(),
     );
     releaseRead();
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     expect(
-      within(await stripFacts()).getByText("Read 4 min ago"),
+      within(await stripFacts()).getByText("4 min ago"),
     ).toBeInTheDocument();
   });
 
@@ -624,7 +627,7 @@ describe("Harness home base", () => {
     );
   });
 
-  it("states Origin, Released and Branch in band 2, beside the freshness line and Re-read Harness", async () => {
+  it("states Origin, Release and Branch in band 2, beside the freshness line and Re-read Harness", async () => {
     stubHarnessServer({
       read: {
         body: {
@@ -641,13 +644,13 @@ describe("Harness home base", () => {
     const band = await band2();
     for (const [label, value] of [
       ["Origin", "github.com/fimoklei/agent-harness"],
-      ["Released", "v0.5.0"],
+      ["Release", "v0.5.0"],
       ["Branch", "main"],
     ]) {
       expect(within(band).getByText(label as string)).toBeInTheDocument();
       expect(within(band).getByText(value as string)).toBeInTheDocument();
     }
-    expect(within(band).getByText("Read 4 min ago")).toBeInTheDocument();
+    expect(within(band).getByText("4 min ago")).toBeInTheDocument();
     expect(
       within(band).getByRole("button", { name: "Re-read Harness" }),
     ).toBeInTheDocument();

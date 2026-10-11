@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { bandSummary } from "../ui/band-summary";
 import {
   EMPTY_SENTENCE,
   EMPTY_TITLE,
   FOLDER_HINT,
+  REPOSITORIES_FACT,
   registerMessage,
+  repositoriesCounts,
   STATUS_READINGS,
   unregisterNotice,
   WRITE_PROMISE,
@@ -133,5 +136,38 @@ describe("unregisterNotice", () => {
       message:
         "The list did not change. Select Unregister repository to try again.",
     });
+  });
+});
+
+describe("repositoriesCounts", () => {
+  it("counts Folder missing as failed, Not a Git repository and Behind as attention, worst first", () => {
+    expect(
+      repositoriesCounts(
+        ["ready", "folder-missing", "not-a-git-repo", "not-a-git-repo"],
+        3,
+      ),
+    ).toEqual([
+      { word: "Folder missing", count: 1, family: "failed" },
+      { word: "Not a Git repository", count: 2, family: "attention" },
+      { word: "Behind", count: 3, family: "attention" },
+    ]);
+  });
+
+  it("turns the dot red for a missing folder even when others are behind", () => {
+    const now = new Date("2026-01-01T12:00:00Z");
+    expect(
+      bandSummary(
+        {
+          freshness: { readAt: [now.toISOString()], outcome: "fetched" },
+          healthy: "Ready",
+          counts: repositoriesCounts(["folder-missing"], 4),
+        },
+        now,
+      ).family,
+    ).toBe("failed");
+  });
+
+  it("names the band 2 fact Repositories", () => {
+    expect(REPOSITORIES_FACT).toBe("Repositories");
   });
 });

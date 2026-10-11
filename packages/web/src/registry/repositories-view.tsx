@@ -2,11 +2,12 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { repoRowId } from "../deploy-state/target-rows";
+import { isBehind, repoRowId } from "../deploy-state/target-rows";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { REGISTER_REPOSITORY } from "../ui/control-labels";
+import { queryReading, readFreshness, targetReadings } from "../ui/freshness";
 import { Icon } from "../ui/icon";
 import { named, phrase } from "../ui/phrase";
 import { TableScreen } from "../ui/table-screen";
@@ -21,7 +22,10 @@ import {
 import {
   EMPTY_SENTENCE,
   EMPTY_TITLE,
+  READY,
   REPOS_NOT_READ,
+  REPOSITORIES_FACT,
+  repositoriesCounts,
   SCREEN,
   STATUS_READINGS,
   unregisterNotice,
@@ -29,6 +33,11 @@ import {
 import { UnregisterDialog } from "./unregister-dialog";
 import { useRegisterDialog } from "./use-register-dialog";
 import { REGISTRY_KEY, useRegistry, useUnregisterRepo } from "./use-registry";
+
+// Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
+// counts; the dot and Read never drop.
+const LABELS_BELOW_REM = 46;
+const COUNTS_BELOW_REM = 42;
 
 export function RepositoriesView() {
   const navigate = useNavigate();
@@ -81,6 +90,10 @@ export function RepositoriesView() {
     github: deployStates[index]?.data?.github,
   }));
 
+  const behind = deployStates.filter((read) =>
+    isBehind(read.data?.releaseHead, read.data?.pendingOperation),
+  ).length;
+
   const onAction = (row: RepositoryRow, action: RepositoryAction) => {
     if (action === "view") {
       navigate("/", { state: { openTarget: repoRowId(row.path) } });
@@ -109,6 +122,32 @@ export function RepositoriesView() {
           {REGISTER_REPOSITORY}
         </Button>
       }
+      band={{
+        facts:
+          registry.data === undefined
+            ? []
+            : [
+                {
+                  label: REPOSITORIES_FACT,
+                  icon: <Icon of={FolderGit2} />,
+                  value: String(repos.length),
+                  machine: false,
+                },
+              ],
+        summary: {
+          freshness: readFreshness([
+            queryReading(registry),
+            ...targetReadings(deployStates),
+          ]),
+          healthy: READY,
+          counts: repositoriesCounts(
+            repos.map((repo) => repo.status),
+            behind,
+          ),
+        },
+        labelsBelowRem: LABELS_BELOW_REM,
+        countsBelowRem: COUNTS_BELOW_REM,
+      }}
       rereading={screen.reading}
       firstReadRows={8}
       rows={rows}
