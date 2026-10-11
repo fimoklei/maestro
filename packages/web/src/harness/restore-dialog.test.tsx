@@ -26,6 +26,14 @@ const renderDialog = (
   );
 
 describe("RestoreDialog", () => {
+  it("sets the skill name in the UI font, not mono", () => {
+    renderDialog();
+
+    const name = screen.getByText("research", { selector: "dd" });
+    expect(name).toHaveClass("font-ui");
+    expect(name).not.toHaveClass("font-mono");
+  });
+
   it("shares its verb with the confirm button", () => {
     renderDialog();
 

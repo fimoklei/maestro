@@ -55,7 +55,7 @@ export function DiscardDialog({
       </p>
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact label="Skill" value={skill} wrap />
+          <Fact label="Skill" value={skill} wrap machine={false} />
           <Fact label="Folder" value={folder} wrap />
           <Fact
             label="Default branch"
