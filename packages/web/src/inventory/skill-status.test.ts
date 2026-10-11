@@ -4,7 +4,7 @@ import { unfinishedReading } from "../deploy-state/target-status";
 import type { DeployedRollup } from "./deployed-rollup";
 import type { SkillDeployment } from "./skill-deployments";
 import {
-  skillCounts,
+  SKILL_CHIPS,
   skillState,
   skillStatus,
   targetReading,
@@ -206,11 +206,11 @@ describe("skillState", () => {
   });
 });
 
-describe("skillCounts", () => {
-  it("counts only Behind, as attention", () => {
-    expect(
-      skillCounts(["Behind", "Local edits", "Unknown", "Up to date", null]),
-    ).toEqual([{ word: "Behind", count: 1, family: "attention" }]);
+describe("SKILL_CHIPS", () => {
+  it("offers only Behind, as attention", () => {
+    expect(SKILL_CHIPS).toEqual([
+      { word: "Behind", family: "attention", covers: ["Behind"] },
+    ]);
     expect(UP_TO_DATE.word).toBe("Up to date");
   });
 });

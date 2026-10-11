@@ -42,7 +42,7 @@ import {
   repoRow,
   type TargetRow,
 } from "./target-rows";
-import { IN_SYNC, TARGET_STATUS_WORDS, targetCounts } from "./target-status";
+import { IN_SYNC, TARGET_CHIPS, TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { updateLabel } from "./update-target-copy";
 import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
@@ -260,7 +260,7 @@ export function DeployStateView() {
         summary: {
           freshness: reading,
           healthy: IN_SYNC.word,
-          counts: targetCounts(targets.map((row) => row.status?.word ?? null)),
+          counts: view.statusCounts(TARGET_CHIPS),
         },
         facts:
           isRead && !isColdStart
