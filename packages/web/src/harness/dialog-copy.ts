@@ -43,7 +43,6 @@ export const RELEASE_UNAVAILABLE = {
 // Import skill's Folder path, submitted empty.
 export const FOLDER_MISSING = "Enter the skill folder's absolute path.";
 
-// Inventory's blocked Delete skill gives the same reasons.
 export const DELETE_UNAVAILABLE = {
   checking: "checking your clone",
   failed: "clone not read",

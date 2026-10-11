@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { measureAs, sentence } from "../test-utils";
+import { measureAs, openFootMenu, sentence } from "../test-utils";
 import {
   harnessRegion,
   installHarnessHooks,
@@ -566,7 +566,11 @@ describe("Harness home base", () => {
         .getAllByRole("button")
         .map((button) => button.textContent)
         .filter((label) => label !== ""),
-    ).toEqual(["Propose change", "Delete skill"]);
+    ).toEqual(["Propose change", "⋯"]);
+    const foot = await openFootMenu(pane, "tdd");
+    expect(
+      foot.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Delete skill"]);
   });
 
   it("links a row's pull request number to GitHub, in a new tab", async () => {

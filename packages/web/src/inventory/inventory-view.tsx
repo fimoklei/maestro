@@ -2,7 +2,6 @@ import type { SkillDeletionCheck } from "@maestro/core";
 import { Table2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
-import { DELETE_UNAVAILABLE } from "../harness/dialog-copy";
 import { folderInClone } from "../harness/use-harness";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
@@ -90,22 +89,20 @@ export type CloneReading =
 const inClone = (clone: CloneReading, name: string) =>
   folderInClone(clone.kind === "read" ? clone.skills[name] : undefined);
 
-// Last, as a danger item; blocked with its reason while the clone cannot
-// take it.
-const deleteItem = (clone: CloneReading, name: string) => {
-  const reason =
-    clone.kind !== "read"
-      ? DELETE_UNAVAILABLE[clone.kind]
-      : inClone(clone, name) === null
-        ? DELETE_UNAVAILABLE["not-in-clone"]
-        : null;
-  return {
-    action: "delete" as const,
-    label: reason === null ? DELETE_SKILL : `${DELETE_SKILL} — ${reason}`,
-    danger: true,
-    disabled: reason !== null,
-  };
-};
+// Last, as a danger item. As on Harness, dim while the clone's read is
+// unsettled and omitted where the clone can never take it (#1485).
+const deleteItem = (clone: CloneReading, name: string) =>
+  clone.kind === "no-harness" ||
+  (clone.kind === "read" && inClone(clone, name) === null)
+    ? []
+    : [
+        {
+          action: "delete" as const,
+          label: DELETE_SKILL,
+          danger: true,
+          disabled: clone.kind !== "read",
+        },
+      ];
 
 // The row's ⋮ and the pane's foot open the same dialog per action (#1065).
 const rowDialog = (
@@ -239,7 +236,7 @@ export function InventoryView({
               },
             ]
           : []),
-        deleteItem(clone, primitive.name),
+        ...deleteItem(clone, primitive.name),
       ],
     };
   });

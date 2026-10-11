@@ -1,11 +1,13 @@
 import { ArrowUpRight } from "lucide-react";
-import { type ActionsMenuItem, orderedItems } from "./actions-menu";
+import { ActionsMenu, type ActionsMenuItem } from "./actions-menu";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { Icon } from "./icon";
+import { rowActionsLabel } from "./row-menu-copy";
 
-// The row's ⋮ items as buttons, at most one of them primary.
+// The row's ⋮ items as buttons, at most one of them primary; the danger items
+// sit behind one ⋯ at the foot's right end, so the foot fits one line (#1485).
 export type FootItem = ActionsMenuItem & {
   /** The accessible name where the label alone would not say what it acts on. */
   name?: string;
@@ -22,28 +24,26 @@ export const firstEnabled = (items: readonly FootItem[]): string | null =>
   )?.label ?? null;
 
 export function FootActions({
+  name,
   items,
   primary,
 }: {
+  /** What the pane shows, which names the ⋯ as the row's ⋮ is named. */
+  name: string;
   items: readonly FootItem[];
   /** The label of the one primary item, or null for none. */
   primary: string | null;
 }) {
-  const ordered = orderedItems(items);
+  const buttons = items.filter((item) => !item.danger);
+  const danger = items.filter((item) => item.danger);
   return (
     <>
-      {ordered.map((item) =>
+      {buttons.map((item) =>
         item.href === undefined ? (
           <Button
             key={item.label}
             size="md"
-            variant={
-              item.danger
-                ? "danger"
-                : item.label === primary
-                  ? "primary"
-                  : "quiet"
-            }
+            variant={item.label === primary ? "primary" : "quiet"}
             aria-label={item.name}
             busy={item.busy !== undefined}
             blocked={item.disabled}
@@ -67,6 +67,17 @@ export function FootActions({
           </a>
         ),
       )}
+      {danger.length > 0 ? (
+        <ActionsMenu
+          label={rowActionsLabel(name)}
+          items={danger}
+          trigger={
+            <Button size="icon" variant="quiet" className="ml-auto">
+              ⋯
+            </Button>
+          }
+        />
+      ) : null}
     </>
   );
 }

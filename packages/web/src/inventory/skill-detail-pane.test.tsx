@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
-import { sentence } from "../test-utils";
+import { openFootMenu, sentence } from "../test-utils";
 import type { FootItem } from "../ui/foot-actions";
 import type { SkillDeployment } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
@@ -416,7 +416,7 @@ describe("SkillDetailPane", () => {
     trigger.remove();
   });
 
-  it("puts the deploy and remove actions at the foot, after the reach they change", () => {
+  it("puts the deploy and remove actions at the foot, after the reach they change", async () => {
     // The foot of the pane (#992), so a long Deployed-to list never hides them.
     renderPane({
       deployments: [dep("Claude Code", "v1.0.0", "up-to-date")],
@@ -432,16 +432,18 @@ describe("SkillDetailPane", () => {
 
     const reach = screen.getByText("Claude Code");
     const deploy = screen.getByRole("button", { name: "Deploy skill" });
-    const remove = screen.getByRole("button", {
-      name: "Remove from all 2 targets",
-    });
+    const more = screen.getByRole("button", { name: "Actions for tdd" });
     const follows = (a: Element, b: Element) =>
       Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect(follows(reach, deploy)).toBe(true);
-    expect(follows(deploy, remove)).toBe(true);
-    // #1065: one primary, danger stays danger, 32px controls.
+    expect(follows(deploy, more)).toBe(true);
+    // #1065: one primary, 32px controls; #1485: the danger item behind the ⋯.
     expect(deploy).toHaveClass("bg-gray-12", "h-control");
-    expect(remove).toHaveClass("text-red-11", "h-control");
+    expect(more).toHaveClass("h-8");
+    const menu = await openFootMenu(pane(), "tdd");
+    expect(
+      menu.getByRole("menuitem", { name: "Remove from all 2 targets" }),
+    ).toHaveClass("text-red-11");
   });
 
   // #1066: the foot reads no coloured or mono status line, and no picker.
