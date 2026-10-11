@@ -21,6 +21,8 @@ Owning it at start does not settle it. → Run `pnpm smoke:check` before each sc
 
 `localStorage` is scoped to the origin, so a worktree keeps its own — but a value left by an earlier run of *this* worktree survives a restart and reads as a product bug. → Clear it before trusting: `agent-browser eval "localStorage.clear(); location.reload()"`.
 
+The default `agent-browser` session is shared by every worktree; another session can move its tab. → Drive this worktree's own session, `agent-browser --session maestro-<worktree folder>`. `pnpm cockpit:snapshot "<selector>" [path]` reads that session as trimmed text and prints its name and URL.
+
 ## Wrong signal: chained commands flake
 
 `pnpm test` run standalone is honest; chained behind `lint`/`typecheck` in one invocation has shown failures in files the diff never touched. → When `pnpm test` fails in untouched files, re-run it alone before calling it a regression. Don't chain `lint`/`typecheck`/`test` in one invocation when the result is about to become a green/red claim.
