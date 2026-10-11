@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { type Band, BandRow } from "./band";
 import type { BandCount } from "./band-summary";
 import type { Freshness } from "./freshness";
@@ -97,5 +98,35 @@ describe("BandRow", () => {
     renderBand(band({ readAt: [null], outcome: null }));
 
     expect(screen.queryByRole("img", { name: "Read" })).toBeNull();
+  });
+
+  it("makes a filtering count a button that toggles its filter", async () => {
+    const onToggle = vi.fn();
+    renderBand(
+      band(READ, [{ ...BEHIND, filter: { pressed: false, onToggle } }]),
+    );
+
+    const chip = screen.getByRole("button", { name: "Behind 4" });
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(chip);
+    expect(onToggle).toHaveBeenCalledOnce();
+  });
+
+  it("marks an active chip pressed, with a ×", () => {
+    renderBand(
+      band(READ, [
+        { ...BEHIND, filter: { pressed: true, onToggle: () => {} } },
+      ]),
+    );
+
+    const chip = screen.getByRole("button", { name: "Behind 4" });
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    expect(chip.querySelector("svg")).not.toBeNull();
+  });
+
+  it("keeps a count without a filter as plain text", () => {
+    renderBand(band(READ, [BEHIND]));
+
+    expect(screen.queryByRole("button", { name: "Behind 4" })).toBeNull();
   });
 });

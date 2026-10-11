@@ -13,6 +13,13 @@ export type BandCount = {
   word: string;
   count: number;
   family: "failed" | "attention";
+  /** Present only where the screen has a status filter. */
+  filter?: { pressed: boolean; onToggle: () => void };
+};
+
+/** A count chip a screen offers: its word, family, and the status words it covers. */
+export type StatusChip = Pick<BandCount, "word" | "family"> & {
+  covers: readonly string[];
 };
 
 /** What a screen states for band 2's summary: its reading, healthy word and counts, worst first. */
