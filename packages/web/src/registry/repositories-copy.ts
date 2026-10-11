@@ -1,5 +1,7 @@
 import type { RegisterError, RepoStatus } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { BEHIND } from "../deploy-state/target-status";
+import { type BandCount, countOf } from "../ui/band-summary";
 import { REGISTER_REPOSITORY, rereadLabel } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import {
@@ -32,6 +34,27 @@ export const STATUS_READINGS: Record<RepoStatus, StatusReading> = {
   "folder-missing": reading("Folder missing", "failed"),
   "not-a-git-repo": reading("Not a Git repository", "attention", WARNING_GLYPH),
 };
+
+export const REPOSITORIES_FACT = "Repositories";
+export const READY = STATUS_READINGS.ready.word;
+
+/** Band 2's counts, worst first: folders to fix, then repositories behind. */
+export const repositoriesCounts = (
+  statuses: readonly RepoStatus[],
+  behind: number,
+): BandCount[] => [
+  {
+    word: STATUS_READINGS["folder-missing"].word,
+    count: countOf(statuses, "folder-missing"),
+    family: "failed",
+  },
+  {
+    word: STATUS_READINGS["not-a-git-repo"].word,
+    count: countOf(statuses, "not-a-git-repo"),
+    family: "attention",
+  },
+  { word: BEHIND.word, count: behind, family: "attention" },
+];
 
 export const REPOS_NOT_READ = {
   level: "error",
