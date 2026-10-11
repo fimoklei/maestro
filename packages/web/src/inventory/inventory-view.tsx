@@ -416,6 +416,7 @@ export function InventoryView({
               // A dialog the row's ⋮ opened holds focus itself.
               initialFocus={dialog === null ? undefined : null}
               targetItems={targetItems}
+              selectionActive={staged.size > 0}
               footItems={row.actions.map((item) => ({
                 label: item.label,
                 danger: item.danger,

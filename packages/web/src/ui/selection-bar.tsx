@@ -25,7 +25,7 @@ export function SelectionBar({
   return (
     <fieldset
       aria-labelledby={countId}
-      className="absolute inset-x-0 bottom-section z-20 mx-auto flex w-fit max-w-[calc(100%-var(--spacing-page))] flex-wrap items-center gap-cell rounded-float border border-gray-7 bg-gray-2 py-tight pr-tight pl-panel font-ui shadow-float"
+      className="sticky bottom-section z-20 mx-auto mt-cell mb-section flex w-fit max-w-[calc(100%-var(--spacing-page))] flex-wrap items-center gap-cell rounded-float border border-gray-7 bg-gray-2 py-tight pr-tight pl-panel font-ui shadow-float"
     >
       <span id={countId} className="text-gray-12 text-row tabular-nums">
         {selectedCount(count)}

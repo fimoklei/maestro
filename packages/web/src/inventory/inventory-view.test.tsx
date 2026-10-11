@@ -1024,6 +1024,21 @@ describe("InventoryView — bulk staging", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the selection bar while the search hides every row", async () => {
+    stubPendingFetch();
+    renderView();
+
+    await userEvent.click(checkbox("tdd"));
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: "Search the Inventory" }),
+      "nothing matches",
+    );
+
+    expect(screen.getByRole("group", { name: "1 selected" })).toHaveTextContent(
+      /1 hidden by the filter/i,
+    );
+  });
+
   it("retires the selection bar once the last skill is unselected", async () => {
     stubPendingFetch();
     renderView();
@@ -1048,6 +1063,28 @@ describe("InventoryView — bulk staging", () => {
     expect(selectionBar()).not.toBeInTheDocument();
     expect(checkbox("tdd")).not.toBeChecked();
     expect(checkbox("caveman")).not.toBeChecked();
+  });
+
+  it("leaves the selection bar the one primary while the pane is open", async () => {
+    stubPendingFetch();
+    renderView({ targets: [deployedTo(["tdd"])] });
+
+    await openRow("tdd");
+    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
+    const paneDeploy = within(pane).getByRole("button", {
+      name: "Deploy skill",
+    });
+    expect(paneDeploy).toHaveClass("bg-gray-12");
+
+    await userEvent.click(checkbox("caveman"));
+
+    expect(paneDeploy).not.toHaveClass("bg-gray-12");
+    expect(
+      within(screen.getByRole("group", { name: "1 selected" })).getByRole(
+        "button",
+        { name: "Deploy skills" },
+      ),
+    ).toHaveClass("bg-gray-12");
   });
 
   it("selects every shown skill from the column header", async () => {
