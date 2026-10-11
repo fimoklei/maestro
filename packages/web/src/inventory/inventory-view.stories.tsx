@@ -48,7 +48,13 @@ const target = (
   pending: undefined,
   label: "Global",
   target: { kind: "global" },
-  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+  deployed: {
+    status: "ready",
+    names,
+    skippedCount: 0,
+    attentionCount: 0,
+    followsRelease: false,
+  },
   primitives: names.map((name) => ({ type: "skill", name, version: "v1.4.0" })),
   drift: driftViewModel(
     unknown

@@ -45,6 +45,11 @@ const SCENARIOS = [
     expect: {
       status: "Behind",
       release: "v1.1.0 → v2.0.0",
+      skills: {
+        "code-review": "Behind",
+        "commit-message": "Up to date",
+        "release-notes": "No longer released",
+      },
       preview: {
         changed: ["code-review"],
         removed: ["release-notes"],
@@ -207,7 +212,9 @@ function targetStatus({ deployState, drift }) {
     indicator = "attention";
   else if (primitives.length === 0 && skipped.length === 0) indicator = "empty";
   else if (!driftRead) indicator = "unknown";
-  else if (reads("no-longer-released")) indicator = "attention";
+  // Update target removes a dropped skill from a target that follows one release.
+  else if (releaseHead === undefined && reads("no-longer-released"))
+    indicator = "attention";
   else if (reads("behind")) indicator = "drift";
   else indicator = "ok";
 

@@ -1,6 +1,7 @@
 import type { ReadDriftEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
+import { readyView } from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { planBulkDeploy } from "./plan-bulk-deploy";
 
@@ -15,7 +16,7 @@ function target(
     pending: undefined,
     label,
     target: { kind: "global" },
-    deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+    deployed: readyView(names),
     primitives: [],
     drift: driftViewModel({ data: { behind }, isError: false }),
   };
@@ -232,12 +233,7 @@ describe("planBulkDeploy", () => {
     const clean = target("Claude Code", ["tdd"], []);
     const flagged: DeploymentTarget = {
       ...clean,
-      deployed: {
-        status: "ready",
-        names: ["tdd"],
-        skippedCount: 1,
-        attentionCount: 1,
-      },
+      deployed: readyView(["tdd"], { skippedCount: 1, attentionCount: 1 }),
     };
 
     expect(planBulkDeploy(["tdd", "lint"], [flagged])).toEqual(

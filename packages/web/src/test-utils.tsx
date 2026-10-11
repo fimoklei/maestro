@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { vi } from "vitest";
 import { createQueryClient } from "./api/query-client";
+import type { DeployedView } from "./deploy-state/deployed-view";
 import * as controlLabels from "./ui/control-labels";
 import { CANCEL, CLOSE } from "./ui/dialog-copy";
 import type { NoticeCopy } from "./ui/notice";
@@ -158,3 +159,18 @@ export function stubResizeObserver(): (px: number) => void {
     for (const each of callbacks) each();
   };
 }
+
+type ReadyView = Extract<DeployedView, { status: "ready" }>;
+
+/** A deploy-state read that answered: nothing skipped, no single release. */
+export const readyView = (
+  names: string[],
+  fields: Partial<Omit<ReadyView, "status" | "names">> = {},
+): ReadyView => ({
+  status: "ready",
+  names,
+  skippedCount: 0,
+  attentionCount: 0,
+  followsRelease: false,
+  ...fields,
+});

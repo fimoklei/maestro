@@ -19,7 +19,7 @@ export function globalToolTargets(
       // One removal covers every tool, so each tool row names the same global target.
       target: { kind: "global" },
       tool: tool.tool,
-      deployed: globalToolView(names, state.skipped),
+      deployed: globalToolView(names, state.skipped, tool.releaseHead),
       primitives: tool.primitives,
       drift: drift.forTool(names),
       // Under one release, this tool's own Release head answers the per-skill

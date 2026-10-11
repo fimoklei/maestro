@@ -262,6 +262,89 @@ describe("ReadDrift", () => {
     expect(result).toMatchObject({ behind: [{ reading: "behind" }] });
   });
 
+  describe("a root-package target", () => {
+    const rootLock = (skills: string[], repoUrl = "fimoklei/harness") =>
+      `dependencies:\n- repo_url: ${repoUrl}\n  host: github.com\n  resolved_ref: v0.2.0\n  package_type: apm_package\n  deployed_files:\n${skills
+        .flatMap((name) => [
+          `  - .claude/skills/${name}`,
+          `  - .claude/skills/${name}/SKILL.md`,
+          `  - .agents/skills/${name}/SKILL.md`,
+        ])
+        .join("\n")}\n`;
+    const packageBehind = behindOne("harness");
+    const packageEntry = {
+      name: "harness",
+      current: "v0.2.0",
+      latest: "v0.3.0",
+      reading: "behind",
+    };
+
+    it("reads each selected skill against the latest release", async () => {
+      const result = await run({
+        outdated: packageBehind,
+        lock: rootLock(["release-notes", "code-review", "commit-message"]),
+        refs: {
+          "v0.2.0": trees({
+            "release-notes": "t1",
+            "code-review": "t2",
+            "commit-message": "t3",
+          }),
+          "v0.3.0": trees({
+            "code-review": "t4",
+            "commit-message": "t3",
+            "test-plan": "t5",
+          }),
+        },
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        behind: [
+          packageEntry,
+          {
+            ...packageEntry,
+            name: "release-notes",
+            reading: "no-longer-released",
+          },
+          { ...packageEntry, name: "code-review", reading: "behind" },
+        ],
+      });
+    });
+
+    it("gives no reading to a selected skill absent from both releases", async () => {
+      const result = await run({
+        outdated: packageBehind,
+        lock: rootLock(["release-notes"]),
+        refs: { "v0.2.0": trees({}), "v0.3.0": trees({}) },
+      });
+
+      expect(result).toEqual({ ok: true, behind: [packageEntry] });
+    });
+
+    it("gives no skill a reading when a release cannot be read", async () => {
+      const result = await run({
+        outdated: packageBehind,
+        lock: rootLock(["release-notes"]),
+        refs: { "v0.2.0": trees({ "release-notes": "t1" }), "v0.3.0": null },
+      });
+
+      expect(result).toEqual({ ok: true, behind: [packageEntry] });
+    });
+
+    it("gives no skill a reading for a package from another repository", async () => {
+      const result = await run({
+        outdated: packageBehind,
+        lock: rootLock(["release-notes"], "someone/harness"),
+        refs: {
+          "v0.2.0": trees({ "release-notes": "t1" }),
+          "v0.3.0": trees({}),
+        },
+      });
+
+      expect(result).toEqual({ ok: true, behind: [packageEntry] });
+    });
+  });
+
   it("forwards a failed check unchanged", async () => {
     const result = await run({
       outdated: { ok: false, reason: "unverified" },

@@ -2,6 +2,7 @@ import type { ReadDriftEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse } from "../drift/use-drift";
+import { readyView } from "../test-utils";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 
 const ranDrift = (behind: ReadDriftEntry[]) =>
@@ -33,7 +34,7 @@ const deployedTarget = (
   behind: ReadDriftEntry[] = [],
 ): DeploymentTarget => ({
   ...paneFields,
-  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+  deployed: readyView(names),
   drift: ranDrift(behind),
 });
 
@@ -45,7 +46,7 @@ const onRelease = (
   selected = names.length,
 ): DeploymentTarget => ({
   ...paneFields,
-  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+  deployed: readyView(names),
   drift: ranDrift([]),
   releaseHead: {
     release: "v0.3.2",
@@ -77,12 +78,7 @@ describe("rollUpDeployment — target count", () => {
   it("counts the Selection, not what is left on disk", () => {
     const target: DeploymentTarget = {
       ...paneFields,
-      deployed: {
-        status: "ready",
-        names: ["tdd", "leftover"],
-        skippedCount: 0,
-        attentionCount: 0,
-      },
+      deployed: readyView(["tdd", "leftover"]),
       drift: ranDrift([]),
       releaseHead: {
         release: "v0.3.2",
@@ -233,12 +229,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,
-        deployed: {
-          status: "ready",
-          names: ["tdd"],
-          skippedCount: 0,
-          attentionCount: 0,
-        },
+        deployed: readyView(["tdd"]),
         drift: drift({ data: { ok: false } }),
       },
     ];
@@ -249,12 +240,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,
-        deployed: {
-          status: "ready",
-          names: ["tdd"],
-          skippedCount: 0,
-          attentionCount: 0,
-        },
+        deployed: readyView(["tdd"]),
         drift: drift({ data: { ok: false, reason: "unverified" } }),
       },
     ];
@@ -265,12 +251,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,
-        deployed: {
-          status: "ready",
-          names: ["tdd"],
-          skippedCount: 0,
-          attentionCount: 0,
-        },
+        deployed: readyView(["tdd"]),
         drift: drift({ data: undefined }),
       },
     ];
@@ -283,12 +264,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,
-        deployed: {
-          status: "ready",
-          names: ["tdd"],
-          skippedCount: 0,
-          attentionCount: 0,
-        },
+        deployed: readyView(["tdd"]),
         drift: drift({ data: undefined }),
       },
     ];

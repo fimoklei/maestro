@@ -1,5 +1,6 @@
 import type { DeployedPrimitive } from "@maestro/core";
 import { describe, expect, it } from "vitest";
+import { readyView } from "../test-utils";
 import { driftViewModel } from "./drift-view-model";
 import type { DriftResponse } from "./use-drift";
 
@@ -36,9 +37,6 @@ const noLongerReleased = (name: string): BehindEntry => ({
   ...pair(name),
   reading: "no-longer-released",
 });
-
-const deployedNames = (names: string[]) =>
-  ({ status: "ready", names, skippedCount: 0, attentionCount: 0 }) as const;
 
 const deployedPrimitives = (names: string[]): DeployedPrimitive[] =>
   names.map((name) => ({ type: "skill", name, version: "v0.5.1" }));
@@ -125,33 +123,47 @@ describe("driftViewModel — latest", () => {
 
 describe("driftViewModel — targetIndicator", () => {
   it("reports drift when a deployed skill is behind", () => {
-    expect(ran([pair("tdd")]).targetIndicator(deployedNames(["tdd"]))).toBe(
+    expect(ran([pair("tdd")]).targetIndicator(readyView(["tdd"]))).toBe(
       "drift",
     );
   });
 
-  it("reads a target with a no-longer-released skill as attention ahead of behind", () => {
+  it("reads a target without one release and a no-longer-released skill as attention ahead of behind", () => {
     const drift = ran([pair("tdd"), noLongerReleased("workflow-commit")]);
-    const deployed = deployedNames(["tdd", "workflow-commit"]);
+    const deployed = readyView(["tdd", "workflow-commit"]);
 
     expect(drift.targetIndicator(deployed)).toBe("attention");
     expect(drift.driftCount(deployed)).toBe(0);
   });
 
+  // Update target removes the dropped skill cleanly, so nothing needs a hand.
+  it("reads a target following one release with a no-longer-released skill by its other skills", () => {
+    const drift = ran([pair("tdd"), noLongerReleased("workflow-commit")]);
+    const deployed = readyView(["tdd", "workflow-commit"], {
+      followsRelease: true,
+    });
+
+    expect(drift.targetIndicator(deployed)).toBe("drift");
+    expect(drift.driftCount(deployed)).toBe(1);
+    expect(
+      ran([noLongerReleased("workflow-commit")]).targetIndicator(
+        readyView(["workflow-commit"], { followsRelease: true }),
+      ),
+    ).toBe("ok");
+  });
+
   it("does not report drift for an orphan-behind primitive", () => {
-    expect(ran([pair("foo")]).targetIndicator(deployedNames(["tdd"]))).toBe(
-      "ok",
-    );
+    expect(ran([pair("foo")]).targetIndicator(readyView(["tdd"]))).toBe("ok");
   });
 
   it("reports ok when the check ran and nothing deployed is behind", () => {
-    expect(ran([]).targetIndicator(deployedNames(["tdd"]))).toBe("ok");
+    expect(ran([]).targetIndicator(readyView(["tdd"]))).toBe("ok");
   });
 
   it("reports unknown when the drift check could not run", () => {
     expect(
       driftViewModel(query({ data: { ok: false } })).targetIndicator(
-        deployedNames(["tdd"]),
+        readyView(["tdd"]),
       ),
     ).toBe("unknown");
   });
@@ -159,7 +171,7 @@ describe("driftViewModel — targetIndicator", () => {
   it("reports pending while the drift check is in flight", () => {
     expect(
       driftViewModel(query({ data: undefined })).targetIndicator(
-        deployedNames(["tdd"]),
+        readyView(["tdd"]),
       ),
     ).toBe("pending");
   });
@@ -168,39 +180,32 @@ describe("driftViewModel — targetIndicator", () => {
     expect(
       driftViewModel(
         query({ data: { ok: false, reason: "unverified" } }),
-      ).targetIndicator(deployedNames(["tdd"])),
+      ).targetIndicator(readyView(["tdd"])),
     ).toBe("unverified");
   });
 
   it("reports empty for a confirmed-empty target even when the drift check failed", () => {
     expect(
       driftViewModel(query({ data: { ok: false } })).targetIndicator(
-        deployedNames([]),
+        readyView([]),
       ),
     ).toBe("empty");
   });
 
   it("reports empty for a confirmed-empty target while the drift check is in flight", () => {
     expect(
-      driftViewModel(query({ data: undefined })).targetIndicator(
-        deployedNames([]),
-      ),
+      driftViewModel(query({ data: undefined })).targetIndicator(readyView([])),
     ).toBe("empty");
   });
 
   it("reports empty for a confirmed-empty target even when the check names an orphan-behind", () => {
-    expect(ran([pair("foo")]).targetIndicator(deployedNames([]))).toBe("empty");
+    expect(ran([pair("foo")]).targetIndicator(readyView([]))).toBe("empty");
   });
 
   it("does not report empty for a target that has only skipped, unsupported primitives", () => {
-    expect(
-      ran([]).targetIndicator({
-        status: "ready",
-        names: [],
-        skippedCount: 1,
-        attentionCount: 0,
-      }),
-    ).toBe("ok");
+    expect(ran([]).targetIndicator(readyView([], { skippedCount: 1 }))).toBe(
+      "ok",
+    );
   });
 
   it("stays pending when deploy-state is still loading, even with a behind entry", () => {
@@ -232,37 +237,37 @@ describe("driftViewModel — driftCount", () => {
   it("counts the deployed skills that are behind", () => {
     expect(
       ran([pair("tdd"), pair("diagnose")]).driftCount(
-        deployedNames(["tdd", "diagnose"]),
+        readyView(["tdd", "diagnose"]),
       ),
     ).toBe(2);
   });
 
   it("excludes an orphan-behind (behind but not deployed here) from the count", () => {
-    expect(
-      ran([pair("tdd"), pair("foo")]).driftCount(deployedNames(["tdd"])),
-    ).toBe(1);
+    expect(ran([pair("tdd"), pair("foo")]).driftCount(readyView(["tdd"]))).toBe(
+      1,
+    );
   });
 
   it("is zero when the check ran and nothing deployed is behind", () => {
-    expect(ran([]).driftCount(deployedNames(["tdd"]))).toBe(0);
+    expect(ran([]).driftCount(readyView(["tdd"]))).toBe(0);
   });
 
   it("excludes a skill that only lags a tag from the count", () => {
     expect(
       ran([pair("tdd"), laggingPin("diagnose")]).driftCount(
-        deployedNames(["tdd", "diagnose"]),
+        readyView(["tdd", "diagnose"]),
       ),
     ).toBe(1);
   });
 
   it("is zero for a confirmed-empty target", () => {
-    expect(ran([pair("tdd")]).driftCount(deployedNames([]))).toBe(0);
+    expect(ran([pair("tdd")]).driftCount(readyView([]))).toBe(0);
   });
 
   it("reads a target holding nothing but lagging pins as ok", () => {
-    expect(
-      ran([laggingPin("tdd")]).targetIndicator(deployedNames(["tdd"])),
-    ).toBe("ok");
+    expect(ran([laggingPin("tdd")]).targetIndicator(readyView(["tdd"]))).toBe(
+      "ok",
+    );
   });
 
   it.each(["unknown", "unverified"] as const)(
@@ -272,15 +277,13 @@ describe("driftViewModel — driftCount", () => {
         reason === "unverified"
           ? driftViewModel(query({ data: { ok: false, reason: "unverified" } }))
           : driftViewModel(query({ data: { ok: false } }));
-      expect(vm.driftCount(deployedNames(["tdd"]))).toBe(0);
+      expect(vm.driftCount(readyView(["tdd"]))).toBe(0);
     },
   );
 
   it("is zero while the drift check is in flight", () => {
     expect(
-      driftViewModel(query({ data: undefined })).driftCount(
-        deployedNames(["tdd"]),
-      ),
+      driftViewModel(query({ data: undefined })).driftCount(readyView(["tdd"])),
     ).toBe(0);
   });
 
@@ -294,18 +297,18 @@ describe("driftViewModel — driftCount", () => {
 
   it("is positive exactly when the target indicator reads drift", () => {
     const drifting = ran([pair("tdd")]);
-    expect(drifting.driftCount(deployedNames(["tdd"]))).toBeGreaterThan(0);
-    expect(drifting.targetIndicator(deployedNames(["tdd"]))).toBe("drift");
+    expect(drifting.driftCount(readyView(["tdd"]))).toBeGreaterThan(0);
+    expect(drifting.targetIndicator(readyView(["tdd"]))).toBe("drift");
 
     const clean = ran([pair("foo")]);
-    expect(clean.driftCount(deployedNames(["tdd"]))).toBe(0);
-    expect(clean.targetIndicator(deployedNames(["tdd"]))).toBe("ok");
+    expect(clean.driftCount(readyView(["tdd"]))).toBe(0);
+    expect(clean.targetIndicator(readyView(["tdd"]))).toBe("ok");
   });
 
   it("narrows the count to one tool through forTool", () => {
     const global = ran([pair("tdd")]);
-    expect(global.forTool(["tdd"]).driftCount(deployedNames(["tdd"]))).toBe(1);
-    expect(global.forTool([]).driftCount(deployedNames([]))).toBe(0);
+    expect(global.forTool(["tdd"]).driftCount(readyView(["tdd"]))).toBe(1);
+    expect(global.forTool([]).driftCount(readyView([]))).toBe(0);
   });
 });
 
@@ -383,16 +386,16 @@ describe("driftViewModel — forTool (per-tool slice of the global check)", () =
     const global = ran([
       { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
     ]);
-    expect(
-      global.forTool(["tdd"]).targetIndicator(deployedNames(["tdd"])),
-    ).toBe("drift");
+    expect(global.forTool(["tdd"]).targetIndicator(readyView(["tdd"]))).toBe(
+      "drift",
+    );
   });
 
   it("drops a behind skill that belongs to another tool", () => {
     const global = ran([
       { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
     ]);
-    expect(global.forTool([]).targetIndicator(deployedNames([]))).toBe("empty");
+    expect(global.forTool([]).targetIndicator(readyView([]))).toBe("empty");
     expect(global.forTool([]).skillStatus("tdd")).toBe("up-to-date");
   });
 

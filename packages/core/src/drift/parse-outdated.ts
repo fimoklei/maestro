@@ -44,7 +44,8 @@ const rowsOf = (output: string): string[][] =>
     .map(cellsOf)
     .filter((cells) => cells !== null);
 
-const lastSegment = (packageCell: string): string =>
+/** The name apm outdated gives a dependency: its package cell's last segment. */
+export const lastSegment = (packageCell: string): string =>
   packageCell.split("/").at(-1) ?? packageCell;
 
 const hasUncheckable = (output: string): boolean =>
