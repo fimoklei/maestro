@@ -1,7 +1,7 @@
 // Git says what a skill's content is; this says what the team did with it.
 import type { GitOrigin } from "../deploy/git-origin";
 
-export type ReviewRequestState = "open" | "closed" | "merged";
+type ReviewRequestState = "open" | "closed" | "merged";
 
 export type ReviewDecision =
   | "approved"
