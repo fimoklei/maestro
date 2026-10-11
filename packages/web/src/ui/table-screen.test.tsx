@@ -180,6 +180,8 @@ describe("TableScreen", () => {
         healthy: "Ripe",
         counts: [],
       },
+      labelsBelowRem: 0,
+      countsBelowRem: 0,
     };
     const band2 = () => htmlElement(reread().closest("[data-band='2']"));
     // The label of each fact shown, in reading order, then Read where it
@@ -282,6 +284,8 @@ describe("TableScreen", () => {
               },
             ],
             summary: ORCHARD.summary,
+            labelsBelowRem: 0,
+            countsBelowRem: 0,
           }}
         />,
       );

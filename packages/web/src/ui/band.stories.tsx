@@ -42,6 +42,8 @@ const HARNESS: Band = {
       { word: "Pending release", count: 0, family: "attention" },
     ],
   },
+  labelsBelowRem: 62,
+  countsBelowRem: 20,
 };
 const withSummary = (summary: Partial<Band["summary"]>): Band => ({
   ...HARNESS,
@@ -126,9 +128,19 @@ export const Offline: Story = {
   },
 };
 
-// Branch and Origin have dropped; Released and the read age stay.
+// The labels, Branch and Origin have dropped; Released and the read age stay.
 export const Narrow: Story = { args: { width: 480 } };
 
+// Only the dot, its counts and the read age stay.
+export const Narrowest: Story = {
+  args: {
+    width: 320,
+    band: withSummary({
+      counts: [{ word: "Pending review", count: 2, family: "attention" }],
+    }),
+  },
+};
+
 export const ReadAlone: Story = {
-  args: { band: { facts: [], summary: HARNESS.summary } },
+  args: { band: { ...HARNESS, facts: [] } },
 };

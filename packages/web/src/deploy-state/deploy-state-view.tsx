@@ -273,6 +273,8 @@ export function DeployStateView() {
                 },
               ]
             : [],
+        labelsBelowRem: 30,
+        countsBelowRem: 20,
       }}
       rereading={screen.reading}
       firstReadRows={8}

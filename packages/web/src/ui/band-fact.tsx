@@ -12,6 +12,8 @@ export type BandFactProps = {
   github?: GitHubPage;
   /** False for a plain word such as Not released yet, which Geist Mono never sets. */
   machine: boolean;
+  /** Keeps the label for screen readers only, on a narrow band. */
+  labelHidden: boolean;
 };
 
 // A label beside its value on one line, inside band 2's own <dl>.
@@ -21,12 +23,13 @@ export function BandFact({
   icon,
   github,
   machine,
+  labelHidden,
 }: BandFactProps) {
   return (
     <div className="flex min-w-0 gap-inline">
       <dt className="flex flex-none items-center gap-tight text-gray-11">
         {icon}
-        {label}
+        {labelHidden ? <span className="sr-only">{label}</span> : label}
       </dt>
       <dd
         title={value}

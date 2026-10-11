@@ -31,8 +31,12 @@ export const readFreshness = (reads: readonly Reading[]): Freshness => {
   };
 };
 
-// Band 2 widths in rem, tuned in `pnpm smoke`: Origin drops first, then
-// Released, then the search becomes an icon; Skills and Read never drop.
+// Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then
+// Origin, Released and Skills, then the search becomes an icon, then the
+// counts go; the dot and Read never drop.
+export const LABELS_BELOW_REM = 66;
 export const ORIGIN_DROP = { rank: 1, belowRem: 59 } as const;
 export const RELEASED_DROP = { rank: 2, belowRem: 39 } as const;
+export const SKILLS_DROP = { rank: 3, belowRem: 31 } as const;
 export const SEARCH_ICON_BELOW_REM = 31;
+export const COUNTS_BELOW_REM = 22;

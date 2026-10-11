@@ -12,6 +12,7 @@ const meta = {
     value: "main",
     icon: <Icon of={GitBranch} />,
     machine: true,
+    labelHidden: false,
   },
   decorators: [
     (Story) => (

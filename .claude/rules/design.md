@@ -212,10 +212,11 @@ Pick the form from this table. Add no other form, and no banner.
   state's family, then the counts above 0 or the summary word), the screen's
   facts, then the read age (clock icon named `Read`, then the age); separators
   between the three; an optional search first, then its controls, on the right. On a
-  narrow band shrink the search from 15rem to 12rem, then drop whole facts by
-  the screen's own drop ranks, lowest first, then turn the search into an icon
-  named by its action.
-  Never drop the summary or the read age.
+  narrow band shrink the search from 15rem to 12rem, then give way in this
+  order: the facts' labels (icon and value stay), whole facts by the screen's
+  own drop ranks, lowest first (Inventory's Skills last), the search into an
+  icon named by its action, then the counts.
+  Never drop the summary dot or the read age.
 - Put no button in a table row. A link to an external page may sit in one.
 - Link a row's own GitHub page from a `GitHub` column: GitHub's mark in slate
   11, named `View {name} on GitHub`, mouse only; the same destination is a ⋮

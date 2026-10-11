@@ -12,12 +12,12 @@ import { useWidthRem } from "./use-width-rem";
 /** Drops the fact while band 2 is narrower than `belowRem`; rank 1 drops first. */
 type FactDrop = { rank: 1 | 2 | 3; belowRem: number };
 
-// The search's rule ranks above every fact rank, so it applies last.
-type DropRule = { rank: FactDrop["rank"] | "search"; belowRem: number };
-const order = (rank: DropRule["rank"]) =>
-  rank === "search" ? Number.POSITIVE_INFINITY : rank;
+// The order band 2 gives way in: labels, facts by rank, the search, then the counts.
+const ORDER = { labels: 0, 1: 1, 2: 2, 3: 3, search: 4, counts: 5 } as const;
+type DropRule = { rank: keyof typeof ORDER; belowRem: number };
+const order = (rank: DropRule["rank"]) => ORDER[rank];
 
-type BandFactItem = BandFactProps & {
+type BandFactItem = Omit<BandFactProps, "labelHidden"> & {
   /** None: the fact never drops. */
   drop?: FactDrop;
 };
@@ -36,6 +36,10 @@ export type Band = {
   summary: BandSummaryInput;
   facts: readonly BandFactItem[];
   search?: BandSearch;
+  /** Band width in rem below which the facts show icon and value only. */
+  labelsBelowRem: number;
+  /** Band width in rem below which the counts hide; the dot and read age stay. */
+  countsBelowRem: number;
 };
 
 const Separator = () => (
@@ -73,7 +77,17 @@ export function BandRow({
     band?.search === undefined
       ? undefined
       : { rank: "search", belowRem: band.search.iconBelowRem };
+  const labelsRule: DropRule | undefined =
+    band === undefined
+      ? undefined
+      : { rank: "labels", belowRem: band.labelsBelowRem };
+  const countsRule: DropRule | undefined =
+    band === undefined
+      ? undefined
+      : { rank: "counts", belowRem: band.countsBelowRem };
   const rules: DropRule[] = [
+    ...(labelsRule === undefined ? [] : [labelsRule]),
+    ...(countsRule === undefined ? [] : [countsRule]),
     ...(band?.facts ?? []).flatMap((fact) =>
       fact.drop === undefined ? [] : [fact.drop],
     ),
@@ -82,6 +96,8 @@ export function BandRow({
   const facts = (band?.facts ?? []).filter(
     (fact) => !applies(fact.drop, rules, width),
   );
+  const labelHidden = applies(labelsRule, rules, width);
+  const countsHidden = applies(countsRule, rules, width);
   return (
     // One tree with or without a band, so Re-read keeps its focus.
     <div ref={ref} className="flex min-w-0 flex-1 items-center gap-panel">
@@ -97,7 +113,11 @@ export function BandRow({
             />
             {summary.word === null ? null : <span>{summary.word}</span>}
             {summary.counts.map((each) => (
-              <span key={each.word}>{`${each.word} ${each.count}`}</span>
+              <span
+                key={each.word}
+                data-count
+                className={cn(countsHidden && "sr-only")}
+              >{`${each.word} ${each.count}`}</span>
             ))}
           </span>
           {facts.length === 0 ? null : (
@@ -105,7 +125,11 @@ export function BandRow({
               <Separator />
               <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
                 {facts.map(({ drop: _drop, ...fact }) => (
-                  <BandFact key={fact.label} {...fact} />
+                  <BandFact
+                    key={fact.label}
+                    {...fact}
+                    labelHidden={labelHidden}
+                  />
                 ))}
               </dl>
             </>

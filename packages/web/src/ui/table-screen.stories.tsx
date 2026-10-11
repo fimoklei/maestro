@@ -81,6 +81,8 @@ function Screen({
                   healthy: "Ready",
                   counts: [],
                 },
+                labelsBelowRem: 0,
+                countsBelowRem: 0,
               }
             : undefined
         }

@@ -553,7 +553,7 @@ describe("InventoryView — band 2 facts", () => {
     ]);
   });
 
-  it("drops Origin, then Release, on a narrow band; Skills and Read stay", () => {
+  it("drops Origin, then Release, then Skills on a narrow band; Read stays", () => {
     stubPendingFetch();
     const reportWidth = stubResizeObserver();
     renderView();
@@ -563,8 +563,10 @@ describe("InventoryView — band 2 facts", () => {
     expect(labels()).toEqual(["Origin", "Release", "Skills"]);
     act(() => reportWidth(50 * 16));
     expect(labels()).toEqual(["Release", "Skills"]);
-    act(() => reportWidth(30 * 16));
+    act(() => reportWidth(35 * 16));
     expect(labels()).toEqual(["Skills"]);
+    act(() => reportWidth(30 * 16));
+    expect(labels()).toEqual([]);
     expect(within(band2()).getByText("Not read yet")).toBeInTheDocument();
   });
 

@@ -1,10 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { Trees } from "lucide-react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type Band, BandRow } from "./band";
 import type { BandCount } from "./band-summary";
 import type { Freshness } from "./freshness";
 import { Icon } from "./icon";
+
+const width = vi.hoisted(() => ({ rem: null as number | null }));
+vi.mock("./use-width-rem", () => ({ useWidthRem: () => width.rem }));
 
 const minutesAgo = (minutes: number) => Date.now() - minutes * 60_000;
 const READ: Freshness = { readAt: [minutesAgo(4)], outcome: "fetched" };
@@ -24,6 +27,8 @@ const band = (
     { label: "Trees", value: "12", icon: <Icon of={Trees} />, machine: false },
   ],
   summary: { freshness, healthy: "In sync", counts },
+  labelsBelowRem: 60,
+  countsBelowRem: 20,
 });
 
 const renderBand = (value: Band) =>
@@ -101,5 +106,57 @@ describe("BandRow", () => {
     renderBand(band({ readAt: [null], outcome: null }));
 
     expect(screen.queryByRole("img", { name: "Read" })).toBeNull();
+  });
+
+  describe("on a narrow band", () => {
+    const NARROW: Band = {
+      ...band(READ, [BEHIND]),
+      facts: [
+        {
+          label: "Origin",
+          value: "orchard/fruit",
+          icon: <Icon of={Trees} />,
+          machine: true,
+          drop: { rank: 1, belowRem: 50 },
+        },
+        {
+          label: "Trees",
+          value: "12",
+          icon: <Icon of={Trees} />,
+          machine: false,
+          drop: { rank: 2, belowRem: 30 },
+        },
+      ],
+    };
+    // Visible labels, values and counts, in reading order.
+    const visible = () =>
+      Array.from(
+        document.querySelectorAll("dt, dd, [data-count]:not(.sr-only)"),
+        (each) => (each.querySelector(".sr-only") ? "" : each.textContent),
+      ).filter((text) => text !== "");
+
+    it.each([
+      [70, ["Behind 4", "Origin", "orchard/fruit", "Trees", "12"]],
+      [55, ["Behind 4", "orchard/fruit", "12"]],
+      [40, ["Behind 4", "12"]],
+      [25, ["Behind 4"]],
+      [15, []],
+    ])("at %s rem shows %j", (rem, texts) => {
+      width.rem = rem;
+      renderBand(NARROW);
+
+      expect(visible()).toEqual(texts);
+      width.rem = null;
+    });
+
+    it("keeps the dot and the read age at the narrowest", () => {
+      width.rem = 10;
+      const { container } = renderBand(NARROW);
+
+      expect(container.querySelector(".rounded-full")).not.toBeNull();
+      expect(screen.getByRole("img", { name: "Read" })).toBeInTheDocument();
+      expect(screen.getByText("4 min ago")).toBeInTheDocument();
+      width.rem = null;
+    });
   });
 });

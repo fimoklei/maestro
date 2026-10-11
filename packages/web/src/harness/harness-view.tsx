@@ -333,6 +333,8 @@ export function HarnessView({
                   ),
                 ),
               },
+              labelsBelowRem: 62,
+              countsBelowRem: 20,
             }
       }
       rereading={refresh.isPending}

@@ -34,12 +34,15 @@ import {
 } from "./bulk-selection";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 import {
+  COUNTS_BELOW_REM,
   type HarnessFacts,
+  LABELS_BELOW_REM,
   ORIGIN_DROP,
   RELEASED_DROP,
   type Reading,
   readFreshness,
   SEARCH_ICON_BELOW_REM,
+  SKILLS_DROP,
 } from "./inventory-band";
 import {
   DISPLAY_OPTIONS,
@@ -338,6 +341,7 @@ export function InventoryView({
                   icon: <Icon of={Puzzle} />,
                   value: skillsFactValue(shownNames.length, all.length),
                   machine: false,
+                  drop: SKILLS_DROP,
                 },
               ]),
         ],
@@ -352,6 +356,8 @@ export function InventoryView({
           onChange: setQuery,
           iconBelowRem: SEARCH_ICON_BELOW_REM,
         },
+        labelsBelowRem: LABELS_BELOW_REM,
+        countsBelowRem: COUNTS_BELOW_REM,
       }}
       rereading={screen.reading}
       firstReadRows={24}
