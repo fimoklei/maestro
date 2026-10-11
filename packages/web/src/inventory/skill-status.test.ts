@@ -207,8 +207,10 @@ describe("skillState", () => {
 });
 
 describe("SKILL_CHIPS", () => {
-  it("offers only Behind, as attention", () => {
+  it("offers Unknown as failed, then Local edits and Behind as attention, worst first", () => {
     expect(SKILL_CHIPS).toEqual([
+      { word: "Unknown", family: "failed", covers: ["Unknown"] },
+      { word: "Local edits", family: "attention", covers: ["Local edits"] },
       { word: "Behind", family: "attention", covers: ["Behind"] },
     ]);
     expect(UP_TO_DATE.word).toBe("Up to date");

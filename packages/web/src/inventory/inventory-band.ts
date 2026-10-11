@@ -16,4 +16,4 @@ export const ORIGIN_DROP = { rank: 1, belowRem: 59 } as const;
 export const RELEASED_DROP = { rank: 2, belowRem: 39 } as const;
 export const SKILLS_DROP = { rank: 3, belowRem: 31 } as const;
 export const SEARCH_ICON_BELOW_REM = 31;
-export const COUNTS_BELOW_REM = 22;
+export const COUNTS_BELOW_REM = 31;

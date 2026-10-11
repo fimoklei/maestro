@@ -16,8 +16,10 @@ export const BEHIND = reading("Behind", "attention");
 export const UNKNOWN = reading("Unknown", "unknown");
 export const NOT_DEPLOYED = reading("Not deployed", "neutral");
 
-/** Band 2's count chip: skills reading Behind. Local edits stay off (spec #1492). */
+/** Band 2's count chips, worst first, as on Deploy-state (spec #1492). */
 export const SKILL_CHIPS: readonly StatusChip[] = [
+  { word: UNKNOWN.word, family: "failed", covers: [UNKNOWN.word] },
+  { word: LOCAL_EDITS.word, family: "attention", covers: [LOCAL_EDITS.word] },
   { word: BEHIND.word, family: "attention", covers: [BEHIND.word] },
 ];
 
