@@ -70,8 +70,8 @@ const COLUMN_OPTIONS = [
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
 // counts; the dot and Read never drop.
-const LABELS_BELOW_REM = 30;
-const COUNTS_BELOW_REM = 20;
+const LABELS_BELOW_REM = 46;
+const COUNTS_BELOW_REM = 42;
 
 export function DeployStateView() {
   const navigate = useNavigate();

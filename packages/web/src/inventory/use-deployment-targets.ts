@@ -7,7 +7,7 @@ import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
-import { queryReading, type Reading } from "../ui/freshness";
+import { type Reading, targetReadings } from "../ui/freshness";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
 import type { DeployTarget } from "./use-deploy-skill";
@@ -101,13 +101,12 @@ export function useDeploymentTargets(
     );
   });
 
-  // A failed query keeps its last answer's time, so the line can date it.
-  const reads: Reading[] = [
+  const reads: Reading[] = targetReadings([
     globalDeploy,
     globalDriftRead,
     ...repoDeploy,
     ...repoDrift,
-  ].map(queryReading);
+  ]);
   // A comparison the server could not run keeps its last answer's time; one
   // never run dates nothing, and its skills read Unknown.
   for (const target of targets) {

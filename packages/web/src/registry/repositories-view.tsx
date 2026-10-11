@@ -7,7 +7,7 @@ import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { REGISTER_REPOSITORY } from "../ui/control-labels";
-import { queryReading, readFreshness } from "../ui/freshness";
+import { queryReading, readFreshness, targetReadings } from "../ui/freshness";
 import { Icon } from "../ui/icon";
 import { named, phrase } from "../ui/phrase";
 import { TableScreen } from "../ui/table-screen";
@@ -36,8 +36,8 @@ import { REGISTRY_KEY, useRegistry, useUnregisterRepo } from "./use-registry";
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
 // counts; the dot and Read never drop.
-const LABELS_BELOW_REM = 30;
-const COUNTS_BELOW_REM = 20;
+const LABELS_BELOW_REM = 46;
+const COUNTS_BELOW_REM = 42;
 
 export function RepositoriesView() {
   const navigate = useNavigate();
@@ -135,16 +135,10 @@ export function RepositoriesView() {
                 },
               ],
         summary: {
-          // A missing folder's deploy-state read is refused, and its own count
-          // already says so (#1492).
-          freshness: readFreshness(
-            [
-              registry,
-              ...deployStates.filter(
-                (_read, index) => repos[index]?.status !== "folder-missing",
-              ),
-            ].map(queryReading),
-          ),
+          freshness: readFreshness([
+            queryReading(registry),
+            ...targetReadings(deployStates),
+          ]),
           healthy: READY,
           counts: repositoriesCounts(
             repos.map((repo) => repo.status),

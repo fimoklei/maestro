@@ -71,6 +71,11 @@ export const queryReading = (query: {
   failed: query.isError,
 });
 
+/** The target reads' readings; an unreadable target is its row's Unknown, so it neither fails nor dates the screen (#1492). */
+export const targetReadings = (
+  queries: readonly Parameters<typeof queryReading>[0][],
+): Reading[] => queries.filter((query) => !query.isError).map(queryReading);
+
 // The oldest reading dates the line, and one that never answered is the
 // oldest of all; a failed reading turns it into the failed-read words.
 export const readFreshness = (reads: readonly Reading[]): Freshness => {
