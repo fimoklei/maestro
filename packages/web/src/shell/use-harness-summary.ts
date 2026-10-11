@@ -2,7 +2,7 @@
 import { useHarness } from "../harness/use-harness";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { machine, type Phrase, phrase } from "../ui/phrase";
-import { locationName } from "./target-name";
+import { harnessName } from "./target-name";
 
 // Each fact has its own read (#841): `undefined` is "not read yet"; `null` is
 // a read that found no release.
@@ -45,7 +45,7 @@ export function useHarnessSummary(): HarnessSummary {
 
   return {
     path,
-    label: path === null ? "No Harness connected" : locationName(path),
+    label: path === null ? "No Harness connected" : harnessName(path),
     meta: harnessMetaLine(
       harness.isSuccess ? harness.data.releasedVersion : undefined,
       inventory.isSuccess ? inventory.data.primitives.length : undefined,
