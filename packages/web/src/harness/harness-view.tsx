@@ -1,5 +1,5 @@
 import type { ReleasePlan, SemverStep } from "@maestro/core";
-import { FolderGit2, FolderInput } from "lucide-react";
+import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { BandAction } from "../ui/band-action";
@@ -7,13 +7,14 @@ import {
   BRANCH_FACT,
   NOT_RELEASED_YET,
   ORIGIN_FACT,
-  RELEASED_FACT,
+  RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
 import { CREATE_RELEASE, IMPORT_SKILL } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
 import { GatedButton } from "../ui/gated-button";
+import { GitHubMark } from "../ui/github-mark-link";
 import { Icon } from "../ui/icon";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { plainText } from "../ui/phrase";
@@ -297,19 +298,22 @@ export function HarnessView({
               facts: [
                 {
                   label: ORIGIN_FACT,
+                  icon: <GitHubMark />,
                   value: state.origin,
                   github: state.github,
                   machine: true,
                   drop: { rank: 2, belowRem: 48 },
                 },
                 {
-                  label: RELEASED_FACT,
+                  label: RELEASE_FACT,
+                  icon: <Icon of={Tag} />,
                   value: state.releasedVersion ?? NOT_RELEASED_YET,
                   machine: state.releasedVersion !== null,
                   drop: { rank: 3, belowRem: 24 },
                 },
                 {
                   label: BRANCH_FACT,
+                  icon: <Icon of={GitBranch} />,
                   value: state.defaultBranch ?? UNKNOWN_FACT_VALUE,
                   machine: state.defaultBranch !== null,
                   drop: { rank: 1, belowRem: 54 },

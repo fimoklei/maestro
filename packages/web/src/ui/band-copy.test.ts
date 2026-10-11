@@ -4,15 +4,15 @@ import {
   NOT_RELEASED_YET,
   ORIGIN_FACT,
   READ_AGE_NAME,
-  RELEASED_FACT,
+  RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "./band-copy";
 
 describe("band copy", () => {
   it("names the Harness facts and says what is not known", () => {
-    expect([ORIGIN_FACT, RELEASED_FACT, BRANCH_FACT]).toEqual([
+    expect([ORIGIN_FACT, RELEASE_FACT, BRANCH_FACT]).toEqual([
       "Origin",
-      "Released",
+      "Release",
       "Branch",
     ]);
     expect(UNKNOWN_FACT_VALUE).toBe("Unknown");

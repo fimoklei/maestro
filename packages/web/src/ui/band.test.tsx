@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
+import { Trees } from "lucide-react";
 import { describe, expect, it } from "vitest";
 import { type Band, BandRow } from "./band";
 import type { BandCount } from "./band-summary";
 import type { Freshness } from "./freshness";
+import { Icon } from "./icon";
 
 const minutesAgo = (minutes: number) => Date.now() - minutes * 60_000;
 const READ: Freshness = { readAt: [minutesAgo(4)], outcome: "fetched" };
@@ -18,7 +20,9 @@ const band = (
   freshness: Freshness,
   counts: readonly BandCount[] = [],
 ): Band => ({
-  facts: [{ label: "Trees", value: "12", machine: false }],
+  facts: [
+    { label: "Trees", value: "12", icon: <Icon of={Trees} />, machine: false },
+  ],
   summary: { freshness, healthy: "In sync", counts },
 });
 

@@ -34,7 +34,7 @@ export function GitHubMarkLink({
 }
 
 // GitHub's mark: Octicons `mark-github-16` (THIRD-PARTY-NOTICES.md).
-function GitHubMark() {
+export function GitHubMark() {
   return (
     <svg
       aria-hidden="true"

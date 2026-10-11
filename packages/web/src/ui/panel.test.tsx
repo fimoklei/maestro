@@ -30,16 +30,6 @@ describe("Panel", () => {
     );
   });
 
-  it("states the screen's own count beside the title", () => {
-    render(
-      <Panel title="Inventory" meta="9 skills">
-        rows
-      </Panel>,
-    );
-
-    expect(screen.getByText("9 skills")).toBeInTheDocument();
-  });
-
   it("draws no second band on a screen with nothing to put in it", () => {
     const { container } = render(<Panel title="Harness">rows</Panel>);
 

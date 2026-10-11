@@ -105,7 +105,9 @@ describe("Deploy-state — one table of every target", () => {
     }));
     renderDeployState();
 
-    expect(await screen.findByText("4 targets")).toBeInTheDocument();
+    const fact = await screen.findByRole("term");
+    expect(fact).toHaveTextContent("Targets");
+    expect(fact.nextElementSibling).toHaveTextContent("4");
   });
 
   it("does not count targets before both reads have landed", () => {
@@ -115,7 +117,7 @@ describe("Deploy-state — one table of every target", () => {
     );
     renderDeployState();
 
-    expect(screen.queryByText(/\d+ targets?/)).toBeNull();
+    expect(screen.queryByText("Targets")).toBeNull();
     expect(
       screen.queryByText(/no repositories registered\./i),
     ).not.toBeInTheDocument();
@@ -125,7 +127,12 @@ describe("Deploy-state — one table of every target", () => {
     stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
     renderDeployState();
 
-    expect(await screen.findByText("Nothing deployed yet")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "No targets yet" }),
+    ).toBeInTheDocument();
+    // Band 1 holds no meta text, and no Targets fact counts nothing.
+    expect(screen.queryByText("Nothing deployed yet")).toBeNull();
+    expect(screen.queryByText("Targets")).toBeNull();
     // With no target at all, the shared empty state says what fills the table.
     expect(
       screen.getByRole("heading", { level: 2, name: "No targets yet" }),
@@ -651,13 +658,13 @@ describe("Deploy-state — Re-read and freshness", () => {
     await waitFor(() => expect(driftReads()).toBe(before + 2));
   });
 
-  it("dates the oldest reading in band 2, alone on its left before Re-read", async () => {
+  it("dates the oldest reading in band 2, after the Targets fact and before Re-read", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
 
     const read = await screen.findByText("just now");
     const band = htmlElement(read.closest('[data-band="2"]'));
-    expect(band.querySelectorAll("dt")).toHaveLength(0);
+    expect(band.querySelector("dt")?.textContent).toBe("Targets");
     expect(
       read.compareDocumentPosition(
         within(band).getByRole("button", { name: "Re-read Deploy-state" }),

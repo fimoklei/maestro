@@ -24,7 +24,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Band 2: Origin, Released and Branch, then the freshness line (#994).
+// Band 2: Origin, Release and Branch, then the freshness line (#994).
 const band2 = async () =>
   (await screen.findByRole("button", { name: "Re-read Harness" })).closest(
     '[data-band="2"]',
@@ -620,7 +620,7 @@ describe("Harness home base", () => {
     );
   });
 
-  it("states Origin, Released and Branch in band 2, beside the freshness line and Re-read Harness", async () => {
+  it("states Origin, Release and Branch in band 2, beside the freshness line and Re-read Harness", async () => {
     stubHarnessServer({
       read: {
         body: {
@@ -637,7 +637,7 @@ describe("Harness home base", () => {
     const band = await band2();
     for (const [label, value] of [
       ["Origin", "github.com/fimoklei/agent-harness"],
-      ["Released", "v0.5.0"],
+      ["Release", "v0.5.0"],
       ["Branch", "main"],
     ]) {
       expect(within(band).getByText(label as string)).toBeInTheDocument();

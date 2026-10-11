@@ -10,14 +10,13 @@ import {
   NO_REPOSITORIES,
   NO_TARGETS,
   NO_TOOL_DETECTED,
-  NOTHING_DEPLOYED,
   ORIGIN_NOT_READ,
   otherOriginLine,
   packageBehindNotice,
   REPO_NOT_READ,
   REPO_NOT_READ_LINE,
   TARGET_LABEL,
-  targetCount,
+  TARGETS_FACT,
   UNREACHED_HINT,
   VIEW_SKILL_ON_GITHUB,
 } from "./deploy-state-copy";
@@ -60,7 +59,6 @@ describe("Deploy-state copy", () => {
   });
 
   it("keeps the approved empty and zero-tool sentences", () => {
-    expect(NOTHING_DEPLOYED).toBe("Nothing deployed yet");
     expect(NO_TOOL_DETECTED).toBe(
       "Install Claude Code or Codex to deploy skills globally.",
     );
@@ -104,9 +102,8 @@ describe("Deploy-state copy", () => {
     expect(VIEW_SKILL_ON_GITHUB).toBe("View skill on GitHub");
   });
 
-  it("counts targets for one and many", () => {
-    expect(targetCount(1)).toBe("1 target");
-    expect(targetCount(7)).toBe("7 targets");
+  it("names the Targets fact", () => {
+    expect(TARGETS_FACT).toBe("Targets");
   });
 
   it("names every other origin a target holds", () => {

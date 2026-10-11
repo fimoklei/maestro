@@ -398,7 +398,7 @@ describe("InventoryPanel", () => {
 
       expect(await screen.findByText("just now")).toBeInTheDocument();
       expect(factValue("Origin")).toBe("github.com/acme/harness");
-      expect(factValue("Released")).toBe("v1.4.0");
+      expect(factValue("Release")).toBe("v1.4.0");
       expect(skillsFact()).toBe("1");
     });
 
@@ -437,7 +437,7 @@ describe("InventoryPanel", () => {
       renderPanel();
 
       await waitFor(() => expect(factValue("Origin")).toBe("Unknown"));
-      expect(factValue("Released")).toBe("Unknown");
+      expect(factValue("Release")).toBe("Unknown");
     });
   });
 

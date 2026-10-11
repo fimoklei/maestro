@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { GitBranch, Tag, Trees } from "lucide-react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { htmlElement, stubResizeObserver } from "../test-utils";
@@ -7,6 +8,8 @@ import type { Band } from "./band";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
+import { GitHubMark } from "./github-mark-link";
+import { Icon } from "./icon";
 import { TableScreen, type TableScreenProps } from "./table-screen";
 import { type TableScreenState, useTableScreen } from "./use-table-screen";
 import { useViewOptions } from "./use-view-options";
@@ -147,22 +150,30 @@ describe("TableScreen", () => {
         {
           label: "Origin",
           value: "orchard/fruit",
+          icon: <GitHubMark />,
           machine: true,
           drop: { rank: 2, belowRem: 36 },
         },
         {
-          label: "Released",
+          label: "Release",
           value: "v1.4.0",
+          icon: <Icon of={Tag} />,
           machine: true,
           drop: { rank: 3, belowRem: 24 },
         },
         {
           label: "Branch",
           value: "main",
+          icon: <Icon of={GitBranch} />,
           machine: true,
           drop: { rank: 1, belowRem: 44 },
         },
-        { label: "Trees", value: "12", machine: false },
+        {
+          label: "Trees",
+          value: "12",
+          icon: <Icon of={Trees} />,
+          machine: false,
+        },
       ],
       summary: {
         freshness: { readAt: [Date.now() - 4 * 60_000], outcome: "fetched" },
@@ -192,7 +203,7 @@ describe("TableScreen", () => {
 
       expect(shown()).toEqual([
         "Origin",
-        "Released",
+        "Release",
         "Branch",
         "Trees",
         "4 min ago",
@@ -205,6 +216,29 @@ describe("TableScreen", () => {
       ).toBeTruthy();
     });
 
+    it("shows each fact's label and value, its icon adding nothing to the name", () => {
+      render(<FruitScreen band={ORCHARD} />);
+
+      const terms = within(band2()).getAllByRole("term");
+      expect(terms.map((term) => term.textContent)).toEqual([
+        "Origin",
+        "Release",
+        "Branch",
+        "Trees",
+      ]);
+      for (const term of terms) {
+        expect(term.querySelector("svg")).toHaveAttribute(
+          "aria-hidden",
+          "true",
+        );
+      }
+      expect(
+        within(band2())
+          .getAllByRole("definition")
+          .map((value) => value.textContent),
+      ).toEqual(["orchard/fruit", "v1.4.0", "main", "12"]);
+    });
+
     it("drops whole facts in rank order as the band narrows, the read age and unruled facts kept", () => {
       const reportWidth = stubResizeObserver();
       render(<FruitScreen band={ORCHARD} />);
@@ -212,15 +246,15 @@ describe("TableScreen", () => {
       act(() => reportWidth(50 * 16));
       expect(shown()).toEqual([
         "Origin",
-        "Released",
+        "Release",
         "Branch",
         "Trees",
         "4 min ago",
       ]);
       act(() => reportWidth(40 * 16));
-      expect(shown()).toEqual(["Origin", "Released", "Trees", "4 min ago"]);
+      expect(shown()).toEqual(["Origin", "Release", "Trees", "4 min ago"]);
       act(() => reportWidth(30 * 16));
-      expect(shown()).toEqual(["Released", "Trees", "4 min ago"]);
+      expect(shown()).toEqual(["Release", "Trees", "4 min ago"]);
       act(() => reportWidth(20 * 16));
       expect(shown()).toEqual(["Trees", "4 min ago"]);
       expect(within(band2()).queryByText("orchard/fruit")).toBeNull();
@@ -235,12 +269,14 @@ describe("TableScreen", () => {
               {
                 label: "Pears",
                 value: "3",
+                icon: <Icon of={Trees} />,
                 machine: false,
                 drop: { rank: 1, belowRem: 20 },
               },
               {
                 label: "Apples",
                 value: "5",
+                icon: <Icon of={Trees} />,
                 machine: false,
                 drop: { rank: 2, belowRem: 30 },
               },

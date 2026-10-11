@@ -1,5 +1,5 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutList } from "lucide-react";
+import { LayoutList, Target } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -28,10 +28,9 @@ import {
   GLOBAL,
   NO_FILTER_MATCH,
   NO_TARGETS,
-  NOTHING_DEPLOYED,
   REPOSITORIES,
   TARGET_LABEL,
-  targetCount,
+  TARGETS_FACT,
 } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { TargetDetailPane } from "./target-detail-pane";
@@ -257,20 +256,23 @@ export function DeployStateView() {
   return (
     <TableScreen
       state={state}
-      meta={
-        isColdStart
-          ? NOTHING_DEPLOYED
-          : isRead
-            ? targetCount(rows.length)
-            : undefined
-      }
       band={{
         summary: {
           freshness: reading,
           healthy: IN_SYNC.word,
           counts: targetCounts(targets.map((row) => row.status?.word ?? null)),
         },
-        facts: [],
+        facts:
+          isRead && !isColdStart
+            ? [
+                {
+                  label: TARGETS_FACT,
+                  value: String(rows.length),
+                  icon: <Icon of={Target} />,
+                  machine: false,
+                },
+              ]
+            : [],
       }}
       rereading={screen.reading}
       firstReadRows={8}

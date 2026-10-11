@@ -1,5 +1,5 @@
 import type { SkillDeletionCheck } from "@maestro/core";
-import { Table2 } from "lucide-react";
+import { Puzzle, Table2, Tag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import { folderInClone } from "../harness/use-harness";
@@ -8,7 +8,7 @@ import type { ActionsMenuItem } from "../ui/actions-menu";
 import {
   NOT_RELEASED_YET,
   ORIGIN_FACT,
-  RELEASED_FACT,
+  RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
@@ -18,6 +18,7 @@ import {
   UPDATE_TARGET,
   VIEW_DEPLOY_STATE,
 } from "../ui/control-labels";
+import { GitHubMark } from "../ui/github-mark-link";
 import { Icon } from "../ui/icon";
 import { SelectionBar } from "../ui/selection-bar";
 import { TableScreen } from "../ui/table-screen";
@@ -312,13 +313,15 @@ export function InventoryView({
             : [
                 {
                   label: ORIGIN_FACT,
+                  icon: <GitHubMark />,
                   value: harness?.origin ?? UNKNOWN_FACT_VALUE,
                   github: harness?.github,
                   machine: harness !== null,
                   drop: ORIGIN_DROP,
                 },
                 {
-                  label: RELEASED_FACT,
+                  label: RELEASE_FACT,
+                  icon: <Icon of={Tag} />,
                   value:
                     harness === null
                       ? UNKNOWN_FACT_VALUE
@@ -332,6 +335,7 @@ export function InventoryView({
             : [
                 {
                   label: SKILLS_FACT,
+                  icon: <Icon of={Puzzle} />,
                   value: skillsFactValue(shownNames.length, all.length),
                   machine: false,
                 },
