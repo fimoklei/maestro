@@ -66,7 +66,9 @@ export function HoverCard({
           sideOffset={6}
           collisionBoundary={panel}
           collisionPadding={GUTTER}
-          className="z-50 w-72 rounded-float border border-gray-7 bg-gray-2 p-cell font-ui text-gray-12 text-meta shadow-float"
+          // Grows for a row such as a whole target name; a sentence never
+          // widens it, so prose keeps the narrow measure.
+          className="z-50 w-max [&_p]:[contain:inline-size] min-w-[min(var(--container-2xs),var(--radix-hover-card-content-available-width))] max-w-[min(var(--container-lg),var(--radix-hover-card-content-available-width))] rounded-float border border-gray-7 bg-gray-2 p-cell font-ui text-gray-12 text-meta shadow-float"
         >
           {content}
         </HoverCardPrimitive.Content>

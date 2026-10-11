@@ -53,6 +53,17 @@ const renderDialog = (
   );
 
 describe("DeletionDialog", () => {
+  it.each([
+    ["proposal", PROPOSE],
+    ["local", LOCAL],
+  ])("sets the skill name in the UI font, never mono (%s)", (_, mode) => {
+    renderDialog({ mode });
+
+    const name = screen.getByText("research", { selector: "dd" });
+    expect(name).toHaveClass("font-ui");
+    expect(name).not.toHaveClass("font-mono");
+  });
+
   it("shows the whole tree hash the confirmation is given against", () => {
     renderDialog();
 

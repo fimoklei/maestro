@@ -113,7 +113,7 @@ export function DeletionDialog({
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           {/* A skill name has no break in it, and the branch carries the
               same name again. */}
-          <Fact label="Skill" value={skill} wrap />
+          <Fact label="Skill" value={skill} wrap machine={false} />
           {mode.kind === "propose" ? (
             <>
               <Fact label="Branch" value={`maestro/${skill}`} wrap />

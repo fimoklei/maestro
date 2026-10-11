@@ -57,7 +57,7 @@ export interface TableScreenProps<T extends RowData> {
   view?: ViewOptions<T>;
   /** Rows carry a checkbox for a bulk action. */
   selection?: DataTableProps<T>["selection"];
-  /** Floats over the table's foot while rows are chosen. */
+  /** Follows the last row while rows are chosen, held in view as the table scrolls. */
   selectionBar?: ReactNode;
   /** In place of the table when the narrowing leaves no row; an active filter adds Clear filters. */
   noMatch?: Omit<EmptyStateProps, "headingLevel">;
@@ -225,13 +225,7 @@ export function TableScreen<T extends RowData>({
                     if (event.relatedTarget !== null)
                       focusInTable.current = false;
                   }}
-                  // Room under the last row while the selection bar floats over
-                  // it: bar height plus its offset (section + page + inline).
-                  className={cn(
-                    "min-h-0 flex-1 overflow-auto",
-                    selectionBar != null &&
-                      "pb-[calc(var(--spacing-section)+var(--spacing-page)+var(--spacing-inline))]",
-                  )}
+                  className="min-h-0 flex-1 overflow-auto"
                 >
                   <DataTable
                     ref={gridRef}
@@ -260,11 +254,18 @@ export function TableScreen<T extends RowData>({
                     onRowOrderChange={setOrder}
                     selection={selection}
                   />
+                  {/* In the scroller: under a short list it follows the last
+                      row, under a long one it sticks to the panel's foot. */}
+                  {selectionBar}
                 </div>
-              ) : emptyState === undefined ? null : (
-                <EmptyState headingLevel={2} {...emptyState} />
+              ) : (
+                <>
+                  {emptyState === undefined ? null : (
+                    <EmptyState headingLevel={2} {...emptyState} />
+                  )}
+                  {selectionBar}
+                </>
               )}
-              {selectionBar}
             </div>
             {openRow !== null && pane !== undefined ? (
               <DetailPaneSlot>

@@ -32,6 +32,7 @@ export function SkillDetailPane({
   deployments,
   targetItems,
   footItems,
+  selectionActive,
   listHeadingRef,
   position,
   onPage,
@@ -49,6 +50,8 @@ export function SkillDetailPane({
   targetItems: (deployment: SkillDeployment) => readonly ActionsMenuItem[];
   /** The row's ⋮ items, as the foot's buttons. */
   footItems: readonly FootItem[];
+  /** A bulk selection is active: its bar holds the screen's one primary. */
+  selectionActive: boolean;
   /** Where the owner sends focus once a removed target row is gone. */
   listHeadingRef: Ref<HTMLHeadingElement>;
   position?: { index: number; count: number } | null;
@@ -104,7 +107,7 @@ export function SkillDetailPane({
       }
       clampParagraph
       foot={footItems}
-      leadsWithNextStep
+      leadsWithNextStep={!selectionActive}
       subList={
         <section>
           <SubListHeading

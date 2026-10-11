@@ -70,6 +70,7 @@ function renderPane(overrides: {
       deployments={deployments}
       targetItems={overrides.targetItems ?? (() => [])}
       footItems={overrides.footItems ?? [DEPLOY]}
+      selectionActive={false}
       onClose={overrides.onClose ?? (() => {})}
       getTriggerElement={overrides.getTriggerElement ?? (() => null)}
       listHeadingRef={null}

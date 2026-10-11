@@ -43,6 +43,7 @@ const meta = {
     },
     rollup: rollup({ targetCount: 3, behindCount: 1 }),
     latestRelease: "v1.4.0",
+    selectionActive: false,
     listHeadingRef: null,
     targetItems: (deployment) => [
       ...(deployment.updatable
