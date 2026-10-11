@@ -10,7 +10,7 @@ export const unfinishedReading = (kind: PendingOperation["kind"]) =>
   reading(UNFINISHED_HEADINGS[kind], "attention", WARNING_GLYPH);
 const ATTENTION = reading("Attention", "attention", WARNING_GLYPH);
 export const LOCAL_EDITS = reading("Local edits", "attention", WARNING_GLYPH);
-const BEHIND = reading("Behind", "attention");
+export const BEHIND = reading("Behind", "attention");
 const UNKNOWN = reading("Unknown", "unknown");
 export const IN_SYNC = reading("In sync", "good");
 const PINNED = reading("Pinned per skill", "neutral");

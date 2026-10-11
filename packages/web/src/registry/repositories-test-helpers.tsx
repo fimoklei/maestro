@@ -1,4 +1,4 @@
-import type { GitHubPage, RepoStatus } from "@maestro/core";
+import type { GitHubPage, ReleaseHead, RepoStatus } from "@maestro/core";
 import { screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { vi } from "vitest";
@@ -25,6 +25,8 @@ export type FakeRegistry = {
   holdUnregister?: Promise<void>;
   /** Each repository's GitHub page, as its deploy-state read answers it. */
   github?: Record<string, GitHubPage>;
+  /** Each repository's release head, as its deploy-state read answers it. */
+  releaseHeads?: Record<string, ReleaseHead>;
   /** The registry stores a new repository first, as a sorted list would. */
   storesFirst?: boolean;
   /** Every deploy-state read waits for this before it answers. */
@@ -43,10 +45,13 @@ export function stubRegistry(state: FakeRegistry) {
         const repo = new URL(url, "http://cockpit").searchParams.get("repo");
         await state.holdDeployState;
         const github = repo === null ? undefined : state.github?.[repo];
+        const releaseHead =
+          repo === null ? undefined : state.releaseHeads?.[repo];
         return jsonResponse({
           primitives: [],
           skipped: [],
           ...(github === undefined ? {} : { github }),
+          ...(releaseHead === undefined ? {} : { releaseHead }),
         });
       }
       if (url === "/api/folder-chooser") {
