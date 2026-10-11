@@ -73,7 +73,16 @@ function Screen({
           withView
             ? {
                 facts: [],
-                read: { sentence: "Read 4 min ago", attention: false },
+                summary: {
+                  freshness: {
+                    readAt: [Date.now() - 4 * 60_000],
+                    outcome: "fetched",
+                  },
+                  healthy: "Ready",
+                  counts: [],
+                },
+                labelsBelowRem: 0,
+                countsBelowRem: 0,
               }
             : undefined
         }

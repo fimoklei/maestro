@@ -396,9 +396,9 @@ describe("InventoryPanel", () => {
       stubReads();
       renderPanel();
 
-      expect(await screen.findByText("Read just now")).toBeInTheDocument();
+      expect(await screen.findByText("just now")).toBeInTheDocument();
       expect(factValue("Origin")).toBe("github.com/acme/harness");
-      expect(factValue("Released")).toBe("v1.4.0");
+      expect(factValue("Release")).toBe("v1.4.0");
       expect(skillsFact()).toBe("1");
     });
 
@@ -422,16 +422,15 @@ describe("InventoryPanel", () => {
       );
       renderPanel();
 
-      expect(await screen.findByText("Read 30 min ago")).toBeInTheDocument();
+      expect(await screen.findByText("30 min ago")).toBeInTheDocument();
     });
 
-    it("says Read failed — never read when a target's read fails before it ever answered", async () => {
+    it("keeps the screen read and its age when one target is unreadable (#1492)", async () => {
       stubReads(["/api/deploy-state/global"]);
       renderPanel();
 
-      expect(
-        await screen.findByText("Read failed — never read"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("just now")).toBeInTheDocument();
+      expect(screen.queryByText("Read failed")).toBeNull();
     });
 
     it("reads Unknown for the Harness facts when the Harness read fails", async () => {
@@ -439,7 +438,7 @@ describe("InventoryPanel", () => {
       renderPanel();
 
       await waitFor(() => expect(factValue("Origin")).toBe("Unknown"));
-      expect(factValue("Released")).toBe("Unknown");
+      expect(factValue("Release")).toBe("Unknown");
     });
   });
 

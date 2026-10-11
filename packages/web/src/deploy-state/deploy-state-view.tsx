@@ -1,5 +1,5 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutList } from "lucide-react";
+import { LayoutList, Target } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -10,7 +10,7 @@ import {
 } from "../drift/use-drift";
 import { type DeployTarget, sameTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
-import { freshnessLine } from "../ui/freshness";
+import { type Freshness, freshnessLine } from "../ui/freshness";
 import { Icon } from "../ui/icon";
 import { type Copy, plainText } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
@@ -28,10 +28,9 @@ import {
   GLOBAL,
   NO_FILTER_MATCH,
   NO_TARGETS,
-  NOTHING_DEPLOYED,
   REPOSITORIES,
   TARGET_LABEL,
-  targetCount,
+  TARGETS_FACT,
 } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { TargetDetailPane } from "./target-detail-pane";
@@ -43,7 +42,7 @@ import {
   repoRow,
   type TargetRow,
 } from "./target-rows";
-import { TARGET_STATUS_WORDS } from "./target-status";
+import { IN_SYNC, TARGET_CHIPS, TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { updateLabel } from "./update-target-copy";
 import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
@@ -68,6 +67,11 @@ const COLUMN_OPTIONS = [
   { value: "status", label: "Status" },
   { value: "skills", label: "Skills" },
 ];
+
+// Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
+// counts; the dot and Read never drop.
+const LABELS_BELOW_REM = 46;
+const COUNTS_BELOW_REM = 42;
 
 export function DeployStateView() {
   const navigate = useNavigate();
@@ -162,21 +166,19 @@ export function DeployStateView() {
       ),
     ),
   ];
-  const freshness = freshnessLine(
-    {
-      readAt: [
-        globalDeploy.dataUpdatedAt,
-        globalDrift.dataUpdatedAt,
-        ...repoDeploy.map((query) => query.dataUpdatedAt),
-        ...repoDrift.map((query) => query.dataUpdatedAt),
-        // The server keeps a release comparison that later failed, so it can
-        // be older than the read that carried it.
-        ...targets.map((row) => row.head?.comparedAt),
-      ],
-      outcome: "untracked",
-    },
-    now,
-  );
+  const reading: Freshness = {
+    readAt: [
+      globalDeploy.dataUpdatedAt,
+      globalDrift.dataUpdatedAt,
+      ...repoDeploy.map((query) => query.dataUpdatedAt),
+      ...repoDrift.map((query) => query.dataUpdatedAt),
+      // The server keeps a release comparison that later failed, so it can
+      // be older than the read that carried it.
+      ...targets.map((row) => row.head?.comparedAt),
+    ],
+    outcome: "untracked",
+  };
+  const freshness = freshnessLine(reading, now);
 
   const rows: TargetTableRow[] = targets.map((row) => ({
     ...row,
@@ -259,18 +261,30 @@ export function DeployStateView() {
   return (
     <TableScreen
       state={state}
-      meta={
-        isColdStart
-          ? NOTHING_DEPLOYED
-          : isRead
-            ? targetCount(rows.length)
-            : undefined
-      }
-      band={
-        freshness === null
-          ? undefined
-          : { facts: [], read: { sentence: freshness, attention: false } }
-      }
+      band={{
+        summary: {
+          // The rows' Compared stays untracked; the band states the failed read.
+          freshness: {
+            ...reading,
+            outcome: notRead.length > 0 ? "fetch-failed" : "fetched",
+          },
+          healthy: IN_SYNC.word,
+          counts: view.statusCounts(TARGET_CHIPS),
+        },
+        facts:
+          isRead && !isColdStart
+            ? [
+                {
+                  label: TARGETS_FACT,
+                  value: String(rows.length),
+                  icon: <Icon of={Target} />,
+                  machine: false,
+                },
+              ]
+            : [],
+        labelsBelowRem: LABELS_BELOW_REM,
+        countsBelowRem: COUNTS_BELOW_REM,
+      }}
       rereading={screen.reading}
       firstReadRows={8}
       rows={rows}

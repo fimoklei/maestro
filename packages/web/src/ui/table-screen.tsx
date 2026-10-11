@@ -36,8 +36,6 @@ type PaneFrame = {
 
 export interface TableScreenProps<T extends RowData> {
   state: TableScreenState;
-  /** The screen's count or state line, beside the title. */
-  meta?: ReactNode;
   /** Band 1's primary action. */
   action?: ReactNode;
   rows: T[];
@@ -75,7 +73,6 @@ export interface TableScreenProps<T extends RowData> {
 // detail pane with its paging and focus return.
 export function TableScreen<T extends RowData>({
   state,
-  meta,
   action,
   rows,
   columns,
@@ -172,7 +169,6 @@ export function TableScreen<T extends RowData>({
       <ScreenFocusContext.Provider value={refocus}>
         <Panel
           title={state.name}
-          meta={meta}
           action={action}
           band2={
             <BandRow band={band}>

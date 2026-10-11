@@ -505,20 +505,20 @@ describe("InventoryView — band 2 facts", () => {
   const NOW = new Date("2026-10-10T12:00:00.000Z");
   const minutesAgo = (minutes: number) => NOW.getTime() - minutes * 60_000;
 
-  it("reads Origin, Released, Skills and Read, with Origin linked to the Harness on GitHub", () => {
+  it("reads Origin, Release, Skills and Read, with Origin linked to the Harness on GitHub", () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     stubPendingFetch();
     renderView({ reads: [{ at: minutesAgo(4), failed: false }] });
 
     expect(facts()).toEqual([
       "Origin github.com/acme/harness",
-      "Released v1.4.0",
+      "Release v1.4.0",
       "Skills 2",
     ]);
     expect(
       within(band2()).getByRole("link", { name: /github\.com\/acme\/harness/ }),
     ).toHaveAttribute("href", "https://github.com/acme/harness");
-    expect(within(band2()).getByText("Read 4 min ago")).toBeInTheDocument();
+    expect(within(band2()).getByText("4 min ago")).toBeInTheDocument();
     // The count left band 1, which keeps the title alone.
     expect(screen.queryByText("2 skills")).not.toBeInTheDocument();
   });
@@ -538,7 +538,7 @@ describe("InventoryView — band 2 facts", () => {
   it("reads Unknown for an unreadable Harness, and Not released yet where it has no release", () => {
     stubPendingFetch();
     const view = renderView({ harness: null });
-    expect(facts()).toEqual(["Origin Unknown", "Released Unknown", "Skills 2"]);
+    expect(facts()).toEqual(["Origin Unknown", "Release Unknown", "Skills 2"]);
 
     view.rerender(
       <InventoryView
@@ -548,23 +548,25 @@ describe("InventoryView — band 2 facts", () => {
     );
     expect(facts()).toEqual([
       "Origin github.com/acme/harness",
-      "Released Not released yet",
+      "Release Not released yet",
       "Skills 2",
     ]);
   });
 
-  it("drops Origin, then Released, on a narrow band; Skills and Read stay", () => {
+  it("drops Origin, then Release, then Skills on a narrow band; Read stays", () => {
     stubPendingFetch();
     const reportWidth = stubResizeObserver();
     renderView();
     const labels = () => facts().map((fact) => fact.split(" ")[0]);
 
     act(() => reportWidth(70 * 16));
-    expect(labels()).toEqual(["Origin", "Released", "Skills"]);
+    expect(labels()).toEqual(["Origin", "Release", "Skills"]);
     act(() => reportWidth(50 * 16));
-    expect(labels()).toEqual(["Released", "Skills"]);
-    act(() => reportWidth(30 * 16));
+    expect(labels()).toEqual(["Release", "Skills"]);
+    act(() => reportWidth(35 * 16));
     expect(labels()).toEqual(["Skills"]);
+    act(() => reportWidth(30 * 16));
+    expect(labels()).toEqual([]);
     expect(within(band2()).getByText("Not read yet")).toBeInTheDocument();
   });
 
@@ -582,7 +584,7 @@ describe("InventoryView — band 2 facts", () => {
           { at: minutesAgo(2), failed: false },
           { at: minutesAgo(9), failed: false },
           { at: minutesAgo(5), failed: false },
-        ]).getByText("Read 9 min ago"),
+        ]).getByText("9 min ago"),
       ).toBeInTheDocument();
     });
 
@@ -600,7 +602,7 @@ describe("InventoryView — band 2 facts", () => {
         read([
           { at: minutesAgo(2), failed: false },
           { at: null, failed: true },
-        ]).getByText("Read failed — never read"),
+        ]).getByText("Read failed"),
       ).toBeInTheDocument();
     });
 
@@ -609,7 +611,7 @@ describe("InventoryView — band 2 facts", () => {
         read([
           { at: minutesAgo(2), failed: false },
           { at: minutesAgo(30), failed: true },
-        ]).getByText("Read failed — last read 30 min ago"),
+        ]).getByText("last read 30 min ago"),
       ).toBeInTheDocument();
     });
   });

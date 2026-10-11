@@ -1,6 +1,7 @@
 import type { RowData } from "@tanstack/react-table";
 import { ListFilter, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
+import { type BandCount, countOf, type StatusChip } from "./band-summary";
 import type { DataTableProps } from "./data-table";
 import { NOT_READ_YET } from "./freshness";
 import { Icon } from "./icon";
@@ -42,6 +43,8 @@ export type ViewOptions<T extends RowData> = {
   filterCount: number;
   /** Sets every filter back to All, so each row shows again. */
   clearFilters: () => void;
+  /** Band 2's counts over every row, each wired to the status filter. */
+  statusCounts: (chips: readonly StatusChip[]) => BandCount[];
   /** Filter, then Display, for band 2. */
   menus: readonly [OptionMenuProps, OptionMenuProps];
 };
@@ -92,6 +95,28 @@ export function useViewOptions<T extends RowData>(
     clearFilters: () => {
       setKind("all");
       setStatuses(new Set());
+    },
+    statusCounts: (chips) => {
+      const words = rows.map(status.of);
+      return chips.map(({ covers, ...chip }) => {
+        const pressed = covers.every((word) => statuses.has(word));
+        return {
+          ...chip,
+          count: countOf(words, ...covers),
+          filter: {
+            pressed,
+            onToggle: () =>
+              setStatuses((current) => {
+                const next = new Set(current);
+                for (const word of covers) {
+                  if (pressed) next.delete(word);
+                  else next.add(word);
+                }
+                return next;
+              }),
+          },
+        };
+      });
     },
     menus: [
       {

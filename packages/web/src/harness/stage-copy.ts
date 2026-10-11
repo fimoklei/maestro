@@ -6,6 +6,7 @@ import type {
   RequestedReviewer,
   StageStatus,
 } from "@maestro/core";
+import { type BandCount, countOf } from "../ui/band-summary";
 import {
   CREATE_RELEASE,
   DISCARD_CHANGE,
@@ -23,6 +24,17 @@ export const STAGE_NAMES: Record<HarnessStage, string> = {
   "pending-review": "Pending review",
   "pending-release": "Pending release",
 };
+
+// Band 2's healthy word: nothing waits in review or release.
+export const ALL_RELEASED = "All released";
+
+/** Band 2's counts: the rows waiting in review and in release, by stage. */
+export const harnessCounts = (stages: readonly HarnessStage[]): BandCount[] =>
+  (["pending-review", "pending-release"] as const).map((stage) => ({
+    word: STAGE_NAMES[stage],
+    count: countOf(stages, stage),
+    family: "attention",
+  }));
 
 export const JOURNEY_EMPTY = {
   title: "No changes yet",

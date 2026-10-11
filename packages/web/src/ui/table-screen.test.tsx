@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { GitBranch, Tag, Trees } from "lucide-react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { htmlElement, stubResizeObserver } from "../test-utils";
@@ -7,6 +8,8 @@ import type { Band } from "./band";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
+import { GitHubMark } from "./github-mark-link";
+import { Icon } from "./icon";
 import { TableScreen, type TableScreenProps } from "./table-screen";
 import { type TableScreenState, useTableScreen } from "./use-table-screen";
 import { useViewOptions } from "./use-view-options";
@@ -147,24 +150,38 @@ describe("TableScreen", () => {
         {
           label: "Origin",
           value: "orchard/fruit",
+          icon: <GitHubMark />,
           machine: true,
           drop: { rank: 2, belowRem: 36 },
         },
         {
-          label: "Released",
+          label: "Release",
           value: "v1.4.0",
+          icon: <Icon of={Tag} />,
           machine: true,
           drop: { rank: 3, belowRem: 24 },
         },
         {
           label: "Branch",
           value: "main",
+          icon: <Icon of={GitBranch} />,
           machine: true,
           drop: { rank: 1, belowRem: 44 },
         },
-        { label: "Trees", value: "12", machine: false },
+        {
+          label: "Trees",
+          value: "12",
+          icon: <Icon of={Trees} />,
+          machine: false,
+        },
       ],
-      read: { sentence: "Read 4 min ago", attention: false },
+      summary: {
+        freshness: { readAt: [Date.now() - 4 * 60_000], outcome: "fetched" },
+        healthy: "Ripe",
+        counts: [],
+      },
+      labelsBelowRem: 0,
+      countsBelowRem: 0,
     };
     const band2 = () => htmlElement(reread().closest("[data-band='2']"));
     // The label of each fact shown, in reading order, then Read where it
@@ -174,56 +191,74 @@ describe("TableScreen", () => {
         band2().querySelectorAll("dt"),
         (each) => each.textContent,
       );
-      const read = within(band2()).queryByText("Read 4 min ago");
+      const read = within(band2()).queryByText("4 min ago");
       const last = band2().querySelector("dl");
       return read !== null &&
-        last !== null &&
-        last.compareDocumentPosition(read) & Node.DOCUMENT_POSITION_FOLLOWING
+        (last === null ||
+          last.compareDocumentPosition(read) & Node.DOCUMENT_POSITION_FOLLOWING)
         ? [...labels, read.textContent]
         : labels;
     };
 
-    it("states the facts in order, then Read, before Re-read", () => {
+    it("states the facts in order, then the read age, before Re-read", () => {
       render(<FruitScreen band={ORCHARD} />);
 
       expect(shown()).toEqual([
         "Origin",
-        "Released",
+        "Release",
         "Branch",
         "Trees",
-        "Read 4 min ago",
+        "4 min ago",
       ]);
       expect(within(band2()).getByText("orchard/fruit")).toBeInTheDocument();
-      const read = within(band2()).getByText("Read 4 min ago");
+      const read = within(band2()).getByText("4 min ago");
       expect(
         read.compareDocumentPosition(reread()) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
 
-    it("drops whole facts in rank order as the band narrows, Read and unruled facts kept", () => {
+    it("shows each fact's label and value, its icon adding nothing to the name", () => {
+      render(<FruitScreen band={ORCHARD} />);
+
+      const terms = within(band2()).getAllByRole("term");
+      expect(terms.map((term) => term.textContent)).toEqual([
+        "Origin",
+        "Release",
+        "Branch",
+        "Trees",
+      ]);
+      for (const term of terms) {
+        expect(term.querySelector("svg")).toHaveAttribute(
+          "aria-hidden",
+          "true",
+        );
+      }
+      expect(
+        within(band2())
+          .getAllByRole("definition")
+          .map((value) => value.textContent),
+      ).toEqual(["orchard/fruit", "v1.4.0", "main", "12"]);
+    });
+
+    it("drops whole facts in rank order as the band narrows, the read age and unruled facts kept", () => {
       const reportWidth = stubResizeObserver();
       render(<FruitScreen band={ORCHARD} />);
 
       act(() => reportWidth(50 * 16));
       expect(shown()).toEqual([
         "Origin",
-        "Released",
+        "Release",
         "Branch",
         "Trees",
-        "Read 4 min ago",
+        "4 min ago",
       ]);
       act(() => reportWidth(40 * 16));
-      expect(shown()).toEqual([
-        "Origin",
-        "Released",
-        "Trees",
-        "Read 4 min ago",
-      ]);
+      expect(shown()).toEqual(["Origin", "Release", "Trees", "4 min ago"]);
       act(() => reportWidth(30 * 16));
-      expect(shown()).toEqual(["Released", "Trees", "Read 4 min ago"]);
+      expect(shown()).toEqual(["Release", "Trees", "4 min ago"]);
       act(() => reportWidth(20 * 16));
-      expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+      expect(shown()).toEqual(["Trees", "4 min ago"]);
       expect(within(band2()).queryByText("orchard/fruit")).toBeNull();
     });
 
@@ -236,24 +271,28 @@ describe("TableScreen", () => {
               {
                 label: "Pears",
                 value: "3",
+                icon: <Icon of={Trees} />,
                 machine: false,
                 drop: { rank: 1, belowRem: 20 },
               },
               {
                 label: "Apples",
                 value: "5",
+                icon: <Icon of={Trees} />,
                 machine: false,
                 drop: { rank: 2, belowRem: 30 },
               },
             ],
-            read: ORCHARD.read,
+            summary: ORCHARD.summary,
+            labelsBelowRem: 0,
+            countsBelowRem: 0,
           }}
         />,
       );
 
       act(() => reportWidth(25 * 16));
 
-      expect(shown()).toEqual(["Read 4 min ago"]);
+      expect(shown()).toEqual(["4 min ago"]);
     });
 
     describe("search", () => {
@@ -280,11 +319,11 @@ describe("TableScreen", () => {
         screen.getByRole("searchbox", { name: SEARCH, hidden: true });
       const icon = () => screen.queryByRole("button", { name: SEARCH });
 
-      it("sits after Read, before Re-read, and narrows the rows", async () => {
+      it("sits after the read age, before Re-read, and narrows the rows", async () => {
         render(<SearchedFruit />);
 
         const box = field();
-        const read = within(band2()).getByText("Read 4 min ago");
+        const read = within(band2()).getByText("4 min ago");
         expect(
           read.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
@@ -302,12 +341,12 @@ describe("TableScreen", () => {
         render(<SearchedFruit />);
 
         act(() => reportWidth(20 * 16));
-        expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+        expect(shown()).toEqual(["Trees", "4 min ago"]);
         expect(field()).toBeVisible();
         expect(icon()).toBeNull();
 
         act(() => reportWidth(17 * 16));
-        expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+        expect(shown()).toEqual(["Trees", "4 min ago"]);
         expect(field()).not.toBeVisible();
         expect(icon()).toBeVisible();
       });
@@ -319,7 +358,7 @@ describe("TableScreen", () => {
         act(() => reportWidth(50 * 16));
 
         expect(icon()).toBeVisible();
-        expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+        expect(shown()).toEqual(["Trees", "4 min ago"]);
       });
 
       it("opens the field from the icon by keyboard, and Esc returns to the icon", async () => {

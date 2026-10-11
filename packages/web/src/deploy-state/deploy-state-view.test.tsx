@@ -105,7 +105,9 @@ describe("Deploy-state — one table of every target", () => {
     }));
     renderDeployState();
 
-    expect(await screen.findByText("4 targets")).toBeInTheDocument();
+    const fact = await screen.findByRole("term");
+    expect(fact).toHaveTextContent("Targets");
+    expect(fact.nextElementSibling).toHaveTextContent("4");
   });
 
   it("does not count targets before both reads have landed", () => {
@@ -115,7 +117,7 @@ describe("Deploy-state — one table of every target", () => {
     );
     renderDeployState();
 
-    expect(screen.queryByText(/\d+ targets?/)).toBeNull();
+    expect(screen.queryByText("Targets")).toBeNull();
     expect(
       screen.queryByText(/no repositories registered\./i),
     ).not.toBeInTheDocument();
@@ -125,7 +127,12 @@ describe("Deploy-state — one table of every target", () => {
     stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
     renderDeployState();
 
-    expect(await screen.findByText("Nothing deployed yet")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "No targets yet" }),
+    ).toBeInTheDocument();
+    // Band 1 holds no meta text, and no Targets fact counts nothing.
+    expect(screen.queryByText("Nothing deployed yet")).toBeNull();
+    expect(screen.queryByText("Targets")).toBeNull();
     // With no target at all, the shared empty state says what fills the table.
     expect(
       screen.getByRole("heading", { level: 2, name: "No targets yet" }),
@@ -494,7 +501,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/a");
-    expect(await screen.findByText("Read 1 h ago")).toBeInTheDocument();
+    expect(await screen.findByText("1 h ago")).toBeInTheDocument();
     await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
 
     const reason = await screen.findByText(
@@ -525,6 +532,18 @@ describe("Deploy-state — failed reads", () => {
     expect(
       screen.queryByText(/install claude code or codex/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("reads Read failed in band 2 when its own read fails", async () => {
+    stubServer(() => ({
+      global: { status: 422, body: { error: "malformed" } },
+    }));
+    renderDeployState();
+
+    await screen.findByText("Deploy-state not read");
+    expect(document.querySelector('[data-band="2"]')).toHaveTextContent(
+      "Read failed",
+    );
   });
 
   it("states a failed registry read, never the register hint", async () => {
@@ -651,15 +670,13 @@ describe("Deploy-state — Re-read and freshness", () => {
     await waitFor(() => expect(driftReads()).toBe(before + 2));
   });
 
-  it("dates the oldest reading in band 2, alone on its left before Re-read", async () => {
+  it("dates the oldest reading in band 2, after the Targets fact and before Re-read", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
 
-    const read = await screen.findByText("Read just now");
+    const read = await screen.findByText("just now");
     const band = htmlElement(read.closest('[data-band="2"]'));
-    expect(band.querySelectorAll("dt")).toHaveLength(0);
-    // First in the band, before every control.
-    expect(band.textContent?.startsWith("Read just now")).toBe(true);
+    expect(band.querySelector("dt")?.textContent).toBe("Targets");
     expect(
       read.compareDocumentPosition(
         within(band).getByRole("button", { name: "Re-read Deploy-state" }),
@@ -682,7 +699,7 @@ describe("Deploy-state — Re-read and freshness", () => {
       }));
       renderDeployState();
       await findRow("…/me/a");
-      expect(await screen.findByText("Read just now")).toBeInTheDocument();
+      expect(await screen.findByText("just now")).toBeInTheDocument();
       await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
       const card = (
         await screen.findByText(
@@ -697,7 +714,7 @@ describe("Deploy-state — Re-read and freshness", () => {
       await act(() => vi.advanceTimersByTimeAsync(2 * 60_000));
 
       // Band 2 and the card, each once.
-      expect(screen.getAllByText("Read 2 min ago")).toHaveLength(2);
+      expect(screen.getByText("2 min ago")).toBeInTheDocument();
       expect(within(card).getByText("Read 2 min ago")).toBeInTheDocument();
       expect(fetchMock.mock.calls.length).toBe(reads);
     } finally {

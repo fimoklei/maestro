@@ -1,5 +1,6 @@
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import type { DriftStatus } from "../drift/drift-view-model";
+import type { StatusChip } from "../ui/band-summary";
 import { WARNING_GLYPH } from "../ui/status-family";
 import {
   reading,
@@ -14,6 +15,13 @@ export const UP_TO_DATE = reading("Up to date", "good");
 export const BEHIND = reading("Behind", "attention");
 export const UNKNOWN = reading("Unknown", "unknown");
 export const NOT_DEPLOYED = reading("Not deployed", "neutral");
+
+/** Band 2's count chips, worst first, as on Deploy-state (spec #1492). */
+export const SKILL_CHIPS: readonly StatusChip[] = [
+  { word: UNKNOWN.word, family: "failed", covers: [UNKNOWN.word] },
+  { word: LOCAL_EDITS.word, family: "attention", covers: [LOCAL_EDITS.word] },
+  { word: BEHIND.word, family: "attention", covers: [BEHIND.word] },
+];
 
 // Null until every read and check has answered: zero reach is not yet "nowhere".
 export function skillStatus(rollup: DeployedRollup): StatusReading | null {

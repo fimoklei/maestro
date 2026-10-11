@@ -8,12 +8,14 @@ import { describe, expect, it } from "vitest";
 import { machineValues } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
+  ALL_RELEASED,
   alsoInWords,
   CHANGE_WORDS,
   changeSentence,
   crossStageLine,
   deployedCopiesLine,
   detailSentence,
+  harnessCounts,
   JOURNEY_EMPTY,
   PULL_REQUEST_CARD,
   pullRequestLinkName,
@@ -758,5 +760,25 @@ describe("pull request words", () => {
     expect(
       alsoInWords(row("pending-proposal", "new-local-work", { alsoIn: null })),
     ).toBe("");
+  });
+});
+
+describe("harnessCounts", () => {
+  it("counts the Pending review and Pending release rows as attention", () => {
+    expect(
+      harnessCounts([
+        "pending-proposal",
+        "pending-review",
+        "pending-release",
+        "pending-release",
+      ]),
+    ).toEqual([
+      { word: "Pending review", count: 1, family: "attention" },
+      { word: "Pending release", count: 2, family: "attention" },
+    ]);
+  });
+
+  it("calls a Harness with nothing waiting All released", () => {
+    expect(ALL_RELEASED).toBe("All released");
   });
 });

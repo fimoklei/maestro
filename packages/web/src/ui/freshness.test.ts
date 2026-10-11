@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { freshnessLine, NOT_READ_YET } from "./freshness";
+import {
+  freshnessLine,
+  NOT_READ_YET,
+  readFreshness,
+  targetReadings,
+} from "./freshness";
 
 const NOW = new Date("2026-08-03T12:00:00.000Z");
 const minutesAgo = (minutes: number) => NOW.getTime() - minutes * 60_000;
@@ -148,5 +153,25 @@ describe("freshnessLine on a screen whose reads report failure elsewhere", () =>
 describe("Freshness copy", () => {
   it("heads the rows whose status has not answered yet", () => {
     expect(NOT_READ_YET).toBe("Not read yet");
+  });
+});
+
+describe("readFreshness over a screen read and its target reads", () => {
+  it("leaves an unreadable target out: its row reads Unknown, the screen read stands (#1492)", () => {
+    const freshness = readFreshness([
+      { at: 1_000, failed: false },
+      ...targetReadings([
+        { dataUpdatedAt: 0, isError: true },
+        { dataUpdatedAt: 2_000, isError: false },
+      ]),
+    ]);
+
+    expect(freshness).toEqual({ readAt: [1_000, 2_000], outcome: "fetched" });
+  });
+
+  it("keeps a target that has not answered yet, so the band reads not read yet", () => {
+    expect(
+      readFreshness(targetReadings([{ dataUpdatedAt: 0, isError: false }])),
+    ).toEqual({ readAt: [], outcome: "fetched" });
   });
 });

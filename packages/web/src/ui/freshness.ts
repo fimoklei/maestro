@@ -48,16 +48,53 @@ const toMs = (time: ReadTime): number =>
 
 // Dates the oldest answered reading, so the line never claims more freshness
 // than the stalest row. `on 20 Jul` reads as a date, `4 min ago` as a
-// distance; both follow "Read", so the prefix is not repeated.
+// distance; neither carries "Read", which its caller places.
+export const oldestAgo = (
+  readAt: Freshness["readAt"],
+  now: Date,
+): string | null => {
+  const answered = readAt.map(toMs).filter((time) => time > 0);
+  return answered.length === 0
+    ? null
+    : ago(new Date(Math.min(...answered)).toISOString(), now);
+};
+
+/** One reading behind the rows: when it last answered, in epoch ms (null: never), and whether its latest attempt failed. */
+export type Reading = { at: number | null; failed: boolean };
+
+/** A query's reading; its `dataUpdatedAt` stays 0 until it first answers. */
+export const queryReading = (query: {
+  dataUpdatedAt: number;
+  isError: boolean;
+}): Reading => ({
+  at: query.dataUpdatedAt === 0 ? null : query.dataUpdatedAt,
+  failed: query.isError,
+});
+
+/** The target reads' readings; an unreadable target is its row's Unknown, so it neither fails nor dates the screen (#1492). */
+export const targetReadings = (
+  queries: readonly Parameters<typeof queryReading>[0][],
+): Reading[] => queries.filter((query) => !query.isError).map(queryReading);
+
+// The oldest reading dates the line, and one that never answered is the
+// oldest of all; a failed reading turns it into the failed-read words.
+export const readFreshness = (reads: readonly Reading[]): Freshness => {
+  const ats = reads.map((each) => each.at);
+  return {
+    readAt: ats.includes(null) ? [] : ats,
+    outcome: reads.some((each) => each.failed) ? "fetch-failed" : "fetched",
+  };
+};
+
+export const READ_FAILED = "Read failed";
+export const OFFLINE = "Offline";
+export const lastRead = (since: string) => `last read ${since}`;
+
 export function freshnessLine(
   { readAt, outcome }: Freshness,
   now: Date,
 ): string | null {
-  const answered = readAt.map(toMs).filter((time) => time > 0);
-  const since =
-    answered.length === 0
-      ? null
-      : ago(new Date(Math.min(...answered)).toISOString(), now);
+  const since = oldestAgo(readAt, now);
   if (outcome === "untracked") {
     return since === null ? null : `Read ${since}`;
   }
@@ -69,10 +106,10 @@ export function freshnessLine(
   }
   // A failure never claims a verdict GitHub has not given: no permission gate,
   // no expired-token guess (#516).
-  const cause = outcome === "offline" ? "Offline" : "Read failed";
+  const cause = outcome === "offline" ? OFFLINE : READ_FAILED;
   return since === null
     ? `${cause} — never read`
-    : `${cause} — last read ${since}`;
+    : `${cause} — ${lastRead(since)}`;
 }
 
 /** The freshness line, ticking with the clock; null input renders no line. */

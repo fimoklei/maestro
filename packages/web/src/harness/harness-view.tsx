@@ -1,5 +1,5 @@
 import type { ReleasePlan, SemverStep } from "@maestro/core";
-import { FolderGit2, FolderInput } from "lucide-react";
+import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { BandAction } from "../ui/band-action";
@@ -7,13 +7,14 @@ import {
   BRANCH_FACT,
   NOT_RELEASED_YET,
   ORIGIN_FACT,
-  RELEASED_FACT,
+  RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
 import { CREATE_RELEASE, IMPORT_SKILL } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
 import { GatedButton } from "../ui/gated-button";
+import { GitHubMark } from "../ui/github-mark-link";
 import { Icon } from "../ui/icon";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { plainText } from "../ui/phrase";
@@ -43,7 +44,12 @@ import {
   staleStatusNotice,
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
-import { JOURNEY_EMPTY, statusReading } from "./stage-copy";
+import {
+  ALL_RELEASED,
+  harnessCounts,
+  JOURNEY_EMPTY,
+  statusReading,
+} from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
 import {
   useDiscardReleasePlan,
@@ -54,6 +60,11 @@ import {
 } from "./use-harness";
 import { useHarnessPresses } from "./use-harness-presses";
 import { useImportFlow } from "./use-import-flow";
+
+// Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
+// counts; the dot and Read never drop.
+const LABELS_BELOW_REM = 62;
+const COUNTS_BELOW_REM = 20;
 
 export function HarnessView({
   openSkill,
@@ -259,9 +270,6 @@ export function HarnessView({
     heardCounts.current = counts;
   }, [harness.dataUpdatedAt]);
 
-  const stale =
-    state !== undefined && staleStatusNotice(state.freshness, reread) !== null;
-
   return (
     <TableScreen
       state={table}
@@ -288,34 +296,54 @@ export function HarnessView({
           </>
         )
       }
-      band={
-        state === undefined || freshness === null
-          ? undefined
-          : {
-              facts: [
+      band={{
+        facts:
+          state === undefined
+            ? []
+            : [
                 {
                   label: ORIGIN_FACT,
+                  icon: <GitHubMark />,
                   value: state.origin,
                   github: state.github,
                   machine: true,
                   drop: { rank: 2, belowRem: 48 },
                 },
                 {
-                  label: RELEASED_FACT,
+                  label: RELEASE_FACT,
+                  icon: <Icon of={Tag} />,
                   value: state.releasedVersion ?? NOT_RELEASED_YET,
                   machine: state.releasedVersion !== null,
                   drop: { rank: 3, belowRem: 24 },
                 },
                 {
                   label: BRANCH_FACT,
+                  icon: <Icon of={GitBranch} />,
                   value: state.defaultBranch ?? UNKNOWN_FACT_VALUE,
                   machine: state.defaultBranch !== null,
                   drop: { rank: 1, belowRem: 54 },
                 },
               ],
-              read: { sentence: freshness, attention: stale },
-            }
-      }
+        summary: {
+          freshness:
+            state === undefined
+              ? { readAt: [], outcome: harness.isError ? "fetch-failed" : null }
+              : {
+                  readAt: [state.freshness.lastFetchedAt],
+                  outcome: state.freshness.outcome,
+                },
+          healthy: ALL_RELEASED,
+          counts: harnessCounts(
+            sections.flatMap((section) =>
+              section.read.outcome === "read"
+                ? section.read.rows.map(() => section.stage)
+                : [],
+            ),
+          ),
+        },
+        labelsBelowRem: LABELS_BELOW_REM,
+        countsBelowRem: COUNTS_BELOW_REM,
+      }}
       rereading={refresh.isPending}
       firstReadRows={8}
       rows={rows}
