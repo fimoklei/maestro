@@ -7,6 +7,7 @@ import { useDeletionCheck, useHarness } from "../harness/use-harness";
 import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import type { ReadFailure } from "../ui/use-table-screen";
+import { queryReading } from "./inventory-band";
 import { INVENTORY_NOT_READ } from "./inventory-copy";
 import { type CloneReading, InventoryView } from "./inventory-view";
 import { useDeploymentTargets } from "./use-deployment-targets";
@@ -38,7 +39,7 @@ export function InventoryPanel() {
   const readingDeployState = useIsFetching({ queryKey: DEPLOY_STATE_KEY }) > 0;
   const repos = registry.data?.repos ?? [];
   // Reuses the existing deploy-state + drift queries — no new server read (#272).
-  const targets = useDeploymentTargets(
+  const { targets, reads } = useDeploymentTargets(
     repos.map((repo) => repo.path),
     { isLoading: registry.isLoading, isError: registry.isError },
   );
@@ -54,9 +55,19 @@ export function InventoryPanel() {
       repos={repos}
       registryReady={registry.isSuccess}
       targets={targets}
-      latestRelease={
-        harness.isSuccess ? harness.data.releasedVersion : undefined
+      harness={
+        harness.isSuccess
+          ? {
+              origin: harness.data.origin,
+              github: harness.data.github,
+              latestRelease: harness.data.releasedVersion,
+            }
+          : harness.isError
+            ? null
+            : undefined
       }
+      // The registry read decides which targets there are, so it is one too.
+      reads={[...[inventory, registry].map(queryReading), ...reads]}
       failure={readFailure(inventory.error)}
       reading={
         inventory.isFetching || registry.isFetching || readingDeployState

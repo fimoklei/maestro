@@ -266,10 +266,10 @@ export function DeployStateView() {
             ? targetCount(rows.length)
             : undefined
       }
-      freshness={
-        freshness === null ? null : (
-          <span className="text-gray-11 text-meta">{freshness}</span>
-        )
+      band={
+        freshness === null
+          ? undefined
+          : { facts: [], read: { sentence: freshness, attention: false } }
       }
       rereading={screen.reading}
       firstReadRows={8}

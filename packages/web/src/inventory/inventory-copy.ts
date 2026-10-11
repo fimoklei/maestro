@@ -105,11 +105,11 @@ export const NO_FILTER_MATCH = {
   description: `Select ${CLEAR_FILTERS} to see every skill.`,
 };
 
-// Band 1's count once a search or filter hides a skill.
-export const shownSkillsMeta = (shown: number, total: number): string => {
-  const skills = `${total} ${total === 1 ? "skill" : "skills"}`;
-  return shown === total ? skills : `${shown} of ${skills}`;
-};
+// Band 2's count of skills (#1480).
+export const SKILLS_FACT = "Skills";
+/** The Skills fact: `X of N` once a search or filter hides a skill. */
+export const skillsFactValue = (shown: number, total: number): string =>
+  shown === total ? `${total}` : ofTotal(shown, total);
 
 // The row's hover card and detail pane (#1041).
 export const deployedToLine = (count: number): string =>
@@ -118,7 +118,6 @@ export const deployedToLine = (count: number): string =>
     : `Deployed to ${count} ${count === 1 ? "target" : "targets"}.`;
 export const moreTargetsLine = (more: number): string => `And ${more} more.`;
 export const SOME_TARGETS_NOT_READ = "Some targets could not be read.";
-export const NOT_RELEASED_YET = "Not released yet";
 
 // The skill detail pane's state sentence: the Status reading and its next step
 // (#1435).

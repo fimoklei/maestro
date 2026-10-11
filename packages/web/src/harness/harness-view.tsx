@@ -1,20 +1,24 @@
-import type { GitHubPage, ReleasePlan, SemverStep } from "@maestro/core";
+import type { ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { BandAction } from "../ui/band-action";
+import {
+  BRANCH_FACT,
+  NOT_RELEASED_YET,
+  ORIGIN_FACT,
+  RELEASED_FACT,
+  UNKNOWN_FACT_VALUE,
+} from "../ui/band-copy";
 import { Button } from "../ui/button";
-import { cn } from "../ui/cn";
 import { CREATE_RELEASE, IMPORT_SKILL } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
 import { GatedButton } from "../ui/gated-button";
-import { GitHubFactLink } from "../ui/github-fact-link";
 import { Icon } from "../ui/icon";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { plainText } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { StatusBadge } from "../ui/status-badge";
-import { STATUS_TOKENS } from "../ui/status-family";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
@@ -284,40 +288,33 @@ export function HarnessView({
           </>
         )
       }
-      lead={
-        state === undefined ? null : (
-          <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
-            <BandFact
-              label="Origin"
-              value={state.origin}
-              github={state.github}
-              yields="lg"
-            />
-            <BandFact
-              label="Released"
-              value={state.releasedVersion ?? "Not released yet"}
-              machine={state.releasedVersion !== null}
-            />
-            <BandFact
-              label="Branch"
-              value={state.defaultBranch ?? "Unknown"}
-              machine={state.defaultBranch !== null}
-              yields="sm"
-            />
-          </dl>
-        )
-      }
-      freshness={
-        freshness === null ? null : (
-          <span
-            className={cn(
-              "text-meta",
-              stale ? STATUS_TOKENS.attention.ink : "text-gray-11",
-            )}
-          >
-            {freshness}
-          </span>
-        )
+      band={
+        state === undefined || freshness === null
+          ? undefined
+          : {
+              facts: [
+                {
+                  label: ORIGIN_FACT,
+                  value: state.origin,
+                  github: state.github,
+                  machine: true,
+                  drop: { rank: 2, belowRem: 48 },
+                },
+                {
+                  label: RELEASED_FACT,
+                  value: state.releasedVersion ?? NOT_RELEASED_YET,
+                  machine: state.releasedVersion !== null,
+                  drop: { rank: 3, belowRem: 24 },
+                },
+                {
+                  label: BRANCH_FACT,
+                  value: state.defaultBranch ?? UNKNOWN_FACT_VALUE,
+                  machine: state.defaultBranch !== null,
+                  drop: { rank: 1, belowRem: 54 },
+                },
+              ],
+              read: { sentence: freshness, attention: stale },
+            }
       }
       rereading={refresh.isPending}
       firstReadRows={8}
@@ -392,43 +389,6 @@ export function HarnessView({
         />
       )}
     </TableScreen>
-  );
-}
-
-// One tree whether open or not, so a re-read landing keeps its focus.
-// Every fact truncates rather than run under the freshness line (#1204); a
-// yielding fact leaves band 2 below its breakpoint.
-const YIELDS = { sm: "max-sm:hidden", lg: "max-lg:hidden" } as const;
-
-function BandFact({
-  label,
-  value,
-  machine = true,
-  yields,
-  github,
-}: {
-  label: string;
-  value: string;
-  /** Links the value to its GitHub page. */
-  github?: GitHubPage;
-  /** False for a plain word such as Not released yet, which Geist Mono never sets. */
-  machine?: boolean;
-  yields?: keyof typeof YIELDS;
-}) {
-  return (
-    <div className={`flex min-w-0 gap-inline ${yields ? YIELDS[yields] : ""}`}>
-      <dt className="flex-none text-gray-11">{label}</dt>
-      <dd
-        title={value}
-        className={
-          machine
-            ? "m-0 truncate font-mono text-gray-12"
-            : "m-0 truncate text-gray-12"
-        }
-      >
-        <GitHubFactLink page={github} value={value} />
-      </dd>
-    </div>
   );
 }
 

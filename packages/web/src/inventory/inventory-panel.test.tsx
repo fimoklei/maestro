@@ -1,3 +1,4 @@
+import type { ToolDeployState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -34,6 +35,11 @@ async function openDeployDialog(name: string) {
 afterEach(() => {
   vi.unstubAllGlobals();
 });
+
+// Band 2's value beside a fact's label.
+const factValue = (label: string) =>
+  screen.getByText(label, { selector: "dt" }).nextElementSibling?.textContent;
+const skillsFact = () => factValue("Skills");
 
 function renderPanel() {
   return renderWithQuery(
@@ -331,7 +337,7 @@ describe("InventoryPanel", () => {
       </MemoryRouter>,
     );
     expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(screen.getByText("1 skill")).toBeInTheDocument();
+    expect(skillsFact()).toBe("1");
 
     fail = true;
     await userEvent.click(
@@ -340,7 +346,7 @@ describe("InventoryPanel", () => {
 
     const heading = await screen.findByText("Inventory not read");
     expect(screen.getByText("tdd")).toBeInTheDocument();
-    expect(screen.getByText("1 skill")).toBeInTheDocument();
+    expect(skillsFact()).toBe("1");
 
     fail = false;
     const notice = heading.closest<HTMLElement>('[role="status"]');
@@ -352,6 +358,89 @@ describe("InventoryPanel", () => {
       expect(screen.queryByText("Inventory not read")).not.toBeInTheDocument(),
     );
     expect(await screen.findByText("tdd")).toBeInTheDocument();
+  });
+
+  describe("band 2", () => {
+    // The Harness answers its origin and latest release; `failing` names the
+    // reads that answer 503, and `tools` the global deploy-state's tools.
+    const stubReads = (failing: string[] = [], tools?: ToolDeployState[]) =>
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL) => {
+          const url = String(input);
+          if (failing.some((path) => url.startsWith(path)))
+            return jsonResponse({ error: "unreadable" }, 503);
+          if (url === "/api/harness")
+            return jsonResponse({
+              origin: "github.com/acme/harness",
+              github: { kind: "link", url: "https://github.com/acme/harness" },
+              releasedVersion: "v1.4.0",
+            });
+          if (url.startsWith("/api/registry"))
+            return jsonResponse({ repos: [] });
+          if (url.startsWith("/api/deploy-state"))
+            return jsonResponse({ primitives: [], skipped: [], tools });
+          if (url.startsWith("/api/drift")) return jsonResponse({ behind: [] });
+          return (
+            withoutHarness(input) ??
+            jsonResponse({
+              primitives: [
+                { type: "skill", name: "tdd", description: "TDD loop" },
+              ],
+            })
+          );
+        }),
+      );
+
+    it("states the Harness's origin and latest release, and Read once every reading answered", async () => {
+      stubReads();
+      renderPanel();
+
+      expect(await screen.findByText("Read just now")).toBeInTheDocument();
+      expect(factValue("Origin")).toBe("github.com/acme/harness");
+      expect(factValue("Released")).toBe("v1.4.0");
+      expect(skillsFact()).toBe("1");
+    });
+
+    it("dates Read by a release comparison older than the reads that carried it", async () => {
+      stubReads(
+        [],
+        [
+          {
+            tool: "claude",
+            primitives: [],
+            releaseHead: {
+              release: "v1.4.0",
+              latestRelease: "v1.4.0",
+              changed: 0,
+              changedSkills: [],
+              selected: 0,
+              comparedAt: new Date(Date.now() - 30 * 60_000).toISOString(),
+            },
+          },
+        ],
+      );
+      renderPanel();
+
+      expect(await screen.findByText("Read 30 min ago")).toBeInTheDocument();
+    });
+
+    it("says Read failed — never read when a target's read fails before it ever answered", async () => {
+      stubReads(["/api/deploy-state/global"]);
+      renderPanel();
+
+      expect(
+        await screen.findByText("Read failed — never read"),
+      ).toBeInTheDocument();
+    });
+
+    it("reads Unknown for the Harness facts when the Harness read fails", async () => {
+      stubReads(["/api/harness"]);
+      renderPanel();
+
+      await waitFor(() => expect(factValue("Origin")).toBe("Unknown"));
+      expect(factValue("Released")).toBe("Unknown");
+    });
   });
 
   it("shows skeleton rows at once when Re-read Inventory is pressed", async () => {
