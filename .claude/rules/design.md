@@ -248,7 +248,9 @@ Mandatory for any change that alters what `packages/web` renders:
    - A connected screen → `pnpm smoke:ready`; a deploy or Harness state →
      `--scenario <name>[,<name>]` (each scenario and what it seeds:
      `scripts/smoke-scenarios.mjs`).
-2. Screenshot the changed UI with `agent-browser`, in each theme.
+2. Screenshot the changed UI with `agent-browser --session maestro-<worktree folder>`,
+   in each theme. Read a region as text with
+   `pnpm cockpit:snapshot "<selector>" [path]`, never a bare `agent-browser snapshot`.
 3. Read changed copy at a narrow width and at 200% zoom, in one theme.
 4. Compare against the design source; on mismatch, fix before claiming done.
 5. Run the `verify-in-smoke` checks before treating the screenshot as proof.
