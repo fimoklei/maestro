@@ -85,7 +85,6 @@ export function SkillPaneDialog({
           skillName={skillName}
           version={dialog.deployment.version}
           target={dialog.deployment.removeTarget}
-          targetName={dialog.deployment.label}
           onCancel={onClose}
           onRemoved={onRemoved}
         />

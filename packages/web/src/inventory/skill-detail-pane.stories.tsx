@@ -17,7 +17,7 @@ const target = (
   mark: skillMark(undefined, status),
   edited: false,
   target: { kind: "repo", repoPath: label },
-  removeTarget: { kind: "repo", repoPath: label },
+  removeTarget: { kind: "repo", repoPath: label, name: label },
   updateName: label,
   rowId: `repo:${label}`,
   updatable: status === "behind",

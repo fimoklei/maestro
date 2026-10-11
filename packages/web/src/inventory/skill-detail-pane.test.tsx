@@ -27,7 +27,7 @@ const dep = (
   edited: false,
   version: release,
   target: { kind: "repo", repoPath: `/dev/${label}` },
-  removeTarget: { kind: "repo", repoPath: `/dev/${label}` },
+  removeTarget: { kind: "repo", repoPath: `/dev/${label}`, name: label },
   updateName: label,
   rowId: `repo:/dev/${label}`,
   updatable: false,

@@ -38,7 +38,6 @@ export function RemoveSkillFlow({
   skillName,
   version,
   target,
-  targetName,
   onCancel,
   onRemoved,
 }: {
@@ -47,8 +46,6 @@ export function RemoveSkillFlow({
   version: string | null;
   // Required: a global target's tools must be present or the confirmation can't render.
   target: RemoveDialogTarget;
-  /** The target as the screen names it, for the removal's toast. */
-  targetName: string;
   onCancel: () => void;
   /** Called once a proven removal has closed the dialog. */
   onRemoved: () => void;
@@ -60,7 +57,9 @@ export function RemoveSkillFlow({
   const remove = useRemoveDeployedSkill();
   // Global's location is apm's own, resolved server-side.
   const wireTarget: DeployTarget =
-    target.kind === "repo" ? target : { kind: "global" };
+    target.kind === "repo"
+      ? { kind: "repo", repoPath: target.repoPath }
+      : { kind: "global" };
   const preflight = useRemovePreflight(skillName, wireTarget);
   const removeWrite = useWriteAction(remove, {
     report: useScreenReport(),
@@ -76,7 +75,7 @@ export function RemoveSkillFlow({
             ? { kind: "global", tools: removed.scope.tools }
             : target.kind === "global"
               ? target
-              : { kind: "repo", name: targetName },
+              : { kind: "repo", name: target.name },
       }),
     // `news` states it: a retry clears the mutation's error mid-attempt.
     failure: () => null,

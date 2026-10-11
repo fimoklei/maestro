@@ -585,6 +585,44 @@ describe("Deploy-state pane — Deployed skills", () => {
     ).toBeInTheDocument();
   });
 
+  it("names each of two clones that share a tail in its removal as its row does (#1476)", async () => {
+    const clientA = "/Users/me/clientA/repos/agent-harness";
+    const clientB = "/Users/me/clientB/repos/agent-harness";
+    const deployed = { primitives: [skill("tdd")], skipped: [] };
+    stubServer(() => ({
+      repos: [clientA, clientB],
+      repo: { [clientA]: deployed, [clientB]: deployed },
+      other: () =>
+        jsonResponse({
+          check: { scope: "repo", warning: null },
+          reclaim: null,
+          receipt: "b".repeat(64),
+        }),
+    }));
+    renderDeployState();
+
+    for (const name of [
+      "…/clientA/repos/agent-harness",
+      "…/clientB/repos/agent-harness",
+    ]) {
+      const pane = await openPane(name);
+      await userEvent.click(
+        within(pane).getByRole("button", { name: "Actions for tdd" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Remove skill" }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText(name)).toBeInTheDocument();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+    }
+  });
+
   it("closes only the removal dialog on Escape, leaving the pane open", async () => {
     stubServer(() => ({
       repos: [REPO],

@@ -184,7 +184,12 @@ describe("skillDeployments", () => {
         status: "up-to-date",
         mark: expect.objectContaining({ word: "Up to date" }),
         target: { kind: "repo", repoPath: "/dev/acme-web" },
-        removeTarget: { kind: "repo", repoPath: "/dev/acme-web" },
+        // The removal carries the row's name (#1476).
+        removeTarget: {
+          kind: "repo",
+          repoPath: "/dev/acme-web",
+          name: "/dev/acme-web",
+        },
         updateName: "/dev/acme-web",
         rowId: "repo:/dev/acme-web",
         updatable: false,

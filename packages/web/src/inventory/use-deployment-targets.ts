@@ -1,4 +1,4 @@
-import { targetLabel } from "../shell/target-label";
+import { repoTargetName } from "../shell/target-name";
 // Every deploy target (each detected tool and each registered repo) as one flat
 // list for the roll-up (#272), from queries the cockpit already runs.
 
@@ -93,7 +93,7 @@ export function useDeploymentTargets(
     targets.push(
       repoTarget({
         // Shortened as the deploy picker names it (#211).
-        label: targetLabel(repoPath, repoPaths),
+        label: repoTargetName(repoPath, repoPaths),
         target: { kind: "repo", repoPath },
         read: deploy,
         drift: driftViewModel(repoDrift[index] ?? pending),

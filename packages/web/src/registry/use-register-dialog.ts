@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { targetLabel } from "../shell/target-label";
+import { repoTargetName } from "../shell/target-name";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { useWriteAction } from "../ui/use-write-action";
 import { registerMessage } from "./repositories-copy";
@@ -40,7 +40,7 @@ export function useRegisterDialog({
     action: "register",
     show: "row",
     name: ({ repos }, sent) =>
-      targetLabel(
+      repoTargetName(
         addedPath(repos, sent),
         repos.map((repo) => repo.path),
       ),

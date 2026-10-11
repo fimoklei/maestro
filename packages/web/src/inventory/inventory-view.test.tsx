@@ -1650,7 +1650,11 @@ describe("InventoryView — a target row in the pane", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("tdd");
-    expect(dialog).toHaveTextContent("/projects/beta");
+    // Named as the pane's row names it, the whole path on hover (#1476).
+    expect(within(dialog).getByText("beta")).toHaveAttribute(
+      "title",
+      "/projects/beta",
+    );
   });
 });
 

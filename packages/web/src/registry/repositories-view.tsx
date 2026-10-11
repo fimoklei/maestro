@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { repoRowId } from "../deploy-state/target-rows";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
-import { targetLabel } from "../shell/target-label";
+import { repoTargetName } from "../shell/target-name";
 import { Button } from "../ui/button";
 import { REGISTER_REPOSITORY } from "../ui/control-labels";
 import { Icon } from "../ui/icon";
@@ -69,14 +69,14 @@ export function RepositoriesView() {
     report,
     action: "unregister",
     show: "toast",
-    name: (_data, path) => phrase`${named(targetLabel(path, paths))}`,
+    name: (_data, path) => phrase`${named(repoTargetName(path, paths))}`,
     failure: unregisterNotice,
   });
 
   const rows: RepositoryRow[] = repos.map((repo, index) => ({
     path: repo.path,
     // Whole set drives each label so shared-prefix repos stay distinct (#211).
-    name: targetLabel(repo.path, paths),
+    name: repoTargetName(repo.path, paths),
     status: STATUS_READINGS[repo.status],
     github: deployStates[index]?.data?.github,
   }));
