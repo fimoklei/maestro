@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { RefreshCw } from "lucide-react";
+import { GitBranch, RefreshCw, Tag } from "lucide-react";
 import type { Band } from "./band";
 import { BandRow } from "./band";
+import { GitHubMark } from "./github-mark-link";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 
@@ -14,18 +15,21 @@ const HARNESS: Band = {
         kind: "link",
         url: "https://github.com/fimoklei/agent-harness",
       },
+      icon: <GitHubMark />,
       machine: true,
       drop: { rank: 2, belowRem: 48 },
     },
     {
-      label: "Released",
+      label: "Release",
       value: "v1.4.0",
+      icon: <Icon of={Tag} />,
       machine: true,
       drop: { rank: 3, belowRem: 24 },
     },
     {
       label: "Branch",
       value: "main",
+      icon: <Icon of={GitBranch} />,
       machine: true,
       drop: { rank: 1, belowRem: 54 },
     },

@@ -16,9 +16,7 @@ export const TARGET_LABEL = "Target";
 export const GLOBAL = "Global";
 export const REPOSITORIES = "Repositories";
 
-export const NOTHING_DEPLOYED = "Nothing deployed yet";
-export const targetCount = (count: number) =>
-  `${count} ${count === 1 ? "target" : "targets"}`;
+export const TARGETS_FACT = "Targets";
 
 // Register repository on the Repositories screen is the only registration
 // control, so every sentence that needs one names both.

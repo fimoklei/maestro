@@ -5,8 +5,6 @@ import type { ReactNode } from "react";
 export interface PanelProps {
   /** The screen name. */
   title: string;
-  /** The screen's own count or state line, beside the title. */
-  meta?: ReactNode;
   /** The screen's primary action, right in band 1. */
   action?: ReactNode;
   /** Band 2's content. Omitted where the screen has none. */
@@ -14,7 +12,7 @@ export interface PanelProps {
   children: ReactNode;
 }
 
-export function Panel({ title, meta, action, band2, children }: PanelProps) {
+export function Panel({ title, action, band2, children }: PanelProps) {
   return (
     // data-panel: the edge a hover card keeps inside.
     <div
@@ -28,7 +26,6 @@ export function Panel({ title, meta, action, band2, children }: PanelProps) {
         <h1 className="m-0 font-semibold font-ui text-gray-12 text-title tracking-title">
           {title}
         </h1>
-        {meta ? <span className="text-gray-11 text-meta">{meta}</span> : null}
         {action ? (
           <div className="ml-auto flex items-center gap-inline">{action}</div>
         ) : null}
