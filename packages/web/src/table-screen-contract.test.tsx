@@ -240,7 +240,8 @@ const renderInventoryRow = () => {
       primitives={[TDD]}
       repos={[]}
       registryReady
-      latestRelease="v1.4.0"
+      harness={{ origin: "github.com/acme/harness", latestRelease: "v1.4.0" }}
+      reads={[]}
       targets={[
         {
           pending: undefined,
@@ -548,7 +549,11 @@ const ON_TABLE_SCREEN: Row[] = [
             primitives={[TDD]}
             repos={[]}
             registryReady
-            latestRelease="v1.4.0"
+            harness={{
+              origin: "github.com/acme/harness",
+              latestRelease: "v1.4.0",
+            }}
+            reads={[]}
             targets={[
               {
                 pending: undefined,

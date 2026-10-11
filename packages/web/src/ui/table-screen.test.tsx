@@ -1,7 +1,9 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { htmlElement } from "../test-utils";
+import { htmlElement, stubResizeObserver } from "../test-utils";
+import type { Band } from "./band";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
@@ -43,8 +45,7 @@ type ScreenProps = {
     | "shown"
     | "notice"
     | "groups"
-    | "lead"
-    | "freshness"
+    | "band"
     | "rereading"
     | "firstReadRows"
     | "selection"
@@ -115,6 +116,7 @@ const reread = () => screen.getByRole("button", { name: "Re-read Fruit" });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("TableScreen", () => {
@@ -138,25 +140,205 @@ describe("TableScreen", () => {
     expect(within(grid()).queryByText("pear")).not.toBeInTheDocument();
   });
 
-  it("puts the screen's facts and freshness line in band 2, before Re-read", () => {
-    render(
-      <FruitScreen
-        lead={<dl aria-label="Orchard facts" />}
-        freshness="Read 4 min ago"
-      />,
-    );
+  describe("band 2", () => {
+    // Harness's drop rules: Branch first, then Origin, then Released.
+    const ORCHARD: Band = {
+      facts: [
+        {
+          label: "Origin",
+          value: "orchard/fruit",
+          machine: true,
+          drop: { rank: 2, belowRem: 36 },
+        },
+        {
+          label: "Released",
+          value: "v1.4.0",
+          machine: true,
+          drop: { rank: 3, belowRem: 24 },
+        },
+        {
+          label: "Branch",
+          value: "main",
+          machine: true,
+          drop: { rank: 1, belowRem: 44 },
+        },
+        { label: "Trees", value: "12", machine: false },
+      ],
+      read: { sentence: "Read 4 min ago", attention: false },
+    };
+    const band2 = () => htmlElement(reread().closest("[data-band='2']"));
+    // The label of each fact shown, in reading order, then Read where it
+    // follows them.
+    const shown = () => {
+      const labels = Array.from(
+        band2().querySelectorAll("dt"),
+        (each) => each.textContent,
+      );
+      const read = within(band2()).queryByText("Read 4 min ago");
+      const last = band2().querySelector("dl");
+      return read !== null &&
+        last !== null &&
+        last.compareDocumentPosition(read) & Node.DOCUMENT_POSITION_FOLLOWING
+        ? [...labels, read.textContent]
+        : labels;
+    };
 
-    const band2 = reread().closest("[data-band='2']") as HTMLElement;
-    const facts = within(band2).getByLabelText("Orchard facts");
-    const freshness = within(band2).getByText("Read 4 min ago");
-    expect(
-      facts.compareDocumentPosition(freshness) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      freshness.compareDocumentPosition(reread()) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    it("states the facts in order, then Read, before Re-read", () => {
+      render(<FruitScreen band={ORCHARD} />);
+
+      expect(shown()).toEqual([
+        "Origin",
+        "Released",
+        "Branch",
+        "Trees",
+        "Read 4 min ago",
+      ]);
+      expect(within(band2()).getByText("orchard/fruit")).toBeInTheDocument();
+      const read = within(band2()).getByText("Read 4 min ago");
+      expect(
+        read.compareDocumentPosition(reread()) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("drops whole facts in rank order as the band narrows, Read and unruled facts kept", () => {
+      const reportWidth = stubResizeObserver();
+      render(<FruitScreen band={ORCHARD} />);
+
+      act(() => reportWidth(50 * 16));
+      expect(shown()).toEqual([
+        "Origin",
+        "Released",
+        "Branch",
+        "Trees",
+        "Read 4 min ago",
+      ]);
+      act(() => reportWidth(40 * 16));
+      expect(shown()).toEqual([
+        "Origin",
+        "Released",
+        "Trees",
+        "Read 4 min ago",
+      ]);
+      act(() => reportWidth(30 * 16));
+      expect(shown()).toEqual(["Released", "Trees", "Read 4 min ago"]);
+      act(() => reportWidth(20 * 16));
+      expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+      expect(within(band2()).queryByText("orchard/fruit")).toBeNull();
+    });
+
+    it("never drops a fact before one of a lower rank", () => {
+      const reportWidth = stubResizeObserver();
+      render(
+        <FruitScreen
+          band={{
+            facts: [
+              {
+                label: "Pears",
+                value: "3",
+                machine: false,
+                drop: { rank: 1, belowRem: 20 },
+              },
+              {
+                label: "Apples",
+                value: "5",
+                machine: false,
+                drop: { rank: 2, belowRem: 30 },
+              },
+            ],
+            read: ORCHARD.read,
+          }}
+        />,
+      );
+
+      act(() => reportWidth(25 * 16));
+
+      expect(shown()).toEqual(["Read 4 min ago"]);
+    });
+
+    describe("search", () => {
+      const SEARCH = "Search the fruit";
+      function SearchedFruit({ iconBelowRem = 18 }: { iconBelowRem?: number }) {
+        const [value, setValue] = useState("");
+        return (
+          <FruitScreen
+            band={{
+              ...ORCHARD,
+              search: {
+                label: SEARCH,
+                value,
+                onChange: setValue,
+                iconBelowRem,
+              },
+            }}
+            shown={(row) => row.name.includes(value)}
+          />
+        );
+      }
+      // Hidden fields too, so `toBeVisible` can say which.
+      const field = () =>
+        screen.getByRole("searchbox", { name: SEARCH, hidden: true });
+      const icon = () => screen.queryByRole("button", { name: SEARCH });
+
+      it("sits after Read, before Re-read, and narrows the rows", async () => {
+        render(<SearchedFruit />);
+
+        const box = field();
+        const read = within(band2()).getByText("Read 4 min ago");
+        expect(
+          read.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+          box.compareDocumentPosition(reread()) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        await userEvent.type(box, "pe");
+        expect(within(grid()).getByText("pear")).toBeInTheDocument();
+        expect(within(grid()).queryByText("apple")).toBeNull();
+      });
+
+      it("stays a field while facts drop, then becomes an icon last", () => {
+        const reportWidth = stubResizeObserver();
+        render(<SearchedFruit />);
+
+        act(() => reportWidth(20 * 16));
+        expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+        expect(field()).toBeVisible();
+        expect(icon()).toBeNull();
+
+        act(() => reportWidth(17 * 16));
+        expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+        expect(field()).not.toBeVisible();
+        expect(icon()).toBeVisible();
+      });
+
+      it("drops every fact with a drop rule once it is an icon, whatever their widths", () => {
+        const reportWidth = stubResizeObserver();
+        render(<SearchedFruit iconBelowRem={60} />);
+
+        act(() => reportWidth(50 * 16));
+
+        expect(icon()).toBeVisible();
+        expect(shown()).toEqual(["Trees", "Read 4 min ago"]);
+      });
+
+      it("opens the field from the icon by keyboard, and Esc returns to the icon", async () => {
+        const reportWidth = stubResizeObserver();
+        render(<SearchedFruit />);
+        act(() => reportWidth(17 * 16));
+
+        htmlElement(icon()).focus();
+        await userEvent.keyboard("{Enter}");
+        expect(field()).toHaveFocus();
+        await userEvent.keyboard("ch");
+        expect(within(grid()).getByText("cherry")).toBeInTheDocument();
+        expect(within(grid()).queryByText("pear")).toBeNull();
+
+        await userEvent.keyboard("{Escape}");
+        expect(icon()).toHaveFocus();
+        expect(field()).not.toBeVisible();
+      });
+    });
   });
 
   it("spins Re-read while the screen re-reads", () => {

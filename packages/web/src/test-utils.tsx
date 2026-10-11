@@ -123,3 +123,30 @@ export function measureAs(scrollWidth: number, clientWidth: number) {
     clientWidth,
   );
 }
+
+/** Stubs ResizeObserver; every observer hears the width the returned call reports, in px. */
+export function stubResizeObserver(): (px: number) => void {
+  const callbacks: (() => void)[] = [];
+  let width = 0;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class implements ResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        callbacks.push(() =>
+          callback(
+            // A partial entry: `useWidthRem` reads `contentRect.width` alone.
+            [{ contentRect: { width } } as ResizeObserverEntry],
+            this,
+          ),
+        );
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  return (px) => {
+    width = px;
+    for (const each of callbacks) each();
+  };
+}

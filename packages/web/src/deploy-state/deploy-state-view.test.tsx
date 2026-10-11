@@ -651,11 +651,20 @@ describe("Deploy-state — Re-read and freshness", () => {
     await waitFor(() => expect(driftReads()).toBe(before + 2));
   });
 
-  it("dates the oldest reading in band 2", async () => {
+  it("dates the oldest reading in band 2, alone on its left before Re-read", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
 
-    expect(await screen.findByText("Read just now")).toBeInTheDocument();
+    const read = await screen.findByText("Read just now");
+    const band = htmlElement(read.closest('[data-band="2"]'));
+    expect(band.querySelectorAll("dt")).toHaveLength(0);
+    // First in the band, before every control.
+    expect(band.textContent?.startsWith("Read just now")).toBe(true);
+    expect(
+      read.compareDocumentPosition(
+        within(band).getByRole("button", { name: "Re-read Deploy-state" }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("ticks band 2 and the status hover card while the screen stays open", async () => {

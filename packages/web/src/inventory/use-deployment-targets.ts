@@ -9,6 +9,7 @@ import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
+import { queryReading, type Reading } from "./inventory-band";
 import type { DeployTarget } from "./use-deploy-skill";
 
 export function useDeploymentTargets(
@@ -16,9 +17,10 @@ export function useDeploymentTargets(
   // Loading/error must reach the roll-up, or a repo-deployed skill reads
   // "deployed nowhere" during a normal load or registry outage.
   registry: { isLoading: boolean; isError: boolean },
-): DeploymentTarget[] {
+): { targets: DeploymentTarget[]; reads: Reading[] } {
   const globalDeploy = useGlobalDeployState();
-  const globalDrift = driftViewModel(useGlobalDrift());
+  const globalDriftRead = useGlobalDrift();
+  const globalDrift = driftViewModel(globalDriftRead);
   const repoDeploy = useQueries({
     queries: repoPaths.map(deployStateQueryOptions),
   });
@@ -99,5 +101,18 @@ export function useDeploymentTargets(
     );
   });
 
-  return targets;
+  // A failed query keeps its last answer's time, so the line can date it.
+  const reads: Reading[] = [
+    globalDeploy,
+    globalDriftRead,
+    ...repoDeploy,
+    ...repoDrift,
+  ].map(queryReading);
+  // A comparison the server could not run keeps its last answer's time; one
+  // never run dates nothing, and its skills read Unknown.
+  for (const target of targets) {
+    const at = target.releaseHead?.comparedAt;
+    if (at != null) reads.push({ at: Date.parse(at), failed: false });
+  }
+  return { targets, reads };
 }

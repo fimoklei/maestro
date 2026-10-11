@@ -28,10 +28,12 @@ import {
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
+  SEARCH_LABEL,
   SELECT_ALL_LABEL,
+  SKILLS_FACT,
   SOME_TARGETS_NOT_READ,
-  shownSkillsMeta,
   skillStateLine,
+  skillsFactValue,
   stageRowLabel,
   TARGETS_LOADING,
   TARGETS_STILL_CHECKING,
@@ -43,6 +45,11 @@ import {
 
 // Approved sentences, as exact strings.
 describe("Inventory copy", () => {
+  // The field's name and placeholder, and the narrow band's icon.
+  it("names the search field and its icon by their action", () => {
+    expect(SEARCH_LABEL).toBe("Search the Inventory");
+  });
+
   it("says how to see every skill when the search matches none", () => {
     expect(NO_SEARCH_MATCH).toEqual({
       title: "No skills match the search",
@@ -58,11 +65,11 @@ describe("Inventory copy", () => {
     });
   });
 
-  it("counts the skills a search or filter shows against all of them", () => {
-    expect(shownSkillsMeta(34, 34)).toBe("34 skills");
-    expect(shownSkillsMeta(1, 1)).toBe("1 skill");
-    expect(shownSkillsMeta(0, 34)).toBe("0 of 34 skills");
-    expect(shownSkillsMeta(1, 34)).toBe("1 of 34 skills");
+  it("counts the skills a search or filter shows against all of them in band 2's Skills fact", () => {
+    expect(SKILLS_FACT).toBe("Skills");
+    expect(skillsFactValue(34, 34)).toBe("34");
+    expect(skillsFactValue(0, 34)).toBe("0 of 34");
+    expect(skillsFactValue(1, 34)).toBe("1 of 34");
   });
 
   it("names a row's checkbox after its skill", () => {

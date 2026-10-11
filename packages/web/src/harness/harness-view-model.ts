@@ -4,6 +4,7 @@ import type {
   HarnessStageRead,
   HarnessState,
 } from "@maestro/core";
+import { NOT_RELEASED_YET } from "../ui/band-copy";
 import { freshnessLine } from "../ui/freshness";
 import { type Copy, machine, phrase } from "../ui/phrase";
 import { CREATE_RELEASE_UNAVAILABLE } from "./dialog-copy";
@@ -71,7 +72,7 @@ const releaseMeta = (read: HarnessStageRead, state: HarnessState): Copy => {
     return "Status unknown";
   }
   return state.releasedVersion === null
-    ? "Not released yet"
+    ? NOT_RELEASED_YET
     : phrase`Compared with ${machine(state.releasedVersion)}`;
 };
 

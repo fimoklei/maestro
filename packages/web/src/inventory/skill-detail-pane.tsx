@@ -1,5 +1,6 @@
 import type { Ref } from "react";
 import type { ActionsMenuItem } from "../ui/actions-menu";
+import { NOT_RELEASED_YET } from "../ui/band-copy";
 import { cn } from "../ui/cn";
 import { DetailPane } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
@@ -12,7 +13,6 @@ import {
   BEHIND_FACT,
   LATEST_RELEASE_FACT,
   NOT_DEPLOYED_ANYWHERE,
-  NOT_RELEASED_YET,
   ofTotal,
   SOME_TARGETS_NOT_READ,
   STATUS_FACT,

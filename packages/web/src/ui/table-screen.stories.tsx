@@ -69,7 +69,14 @@ function Screen({
         columns={columns}
         rowId={(row) => row.path}
         view={withView ? view : undefined}
-        freshness={withView ? "Read 4 min ago" : undefined}
+        band={
+          withView
+            ? {
+                facts: [],
+                read: { sentence: "Read 4 min ago", attention: false },
+              }
+            : undefined
+        }
         empty={{
           title: "No repositories yet",
           description:

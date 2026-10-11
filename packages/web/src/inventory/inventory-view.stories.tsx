@@ -74,7 +74,12 @@ const meta = {
     primitives,
     repos: [{ path: "/Users/me/dev/acme-web" }],
     registryReady: true,
-    latestRelease: "v1.4.0",
+    harness: {
+      origin: "github.com/acme/harness",
+      github: { kind: "link", url: "https://github.com/acme/harness" },
+      latestRelease: "v1.4.0",
+    },
+    reads: [{ at: Date.now() - 4 * 60_000, failed: false }],
     targets: [
       target(
         ["audit-dependencies", "create-issue", "diagnose", "tdd"],
