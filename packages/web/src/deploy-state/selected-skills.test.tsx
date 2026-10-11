@@ -36,7 +36,11 @@ function renderList(
       row={{
         primitives,
         drift,
-        target: { kind: "repo", repoPath: "/Users/me/project" },
+        target: {
+          kind: "repo",
+          repoPath: "/Users/me/project",
+          name: "…/me/project",
+        },
         wire: { kind: "repo", repoPath: "/Users/me/project" },
         name: "…/me/project",
         updateName: "…/me/project",

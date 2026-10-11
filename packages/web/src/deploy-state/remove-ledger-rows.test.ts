@@ -24,7 +24,7 @@ describe("removeLedgerRows", () => {
   it("states the repo path as the only row", () => {
     expect(
       removeLedgerRows(
-        { kind: "repo", repoPath: "/Users/me/project" },
+        { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
         [],
         RUNNING,
       ),
@@ -249,7 +249,7 @@ describe("removeLedgerRows", () => {
 
     it("never reads an unproven target as removed", () => {
       const report = removeOutcomeReport(
-        { kind: "repo", repoPath: "/Users/me/project" },
+        { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
         { scope: "repo", state: "unknown" },
       );
 
@@ -259,7 +259,7 @@ describe("removeLedgerRows", () => {
 
     it("names the repository as the table does, never in mono", () => {
       const report = removeOutcomeReport(
-        { kind: "repo", repoPath: "/Users/me/project" },
+        { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
         { scope: "repo", state: "not-removed" },
       );
 
@@ -293,7 +293,7 @@ describe("removeLedgerRows", () => {
     it("speaks of one target in the singular", () => {
       expect(
         removeOutcomeReport(
-          { kind: "repo", repoPath: "/Users/me/project" },
+          { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
           { scope: "repo", state: "removed" },
         ).heading,
       ).toBe("Removed from 1 of 1 target");
@@ -312,7 +312,7 @@ describe("removeLedgerRows", () => {
 
   it("puts the repo scope's aggregate answer on its single row", () => {
     const [repo] = removeLedgerRows(
-      { kind: "repo", repoPath: "/Users/me/project" },
+      { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
       [],
       { kind: "repo", warning: "cannot-verify" },
     );

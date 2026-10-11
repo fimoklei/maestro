@@ -244,7 +244,11 @@ const ON_DIALOG: Row[] = [
       <RemoveSkillDialog
         skillName="tdd"
         version="v0.5.0"
-        target={{ kind: "repo", repoPath: "/Users/me/project" }}
+        target={{
+          kind: "repo",
+          repoPath: "/Users/me/project",
+          name: "…/me/project",
+        }}
         isRemoving={running}
         preflight={{
           kind: "offered",
@@ -269,7 +273,11 @@ const ON_DIALOG: Row[] = [
           <RemoveSkillDialog
             skillName="tdd"
             version="v0.5.0"
-            target={{ kind: "repo", repoPath: "/Users/me/project" }}
+            target={{
+              kind: "repo",
+              repoPath: "/Users/me/project",
+              name: "…/me/project",
+            }}
             isRemoving={false}
             preflight={{
               kind: "offered",

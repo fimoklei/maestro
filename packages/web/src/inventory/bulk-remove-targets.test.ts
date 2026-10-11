@@ -94,23 +94,18 @@ describe("bulkRemoveTargets", () => {
     ]);
   });
 
-  // A row has one line for a name, and deep clones share a long prefix — the
-  // tail is the part that tells two of them apart (#211).
-  it("shortens a repo path to the tail that tells it from its siblings", () => {
+  // The list names each repo as its pane row does: shortened against every
+  // registered repository, not only the ones holding the skill (#1476).
+  it("names a repo with the target's own short name", () => {
     expect(
       bulkRemoveTargets("tdd", [
         ready(
-          repo("/home/me/work/acme-web"),
+          repo("/home/me/clientA/repos/agent-harness"),
           ["tdd"],
-          "/home/me/work/acme-web",
-        ),
-        ready(
-          repo("/home/me/play/acme-web"),
-          ["tdd"],
-          "/home/me/play/acme-web",
+          "…/clientA/repos/agent-harness",
         ),
       ]).map((entry) => entry.label),
-    ).toEqual(["…/work/acme-web", "…/play/acme-web"]);
+    ).toEqual(["…/clientA/repos/agent-harness"]);
   });
 
   // One removal covers every tool, so no single tool's name describes it —

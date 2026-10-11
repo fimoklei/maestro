@@ -15,6 +15,7 @@ import { RemoveSkillDialog } from "./remove-skill-dialog";
 const REPO_TARGET = {
   kind: "repo" as const,
   repoPath: "/Users/me/project",
+  name: "…/me/project",
 };
 
 const noticeFor = (code: string): DeployStateNotice =>

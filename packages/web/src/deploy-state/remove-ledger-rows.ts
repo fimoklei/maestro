@@ -4,7 +4,6 @@ import type {
   RemoveTargetState,
 } from "@maestro/core";
 import type { PrimitiveType } from "../inventory/type-filter";
-import { targetLabel } from "../shell/target-label";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import type { ReportGroup } from "../ui/report";
 import type {
@@ -14,7 +13,8 @@ import type {
 import { toolDisplayName } from "./tool-presentation";
 
 export type RemoveDialogTarget =
-  | { kind: "repo"; repoPath: string }
+  // A repo carries its table row's name, so the dialog names it as the row does.
+  | { kind: "repo"; repoPath: string; name: string }
   | { kind: "global"; tools: string[] };
 
 export type RemoveLedgerRow = {
@@ -115,7 +115,7 @@ export function removeOutcomeReport(
         .filter((entry) => entry.state === state)
         .map((entry) =>
           target.kind === "repo"
-            ? { name: targetLabel(target.repoPath) }
+            ? { name: target.name }
             : {
                 name:
                   targets.find((each) => each.tool === entry.tool)?.name ??
@@ -133,7 +133,7 @@ const rank = (onScreen: readonly string[], tool: string) => {
 
 const targetsOf = (target: RemoveDialogTarget) =>
   target.kind === "repo"
-    ? [{ tool: target.repoPath, name: targetLabel(target.repoPath) }]
+    ? [{ tool: target.repoPath, name: target.name }]
     : target.tools.map((tool) => ({ tool, name: toolDisplayName(tool) }));
 
 export function removeLedgerRows(

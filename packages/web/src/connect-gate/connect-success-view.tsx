@@ -1,5 +1,5 @@
 import type { ConnectOutcome } from "@maestro/core";
-import { targetLabel } from "../shell/target-label";
+import { locationName } from "../shell/target-name";
 import { Button } from "../ui/button";
 import { Fact } from "../ui/fact";
 import { Notice } from "../ui/notice";
@@ -80,7 +80,7 @@ export function ConnectSuccessView({
       <dl className="m-0">
         <Fact
           label="Local folder"
-          value={targetLabel(inventoryPath)}
+          value={locationName(inventoryPath)}
           title={inventoryPath}
         />
       </dl>
