@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   IN_SYNC,
+  TARGET_CHIPS,
   TARGET_STATUS_WORDS,
-  targetCounts,
   targetStatus,
 } from "./target-status";
 
@@ -160,24 +160,22 @@ describe("targetStatus", () => {
   });
 });
 
-describe("targetCounts", () => {
-  it("counts Unknown as failed, and Attention, Local edits and Behind as attention, unfinished operations under Attention", () => {
-    expect(
-      targetCounts([
-        "Unknown",
-        "Attention",
-        "Deploy incomplete",
-        "Removal incomplete",
-        "Local edits",
-        "In sync",
-        "Pinned per skill",
-        null,
-      ]),
-    ).toEqual([
-      { word: "Unknown", count: 1, family: "failed" },
-      { word: "Attention", count: 3, family: "attention" },
-      { word: "Local edits", count: 1, family: "attention" },
-      { word: "Behind", count: 0, family: "attention" },
+describe("TARGET_CHIPS", () => {
+  it("offers Unknown as failed, and Attention, Local edits and Behind as attention, unfinished operations under Attention", () => {
+    expect(TARGET_CHIPS).toEqual([
+      { word: "Unknown", family: "failed", covers: ["Unknown"] },
+      {
+        word: "Attention",
+        family: "attention",
+        covers: [
+          "Attention",
+          "Deploy incomplete",
+          "Removal incomplete",
+          "Update incomplete",
+        ],
+      },
+      { word: "Local edits", family: "attention", covers: ["Local edits"] },
+      { word: "Behind", family: "attention", covers: ["Behind"] },
     ]);
     expect(IN_SYNC.word).toBe("In sync");
   });
