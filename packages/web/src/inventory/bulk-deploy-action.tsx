@@ -8,7 +8,7 @@ import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
-import { targetLabel } from "../shell/target-label";
+import { repoTargetName } from "../shell/target-name";
 import { Button } from "../ui/button";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
@@ -114,7 +114,7 @@ export function BulkDeployRun({
         ? { target: { kind: "global" }, label: "Global" }
         : {
             target: { kind: "repo", repoPath: selected },
-            label: targetLabel(selected, repoPaths),
+            label: repoTargetName(selected, repoPaths),
           };
 
   const repoDeployState = useDeployState(
@@ -211,7 +211,7 @@ export function BulkDeployRun({
         },
         ...repos.map((repo) => ({
           value: repo.path,
-          label: targetLabel(repo.path, repoPaths),
+          label: repoTargetName(repo.path, repoPaths),
         })),
       ]}
       selected={selected}

@@ -103,7 +103,9 @@ export function skillDeployments(
         : skillMark(deployed.copy, status),
       target: wire,
       removeTarget:
-        wire.kind === "repo" ? wire : { kind: "global", tools: [...tools] },
+        wire.kind === "repo"
+          ? { ...wire, name: target.label }
+          : { kind: "global", tools: [...tools] },
       updateName: wire.kind === "repo" ? target.label : toolNameList(tools),
       rowId:
         wire.kind === "repo"

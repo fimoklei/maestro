@@ -8,7 +8,7 @@ import type {
 } from "@maestro/core";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
-import { targetLabel } from "../shell/target-label";
+import { repoTargetName } from "../shell/target-name";
 import type { Copy } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
 import {
@@ -208,13 +208,13 @@ export function repoRow(
   const pinned = data?.pinnedPerSkill;
   const pending = data?.pendingOperation;
   const behind = isBehind(head, pending);
-  const label = targetLabel(repoPath, siblings);
+  const label = repoTargetName(repoPath, siblings);
   return {
     id: repoRowId(repoPath),
     group: REPOSITORIES,
     name: label,
     path: repoPath,
-    target: { kind: "repo", repoPath },
+    target: { kind: "repo", repoPath, name: label },
     wire: { kind: "repo", repoPath },
     updateName: label,
     release: releaseOf(head, pinned),

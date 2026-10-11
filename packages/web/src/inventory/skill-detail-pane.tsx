@@ -1,4 +1,5 @@
 import type { Ref } from "react";
+import { wholeTargetName } from "../shell/target-name";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import { NOT_RELEASED_YET } from "../ui/band-copy";
 import { cn } from "../ui/cn";
@@ -127,9 +128,7 @@ export function SkillDetailPane({
                   name={deployment.label}
                   value={deployment.release}
                   menuLabel={rowActionsLabel(
-                    deployment.target.kind === "repo"
-                      ? deployment.target.repoPath
-                      : deployment.label,
+                    wholeTargetName(deployment.target, deployment.label),
                   )}
                   items={targetItems(deployment)}
                 />

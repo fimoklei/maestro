@@ -40,7 +40,11 @@ const meta = {
   args: {
     skillName: "tdd",
     version: "v0.5.0",
-    target: { kind: "repo", repoPath: "/Users/me/acme-web" },
+    target: {
+      kind: "repo",
+      repoPath: "/Users/me/acme-web",
+      name: "…/me/acme-web",
+    },
     isRemoving: false,
     preflight: repoCheck("none"),
     error: null,
@@ -69,6 +73,7 @@ export const LongRepoPath: Story = {
       kind: "repo",
       repoPath:
         "/Users/me/dev/clients/acme/platform/services/acme-web-frontend",
+      name: "…/services/acme-web-frontend",
     },
   },
 };

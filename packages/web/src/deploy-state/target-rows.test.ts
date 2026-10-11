@@ -35,7 +35,7 @@ const row = (facts: Partial<TargetRow>): TargetRow => ({
   group: REPOSITORIES,
   name: "a",
   path: "/me/a",
-  target: { kind: "repo", repoPath: "/me/a" },
+  target: { kind: "repo", repoPath: "/me/a", name: "a" },
   wire: { kind: "repo", repoPath: "/me/a" },
   updateName: "a",
   release: null,

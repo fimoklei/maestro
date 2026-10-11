@@ -78,12 +78,15 @@ export function renderRow({
     | { kind: "global"; tools: string[] },
   onRemoved = vi.fn(),
   primitives = [tdd],
+  name = REPO_NAME,
 }: {
   target?:
     | { kind: "repo"; repoPath: string }
     | { kind: "global"; tools: string[] };
   onRemoved?: () => void;
   primitives?: (typeof tdd)[];
+  /** The row's name, as the Deploy-state table shows it. */
+  name?: string;
 } = {}) {
   const list = (primitives: (typeof tdd)[]) => (
     <>
@@ -91,10 +94,10 @@ export function renderRow({
         row={{
           primitives,
           drift: PENDING_DRIFT,
-          target,
+          target: target.kind === "repo" ? { ...target, name } : target,
           wire: target.kind === "repo" ? target : { kind: "global" },
-          name: REPO_NAME,
-          updateName: REPO_NAME,
+          name,
+          updateName: name,
         }}
         onRemoved={onRemoved}
         headingRef={null}

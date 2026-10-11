@@ -1,6 +1,5 @@
 import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { targetLabel } from "../shell/target-label";
 import {
   CONFIRM,
   clearToasts,
@@ -8,6 +7,7 @@ import {
   openRemoveDialog,
   RECEIPT,
   REPO,
+  REPO_NAME,
   removeCalls,
   renderRow,
   screen,
@@ -42,7 +42,24 @@ describe("removing a deployed skill from a row", () => {
     const dialog = await openRemoveDialog();
 
     expect(dialog).toHaveTextContent("tdd");
-    expect(dialog).toHaveTextContent(targetLabel(REPO));
+    expect(dialog).toHaveTextContent(REPO_NAME);
+  });
+
+  it("names the repo with its row's name, not a shortening of its own (#1476)", async () => {
+    stubFetch(null);
+    renderRow({
+      target: {
+        kind: "repo",
+        repoPath: "/Users/me/clientA/repos/agent-harness",
+      },
+      name: "…/clientA/repos/agent-harness",
+    });
+
+    const dialog = await openRemoveDialog();
+
+    expect(
+      within(dialog).getByText("…/clientA/repos/agent-harness"),
+    ).toBeInTheDocument();
   });
 
   it("carries the row's version into the question the confirmation asks", async () => {

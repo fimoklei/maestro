@@ -106,7 +106,6 @@ export function SelectedSkills({
               ?.version ?? null
           }
           target={row.target}
-          targetName={row.name}
           onCancel={() => setOpen(null)}
           onRemoved={() => {
             setOpen(null);
