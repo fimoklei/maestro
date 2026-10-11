@@ -80,7 +80,8 @@ the new pattern to this section before building it.
   32px: mark, name, machine value, ⋮.
 - Fix the pane's foot and scroll only its content. The foot holds the row's ⋮
   items that the pane does not place beside their fact or in a notice, as 32px
-  buttons in ⋮ order. A destructive one stays danger.
+  buttons in ⋮ order. Its danger items sit behind one 32px ⋯ at the foot's
+  right end, named `Actions for {name}`; a foot without one has no ⋯.
 - Give a fact at most one action button beside its value, and only for an
   action that changes that fact.
 - Choose the pane's one primary by state, not position: an unfinished
@@ -185,8 +186,9 @@ Pick the form from this table. Add no other form, and no banner.
   row's detail pane.
 - Open a menu button with Enter, Space or Down Arrow, landing on the first
   item.
-- Keep an unavailable control focusable with `aria-disabled`, and state why.
-  A row's ⋮ menu keeps only an item another write locks; it omits the rest.
+- Keep an unavailable control focusable with `aria-disabled`. A button states
+  why; a menu item carries its plain label and no reason. A ⋮ or ⋯ menu keeps
+  only an item another write or an unsettled read locks; it omits the rest.
 - Make every pointer target at least 24×24px. Hold every screen at 200% zoom
   and a narrow width.
 - Mount one `role="status"` region per screen before its content changes. Set

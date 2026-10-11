@@ -268,6 +268,7 @@ export function DetailPane({
       {foot.length > 0 ? (
         <div className="flex flex-none flex-wrap items-start gap-inline border-edge border-t p-panel">
           <FootActions
+            name={title}
             items={foot}
             primary={foot.find((item) => item === primary)?.label ?? null}
           />

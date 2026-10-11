@@ -5,7 +5,12 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RELEASED, row, withStages } from "../harness/harness-flow-fixture";
 import { HarnessView } from "../harness/harness-view";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  jsonResponse,
+  openFootMenu,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import { InventoryPanel } from "./inventory-panel";
 
 // Delete skill starts in Inventory and lands on the Harness view (#1385).
@@ -91,7 +96,7 @@ async function openRowMenu() {
 
 async function openPane() {
   await userEvent.click(await screen.findByRole("gridcell", { name: "tdd" }));
-  return within(await screen.findByRole("complementary"));
+  return screen.findByRole("complementary");
 }
 
 afterEach(() => {
@@ -148,38 +153,63 @@ describe("Inventory — Delete skill", () => {
   });
 
   const never = new Promise<void>(() => {});
+  // #1485: a blocked menu item carries no reason, as Harness's do.
   it.each([
     [
-      "no Harness connected",
-      { harness: { body: { error: "not-configured" }, status: 409 } },
+      "while the clone is read",
+      { check: { body: IN_CLONE, heldUntil: never } },
     ],
     [
-      "not in your clone",
-      { check: { body: { skills: { tdd: { inClone: false } } } } },
-    ],
-    ["checking your clone", { check: { body: IN_CLONE, heldUntil: never } }],
-    [
-      "clone not read",
+      "when the clone could not be read",
       { check: { body: { error: "no-answer" }, status: 409 } },
     ],
   ])(
-    "blocks Delete skill — %s in the row menu and the pane foot",
-    async (reason, answers) => {
+    "dims Delete skill %s, in the row menu and the pane foot",
+    async (_when, answers) => {
       stubServer(answers);
       renderInventory();
-      const label = `Delete skill — ${reason}`;
 
       const menu = await openRowMenu();
-      const item = await menu.findByRole("menuitem", { name: label });
+      const item = await menu.findByRole("menuitem", { name: "Delete skill" });
       expect(item).toHaveAttribute("aria-disabled", "true");
       await userEvent.click(item);
       await userEvent.keyboard("{Escape}");
 
-      const pane = await openPane();
-      const button = pane.getByRole("button", { name: label });
-      expect(button).toHaveAttribute("aria-disabled", "true");
-      await userEvent.click(button);
+      const foot = await openFootMenu(await openPane(), "tdd");
+      const footItem = foot.getByRole("menuitem", { name: "Delete skill" });
+      expect(footItem).toHaveAttribute("aria-disabled", "true");
+      await userEvent.click(footItem);
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    [
+      "where no Harness is connected",
+      { harness: { body: { error: "not-configured" }, status: 409 } },
+    ],
+    [
+      "where the skill is not in the clone",
+      { check: { body: { skills: { tdd: { inClone: false } } } } },
+    ],
+  ])(
+    "omits Delete skill %s, from the row menu and the pane foot",
+    async (_where, answers) => {
+      stubServer(answers);
+      renderInventory();
+
+      const menu = await openRowMenu();
+      await waitFor(() =>
+        expect(
+          menu.getAllByRole("menuitem").map((item) => item.textContent),
+        ).toEqual(["Deploy skill"]),
+      );
+      await userEvent.keyboard("{Escape}");
+
+      const pane = within(await openPane());
+      expect(
+        pane.queryByRole("button", { name: "Actions for tdd" }),
+      ).not.toBeInTheDocument();
     },
   );
 });

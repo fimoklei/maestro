@@ -48,6 +48,14 @@ export async function chooseDeployTarget(
   await userEvent.click(await screen.findByRole("option", { name }));
 }
 
+/** Opens a pane foot's ⋯, where its danger items sit (#1485). */
+export async function openFootMenu(pane: HTMLElement, name: string) {
+  await userEvent.click(
+    within(pane).getByRole("button", { name: `Actions for ${name}` }),
+  );
+  return within(await screen.findByRole("menu"));
+}
+
 /** The element a query found, or a failed test where it found none. */
 export function htmlElement(element: Element | null | undefined): HTMLElement {
   if (!(element instanceof HTMLElement)) {

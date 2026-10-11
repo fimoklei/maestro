@@ -863,6 +863,7 @@ describe("every table screen", () => {
       });
     });
 
+    // #1485: the foot's danger items sit behind its ⋯, never as buttons.
     it("marks every destructive ⋮ and foot item danger", async () => {
       actions.render();
       const row = await findRow();
@@ -880,8 +881,22 @@ describe("every table screen", () => {
       await userEvent.click(
         htmlElement(within(row).getAllByRole("gridcell")[0]),
       );
+      const aside = await screen.findByRole("complementary");
+      const pane = within(aside);
+      expect(
+        pane
+          .getAllByRole("button")
+          .filter((button) => DESTRUCTIVE.test(button.textContent ?? "")),
+      ).toEqual([]);
+      if (actions.destructive.length === 0) return;
+      await userEvent.click(
+        pane.getByRole("button", {
+          // The pane's own ⋯, not a sub-list row's ⋮.
+          name: `Actions for ${aside.getAttribute("aria-label")?.replace(/ detail$/, "")}`,
+        }),
+      );
       expectDanger(
-        within(await screen.findByRole("complementary")).getAllByRole("button"),
+        within(await screen.findByRole("menu")).getAllByRole("menuitem"),
         actions.destructive,
       );
     });

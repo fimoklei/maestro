@@ -9,6 +9,7 @@ import {
   htmlElement,
   jsonResponse,
   measureAs,
+  openFootMenu,
   renderWithQuery,
   sentence,
   stubResizeObserver,
@@ -1122,8 +1123,12 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
 
     await openRow("tdd");
 
+    const menu = await openFootMenu(
+      screen.getByRole("complementary", { name: "tdd detail" }),
+      "tdd",
+    );
     expect(
-      screen.getByRole("button", { name: "Remove from all 2 targets" }),
+      menu.getByRole("menuitem", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 
@@ -1132,8 +1137,12 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
 
     await openRow("tdd");
 
+    const menu = await openFootMenu(
+      screen.getByRole("complementary", { name: "tdd detail" }),
+      "tdd",
+    );
     expect(
-      screen.queryByRole("button", { name: /remove from all/i }),
+      menu.queryByRole("menuitem", { name: /remove from all/i }),
     ).toBeNull();
   });
 
@@ -1147,8 +1156,9 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
     expect(
       within(pane).getByText(/Not deployed to any target\./i),
     ).toBeInTheDocument();
+    const menu = await openFootMenu(pane, "tdd");
     expect(
-      screen.queryByRole("button", { name: /remove from all/i }),
+      menu.queryByRole("menuitem", { name: /remove from all/i }),
     ).toBeNull();
   });
 
@@ -1177,8 +1187,9 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
         .getAllByRole("listitem")
         .map((row) => row.textContent?.replace(/v1\.0\.0.*$/, "")),
     ).toHaveLength(3);
+    const menu = await openFootMenu(pane, "tdd");
     expect(
-      within(pane).getByRole("button", { name: "Remove from all 2 targets" }),
+      menu.getByRole("menuitem", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 
@@ -1199,8 +1210,12 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
     await openRow("tdd");
 
     // Each tool row's own Remove from target already removes from both.
+    const menu = await openFootMenu(
+      screen.getByRole("complementary", { name: "tdd detail" }),
+      "tdd",
+    );
     expect(
-      screen.queryByRole("button", { name: /remove from all/i }),
+      menu.queryByRole("menuitem", { name: /remove from all/i }),
     ).toBeNull();
   });
 
@@ -1220,8 +1235,12 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
 
     await openRow("tdd");
 
+    const menu = await openFootMenu(
+      screen.getByRole("complementary", { name: "tdd detail" }),
+      "tdd",
+    );
     expect(
-      screen.getByRole("button", { name: "Remove from all 2 targets" }),
+      menu.getByRole("menuitem", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 });
@@ -1339,7 +1358,7 @@ describe("InventoryView — row menu", () => {
 
     expect(menuItems(await openMenu("tdd"))).toEqual([
       "Deploy skill",
-      "Delete skill — checking your clone",
+      "Delete skill",
     ]);
   });
 
@@ -1356,19 +1375,18 @@ describe("InventoryView — row menu", () => {
     expect(menuItems(await openMenu("tdd"))).toEqual([
       "Deploy skill",
       "Remove from all 2 targets",
-      "Delete skill — checking your clone",
+      "Delete skill",
     ]);
     await userEvent.keyboard("{Escape}");
     await openRow("tdd");
     const pane = screen.getByRole("complementary", { name: "tdd detail" });
     expect(
-      within(pane)
-        .getAllByRole("button")
-        .map((button) => button.textContent)
-        .filter(
-          (label) => label === "Deploy skill" || /^Remove/.test(label ?? ""),
-        ),
-    ).toEqual(["Deploy skill", "Remove from all 2 targets"]);
+      within(pane).getByRole("button", { name: "Deploy skill" }),
+    ).toBeInTheDocument();
+    const menu = await openFootMenu(pane, "tdd");
+    expect(
+      menu.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Remove from all 2 targets", "Delete skill"]);
   });
 
   it("opens the deploy dialog for this skill alone on Deploy skill", async () => {
@@ -1422,6 +1440,35 @@ describe("InventoryView — row menu", () => {
     expect(
       await screen.findByRole("dialog", { name: "Remove tdd from 2 targets" }),
     ).toBeInTheDocument();
+  });
+
+  // #1485: the pane's ⋯ is the dialog's opener, so Cancel lands back on it.
+  it("returns focus to the pane's ⋯ when the removal it opened is cancelled", async () => {
+    stubPendingFetch();
+    renderView({
+      repos,
+      targets: [
+        onRepo("/projects/alpha", ["tdd"]),
+        onRepo("/projects/beta", ["tdd"]),
+      ],
+    });
+
+    await openRow("tdd");
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    const foot = await openFootMenu(pane, "tdd");
+    await userEvent.click(
+      foot.getByRole("menuitem", { name: "Remove from all 2 targets" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove tdd from 2 targets",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+
+    expect(
+      within(pane).getByRole("button", { name: "Actions for tdd" }),
+    ).toHaveFocus();
   });
 });
 
