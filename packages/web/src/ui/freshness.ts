@@ -48,7 +48,7 @@ const toMs = (time: ReadTime): number =>
 
 // Dates the oldest answered reading, so the line never claims more freshness
 // than the stalest row. `on 20 Jul` reads as a date, `4 min ago` as a
-// distance; both follow "Read", so the prefix is not repeated.
+// distance; neither carries "Read", which its caller places.
 export const oldestAgo = (
   readAt: Freshness["readAt"],
   now: Date,
@@ -57,6 +57,28 @@ export const oldestAgo = (
   return answered.length === 0
     ? null
     : ago(new Date(Math.min(...answered)).toISOString(), now);
+};
+
+/** One reading behind the rows: when it last answered, in epoch ms (null: never), and whether its latest attempt failed. */
+export type Reading = { at: number | null; failed: boolean };
+
+/** A query's reading; its `dataUpdatedAt` stays 0 until it first answers. */
+export const queryReading = (query: {
+  dataUpdatedAt: number;
+  isError: boolean;
+}): Reading => ({
+  at: query.dataUpdatedAt === 0 ? null : query.dataUpdatedAt,
+  failed: query.isError,
+});
+
+// The oldest reading dates the line, and one that never answered is the
+// oldest of all; a failed reading turns it into the failed-read words.
+export const readFreshness = (reads: readonly Reading[]): Freshness => {
+  const ats = reads.map((each) => each.at);
+  return {
+    readAt: ats.includes(null) ? [] : ats,
+    outcome: reads.some((each) => each.failed) ? "fetch-failed" : "fetched",
+  };
 };
 
 export const READ_FAILED = "Read failed";

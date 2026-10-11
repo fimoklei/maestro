@@ -378,6 +378,43 @@ describe("Repositories — band 2", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("turns the dot red for a missing folder, even with others Behind", async () => {
+    stubRegistry({
+      ...threeRepos(),
+      releaseHeads: { "/home/me/acme-web": behindHead },
+    });
+    renderRepositories();
+
+    const band = await band2();
+    await waitFor(() => expect(band).toHaveTextContent("Behind 1"));
+    expect(band.querySelector(".rounded-full")).toHaveClass("bg-red-11");
+  });
+
+  it("keeps Folder missing when that folder's deploy-state read is refused", async () => {
+    const state = threeRepos();
+    const missing = state.repos.find(
+      (repo) => repo.status === "folder-missing",
+    );
+    if (missing === undefined) throw new Error("a missing folder expected");
+    stubRegistry({ ...state, deployStateRefused: [missing.path] });
+    renderRepositories();
+
+    const band = await band2();
+    await waitFor(() => expect(band).toHaveTextContent("Folder missing 1"));
+    expect(band).not.toHaveTextContent("Read failed");
+  });
+
+  it("reads Read failed when the first read fails", async () => {
+    stubRegistry({ ...threeRepos(), readFails: 503 });
+    renderRepositories();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-band="2"]')).toHaveTextContent(
+        "Read failed",
+      ),
+    );
+  });
+
   it("reads Ready when every repository is ready and current", async () => {
     stubRegistry({ repos: [{ path: "/home/me/acme-web", status: "ready" }] });
     renderRepositories();

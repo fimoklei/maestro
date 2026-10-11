@@ -68,6 +68,11 @@ const COLUMN_OPTIONS = [
   { value: "skills", label: "Skills" },
 ];
 
+// Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
+// counts; the dot and Read never drop.
+const LABELS_BELOW_REM = 30;
+const COUNTS_BELOW_REM = 20;
+
 export function DeployStateView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -258,7 +263,11 @@ export function DeployStateView() {
       state={state}
       band={{
         summary: {
-          freshness: reading,
+          // The rows' Compared stays untracked; the band states the failed read.
+          freshness: {
+            ...reading,
+            outcome: notRead.length > 0 ? "fetch-failed" : "fetched",
+          },
           healthy: IN_SYNC.word,
           counts: view.statusCounts(TARGET_CHIPS),
         },
@@ -273,8 +282,8 @@ export function DeployStateView() {
                 },
               ]
             : [],
-        labelsBelowRem: 30,
-        countsBelowRem: 20,
+        labelsBelowRem: LABELS_BELOW_REM,
+        countsBelowRem: COUNTS_BELOW_REM,
       }}
       rereading={screen.reading}
       firstReadRows={8}

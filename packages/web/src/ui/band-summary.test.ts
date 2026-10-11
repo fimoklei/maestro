@@ -12,7 +12,28 @@ const zero = (count: BandCount): BandCount => ({ ...count, count: 0 });
 const summary = (freshness: Freshness, counts: readonly BandCount[] = []) =>
   bandSummary({ freshness, healthy: "In sync", counts }, NOW);
 
+const pressed = (count: BandCount): BandCount => ({
+  ...count,
+  filter: { pressed: true, onToggle: () => {} },
+});
+
 describe("bandSummary", () => {
+  it("keeps a pressed chip at 0 so it can be unpressed", () => {
+    expect(summary(READ, [pressed(zero(UNKNOWN)), zero(BEHIND)])).toMatchObject(
+      {
+        family: "good",
+        word: "In sync",
+        counts: [{ word: "Unknown", count: 0 }],
+      },
+    );
+  });
+
+  it("keeps a pressed chip after a failed read", () => {
+    expect(
+      summary({ ...READ, outcome: "fetch-failed" }, [pressed(BEHIND)]).counts,
+    ).toMatchObject([{ word: "Behind" }]);
+  });
+
   it("reads red and Read failed when the screen's read failed, whatever the counts", () => {
     expect(summary({ ...READ, outcome: "fetch-failed" }, [BEHIND])).toEqual({
       family: "failed",

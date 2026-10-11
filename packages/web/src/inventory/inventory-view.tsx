@@ -18,6 +18,7 @@ import {
   UPDATE_TARGET,
   VIEW_DEPLOY_STATE,
 } from "../ui/control-labels";
+import { type Reading, readFreshness } from "../ui/freshness";
 import { GitHubMark } from "../ui/github-mark-link";
 import { Icon } from "../ui/icon";
 import { SelectionBar } from "../ui/selection-bar";
@@ -39,8 +40,6 @@ import {
   LABELS_BELOW_REM,
   ORIGIN_DROP,
   RELEASED_DROP,
-  type Reading,
-  readFreshness,
   SEARCH_ICON_BELOW_REM,
   SKILLS_DROP,
 } from "./inventory-band";

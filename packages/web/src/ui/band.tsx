@@ -5,6 +5,7 @@ import { BandFact, type BandFactProps } from "./band-fact";
 import { type BandSummaryInput, bandSummary } from "./band-summary";
 import { cn } from "./cn";
 import { SearchBox } from "./search-box";
+import { Separator } from "./separator";
 import { STATUS_TOKENS } from "./status-family";
 import { useNow } from "./use-now";
 import { useWidthRem } from "./use-width-rem";
@@ -42,10 +43,6 @@ export type Band = {
   countsBelowRem: number;
 };
 
-const Separator = () => (
-  <span aria-hidden="true" className="h-4 w-px flex-none bg-gray-6" />
-);
-
 // A rule applies while the band is narrower than it, and also while any rule of
 // its rank or higher applies, so the order holds whatever the widths say.
 const applies = (
@@ -73,26 +70,24 @@ export function BandRow({
   const width = useWidthRem(ref, (element) => element);
   const now = useNow();
   const summary = band === undefined ? null : bandSummary(band.summary, now);
-  const searchRule: DropRule | undefined =
-    band?.search === undefined
-      ? undefined
-      : { rank: "search", belowRem: band.search.iconBelowRem };
-  const labelsRule: DropRule | undefined =
-    band === undefined
-      ? undefined
-      : { rank: "labels", belowRem: band.labelsBelowRem };
-  const countsRule: DropRule | undefined =
-    band === undefined
-      ? undefined
-      : { rank: "counts", belowRem: band.countsBelowRem };
-  const rules: DropRule[] = [
-    ...(labelsRule === undefined ? [] : [labelsRule]),
-    ...(countsRule === undefined ? [] : [countsRule]),
-    ...(band?.facts ?? []).flatMap((fact) =>
-      fact.drop === undefined ? [] : [fact.drop],
-    ),
-    ...(searchRule === undefined ? [] : [searchRule]),
-  ];
+  const searchRule: DropRule | undefined = band?.search && {
+    rank: "search",
+    belowRem: band.search.iconBelowRem,
+  };
+  const labelsRule: DropRule | undefined = band && {
+    rank: "labels",
+    belowRem: band.labelsBelowRem,
+  };
+  const countsRule: DropRule | undefined = band && {
+    rank: "counts",
+    belowRem: band.countsBelowRem,
+  };
+  const rules = [
+    labelsRule,
+    countsRule,
+    ...(band?.facts ?? []).map((fact) => fact.drop),
+    searchRule,
+  ].filter((rule): rule is DropRule => rule !== undefined);
   const facts = (band?.facts ?? []).filter(
     (fact) => !applies(fact.drop, rules, width),
   );

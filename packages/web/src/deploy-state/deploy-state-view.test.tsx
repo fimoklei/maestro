@@ -534,6 +534,18 @@ describe("Deploy-state — failed reads", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("reads Read failed in band 2 when its own read fails", async () => {
+    stubServer(() => ({
+      global: { status: 422, body: { error: "malformed" } },
+    }));
+    renderDeployState();
+
+    await screen.findByText("Deploy-state not read");
+    expect(document.querySelector('[data-band="2"]')).toHaveTextContent(
+      "Read failed",
+    );
+  });
+
   it("states a failed registry read, never the register hint", async () => {
     stubServer(() => ({ repos: { status: 500, body: { message: "boom" } } }));
     renderDeployState();

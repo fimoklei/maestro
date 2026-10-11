@@ -61,6 +61,11 @@ import {
 import { useHarnessPresses } from "./use-harness-presses";
 import { useImportFlow } from "./use-import-flow";
 
+// Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
+// counts; the dot and Read never drop.
+const LABELS_BELOW_REM = 62;
+const COUNTS_BELOW_REM = 20;
+
 export function HarnessView({
   openSkill,
 }: {
@@ -291,11 +296,11 @@ export function HarnessView({
           </>
         )
       }
-      band={
-        state === undefined || freshness === null
-          ? undefined
-          : {
-              facts: [
+      band={{
+        facts:
+          state === undefined
+            ? []
+            : [
                 {
                   label: ORIGIN_FACT,
                   icon: <GitHubMark />,
@@ -319,24 +324,26 @@ export function HarnessView({
                   drop: { rank: 1, belowRem: 54 },
                 },
               ],
-              summary: {
-                freshness: {
+        summary: {
+          freshness:
+            state === undefined
+              ? { readAt: [], outcome: harness.isError ? "fetch-failed" : null }
+              : {
                   readAt: [state.freshness.lastFetchedAt],
                   outcome: state.freshness.outcome,
                 },
-                healthy: ALL_RELEASED,
-                counts: harnessCounts(
-                  sections.flatMap((section) =>
-                    section.read.outcome === "read"
-                      ? section.read.rows.map(() => section.stage)
-                      : [],
-                  ),
-                ),
-              },
-              labelsBelowRem: 62,
-              countsBelowRem: 20,
-            }
-      }
+          healthy: ALL_RELEASED,
+          counts: harnessCounts(
+            sections.flatMap((section) =>
+              section.read.outcome === "read"
+                ? section.read.rows.map(() => section.stage)
+                : [],
+            ),
+          ),
+        },
+        labelsBelowRem: LABELS_BELOW_REM,
+        countsBelowRem: COUNTS_BELOW_REM,
+      }}
       rereading={refresh.isPending}
       firstReadRows={8}
       rows={rows}

@@ -96,12 +96,13 @@ export function useViewOptions<T extends RowData>(
       setKind("all");
       setStatuses(new Set());
     },
-    statusCounts: (chips) =>
-      chips.map(({ covers, ...chip }) => {
+    statusCounts: (chips) => {
+      const words = rows.map(status.of);
+      return chips.map(({ covers, ...chip }) => {
         const pressed = covers.every((word) => statuses.has(word));
         return {
           ...chip,
-          count: countOf(rows.map(status.of), ...covers),
+          count: countOf(words, ...covers),
           filter: {
             pressed,
             onToggle: () =>
@@ -115,7 +116,8 @@ export function useViewOptions<T extends RowData>(
               }),
           },
         };
-      }),
+      });
+    },
     menus: [
       {
         label: FILTER_LABEL,

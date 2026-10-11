@@ -50,22 +50,33 @@ export function bandSummary(
 ): BandSummaryReading {
   const since = oldestAgo(freshness.readAt, now);
   const { outcome } = freshness;
+  // A pressed chip stays, so the band can always unpress it (US17).
+  const pressed = counts.filter((each) => each.filter?.pressed === true);
   if (outcome === "fetch-failed" || outcome === "offline") {
     return {
       family: "failed",
       word: outcome === "offline" ? OFFLINE : READ_FAILED,
-      counts: [],
+      counts: pressed,
       age: since === null ? null : lastRead(since),
     };
   }
   if (outcome === null || since === null) {
-    return { family: "unknown", word: NOT_READ_YET, counts: [], age: null };
+    return {
+      family: "unknown",
+      word: NOT_READ_YET,
+      counts: pressed,
+      age: null,
+    };
   }
-  const shown = counts.filter((each) => each.count > 0);
-  if (shown.length === 0) {
-    return { family: "good", word: healthy, counts: [], age: since };
+  const shown = counts.filter(
+    (each) => each.count > 0 || each.filter?.pressed === true,
+  );
+  if (shown.every((each) => each.count === 0)) {
+    return { family: "good", word: healthy, counts: shown, age: since };
   }
-  const family = shown.some((each) => each.family === "failed")
+  const family = shown.some(
+    (each) => each.count > 0 && each.family === "failed",
+  )
     ? "failed"
     : "attention";
   return { family, word: null, counts: shown, age: since };

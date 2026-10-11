@@ -311,6 +311,13 @@ describe("Harness home base", () => {
     expect(screen.queryByText(/read failed/i)).not.toBeInTheDocument();
   });
 
+  it("reads Read failed in band 2 when the first read fails", async () => {
+    stubHarnessServer({ read: { body: {}, status: 500 } });
+    renderHarness();
+
+    expect(await band2()).toHaveTextContent("Read failed");
+  });
+
   it("never turns a failed read into a permission gate", async () => {
     stubHarnessServer({
       read: { body: RELEASED },

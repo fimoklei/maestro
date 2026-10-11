@@ -7,9 +7,9 @@ import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
+import { queryReading, type Reading } from "../ui/freshness";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
-import { queryReading, type Reading } from "./inventory-band";
 import type { DeployTarget } from "./use-deploy-skill";
 
 export function useDeploymentTargets(
