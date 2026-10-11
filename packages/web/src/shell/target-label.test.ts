@@ -3,8 +3,8 @@ import { targetLabel } from "./target-label";
 
 describe("targetLabel", () => {
   it("keeps the distinguishing tail for paths sharing a long common prefix", () => {
-    const a = targetLabel("/Users/dev/Projects/client-a/agent-harness");
-    const b = targetLabel("/Users/dev/Projects/client-b/agent-harness");
+    const a = targetLabel("/Users/dev/Projects/client-a/agent-harness", []);
+    const b = targetLabel("/Users/dev/Projects/client-b/agent-harness", []);
 
     // The tail is the only part that tells the two clones apart.
     expect(a).not.toBe(b);
@@ -13,21 +13,21 @@ describe("targetLabel", () => {
   });
 
   it("distinguishes two clones of the same repo under different parents", () => {
-    expect(targetLabel("/Users/m/Projects/agent-harness")).toBe(
+    expect(targetLabel("/Users/m/Projects/agent-harness", [])).toBe(
       "…/Projects/agent-harness",
     );
-    expect(targetLabel("/Users/m/work/agent-harness")).toBe(
+    expect(targetLabel("/Users/m/work/agent-harness", [])).toBe(
       "…/work/agent-harness",
     );
   });
 
   it("returns a short path unchanged", () => {
-    expect(targetLabel("/tmp")).toBe("/tmp");
-    expect(targetLabel("/opt/tools")).toBe("/opt/tools");
+    expect(targetLabel("/tmp", [])).toBe("/tmp");
+    expect(targetLabel("/opt/tools", [])).toBe("/opt/tools");
   });
 
   it("ignores a trailing slash when taking the tail", () => {
-    expect(targetLabel("/a/b/c/")).toBe("…/b/c");
+    expect(targetLabel("/a/b/c/", [])).toBe("…/b/c");
   });
 
   it("grows the tail until it is unique among sibling paths", () => {

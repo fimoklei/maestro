@@ -4,7 +4,7 @@ import { useHarness } from "../harness/use-harness";
 import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
 import { refreshInventoryReads } from "../inventory/use-connect-inventory";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
-import { locationName } from "../shell/target-name";
+import { harnessName } from "../shell/target-name";
 import { harnessMetaLine } from "../shell/use-harness-summary";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
@@ -45,7 +45,7 @@ export function HarnessLocationPage() {
   const dialog = useSetLocationDialog({
     onSet: (stored) =>
       status.report(
-        plainText(doneSentence("setLocation", locationName(stored))),
+        plainText(doneSentence("setLocation", harnessName(stored))),
       ),
   });
 

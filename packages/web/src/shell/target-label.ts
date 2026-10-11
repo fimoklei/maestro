@@ -2,10 +2,7 @@
 // so left-anchored truncation would drop the part that tells clones apart (#211).
 const MIN_SEGMENTS = 2;
 
-export function targetLabel(
-  path: string,
-  siblings: readonly string[] = [],
-): string {
+export function targetLabel(path: string, siblings: readonly string[]): string {
   const segments = path.split("/").filter(Boolean);
   if (segments.length <= MIN_SEGMENTS) return path;
 

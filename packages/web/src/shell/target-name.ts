@@ -16,5 +16,5 @@ export const wholeTargetName = (
   shortName: string,
 ): string => (target.kind === "repo" ? target.repoPath : shortName);
 
-/** A lone location's short name, such as the Harness: no other path competes. */
-export const locationName = (path: string): string => targetLabel(path);
+// One Harness, so no other path competes for its name.
+export const harnessName = (path: string): string => targetLabel(path, []);
