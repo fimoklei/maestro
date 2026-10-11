@@ -1,4 +1,4 @@
-import { Clock } from "lucide-react";
+import { Clock, X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
 import { READ_AGE_NAME } from "./band-copy";
 import { BandFact, type BandFactProps } from "./band-fact";
@@ -112,13 +112,39 @@ export function BandRow({
               )}
             />
             {summary.word === null ? null : <span>{summary.word}</span>}
-            {summary.counts.map((each) => (
-              <span
-                key={each.word}
-                data-count
-                className={cn(countsHidden && "sr-only")}
-              >{`${each.word} ${each.count}`}</span>
-            ))}
+            {summary.counts.map(({ word, count, filter }) =>
+              // A hidden count stays for screen readers, never as an unseen button.
+              countsHidden || filter === undefined ? (
+                <span
+                  key={word}
+                  data-count
+                  className={cn(countsHidden && "sr-only")}
+                >{`${word} ${count}`}</span>
+              ) : (
+                <button
+                  key={word}
+                  data-count
+                  type="button"
+                  aria-pressed={filter.pressed}
+                  onClick={filter.onToggle}
+                  className={cn(
+                    "flex items-center gap-tight rounded-chip border px-1.5",
+                    filter.pressed
+                      ? "border-gray-7 bg-gray-5"
+                      : "border-transparent bg-gray-3 hover:bg-gray-4",
+                  )}
+                >
+                  {`${word} ${count}`}
+                  {filter.pressed ? (
+                    <X
+                      aria-hidden="true"
+                      strokeWidth={1.5}
+                      className="size-3"
+                    />
+                  ) : null}
+                </button>
+              ),
+            )}
           </span>
           {facts.length === 0 ? null : (
             <>

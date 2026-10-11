@@ -91,6 +91,29 @@ export const Attention: Story = {
   },
 };
 
+// A count chip filtering the table: pressed, with a ×.
+export const ActiveChip: Story = {
+  args: {
+    band: withSummary({
+      healthy: "In sync",
+      counts: [
+        {
+          word: "Unknown",
+          count: 1,
+          family: "failed",
+          filter: { pressed: false, onToggle: () => {} },
+        },
+        {
+          word: "Behind",
+          count: 3,
+          family: "attention",
+          filter: { pressed: true, onToggle: () => {} },
+        },
+      ],
+    }),
+  },
+};
+
 // Red: a failed count, worst first.
 export const Failed: Story = {
   args: {

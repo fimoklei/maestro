@@ -2,8 +2,9 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { repoRowId } from "../deploy-state/target-rows";
+import { isBehind, repoRowId } from "../deploy-state/target-rows";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
+import { queryReading, readFreshness } from "../inventory/inventory-band";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { REGISTER_REPOSITORY } from "../ui/control-labels";
@@ -21,7 +22,10 @@ import {
 import {
   EMPTY_SENTENCE,
   EMPTY_TITLE,
+  READY,
   REPOS_NOT_READ,
+  REPOSITORIES_FACT,
+  repositoriesCounts,
   SCREEN,
   STATUS_READINGS,
   unregisterNotice,
@@ -81,6 +85,10 @@ export function RepositoriesView() {
     github: deployStates[index]?.data?.github,
   }));
 
+  const behind = deployStates.filter((read) =>
+    isBehind(read.data?.releaseHead, read.data?.pendingOperation),
+  ).length;
+
   const onAction = (row: RepositoryRow, action: RepositoryAction) => {
     if (action === "view") {
       navigate("/", { state: { openTarget: repoRowId(row.path) } });
@@ -108,6 +116,32 @@ export function RepositoriesView() {
         <Button variant="primary" onClick={register.openDialog}>
           {REGISTER_REPOSITORY}
         </Button>
+      }
+      band={
+        registry.data === undefined
+          ? undefined
+          : {
+              facts: [
+                {
+                  label: REPOSITORIES_FACT,
+                  icon: <Icon of={FolderGit2} />,
+                  value: String(repos.length),
+                  machine: false,
+                },
+              ],
+              summary: {
+                freshness: readFreshness(
+                  [registry, ...deployStates].map(queryReading),
+                ),
+                healthy: READY,
+                counts: repositoriesCounts(
+                  repos.map((repo) => repo.status),
+                  behind,
+                ),
+              },
+              labelsBelowRem: 30,
+              countsBelowRem: 20,
+            }
       }
       rereading={screen.reading}
       firstReadRows={8}

@@ -75,7 +75,7 @@ import { type PaneDialog, SkillPaneDialog } from "./skill-pane-dialogs";
 import {
   BEHIND,
   NOT_DEPLOYED,
-  skillCounts,
+  SKILL_CHIPS,
   skillStatus,
   UNKNOWN,
   UP_TO_DATE,
@@ -348,7 +348,7 @@ export function InventoryView({
         summary: {
           freshness: readFreshness(reads),
           healthy: UP_TO_DATE.word,
-          counts: skillCounts(rows.map((row) => row.status?.word ?? null)),
+          counts: view.statusCounts(SKILL_CHIPS),
         },
         search: {
           label: SEARCH_LABEL,
