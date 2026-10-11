@@ -518,7 +518,7 @@ describe("InventoryView — band 2 facts", () => {
     expect(
       within(band2()).getByRole("link", { name: /github\.com\/acme\/harness/ }),
     ).toHaveAttribute("href", "https://github.com/acme/harness");
-    expect(within(band2()).getByText("Read 4 min ago")).toBeInTheDocument();
+    expect(within(band2()).getByText("4 min ago")).toBeInTheDocument();
     // The count left band 1, which keeps the title alone.
     expect(screen.queryByText("2 skills")).not.toBeInTheDocument();
   });
@@ -582,7 +582,7 @@ describe("InventoryView — band 2 facts", () => {
           { at: minutesAgo(2), failed: false },
           { at: minutesAgo(9), failed: false },
           { at: minutesAgo(5), failed: false },
-        ]).getByText("Read 9 min ago"),
+        ]).getByText("9 min ago"),
       ).toBeInTheDocument();
     });
 
@@ -600,7 +600,7 @@ describe("InventoryView — band 2 facts", () => {
         read([
           { at: minutesAgo(2), failed: false },
           { at: null, failed: true },
-        ]).getByText("Read failed — never read"),
+        ]).getByText("Read failed"),
       ).toBeInTheDocument();
     });
 
@@ -609,7 +609,7 @@ describe("InventoryView — band 2 facts", () => {
         read([
           { at: minutesAgo(2), failed: false },
           { at: minutesAgo(30), failed: true },
-        ]).getByText("Read failed — last read 30 min ago"),
+        ]).getByText("last read 30 min ago"),
       ).toBeInTheDocument();
     });
   });

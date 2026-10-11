@@ -1,5 +1,6 @@
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import type { DriftStatus } from "../drift/drift-view-model";
+import { type BandCount, countOf } from "../ui/band-summary";
 import { WARNING_GLYPH } from "../ui/status-family";
 import {
   reading,
@@ -14,6 +15,15 @@ export const UP_TO_DATE = reading("Up to date", "good");
 export const BEHIND = reading("Behind", "attention");
 export const UNKNOWN = reading("Unknown", "unknown");
 export const NOT_DEPLOYED = reading("Not deployed", "neutral");
+
+/** Band 2's counts: skills reading Behind. Local edits stay off (spec #1492). */
+export const skillCounts = (words: readonly (string | null)[]): BandCount[] => [
+  {
+    word: BEHIND.word,
+    count: countOf(words, BEHIND.word),
+    family: "attention",
+  },
+];
 
 // Null until every read and check has answered: zero reach is not yet "nowhere".
 export function skillStatus(rollup: DeployedRollup): StatusReading | null {

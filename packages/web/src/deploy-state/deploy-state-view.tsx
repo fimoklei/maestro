@@ -10,7 +10,7 @@ import {
 } from "../drift/use-drift";
 import { type DeployTarget, sameTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
-import { freshnessLine } from "../ui/freshness";
+import { type Freshness, freshnessLine } from "../ui/freshness";
 import { Icon } from "../ui/icon";
 import { type Copy, plainText } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
@@ -43,7 +43,7 @@ import {
   repoRow,
   type TargetRow,
 } from "./target-rows";
-import { TARGET_STATUS_WORDS } from "./target-status";
+import { IN_SYNC, TARGET_STATUS_WORDS, targetCounts } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { updateLabel } from "./update-target-copy";
 import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
@@ -162,21 +162,19 @@ export function DeployStateView() {
       ),
     ),
   ];
-  const freshness = freshnessLine(
-    {
-      readAt: [
-        globalDeploy.dataUpdatedAt,
-        globalDrift.dataUpdatedAt,
-        ...repoDeploy.map((query) => query.dataUpdatedAt),
-        ...repoDrift.map((query) => query.dataUpdatedAt),
-        // The server keeps a release comparison that later failed, so it can
-        // be older than the read that carried it.
-        ...targets.map((row) => row.head?.comparedAt),
-      ],
-      outcome: "untracked",
-    },
-    now,
-  );
+  const reading: Freshness = {
+    readAt: [
+      globalDeploy.dataUpdatedAt,
+      globalDrift.dataUpdatedAt,
+      ...repoDeploy.map((query) => query.dataUpdatedAt),
+      ...repoDrift.map((query) => query.dataUpdatedAt),
+      // The server keeps a release comparison that later failed, so it can
+      // be older than the read that carried it.
+      ...targets.map((row) => row.head?.comparedAt),
+    ],
+    outcome: "untracked",
+  };
+  const freshness = freshnessLine(reading, now);
 
   const rows: TargetTableRow[] = targets.map((row) => ({
     ...row,
@@ -266,11 +264,14 @@ export function DeployStateView() {
             ? targetCount(rows.length)
             : undefined
       }
-      band={
-        freshness === null
-          ? undefined
-          : { facts: [], read: { sentence: freshness, attention: false } }
-      }
+      band={{
+        summary: {
+          freshness: reading,
+          healthy: IN_SYNC.word,
+          counts: targetCounts(targets.map((row) => row.status?.word ?? null)),
+        },
+        facts: [],
+      }}
       rereading={screen.reading}
       firstReadRows={8}
       rows={rows}

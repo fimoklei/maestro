@@ -1,8 +1,12 @@
+import { Clock } from "lucide-react";
 import { type ReactNode, useRef } from "react";
+import { READ_AGE_NAME } from "./band-copy";
 import { BandFact, type BandFactProps } from "./band-fact";
+import { type BandSummaryInput, bandSummary } from "./band-summary";
 import { cn } from "./cn";
 import { SearchBox } from "./search-box";
 import { STATUS_TOKENS } from "./status-family";
+import { useNow } from "./use-now";
 import { useWidthRem } from "./use-width-rem";
 
 /** Drops the fact while band 2 is narrower than `belowRem`; rank 1 drops first. */
@@ -27,13 +31,16 @@ type BandSearch = {
   iconBelowRem: number;
 };
 
-/** Band 2: the facts in order, then Read, which never drops; an optional search on the right. */
+/** Band 2: the summary, the facts in order, then the read age; an optional search on the right. */
 export type Band = {
+  summary: BandSummaryInput;
   facts: readonly BandFactItem[];
-  /** The freshness line; `attention` marks it amber. */
-  read: { sentence: string; attention: boolean };
   search?: BandSearch;
 };
+
+const Separator = () => (
+  <span aria-hidden="true" className="h-4 w-px flex-none bg-gray-6" />
+);
 
 // A rule applies while the band is narrower than it, and also while any rule of
 // its rank or higher applies, so the order holds whatever the widths say.
@@ -48,7 +55,7 @@ const applies = (
     (other) => order(other.rank) >= order(rule.rank) && width < other.belowRem,
   );
 
-/** Band 2: facts and Read on the left; the search, then the screen's controls, on the right. */
+/** Band 2: summary, facts and read age on the left; the search, then the screen's controls, on the right. */
 export function BandRow({
   band,
   children,
@@ -60,6 +67,8 @@ export function BandRow({
   const ref = useRef<HTMLDivElement>(null);
   // The band's own width, not the window's: the sidebar takes its share.
   const width = useWidthRem(ref, (element) => element);
+  const now = useNow();
+  const summary = band === undefined ? null : bandSummary(band.summary, now);
   const searchRule: DropRule | undefined =
     band?.search === undefined
       ? undefined
@@ -70,29 +79,51 @@ export function BandRow({
     ),
     ...(searchRule === undefined ? [] : [searchRule]),
   ];
+  const facts = (band?.facts ?? []).filter(
+    (fact) => !applies(fact.drop, rules, width),
+  );
   return (
     // One tree with or without a band, so Re-read keeps its focus.
     <div ref={ref} className="flex min-w-0 flex-1 items-center gap-panel">
-      {band === undefined ? null : (
+      {summary === null ? null : (
         <>
-          {/* Hidden once empty, so it takes no gap before Read. */}
-          <dl className="m-0 flex min-w-0 items-center gap-panel text-row empty:hidden">
-            {band.facts
-              .filter((fact) => !applies(fact.drop, rules, width))
-              .map(({ drop: _drop, ...fact }) => (
-                <BandFact key={fact.label} {...fact} />
-              ))}
-          </dl>
-          <span
-            className={cn(
-              "flex-none whitespace-nowrap text-meta",
-              band.read.attention
-                ? STATUS_TOKENS.attention.ink
-                : "text-gray-11",
-            )}
-          >
-            {band.read.sentence}
+          <span className="flex flex-none items-center gap-inline whitespace-nowrap text-row text-gray-11">
+            <span
+              aria-hidden="true"
+              className={cn(
+                "size-2 flex-none rounded-full",
+                STATUS_TOKENS[summary.family].dot,
+              )}
+            />
+            {summary.word === null ? null : <span>{summary.word}</span>}
+            {summary.counts.map((each) => (
+              <span key={each.word}>{`${each.word} ${each.count}`}</span>
+            ))}
           </span>
+          {facts.length === 0 ? null : (
+            <>
+              <Separator />
+              <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
+                {facts.map(({ drop: _drop, ...fact }) => (
+                  <BandFact key={fact.label} {...fact} />
+                ))}
+              </dl>
+            </>
+          )}
+          {summary.age === null ? null : (
+            <>
+              <Separator />
+              <span className="flex flex-none items-center gap-tight whitespace-nowrap text-gray-11 text-meta">
+                <Clock
+                  role="img"
+                  aria-label={READ_AGE_NAME}
+                  strokeWidth={1.5}
+                  className="size-3"
+                />
+                {summary.age}
+              </span>
+            </>
+          )}
         </>
       )}
       {/* The search sits in this row, not a group, so it gives way before a fact is cut. */}

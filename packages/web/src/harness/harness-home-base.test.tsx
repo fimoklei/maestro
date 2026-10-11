@@ -179,7 +179,7 @@ describe("Harness home base", () => {
 
     await waitFor(async () =>
       expect(
-        within(await stripFacts()).getByText("Read 4 min ago"),
+        within(await stripFacts()).getByText("4 min ago"),
       ).toBeInTheDocument(),
     );
     await waitFor(() =>
@@ -257,7 +257,7 @@ describe("Harness home base", () => {
     release();
     await waitFor(async () =>
       expect(
-        within(await stripFacts()).getByText("Read 4 min ago"),
+        within(await stripFacts()).getByText("4 min ago"),
       ).toBeInTheDocument(),
     );
     await waitFor(() =>
@@ -307,9 +307,7 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(
-      await screen.findByText("Offline — last read 1 h ago"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("last read 1 h ago")).toBeInTheDocument();
     expect(screen.queryByText(/read failed/i)).not.toBeInTheDocument();
   });
 
@@ -325,9 +323,7 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(
-      await screen.findByText("Read failed — never read"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Read failed")).toBeInTheDocument();
     expect(
       screen.queryByText(/permission|not allowed|access denied/i),
     ).not.toBeInTheDocument();
@@ -378,13 +374,13 @@ describe("Harness home base", () => {
 
     await waitFor(async () =>
       expect(
-        within(await stripFacts()).getByText("Read 4 min ago"),
+        within(await stripFacts()).getByText("4 min ago"),
       ).toBeInTheDocument(),
     );
     releaseRead();
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     expect(
-      within(await stripFacts()).getByText("Read 4 min ago"),
+      within(await stripFacts()).getByText("4 min ago"),
     ).toBeInTheDocument();
   });
 
@@ -647,7 +643,7 @@ describe("Harness home base", () => {
       expect(within(band).getByText(label as string)).toBeInTheDocument();
       expect(within(band).getByText(value as string)).toBeInTheDocument();
     }
-    expect(within(band).getByText("Read 4 min ago")).toBeInTheDocument();
+    expect(within(band).getByText("4 min ago")).toBeInTheDocument();
     expect(
       within(band).getByRole("button", { name: "Re-read Harness" }),
     ).toBeInTheDocument();

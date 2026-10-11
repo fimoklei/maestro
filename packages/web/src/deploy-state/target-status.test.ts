@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { TARGET_STATUS_WORDS, targetStatus } from "./target-status";
+import {
+  IN_SYNC,
+  TARGET_STATUS_WORDS,
+  targetCounts,
+  targetStatus,
+} from "./target-status";
 
 const words = (value: ReturnType<typeof targetStatus>) =>
   value === null ? null : `${value.glyph} ${value.word}`;
@@ -152,5 +157,28 @@ describe("targetStatus", () => {
       "Other origin",
       "Empty",
     ]);
+  });
+});
+
+describe("targetCounts", () => {
+  it("counts Unknown as failed, and Attention, Local edits and Behind as attention, unfinished operations under Attention", () => {
+    expect(
+      targetCounts([
+        "Unknown",
+        "Attention",
+        "Deploy incomplete",
+        "Removal incomplete",
+        "Local edits",
+        "In sync",
+        "Pinned per skill",
+        null,
+      ]),
+    ).toEqual([
+      { word: "Unknown", count: 1, family: "failed" },
+      { word: "Attention", count: 3, family: "attention" },
+      { word: "Local edits", count: 1, family: "attention" },
+      { word: "Behind", count: 0, family: "attention" },
+    ]);
+    expect(IN_SYNC.word).toBe("In sync");
   });
 });

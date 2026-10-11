@@ -18,7 +18,6 @@ import {
   UPDATE_TARGET,
   VIEW_DEPLOY_STATE,
 } from "../ui/control-labels";
-import { freshnessLine, NOT_READ_YET } from "../ui/freshness";
 import { Icon } from "../ui/icon";
 import { SelectionBar } from "../ui/selection-bar";
 import { TableScreen } from "../ui/table-screen";
@@ -72,6 +71,7 @@ import { type PaneDialog, SkillPaneDialog } from "./skill-pane-dialogs";
 import {
   BEHIND,
   NOT_DEPLOYED,
+  skillCounts,
   skillStatus,
   UNKNOWN,
   UP_TO_DATE,
@@ -337,9 +337,10 @@ export function InventoryView({
                 },
               ]),
         ],
-        read: {
-          sentence: freshnessLine(readFreshness(reads), now) ?? NOT_READ_YET,
-          attention: false,
+        summary: {
+          freshness: readFreshness(reads),
+          healthy: UP_TO_DATE.word,
+          counts: skillCounts(rows.map((row) => row.status?.word ?? null)),
         },
         search: {
           label: SEARCH_LABEL,

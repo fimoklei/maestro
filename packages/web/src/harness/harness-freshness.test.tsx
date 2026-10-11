@@ -3,7 +3,6 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { htmlElement } from "../test-utils";
-import { STATUS_TOKENS } from "../ui/status-family";
 import {
   harnessGrid,
   installHarnessHooks,
@@ -147,12 +146,12 @@ describe("Harness freshness and failed reads", () => {
     ).not.toHaveAttribute("aria-disabled");
   });
 
-  it("marks an out-of-date Read amber in band 2, after the Harness facts", async () => {
+  it("marks an out-of-date read red in band 2, after the Harness facts", async () => {
     stubHarnessServer({ read: { body: STALE } });
     renderHarness();
 
-    const read = await screen.findByText("Read failed — last read 4 min ago");
-    expect(read).toHaveClass(STATUS_TOKENS.attention.ink);
+    const read = await screen.findByText("last read 4 min ago");
+    expect(screen.getByText("Read failed")).toBeInTheDocument();
     const band = htmlElement(read.closest('[data-band="2"]'));
     expect(
       Array.from(band.querySelectorAll("dt"), (label) => label.textContent),

@@ -1,5 +1,6 @@
 import type { PendingOperation } from "@maestro/core";
 import type { TargetDriftIndicator } from "../drift/drift-view-model";
+import { type BandCount, countOf } from "../ui/band-summary";
 import { WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { UNFINISHED_HEADINGS } from "./release-head-copy";
@@ -11,7 +12,7 @@ const ATTENTION = reading("Attention", "attention", WARNING_GLYPH);
 export const LOCAL_EDITS = reading("Local edits", "attention", WARNING_GLYPH);
 const BEHIND = reading("Behind", "attention");
 const UNKNOWN = reading("Unknown", "unknown");
-const IN_SYNC = reading("In sync", "good");
+export const IN_SYNC = reading("In sync", "good");
 const PINNED = reading("Pinned per skill", "neutral");
 const OTHER_ORIGIN = reading("Other origin", "neutral");
 const EMPTY = reading("Empty", "neutral");
@@ -29,6 +30,32 @@ export const TARGET_STATUS_WORDS = [
     OTHER_ORIGIN,
     EMPTY,
   ].map((value) => value.word),
+];
+
+/** Band 2's counts, worst first; the unfinished operations roll into Attention. */
+export const targetCounts = (
+  words: readonly (string | null)[],
+): BandCount[] => [
+  { word: UNKNOWN.word, count: countOf(words, UNKNOWN.word), family: "failed" },
+  {
+    word: ATTENTION.word,
+    count: countOf(
+      words,
+      ATTENTION.word,
+      ...Object.values(UNFINISHED_HEADINGS),
+    ),
+    family: "attention",
+  },
+  {
+    word: LOCAL_EDITS.word,
+    count: countOf(words, LOCAL_EDITS.word),
+    family: "attention",
+  },
+  {
+    word: BEHIND.word,
+    count: countOf(words, BEHIND.word),
+    family: "attention",
+  },
 ];
 
 // How a target was built outranks what the drift check made of it; nothing

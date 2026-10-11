@@ -43,7 +43,12 @@ import {
   staleStatusNotice,
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
-import { JOURNEY_EMPTY, statusReading } from "./stage-copy";
+import {
+  ALL_RELEASED,
+  harnessCounts,
+  JOURNEY_EMPTY,
+  statusReading,
+} from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
 import {
   useDiscardReleasePlan,
@@ -259,9 +264,6 @@ export function HarnessView({
     heardCounts.current = counts;
   }, [harness.dataUpdatedAt]);
 
-  const stale =
-    state !== undefined && staleStatusNotice(state.freshness, reread) !== null;
-
   return (
     <TableScreen
       state={table}
@@ -313,7 +315,20 @@ export function HarnessView({
                   drop: { rank: 1, belowRem: 54 },
                 },
               ],
-              read: { sentence: freshness, attention: stale },
+              summary: {
+                freshness: {
+                  readAt: [state.freshness.lastFetchedAt],
+                  outcome: state.freshness.outcome,
+                },
+                healthy: ALL_RELEASED,
+                counts: harnessCounts(
+                  sections.flatMap((section) =>
+                    section.read.outcome === "read"
+                      ? section.read.rows.map(() => section.stage)
+                      : [],
+                  ),
+                ),
+              },
             }
       }
       rereading={refresh.isPending}

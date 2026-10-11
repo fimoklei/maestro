@@ -3,7 +3,13 @@ import { skillMark } from "../deploy-state/skill-mark";
 import { unfinishedReading } from "../deploy-state/target-status";
 import type { DeployedRollup } from "./deployed-rollup";
 import type { SkillDeployment } from "./skill-deployments";
-import { skillState, skillStatus, targetReading } from "./skill-status";
+import {
+  skillCounts,
+  skillState,
+  skillStatus,
+  targetReading,
+  UP_TO_DATE,
+} from "./skill-status";
 
 const rollup = (over: Partial<DeployedRollup>): DeployedRollup => ({
   targetCount: 0,
@@ -197,5 +203,14 @@ describe("skillState", () => {
     expect(
       skillState(rollup({ targetCount: 1, unreadable: true }), [], "v1.4.0"),
     ).toBeNull();
+  });
+});
+
+describe("skillCounts", () => {
+  it("counts only Behind, as attention", () => {
+    expect(
+      skillCounts(["Behind", "Local edits", "Unknown", "Up to date", null]),
+    ).toEqual([{ word: "Behind", count: 1, family: "attention" }]);
+    expect(UP_TO_DATE.word).toBe("Up to date");
   });
 });

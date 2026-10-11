@@ -49,15 +49,25 @@ const toMs = (time: ReadTime): number =>
 // Dates the oldest answered reading, so the line never claims more freshness
 // than the stalest row. `on 20 Jul` reads as a date, `4 min ago` as a
 // distance; both follow "Read", so the prefix is not repeated.
+export const oldestAgo = (
+  readAt: Freshness["readAt"],
+  now: Date,
+): string | null => {
+  const answered = readAt.map(toMs).filter((time) => time > 0);
+  return answered.length === 0
+    ? null
+    : ago(new Date(Math.min(...answered)).toISOString(), now);
+};
+
+export const READ_FAILED = "Read failed";
+export const OFFLINE = "Offline";
+export const lastRead = (since: string) => `last read ${since}`;
+
 export function freshnessLine(
   { readAt, outcome }: Freshness,
   now: Date,
 ): string | null {
-  const answered = readAt.map(toMs).filter((time) => time > 0);
-  const since =
-    answered.length === 0
-      ? null
-      : ago(new Date(Math.min(...answered)).toISOString(), now);
+  const since = oldestAgo(readAt, now);
   if (outcome === "untracked") {
     return since === null ? null : `Read ${since}`;
   }
@@ -69,10 +79,10 @@ export function freshnessLine(
   }
   // A failure never claims a verdict GitHub has not given: no permission gate,
   // no expired-token guess (#516).
-  const cause = outcome === "offline" ? "Offline" : "Read failed";
+  const cause = outcome === "offline" ? OFFLINE : READ_FAILED;
   return since === null
     ? `${cause} — never read`
-    : `${cause} — last read ${since}`;
+    : `${cause} — ${lastRead(since)}`;
 }
 
 /** The freshness line, ticking with the clock; null input renders no line. */
