@@ -5,7 +5,7 @@ import { IconButton } from "./icon-button";
 
 function renderButton(props: Partial<Parameters<typeof IconButton>[0]> = {}) {
   return render(
-    <IconButton label="Re-read Inventory" {...props}>
+    <IconButton label="Re-read Skills" {...props}>
       <svg aria-hidden="true" />
     </IconButton>,
   );
@@ -16,7 +16,7 @@ describe("IconButton", () => {
     renderButton();
 
     expect(
-      screen.getByRole("button", { name: "Re-read Inventory" }),
+      screen.getByRole("button", { name: "Re-read Skills" }),
     ).toBeInTheDocument();
   });
 
@@ -25,7 +25,7 @@ describe("IconButton", () => {
     renderButton({ onClick });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Re-read Inventory" }),
+      screen.getByRole("button", { name: "Re-read Skills" }),
     );
 
     expect(onClick).toHaveBeenCalledOnce();
@@ -36,7 +36,7 @@ describe("IconButton", () => {
     renderButton({ unavailable: "No Harness connected", onClick });
 
     const button = screen.getByRole("button", {
-      name: "Re-read Inventory — No Harness connected",
+      name: "Re-read Skills — No Harness connected",
     });
     expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).not.toBeDisabled();
@@ -49,7 +49,7 @@ describe("IconButton", () => {
     const onClick = vi.fn();
     renderButton({ busy: true, onClick });
 
-    const button = screen.getByRole("button", { name: "Re-read Inventory" });
+    const button = screen.getByRole("button", { name: "Re-read Skills" });
     expect(button).toHaveAttribute("aria-busy", "true");
     await userEvent.click(button);
 

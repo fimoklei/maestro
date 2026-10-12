@@ -6,8 +6,8 @@ import {
   CONNECT_HARNESS,
   CONNECT_TITLE,
   CONNECTED_TITLE,
+  CONTINUE_TO_FIRST_VIEW,
   CONTINUE_TO_HARNESS,
-  CONTINUE_TO_INVENTORY,
   CREATED_TITLE,
   connectedMessage,
   NO_SKILLS_YET,
@@ -38,7 +38,7 @@ describe("connect gate copy", () => {
 
   it("titles a finished connect and names the way on", () => {
     expect(CONNECTED_TITLE).toBe("Harness connected");
-    expect(CONTINUE_TO_INVENTORY).toBe("Continue to Inventory");
+    expect(CONTINUE_TO_FIRST_VIEW).toBe("Continue to Skills");
     expect(CREATED_TITLE).toBe("Harness created");
     expect(CONTINUE_TO_HARNESS).toBe("Continue to Harness");
   });

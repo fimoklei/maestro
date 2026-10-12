@@ -6,6 +6,7 @@
 - **Amended:** 2026-09-08, [What the three stages mean](https://github.com/fimoklei/maestro/issues/808) — point 10.
 - **Amended:** 2026-09-10, [Keep the Harness author journey honest after a merge and a hand-made commit](https://github.com/fimoklei/maestro/issues/890) — points 11 and 12.
 - **Amended:** 2026-10-04, [Delete a released skill from the Harness, from the cockpit](https://github.com/fimoklei/maestro/issues/1370) — point 13.
+- **Amended:** 2026-10-12 ([#1475](https://github.com/fimoklei/maestro/issues/1475)) — the screen this record calls Inventory is now **Skills**, the first Inventory view, at `/inventory/skills`. **Inventory** names the whole collection and its sidebar heading. Its re-read control is **Re-read Skills**.
 
 ## Context
 

@@ -89,7 +89,7 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
   if (outcome !== "fetched")
     throw new Error(
       `connected ${inventoryPath}, but the harness could not be fetched ` +
-        `(${outcome ?? "no outcome"}), so the Inventory would show no released skills. ` +
+        `(${outcome ?? "no outcome"}), so Skills would show no released skills. ` +
         "Check the network and `gh auth status`, then re-run.",
     );
 

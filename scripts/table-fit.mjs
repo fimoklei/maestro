@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 
 const TABLE_SCREENS = [
   { screen: "Deploy-state", path: "/" },
-  { screen: "Inventory", path: "/inventory" },
+  { screen: "Skills", path: "/inventory/skills" },
   { screen: "Harness", path: "/harness" },
   { screen: "Repositories", path: "/repositories" },
 ];

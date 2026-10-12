@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { tableFitReport } from "../../scripts/table-fit.mjs";
 
 const fits = {
-  screen: "Inventory",
+  screen: "Skills",
   viewport: 1440,
   detailOpen: false,
   tableWidth: 800,
@@ -48,7 +48,7 @@ describe("tableFitReport", () => {
         },
       ]).failures,
     ).toEqual([
-      "Inventory, detail pane open, viewport 900px: the detail pane covers the Status, Actions columns",
+      "Skills, detail pane open, viewport 900px: the detail pane covers the Status, Actions columns",
     ]);
   });
 
@@ -62,10 +62,10 @@ describe("tableFitReport", () => {
     expect(
       tableFitReport([
         fits,
-        { screen: "Inventory", viewport: 1104, paneOpened: false },
+        { screen: "Skills", viewport: 1104, paneOpened: false },
       ]).failures,
     ).toEqual([
-      "Inventory, viewport 1104px: a row did not open its detail pane, so the table beside it was not measured",
+      "Skills, viewport 1104px: a row did not open its detail pane, so the table beside it was not measured",
     ]);
   });
 

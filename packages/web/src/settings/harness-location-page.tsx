@@ -102,7 +102,7 @@ export function HarnessLocationPage() {
         busy={reading}
         action={
           <Button variant="quiet" onClick={reread}>
-            {rereadLabel("Inventory")}
+            {rereadLabel("Skills")}
           </Button>
         }
       >

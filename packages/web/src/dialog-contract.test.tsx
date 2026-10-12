@@ -21,8 +21,6 @@ import { ImportDialog } from "./harness/import-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import { WithdrawDialog } from "./harness/withdraw-dialog";
-import { BulkDeployDialog } from "./inventory/bulk-deploy-dialog";
-import { BulkRemoveDialog } from "./inventory/bulk-remove-dialog";
 import { RegisterRepositoryDialog } from "./registry/register-repository-dialog";
 import {
   renderRepositories,
@@ -30,6 +28,8 @@ import {
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
+import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
+import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
 import { htmlElement } from "./test-utils";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
@@ -398,7 +398,7 @@ const ON_DIALOG: Row[] = [
     notices: [],
   },
   {
-    file: "inventory/bulk-deploy-dialog.tsx",
+    file: "skills/bulk-deploy-dialog.tsx",
     heading: "Deploy 2 skills",
     render: ({ running, onClose }) => (
       <BulkDeployDialog
@@ -577,7 +577,7 @@ const ON_DIALOG: Row[] = [
     ],
   },
   {
-    file: "inventory/bulk-remove-dialog.tsx",
+    file: "skills/bulk-remove-dialog.tsx",
     heading: "Remove tdd from 3 targets",
     render: ({ running, onClose }) => (
       <BulkRemoveDialog

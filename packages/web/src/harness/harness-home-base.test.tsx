@@ -37,7 +37,7 @@ describe("Harness home base", () => {
 
     expect(
       // The view's own <h1>, so heading navigation has a starting point
-      // (#868). Inventory carries one too.
+      // (#868). Skills carries one too.
       await screen.findByRole("heading", { level: 1, name: /harness/i }),
     ).toBeInTheDocument();
     expect(

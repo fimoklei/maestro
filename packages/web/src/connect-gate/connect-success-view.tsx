@@ -5,8 +5,8 @@ import { Fact } from "../ui/fact";
 import { Notice } from "../ui/notice";
 import {
   CONNECTED_TITLE,
+  CONTINUE_TO_FIRST_VIEW,
   CONTINUE_TO_HARNESS,
-  CONTINUE_TO_INVENTORY,
   CREATED_TITLE,
   connectedMessage,
   NO_SKILLS_YET,
@@ -37,7 +37,7 @@ function completionCopy(
       return {
         title: CONNECTED_TITLE,
         message: connectedMessage(primitiveCount),
-        continueLabel: CONTINUE_TO_INVENTORY,
+        continueLabel: CONTINUE_TO_FIRST_VIEW,
       };
     case "joined":
       // Only a clone can be someone else's private repository.
@@ -45,7 +45,7 @@ function completionCopy(
         title: CONNECTED_TITLE,
         message: connectedMessage(primitiveCount),
         detail: PRIVATE_HARNESS_ACCESS,
-        continueLabel: CONTINUE_TO_INVENTORY,
+        continueLabel: CONTINUE_TO_FIRST_VIEW,
       };
     case "scaffolded":
       return {

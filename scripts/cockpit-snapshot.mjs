@@ -52,7 +52,7 @@ function fail(message) {
 async function main([selector, path]) {
   if (!selector)
     fail(
-      'give a CSS selector: pnpm cockpit:snapshot "main table" [/inventory]',
+      'give a CSS selector: pnpm cockpit:snapshot "main table" [/inventory/skills]',
     );
   if (path !== undefined && !path.startsWith("/"))
     fail(`give the path from its leading slash: /${path}`);

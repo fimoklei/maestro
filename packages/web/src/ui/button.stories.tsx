@@ -40,7 +40,7 @@ export const Sizes: Story = {
       <Button size="sm">update</Button>
       <Button size="md">deploy →</Button>
       <Button size="lg">deploy all targets</Button>
-      <Button size="icon" aria-label="Re-read Inventory">
+      <Button size="icon" aria-label="Re-read Skills">
         <RefreshCw aria-hidden="true" size={16} strokeWidth={1.5} />
       </Button>
     </div>

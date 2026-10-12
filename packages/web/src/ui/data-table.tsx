@@ -100,7 +100,7 @@ interface DataTableGroups<T> {
 }
 
 export interface DataTableProps<T extends RowData> {
-  /** The grid's accessible name, e.g. "Inventory table". */
+  /** The grid's accessible name, e.g. "Skills table". */
   label: string;
   columns: DataTableColumn<T>[];
   data: T[];

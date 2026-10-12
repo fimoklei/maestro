@@ -14,7 +14,7 @@ function Row({ compact, width }: { compact: boolean; width: number }) {
       </span>
       <SearchBox
         className="ml-auto"
-        label="Search the Inventory"
+        label="Search Skills"
         value={value}
         onChange={setValue}
         compact={compact}

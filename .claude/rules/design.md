@@ -87,7 +87,7 @@ the new pattern to this section before building it.
 - Choose the pane's one primary by state, not position: an unfinished
   operation's retry in its notice, else Import local edits on Local edits,
   else Update target on a behind target, else none. A pane whose ⋮ order already
-  leads with the next step (Inventory, Harness) makes its first enabled item
+  leads with the next step (Skills, Harness) makes its first enabled item
   primary.
 - Show the pane beside the table at every width, never over it; the table
   hides secondary columns to make room. On a panel under 44rem, too narrow
@@ -214,7 +214,7 @@ Pick the form from this table. Add no other form, and no banner.
   between the three; an optional search first, then its controls, on the right. On a
   narrow band shrink the search from 15rem to 12rem, then give way in this
   order: the facts' labels (icon and value stay), whole facts by the screen's
-  own drop ranks, lowest first (Inventory's Skills last), the search into an
+  own drop ranks, lowest first (the Skills fact on Skills last), the search into an
   icon named by its action, then the counts.
   Never drop the summary dot or the read age.
 - Put no button in a table row. A link to an external page may sit in one.

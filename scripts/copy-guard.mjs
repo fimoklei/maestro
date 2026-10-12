@@ -7,6 +7,8 @@ import ts from "typescript-6";
 
 const RETIRED = [
   /\bInventory source\b/i,
+  /\bRe-read Inventory\b/i,
+  /\bSearch the Inventory\b/i,
   /\brefresh(?:es|ed|ing)?\b/i,
   /\bRetry check\b/i,
   /\bPlan release\b/i,

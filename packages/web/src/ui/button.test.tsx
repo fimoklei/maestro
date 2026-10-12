@@ -56,10 +56,11 @@ describe("Button", () => {
   });
 
   it("keeps an icon-sized button square at the 32px control height", () => {
-    render(<Button size="icon" aria-label="Re-read Inventory" />);
-    expect(
-      screen.getByRole("button", { name: "Re-read Inventory" }),
-    ).toHaveClass("h-8", "w-8");
+    render(<Button size="icon" aria-label="Re-read Skills" />);
+    expect(screen.getByRole("button", { name: "Re-read Skills" })).toHaveClass(
+      "h-8",
+      "w-8",
+    );
   });
 
   describe("wrapping", () => {

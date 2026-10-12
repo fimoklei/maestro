@@ -1134,12 +1134,12 @@ describe.each(suites)("%s", (_name, read, fallback, cases) => {
   });
 });
 
-describe("localDeletionNotice on Inventory", () => {
-  it("names Inventory's own way to the Harness view for a folder already gone", () => {
+describe("localDeletionNotice on Skills", () => {
+  it("names the Skills way to the Harness view for a folder already gone", () => {
     expect(
       localDeletionNotice(new HttpError(409, "", "already-gone"), {
         skill: "tdd",
-        screen: "inventory",
+        screen: "skills",
       })?.message,
     ).toBe("Select Harness to see the skill as it is now.");
   });
@@ -1281,9 +1281,9 @@ describe("releasePublishedNotice", () => {
       level: "warning",
       label: "Release published",
       message:
-        "Maestro tagged v1.5.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+        "Maestro tagged v1.5.0, but Inventory was not read. Select Re-read Skills to see the published skills.",
       detail: "A release cannot change after publication.",
-      action: { label: "Re-read Inventory", onClick: reread },
+      action: { label: "Re-read Skills", onClick: reread },
     });
   });
 

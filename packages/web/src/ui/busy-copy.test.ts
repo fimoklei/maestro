@@ -70,11 +70,11 @@ describe("done sentences", () => {
 
 describe("read announcements", () => {
   it("names the screen while the skeleton is up", () => {
-    expect(loadingText("Inventory")).toBe("Loading the Inventory…");
+    expect(loadingText("Skills")).toBe("Loading the Skills…");
   });
 
   it("ends the read with the screen name", () => {
-    expect(loadedText("Inventory")).toBe("Inventory loaded.");
+    expect(loadedText("Skills")).toBe("Skills loaded.");
   });
 });
 

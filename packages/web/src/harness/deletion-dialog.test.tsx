@@ -234,7 +234,7 @@ describe("DeletionDialog", () => {
     });
 
     it("names the Harness screen when opened from another screen", () => {
-      renderDialog({ mode: { ...STEP_ONE, screen: "inventory" } });
+      renderDialog({ mode: { ...STEP_ONE, screen: "skills" } });
 
       expect(
         screen.getByText(

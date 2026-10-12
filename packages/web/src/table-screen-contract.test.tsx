@@ -18,13 +18,13 @@ import {
   withStages,
 } from "./harness/harness-flow-fixture";
 import { pullRequest } from "./harness/stage-row-fixture";
-import { InventoryPanel } from "./inventory/inventory-panel";
-import { InventoryView } from "./inventory/inventory-view";
 import {
   type FakeRegistry,
   renderRepositories,
   stubRegistry,
 } from "./registry/repositories-test-helpers";
+import { SkillsPanel } from "./skills/skills-panel";
+import { SkillsView } from "./skills/skills-view";
 import {
   htmlElement,
   jsonResponse,
@@ -112,7 +112,7 @@ const harnessLeaves = (): RowLeaves => {
   };
 };
 
-const inventoryLeaves = (): RowLeaves => {
+const skillsLeaves = (): RowLeaves => {
   let names = ["alpha", "beta"];
   return {
     render: () => {
@@ -134,7 +134,7 @@ const inventoryLeaves = (): RowLeaves => {
       );
       return renderWithQuery(
         <MemoryRouter>
-          <InventoryPanel />
+          <SkillsPanel />
         </MemoryRouter>,
       );
     },
@@ -231,13 +231,13 @@ const renderBehindTarget = () => {
   renderDeployState();
 };
 
-const renderInventoryRow = () => {
+const renderSkillsRow = () => {
   vi.stubGlobal(
     "fetch",
     vi.fn(() => new Promise<Response>(() => {})),
   );
   renderWithQuery(
-    <InventoryView
+    <SkillsView
       primitives={[TDD]}
       repos={[]}
       registryReady
@@ -310,8 +310,8 @@ const PANE_SUB_LISTS: PaneSubList[] = [
     destructive: ["Remove skill"],
   },
   {
-    file: "inventory/inventory-view.tsx",
-    render: renderInventoryRow,
+    file: "skills/skills-view.tsx",
+    render: renderSkillsRow,
     row: "tdd",
     heading: "Deployed to 1",
     item: "Claude Code",
@@ -491,9 +491,9 @@ const ON_TABLE_SCREEN: Row[] = [
     },
   },
   {
-    file: "inventory/inventory-view.tsx",
-    name: "Inventory",
-    leaves: inventoryLeaves(),
+    file: "skills/skills-view.tsx",
+    name: "Skills",
+    leaves: skillsLeaves(),
     render: () => {
       vi.stubGlobal(
         "fetch",
@@ -505,7 +505,7 @@ const ON_TABLE_SCREEN: Row[] = [
       );
       renderWithQuery(
         <MemoryRouter>
-          <InventoryPanel />
+          <SkillsPanel />
         </MemoryRouter>,
       );
     },
@@ -521,14 +521,14 @@ const ON_TABLE_SCREEN: Row[] = [
         );
         renderWithQuery(
           <MemoryRouter>
-            <InventoryPanel />
+            <SkillsPanel />
           </MemoryRouter>,
         );
       },
       title: "No released skills yet",
     },
     card: {
-      render: renderInventoryRow,
+      render: renderSkillsRow,
       name: "tdd",
       badge: "Up to date",
       body: "Deployed to 1 target.",
@@ -541,7 +541,7 @@ const ON_TABLE_SCREEN: Row[] = [
           vi.fn(() => new Promise<Response>(() => {})),
         );
         renderWithQuery(
-          <InventoryView
+          <SkillsView
             primitives={[TDD]}
             repos={[]}
             registryReady
@@ -574,13 +574,12 @@ const ON_TABLE_SCREEN: Row[] = [
       "Select for bulk deploy",
       "Name",
       "Status",
-      "Type",
       "Description",
       "Targets",
       "Actions",
     ],
     actions: {
-      render: renderInventoryRow,
+      render: renderSkillsRow,
       name: "tdd",
       destructive: ["Delete skill"],
       pane: true,

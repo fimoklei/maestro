@@ -6,7 +6,7 @@ const meta = {
   title: "Core/Tooltip",
   component: Tooltip,
   args: {
-    label: "Re-read Inventory",
+    label: "Re-read Skills",
     children: <Button variant="quiet">Re-read</Button>,
   },
 } satisfies Meta<typeof Tooltip>;

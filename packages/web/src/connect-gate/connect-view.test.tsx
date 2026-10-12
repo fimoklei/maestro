@@ -51,7 +51,7 @@ function renderView() {
     <MemoryRouter initialEntries={["/welcome/connect"]}>
       <Routes>
         <Route path="/welcome/connect" element={<ConnectView />} />
-        <Route path="/inventory" element={<div>inventory-landed</div>} />
+        <Route path="/inventory/skills" element={<div>inventory-landed</div>} />
         <Route path="/" element={<div>deploy-state-landed</div>} />
       </Routes>
     </MemoryRouter>,
@@ -106,7 +106,7 @@ describe("ConnectView", () => {
     expect(source).toHaveAttribute("title", "/home/me/agent-harness");
   });
 
-  it("lands on Inventory once the user continues past the confirmation", async () => {
+  it("lands on Skills once the user continues past the confirmation", async () => {
     stubApi();
     renderView();
 

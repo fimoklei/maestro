@@ -270,7 +270,7 @@ export function usePromoteDeletion() {
   });
 }
 
-// Inventory gates Delete skill on it (#1385); the dialog confirms only against
+// Skills gates Delete skill on it (#1385); the dialog confirms only against
 // its own read, as `staleTime: 0` refetches on every mount. `gcTime: 0` drops
 // the reading once nothing holds it.
 export function useDeletionCheck() {

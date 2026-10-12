@@ -8,6 +8,7 @@ import {
   driftQueryOptions,
   useGlobalDrift,
 } from "../drift/use-drift";
+import { inventoryPathFor } from "../inventory/inventory-views";
 import { type DeployTarget, sameTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { type Freshness, freshnessLine } from "../ui/freshness";
@@ -195,8 +196,9 @@ export function DeployStateView() {
 
   const onAction = useCallback(
     (row: TargetTableRow, action: TargetAction) => {
+      // Deploy skill adds a skill, so it opens the view of skills.
       if (action === "deploy") {
-        navigate("/inventory");
+        navigate(inventoryPathFor("skill"));
         return;
       }
       openFromMenu(

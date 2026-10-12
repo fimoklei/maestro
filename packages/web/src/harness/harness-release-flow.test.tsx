@@ -302,7 +302,7 @@ describe("Harness release", () => {
     expect(
       screen.getByText(
         sentence(
-          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Skills to see the published skills.",
         ),
       ),
     ).toBeInTheDocument();
@@ -312,7 +312,7 @@ describe("Harness release", () => {
 
     // The action is the way back: it reads the Inventory again.
     await userEvent.click(
-      screen.getByRole("button", { name: /^re-read inventory$/i }),
+      screen.getByRole("button", { name: /^re-read skills$/i }),
     );
     await waitFor(() =>
       expect(
@@ -322,7 +322,7 @@ describe("Harness release", () => {
   });
 
   // Nothing is holding the Inventory open, so there is no query to invalidate.
-  // The publication still has to read it, or "re-read Inventory" states a
+  // The publication still has to read it, or "Re-read Skills" states a
   // read that never happened (#849).
   it("reads the Inventory when no screen is holding it open", async () => {
     const calls = stubHarnessServer({
@@ -385,7 +385,7 @@ describe("Harness release", () => {
     expect(
       await screen.findByText(
         sentence(
-          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Skills to see the published skills.",
         ),
       ),
     ).toBeInTheDocument();

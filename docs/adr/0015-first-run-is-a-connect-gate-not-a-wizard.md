@@ -6,6 +6,7 @@
 - **Amended 2026-08-01** by ADR-0021 (issue #352) and 2026-08-09 by issue
   #557 — see *Amendments*. The headline decision stands; three points below
   no longer hold as written.
+- **Amended:** 2026-10-12 ([#1475](https://github.com/fimoklei/maestro/issues/1475)) — the screen this record calls Inventory is now **Skills**, the first Inventory view, at `/inventory/skills`. **Inventory** names the whole collection and its sidebar heading. A found or joined Harness lands on Skills, behind **Continue to Skills**.
 
 ## Context
 

@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-22
+- **Amended:** 2026-10-12 ([#1475](https://github.com/fimoklei/maestro/issues/1475)) — the screen this record calls Inventory is now **Skills**, the first Inventory view, at `/inventory/skills`. **Inventory** names the whole collection and its sidebar heading. Skills is the deploy-aware screen; it has no Type filter, column or grouping.
 
 ## Context
 

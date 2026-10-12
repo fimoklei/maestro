@@ -208,7 +208,7 @@ light.
 - Nineteen documented foreground/background pairs are the allowlist, each
   measured at its own floor in both themes.
 - Geist and Geist Mono, five sizes in rem, weights 400, 500 and 600.
-- One fixed density: every row is 32px, and the Inventory shows at least 18
+- One fixed density: every row is 32px, and Skills shows at least 18
   rows at 1440x900.
 - Only what floats moves, by opacity alone.
 
@@ -300,7 +300,7 @@ design width is 1440px; below 1024px the sidebar folds into a 48px bar.
 
 One fixed density: a table row, header, list row and nav item are all 32px
 (20px line plus 6px above and below). A control inside a row is 24px, the WCAG
-2.2 2.5.8 floor; a control in a band, dialog or form is 32px. The Inventory is
+2.2 2.5.8 floor; a control in a band, dialog or form is 32px. Skills is
 checked against 18 rows visible at 1440x900.
 
 Spacing runs a six-step scale on a 4px base with no half steps, from tight

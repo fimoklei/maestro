@@ -1,0 +1,117 @@
+import { repoTargetName } from "../shell/target-name";
+// Every deploy target (each detected tool and each registered repo) as one flat
+// list for the roll-up (#272), from queries the cockpit already runs.
+
+import { useQueries } from "@tanstack/react-query";
+import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
+import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
+import { driftViewModel } from "../drift/drift-view-model";
+import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
+import type { DeploymentTarget } from "../inventory/deployed-rollup";
+import type { DeployTarget } from "../inventory/use-deploy-skill";
+import { type Reading, targetReadings } from "../ui/freshness";
+import { globalToolTargets, repoTarget } from "./deployment-target-rows";
+
+export function useDeploymentTargets(
+  repoPaths: string[],
+  // Loading/error must reach the roll-up, or a repo-deployed skill reads
+  // "deployed nowhere" during a normal load or registry outage.
+  registry: { isLoading: boolean; isError: boolean },
+): { targets: DeploymentTarget[]; reads: Reading[] } {
+  const globalDeploy = useGlobalDeployState();
+  const globalDriftRead = useGlobalDrift();
+  const globalDrift = driftViewModel(globalDriftRead);
+  const repoDeploy = useQueries({
+    queries: repoPaths.map(deployStateQueryOptions),
+  });
+  const repoDrift = useQueries({ queries: repoPaths.map(driftQueryOptions) });
+
+  const targets: DeploymentTarget[] = [];
+
+  // Drift and target on a non-ready target are never read, so a placeholder
+  // can carry any model and any target.
+  const unresolvedDrift = globalDrift;
+  const unresolvedTarget: DeployTarget = { kind: "global" };
+
+  // Placeholders keep the reach honest while the set is unknown — no target,
+  // no primitives; the count reads their status, the pane skips them.
+  if (registry.isLoading) {
+    targets.push({
+      pending: undefined,
+      label: "",
+      target: unresolvedTarget,
+      deployed: { status: "pending" },
+      primitives: [],
+      drift: unresolvedDrift,
+    });
+  } else if (registry.isError) {
+    targets.push({
+      pending: undefined,
+      label: "",
+      target: unresolvedTarget,
+      deployed: { status: "unknown" },
+      primitives: [],
+      drift: unresolvedDrift,
+    });
+  }
+
+  // While loading, one pending target stands in so a globally-deployed skill
+  // reads as still-resolving, not "deployed nowhere".
+  if (globalDeploy.isLoading) {
+    targets.push({
+      pending: undefined,
+      label: "",
+      target: { kind: "global" },
+      deployed: { status: "pending" },
+      primitives: [],
+      drift: globalDrift,
+    });
+  } else if (globalDeploy.isError) {
+    // Unknown, not empty. Stale cached tools dropped, never presented as current.
+    targets.push({
+      pending: undefined,
+      label: "",
+      target: { kind: "global" },
+      deployed: { status: "unknown" },
+      primitives: [],
+      drift: globalDrift,
+    });
+  } else {
+    targets.push(
+      ...globalToolTargets(
+        globalDeploy.data ?? { tools: [], skipped: [] },
+        globalDrift,
+      ),
+    );
+  }
+
+  // useQueries returns one result per query in order, so index i is repo i.
+  // The pending fallback only guards the impossible short-read.
+  const pending = { data: undefined, isError: false } as const;
+  repoPaths.forEach((repoPath, index) => {
+    const deploy = repoDeploy[index] ?? pending;
+    targets.push(
+      repoTarget({
+        // Shortened as the deploy picker names it (#211).
+        label: repoTargetName(repoPath, repoPaths),
+        target: { kind: "repo", repoPath },
+        read: deploy,
+        drift: driftViewModel(repoDrift[index] ?? pending),
+      }),
+    );
+  });
+
+  const reads: Reading[] = targetReadings([
+    globalDeploy,
+    globalDriftRead,
+    ...repoDeploy,
+    ...repoDrift,
+  ]);
+  // A comparison the server could not run keeps its last answer's time; one
+  // never run dates nothing, and its skills read Unknown.
+  for (const target of targets) {
+    const at = target.releaseHead?.comparedAt;
+    if (at != null) reads.push({ at: Date.parse(at), failed: false });
+  }
+  return { targets, reads };
+}

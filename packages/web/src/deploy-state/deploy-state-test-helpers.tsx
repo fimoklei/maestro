@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { vi } from "vitest";
+import { inventoryPathFor } from "../inventory/inventory-views";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import { DeployStateView } from "./deploy-state-view";
@@ -105,7 +106,10 @@ export function renderDeployState(state?: { openTarget: string }) {
     <MemoryRouter initialEntries={[{ pathname: "/", state }]}>
       <Routes>
         <Route path="/" element={<DeployStateView />} />
-        <Route path="/inventory" element={<p>inventory view</p>} />
+        <Route
+          path={inventoryPathFor("skill")}
+          element={<p>inventory view</p>}
+        />
         <Route path="/harness" element={<HarnessProbe />} />
       </Routes>
       {/* At the root, as in the app: a toast outlives the screen that raised it. */}
