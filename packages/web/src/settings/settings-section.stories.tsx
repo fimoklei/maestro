@@ -15,7 +15,7 @@ const meta = {
           value="/Users/me/Projects/agent-harness"
         />
         <SettingsRow name="GitHub repository" value="fimoklei/agent-harness" />
-        <SettingsRow name="Latest release" value="v1.4.0 · 36 skills" />
+        <SettingsRow name="Latest release" value="v1.4.0" />
       </>
     ),
   },

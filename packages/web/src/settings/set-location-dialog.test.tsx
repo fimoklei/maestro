@@ -96,7 +96,7 @@ describe("Set Harness location", () => {
   it("reads the release again for the new location", async () => {
     const { fetchMock } = stubServer();
     renderPage();
-    await screen.findByText("v1.4.0 · 2 skills");
+    await screen.findByText("v1.4.0");
     const harnessReads = () =>
       fetchMock.mock.calls.filter(([url]) => String(url) === "/api/harness")
         .length;

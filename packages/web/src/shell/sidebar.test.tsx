@@ -3,7 +3,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { Sidebar } from "./sidebar";
 
 afterEach(() => {
@@ -93,18 +93,54 @@ describe("Sidebar", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("names the Harness, its release and its skill count on the menu button", async () => {
+  it("names the Harness and its release alone on the menu button", async () => {
     stubServer();
     renderSidebar();
 
-    const meta = await screen.findByText(sentence("v0.5.0 · 2 skills"));
-    // #1458: only the release is mono; the words stay Geist.
-    expect(meta).not.toHaveClass("font-mono");
-    expect(within(meta).getByText("v0.5.0")).toHaveClass("font-mono");
+    expect(await screen.findByText("v0.5.0")).toHaveClass("font-mono");
+    const button = screen.getByRole("button", { name: /harness menu/i });
+    expect(button).not.toHaveTextContent(/skill/);
     expect(screen.getByText("…/me/agent-harness")).toHaveAttribute(
       "title",
       "/home/me/agent-harness",
     );
+  });
+
+  it("marks the Harness with the first letter of its folder name", async () => {
+    stubServer();
+    renderSidebar();
+
+    const button = await screen.findByRole("button", { name: /harness menu/i });
+    expect(await within(button).findByText("A")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("reads no Inventory to summarise the Harness", async () => {
+    stubServer();
+    renderSidebar();
+
+    await screen.findByText("v0.5.0");
+    expect(
+      vi
+        .mocked(fetch)
+        .mock.calls.some(([url]) =>
+          String(url).startsWith("/api/inventory/primitives"),
+        ),
+    ).toBe(false);
+  });
+
+  it("states no Harness and no letter while none is connected", async () => {
+    stubServer({ inventoryPath: null });
+    renderSidebar();
+
+    const button = await screen.findByRole("button", { name: /harness menu/i });
+    expect(
+      await within(button).findByText("No Harness connected"),
+    ).toBeInTheDocument();
+    expect(button.querySelector("[aria-hidden='true'] + *")).toBeNull();
+    expect(within(button).queryByText(/^[A-Z]$/)).not.toBeInTheDocument();
   });
 
   it("holds Settings in the Harness menu", async () => {
@@ -137,7 +173,7 @@ describe("Sidebar", () => {
     stubServer();
     renderSidebar();
 
-    await screen.findByText(sentence("v0.5.0 · 2 skills"));
+    await screen.findByText("v0.5.0");
     expect(
       screen.queryByRole("list", { name: /targets/i }),
     ).not.toBeInTheDocument();
@@ -169,8 +205,6 @@ describe("Sidebar", () => {
     );
     renderSidebar();
 
-    expect(
-      await screen.findByText("Not released yet · 0 skills"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Not released yet")).toBeInTheDocument();
   });
 });

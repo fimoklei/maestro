@@ -19,6 +19,13 @@ const HARNESS_STATE = {
   },
 } satisfies HarnessState;
 
+export function harnessAnswer(releasedVersion: string | null) {
+  return jsonResponse({
+    ...HARNESS_STATE,
+    releasedVersion,
+  } satisfies HarnessState);
+}
+
 export function skill(name: string) {
   return { type: "skill", name, description: `${name} skill` };
 }
@@ -31,6 +38,8 @@ type FakeServer = {
   github?: GitHubPage;
   /** Called per read, so a re-read can see another answer. */
   primitives?: () => Answer;
+  /** Called per Harness read; by default it answers release v1.4.0. */
+  harness?: () => Answer;
   /** The connect answer for the path sent; by default it connects it. */
   connect?: (path: string) => Answer;
   scaffold?: (path: string) => Answer;
@@ -71,7 +80,9 @@ export function stubServer(state: FakeServer = {}) {
         return state.scaffold(body.path);
       }
       if (url.startsWith("/api/harness")) {
-        return jsonResponse(HARNESS_STATE);
+        return state.harness
+          ? state.harness()
+          : harnessAnswer(HARNESS_STATE.releasedVersion);
       }
       if (url === "/api/inventory/connect" && body) {
         if (state.connect) return state.connect(body.path);

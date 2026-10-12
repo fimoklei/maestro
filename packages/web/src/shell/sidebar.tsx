@@ -17,12 +17,19 @@ export function Sidebar({ className }: { className?: string }) {
     <aside
       aria-label="Navigation"
       className={cn(
-        "flex w-[244px] shrink-0 flex-col gap-panel overflow-y-auto px-cell py-panel",
+        "flex w-[244px] shrink-0 flex-col gap-panel overflow-y-auto px-cell pt-inline pb-panel",
         className,
       )}
     >
-      <Logo className="px-inline" />
-      <HarnessButton />
+      {/* Level with the panel's two 48px bands, below its 1px border. */}
+      <div className="flex flex-col pt-px">
+        <div className="flex h-12 items-center">
+          <Logo className="px-inline" />
+        </div>
+        <div className="flex h-12 items-center">
+          <HarnessButton />
+        </div>
+      </div>
       {SCREEN_GROUPS.map((group) => (
         <div key={group.label} className="flex flex-col gap-tight">
           {group.headed ? (

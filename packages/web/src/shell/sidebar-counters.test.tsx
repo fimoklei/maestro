@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { STAGE_TITLES, stageRows } from "../harness/harness-flow-fixture";
 import { stageRow } from "../harness/stage-row-fixture";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { AppRoutes } from "./app-router";
 import { Sidebar } from "./sidebar";
 
@@ -148,7 +148,7 @@ describe("Deploy-state counter", () => {
     renderSidebar();
 
     // The Harness read answering means every read of the frame has landed.
-    await screen.findByText(sentence("v0.5.0 · 0 skills"));
+    await screen.findByText("v0.5.0");
     expect(
       within(screens()).getByRole("button", { name: "Deploy-state" }),
     ).toBeInTheDocument();
@@ -221,7 +221,7 @@ describe("Harness counter", () => {
     stubServer({});
     renderSidebar();
 
-    await screen.findByText(sentence("v0.5.0 · 0 skills"));
+    await screen.findByText("v0.5.0");
     expect(
       within(author()).getByRole("button", { name: "Harness" }),
     ).toBeInTheDocument();
