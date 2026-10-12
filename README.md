@@ -19,8 +19,8 @@ is deployed and which copies are behind. From the same screen you deploy,
 update and publish skills for your whole team.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/inventory-dark.png">
-  <img src="docs/images/inventory.png" alt="The Inventory screen: every skill in the Harness, with its status and the number of targets it is deployed to" width="960">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/skills-dark.png">
+  <img src="docs/images/skills.png" alt="The Skills screen: every skill in the Harness, with its status and the number of targets it is deployed to" width="960">
 </picture>
 
 Maestro does not install anything itself. [APM](https://microsoft.github.io/apm/),
@@ -84,7 +84,7 @@ The first screen asks for a Harness. Give it one of these:
 
 After that, the daily loop is:
 
-1. **Deploy** a skill from the Inventory to a project or to your global folder.
+1. **Deploy** a skill from Skills to a project or to your global folder.
 2. **Update** a target when the Harness has a newer release.
 3. **Import** a skill you wrote into the Harness and **propose the change**.
    Maestro opens a pull request on the Harness.

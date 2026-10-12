@@ -121,8 +121,8 @@ Status chip: the word disagrees with what happened (#889)
 | Empty state | `No {things} yet`, then one sentence saying what appears here | `No changes yet` |
 | Busy label | `{Verb}ing…`, the verb of the control's own label, no object | `Deploying…` |
 | Status announcement | Start: the busy label. End: `{Done word} {name}.` A failure is the notice, a toast replaces the end | `Deployed tdd.` |
-| Loading text | `Loading the {screen name}…` — heard, not seen; visible only inside a dialog | `Loading the Inventory…` |
+| Loading text | `Loading the {screen name}…` — heard, not seen; visible only inside a dialog | `Loading the Skills…` |
 | Dialog | Title and confirm button share a verb. A dialog that acts on a subject the reader already chose titles `{Verb} {name}`, or `{Verb} {object} for {name}` where the verb carries its own object. A dialog that asks the reader to choose the subject titles `{Verb} a {thing}`. Confirm button `{Verb} {thing}`. The body states what changes, then what stays | `Delete {skill}` / `Delete skill`; `Withdraw proposal for {skill}` / `Withdraw proposal`; `Update a skill` / `Update skill`; `Your targets keep the skill until you update them.` |
 | Field | Visible label naming the value; a hint adds what a label cannot | `Folder path` |
-| Accessible name | Visible words first, in the same order (`design.md`) | `Inventory table` |
+| Accessible name | Visible words first, in the same order (`design.md`) | `Skills table` |
 | Request-shape message | `Nothing was {done}. Reload the page, then {do it} again.` plus a `detail` naming the expected shape | see `packages/server/src/app.ts` |

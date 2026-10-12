@@ -6,6 +6,7 @@
   spec #827)
 - **Amended:** 2026-10-06 (#1368) — the record covers the pull-request writes
   Maestro makes through `gh`, and states that a write reads nothing back.
+- **Amended:** 2026-10-12 ([#1475](https://github.com/fimoklei/maestro/issues/1475)) — the screen this record calls Inventory is now **Skills**, the first Inventory view, at `/inventory/skills`. **Inventory** names the whole collection and its sidebar heading. The decision stands.
 
 ## Context
 

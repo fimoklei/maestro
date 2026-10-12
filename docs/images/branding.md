@@ -4,9 +4,9 @@ The approved Convergence M mark lives in
 `packages/web/src/assets/maestro-mark.svg`. The app uses it directly.
 Run `node scripts/brand-assets.mjs` to regenerate the SVG exports.
 
-The README uses the wordmark and real Inventory screenshots in both themes.
+The README uses the wordmark and real Skills screenshots in both themes.
 `social-preview.png` is the 1280 × 640 GitHub social preview, combining the
-wordmark and tagline with the real light-theme Inventory screenshot.
+wordmark and tagline with the real light-theme Skills screenshot.
 `github-avatar.png` is a square export for branding. A repository has no
 separate avatar setting; changing the owner's avatar would affect other repos.
 

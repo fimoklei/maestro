@@ -588,7 +588,7 @@
       "The neutral role is named gray and its values are slate; five scales in total and no sixth.",
       "The documented foreground and background pairs are the allowlist, each measured at its own floor in both themes.",
       "Geist and Geist Mono, five sizes in rem, weights 400, 500 and 600.",
-      "One fixed density: every row is 32px, and the Inventory shows at least 18 rows at 1440x900.",
+      "One fixed density: every row is 32px, and Skills shows at least 18 rows at 1440x900.",
       "Only what floats moves, by opacity alone."
     ],
     "rules": [

@@ -15,8 +15,8 @@ const font = readFileSync(
   join(fontRoot, "files/geist-latin-wght-normal.woff2"),
 ).toString("base64");
 const fontStyle = `<style>@font-face{font-family:Geist;src:url(data:font/woff2;base64,${font}) format('woff2');font-weight:100 900}text{font-family:Geist,Arial,sans-serif}</style>`;
-const inventoryScreenshot = readFileSync(
-  join(root, "docs/images/inventory.png"),
+const skillsScreenshot = readFileSync(
+  join(root, "docs/images/skills.png"),
 ).toString("base64");
 const svg = (width, height, content) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><title>Maestro</title>${content}</svg>\n`;
@@ -62,7 +62,7 @@ save(
     <text x="142" y="118" font-size="64" font-weight="600" letter-spacing="-1.8" fill="#1c2024">Maestro</text>
     <text x="50" y="166" font-size="26" font-weight="400" fill="#60646c">See and steer your AI agent skills from one screen.</text>
     <rect x="50" y="212" width="1180" height="737.5" rx="12" fill="#fcfcfd" filter="url(#shadow)"/>
-    <image x="50" y="212" width="1180" height="737.5" href="data:image/png;base64,${inventoryScreenshot}" clip-path="url(#screen)"/>
+    <image x="50" y="212" width="1180" height="737.5" href="data:image/png;base64,${skillsScreenshot}" clip-path="url(#screen)"/>
     <rect x="50" y="212" width="1180" height="737.5" rx="12" fill="none" stroke="#d9d9e0"/>`,
   ),
 );

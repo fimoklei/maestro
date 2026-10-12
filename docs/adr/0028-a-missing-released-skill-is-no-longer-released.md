@@ -2,6 +2,7 @@
 
 - **Status:** Accepted — narrows ADR-0027 for a deployed skill name absent from the latest release
 - **Date:** 2026-09-04 (issue #770)
+- **Amended:** 2026-10-12 ([#1475](https://github.com/fimoklei/maestro/issues/1475)) — the screen this record calls Inventory is now **Skills**, the first Inventory view, at `/inventory/skills`. **Inventory** names the whole collection and its sidebar heading. The decision stands.
 
 ## Context
 
