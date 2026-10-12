@@ -80,16 +80,25 @@ describe("Sidebar", () => {
     renderSidebar();
 
     const consume = screen.getByRole("navigation", { name: "Screens" });
-    for (const name of ["Deploy-state", "Inventory", "Repositories"]) {
+    for (const name of ["Deploy-state", "Repositories"]) {
       expect(within(consume).getByRole("button", { name })).toBeEnabled();
     }
+
+    // Inventory is a headed group of views, between the screens and Author.
+    const inventory = screen.getByRole("navigation", { name: "Inventory" });
+    expect(
+      within(inventory).getByRole("button", { name: "Skills" }),
+    ).toBeEnabled();
+    expect(
+      within(consume).queryByRole("button", { name: "Inventory" }),
+    ).not.toBeInTheDocument();
 
     const author = screen.getByRole("navigation", { name: "Author" });
     expect(
       within(author).getByRole("button", { name: "Harness" }),
     ).toBeInTheDocument();
     expect(
-      within(author).queryByRole("button", { name: "Inventory" }),
+      within(author).queryByRole("button", { name: "Skills" }),
     ).not.toBeInTheDocument();
   });
 

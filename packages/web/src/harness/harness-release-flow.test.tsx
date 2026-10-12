@@ -302,7 +302,7 @@ describe("Harness release", () => {
     expect(
       screen.getByText(
         sentence(
-          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Skills to see the published skills.",
         ),
       ),
     ).toBeInTheDocument();
@@ -312,7 +312,7 @@ describe("Harness release", () => {
 
     // The action is the way back: it reads the Inventory again.
     await userEvent.click(
-      screen.getByRole("button", { name: /^re-read inventory$/i }),
+      screen.getByRole("button", { name: /^re-read skills$/i }),
     );
     await waitFor(() =>
       expect(
@@ -385,7 +385,7 @@ describe("Harness release", () => {
     expect(
       await screen.findByText(
         sentence(
-          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Skills to see the published skills.",
         ),
       ),
     ).toBeInTheDocument();

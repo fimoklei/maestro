@@ -1,3 +1,4 @@
+import { FIRST_INVENTORY_VIEW } from "../inventory/inventory-views";
 import { primitiveCountLabel } from "../shell/primitive-count-label";
 
 export const WELCOME_TITLE = "No Harness connected";
@@ -13,7 +14,7 @@ export const CLONE_WAIT = "Cloning can take a minute.";
 export const CLONE_LABEL = "Folder for the Harness";
 
 export const CONNECTED_TITLE = "Harness connected";
-export const CONTINUE_TO_INVENTORY = "Continue to Inventory";
+export const CONTINUE_TO_FIRST_VIEW = `Continue to ${FIRST_INVENTORY_VIEW.name}`;
 export const CREATED_TITLE = "Harness created";
 export const CONTINUE_TO_HARNESS = "Continue to Harness";
 

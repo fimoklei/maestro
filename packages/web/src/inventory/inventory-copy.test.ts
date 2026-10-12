@@ -47,7 +47,7 @@ import {
 describe("Inventory copy", () => {
   // The field's name and placeholder, and the narrow band's icon.
   it("names the search field and its icon by their action", () => {
-    expect(SEARCH_LABEL).toBe("Search the Inventory");
+    expect(SEARCH_LABEL).toBe("Search Skills");
   });
 
   it("says how to see every skill when the search matches none", () => {
@@ -268,9 +268,9 @@ describe("skillStateLine", () => {
     );
   });
 
-  it("names Re-read Inventory where a check could not answer", () => {
+  it("names Re-read Skills where a check could not answer", () => {
     expect(line({ kind: "unknown" })).toBe(
-      "Some targets could not be checked. Select Re-read Inventory to try again.",
+      "Some targets could not be checked. Select Re-read Skills to try again.",
     );
   });
 

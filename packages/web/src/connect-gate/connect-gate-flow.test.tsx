@@ -68,7 +68,7 @@ function renderApp(path: string) {
 }
 
 describe("connect gate", () => {
-  it("walks a fresh install from welcome through connect and the success beat onto Inventory", async () => {
+  it("walks a fresh install from welcome through connect and the success beat onto Skills", async () => {
     stubServer();
     renderApp("/");
 
@@ -106,16 +106,16 @@ describe("connect gate", () => {
 
     // The beat holds until continue is pressed; no auto-navigate.
     expect(
-      screen.queryByRole("heading", { name: /^inventory$/i }),
+      screen.queryByRole("heading", { name: /^skills$/i }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(
-      await screen.findByRole("heading", { name: /^inventory$/i }),
+      await screen.findByRole("heading", { name: /^skills$/i }),
     ).toBeInTheDocument();
   });
 
-  it("joins a Harness pasted as a GitHub url and lands on Inventory", async () => {
+  it("joins a Harness pasted as a GitHub url and lands on Skills", async () => {
     let inventoryPath: string | null = null;
     const connectBodies: string[] = [];
     vi.stubGlobal(
@@ -163,7 +163,7 @@ describe("connect gate", () => {
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(
-      await screen.findByRole("heading", { name: /^inventory$/i }),
+      await screen.findByRole("heading", { name: /^skills$/i }),
     ).toBeInTheDocument();
   });
 
@@ -463,11 +463,11 @@ describe("connect gate", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: /^inventory$/i }),
+      await screen.findByRole("heading", { name: /^skills$/i }),
     ).toBeInTheDocument();
     // Inventory's own <h1> must be the only one: no gate heading rode along.
     const h1s = screen.getAllByRole("heading", { level: 1 });
     expect(h1s).toHaveLength(1);
-    expect(h1s[0]).toHaveTextContent(/^inventory$/i);
+    expect(h1s[0]).toHaveTextContent(/^skills$/i);
   });
 });

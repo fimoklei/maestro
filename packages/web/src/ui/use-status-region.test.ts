@@ -31,7 +31,7 @@ describe("useStatusRegion", () => {
     const { result, rerender } = renderRegion("Inventory loaded.");
 
     act(() => result.current[1]("Deployed tdd."));
-    rerender({ read: "Loading the Inventory…" });
-    expect(result.current[0]).toBe("Loading the Inventory…");
+    rerender({ read: "Loading the Skills…" });
+    expect(result.current[0]).toBe("Loading the Skills…");
   });
 });

@@ -19,13 +19,13 @@ import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";
 import type { Primitive } from "./use-inventory";
 
-const grid = () => screen.getByRole("grid", { name: "Inventory table" });
+const grid = () => screen.getByRole("grid", { name: "Skills table" });
 
-// Column order: bulk checkbox, Type, Name, Description, Status, Targets, ⋮.
+// Column order: bulk checkbox, Name, Description, Status, Targets, ⋮.
 // The Status cell and the Targets cell beside its secondary columns.
 const statusAndReach = (name: string) => {
   const cells = cellsOf(name);
-  return [cells[2], cells[5]];
+  return [cells[2], cells[4]];
 };
 
 function cellsOf(name: string): string[] {
@@ -126,7 +126,7 @@ describe("InventoryView — the table", () => {
     stubPendingFetch();
     renderView({ repos: [{ path: "/projects/alpha" }] });
 
-    for (const header of ["Type", "Name", "Description", "Status", "Targets"]) {
+    for (const header of ["Name", "Description", "Status", "Targets"]) {
       expect(
         within(grid()).getByRole("columnheader", { name: new RegExp(header) }),
       ).toBeInTheDocument();
@@ -153,14 +153,6 @@ describe("InventoryView — the table", () => {
     expect(
       screen.getByRole("gridcell", { name: "caveman" }),
     ).toBeInTheDocument();
-  });
-
-  it("names each row's type in its plain word", () => {
-    stubPendingFetch();
-    renderView();
-
-    expect(cellsOf("tdd")[3]).toBe("Skill");
-    expect(within(grid()).getAllByText("Skill")).toHaveLength(2);
   });
 
   it("shows one status badge, the worst reading, and the reach as a number", () => {
@@ -258,7 +250,7 @@ describe("InventoryView — the table", () => {
       failure: {
         level: "error",
         label: "Inventory not read",
-        message: "Select Re-read Inventory to try again.",
+        message: "Select Re-read Skills to try again.",
       },
     });
 
@@ -278,7 +270,7 @@ describe("InventoryView — band 2", () => {
     renderView();
 
     await userEvent.type(
-      screen.getByRole("searchbox", { name: "Search the Inventory" }),
+      screen.getByRole("searchbox", { name: "Search Skills" }),
       "cave",
     );
 
@@ -295,7 +287,7 @@ describe("InventoryView — band 2", () => {
     renderView();
 
     await userEvent.type(
-      screen.getByRole("searchbox", { name: "Search the Inventory" }),
+      screen.getByRole("searchbox", { name: "Search Skills" }),
       "zzz",
     );
 
@@ -310,41 +302,6 @@ describe("InventoryView — band 2", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("0 of 2")).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
-  });
-
-  it("offers a data-driven type filter of all plus the types present", async () => {
-    stubPendingFetch();
-    renderView();
-
-    await userEvent.click(screen.getByRole("button", { name: "Filter" }));
-
-    expect(
-      await screen.findByRole("menuitemradio", { name: "All" }),
-    ).toBeChecked();
-    expect(
-      screen.getByRole("menuitemradio", { name: "Skills" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("menuitemradio", { name: "Hooks" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("keeps the skills visible and counts the type filter as active once chosen", async () => {
-    stubPendingFetch();
-    renderView();
-
-    await userEvent.click(screen.getByRole("button", { name: "Filter" }));
-    await userEvent.click(
-      await screen.findByRole("menuitemradio", { name: "Skills" }),
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Filter, 1 active" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("gridcell", { name: "tdd" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("gridcell", { name: "caveman" }),
-    ).toBeInTheDocument();
   });
 
   it("filters by status and counts each status chosen", async () => {
@@ -452,17 +409,41 @@ describe("InventoryView — band 2", () => {
     ]);
   });
 
-  it("groups the rows by type from Display", async () => {
+  it("offers no type grouping, Type column or Type filter on Skills", async () => {
     stubPendingFetch();
     renderView();
 
+    expect(
+      within(grid()).queryByRole("columnheader", { name: /^Type$/ }),
+    ).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Display" }));
-    await userEvent.click(
-      await screen.findByRole("menuitemradio", { name: "Type" }),
-    );
+    expect(
+      screen.queryByRole("menuitemradio", { name: "Type" }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("menuitemradio", { name: "Status" }),
+    ).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+    expect(
+      screen.queryByRole("menuitemradio", { name: "Type" }),
+    ).not.toBeInTheDocument();
+  });
 
-    expect(within(grid()).getAllByRole("row")[1]).toHaveTextContent("Skills 2");
+  it("names the view Skills in its heading, re-read control and table", () => {
+    stubPendingFetch();
+    renderView();
+
+    expect(screen.getByRole("heading", { name: "Skills" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Re-read Skills" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("searchbox", { name: "Search Skills" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("grid", { name: "Skills table" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps Filter and Display focusable but unavailable while no skill is read", () => {
@@ -482,7 +463,7 @@ describe("InventoryView — band 2", () => {
     renderView({ onReread });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Re-read Inventory" }),
+      screen.getByRole("button", { name: "Re-read Skills" }),
     );
 
     expect(onReread).toHaveBeenCalledOnce();
@@ -493,7 +474,7 @@ describe("InventoryView — band 2 facts", () => {
   const band2 = () =>
     htmlElement(
       screen
-        .getByRole("button", { name: "Re-read Inventory" })
+        .getByRole("button", { name: "Re-read Skills" })
         .closest("[data-band='2']"),
     );
   // Each fact as `label value`, in reading order.
@@ -529,7 +510,7 @@ describe("InventoryView — band 2 facts", () => {
     renderView();
 
     await userEvent.type(
-      screen.getByRole("searchbox", { name: "Search the Inventory" }),
+      screen.getByRole("searchbox", { name: "Search Skills" }),
       "cave",
     );
 
@@ -651,7 +632,7 @@ describe("InventoryView — sorting", () => {
     renderView({ primitives: many });
 
     await userEvent.type(
-      screen.getByRole("searchbox", { name: "Search the Inventory" }),
+      screen.getByRole("searchbox", { name: "Search Skills" }),
       "search",
     );
     await userEvent.click(
@@ -769,7 +750,7 @@ describe("InventoryView — detail pane", () => {
 
     await openRow("tdd");
     const search = screen.getByRole("searchbox", {
-      name: "Search the Inventory",
+      name: "Search Skills",
     });
     // Reached from the keyboard: a press on it is outside the pane.
     search.focus();
@@ -994,7 +975,7 @@ describe("InventoryView — bulk staging", () => {
 
     await userEvent.click(checkbox("tdd"));
     const search = screen.getByRole("searchbox", {
-      name: "Search the Inventory",
+      name: "Search Skills",
     });
     await userEvent.type(search, "cave");
     expect(
@@ -1017,7 +998,7 @@ describe("InventoryView — bulk staging", () => {
     await userEvent.click(checkbox("tdd"));
     await userEvent.click(checkbox("caveman"));
     await userEvent.type(
-      screen.getByRole("searchbox", { name: "Search the Inventory" }),
+      screen.getByRole("searchbox", { name: "Search Skills" }),
       "cave",
     );
 
@@ -1034,7 +1015,7 @@ describe("InventoryView — bulk staging", () => {
 
     await userEvent.click(checkbox("tdd"));
     await userEvent.type(
-      screen.getByRole("searchbox", { name: "Search the Inventory" }),
+      screen.getByRole("searchbox", { name: "Search Skills" }),
       "nothing matches",
     );
 
@@ -1267,7 +1248,7 @@ describe("InventoryView — reading", () => {
     expect(within(grid()).getAllByRole("row").length).toBeGreaterThan(1);
   });
 
-  it("announces a read when its skeleton appears, then the Inventory loaded", () => {
+  it("announces a read when its skeleton appears, then the Skills loaded", () => {
     vi.useFakeTimers();
     const view = renderView({ primitives: undefined });
     expect(region()).toBeEmptyDOMElement();
@@ -1276,11 +1257,11 @@ describe("InventoryView — reading", () => {
       <InventoryView {...baseProps} primitives={undefined} reading />,
     );
     act(() => vi.advanceTimersByTime(1300));
-    expect(region()).toHaveTextContent("Loading the Inventory…");
+    expect(region()).toHaveTextContent("Loading the Skills…");
 
     view.rerender(<InventoryView {...baseProps} />);
     act(() => vi.advanceTimersByTime(500));
-    expect(region()).toHaveTextContent("Inventory loaded.");
+    expect(region()).toHaveTextContent("Skills loaded.");
   });
 
   it("keeps the previous rows under a failed re-read, with the notice above them", async () => {
@@ -1291,7 +1272,7 @@ describe("InventoryView — reading", () => {
       failure: {
         level: "error",
         label: "Inventory not read",
-        message: "Select Re-read Inventory to try again.",
+        message: "Select Re-read Skills to try again.",
       },
     });
 
@@ -1302,7 +1283,7 @@ describe("InventoryView — reading", () => {
       .closest<HTMLElement>('[role="status"]');
     if (notice === null) throw new Error("the notice is not a status region");
     await userEvent.click(
-      within(notice).getByRole("button", { name: "Re-read Inventory" }),
+      within(notice).getByRole("button", { name: "Re-read Skills" }),
     );
     expect(onReread).toHaveBeenCalledOnce();
   });

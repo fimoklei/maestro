@@ -105,7 +105,7 @@ export function renderDeployState(state?: { openTarget: string }) {
     <MemoryRouter initialEntries={[{ pathname: "/", state }]}>
       <Routes>
         <Route path="/" element={<DeployStateView />} />
-        <Route path="/inventory" element={<p>inventory view</p>} />
+        <Route path="/inventory/skills" element={<p>inventory view</p>} />
         <Route path="/harness" element={<HarnessProbe />} />
       </Routes>
       {/* At the root, as in the app: a toast outlives the screen that raised it. */}

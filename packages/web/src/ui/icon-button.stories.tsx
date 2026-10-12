@@ -6,7 +6,7 @@ const meta = {
   title: "Core/IconButton",
   component: IconButton,
   args: {
-    label: "Re-read Inventory",
+    label: "Re-read Skills",
     children: <RefreshCw aria-hidden="true" size={16} strokeWidth={1.5} />,
   },
 } satisfies Meta<typeof IconButton>;
@@ -24,7 +24,7 @@ export const Unavailable: Story = {
 export const InBandTwo: Story = {
   render: () => (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <IconButton label="Re-read Inventory">
+      <IconButton label="Re-read Skills">
         <RefreshCw aria-hidden="true" size={16} strokeWidth={1.5} />
       </IconButton>
       <IconButton label="Filter">

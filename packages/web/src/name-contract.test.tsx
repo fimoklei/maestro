@@ -90,6 +90,9 @@ const PLAIN: Record<string, Record<string, string>> = {
       "report heading",
     "`Deploy ${name} again`": "button label",
   },
+  "connect-gate/connect-gate-copy.ts": {
+    "`Continue to ${FIRST_INVENTORY_VIEW.name}`": "button label",
+  },
   "inventory/inventory-copy.ts": {
     "`Remove ${skillName} from ${targetCount(count)}`": "dialog title",
     "`Select ${name} for bulk deploy`": "checkbox label",

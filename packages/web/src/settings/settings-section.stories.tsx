@@ -36,5 +36,5 @@ export const Plain: Story = { args: { action: undefined } };
 
 // The action sits beside the facts it refreshes (#995).
 export const WithAction: Story = {
-  args: { action: <Button variant="quiet">Re-read Inventory</Button> },
+  args: { action: <Button variant="quiet">Re-read Skills</Button> },
 };

@@ -78,13 +78,13 @@ afterEach(() => {
 });
 
 describe("Inventory reads", () => {
-  it("re-reads every read its rows show on Re-read Inventory", async () => {
+  it("re-reads every read its rows show on Re-read Skills", async () => {
     const requests = stubServer();
     await renderAt("/inventory", requests, ROW_READS);
     await screen.findByText("tdd");
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Re-read Inventory" }),
+      screen.getByRole("button", { name: "Re-read Skills" }),
     );
 
     await waitFor(() => {
@@ -103,7 +103,7 @@ describe("Inventory reads", () => {
 
     hangDeployState = true;
     await userEvent.click(
-      screen.getByRole("button", { name: "Re-read Inventory" }),
+      screen.getByRole("button", { name: "Re-read Skills" }),
     );
     await waitFor(() =>
       expect(requested(requests, "/api/inventory/primitives")).toBe(true),
@@ -111,9 +111,10 @@ describe("Inventory reads", () => {
     // Past the skeleton's 0.5 s hold, which a finished read would end.
     await new Promise((resolve) => setTimeout(resolve, 700));
 
-    expect(
-      screen.getByRole("grid", { name: "Inventory table" }),
-    ).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("grid", { name: "Skills table" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
   });
 
   it("does not re-read on tab return", async () => {

@@ -171,7 +171,7 @@ describe("Harness outcome notices", () => {
 
     const notice = await bandNotice("Release published");
     expect(
-      within(notice).getByRole("button", { name: "Re-read Inventory" }),
+      within(notice).getByRole("button", { name: "Re-read Skills" }),
     ).toBeInTheDocument();
     expect(screen.queryByText(sentence("Published v1.3.0."))).toBeNull();
   });

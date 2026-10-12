@@ -4,7 +4,7 @@ import { Tooltip } from "./tooltip";
 
 export interface IconButtonProps
   extends Omit<ComponentPropsWithRef<"button">, "children"> {
-  /** The action, e.g. "Re-read Inventory". */
+  /** The action, e.g. "Re-read Skills". */
   label: string;
   /** Why the control cannot be used, in five words or fewer. */
   unavailable?: string;

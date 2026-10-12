@@ -75,7 +75,7 @@ describe("ConnectSuccessView", () => {
       "/home/me/agent-harness",
     );
     const continueButton = screen.getByRole("button", {
-      name: /continue to inventory/i,
+      name: /continue to skills/i,
     });
     continueButton.focus();
     await userEvent.keyboard("{Enter}");

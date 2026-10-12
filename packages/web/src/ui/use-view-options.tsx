@@ -20,8 +20,8 @@ type Option = { value: string; label: string };
 type Groups<T extends RowData> = NonNullable<DataTableProps<T>["groups"]>;
 
 export interface ViewOptionsConfig<T extends RowData> {
-  /** The one-of filter: Target on Deploy-state, Type on Inventory. "All" is added. */
-  kind: { label: string; options: readonly Option[]; of: (row: T) => string };
+  /** The one-of filter: Target on Deploy-state. "All" is added; absent where no such filter exists. */
+  kind?: { label: string; options: readonly Option[]; of: (row: T) => string };
   /** Status words worst first, as Filter lists them and Status groups them. */
   status: {
     words: readonly string[];
@@ -62,6 +62,7 @@ export function useViewOptions<T extends RowData>(
 ): ViewOptions<T> {
   const { kind, status } = config;
   const [kindValue, setKind] = useState("all");
+
   const [statuses, setStatuses] = useState<ReadonlySet<string>>(new Set());
   const [grouping, setGrouping] = useState(config.initialGrouping);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
@@ -85,7 +86,9 @@ export function useViewOptions<T extends RowData>(
     shown: (row) => {
       const word = status.of(row);
       return (
-        (kindValue === "all" || kind.of(row) === kindValue) &&
+        (kind === undefined ||
+          kindValue === "all" ||
+          kind.of(row) === kindValue) &&
         (statuses.size === 0 || (word !== null && statuses.has(word)))
       );
     },
@@ -125,13 +128,17 @@ export function useViewOptions<T extends RowData>(
         unavailable,
         count: filterCount,
         sections: [
-          {
-            kind: "radio",
-            label: kind.label,
-            options: [{ value: "all", label: ALL }, ...kind.options],
-            value: kindValue,
-            onChange: setKind,
-          },
+          ...(kind === undefined
+            ? []
+            : [
+                {
+                  kind: "radio" as const,
+                  label: kind.label,
+                  options: [{ value: "all", label: ALL }, ...kind.options],
+                  value: kindValue,
+                  onChange: setKind,
+                },
+              ]),
           {
             kind: "check",
             label: STATUS_LABEL,

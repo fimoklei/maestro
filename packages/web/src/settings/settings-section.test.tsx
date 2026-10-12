@@ -21,7 +21,7 @@ describe("SettingsSection", () => {
     render(
       <SettingsSection
         title="Connected Harness"
-        action={<Button>Re-read Inventory</Button>}
+        action={<Button>Re-read Skills</Button>}
       >
         <SettingsRow name="Local clone" value="/home/me/agent-harness" />
       </SettingsSection>,
@@ -29,7 +29,7 @@ describe("SettingsSection", () => {
 
     const region = screen.getByRole("region", { name: "Connected Harness" });
     expect(
-      within(region).getByRole("button", { name: "Re-read Inventory" }),
+      within(region).getByRole("button", { name: "Re-read Skills" }),
     ).toBeInTheDocument();
     expect(within(region).getByText("Local clone")).toBeInTheDocument();
   });

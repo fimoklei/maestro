@@ -70,7 +70,7 @@ function renderApp(path = "/") {
 }
 
 describe("cockpit navigation", () => {
-  it("swaps the main region from Deploy-state to Inventory on nav click", async () => {
+  it("swaps the main region from Deploy-state to Skills on nav click", async () => {
     stubEmptyServer();
     renderApp();
 
@@ -78,10 +78,10 @@ describe("cockpit navigation", () => {
       await screen.findByRole("heading", { name: /deploy-state/i }),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Inventory" }));
+    await userEvent.click(screen.getByRole("button", { name: "Skills" }));
 
     expect(
-      await screen.findByRole("heading", { name: /^inventory$/i }),
+      await screen.findByRole("heading", { name: /^skills$/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /deploy-state/i }),

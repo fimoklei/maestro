@@ -492,7 +492,7 @@ const ON_TABLE_SCREEN: Row[] = [
   },
   {
     file: "inventory/inventory-view.tsx",
-    name: "Inventory",
+    name: "Skills",
     leaves: inventoryLeaves(),
     render: () => {
       vi.stubGlobal(
@@ -574,7 +574,6 @@ const ON_TABLE_SCREEN: Row[] = [
       "Select for bulk deploy",
       "Name",
       "Status",
-      "Type",
       "Description",
       "Targets",
       "Actions",

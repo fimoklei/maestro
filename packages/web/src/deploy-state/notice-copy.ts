@@ -82,13 +82,13 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "A skill name uses lowercase letters, digits and single hyphens.",
   },
   "unknown-skill": {
-    message: `Nothing was deployed. Select ${rereadLabel("Inventory")}, then select the skill again.`,
+    message: `Nothing was deployed. Select ${rereadLabel("Skills")}, then select the skill again.`,
   },
   "inventory-not-configured": {
     message: `Nothing was deployed. ${CHANGE_LOCATION_STEP}, ${DEPLOY_AGAIN}`,
   },
   "inventory-unreadable": {
-    message: `Nothing was deployed. Select ${rereadLabel("Inventory")}, then deploy again.`,
+    message: `Nothing was deployed. Select ${rereadLabel("Skills")}, then deploy again.`,
   },
   "repo-not-registered": {
     message: `Nothing was deployed. ${REGISTER_STEP}, then deploy again.`,
@@ -291,7 +291,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
       "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
   },
   "not-deployed": {
-    message: `This target follows no release. Select ${DEPLOY_SKILL} in the Inventory to put one on it.`,
+    message: `This target follows no release. Select ${DEPLOY_SKILL} on Skills to put one on it.`,
   },
   "lockfile-malformed": {
     message: `Repair or delete apm.lock.yaml in the target, ${UPDATE_AGAIN}`,
@@ -306,7 +306,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     message: `${CHANGE_LOCATION_STEP}, ${UPDATE_AGAIN}`,
   },
   "inventory-unreadable": {
-    message: `Select ${rereadLabel("Inventory")} on the Harness location screen, ${UPDATE_AGAIN}`,
+    message: `Select ${rereadLabel("Skills")} on the Harness location screen, ${UPDATE_AGAIN}`,
   },
   "no-published-tag": {
     message: `${CREATE_RELEASE_STEP}, ${UPDATE_AGAIN}`,

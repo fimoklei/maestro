@@ -21,7 +21,7 @@ export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…
 export const INVENTORY_NOT_READ = {
   level: "error",
   label: "Inventory not read",
-  message: `Select ${rereadLabel("Inventory")} to try again.`,
+  message: `Select ${rereadLabel("Skills")} to try again.`,
 } as const;
 
 // Empty is an offer, not a failure: the action is the one step that fills the list.
@@ -31,7 +31,7 @@ export const NO_RELEASED_SKILLS = {
 };
 
 // The Inventory's band 2 and table (#1040).
-export const SEARCH_LABEL = "Search the Inventory";
+export const SEARCH_LABEL = "Search Skills";
 export const NO_SKILLS_YET = "no skills yet";
 export const STAGE_COLUMN_LABEL = "Select for bulk deploy";
 export const stageRowLabel = (name: string) => `Select ${name} for bulk deploy`;
@@ -148,7 +148,7 @@ export function skillStateLine(state: SkillState): Copy {
         : phrase`${lag} Select ${UPDATE_TARGET} to move ${them} to ${machine(state.to)}.`;
     }
     case "unknown":
-      return `Some targets could not be checked. Select ${rereadLabel("Inventory")} to try again.`;
+      return `Some targets could not be checked. Select ${rereadLabel("Skills")} to try again.`;
     case "up-to-date":
       return "No newer release changes this skill.";
   }

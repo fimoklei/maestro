@@ -687,9 +687,9 @@ export const releasePublishedNotice = (
 ): NoticeContent => ({
   level: "warning",
   label: "Release published",
-  message: phrase`Maestro tagged ${machine(tag)}, but Inventory was not read. Select ${rereadLabel("Inventory")} to see the published skills.`,
+  message: phrase`Maestro tagged ${machine(tag)}, but Inventory was not read. Select ${rereadLabel("Skills")} to see the published skills.`,
   detail: "A release cannot change after publication.",
-  action: { label: rereadLabel("Inventory"), onClick: onReread },
+  action: { label: rereadLabel("Skills"), onClick: onReread },
 });
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>

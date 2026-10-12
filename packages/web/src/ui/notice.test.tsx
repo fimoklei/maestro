@@ -127,7 +127,7 @@ describe("Notice", () => {
         notice={{
           level: "error",
           label: "Inventory not read",
-          message: "Select Re-read Inventory to try again.",
+          message: "Select Re-read Skills to try again.",
         }}
       />,
     );
@@ -144,7 +144,7 @@ describe("Notice", () => {
           notice={{
             level: "error",
             label: "Inventory not read",
-            message: "Select Re-read Inventory to try again.",
+            message: "Select Re-read Skills to try again.",
           }}
         />,
       );

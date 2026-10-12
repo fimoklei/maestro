@@ -29,7 +29,7 @@ const skills = (count: number) =>
 const connected = () =>
   screen.getByRole("region", { name: "Connected Harness" });
 const reread = () =>
-  within(connected()).getByRole("button", { name: "Re-read Inventory" });
+  within(connected()).getByRole("button", { name: "Re-read Skills" });
 
 describe("Harness location page", () => {
   it("holds its title on screen while the location is still being read", () => {
@@ -146,7 +146,7 @@ describe("Harness location page", () => {
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
   });
 
-  it("offers Re-read Inventory beside the facts it refreshes", async () => {
+  it("offers Re-read Skills beside the facts it refreshes", async () => {
     let reads = 0;
     stubServer({
       harness: () => harnessAnswer(++reads === 1 ? "v1.4.0" : "v1.5.0"),
@@ -218,7 +218,7 @@ describe("Harness location page", () => {
     const notice = await screen.findByText("Inventory not read");
     const block = notice.closest("[role]");
     expect(block).toHaveTextContent(
-      /^✕Inventory not readSelect Re-read Inventory to try again\.$/,
+      /^✕Inventory not readSelect Re-read Skills to try again\.$/,
     );
     expect(block).toHaveClass("border-red-7", "bg-red-3");
     expect(reread()).toBeInTheDocument();

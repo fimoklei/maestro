@@ -1,9 +1,13 @@
-import { Navigate, Route, Routes, useLocation } from "react-router";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router";
 import { ConnectView } from "../connect-gate/connect-view";
 import { WelcomeView } from "../connect-gate/welcome-view";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
 import { HarnessView } from "../harness/harness-view";
 import { InventoryPanel } from "../inventory/inventory-panel";
+import {
+  FIRST_INVENTORY_PATH,
+  INVENTORY_VIEWS,
+} from "../inventory/inventory-views";
 import { RepositoriesView } from "../registry/repositories-view";
 import { AppearancePage } from "../settings/appearance-page";
 import { HarnessLocationPage } from "../settings/harness-location-page";
@@ -33,7 +37,11 @@ export function AppRoutes() {
       </Route>
       <Route element={<AppShell />}>
         <Route index element={<DeployStateView />} />
-        <Route path="inventory" element={<InventoryPanel />} />
+        <Route
+          path="inventory"
+          element={<Navigate to={FIRST_INVENTORY_PATH} replace />}
+        />
+        <Route path="inventory/:view" element={<InventoryRoute />} />
         <Route path="repositories" element={<RepositoriesView />} />
         <Route path="harness" element={<HarnessScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -46,4 +54,15 @@ export function AppRoutes() {
 function HarnessScreen() {
   const state = useLocation().state as { openSkill?: string } | null;
   return <HarnessView openSkill={state?.openSkill ?? null} />;
+}
+
+// Each view's screen, by its segment. An unknown segment opens the first view.
+function InventoryRoute() {
+  const { view } = useParams();
+  const match = INVENTORY_VIEWS.find((each) => each.segment === view);
+  return match === undefined ? (
+    <Navigate to={FIRST_INVENTORY_PATH} replace />
+  ) : (
+    <InventoryPanel />
+  );
 }

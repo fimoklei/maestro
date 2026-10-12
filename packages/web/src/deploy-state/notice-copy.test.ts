@@ -47,7 +47,7 @@ describe("deploy notices", () => {
       {
         label: "Skill not in the Inventory",
         message:
-          "Nothing was deployed. Select Re-read Inventory, then select the skill again.",
+          "Nothing was deployed. Select Re-read Skills, then select the skill again.",
       },
     ],
     [
@@ -63,7 +63,7 @@ describe("deploy notices", () => {
       {
         label: "Inventory not read",
         message:
-          "Nothing was deployed. Select Re-read Inventory, then deploy again.",
+          "Nothing was deployed. Select Re-read Skills, then deploy again.",
       },
     ],
     [
@@ -519,7 +519,7 @@ describe("update preview notices", () => {
       {
         label: "Nothing deployed here",
         message:
-          "This target follows no release. Select Deploy skill in the Inventory to put one on it.",
+          "This target follows no release. Select Deploy skill on Skills to put one on it.",
       },
     ],
     [
@@ -554,7 +554,7 @@ describe("update preview notices", () => {
       {
         label: "Inventory not read",
         message:
-          "Select Re-read Inventory on the Harness location screen, then select Update target again.",
+          "Select Re-read Skills on the Harness location screen, then select Update target again.",
       },
     ],
     [

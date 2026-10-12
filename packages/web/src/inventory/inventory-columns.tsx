@@ -9,12 +9,11 @@ import { readingRank, type StatusReading } from "../ui/status-reading";
 import { StatusSkeleton } from "../ui/status-skeleton";
 import { ReachCard } from "./reach-card";
 import type { SkillDeployment } from "./skill-deployments";
-import { TYPE_WORD } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
 export type RowAction = "deploy" | "remove" | "delete";
 
-// The Inventory table's columns, and the columns Display can switch off.
+// The Skills table's columns, and the columns Display can switch off.
 export type InventoryRow = Primitive & {
   status: StatusReading | null;
   // Null while the status is unconfirmed, so a partial reach never shows.
@@ -86,11 +85,6 @@ export const inventoryColumns = ({
       }),
       card: reachCard,
     },
-    helper.accessor("type", {
-      header: "Type",
-      cell: ({ row }) => TYPE_WORD[row.original.type],
-      meta: { className: "text-gray-11", width: 16, priority: 2 },
-    }),
     helper.accessor("description", {
       header: "Description",
       // Drops out first on a narrow window (#992).
@@ -140,7 +134,6 @@ export const inventoryColumns = ({
 
 export const DISPLAY_OPTIONS = [
   { value: "status", label: "Status" },
-  { value: "type", label: "Type" },
   { value: "description", label: "Description" },
   { value: "targets", label: "Targets" },
 ];

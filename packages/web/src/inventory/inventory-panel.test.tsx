@@ -83,7 +83,7 @@ describe("InventoryPanel", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /^inventory$/i,
+        name: /^skills$/i,
       }),
     ).toBeInTheDocument();
   });
@@ -104,21 +104,6 @@ describe("InventoryPanel", () => {
     expect(screen.getByText("Diagnosis loop")).toBeInTheDocument();
   });
 
-  it("names each skill row's type", async () => {
-    // Type-aware though only skills render today (#80, #987).
-    stubApi(
-      [
-        { type: "skill", name: "tdd", description: "TDD loop" },
-        { type: "skill", name: "diagnose", description: "Diagnosis loop" },
-      ],
-      [],
-    );
-    renderPanel();
-
-    await screen.findByText("tdd");
-    expect(screen.getAllByText("Skill")).toHaveLength(2);
-  });
-
   it("exposes the skills as a table, one row per skill", async () => {
     // A real table keeps table semantics for assistive tech (#80, #285).
     stubApi(
@@ -131,7 +116,7 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     await screen.findByText("tdd");
-    const grid = screen.getByRole("grid", { name: "Inventory table" });
+    const grid = screen.getByRole("grid", { name: "Skills table" });
     expect(within(grid).getAllByRole("row")).toHaveLength(3); // header + 2 skills
   });
 
@@ -256,7 +241,7 @@ describe("InventoryPanel", () => {
     expect(notice).not.toBeNull();
     // The Harness screen's own words for the same refusal.
     expect(notice).toHaveTextContent(
-      /^✕No Harness connectedSelect Change Harness location in Settings\.Re-read Inventory$/,
+      /^✕No Harness connectedSelect Change Harness location in Settings\.Re-read Skills$/,
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -287,9 +272,9 @@ describe("InventoryPanel", () => {
       await screen.findByText("Inventory not read")
     ).closest<HTMLElement>('[role="status"]');
     if (notice === null) throw new Error("the notice is not a status region");
-    expect(notice).toHaveTextContent("Select Re-read Inventory to try again.");
+    expect(notice).toHaveTextContent("Select Re-read Skills to try again.");
     expect(
-      within(notice).getByRole("button", { name: "Re-read Inventory" }),
+      within(notice).getByRole("button", { name: "Re-read Skills" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -352,7 +337,7 @@ describe("InventoryPanel", () => {
     const notice = heading.closest<HTMLElement>('[role="status"]');
     if (notice === null) throw new Error("the notice is not a status region");
     await userEvent.click(
-      within(notice).getByRole("button", { name: "Re-read Inventory" }),
+      within(notice).getByRole("button", { name: "Re-read Skills" }),
     );
     await waitFor(() =>
       expect(screen.queryByText("Inventory not read")).not.toBeInTheDocument(),
@@ -442,7 +427,7 @@ describe("InventoryPanel", () => {
     });
   });
 
-  it("shows skeleton rows at once when Re-read Inventory is pressed", async () => {
+  it("shows skeleton rows at once when Re-read Skills is pressed", async () => {
     let hang = false;
     vi.stubGlobal(
       "fetch",
@@ -464,16 +449,16 @@ describe("InventoryPanel", () => {
 
     hang = true;
     await userEvent.click(
-      screen.getByRole("button", { name: "Re-read Inventory" }),
+      screen.getByRole("button", { name: "Re-read Skills" }),
     );
 
-    const grid = screen.getByRole("grid", { name: "Inventory table" });
+    const grid = screen.getByRole("grid", { name: "Skills table" });
     expect(grid).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByText("tdd")).not.toBeInTheDocument();
     expect(
       screen
         .getAllByRole("status")
         .find((each) => each.classList.contains("sr-only")),
-    ).toHaveTextContent("Loading the Inventory…");
+    ).toHaveTextContent("Loading the Skills…");
   });
 });

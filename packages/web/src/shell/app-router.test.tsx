@@ -42,8 +42,10 @@ describe("AppRoutes", () => {
 
   it.each([
     ["/", "Deploy-state · Maestro"],
-    ["/inventory", "Inventory · Maestro"],
-    ["/inventory/", "Inventory · Maestro"],
+    ["/inventory", "Skills · Maestro"],
+    ["/inventory/", "Skills · Maestro"],
+    ["/inventory/skills", "Skills · Maestro"],
+    ["/inventory/prompts", "Skills · Maestro"],
     ["/repositories", "Repositories · Maestro"],
     ["/harness", "Harness · Maestro"],
     ["/settings/harness-location", "Harness location · Settings · Maestro"],
@@ -56,6 +58,16 @@ describe("AppRoutes", () => {
     renderAt(path);
 
     await waitFor(() => expect(document.title).toBe(title));
+  });
+
+  it("opens Skills from the Inventory redirect and an unknown view", async () => {
+    stubEmptyServer();
+    renderAt("/inventory");
+
+    expect(
+      await screen.findByRole("heading", { name: "Skills" }),
+    ).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
   });
 
   it("retitles the document when the reader moves to another screen", async () => {

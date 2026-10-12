@@ -1281,9 +1281,9 @@ describe("releasePublishedNotice", () => {
       level: "warning",
       label: "Release published",
       message:
-        "Maestro tagged v1.5.0, but Inventory was not read. Select Re-read Inventory to see the published skills.",
+        "Maestro tagged v1.5.0, but Inventory was not read. Select Re-read Skills to see the published skills.",
       detail: "A release cannot change after publication.",
-      action: { label: "Re-read Inventory", onClick: reread },
+      action: { label: "Re-read Skills", onClick: reread },
     });
   });
 

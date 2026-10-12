@@ -79,7 +79,7 @@ import {
   UNKNOWN,
   UP_TO_DATE,
 } from "./skill-status";
-import { filterByName, TYPE_LABEL, typeOptions } from "./type-filter";
+import { filterByName } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
 // Presentational; the container supplies the reads (#992, #1040).
@@ -135,12 +135,6 @@ const STATUS_WORDS = [
   NOT_DEPLOYED,
 ].map((reading) => reading.word);
 
-const BY_TYPE = {
-  value: "type",
-  label: "Type",
-  groups: { key: (row: InventoryRow) => TYPE_LABEL[row.type] },
-};
-
 export function InventoryView({
   primitives,
   repos,
@@ -182,7 +176,7 @@ export function InventoryView({
   onDeleted: (skill: string) => void;
 }) {
   const screen = useTableScreen({
-    name: "Inventory",
+    name: "Skills",
     reading,
     settled: primitives !== undefined,
     failure,
@@ -245,16 +239,11 @@ export function InventoryView({
   });
 
   const view = useViewOptions(rows, {
-    kind: {
-      label: "Type",
-      options: typeOptions(all),
-      of: (row) => row.type,
-    },
     status: {
       words: STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
     },
-    groupings: [BY_TYPE],
+    groupings: [],
     initialGrouping: "none",
     columns: DISPLAY_OPTIONS,
     unavailable: NO_SKILLS_YET,
