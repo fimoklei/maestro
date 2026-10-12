@@ -56,7 +56,7 @@ function headsReading(
     : "up-to-date";
 }
 
-// The Inventory's two lenses share this, so the count and the detail pane can
+// The Skills screen's two lenses share this, so the count and the detail pane can
 // never disagree.
 export const skillReading = (
   target: DeploymentTarget,

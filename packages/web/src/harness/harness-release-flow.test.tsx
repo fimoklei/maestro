@@ -322,7 +322,7 @@ describe("Harness release", () => {
   });
 
   // Nothing is holding the Inventory open, so there is no query to invalidate.
-  // The publication still has to read it, or "re-read Inventory" states a
+  // The publication still has to read it, or "Re-read Skills" states a
   // read that never happened (#849).
   it("reads the Inventory when no screen is holding it open", async () => {
     const calls = stubHarnessServer({

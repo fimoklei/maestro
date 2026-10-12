@@ -3,7 +3,6 @@ import { ConnectView } from "../connect-gate/connect-view";
 import { WelcomeView } from "../connect-gate/welcome-view";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
 import { HarnessView } from "../harness/harness-view";
-import { InventoryPanel } from "../inventory/inventory-panel";
 import {
   FIRST_INVENTORY_PATH,
   INVENTORY_VIEWS,
@@ -13,6 +12,7 @@ import { AppearancePage } from "../settings/appearance-page";
 import { HarnessLocationPage } from "../settings/harness-location-page";
 import { HARNESS_LOCATION_PAGE } from "../settings/settings-pages";
 import { SettingsShell } from "../settings/settings-shell";
+import { SkillsPanel } from "../skills/skills-panel";
 import { AppShell } from "./app-shell";
 import { useDocumentTitle } from "./document-title";
 import { GateShell } from "./gate-shell";
@@ -63,6 +63,6 @@ function InventoryRoute() {
   return match === undefined ? (
     <Navigate to={FIRST_INVENTORY_PATH} replace />
   ) : (
-    <InventoryPanel />
+    <SkillsPanel />
   );
 }

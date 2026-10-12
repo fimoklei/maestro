@@ -420,7 +420,7 @@ describe("connect gate", () => {
     },
   );
 
-  it("lands on Inventory even when the config refetch after connect is still in flight", async () => {
+  it("lands on Skills even when the config refetch after connect is still in flight", async () => {
     // invalidateQueries does not update the cache synchronously, so the first-run
     // gate could bounce to /welcome. The refetch is held open to prove it does not.
     let inventoryPath: string | null = null;
@@ -465,7 +465,7 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", { name: /^skills$/i }),
     ).toBeInTheDocument();
-    // Inventory's own <h1> must be the only one: no gate heading rode along.
+    // The Skills <h1> must be the only one: no gate heading rode along.
     const h1s = screen.getAllByRole("heading", { level: 1 });
     expect(h1s).toHaveLength(1);
     expect(h1s[0]).toHaveTextContent(/^skills$/i);

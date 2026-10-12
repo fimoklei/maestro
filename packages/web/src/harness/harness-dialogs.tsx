@@ -196,7 +196,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
 
 // Mounted only while the dialog stands, so every opening reads the folder
 // afresh, and a stale refusal reads it again before the next confirmation.
-// Inventory opens it too (#1385); `screen` picks the control its notices name.
+// Skills opens it too (#1385); `screen` picks the control its notices name.
 export function LocalDeletionDialog({
   target: { skill, localOnly },
   screen,

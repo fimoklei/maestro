@@ -1134,12 +1134,12 @@ describe.each(suites)("%s", (_name, read, fallback, cases) => {
   });
 });
 
-describe("localDeletionNotice on Inventory", () => {
-  it("names Inventory's own way to the Harness view for a folder already gone", () => {
+describe("localDeletionNotice on Skills", () => {
+  it("names the Skills way to the Harness view for a folder already gone", () => {
     expect(
       localDeletionNotice(new HttpError(409, "", "already-gone"), {
         skill: "tdd",
-        screen: "inventory",
+        screen: "skills",
       })?.message,
     ).toBe("Select Harness to see the skill as it is now.");
   });

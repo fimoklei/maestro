@@ -106,7 +106,7 @@ describe("ConnectView", () => {
     expect(source).toHaveAttribute("title", "/home/me/agent-harness");
   });
 
-  it("lands on Inventory once the user continues past the confirmation", async () => {
+  it("lands on Skills once the user continues past the confirmation", async () => {
     stubApi();
     renderView();
 

@@ -8,7 +8,7 @@ export type PrimitiveType = "skill" | "hook" | "mcp" | "bundle";
 // Fixed order, not derived from key/insertion order, so layout never shifts.
 const TYPE_ORDER: readonly PrimitiveType[] = ["skill", "hook", "mcp", "bundle"];
 
-export const TYPE_LABEL: Record<PrimitiveType, string> = {
+const TYPE_LABEL: Record<PrimitiveType, string> = {
   skill: "Skills",
   hook: "Hooks",
   mcp: "MCP servers",

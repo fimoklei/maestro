@@ -5,7 +5,7 @@ import { DELETION_CHECK_KEY } from "../harness/use-harness";
 import { refreshInventoryReads } from "../inventory/use-connect-inventory";
 import { REGISTRY_KEY } from "../registry/use-registry";
 
-// Drops the cached copies of every read the Inventory's rows show and lets
+// Drops the cached copies of every read the Skills rows show and lets
 // Query refetch.
 export function useRereadInventory(): () => void {
   const queryClient = useQueryClient();

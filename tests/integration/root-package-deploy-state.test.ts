@@ -173,7 +173,7 @@ describe("reading a root-package target over HTTP", () => {
     expect(body.releaseHead.changedSkills).toEqual(["tdd"]);
   });
 
-  // The Inventory's `→ N targets` counts the Selection.
+  // The Skills `→ N targets` counts the Selection.
   it("carries the Selection the count speaks about", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     await seedFiles(repo, files);

@@ -18,7 +18,7 @@ describe("useStatusRegion", () => {
   });
 
   // A cleared write means its notice or toast said the end. Falling back to
-  // the old read would announce "Inventory loaded." after a failed deploy.
+  // the old read would announce "Skills loaded." after a failed deploy.
   it("stays silent after a write clears, never repeating an old read", () => {
     const { result } = renderRegion("Inventory loaded.");
 

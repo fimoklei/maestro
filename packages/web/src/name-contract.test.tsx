@@ -85,7 +85,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Withdraw proposal for ${skill}`": "dialog title",
     "`maestro/${skill}`": "branch, a machine value in a fact",
   },
-  "inventory/bulk-deploy-report-view.ts": {
+  "skills/bulk-deploy-report-view.ts": {
     '`Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`':
       "report heading",
     "`Deploy ${name} again`": "button label",
@@ -93,7 +93,7 @@ const PLAIN: Record<string, Record<string, string>> = {
   "connect-gate/connect-gate-copy.ts": {
     "`Continue to ${FIRST_INVENTORY_VIEW.name}`": "button label",
   },
-  "inventory/inventory-copy.ts": {
+  "skills/skills-copy.ts": {
     "`Remove ${skillName} from ${targetCount(count)}`": "dialog title",
     "`Select ${name} for bulk deploy`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",

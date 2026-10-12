@@ -257,7 +257,7 @@ describe("update HTTP journey", () => {
     expect(body.preview.copyReceipt).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  // The Inventory's entrance: adding a skill the target's release lacks (#955).
+  // The Skills entrance: adding a skill the target's release lacks (#955).
   it("names the requested skill and carries it into the desired Selection", async () => {
     const { app, registry } = await makeApp();
     await seedTarget(["tdd", "grill", "review"]);
