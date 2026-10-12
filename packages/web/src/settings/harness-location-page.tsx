@@ -5,7 +5,7 @@ import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
 import { refreshInventoryReads } from "../inventory/use-connect-inventory";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { harnessName } from "../shell/target-name";
-import { harnessMetaLine } from "../shell/use-harness-summary";
+import { NOT_RELEASED_YET } from "../ui/band-copy";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { rereadLabel } from "../ui/control-labels";
@@ -66,11 +66,13 @@ export function HarnessLocationPage() {
     notice: readNotice,
     busy: dialog.busy ? ACTIONS.setLocation.busy : null,
   });
-  const meta = harnessMetaLine(
-    harness.isSuccess ? harness.data.releasedVersion : undefined,
-    inventory.data?.primitives.length,
-  );
-  const release = meta === null ? NOT_READ_YET : plainText(meta);
+  const releasedVersion = harness.isSuccess
+    ? harness.data.releasedVersion
+    : undefined;
+  const release =
+    releasedVersion === undefined
+      ? NOT_READ_YET
+      : (releasedVersion ?? NOT_RELEASED_YET);
   const github = config.data?.githubRepository ?? null;
 
   const fact = (
@@ -108,7 +110,7 @@ export function HarnessLocationPage() {
         {github === null
           ? fact(GITHUB_REPOSITORY, GITHUB_NOT_READ, false)
           : fact(GITHUB_REPOSITORY, github, true, config.data?.github)}
-        {fact(LATEST_RELEASE, release)}
+        {fact(LATEST_RELEASE, release, typeof releasedVersion === "string")}
       </SettingsSection>
       <SettingsSection title={LOCATION}>
         <SettingsRow
