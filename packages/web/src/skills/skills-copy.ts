@@ -10,6 +10,7 @@ import {
   rereadLabel,
   UPDATE_TARGET,
 } from "../ui/control-labels";
+import type { NoticeCopy } from "../ui/notice";
 import { type Copy, machine, phrase } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
 
@@ -47,6 +48,32 @@ export const NO_TARGET_REMOVABLE = "no target can be removed";
 // The bulk Remove dialog's title (#1436), in one and many.
 export const bulkRemoveTitle = (skillName: string, count: number): string =>
   `Remove ${skillName} from ${targetCount(count)}`;
+
+// The bulk Remove dialog and its Report (#1436): every count in one and many.
+export const checkingTargetsLine = (total: number, answered: number): string =>
+  `Checking ${targetCount(total)} — ${answered} answered`;
+export const bulkRemoveReportHeading = (
+  removed: number,
+  total: number,
+): string =>
+  removed === total
+    ? `Removed from ${targetCount(total)}`
+    : `Removed from ${removed} of ${targetCount(total)}`;
+
+// The bulk Remove dialog's targets where a removal loses no work.
+export const targetsWithoutLocalEditsNotice = (count: number): NoticeCopy => ({
+  label: `${targetCount(count)} without local edits`,
+  message: "Only the deployed files are removed.",
+});
+
+// The way out for a pinned target the removal left alone because its files
+// changed.
+export const PINNED_LOCAL_CHANGES_NEXT_STEP =
+  "Save the changes. Restore the files from the skill's deployed version in the Harness clone. Then remove the skill.";
+
+// The bulk Remove dialog's confirm: the targets it walks.
+export const removeFromCountLabel = (count: number): string =>
+  `Remove from ${targetCount(count)}`;
 
 // The bulk-deploy picker's Global option. undefined = not loaded or
 // unreadable → plain "Global"; empty = zero detected tools (#134).

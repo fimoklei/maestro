@@ -2,8 +2,11 @@
 // pane order. Per DeployTarget, not per row: apm's uninstall has no -t, so
 // global's per-tool rows are one removal.
 
-import type { DeploymentTarget } from "./deployed-rollup";
-import { type DeployTarget, targetQueryKey } from "./use-deploy-skill";
+import type { DeploymentTarget } from "../inventory/deployed-rollup";
+import {
+  type DeployTarget,
+  targetQueryKey,
+} from "../inventory/use-deploy-skill";
 
 export type BulkRemoveCandidate = {
   target: DeployTarget;

@@ -196,6 +196,7 @@ export function DeployStateView() {
 
   const onAction = useCallback(
     (row: TargetTableRow, action: TargetAction) => {
+      // Deploy skill adds a skill, so it opens the view of skills.
       if (action === "deploy") {
         navigate(inventoryPathFor("skill"));
         return;

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -60,15 +60,24 @@ describe("AppRoutes", () => {
     await waitFor(() => expect(document.title).toBe(title));
   });
 
-  it("opens Skills from the Inventory redirect and an unknown view", async () => {
-    stubEmptyServer();
-    renderAt("/inventory");
+  it.each(["/inventory", "/inventory/prompts"])(
+    "opens Skills from %s",
+    async (path) => {
+      stubEmptyServer();
+      renderAt(path);
 
-    expect(
-      await screen.findByRole("heading", { name: "Skills" }),
-    ).toBeInTheDocument();
-    expect(window.location.pathname).toBe("/");
-  });
+      expect(
+        await screen.findByRole("heading", { level: 1, name: "Skills" }),
+      ).toBeInTheDocument();
+      // The sidebar marks the entry whose path is shown: /inventory/skills.
+      const navigation = screen.getByRole("complementary", {
+        name: "Navigation",
+      });
+      expect(
+        within(navigation).getByRole("button", { name: "Skills" }),
+      ).toHaveAttribute("aria-current", "page");
+    },
+  );
 
   it("retitles the document when the reader moves to another screen", async () => {
     stubEmptyServer();

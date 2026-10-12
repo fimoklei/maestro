@@ -3,7 +3,6 @@ import { Puzzle, Table2, Tag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import { folderInClone } from "../harness/use-harness";
-import { bulkRemoveTargets } from "../inventory/bulk-remove-targets";
 import {
   hiddenStagedCount,
   setStagedMany,
@@ -52,6 +51,7 @@ import { useNow } from "../ui/use-now";
 import { type ReadFailure, useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions } from "../ui/use-view-options";
 import { BulkDeployAction } from "./bulk-deploy-action";
+import { bulkRemoveTargets } from "./bulk-remove-targets";
 import { SkillDetailPane } from "./skill-detail-pane";
 import { type PaneDialog, SkillPaneDialog } from "./skill-pane-dialogs";
 import {
@@ -242,6 +242,7 @@ export function SkillsView({
   });
 
   const view = useViewOptions(rows, {
+    kind: null,
     status: {
       words: STATUS_WORDS,
       of: (row) => row.status?.word ?? null,

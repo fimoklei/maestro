@@ -1,10 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { BulkRemoveDialogView } from "../inventory/bulk-remove-dialog-view";
-import type { BulkRemoveReportView } from "../inventory/bulk-remove-report-view";
 import { htmlElement } from "../test-utils";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
+import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
+import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",

@@ -4,10 +4,10 @@ import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
-import type { BulkRemoveCandidate } from "../inventory/bulk-remove-targets";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { BulkRemoveRun } from "./bulk-remove-skill-action";
+import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 
 afterEach(() => {
   vi.unstubAllGlobals();

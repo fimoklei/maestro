@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { BulkRemoveDialogView } from "../inventory/bulk-remove-dialog-view";
 import { LOCAL_CHANGES_NEXT_STEP } from "../inventory/inventory-copy";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
+import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",

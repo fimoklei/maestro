@@ -1,16 +1,16 @@
 import type { BulkRemoveReport, RemoveDeployedSkillError } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import { HttpError } from "../api/http";
-import { REFUSAL_REASON } from "../inventory/bulk-remove-dialog-view";
-import { bulkRemoveReportView } from "../inventory/bulk-remove-report-view";
-import { UPDATE_TARGET } from "../ui/control-labels";
+import { HttpError } from "./api/http";
 import {
   deployNotice,
   removeNotice,
   retryNotice,
   updateNotice,
   updatePreviewNotice,
-} from "./notice-copy";
+} from "./deploy-state/notice-copy";
+import { REFUSAL_REASON } from "./skills/bulk-remove-dialog-view";
+import { bulkRemoveReportView } from "./skills/bulk-remove-report-view";
+import { UPDATE_TARGET } from "./ui/control-labels";
 
 // The approved reason per server code (#1459). Every surface that names one of
 // these codes reads the same words.

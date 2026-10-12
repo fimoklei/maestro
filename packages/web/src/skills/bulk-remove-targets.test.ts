@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
+import type { DeploymentTarget } from "../inventory/deployed-rollup";
+import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { readyView } from "../test-utils";
 import { bulkRemoveTargets } from "./bulk-remove-targets";
-import type { DeploymentTarget } from "./deployed-rollup";
-import type { DeployTarget } from "./use-deploy-skill";
 
 const drift = driftViewModel({ data: { behind: [] }, isError: false });
 

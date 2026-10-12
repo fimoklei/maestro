@@ -24,6 +24,19 @@ export function useInventory({ enabled = true }: { enabled?: boolean } = {}) {
   });
 }
 
+/** One type's primitives, from the same cached read: a view switch sends no request. */
+export function useInventoryOf<T extends Primitive["type"]>(type: T) {
+  return useQuery({
+    queryKey: INVENTORY_KEY,
+    queryFn: fetchInventoryPrimitives,
+    select: (data) =>
+      data.primitives.filter(
+        (primitive): primitive is Extract<Primitive, { type: T }> =>
+          primitive.type === type,
+      ),
+  });
+}
+
 type InventoryConfigResponse = {
   inventoryPath: string | null;
   githubRepository: string | null;

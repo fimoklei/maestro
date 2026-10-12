@@ -5,7 +5,7 @@ import { DEPLOY_STATE_KEY } from "../deploy-state/use-deploy-state";
 import { harnessHeadings } from "../harness/notice-copy";
 import { useDeletionCheck, useHarness } from "../harness/use-harness";
 import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
-import { useInventory } from "../inventory/use-inventory";
+import { useInventoryOf } from "../inventory/use-inventory";
 import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { queryReading } from "../ui/freshness";
@@ -27,7 +27,7 @@ function readFailure(error: Error | null): ReadFailure | null {
 }
 
 export function SkillsPanel() {
-  const inventory = useInventory();
+  const inventory = useInventoryOf("skill");
   const registry = useRegistry();
   const invalidate = useRereadInventory();
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ export function SkillsPanel() {
 
   return (
     <SkillsView
-      primitives={disconnected ? undefined : inventory.data?.primitives}
+      primitives={disconnected ? undefined : inventory.data}
       repos={repos}
       registryReady={registry.isSuccess}
       targets={targets}

@@ -20,8 +20,12 @@ type Option = { value: string; label: string };
 type Groups<T extends RowData> = NonNullable<DataTableProps<T>["groups"]>;
 
 export interface ViewOptionsConfig<T extends RowData> {
-  /** The one-of filter: Target on Deploy-state. "All" is added; absent where no such filter exists. */
-  kind?: { label: string; options: readonly Option[]; of: (row: T) => string };
+  /** The one-of filter: Target on Deploy-state. "All" is added; null where no such filter exists. */
+  kind: {
+    label: string;
+    options: readonly Option[];
+    of: (row: T) => string;
+  } | null;
   /** Status words worst first, as Filter lists them and Status groups them. */
   status: {
     words: readonly string[];
@@ -62,7 +66,6 @@ export function useViewOptions<T extends RowData>(
 ): ViewOptions<T> {
   const { kind, status } = config;
   const [kindValue, setKind] = useState("all");
-
   const [statuses, setStatuses] = useState<ReadonlySet<string>>(new Set());
   const [grouping, setGrouping] = useState(config.initialGrouping);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
@@ -86,9 +89,7 @@ export function useViewOptions<T extends RowData>(
     shown: (row) => {
       const word = status.of(row);
       return (
-        (kind === undefined ||
-          kindValue === "all" ||
-          kind.of(row) === kindValue) &&
+        (kind === null || kindValue === "all" || kind.of(row) === kindValue) &&
         (statuses.size === 0 || (word !== null && statuses.has(word)))
       );
     },
@@ -128,7 +129,7 @@ export function useViewOptions<T extends RowData>(
         unavailable,
         count: filterCount,
         sections: [
-          ...(kind === undefined
+          ...(kind === null
             ? []
             : [
                 {

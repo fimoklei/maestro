@@ -3,6 +3,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { findRow, stubServer } from "../deploy-state/deploy-state-test-helpers";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { AppRoutes } from "./app-router";
 
@@ -208,6 +209,49 @@ describe("cockpit navigation", () => {
 
     expect(
       await screen.findByRole("heading", { name: /deploy-state/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens Skills from Deploy skill on a Deploy-state row", async () => {
+    stubServer(() => ({
+      global: {
+        tools: [{ tool: "claude", primitives: [] }],
+        skipped: [],
+      },
+      other: (url) =>
+        url.startsWith("/api/harness")
+          ? jsonResponse(HARNESS_STATE, 200)
+          : jsonResponse({ primitives: [], skipped: [], behind: [] }, 200),
+    }));
+    renderApp();
+
+    await userEvent.click(
+      within(await findRow("Claude Code")).getByRole("button", {
+        name: "Actions for Claude Code",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Deploy skill" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Skills" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists Skills in the narrow bar's menu", async () => {
+    stubEmptyServer();
+    renderApp();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Menu" }));
+    await userEvent.click(
+      within(await screen.findByRole("menu")).getByRole("menuitem", {
+        name: "Skills",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Skills" }),
     ).toBeInTheDocument();
   });
 

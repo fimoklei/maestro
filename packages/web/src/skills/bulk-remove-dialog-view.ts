@@ -9,14 +9,14 @@ import type {
   RemoveRowWarning,
 } from "../deploy-state/remove-preflight-view";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
+import { LOCAL_CHANGES_NEXT_STEP } from "../inventory/inventory-copy";
 import type { NoticeCopy } from "../ui/notice";
 import {
   checkingTargetsLine,
-  LOCAL_CHANGES_NEXT_STEP,
   PINNED_LOCAL_CHANGES_NEXT_STEP,
   removeFromCountLabel,
   targetsWithoutLocalEditsNotice,
-} from "./inventory-copy";
+} from "./skills-copy";
 
 export type BulkRemoveCheckedTarget = {
   label: string;

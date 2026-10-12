@@ -6,12 +6,12 @@ import {
   removePreflightView,
 } from "../deploy-state/remove-preflight-view";
 import { removePreflightQueryOptions } from "../deploy-state/use-remove-preflight";
-import { bulkRemoveDialogView } from "../inventory/bulk-remove-dialog-view";
-import { bulkRemoveReportView } from "../inventory/bulk-remove-report-view";
-import type { BulkRemoveCandidate } from "../inventory/bulk-remove-targets";
 import { invalidateTarget } from "../inventory/use-deploy-skill";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
+import { bulkRemoveDialogView } from "./bulk-remove-dialog-view";
+import { bulkRemoveReportView } from "./bulk-remove-report-view";
+import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 import { useBulkRemove } from "./use-bulk-remove";
 
 // Stands in for a missing result: a running check, never a clean copy.

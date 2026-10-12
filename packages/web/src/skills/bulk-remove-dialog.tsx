@@ -1,16 +1,16 @@
 import { useId } from "react";
-import type { BulkRemoveDialogView } from "../inventory/bulk-remove-dialog-view";
-import type { BulkRemoveReportView } from "../inventory/bulk-remove-report-view";
-import { removeFromCountLabel } from "../inventory/inventory-copy";
 import { Dialog } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Notice } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
 import { LIST_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
+import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
+import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 import {
   bulkRemoveTitle,
   NO_TARGET_REMOVABLE,
+  removeFromCountLabel,
   TARGETS_STILL_CHECKING,
 } from "./skills-copy";
 

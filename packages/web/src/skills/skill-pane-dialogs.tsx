@@ -4,13 +4,13 @@ import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { LocalDeletionDialog } from "../harness/harness-dialogs";
 import { localDeletionNotice } from "../harness/local-deletion-copy";
 import { useDeleteLocalSkill } from "../harness/use-harness";
-import type { BulkRemoveCandidate } from "../inventory/bulk-remove-targets";
 import type { SkillDeployment } from "../inventory/skill-deployments";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployRun } from "./bulk-deploy-action";
 import { BulkRemoveRun } from "./bulk-remove-skill-action";
+import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 
 // What the Skills pane's foot or a target row asked for (#1065). Each
 // dialog is mounted only while open, so nothing from one run reaches the next.

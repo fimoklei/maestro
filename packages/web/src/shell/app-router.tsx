@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router";
 import { ConnectView } from "../connect-gate/connect-view";
 import { WelcomeView } from "../connect-gate/welcome-view";
@@ -7,6 +8,7 @@ import {
   FIRST_INVENTORY_PATH,
   INVENTORY_VIEWS,
 } from "../inventory/inventory-views";
+import type { Primitive } from "../inventory/use-inventory";
 import { RepositoriesView } from "../registry/repositories-view";
 import { AppearancePage } from "../settings/appearance-page";
 import { HarnessLocationPage } from "../settings/harness-location-page";
@@ -56,13 +58,18 @@ function HarnessScreen() {
   return <HarnessView openSkill={state?.openSkill ?? null} />;
 }
 
+// Keyed by the wire type, so a view type without a screen fails to compile.
+const SCREEN_OF: Record<Primitive["type"], ComponentType> = {
+  skill: SkillsPanel,
+};
+
 // Each view's screen, by its segment. An unknown segment opens the first view.
 function InventoryRoute() {
   const { view } = useParams();
   const match = INVENTORY_VIEWS.find((each) => each.segment === view);
-  return match === undefined ? (
-    <Navigate to={FIRST_INVENTORY_PATH} replace />
-  ) : (
-    <SkillsPanel />
-  );
+  if (match === undefined) {
+    return <Navigate to={FIRST_INVENTORY_PATH} replace />;
+  }
+  const Screen = SCREEN_OF[match.type];
+  return <Screen />;
 }

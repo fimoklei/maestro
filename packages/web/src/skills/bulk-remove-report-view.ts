@@ -5,10 +5,10 @@
 import type { BulkRemoveReport, RemoveOutcome } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { REASON } from "../deploy-state/reason-copy";
+import { targetQueryKey } from "../inventory/use-deploy-skill";
 import { localChangesNote, REFUSAL_REASON } from "./bulk-remove-dialog-view";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
-import { bulkRemoveReportHeading } from "./inventory-copy";
-import { targetQueryKey } from "./use-deploy-skill";
+import { bulkRemoveReportHeading } from "./skills-copy";
 
 // Never "nothing was removed": a lost answer does not prove the walk never ran,
 // so the honest instruction is to go and look.

@@ -1,6 +1,9 @@
 import { FileText, LayoutList, Pencil } from "lucide-react";
 import type { ReactNode } from "react";
-import { INVENTORY_VIEWS } from "../inventory/inventory-views";
+import {
+  INVENTORY_VIEWS,
+  inventoryPathFor,
+} from "../inventory/inventory-views";
 import { SETTINGS as SETTINGS_NAME } from "../settings/settings-copy";
 import { HARNESS_LOCATION_PAGE } from "../settings/settings-pages";
 import { Icon } from "../ui/icon";
@@ -36,7 +39,7 @@ export const SCREEN_GROUPS: ReadonlyArray<{
     label: "Inventory",
     headed: true,
     items: INVENTORY_VIEWS.map((view) => ({
-      to: `/inventory/${view.segment}`,
+      to: inventoryPathFor(view.type),
       label: view.name,
       icon: view.icon,
     })),
