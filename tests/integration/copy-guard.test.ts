@@ -34,7 +34,7 @@ describe("copy guard", () => {
     plant(
       "packages/web/src/a-copy.ts",
       [
-        'export const a = "Set the Harness location, then select Re-read Inventory.";',
+        'export const a = "Set the Harness location, then select Re-read Skills.";',
         'export const b = "Read just now";',
         'export const c = "Is it 1 !== 2?";',
         'export const d = "The Harness already holds a skill under it. Pick another name.";',
