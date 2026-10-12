@@ -2,7 +2,12 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse } from "../test-utils";
-import { renderPage, skill, stubServer } from "./harness-location-test-helpers";
+import {
+  harnessAnswer,
+  renderPage,
+  skill,
+  stubServer,
+} from "./harness-location-test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -44,9 +49,8 @@ describe("Harness location page", () => {
     renderPage();
 
     const section = connected();
-    expect(
-      await within(section).findByText("v1.4.0 · 2 skills"),
-    ).toBeInTheDocument();
+    expect(await within(section).findByText("v1.4.0")).toHaveClass("font-mono");
+    expect(section).not.toHaveTextContent(/skill/);
     expect(within(section).getByText("Local clone")).toBeInTheDocument();
     expect(within(section).getByText("/home/me/agent-harness")).toHaveAttribute(
       "title",
@@ -116,14 +120,25 @@ describe("Harness location page", () => {
     expect(screen.getByText("GitHub repository not read")).toBeInTheDocument();
   });
 
-  it("singularises a lone skill", async () => {
-    stubServer({ primitives: () => skills(1) });
+  it("states a Harness with no release in plain words, never in mono", async () => {
+    stubServer({ harness: () => harnessAnswer(null) });
     renderPage();
 
-    expect(await screen.findByText("v1.4.0 · 1 skill")).toBeInTheDocument();
+    expect(await screen.findByText("Not released yet")).not.toHaveClass(
+      "font-mono",
+    );
   });
 
-  it("states the release alone while the count is still being read, never 'undefined'", async () => {
+  it("states an unread release in plain words, never in mono", async () => {
+    stubServer({ harness: failed });
+    renderPage();
+
+    expect(await screen.findByText("Not read yet")).not.toHaveClass(
+      "font-mono",
+    );
+  });
+
+  it("states the release while the Inventory is still being read, never 'undefined'", async () => {
     stubServer({ primitives: () => new Promise<Response>(() => {}) });
     renderPage();
 
@@ -133,19 +148,21 @@ describe("Harness location page", () => {
 
   it("offers Re-read Inventory beside the facts it refreshes", async () => {
     let reads = 0;
-    stubServer({ primitives: () => skills(++reads === 1 ? 2 : 5) });
+    stubServer({
+      harness: () => harnessAnswer(++reads === 1 ? "v1.4.0" : "v1.5.0"),
+    });
     renderPage();
 
-    expect(await screen.findByText("v1.4.0 · 2 skills")).toBeInTheDocument();
+    expect(await screen.findByText("v1.4.0")).toBeInTheDocument();
     await userEvent.click(reread());
 
-    expect(await screen.findByText("v1.4.0 · 5 skills")).toBeInTheDocument();
+    expect(await screen.findByText("v1.5.0")).toBeInTheDocument();
   });
 
   it("reads the release again with the Inventory", async () => {
     const { fetchMock } = stubServer();
     renderPage();
-    await screen.findByText("v1.4.0 · 2 skills");
+    await screen.findByText("v1.4.0");
     const harnessReads = () =>
       fetchMock.mock.calls.filter(([url]) => String(url) === "/api/harness")
         .length;
@@ -164,7 +181,7 @@ describe("Harness location page", () => {
     });
     renderPage();
 
-    await screen.findByText("v1.4.0 · 2 skills");
+    await screen.findByText("v1.4.0");
     await userEvent.click(reread());
 
     expect(reread()).toBeInTheDocument();
@@ -174,7 +191,7 @@ describe("Harness location page", () => {
     await waitFor(() => expect(connected()).not.toHaveAttribute("aria-busy"));
   });
 
-  it("announces a re-read even when the count is unchanged", async () => {
+  it("announces a re-read even when nothing changed", async () => {
     let reads = 0;
     const second = held();
     stubServer({
@@ -182,7 +199,7 @@ describe("Harness location page", () => {
     });
     renderPage();
 
-    await screen.findByText("v1.4.0 · 2 skills");
+    await screen.findByText("v1.4.0");
     await userEvent.click(reread());
     expect(
       await screen.findByText("Loading the Harness location…"),
@@ -208,17 +225,17 @@ describe("Harness location page", () => {
     expect(screen.queryByText(/loading the count/i)).not.toBeInTheDocument();
   });
 
-  it("states a failed re-read after a count was shown, and keeps the facts it had", async () => {
+  it("states a failed re-read after the facts were shown, and keeps them", async () => {
     // The previous rows stay after a failed read.
     let reads = 0;
     stubServer({ primitives: () => (++reads === 1 ? skills(2) : failed()) });
     renderPage();
 
-    await screen.findByText("v1.4.0 · 2 skills");
+    await screen.findByText("v1.4.0");
     await userEvent.click(reread());
 
     expect(await screen.findByText("Inventory not read")).toBeInTheDocument();
-    expect(await screen.findByText("v1.4.0 · 2 skills")).toBeInTheDocument();
+    expect(await screen.findByText("v1.4.0")).toBeInTheDocument();
   });
 
   it("announces a successful retry after a failed read", async () => {
@@ -239,11 +256,11 @@ describe("Harness location page", () => {
     expect(
       await screen.findByText("Harness location loaded."),
     ).toBeInTheDocument();
-    expect(await screen.findByText("v1.4.0 · 2 skills")).toBeInTheDocument();
+    expect(await screen.findByText("v1.4.0")).toBeInTheDocument();
     expect(screen.queryByText("Inventory not read")).not.toBeInTheDocument();
   });
 
-  it("announces the recovery when a retry succeeds after a failed re-read of a shown count", async () => {
+  it("announces the recovery when a retry succeeds after a failed re-read", async () => {
     let reads = 0;
     const retry = held();
     stubServer({
@@ -256,7 +273,7 @@ describe("Harness location page", () => {
     });
     renderPage();
 
-    await screen.findByText("v1.4.0 · 2 skills");
+    await screen.findByText("v1.4.0");
     await userEvent.click(reread());
     await screen.findByText("Inventory not read");
 
@@ -266,7 +283,7 @@ describe("Harness location page", () => {
     expect(
       await screen.findByText("Harness location loaded."),
     ).toBeInTheDocument();
-    expect(await screen.findByText("v1.4.0 · 5 skills")).toBeInTheDocument();
+    expect(await screen.findByText("v1.4.0")).toBeInTheDocument();
   });
 
   it("offers Change Harness location in its own section", async () => {

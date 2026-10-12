@@ -512,12 +512,12 @@ describe("InventoryView — band 2 facts", () => {
     renderView({ reads: [{ at: minutesAgo(4), failed: false }] });
 
     expect(facts()).toEqual([
-      "Origin github.com/acme/harness",
+      "Origin acme/harness",
       "Release v1.4.0",
       "Skills 2",
     ]);
     expect(
-      within(band2()).getByRole("link", { name: /github\.com\/acme\/harness/ }),
+      within(band2()).getByRole("link", { name: "acme/harness on GitHub" }),
     ).toHaveAttribute("href", "https://github.com/acme/harness");
     expect(within(band2()).getByText("4 min ago")).toBeInTheDocument();
     // The count left band 1, which keeps the title alone.

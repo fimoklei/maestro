@@ -397,7 +397,7 @@ describe("InventoryPanel", () => {
       renderPanel();
 
       expect(await screen.findByText("just now")).toBeInTheDocument();
-      expect(factValue("Origin")).toBe("github.com/acme/harness");
+      expect(factValue("Origin")).toBe("acme/harness");
       expect(factValue("Release")).toBe("v1.4.0");
       expect(skillsFact()).toBe("1");
     });

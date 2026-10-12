@@ -670,9 +670,11 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
+    // The GitHub mark already names the host, so the value drops it.
     const link = within(await band2()).getByRole("link", {
-      name: "github.com/fimoklei/agent-harness on GitHub",
+      name: "fimoklei/agent-harness on GitHub",
     });
+    expect(link).toHaveTextContent(/^fimoklei\/agent-harness$/);
     expect(link).toHaveAttribute(
       "href",
       "https://github.com/fimoklei/agent-harness",

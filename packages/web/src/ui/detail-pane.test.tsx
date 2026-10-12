@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DetailPane, type PaneNotice } from "./detail-pane";
 import { named, phrase } from "./phrase";
 
@@ -258,6 +258,30 @@ describe("DetailPane slots", () => {
   });
 
   // A clamp shortens the long last line, never the state above it.
+  it("puts a fact's action beside its value", () => {
+    renderPane({
+      facts: [
+        {
+          label: "Latest release",
+          value: "v0.3.4",
+          action: { label: "Update target", onSelect: () => {} },
+        },
+      ],
+    });
+
+    expect(
+      screen.getByText("Latest release").nextElementSibling,
+    ).toContainElement(button("Update target"));
+  });
+});
+
+describe("DetailPane clamped line", () => {
+  // happy-dom lays nothing out, so the line overflows only where stubbed.
+  const overflow = (px: number) =>
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(px);
+  beforeEach(() => overflow(60));
+  afterEach(() => vi.restoreAllMocks());
+
   it("clamps only the last paragraph line, the lines above it whole and apart", () => {
     renderPane({
       paragraph: ["1 of 2 targets has local edits.", "A long description."],
@@ -305,7 +329,9 @@ describe("DetailPane slots", () => {
     const line = screen.getByText("A long description.");
     const more = screen.getByRole("button", { name: "More" });
     expect(more).toHaveAttribute("aria-expanded", "false");
+    // `block` would undo the clamp's own display.
     expect(line).toHaveClass("line-clamp-3");
+    expect(line).not.toHaveClass("block");
 
     await userEvent.click(more);
 
@@ -322,20 +348,12 @@ describe("DetailPane slots", () => {
     expect(line).toHaveClass("line-clamp-3");
   });
 
-  it("puts a fact's action beside its value", () => {
-    renderPane({
-      facts: [
-        {
-          label: "Latest release",
-          value: "v0.3.4",
-          action: { label: "Update target", onSelect: () => {} },
-        },
-      ],
-    });
+  it("offers no More where the line fits in three lines", () => {
+    overflow(0);
+    renderPane({ paragraph: ["A short description."], clampParagraph: true });
 
-    expect(
-      screen.getByText("Latest release").nextElementSibling,
-    ).toContainElement(button("Update target"));
+    expect(screen.getByText("A short description.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More" })).toBeNull();
   });
 });
 
