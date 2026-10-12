@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.1.3 — 2026-10-12
+
+### New Features
+- **Grouped Inventory views in the sidebar.** The Inventory screen is now **Skills**, the first view under a new **Inventory** heading. It lives at `/inventory/skills`. (#1512)
+- **Restyled the Harness button in the sidebar.** It shows a letter mark, the Harness name and the release. It no longer shows the skill count. (#1507)
+- **Showed each table screen's data source, read age and status counts.** The second row of each table screen states where its data comes from and how old it is. A dot shows the worst status on the screen, and each count works as a status filter. (#1484, #1498)
+- **Moved actions that remove or delete behind ⋯ in detail panes.** The pane foot now fits on one line. (#1488)
+- **Made Skills work by keyboard and screen reader.** You can use the table and the detail pane without a mouse, and screen readers announce them. (#1473)
+- **Made bulk deploy ask for a target first.** The dialog shows what will change before you deploy. (#1472)
+- **Showed each target's real state on Skills.** A locally edited copy reads **Local edits** everywhere, and the detail pane explains the skill's state. (#1466)
+- **Used one hover card and name cell on every table screen.** Names and hover cards look and work the same on each screen. (#1462)
+- **Made a Contributor wait on another's open proposal.** While another Contributor's pull request is open on a skill's proposal branch, you can't write to that branch. (#1429)
+- **Showed the kind of change on each Harness row.** Each row says whether it adds, edits, renames or deletes a skill. (#1426)
+- **Set names and technical values apart in sentences.** Names show in medium weight. Versions, tags, paths and commands show in a monospace font. (#1416, #1422)
+- **Added Group by Status to Deploy-state.** **Display** groups targets by status, worst first. A target that has not been read yet shows under **Not read yet**. (#1406)
+- **Shortened cockpit copy.** Each screen, dialog and notice now says one thing. (#1398)
+- **Added Discard change to the Harness.** A **Not yet proposed** row can go back to the skill's copy on the default branch. (#1397)
+- **Split deleting a released skill into two steps.** **Delete skill** removes the folder from your clone. **Propose change** then opens a pull request titled `Delete skill: {name}`. (#1387)
+
+### Bug Fixes
+- **Fixed the More toggle in the detail pane.** A long description now folds to three lines. A linked Origin no longer starts with `github.com/`. (#1508)
+- **Stopped the Harness name from taking a repository's label.** (#1502)
+- **Marked each dropped skill on a root-package target.** A skill the latest release dropped reads **No longer released**. **Update target** removes it. (#1501)
+- **Set skill names in the UI font in the Discard, Withdraw and Restore dialogs.** (#1489)
+- **Removed retired words and controls from cockpit copy.** Eleven strings used old screen words, and three told you to use a **Deploy again** control that no longer exists. (#1331, #1469)
+- **Made removal copy on Skills match what happens.** The Remove dialog and report state the real counts and next steps. (#1467)
+- **Made Deploy-state, Skills, Repositories and Harness behave the same.** Row menus, blocked buttons and dialogs work the same way on all four screens. (#1465)
+- **Made Deploy-state copy say what its controls and statuses do.** Dialog labels no longer use spaced capitals. (#1430, #1432)
+- **Fixed gray blocks behind versions in warning and error boxes.** (#1428)
+- **Stopped crafted inputs from stalling the server.** A long, crafted connect input or git origin can no longer stall the server. (#1377, #1412)
+- **Named the Harness in the Delete skill dialog.** The dialog says where the skill stays and how to delete it there too. (#1410)
+- **Showed a failed retry of an unfinished operation.** The target's pane shows a notice with the retry as its action. (#1405)
+- **Fixed Update target when you edited a skill the new release drops.** The update removes that skill's copies and then finishes. (#1401)
+- **Kept the Import local edits dialog open after a change.** A click outside no longer closes it once you changed a check. (#1345)
+- **Stopped Harness git reads from hanging.** Each read now times out after 60 seconds and never asks for input. (#1330)
+- **Showed a report row's redeploy as busy while it runs.** **Deploy {name} again** reads **Deploying…**, and the bulk deploy report can't be closed during that deploy. (#1329)
+
 ## v0.1.2 — 2026-09-30
 
 ### New Features
