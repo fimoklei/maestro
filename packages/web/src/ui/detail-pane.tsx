@@ -115,6 +115,7 @@ export function DetailPane({
   // Open for one subject only: the next one starts clamped.
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const expanded = expandedKey === activeKey;
+  const [overflows, setOverflows] = useState(false);
   const shown = facts.filter((fact) => fact !== null);
   const clamped = clampParagraph ? (paragraph.at(-1) ?? null) : null;
   const whole = clamped === null ? paragraph : paragraph.slice(0, -1);
@@ -223,23 +224,37 @@ export function DetailPane({
           >
             <span
               id={clampedId}
-              className={cn("block", !expanded && "line-clamp-3")}
+              // Measured while clamped only: open, the line always fits.
+              ref={(element) => {
+                if (element === null || expanded) return;
+                const measure = () =>
+                  setOverflows(element.scrollHeight > element.clientHeight);
+                measure();
+                if (typeof ResizeObserver === "undefined") return;
+                const observer = new ResizeObserver(measure);
+                observer.observe(element);
+                return () => observer.disconnect();
+              }}
+              // Not `block` while clamped: it would undo the clamp's display.
+              className={expanded ? "block" : "line-clamp-3"}
             >
               <PhraseText copy={clamped} />
             </span>
-            <button
-              type="button"
-              aria-expanded={expanded}
-              aria-controls={clampedId}
-              onClick={() => setExpandedKey(expanded ? null : activeKey)}
-              className={cn(
-                "mt-tight inline-block cursor-pointer rounded-control text-gray-11 text-meta hover:text-gray-12",
-                FOCUS_RING,
-              )}
-            >
-              {expanded ? "Less" : "More"}
-              <span aria-hidden="true">{expanded ? " ‹" : " ›"}</span>
-            </button>
+            {expanded || overflows ? (
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={clampedId}
+                onClick={() => setExpandedKey(expanded ? null : activeKey)}
+                className={cn(
+                  "mt-tight inline-block cursor-pointer rounded-control text-gray-11 text-meta hover:text-gray-12",
+                  FOCUS_RING,
+                )}
+              >
+                {expanded ? "Less" : "More"}
+                <span aria-hidden="true">{expanded ? " ‹" : " ›"}</span>
+              </button>
+            ) : null}
           </div>
         )}
         {notices.length > 0 ? (
