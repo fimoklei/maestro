@@ -25,6 +25,9 @@ export function BandFact({
   machine,
   labelHidden,
 }: BandFactProps) {
+  // The GitHub mark already names the host.
+  const shown =
+    github?.kind === "link" ? value.replace(/^github\.com\//, "") : value;
   return (
     <div className="flex min-w-0 gap-inline">
       <dt className="flex flex-none items-center gap-tight text-gray-11">
@@ -32,10 +35,10 @@ export function BandFact({
         {labelHidden ? <span className="sr-only">{label}</span> : label}
       </dt>
       <dd
-        title={value}
+        title={shown}
         className={cn("m-0 truncate text-gray-12", machine && "font-mono")}
       >
-        <GitHubFactLink page={github} value={value} />
+        <GitHubFactLink page={github} value={shown} />
       </dd>
     </div>
   );
