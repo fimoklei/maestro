@@ -18,3 +18,7 @@ export const wholeTargetName = (
 
 // One Harness, so no other path competes for its name.
 export const harnessName = (path: string): string => targetLabel(path, []);
+
+/** The Harness folder's first letter, for its mark on the Harness button. */
+export const harnessInitial = (path: string): string =>
+  (path.split("/").filter(Boolean).at(-1) ?? "").charAt(0).toUpperCase();

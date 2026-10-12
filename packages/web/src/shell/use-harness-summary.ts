@@ -1,29 +1,18 @@
-// The Harness name, release and skill count, shared by sidebar and narrow bar.
+// The Harness name and release, shared by sidebar and narrow bar.
 import { useHarness } from "../harness/use-harness";
-import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
+import { useInventoryConfig } from "../inventory/use-inventory";
+import { NOT_RELEASED_YET } from "../ui/band-copy";
 import { machine, type Phrase, phrase } from "../ui/phrase";
 import { harnessName } from "./target-name";
 
-// Each fact has its own read (#841): `undefined` is "not read yet"; `null` is
-// a read that found no release.
+// `undefined` is "not read yet"; `null` is a read that found no release (#841).
 export function harnessMetaLine(
   release: string | null | undefined,
-  skillCount: number | undefined,
 ): Phrase | null {
-  const parts: Phrase[] = [];
-  if (release !== undefined) {
-    // The line has one 16px row inside a 244px sidebar: a longer wording
-    // truncates beside the skill count.
-    parts.push(
-      release === null ? phrase`Not released yet` : phrase`${machine(release)}`,
-    );
-  }
-  if (skillCount !== undefined) {
-    parts.push(phrase`${skillCount} ${skillCount === 1 ? "skill" : "skills"}`);
-  }
-  const [first, second] = parts;
-  if (first === undefined) return null;
-  return second === undefined ? first : phrase`${first} · ${second}`;
+  if (release === undefined) return null;
+  return release === null
+    ? phrase`${NOT_RELEASED_YET}`
+    : phrase`${machine(release)}`;
 }
 
 interface HarnessSummary {
@@ -31,24 +20,21 @@ interface HarnessSummary {
   path: string | null;
   /** The shortened, identifying label for that path (#211). */
   label: string;
-  /** The release, set apart as a machine value, and the skill count. */
+  /** The release, set apart as a machine value. */
   meta: Phrase | null;
 }
 
 export function useHarnessSummary(): HarnessSummary {
   const config = useInventoryConfig();
   const path = config.data?.inventoryPath ?? null;
-  // Gated on a connected Harness: both reads answer 409 until one is set.
-  const connected = path !== null;
-  const harness = useHarness({ enabled: connected });
-  const inventory = useInventory({ enabled: connected });
+  // Gated on a connected Harness: the read answers 409 until one is set.
+  const harness = useHarness({ enabled: path !== null });
 
   return {
     path,
     label: path === null ? "No Harness connected" : harnessName(path),
     meta: harnessMetaLine(
       harness.isSuccess ? harness.data.releasedVersion : undefined,
-      inventory.isSuccess ? inventory.data.primitives.length : undefined,
     ),
   };
 }
