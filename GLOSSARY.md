@@ -33,8 +33,12 @@ A Model Context Protocol server declared as a primitive so it can be deployed in
 _Avoid_: integration, connector.
 
 **Central inventory**:
-The collection of primitives in the latest published release of the connected **Harness**.
+The collection of primitives in the latest published release of the connected **Harness**. It holds every primitive type; each **Inventory view** shows one type of it.
 _Avoid_: skills repo, library, catalog (a catalog is passive; the inventory is the governed source).
+
+**Inventory view**:
+A screen that shows one primitive type of the **Central inventory** — Skills first; Prompts, MCP servers and Hooks follow. A view, not a collection of its own: every view reads the same inventory.
+_Avoid_: sub-inventory, skills inventory.
 
 **Harness**:
 The Git repository the team writes primitives into — the same repository the **Central inventory** names, seen from the author's side instead of the consumer's. Skills live at `.apm/skills/<name>`, and a repository counts as a harness when `apm.yml` sits in its root (ADR-0021).
@@ -166,7 +170,8 @@ details may name the exact APM mechanism or file.
 | Domain term | Screen name | Rule |
 |---|---|---|
 | Harness | **Harness** | Use **Working Harness** or **Released Harness** when the state matters. |
-| Central inventory | **Inventory** | Reserve **Inventory** for the collection and its screen. |
+| Central inventory | **Inventory** | Reserve **Inventory** for the whole collection and its sidebar heading. A sentence about the collection says **Inventory** (*Skill not in the Inventory*). |
+| Inventory view | **Skills** (later **Prompts**, **MCP servers**, **Hooks**) | Each view is named by its type and listed under the **Inventory** heading. A sentence about the screen names the view (*Select Deploy skill on Skills*). |
 | Inventory source | **Harness location** | Do not use *source* for the configured Harness location. The controls on that screen are **Re-read Inventory**, **Change Harness location** and **Set Harness location**. |
 | Drift | **Behind** | A target's reading, stated in its **Status** column. On a skill's row it means one of the skill's targets is behind and the skill changed in the newer release; a skill has no release of its own. Use *an update is available* as explanation, not as a second status name. The `?` marker reads **Update check did not run**; *drift* never reaches the screen. **Behind** claims a newer release exists and nothing more (ADR-0027); the changed count beside it carries the content fact. *Older tag* is retired (ADR-0031). |
 | Changed / unchanged skill | **Changed** / **Unchanged** | The two sections of the **Update target** preview, and the count in a target's Status hover card (`2 of 5 deployed skills changed`). Explain *unchanged* as *identical at both releases*; never *same content*, which is **Content drift**'s territory. |
