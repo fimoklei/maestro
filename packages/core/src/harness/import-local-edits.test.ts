@@ -2,15 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { DeployedContentState } from "../deploy/deploy-skill";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
+import { InMemoryHarnessGit } from "./harness-git.fake";
 import { ImportLocalEdits } from "./import-local-edits";
 import { ImportSkill } from "./import-skill";
-import type { HarnessSkillTrees } from "./read-harness-state";
 
 const ROOT = "/harness";
 const REPO = "/work/app";
 const HOME = "/home/me";
 const APM_GLOBAL = `${HOME}/.apm`;
-const ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 const HELD =
   "---\nname: code-review\ndescription: Reviews code.\n---\n\nOld.\n";
 const EDITED =
@@ -41,7 +40,6 @@ function target(
     // `both`: the reading of both tools asked together, where it differs.
     copies?: Record<string, { claude?: Copy; codex?: Copy; both?: Copy }>;
     lockfile?: string[];
-    trees?: HarnessSkillTrees;
     registered?: boolean;
     pending?: boolean;
     // The copy into the Harness fails for this skill: a full disk, say.
@@ -141,12 +139,18 @@ function target(
     },
   };
 
-  let trees: HarnessSkillTrees = overrides.trees ?? {
-    remote: {},
-    promote: {},
-    local: Object.fromEntries(Object.keys(copies).map((n) => [n, "tree-1"])),
-    working: Object.fromEntries(Object.keys(copies).map((n) => [n, "tree-1"])),
-  };
+  // Every skill committed locally as "tree-1", the content v1.0.0 released.
+  const committed = Object.fromEntries(
+    Object.keys(copies).map((name) => [name, "tree-1"]),
+  );
+  const git = new InMemoryHarnessGit();
+  git.commit("release", overrides.release ?? committed);
+  git.commit("remote", {});
+  git.commit("local", committed, { parent: "remote" });
+  git.tip = "remote";
+  git.head = "local";
+  git.working = { ...committed };
+  git.tags = [{ name: "v1.0.0", commit: "release" }];
 
   const facts = {
     describe: async (path: string) =>
@@ -165,15 +169,7 @@ function target(
     homeRoot: () => "/",
     fs,
     facts,
-    git: {
-      readFacts: async () => ({
-        originUrl: ORIGIN,
-        defaultBranch: "main",
-        defaultBranchCommit: null,
-        tags: [],
-      }),
-      readMovementTrees: async () => trees,
-    },
+    git,
     copy: {
       copy: async (input) => {
         if (input.name === overrides.copyFails) {
@@ -188,27 +184,7 @@ function target(
     deployedTargets: async () => [{ treeRoot: tree, lockfilePath }],
   });
 
-  let release: Record<string, string> | null = overrides.release ?? {
-    ...trees.local,
-  };
-  const harnessReads = { movementTrees: 0, roots: 0 };
-  const harnessGit = {
-    readMovementTrees: async () => {
-      harnessReads.movementTrees += 1;
-      return trees;
-    },
-    readSkillTreesAtTag: async (_root: string, tag: string) => {
-      if (release === null) {
-        throw new Error("tag unreadable");
-      }
-      return tag === "v1.0.0"
-        ? Object.entries(release).map(([name, treeHash]) => ({
-            name,
-            treeHash,
-          }))
-        : null;
-    },
-  };
+  let rootReads = 0;
   const reader = new GlobalDeployStateReader({
     fs,
     toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
@@ -258,9 +234,9 @@ function target(
     globalRoot: () => APM_GLOBAL,
     home: () => HOME,
     importSkill,
-    git: harnessGit,
+    git,
     resolveRoot: async () => {
-      harnessReads.roots += 1;
+      rootReads += 1;
       return ROOT;
     },
     locks,
@@ -269,13 +245,14 @@ function target(
   const edit = (name: string, tool: "claude" | "codex", state: Copy) => {
     copies[name] = { ...copies[name], [tool]: state };
   };
-  const setTrees = (next: HarnessSkillTrees) => {
-    trees = next;
+  return {
+    useCase,
+    files,
+    locks,
+    edit,
+    git,
+    rootReads: () => rootReads,
   };
-  const setRelease = (next: Record<string, string> | null) => {
-    release = next;
-  };
-  return { useCase, files, locks, edit, setTrees, setRelease, harnessReads };
 }
 
 const REPO_TARGET = { kind: "repo" as const, repoPath: REPO };
@@ -350,7 +327,7 @@ describe("ImportLocalEdits.check", () => {
   });
 
   it("refuses a skill with uncommitted Harness changes and one whose edit the Harness holds", async () => {
-    const { useCase, files, setTrees } = target({
+    const { useCase, files, git } = target({
       copies: {
         "code-review": { claude: "diverged" },
         tdd: { claude: "diverged" },
@@ -360,12 +337,7 @@ describe("ImportLocalEdits.check", () => {
         ...entry("tdd", FROM_THIS_HARNESS),
       ],
     });
-    setTrees({
-      remote: {},
-      promote: {},
-      local: { "code-review": "tree-1", tdd: "tree-1" },
-      working: { "code-review": "tree-2", tdd: "tree-1" },
-    });
+    git.working = { "code-review": "tree-2", tdd: "tree-1" };
     // Import stamps the recorded name into the frontmatter before comparing.
     files[`${ROOT}/.apm/skills/tdd/SKILL.md`] = EDITED.replace(
       "name: code-review",
@@ -419,8 +391,8 @@ describe("ImportLocalEdits.check", () => {
   });
 
   it("flags a skill whose deployed release the Harness cannot read", async () => {
-    const { useCase, setRelease } = target();
-    setRelease({});
+    const { useCase, git } = target();
+    git.commit("release", {});
 
     await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
       ok: true,
@@ -431,8 +403,8 @@ describe("ImportLocalEdits.check", () => {
   });
 
   it("never flags a skill deployed from the latest release, even when its tag is unreadable", async () => {
-    const { useCase, setRelease } = target({ latestRelease: "v1.0.0" });
-    setRelease(null);
+    const { useCase, git } = target({ latestRelease: "v1.0.0" });
+    git.unreadable.add("release");
 
     await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
       ok: true,
@@ -441,8 +413,8 @@ describe("ImportLocalEdits.check", () => {
   });
 
   it("flags a skill from an older release whose tag is unreadable", async () => {
-    const { useCase, setRelease } = target({ latestRelease: "v1.1.0" });
-    setRelease(null);
+    const { useCase, git } = target({ latestRelease: "v1.1.0" });
+    git.unreadable.add("release");
 
     await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
       ok: true,
@@ -453,7 +425,7 @@ describe("ImportLocalEdits.check", () => {
   });
 
   it("reads the Harness state once per check, whatever the skill count", async () => {
-    const { useCase, harnessReads } = target({
+    const { useCase, git, rootReads } = target({
       copies: {
         "code-review": { claude: "diverged" },
         tdd: { claude: "diverged" },
@@ -468,7 +440,9 @@ describe("ImportLocalEdits.check", () => {
 
     await useCase.check(REPO_TARGET);
 
-    expect(harnessReads).toEqual({ roots: 1, movementTrees: 1 });
+    expect(rootReads()).toBe(1);
+    // Its own one read, beside the one Import skill makes per skill it judges.
+    expect(git.movementReads).toBe(1 + 3);
   });
 
   it("lists a global skill with identical Claude Code and Codex edits as eligible", async () => {
@@ -578,7 +552,7 @@ describe("ImportLocalEdits.execute", () => {
   });
 
   it("re-judges at execute and still lands the other skills", async () => {
-    const { useCase, setTrees } = target({
+    const { useCase, git } = target({
       copies: {
         "code-review": { claude: "diverged" },
         tdd: { claude: "diverged" },
@@ -595,12 +569,7 @@ describe("ImportLocalEdits.execute", () => {
         { name: "tdd", refusal: null },
       ],
     });
-    setTrees({
-      remote: {},
-      promote: {},
-      local: { "code-review": "tree-1", tdd: "tree-1" },
-      working: { "code-review": "tree-2", tdd: "tree-1" },
-    });
+    git.working = { "code-review": "tree-2", tdd: "tree-1" };
 
     await expect(
       useCase.execute({
@@ -648,18 +617,15 @@ describe("ImportLocalEdits.execute", () => {
   });
 
   it("refuses a skill the Harness moved past its release after the check", async () => {
-    const { useCase, setTrees } = target();
+    const { useCase, git } = target();
     await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
       ok: true,
       skills: [{ name: "code-review", refusal: null }],
     });
     // A teammate's change pulled in: committed, so Import skill still allows it.
-    setTrees({
-      remote: {},
-      promote: {},
-      local: { "code-review": "tree-2" },
-      working: { "code-review": "tree-2" },
-    });
+    git.commit("pulled", { "code-review": "tree-2" }, { parent: "local" });
+    git.head = "pulled";
+    git.working = { "code-review": "tree-2" };
 
     await expect(
       useCase.execute({
