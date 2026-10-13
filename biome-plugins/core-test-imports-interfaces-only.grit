@@ -1,0 +1,80 @@
+language js
+
+// Allowed from another core folder: the entry point, shared fakes (*.fake.ts),
+// port files (*-port.ts), and two shared helpers. InFlightLocks and ConfigStore
+// are collaborators a test injects; both are in the core entry point and have
+// no fake, so a test uses the real one. A port declared inside another file
+// (FileSystemPort, ApmDriverPort) comes through ../index.
+//
+// Other modules several folders import (lockfile, git-origin, the harness
+// types) stay private: their imports below are exceptions, one test file and
+// import each. The list only shrinks; never add to it.
+JsModuleSource() as $source where {
+  $source <: r"[\"']\.\./[^\"']+[\"']",
+  not $source <: r"[\"']\.\./index(?:\.js)?[\"']",
+  not $source <: r"[\"'][^\"']*(?:\.fake|-port)(?:\.js)?[\"']",
+  not $source <: r"[\"']\.\./(?:deploy/in-flight-locks|registry/config-store)(?:\.js)?[\"']",
+  not or {
+    and {
+      $filename <: r".*/core/src/deploy-state/deploy-state-reader\.test\.ts",
+      $source <: r"[\"']\.\./deploy/deploy-tools[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/deploy-state/group-primitives-by-tool\.test\.ts",
+      $source <: r"[\"']\.\./lockfile/lockfile[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/deploy-state/pinned-per-skill\.test\.ts",
+      $source <: r"[\"']\.\./(?:deploy/git-origin|lockfile/lockfile)[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/deploy-state/release-head\.test\.ts",
+      $source <: r"[\"']\.\./harness/(?:read-harness-state|skill-movements)[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/deploy-state/root-package-skills\.test\.ts",
+      $source <: r"[\"']\.\./lockfile/lockfile[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/deploy/deployed-ref\.test\.ts",
+      $source <: r"[\"']\.\./lockfile/lockfile[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/deploy/update-target\.test\.ts",
+      $source <: r"[\"']\.\./harness/(?:read-harness-state|skill-movements)[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/drift/check-version-drift\.test\.ts",
+      $source <: r"[\"']\.\./deploy/deploy-skill[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/drift/read-drift\.test\.ts",
+      $source <: r"[\"']\.\./(?:deploy/deployed-location|deploy/git-origin|harness/skill-movements)[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/harness/harness-stages\.test\.ts",
+      $source <: r"[\"']\.\./deploy/git-origin[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/harness/import-local-edits\.test\.ts",
+      $source <: r"[\"']\.\./(?:deploy/deploy-skill|deploy-state/deploy-state-reader)[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/harness/import-skill\.test\.ts",
+      $source <: r"[\"']\.\./filesystem/copy-skill-folder[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/harness/restore-skill\.test\.ts",
+      $source <: r"[\"']\.\./filesystem/copy-tree-fs[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/inventory/released-skills\.test\.ts",
+      $source <: r"[\"']\.\./harness/(?:read-harness-state|skill-movements)[\"']"
+    },
+    and {
+      $filename <: r".*/core/src/registry/registry\.test\.ts",
+      $source <: r"[\"']\.\./inventory/resolve-inventory-path[\"']"
+    }
+  },
+  register_diagnostic(span=$source, message="Test through the module's interface: import another core folder only through ../index, a *.fake.ts or a *-port.ts.")
+}

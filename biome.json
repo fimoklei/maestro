@@ -91,6 +91,10 @@
         "packages/web/src/**/*-cell.tsx"
       ],
       "plugins": ["./biome-plugins/no-title-in-table-cell.grit"]
+    },
+    {
+      "includes": ["packages/core/src/**/*.test.ts"],
+      "plugins": ["./biome-plugins/core-test-imports-interfaces-only.grit"]
     }
   ],
   "plugins": ["./biome-plugins/no-shell-true.grit"]
