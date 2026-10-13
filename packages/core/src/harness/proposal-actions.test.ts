@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { InMemoryHarnessGit, type Skills } from "./harness-git.fake";
 import type {
   HarnessReviewRead,
   NewReviewRequest,
@@ -7,15 +8,6 @@ import type {
   ViewerRead,
 } from "./harness-review-port";
 import { ProposalActions } from "./proposal-actions";
-import type { HarnessFacts } from "./read-harness-state";
-import type { HarnessSkillTree } from "./skill-movements";
-
-const FACTS: HarnessFacts = {
-  originUrl: "git@github.com:fimoklei/agent-harness.git",
-  defaultBranch: "main",
-  defaultBranchCommit: "head",
-  tags: [],
-};
 
 const request = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
   number: 45,
@@ -35,7 +27,7 @@ const request = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
 });
 
 // The pushed `maestro/tdd` still holds the skill: a change.
-const PROMOTE_TREE: HarnessSkillTree[] = [{ name: "tdd", treeHash: "b2" }];
+const PROMOTE_TREE: Skills = { tdd: "proposed tdd" };
 
 const readOf = (requests: ReviewRequest[]): HarnessReviewRead => ({
   outcome: "read",
@@ -48,37 +40,41 @@ type Calls = {
   created: NewReviewRequest[];
   reopened: number[];
   closed: number[];
-  refsRead: string[];
 };
 
 function build(overrides?: {
   root?: string | undefined;
-  facts?: Partial<HarnessFacts>;
+  // Mutates the clone; the default is a fetched `maestro/tdd` over a default
+  // branch that holds the same `tdd`.
+  world?: (git: InMemoryHarnessGit) => void;
   review?: HarnessReviewRead;
   viewer?: ViewerRead;
   write?: ReviewWriteOutcome;
-  promoteTree?: HarnessSkillTree[] | null;
-  remoteTree?: HarnessSkillTree[] | null;
+  // null: a ref nobody could read.
+  promoteTree?: Skills | null;
+  remoteTree?: Skills | null;
 }) {
-  const calls: Calls = { created: [], reopened: [], closed: [], refsRead: [] };
+  const calls: Calls = { created: [], reopened: [], closed: [] };
   const write = overrides?.write ?? ({ ok: true } as ReviewWriteOutcome);
+  const git = new InMemoryHarnessGit();
+  git.commit("head", overrides?.remoteTree ?? PROMOTE_TREE);
+  git.commit("tdd-tip", overrides?.promoteTree ?? PROMOTE_TREE, {
+    parent: "head",
+  });
+  git.tip = "head";
+  git.head = "head";
+  git.promote = { tdd: "tdd-tip" };
+  if (overrides?.remoteTree === null) {
+    git.unreadable.add("head");
+  }
+  if (overrides?.promoteTree === null) {
+    git.unreadable.add("tdd-tip");
+  }
+  overrides?.world?.(git);
   const actions = new ProposalActions({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
-    git: {
-      readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      readSkillTrees: async (_root, ref) => {
-        calls.refsRead.push(ref);
-        if (ref === FACTS.defaultBranchCommit) {
-          return overrides && "remoteTree" in overrides
-            ? (overrides.remoteTree ?? null)
-            : PROMOTE_TREE;
-        }
-        return overrides && "promoteTree" in overrides
-          ? (overrides.promoteTree ?? null)
-          : PROMOTE_TREE;
-      },
-    },
+    git,
     review: {
       readReviews: async () => overrides?.review ?? readOf([]),
       readViewer: async () =>
@@ -98,13 +94,13 @@ function build(overrides?: {
       editRequest: async () => write,
     },
   });
-  return { actions, calls };
+  return { actions, calls, git };
 }
 
 describe("ProposalActions · create", () => {
-  it.each<[string, HarnessSkillTree[], string]>([
+  it.each<[string, Skills, string]>([
     ["holds", PROMOTE_TREE, "Edit skill: tdd"],
-    ["lacks", [], "Add skill: tdd"],
+    ["lacks", {}, "Add skill: tdd"],
   ])(
     "opens a request over the prepared branch for a skill the default branch %s, without pushing anything",
     async (_, remoteTree, title) => {
@@ -123,16 +119,16 @@ describe("ProposalActions · create", () => {
   );
 
   it("reads only the skill's pushed branch and the default branch, never the clone", async () => {
-    const { actions, calls } = build();
+    const { actions, git } = build();
 
     await actions.create("tdd");
 
-    expect(calls.refsRead).toEqual(["refs/remotes/origin/maestro/tdd", "head"]);
+    expect(git.treeReads).toEqual(["refs/remotes/origin/maestro/tdd", "head"]);
   });
 
   it("titles the request Delete skill when the pushed branch deletes the skill", async () => {
     const { actions, calls } = build({
-      promoteTree: [{ name: "other", treeHash: "d4" }],
+      promoteTree: { other: "other" },
     });
 
     expect(await actions.create("tdd")).toEqual({ ok: true });
@@ -160,7 +156,14 @@ describe("ProposalActions · create", () => {
   // Addition or edit is judged against the default branch; unread, it names neither.
   it.each([
     ["could not be read", { remoteTree: null }],
-    ["has no known tip", { facts: { defaultBranchCommit: null } }],
+    [
+      "has no known tip",
+      {
+        world: (git: InMemoryHarnessGit) => {
+          git.tip = null;
+        },
+      },
+    ],
   ])("opens nothing when the default branch %s", async (_, over) => {
     const { actions, calls } = build(over);
 
@@ -392,7 +395,11 @@ describe("ProposalActions · what authorizes an action", () => {
   });
 
   it("refuses when the origin is not one apm could resolve", async () => {
-    const { actions } = build({ facts: { originUrl: null } });
+    const { actions } = build({
+      world: (git) => {
+        git.originUrl = null;
+      },
+    });
 
     expect(await actions.create("tdd")).toEqual({
       ok: false,
@@ -401,7 +408,11 @@ describe("ProposalActions · what authorizes an action", () => {
   });
 
   it("refuses when the default branch could not be read", async () => {
-    const { actions } = build({ facts: { defaultBranch: null } });
+    const { actions } = build({
+      world: (git) => {
+        git.defaultBranch = null;
+      },
+    });
 
     expect(await actions.create("tdd")).toEqual({
       ok: false,
