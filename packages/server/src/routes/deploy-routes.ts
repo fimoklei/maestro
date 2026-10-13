@@ -1,4 +1,4 @@
-import { BulkDeploySkills, BulkRemoveDeployedSkill } from "@maestro/core";
+import { BulkRemoveDeployedSkill } from "@maestro/core";
 import type { Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import {
@@ -298,14 +298,13 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
   });
 
   // Always 200 with a report: a per-skill refusal is data, not an HTTP error.
-  const bulkDeploy = new BulkDeploySkills({ deploy: deps.deploy });
   app.post("/api/deploy/bulk", async (c) => {
     const body = await parseBody(c, bulkDeployBodySchema, BULK_DEPLOY_BODY);
     if (!body.ok) {
       return body.response;
     }
 
-    const report = await bulkDeploy.execute(body.data);
+    const report = await deps.deploy.executeBatch(body.data);
     return c.json(report);
   });
 
