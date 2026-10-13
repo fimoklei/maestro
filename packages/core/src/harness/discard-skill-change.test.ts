@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { DiscardSkillChange } from "./discard-skill-change";
+import { InMemoryHarnessGit, treeHash } from "./harness-git.fake";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
 import type { WorktreeAmbiguity } from "./read-harness-state";
 
@@ -8,7 +9,7 @@ const ROOT = "/harness";
 const SKILLS = "/harness/.apm/skills";
 const STAGING = "/harness/.apm/skills/.maestro-copy-1";
 const REMOTE_COMMIT = "commit-remote";
-const SEEN = "tree-remote";
+const SEEN = treeHash("remote tdd");
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-proposal",
@@ -40,15 +41,33 @@ function build(overrides?: {
   stages?: HarnessStages | null;
   ambiguity?: WorktreeAmbiguity | null;
   remoteCommit?: string | null;
-  atRemote?: { name: string; treeHash: string }[] | null;
-  write?: "written" | "missing" | "failed";
+  // The default branch's skills; null is a listing nobody could read.
+  atRemote?: Record<string, string> | null;
+  write?: "missing" | "failed";
   realpath?: (path: string) => Promise<string>;
   failMoveInto?: string;
   locks?: InFlightLocks;
 }) {
+  // An edited `tdd` on disk; the default branch holds "remote tdd".
+  const git = new InMemoryHarnessGit().settled(
+    { tdd: "remote tdd" },
+    REMOTE_COMMIT,
+  );
+  git.working = { tdd: "edited tdd" };
+  if (overrides && "atRemote" in overrides) {
+    git.commit("newer", overrides.atRemote ?? {}, { parent: REMOTE_COMMIT });
+    git.tip = "newer";
+    if (overrides.atRemote === null) {
+      git.unreadable.add("newer");
+    }
+  }
+  if (overrides && "remoteCommit" in overrides) {
+    git.tip = overrides.remoteCommit ?? null;
+  }
+  git.ambiguity = overrides?.ambiguity ?? null;
+  git.writeOutcome = overrides?.write ?? null;
   const moved: [string, string][] = [];
   const removed: string[] = [];
-  const written: { commit: string; into: string }[] = [];
   let failsLeft = overrides?.failMoveInto === undefined ? 0 : 1;
   const discard = new DiscardSkillChange({
     resolveRoot: async () =>
@@ -70,29 +89,10 @@ function build(overrides?: {
         removed.push(path);
       },
     },
-    git: {
-      readWorktreeAmbiguity: async () => overrides?.ambiguity ?? null,
-      readFacts: async () => ({
-        originUrl: "git@github.com:fimoklei/agent-harness.git",
-        defaultBranch: "main",
-        defaultBranchCommit:
-          overrides && "remoteCommit" in overrides
-            ? (overrides.remoteCommit ?? null)
-            : REMOTE_COMMIT,
-        tags: [],
-      }),
-      readSkillTrees: async () =>
-        overrides && "atRemote" in overrides
-          ? (overrides.atRemote ?? null)
-          : [{ name: "tdd", treeHash: SEEN }],
-      writeSkillTreeInto: async (_root, _name, commit, into) => {
-        written.push({ commit, into });
-        return overrides?.write ?? "written";
-      },
-    },
+    git,
     locks: overrides?.locks ?? new InFlightLocks(),
   });
-  return { discard, moved, removed, written };
+  return { discard, moved, removed, written: git.written };
 }
 
 describe("DiscardSkillChange", () => {
@@ -104,7 +104,9 @@ describe("DiscardSkillChange", () => {
       name: "tdd",
     });
 
-    expect(written).toEqual([{ commit: REMOTE_COMMIT, into: STAGING }]);
+    expect(written).toEqual([
+      { name: "tdd", commit: REMOTE_COMMIT, into: STAGING },
+    ]);
     expect(moved).toEqual([
       [`${SKILLS}/tdd`, `${STAGING}/discarded`],
       [`${STAGING}/tdd`, `${SKILLS}/tdd`],
@@ -205,9 +207,9 @@ describe("DiscardSkillChange", () => {
     ],
     [
       "the default branch moved before the write",
-      { atRemote: [{ name: "tdd", treeHash: "tree-newer" }] },
+      { atRemote: { tdd: "newer tdd" } },
     ],
-    ["the default branch no longer holds the skill", { atRemote: [] }],
+    ["the default branch no longer holds the skill", { atRemote: {} }],
   ])("refuses a stale confirmation when %s", async (_, overrides) => {
     const { discard, moved, written } = build(overrides);
 

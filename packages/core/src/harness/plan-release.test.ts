@@ -1,96 +1,39 @@
 import { describe, expect, it } from "vitest";
-import type {
-  HarnessFacts,
-  HarnessFreshness,
-  HarnessSkillTrees,
-} from "./read-harness-state";
+import { InMemoryHarnessGit } from "./harness-git.fake";
+import type { HarnessFreshness } from "./read-harness-state";
 import { ReadHarnessState } from "./read-harness-state";
-import type { HarnessSkillTree } from "./skill-movements";
 
 const FETCHED: HarnessFreshness = {
   outcome: "fetched",
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
 
-const FACTS: HarnessFacts = {
-  originUrl: "git@github.com:fimoklei/agent-harness.git",
-  defaultBranch: "main",
-  defaultBranchCommit: "head",
-  tags: [{ name: "v1.2.3", commit: "old" }],
+const manifest = (name: string, body = "Body") =>
+  `---\ndescription: ${name} does a thing\n---\n${body}\n`;
+
+// v1.2.3 tags `old`; origin/HEAD is `head`.
+const releasedAt = (
+  atRelease: Record<string, string | null>,
+  atHead: Record<string, string | null>,
+) => {
+  const git = new InMemoryHarnessGit();
+  git.commit("old", atRelease);
+  git.commit("head", atHead, { parent: "old" });
+  git.tip = "head";
+  git.head = "head";
+  git.working = { ...atHead };
+  git.tags = [{ name: "v1.2.3", commit: "old" }];
+  return git;
 };
 
-const SETTLED_TREES: HarnessSkillTrees = {
-  remote: {},
-  promote: {},
-  local: {},
-  working: {},
-};
-
-const goodManifest = (name: string) =>
-  `---\ndescription: ${name} does a thing\n---\nBody\n`;
-
-type TreesByRef = Record<string, HarnessSkillTree[] | null>;
-
-function buildRead(overrides?: {
-  facts?: Partial<HarnessFacts>;
-  root?: string | undefined;
-  freshness?: HarnessFreshness;
-  trees?: TreesByRef;
-  authors?: Record<string, string>;
-  authorsAtRelease?: Record<string, string>;
-  manifests?: Record<string, string | null>;
-  onReadSkillTrees?: (ref: string) => void;
-}) {
+function buildRead(
+  git: InMemoryHarnessGit,
+  overrides?: { root?: string | undefined; freshness?: HarnessFreshness },
+) {
   return new ReadHarnessState({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
-    git: {
-      fetch: async () => "fetched",
-      catchUp: async () => {},
-      readCloneSync: async () => "current" as const,
-      readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      readSkillTrees: async (_root: string, ref: string) => {
-        overrides?.onReadSkillTrees?.(ref);
-        return overrides?.trees?.[ref] === undefined
-          ? []
-          : overrides.trees[ref];
-      },
-      readSkillAuthors: async (_root: string, ref: string, names: string[]) => {
-        const known =
-          ref === "head" ? overrides?.authors : overrides?.authorsAtRelease;
-        return Object.fromEntries(
-          names.map((name) => [name, known?.[name] ?? null]),
-        );
-      },
-      readMovementTrees: async () => SETTLED_TREES,
-      mergeBaseCommit: async () => null,
-      readSkillManifests: async (
-        _root: string,
-        _ref: string,
-        names: string[],
-      ) =>
-        Object.fromEntries(
-          names.map((name) => [
-            name,
-            overrides?.manifests && Object.hasOwn(overrides.manifests, name)
-              ? (overrides.manifests[name] ?? null)
-              : goodManifest(name),
-          ]),
-        ),
-      publishTag: async () => {
-        throw new Error("git port's publishTag was reached");
-      },
-      pushSkillPromotion: async () => {
-        throw new Error("git port's pushSkillPromotion was reached");
-      },
-      pushSkillDeletion: async () => {
-        throw new Error("git port's pushSkillDeletion was reached");
-      },
-      readWorktreeAmbiguity: async () => null,
-      readLocalHeadCommit: async () => "local-head",
-      readStagedSkillDifference: async () => false,
-      writeSkillTreeInto: async () => "written",
-    },
+    git,
     review: {
       readReviews: async () =>
         ({
@@ -110,20 +53,26 @@ function buildRead(overrides?: {
 
 describe("ReadHarnessState.planRelease", () => {
   it("plans the delta, previous tag, revision, and default branch", async () => {
-    const read = buildRead({
-      trees: {
-        old: [{ name: "tdd", treeHash: "t1" }],
-        head: [
-          { name: "tdd", treeHash: "t2" },
-          { name: "research", treeHash: "r1" },
-        ],
+    const git = new InMemoryHarnessGit();
+    git.commit("old", { tdd: manifest("tdd") });
+    git.commit(
+      "edit",
+      { tdd: manifest("tdd", "v2") },
+      {
+        parent: "old",
+        author: "Ada",
       },
-      authors: { tdd: "Ada", research: "Grace" },
-    });
+    );
+    git.commit(
+      "head",
+      { tdd: manifest("tdd", "v2"), research: manifest("research") },
+      { parent: "edit", author: "Grace" },
+    );
+    git.tip = "head";
+    git.head = "head";
+    git.tags = [{ name: "v1.2.3", commit: "old" }];
 
-    const result = await read.planRelease();
-
-    expect(result).toMatchObject({
+    await expect(buildRead(git).planRelease()).resolves.toMatchObject({
       ok: true,
       plan: {
         previousTag: "v1.2.3",
@@ -142,24 +91,24 @@ describe("ReadHarnessState.planRelease", () => {
 
   it("names a removal's author from the release when the branch never had it", async () => {
     // A tag on another history: a log at the branch answers nothing.
-    const read = buildRead({
-      trees: { old: [{ name: "grilling", treeHash: "g1" }], head: [] },
-      authorsAtRelease: { grilling: "Linus" },
-    });
+    const git = new InMemoryHarnessGit();
+    git.commit("old", { grilling: manifest("grilling") }, { author: "Linus" });
+    git.commit("head", {});
+    git.tip = "head";
+    git.head = "head";
+    git.tags = [{ name: "v1.2.3", commit: "old" }];
 
-    await expect(read.planRelease()).resolves.toMatchObject({
+    await expect(buildRead(git).planRelease()).resolves.toMatchObject({
       ok: true,
       plan: { delta: [{ kind: "removed", name: "grilling", author: "Linus" }] },
     });
   });
 
   it("proposes v0.1.0 for a never-released harness", async () => {
-    const read = buildRead({
-      facts: { tags: [] },
-      trees: { head: [{ name: "tdd", treeHash: "t1" }] },
-    });
+    const git = releasedAt({}, { tdd: manifest("tdd") });
+    git.tags = [];
 
-    await expect(read.planRelease()).resolves.toMatchObject({
+    await expect(buildRead(git).planRelease()).resolves.toMatchObject({
       ok: true,
       plan: {
         previousTag: null,
@@ -170,24 +119,16 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("reports one advisory finding per structurally broken skill at origin/HEAD", async () => {
-    const read = buildRead({
-      trees: {
-        old: [],
-        head: [
-          { name: "good", treeHash: "g" },
-          { name: "nomanifest", treeHash: "n" },
-          { name: "blankdesc", treeHash: "b" },
-        ],
-      },
-      manifests: {
+    const git = releasedAt(
+      {},
+      {
+        good: manifest("good"),
         nomanifest: null,
         blankdesc: "---\ndescription: '  '\n---\n",
       },
-    });
+    );
 
-    const result = await read.planRelease();
-
-    expect(result).toMatchObject({
+    await expect(buildRead(git).planRelease()).resolves.toMatchObject({
       ok: true,
       plan: {
         findings: [
@@ -199,7 +140,7 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("has no answer when no fetch has confirmed the remote", async () => {
-    const read = buildRead({
+    const read = buildRead(releasedAt({}, {}), {
       freshness: { outcome: null, lastFetchedAt: null },
     });
 
@@ -210,20 +151,21 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("has no answer when the default branch could not be read", async () => {
-    const read = buildRead({
-      facts: { defaultBranch: null, defaultBranchCommit: null },
-    });
+    const git = releasedAt({}, {});
+    git.defaultBranch = null;
+    git.tip = null;
 
-    await expect(read.planRelease()).resolves.toEqual({
+    await expect(buildRead(git).planRelease()).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
   });
 
   it("has no answer when a skill tree could not be read", async () => {
-    const read = buildRead({ trees: { head: null } });
+    const git = releasedAt({}, {});
+    git.unreadable.add("head");
 
-    await expect(read.planRelease()).resolves.toEqual({
+    await expect(buildRead(git).planRelease()).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -231,9 +173,10 @@ describe("ReadHarnessState.planRelease", () => {
 
   it("has no answer when the release tags could not be read", async () => {
     // An unreadable tag namespace is not an unreleased harness (#519).
-    const read = buildRead({ facts: { tags: null } });
+    const git = releasedAt({}, {});
+    git.tags = null;
 
-    await expect(read.planRelease()).resolves.toEqual({
+    await expect(buildRead(git).planRelease()).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -241,19 +184,15 @@ describe("ReadHarnessState.planRelease", () => {
 
   it("reads origin/HEAD's skills once, so the delta and the checks agree", async () => {
     // A failed second read once reported "no advisories" for checks never run.
-    const refs: string[] = [];
-    const read = buildRead({
-      trees: { old: [], head: [{ name: "tdd", treeHash: "t1" }] },
-      onReadSkillTrees: (ref) => refs.push(ref),
-    });
+    const git = releasedAt({}, { tdd: manifest("tdd") });
 
-    await read.planRelease();
+    await buildRead(git).planRelease();
 
-    expect(refs.filter((ref) => ref === "head")).toHaveLength(1);
+    expect(git.treeReads.filter((ref) => ref === "head")).toHaveLength(1);
   });
 
   it("refuses when no harness is connected", async () => {
-    const read = buildRead({ root: undefined });
+    const read = buildRead(releasedAt({}, {}), { root: undefined });
 
     await expect(read.planRelease()).resolves.toEqual({
       ok: false,
@@ -262,9 +201,10 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("refuses an origin apm could never resolve", async () => {
-    const read = buildRead({ facts: { originUrl: "/srv/mirror.git" } });
+    const git = releasedAt({}, {});
+    git.originUrl = "/srv/mirror.git";
 
-    await expect(read.planRelease()).resolves.toEqual({
+    await expect(buildRead(git).planRelease()).resolves.toEqual({
       ok: false,
       error: "no-usable-origin",
     });

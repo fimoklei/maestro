@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
+import { InMemoryHarnessGit } from "./harness-git.fake";
 import type {
   HarnessReviewRead,
   NewReviewRequest,
@@ -7,21 +8,9 @@ import type {
   ReviewWriteOutcome,
 } from "./harness-review-port";
 import { PromoteSkill } from "./promote-skill";
-import type {
-  HarnessFacts,
-  HarnessFreshness,
-  PromoteSkillOutcome,
-} from "./read-harness-state";
-import type { HarnessSkillTree } from "./skill-movements";
+import type { HarnessFreshness } from "./read-harness-state";
 
 const AT = new Date("2026-08-09T12:00:00.000Z");
-
-const FACTS: HarnessFacts = {
-  originUrl: "git@github.com:fimoklei/agent-harness.git",
-  defaultBranch: "main",
-  defaultBranchCommit: "head",
-  tags: [],
-};
 
 const EMPTY_REVIEW: HarnessReviewRead = {
   outcome: "read",
@@ -52,79 +41,30 @@ const FRESHNESS: HarnessFreshness = {
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
 
-function buildPromote(overrides?: {
-  root?: string | undefined;
-  facts?: Partial<HarnessFacts>;
-  freshness?: HarnessFreshness;
-  fetchOutcome?: "fetched" | "offline" | "fetch-failed";
-  fetchHold?: Promise<void>;
-  outcome?: PromoteSkillOutcome;
-  onPush?: (root: string, name: string, base: string) => void;
-  onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
-  trees?: Record<string, HarnessSkillTree[]>;
-  mergeBase?: string | null;
-  onMergeBaseCommit?: (remoteCommit: string) => void;
-  // Facts per call, in order, so a teammate's push can land between checks.
-  factsPerCall?: Partial<HarnessFacts>[];
-  onFetch?: () => void;
-  review?: HarnessReviewRead;
-  onCreate?: (request: NewReviewRequest) => void;
-  onEdit?: (number: number, title: string) => void;
-  editOutcome?: ReviewWriteOutcome;
-  createOutcome?: ReviewWriteOutcome;
-}) {
-  let factsCall = 0;
+// A new skill on disk, on a clone level with an origin/HEAD that lacks it.
+const newSkillWorld = () => {
+  const git = new InMemoryHarnessGit().settled({}, "head");
+  git.working = { tdd: "mine" };
+  return git;
+};
+
+function buildPromote(
+  git: InMemoryHarnessGit,
+  overrides?: {
+    root?: string | undefined;
+    freshness?: HarnessFreshness;
+    onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
+    review?: HarnessReviewRead;
+    onCreate?: (request: NewReviewRequest) => void;
+    onEdit?: (number: number, title: string) => void;
+    createOutcome?: ReviewWriteOutcome;
+  },
+) {
   return new PromoteSkill({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     locks: new InFlightLocks(),
-    git: {
-      fetch: async () => {
-        overrides?.onFetch?.();
-        await overrides?.fetchHold;
-        return overrides?.fetchOutcome ?? "fetched";
-      },
-      catchUp: async () => {},
-      readCloneSync: async () => "current" as const,
-      readFacts: async () => {
-        const perCall = overrides?.factsPerCall;
-        const facts =
-          perCall === undefined
-            ? overrides?.facts
-            : (perCall[Math.min(factsCall, perCall.length - 1)] ??
-              overrides?.facts);
-        factsCall += 1;
-        return { ...FACTS, ...facts };
-      },
-      readSkillTrees: async (_root: string, ref: string) =>
-        overrides?.trees?.[ref] ?? [],
-      mergeBaseCommit: async (_root: string, remoteCommit: string) => {
-        overrides?.onMergeBaseCommit?.(remoteCommit);
-        return overrides && "mergeBase" in overrides
-          ? (overrides.mergeBase ?? null)
-          : "base";
-      },
-      readSkillAuthors: async () => ({}),
-      readMovementTrees: async () => ({
-        remote: {},
-        promote: {},
-        local: {},
-        working: {},
-      }),
-      readSkillManifests: async () => ({}),
-      publishTag: async () => "pushed",
-      pushSkillPromotion: async (root, name, base) => {
-        overrides?.onPush?.(root, name, base);
-        return overrides?.outcome ?? "pushed";
-      },
-      pushSkillDeletion: async () => {
-        throw new Error("git port's pushSkillDeletion was reached");
-      },
-      readWorktreeAmbiguity: async () => null,
-      readLocalHeadCommit: async () => "local-head",
-      readStagedSkillDifference: async () => false,
-      writeSkillTreeInto: async () => "written",
-    },
+    git,
     freshness: {
       read: async () => overrides?.freshness ?? FRESHNESS,
       record: async (root, freshness) => {
@@ -142,7 +82,7 @@ function buildPromote(overrides?: {
       closeRequest: async () => ({ ok: true }),
       editRequest: async (_origin, number, { title }) => {
         overrides?.onEdit?.(number, title);
-        return overrides?.editOutcome ?? { ok: true };
+        return { ok: true };
       },
     },
   });
@@ -150,39 +90,50 @@ function buildPromote(overrides?: {
 
 describe("PromoteSkill", () => {
   it("pushes the skill and answers with the branch and its pull-request page", async () => {
-    const pushed: string[] = [];
-    const promote = buildPromote({
-      onPush: (root, name, base) => pushed.push(root, name, base),
-    });
+    const git = newSkillWorld();
 
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
       ok: true,
       branch: "maestro/tdd",
       pullRequestUrl:
         "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
     });
-    // Built on the fetched tip, never local HEAD: local commits must not ride along.
-    expect(pushed).toEqual(["/harness", "tdd", "head"]);
+    expect(git.pushed).toEqual([
+      { name: "tdd", base: "head", kind: "addition" },
+    ]);
+  });
+
+  it("builds the push on the fetched tip, never local HEAD, so local commits never ride along", async () => {
+    const git = new InMemoryHarnessGit();
+    git.commit("head", { tdd: "old" });
+    git.commit("local", { tdd: "mine", jobs: "unpushed" }, { parent: "head" });
+    git.tip = "head";
+    git.head = "local";
+    git.working = { tdd: "mine", jobs: "unpushed" };
+
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(git.pushed.map((push) => push.base)).toEqual(["head"]);
   });
 
   // Decided against the default branch just fetched, never the cockpit's read.
-  it.each<[string, Record<string, HarnessSkillTree[]>, string]>([
-    ["lacks", {}, "Add skill: tdd"],
+  it.each<[string, InMemoryHarnessGit, string]>([
+    ["lacks", newSkillWorld(), "Add skill: tdd"],
     [
       "holds",
-      {
-        head: [{ name: "tdd", treeHash: "t1" }],
-        HEAD: [{ name: "tdd", treeHash: "t1" }],
-        base: [{ name: "tdd", treeHash: "t1" }],
-      },
+      (() => {
+        const git = new InMemoryHarnessGit().settled({ tdd: "old" }, "head");
+        git.working = { tdd: "mine" };
+        return git;
+      })(),
       "Edit skill: tdd",
     ],
   ])(
     "opens the pull request for a skill the default branch %s, titled by its kind",
-    async (_, trees, title) => {
+    async (_, git, title) => {
       const created: NewReviewRequest[] = [];
-      const promote = buildPromote({
-        trees,
+      const promote = buildPromote(git, {
         onCreate: (made) => created.push(made),
       });
 
@@ -203,7 +154,7 @@ describe("PromoteSkill", () => {
   it("sends an update to the open proposal without touching the request", async () => {
     // Leaving the request alone keeps GitHub's review verdict standing (#827).
     const created: NewReviewRequest[] = [];
-    const promote = buildPromote({
+    const promote = buildPromote(newSkillWorld(), {
       review: { ...EMPTY_REVIEW, requests: [openRequest()] },
       onCreate: (made) => created.push(made),
     });
@@ -216,7 +167,7 @@ describe("PromoteSkill", () => {
 
   it("retitles an open deletion request as the change it now carries", async () => {
     const edited: [number, string][] = [];
-    const promote = buildPromote({
+    const promote = buildPromote(newSkillWorld(), {
       review: {
         ...EMPTY_REVIEW,
         requests: [openRequest({ title: "Delete skill: tdd" })],
@@ -231,55 +182,50 @@ describe("PromoteSkill", () => {
   });
 
   it("refuses while another contributor's request is open on the branch", async () => {
-    const pushed: string[] = [];
-    const promote = buildPromote({
+    const git = newSkillWorld();
+    const promote = buildPromote(git, {
       review: {
         ...EMPTY_REVIEW,
         requests: [openRequest({ author: "teammate" })],
       },
-      onPush: (root) => pushed.push(root),
     });
 
     await expect(promote.execute("tdd", AT)).resolves.toEqual({
       ok: false,
       error: "proposed-by-other",
     });
-    expect(pushed).toEqual([]);
+    expect(git.pushed).toEqual([]);
   });
 
   it("refuses while more than one open request matches the branch", async () => {
-    const pushed: string[] = [];
-    const promote = buildPromote({
+    const git = newSkillWorld();
+    const promote = buildPromote(git, {
       review: {
         ...EMPTY_REVIEW,
         requests: [openRequest({ number: 41 }), openRequest({ number: 44 })],
       },
-      onPush: (root) => pushed.push(root),
     });
 
     await expect(promote.execute("tdd", AT)).resolves.toEqual({
       ok: false,
       error: "extra-requests",
     });
-    expect(pushed).toEqual([]);
+    expect(git.pushed).toEqual([]);
   });
 
   it("still pushes when GitHub cannot be asked, leaving the request missing", async () => {
     // A gh failure degrades the review capability alone; the branch still lands.
-    const pushed: string[] = [];
-    const promote = buildPromote({
-      review: { outcome: "unavailable" },
-      onPush: (root) => pushed.push(root),
-    });
+    const git = newSkillWorld();
+    const promote = buildPromote(git, { review: { outcome: "unavailable" } });
 
     await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
       ok: true,
     });
-    expect(pushed).toEqual(["/harness"]);
+    expect(git.pushed).toHaveLength(1);
   });
 
   it("keeps the push when the request could not be opened", async () => {
-    const promote = buildPromote({
+    const promote = buildPromote(newSkillWorld(), {
       createOutcome: { ok: false, error: "failed" },
     });
 
@@ -289,7 +235,7 @@ describe("PromoteSkill", () => {
   });
 
   it("refuses when no harness is connected", async () => {
-    const promote = buildPromote({ root: undefined });
+    const promote = buildPromote(newSkillWorld(), { root: undefined });
 
     await expect(promote.execute("tdd", AT)).resolves.toEqual({
       ok: false,
@@ -298,42 +244,40 @@ describe("PromoteSkill", () => {
   });
 
   it("refuses an origin apm could never resolve", async () => {
-    const promote = buildPromote({ facts: { originUrl: "/srv/mirror.git" } });
+    const git = newSkillWorld();
+    git.originUrl = "/srv/mirror.git";
 
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
       ok: false,
       error: "no-usable-origin",
     });
   });
 
   it("refuses a name that is not a plain skill directory, without reaching git", async () => {
-    let reached = false;
-    const promote = buildPromote({ onPush: () => (reached = true) });
+    const git = newSkillWorld();
 
-    await expect(promote.execute("../secrets", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("../secrets", AT)).resolves.toEqual({
       ok: false,
       error: "invalid-skill",
     });
-    expect(reached).toBe(false);
+    expect(git.fetches).toBe(0);
+    expect(git.pushed).toEqual([]);
   });
 
   it("reports a fetch that got no answer as the unfresh state release uses", async () => {
-    let reached = false;
-    const promote = buildPromote({
-      fetchOutcome: "offline",
-      onPush: () => (reached = true),
-    });
+    const git = newSkillWorld();
+    git.fetchOutcomes = ["offline"];
 
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
-    expect(reached).toBe(false);
+    expect(git.pushed).toEqual([]);
   });
 
   it("records what the fetch found, so the screen shows this call's own reach", async () => {
     const recorded: HarnessFreshness[] = [];
-    const promote = buildPromote({
+    const promote = buildPromote(newSkillWorld(), {
       onFreshnessRecord: (_root, freshness) => recorded.push(freshness),
     });
 
@@ -346,8 +290,9 @@ describe("PromoteSkill", () => {
 
   it("keeps the last successful time when this fetch failed", async () => {
     const recorded: HarnessFreshness[] = [];
-    const promote = buildPromote({
-      fetchOutcome: "fetch-failed",
+    const git = newSkillWorld();
+    git.fetchOutcomes = ["fetch-failed"];
+    const promote = buildPromote(git, {
       onFreshnessRecord: (_root, freshness) => recorded.push(freshness),
     });
 
@@ -359,187 +304,170 @@ describe("PromoteSkill", () => {
   });
 
   it("refuses when the remote's default branch could not be read", async () => {
-    const promote = buildPromote({
-      facts: { defaultBranch: null, defaultBranchCommit: null },
-    });
+    const git = newSkillWorld();
+    git.defaultBranch = null;
+    git.tip = null;
 
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
   });
 
   it("reports a skill that is not in the working harness", async () => {
-    const promote = buildPromote({ outcome: "skill-missing" });
+    const git = newSkillWorld();
+    git.working = {};
 
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
       ok: false,
       error: "skill-missing",
     });
   });
 
-  it("reports a push that never reached the remote as no answer", async () => {
-    const promote = buildPromote({ outcome: "offline" });
+  it.each([
+    ["never reached the remote", "offline", "no-answer"],
+    [
+      "went to another destination than the link names",
+      "push-elsewhere",
+      "push-elsewhere",
+    ],
+    [
+      "was refused, so the author can press again",
+      "push-failed",
+      "promote-failed",
+    ],
+  ] as const)("reports a push that %s", async (_, outcome, error) => {
+    const git = newSkillWorld();
+    git.pushOutcome = outcome;
 
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
       ok: false,
-      error: "no-answer",
-    });
-  });
-
-  it("refuses a clone whose push destination is not the origin the link names", async () => {
-    const promote = buildPromote({ outcome: "push-elsewhere" });
-
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
-      ok: false,
-      error: "push-elsewhere",
-    });
-  });
-
-  it("leaves a refused push as a failure the author can press again", async () => {
-    const promote = buildPromote({ outcome: "push-failed" });
-
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
-      ok: false,
-      error: "promote-failed",
+      error,
     });
   });
 
   it("refuses to push over a teammate's change that landed since the last refresh", async () => {
-    let reached = false;
-    const promote = buildPromote({
-      onPush: () => (reached = true),
-      trees: {
-        head: [{ name: "tdd", treeHash: "theirs" }],
-        HEAD: [{ name: "tdd", treeHash: "mine-old" }],
-      },
-    });
+    const git = new InMemoryHarnessGit();
+    git.commit("fork", { tdd: "old" });
+    git.commit("theirs", { tdd: "theirs" }, { parent: "fork" });
+    git.commit("mine", { tdd: "mine" }, { parent: "fork" });
+    git.tip = "theirs";
+    git.head = "mine";
+    git.working = { tdd: "mine" };
 
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
       ok: false,
       error: "concurrent-change",
     });
-    expect(reached).toBe(false);
+    expect(git.pushed).toEqual([]);
+  });
+
+  it("refuses to promote from a clone that is only behind a teammate's change", async () => {
+    const git = new InMemoryHarnessGit();
+    git.commit("mine", { tdd: "older" });
+    git.commit("theirs", { tdd: "newer" }, { parent: "mine" });
+    git.tip = "theirs";
+    git.head = "mine";
+    git.working = { tdd: "edited" };
+
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "concurrent-change",
+    });
+  });
+
+  it("falls back to calling a difference concurrent when no merge base exists", async () => {
+    // Unrelated histories: nothing tells the author's change from a teammate's.
+    const git = new InMemoryHarnessGit();
+    git.commit("theirs", { tdd: "theirs" });
+    git.commit("mine", { tdd: "mine" });
+    git.tip = "theirs";
+    git.head = "mine";
+    git.working = { tdd: "mine" };
+
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "concurrent-change",
+    });
   });
 
   it("still pushes the author's own unpushed commit, never mistaking it for a teammate's", async () => {
-    const pushed: string[] = [];
-    const promote = buildPromote({
-      onPush: (root, name, base) => pushed.push(root, name, base),
-      trees: {
-        head: [{ name: "tdd", treeHash: "old" }],
-        HEAD: [{ name: "tdd", treeHash: "mine" }],
-        base: [{ name: "tdd", treeHash: "old" }],
-      },
-    });
+    const git = new InMemoryHarnessGit();
+    git.commit("head", { tdd: "old" });
+    git.commit("mine", { tdd: "mine" }, { parent: "head" });
+    git.tip = "head";
+    git.head = "mine";
+    git.working = { tdd: "mine" };
 
-    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toMatchObject({
       ok: true,
     });
-    expect(pushed).toEqual(["/harness", "tdd", "head"]);
+    expect(git.pushed.map((push) => push.base)).toEqual(["head"]);
   });
 
   it("never lets a teammate's change to a different skill block this promotion", async () => {
     // Only `jobs` moved on origin/HEAD since the fork, so `tdd` is ours (#579).
-    const pushed: string[] = [];
-    const promote = buildPromote({
-      onPush: (root, name, base) => pushed.push(root, name, base),
-      trees: {
-        head: [
-          { name: "tdd", treeHash: "same" },
-          { name: "jobs", treeHash: "theirs" },
-        ],
-        HEAD: [
-          { name: "tdd", treeHash: "mine" },
-          { name: "jobs", treeHash: "old" },
-        ],
-        base: [
-          { name: "tdd", treeHash: "same" },
-          { name: "jobs", treeHash: "old" },
-        ],
-      },
-    });
+    const git = new InMemoryHarnessGit();
+    git.commit("fork", { tdd: "same", jobs: "old" });
+    git.commit("head", { tdd: "same", jobs: "theirs" }, { parent: "fork" });
+    git.commit("mine", { tdd: "mine", jobs: "old" }, { parent: "fork" });
+    git.tip = "head";
+    git.head = "mine";
+    git.working = { tdd: "mine", jobs: "old" };
 
-    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toMatchObject({
       ok: true,
     });
-    expect(pushed).toEqual(["/harness", "tdd", "head"]);
+    expect(git.pushed.map((push) => push.base)).toEqual(["head"]);
   });
 
-  it("refetches and rechecks right before the push, catching a teammate's push landing in between", async () => {
-    // A teammate pushes between the two checks; the second must catch it (#579).
-    let fetches = 0;
-    const pushed: string[] = [];
-    const promote = buildPromote({
-      onFetch: () => {
-        fetches += 1;
-      },
-      onPush: (root, name, base) => pushed.push(root, name, base),
-      factsPerCall: [
-        { defaultBranchCommit: "head-1" },
-        { defaultBranchCommit: "head-2" },
-      ],
-      trees: {
-        "head-1": [{ name: "tdd", treeHash: "same" }],
-        "head-2": [{ name: "tdd", treeHash: "theirs" }],
-        HEAD: [{ name: "tdd", treeHash: "same" }],
-        base: [{ name: "tdd", treeHash: "same" }],
-      },
-    });
+  it("re-checks after its pre-push refetch, catching a teammate's push landing in between", async () => {
+    // The first check passes; the teammate's push arrives with the second fetch (#579).
+    const git = new InMemoryHarnessGit().settled({ tdd: "same" }, "head-1");
+    git.working = { tdd: "mine" };
+    git.arrivals.push(() => {});
+    git.teammatePushes("head-2", { tdd: "theirs" });
 
-    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toEqual({
       ok: false,
       error: "concurrent-change",
     });
-    expect(fetches).toBe(2);
-    expect(pushed).toEqual([]);
+    expect(git.fetches).toBe(2);
+    expect(git.pushed).toEqual([]);
   });
 
   it("builds the push on the tip its own pre-push refetch found, not the first check's", async () => {
-    const pushed: string[] = [];
-    const promote = buildPromote({
-      onPush: (root, name, base) => pushed.push(root, name, base),
-      factsPerCall: [
-        { defaultBranchCommit: "head-1" },
-        { defaultBranchCommit: "head-2" },
-      ],
-      trees: {
-        "head-1": [{ name: "tdd", treeHash: "same" }],
-        "head-2": [{ name: "tdd", treeHash: "same" }],
-        HEAD: [{ name: "tdd", treeHash: "same" }],
-        base: [{ name: "tdd", treeHash: "same" }],
-      },
-    });
+    const git = new InMemoryHarnessGit().settled({ tdd: "same" }, "head-1");
+    git.working = { tdd: "mine" };
+    git.arrivals.push(() => {});
+    git.teammatePushes("head-2", { tdd: "same", jobs: "theirs" });
 
-    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+    await expect(buildPromote(git).execute("tdd", AT)).resolves.toMatchObject({
       ok: true,
     });
-    expect(pushed).toEqual(["/harness", "tdd", "head-2"]);
+    expect(git.pushed.map((push) => push.base)).toEqual(["head-2"]);
   });
 
   it("asks for the merge base against the exact commit each check just read, never a mutable ref", async () => {
     // One captured commit per read, never a shared ref a fetch could move (#579).
-    const remoteCommits: string[] = [];
-    const promote = buildPromote({
-      onMergeBaseCommit: (remoteCommit) => remoteCommits.push(remoteCommit),
-      factsPerCall: [
-        { defaultBranchCommit: "head-1" },
-        { defaultBranchCommit: "head-2" },
-      ],
-    });
+    const git = new InMemoryHarnessGit().settled({ tdd: "same" }, "head-1");
+    git.working = { tdd: "mine" };
+    git.arrivals.push(() => {});
+    git.teammatePushes("head-2", { tdd: "same", jobs: "theirs" });
 
-    await promote.execute("tdd", AT);
+    await buildPromote(git).execute("tdd", AT);
 
-    expect(remoteCommits).toEqual(["head-1", "head-2"]);
+    expect(git.mergeBaseAsks).toEqual(["head-1", "head-2"]);
   });
 
   it("refuses a second promotion of the same harness while one is in flight", async () => {
     let release = () => {};
-    const promote = buildPromote({
-      fetchHold: new Promise<void>((resolve) => {
-        release = resolve;
-      }),
+    const git = newSkillWorld();
+    git.working = { tdd: "mine", jobs: "mine" };
+    git.fetchHold = new Promise<void>((resolve) => {
+      release = resolve;
     });
+    const promote = buildPromote(git);
 
     const first = promote.execute("tdd", AT);
     const second = await promote.execute("jobs", AT);

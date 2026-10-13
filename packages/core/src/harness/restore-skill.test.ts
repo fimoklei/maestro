@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import type { CopyEntryFacts } from "../filesystem/copy-tree-fs";
-import type { HarnessReviewPort } from "./harness-review-port";
-import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
+import { InMemoryHarnessGit } from "./harness-git.fake";
+import type { WorktreeAmbiguity } from "./read-harness-state";
 import { RestoreSkill } from "./restore-skill";
 
 const ROOT = "/harness";
@@ -18,70 +18,47 @@ const FOLDER: CopyEntryFacts = {
   identity: "1:2:3",
 };
 
-type Calls = { git: string[]; review: string[] };
-
+// `tdd` is committed at local HEAD and deleted from disk.
 function build(overrides?: {
   root?: string | undefined;
   head?: string | null;
   staged?: boolean | null;
   atHead?: string[] | null;
   describes?: (CopyEntryFacts | null)[];
-  write?: "written" | "missing" | "failed";
+  write?: "missing" | "failed";
   realpath?: (path: string) => Promise<string>;
   moveFails?: boolean;
   locks?: InFlightLocks;
   ambiguity?: WorktreeAmbiguity | null;
 }) {
-  const calls: Calls = { git: [], review: [] };
+  const git = new InMemoryHarnessGit();
+  const atHead =
+    overrides && "atHead" in overrides ? (overrides.atHead ?? null) : ["tdd"];
+  git.commit(
+    HEAD,
+    Object.fromEntries((atHead ?? []).map((name) => [name, `${name} body`])),
+  );
+  if (atHead === null) {
+    git.unreadable.add(HEAD);
+  }
+  git.tip = HEAD;
+  git.head = HEAD;
+  if (overrides && "head" in overrides) {
+    if (overrides.head !== null && overrides.head !== undefined) {
+      git.commit(overrides.head, {}, { parent: HEAD });
+    }
+    git.head = overrides.head ?? null;
+  }
+  if (overrides && "staged" in overrides) {
+    git.staged = { tdd: overrides.staged ?? null };
+  }
+  git.writeOutcome = overrides?.write ?? null;
+  git.ambiguity = overrides?.ambiguity ?? null;
+
   const moved: [string, string][] = [];
   const removed: string[] = [];
-  const written: string[] = [];
   const describes = overrides?.describes ?? [null, null];
   let described = 0;
-  const record =
-    (kind: keyof Calls, name: string) => async (): Promise<never> => {
-      calls[kind].push(name);
-      throw new Error(`${name} must not be called`);
-    };
-  const git: HarnessGitPort = {
-    fetch: record("git", "fetch"),
-    readFacts: record("git", "readFacts"),
-    catchUp: record("git", "catchUp"),
-    readCloneSync: record("git", "readCloneSync"),
-    readSkillTrees: async () => {
-      const names =
-        overrides && "atHead" in overrides
-          ? (overrides.atHead ?? null)
-          : ["tdd"];
-      return names === null
-        ? null
-        : names.map((name) => ({ name, treeHash: `tree-${name}` }));
-    },
-    readSkillAuthors: record("git", "readSkillAuthors"),
-    readMovementTrees: record("git", "readMovementTrees"),
-    mergeBaseCommit: record("git", "mergeBaseCommit"),
-    readSkillManifests: record("git", "readSkillManifests"),
-    publishTag: record("git", "publishTag"),
-    pushSkillPromotion: record("git", "pushSkillPromotion"),
-    pushSkillDeletion: record("git", "pushSkillDeletion"),
-    readWorktreeAmbiguity: async () => overrides?.ambiguity ?? null,
-    readLocalHeadCommit: async () =>
-      overrides && "head" in overrides ? (overrides.head ?? null) : HEAD,
-    readStagedSkillDifference: async () =>
-      overrides && "staged" in overrides ? (overrides.staged ?? null) : false,
-    writeSkillTreeInto: async (_root, name, _commit, into) => {
-      written.push(`${into}/${name}`);
-      return overrides?.write ?? "written";
-    },
-  };
-  const review: HarnessReviewPort = {
-    readReviews: record("review", "readReviews"),
-    readViewer: record("review", "readViewer"),
-    createRequest: record("review", "createRequest"),
-    reopenRequest: record("review", "reopenRequest"),
-    closeRequest: record("review", "closeRequest"),
-    editRequest: record("review", "editRequest"),
-  };
   const restore = new RestoreSkill({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : ROOT,
@@ -102,12 +79,13 @@ function build(overrides?: {
     git,
     locks: overrides?.locks ?? new InFlightLocks(),
   });
-  return { restore, calls, moved, removed, written, review };
+
+  return { restore, git, moved, removed };
 }
 
 describe("RestoreSkill", () => {
   it("writes the committed folder into place from the confirmed commit", async () => {
-    const { restore, moved, written } = build();
+    const { restore, moved, git } = build();
 
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
       ok: true,
@@ -115,7 +93,7 @@ describe("RestoreSkill", () => {
       commit: HEAD,
     });
 
-    expect(written).toEqual([`${STAGING}/tdd`]);
+    expect(git.written).toEqual([{ name: "tdd", commit: HEAD, into: STAGING }]);
     expect(moved).toEqual([[`${STAGING}/tdd`, `${SKILLS}/tdd`]]);
   });
 
@@ -132,19 +110,21 @@ describe("RestoreSkill", () => {
     expect(failed.removed).toEqual([STAGING]);
   });
 
-  it("never fetches, pushes or asks GitHub anything", async () => {
-    const { restore, calls } = build();
+  it("never fetches or pushes anything", async () => {
+    const { restore, git } = build();
     await restore.execute("tdd", HEAD);
-    expect(calls).toEqual({ git: [], review: [] });
+    expect(git.fetches).toBe(0);
+    expect(git.pushed).toEqual([]);
+    expect(git.published).toEqual([]);
   });
 
   it("refuses a name that is not a skill slug", async () => {
-    const { restore, written } = build();
+    const { restore, git } = build();
     await expect(restore.execute("../escape", HEAD)).resolves.toEqual({
       ok: false,
       error: "invalid-skill",
     });
-    expect(written).toEqual([]);
+    expect(git.written).toEqual([]);
   });
 
   it("refuses when no Harness is connected", async () => {
@@ -156,12 +136,12 @@ describe("RestoreSkill", () => {
   });
 
   it("refuses when local HEAD moved after the confirmation read it", async () => {
-    const { restore, written } = build({ head: "commit-xyz" });
+    const { restore, git } = build({ head: "commit-xyz" });
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
       ok: false,
       error: "head-moved",
     });
-    expect(written).toEqual([]);
+    expect(git.written).toEqual([]);
   });
 
   it("refuses when local HEAD cannot be read at all", async () => {
@@ -173,12 +153,12 @@ describe("RestoreSkill", () => {
   });
 
   it("refuses a skill with a staged edit or a staged deletion", async () => {
-    const { restore, written } = build({ staged: true });
+    const { restore, git } = build({ staged: true });
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
       ok: false,
       error: "staged-changes",
     });
-    expect(written).toEqual([]);
+    expect(git.written).toEqual([]);
   });
 
   // Fail-closed: an unasked question is not a clean index.
@@ -191,12 +171,12 @@ describe("RestoreSkill", () => {
   });
 
   it("refuses when the confirmed commit does not hold the skill", async () => {
-    const { restore, written } = build({ atHead: ["jobs"] });
+    const { restore, git } = build({ atHead: ["jobs"] });
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
       ok: false,
       error: "not-in-commit",
     });
-    expect(written).toEqual([]);
+    expect(git.written).toEqual([]);
   });
 
   it("refuses when the commit's skills could not be read", async () => {
@@ -208,12 +188,12 @@ describe("RestoreSkill", () => {
   });
 
   it("refuses when anything already sits at the destination", async () => {
-    const { restore, written } = build({ describes: [FOLDER] });
+    const { restore, git } = build({ describes: [FOLDER] });
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-exists",
     });
-    expect(written).toEqual([]);
+    expect(git.written).toEqual([]);
   });
 
   // Something created the folder between the first look and the move.
@@ -228,14 +208,14 @@ describe("RestoreSkill", () => {
   });
 
   it("refuses when the skills folder does not resolve inside the Harness", async () => {
-    const { restore, written } = build({
+    const { restore, git } = build({
       realpath: async (path) => (path === SKILLS ? "/elsewhere/skills" : path),
     });
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
-    expect(written).toEqual([]);
+    expect(git.written).toEqual([]);
   });
 
   it("refuses when the committed copy could not be written", async () => {
@@ -261,7 +241,7 @@ describe("RestoreSkill", () => {
 
   // An unread destination is never an empty one.
   it("refuses when the skills folder cannot be read at all", async () => {
-    const { restore, written } = build({
+    const { restore, git } = build({
       realpath: async (path) => {
         if (path === SKILLS) {
           throw new Error("ENOENT");
@@ -273,7 +253,7 @@ describe("RestoreSkill", () => {
       ok: false,
       error: "destination-unreadable",
     });
-    expect(written).toEqual([]);
+    expect(git.written).toEqual([]);
   });
 
   // Asked first, so an unanswerable working tree refuses under its own name.
@@ -288,7 +268,7 @@ describe("RestoreSkill", () => {
 
     for (const ambiguity of ambiguities) {
       it(`refuses under ${ambiguity}, before any other fact is read`, async () => {
-        const { restore, written, moved } = build({
+        const { restore, git, moved } = build({
           ambiguity,
           // Each would refuse under its own code; none is reached, proving the order.
           head: "commit-xyz",
@@ -299,7 +279,7 @@ describe("RestoreSkill", () => {
           ok: false,
           error: ambiguity,
         });
-        expect(written).toEqual([]);
+        expect(git.written).toEqual([]);
         expect(moved).toEqual([]);
       });
     }
