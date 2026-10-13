@@ -56,6 +56,34 @@ function harnessSeed() {
   };
 }
 
+type InMemoryFileSystemSeed = ConstructorParameters<
+  typeof InMemoryFileSystem
+>[0];
+
+const CLONE_DESTINATION = `${HOME_ROOT}/agent-harness`;
+
+function existingCloneSeed(): InMemoryFileSystemSeed {
+  return {
+    directories: {
+      [CLONE_DESTINATION]: CLONE_DESTINATION,
+      [`${CLONE_DESTINATION}/.git`]: `${CLONE_DESTINATION}/.git`,
+    },
+    listings: { [CLONE_DESTINATION]: [".git", "apm.yml"] },
+    files: { [`${CLONE_DESTINATION}/apm.yml`]: "dependencies: []\n" },
+  };
+}
+
+// What an interrupted clone leaves behind.
+function partialCloneSeed(): InMemoryFileSystemSeed {
+  return {
+    directories: {
+      [CLONE_DESTINATION]: CLONE_DESTINATION,
+      [`${CLONE_DESTINATION}/.git`]: `${CLONE_DESTINATION}/.git`,
+    },
+    listings: { [CLONE_DESTINATION]: [".git"] },
+  };
+}
+
 describe("ConnectInventory", () => {
   it("persists inventoryPath for a clone carrying an apm.yml manifest", async () => {
     const fs = new InMemoryFileSystem(harnessSeed());
@@ -432,15 +460,7 @@ describe("ConnectInventory", () => {
     });
 
     it("connects an existing clone of the same repository instead of re-cloning", async () => {
-      const destination = `${HOME_ROOT}/agent-harness`;
-      const fs = new InMemoryFileSystem({
-        directories: {
-          [destination]: destination,
-          [`${destination}/.git`]: `${destination}/.git`,
-        },
-        listings: { [destination]: [".git", "apm.yml"] },
-        files: { [`${destination}/apm.yml`]: "dependencies: []\n" },
-      });
+      const fs = new InMemoryFileSystem(existingCloneSeed());
       const clone = new FakeClone(fs);
       const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
 
@@ -451,13 +471,13 @@ describe("ConnectInventory", () => {
       expect(result).toEqual({
         ok: true,
         outcome: "found",
-        inventoryPath: destination,
+        inventoryPath: CLONE_DESTINATION,
       });
       expect(clone.calls).toEqual([]);
     });
 
     it("refuses a destination occupied by anything else, leaving it alone", async () => {
-      const destination = `${HOME_ROOT}/agent-harness`;
+      const destination = CLONE_DESTINATION;
       const fs = new InMemoryFileSystem({
         directories: { [destination]: destination },
         listings: { [destination]: ["notes.txt"] },
@@ -476,21 +496,13 @@ describe("ConnectInventory", () => {
     });
 
     it("reports a partial clone rather than cloning over it", async () => {
-      const destination = `${HOME_ROOT}/agent-harness`;
-      const fs = new InMemoryFileSystem({
-        directories: {
-          [destination]: destination,
-          [`${destination}/.git`]: `${destination}/.git`,
-        },
-        listings: { [destination]: [".git"] },
-      });
+      const fs = new InMemoryFileSystem(partialCloneSeed());
       const clone = new FakeClone(fs);
       const connect = makeConnect(
         fs,
         PARSEABLE_ORIGIN,
         "main",
         clone,
-        // No commit at HEAD: what an interrupted clone leaves behind.
         "no-head",
       );
 
@@ -500,8 +512,121 @@ describe("ConnectInventory", () => {
 
       expect(result).toEqual({ ok: false, error: "destination-partial-clone" });
       expect(clone.calls).toEqual([]);
-      expect(await fs.isDirectory(destination)).toBe(true);
+      expect(await fs.isDirectory(CLONE_DESTINATION)).toBe(true);
     });
+
+    // git clones into an existing empty directory, so this is not an obstacle.
+    it("clones into an existing empty directory at the destination", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: { [CLONE_DESTINATION]: CLONE_DESTINATION },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const result = await connect.connect(
+        "https://github.com/fimoklei/agent-harness.git",
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        outcome: "joined",
+        inventoryPath: CLONE_DESTINATION,
+      });
+      expect(clone.calls).toHaveLength(1);
+    });
+
+    it("matches an existing clone's origin regardless of its casing", async () => {
+      const fs = new InMemoryFileSystem(existingCloneSeed());
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(
+        fs,
+        "https://github.com/Fimoklei/Agent-Harness",
+        "main",
+        clone,
+      );
+
+      const result = await connect.connect(
+        "https://github.com/fimoklei/agent-harness.git",
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        outcome: "found",
+        inventoryPath: CLONE_DESTINATION,
+      });
+      expect(clone.calls).toEqual([]);
+    });
+
+    // Only a partial clone recovers by deleting the folder, so doubt is occupied.
+    it.each<{
+      name: string;
+      seed: () => InMemoryFileSystemSeed;
+      origin: string | null;
+      head: HeadProbe;
+    }>([
+      {
+        name: "a clone of a different repository",
+        seed: existingCloneSeed,
+        origin: "git@github.com:someone/else.git",
+        head: "commit",
+      },
+      {
+        name: "a repository with no readable origin",
+        seed: existingCloneSeed,
+        origin: null,
+        head: "commit",
+      },
+      {
+        name: "a file sitting on the destination name",
+        seed: () => ({ files: { [CLONE_DESTINATION]: "hello" } }),
+        origin: PARSEABLE_ORIGIN,
+        head: "commit",
+      },
+      {
+        name: "a commitless repository of another origin",
+        seed: partialCloneSeed,
+        origin: "git@github.com:someone/else.git",
+        head: "no-head",
+      },
+      {
+        name: "a commitless repository with no readable origin",
+        seed: partialCloneSeed,
+        origin: null,
+        head: "no-head",
+      },
+      // Git failing to answer is not git answering "empty".
+      {
+        name: "a repository git cannot inspect",
+        seed: partialCloneSeed,
+        origin: PARSEABLE_ORIGIN,
+        head: "unknown",
+      },
+      {
+        name: "a directory it cannot list",
+        seed: () => ({
+          directories: {
+            [CLONE_DESTINATION]: CLONE_DESTINATION,
+          },
+          unreadable: [CLONE_DESTINATION],
+        }),
+        origin: PARSEABLE_ORIGIN,
+        head: "commit",
+      },
+    ])(
+      "refuses $name at the destination as occupied",
+      async ({ seed, origin, head }) => {
+        const fs = new InMemoryFileSystem(seed());
+        const clone = new FakeClone(fs);
+        const connect = makeConnect(fs, origin, "main", clone, head);
+
+        const result = await connect.connect(
+          "https://github.com/fimoklei/agent-harness.git",
+        );
+
+        expect(result).toEqual({ ok: false, error: "destination-occupied" });
+        expect(clone.calls).toEqual([]);
+      },
+    );
 
     // Compared canonical-to-canonical: on macOS /var resolves to /private/var.
     it("accepts a parent inside a home whose own path is a symlink", async () => {
