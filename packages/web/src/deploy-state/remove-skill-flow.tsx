@@ -1,22 +1,100 @@
-import type { RemoveOutcome } from "@maestro/core";
+import type {
+  RemoveOutcome,
+  RemoveTargetState,
+  RemoveToolOutcome,
+} from "@maestro/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { HttpError } from "../api/http";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
+import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
-import { removedName } from "./removal-announcement";
-import { removalOutcome } from "./removal-outcome";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
-import { restatedCost } from "./restated-cost";
+import { toolDisplayName } from "./tool-presentation";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
 import {
   type RemovePreflight,
+  readRemovePreflight,
   removePreflightQueryOptions,
   useRemovePreflight,
 } from "./use-remove-preflight";
+
+type RemovedSkill = {
+  name: string;
+  version: string | undefined;
+  // As the server resolved it: the detected tool set can differ from what was
+  // confirmed. A repo goes by the table's name, never its absolute path (#1119).
+  target:
+    | Exclude<RemoveDialogTarget, { kind: "repo" }>
+    | { kind: "repo"; name: string };
+};
+
+// What a landed removal's done sentence names.
+function removedName({ name, version, target }: RemovedSkill): Phrase {
+  const scope =
+    target.kind === "repo"
+      ? named(target.name)
+      : // The detected set can be empty.
+        target.tools.length === 0
+        ? "every detected tool"
+        : namedList(target.tools.map(toolDisplayName));
+  const release =
+    version === undefined ? "(version unknown)" : machine(version);
+  return phrase`${named(name)} ${release} from ${scope}`;
+}
+
+const STATES: Record<string, RemoveTargetState> = {
+  removed: "removed",
+  "not-removed": "not-removed",
+  unknown: "unknown",
+};
+
+// Nothing validates this body. A report this build cannot read is dropped
+// whole: a ledger built on a guess states an outcome the server never proved.
+function removalOutcome(error: unknown): RemoveOutcome | null {
+  if (!(error instanceof HttpError)) {
+    return null;
+  }
+  const outcome = (error.body as { outcome?: unknown } | undefined)?.outcome as
+    | { scope?: unknown; state?: unknown; tools?: unknown }
+    | undefined;
+  if (outcome?.scope === "repo") {
+    const state = STATES[String(outcome.state)];
+    return state === undefined ? null : { scope: "repo", state };
+  }
+  if (outcome?.scope === "global" && Array.isArray(outcome.tools)) {
+    const tools: RemoveToolOutcome[] = [];
+    for (const entry of outcome.tools as {
+      tool?: unknown;
+      state?: unknown;
+    }[]) {
+      const state = STATES[String(entry?.state)];
+      if (state === undefined || typeof entry?.tool !== "string") {
+        return null;
+      }
+      tools.push({ tool: entry.tool as RemoveToolOutcome["tool"], state });
+    }
+    return { scope: "global", tools };
+  }
+  return null;
+}
+
+// The question a refused removal restated (#364). All or nothing: a fresh cost
+// paired with an older consent is what #364 prevents.
+function restatedCost(
+  error: unknown,
+): (RemovePreflight & { receipt: string }) | null {
+  if (!(error instanceof HttpError) || error.code !== "cost-not-acknowledged") {
+    return null;
+  }
+  const cost = readRemovePreflight(error.body);
+  return cost?.receipt === undefined
+    ? null
+    : { ...cost, receipt: cost.receipt };
+}
 
 // Read after a failed attempt, a clean target means that attempt landed: apm
 // can remove a skill and still fail to prove it.
