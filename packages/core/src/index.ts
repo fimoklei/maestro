@@ -6,11 +6,6 @@ export {
   BulkDeploySkills,
 } from "./deploy/bulk-deploy-skills";
 export {
-  BulkRemoveDeployedSkill,
-  type BulkRemoveReport,
-  type BulkRemoveTarget,
-} from "./deploy/bulk-remove-deployed-skill";
-export {
   // Exported for the integration lane's apm fake.
   type ApmDriverPort,
   type DeployedContentState,
@@ -33,6 +28,8 @@ export type {
   ReclaimPreview,
 } from "./deploy/remove-consent";
 export {
+  type BulkRemoveReport,
+  type BulkRemoveTarget,
   type RemoveCheck,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
