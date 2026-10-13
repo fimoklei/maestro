@@ -11,6 +11,9 @@ import type { NoticeCopy } from "./ui/notice";
 import { type Copy, plainText } from "./ui/phrase";
 import { ScreenReportContext } from "./ui/use-write-action";
 
+/** The key the theme choice persists under; index.html reads the same one. */
+export const INTERFACE_THEME_STORAGE_KEY = "maestro.interface-theme";
+
 export function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,

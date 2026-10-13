@@ -1,11 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  chooseInterfaceTheme,
-  INTERFACE_THEME_KEY,
-  resolveTheme,
-} from "./interface-theme";
+import { INTERFACE_THEME_STORAGE_KEY } from "../test-utils";
+import { chooseInterfaceTheme, followSystemTheme } from "./interface-theme";
 
 // Stored choice × system preference → the theme stamped on <html>. Nothing
 // stored and an unknown value both mean System (#996).
@@ -24,11 +21,33 @@ const RESOLUTION_MATRIX: ReadonlyArray<
   ["purple", true, "dark"],
 ];
 
-describe("resolveTheme", () => {
+describe("followSystemTheme", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    for (const style of document.head.querySelectorAll("style")) style.remove();
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.removeItem(INTERFACE_THEME_STORAGE_KEY);
+  });
+
   it.each(RESOLUTION_MATRIX)(
     "resolves stored %s with a dark system preference %s to %s",
     (stored, prefersDark, theme) => {
-      expect(resolveTheme(stored, prefersDark)).toBe(theme);
+      let follow: (event: { matches: boolean }) => void = () => {};
+      vi.stubGlobal("matchMedia", () => ({
+        addEventListener: (_: string, listener: typeof follow) => {
+          follow = listener;
+        },
+        removeEventListener: () => {},
+      }));
+      if (stored !== null) {
+        localStorage.setItem(INTERFACE_THEME_STORAGE_KEY, stored);
+      }
+
+      const stop = followSystemTheme();
+      follow({ matches: prefersDark });
+      stop();
+
+      expect(document.documentElement).toHaveAttribute("data-theme", theme);
     },
   );
 });
@@ -65,7 +84,7 @@ describe("index.html's inline theme script", () => {
     "stamps stored %s with a dark system preference %s as %s",
     (stored, prefersDark, theme) => {
       const getItem = (key: string) =>
-        key === INTERFACE_THEME_KEY ? stored : null;
+        key === INTERFACE_THEME_STORAGE_KEY ? stored : null;
       expect(runInlineScript(getItem, prefersDark)).toBe(theme);
     },
   );
@@ -82,7 +101,7 @@ describe("chooseInterfaceTheme", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     document.documentElement.removeAttribute("data-theme");
-    localStorage.removeItem(INTERFACE_THEME_KEY);
+    localStorage.removeItem(INTERFACE_THEME_STORAGE_KEY);
   });
 
   const transitionMutes = () =>

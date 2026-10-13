@@ -214,6 +214,36 @@ describe("Sidebar", () => {
     );
     renderSidebar();
 
-    expect(await screen.findByText("Not released yet")).toBeInTheDocument();
+    expect(await screen.findByText("Not released yet")).not.toHaveClass(
+      "font-mono",
+    );
+  });
+
+  it("states nothing about the release while it is unread", async () => {
+    stubServer();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse(
+            { inventoryPath: "/home/me/agent-harness", githubRepository: null },
+            200,
+          );
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          return jsonResponse({ primitives: [] }, 200);
+        }
+        if (url.startsWith("/api/harness")) {
+          return new Promise<Response>(() => {});
+        }
+        return jsonResponse({ ok: true, repos: [] }, 200);
+      }),
+    );
+    renderSidebar();
+
+    // An unread release never reads as "no release" (#841).
+    expect(await screen.findByText("…/me/agent-harness")).toBeInTheDocument();
+    expect(screen.queryByText("Not released yet")).not.toBeInTheDocument();
   });
 });

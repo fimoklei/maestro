@@ -42,7 +42,7 @@ const configSchema = z.object({
 
 export type MaestroConfig = z.infer<typeof configSchema>;
 
-export class ConfigError extends Error {
+class ConfigError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
     this.name = "ConfigError";

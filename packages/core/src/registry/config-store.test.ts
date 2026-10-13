@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, ConfigStore } from "./config-store";
+import { ConfigStore } from "./config-store";
 import { InMemoryFileSystem } from "./file-system.fake";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
@@ -41,7 +41,7 @@ describe("ConfigStore", () => {
     });
     const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
 
-    await expect(store.read()).rejects.toThrow(ConfigError);
+    await expect(store.read()).rejects.toThrow("is not valid JSON.");
   });
 
   it("throws a blocking error when the config shape is invalid", async () => {
@@ -50,7 +50,9 @@ describe("ConfigStore", () => {
     });
     const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
 
-    await expect(store.read()).rejects.toThrow(ConfigError);
+    await expect(store.read()).rejects.toThrow(
+      "does not match the expected shape.",
+    );
   });
 
   it("reads a fetch time that is not a real moment as no record at all", async () => {

@@ -88,7 +88,7 @@ export const otherOriginLine = (origins: readonly string[]) =>
 const KEEP_LOCAL_EDITS = `Select ${IMPORT_LOCAL_EDITS} to keep them.`;
 const KEEP_BEFORE_UPDATE = `To keep them, select ${IMPORT_LOCAL_EDITS} before you update.`;
 
-export const localEditsReason = (names: readonly string[]) =>
+const localEditsReason = (names: readonly string[]) =>
   names.length === 1
     ? phrase`1 skill has changes that are not in the latest release: ${namedList(names)}.`
     : phrase`${names.length} skills have changes that are not in the latest release: ${namedList(names)}.`;

@@ -8,7 +8,10 @@ import {
 import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { Dialog, type DialogAction, type DialogProps } from "./dialog";
+import { Dialog, type DialogProps } from "./dialog";
+
+type DialogAction = NonNullable<DialogProps["action"]>;
+
 import { Select } from "./select";
 
 const action = (overrides: Partial<DialogAction> = {}): DialogAction => ({

@@ -58,7 +58,7 @@ export type ReviewRequestLink = {
 };
 
 // `number` is null for a prepared branch nobody opened a request for.
-export type ProposalComparison =
+type ProposalComparison =
   | { kind: "proposal"; number: number | null }
   | { kind: "default-branch" };
 

@@ -20,7 +20,7 @@ const defaultRun = promisify(execFile);
 
 // gh's default of 30 would silently drop older requests. An answer that fills
 // this bound is reported incomplete, never as an absence.
-export const REVIEW_READ_LIMIT = 100;
+const REVIEW_READ_LIMIT = 100;
 
 const GH_TIMEOUT_MS = 30_000;
 

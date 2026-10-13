@@ -1,14 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { OptionMenu, type OptionSection } from "./option-menu";
+import { OptionMenu, type OptionMenuProps } from "./option-menu";
 
 const sections = (
   over: {
     onChange?: (value: string) => void;
     onToggle?: (v: string) => void;
   } = {},
-): OptionSection[] => [
+): OptionMenuProps["sections"] => [
   {
     kind: "radio",
     label: "Type",

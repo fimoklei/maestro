@@ -1,4 +1,11 @@
-import type { DeploySkillError } from "@maestro/core";
+import type {
+  DeploySkillError,
+  RemoveDeployedSkillError,
+  RemovePreflightError,
+  RetryTargetOperationError,
+  UpdatePreviewError,
+  UpdateRunError,
+} from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import { machineValues, readNotice, unselectedControls } from "../test-utils";
@@ -7,7 +14,6 @@ import {
   type DeployStateNotice,
   deployNotice,
   deployNoticeFor,
-  NOTICE_CODES,
   removeNotice,
   retryNotice,
   updateNotice,
@@ -17,231 +23,155 @@ import {
 // Pins the finished notice per code as data, never measuring the prose itself.
 const refusal = (code: string) => new HttpError(422, "unused", code);
 
-// A code a table words but no case pins would ship unapproved copy.
-const codesWithoutCase = (table: string[], cases: [string, unknown][]) =>
-  table.filter((code) => !cases.some(([covered]) => covered === code));
+// A code a table words but no case pins would ship unapproved copy: the Record
+// fails the typecheck on a missing or unknown code.
+const pinned = <Code extends string>(cases: Record<Code, DeployStateNotice>) =>
+  // Object.entries widens each key to string; the Record holds only Codes.
+  Object.entries(cases) as [Code, DeployStateNotice][];
 
 describe("deploy notices", () => {
-  const cases: [DeploySkillError, DeployStateNotice][] = [
-    [
-      "unsupported-primitive-type",
-      {
-        label: "Skills only",
-        message:
-          "Nothing was deployed. Maestro deploys skills only. Select a skill, then deploy again.",
-        detail: "Hooks and MCP servers stay in the Harness.",
-      },
-    ],
-    [
-      "invalid-name",
-      {
-        label: "Unusable skill name",
-        message:
-          "Nothing was deployed. Rename the skill in the Harness, then deploy again.",
-        detail:
-          "A skill name uses lowercase letters, digits and single hyphens.",
-      },
-    ],
-    [
-      "unknown-skill",
-      {
-        label: "Skill not in the Inventory",
-        message:
-          "Nothing was deployed. Select Re-read Skills, then select the skill again.",
-      },
-    ],
-    [
-      "inventory-not-configured",
-      {
-        label: "No Harness connected",
-        message:
-          "Nothing was deployed. Select Change Harness location in Settings, then deploy again.",
-      },
-    ],
-    [
-      "inventory-unreadable",
-      {
-        label: "Inventory not read",
-        message:
-          "Nothing was deployed. Select Re-read Skills, then deploy again.",
-      },
-    ],
-    [
-      "repo-not-registered",
-      {
-        label: "Repository not registered",
-        message:
-          "Nothing was deployed. Select Register repository on the Repositories screen, then deploy again.",
-      },
-    ],
-    [
-      "inventory-origin-unavailable",
-      {
-        label: "No GitHub origin",
-        message:
-          "Nothing was deployed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
-        detail:
-          "A deploy takes the skill from a GitHub tag, over https or ssh.",
-      },
-    ],
-    [
-      "no-published-tag",
-      {
-        label: "Not in any release",
-        message:
-          "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
-        detail: "A deploy takes the skill from a published tag.",
-      },
-    ],
-    [
-      "local-diverged-from-tag",
-      {
-        label: "Harness copy unreleased",
-        message:
-          "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
-        detail: "A deploy takes the latest release, not the Harness copy.",
-      },
-    ],
-    [
-      "deployed-diverged-from-lock",
-      {
-        label: "Local changes in deployed files",
-        message:
-          "Deploy this skill again to replace the local edits with the latest release.",
-        detail: "The edits never went through the Harness.",
-      },
-    ],
-    [
-      "deployed-unverifiable",
-      {
-        label: "Local edits unverifiable",
-        message:
-          "Deploy this skill again to replace this copy with the latest release.",
-        detail:
-          "This copy predates content tracking, so any change in it is invisible.",
-      },
-    ],
-    [
-      "deployed-unreadable",
-      {
-        label: "Deployed copy not read",
-        message:
-          "Nothing was deployed. Make the deployed copy readable, then deploy again.",
-        detail: "Its permissions or its shape blocked the check.",
-      },
-    ],
-    [
-      "lockfile-malformed",
-      {
-        label: "Deployment record not read",
-        message:
-          "Nothing was deployed. Repair or delete apm.lock.yaml in the target, then deploy again.",
-        detail:
-          "The file is present but does not parse, so the target's state is unknown.",
-      },
-    ],
-    [
-      "deploy-in-progress",
-      {
-        label: "Target busy",
-        message:
-          "Nothing was deployed. Wait for the running deploy on this target to finish, then deploy again.",
-      },
-    ],
-    [
-      "ref-unresolvable",
-      {
-        label: "Deployed version unknown",
-        message:
-          "Nothing was deployed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
-        detail: "The target's record names more than one, or names no release.",
-      },
-    ],
-    [
-      "not-at-target-release",
-      {
-        label: "Not in this release",
-        message:
-          "Nothing was deployed. Select Update target on the Deploy-state screen to move this target to a release that holds the skill.",
-        detail: "This skill is not in the release this target follows.",
-      },
-    ],
-    [
-      "target-pinned-per-skill",
-      {
-        label: "Pinned per skill",
-        message:
-          "Nothing was deployed. Select Remove skill for each skill on the Deploy-state screen. Then select Deploy skill to put them on one release.",
-        detail: "This target holds skills from separate deployments.",
-      },
-    ],
-    [
-      "manifest-not-recognised",
-      {
-        label: "Manifest not recognised",
-        message:
-          "Nothing was deployed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
-        detail: "Maestro edits that list only, and it found another shape.",
-      },
-    ],
-    [
-      "operation-unfinished",
-      {
-        label: "Unfinished operation",
-        message:
-          "Nothing was deployed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
-        detail: "An earlier change on this target did not finish.",
-      },
-    ],
-    [
-      "deploy-incomplete",
-      {
-        label: "Deploy incomplete",
-        message:
-          "Part of the selection is not on disk. Open the target on the Deploy-state screen and select Retry deploy.",
-        detail: "apm reported success, but some files are missing.",
-      },
-    ],
-    [
-      "no-supported-tool",
-      {
-        label: "No supported tool",
-        message:
-          "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
-        detail: "A global deploy puts skills into Claude Code or Codex.",
-      },
-    ],
-    [
-      "auth-required",
-      {
-        label: "No GitHub access",
-        message:
-          "Nothing was deployed. Set up GitHub access in git, then deploy again.",
-        detail: "GitHub refused the download.",
-      },
-    ],
-    [
-      "destination-symlinked",
-      {
-        label: "Linked skill folder",
-        message:
-          "Nothing was written. Delete the linked skill folder in the target, then deploy again.",
-        detail:
-          "This removes the link only. The folder it points at remains on disk.",
-      },
-    ],
-    [
-      "deploy-failed",
-      {
-        label: "Deploy did not finish",
-        message:
-          "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
-      },
-    ],
-  ];
-
-  it("pins a case for every deploy code", () => {
-    expect(codesWithoutCase(NOTICE_CODES.deploy, cases)).toEqual([]);
+  const cases = pinned<DeploySkillError>({
+    "unsupported-primitive-type": {
+      label: "Skills only",
+      message:
+        "Nothing was deployed. Maestro deploys skills only. Select a skill, then deploy again.",
+      detail: "Hooks and MCP servers stay in the Harness.",
+    },
+    "invalid-name": {
+      label: "Unusable skill name",
+      message:
+        "Nothing was deployed. Rename the skill in the Harness, then deploy again.",
+      detail: "A skill name uses lowercase letters, digits and single hyphens.",
+    },
+    "unknown-skill": {
+      label: "Skill not in the Inventory",
+      message:
+        "Nothing was deployed. Select Re-read Skills, then select the skill again.",
+    },
+    "inventory-not-configured": {
+      label: "No Harness connected",
+      message:
+        "Nothing was deployed. Select Change Harness location in Settings, then deploy again.",
+    },
+    "inventory-unreadable": {
+      label: "Inventory not read",
+      message:
+        "Nothing was deployed. Select Re-read Skills, then deploy again.",
+    },
+    "repo-not-registered": {
+      label: "Repository not registered",
+      message:
+        "Nothing was deployed. Select Register repository on the Repositories screen, then deploy again.",
+    },
+    "inventory-origin-unavailable": {
+      label: "No GitHub origin",
+      message:
+        "Nothing was deployed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
+      detail: "A deploy takes the skill from a GitHub tag, over https or ssh.",
+    },
+    "no-published-tag": {
+      label: "Not in any release",
+      message:
+        "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
+      detail: "A deploy takes the skill from a published tag.",
+    },
+    "local-diverged-from-tag": {
+      label: "Harness copy unreleased",
+      message:
+        "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
+      detail: "A deploy takes the latest release, not the Harness copy.",
+    },
+    "deployed-diverged-from-lock": {
+      label: "Local changes in deployed files",
+      message:
+        "Deploy this skill again to replace the local edits with the latest release.",
+      detail: "The edits never went through the Harness.",
+    },
+    "deployed-unverifiable": {
+      label: "Local edits unverifiable",
+      message:
+        "Deploy this skill again to replace this copy with the latest release.",
+      detail:
+        "This copy predates content tracking, so any change in it is invisible.",
+    },
+    "deployed-unreadable": {
+      label: "Deployed copy not read",
+      message:
+        "Nothing was deployed. Make the deployed copy readable, then deploy again.",
+      detail: "Its permissions or its shape blocked the check.",
+    },
+    "lockfile-malformed": {
+      label: "Deployment record not read",
+      message:
+        "Nothing was deployed. Repair or delete apm.lock.yaml in the target, then deploy again.",
+      detail:
+        "The file is present but does not parse, so the target's state is unknown.",
+    },
+    "deploy-in-progress": {
+      label: "Target busy",
+      message:
+        "Nothing was deployed. Wait for the running deploy on this target to finish, then deploy again.",
+    },
+    "ref-unresolvable": {
+      label: "Deployed version unknown",
+      message:
+        "Nothing was deployed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
+      detail: "The target's record names more than one, or names no release.",
+    },
+    "not-at-target-release": {
+      label: "Not in this release",
+      message:
+        "Nothing was deployed. Select Update target on the Deploy-state screen to move this target to a release that holds the skill.",
+      detail: "This skill is not in the release this target follows.",
+    },
+    "target-pinned-per-skill": {
+      label: "Pinned per skill",
+      message:
+        "Nothing was deployed. Select Remove skill for each skill on the Deploy-state screen. Then select Deploy skill to put them on one release.",
+      detail: "This target holds skills from separate deployments.",
+    },
+    "manifest-not-recognised": {
+      label: "Manifest not recognised",
+      message:
+        "Nothing was deployed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
+      detail: "Maestro edits that list only, and it found another shape.",
+    },
+    "operation-unfinished": {
+      label: "Unfinished operation",
+      message:
+        "Nothing was deployed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
+      detail: "An earlier change on this target did not finish.",
+    },
+    "deploy-incomplete": {
+      label: "Deploy incomplete",
+      message:
+        "Part of the selection is not on disk. Open the target on the Deploy-state screen and select Retry deploy.",
+      detail: "apm reported success, but some files are missing.",
+    },
+    "no-supported-tool": {
+      label: "No supported tool",
+      message:
+        "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
+      detail: "A global deploy puts skills into Claude Code or Codex.",
+    },
+    "auth-required": {
+      label: "No GitHub access",
+      message:
+        "Nothing was deployed. Set up GitHub access in git, then deploy again.",
+      detail: "GitHub refused the download.",
+    },
+    "destination-symlinked": {
+      label: "Linked skill folder",
+      message:
+        "Nothing was written. Delete the linked skill folder in the target, then deploy again.",
+      detail:
+        "This removes the link only. The folder it points at remains on disk.",
+    },
+    "deploy-failed": {
+      label: "Deploy did not finish",
+      message:
+        "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
+    },
   });
 
   it("names every control it points to as select {Control}", () => {
@@ -294,155 +224,101 @@ describe("deploy notices", () => {
 });
 
 describe("remove notices", () => {
-  const cases: [string, DeployStateNotice][] = [
-    [
-      "unsupported-primitive-type",
-      {
-        label: "Skills only",
-        message:
-          "Maestro removes skills; hooks and MCP servers stay where they are. Remove a skill instead.",
-      },
-    ],
-    [
-      "invalid-name",
-      {
-        label: "Unusable skill name",
-        message:
-          "Nothing was removed. A skill name uses lowercase letters, digits and single hyphens.",
-      },
-    ],
-    [
-      "repo-not-registered",
-      {
-        label: "Repository not registered",
-        message:
-          "Select Register repository on the Repositories screen, then remove again.",
-      },
-    ],
-    [
-      "no-supported-tool",
-      {
-        label: "No supported tool",
-        message:
-          "Neither Claude Code nor Codex is on this machine. There is nothing here to remove.",
-      },
-    ],
-    [
-      "deployed-diverged-from-lock",
-      {
-        label: "Local changes in deployed files",
-        message:
-          "The skill was not removed. Its files changed after deployment.",
-        detail:
-          "Select Deploy skill to restore the released files. Then remove the skill. Reset any copy under Other copies manually.",
-      },
-    ],
-    [
-      "not-deployed",
-      {
-        label: "Nothing deployed here",
-        message:
-          "Nothing was removed. Select Re-read Deploy-state on the Deploy-state screen to read the list again.",
-      },
-    ],
-    [
-      "lockfile-malformed",
-      {
-        label: "Deployment record not read",
-        message:
-          "Repair or delete apm.lock.yaml in the target, then remove again.",
-        detail:
-          "The file is present but does not parse, so nothing can name what to remove.",
-      },
-    ],
-    [
-      "ref-unresolvable",
-      {
-        label: "Deployed version unknown",
-        message:
-          "A removal could delete the wrong package. Deploy the skill again to restore a readable entry.",
-        detail:
-          "Its reference does not point at this skill the way a Maestro deploy would.",
-      },
-    ],
-    [
-      "deployed-unreadable",
-      {
-        label: "Deployed copy not read",
-        message:
-          "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
-      },
-    ],
-    [
-      "deployed-diverged-pinned-per-skill",
-      {
-        label: "Local changes in deployed files",
-        message:
-          "The skill was not removed. Its files changed after deployment.",
-        detail:
-          "Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select Remove skill again.",
-      },
-    ],
-    [
-      "cost-not-acknowledged",
-      {
-        label: "Removal not confirmed",
-        message:
-          "Nothing was removed. A copy changed after the check. Read the list again, then select Remove skill.",
-      },
-    ],
-    [
-      "remove-in-progress",
-      {
-        label: "Target busy",
-        message:
-          "A removal is still running on this target. Wait for it to finish.",
-      },
-    ],
-    [
-      "remove-incomplete",
-      {
-        label: "Removal incomplete",
-        message:
-          "The skill's files are still on disk. Select Retry removal to run the same removal again.",
-        detail: "apm reported success, but some files are missing.",
-      },
-    ],
-    [
-      "remove-failed",
-      {
-        label: "Removal outcome unknown",
-        message:
-          "The copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
-        detail: "The removal ran but proved nothing.",
-      },
-    ],
-    [
-      "preflight-failed",
-      {
-        label: "Deployed files not checked",
-        message:
-          "Make the deployed copy readable, then start the removal again.",
-      },
-    ],
-    [
-      "manifest-not-recognised",
-      {
-        label: "Manifest not recognised",
-        message:
-          "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
-        detail: "Maestro edits that list only, and it found another shape.",
-      },
-    ],
-    [
-      "operation-unfinished",
-      {
-        label: "Unfinished operation",
-        message:
-          "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
-      },
-    ],
-  ];
+  const cases = pinned<RemoveDeployedSkillError | RemovePreflightError>({
+    "unsupported-primitive-type": {
+      label: "Skills only",
+      message:
+        "Maestro removes skills; hooks and MCP servers stay where they are. Remove a skill instead.",
+    },
+    "invalid-name": {
+      label: "Unusable skill name",
+      message:
+        "Nothing was removed. A skill name uses lowercase letters, digits and single hyphens.",
+    },
+    "repo-not-registered": {
+      label: "Repository not registered",
+      message:
+        "Select Register repository on the Repositories screen, then remove again.",
+    },
+    "no-supported-tool": {
+      label: "No supported tool",
+      message:
+        "Neither Claude Code nor Codex is on this machine. There is nothing here to remove.",
+    },
+    "deployed-diverged-from-lock": {
+      label: "Local changes in deployed files",
+      message: "The skill was not removed. Its files changed after deployment.",
+      detail:
+        "Select Deploy skill to restore the released files. Then remove the skill. Reset any copy under Other copies manually.",
+    },
+    "not-deployed": {
+      label: "Nothing deployed here",
+      message:
+        "Nothing was removed. Select Re-read Deploy-state on the Deploy-state screen to read the list again.",
+    },
+    "lockfile-malformed": {
+      label: "Deployment record not read",
+      message:
+        "Repair or delete apm.lock.yaml in the target, then remove again.",
+      detail:
+        "The file is present but does not parse, so nothing can name what to remove.",
+    },
+    "ref-unresolvable": {
+      label: "Deployed version unknown",
+      message:
+        "A removal could delete the wrong package. Deploy the skill again to restore a readable entry.",
+      detail:
+        "Its reference does not point at this skill the way a Maestro deploy would.",
+    },
+    "deployed-unreadable": {
+      label: "Deployed copy not read",
+      message:
+        "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
+    },
+    "deployed-diverged-pinned-per-skill": {
+      label: "Local changes in deployed files",
+      message: "The skill was not removed. Its files changed after deployment.",
+      detail:
+        "Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select Remove skill again.",
+    },
+    "cost-not-acknowledged": {
+      label: "Removal not confirmed",
+      message:
+        "Nothing was removed. A copy changed after the check. Read the list again, then select Remove skill.",
+    },
+    "remove-in-progress": {
+      label: "Target busy",
+      message:
+        "A removal is still running on this target. Wait for it to finish.",
+    },
+    "remove-incomplete": {
+      label: "Removal incomplete",
+      message:
+        "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+      detail: "apm reported success, but some files are missing.",
+    },
+    "remove-failed": {
+      label: "Removal outcome unknown",
+      message:
+        "The copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
+      detail: "The removal ran but proved nothing.",
+    },
+    "preflight-failed": {
+      label: "Deployed files not checked",
+      message: "Make the deployed copy readable, then start the removal again.",
+    },
+    "manifest-not-recognised": {
+      label: "Manifest not recognised",
+      message:
+        "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
+      detail: "Maestro edits that list only, and it found another shape.",
+    },
+    "operation-unfinished": {
+      label: "Unfinished operation",
+      message:
+        "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
+    },
+  });
 
   it("names every control it points to as select {Control}", () => {
     for (const [code] of cases) {
@@ -451,10 +327,6 @@ describe("remove notices", () => {
         code,
       ).toEqual([]);
     }
-  });
-
-  it("pins a case for every remove code", () => {
-    expect(codesWithoutCase(NOTICE_CODES.remove, cases)).toEqual([]);
   });
 
   it.each(cases)("states the whole notice for %s", (code, expected) => {
@@ -497,122 +369,82 @@ describe("remove notices", () => {
 });
 
 describe("update preview notices", () => {
-  const cases: [string, DeployStateNotice][] = [
-    [
-      "repo-not-registered",
-      {
-        label: "Repository not registered",
-        message:
-          "Select Register repository on the Repositories screen, then select Update target again.",
-      },
-    ],
-    [
-      "no-supported-tool",
-      {
-        label: "No supported tool",
-        message:
-          "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
-      },
-    ],
-    [
-      "not-deployed",
-      {
-        label: "Nothing deployed here",
-        message:
-          "This target follows no release. Select Deploy skill on Skills to put one on it.",
-      },
-    ],
-    [
-      "lockfile-malformed",
-      {
-        label: "Deployment record not read",
-        message:
-          "Repair or delete apm.lock.yaml in the target, then select Update target again.",
-        detail:
-          "The file is present but does not parse, so the target's state is unknown.",
-      },
-    ],
-    [
-      "deployed-unreadable",
-      {
-        label: "Deployed copy not read",
-        message:
-          "Nothing was changed. Make the deployed copy readable, then select Update target again.",
-        detail: "Its permissions or its shape blocked the check.",
-      },
-    ],
-    [
-      "inventory-not-configured",
-      {
-        label: "No Harness connected",
-        message:
-          "Select Change Harness location in Settings, then select Update target again.",
-      },
-    ],
-    [
-      "inventory-unreadable",
-      {
-        label: "Inventory not read",
-        message:
-          "Select Re-read Skills on the Harness location screen, then select Update target again.",
-      },
-    ],
-    [
-      "no-published-tag",
-      {
-        label: "Not in any release",
-        message:
-          "Select Create a release on the Harness screen, then select Update target again.",
-        detail: "An update moves the target to a published tag.",
-      },
-    ],
-    [
-      "skill-not-in-release",
-      {
-        label: "Not in the latest release",
-        message:
-          "The latest release does not hold this skill. Select Create a release on the Harness screen, then deploy again.",
-        detail: "Nothing was changed, and the target keeps its own release.",
-      },
-    ],
-    [
-      "inventory-origin-unavailable",
-      {
-        label: "No GitHub origin",
-        message:
-          "Point the Harness clone's origin at its GitHub repository, then select Update target again.",
-        detail:
-          "An update takes the skill from a GitHub tag, over https or ssh.",
-      },
-    ],
-    [
-      "ref-unresolvable",
-      {
-        label: "Deployed version unknown",
-        message:
-          "Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, then select Update target again.",
-        detail: "The target's record names more than one, or names no release.",
-      },
-    ],
-    [
-      "preview-failed",
-      {
-        label: "Preview did not run",
-        message:
-          "Nothing was changed. Wait a moment, then select Update target again.",
-      },
-    ],
-    [
-      "destination-symlinked",
-      {
-        label: "Linked skill folder",
-        message:
-          "Nothing was written. Delete the linked skill folder in the target, then select Update target again.",
-        detail:
-          "This removes the link only. The folder it points at remains on disk.",
-      },
-    ],
-  ];
+  const cases = pinned<UpdatePreviewError>({
+    "repo-not-registered": {
+      label: "Repository not registered",
+      message:
+        "Select Register repository on the Repositories screen, then select Update target again.",
+    },
+    "no-supported-tool": {
+      label: "No supported tool",
+      message:
+        "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
+    },
+    "not-deployed": {
+      label: "Nothing deployed here",
+      message:
+        "This target follows no release. Select Deploy skill on Skills to put one on it.",
+    },
+    "lockfile-malformed": {
+      label: "Deployment record not read",
+      message:
+        "Repair or delete apm.lock.yaml in the target, then select Update target again.",
+      detail:
+        "The file is present but does not parse, so the target's state is unknown.",
+    },
+    "deployed-unreadable": {
+      label: "Deployed copy not read",
+      message:
+        "Nothing was changed. Make the deployed copy readable, then select Update target again.",
+      detail: "Its permissions or its shape blocked the check.",
+    },
+    "inventory-not-configured": {
+      label: "No Harness connected",
+      message:
+        "Select Change Harness location in Settings, then select Update target again.",
+    },
+    "inventory-unreadable": {
+      label: "Inventory not read",
+      message:
+        "Select Re-read Skills on the Harness location screen, then select Update target again.",
+    },
+    "no-published-tag": {
+      label: "Not in any release",
+      message:
+        "Select Create a release on the Harness screen, then select Update target again.",
+      detail: "An update moves the target to a published tag.",
+    },
+    "skill-not-in-release": {
+      label: "Not in the latest release",
+      message:
+        "The latest release does not hold this skill. Select Create a release on the Harness screen, then deploy again.",
+      detail: "Nothing was changed, and the target keeps its own release.",
+    },
+    "inventory-origin-unavailable": {
+      label: "No GitHub origin",
+      message:
+        "Point the Harness clone's origin at its GitHub repository, then select Update target again.",
+      detail: "An update takes the skill from a GitHub tag, over https or ssh.",
+    },
+    "ref-unresolvable": {
+      label: "Deployed version unknown",
+      message:
+        "Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, then select Update target again.",
+      detail: "The target's record names more than one, or names no release.",
+    },
+    "preview-failed": {
+      label: "Preview did not run",
+      message:
+        "Nothing was changed. Wait a moment, then select Update target again.",
+    },
+    "destination-symlinked": {
+      label: "Linked skill folder",
+      message:
+        "Nothing was written. Delete the linked skill folder in the target, then select Update target again.",
+      detail:
+        "This removes the link only. The folder it points at remains on disk.",
+    },
+  });
 
   it("names every control it points to as select {Control}", () => {
     for (const [code] of cases) {
@@ -623,10 +455,6 @@ describe("update preview notices", () => {
         code,
       ).toEqual([]);
     }
-  });
-
-  it("pins a case for every update preview code", () => {
-    expect(codesWithoutCase(NOTICE_CODES.updatePreview, cases)).toEqual([]);
   });
 
   it.each(cases)("states %s", (code, expected) => {
@@ -657,83 +485,52 @@ describe("update preview notices", () => {
 });
 
 describe("update notices", () => {
-  const cases: [string, DeployStateNotice][] = [
-    [
-      "status-out-of-date",
-      {
-        label: "Status out of date",
-        message:
-          "Nothing was changed. The target changed after the preview. Select Update target again.",
-      },
-    ],
-    [
-      "update-in-progress",
-      {
-        label: "Target busy",
-        message:
-          "An update is still running on this target. Wait for it to finish.",
-      },
-    ],
-    [
-      "operation-unfinished",
-      {
-        label: "Unfinished operation",
-        message:
-          "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then select Update target again.",
-      },
-    ],
-    [
-      "deployed-diverged-from-lock",
-      {
-        label: "Local changes in deployed files",
-        message:
-          "Nothing was changed. Select Update target again to review the local edits before updating.",
-        detail: "The edits never went through the Harness.",
-      },
-    ],
-    [
-      "deployed-unverifiable",
-      {
-        label: "Local edits unverifiable",
-        message:
-          "Nothing was changed. Select Update target again to review the unverified copies before updating.",
-        detail:
-          "These copies predate content tracking, so any change in them is invisible.",
-      },
-    ],
-    [
-      "manifest-not-recognised",
-      {
-        label: "Manifest not recognised",
-        message:
-          "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Update target again.",
-        detail: "Maestro edits that list only, and it found another shape.",
-      },
-    ],
-    [
-      "update-incomplete",
-      {
-        label: "Update incomplete",
-        message:
-          "The update is incomplete. Select Retry update to run the same release again.",
-        detail: "apm reported success, but some files are missing.",
-      },
-    ],
-    [
-      "update-failed",
-      {
-        label: "Update outcome unknown",
-        message:
-          "Nothing proved the update finished. Check the target on the Deploy-state screen, then select Update target again.",
-      },
-    ],
-  ];
-
-  it("pins a case for every update code the preview does not word", () => {
-    const runOnly = NOTICE_CODES.update.filter(
-      (code) => !NOTICE_CODES.updatePreview.includes(code),
-    );
-    expect(codesWithoutCase(runOnly, cases)).toEqual([]);
+  const cases = pinned<Exclude<UpdateRunError, UpdatePreviewError>>({
+    "status-out-of-date": {
+      label: "Status out of date",
+      message:
+        "Nothing was changed. The target changed after the preview. Select Update target again.",
+    },
+    "update-in-progress": {
+      label: "Target busy",
+      message:
+        "An update is still running on this target. Wait for it to finish.",
+    },
+    "operation-unfinished": {
+      label: "Unfinished operation",
+      message:
+        "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then select Update target again.",
+    },
+    "deployed-diverged-from-lock": {
+      label: "Local changes in deployed files",
+      message:
+        "Nothing was changed. Select Update target again to review the local edits before updating.",
+      detail: "The edits never went through the Harness.",
+    },
+    "deployed-unverifiable": {
+      label: "Local edits unverifiable",
+      message:
+        "Nothing was changed. Select Update target again to review the unverified copies before updating.",
+      detail:
+        "These copies predate content tracking, so any change in them is invisible.",
+    },
+    "manifest-not-recognised": {
+      label: "Manifest not recognised",
+      message:
+        "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Update target again.",
+      detail: "Maestro edits that list only, and it found another shape.",
+    },
+    "update-incomplete": {
+      label: "Update incomplete",
+      message:
+        "The update is incomplete. Select Retry update to run the same release again.",
+      detail: "apm reported success, but some files are missing.",
+    },
+    "update-failed": {
+      label: "Update outcome unknown",
+      message:
+        "Nothing proved the update finished. Check the target on the Deploy-state screen, then select Update target again.",
+    },
   });
 
   it("names every control it points to as select {Control}", () => {
@@ -854,96 +651,66 @@ describe("notices that send the reader to the target", () => {
 
 describe("retry notices", () => {
   const deploy = { kind: "deploy", release: "v0.3.4" } as const;
-  const cases: [string, DeployStateNotice][] = [
-    [
-      "repo-not-registered",
-      {
-        label: "Repository not registered",
-        message:
-          "Nothing was changed. Select Register repository on the Repositories screen, then select Retry deploy again.",
-      },
-    ],
-    [
-      "nothing-to-retry",
-      {
-        label: "Change already finished",
-        message:
-          "Nothing was changed. The earlier change on this target already finished.",
-      },
-    ],
-    [
-      "retry-in-progress",
-      {
-        label: "Target busy",
-        message:
-          "Nothing was changed. Wait for the running change to finish, then select Retry deploy again.",
-      },
-    ],
-    [
-      "deployed-diverged-from-lock",
-      {
-        label: "Local changes in deployed files",
-        message:
-          "Nothing was changed. Undo the local edits in the deployed files, then select Retry deploy again.",
-        detail: "The edits never went through the Harness.",
-      },
-    ],
-    [
-      "deployed-unverifiable",
-      {
-        label: "Local edits unverifiable",
-        message:
-          "Nothing was changed. Delete the unverified copies in the target, then select Retry deploy again.",
-        detail:
-          "These copies predate content tracking, so any change in them is invisible.",
-      },
-    ],
-    [
-      "deployed-unreadable",
-      {
-        label: "Deployed copy not read",
-        message:
-          "Nothing was changed. Make the deployed copy readable, then select Retry deploy again.",
-        detail: "Its permissions or its shape blocked the check.",
-      },
-    ],
-    [
-      "lockfile-malformed",
-      {
-        label: "Deployment record not read",
-        message:
-          "Nothing was changed. Repair or delete apm.lock.yaml in the target, then select Retry deploy again.",
-        detail:
-          "The file is present but does not parse, so the target's state is unknown.",
-      },
-    ],
-    [
-      "manifest-not-recognised",
-      {
-        label: "Manifest not recognised",
-        message:
-          "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Retry deploy again.",
-        detail: "Maestro edits that list only, and it found another shape.",
-      },
-    ],
-    [
-      "retry-incomplete",
-      {
-        label: "Deploy still incomplete",
-        message:
-          "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
-        detail: "apm reported success, but some files are missing.",
-      },
-    ],
-    [
-      "retry-failed",
-      {
-        label: "Deploy outcome unknown",
-        message:
-          "Nothing proved the deploy finished. Select Retry deploy to run it again.",
-      },
-    ],
-  ];
+  const cases = pinned<RetryTargetOperationError>({
+    "repo-not-registered": {
+      label: "Repository not registered",
+      message:
+        "Nothing was changed. Select Register repository on the Repositories screen, then select Retry deploy again.",
+    },
+    "nothing-to-retry": {
+      label: "Change already finished",
+      message:
+        "Nothing was changed. The earlier change on this target already finished.",
+    },
+    "retry-in-progress": {
+      label: "Target busy",
+      message:
+        "Nothing was changed. Wait for the running change to finish, then select Retry deploy again.",
+    },
+    "deployed-diverged-from-lock": {
+      label: "Local changes in deployed files",
+      message:
+        "Nothing was changed. Undo the local edits in the deployed files, then select Retry deploy again.",
+      detail: "The edits never went through the Harness.",
+    },
+    "deployed-unverifiable": {
+      label: "Local edits unverifiable",
+      message:
+        "Nothing was changed. Delete the unverified copies in the target, then select Retry deploy again.",
+      detail:
+        "These copies predate content tracking, so any change in them is invisible.",
+    },
+    "deployed-unreadable": {
+      label: "Deployed copy not read",
+      message:
+        "Nothing was changed. Make the deployed copy readable, then select Retry deploy again.",
+      detail: "Its permissions or its shape blocked the check.",
+    },
+    "lockfile-malformed": {
+      label: "Deployment record not read",
+      message:
+        "Nothing was changed. Repair or delete apm.lock.yaml in the target, then select Retry deploy again.",
+      detail:
+        "The file is present but does not parse, so the target's state is unknown.",
+    },
+    "manifest-not-recognised": {
+      label: "Manifest not recognised",
+      message:
+        "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Retry deploy again.",
+      detail: "Maestro edits that list only, and it found another shape.",
+    },
+    "retry-incomplete": {
+      label: "Deploy still incomplete",
+      message:
+        "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
+      detail: "apm reported success, but some files are missing.",
+    },
+    "retry-failed": {
+      label: "Deploy outcome unknown",
+      message:
+        "Nothing proved the deploy finished. Select Retry deploy to run it again.",
+    },
+  });
 
   it("names every control it points to as select {Control}", () => {
     for (const [code] of cases) {
@@ -952,10 +719,6 @@ describe("retry notices", () => {
         code,
       ).toEqual([]);
     }
-  });
-
-  it("pins a case for every retry code", () => {
-    expect(codesWithoutCase(NOTICE_CODES.retry, cases)).toEqual([]);
   });
 
   it.each(cases)("states %s", (code, notice) => {

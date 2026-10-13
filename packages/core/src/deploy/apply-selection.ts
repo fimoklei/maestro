@@ -79,7 +79,7 @@ export class SelectionWriter {
   }
 }
 
-export async function applySelection(
+async function applySelection(
   deps: ApplySelectionDeps,
   write: SelectionWrite,
 ): Promise<SelectionResult> {

@@ -10,7 +10,7 @@ import { Tooltip } from "./tooltip";
 
 type Option = { value: string; label: string };
 
-export type OptionSection = { label: string; options: readonly Option[] } & (
+type OptionSection = { label: string; options: readonly Option[] } & (
   | { kind: "radio"; value: string; onChange: (value: string) => void }
   | {
       kind: "check";

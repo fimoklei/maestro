@@ -7,7 +7,7 @@ import {
   INTERFACE_THEME_LABELS,
   INTERFACE_THEME_SENTENCE,
   LOCATION,
-  SET_LOCATION_MESSAGES,
+  setLocationMessage,
   THEME,
 } from "./settings-copy";
 
@@ -26,10 +26,15 @@ describe("Harness location copy", () => {
   });
 
   it("never offers a URL in a refusal of the folder field", () => {
-    expect(SET_LOCATION_MESSAGES).toEqual({
-      missing: "Type the path to a local Harness clone.",
-      "not-an-inventory": "Choose a folder that holds a Harness.",
-    });
+    expect(setLocationMessage("missing")).toBe(
+      "Type the path to a local Harness clone.",
+    );
+    expect(setLocationMessage("not-an-inventory")).toBe(
+      "Choose a folder that holds a Harness.",
+    );
+    // Every other code keeps the connect gate's sentence.
+    expect(setLocationMessage("scaffoldable")).toBeUndefined();
+    expect(setLocationMessage(null)).toBeUndefined();
   });
 });
 

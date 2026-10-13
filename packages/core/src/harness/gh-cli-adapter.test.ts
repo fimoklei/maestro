@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GhCliAdapter, REVIEW_READ_LIMIT } from "./gh-cli-adapter";
+import { GhCliAdapter } from "./gh-cli-adapter";
+
+const REVIEW_READ_LIMIT = 100;
 
 // Payloads are real `gh --json` captures replayed through `run`; gh never runs.
 type RunCall = {
