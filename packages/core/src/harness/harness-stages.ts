@@ -27,7 +27,7 @@ const STAGE_ORDER = [
 
 type ProposalStatus = "not-yet-proposed" | "new-local-work";
 
-export type ReviewStatus =
+type ReviewStatus =
   | "draft"
   | "waiting-for-review"
   | "changes-requested"
