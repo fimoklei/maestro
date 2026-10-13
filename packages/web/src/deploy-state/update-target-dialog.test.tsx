@@ -1,5 +1,11 @@
 import type { UpdatePreview } from "@maestro/core";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { sentence } from "../test-utils";
@@ -68,6 +74,19 @@ describe("UpdateTargetDialog", () => {
     ).toBeTruthy();
   });
 
+  it("counts one skill in the singular, and keeps the sentence where nothing changes", () => {
+    show({ counts: { changed: 1, removed: 0, unchanged: 0 } });
+    expect(
+      screen.getByText("Updates 1 skill, removes 0, leaves 0 unchanged."),
+    ).toBeTruthy();
+    cleanup();
+
+    show({ counts: { changed: 0, removed: 0, unchanged: 5 } });
+    expect(
+      screen.getByText("Updates 0 skills, removes 0, leaves 5 unchanged."),
+    ).toBeTruthy();
+  });
+
   it("names the release the target moves to", () => {
     show();
 
@@ -78,7 +97,11 @@ describe("UpdateTargetDialog", () => {
   });
 
   it("renders the sections it has, in the fixed order", () => {
-    show({ addedByThisDeploy: [row("brief")] });
+    show({
+      addedByThisDeploy: [row("brief")],
+      localEdits: { discard: [{ name: "tdd", tool: null }], unverified: [] },
+      copyReceipt: "b".repeat(64),
+    });
 
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
@@ -86,6 +109,7 @@ describe("UpdateTargetDialog", () => {
       "Added by this deploy",
       "Changed",
       "Removed by this release",
+      "Local edits",
       "Unchanged (3)",
       "New in this release (1)",
     ]);

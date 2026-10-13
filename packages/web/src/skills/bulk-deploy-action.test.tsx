@@ -647,7 +647,7 @@ describe("BulkDeployAction", () => {
 
     // A Notice, never zeroed counts that would read as a clean success (#292).
     const notice = await screen.findByRole("alert");
-    expect(notice).toHaveTextContent(/did not run/i);
+    expect(notice).toHaveTextContent("Deploy to Global did not run");
     const dialog = screen.getByRole("dialog");
     expect(
       within(dialog)
