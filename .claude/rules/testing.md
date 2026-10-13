@@ -41,6 +41,7 @@ Run from the repo root.
 - `pnpm test:affected` is the coding loop: the tests of the three cheap lanes that the uncommitted work reaches, selected as the commit gate selects them. `pnpm test:loop` runs those three lanes whole; `pnpm test` runs all four.
 - One file, for TDD red/green: `./node_modules/.bin/vitest run <path-from-repo-root>`, without `--root` (it breaks the root config's project globs); `--reporter=verbose` prints per-test names.
 - `pnpm verify` is the gate: lint, typecheck and test in one summary. It reuses a passing run on an unchanged tree (ignored files do not count); `--force` reruns.
+- `pnpm verify` fails on an export only tests use (`knip --production --include exports,types`). Test through the real entry point, or remove the `export`.
 - A full run leaves its output in `.logs/`; read it there rather than re-running with a narrower filter.
 
 ## When to write which test
