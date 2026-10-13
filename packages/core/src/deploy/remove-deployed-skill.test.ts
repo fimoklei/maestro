@@ -48,7 +48,10 @@ const globalPreflightOk = (tools: RemoveToolCheck[]) => ({
 
 type Overrides = {
   registered?: boolean;
+  // Per repo path, for a batch whose targets answer differently.
+  isRegistered?: (path: string) => Promise<boolean>;
   lookup?: DeployedRefLookup;
+  lookupFor?: (target: DeployTarget) => DeployedRefLookup | undefined;
   removed?: boolean;
   locks?: InFlightLocks;
   canonicalPath?: (path: string) => Promise<string>;
@@ -98,11 +101,17 @@ function buildUseCase(overrides: Overrides = {}) {
     contentDigest: async () => null,
   };
   const useCase = new RemoveDeployedSkill({
-    registry: { isRegistered: async () => overrides.registered ?? true },
+    registry: {
+      isRegistered:
+        overrides.isRegistered ?? (async () => overrides.registered ?? true),
+    },
     deployedRef: {
-      resolve: async ({ name }) => {
+      resolve: async ({ target, name }) => {
         calls.lookups.push(name);
-        return overrides.lookup ?? { ok: true, ref: REF, version: VERSION };
+        return (
+          overrides.lookupFor?.(target) ??
+          overrides.lookup ?? { ok: true, ref: REF, version: VERSION }
+        );
       },
     },
     copyGuard: new LocalCopyGuard({ content: deployedContent }),
@@ -1348,5 +1357,244 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
       error: "deployed-unreadable",
     });
     expect(calls.removes).toEqual([]);
+  });
+});
+
+// Bulk runs through the same removal, so a change to what one target accepts
+// turns these red too (#364).
+describe("RemoveDeployedSkill removing one skill from many targets", () => {
+  const global: DeployTarget = { kind: "global" };
+  const repo = (path: string): DeployTarget => ({
+    kind: "repo",
+    repoPath: path,
+  });
+
+  // Each target carries its own preflight's receipt, as the dialog sends it.
+  async function confirmed(
+    useCase: RemoveDeployedSkill,
+    targets: DeployTarget[],
+  ) {
+    const entries: {
+      target: DeployTarget;
+      confirmedRemovalReceipt?: string;
+    }[] = [];
+    for (const target of targets) {
+      entries.push({
+        target,
+        confirmedRemovalReceipt: await receiptFor(useCase, {
+          type: "skill",
+          name: "tdd",
+          target,
+        }),
+      });
+    }
+    return entries;
+  }
+
+  it("removes the skill from every target in order and reports each one's version", async () => {
+    const { useCase, calls } = buildUseCase({
+      lookupFor: (target) =>
+        target.kind === "repo"
+          ? {
+              ok: true,
+              ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.9.0",
+              version: "v0.9.0",
+            }
+          : undefined,
+    });
+
+    const report = await useCase.executeBatch({
+      name: "tdd",
+      targets: await confirmed(useCase, [repo("/repo-a"), global]),
+    });
+
+    expect(report).toEqual({
+      name: "tdd",
+      removed: [
+        { target: repo("/repo-a"), version: "v0.9.0" },
+        { target: global, version: VERSION },
+      ],
+      refused: [],
+      failed: [],
+    });
+    expect(calls.removes.map((call) => call.target)).toEqual([
+      repo("/repo-a"),
+      global,
+    ]);
+  });
+
+  it("keeps going after a target whose removal is already running", async () => {
+    const locks = new InFlightLocks();
+    void locks.run("/repo-b", () => new Promise<void>(() => undefined));
+    const { useCase } = buildUseCase({ locks });
+
+    const report = await useCase.executeBatch({
+      name: "tdd",
+      targets: await confirmed(useCase, [
+        repo("/repo-a"),
+        repo("/repo-b"),
+        global,
+      ]),
+    });
+
+    expect(report.removed).toEqual([
+      { target: repo("/repo-a"), version: VERSION },
+      { target: global, version: VERSION },
+    ]);
+    expect(report.failed).toEqual([
+      { target: repo("/repo-b"), reason: "remove-in-progress" },
+    ]);
+  });
+
+  it("keeps going after a removal that throws mid-batch", async () => {
+    let broken = false;
+    const { useCase } = buildUseCase({
+      // Rejects outside the removal's typed-error handling (#421).
+      isRegistered: async (path) => {
+        if (broken && path === "/repo-b") {
+          throw new Error("ENOENT: filesystem read failed");
+        }
+        return true;
+      },
+    });
+    const targets = await confirmed(useCase, [
+      repo("/repo-a"),
+      repo("/repo-b"),
+      global,
+    ]);
+    broken = true;
+
+    const report = await useCase.executeBatch({ name: "tdd", targets });
+
+    expect(report.removed).toEqual([
+      { target: repo("/repo-a"), version: VERSION },
+      { target: global, version: VERSION },
+    ]);
+    expect(report.failed).toEqual([
+      { target: repo("/repo-b"), reason: "remove-failed" },
+    ]);
+  });
+
+  it("skips a target the caller marked refused instead of attempting it", async () => {
+    const { useCase, calls } = buildUseCase();
+
+    const report = await useCase.executeBatch({
+      name: "tdd",
+      targets: [
+        ...(await confirmed(useCase, [repo("/repo-a")])),
+        { target: repo("/repo-b"), refused: "repo-not-registered" },
+      ],
+    });
+
+    expect(calls.removes.map((call) => call.target)).toEqual([repo("/repo-a")]);
+    expect(report).toEqual({
+      name: "tdd",
+      removed: [{ target: repo("/repo-a"), version: VERSION }],
+      refused: [{ target: repo("/repo-b"), reason: "repo-not-registered" }],
+      failed: [],
+    });
+  });
+
+  it("keeps every left-alone target on its own row with its own reason", async () => {
+    const locks = new InFlightLocks();
+    void locks.run("/repo-b", () => new Promise<void>(() => undefined));
+    const { useCase } = buildUseCase({
+      locks,
+      lookupFor: (target) =>
+        target.kind === "repo" && target.repoPath === "/repo-a"
+          ? { ok: false, reason: "not-deployed" }
+          : undefined,
+    });
+
+    const report = await useCase.executeBatch({
+      name: "tdd",
+      targets: [
+        ...(await confirmed(useCase, [repo("/repo-a"), repo("/repo-b")])),
+        { target: repo("/repo-c"), refused: "preflight-failed" },
+      ],
+    });
+
+    expect(report.failed).toEqual([
+      { target: repo("/repo-a"), reason: "not-deployed" },
+      { target: repo("/repo-b"), reason: "remove-in-progress" },
+    ]);
+    expect(report.refused).toEqual([
+      { target: repo("/repo-c"), reason: "preflight-failed" },
+    ]);
+  });
+
+  it("carries what a failed target's disk probe found onto its own row", async () => {
+    // Only the probe says whether a copy is still on that target (#416).
+    const { useCase } = buildUseCase({
+      removed: false,
+      isRegistered: async (path) => path !== "/repo-b",
+    });
+
+    const report = await useCase.executeBatch({
+      name: "tdd",
+      targets: await confirmed(useCase, [repo("/repo-a"), repo("/repo-b")]),
+    });
+
+    expect(report.failed).toEqual([
+      {
+        target: repo("/repo-a"),
+        reason: "remove-failed",
+        outcome: { scope: "repo", state: "not-removed" },
+      },
+      // Omitted, never null: a failure that never reached apm has no outcome.
+      { target: repo("/repo-b"), reason: "repo-not-registered" },
+    ]);
+  });
+
+  it("reclaims only on the target whose own preflight token it carries", async () => {
+    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+    const preflight = await useCase.preflight(removeTddGlobally);
+    const [globalEntry, repoEntry] = await confirmed(useCase, [
+      global,
+      repo("/repo-a"),
+    ]);
+    if (!preflight.ok || !globalEntry || !repoEntry) {
+      throw new Error("preflight refused");
+    }
+
+    const report = await useCase.executeBatch({
+      name: "tdd",
+      targets: [
+        { ...globalEntry, confirmedReclaimToken: preflight.reclaim?.token },
+        repoEntry,
+      ],
+    });
+
+    expect(report.removed).toHaveLength(2);
+    expect(calls.cleanups).toEqual([
+      { target: global, name: "tdd", tools: ["claude"] },
+    ]);
+  });
+
+  it("removes no target whose receipt is missing or minted for another target", async () => {
+    const { useCase, calls } = buildUseCase();
+    const [, ownReceipt] = await confirmed(useCase, [
+      repo("/repo-a"),
+      repo("/repo-b"),
+    ]);
+    const receipt = ownReceipt?.confirmedRemovalReceipt;
+
+    const report = await useCase.executeBatch({
+      name: "tdd",
+      targets: [
+        { target: repo("/repo-a"), confirmedRemovalReceipt: receipt },
+        { target: repo("/repo-b"), confirmedRemovalReceipt: receipt },
+        { target: repo("/repo-c") },
+      ],
+    });
+
+    expect(report.failed).toEqual([
+      { target: repo("/repo-a"), reason: "cost-not-acknowledged" },
+      { target: repo("/repo-c"), reason: "cost-not-acknowledged" },
+    ]);
+    expect(report.removed).toEqual([
+      { target: repo("/repo-b"), version: VERSION },
+    ]);
+    expect(calls.removes.map((call) => call.target)).toEqual([repo("/repo-b")]);
   });
 });
