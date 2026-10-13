@@ -181,7 +181,39 @@ export type DeploySkillResult =
       copyReceipt?: string;
     };
 
-export type BatchDeployResult = { name: string; result: DeploySkillResult };
+type BatchDeployResult = { name: string; result: DeploySkillResult };
+
+type BulkAttentionRow = {
+  name: string;
+  error: DeploySkillError;
+  forceable: boolean;
+  // Minted by this row's own refusal; grants only what that refusal read (#952).
+  copyReceipt?: string;
+};
+type BulkFailure = {
+  error: DeploySkillError;
+  names: string[];
+  linkedPath?: string;
+};
+
+export type BulkDeployReport = {
+  target: DeployTarget;
+  deployed: { name: string; version: string }[];
+  attention: BulkAttentionRow[];
+  failed: BulkFailure[];
+};
+
+// Refusals the user acts on, and whether a force is the action. Every error
+// absent here is a genuine failure.
+const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
+  "deployed-diverged-from-lock": { forceable: true },
+  "deployed-unverifiable": { forceable: true },
+  "not-at-target-release": { forceable: false },
+  "target-pinned-per-skill": { forceable: false },
+  "deploy-in-progress": { forceable: false },
+  "manifest-not-recognised": { forceable: false },
+  "operation-unfinished": { forceable: false },
+};
 
 type SelectionError = Extract<SelectionResult, { ok: false }>["error"];
 
@@ -235,12 +267,56 @@ export class DeploySkill {
     return answer?.result ?? { ok: false, error: "deploy-failed" };
   }
 
-  // No consent: a bulk deploy never overwrites a copy with local edits (#292).
+  // No consent: a bulk deploy never overwrites a copy with local edits; force
+  // stays per-item, on the single deploy (#292).
   async executeBatch(input: {
     names: readonly string[];
     target: DeployTarget;
-  }): Promise<BatchDeployResult[]> {
-    return await this.run(input.names, input.target, undefined);
+  }): Promise<BulkDeployReport> {
+    let rows: BatchDeployResult[];
+    try {
+      rows = await this.run(input.names, input.target, undefined);
+    } catch {
+      rows = input.names.map((name) => ({
+        name,
+        result: { ok: false, error: "deploy-failed" },
+      }));
+    }
+
+    const deployed: BulkDeployReport["deployed"] = [];
+    const attention: BulkAttentionRow[] = [];
+    // Keyed by error and link, so identical failures collapse to one line.
+    const failures = new Map<string, BulkFailure>();
+    for (const { name, result } of rows) {
+      if (result.ok) {
+        deployed.push({ name, version: result.deployed.version });
+        continue;
+      }
+      const offer = ATTENTION[result.error];
+      if (offer) {
+        attention.push({
+          name,
+          error: result.error,
+          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+          forceable: offer.forceable,
+        });
+        continue;
+      }
+      const key = `${result.error}\0${result.linkedPath ?? ""}`;
+      const line = failures.get(key) ?? {
+        error: result.error,
+        names: [],
+        ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
+      };
+      line.names.push(name);
+      failures.set(key, line);
+    }
+    return {
+      target: input.target,
+      deployed,
+      attention,
+      failed: [...failures.values()],
+    };
   }
 
   // One answer per name, in the order given.
