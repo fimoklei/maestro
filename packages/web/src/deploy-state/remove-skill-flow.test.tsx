@@ -8,11 +8,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HttpError } from "../api/http";
 import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
-import { plainText } from "../ui/phrase";
 import { ToastHost } from "../ui/toast";
-import { removeNotice } from "./notice-copy";
 import { RemoveSkillFlow } from "./remove-skill-flow";
 
 // The flow as its callers mount it, with only `fetch` stubbed. Claims a row
@@ -84,8 +81,6 @@ const REFUSED = failedWith({ error: "repo-not-registered" }, 403);
 const CHECK_FAILED = failedWith({ error: "preflight-failed" }, 502);
 const REMOVE_FAILED = failedWith({ error: "remove-failed" }, 502);
 const MAY_LOSE: RemoveWarning = "cannot-verify-local-edits";
-
-const FAILURE = removeNotice(new HttpError(502, "unused", "remove-failed"));
 
 function renderFlow({
   target = REPO_TARGET,
@@ -358,7 +353,9 @@ describe("RemoveSkillFlow", () => {
       await fail();
 
       const label = screen.getByText("Removal outcome unknown");
-      const message = screen.getByText(plainText(FAILURE.message));
+      const message = screen.getByText(
+        "The copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
+      );
       expect(stepOf(label)).toBeGreaterThanOrEqual(0);
       expect(stepOf(label)).toBeLessThanOrEqual(stepOf(message));
     });
@@ -485,7 +482,9 @@ describe("RemoveSkillFlow", () => {
         remove: () => Promise.reject(new TypeError("network down")),
       });
 
-      await fail();
+      expect(await fail()).toHaveTextContent(
+        "Nothing confirmed the removal. Check the target on the Deploy-state screen to see whether the skill is still deployed.",
+      );
       expect(screen.queryAllByRole("listitem")).toEqual([]);
     });
   });
@@ -514,7 +513,10 @@ describe("RemoveSkillFlow", () => {
       expect(alert.className).toContain("amber");
       expect(alert.className).not.toContain("-red-");
       expect(alert).toHaveTextContent("⚠");
-      expect(alert).toHaveTextContent(/Removal not confirmed/);
+      expect(alert).toHaveTextContent(
+        "Removal not confirmed" +
+          "Nothing was removed. A copy changed after the check. Read the list again, then select Remove skill.",
+      );
     });
 
     it("carries the one confirm in its panel, and Cancel still leaves", async () => {
@@ -805,6 +807,9 @@ describe("RemoveSkillFlow", () => {
       expect(
         within(alert).getByText("Repository not registered"),
       ).not.toHaveAttribute("aria-hidden");
+      expect(alert).toHaveTextContent(
+        "Select Register repository on the Repositories screen, then remove again.",
+      );
     });
 
     it("lists no target and promises nothing, because nothing is lost", async () => {
