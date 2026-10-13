@@ -11,7 +11,6 @@ import {
   validateRepoPath,
 } from "../registry/repo-path";
 import type { CloneFailure } from "./classify-clone-failure";
-import { classifyCloneDestination } from "./clone-destination";
 import type { CloneRepositoryPort } from "./clone-repository";
 import { type ConnectInputError, classifyConnectInput } from "./connect-input";
 import { HARNESS_MANIFEST } from "./harness-layout";
@@ -116,11 +115,7 @@ export class ConnectInventory {
     destination: string,
     route: { url: string; ownerRepo: string },
   ): Promise<ConnectInventoryResult> {
-    const state = await classifyCloneDestination(destination, route.ownerRepo, {
-      fs: this.fs,
-      originUrl: this.originUrl,
-      probeHead: this.probeHead,
-    });
+    const state = await this.classifyDestination(destination, route.ownerRepo);
     if (state === "occupied") {
       return { ok: false, error: "destination-occupied" };
     }
@@ -137,6 +132,43 @@ export class ConnectInventory {
     }
     // A clone that fails to connect stays on disk: never delete a repo (#498).
     return this.connectDirectory(destination, "joined");
+  }
+
+  // What already sits where the clone would land. Maestro never renames,
+  // suffixes or deletes to make room: it reuses, refuses, or reports (#555).
+  private async classifyDestination(
+    destination: string,
+    ownerRepo: string,
+  ): Promise<"free" | "same-origin" | "partial-clone" | "occupied"> {
+    if (!(await this.fs.exists(destination))) {
+      return "free";
+    }
+    // Entry, not target: cloning through a symlink would write outside the parent.
+    if (!(await this.fs.isDirectoryEntry(destination))) {
+      return "occupied";
+    }
+
+    if (!(await this.fs.exists(join(destination, ".git")))) {
+      // Only a knowably empty directory is free.
+      const entries = await this.fs
+        .listRawEntries(destination)
+        .catch(() => null);
+      return entries?.length === 0 ? "free" : "occupied";
+    }
+
+    // Only partial-clone recovers by deleting the folder, so unknown is occupied.
+    const head = await this.probeHead(destination);
+    if (head === "unknown") {
+      return "occupied";
+    }
+
+    // A commitless repository with another origin is not this clone's leftover.
+    const origin = await this.originUrl(destination);
+    const parsed = origin === null ? null : parseGitOrigin(origin);
+    if (parsed?.ownerRepo.toLowerCase() !== ownerRepo.toLowerCase()) {
+      return "occupied";
+    }
+    return head === "commit" ? "same-origin" : "partial-clone";
   }
 
   // Untrusted input: refuse lexically outside home before touching disk,
