@@ -2,10 +2,6 @@
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { SelectionWriter } from "./deploy/apply-selection";
 export {
-  type BulkDeployReport,
-  BulkDeploySkills,
-} from "./deploy/bulk-deploy-skills";
-export {
   BulkRemoveDeployedSkill,
   type BulkRemoveReport,
   type BulkRemoveTarget,
@@ -13,6 +9,7 @@ export {
 export {
   // Exported for the integration lane's apm fake.
   type ApmDriverPort,
+  type BulkDeployReport,
   type DeployedContentState,
   DeploySkill,
   type DeploySkillError,

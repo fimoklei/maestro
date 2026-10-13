@@ -92,6 +92,30 @@ describe("Harness release", () => {
     expect(within(dialog).getByText(/broken/)).toBeInTheDocument();
   });
 
+  it("states a plan GitHub gave no answer for in the dialog", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: { error: "no-answer" }, status: 409 },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      await within(dialog).findByText("GitHub did not respond"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Select Re-read Harness, then select Create a release again.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("keeps Release out of reach while a refresh is still moving the refs", async () => {
     // A refresh rewrites the very refs a plan reads. Planning across one can
     // price a release from a revision that no longer stands (#519).
