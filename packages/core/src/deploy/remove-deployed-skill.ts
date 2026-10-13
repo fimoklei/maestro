@@ -196,6 +196,34 @@ type RemovePreflightResult =
     }
   | { ok: false; error: RemovePreflightError };
 
+// Each token and receipt belongs to this target's own preflight: one target's
+// confirmation never licenses another's removal (#390, #458).
+export type BulkRemoveTarget = {
+  target: DeployTarget;
+  confirmedReclaimToken?: string;
+  confirmedRemovalReceipt?: string;
+  refused?: RemovePreflightError;
+};
+
+type BulkRemovedRow = { target: DeployTarget; version: string };
+type BulkRemoveRefusedRow = {
+  target: DeployTarget;
+  reason: RemovePreflightError;
+};
+type BulkRemoveFailedRow = {
+  target: DeployTarget;
+  reason: RemoveDeployedSkillError;
+  outcome?: RemoveOutcome;
+};
+
+// One row per target: identical reasons are never collapsed.
+export type BulkRemoveReport = {
+  name: string;
+  removed: BulkRemovedRow[];
+  refused: BulkRemoveRefusedRow[];
+  failed: BulkRemoveFailedRow[];
+};
+
 export class RemoveDeployedSkill {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
@@ -387,6 +415,55 @@ export class RemoveDeployedSkill {
       this.remove(input, scope, lockKey),
     );
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
+  }
+
+  // Each target runs the single removal unchanged. Sequential on purpose: the
+  // run must not contend with its own target lock.
+  async executeBatch(input: {
+    name: string;
+    targets: readonly BulkRemoveTarget[];
+  }): Promise<BulkRemoveReport> {
+    const report: BulkRemoveReport = {
+      name: input.name,
+      removed: [],
+      refused: [],
+      failed: [],
+    };
+
+    for (const entry of input.targets) {
+      if (entry.refused !== undefined) {
+        report.refused.push({ target: entry.target, reason: entry.refused });
+        continue;
+      }
+
+      const result = await this.execute({
+        type: "skill",
+        name: input.name,
+        target: entry.target,
+        confirmedReclaimToken: entry.confirmedReclaimToken,
+        confirmedRemovalReceipt: entry.confirmedRemovalReceipt,
+      }).catch(
+        (): RemoveDeployedSkillResult => ({
+          ok: false,
+          error: "remove-failed",
+        }),
+      );
+
+      if (result.ok) {
+        report.removed.push({
+          target: entry.target,
+          version: result.removed.version,
+        });
+      } else {
+        report.failed.push({
+          target: entry.target,
+          reason: result.error,
+          ...(result.outcome ? { outcome: result.outcome } : {}),
+        });
+      }
+    }
+
+    return report;
   }
 
   private async resolveScope(target: DeployTarget): Promise<ResolvedScope> {

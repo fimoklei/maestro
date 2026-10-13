@@ -154,6 +154,29 @@ describe("RemoveDeployedSkill on a target following one release", () => {
     expect(world.calls).toEqual([]);
   });
 
+  it("narrows the selection when the removal runs as part of a batch", async () => {
+    const { world, remove } = buildUseCase();
+    world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
+    const preflight = await remove.preflight({
+      type: "skill",
+      name: "caveman",
+      target,
+    });
+
+    const report = await remove.executeBatch({
+      name: "caveman",
+      targets: [
+        {
+          target,
+          confirmedRemovalReceipt: preflight.ok ? preflight.receipt : undefined,
+        },
+      ],
+    });
+
+    expect(report.removed).toEqual([{ target, version: "v0.6.0" }]);
+    expect(world.files.get("/target/apm.yml")).not.toContain("caveman");
+  });
+
   it("refuses a skill the target's own record does not hold", async () => {
     const { world, remove } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["prototype"] });

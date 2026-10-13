@@ -108,7 +108,7 @@ describe("removing a deployed skill from a row", () => {
       await screen.findByRole("button", { name: /removing/i }),
     ).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("alert")).toHaveTextContent(
-      /The removal ran but proved nothing/,
+      "Removal outcome unknown",
     );
     expect(
       screen.getAllByRole("button", { name: "Close" }).at(-1),

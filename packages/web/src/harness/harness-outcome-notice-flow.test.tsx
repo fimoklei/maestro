@@ -239,6 +239,11 @@ describe("Harness outcome notices", () => {
     renderHarness();
 
     expect(await screen.findByText("Status out of date")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Maestro could not reach GitHub, so these rows are from the last read.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^close /i })).toBeNull();
   });
 });
