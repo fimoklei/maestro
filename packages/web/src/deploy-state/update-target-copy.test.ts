@@ -3,7 +3,9 @@ import { machineValues } from "../test-utils";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import {
+  ADDED_BY_THIS_DEPLOY,
   BECOMES_EMPTY,
+  CHANGED,
   CONSENT_NOT_GIVEN,
   consentRowName,
   countingSentence,
@@ -11,16 +13,19 @@ import {
   foldedHeading,
   KEEP_WORK_BY_IMPORTING,
   LOADING_PREVIEW,
+  LOCAL_EDITS,
   localEditsSentence,
+  NEW_IN_THIS_RELEASE,
   NO_CONTENT_CHANGES,
   NO_GITHUB_ORIGIN,
   NOT_ADDED,
   OVERWRITE_UNVERIFIED,
   outcomeDetail,
   outcomeHeading,
+  REMOVED_BY_THIS_RELEASE,
   RETRY_UPDATE,
   releaseMoveLine,
-  SECTION_HEADINGS,
+  UNCHANGED,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
   unverifiedSentence,
@@ -70,7 +75,14 @@ describe("Update target copy", () => {
   });
 
   it("heads the six sections in one fixed order", () => {
-    expect(SECTION_HEADINGS).toStrictEqual([
+    expect([
+      ADDED_BY_THIS_DEPLOY,
+      CHANGED,
+      REMOVED_BY_THIS_RELEASE,
+      LOCAL_EDITS,
+      UNCHANGED,
+      NEW_IN_THIS_RELEASE,
+    ]).toStrictEqual([
       "Added by this deploy",
       "Changed",
       "Removed by this release",

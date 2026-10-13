@@ -1,12 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import {
-  CLEAR_SELECTION,
-  hiddenByFilterLine,
-  SelectionBar,
-  selectedCount,
-} from "./selection-bar";
+import { SelectionBar } from "./selection-bar";
 
 describe("SelectionBar", () => {
   it("is named by its count and carries the actions on the selection", () => {
@@ -44,17 +39,8 @@ describe("SelectionBar", () => {
     );
 
     await userEvent.click(
-      screen.getByRole("button", { name: CLEAR_SELECTION }),
+      screen.getByRole("button", { name: "Clear selection" }),
     );
     expect(onClear).toHaveBeenCalledOnce();
-  });
-});
-
-// Approved words, as exact strings.
-describe("SelectionBar copy", () => {
-  it("counts the selection and what the filter hides", () => {
-    expect(selectedCount(3)).toBe("3 selected");
-    expect(hiddenByFilterLine(1)).toBe("· 1 hidden by the filter");
-    expect(CLEAR_SELECTION).toBe("Clear selection");
   });
 });

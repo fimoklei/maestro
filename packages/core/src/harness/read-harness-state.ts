@@ -156,7 +156,7 @@ export interface HarnessFreshnessPort {
 }
 
 // `unknown`: nothing to compare against; an uncheckable check is never a verdict.
-export type HarnessReleaseState =
+type HarnessReleaseState =
   | "released"
   | "pending-release"
   | "never-released"

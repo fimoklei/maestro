@@ -19,7 +19,7 @@ import {
 
 // A behind target's reason; this tool's own release can already be the latest
 // when another tool on the one global target is behind (#951).
-export function behindReason(head: ReleaseHead): Copy {
+function behindReason(head: ReleaseHead): Copy {
   if (head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
   const latest = machine(head.latestRelease);
   if (head.latestRelease === head.release) {

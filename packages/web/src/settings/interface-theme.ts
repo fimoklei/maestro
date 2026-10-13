@@ -4,7 +4,7 @@ type InterfaceTheme = "system" | "light" | "dark";
 export type Theme = "light" | "dark";
 
 /** The localStorage key; index.html's inline script reads the same one. */
-export const INTERFACE_THEME_KEY = "maestro.interface-theme";
+const INTERFACE_THEME_KEY = "maestro.interface-theme";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
@@ -13,10 +13,7 @@ export function parseInterfaceTheme(stored: string | null): InterfaceTheme {
   return stored === "light" || stored === "dark" ? stored : "system";
 }
 
-export function resolveTheme(
-  stored: string | null,
-  prefersDark: boolean,
-): Theme {
+function resolveTheme(stored: string | null, prefersDark: boolean): Theme {
   const choice = parseInterfaceTheme(stored);
   if (choice !== "system") return choice;
   return prefersDark ? "dark" : "light";

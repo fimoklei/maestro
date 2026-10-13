@@ -31,7 +31,7 @@ export const releaseMoveLine = (from: string, to: string): Phrase =>
   phrase`release ${machine(from)} → ${machine(to)}`;
 
 // The fixed order the dialog renders; Unchanged and New in this release are folded.
-export const SECTION_HEADINGS = [
+const SECTION_HEADINGS = [
   "Added by this deploy",
   "Changed",
   "Removed by this release",

@@ -24,9 +24,7 @@ export const FOLDER_HINT = "Must be a local Harness clone.";
 
 // The dialog takes a folder only, so its refusals never offer a URL: these
 // replace the connect gate's sentences for the same codes.
-export const SET_LOCATION_MESSAGES: Partial<
-  Record<ConnectInventoryError, string>
-> = {
+const SET_LOCATION_MESSAGES: Partial<Record<ConnectInventoryError, string>> = {
   missing: "Type the path to a local Harness clone.",
   "not-an-inventory": "Choose a folder that holds a Harness.",
 };

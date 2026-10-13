@@ -28,7 +28,7 @@ const OWNER_REPO = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 // The lockfile lives in the user's repo and alone decides which package apm
 // removes, so every field is checked against the shape our own deploy writes:
 // an args array stops injection, only this stops substitution.
-export function refForDeployedSkill(
+function refForDeployedSkill(
   entries: readonly LockfileEntry[],
   name: string,
 ): DeployedRefLookup {

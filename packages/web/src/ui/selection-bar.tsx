@@ -3,9 +3,9 @@ import { type ReactNode, useId } from "react";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 
-export const CLEAR_SELECTION = "Clear selection";
-export const selectedCount = (count: number) => `${count} selected`;
-export const hiddenByFilterLine = (hidden: number) =>
+const CLEAR_SELECTION = "Clear selection";
+const selectedCount = (count: number) => `${count} selected`;
+const hiddenByFilterLine = (hidden: number) =>
   `· ${hidden} hidden by the filter`;
 
 export function SelectionBar({

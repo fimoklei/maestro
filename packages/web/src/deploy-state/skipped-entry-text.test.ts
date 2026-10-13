@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { machineValues } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
-  skippedEntryKey,
   skippedEntryReason,
   skippedEntryText,
   skippedNeedsAttention,
@@ -92,14 +91,6 @@ describe("skippedEntryText", () => {
     expect(
       plainText(skippedEntryText({ reason: "unreadable", virtualPath: null })),
     ).toBe("One entry in the deployment record could not be read.");
-  });
-});
-
-describe("skippedEntryKey", () => {
-  it("keeps two unnamed entries apart", () => {
-    const unnamed = { reason: "unreadable", virtualPath: null } as const;
-
-    expect(skippedEntryKey(unnamed, 0)).not.toBe(skippedEntryKey(unnamed, 1));
   });
 });
 

@@ -1,8 +1,11 @@
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app";
-import { INTERFACE_THEME_KEY } from "./settings/interface-theme";
-import { jsonResponse, renderWithQuery } from "./test-utils";
+import {
+  INTERFACE_THEME_STORAGE_KEY,
+  jsonResponse,
+  renderWithQuery,
+} from "./test-utils";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -73,7 +76,7 @@ describe("App", () => {
 
   it("keeps a pinned theme when the system theme changes", async () => {
     stubEmptyReads();
-    localStorage.setItem(INTERFACE_THEME_KEY, "light");
+    localStorage.setItem(INTERFACE_THEME_STORAGE_KEY, "light");
     const flip = systemTheme(false);
     document.documentElement.setAttribute("data-theme", "light");
     renderApp();

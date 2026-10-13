@@ -23,7 +23,7 @@ const WIDTH = {
   640: "max-w-[640px]",
 } as const;
 
-export type DialogAction = {
+type DialogAction = {
   label: string;
   /** Picks the busy label from `busy-copy`. */
   verb: ActionKey;

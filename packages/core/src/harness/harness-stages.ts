@@ -27,7 +27,7 @@ const STAGE_ORDER = [
 
 type ProposalStatus = "not-yet-proposed" | "new-local-work";
 
-export type ReviewStatus =
+type ReviewStatus =
   | "draft"
   | "waiting-for-review"
   | "changes-requested"
@@ -58,7 +58,7 @@ export type ReviewRequestLink = {
 };
 
 // `number` is null for a prepared branch nobody opened a request for.
-export type ProposalComparison =
+type ProposalComparison =
   | { kind: "proposal"; number: number | null }
   | { kind: "default-branch" };
 

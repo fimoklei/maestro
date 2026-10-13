@@ -124,9 +124,6 @@ const PLAIN_MACHINE: Record<string, Record<string, string>> = {
   "deploy-state/selected-skills.tsx": {
     "`${primitive.version} → ${latest}`": "sub-list value, set in mono",
   },
-  "deploy-state/skipped-entry-text.ts": {
-    "`${entry.reason}:${entry.virtualPath ?? index}`": "key",
-  },
   "deploy-state/target-rows.ts": {
     "`repo:${repoPath}`": "key",
   },

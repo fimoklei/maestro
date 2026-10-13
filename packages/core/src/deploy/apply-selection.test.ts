@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ConfigStore } from "../registry/config-store";
-import { applySelection } from "./apply-selection";
+import { type SelectionWrite, SelectionWriter } from "./apply-selection";
 import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import { copyPaths } from "./selection-writer-fake";
 import { TargetOperationStore } from "./target-operation";
@@ -130,7 +130,7 @@ function world() {
   };
 }
 
-const write = (over: Partial<Parameters<typeof applySelection>[1]> = {}) => ({
+const write = (over: Partial<SelectionWrite> = {}) => ({
   target,
   key: "/repo",
   kind: "deploy" as const,
@@ -141,8 +141,10 @@ const write = (over: Partial<Parameters<typeof applySelection>[1]> = {}) => ({
   ...over,
 });
 
-describe("applySelection", () => {
+describe("SelectionWriter.apply", () => {
   let stage: ReturnType<typeof world>;
+  const apply = (selection: SelectionWrite) =>
+    new SelectionWriter(stage.deps).apply(selection);
 
   beforeEach(() => {
     stage = world();
@@ -154,7 +156,7 @@ describe("applySelection", () => {
   });
 
   it("writes the exact selection to the manifest and installs the root ref with it", async () => {
-    const result = await applySelection(stage.deps, write());
+    const result = await apply(write());
 
     expect(result).toEqual({ ok: true });
     expect(stage.calls).toEqual([
@@ -171,8 +173,7 @@ describe("applySelection", () => {
     stage.files.set("/repo/apm.yml", manifest(["caveman", "prototype"]));
     stage.files.set("/repo/.claude/skills/caveman/SKILL.md", "content");
 
-    await applySelection(
-      stage.deps,
+    await apply(
       write({
         kind: "remove",
         previous: ["caveman", "prototype"],
@@ -191,10 +192,7 @@ describe("applySelection", () => {
     stage.files.delete("/repo/apm.lock.yaml");
     stage.files.delete("/repo/.claude/skills/prototype/SKILL.md");
 
-    const result = await applySelection(
-      stage.deps,
-      write({ previous: [], desired: ["review"] }),
-    );
+    const result = await apply(write({ previous: [], desired: ["review"] }));
 
     expect(result).toEqual({ ok: true });
     expect(stage.calls).toEqual([
@@ -212,7 +210,7 @@ describe("applySelection", () => {
       `dependencies:\n  apm:\n    - github.com/${HARNESS}#v0.6.0\n`,
     );
 
-    const result = await applySelection(stage.deps, write());
+    const result = await apply(write());
 
     expect(result).toEqual({ ok: false, error: "manifest-not-recognised" });
     expect(stage.calls).toEqual([]);
@@ -220,8 +218,7 @@ describe("applySelection", () => {
   });
 
   it("removes the last skill with the named uninstall of the Harness dependency", async () => {
-    const result = await applySelection(
-      stage.deps,
+    const result = await apply(
       write({ kind: "remove", previous: ["prototype"], desired: [] }),
     );
 
@@ -244,7 +241,7 @@ describe("applySelection", () => {
       },
     };
 
-    await applySelection({ ...stage.deps, apm }, write());
+    await new SelectionWriter({ ...stage.deps, apm }).apply(write());
 
     expect(recorded).toMatchObject({
       kind: "deploy",
@@ -255,14 +252,14 @@ describe("applySelection", () => {
   });
 
   it("clears the operation once disk, manifest and record agree with it", async () => {
-    await applySelection(stage.deps, write());
+    await apply(write());
     expect(await stage.operations.read("/repo")).toBeNull();
   });
 
   it("keeps the operation and reports incomplete when a skill did not land", async () => {
     stage.landsOnly(["prototype"]);
 
-    const result = await applySelection(stage.deps, write());
+    const result = await apply(write());
 
     expect(result).toEqual({ ok: false, error: "apply-incomplete" });
     expect(await stage.operations.read("/repo")).toMatchObject({
@@ -273,10 +270,7 @@ describe("applySelection", () => {
   it("keeps the operation when one targeted tool lacks a skill's copy", async () => {
     stage.skipsCopy("claude", "review");
 
-    const result = await applySelection(
-      stage.deps,
-      write({ tools: ["claude", "codex"] }),
-    );
+    const result = await apply(write({ tools: ["claude", "codex"] }));
 
     expect(result).toEqual({ ok: false, error: "apply-incomplete" });
     expect(await stage.operations.read("/repo")).toMatchObject({
@@ -287,16 +281,13 @@ describe("applySelection", () => {
   it("counts every tool as targeted when the write names none", async () => {
     stage.skipsCopy("codex", "review");
 
-    const result = await applySelection(stage.deps, write());
+    const result = await apply(write());
 
     expect(result).toEqual({ ok: false, error: "apply-incomplete" });
   });
 
   it("does not wait for a copy in a tool the write did not target", async () => {
-    const result = await applySelection(
-      stage.deps,
-      write({ tools: ["codex"] }),
-    );
+    const result = await apply(write({ tools: ["codex"] }));
 
     expect(result).toEqual({ ok: true });
   });
@@ -304,7 +295,7 @@ describe("applySelection", () => {
   it("keeps the operation when the record shows the tag but not the files", async () => {
     stage.landsOnly([]);
 
-    const result = await applySelection(stage.deps, write());
+    const result = await apply(write());
 
     expect(result).toEqual({ ok: false, error: "apply-incomplete" });
   });
@@ -313,8 +304,7 @@ describe("applySelection", () => {
     stage.files.set("/repo/.claude/skills/caveman/SKILL.md", "edited");
     stage.landsOnly(["prototype", "caveman"]);
 
-    const result = await applySelection(
-      stage.deps,
+    const result = await apply(
       write({
         kind: "remove",
         previous: ["caveman", "prototype"],
@@ -334,7 +324,9 @@ describe("applySelection", () => {
       }),
     };
 
-    const result = await applySelection({ ...stage.deps, apm }, write());
+    const result = await new SelectionWriter({ ...stage.deps, apm }).apply(
+      write(),
+    );
 
     expect(result).toEqual({ ok: false, error: "apply-failed" });
     expect(await stage.operations.read("/repo")).toMatchObject({
@@ -351,7 +343,9 @@ describe("applySelection", () => {
       }),
     };
 
-    const result = await applySelection({ ...stage.deps, apm }, write());
+    const result = await new SelectionWriter({ ...stage.deps, apm }).apply(
+      write(),
+    );
 
     expect(result).toEqual({ ok: false, error: "destination-symlinked" });
   });

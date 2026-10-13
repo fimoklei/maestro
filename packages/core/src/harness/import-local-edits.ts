@@ -41,7 +41,7 @@ export type LocalEditsError =
   | "import-in-progress";
 
 // Home-relative, never absolute: the refusal's sentence names them.
-export type DifferingFolders = { claude: string; codex: string };
+type DifferingFolders = { claude: string; codex: string };
 
 export type LocalEditsSkill = {
   name: string;

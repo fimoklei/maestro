@@ -1,8 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { INTERFACE_THEME_STORAGE_KEY } from "../test-utils";
 import { AppearancePage } from "./appearance-page";
-import { INTERFACE_THEME_KEY } from "./interface-theme";
 
 // The system preference, fixed per test.
 function prefersDark(dark: boolean) {
@@ -48,7 +48,7 @@ describe("AppearancePage", () => {
   });
 
   it("shows the stored choice", () => {
-    localStorage.setItem(INTERFACE_THEME_KEY, "dark");
+    localStorage.setItem(INTERFACE_THEME_STORAGE_KEY, "dark");
     render(<AppearancePage />);
 
     expect(
@@ -66,13 +66,13 @@ describe("AppearancePage", () => {
     await userEvent.click(await screen.findByRole("option", { name: "Light" }));
 
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
-    expect(localStorage.getItem(INTERFACE_THEME_KEY)).toBe("light");
+    expect(localStorage.getItem(INTERFACE_THEME_STORAGE_KEY)).toBe("light");
     expect(select).toHaveTextContent("Light");
   });
 
   it("returns to the system theme when System is chosen", async () => {
     prefersDark(true);
-    localStorage.setItem(INTERFACE_THEME_KEY, "light");
+    localStorage.setItem(INTERFACE_THEME_STORAGE_KEY, "light");
     document.documentElement.setAttribute("data-theme", "light");
     render(<AppearancePage />);
 
@@ -83,6 +83,6 @@ describe("AppearancePage", () => {
     );
 
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    expect(localStorage.getItem(INTERFACE_THEME_KEY)).toBe("system");
+    expect(localStorage.getItem(INTERFACE_THEME_STORAGE_KEY)).toBe("system");
   });
 });

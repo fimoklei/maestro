@@ -6,9 +6,7 @@ import { machine, type Phrase, phrase } from "../ui/phrase";
 import { harnessName } from "./target-name";
 
 // `undefined` is "not read yet"; `null` is a read that found no release (#841).
-export function harnessMetaLine(
-  release: string | null | undefined,
-): Phrase | null {
+function harnessMetaLine(release: string | null | undefined): Phrase | null {
   if (release === undefined) return null;
   return release === null
     ? phrase`${NOT_RELEASED_YET}`

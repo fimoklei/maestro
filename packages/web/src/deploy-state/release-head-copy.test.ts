@@ -4,7 +4,6 @@ import { machineValues, readNotice } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
   behindLine,
-  behindReason,
   changedFact,
   comparedFact,
   copyChipText,
@@ -29,46 +28,32 @@ const head = (over: Partial<ReleaseHead> = {}): ReleaseHead => ({
   ...over,
 });
 
-describe("behindReason", () => {
+describe("behindLine", () => {
+  const line = (over: Partial<ReleaseHead> = {}) =>
+    plainText(behindLine(head(over), "Update target"));
+  const select = "Select Update target to move this target to v0.3.4.";
+
   it("counts the changed skills in the newer release", () => {
-    expect(plainText(behindReason(head()))).toBe(
-      "2 of 5 deployed skills changed in v0.3.4.",
-    );
-    expect(plainText(behindReason(head({ changed: 0 })))).toBe(
-      "None of the 5 deployed skills changed in v0.3.4.",
+    expect(line()).toBe(`2 of 5 deployed skills changed in v0.3.4. ${select}`);
+    expect(line({ changed: 0 })).toBe(
+      `None of the 5 deployed skills changed in v0.3.4. ${select}`,
     );
   });
 
   it("says the changes could not be read rather than counting them", () => {
-    expect(plainText(behindReason(head({ changed: null })))).toBe(
-      "Changes in v0.3.4 could not be read.",
+    expect(line({ changed: null })).toBe(
+      `Changes in v0.3.4 could not be read. ${select}`,
     );
   });
 
   it("names another tool when this tool is already on the newer release", () => {
-    expect(plainText(behindReason(head({ release: "v0.3.4" })))).toBe(
-      "Another tool's skills are behind v0.3.4.",
-    );
-  });
-});
-
-describe("behindLine", () => {
-  it("names the update control after the reason", () => {
-    expect(plainText(behindLine(head(), "Update target"))).toBe(
-      "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+    expect(line({ release: "v0.3.4" })).toBe(
+      `Another tool's skills are behind v0.3.4. ${select}`,
     );
   });
 
   it("names no control while the latest release is unknown", () => {
-    expect(
-      plainText(behindLine(head({ latestRelease: null }), "Update target")),
-    ).toBe("Latest release could not be read.");
-  });
-});
-
-describe("behindReason without a latest release", () => {
-  it("says the latest release could not be read", () => {
-    expect(behindReason(head({ latestRelease: null }))).toBe(
+    expect(line({ latestRelease: null })).toBe(
       "Latest release could not be read.",
     );
   });
@@ -247,14 +232,13 @@ describe("unfinishedOperationNotice", () => {
 });
 
 describe("a release in these sentences", () => {
-  it("is set apart in the behind reason", () => {
-    expect(machineValues(behindReason(head()))).toEqual(["v0.3.4"]);
-    expect(machineValues(behindReason(head({ changed: null })))).toEqual([
-      "v0.3.4",
-    ]);
-    expect(machineValues(behindReason(head({ release: "v0.3.4" })))).toEqual([
-      "v0.3.4",
-    ]);
+  it("is set apart in the behind line", () => {
+    const values = (over: Partial<ReleaseHead>) =>
+      machineValues(behindLine(head(over), "Update target"));
+    const both = ["v0.3.4", "v0.3.4"];
+    expect(values({})).toEqual(both);
+    expect(values({ changed: null })).toEqual(both);
+    expect(values({ release: "v0.3.4" })).toEqual(both);
   });
 
   it("is set apart in the pinned tags line", () => {

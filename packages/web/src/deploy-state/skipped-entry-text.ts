@@ -26,10 +26,6 @@ export function skippedEntryText(entry: SkippedEntry): Copy {
     : reason;
 }
 
-export function skippedEntryKey(entry: SkippedEntry, index: number): string {
-  return `${entry.reason}:${entry.virtualPath ?? index}`;
-}
-
 export function skippedNeedsAttention(entry: SkippedEntry): boolean {
   return (
     entry.reason === "unmanageable-skill" || entry.reason === "invalid-package"
