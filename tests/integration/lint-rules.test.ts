@@ -133,6 +133,74 @@ describe("lint rules", () => {
     ).not.toContain(message);
   });
 
+  it("refuses a core test importing another folder's private file", () => {
+    const message = "Test through the module's interface";
+    const lintProbe = (source: string) =>
+      lint("packages/core/src/harness/probe.test.ts", source);
+
+    expect(
+      lintProbe(
+        'import { parseLockfile } from "../lockfile/lockfile";\nexport const p = parseLockfile;\n',
+      ),
+    ).toContain(message);
+    expect(
+      lintProbe(
+        'import type { GitOrigin } from "../deploy/git-origin";\nexport type G = GitOrigin;\n',
+      ),
+    ).toContain(message);
+    expect(
+      lintProbe(
+        'import D, { parseLockfile } from "../lockfile/lockfile";\nexport const p = [D, parseLockfile];\n',
+      ),
+    ).toContain(message);
+    expect(
+      lintProbe('export { parseLockfile } from "../lockfile/lockfile";\n'),
+    ).toContain(message);
+    expect(
+      lint(
+        "packages/core/src/harness/probe.ts",
+        'import { parseLockfile } from "../lockfile/lockfile";\nexport const p = parseLockfile;\n',
+      ),
+    ).not.toContain(message);
+  });
+
+  it("excepts a listed import only, not the rest of its test file", () => {
+    const message = "Test through the module's interface";
+    const lintProbe = (source: string) =>
+      lint("packages/core/src/registry/registry.test.ts", source);
+
+    expect(
+      lintProbe(
+        'import { resolveInventoryPath } from "../inventory/resolve-inventory-path";\nexport const r = resolveInventoryPath;\n',
+      ),
+    ).not.toContain(message);
+    expect(
+      lintProbe(
+        'import { parseLockfile } from "../lockfile/lockfile";\nexport const p = parseLockfile;\n',
+      ),
+    ).toContain(message);
+  });
+
+  it("allows a core test to import fakes, ports, shared helpers, its own folder and the entry point", () => {
+    const message = "Test through the module's interface";
+    const source = [
+      'import { InMemoryFileSystem } from "../registry/file-system.fake";',
+      'import type { ToolPresencePort } from "../tools/tool-presence-port";',
+      'import { InFlightLocks } from "../deploy/in-flight-locks";',
+      'import { ConfigStore } from "../registry/config-store";',
+      'import { parseLockfile } from "../index.js";',
+      'import { promoteSkill } from "./promote-skill";',
+      "export const all = [InMemoryFileSystem, InFlightLocks, ConfigStore, parseLockfile, promoteSkill];",
+      "export type T = ToolPresencePort;",
+      "",
+    ].join("\n");
+
+    const output = lint("packages/core/src/harness/probe.test.ts", source);
+
+    expect(output).not.toContain(message);
+    expect(output).not.toContain("core-test-imports-interfaces-only errored");
+  });
+
   it("refuses a file name that is not kebab-case", () => {
     expect(
       lint("packages/web/src/HarnessView.tsx", "export const a = 1;\n"),
