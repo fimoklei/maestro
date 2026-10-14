@@ -65,8 +65,13 @@ type SanitizedLogEntry = {
 type RunFn = (
   file: string,
   args: string[],
-  options?: { cwd?: string; env?: NodeJS.ProcessEnv },
+  options: { cwd?: string; env?: NodeJS.ProcessEnv; signal: AbortSignal },
 ) => Promise<{ stdout: string; stderr: string }>;
+
+// A hung apm ends as a plain failure: callers already map that to their own
+// message, never apm's output. Installs clone, so they get the longer bound.
+const READ_TIMEOUT_MS = 60_000;
+const WRITE_TIMEOUT_MS = 300_000;
 
 export class ApmCliDriver implements ApmDriverPort {
   private readonly log: (entry: SanitizedLogEntry) => void;
@@ -92,7 +97,11 @@ export class ApmCliDriver implements ApmDriverPort {
     const started = Date.now();
     let stdout: string;
     try {
-      ({ stdout } = await this.run("apm", ["view", ownerRepo, "versions"]));
+      ({ stdout } = await this.runApm(
+        ["view", ownerRepo, "versions"],
+        {},
+        READ_TIMEOUT_MS,
+      ));
     } catch (error) {
       // The raw error may carry a token in a git URL: only the reason leaves.
       return {
@@ -125,7 +134,11 @@ export class ApmCliDriver implements ApmDriverPort {
     );
     let output: string;
     try {
-      const { stdout, stderr } = await this.run("apm", args, { cwd });
+      const { stdout, stderr } = await this.runApm(
+        args,
+        { cwd },
+        WRITE_TIMEOUT_MS,
+      );
       output = `${stdout}\n${stderr}`;
     } catch (error) {
       // Classify from the rejected run's own output, not the exit code (#183).
@@ -162,7 +175,11 @@ export class ApmCliDriver implements ApmDriverPort {
       target.kind === "repo" ? basename(target.repoPath) : "global";
     let output: string;
     try {
-      const { stdout, stderr } = await this.run("apm", args, { cwd });
+      const { stdout, stderr } = await this.runApm(
+        args,
+        { cwd },
+        WRITE_TIMEOUT_MS,
+      );
       output = `${stdout}\n${stderr}`;
     } catch (error) {
       output = outputOf(error);
@@ -186,10 +203,11 @@ export class ApmCliDriver implements ApmDriverPort {
       target.kind === "repo" ? target.repoPath : await this.prepareGlobalCwd();
     const args = target.kind === "repo" ? ["outdated"] : ["outdated", "-g"];
     try {
-      const { stdout } = await this.run("apm", args, {
-        cwd,
-        env: { ...process.env, COLUMNS: WIDE_COLUMNS },
-      });
+      const { stdout } = await this.runApm(
+        args,
+        { cwd, env: { ...process.env, COLUMNS: WIDE_COLUMNS } },
+        READ_TIMEOUT_MS,
+      );
       this.log({
         operation: "check-outdated",
         target: target.kind === "repo" ? basename(target.repoPath) : "global",
@@ -200,6 +218,29 @@ export class ApmCliDriver implements ApmDriverPort {
     } catch {
       // Not logged: the raw apm error may carry a token.
       return { ok: false };
+    }
+  }
+
+  // The abort kills the real process; the race also ends a runner that ignores it.
+  private async runApm(
+    args: string[],
+    options: { cwd?: string; env?: NodeJS.ProcessEnv },
+    timeoutMs: number,
+  ): Promise<{ stdout: string; stderr: string }> {
+    const controller = new AbortController();
+    const timedOut = new Promise<never>((_, reject) => {
+      controller.signal.addEventListener("abort", () =>
+        reject(new Error("apm timed out")),
+      );
+    });
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await Promise.race([
+        this.run("apm", args, { ...options, signal: controller.signal }),
+        timedOut,
+      ]);
+    } finally {
+      clearTimeout(timer);
     }
   }
 
