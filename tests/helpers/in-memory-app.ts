@@ -23,18 +23,11 @@ const unreachable = <Port>(name: string): Port =>
     },
   ) as Port;
 
-const harnessGit = (): UseCasePorts["git"]["harness"] => {
-  const git = new InMemoryHarnessGit();
-  return Object.assign(git, {
-    readOrigin: async () => null,
-    readTags: async () => git.tags,
-    readSkillManifestsAtTag: async () => ({}),
-  });
+type Overrides = Partial<Omit<UseCasePorts, "git">> & {
+  git?: Partial<UseCasePorts["git"]>;
 };
 
-const inMemoryPorts = (
-  overrides: Partial<UseCasePorts> = {},
-): UseCasePorts => ({
+const inMemoryPorts = ({ git, ...overrides }: Overrides): UseCasePorts => ({
   env: { HOME: "/home", MAESTRO_HOME: "/maestro-home" },
   home: () => "/home",
   fs: new InMemoryFileSystem(),
@@ -43,7 +36,7 @@ const inMemoryPorts = (
   deployedCleanup: unreachable("deployedCleanup"),
   apm: unreachable("apm"),
   git: {
-    harness: harnessGit(),
+    harness: new InMemoryHarnessGit(),
     inventory: () => unreachable("inventoryGit"),
     clone: unreachable("clone"),
     scaffold: unreachable("scaffoldGit"),
@@ -52,6 +45,7 @@ const inMemoryPorts = (
     isRepositoryRoot: async () => false,
     probeHead: async () => "unknown",
     githubPage: async () => null,
+    ...git,
   },
   gh: unavailableHarnessReview(),
   folderChooser: null,
@@ -59,7 +53,7 @@ const inMemoryPorts = (
 });
 
 // Tests construct the origin/host guard disabled; production always enables it.
-export const inMemoryApp = (overrides: Partial<UseCasePorts> = {}) =>
+export const inMemoryApp = (overrides: Overrides = {}) =>
   createApp({
     ...composeUseCases(inMemoryPorts(overrides)),
     enforceOriginHost: false,

@@ -61,6 +61,15 @@ describe("DeployedRefAdapter.resolve", () => {
     });
   });
 
+  it("reports a target with no lockfile at all as not deployed", async () => {
+    const lookup = await new DeployedRefAdapter({
+      fs: new InMemoryFileSystem(),
+      location,
+    }).resolve({ target, name: "tdd" });
+
+    expect(lookup).toEqual({ ok: false, reason: "not-deployed" });
+  });
+
   it("ignores an entry of an unsupported package type", async () => {
     const hookEntry: LockfileEntry = {
       ...tddEntry,
