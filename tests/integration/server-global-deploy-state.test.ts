@@ -2,27 +2,9 @@ import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  GlobalDeployStateReader,
-  InFlightLocks,
-  InventoryReader,
-  NodeFileSystem,
-  ToolPresenceAdapter,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import { ToolPresenceAdapter } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { nodeApp } from "../helpers/node-app";
 
 // The server resolves the user-scope location itself, so the route takes
 // no query. Lockfile root and tool presence point at a sandbox HOME.
@@ -62,38 +44,12 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     await writeFile(join(home, ".codex", "config.toml"), "", "utf8");
   }
 
+  // Tool presence is read from the sandbox HOME, as installClaude/installCodex left it.
   function makeApp() {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const deployState = new GlobalDeployStateReader({
-      fs,
-      toolPresence: new ToolPresenceAdapter({ homeRoot: () => home }),
-    });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState,
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => apmRoot,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
+    return nodeApp(
+      { HOME: home, MAESTRO_HOME: home },
+      { toolPresence: new ToolPresenceAdapter({ homeRoot: () => home }) },
+    );
   }
 
   it("groups a single-tool install under only the detected tool", async () => {

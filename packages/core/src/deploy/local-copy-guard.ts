@@ -38,10 +38,13 @@ const BLOCKING: readonly Exclude<CopyVerdict, "clean">[] = [
 const CONSENTABLE = new Set<CopyVerdict>(["local-edits", "unverified"]);
 
 // `tool: null` is the whole copy, where the write does not split by tool.
+// `linkedPath` is the symlinked skill folder apm skips while reporting success
+// (#1215); each write decides whether it refuses over one.
 export type CopyFinding = {
   name: string;
   tool: SupportedTool | null;
   verdict: CopyVerdict;
+  linkedPath: string | null;
 };
 
 // A deploy's receipt never licenses a removal.
@@ -76,6 +79,17 @@ export function worstVerdict(
   );
 }
 
+// The first symlinked folder among `names`, which a write refuses over.
+export function linkedPathAmong(
+  check: LocalCopyCheck,
+  names: readonly string[],
+): string | undefined {
+  return (
+    check.findings.find((f) => f.linkedPath !== null && names.includes(f.name))
+      ?.linkedPath ?? undefined
+  );
+}
+
 // Shared with the Update preflight token, so the two never bind different facts.
 export function copyKeys(check: LocalCopyCheck): string[] {
   return check.findings
@@ -87,7 +101,10 @@ export function copyKeys(check: LocalCopyCheck): string[] {
 
 export class LocalCopyGuard {
   private readonly deps: {
-    content: Pick<DeployedContentPort, "classify" | "contentDigest">;
+    content: Pick<
+      DeployedContentPort,
+      "classify" | "contentDigest" | "linkedSkillPath"
+    >;
   };
   private readonly signer = new ConsentSigner();
 
@@ -113,7 +130,12 @@ export class LocalCopyGuard {
     for (const name of input.names) {
       for (const tool of scopes) {
         const verdict = await this.classify(input, name, tool);
-        findings.push({ name, tool, verdict });
+        const linkedPath = await this.deps.content.linkedSkillPath({
+          target: input.target,
+          name,
+          ...(tool === null ? {} : { tools: [tool] }),
+        });
+        findings.push({ name, tool, verdict, linkedPath });
         if (CONSENTABLE.has(verdict)) {
           bytes.push(
             `${name}:${tool ?? ""}:${await this.digest(input, name, tool)}`,

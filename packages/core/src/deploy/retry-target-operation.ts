@@ -55,7 +55,10 @@ export class RetryTargetOperation {
     selection: SelectionWriter;
     deployedCleanup: DeployedCleanupPort;
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
-    deployedContent: Pick<DeployedContentPort, "classify" | "contentDigest">;
+    deployedContent: Pick<
+      DeployedContentPort,
+      "classify" | "contentDigest" | "linkedSkillPath"
+    >;
     toolPresence: ToolPresencePort;
     canonicalPath: (path: string) => Promise<string>;
     locks: InFlightLocks;

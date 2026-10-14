@@ -5,32 +5,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  ConfigStore,
-  HarnessFreshnessStore,
-  HarnessGitAdapter,
-  InFlightLocks,
-  InventoryReader,
-  NodeFileSystem,
-  ReadHarnessState,
-  releasedSkillsFromGit,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import { HarnessGitAdapter } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
+import { nodeApp } from "../helpers/node-app";
 import { stubReview } from "../helpers/stub-review";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
 
 const run = promisify(execFile);
 
@@ -103,46 +82,11 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     await git(other, "push", "--tags", "origin", "HEAD:main");
   }
 
-  function makeApp(harnessPath: string | undefined) {
-    const fs = new NodeFileSystem();
-    const configPath = join(base, "config.json");
-    const registry = realRegistry(fs, configPath);
-    const store = new ConfigStore({ fs, configPath: () => configPath });
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => harnessPath,
-      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
-      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
-    });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      harness: new ReadHarnessState({
-        resolveRoot: async () =>
-          harnessPath === undefined
-            ? undefined
-            : await fs.realpath(harnessPath),
-        git: new HarnessGitAdapter(),
-        freshness: new HarnessFreshnessStore({ store }),
-        review: stubReview(),
-      }),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+  const makeApp = (harnessPath: string | undefined) =>
+    nodeApp(
+      { HOME: base, MAESTRO_HOME: base, MAESTRO_INVENTORY_PATH: harnessPath },
+      { gh: stubReview() },
+    );
 
   const readHarness = async (app: ReturnType<typeof makeApp>) => {
     const res = await app.request("/api/harness");

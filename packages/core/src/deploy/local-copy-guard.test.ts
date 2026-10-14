@@ -1,33 +1,65 @@
 import { describe, expect, it } from "vitest";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
+import {
+  deployedCopies,
+  inMemoryDeployedContent,
+} from "./deployed-content.fake";
 import { LocalCopyGuard } from "./local-copy-guard";
 
 const repo: DeployTarget = { kind: "repo", repoPath: "/repo" };
 const globalTarget: DeployTarget = { kind: "global" };
 
-// Keyed by `${name}:${tool ?? ""}`, so a fake can answer one copy differently
-// from another without growing a second stub.
+const TOOL_DIR = { claude: ".claude/skills", codex: ".agents/skills" };
+
+// Real copies on an in-memory tree. Keys are `${name}:${tool}`; a bare name
+// sets every tool's copy, and a tool key is only ever "diverged" (one tool's
+// file is edited on a clean copy). Unlisted names are clean copies.
 function guardOver(
   states: Record<string, DeployedContentState | "throws">,
   fallback: DeployedContentState = "clean",
 ) {
   const calls: { name: string; tools?: readonly SupportedTool[] }[] = [];
+  const fake = inMemoryDeployedContent();
+  const placed = new Set<string>();
+  const place = (target: DeployTarget, name: string) => {
+    const where = `${fake.treeRoot(target)}/${name}`;
+    if (placed.has(where)) {
+      return;
+    }
+    placed.add(where);
+    const base = states[`${name}:`] ?? fallback;
+    fake.setCopy(target, name, base === "throws" ? "clean" : base);
+    for (const tool of ["claude", "codex"] as const) {
+      if (states[`${name}:${tool}`] === "diverged") {
+        fake.editFile(
+          `${fake.treeRoot(target)}/${TOOL_DIR[tool]}/${name}/SKILL.md`,
+          "edited\n",
+        );
+      }
+    }
+  };
   const guard = new LocalCopyGuard({
     content: {
       classify: async (input) => {
         calls.push({ name: input.name, tools: input.tools });
-        const key = `${input.name}:${input.tools?.[0] ?? ""}`;
-        const state = states[key] ?? fallback;
-        if (state === "throws") {
+        if (states[`${input.name}:${input.tools?.[0] ?? ""}`] === "throws") {
           throw new Error("unreadable");
         }
-        return state;
+        place(input.target, input.name);
+        return fake.content.classify(input);
       },
-      contentDigest: async () => null,
+      contentDigest: async (input) => {
+        place(input.target, input.name);
+        return fake.content.contentDigest(input);
+      },
+      linkedSkillPath: async (input) => {
+        place(input.target, input.name);
+        return fake.content.linkedSkillPath(input);
+      },
     },
   });
-  return { guard, calls };
+  return { guard, calls, fake };
 }
 
 describe("LocalCopyGuard", () => {
@@ -37,8 +69,8 @@ describe("LocalCopyGuard", () => {
     const check = await guard.check({ ...scope, names: ["tdd", "grill"] });
 
     expect(check.findings).toEqual([
-      { name: "tdd", tool: null, verdict: "clean" },
-      { name: "grill", tool: null, verdict: "clean" },
+      { name: "tdd", tool: null, verdict: "clean", linkedPath: null },
+      { name: "grill", tool: null, verdict: "clean", linkedPath: null },
     ]);
     expect(guard.admits(scope, check)).toEqual({ ok: true });
   });
@@ -85,39 +117,25 @@ describe("LocalCopyGuard", () => {
   });
 
   it("refuses a receipt once the content behind it changed", async () => {
-    const states: Record<string, DeployedContentState> = {
-      "tdd:": "unverifiable",
-    };
-    const guard = new LocalCopyGuard({
-      content: {
-        classify: async (input) => states[`${input.name}:`] ?? "clean",
-        contentDigest: async () => null,
-      },
-    });
+    const { guard, fake } = guardOver({ "tdd:": "unverifiable" });
     const scope = { write: "deploy", target: repo } as const;
     const priced = await guard.check({ ...scope, names: ["tdd"] });
     const receipt = guard.receipt(scope, priced);
 
     // Someone edits the copy between the refusal and the confirmation.
-    states["tdd:"] = "diverged";
+    fake.editFile("/repo/.claude/skills/tdd/SKILL.md", "edited\n");
     const fresh = await guard.check({ ...scope, names: ["tdd"] });
     expect(guard.admits(scope, fresh, receipt).ok).toBe(false);
     expect(guard.admits(scope, priced, receipt).ok).toBe(true);
   });
 
   it("refuses a receipt once the same verdict covers different content", async () => {
-    let body = "first edit";
-    const guard = new LocalCopyGuard({
-      content: {
-        classify: async () => "diverged" as const,
-        contentDigest: async () => body,
-      },
-    });
+    const { guard, fake } = guardOver({ "tdd:": "diverged" });
     const scope = { write: "deploy", target: repo } as const;
     const priced = await guard.check({ ...scope, names: ["tdd"] });
     const receipt = guard.receipt(scope, priced);
 
-    body = "second edit";
+    fake.editFile("/repo/.claude/skills/tdd/SKILL.md", "second edit\n");
     const fresh = await guard.check({ ...scope, names: ["tdd"] });
     expect(fresh.findings).toEqual(priced.findings);
     expect(guard.admits(scope, fresh, receipt).ok).toBe(false);
@@ -194,7 +212,7 @@ describe("LocalCopyGuard", () => {
     const check = await guard.check({ ...scope, names: ["tdd"] });
 
     expect(check.findings).toEqual([
-      { name: "tdd", tool: null, verdict: "unreadable" },
+      { name: "tdd", tool: null, verdict: "unreadable", linkedPath: null },
     ]);
   });
 
@@ -226,8 +244,8 @@ describe("LocalCopyGuard", () => {
       { name: "tdd", tools: ["codex"] },
     ]);
     expect(check.findings).toEqual([
-      { name: "tdd", tool: "claude", verdict: "clean" },
-      { name: "tdd", tool: "codex", verdict: "local-edits" },
+      { name: "tdd", tool: "claude", verdict: "clean", linkedPath: null },
+      { name: "tdd", tool: "codex", verdict: "local-edits", linkedPath: null },
     ]);
     const refused = guard.admits(scope, check);
     expect(refused.ok).toBe(false);
@@ -257,13 +275,17 @@ describe("LocalCopyGuard", () => {
 
   it("passes the chosen release to the classifier, so an equal copy can pass", async () => {
     const releases: (string | undefined)[] = [];
+    const copy = deployedCopies([
+      { target: repo, name: "tdd", state: "clean" },
+    ]);
     const guard = new LocalCopyGuard({
       content: {
         classify: async (input) => {
           releases.push(input.release);
-          return "clean";
+          return copy.content.classify(input);
         },
-        contentDigest: async () => null,
+        contentDigest: async (input) => copy.content.contentDigest(input),
+        linkedSkillPath: async (input) => copy.content.linkedSkillPath(input),
       },
     });
 
@@ -274,6 +296,38 @@ describe("LocalCopyGuard", () => {
       release: "v0.3.4",
     });
     expect(releases).toEqual(["v0.3.4"]);
+  });
+
+  it("names the linked skill folder of each copy it checks", async () => {
+    const copies = deployedCopies([
+      { target: globalTarget, name: "tdd", state: { codex: "not-deployed" } },
+      { target: globalTarget, name: "grill", state: "clean" },
+    ]);
+    copies.tree.symlink("/home/fake/.agents/skills/tdd", "/elsewhere/tdd");
+    const guard = new LocalCopyGuard({ content: copies.content });
+    const check = await guard.check({
+      write: "update",
+      target: globalTarget,
+      names: ["tdd", "grill"],
+      tools: ["claude", "codex"],
+    });
+
+    expect(
+      check.findings.map(({ name, tool, linkedPath }) => ({
+        name,
+        tool,
+        linkedPath,
+      })),
+    ).toEqual([
+      { name: "tdd", tool: "claude", linkedPath: null },
+      {
+        name: "tdd",
+        tool: "codex",
+        linkedPath: "/home/fake/.agents/skills/tdd",
+      },
+      { name: "grill", tool: "claude", linkedPath: null },
+      { name: "grill", tool: "codex", linkedPath: null },
+    ]);
   });
 
   it("takes a malformed receipt as no consent at all", async () => {

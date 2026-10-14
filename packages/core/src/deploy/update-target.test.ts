@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { HarnessTag } from "../harness/read-harness-state";
 import type { HarnessSkillTree } from "../harness/skill-movements";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
-import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
+import {
+  deployTargetSubtrees,
+  SUPPORTED_TOOLS,
+  type SupportedTool,
+} from "./deploy-tools";
+import { inMemoryDeployedContent } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import { copyPaths, selectionWorld } from "./selection-writer-fake";
@@ -44,6 +49,7 @@ const CLEAN_COPIES = {
     name,
     tool: null,
     verdict: "clean" as const,
+    linkedPath: null,
   })),
   digest: null,
 };
@@ -59,11 +65,11 @@ type Options = {
   registered?: boolean;
   copies?: Record<string, DeployedContentState>;
   target?: DeployTarget;
-  copiesAfter?: Record<string, DeployedContentState>;
+  // Reading this skill's copy back after the write fails, as an EACCES would.
+  unreadableAfter?: string;
   add?: string;
-  bytes?: () => string | null;
-  // A symlinked leaf destination, as the disk reports it.
-  linked?: { name: string; tool: SupportedTool; path: string };
+  // A skill folder that is a symlink on disk.
+  linked?: { name: string; tool: SupportedTool };
   // Copies the operator edited on disk, which apm keeps when it drops them.
   edited?: { name: string; tool: SupportedTool }[];
 };
@@ -84,41 +90,57 @@ function subject(options: Options = {}) {
     world.edits(tool, name);
   }
   const locks = new InFlightLocks();
-  // Before the write the recorded baseline decides; afterwards the disk and the
-  // deployment record do.
+  // Copies live on a real in-memory tree: the listed ones in their state, the
+  // rest clean, placed when first read.
+  const copyTarget = options.target ?? REPO;
+  const copies = inMemoryDeployedContent();
+  const placed = new Set<string>();
+  const place = (name: string) => {
+    if (!placed.has(name)) {
+      placed.add(name);
+      copies.setCopy(copyTarget, name, options.copies?.[name] ?? "clean");
+    }
+  };
+  for (const name of Object.keys(options.copies ?? {})) {
+    place(name);
+  }
+  if (options.linked !== undefined) {
+    const { name, tool } = options.linked;
+    place(name);
+    const folder = `${copies.treeRoot(copyTarget)}/${deployTargetSubtrees(name, [tool])[0]}`;
+    copies.tree.remove(folder);
+    copies.tree.symlink(folder, `/elsewhere/${name}`);
+  }
+  // Before the write the recorded baseline decides; afterwards a copy is clean
+  // while the deployment record lists every file the write placed.
   const classify = async (input: {
     name: string;
     tools?: readonly SupportedTool[];
     release?: string;
   }) => {
     if (world.calls.length === 0) {
-      return options.copies?.[input.name] ?? "clean";
+      place(input.name);
+      return copies.content.classify({ target: copyTarget, ...input });
     }
-    const forced = options.copiesAfter?.[input.name];
-    if (forced !== undefined) {
-      return forced;
+    if (options.unreadableAfter === input.name) {
+      throw new Error("EACCES: permission denied");
     }
-    const copies = copyPaths([input.name], input.tools ?? SUPPORTED_TOOLS);
-    if (!copies.some((path) => world.files.has(`${TREE_ROOT}/${path}`))) {
+    const written = copyPaths([input.name], input.tools ?? SUPPORTED_TOOLS);
+    const present = written.filter((path) =>
+      world.files.has(`${TREE_ROOT}/${path}`),
+    );
+    if (present.length === 0) {
       return "not-deployed" as const;
     }
     const lockfile = world.files.get(`${TREE_ROOT}/apm.lock.yaml`) ?? "";
-    return lockfile.includes(`resolved_ref: ${input.release}`)
+    return present.every((path) => lockfile.includes(`  - ${path}\n`))
       ? ("clean" as const)
       : ("diverged" as const);
   };
   const update = new UpdateTarget({
     selection: world.writer,
     deployedCleanup: world.cleanup,
-    deployedContent: {
-      classify,
-      linkedSkillPath: async (input) =>
-        options.linked !== undefined &&
-        input.name === options.linked.name &&
-        (input.tools === undefined || input.tools.includes(options.linked.tool))
-          ? options.linked.path
-          : null,
-    },
+    deployedContent: { classify },
     canonicalPath: async (path) => path,
     locks,
     registry: { isRegistered: async () => options.registered ?? true },
@@ -141,7 +163,12 @@ function subject(options: Options = {}) {
     copyGuard: new LocalCopyGuard({
       content: {
         classify,
-        contentDigest: async () => options.bytes?.() ?? null,
+        contentDigest: async (input) => {
+          place(input.name);
+          return copies.content.contentDigest({ ...input, target: copyTarget });
+        },
+        linkedSkillPath: (input) =>
+          copies.content.linkedSkillPath({ ...input, target: copyTarget }),
       },
     }),
   });
@@ -151,6 +178,7 @@ function subject(options: Options = {}) {
     update,
     world,
     locks,
+    copies,
     preview: () => update.preview({ target, ...add }),
     run: (input: {
       token: string;
@@ -458,14 +486,13 @@ describe("UpdateTarget.preview linked skill folders", () => {
       linked: {
         name: "tdd",
         tool: "claude",
-        path: "/home/.claude/skills/tdd",
       },
     }).preview();
 
     expect(result).toStrictEqual({
       ok: false,
       error: "destination-symlinked",
-      linkedPath: "/home/.claude/skills/tdd",
+      linkedPath: "/home/fake/.claude/skills/tdd",
     });
   });
 
@@ -474,7 +501,6 @@ describe("UpdateTarget.preview linked skill folders", () => {
       linked: {
         name: "jobs",
         tool: "codex",
-        path: "/repo/.agents/skills/jobs",
       },
     }).preview();
 
@@ -491,7 +517,6 @@ describe("UpdateTarget.preview linked skill folders", () => {
       linked: {
         name: "wizard",
         tool: "claude",
-        path: "/repo/.claude/skills/wizard",
       },
     }).preview();
 
@@ -506,7 +531,7 @@ describe("UpdateTarget.preview linked skill folders", () => {
     const result = await subject({
       target: GLOBAL,
       detected: ["claude"],
-      linked: { name: "tdd", tool: "codex", path: "/home/.agents/skills/tdd" },
+      linked: { name: "tdd", tool: "codex" },
     }).preview();
 
     expect(result.ok).toBe(true);
@@ -562,10 +587,8 @@ describe("UpdateTarget preflight token", () => {
   });
 
   it("refuses the confirm when a blocked copy was edited again after pricing", async () => {
-    let body = "first edit";
-    const { preview, run } = subject({
+    const { preview, run, copies } = subject({
       copies: { tdd: "diverged" },
-      bytes: () => body,
     });
     const answer = await preview();
     if (!answer.ok) {
@@ -573,7 +596,10 @@ describe("UpdateTarget preflight token", () => {
     }
     const receipt = answer.preview.copyReceipt ?? undefined;
 
-    body = "second edit";
+    copies.editFile(
+      `${REPO.repoPath}/.claude/skills/tdd/SKILL.md`,
+      "second edit\n",
+    );
     await expect(
       run({ token: answer.preview.token, confirmedCopyReceipt: receipt }),
     ).resolves.toMatchObject({ ok: false, error: "status-out-of-date" });
@@ -744,7 +770,7 @@ describe("UpdateTarget.run", () => {
   });
 
   it("claims no skill moved while the record still names the old release", async () => {
-    const running = await confirmed({ copiesAfter: { tdd: "clean" } });
+    const running = await confirmed();
     running.world.refuseWith({ ok: false, reason: "failed" });
 
     const result = await running.run({ token: running.token });
@@ -758,7 +784,7 @@ describe("UpdateTarget.run", () => {
   });
 
   it("claims nothing about a copy it could not read back", async () => {
-    const running = await confirmed({ copiesAfter: { grill: "unreadable" } });
+    const running = await confirmed({ unreadableAfter: "grill" });
 
     const result = await running.run({ token: running.token });
 
@@ -781,9 +807,11 @@ describe("UpdateTarget.run", () => {
   });
 
   it("refuses a token minted before the copy on disk changed", async () => {
-    const options: Options = {};
-    const running = await confirmed(options);
-    options.copies = { tdd: "diverged" };
+    const running = await confirmed();
+    running.copies.editFile(
+      `${REPO.repoPath}/.claude/skills/tdd/SKILL.md`,
+      "edited\n",
+    );
 
     const result = await running.run({ token: running.token });
 
@@ -898,20 +926,19 @@ describe("UpdateTarget.run", () => {
   });
 
   it("writes nothing when a selected skill's folder became a link after the preview", async () => {
-    const options: Options = { target: GLOBAL };
-    const running = await confirmed(options);
-    options.linked = {
-      name: "grill",
-      tool: "claude",
-      path: "/home/.claude/skills/grill",
-    };
+    const running = await confirmed({ target: GLOBAL });
+    running.copies.tree.remove("/home/fake/.claude/skills/grill");
+    running.copies.tree.symlink(
+      "/home/fake/.claude/skills/grill",
+      "/elsewhere/grill",
+    );
 
     const result = await running.run({ token: running.token });
 
     expect(result).toStrictEqual({
       ok: false,
       error: "destination-symlinked",
-      linkedPath: "/home/.claude/skills/grill",
+      linkedPath: "/home/fake/.claude/skills/grill",
     });
     expect(running.world.calls).toStrictEqual([]);
   });

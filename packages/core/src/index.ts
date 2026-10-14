@@ -1,18 +1,16 @@
 // Only what crosses the package boundary; keep core-internal exports off it.
+
+export {
+  composeUseCases,
+  type UseCasePorts,
+  type UseCases,
+} from "./compose-use-cases";
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { SelectionWriter } from "./deploy/apply-selection";
 export {
-  type BulkDeployReport,
-  BulkDeploySkills,
-} from "./deploy/bulk-deploy-skills";
-export {
-  BulkRemoveDeployedSkill,
-  type BulkRemoveReport,
-  type BulkRemoveTarget,
-} from "./deploy/bulk-remove-deployed-skill";
-export {
   // Exported for the integration lane's apm fake.
   type ApmDriverPort,
+  type BulkDeployReport,
   type DeployedContentState,
   DeploySkill,
   type DeploySkillError,
@@ -33,6 +31,8 @@ export type {
   ReclaimPreview,
 } from "./deploy/remove-consent";
 export {
+  type BulkRemoveReport,
+  type BulkRemoveTarget,
   type RemoveCheck,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
@@ -214,6 +214,7 @@ export {
   type ScaffoldHarnessError,
 } from "./inventory/scaffold-harness";
 export { ScaffoldOffers } from "./inventory/scaffold-offers";
+export { nodeUseCasePorts } from "./node-use-case-ports";
 export { ConfigStore } from "./registry/config-store";
 export type { FileSystemPort } from "./registry/file-system";
 export { NodeFileSystem } from "./registry/node-file-system";

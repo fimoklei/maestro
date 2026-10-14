@@ -462,10 +462,22 @@ describe("Harness home base", () => {
   it("shows No changes yet on a confirmed empty journey", async () => {
     // Every stage drops out when empty, so the empty journey is stated rather
     // than leaving a page with nothing on it.
-    stubHarnessServer({ read: { body: RELEASED } });
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          freshness: {
+            outcome: "fetched",
+            lastFetchedAt: new Date().toISOString(),
+          },
+        },
+      },
+    });
     renderHarness();
 
     expect(await screen.findByText("No changes yet")).toBeInTheDocument();
+    // Nothing waits in review or release, so band 2 reads healthy.
+    expect(screen.getByText("All released")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Skills you import or edit in your clone will appear here.",

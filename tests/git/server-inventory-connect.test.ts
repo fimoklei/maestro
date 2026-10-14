@@ -10,37 +10,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  ConfigStore,
-  ConnectInventory,
-  HarnessGitAdapter,
-  InFlightLocks,
-  InventoryReader,
-  isRepositoryRoot,
-  NodeFileSystem,
-  probeHead,
-  Registry,
-  readConfiguredGitOriginUrl,
-  releasedSkillsFromGit,
-  resolveDefaultBranch,
-  resolveInventoryPath,
-  ScaffoldOffers,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type GitCloneOptions, initGitClone } from "../helpers/git-fixture";
-import { centralInventoryPath } from "../helpers/real-registry";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { nodeApp } from "../helpers/node-app";
 
 const run = promisify(execFile);
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
@@ -70,56 +42,12 @@ describe("inventory connect HTTP route", () => {
     return clone;
   }
 
-  function makeApp() {
-    const fs = new NodeFileSystem();
-    // Connect and the inventory reader share this store, so the test needs it.
-    const store = new ConfigStore({
-      fs,
-      configPath: () => join(dir, "config.json"),
-    });
-    const registry = new Registry({
-      fs,
-      store,
-      resolveCentralInventoryPath: centralInventoryPath,
-    });
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: async () => resolveInventoryPath(await store.read(), {}),
-      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
-      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
-    });
-    const deployState = stubDeployState({ fs });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: new ConnectInventory({
-        fs,
-        store,
-        originUrl: readConfiguredGitOriginUrl,
-        defaultBranch: resolveDefaultBranch,
-        isRepositoryRoot,
-        offers: new ScaffoldOffers(),
-        probeHead,
-        homeRoot: () => dir,
-        clone: { clone: async () => "clone-unavailable" },
-      }),
-      scaffold: stubScaffold(),
-      deployState,
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+  // No test clones a URL; a reached clone fails offline instead of hitting GitHub.
+  const makeApp = () =>
+    nodeApp(
+      { HOME: dir, MAESTRO_HOME: dir },
+      { git: { clone: { clone: async () => "clone-unavailable" } } },
+    );
 
   async function readRemoteHead(clone: string): Promise<string | null> {
     return await run("git", ["-C", clone, "symbolic-ref", REMOTE_HEAD]).then(

@@ -1,6 +1,5 @@
 // Stage membership is independent: one skill may hold a row in every stage.
 import type { GitOrigin } from "../deploy/git-origin";
-import { isConcurrentlyChanged, isLocalDeletion } from "./classify-movement";
 import {
   type HarnessReviewRead,
   isOthers,
@@ -44,6 +43,32 @@ type ReleaseStatus = "not-yet-released";
 // default branch. A rename is one change only once merged; before that its
 // folders read as an addition and a deletion.
 export type HarnessChange = "addition" | "edit" | "deletion" | "rename";
+
+// `null` is a skill absent at that ref; it compares like any other value.
+type SkillTreeHashes = {
+  /** The skill's tree at `origin/HEAD` — the merged truth. */
+  remote: string | null;
+  /** Its tree at local `HEAD`. */
+  local: string | null;
+  /** Its tree on disk, untracked files included. */
+  working: string | null;
+};
+
+// Renames are not inferred: a moved directory is a deletion plus an addition (#575).
+const isLocalDeletion = ({
+  local,
+  working,
+}: Pick<SkillTreeHashes, "local" | "working">): boolean =>
+  local !== null && working === null;
+
+// Never compares the promote branch: that is the author's own proposal.
+// Remote matching `atMergeBase` means only the author changed this skill (#579).
+// `undefined` (merge base unreadable) falls back to the plain, safer comparison.
+// Promote re-checks with it after its own fetch.
+export const isConcurrentlyChanged = (
+  { remote, local }: Pick<SkillTreeHashes, "remote" | "local">,
+  atMergeBase: string | null | undefined,
+) => remote !== local && (atMergeBase === undefined || remote !== atMergeBase);
 
 export type StageStatus = ProposalStatus | ReviewStatus | ReleaseStatus;
 
@@ -229,8 +254,6 @@ const blankRow = (
 // Local places only, so every stage gives the same answer.
 const isRestorable = (trees: HarnessSkillTrees, skill: string): boolean =>
   isLocalDeletion({
-    remote: null,
-    promote: null,
     local: trees.local[skill] ?? null,
     working: trees.working[skill] ?? null,
   });
@@ -312,7 +335,6 @@ const proposalStage = (
     const branch = trees.promote[skill];
     const hashes = {
       remote: trees.remote[skill] ?? null,
-      promote: branch === undefined ? null : { tree: branch.tree },
       local: trees.local[skill] ?? null,
       working: trees.working[skill] ?? null,
     };

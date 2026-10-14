@@ -15,39 +15,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  ConfigStore,
-  DeleteLocalSkill,
-  DiscardSkillChange,
-  HarnessFreshnessStore,
-  HarnessGitAdapter,
-  type HarnessState,
-  InFlightLocks,
-  InventoryReader,
-  NodeCopyTreeFs,
-  NodeFileSystem,
-  PromoteSkill,
-  PromoteSkillDeletion,
-  ProposalActions,
-  ReadHarnessState,
-  RestoreSkill,
-  releasedSkillsFromGit,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import { HarnessGitAdapter, type HarnessState } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubImports } from "../helpers/stub-import";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
+import { nodeApp } from "../helpers/node-app";
 import { stubReview } from "../helpers/stub-review";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
 
 const run = promisify(execFile);
 
@@ -122,86 +94,11 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     await removeGitTempTree(base);
   });
 
-  function makeApp(review = stubReview()) {
-    const fs = new NodeFileSystem();
-    const configPath = join(base, "config.json");
-    const registry = realRegistry(fs, configPath);
-    const store = new ConfigStore({ fs, configPath: () => configPath });
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => root,
-      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
-    });
-    const locks = new InFlightLocks();
-    const resolveRoot = async () => await fs.realpath(root);
-    const harness = new ReadHarnessState({
-      resolveRoot,
-      git: new HarnessGitAdapter(),
-      freshness: new HarnessFreshnessStore({ store }),
-      review,
-    });
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      harness,
-      publish: stubPublish(),
-      promote: new PromoteSkill({
-        resolveRoot,
-        git: new HarnessGitAdapter(),
-        freshness: new HarnessFreshnessStore({ store }),
-        review,
-        locks: new InFlightLocks(),
-      }),
-      promoteDeletion: new PromoteSkillDeletion({
-        resolveRoot,
-        git: new HarnessGitAdapter(),
-        freshness: new HarnessFreshnessStore({ store }),
-        review,
-        locks: new InFlightLocks(),
-      }),
-      deleteLocalSkill: new DeleteLocalSkill({
-        resolveRoot,
-        fs,
-        git: new HarnessGitAdapter(),
-        locks: new InFlightLocks(),
-      }),
-      restoreSkill: new RestoreSkill({
-        resolveRoot,
-        fs,
-        copyFs: new NodeCopyTreeFs(),
-        git: new HarnessGitAdapter(),
-        locks: new InFlightLocks(),
-      }),
-      discardSkillChange: new DiscardSkillChange({
-        resolveRoot,
-        readStages: async () => {
-          const read = await harness.execute();
-          return read.ok ? read.state.stages : null;
-        },
-        fs,
-        copyFs: new NodeCopyTreeFs(),
-        git: new HarnessGitAdapter(),
-        locks: new InFlightLocks(),
-      }),
-      proposals: new ProposalActions({
-        resolveRoot,
-        git: new HarnessGitAdapter(),
-        review,
-      }),
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+  const makeApp = (review = stubReview()) =>
+    nodeApp(
+      { HOME: base, MAESTRO_HOME: base, MAESTRO_INVENTORY_PATH: root },
+      { gh: review },
+    );
 
   const restore = async (app: ReturnType<typeof makeApp>, body: unknown) =>
     app.request("/api/harness/skill/restore", {

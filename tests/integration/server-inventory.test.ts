@@ -7,33 +7,18 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  InFlightLocks,
-  InventoryReader,
-  NodeFileSystem,
-  type ReleasedSkill,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import type { ReleasedSkill } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
+import { nodeApp } from "../helpers/node-app";
 
 describe("inventory HTTP route", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "maestro-inventory-"));
+    dir = await nodeRealpath(
+      await mkdtemp(join(tmpdir(), "maestro-inventory-")),
+    );
   });
 
   afterEach(async () => {
@@ -61,35 +46,28 @@ describe("inventory HTTP route", () => {
       released = [],
     }: { originUrl?: string | null; released?: ReleasedSkill[] | null } = {},
   ) {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, join(dir, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => inventoryPath,
-      originUrl: () => originUrl,
-      readReleasedSkills: async () => released,
-    });
-    const deployState = stubDeployState({ fs });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState,
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
+    // The release lives in git tags; the working tree is never its source.
+    const harness = new InMemoryHarnessGit();
+    harness.root = dir;
+    if (released === null) {
+      harness.tags = null;
+    } else {
+      harness.commit(
+        "released",
+        Object.fromEntries(released.map((s) => [s.name, s.manifest])),
+      );
+      harness.tags = [{ name: "v1.0.0", commit: "released" }];
+    }
+    return nodeApp(
+      {
+        HOME: dir,
+        MAESTRO_HOME: dir,
+        ...(inventoryPath === undefined
+          ? {}
+          : { MAESTRO_INVENTORY_PATH: inventoryPath }),
+      },
+      { git: { harness, originUrl: async () => originUrl } },
+    );
   }
 
   it("GET /api/inventory/primitives lists the released skills", async () => {

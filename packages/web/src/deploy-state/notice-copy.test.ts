@@ -1,5 +1,6 @@
 import type {
   DeploySkillError,
+  PendingOperation,
   RemoveDeployedSkillError,
   RemovePreflightError,
   RetryTargetOperationError,
@@ -9,6 +10,7 @@ import type {
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import { machineValues, readNotice, unselectedControls } from "../test-utils";
+import { plainText } from "../ui/phrase";
 import { localEditsCheckNotice } from "./import-local-edits-copy";
 import {
   type DeployStateNotice,
@@ -20,182 +22,194 @@ import {
   updatePreviewNotice,
 } from "./notice-copy";
 
-// Pins the finished notice per code as data, never measuring the prose itself.
+// Contract tests: the words live once, in the copy module and the flow test
+// that renders them. These prove the rules every row keeps.
+
+// A Record so a code the server can send, or one it no longer sends, fails the
+// typecheck until the list matches the core union.
+const codes = <Code extends string>(all: Record<Code, true>) =>
+  // Object.keys widens each key to string; the Record holds only Codes.
+  Object.keys(all) as Code[];
+
+const DEPLOY = codes<DeploySkillError>({
+  "unsupported-primitive-type": true,
+  "invalid-name": true,
+  "unknown-skill": true,
+  "inventory-not-configured": true,
+  "inventory-unreadable": true,
+  "repo-not-registered": true,
+  "inventory-origin-unavailable": true,
+  "no-published-tag": true,
+  "local-diverged-from-tag": true,
+  "deployed-diverged-from-lock": true,
+  "deployed-unverifiable": true,
+  "deployed-unreadable": true,
+  "lockfile-malformed": true,
+  "deploy-in-progress": true,
+  "ref-unresolvable": true,
+  "not-at-target-release": true,
+  "target-pinned-per-skill": true,
+  "manifest-not-recognised": true,
+  "operation-unfinished": true,
+  "deploy-incomplete": true,
+  "no-supported-tool": true,
+  "auth-required": true,
+  "destination-symlinked": true,
+  "deploy-failed": true,
+});
+
+const UPDATE_PREVIEW = codes<UpdatePreviewError>({
+  "repo-not-registered": true,
+  "no-supported-tool": true,
+  "not-deployed": true,
+  "lockfile-malformed": true,
+  "deployed-unreadable": true,
+  "inventory-not-configured": true,
+  "inventory-unreadable": true,
+  "no-published-tag": true,
+  "skill-not-in-release": true,
+  "inventory-origin-unavailable": true,
+  "ref-unresolvable": true,
+  "preview-failed": true,
+  "destination-symlinked": true,
+});
+
+const UPDATE_RUN: UpdateRunError[] = [
+  ...UPDATE_PREVIEW,
+  ...codes<Exclude<UpdateRunError, UpdatePreviewError>>({
+    "status-out-of-date": true,
+    "update-in-progress": true,
+    "operation-unfinished": true,
+    "deployed-diverged-from-lock": true,
+    "deployed-unverifiable": true,
+    "manifest-not-recognised": true,
+    "update-incomplete": true,
+    "update-failed": true,
+  }),
+];
+
+const RETRY = codes<RetryTargetOperationError>({
+  "repo-not-registered": true,
+  "nothing-to-retry": true,
+  "retry-in-progress": true,
+  "deployed-diverged-from-lock": true,
+  "deployed-unverifiable": true,
+  "deployed-unreadable": true,
+  "lockfile-malformed": true,
+  "manifest-not-recognised": true,
+  "retry-incomplete": true,
+  "retry-failed": true,
+});
+
+const KINDS: PendingOperation["kind"][] = ["deploy", "remove", "update"];
+const pending = (kind: PendingOperation["kind"]) =>
+  ({ kind, release: "v0.3.4" }) as const;
+
 const refusal = (code: string) => new HttpError(422, "unused", code);
 
-// A code a table words but no case pins would ship unapproved copy: the Record
-// fails the typecheck on a missing or unknown code.
-const pinned = <Code extends string>(cases: Record<Code, DeployStateNotice>) =>
-  // Object.entries widens each key to string; the Record holds only Codes.
-  Object.entries(cases) as [Code, DeployStateNotice][];
+type Surface = {
+  name: string;
+  read: (error: unknown) => DeployStateNotice;
+  codes: readonly string[];
+  // A code whose own notice is the surface's fallback: the outcome is as
+  // unknown as a failure with no code.
+  fallbackCode?: string;
+};
 
-describe("deploy notices", () => {
-  const cases = pinned<DeploySkillError>({
-    "unsupported-primitive-type": {
-      label: "Skills only",
-      message:
-        "Nothing was deployed. Maestro deploys skills only. Select a skill, then deploy again.",
-      detail: "Hooks and MCP servers stay in the Harness.",
-    },
-    "invalid-name": {
-      label: "Unusable skill name",
-      message:
-        "Nothing was deployed. Rename the skill in the Harness, then deploy again.",
-      detail: "A skill name uses lowercase letters, digits and single hyphens.",
-    },
-    "unknown-skill": {
-      label: "Skill not in the Inventory",
-      message:
-        "Nothing was deployed. Select Re-read Skills, then select the skill again.",
-    },
-    "inventory-not-configured": {
-      label: "No Harness connected",
-      message:
-        "Nothing was deployed. Select Change Harness location in Settings, then deploy again.",
-    },
-    "inventory-unreadable": {
-      label: "Inventory not read",
-      message:
-        "Nothing was deployed. Select Re-read Skills, then deploy again.",
-    },
-    "repo-not-registered": {
-      label: "Repository not registered",
-      message:
-        "Nothing was deployed. Select Register repository on the Repositories screen, then deploy again.",
-    },
-    "inventory-origin-unavailable": {
-      label: "No GitHub origin",
-      message:
-        "Nothing was deployed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
-      detail: "A deploy takes the skill from a GitHub tag, over https or ssh.",
-    },
-    "no-published-tag": {
-      label: "Not in any release",
-      message:
-        "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
-      detail: "A deploy takes the skill from a published tag.",
-    },
-    "local-diverged-from-tag": {
-      label: "Harness copy unreleased",
-      message:
-        "Nothing was deployed. Select Create a release on the Harness screen, then deploy again.",
-      detail: "A deploy takes the latest release, not the Harness copy.",
-    },
-    "deployed-diverged-from-lock": {
-      label: "Local changes in deployed files",
-      message:
-        "Deploy this skill again to replace the local edits with the latest release.",
-      detail: "The edits never went through the Harness.",
-    },
-    "deployed-unverifiable": {
-      label: "Local edits unverifiable",
-      message:
-        "Deploy this skill again to replace this copy with the latest release.",
-      detail:
-        "This copy predates content tracking, so any change in it is invisible.",
-    },
-    "deployed-unreadable": {
-      label: "Deployed copy not read",
-      message:
-        "Nothing was deployed. Make the deployed copy readable, then deploy again.",
-      detail: "Its permissions or its shape blocked the check.",
-    },
-    "lockfile-malformed": {
-      label: "Deployment record not read",
-      message:
-        "Nothing was deployed. Repair or delete apm.lock.yaml in the target, then deploy again.",
-      detail:
-        "The file is present but does not parse, so the target's state is unknown.",
-    },
-    "deploy-in-progress": {
-      label: "Target busy",
-      message:
-        "Nothing was deployed. Wait for the running deploy on this target to finish, then deploy again.",
-    },
-    "ref-unresolvable": {
-      label: "Deployed version unknown",
-      message:
-        "Nothing was deployed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
-      detail: "The target's record names more than one, or names no release.",
-    },
-    "not-at-target-release": {
-      label: "Not in this release",
-      message:
-        "Nothing was deployed. Select Update target on the Deploy-state screen to move this target to a release that holds the skill.",
-      detail: "This skill is not in the release this target follows.",
-    },
-    "target-pinned-per-skill": {
-      label: "Pinned per skill",
-      message:
-        "Nothing was deployed. Select Remove skill for each skill on the Deploy-state screen. Then select Deploy skill to put them on one release.",
-      detail: "This target holds skills from separate deployments.",
-    },
-    "manifest-not-recognised": {
-      label: "Manifest not recognised",
-      message:
-        "Nothing was deployed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
-      detail: "Maestro edits that list only, and it found another shape.",
-    },
-    "operation-unfinished": {
-      label: "Unfinished operation",
-      message:
-        "Nothing was deployed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
-      detail: "An earlier change on this target did not finish.",
-    },
-    "deploy-incomplete": {
-      label: "Deploy incomplete",
-      message:
-        "Part of the selection is not on disk. Open the target on the Deploy-state screen and select Retry deploy.",
-      detail: "apm reported success, but some files are missing.",
-    },
-    "no-supported-tool": {
-      label: "No supported tool",
-      message:
-        "Nothing was deployed. Install Claude Code or Codex, then deploy again.",
-      detail: "A global deploy puts skills into Claude Code or Codex.",
-    },
-    "auth-required": {
-      label: "No GitHub access",
-      message:
-        "Nothing was deployed. Set up GitHub access in git, then deploy again.",
-      detail: "GitHub refused the download.",
-    },
-    "destination-symlinked": {
-      label: "Linked skill folder",
-      message:
-        "Nothing was written. Delete the linked skill folder in the target, then deploy again.",
-      detail:
-        "This removes the link only. The folder it points at remains on disk.",
-    },
-    "deploy-failed": {
-      label: "Deploy did not finish",
-      message:
-        "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
-    },
-  });
+const SURFACES: Surface[] = [
+  { name: "deployNotice", read: deployNotice, codes: DEPLOY },
+  {
+    name: "removeNotice",
+    read: removeNotice,
+    codes: codes<RemoveDeployedSkillError | RemovePreflightError>({
+      "unsupported-primitive-type": true,
+      "invalid-name": true,
+      "repo-not-registered": true,
+      "no-supported-tool": true,
+      "deployed-diverged-from-lock": true,
+      "not-deployed": true,
+      "lockfile-malformed": true,
+      "ref-unresolvable": true,
+      "deployed-unreadable": true,
+      "deployed-diverged-pinned-per-skill": true,
+      "cost-not-acknowledged": true,
+      "remove-in-progress": true,
+      "remove-incomplete": true,
+      "remove-failed": true,
+      "preflight-failed": true,
+      "manifest-not-recognised": true,
+      "operation-unfinished": true,
+    }),
+    // "Removal outcome unknown" is both the fallback and remove-failed's label.
+    fallbackCode: "remove-failed",
+  },
+  {
+    name: "updatePreviewNotice",
+    read: (error) => updatePreviewNotice(error, "Update target"),
+    codes: UPDATE_PREVIEW,
+  },
+  {
+    name: "updateNotice",
+    read: (error) => updateNotice(error, "Update target"),
+    codes: UPDATE_RUN,
+  },
+  ...KINDS.map((kind) => ({
+    name: `retryNotice for a ${kind}`,
+    read: (error: unknown) => retryNotice(error, pending(kind)),
+    codes: RETRY,
+    // A retry that failed proves no more than one that never answered.
+    fallbackCode: "retry-failed",
+  })),
+];
 
-  it("names every control it points to as select {Control}", () => {
-    for (const [code] of cases) {
-      expect(
-        unselectedControls(deployNotice(refusal(code)).message),
-        code,
-      ).toEqual([]);
+const UNKNOWN_CODE = "a-code-this-build-predates";
+
+// Every notice a surface can show: one per code, then its fallback.
+const noticesOf = ({ read, codes }: Surface) =>
+  [...codes, UNKNOWN_CODE].map(
+    (code) => [code, readNotice(read(refusal(code)))] as const,
+  );
+
+describe.each(SURFACES)("$name", (each) => {
+  const fallback = readNotice(each.read(refusal(UNKNOWN_CODE)));
+
+  it("has its own notice for every server code", () => {
+    for (const code of each.codes) {
+      if (code === each.fallbackCode) continue;
+      expect(readNotice(each.read(refusal(code))), code).not.toEqual(fallback);
     }
   });
 
-  it.each(cases)("states the whole notice for %s", (code, expected) => {
-    expect(deployNoticeFor(code, undefined)).toEqual(expected);
-    expect(deployNotice(refusal(code))).toEqual(expected);
+  it("gives every server code a label", () => {
+    for (const [code, notice] of noticesOf(each)) {
+      expect(notice?.label, code).toMatch(/^[A-Z]/);
+    }
   });
 
-  it("falls back to a named outcome for a code it does not know", () => {
-    expect(deployNotice(refusal("cost-not-acknowledged"))).toEqual({
-      label: "Deploy outcome unknown",
-      message:
-        "Nothing confirmed the deploy. Deploy to this target again to re-check it.",
-      detail:
-        "A dropped connection, or a failure this version of Maestro does not name.",
-    });
+  it("states a failure no row covers as an unknown outcome", () => {
+    expect(fallback).toEqual(readNotice(each.read(new Error("offline"))));
+    expect(fallback?.label).toMatch(/outcome unknown$/);
+    expect(fallback?.detail).toBe(
+      "A dropped connection, or a failure this version of Maestro does not name.",
+    );
+  });
+
+  it("names every control it points to as select {Control}", () => {
+    for (const [code, notice] of noticesOf(each)) {
+      expect(unselectedControls(notice?.message ?? ""), code).toEqual([]);
+      expect(unselectedControls(notice?.detail ?? ""), code).toEqual([]);
+    }
+  });
+
+  // Required return, never the thrown message: an uncovered code would
+  // otherwise render the wrapper's own "Request failed with status 422.".
+  it("never renders the thrown message", () => {
+    const error = new HttpError(
+      422,
+      "Request failed with status 422.",
+      "sunspots",
+    );
+    expect(JSON.stringify(readNotice(each.read(error)))).not.toContain("422");
   });
 
   it("keeps the server's request-shape sentence for a malformed request", () => {
@@ -205,134 +219,40 @@ describe("deploy notices", () => {
       "invalid-body",
       { detail: "The request carries a type, a name and a target." },
     );
-    expect(deployNotice(error)).toEqual({
+    expect(each.read(error)).toEqual({
       label: "Maestro could not start the action",
       message:
         "Maestro could not start this change. Reload the page, then try again.",
       detail: "The request carries a type, a name and a target.",
     });
   });
+});
 
-  it("never renders the thrown message for an uncovered code", () => {
-    const error = new HttpError(
-      422,
-      "Request failed with status 422.",
-      "sunspots",
-    );
-    expect(deployNotice(error).message).not.toContain("422");
+describe("the fallbacks", () => {
+  // One fallback per surface: each failure costs something different (#688).
+  it("state a different outcome on every surface", () => {
+    const labels = [
+      deployNotice(new Error("offline")),
+      removeNotice(new Error("offline")),
+      updatePreviewNotice(new Error("offline"), "Update target"),
+      updateNotice(new Error("offline"), "Update target"),
+    ].map(({ label }) => label);
+
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });
 
-describe("remove notices", () => {
-  const cases = pinned<RemoveDeployedSkillError | RemovePreflightError>({
-    "unsupported-primitive-type": {
-      label: "Skills only",
-      message:
-        "Maestro removes skills; hooks and MCP servers stay where they are. Remove a skill instead.",
-    },
-    "invalid-name": {
-      label: "Unusable skill name",
-      message:
-        "Nothing was removed. A skill name uses lowercase letters, digits and single hyphens.",
-    },
-    "repo-not-registered": {
-      label: "Repository not registered",
-      message:
-        "Select Register repository on the Repositories screen, then remove again.",
-    },
-    "no-supported-tool": {
-      label: "No supported tool",
-      message:
-        "Neither Claude Code nor Codex is on this machine. There is nothing here to remove.",
-    },
-    "deployed-diverged-from-lock": {
-      label: "Local changes in deployed files",
-      message: "The skill was not removed. Its files changed after deployment.",
-      detail:
-        "Select Deploy skill to restore the released files. Then remove the skill. Reset any copy under Other copies manually.",
-    },
-    "not-deployed": {
-      label: "Nothing deployed here",
-      message:
-        "Nothing was removed. Select Re-read Deploy-state on the Deploy-state screen to read the list again.",
-    },
-    "lockfile-malformed": {
-      label: "Deployment record not read",
-      message:
-        "Repair or delete apm.lock.yaml in the target, then remove again.",
-      detail:
-        "The file is present but does not parse, so nothing can name what to remove.",
-    },
-    "ref-unresolvable": {
-      label: "Deployed version unknown",
-      message:
-        "A removal could delete the wrong package. Deploy the skill again to restore a readable entry.",
-      detail:
-        "Its reference does not point at this skill the way a Maestro deploy would.",
-    },
-    "deployed-unreadable": {
-      label: "Deployed copy not read",
-      message:
-        "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
-    },
-    "deployed-diverged-pinned-per-skill": {
-      label: "Local changes in deployed files",
-      message: "The skill was not removed. Its files changed after deployment.",
-      detail:
-        "Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select Remove skill again.",
-    },
-    "cost-not-acknowledged": {
-      label: "Removal not confirmed",
-      message:
-        "Nothing was removed. A copy changed after the check. Read the list again, then select Remove skill.",
-    },
-    "remove-in-progress": {
-      label: "Target busy",
-      message:
-        "A removal is still running on this target. Wait for it to finish.",
-    },
-    "remove-incomplete": {
-      label: "Removal incomplete",
-      message:
-        "The skill's files are still on disk. Select Retry removal to run the same removal again.",
-      detail: "apm reported success, but some files are missing.",
-    },
-    "remove-failed": {
-      label: "Removal outcome unknown",
-      message:
-        "The copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
-      detail: "The removal ran but proved nothing.",
-    },
-    "preflight-failed": {
-      label: "Deployed files not checked",
-      message: "Make the deployed copy readable, then start the removal again.",
-    },
-    "manifest-not-recognised": {
-      label: "Manifest not recognised",
-      message:
-        "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
-      detail: "Maestro edits that list only, and it found another shape.",
-    },
-    "operation-unfinished": {
-      label: "Unfinished operation",
-      message:
-        "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
-    },
-  });
-
-  it("names every control it points to as select {Control}", () => {
-    for (const [code] of cases) {
-      expect(
-        unselectedControls(removeNotice(refusal(code)).message),
-        code,
-      ).toEqual([]);
+describe("a bulk run's deploy notice", () => {
+  it("reads the same as the single deploy's, code by code", () => {
+    for (const code of DEPLOY) {
+      expect(deployNoticeFor(code, undefined), code).toEqual(
+        deployNotice(refusal(code)),
+      );
     }
   });
+});
 
-  it.each(cases)("states the whole notice for %s", (code, expected) => {
-    expect(removeNotice(refusal(code))).toEqual(expected);
-  });
-
+describe("a code deploy and removal share", () => {
   it("states the removal's own way through, not the deploy's", () => {
     expect(removeNotice(refusal("repo-not-registered")).message).toContain(
       "remove again",
@@ -341,296 +261,55 @@ describe("remove notices", () => {
       "deploy again",
     );
   });
+});
 
-  it("falls back to a named outcome when nothing confirmed the removal", () => {
-    expect(removeNotice(new Error("offline"))).toEqual({
-      label: "Removal outcome unknown",
-      message:
-        "Nothing confirmed the removal. Check the target on the Deploy-state screen to see whether the skill is still deployed.",
-      detail:
-        "A dropped connection, or a failure this version of Maestro does not name.",
-    });
-  });
+describe("an update that moves more than its row", () => {
+  // The tables name Update target; a wider row names its own label instead.
+  it.each([
+    [
+      "preview, unknown",
+      updatePreviewNotice(new Error("offline"), "Update targets"),
+    ],
+    [
+      "run, out of date",
+      updateNotice(refusal("status-out-of-date"), "Update targets"),
+    ],
+    [
+      "run, linked folder",
+      updateNotice(refusal("destination-symlinked"), "Update targets"),
+    ],
+  ])("names the control by the label the row gives it (%s)", (_, notice) => {
+    const message = plainText(notice.message);
 
-  it("keeps the server's request-shape sentence for a malformed request", () => {
-    const error = new HttpError(
-      400,
-      "Maestro could not start this change. Reload the page, then try again.",
-      "invalid-body",
-      { detail: "The request carries a type, a name and a target." },
-    );
-    expect(removeNotice(error)).toEqual({
-      label: "Maestro could not start the action",
-      message:
-        "Maestro could not start this change. Reload the page, then try again.",
-      detail: "The request carries a type, a name and a target.",
-    });
+    expect(message).toMatch(/[Ss]elect Update targets again\.$/);
+    expect(message).not.toMatch(/Update target\b(?!s)/);
   });
 });
 
-describe("update preview notices", () => {
-  const cases = pinned<UpdatePreviewError>({
-    "repo-not-registered": {
-      label: "Repository not registered",
-      message:
-        "Select Register repository on the Repositories screen, then select Update target again.",
-    },
-    "no-supported-tool": {
-      label: "No supported tool",
-      message:
-        "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
-    },
-    "not-deployed": {
-      label: "Nothing deployed here",
-      message:
-        "This target follows no release. Select Deploy skill on Skills to put one on it.",
-    },
-    "lockfile-malformed": {
-      label: "Deployment record not read",
-      message:
-        "Repair or delete apm.lock.yaml in the target, then select Update target again.",
-      detail:
-        "The file is present but does not parse, so the target's state is unknown.",
-    },
-    "deployed-unreadable": {
-      label: "Deployed copy not read",
-      message:
-        "Nothing was changed. Make the deployed copy readable, then select Update target again.",
-      detail: "Its permissions or its shape blocked the check.",
-    },
-    "inventory-not-configured": {
-      label: "No Harness connected",
-      message:
-        "Select Change Harness location in Settings, then select Update target again.",
-    },
-    "inventory-unreadable": {
-      label: "Inventory not read",
-      message:
-        "Select Re-read Skills on the Harness location screen, then select Update target again.",
-    },
-    "no-published-tag": {
-      label: "Not in any release",
-      message:
-        "Select Create a release on the Harness screen, then select Update target again.",
-      detail: "An update moves the target to a published tag.",
-    },
-    "skill-not-in-release": {
-      label: "Not in the latest release",
-      message:
-        "The latest release does not hold this skill. Select Create a release on the Harness screen, then deploy again.",
-      detail: "Nothing was changed, and the target keeps its own release.",
-    },
-    "inventory-origin-unavailable": {
-      label: "No GitHub origin",
-      message:
-        "Point the Harness clone's origin at its GitHub repository, then select Update target again.",
-      detail: "An update takes the skill from a GitHub tag, over https or ssh.",
-    },
-    "ref-unresolvable": {
-      label: "Deployed version unknown",
-      message:
-        "Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, then select Update target again.",
-      detail: "The target's record names more than one, or names no release.",
-    },
-    "preview-failed": {
-      label: "Preview did not run",
-      message:
-        "Nothing was changed. Wait a moment, then select Update target again.",
-    },
-    "destination-symlinked": {
-      label: "Linked skill folder",
-      message:
-        "Nothing was written. Delete the linked skill folder in the target, then select Update target again.",
-      detail:
-        "This removes the link only. The folder it points at remains on disk.",
-    },
-  });
-
-  it("names every control it points to as select {Control}", () => {
-    for (const [code] of cases) {
-      expect(
-        unselectedControls(
-          updatePreviewNotice(refusal(code), "Update target").message,
-        ),
-        code,
-      ).toEqual([]);
-    }
-  });
-
-  it.each(cases)("states %s", (code, expected) => {
-    expect(updatePreviewNotice(refusal(code), "Update target")).toEqual(
-      expected,
-    );
-  });
-
-  it("names the control by the label the target's row gives it", () => {
-    const label = "Update targets";
-    expect(updatePreviewNotice(new Error("offline"), label).message).toBe(
-      "Nothing was changed. Wait a moment, then select Update targets again.",
-    );
-    expect(updateNotice(refusal("status-out-of-date"), label).message).toBe(
-      "Nothing was changed. The target changed after the preview. Select Update targets again.",
-    );
-  });
-
-  it("names a failure it has no code for", () => {
-    expect(updatePreviewNotice(new Error("offline"), "Update target")).toEqual({
-      label: "Preview outcome unknown",
-      message:
-        "Nothing was changed. Wait a moment, then select Update target again.",
-      detail:
-        "A dropped connection, or a failure this version of Maestro does not name.",
-    });
-  });
-});
-
-describe("update notices", () => {
-  const cases = pinned<Exclude<UpdateRunError, UpdatePreviewError>>({
-    "status-out-of-date": {
-      label: "Status out of date",
-      message:
-        "Nothing was changed. The target changed after the preview. Select Update target again.",
-    },
-    "update-in-progress": {
-      label: "Target busy",
-      message:
-        "An update is still running on this target. Wait for it to finish.",
-    },
-    "operation-unfinished": {
-      label: "Unfinished operation",
-      message:
-        "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then select Update target again.",
-    },
-    "deployed-diverged-from-lock": {
-      label: "Local changes in deployed files",
-      message:
-        "Nothing was changed. Select Update target again to review the local edits before updating.",
-      detail: "The edits never went through the Harness.",
-    },
-    "deployed-unverifiable": {
-      label: "Local edits unverifiable",
-      message:
-        "Nothing was changed. Select Update target again to review the unverified copies before updating.",
-      detail:
-        "These copies predate content tracking, so any change in them is invisible.",
-    },
-    "manifest-not-recognised": {
-      label: "Manifest not recognised",
-      message:
-        "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Update target again.",
-      detail: "Maestro edits that list only, and it found another shape.",
-    },
-    "update-incomplete": {
-      label: "Update incomplete",
-      message:
-        "The update is incomplete. Select Retry update to run the same release again.",
-      detail: "apm reported success, but some files are missing.",
-    },
-    "update-failed": {
-      label: "Update outcome unknown",
-      message:
-        "Nothing proved the update finished. Check the target on the Deploy-state screen, then select Update target again.",
-    },
-  });
-
-  it("names every control it points to as select {Control}", () => {
-    for (const [code] of cases) {
-      expect(
-        unselectedControls(
-          updateNotice(refusal(code), "Update target").message,
-        ),
-        code,
-      ).toEqual([]);
-    }
-  });
-
-  it.each(cases)("states %s", (code, expected) => {
-    expect(updateNotice(refusal(code), "Update target")).toEqual(expected);
-  });
-});
-
-describe("update notices for a linked skill folder", () => {
+describe("a linked skill folder", () => {
   const LINKED = "/Users/dev/.claude/skills/tdd";
   const linked = (body: unknown) =>
     new HttpError(409, "unused", "destination-symlinked", body);
+  const withPath = linked({
+    error: "destination-symlinked",
+    linkedPath: LINKED,
+  });
+  const withoutPath = linked({ error: "destination-symlinked" });
 
   it.each([
-    ["preview", updatePreviewNotice],
-    ["run", updateNotice],
-  ])("spells out the rm for the path the server read (%s)", (_, notice) => {
+    ["deploy", deployNotice],
+    ["update preview", (e: unknown) => updatePreviewNotice(e, "Update target")],
+    ["update run", (e: unknown) => updateNotice(e, "Update target")],
+  ])("sets apart the rm for the path the server read (%s)", (_, notice) => {
+    expect(machineValues(notice(withPath).message)).toEqual([`rm ${LINKED}`]);
+    expect(machineValues(notice(withoutPath).message)).toEqual([]);
+    expect(notice(withPath).detail).toEqual(notice(withoutPath).detail);
+  });
+
+  it("sets apart the rm for the path a bulk run carries", () => {
     expect(
-      readNotice(
-        notice(
-          linked({ error: "destination-symlinked", linkedPath: LINKED }),
-          "Update target",
-        ),
-      ),
-    ).toEqual({
-      label: "Linked skill folder",
-      message: `Nothing was written. Run rm ${LINKED} and then select Update target again.`,
-      detail:
-        "This removes the link only. The folder it points at remains on disk.",
-    });
-  });
-
-  it.each([
-    ["preview", updatePreviewNotice],
-    ["run", updateNotice],
-  ])("names the folder in general when no path came back (%s)", (_, notice) => {
-    expect(
-      notice(linked({ error: "destination-symlinked" }), "Update target"),
-    ).toEqual({
-      label: "Linked skill folder",
-      message:
-        "Nothing was written. Delete the linked skill folder in the target, then select Update target again.",
-      detail:
-        "This removes the link only. The folder it points at remains on disk.",
-    });
-  });
-});
-
-describe("deploy notice for a linked skill folder", () => {
-  it("spells out the rm for the path a bulk run carries", () => {
-    expect(
-      readNotice(
-        deployNoticeFor(
-          "destination-symlinked",
-          "/Users/dev/.claude/skills/tdd",
-        ),
-      ),
-    ).toEqual({
-      label: "Linked skill folder",
-      message:
-        "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",
-      detail:
-        "This removes the link only. The folder it points at remains on disk.",
-    });
-  });
-
-  it("spells out the rm for the path the server read", () => {
-    const error = new HttpError(409, "unused", "destination-symlinked", {
-      error: "destination-symlinked",
-      linkedPath: "/Users/dev/.claude/skills/tdd",
-    });
-
-    expect(readNotice(deployNotice(error))).toEqual({
-      label: "Linked skill folder",
-      message:
-        "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again.",
-      detail:
-        "This removes the link only. The folder it points at remains on disk.",
-    });
-  });
-
-  it("sets the rm command apart, path included", () => {
-    const notice = deployNoticeFor(
-      "destination-symlinked",
-      "/Users/dev/.claude/skills/tdd",
-    );
-
-    expect(machineValues(notice.message)).toEqual([
-      "rm /Users/dev/.claude/skills/tdd",
-    ]);
+      machineValues(deployNoticeFor("destination-symlinked", LINKED).message),
+    ).toEqual([`rm ${LINKED}`]);
   });
 });
 
@@ -649,131 +328,41 @@ describe("notices that send the reader to the target", () => {
   });
 });
 
-describe("retry notices", () => {
-  const deploy = { kind: "deploy", release: "v0.3.4" } as const;
-  const cases = pinned<RetryTargetOperationError>({
-    "repo-not-registered": {
-      label: "Repository not registered",
-      message:
-        "Nothing was changed. Select Register repository on the Repositories screen, then select Retry deploy again.",
-    },
-    "nothing-to-retry": {
-      label: "Change already finished",
-      message:
-        "Nothing was changed. The earlier change on this target already finished.",
-    },
-    "retry-in-progress": {
-      label: "Target busy",
-      message:
-        "Nothing was changed. Wait for the running change to finish, then select Retry deploy again.",
-    },
-    "deployed-diverged-from-lock": {
-      label: "Local changes in deployed files",
-      message:
-        "Nothing was changed. Undo the local edits in the deployed files, then select Retry deploy again.",
-      detail: "The edits never went through the Harness.",
-    },
-    "deployed-unverifiable": {
-      label: "Local edits unverifiable",
-      message:
-        "Nothing was changed. Delete the unverified copies in the target, then select Retry deploy again.",
-      detail:
-        "These copies predate content tracking, so any change in them is invisible.",
-    },
-    "deployed-unreadable": {
-      label: "Deployed copy not read",
-      message:
-        "Nothing was changed. Make the deployed copy readable, then select Retry deploy again.",
-      detail: "Its permissions or its shape blocked the check.",
-    },
-    "lockfile-malformed": {
-      label: "Deployment record not read",
-      message:
-        "Nothing was changed. Repair or delete apm.lock.yaml in the target, then select Retry deploy again.",
-      detail:
-        "The file is present but does not parse, so the target's state is unknown.",
-    },
-    "manifest-not-recognised": {
-      label: "Manifest not recognised",
-      message:
-        "Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, then select Retry deploy again.",
-      detail: "Maestro edits that list only, and it found another shape.",
-    },
-    "retry-incomplete": {
-      label: "Deploy still incomplete",
-      message:
-        "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
-      detail: "apm reported success, but some files are missing.",
-    },
-    "retry-failed": {
-      label: "Deploy outcome unknown",
-      message:
-        "Nothing proved the deploy finished. Select Retry deploy to run it again.",
-    },
-  });
+describe("a retry", () => {
+  const RETRY_CONTROLS = {
+    deploy: "Retry deploy",
+    remove: "Retry removal",
+    update: "Retry update",
+  } as const;
 
-  it("names every control it points to as select {Control}", () => {
-    for (const [code] of cases) {
+  it.each(KINDS)("names the %s's own retry control", (kind) => {
+    for (const code of [
+      "repo-not-registered",
+      "retry-incomplete",
+      "retry-failed",
+    ]) {
       expect(
-        unselectedControls(retryNotice(refusal(code), deploy).message),
+        plainText(retryNotice(refusal(code), pending(kind)).message),
         code,
-      ).toEqual([]);
+      ).toMatch(new RegExp(`[Ss]elect ${RETRY_CONTROLS[kind]}`));
     }
   });
 
-  it.each(cases)("states %s", (code, notice) => {
-    expect(readNotice(retryNotice(refusal(code), deploy))).toEqual(notice);
+  it("names the operation in the label of a retry that did not finish", () => {
+    for (const code of ["retry-incomplete", "retry-failed"]) {
+      const labels = KINDS.map(
+        (kind) => retryNotice(refusal(code), pending(kind)).label,
+      );
+      expect(new Set(labels).size, code).toBe(KINDS.length);
+    }
   });
 
-  it("states a retry that never answered", () => {
-    expect(retryNotice(new Error("offline"), deploy)).toEqual({
-      label: "Deploy outcome unknown",
-      message:
-        "Nothing proved the deploy finished. Select Retry deploy to run it again.",
-      detail:
-        "A dropped connection, or a failure this version of Maestro does not name.",
-    });
-  });
-
-  it.each([
-    [
-      "remove",
-      "Removal still incomplete",
-      "The skill's files are still on disk. Select Retry removal to run the same removal again.",
-    ],
-    [
-      "update",
-      "Update still incomplete",
-      "The update is incomplete. Select Retry update to run the same release again.",
-    ],
-  ] as const)(
-    "states an unfinished %s that is still incomplete",
-    (kind, label, message) => {
-      expect(
-        retryNotice(refusal("retry-incomplete"), { kind, release: "v0.3.4" }),
-      ).toEqual({
-        label,
-        message,
-        detail: "apm reported success, but some files are missing.",
-      });
-    },
-  );
-
-  it.each([
-    [
-      "remove",
-      "Removal outcome unknown",
-      "Nothing proved the removal finished. Select Retry removal to run it again.",
-    ],
-    [
-      "update",
-      "Update outcome unknown",
-      "Nothing proved the update finished. Select Retry update to run it again.",
-    ],
-  ] as const)("names the %s in a failed retry", (kind, label, message) => {
+  it("names the release a still-incomplete deploy would install", () => {
     expect(
-      retryNotice(refusal("retry-failed"), { kind, release: "v0.3.4" }),
-    ).toEqual({ label, message });
+      machineValues(
+        retryNotice(refusal("retry-incomplete"), pending("deploy")).message,
+      ),
+    ).toEqual(["v0.3.4"]);
   });
 });
 
@@ -781,12 +370,11 @@ describe("Repository not registered", () => {
   const STEP = "Select Register repository on the Repositories screen";
 
   it("names Register repository and its screen in every notice", () => {
-    const deploy = { kind: "deploy", release: "v0.3.4" } as const;
     for (const notice of [
       deployNotice(refusal("repo-not-registered")),
       removeNotice(refusal("repo-not-registered")),
       updatePreviewNotice(refusal("repo-not-registered"), "Update target"),
-      retryNotice(refusal("repo-not-registered"), deploy),
+      retryNotice(refusal("repo-not-registered"), pending("deploy")),
       localEditsCheckNotice(refusal("repo-not-registered")),
     ]) {
       expect(readNotice(notice)?.message).toContain(STEP);

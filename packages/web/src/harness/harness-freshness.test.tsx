@@ -176,6 +176,22 @@ describe("Harness freshness and failed reads", () => {
     expect(screen.getByText("tdd")).toBeInTheDocument();
   });
 
+  it("says GitHub was out of reach when the read went offline", async () => {
+    const offline: HarnessState = {
+      ...STALE,
+      freshness: { ...STALE.freshness, outcome: "offline" },
+    };
+    stubHarnessServer({ read: { body: offline } });
+    renderHarness();
+
+    expect(await screen.findByText("Status out of date")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Maestro could not reach GitHub, so these rows are from the last read.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("closes Create a release and every row-menu press while the read is stale", async () => {
     stubHarnessServer({ read: { body: STALE } });
     renderHarness();

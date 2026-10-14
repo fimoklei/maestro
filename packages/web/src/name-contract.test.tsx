@@ -85,7 +85,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Withdraw proposal for ${skill}`": "dialog title",
     "`maestro/${skill}`": "branch, a machine value in a fact",
   },
-  "skills/bulk-deploy-report-view.ts": {
+  "skills/bulk-deploy-action.tsx": {
     '`Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`':
       "report heading",
     "`Deploy ${name} again`": "button label",

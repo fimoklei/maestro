@@ -5,39 +5,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import {
-  ConfigStore,
-  DeleteLocalSkill,
-  DiscardSkillChange,
-  HarnessFreshnessStore,
   HarnessGitAdapter,
   type HarnessState,
-  InFlightLocks,
-  InventoryReader,
-  NodeCopyTreeFs,
-  NodeFileSystem,
-  PromoteSkill,
-  PromoteSkillDeletion,
-  ProposalActions,
-  ReadHarnessState,
-  RestoreSkill,
   type ReviewRequest,
-  releasedSkillsFromGit,
 } from "@maestro/core";
-import { createApp } from "@maestro/server";
 import { afterEach, beforeEach } from "vitest";
 import { removeGitTempTree } from "./git-fixture";
-import { realRegistry } from "./real-registry";
-import { stubConnect } from "./stub-connect";
-import { stubDeploy, stubRetryOperation } from "./stub-deploy";
-import { stubDeployState } from "./stub-deploy-state";
-import { stubDrift } from "./stub-drift";
-import { stubFolderChooser } from "./stub-folder-chooser";
-import { stubImports } from "./stub-import";
-import { stubPublish } from "./stub-publish";
-import { stubRemove } from "./stub-remove";
+import { nodeApp } from "./node-app";
 import { type StubReview, stubReview } from "./stub-review";
-import { stubScaffold } from "./stub-scaffold";
-import { stubUpdate } from "./stub-update";
 
 const run = promisify(execFile);
 
@@ -108,87 +83,11 @@ export function useHarnessStages() {
     await removeGitTempTree(base);
   });
 
-  function makeApp() {
-    const fs = new NodeFileSystem();
-    const configPath = join(base, "config.json");
-    const registry = realRegistry(fs, configPath);
-    const store = new ConfigStore({ fs, configPath: () => configPath });
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => root,
-      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
-      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
-    });
-    const locks = new InFlightLocks();
-    const resolveRoot = async () => await fs.realpath(root);
-    const harness = new ReadHarnessState({
-      resolveRoot,
-      git: new HarnessGitAdapter(),
-      freshness: new HarnessFreshnessStore({ store }),
-      review,
-    });
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      harness,
-      publish: stubPublish(),
-      promote: new PromoteSkill({
-        resolveRoot,
-        git: new HarnessGitAdapter(),
-        freshness: new HarnessFreshnessStore({ store }),
-        review,
-        locks,
-      }),
-      promoteDeletion: new PromoteSkillDeletion({
-        resolveRoot,
-        git: new HarnessGitAdapter(),
-        freshness: new HarnessFreshnessStore({ store }),
-        review,
-        locks,
-      }),
-      deleteLocalSkill: new DeleteLocalSkill({
-        resolveRoot,
-        fs,
-        git: new HarnessGitAdapter(),
-        locks,
-      }),
-      restoreSkill: new RestoreSkill({
-        resolveRoot,
-        fs,
-        copyFs: new NodeCopyTreeFs(),
-        git: new HarnessGitAdapter(),
-        locks,
-      }),
-      discardSkillChange: new DiscardSkillChange({
-        resolveRoot,
-        readStages: async () => {
-          const read = await harness.execute();
-          return read.ok ? read.state.stages : null;
-        },
-        fs,
-        copyFs: new NodeCopyTreeFs(),
-        git: new HarnessGitAdapter(),
-        locks,
-      }),
-      proposals: new ProposalActions({
-        resolveRoot,
-        git: new HarnessGitAdapter(),
-        review,
-      }),
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+  const makeApp = () =>
+    nodeApp(
+      { HOME: base, MAESTRO_HOME: base, MAESTRO_INVENTORY_PATH: root },
+      { gh: review },
+    );
 
   type App = ReturnType<typeof makeApp>;
 

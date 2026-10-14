@@ -182,6 +182,52 @@ describe("Deploy-state — Update target on a repository", () => {
     ).toBeInTheDocument();
   });
 
+  it("states a refused preview in the dialog, spelling out the rm for the linked folder", async () => {
+    const linkedPath = "/Users/me/project/.claude/skills/tdd";
+    stubServer(() => ({
+      repos: [REPO],
+      repo: { [REPO]: repoAt("v0.3.4") },
+      other: () =>
+        jsonResponse(
+          { error: "destination-symlinked", message: "unused", linkedPath },
+          409,
+        ),
+    }));
+    renderDeployState();
+
+    const pane = await openPane("…/me/project");
+    await userEvent.click(
+      within(pane).getByRole("button", { name: /^Update target/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Linked skill folder" +
+        `Nothing was written. Run rm ${linkedPath} and then select Update target again.` +
+        "This removes the link only. The folder it points at remains on disk.",
+    );
+  });
+
+  it("states a refused update in the dialog, with the way back to a fresh preview", async () => {
+    stubUpdate(
+      Promise.resolve(
+        jsonResponse({ error: "status-out-of-date", message: "unused" }, 409),
+      ),
+      {
+        before: { repos: [REPO], repo: { [REPO]: repoAt("v0.3.4") } },
+        after: { repos: [REPO], repo: { [REPO]: repoAt("v0.3.4") } },
+      },
+    );
+    renderDeployState();
+
+    const dialog = await confirmUpdate("…/me/project");
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Status out of date" +
+        "Nothing was changed. The target changed after the preview. Select Update target again.",
+    );
+  });
+
   it("keeps the dialog when a mid-run read finds the update unfinished", async () => {
     const update = deferred();
     stubUpdate(update.promise, {

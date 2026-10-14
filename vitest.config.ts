@@ -54,7 +54,7 @@ export default defineConfig({
           name: "core",
           root: "./packages/core",
           environment: "node",
-          include: ["src/**/*.test.ts"],
+          include: ["src/**/*.test.ts", "../../tests/unit/**/*.test.ts"],
         },
       },
       {

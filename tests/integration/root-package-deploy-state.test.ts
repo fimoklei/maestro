@@ -1,34 +1,20 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  type DeployStateExtras,
-  GlobalDeployStateReader,
-  InFlightLocks,
-  InventoryReader,
-  NodeFileSystem,
-  type ReleaseHead,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import type { DeployStateExtras, ReleaseHead } from "@maestro/core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
+import { nodeApp } from "../helpers/node-app";
 
-// Real files on disk decide what is deployed; the Release head crosses the
-// HTTP edge shape-checked.
+// Real files on disk decide what is deployed; the Release head, derived from
+// the Harness's release tags, crosses the HTTP edge shape-checked.
+
+const SKILL_BODY = "# skill\n";
+const SKILL_HASH = `sha256:${createHash("sha256").update(SKILL_BODY).digest("hex")}`;
 
 // The shape apm 0.29.0 writes for a root package: no virtual_path, a
-// skill_subset beside deployed_files.
+// skill_subset beside deployed_files, a hash per deployed file.
 const rootPackageLockfile = (
   ref: string,
   deployedFiles: string[],
@@ -45,85 +31,93 @@ const rootPackageLockfile = (
     "  package_type: apm_package",
     "  deployed_files:",
     ...deployedFiles.map((file) => `  - ${file}`),
+    "  deployed_file_hashes:",
+    ...deployedFiles.map((file) => `    ${file}: ${SKILL_HASH}`),
     "  skill_subset:",
     ...subset.map((name) => `  - ${name}`),
     "",
   ].join("\n");
 
+const NOW = "2026-09-12T10:00:00.000Z";
+
+// v0.3.4 changed tdd and left grill as v0.3.2 shipped it.
 const HEAD: ReleaseHead = {
   release: "v0.3.2",
   latestRelease: "v0.3.4",
   changed: 1,
+  changedSkills: ["tdd"],
+  selection: ["tdd", "grill"],
   selected: 2,
-  comparedAt: "2026-09-12T10:00:00.000Z",
+  comparedAt: NOW,
 };
 
 describe("reading a root-package target over HTTP", () => {
   let home: string;
   let apmRoot: string;
   let repo: string;
+  let harnessRoot: string;
 
   beforeEach(async () => {
-    home = await mkdtemp(join(tmpdir(), "maestro-root-package-"));
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(NOW));
+    home = await realpath(
+      await mkdtemp(join(tmpdir(), "maestro-root-package-")),
+    );
     apmRoot = join(home, ".apm");
     repo = join(home, "repo");
+    harnessRoot = join(home, "harness");
     await mkdir(apmRoot, { recursive: true });
     await mkdir(join(repo, ".git"), { recursive: true });
+    await mkdir(harnessRoot);
   });
 
   afterEach(async () => {
+    vi.useRealTimers();
     await rm(home, { recursive: true, force: true });
   });
 
   async function seedFiles(root: string, files: string[]) {
     for (const file of files) {
       await mkdir(join(root, file, ".."), { recursive: true });
-      await writeFile(join(root, file), "# skill\n", "utf8");
+      await writeFile(join(root, file), SKILL_BODY, "utf8");
     }
   }
 
-  async function makeApp(
-    head: ReleaseHead | undefined = HEAD,
-    harnessPage?: DeployStateExtras["harnessPage"],
-  ) {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const locks = new InFlightLocks();
-    const app = createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState: new GlobalDeployStateReader({
-        fs,
+  // The Harness clone answers its tags and origin; harnessPage is its GitHub page.
+  async function makeApp(harnessPage?: DeployStateExtras["harnessPage"]) {
+    const harness = new InMemoryHarnessGit();
+    harness.root = harnessRoot;
+    harness.commit("c32", { tdd: "tdd one", grill: "grill" });
+    harness.commit(
+      "c34",
+      { tdd: "tdd two", grill: "grill" },
+      { parent: "c32" },
+    );
+    harness.tags = [
+      { name: "v0.3.2", commit: "c32" },
+      { name: "v0.3.4", commit: "c34" },
+    ];
+    const app = nodeApp(
+      {
+        HOME: home,
+        MAESTRO_HOME: join(home, ".maestro"),
+        MAESTRO_INVENTORY_PATH: harnessRoot,
+      },
+      {
         toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
-        treeRoot: () => home,
-        releaseHead: { read: async () => head ?? HEAD },
-        harnessPage,
-        harnessOrigin: async () => ({
-          host: "github.com",
-          ownerRepo: "fimoklei/agent-harness",
-        }),
-      }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => apmRoot,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
+        git: {
+          harness,
+          githubPage: async (path) =>
+            path === harnessRoot && harnessPage ? await harnessPage() : null,
+        },
+      },
+    );
+    const res = await app.request("/api/registry/repos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: repo }),
     });
-    await registry.register(repo);
+    expect(res.status).toBe(201);
     return app;
   }
 
@@ -164,7 +158,7 @@ describe("reading a root-package target over HTTP", () => {
       "utf8",
     );
 
-    const app = await makeApp({ ...HEAD, selected: 1, changedSkills: ["tdd"] });
+    const app = await makeApp();
     const res = await app.request(
       `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
     );
@@ -183,7 +177,7 @@ describe("reading a root-package target over HTTP", () => {
       "utf8",
     );
 
-    const app = await makeApp({ ...HEAD, selected: 1, selection: ["tdd"] });
+    const app = await makeApp();
     const res = await app.request(
       `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
     );
@@ -226,7 +220,7 @@ describe("reading a root-package target over HTTP", () => {
       "utf8",
     );
 
-    const app = await makeApp({ ...HEAD, release: "main" });
+    const app = await makeApp();
     const res = await app.request(
       `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
     );
@@ -320,12 +314,12 @@ describe("reading a root-package target over HTTP", () => {
         {
           tool: "claude",
           primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
-          releaseHead: HEAD,
+          releaseHead: { ...HEAD, selection: ["tdd"], selected: 1 },
         },
         {
           tool: "codex",
           primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
-          releaseHead: HEAD,
+          releaseHead: { ...HEAD, selection: ["tdd"], selected: 1 },
         },
       ],
       skipped: [],
@@ -348,7 +342,7 @@ describe("reading a root-package target over HTTP", () => {
       const lockfile = rootPackageLockfile("v0.3.2", files, ["tdd"]);
       await writeFile(join(repo, "apm.lock.yaml"), lockfile, "utf8");
       await writeFile(join(apmRoot, "apm.lock.yaml"), lockfile, "utf8");
-      const res = await (await makeApp(HEAD, harnessPage)).request(path);
+      const res = await (await makeApp(harnessPage)).request(path);
       expect(res.status).toBe(200);
       return await res.json();
     }
@@ -401,7 +395,7 @@ describe("reading a root-package target over HTTP", () => {
         ),
         "utf8",
       );
-      const app = await makeApp(HEAD, async () => ({
+      const app = await makeApp(async () => ({
         kind: "link",
         url: "https://github.com/o/r#x",
       }));

@@ -4,12 +4,13 @@ import type { PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionResult, SelectionWriter } from "./apply-selection";
 import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
-import { parseGitOrigin } from "./git-origin";
+import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
   type CopyFinding,
   type CopyVerdict,
   LocalCopyGuard,
+  linkedPathAmong,
   worstVerdict,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
@@ -181,7 +182,39 @@ export type DeploySkillResult =
       copyReceipt?: string;
     };
 
-export type BatchDeployResult = { name: string; result: DeploySkillResult };
+type BatchDeployResult = { name: string; result: DeploySkillResult };
+
+type BulkAttentionRow = {
+  name: string;
+  error: DeploySkillError;
+  forceable: boolean;
+  // Minted by this row's own refusal; grants only what that refusal read (#952).
+  copyReceipt?: string;
+};
+type BulkFailure = {
+  error: DeploySkillError;
+  names: string[];
+  linkedPath?: string;
+};
+
+export type BulkDeployReport = {
+  target: DeployTarget;
+  deployed: { name: string; version: string }[];
+  attention: BulkAttentionRow[];
+  failed: BulkFailure[];
+};
+
+// Refusals the user acts on, and whether a force is the action. Every error
+// absent here is a genuine failure.
+const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
+  "deployed-diverged-from-lock": { forceable: true },
+  "deployed-unverifiable": { forceable: true },
+  "not-at-target-release": { forceable: false },
+  "target-pinned-per-skill": { forceable: false },
+  "deploy-in-progress": { forceable: false },
+  "manifest-not-recognised": { forceable: false },
+  "operation-unfinished": { forceable: false },
+};
 
 type SelectionError = Extract<SelectionResult, { ok: false }>["error"];
 
@@ -207,7 +240,7 @@ export class DeploySkill {
     deployedCleanup: DeployedCleanupPort;
     // Global path only.
     toolPresence: ToolPresencePort;
-    inventoryOriginUrl: () => Promise<string | null>;
+    harnessOrigin: () => Promise<GitOrigin | null>;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with the remove use-case: both rewrite the same apm.lock.yaml.
@@ -235,12 +268,56 @@ export class DeploySkill {
     return answer?.result ?? { ok: false, error: "deploy-failed" };
   }
 
-  // No consent: a bulk deploy never overwrites a copy with local edits (#292).
+  // No consent: a bulk deploy never overwrites a copy with local edits; force
+  // stays per-item, on the single deploy (#292).
   async executeBatch(input: {
     names: readonly string[];
     target: DeployTarget;
-  }): Promise<BatchDeployResult[]> {
-    return await this.run(input.names, input.target, undefined);
+  }): Promise<BulkDeployReport> {
+    let rows: BatchDeployResult[];
+    try {
+      rows = await this.run(input.names, input.target, undefined);
+    } catch {
+      rows = input.names.map((name) => ({
+        name,
+        result: { ok: false, error: "deploy-failed" },
+      }));
+    }
+
+    const deployed: BulkDeployReport["deployed"] = [];
+    const attention: BulkAttentionRow[] = [];
+    // Keyed by error and link, so identical failures collapse to one line.
+    const failures = new Map<string, BulkFailure>();
+    for (const { name, result } of rows) {
+      if (result.ok) {
+        deployed.push({ name, version: result.deployed.version });
+        continue;
+      }
+      const offer = ATTENTION[result.error];
+      if (offer) {
+        attention.push({
+          name,
+          error: result.error,
+          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+          forceable: offer.forceable,
+        });
+        continue;
+      }
+      const key = `${result.error}\0${result.linkedPath ?? ""}`;
+      const line = failures.get(key) ?? {
+        error: result.error,
+        names: [],
+        ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
+      };
+      line.names.push(name);
+      failures.set(key, line);
+    }
+    return {
+      target: input.target,
+      deployed,
+      attention,
+      failed: [...failures.values()],
+    };
   }
 
   // One answer per name, in the order given.
@@ -334,8 +411,7 @@ export class DeploySkill {
       return results;
     }
 
-    const originUrl = await this.deps.inventoryOriginUrl();
-    const origin = originUrl === null ? null : parseGitOrigin(originUrl);
+    const origin = await this.deps.harnessOrigin();
     if (origin === null) {
       return refuseRest("inventory-origin-unavailable");
     }
@@ -387,22 +463,20 @@ export class DeploySkill {
       }
       await this.deps.inventoryGit.syncBeforeDeploy();
 
-      const candidates: string[] = [];
+      const tagged: string[] = [];
       for (const name of known) {
         const refusal = await this.nameRefusal(
           name,
-          target,
           tag,
           current.kind === "root",
-          globalTools,
         );
         if (refusal === null) {
-          candidates.push(name);
+          tagged.push(name);
         } else {
           results.set(name, refusal);
         }
       }
-      if (candidates.length === 0) {
+      if (tagged.length === 0) {
         return results;
       }
 
@@ -411,12 +485,41 @@ export class DeploySkill {
       // all. A copy equal to this release is not an edit (#952).
       const deployed = current.kind === "root" ? current.deployed : [];
       const scope = { write: "deploy", target } as const;
-      const check = await this.copyGuard.check({
-        ...scope,
-        names: union(deployed, candidates),
-        ...toolScope,
-        release: tag,
-      });
+      const checkOver = (names: readonly string[]) =>
+        this.copyGuard.check({
+          ...scope,
+          names: union(deployed, names),
+          ...toolScope,
+          release: tag,
+        });
+      let check = await checkOver(tagged);
+      // A root-package install skips a symlinked destination and still reports
+      // success, so the link is refused here.
+      const candidates: string[] = [];
+      for (const name of tagged) {
+        const linkedPath = linkedPathAmong(check, [name]);
+        if (linkedPath) {
+          results.set(name, {
+            ok: false,
+            error: "destination-symlinked",
+            linkedPath,
+          });
+        } else {
+          candidates.push(name);
+        }
+      }
+      if (candidates.length === 0) {
+        return results;
+      }
+      // A refused name outside the Selection is no copy at risk, so it must
+      // not bind the receipt a later single deploy checks.
+      if (
+        tagged.some(
+          (name) => !candidates.includes(name) && !deployed.includes(name),
+        )
+      ) {
+        check = await checkOver(candidates);
+      }
       const admitted = this.copyGuard.admits(scope, check, receipt);
       const held = admitted.ok
         ? []
@@ -513,10 +616,8 @@ export class DeploySkill {
   // Null lets the name into the install.
   private async nameRefusal(
     name: string,
-    target: DeployTarget,
     tag: string,
     followsRelease: boolean,
-    tools: readonly SupportedTool[] | undefined,
   ): Promise<DeploySkillResult | null> {
     if (!(await this.deps.inventoryGit.skillExistsAtTag(tag, name))) {
       return {
@@ -527,16 +628,7 @@ export class DeploySkill {
     if (await this.deps.inventoryGit.skillDivergesFromTag(tag, name)) {
       return { ok: false, error: "local-diverged-from-tag" };
     }
-    // A root-package install skips a symlinked destination and still reports
-    // success, so the link is refused here.
-    const linkedPath = await this.deps.deployedContent.linkedSkillPath({
-      target,
-      name,
-      tools,
-    });
-    return linkedPath === null
-      ? null
-      : { ok: false, error: "destination-symlinked", linkedPath };
+    return null;
   }
 
   // A blocked deployed copy holds every name, since the one install rewrites

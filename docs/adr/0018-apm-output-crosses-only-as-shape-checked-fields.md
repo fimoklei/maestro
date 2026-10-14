@@ -83,7 +83,7 @@ Two further points the arms share:
   the real driver with output carrying every leak shape and asserts the HTTP body
   carries none of it, on the remove route and on both drift routes. The shapes are
   named there and nowhere else, so the list has one owner. The field-level shapes
-  are covered in `parse-outdated.test.ts`, and `remove-skill-dialog.test.tsx`
+  are covered in `parse-outdated.test.ts`, and `remove-skill-flow.test.tsx`
   holds the last half: the failure block's label does not move with the server's
   sentence.
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeployTarget } from "./deploy-skill";
+import { copiesIn } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { RemoveDeployedSkill } from "./remove-deployed-skill";
 import { selectionWorld } from "./selection-writer-fake";
@@ -19,8 +20,7 @@ function buildUseCase(copy: "clean" | "diverged" = "clean") {
       }),
     },
     deployedContent: {
-      classify: async () => copy,
-      contentDigest: async () => null,
+      ...copiesIn(copy).content,
     },
     apm: { removeSkill: async () => ({ ok: true as const }) },
     deployedCleanup: { removeSkillTargets: async () => {} },
@@ -29,7 +29,7 @@ function buildUseCase(copy: "clean" | "diverged" = "clean") {
     locks: new InFlightLocks(),
     location: { treeRoot: () => "/repo" },
     selection: world.writer,
-    inventoryOrigin: async () => ({ host: "github.com", ownerRepo: HARNESS }),
+    harnessOrigin: async () => ({ host: "github.com", ownerRepo: HARNESS }),
   };
   return { world, remove: new RemoveDeployedSkill(deps), deps };
 }
@@ -152,6 +152,29 @@ describe("RemoveDeployedSkill on a target following one release", () => {
       error: "manifest-not-recognised",
     });
     expect(world.calls).toEqual([]);
+  });
+
+  it("narrows the selection when the removal runs as part of a batch", async () => {
+    const { world, remove } = buildUseCase();
+    world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
+    const preflight = await remove.preflight({
+      type: "skill",
+      name: "caveman",
+      target,
+    });
+
+    const report = await remove.executeBatch({
+      name: "caveman",
+      targets: [
+        {
+          target,
+          confirmedRemovalReceipt: preflight.ok ? preflight.receipt : undefined,
+        },
+      ],
+    });
+
+    expect(report.removed).toEqual([{ target, version: "v0.6.0" }]);
+    expect(world.files.get("/target/apm.yml")).not.toContain("caveman");
   });
 
   it("refuses a skill the target's own record does not hold", async () => {

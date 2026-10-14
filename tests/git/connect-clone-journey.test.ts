@@ -11,38 +11,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  ConfigStore,
-  ConnectInventory,
-  GitCloneAdapter,
-  HarnessGitAdapter,
-  InFlightLocks,
-  InventoryReader,
-  isRepositoryRoot,
-  NodeFileSystem,
-  probeHead,
-  Registry,
-  readConfiguredGitOriginUrl,
-  releasedSkillsFromGit,
-  resolveDefaultBranch,
-  resolveInventoryPath,
-  ScaffoldOffers,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
-import { centralInventoryPath } from "../helpers/real-registry";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { nodeApp } from "../helpers/node-app";
 
 const run = promisify(execFile);
 
@@ -106,55 +77,7 @@ describe("joining a Harness by its GitHub url", () => {
     await removeGitTempTree(base);
   });
 
-  function makeApp() {
-    const fs = new NodeFileSystem();
-    const store = new ConfigStore({
-      fs,
-      configPath: () => join(base, "config.json"),
-    });
-    const registry = new Registry({
-      fs,
-      store,
-      resolveCentralInventoryPath: centralInventoryPath,
-    });
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: async () => resolveInventoryPath(await store.read(), {}),
-      originUrl: readConfiguredGitOriginUrl,
-      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
-      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
-    });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: new ConnectInventory({
-        fs,
-        store,
-        originUrl: readConfiguredGitOriginUrl,
-        defaultBranch: resolveDefaultBranch,
-        isRepositoryRoot,
-        offers: new ScaffoldOffers(),
-        probeHead,
-        homeRoot: () => home,
-        clone: new GitCloneAdapter(),
-      }),
-      scaffold: stubScaffold(),
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+  const makeApp = () => nodeApp({ HOME: home, MAESTRO_HOME: base });
 
   function postConnect(app: ReturnType<typeof makeApp>, body: unknown) {
     return app.request("/api/inventory/connect", {
