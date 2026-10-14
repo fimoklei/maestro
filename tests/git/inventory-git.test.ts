@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { InventoryGitAdapter } from "@maestro/core";
+import { InventoryGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
@@ -40,7 +40,10 @@ describe("InventoryGitAdapter", () => {
   });
 
   const adapter = () =>
-    new InventoryGitAdapter({ resolveRoot: async () => root });
+    new InventoryGitAdapter({
+      resolveRoot: async () => root,
+      released: new ReleasedContentReader(),
+    });
 
   it("finds a skill that is part of the tag's tree", async () => {
     await expect(adapter().skillExistsAtTag("v0.1.0", "tdd")).resolves.toBe(
@@ -118,6 +121,7 @@ describe("InventoryGitAdapter", () => {
   it("rejects when no inventory root is configured", async () => {
     const broken = new InventoryGitAdapter({
       resolveRoot: async () => undefined,
+      released: new ReleasedContentReader(),
     });
     await expect(broken.skillExistsAtTag("v0.1.0", "tdd")).rejects.toThrow();
   });
@@ -196,6 +200,7 @@ describe("InventoryGitAdapter", () => {
     it("answers null with no inventory root configured", async () => {
       const broken = new InventoryGitAdapter({
         resolveRoot: async () => undefined,
+        released: new ReleasedContentReader(),
       });
 
       await expect(
@@ -248,7 +253,10 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
   });
 
   const adapter = () =>
-    new InventoryGitAdapter({ resolveRoot: async () => root });
+    new InventoryGitAdapter({
+      resolveRoot: async () => root,
+      released: new ReleasedContentReader(),
+    });
 
   it("clears a carried-back change once it is released, and catches up", async () => {
     // #978: deploy never reads a landed change as local work.

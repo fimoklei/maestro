@@ -9,6 +9,7 @@ import {
   HarnessGitAdapter,
   NodeFileSystem,
   ReadDrift,
+  ReleasedContentReader,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
@@ -89,7 +90,9 @@ describe("the content reading beside apm's Behind", () => {
   });
 
   const readDriftFor = (root: string | undefined, behind: string[]) => {
-    const harnessGit = new HarnessGitAdapter();
+    const harnessGit = new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    });
     const gate = new HarnessFetchGate({
       git: harnessGit,
       freshness: {

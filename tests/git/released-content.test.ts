@@ -1,6 +1,7 @@
 // Content at a commit never changes; a tag can move. The reader must honour
 // the move at once.
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -123,5 +124,57 @@ describe("ReleasedContentReader", { timeout: 30_000 }, () => {
       missing: null,
     });
     expect(second).toEqual({ tdd: "tdd v2\n" });
+  });
+
+  it("hashes a skill's files at a tag, the way git reports their bytes", async () => {
+    await mkdir(join(root, ".apm/skills/tdd/scripts"), { recursive: true });
+    await writeFile(
+      join(root, ".apm/skills/tdd/scripts/run.sh"),
+      "#!/bin/sh\n",
+    );
+    await release("grow the skill");
+    const blobHash = async (path: string) =>
+      `sha256:${createHash("sha256")
+        .update(
+          (
+            await run("git", ["show", `${TAG}:.apm/skills/tdd/${path}`], {
+              cwd: root,
+              encoding: "buffer",
+            })
+          ).stdout,
+        )
+        .digest("hex")}`;
+
+    expect(
+      await new ReleasedContentReader().skillFiles(root, TAG, "tdd"),
+    ).toEqual({
+      "SKILL.md": await blobHash("SKILL.md"),
+      "scripts/run.sh": await blobHash("scripts/run.sh"),
+    });
+  });
+
+  it("reads a skill's new files once the tag moves to a new commit", async () => {
+    const reader = new ReleasedContentReader();
+    const before = await reader.skillFiles(root, TAG, "tdd");
+
+    await writeSkill("tdd", "tdd v2\n");
+    await release("second release");
+    const after = await reader.skillFiles(root, TAG, "tdd");
+
+    expect(before).toEqual({
+      "SKILL.md": `sha256:${createHash("sha256").update("tdd v1\n").digest("hex")}`,
+    });
+    expect(after).toEqual({
+      "SKILL.md": `sha256:${createHash("sha256").update("tdd v2\n").digest("hex")}`,
+    });
+  });
+
+  it("reads no files for a skill the release lacks, null for a ref the clone lacks", async () => {
+    const reader = new ReleasedContentReader();
+
+    expect(await reader.skillFiles(root, TAG, "missing")).toEqual({});
+    expect(
+      await reader.skillFiles(root, "refs/maestro/tags/v9.9.9", "tdd"),
+    ).toBeNull();
   });
 });
