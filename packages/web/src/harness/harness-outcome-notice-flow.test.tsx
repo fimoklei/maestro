@@ -13,8 +13,27 @@ import {
   stubHarnessServer,
   withStages,
 } from "./harness-flow-fixture";
+import {
+  releasePublishedNotice,
+  skillRestoredNotice,
+  staleStatusNotice,
+} from "./notice-copy";
 
 installHarnessHooks();
+
+// Each notice's own text is asserted in its own flow file; here only which one
+// shows, and where.
+const noop = () => {};
+const stale = staleStatusNotice(
+  { outcome: "offline", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
+  noop,
+);
+if (stale === null) {
+  throw new Error("an offline read past a fetch states a notice");
+}
+const STATUS_OUT_OF_DATE = stale.label;
+const SKILL_RESTORED = skillRestoredNotice(false, noop).label;
+const RELEASE_PUBLISHED = releasePublishedNotice("v1.3.0", noop).label;
 
 describe("Harness outcome notices", () => {
   const DELETED_ROW: HarnessState = withStages(ON_DISK, {
@@ -80,7 +99,7 @@ describe("Harness outcome notices", () => {
     });
     renderHarness();
 
-    expect(await screen.findByText("Status out of date")).toBeInTheDocument();
+    expect(await screen.findByText(STATUS_OUT_OF_DATE)).toBeInTheDocument();
     await openTimeCheckSettled();
     expect(screen.queryByText("Harness clone not updated")).toBeNull();
 
@@ -88,9 +107,9 @@ describe("Harness outcome notices", () => {
     await restore();
 
     expect(await screen.findByText("Harness not read")).toBeInTheDocument();
-    expect(screen.queryByText("Status out of date")).toBeNull();
+    expect(screen.queryByText(STATUS_OUT_OF_DATE)).toBeNull();
     expect(screen.queryByText("Harness clone not updated")).toBeNull();
-    expect(screen.queryByText("Skill restored")).toBeNull();
+    expect(screen.queryByText(SKILL_RESTORED)).toBeNull();
   });
 
   it("shows the next notice once the first clears", async () => {
@@ -102,7 +121,7 @@ describe("Harness outcome notices", () => {
       },
     });
     renderHarness();
-    expect(await screen.findByText("Status out of date")).toBeInTheDocument();
+    expect(await screen.findByText(STATUS_OUT_OF_DATE)).toBeInTheDocument();
     await openTimeCheckSettled();
 
     const [reread] = screen.getAllByRole("button", { name: "Re-read Harness" });
@@ -111,7 +130,7 @@ describe("Harness outcome notices", () => {
     expect(
       await screen.findByText("Harness clone not updated"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Status out of date")).toBeNull();
+    expect(screen.queryByText(STATUS_OUT_OF_DATE)).toBeNull();
   });
 
   it("states a full restore and a full publish in a toast, not the band", async () => {
@@ -133,8 +152,8 @@ describe("Harness outcome notices", () => {
       await screen.findByText(sentence("Published v1.3.0.")),
     ).toBeInTheDocument();
 
-    expect(screen.queryByText("Skill restored")).toBeNull();
-    expect(screen.queryByText("Release published")).toBeNull();
+    expect(screen.queryByText(SKILL_RESTORED)).toBeNull();
+    expect(screen.queryByText(RELEASE_PUBLISHED)).toBeNull();
   });
 
   const bandNotice = async (label: string) =>
@@ -150,7 +169,7 @@ describe("Harness outcome notices", () => {
 
     await restore();
 
-    const notice = await bandNotice("Skill restored");
+    const notice = await bandNotice(SKILL_RESTORED);
     expect(
       within(notice).getByRole("button", { name: "Re-read Harness" }),
     ).toBeInTheDocument();
@@ -169,7 +188,7 @@ describe("Harness outcome notices", () => {
 
     await publish();
 
-    const notice = await bandNotice("Release published");
+    const notice = await bandNotice(RELEASE_PUBLISHED);
     expect(
       within(notice).getByRole("button", { name: "Re-read Skills" }),
     ).toBeInTheDocument();
@@ -184,23 +203,23 @@ describe("Harness outcome notices", () => {
     });
     renderHarness();
     await restore();
-    await screen.findByText("Skill restored");
+    await screen.findByText(SKILL_RESTORED);
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Close Skill restored" }),
+      screen.getByRole("button", { name: `Close ${SKILL_RESTORED}` }),
     );
 
-    expect(screen.queryByText("Skill restored")).toBeNull();
+    expect(screen.queryByText(SKILL_RESTORED)).toBeNull();
     const reread = screen.getByRole("button", { name: "Re-read Harness" });
     expect(reread).toHaveFocus();
 
     // Dismissed until the reader runs the action again.
     await userEvent.click(reread);
     await waitFor(() => expect(reread).not.toHaveAttribute("aria-busy"));
-    expect(screen.queryByText("Skill restored")).toBeNull();
+    expect(screen.queryByText(SKILL_RESTORED)).toBeNull();
 
     await restore();
-    expect(await screen.findByText("Skill restored")).toBeInTheDocument();
+    expect(await screen.findByText(SKILL_RESTORED)).toBeInTheDocument();
   });
 
   it("hands focus to the next outcome's ✕ when one is dismissed", async () => {
@@ -214,16 +233,16 @@ describe("Harness outcome notices", () => {
     });
     renderHarness();
     await restore();
-    await screen.findByText("Skill restored");
+    await screen.findByText(SKILL_RESTORED);
     await publish();
-    await screen.findByText("Release published");
+    await screen.findByText(RELEASE_PUBLISHED);
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Close Release published" }),
+      screen.getByRole("button", { name: `Close ${RELEASE_PUBLISHED}` }),
     );
 
     expect(
-      screen.getByRole("button", { name: "Close Skill restored" }),
+      screen.getByRole("button", { name: `Close ${SKILL_RESTORED}` }),
     ).toHaveFocus();
   });
 
@@ -238,12 +257,7 @@ describe("Harness outcome notices", () => {
     stubHarnessServer({ read: { body: offline }, refresh: { body: offline } });
     renderHarness();
 
-    expect(await screen.findByText("Status out of date")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Maestro could not reach GitHub, so these rows are from the last read.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(STATUS_OUT_OF_DATE)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^close /i })).toBeNull();
   });
 });
