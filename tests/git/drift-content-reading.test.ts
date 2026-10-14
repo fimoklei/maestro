@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   DeployedLocation,
+  HarnessFetchGate,
   HarnessGitAdapter,
   NodeFileSystem,
   ReadDrift,
@@ -88,8 +89,19 @@ describe("the content reading beside apm's Behind", () => {
     await removeGitTempTree(tree);
   });
 
-  const readDriftFor = (root: string | undefined, behind: string[]) =>
-    new ReadDrift({
+  const readDriftFor = (root: string | undefined, behind: string[]) => {
+    const harnessGit = new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    });
+    const gate = new HarnessFetchGate({
+      git: harnessGit,
+      freshness: {
+        read: async () => ({ outcome: null, lastFetchedAt: null }),
+        record: async () => {},
+      },
+      now: () => new Date(),
+    });
+    return new ReadDrift({
       drift: {
         execute: async () => ({
           ok: true,
@@ -103,8 +115,10 @@ describe("the content reading beside apm's Behind", () => {
       fs: new NodeFileSystem(),
       location: new DeployedLocation({}),
       resolveRoot: async () => root,
-      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
+      git: harnessGit,
+      fetchHarness: (harnessRoot) => gate.fetch(harnessRoot, 0),
     }).execute({ target: { kind: "repo", repoPath: repo } });
+  };
 
   it("separates the skill that moved in the release from the one that did not", async () => {
     const result = await readDriftFor(harness, ["workflow-commit", "tdd"]);

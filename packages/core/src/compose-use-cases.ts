@@ -29,6 +29,7 @@ import type { FolderChooserPort } from "./folder-chooser/folder-chooser-port";
 import type { GitHubPage } from "./git/github-page";
 import { DeleteLocalSkill } from "./harness/delete-local-skill";
 import { DiscardSkillChange } from "./harness/discard-skill-change";
+import { HarnessFetchGate } from "./harness/harness-fetch-gate";
 import { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 import type { HarnessGitAdapter } from "./harness/harness-git";
 import type { HarnessReviewPort } from "./harness/harness-review-port";
@@ -42,6 +43,7 @@ import {
   type HarnessGitPort,
   ReadHarnessState,
 } from "./harness/read-harness-state";
+import { rememberOrigin } from "./harness/remembered-origin";
 import { RestoreSkill } from "./harness/restore-skill";
 import {
   resolveApmGlobalRoot,
@@ -100,6 +102,9 @@ export type UseCasePorts = {
 
 export type UseCases = ReturnType<typeof composeUseCases>;
 
+// How old a Harness fetch a Drift or Harness read may reuse.
+const HARNESS_READ_MAX_AGE_MS = 30_000;
+
 export function composeUseCases(ports: UseCasePorts) {
   const { env, fs, git, apm } = ports;
   const harnessGit = git.harness;
@@ -148,9 +153,13 @@ export function composeUseCases(ports: UseCasePorts) {
   });
   // The configured origin names the Harness; an `insteadOf` only moves where
   // git connects.
+  const readHarnessOrigin = rememberOrigin({
+    fs,
+    readOrigin: (root) => harnessGit.readOrigin(root),
+  });
   const harnessOrigin = async () => {
     const root = await harnessRoot();
-    return root === undefined ? null : await harnessGit.readOrigin(root);
+    return root === undefined ? null : await readHarnessOrigin(root);
   };
   const deployState = new GlobalDeployStateReader({
     fs,
@@ -174,6 +183,14 @@ export function composeUseCases(ports: UseCasePorts) {
     },
   });
   const harnessFreshness = new HarnessFreshnessStore({ store });
+  // One gate for every read of the clone, keyed on the resolved root.
+  const harnessFetchGate = new HarnessFetchGate({
+    git: harnessGit,
+    freshness: harnessFreshness,
+    now: () => new Date(),
+  });
+  const fetchHarnessForRead = (root: string) =>
+    harnessFetchGate.fetch(root, HARNESS_READ_MAX_AGE_MS);
   // Shared by both ways a movement reaches review: two of them for the same
   // harness must queue, not race each other's temporary index and push.
   const harnessPromoteLocks = new InFlightLocks();
@@ -188,6 +205,7 @@ export function composeUseCases(ports: UseCasePorts) {
     location: deployedLocation,
     resolveRoot: harnessRoot,
     git: harnessGit,
+    fetchHarness: fetchHarnessForRead,
   });
   // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a
   // deploy racing a remove would corrupt it.
@@ -209,10 +227,7 @@ export function composeUseCases(ports: UseCasePorts) {
     deployedContent,
     // apm's success marker says nothing about what it recorded, so the lockfile
     // is read back before the deploy is called clean (#358).
-    recordedPackage: new RecordedPackageAdapter({
-      fs,
-      location: deployedLocation,
-    }),
+    recordedPackage: new RecordedPackageAdapter(),
     // A direct subtree rm for an untargeted tool's leftover copy (#136), never `apm uninstall -g`.
     deployedCleanup,
     // Probed per deploy, so a global install targets only tools the machine has.
@@ -250,6 +265,7 @@ export function composeUseCases(ports: UseCasePorts) {
     resolveRoot: harnessRoot,
     git: harnessGit,
     freshness: harnessFreshness,
+    fetchHarness: fetchHarnessForRead,
     review: ports.gh,
   });
   const scaffoldOffers = new ScaffoldOffers();

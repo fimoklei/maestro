@@ -89,7 +89,7 @@ export class ImportLocalEdits {
     registry: Pick<Registry, "resolveRegistered">;
     // The reader Deploy-state uses, so the dialog agrees with the row.
     deployState: Pick<GlobalDeployStateReader, "read" | "readGlobal">;
-    content: Pick<DeployedContentPort, "classify">;
+    content: Pick<DeployedContentPort, "readLockfile" | "classify">;
     // Compares one skill's tool copies with each other.
     tree: SameTreeFs;
     // The global lockfile's folder; the global tree is `home`.
@@ -329,9 +329,16 @@ export class ImportLocalEdits {
   ): Promise<Partial<Record<SupportedTool, string>>> {
     const edited: Partial<Record<SupportedTool, string>> = {};
     const present: Partial<Record<SupportedTool, string>> = {};
+    const lockfile = await this.deps.content.readLockfile(reading.target);
     for (const { tool, release } of copy.tools) {
       const state = await this.deps.content
-        .classify({ target: reading.target, name, tools: [tool], release })
+        .classify({
+          target: reading.target,
+          name,
+          tools: [tool],
+          release,
+          lockfile,
+        })
         .catch(() => null);
       const [subtree] = deployTargetSubtrees(name, [tool]);
       if (subtree === undefined || state === null || state === "not-deployed") {

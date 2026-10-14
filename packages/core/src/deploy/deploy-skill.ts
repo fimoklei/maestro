@@ -1,6 +1,6 @@
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
-import type { PackageReading } from "../lockfile/lockfile";
+import type { LockfileReading, PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionResult, SelectionWriter } from "./apply-selection";
 import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
@@ -87,6 +87,8 @@ export type DeployedContentState =
   | "lockfile-malformed";
 
 export type DeployedContentPort = {
+  // Never rejects: a present but unreadable lockfile reads as malformed (#58).
+  readLockfile(target: DeployTarget): Promise<LockfileReading>;
   // `tools` scopes the scan and its baseline, so an untargeted tool's absent
   // copy cannot force a false `diverged` (#136).
   classify(input: {
@@ -96,6 +98,8 @@ export type DeployedContentPort = {
     // A copy equal to this release in full is `clean`; an unreadable release
     // grants no such pass (#952).
     release?: string;
+    // Read once per target and shared by every skill classified against it.
+    lockfile: LockfileReading;
   }): Promise<DeployedContentState>;
   // Consent is given for content, not a verdict: two different edits both
   // read `diverged`. Null where nothing could be read.
@@ -121,7 +125,7 @@ export type RecordedPackageResult =
 
 export type RecordedPackagePort = {
   read(input: {
-    target: DeployTarget;
+    lockfile: LockfileReading;
     name: string;
   }): Promise<RecordedPackageResult>;
 };
@@ -641,13 +645,21 @@ export class DeploySkill {
   ): Promise<string[]> {
     // Files apm placed under a package type it could not manage are apm's own,
     // not local work; refusing over them would strand the target (#358).
-    const apmOwns = new Set<string>();
-    for (const name of candidates) {
-      const standing = await this.deps.recordedPackage.read({ target, name });
-      if (standing.kind === "recorded" && standing.reading.kind !== "skill") {
-        apmOwns.add(name);
-      }
-    }
+    const lockfile = await this.deps.deployedContent.readLockfile(target);
+    const standings = await Promise.all(
+      candidates.map(async (name) => ({
+        name,
+        standing: await this.deps.recordedPackage.read({ lockfile, name }),
+      })),
+    );
+    const apmOwns = new Set(
+      standings
+        .filter(
+          ({ standing }) =>
+            standing.kind === "recorded" && standing.reading.kind !== "skill",
+        )
+        .map(({ name }) => name),
+    );
     const blocking = findings.filter(
       (f) =>
         f.verdict !== "clean" &&

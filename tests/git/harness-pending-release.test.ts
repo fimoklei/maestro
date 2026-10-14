@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import type { HarnessFreshness, PendingSkillMovement } from "@maestro/core";
 import {
+  HarnessFetchGate,
   HarnessGitAdapter,
   ReadHarnessState,
   ReleasedContentReader,
@@ -68,20 +69,31 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     return { remote, root };
   };
 
-  const readerFor = (root: string) =>
-    new ReadHarnessState({
+  const readerFor = (root: string) => {
+    const harnessGit = new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    });
+    const freshness = {
+      read: async () => FETCHED,
+      record: async () => {},
+    };
+    const gate = new HarnessFetchGate({
+      git: harnessGit,
+      freshness,
+      now: () => new Date("2026-08-03T08:00:00.000Z"),
+    });
+    return new ReadHarnessState({
       resolveRoot: async () => root,
-      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
-      freshness: {
-        read: async () => FETCHED,
-        record: async () => {},
-      },
+      git: harnessGit,
+      freshness,
+      fetchHarness: (harnessRoot) => gate.fetch(harnessRoot, 0),
       review: stubReview(),
     });
+  };
 
   const movementsOf = async (root: string): Promise<PendingSkillMovement[]> => {
     const read = readerFor(root);
-    await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
+    await read.refresh();
     const result = await read.planRelease();
     if (!result.ok) {
       throw new Error(`unexpected refusal: ${result.error}`);
@@ -90,9 +102,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
   };
 
   const releaseStageOf = async (root: string): Promise<string[]> => {
-    const result = await readerFor(root).refresh(
-      new Date("2026-08-03T08:00:00.000Z"),
-    );
+    const result = await readerFor(root).refresh();
     if (!result.ok) {
       throw new Error(`unexpected refusal: ${result.error}`);
     }
@@ -228,13 +238,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     await commitAll(root, "start the harness");
     await git(root, "push", "origin", "HEAD:main");
 
-    const read = new ReadHarnessState({
-      resolveRoot: async () => root,
-      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
-      freshness: { read: async () => FETCHED, record: async () => {} },
-      review: stubReview(),
-    });
-    const result = await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
+    const result = await readerFor(root).refresh();
 
     expect(result).toMatchObject({
       ok: true,

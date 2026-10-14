@@ -8,7 +8,6 @@ import {
   proposeReleaseVersion,
   type SemverStep,
 } from "./propose-release-version";
-import { recordFetch } from "./record-fetch";
 import { highestReleaseTag } from "./release-tag";
 import type { HarnessSkillTree, SkillMovement } from "./skill-movements";
 import { diffSkillTrees } from "./skill-movements";
@@ -213,43 +212,24 @@ export class ReadHarnessState {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
     freshness: HarnessFreshnessPort;
+    // The fetch gate, bound to this read's maximum age.
+    fetchHarness: (root: string) => Promise<HarnessFetchOutcome>;
     // A failed review read degrades one stage, never the others. Read half
     // only: a Harness read must never change a proposal.
     review: Pick<HarnessReviewPort, "readReviews" | "readViewer">;
   };
 
-  // One fetch per harness at a time: two fetches race over the same git refs.
-  // Callers arriving mid-flight share the answer.
-  private inFlight = new Map<string, Promise<HarnessStateResult>>();
-
   constructor(deps: ReadHarnessState["deps"]) {
     this.deps = deps;
   }
 
-  async refresh(at: Date): Promise<HarnessStateResult> {
+  // Concurrent refreshes share one fetch, then each reads on its own.
+  async refresh(): Promise<HarnessStateResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
-
-    const running = this.inFlight.get(root);
-    if (running !== undefined) {
-      return running;
-    }
-    const fetching = this.fetchAndRead(root, at).finally(() => {
-      this.inFlight.delete(root);
-    });
-    this.inFlight.set(root, fetching);
-    return fetching;
-  }
-
-  private async fetchAndRead(
-    root: string,
-    at: Date,
-  ): Promise<HarnessStateResult> {
-    await recordFetch(this.deps, root, at);
-    // Only a POST reaches here: catching up writes the working tree (#978).
-    await this.deps.git.catchUp(root);
+    await this.deps.fetchHarness(root);
     // Never a second root lookup: a reconnect in between would report another harness.
     return this.stateFor(root);
   }

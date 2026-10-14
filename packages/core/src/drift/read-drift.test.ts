@@ -38,8 +38,8 @@ const build = (options: {
     fs: { readFile: async () => options.lock ?? null },
     location: new DeployedLocation({}),
     resolveRoot: async () => ("root" in options ? options.root : "/harness"),
+    fetchHarness: fetch,
     git: {
-      fetch,
       readOrigin: async () =>
         options.origin === undefined ? ORIGIN : options.origin,
       readSkillTreesAtTag,

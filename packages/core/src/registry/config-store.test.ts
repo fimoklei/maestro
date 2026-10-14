@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ConfigStore } from "./config-store";
 import { InMemoryFileSystem } from "./file-system.fake";
 
@@ -120,5 +120,78 @@ describe("ConfigStore", () => {
     await expect(store.read()).resolves.toEqual({
       repos: [{ path: "/Users/me/project" }],
     });
+  });
+
+  it("re-reads a config that changed on disk since the last read", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [CONFIG_PATH]: JSON.stringify({ repos: [] }) },
+    });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+    await store.read();
+
+    await fs.writeFile(
+      CONFIG_PATH,
+      JSON.stringify({ repos: [{ path: "/Users/me/project" }] }),
+    );
+
+    await expect(store.read()).resolves.toEqual({
+      repos: [{ path: "/Users/me/project" }],
+    });
+  });
+
+  it("answers an unchanged config without reading the file again", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [CONFIG_PATH]: JSON.stringify({ repos: [{ path: "/Users/me/a" }] }),
+      },
+    });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+    await store.read();
+    const readFile = vi.spyOn(fs, "readFile");
+
+    const again = await store.read();
+
+    expect(again).toEqual({ repos: [{ path: "/Users/me/a" }] });
+    expect(readFile).not.toHaveBeenCalled();
+  });
+
+  it("still fails when a valid config is replaced by an invalid one", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [CONFIG_PATH]: JSON.stringify({ repos: [] }) },
+    });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+    await store.read();
+
+    await fs.writeFile(CONFIG_PATH, "{ not json");
+
+    await expect(store.read()).rejects.toThrow("is not valid JSON.");
+  });
+
+  it("shows a write through the store on the next read", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [CONFIG_PATH]: JSON.stringify({ repos: [] }) },
+    });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+    await store.read();
+
+    await store.update((config) => ({
+      config: { ...config, inventoryPath: "/Users/me/agent-harness" },
+    }));
+
+    await expect(store.read()).resolves.toEqual({
+      repos: [],
+      inventoryPath: "/Users/me/agent-harness",
+    });
+  });
+
+  it("never lets a caller's change to a returned config leak into the next read", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [CONFIG_PATH]: JSON.stringify({ repos: [] }) },
+    });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+
+    (await store.read()).repos.push({ path: "/Users/me/stray" });
+
+    await expect(store.read()).resolves.toEqual({ repos: [] });
   });
 });
