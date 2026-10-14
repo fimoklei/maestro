@@ -283,6 +283,17 @@ describe("remove HTTP route", () => {
       expect(w.uninstalls).toEqual([{ target: globalTarget, ref: REF }]);
     });
 
+    it("answers a global lockfile that lacks the skill with 404, and runs no uninstall", async () => {
+      const w = await world();
+      w.seed(globalTarget, [skillEntry("jobs")]);
+
+      const response = await w.remove({ target: globalTarget });
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({ error: "not-deployed" });
+      expect(w.uninstalls).toEqual([]);
+    });
+
     it("takes no path from the client, even one that is offered", async () => {
       const w = await world();
       w.seed(globalTarget, [skillEntry("tdd")]);

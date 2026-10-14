@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import type { DeployTarget } from "./deploy-skill";
 import { DeployedContentAdapter } from "./deployed-content";
+import { DeployedLocation } from "./deployed-location";
 
 const FAKE_REPO = "/repo";
 const fakeRepoTarget: DeployTarget = { kind: "repo", repoPath: FAKE_REPO };
@@ -324,6 +325,7 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
       await expect(classify(fake.content, { release: "v0.6.0" })).resolves.toBe(
         "diverged",
       );
+      expect(fake.releaseReads).toEqual(["v0.6.0"]);
     });
 
     it("keeps the copy protected when no release was chosen", async () => {
@@ -332,6 +334,19 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
       fake.recordLockfile("tdd");
       fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "release\n");
       await expect(classify(fake.content)).resolves.toBe("diverged");
+      expect(fake.releaseReads).toEqual([]);
+    });
+
+    it("reads a single-tool copy as clean when that tool equals the release, whatever the other tool holds", async () => {
+      const fake = adapterOn({ release });
+      fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "skill\n");
+      fake.tree.write(at(".agents/skills/tdd/SKILL.md"), "skill\n");
+      fake.recordLockfile("tdd");
+      fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "release\n");
+      fake.tree.write(at(".agents/skills/tdd/SKILL.md"), "mine\n");
+      await expect(
+        classify(fake.content, { tools: ["claude"], release: "v0.6.0" }),
+      ).resolves.toBe("clean");
     });
     it("keeps a copy missing a file the release has protected", async () => {
       const fake = adapterOn({
@@ -515,5 +530,37 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
         fake.content.contentDigest({ target: fakeRepoTarget, name: "tdd" }),
       ).resolves.toBe("");
     });
+  });
+});
+
+// The global copy lives under HOME, its lockfile under ~/.apm, and apm keys the
+// hashes HOME-relative. Only the real DeployedLocation maps those two places.
+describe("DeployedContentAdapter, global target", () => {
+  it("is clean when the HOME copy matches the hash its ~/.apm lockfile records", async () => {
+    const tree = new InMemoryCopyTree();
+    const content = new DeployedContentAdapter({
+      location: new DeployedLocation({
+        HOME: "/home/fake",
+      } as NodeJS.ProcessEnv),
+      fs: tree,
+    });
+    tree.write("/home/fake/.claude/skills/tdd/SKILL.md", "skill\n");
+    tree.write(
+      "/home/fake/.apm/apm.lock.yaml",
+      [
+        "dependencies:",
+        "  - virtual_path: .apm/skills/tdd",
+        "    package_type: claude_skill",
+        "    resolved_ref: v0.5.1",
+        "    deployed_file_hashes:",
+        `      .claude/skills/tdd/SKILL.md: ${sha(Buffer.from("skill\n"))}`,
+        "    content_hash: sha256:opaque",
+        "",
+      ].join("\n"),
+    );
+
+    await expect(
+      content.classify({ target: { kind: "global" }, name: "tdd" }),
+    ).resolves.toBe("clean");
   });
 });

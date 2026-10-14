@@ -422,6 +422,7 @@ describe("BulkRemoveRun", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /outcome is unrecorded/i,
     );
+    expect(screen.queryByRole("heading", { name: /^Removed from/ })).toBeNull();
     // Looking comes before another run: no confirm beside the notice.
     expect(footerLabels()).toEqual(["Close"]);
     await userEvent.click(closeButton());
@@ -445,9 +446,12 @@ describe("BulkRemoveRun", () => {
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Run not started",
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Run not started");
+    expect(alert).toHaveTextContent(
+      "Nothing was removed anywhere. Confirm the removal again.",
     );
+    expect(alert).toHaveTextContent("The Maestro server refused the request.");
     expect(screen.queryByRole("heading", { name: /^Removed from/ })).toBeNull();
     expect(
       screen.getByText("1 target without local edits"),
@@ -508,9 +512,70 @@ describe("BulkRemoveRun", () => {
       "/dev/legacy-etlRepository not registered",
     );
     expect(dialog).toHaveTextContent("global");
+    // Each left-alone target sits in the group that names its class.
+    const failedGroup = groupUnder("Failed");
+    expect(failedGroup).toHaveTextContent("/dev/acme-apiTarget busy");
+    expect(failedGroup).not.toHaveTextContent("/dev/legacy-etl");
+    const refusedGroup = groupUnder("Refused");
+    expect(refusedGroup).not.toHaveTextContent("/dev/acme-api");
+    expect(refusedGroup).toHaveTextContent(
+      "/dev/legacy-etlRepository not registered",
+    );
     // No target was left alone for local changes, so no way out is named.
     expect(dialog).not.toHaveTextContent(/Select Deploy skill/);
+    expect(dialog).not.toHaveTextContent(PINNED_NEXT);
     expect(footerLabels()).toEqual(["Close"]);
+  });
+
+  it("names no Failed or Refused group after a fully clean run", async () => {
+    stubServer({
+      report: () =>
+        jsonResponse({
+          name: "tdd",
+          removed: [
+            { target: GLOBAL.target, version: "v1.0.0" },
+            { target: ACME_WEB.target, version: "v1.0.0" },
+          ],
+          refused: [],
+          failed: [],
+        }),
+    });
+    renderAction();
+    await openDialog();
+    await userEvent.click(await answered("Remove from 2 targets"));
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 3,
+        name: "Removed from 2 targets",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { level: 4, name: /^✕?(Failed|Refused)/ }),
+    ).toBeNull();
+    expect(screen.getByRole("dialog")).not.toHaveTextContent(PINNED_NEXT);
+  });
+
+  it("heads a one-target run in the singular", async () => {
+    stubServer({
+      report: () =>
+        jsonResponse({
+          name: "tdd",
+          removed: [{ target: ACME_WEB.target, version: "v1.0.0" }],
+          refused: [],
+          failed: [],
+        }),
+    });
+    renderAction([ACME_WEB]);
+    await openDialog();
+    await userEvent.click(await answered("Remove from 1 target"));
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 3,
+        name: "Removed from 1 target",
+      }),
+    ).toBeInTheDocument();
   });
 
   // A failed removal can still have taken the copy off disk: "go and look" and
@@ -908,6 +973,12 @@ const footerLabels = () =>
     .getAllByRole("button")
     .filter((control) => control.textContent !== "")
     .map((control) => control.textContent);
+
+// The report group whose status heading starts with the given word.
+const groupUnder = (status: string) =>
+  screen
+    .getByRole("heading", { level: 4, name: new RegExp(`^${status}`) })
+    .closest("section") as HTMLElement;
 
 // The footer's Close, not the header's ✕ of the same name.
 function closeButton(): HTMLElement {

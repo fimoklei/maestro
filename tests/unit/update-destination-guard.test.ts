@@ -3,7 +3,11 @@
 import { createHash } from "node:crypto";
 import type { DeployTarget } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import { deployWorld, lockfilePath } from "../helpers/deploy-world";
+import {
+  consumerManifest,
+  deployWorld,
+  lockfilePath,
+} from "../helpers/deploy-world";
 
 const REPO = "/work/app";
 const target: DeployTarget = { kind: "repo", repoPath: REPO };
@@ -118,6 +122,36 @@ describe("update journey against the destination guard", () => {
     expect(await w.update()).toEqual({
       status: 200,
       body: { deployed: { type: "skill", name: "tdd", version: LATEST_TAG } },
+    });
+  });
+
+  it("reads the new tag back in deploy-state after an update over an older-release lockfile", async () => {
+    // The drift half of this claim needs apm's outdated check, which the
+    // in-memory world does not answer; only the deploy-state half is proven here.
+    const w = await world();
+    await w.update();
+    w.harness.tags = [
+      { name: "v0.5.0", commit: w.harness.commit("v0.5.0", { tdd: "a" }) },
+      { name: LATEST_TAG, commit: w.harness.commit(LATEST_TAG, { tdd: "b" }) },
+    ];
+    w.disk.write(LOCKFILE, w.recorded().replaceAll(LATEST_TAG, "v0.5.0"));
+    w.disk.write(`${REPO}/apm.yml`, consumerManifest(["tdd"]));
+
+    const preflight = await w.post("/api/deploy/update/preflight", { target });
+    const { preview } = (await preflight.json()) as {
+      preview: { token: string };
+    };
+    const up = await w.post("/api/deploy/update", {
+      target,
+      token: preview.token,
+    });
+    expect(up.status).toBe(200);
+
+    const state = await w.app.request(
+      `/api/deploy-state?repo=${encodeURIComponent(REPO)}`,
+    );
+    expect(await state.json()).toMatchObject({
+      primitives: [{ name: "tdd", version: LATEST_TAG }],
     });
   });
 });

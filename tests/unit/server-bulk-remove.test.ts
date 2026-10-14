@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { BulkRemoveReport, DeployTarget } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { deployWorld, lockfilePath } from "../helpers/deploy-world";
@@ -88,6 +89,34 @@ describe("bulk remove HTTP route", () => {
     expect(report.failed).toEqual([{ target: repoA, reason: "remove-failed" }]);
     expect(report.removed).toEqual([{ target: repoB, version: "v0.5.1" }]);
     expect(JSON.stringify(report)).not.toContain("token in stderr");
+  });
+
+  it("refuses a diverged target on its own row, and still removes the rest", async () => {
+    const w = await world();
+    // repoA's copy was hashed at deploy time, then hand-edited afterwards.
+    const baseline = createHash("sha256").update("# tdd\n").digest("hex");
+    w.disk.write(
+      lockfilePath(repoA),
+      lockfile.replace(
+        "  package_type: claude_skill\n",
+        `  package_type: claude_skill\n  deployed_file_hashes:\n    .claude/skills/tdd/SKILL.md: sha256:${baseline}\n`,
+      ),
+    );
+    w.disk.write("/work/a/.claude/skills/tdd/SKILL.md", "# tdd, edited\n");
+
+    const response = await w.bulk({
+      name: "tdd",
+      targets: await w.confirmed([repoA, repoB]),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      name: "tdd",
+      removed: [{ target: repoB, version: "v0.5.1" }],
+      refused: [],
+      failed: [{ target: repoA, reason: "deployed-diverged-from-lock" }],
+    });
+    expect(w.uninstalls).toEqual([{ target: repoB, ref: REF }]);
   });
 
   it("rejects a receipt that is not even token-shaped, at the edge", async () => {

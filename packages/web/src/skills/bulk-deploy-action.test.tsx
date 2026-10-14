@@ -1241,6 +1241,13 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
     const changes = groupNamed(dialog, "To deploy · 2");
     expect(within(changes).getByText("review")).toBeVisible();
     expect(within(changes).getByText("grilling")).toBeVisible();
+    // A behind skill is a deploy, never an update or a move to the latest.
+    expect(
+      within(dialog)
+        .getAllByRole("group")
+        .map((group) => group.querySelector("legend")?.textContent),
+    ).toEqual(["To deploy · 2", "Already up to date · 1"]);
+    expect(dialog).not.toHaveTextContent(/update|latest/i);
   });
 
   it("sends exactly the skills the dialog listed as to deploy", async () => {
