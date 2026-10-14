@@ -1,4 +1,3 @@
-// Kept out of the build (tsconfig.build excludes *.fake.ts).
 // A real DeployedContentAdapter over an in-memory copy tree. A test puts a
 // skill's copy into a state with `setCopy`; the drift verdict and digest the
 // use case reads are then computed from the files, never scripted.

@@ -461,6 +461,7 @@ describe("RemoveSkillFlow", () => {
         undefined,
         { scope: "repo", state: "maybe" },
         { scope: "global", tools: [{ tool: "claude", state: "probably" }] },
+        { scope: "global", tools: [{ tool: "cursor", state: "removed" }] },
         { scope: "repo" },
         { scope: "global" },
         { scope: "elsewhere", state: "removed" },

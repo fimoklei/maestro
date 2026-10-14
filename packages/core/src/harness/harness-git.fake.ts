@@ -1,4 +1,3 @@
-// Kept out of the build (tsconfig.build excludes *.fake.ts).
 // One in-memory Harness clone behind `HarnessGitPort`: commits hold skill
 // contents, refs point at commits, and every read derives from them, so a
 // test states content and never a tree hash.

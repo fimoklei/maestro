@@ -1,4 +1,3 @@
-// Kept out of the build (tsconfig.build excludes *.fake.ts).
 import type { FileSystemPort, RawDirEntry } from "./file-system";
 
 type FakeSeed = {

@@ -1,4 +1,3 @@
-// Kept out of the build (tsconfig.build excludes *.fake.ts).
 import type { FileSystemPort } from "../registry/file-system";
 import type { CopyEntryFacts, CopyTreeFsPort, OpenFile } from "./copy-tree-fs";
 
@@ -172,7 +171,7 @@ export class InMemoryCopyTree implements CopyTreeFsPort {
       return null;
     }
     return {
-      facts: async () => (await this.describe(key)) as CopyEntryFacts | null,
+      facts: () => this.describe(key),
       read: async () => Buffer.from(file.bytes),
       close: async () => {},
     };

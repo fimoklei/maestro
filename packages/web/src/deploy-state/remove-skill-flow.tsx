@@ -52,6 +52,15 @@ const STATES: Record<string, RemoveTargetState> = {
   unknown: "unknown",
 };
 
+const KNOWN_TOOLS: Record<RemoveToolOutcome["tool"], true> = {
+  claude: true,
+  codex: true,
+};
+
+function isKnown(tool: string): tool is RemoveToolOutcome["tool"] {
+  return Object.hasOwn(KNOWN_TOOLS, tool);
+}
+
 // Nothing validates this body. A report this build cannot read is dropped
 // whole: a ledger built on a guess states an outcome the server never proved.
 function removalOutcome(error: unknown): RemoveOutcome | null {
@@ -72,10 +81,11 @@ function removalOutcome(error: unknown): RemoveOutcome | null {
       state?: unknown;
     }[]) {
       const state = STATES[String(entry?.state)];
-      if (state === undefined || typeof entry?.tool !== "string") {
+      const tool = entry?.tool;
+      if (state === undefined || typeof tool !== "string" || !isKnown(tool)) {
         return null;
       }
-      tools.push({ tool: entry.tool as RemoveToolOutcome["tool"], state });
+      tools.push({ tool, state });
     }
     return { scope: "global", tools };
   }
