@@ -95,6 +95,7 @@ function buildUseCase(overrides: Overrides = {}) {
     }
   };
   const deployedContent = {
+    readLockfile: (target: DeployTarget) => copies.content.readLockfile(target),
     classify: async (input: {
       target: DeployTarget;
       name: string;
@@ -1188,6 +1189,8 @@ describe("RemoveDeployedSkill.preflight", () => {
     const classified: string[] = [];
     const copies = inMemoryDeployedContent();
     const watched = {
+      readLockfile: (target: DeployTarget) =>
+        copies.content.readLockfile(target),
       classify: (input: Parameters<typeof copies.content.classify>[0]) => {
         classified.push(input.name);
         return copies.content.classify(input);
@@ -1243,6 +1246,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       },
       copyGuard: new LocalCopyGuard({
         content: {
+          readLockfile: async () => "missing" as const,
           classify: async () => {
             throw new Error("disk exploded");
           },
@@ -1251,6 +1255,7 @@ describe("RemoveDeployedSkill.preflight", () => {
         },
       }),
       deployedContent: {
+        readLockfile: async () => "missing" as const,
         classify: async () => {
           throw new Error("disk exploded");
         },

@@ -58,7 +58,7 @@ export class RetryTargetOperation {
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
     deployedContent: Pick<
       DeployedContentPort,
-      "classify" | "contentDigest" | "linkedSkillPath"
+      "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
     >;
     toolPresence: ToolPresencePort;
     canonicalPath: (path: string) => Promise<string>;

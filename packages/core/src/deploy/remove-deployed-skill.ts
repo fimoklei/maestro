@@ -1,3 +1,4 @@
+import type { LockfileReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionWriter } from "./apply-selection";
 import type {
@@ -237,7 +238,7 @@ export class RemoveDeployedSkill {
     // guard's verdicts collapse.
     deployedContent: Pick<
       DeployedContentPort,
-      "classify" | "contentDigest" | "linkedSkillPath"
+      "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
     >;
     apm: Pick<ApmDriverPort, "removeSkill">;
     // The only way to clear a copy apm left behind: a bare `apm uninstall -g`
@@ -677,24 +678,37 @@ export class RemoveDeployedSkill {
     name: string,
     detected: readonly SupportedTool[] | undefined,
   ): Promise<RemoveOutcome> {
+    const lockfile = await this.deps.deployedContent.readLockfile(target);
     if (detected === undefined) {
-      return { scope: "repo", state: await this.probeTarget(target, name) };
+      return {
+        scope: "repo",
+        state: await this.probeTarget(target, lockfile, name),
+      };
     }
     const tools: RemoveToolOutcome[] = [];
     for (const tool of detected) {
-      tools.push({ tool, state: await this.probeTarget(target, name, [tool]) });
+      tools.push({
+        tool,
+        state: await this.probeTarget(target, lockfile, name, [tool]),
+      });
     }
     return { scope: "global", tools };
   }
 
   private async probeTarget(
     target: DeployTarget,
+    lockfile: LockfileReading,
     name: string,
     tools?: readonly SupportedTool[],
   ): Promise<RemoveTargetState> {
     try {
       return PROBE_STATES[
-        await this.deps.deployedContent.classify({ target, name, tools })
+        await this.deps.deployedContent.classify({
+          target,
+          name,
+          tools,
+          lockfile,
+        })
       ];
     } catch {
       return "unknown";

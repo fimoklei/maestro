@@ -42,6 +42,7 @@ import {
   type HarnessGitPort,
   ReadHarnessState,
 } from "./harness/read-harness-state";
+import { rememberOrigin } from "./harness/remembered-origin";
 import { RestoreSkill } from "./harness/restore-skill";
 import {
   resolveApmGlobalRoot,
@@ -148,9 +149,13 @@ export function composeUseCases(ports: UseCasePorts) {
   });
   // The configured origin names the Harness; an `insteadOf` only moves where
   // git connects.
+  const readHarnessOrigin = rememberOrigin({
+    fs,
+    readOrigin: (root) => harnessGit.readOrigin(root),
+  });
   const harnessOrigin = async () => {
     const root = await harnessRoot();
-    return root === undefined ? null : await harnessGit.readOrigin(root);
+    return root === undefined ? null : await readHarnessOrigin(root);
   };
   const deployState = new GlobalDeployStateReader({
     fs,
@@ -209,10 +214,7 @@ export function composeUseCases(ports: UseCasePorts) {
     deployedContent,
     // apm's success marker says nothing about what it recorded, so the lockfile
     // is read back before the deploy is called clean (#358).
-    recordedPackage: new RecordedPackageAdapter({
-      fs,
-      location: deployedLocation,
-    }),
+    recordedPackage: new RecordedPackageAdapter(),
     // A direct subtree rm for an untargeted tool's leftover copy (#136), never `apm uninstall -g`.
     deployedCleanup,
     // Probed per deploy, so a global install targets only tools the machine has.

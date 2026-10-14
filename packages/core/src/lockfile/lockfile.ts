@@ -34,6 +34,10 @@ type LockfileParseResult =
   | { ok: true; entries: LockfileEntry[]; unreadable: UnreadableEntry[] }
   | { ok: false };
 
+// One read of a target's lockfile, handed to every skill classified against
+// it. `{ ok: false }` also covers a present file that could not be read (#58).
+export type LockfileReading = "missing" | LockfileParseResult;
+
 export function parseLockfile(raw: string): LockfileParseResult {
   let data: unknown;
   try {

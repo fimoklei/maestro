@@ -9,6 +9,7 @@ import { type GitHubPage, UNKNOWN_PAGE } from "../git/github-page";
 import { resolveHomeDirectory } from "../home-directory";
 import {
   type LockfileEntry,
+  type LockfileReading,
   parseLockfile,
   readPackage,
   type UnreadableEntry,
@@ -194,6 +195,7 @@ export class DeployStateReader {
     await this.markCopies(
       primitives,
       target,
+      parsed,
       releaseHead?.latestRelease ?? undefined,
     );
     const extraFiles =
@@ -230,6 +232,7 @@ export class DeployStateReader {
   protected async markCopies(
     primitives: DeployedPrimitive[],
     target: DeployTarget,
+    lockfile: LockfileReading,
     latestRelease: string | undefined,
     tools?: readonly SupportedTool[],
   ): Promise<void> {
@@ -246,6 +249,7 @@ export class DeployStateReader {
             name: primitive.name,
             tools,
             release: latestRelease,
+            lockfile,
           })
           .catch(() => null);
         if (state === "diverged") {
@@ -348,6 +352,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
       await this.markCopies(
         group.primitives,
         { kind: "global" },
+        parsed,
         group.releaseHead?.latestRelease ?? undefined,
         [group.tool],
       );

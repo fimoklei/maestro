@@ -3,12 +3,28 @@
 // use case reads are then computed from the files, never scripted.
 import { createHash } from "node:crypto";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
+import type { LockfileReading } from "../lockfile/lockfile";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
 import { deployTargetSubtrees, type SupportedTool } from "./deploy-tools";
 import { DeployedContentAdapter } from "./deployed-content";
 import { DeployedLocation } from "./deployed-location";
 
 const FAKE_HOME = "/home/fake";
+
+type ClassifyInput = Parameters<DeployedContentAdapter["classify"]>[0];
+
+// The fake's copies are recorded in its own lockfile, written as a test places
+// them, so classify reads that one at call time, never the caller's reading.
+class FakeDeployedContent extends DeployedContentAdapter {
+  override async classify(
+    input: Omit<ClassifyInput, "lockfile"> & { lockfile?: LockfileReading },
+  ): Promise<DeployedContentState> {
+    return super.classify({
+      ...input,
+      lockfile: await this.readLockfile(input.target),
+    });
+  }
+}
 
 const sha = (bytes: Buffer) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -46,7 +62,7 @@ export function inMemoryDeployedContent(
   const treeRoot = (target: DeployTarget) => location.treeRoot(target);
   const lockfilePath = (target: DeployTarget) => location.lockfilePath(target);
 
-  const content = new DeployedContentAdapter({
+  const content = new FakeDeployedContent({
     location,
     fs: tree,
     ...(options.release === undefined
@@ -214,6 +230,7 @@ export function copiesIn(states: CopyStates | ((name: string) => CopyStates)) {
   return {
     ...fake,
     content: {
+      readLockfile: (target: DeployTarget) => fake.content.readLockfile(target),
       classify: (input: Parameters<typeof fake.content.classify>[0]) => {
         place(input.target, input.name);
         return fake.content.classify(input);
