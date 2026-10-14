@@ -886,7 +886,7 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
-  it("falls back to deploy-failed for a generic resolve failure", async () => {
+  it("reports a generic resolve failure as a deploy that did not start", async () => {
     const { deps, deployed } = buildDeps({
       apm: {
         resolveLatestTag: async () => ({ ok: false, reason: "failed" }),
@@ -901,7 +901,7 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+    expect(result).toEqual({ ok: false, error: "deploy-not-started" });
     expect(deployed).toEqual([]);
   });
 
@@ -1311,7 +1311,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "deploy-failed" });
   });
 
-  it("turns an apm tag-resolution failure into a typed deploy-failed error", async () => {
+  it("reports a thrown tag resolution as a deploy that did not start", async () => {
     const { deps, deployed } = buildDeps({
       apm: {
         resolveLatestTag: async () => {
@@ -1326,8 +1326,32 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+    expect(result).toEqual({ ok: false, error: "deploy-not-started" });
     expect(deployed).toEqual([]);
+  });
+
+  it("reports a failure while the install's operation is still pending as a deploy that did not finish", async () => {
+    // The guard reads links before the install too; only the refusal's probe fails.
+    let installs: readonly unknown[] = [];
+    const { deps, deployed, world } = buildDeps({
+      deployedContent: withLinks(async () => {
+        if (installs.length > 0) {
+          throw new Error("lstat failed");
+        }
+        return null;
+      }),
+    });
+    installs = deployed;
+    world.refuseWith({ ok: false, reason: "destination-symlinked" });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+    expect(await world.operations.read("/registered/repo")).not.toBeNull();
   });
 });
 
@@ -1434,6 +1458,36 @@ describe("DeploySkill.executeBatch", () => {
       ok: true,
       deployed: { type: "skill", name: "review", version: "v0.5.1" },
     });
+  });
+
+  it("reports a held name as not started when a failure follows a landed install", async () => {
+    // The install landed and cleared its operation; the held name's re-check fails.
+    const edited = editedCopies({ review: "diverged" });
+    let installs: readonly unknown[] = [];
+    const { deps, deployed, world } = buildDeps({
+      inventory: skills("tdd", "review"),
+      deployedContent: {
+        readLockfile: (target) =>
+          installs.length > 0
+            ? Promise.reject(new Error("disk gone"))
+            : edited.readLockfile(target),
+        classify: (input) => edited.classify(input),
+        contentDigest: (input) => edited.contentDigest(input),
+        linkedSkillPath: async () => null,
+      },
+    });
+    installs = deployed;
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(report.deployed).toEqual([{ name: "tdd", version: "v0.5.1" }]);
+    expect(report.failed).toEqual([
+      { error: "deploy-not-started", names: ["review"] },
+    ]);
+    expect(await world.operations.read("/registered/repo")).toBeNull();
   });
 
   it("marks an unverifiable copy as forceable attention", async () => {
@@ -1563,7 +1617,7 @@ describe("DeploySkill.executeBatch", () => {
       target: globalTarget,
       deployed: [],
       attention: [],
-      failed: [{ error: "deploy-failed", names: ["tdd", "review"] }],
+      failed: [{ error: "deploy-not-started", names: ["tdd", "review"] }],
     });
   });
 

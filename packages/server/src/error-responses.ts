@@ -57,6 +57,7 @@ export const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "tag-check-timed-out": TIMED_OUT,
   "deploy-timed-out": TIMED_OUT,
   "deploy-failed": { status: 502 },
+  "deploy-not-started": { status: 502 },
 };
 
 export const retryOperationErrorResponses: ErrorTable<RetryTargetOperationError> =

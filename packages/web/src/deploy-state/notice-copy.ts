@@ -189,8 +189,11 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "Part of the selection may not be on disk.",
   },
   "deploy-failed": {
-    message:
-      "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
+    message: `The deploy did not finish. On the Deploy-state screen, select ${RETRY_DEPLOY}.`,
+    detail: "Some of the skill's files may be on disk.",
+  },
+  "deploy-not-started": {
+    message: `Nothing was deployed. Select ${DEPLOY_SKILL} on the Skills screen to try again.`,
   },
 };
 
