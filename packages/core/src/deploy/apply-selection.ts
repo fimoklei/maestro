@@ -33,6 +33,7 @@ type SelectionError =
   | "manifest-not-recognised"
   | "destination-symlinked"
   | "apply-incomplete"
+  | "apply-timed-out"
   | "apply-failed";
 
 export type SelectionResult =
@@ -112,7 +113,7 @@ async function applySelection(
     const removed = await deps.apm.removeSkill({ target: write.target, ref });
     // Verify disk regardless: a blocked uninstall deletes the rest of the
     // Selection first.
-    return await verify(deps, write, removed.ok ? null : "apply-failed");
+    return await verify(deps, write, refusalFor(removed));
   }
 
   // `--skill` only adds to the persisted list, so the exact Selection must be
@@ -138,7 +139,16 @@ async function applySelection(
   if (!installed.ok && installed.reason === "destination-symlinked") {
     return { ok: false, error: "destination-symlinked" };
   }
-  return await verify(deps, write, installed.ok ? null : "apply-failed");
+  return await verify(deps, write, refusalFor(installed));
+}
+
+function refusalFor(
+  ran: { ok: true } | { ok: false; reason?: string },
+): SelectionError | null {
+  if (ran.ok) {
+    return null;
+  }
+  return ran.reason === "timed-out" ? "apply-timed-out" : "apply-failed";
 }
 
 // Completion is disk plus the deployment record plus the manifest agreeing with

@@ -11,6 +11,7 @@ import { readConfiguredGitOriginUrl } from "./git/configured-origin";
 import { readGitHubPage } from "./git/github-page";
 import { GhCliAdapter } from "./harness/gh-cli-adapter";
 import { HarnessGitAdapter } from "./harness/harness-git";
+import { ReleasedContentReader } from "./harness/released-content";
 import { resolveApmScratchCwd } from "./home-directory";
 import { GitCloneAdapter } from "./inventory/clone-repository";
 import { resolveDefaultBranch } from "./inventory/default-branch";
@@ -22,6 +23,7 @@ import { ToolPresenceAdapter } from "./tools/tool-presence";
 
 export function nodeUseCasePorts(env: NodeJS.ProcessEnv): UseCasePorts {
   const fs = new NodeFileSystem();
+  const released = new ReleasedContentReader();
   return {
     env,
     home: () => homedir(),
@@ -41,8 +43,9 @@ export function nodeUseCasePorts(env: NodeJS.ProcessEnv): UseCasePorts {
       },
     }),
     git: {
-      harness: new HarnessGitAdapter(),
-      inventory: (resolveRoot) => new InventoryGitAdapter({ resolveRoot }),
+      harness: new HarnessGitAdapter({ released }),
+      inventory: (resolveRoot) =>
+        new InventoryGitAdapter({ resolveRoot, released }),
       clone: new GitCloneAdapter(),
       scaffold: new GitHarnessScaffoldAdapter(),
       originUrl: readConfiguredGitOriginUrl,

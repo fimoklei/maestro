@@ -268,6 +268,26 @@ describe("deploy HTTP route", () => {
     expect(JSON.stringify(body)).not.toContain("token in stderr");
   });
 
+  it("surfaces a timed-out install as a 504 of its own", async () => {
+    const w = await world();
+    w.answers.installRefusal = { ok: false, reason: "timed-out" };
+
+    const res = await w.deploy({ target: repoTarget });
+
+    expect(res.status).toBe(504);
+    expect(await res.json()).toEqual({ error: "deploy-timed-out" });
+  });
+
+  it("surfaces a timed-out release lookup as a 504 of its own", async () => {
+    const w = await world();
+    w.answers.latestTag = { ok: false, reason: "timed-out" };
+
+    const res = await w.deploy({ target: repoTarget });
+
+    expect(res.status).toBe(504);
+    expect(await res.json()).toEqual({ error: "tag-check-timed-out" });
+  });
+
   it("surfaces missing GitHub auth as a distinct 502", async () => {
     const w = await world();
     w.answers.latestTag = { ok: false, reason: "auth-required" };

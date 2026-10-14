@@ -6,10 +6,11 @@ import { isValidSkillSlug } from "../deploy/package-ref";
 export type VersionDrift = { name: string; current: string; latest: string };
 
 // Never a bare array: an empty set for unparsed output would read as up to date.
-// "unverified" is apm reached but could not resolve; absent is a real failure.
+// "unverified" is apm reached but could not resolve; "timed-out" is a hung apm
+// the driver stopped; absent is a real failure.
 export type OutdatedResult =
   | { ok: true; behind: VersionDrift[] }
-  | { ok: false; reason?: "unverified" };
+  | { ok: false; reason?: "unverified" | "timed-out" };
 
 const UP_TO_DATE = /All dependencies are up-to-date/;
 const NO_REMOTE = /No remote dependencies to check/;

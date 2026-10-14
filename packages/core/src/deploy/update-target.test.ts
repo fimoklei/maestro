@@ -773,6 +773,15 @@ describe("UpdateTarget.run", () => {
     });
   });
 
+  it("reports a timed-out install as a timed-out update", async () => {
+    const running = await confirmed();
+    running.world.refuseWith({ ok: false, reason: "timed-out" });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok ? null : result.error).toBe("update-timed-out");
+  });
+
   it("claims no skill moved while the record still names the old release", async () => {
     const running = await confirmed();
     running.world.refuseWith({ ok: false, reason: "failed" });

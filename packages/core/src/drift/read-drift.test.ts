@@ -353,6 +353,14 @@ describe("ReadDrift", () => {
     expect(result).toEqual({ ok: false, reason: "unverified" });
   });
 
+  it("forwards a timed-out check unchanged", async () => {
+    const result = await run({
+      outdated: { ok: false, reason: "timed-out" },
+    });
+
+    expect(result).toEqual({ ok: false, reason: "timed-out" });
+  });
+
   it("reads no trees when apm reports nothing behind", async () => {
     const { readDrift, readSkillTreesAtTag, fetch } = build({
       outdated: { ok: true, behind: [] },

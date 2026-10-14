@@ -61,7 +61,7 @@ type Deps = Pick<
 >;
 
 // A failed check is a 200 the web maps to a badge, never an HTTP error.
-const driftFailureBody = (result: { reason?: "unverified" }) =>
+const driftFailureBody = (result: { reason?: "unverified" | "timed-out" }) =>
   result.reason
     ? { ok: false as const, reason: result.reason }
     : { ok: false as const };

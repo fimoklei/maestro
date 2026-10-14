@@ -19,6 +19,7 @@ import {
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
+  TIMED_OUT_HINT,
   UNREACHED_HINT,
 } from "./deploy-state-copy";
 import {
@@ -282,7 +283,9 @@ function statusReason(row: TargetRow): Copy | null {
   }
   const skipped = row.skipped.find(skippedNeedsAttention);
   if (skipped) return skippedEntryReason(skipped);
-  if (row.status?.family === "unknown") return UNREACHED_HINT;
+  if (row.status?.family === "unknown") {
+    return row.drift.timedOut ? TIMED_OUT_HINT : UNREACHED_HINT;
+  }
   if (!row.head) return null;
   if (row.head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
   return row.behind

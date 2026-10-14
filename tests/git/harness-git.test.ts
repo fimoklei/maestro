@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter } from "@maestro/core";
+import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 
@@ -40,14 +40,17 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
     // Seeded through the adapter, so the clone carries the product's own refs.
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
   }, 30_000);
 
   afterEach(async () => {
     await removeGitTempTree(base);
   });
 
-  const adapter = () => new HarnessGitAdapter();
+  const adapter = () =>
+    new HarnessGitAdapter({ released: new ReleasedContentReader() });
 
   // Null is an unreadable namespace, never "no releases".
   const tagNames = (tags: { name: string }[] | null): string[] => {
