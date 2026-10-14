@@ -122,4 +122,17 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
     expect(await response.json()).toEqual({ error: "confirmation-stale" });
     expect((await trees()).working.tdd).toBe(before);
   });
+
+  // Discard is local: GitHub's answer is the same before and after it.
+  it("a stages read after Discard reuses the remembered review read", async () => {
+    const app = makeApp();
+    await editTdd();
+    const seen = await seenRemoteTree(app);
+    const asked = stages.review.asked.length;
+
+    await discard(app, { name: "tdd", seenRemoteTree: seen });
+    await stages.read(app);
+
+    expect(stages.review.asked.length).toBe(asked);
+  });
 });

@@ -45,6 +45,7 @@ import {
 } from "./harness/read-harness-state";
 import { rememberOrigin } from "./harness/remembered-origin";
 import { RestoreSkill } from "./harness/restore-skill";
+import { ReviewReadGate } from "./harness/review-read-gate";
 import {
   resolveApmGlobalRoot,
   resolveMaestroConfigPath,
@@ -104,6 +105,8 @@ export type UseCases = ReturnType<typeof composeUseCases>;
 
 // How old a Harness fetch a Drift or Harness read may reuse.
 const HARNESS_READ_MAX_AGE_MS = 30_000;
+// How old a review read the Harness read may reuse.
+const REVIEW_READ_MAX_AGE_MS = 30_000;
 
 export function composeUseCases(ports: UseCasePorts) {
   const { env, fs, git, apm } = ports;
@@ -191,6 +194,11 @@ export function composeUseCases(ports: UseCasePorts) {
   });
   const fetchHarnessForRead = (root: string) =>
     harnessFetchGate.fetch(root, HARNESS_READ_MAX_AGE_MS);
+  // Every review write goes through `writes`, so a Proposal action shows at once.
+  const reviewGate = new ReviewReadGate({
+    review: ports.gh,
+    now: () => new Date(),
+  });
   // Shared by both ways a movement reaches review: two of them for the same
   // harness must queue, not race each other's temporary index and push.
   const harnessPromoteLocks = new InFlightLocks();
@@ -266,7 +274,7 @@ export function composeUseCases(ports: UseCasePorts) {
     git: harnessGit,
     freshness: harnessFreshness,
     fetchHarness: fetchHarnessForRead,
-    review: ports.gh,
+    review: reviewGate.reads(REVIEW_READ_MAX_AGE_MS),
   });
   const scaffoldOffers = new ScaffoldOffers();
   const connect = new ConnectInventory({
@@ -343,7 +351,7 @@ export function composeUseCases(ports: UseCasePorts) {
       git: harnessGit,
       freshness: harnessFreshness,
       locks: harnessPromoteLocks,
-      review: ports.gh,
+      review: reviewGate.writes,
     }),
     // Shares the promotion's lock: an edit and a removal from one fetched tip would race.
     promoteDeletion: new PromoteSkillDeletion({
@@ -351,7 +359,7 @@ export function composeUseCases(ports: UseCasePorts) {
       git: harnessGit,
       freshness: harnessFreshness,
       locks: harnessPromoteLocks,
-      review: ports.gh,
+      review: reviewGate.writes,
     }),
     // Shares the promotion lock: it reads the same working tree (#798).
     deleteLocalSkill: new DeleteLocalSkill({
@@ -383,7 +391,7 @@ export function composeUseCases(ports: UseCasePorts) {
     proposals: new ProposalActions({
       resolveRoot: harnessRoot,
       git: harnessGit,
-      review: ports.gh,
+      review: reviewGate.writes,
     }),
     connect,
     scaffold: new ScaffoldHarness({
