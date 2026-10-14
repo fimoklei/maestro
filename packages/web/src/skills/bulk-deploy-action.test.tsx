@@ -12,9 +12,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// Stubs the reads (nothing deployed, drift up to date); the bulk route returns
-// the test's `bulkReport`.
-function stubReads(bulkReport: unknown) {
+// Stubs the reads (drift up to date; each tool holds the skills `deployed`
+// names, nothing by default); the bulk route returns the test's `bulkReport`.
+function stubReads(bulkReport: unknown, deployed: string[] = []) {
+  const primitives = deployed.map((name) => ({
+    type: "skill",
+    name,
+    version: "v1.0.0",
+  }));
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -22,8 +27,8 @@ function stubReads(bulkReport: unknown) {
       if (url.startsWith("/api/deploy-state/global")) {
         return jsonResponse({
           tools: [
-            { tool: "claude", primitives: [] },
-            { tool: "codex", primitives: [] },
+            { tool: "claude", primitives },
+            { tool: "codex", primitives },
           ],
           skipped: [],
         });
@@ -109,6 +114,124 @@ describe("BulkDeployAction", () => {
       names: ["tdd", "review"],
       target: { kind: "global" },
     });
+  });
+
+  // A bulk run never moves a target's release (#956): every success is a
+  // deploy, and a skill already up to date counts as having reached the target.
+  it("reports a clean run as deploys and skips, never as an update", async () => {
+    stubReads(
+      {
+        target: { kind: "global" },
+        deployed: [
+          { name: "tdd", version: "v1.2.0" },
+          { name: "research", version: "v0.3.0" },
+        ],
+        attention: [],
+        failed: [],
+      },
+      ["review"],
+    );
+    renderWithQuery(
+      <BulkDeployAction
+        stagedNames={["tdd", "research", "review"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
+    );
+
+    const dialog = await deploy();
+
+    expect(
+      await within(dialog).findByRole("heading", {
+        name: "Deployed 3 of 3 skills to Global",
+      }),
+    ).toBeVisible();
+    expect(
+      within(dialog)
+        .getAllByRole("heading", { level: 4 })
+        .map((group) => group.textContent),
+    ).toEqual(["Already up to date1", "✓Deployed2"]);
+    const rows = within(dialog)
+      .getAllByRole("listitem")
+      .map((row) => row.textContent);
+    expect(rows).toEqual(["review", "tddv1.2.0", "researchv0.3.0"]);
+    expect(dialog).not.toHaveTextContent(/updated|latest/i);
+  });
+
+  it("counts every skipped skill as having reached the target", async () => {
+    stubReads({}, ["tdd", "review"]);
+    renderWithQuery(
+      <BulkDeployAction
+        stagedNames={["tdd", "review"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
+    );
+
+    await deploy();
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Deployed 2 of 2 skills to Global",
+      }),
+    ).toBeVisible();
+    const fetchMock = fetch as ReturnType<typeof vi.fn>;
+    expect(fetchMock.mock.calls.map(([url]) => url)).not.toContain(
+      "/api/deploy/bulk",
+    );
+  });
+
+  it("states each refused row as a single deploy would, with a way out only where one exists", async () => {
+    stubReads({
+      target: { kind: "global" },
+      deployed: [],
+      attention: [
+        { name: "grill", error: "target-pinned-per-skill", forceable: false },
+      ],
+      failed: [
+        { error: "no-supported-tool", names: ["research"] },
+        {
+          error: "destination-symlinked",
+          names: ["tdd"],
+          linkedPath: "/Users/dev/.claude/skills/tdd",
+        },
+      ],
+    });
+    renderWithQuery(
+      <BulkDeployAction
+        stagedNames={["grill", "research", "tdd"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
+    );
+
+    const dialog = await deploy();
+    await within(dialog).findByRole("heading", { level: 3 });
+    const row = (name: string) =>
+      within(dialog)
+        .getAllByRole("listitem")
+        .find((item) => item.textContent?.startsWith(name)) as HTMLElement;
+
+    expect(row("grill")).toHaveTextContent(
+      "Pinned per skill" +
+        "Nothing was deployed. Select Remove skill for each skill on the Deploy-state screen. Then select Deploy skill to put them on one release." +
+        "This target holds skills from separate deployments.",
+    );
+    expect(within(row("grill")).queryByRole("button")).toBeNull();
+    expect(row("research")).toHaveTextContent(
+      "No supported tool" +
+        "Nothing was deployed. Install Claude Code or Codex, then deploy again." +
+        "A global deploy puts skills into Claude Code or Codex.",
+    );
+    // #748: the exact rm, not "delete the linked folder".
+    expect(row("tdd")).toHaveTextContent(
+      "Linked skill folder" +
+        "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again." +
+        "This removes the link only. The folder it points at remains on disk.",
+    );
   });
 
   it("reinstalls a diverged attention skill on its own row's receipt", async () => {
@@ -197,18 +320,17 @@ describe("BulkDeployAction", () => {
     );
   });
 
-  it("holds Deploy again busy and the dialog open while it runs, so a second press sends nothing", async () => {
+  it("holds Deploy again busy, every other one locked and the dialog open while it runs", async () => {
+    const diverged = (name: string) => ({
+      name,
+      error: "deployed-diverged-from-lock",
+      forceable: true,
+      copyReceipt: "b".repeat(64),
+    });
     stubReads({
       target: { kind: "global" },
       deployed: [],
-      attention: [
-        {
-          name: "review",
-          error: "deployed-diverged-from-lock",
-          forceable: true,
-          copyReceipt: "b".repeat(64),
-        },
-      ],
+      attention: [diverged("review"), diverged("tdd")],
       failed: [],
     });
     const reads = fetch;
@@ -243,7 +365,12 @@ describe("BulkDeployAction", () => {
     expect(again).toHaveAccessibleName("Deploying…");
     expect(again).toHaveAttribute("aria-busy", "true");
     expect(again).toHaveAttribute("aria-disabled", "true");
+    const other = within(dialog).getByRole("button", {
+      name: "Deploy tdd again",
+    });
+    expect(other).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(again);
+    await userEvent.click(other);
     expect(deployCalls).toHaveBeenCalledTimes(1);
     await userEvent.keyboard("{Escape}");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -520,7 +647,7 @@ describe("BulkDeployAction", () => {
 
     // A Notice, never zeroed counts that would read as a clean success (#292).
     const notice = await screen.findByRole("alert");
-    expect(notice).toHaveTextContent(/did not run/i);
+    expect(notice).toHaveTextContent("Deploy to Global did not run");
     const dialog = screen.getByRole("dialog");
     expect(
       within(dialog)
@@ -687,23 +814,26 @@ describe("BulkDeployAction", () => {
 
   it("reports a partial run worst group first, a failed install as one row for every name", async () => {
     // One install carries the batch, so an install failure fails every name in it.
-    stubReads({
-      target: { kind: "global" },
-      deployed: [{ name: "grilling", version: "v1.0.0" }],
-      attention: [
-        {
-          name: "review",
-          error: "deployed-diverged-from-lock",
-          forceable: true,
-          copyReceipt:
-            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        },
-      ],
-      failed: [{ error: "deploy-failed", names: ["tdd", "caveman"] }],
-    });
+    stubReads(
+      {
+        target: { kind: "global" },
+        deployed: [{ name: "grilling", version: "v1.0.0" }],
+        attention: [
+          {
+            name: "review",
+            error: "deployed-diverged-from-lock",
+            forceable: true,
+            copyReceipt:
+              "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          },
+        ],
+        failed: [{ error: "deploy-failed", names: ["tdd", "caveman"] }],
+      },
+      ["docs"],
+    );
     renderWithQuery(
       <BulkDeployAction
-        stagedNames={["tdd", "caveman", "review", "grilling"]}
+        stagedNames={["tdd", "caveman", "review", "grilling", "docs"]}
         repos={[]}
         registryReady
         onSelectionSpent={() => {}}
@@ -712,11 +842,15 @@ describe("BulkDeployAction", () => {
 
     const dialog = await deploy();
 
-    await within(dialog).findByRole("heading", { level: 3 });
+    // A skipped skill reached the target; a failed line counts every name in it.
+    expect(
+      await within(dialog).findByRole("heading", { level: 3 }),
+    ).toHaveTextContent("Deployed 2 of 5 skills to Global");
     const groups = within(dialog).getAllByRole("heading", { level: 4 });
     expect(groups.map((group) => group.textContent)).toEqual([
       "✕Failed2",
       "⚠Attention1",
+      "Already up to date1",
       "✓Deployed1",
     ]);
     expect(within(dialog).getByText("tdd, caveman")).toBeVisible();
@@ -922,36 +1056,67 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
     name,
     version: "v1.0.0",
   });
-  const behindEntry = (name: string) => ({
+  const behindEntry = (name: string, reading: string) => ({
     name,
     current: "v1.0.0",
     latest: "v1.2.0",
-    reading: "older-tag",
+    reading,
   });
 
   // Each tool and each repository holds the skills named for it; `behind` names
-  // the skills every target reads as lagging.
+  // the skills every target reads as lagging (`reading`, older-tag by default);
+  // `changedInRelease`, when set, gives every target a Release head naming them.
   function stubWorld(
     world: {
       tools?: Record<string, string[]>;
       repos?: Record<string, string[]>;
       behind?: string[];
+      reading?: string;
+      changedInRelease?: string[];
+      skipped?: unknown[];
+      globalStateHangs?: boolean;
       repoStateFails?: boolean;
       repoStateHangs?: boolean;
       unverifiedDrift?: boolean;
     } = {},
   ) {
-    const { tools = { claude: [] }, repos = {}, behind = [] } = world;
-    const lagging = { behind: behind.map(behindEntry) };
+    const {
+      tools = { claude: [] },
+      repos = {},
+      behind = [],
+      reading = "older-tag",
+      skipped = [],
+    } = world;
+    const lagging = {
+      behind: behind.map((name) => behindEntry(name, reading)),
+    };
+    const releaseHead = (names: string[]) =>
+      world.changedInRelease === undefined
+        ? {}
+        : {
+            releaseHead: {
+              release: "v0.3.2",
+              latestRelease: "v0.3.4",
+              changed: world.changedInRelease.length,
+              changedSkills: world.changedInRelease,
+              selection: names,
+              selected: names.length,
+              comparedAt: "2026-09-12T10:00:00.000Z",
+            },
+          };
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith("/api/deploy-state/global")) {
+        if (world.globalStateHangs) {
+          return new Promise<Response>(() => undefined);
+        }
         return jsonResponse({
           tools: Object.entries(tools).map(([tool, names]) => ({
             tool,
             primitives: names.map(skill),
+            ...releaseHead(names),
           })),
-          skipped: [],
+          skipped,
         });
       }
       if (url.startsWith("/api/drift")) {
@@ -967,9 +1132,11 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
           throw new Error("read failed");
         }
         const path = decodeURIComponent(url.split("repo=")[1] ?? "");
+        const names = repos[path] ?? [];
         return jsonResponse({
-          primitives: (repos[path] ?? []).map(skill),
-          skipped: [],
+          primitives: names.map(skill),
+          skipped,
+          ...releaseHead(names),
         });
       }
       return jsonResponse({
@@ -1184,5 +1351,107 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
         name: "Deploy skill — targets still loading",
       }),
     ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("marks nothing while the Global state is still loading", async () => {
+    stubWorld({ globalStateHangs: true });
+    const dialog = await open([], ["tdd"]);
+
+    await chooseDeployTarget(dialog, /^Global/);
+
+    expect(
+      within(dialog).getByRole("button", {
+        name: "Deploy skill — targets still loading",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
+    expect(
+      within(dialog).queryByRole("group", {
+        name: /^(To deploy|Already up to date)/,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("marks a skill on Global up to date once it is current on every detected tool", async () => {
+    stubWorld({ tools: { claude: ["tdd"], codex: ["tdd"] } });
+    const dialog = await open([], ["tdd"]);
+
+    await chooseDeployTarget(dialog, /^Global/);
+
+    expect(
+      await within(dialog).findByRole("group", {
+        name: "Already up to date · 1",
+      }),
+    ).toBeVisible();
+  });
+
+  it.each(["behind", "no-longer-released"])(
+    "deploys a skill whose drift reads %s rather than skipping it",
+    async (reading) => {
+      stubWorld({
+        tools: { claude: ["tdd"], codex: ["tdd"] },
+        behind: ["tdd"],
+        reading,
+      });
+      const dialog = await open([], ["tdd"]);
+
+      await chooseDeployTarget(dialog, /^Global/);
+
+      expect(
+        await within(dialog).findByRole("group", { name: "To deploy · 1" }),
+      ).toBeVisible();
+    },
+  );
+
+  // The Release head answers first (#956): a skill the newest release changed
+  // is never up to date, whatever the per-skill drift says.
+  it.each<[RegExp, Parameters<typeof stubWorld>[0]]>([
+    [/^Global/, { tools: { claude: ["tdd"] } }],
+    [/projects\/alpha$/, { repos: { "/projects/alpha": ["tdd"] } }],
+  ])("reads the Release head of %s before its drift", async (target, world) => {
+    stubWorld({ ...world, changedInRelease: ["tdd"] });
+    const dialog = await open(twoRepos, ["tdd"]);
+
+    await chooseDeployTarget(dialog, target);
+
+    expect(
+      await within(dialog).findByRole("group", { name: "To deploy · 1" }),
+    ).toBeVisible();
+  });
+
+  it("skips a skill the newest release left alone", async () => {
+    stubWorld({ tools: { claude: ["tdd"] }, changedInRelease: [] });
+    const dialog = await open([], ["tdd"]);
+
+    await chooseDeployTarget(dialog, /^Global/);
+
+    expect(
+      await within(dialog).findByRole("group", {
+        name: "Already up to date · 1",
+      }),
+    ).toBeVisible();
+  });
+
+  // Attention colours a target's reading; it never decides what a run deploys (#792).
+  it("plans the same when the target holds an entry needing attention", async () => {
+    stubWorld({
+      tools: { claude: ["tdd"] },
+      skipped: [
+        {
+          reason: "unmanageable-skill",
+          virtualPath: "skills/other",
+          packageType: "claude_skill",
+        },
+      ],
+    });
+    const dialog = await open([], ["tdd", "lint"]);
+
+    await chooseDeployTarget(dialog, /^Global/);
+
+    expect(
+      await within(dialog).findByRole("group", {
+        name: "Already up to date · 1",
+      }),
+    ).toHaveTextContent("tdd");
+    expect(groupNamed(dialog, "To deploy · 1")).toHaveTextContent("lint");
   });
 });

@@ -3,8 +3,8 @@
 import type { GitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
-import { isConcurrentlyChanged } from "./classify-movement";
 import type { HarnessReviewPort } from "./harness-review-port";
+import { isConcurrentlyChanged } from "./harness-stages";
 import { promoteBranch, promoteCompareUrl } from "./promote-branch";
 import {
   beforeProposalPush,
@@ -169,9 +169,7 @@ export class PromoteSkill {
       {
         remote:
           remoteTrees.find((tree) => tree.name === name)?.treeHash ?? null,
-        promote: null,
         local: localTrees.find((tree) => tree.name === name)?.treeHash ?? null,
-        working: null,
       },
       mergeBaseTrees === null
         ? undefined

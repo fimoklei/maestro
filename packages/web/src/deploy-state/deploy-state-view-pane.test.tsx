@@ -780,6 +780,11 @@ describe("Deploy-state pane — an unfinished operation", () => {
     const pane = await openPane(LABEL);
     expect(within(pane).getByText("Removal incomplete")).toBeInTheDocument();
     expect(
+      within(pane).getByText(
+        "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
       within(within(pane).getByRole("status")).getByRole("button", {
         name: "Retry removal",
       }),

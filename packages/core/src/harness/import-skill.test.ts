@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CopySkillFolderResult } from "../filesystem/copy-skill-folder";
+import { InMemoryHarnessGit, type Skills } from "./harness-git.fake";
 import { ImportSkill } from "./import-skill";
-import type { HarnessSkillTrees } from "./read-harness-state";
 
 const ROOT = "/harness";
 const SOURCE = "/work/Code Review";
@@ -37,14 +37,9 @@ const unreachableFacts = {
   },
 };
 
-const unreachableGit = {
-  readFacts: async () => {
-    throw new Error("git port was reached");
-  },
-  readMovementTrees: async () => {
-    throw new Error("git port was reached");
-  },
-};
+// A clone at no root these tests resolve, so any read of it throws.
+const unreachableGit = new InMemoryHarnessGit();
+unreachableGit.root = "/unreachable";
 
 function harness(
   overrides: {
@@ -56,7 +51,8 @@ function harness(
     deployedTargets?: { treeRoot: string; lockfilePath: string }[];
     copy?: () => Promise<CopySkillFolderResult>;
     originUrl?: string | null;
-    trees?: HarnessSkillTrees | null;
+    // The Harness clone's folders on disk; null is a clone nobody could read.
+    harnessWorking?: Skills | null;
     homeRoot?: string;
   } = {},
 ) {
@@ -124,25 +120,20 @@ function harness(
           },
   };
 
-  let trees: HarnessSkillTrees | null =
-    overrides.trees === undefined
-      ? {
-          remote: {},
-          promote: {},
-          local: { "code-review": "tree-1" },
-          working: { "code-review": "tree-1" },
-        }
-      : overrides.trees;
-  const git = {
-    readFacts: async () => ({
-      originUrl:
-        overrides.originUrl === undefined ? ORIGIN : overrides.originUrl,
-      defaultBranch: "main",
-      defaultBranchCommit: null,
-      tags: [],
-    }),
-    readMovementTrees: async () => trees,
+  // `code-review` is committed locally, not yet on origin/HEAD.
+  const git = new InMemoryHarnessGit();
+  git.commit("remote", {});
+  git.commit("local", { "code-review": HELD_MANIFEST }, { parent: "remote" });
+  git.tip = "remote";
+  git.head = "local";
+  git.working = overrides.harnessWorking ?? {
+    "code-review": HELD_MANIFEST,
   };
+  if (overrides.harnessWorking === null) {
+    git.unreadable.add("working");
+  }
+  git.originUrl =
+    overrides.originUrl === undefined ? ORIGIN : overrides.originUrl;
 
   const importSkill = new ImportSkill({
     resolveRoot: async () => ROOT,
@@ -170,11 +161,7 @@ function harness(
     deployedTargets: async () => overrides.deployedTargets ?? [],
   });
 
-  const setTrees = (next: HarnessSkillTrees | null) => {
-    trees = next;
-  };
-
-  return { importSkill, files, directories, copied, fs, setTrees };
+  return { importSkill, files, directories, copied, fs, git };
 }
 
 describe("ImportSkill.check", () => {
@@ -561,12 +548,7 @@ describe("ImportSkill.check", () => {
 
   it("refuses an update while the Harness's own copy has uncommitted changes", async () => {
     const { importSkill, deployed } = deployedInRepo(FROM_THIS_HARNESS, {
-      trees: {
-        remote: {},
-        promote: {},
-        local: { "code-review": "tree-1" },
-        working: { "code-review": "tree-2" },
-      },
+      harnessWorking: { "code-review": "edited" },
     });
 
     await expect(
@@ -578,7 +560,7 @@ describe("ImportSkill.check", () => {
 
   it("names the unreadable clone apart from work it can see is uncommitted", async () => {
     const { importSkill, deployed } = deployedInRepo(FROM_THIS_HARNESS, {
-      trees: null,
+      harnessWorking: null,
     });
 
     await expect(
@@ -932,12 +914,7 @@ describe("ImportSkill.execute", () => {
       ],
     });
     await update.importSkill.check({ source: deployed });
-    update.setTrees({
-      remote: {},
-      promote: {},
-      local: { "code-review": "tree-1" },
-      working: { "code-review": "tree-2" },
-    });
+    update.git.working = { "code-review": "edited" };
 
     await expect(
       update.importSkill.execute({ source: deployed }),
