@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
+import { copiesIn } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { RetryTargetOperation } from "./retry-target-operation";
 import { selectionWorld } from "./selection-writer-fake";
@@ -13,10 +14,7 @@ function buildUseCase(state: DeployedContentState = "clean") {
     registry: { isRegistered: async () => true },
     selection: world.writer,
     deployedCleanup: world.cleanup,
-    deployedContent: {
-      classify: async () => state,
-      contentDigest: async () => null,
-    },
+    deployedContent: copiesIn(state).content,
     toolPresence: { detectGlobalTools: async () => ["claude" as const] },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
@@ -236,10 +234,7 @@ describe("RetryTargetOperation", () => {
       registry: { isRegistered: async () => false },
       selection: world.writer,
       deployedCleanup: world.cleanup,
-      deployedContent: {
-        classify: async () => "clean" as const,
-        contentDigest: async () => null,
-      },
+      deployedContent: copiesIn("clean").content,
       toolPresence: { detectGlobalTools: async () => ["claude" as const] },
       canonicalPath: async (path: string) => path,
       locks: new InFlightLocks(),

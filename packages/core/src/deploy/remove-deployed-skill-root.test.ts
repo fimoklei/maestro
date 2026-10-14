@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeployTarget } from "./deploy-skill";
+import { copiesIn } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { RemoveDeployedSkill } from "./remove-deployed-skill";
 import { selectionWorld } from "./selection-writer-fake";
@@ -19,8 +20,7 @@ function buildUseCase(copy: "clean" | "diverged" = "clean") {
       }),
     },
     deployedContent: {
-      classify: async () => copy,
-      contentDigest: async () => null,
+      ...copiesIn(copy).content,
     },
     apm: { removeSkill: async () => ({ ok: true as const }) },
     deployedCleanup: { removeSkillTargets: async () => {} },

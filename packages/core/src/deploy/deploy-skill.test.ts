@@ -7,6 +7,7 @@ import {
   type RecordedPackageResult,
 } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
+import { deployedCopies } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import { selectionWorld } from "./selection-writer-fake";
@@ -14,11 +15,36 @@ import { selectionWorld } from "./selection-writer-fake";
 const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
 const globalTarget: DeployTarget = { kind: "global" };
 
-const contentState = (state: DeployedContentState): DeployedContentPort => ({
-  classify: async () => state,
-  contentDigest: async () => null,
-  linkedSkillPath: async () => null,
-});
+// A real copy of `name` at the registered repo, in the named drift state.
+const copyAt = (
+  state: DeployedContentState,
+  target: DeployTarget = repo("/registered/repo"),
+  name = "tdd",
+): DeployedContentPort => deployedCopies([{ target, name, state }]).content;
+
+// Several skills at the registered repo, each in its named state.
+const editedCopies = (
+  states: Record<string, DeployedContentState>,
+): DeployedContentPort =>
+  deployedCopies(
+    Object.entries(states).map(([name, state]) => ({
+      target: repo("/registered/repo"),
+      name,
+      state,
+    })),
+  ).content;
+
+// No drift, with the linked-directory answer scripted.
+const withLinks = (
+  linkedSkillPath: DeployedContentPort["linkedSkillPath"],
+): DeployedContentPort => {
+  const none = deployedCopies([]).content;
+  return {
+    classify: (input) => none.classify(input),
+    contentDigest: (input) => none.contentDigest(input),
+    linkedSkillPath,
+  };
+};
 
 // `deployedContent` is the whole port: the guard reads its `classify`, the
 // use-case only asks it for a linked destination.
@@ -39,6 +65,7 @@ const buildDeps = (
     name: string;
     tools: readonly SupportedTool[];
   }> = [];
+  const noCopies = deployedCopies([]).content;
   const base = {
     inventory: {
       read: async () => ({
@@ -77,9 +104,13 @@ const buildDeps = (
         tools?: readonly SupportedTool[];
       }) => {
         classified.push(input);
-        return "not-deployed" as const;
+        return noCopies.classify(input);
       },
-      contentDigest: async () => null,
+      contentDigest: async (input: {
+        target: DeployTarget;
+        name: string;
+        tools?: readonly SupportedTool[];
+      }) => noCopies.contentDigest(input),
       linkedSkillPath: async () => null,
     },
     deployedCleanup: {
@@ -184,11 +215,7 @@ describe("DeploySkill", () => {
     // Without a baseline the guard would refuse this copy as unverifiable, but it
     // is apm's own, not local work (#358).
     const { deps } = buildDeps({
-      deployedContent: {
-        classify: async () => "unverifiable" as const,
-        contentDigest: async () => null,
-        linkedSkillPath: async () => null,
-      },
+      deployedContent: copyAt("unverifiable"),
       recordedPackage: {
         read: async () => ({
           kind: "recorded" as const,
@@ -791,11 +818,9 @@ describe("DeploySkill", () => {
 
   it("names the link apm refused, so the notice can spell out one rm", async () => {
     const { deps, world } = buildDeps({
-      deployedContent: {
-        classify: async () => "not-deployed" as const,
-        contentDigest: async () => null,
-        linkedSkillPath: async () => "/registered/repo/.claude/skills/tdd",
-      },
+      deployedContent: withLinks(
+        async () => "/registered/repo/.claude/skills/tdd",
+      ),
     });
     world.refuseWith({ ok: false, reason: "destination-symlinked" });
     const result = await new DeploySkill(deps).execute({
@@ -907,7 +932,7 @@ describe("DeploySkill", () => {
   it("refuses to deploy when the deployed copy diverges from the lockfile", async () => {
     // A same-ref apm install silently resets a locally edited deployed copy (#56).
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("diverged"),
+      deployedContent: copyAt("diverged"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -924,7 +949,7 @@ describe("DeploySkill", () => {
 
   it("refuses when the deployed copy cannot be verified (legacy lockfile)", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("unverifiable"),
+      deployedContent: copyAt("unverifiable"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -941,7 +966,7 @@ describe("DeploySkill", () => {
 
   it("refuses when the deployed copy cannot be read", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("unreadable"),
+      deployedContent: copyAt("unreadable"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -955,7 +980,7 @@ describe("DeploySkill", () => {
 
   it("refuses when the target lockfile cannot be parsed", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("lockfile-malformed"),
+      deployedContent: copyAt("lockfile-malformed"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -970,7 +995,7 @@ describe("DeploySkill", () => {
   it("offers no consent past a malformed lockfile", async () => {
     // The refusal mints no receipt, and a made-up one clears nothing (#58, #952).
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("lockfile-malformed"),
+      deployedContent: copyAt("lockfile-malformed"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -985,7 +1010,7 @@ describe("DeploySkill", () => {
 
   it("deploys when the deployed copy is clean (an unedited re-deploy)", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("clean"),
+      deployedContent: copyAt("clean"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -999,7 +1024,7 @@ describe("DeploySkill", () => {
 
   it("refuses a global deploy when the deployed copy diverges", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("diverged"),
+      deployedContent: copyAt("diverged", globalTarget),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -1016,7 +1041,7 @@ describe("DeploySkill", () => {
 
   it("deploys past a locally edited copy once its own receipt comes back", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("diverged"),
+      deployedContent: copyAt("diverged"),
     });
     const refusal = await new DeploySkill(deps).execute({
       type: "skill",
@@ -1045,7 +1070,7 @@ describe("DeploySkill", () => {
 
   it("deploys past an unverified copy once its own receipt comes back", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("unverifiable"),
+      deployedContent: copyAt("unverifiable"),
     });
     const refusal = await new DeploySkill(deps).execute({
       type: "skill",
@@ -1070,7 +1095,7 @@ describe("DeploySkill", () => {
 
   it("refuses a receipt minted for another skill on the same target", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("diverged"),
+      deployedContent: editedCopies({ tdd: "diverged", grill: "diverged" }),
       inventory: {
         read: async () => ({
           ok: true as const,
@@ -1112,7 +1137,7 @@ describe("DeploySkill", () => {
         skillDivergesFromTag: async () => true,
         readSkillFilesAtTag: async () => null,
       },
-      deployedContent: contentState("diverged"),
+      deployedContent: copyAt("diverged"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -1127,7 +1152,7 @@ describe("DeploySkill", () => {
 
   it("offers no consent past an unreadable deployed copy", async () => {
     const { deps, deployed } = buildDeps({
-      deployedContent: contentState("unreadable"),
+      deployedContent: copyAt("unreadable"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -1278,14 +1303,6 @@ describe("DeploySkill.executeBatch", () => {
         description: name,
       })),
     }),
-  });
-
-  const editedCopies = (
-    states: Record<string, DeployedContentState>,
-  ): DeployedContentPort => ({
-    classify: async ({ name }) => states[name] ?? "not-deployed",
-    contentDigest: async () => null,
-    linkedSkillPath: async () => null,
   });
 
   it("deploys every staged name in one install and reports each success", async () => {
@@ -1556,12 +1573,9 @@ describe("DeploySkill.executeBatch", () => {
     // (#748), so linked skills never merge into one line.
     const { deps, deployed } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
-      deployedContent: {
-        classify: async () => "not-deployed" as const,
-        contentDigest: async () => null,
-        linkedSkillPath: async ({ name }) =>
-          name === "tdd" ? null : `/registered/repo/.claude/skills/${name}`,
-      },
+      deployedContent: withLinks(async ({ name }) =>
+        name === "tdd" ? null : `/registered/repo/.claude/skills/${name}`,
+      ),
     });
 
     const report = await new DeploySkill(deps).executeBatch({
@@ -1597,12 +1611,9 @@ describe("DeploySkill.executeBatch", () => {
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,
       },
-      deployedContent: {
-        classify: async () => "not-deployed" as const,
-        contentDigest: async () => null,
-        linkedSkillPath: async ({ name }) =>
-          name === "review" ? "/registered/repo/.claude/skills/review" : null,
-      },
+      deployedContent: withLinks(async ({ name }) =>
+        name === "review" ? "/registered/repo/.claude/skills/review" : null,
+      ),
     });
     world.seed({ release: "v0.4.0", skills: ["docs"] });
 

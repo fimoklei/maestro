@@ -10,6 +10,7 @@ import {
   type DeployTarget,
   InFlightLocks,
   InventoryReader,
+  NodeCopyTreeFs,
   NodeFileSystem,
   RemoveDeployedSkill,
   type SupportedTool,
@@ -94,6 +95,7 @@ describe("remove HTTP route", () => {
       }),
       deployedContent: options?.realDeployedContent
         ? new DeployedContentAdapter({
+            fs: new NodeCopyTreeFs(),
             location: new DeployedLocation({ HOME: home }),
           })
         : {

@@ -1,10 +1,7 @@
-// Touches node:fs directly: no port models walking and hashing a tree (#56).
-
 import { createHash } from "node:crypto";
-import { constants } from "node:fs";
-import { access, lstat, readdir, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { isRootPackage } from "../deploy-state/root-package-skills";
+import type { CopyTreeFsPort, OpenFile } from "../filesystem/copy-tree-fs";
 import { parseLockfile, unreadableCovers } from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
@@ -23,10 +20,6 @@ import type { DeployedLocation } from "./deployed-location";
 // would read as "nothing deployed" and let a deploy overwrite blindly (#59).
 class DeployedSubtreeUnreadableError extends Error {}
 
-function isMissing(error: unknown): boolean {
-  return (error as NodeJS.ErrnoException)?.code === "ENOENT";
-}
-
 // `hashes` is empty unless hashing was requested; `fileCount` is always set.
 type SubtreeScan = { hashes: DeployedFileHashes; fileCount: number };
 
@@ -35,6 +28,8 @@ export class DeployedContentAdapter implements DeployedContentPort {
     location: Pick<DeployedLocation, "treeRoot" | "lockfilePath">;
     // Absent, a copy is only measured against its recorded baseline.
     inventoryGit?: Pick<InventoryGitPort, "readSkillFilesAtTag">;
+    // Walks, reads and hashes the copy; an in-memory tree in tests.
+    fs: CopyTreeFsPort;
   };
 
   constructor(deps: DeployedContentAdapter["deps"]) {
@@ -150,8 +145,8 @@ export class DeployedContentAdapter implements DeployedContentPort {
     return true;
   }
 
-  // apm refuses when the leaf skill dir is a symlink. lstat, not stat: a link
-  // resolves to a dir (#748).
+  // apm refuses when the leaf skill dir is a symlink. Never follows a link: a
+  // link resolves to a dir (#748).
   async linkedSkillPath(input: {
     target: DeployTarget;
     name: string;
@@ -160,8 +155,8 @@ export class DeployedContentAdapter implements DeployedContentPort {
     const root = this.deps.location.treeRoot(input.target);
     for (const subtree of deployTargetSubtrees(input.name, input.tools)) {
       const abs = join(root, subtree);
-      const stats = await lstat(abs).catch(() => null);
-      if (stats?.isSymbolicLink()) {
+      const facts = await this.deps.fs.describe(abs);
+      if (facts?.kind === "symlink") {
         return abs;
       }
     }
@@ -177,15 +172,22 @@ export class DeployedContentAdapter implements DeployedContentPort {
     | { kind: "malformed" }
     | { kind: "hashes"; hashes: DeployedFileHashes }
   > {
+    const lockfilePath = this.deps.location.lockfilePath(target);
+    const file = await this.openFollowingLinks(lockfilePath);
+    // Present but unreadable is an error, not an absent baseline (#58).
+    if (file === "missing") {
+      return { kind: "none" };
+    }
+    if (file === null) {
+      return { kind: "malformed" };
+    }
     let raw: string;
     try {
-      raw = await readFile(this.deps.location.lockfilePath(target), "utf8");
-    } catch (error) {
-      // Present but unreadable is an error, not an absent baseline (#58).
-      if (isMissing(error)) {
-        return { kind: "none" };
-      }
+      raw = (await file.read()).toString("utf8");
+    } catch {
       return { kind: "malformed" };
+    } finally {
+      await file.close();
     }
 
     const parsed = parseLockfile(raw);
@@ -219,48 +221,70 @@ export class DeployedContentAdapter implements DeployedContentPort {
     return { kind: "hashes", hashes };
   }
 
+  // Reads through a symlinked file, which the port never follows. "missing"
+  // when nothing is there, a dangling link included; null when unreadable.
+  private async openFollowingLinks(
+    path: string,
+  ): Promise<OpenFile | "missing" | null> {
+    const { fs } = this.deps;
+    const file = await fs.openFile(path);
+    if (file !== null) {
+      return file;
+    }
+    const facts = await fs.describe(path);
+    if (facts === null) {
+      return "missing";
+    }
+    if (facts.kind !== "symlink") {
+      return null;
+    }
+    const target = await fs.realpath(path);
+    return target === null ? "missing" : fs.openFile(target);
+  }
+
   // Keys use forward slashes, matching the lockfile's own keys.
   private async scanSubtrees(
     root: string,
     subtrees: string[],
     opts: { hash: boolean },
   ): Promise<SubtreeScan> {
+    const { fs } = this.deps;
     const hashes: DeployedFileHashes = {};
     let fileCount = 0;
     const walk = async (rel: string): Promise<void> => {
-      const entries = await readdir(join(root, rel), {
-        withFileTypes: true,
-      }).catch((error: unknown) => {
-        if (isMissing(error)) {
-          return [];
+      const abs = join(root, rel);
+      const names = await fs.listNames(abs);
+      if (names === null) {
+        // Missing reads as empty; present but unlistable is unreadable (#59).
+        if ((await fs.describe(abs)) === null) {
+          return;
         }
         throw new DeployedSubtreeUnreadableError();
-      });
-      for (const entry of entries) {
-        const childRel = `${rel}/${entry.name}`;
-        if (entry.isDirectory()) {
+      }
+      for (const name of names) {
+        const childRel = `${rel}/${name}`;
+        const childAbs = join(root, childRel);
+        // describe never follows a link, so a linked dir counts as one file.
+        if ((await fs.describe(childAbs))?.kind === "directory") {
           await walk(childRel);
           continue;
         }
         fileCount++;
-        const abs = join(root, childRel);
-        if (opts.hash) {
-          // Raw bytes, never utf8: decoding would flag a binary asset as drift.
-          let bytes: Buffer;
-          try {
-            bytes = await readFile(abs);
-          } catch {
-            throw new DeployedSubtreeUnreadableError();
+        const file = await this.openFollowingLinks(childAbs);
+        if (file === "missing" || file === null) {
+          throw new DeployedSubtreeUnreadableError();
+        }
+        try {
+          if (opts.hash) {
+            // Raw bytes, never utf8: decoding would flag a binary asset as drift.
+            const bytes = await file.read();
+            hashes[childRel] =
+              `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
           }
-          hashes[childRel] =
-            `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-        } else {
-          // Probe readability, so the unreadable refusal survives (#59).
-          try {
-            await access(abs, constants.R_OK);
-          } catch {
-            throw new DeployedSubtreeUnreadableError();
-          }
+        } catch {
+          throw new DeployedSubtreeUnreadableError();
+        } finally {
+          await file.close();
         }
       }
     };

@@ -1,6 +1,12 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { SupportedTool } from "../deploy/deploy-tools";
+import {
+  copiesIn,
+  inMemoryDeployedContent,
+} from "../deploy/deployed-content.fake";
+import type { DeployTarget } from "../index";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import {
@@ -577,14 +583,13 @@ describe("DeployStateReader on a root-package target", () => {
     });
     const reader = new DeployStateReader({
       fs,
-      content: {
-        classify: async ({ name }) =>
-          name === "tdd"
-            ? "diverged"
-            : name === "grill"
-              ? "unverifiable"
-              : "clean",
-      },
+      content: copiesIn((name) =>
+        name === "tdd"
+          ? "diverged"
+          : name === "grill"
+            ? "unverifiable"
+            : "clean",
+      ).content,
     });
 
     await expect(reader.read(REPO)).resolves.toEqual({
@@ -752,23 +757,12 @@ describe("GlobalDeployStateReader on a root-package target", () => {
   });
 });
 
-// Reads its own injected state: a detached method call would chip nothing (#949).
-class StatefulClassifier {
-  private readonly edited: string;
-
-  constructor(edited: string) {
-    this.edited = edited;
-  }
-
-  async classify(input: { name: string }) {
-    return input.name === this.edited
-      ? ("diverged" as const)
-      : ("clean" as const);
-  }
-}
-
 describe("DeployStateReader copy chips", () => {
   it("calls the content port as a method, so an adapter keeps its own state", async () => {
+    // The real adapter, with tdd's copy edited on disk: a detached method call
+    // would lose its state (#949).
+    const editedTdd = inMemoryDeployedContent();
+    editedTdd.setCopy({ kind: "repo", repoPath: REPO }, "tdd", "diverged");
     const files = [".claude/skills/tdd/SKILL.md"];
     const fs = new InMemoryFileSystem({
       files: {
@@ -778,7 +772,7 @@ describe("DeployStateReader copy chips", () => {
     });
     const reader = new DeployStateReader({
       fs,
-      content: new StatefulClassifier("tdd"),
+      content: editedTdd.content,
     });
 
     await expect(reader.read(REPO)).resolves.toMatchObject({
@@ -798,7 +792,7 @@ describe("DeployStateReader copy chips", () => {
     });
     const reader = new DeployStateReader({
       fs,
-      content: RELEASED_IN_V041,
+      content: releasedIn041({ kind: "repo", repoPath: REPO }),
       releaseHead: latestIs("v0.4.1"),
     });
 
@@ -819,7 +813,7 @@ describe("DeployStateReader copy chips", () => {
     });
     const reader = new DeployStateReader({
       fs,
-      content: RELEASED_IN_V041,
+      content: releasedIn041({ kind: "repo", repoPath: REPO }),
       releaseHead: latestIs(null),
     });
 
@@ -840,7 +834,7 @@ describe("DeployStateReader copy chips", () => {
     });
     const reader = new DeployStateReader({
       fs,
-      content: RELEASED_IN_V041,
+      content: releasedIn041({ kind: "repo", repoPath: REPO }),
       releaseHead: latestIs("v0.4.2"),
     });
 
@@ -866,12 +860,7 @@ describe("DeployStateReader copy chips", () => {
       fs,
       toolPresence: fakePresence(["claude", "codex"]),
       treeRoot: () => "/home",
-      content: {
-        classify: async ({ release, tools }) =>
-          tools?.[0] === "claude" && release === "v0.4.1"
-            ? "clean"
-            : "diverged",
-      },
+      content: releasedIn041({ kind: "global" }, ["codex"]),
       releaseHead: latestIs("v0.4.1"),
     });
 
@@ -898,7 +887,7 @@ describe("DeployStateReader copy chips", () => {
       fs,
       toolPresence: fakePresence(["claude"]),
       treeRoot: () => "/home",
-      content: RELEASED_IN_V041,
+      content: releasedIn041({ kind: "global" }),
       releaseHead: latestIs("v0.4.1"),
     });
 
@@ -910,11 +899,31 @@ describe("DeployStateReader copy chips", () => {
   });
 });
 
-// Diverged from its record, equal to the skill at v0.4.1 only.
-const RELEASED_IN_V041: DeployStateExtras["content"] = {
-  classify: async ({ release }) =>
-    release === "v0.4.1" ? "clean" : "diverged",
-};
+// tdd's copy, edited away from its record to equal the skill at v0.4.1 only;
+// the `unreleased` tools hold work no release has.
+function releasedIn041(
+  target: DeployTarget,
+  unreleased: SupportedTool[] = [],
+): DeployStateExtras["content"] {
+  const released = "tdd at v0.4.1\n";
+  const copies = inMemoryDeployedContent({
+    release: (tag) =>
+      tag === "v0.4.1"
+        ? {
+            "SKILL.md": `sha256:${createHash("sha256").update(released).digest("hex")}`,
+          }
+        : null,
+  });
+  copies.setCopy(target, "tdd", "clean");
+  const dirs = { claude: ".claude/skills", codex: ".agents/skills" };
+  for (const tool of ["claude", "codex"] as const) {
+    copies.editFile(
+      `${copies.treeRoot(target)}/${dirs[tool]}/tdd/SKILL.md`,
+      unreleased.includes(tool) ? "unreleased work\n" : released,
+    );
+  }
+  return copies.content;
+}
 
 function latestIs(
   latestRelease: string | null,

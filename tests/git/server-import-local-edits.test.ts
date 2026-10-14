@@ -114,7 +114,10 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
     const registry = realRegistry(fs, join(base, "config.json"));
     expect(await registry.register(repo)).toMatchObject({ ok: true });
     const location = new DeployedLocation({ HOME: base });
-    const content = new DeployedContentAdapter({ location });
+    const content = new DeployedContentAdapter({
+      location,
+      fs: new NodeCopyTreeFs(),
+    });
     const git = new HarnessGitAdapter();
     const resolveRoot = async () => fs.realpath(harnessRoot);
     const inventory = new InventoryReader({

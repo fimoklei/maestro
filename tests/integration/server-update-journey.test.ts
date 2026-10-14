@@ -15,6 +15,7 @@ import {
   InFlightLocks,
   InventoryReader,
   LocalCopyGuard,
+  NodeCopyTreeFs,
   NodeFileSystem,
   UpdateTarget,
 } from "@maestro/core";
@@ -177,6 +178,7 @@ describe("update HTTP journey", () => {
         }),
         // Read from what apm just wrote, never stubbed (#954).
         deployedContent: new DeployedContentAdapter({
+          fs: new NodeCopyTreeFs(),
           location: rootPackageLocation(join(home, ".apm")),
         }),
         canonicalPath: async (path: string) => path,

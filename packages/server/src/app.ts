@@ -129,15 +129,18 @@ function realDeps(): AppDeps {
   });
   // Shared instance, so guard and cleanup agree on a global deploy's lockfile root and tree.
   const deployedLocation = new DeployedLocation(process.env);
+  const copyTreeFs = new NodeCopyTreeFs();
   const canonicalPath = (path: string) => fs.realpath(path);
   const toolPresence = new ToolPresenceAdapter();
   // Measured against the latest release too, as Update target measures (#1213).
   const releaseAwareContent = new DeployedContentAdapter({
     location: deployedLocation,
     inventoryGit,
+    fs: copyTreeFs,
   });
   const deployedContent = new DeployedContentAdapter({
     location: deployedLocation,
+    fs: copyTreeFs,
   });
   const harnessOrigin = async () => {
     const root = await harnessRoot();
@@ -266,7 +269,6 @@ function realDeps(): AppDeps {
     review: harnessReview,
   });
   const scaffoldOffers = new ScaffoldOffers();
-  const copyTreeFs = new NodeCopyTreeFs();
   const connect = new ConnectInventory({
     fs,
     store,
