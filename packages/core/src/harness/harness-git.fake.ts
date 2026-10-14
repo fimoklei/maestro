@@ -3,6 +3,7 @@
 // contents, refs point at commits, and every read derives from them, so a
 // test states content and never a tree hash.
 import { createHash } from "node:crypto";
+import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
 import type { ProposalKind } from "./proposal-request";
 import type {
   CloneSync,
@@ -293,6 +294,27 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return Object.fromEntries(
       names.map((name) => [name, skills[name] ?? null]),
     );
+  }
+
+  async readSkillManifestsAtTag(
+    root: string,
+    tag: string,
+    names: string[],
+  ): Promise<Record<string, string | null>> {
+    const commit = this.tags?.find((t) => t.name === tag)?.commit;
+    return commit === undefined
+      ? Object.fromEntries(names.map((name) => [name, null]))
+      : this.readSkillManifests(root, commit, names);
+  }
+
+  async readTags(root: string): Promise<HarnessTag[] | null> {
+    this.at(root);
+    return this.tags;
+  }
+
+  async readOrigin(root: string): Promise<GitOrigin | null> {
+    this.at(root);
+    return this.originUrl === null ? null : parseGitOrigin(this.originUrl);
   }
 
   async publishTag(

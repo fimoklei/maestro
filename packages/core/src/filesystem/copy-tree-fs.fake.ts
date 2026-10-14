@@ -1,4 +1,5 @@
 // Kept out of the build (tsconfig.build excludes *.fake.ts).
+import type { FileSystemPort } from "../registry/file-system";
 import type { CopyEntryFacts, CopyTreeFsPort, OpenFile } from "./copy-tree-fs";
 
 type MemoryFile = { bytes: Buffer; executable: boolean; version: number };
@@ -42,6 +43,56 @@ export class InMemoryCopyTree implements CopyTreeFsPort {
   // Listing and opening of `path` are refused from now on, as an EACCES would.
   setUnreadable(path: string): void {
     this.unreadable.add(normalize(path));
+  }
+
+  // The same tree behind `FileSystemPort`, so code reading through either
+  // port sees one disk.
+  fileSystem(): FileSystemPort {
+    const resolved = async (path: string) => {
+      const real = await this.realpath(path);
+      if (real === null) {
+        throw new Error(`ENOENT: no such file or directory, '${path}'`);
+      }
+      return real;
+    };
+    return {
+      realpath: resolved,
+      isDirectory: async (path) =>
+        this.directories.has((await this.realpath(path)) ?? ""),
+      isDirectoryEntry: async (path) => this.directories.has(normalize(path)),
+      exists: async (path) => (await this.describe(path)) !== null,
+      isFileEntry: async (path) => this.files.has(normalize(path)),
+      readFile: async (path) => {
+        const real = await this.realpath(path);
+        return real === null
+          ? null
+          : (this.files.get(real)?.bytes.toString("utf8") ?? null);
+      },
+      listRawEntries: async (path) => {
+        const key = normalize(path);
+        if (this.unreadable.has(key)) {
+          throw new Error(`EACCES: permission denied, scandir '${path}'`);
+        }
+        return ((await this.listNames(key)) ?? []).map((name) => {
+          const child = key === "/" ? `/${name}` : `${key}/${name}`;
+          return {
+            name,
+            isDirectory: this.directories.has(child),
+            isSymlink: this.symlinks.has(child),
+          };
+        });
+      },
+      writeFile: async (path, contents) => this.write(path, contents),
+      createNewFile: async (path, contents) => {
+        if ((await this.describe(path)) !== null) {
+          return false;
+        }
+        this.write(path, contents);
+        return true;
+      },
+      remove: async (path) => this.remove(path),
+      ensureDir: async (path) => this.makeDirSync(path),
+    };
   }
 
   // Test reads: what the copy holds now, for building expectations.
