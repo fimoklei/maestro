@@ -48,6 +48,17 @@ describe("deploy HTTP route", () => {
     );
   });
 
+  it("fetches the Harness right before a deploy, even right after a Harness refresh", async () => {
+    const w = await world();
+    await w.app.request("/api/harness/refresh", { method: "POST" });
+    expect(w.harness.fetches).toBe(1);
+
+    const res = await w.deploy({ target: repoTarget });
+
+    expect(res.status).toBe(200);
+    expect(w.harness.fetches).toBe(2);
+  });
+
   it("reports an install that landed nothing as incomplete, never a success", async () => {
     // apm returned success and placed none of the Selection (#951).
     const w = await world();

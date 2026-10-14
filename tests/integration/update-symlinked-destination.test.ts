@@ -88,7 +88,6 @@ describe("update into a target whose skill folder is a link", () => {
         git: {
           harness,
           inventory: () => ({
-            syncBeforeDeploy: async () => {},
             skillExistsAtTag: async () => true,
             skillDivergesFromTag: async () => false,
             readSkillFilesAtTag: async () => null,

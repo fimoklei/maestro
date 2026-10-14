@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import {
+  HarnessFetchGate,
   type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
@@ -41,12 +42,16 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     new PromoteSkill({
       resolveRoot: async () => root,
       git: new HarnessGitAdapter(),
-      freshness: {
-        read: async () => freshness,
-        record: async (_root, next) => {
-          freshness = next;
+      fetchGate: new HarnessFetchGate({
+        git: new HarnessGitAdapter(),
+        freshness: {
+          read: async () => freshness,
+          record: async (_root, next) => {
+            freshness = next;
+          },
         },
-      },
+        now: () => AT,
+      }),
       locks: new InFlightLocks(),
       // No GitHub capability in this lane: the push is what these journeys prove.
       review: unavailableHarnessReview(),
@@ -92,7 +97,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await git(root, "add", "staged.md");
     await writeSkill("tdd", "edited on disk");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: true,
       branch: "maestro/tdd",
       pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
@@ -129,7 +134,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await git(other, "push", "origin", "HEAD:main");
     await writeSkill("tdd", "edited on disk");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+    await expect(promoter().execute("tdd")).resolves.toMatchObject({
       ok: true,
     });
 
@@ -145,7 +150,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
   it("promotes a skill that exists only as untracked files on disk", async () => {
     await writeSkill("jobs", "brand new");
 
-    await expect(promoter().execute("jobs", AT)).resolves.toMatchObject({
+    await expect(promoter().execute("jobs")).resolves.toMatchObject({
       ok: true,
       branch: "maestro/jobs",
     });
@@ -171,7 +176,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     );
     await writeSkill("tdd", "edited on disk");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+    await expect(promoter().execute("tdd")).resolves.toMatchObject({
       ok: true,
     });
 
@@ -186,7 +191,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     const status = (await git(root, "status", "--porcelain")).stdout;
     const branches = (await git(root, "branch", "--list")).stdout;
 
-    await promoter().execute("tdd", AT);
+    await promoter().execute("tdd");
 
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
     expect((await git(root, "status", "--porcelain")).stdout).toBe(status);
@@ -196,7 +201,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
   it("moves the skill into Pending review, so a refresh reads it back", async () => {
     await writeSkill("tdd", "edited on disk");
 
-    await promoter().execute("tdd", AT);
+    await promoter().execute("tdd");
     await new HarnessGitAdapter().fetch(root);
 
     const trees = await new HarnessGitAdapter().readMovementTrees(root);
@@ -205,7 +210,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
   });
 
   it("reports a skill the working harness does not have", async () => {
-    await expect(promoter().execute("absent", AT)).resolves.toEqual({
+    await expect(promoter().execute("absent")).resolves.toEqual({
       ok: false,
       error: "skill-missing",
     });
@@ -213,7 +218,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
 
   it("appends a second promotion onto the existing branch, keeping both commits", async () => {
     await writeSkill("tdd", "first edit");
-    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+    await expect(promoter().execute("tdd")).resolves.toMatchObject({
       ok: true,
     });
     const first = await promoted("tdd", "rev-parse");
@@ -230,7 +235,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await git(other, "push", "origin", "HEAD:main");
     await writeSkill("tdd", "second edit");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+    await expect(promoter().execute("tdd")).resolves.toMatchObject({
       ok: true,
       branch: "maestro/tdd",
     });
@@ -266,7 +271,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
 
   it("settles a second promotion whose reply was lost, without stacking a duplicate commit", async () => {
     await writeSkill("tdd", "first edit");
-    await promoter().execute("tdd", AT);
+    await promoter().execute("tdd");
     const first = await promoted("tdd", "rev-parse");
 
     // The push errors after the remote already took the branch (#577).
@@ -278,7 +283,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await git(root, "config", "remote.origin.receivepack", script);
     await writeSkill("tdd", "second edit");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: true,
       branch: "maestro/tdd",
       pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
@@ -298,10 +303,10 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
 
   it("publishes no new commit when a press finds the branch already carries its content", async () => {
     await writeSkill("tdd", "edited on disk");
-    await promoter().execute("tdd", AT);
+    await promoter().execute("tdd");
     const first = await promoted("tdd", "rev-parse");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+    await expect(promoter().execute("tdd")).resolves.toMatchObject({
       ok: true,
       branch: "maestro/tdd",
     });
@@ -316,7 +321,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
 
   it("leaves the repository untouched when a promote push is rejected, and a retry appends cleanly", async () => {
     await writeSkill("tdd", "first edit");
-    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+    await expect(promoter().execute("tdd")).resolves.toMatchObject({
       ok: true,
     });
     const first = await promoted("tdd", "rev-parse");
@@ -333,7 +338,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     const branches = (await git(root, "branch", "--list")).stdout;
     await writeSkill("tdd", "second edit");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: false,
       error: "promote-failed",
     });
@@ -345,7 +350,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
 
     // A fresh press by the test, not a retry the code triggered.
     await rm(join(remote, "hooks", "pre-receive"));
-    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+    await expect(promoter().execute("tdd")).resolves.toMatchObject({
       ok: true,
     });
     expect(
@@ -366,7 +371,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await git(root, "config", "remote.origin.receivepack", script);
     await writeSkill("tdd", "edited on disk");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: true,
       branch: "maestro/tdd",
       pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
@@ -398,7 +403,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     );
     await git(root, "config", "filter.mutate.clean", `${mutate} %f`);
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: false,
       error: "source-changed",
     });
@@ -416,7 +421,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await git(root, "config", "remote.origin.pushurl", fork);
     await writeSkill("tdd", "edited on disk");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: false,
       error: "push-elsewhere",
     });
@@ -432,7 +437,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await writeFile(join(root, ".gitignore"), ".apm/skills/draft/\n", "utf8");
     await writeSkill("draft", "ignored on disk");
 
-    const result = await promoter().execute("draft", AT);
+    const result = await promoter().execute("draft");
 
     expect(result).toEqual({ ok: false, error: "promote-failed" });
     expect(JSON.stringify(result)).not.toContain(root);
@@ -491,7 +496,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
 
   it("refuses a no-op press when the skill mutates again while it is being re-verified", async () => {
     await writeSkill("tdd", "stable content");
-    await promoter().execute("tdd", AT);
+    await promoter().execute("tdd");
 
     // The file is untouched on the first read, so the no-op shortcut would
     // fire, but it changes before a second read.
@@ -506,7 +511,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     );
     await git(root, "config", "filter.mutate.clean", `${mutate} %f`);
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: false,
       error: "source-changed",
     });
@@ -520,7 +525,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
 
   it("settles a promote whose reply was lost even when another actor fast-forwards it first", async () => {
     await writeSkill("tdd", "first edit");
-    await promoter().execute("tdd", AT);
+    await promoter().execute("tdd");
     const first = await promoted("tdd", "rev-parse");
 
     // Another actor fast-forwards the branch before the reply gets back.
@@ -543,7 +548,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await git(root, "config", "remote.origin.receivepack", script);
     await writeSkill("tdd", "second edit");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: true,
       branch: "maestro/tdd",
       pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
@@ -572,7 +577,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     );
     await writeSkill("tdd", "edited on disk");
 
-    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+    await expect(promoter().execute("tdd")).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });

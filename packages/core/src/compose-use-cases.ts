@@ -191,6 +191,13 @@ export function composeUseCases(ports: UseCasePorts) {
   });
   const fetchHarnessForRead = (root: string) =>
     harnessFetchGate.fetch(root, HARNESS_READ_MAX_AGE_MS);
+  // A deploy always fetches, so it never deploys from a stale clone (#666).
+  const syncHarness = async () => {
+    const root = await harnessRoot();
+    if (root !== undefined) {
+      await harnessFetchGate.fetch(root, 0).catch(() => {});
+    }
+  };
   // Shared by both ways a movement reaches review: two of them for the same
   // harness must queue, not race each other's temporary index and push.
   const harnessPromoteLocks = new InFlightLocks();
@@ -223,6 +230,7 @@ export function composeUseCases(ports: UseCasePorts) {
     apm,
     selection,
     inventoryGit,
+    syncHarness,
     copyGuard,
     deployedContent,
     // apm's success marker says nothing about what it recorded, so the lockfile
@@ -330,7 +338,7 @@ export function composeUseCases(ports: UseCasePorts) {
     publish: new PublishRelease({
       resolveRoot: harnessRoot,
       git: harnessGit,
-      freshness: harnessFreshness,
+      fetchGate: harnessFetchGate,
       // Bound to the root the publication already resolved and locked, so a
       // harness connected mid-flight cannot answer for it (#521).
       replan: (root) => harness.planReleaseAt(root),
@@ -341,7 +349,7 @@ export function composeUseCases(ports: UseCasePorts) {
     promote: new PromoteSkill({
       resolveRoot: harnessRoot,
       git: harnessGit,
-      freshness: harnessFreshness,
+      fetchGate: harnessFetchGate,
       locks: harnessPromoteLocks,
       review: ports.gh,
     }),
@@ -349,7 +357,7 @@ export function composeUseCases(ports: UseCasePorts) {
     promoteDeletion: new PromoteSkillDeletion({
       resolveRoot: harnessRoot,
       git: harnessGit,
-      freshness: harnessFreshness,
+      fetchGate: harnessFetchGate,
       locks: harnessPromoteLocks,
       review: ports.gh,
     }),

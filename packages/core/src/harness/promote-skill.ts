@@ -3,6 +3,7 @@
 import type { GitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
+import type { HarnessFetchGate } from "./harness-fetch-gate";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { isConcurrentlyChanged } from "./harness-stages";
 import { promoteBranch, promoteCompareUrl } from "./promote-branch";
@@ -11,11 +12,7 @@ import {
   type ProposalKind,
   readOriginFacts,
 } from "./proposal-request";
-import type {
-  HarnessFreshnessPort,
-  HarnessGitPort,
-} from "./read-harness-state";
-import { recordFetch } from "./record-fetch";
+import type { HarnessGitPort } from "./read-harness-state";
 
 export type PromoteSkillError =
   | "not-configured"
@@ -50,7 +47,7 @@ export class PromoteSkill {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
-    freshness: HarnessFreshnessPort;
+    fetchGate: Pick<HarnessFetchGate, "fetch" | "invalidate">;
     locks: InFlightLocks;
     review: HarnessReviewPort;
   };
@@ -60,7 +57,7 @@ export class PromoteSkill {
   }
 
   // One promotion per harness at a time.
-  async execute(name: string, at: Date): Promise<PromoteSkillResult> {
+  async execute(name: string): Promise<PromoteSkillResult> {
     if (!isValidSkillSlug(name)) {
       return { ok: false, error: "invalid-skill" };
     }
@@ -69,18 +66,15 @@ export class PromoteSkill {
       return { ok: false, error: "not-configured" };
     }
 
-    const run = await this.deps.locks.run(root, () =>
-      this.promote(root, name, at),
-    );
+    const run = await this.deps.locks.run(root, () => this.promote(root, name));
     return run.ok ? run.value : { ok: false, error: "promote-in-progress" };
   }
 
   private async promote(
     root: string,
     name: string,
-    at: Date,
   ): Promise<PromoteSkillResult> {
-    const outcome = await recordFetch(this.deps, root, at);
+    const outcome = await this.deps.fetchGate.fetch(root, 0);
     if (outcome !== "fetched") {
       return { ok: false, error: "no-answer" };
     }
@@ -91,7 +85,7 @@ export class PromoteSkill {
 
     // Re-fetched and rechecked right before the push, so a teammate's change
     // cannot slip through the gap (#579).
-    const refetched = await this.deps.git.fetch(root);
+    const refetched = await this.deps.fetchGate.fetch(root, 0);
     if (refetched !== "fetched") {
       return { ok: false, error: "no-answer" };
     }
@@ -121,6 +115,8 @@ export class PromoteSkill {
     );
     switch (push) {
       case "pushed":
+        // The new branch reaches the clone only through a fetch.
+        this.deps.fetchGate.invalidate(root);
         await request.afterPush();
         return {
           ok: true,

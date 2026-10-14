@@ -225,7 +225,6 @@ export function deployWorld(
       harness: harnessGit,
       originUrl: async () => ORIGIN_URL,
       inventory: () => ({
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => state.skillAtTag,
         skillDivergesFromTag: async () => state.divergedFromTag,
         readSkillFilesAtTag: async () => state.releasedFiles,

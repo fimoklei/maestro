@@ -95,8 +95,8 @@ const buildDeps = (
       host: "github.com",
       ownerRepo: "fimoklei/agent-harness",
     }),
+    syncHarness: async () => {},
     inventoryGit: {
-      syncBeforeDeploy: async () => {},
       skillExistsAtTag: async (_tag: string, _name: string) => true,
       skillDivergesFromTag: async (_tag: string, _name: string) => false,
       readSkillFilesAtTag: async (_tag: string, _name: string) => null,
@@ -348,7 +348,6 @@ describe("DeploySkill", () => {
   it("refuses when the skill is not in the release the target follows", async () => {
     const { deps, deployed, world } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async (tag: string) => tag !== "v0.4.0",
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,
@@ -879,7 +878,6 @@ describe("DeploySkill", () => {
     // skill (#15).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => false,
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,
@@ -898,7 +896,6 @@ describe("DeploySkill", () => {
   it("refuses to deploy a skill whose local tree diverges from the tag", async () => {
     const { deps, deployed } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
         readSkillFilesAtTag: async () => null,
@@ -920,7 +917,6 @@ describe("DeploySkill", () => {
   it("refuses a global deploy when the local tree diverges from the tag", async () => {
     const { deps, deployed } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
         readSkillFilesAtTag: async () => null,
@@ -1139,7 +1135,6 @@ describe("DeploySkill", () => {
   it("consents to the copy only — source divergence still refuses", async () => {
     const { deps, deployed } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
         readSkillFilesAtTag: async () => null,
@@ -1346,7 +1341,6 @@ describe("DeploySkill.executeBatch", () => {
     const { deps, deployed } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async (_tag, name) => name === "review",
         readSkillFilesAtTag: async () => null,
@@ -1653,7 +1647,6 @@ describe("DeploySkill.executeBatch", () => {
     const { deps, world } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async (_tag, name) => name !== "tdd",
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,

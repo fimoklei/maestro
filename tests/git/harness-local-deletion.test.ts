@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   DeleteLocalSkill,
+  HarnessFetchGate,
   type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
@@ -137,17 +138,21 @@ describe("deleting a Harness skill from the clone", () => {
     const step2 = new PromoteSkillDeletion({
       resolveRoot: async () => root,
       git: new HarnessGitAdapter(),
-      freshness: {
-        read: async () => freshness,
-        record: async (_root, next) => {
-          freshness = next;
+      fetchGate: new HarnessFetchGate({
+        git: new HarnessGitAdapter(),
+        freshness: {
+          read: async () => freshness,
+          record: async (_root, next) => {
+            freshness = next;
+          },
         },
-      },
+        now: () => AT,
+      }),
       locks: new InFlightLocks(),
       review: unavailableHarnessReview(),
     });
     await expect(
-      step2.execute("jobs", trees?.remote.jobs as string, AT),
+      step2.execute("jobs", trees?.remote.jobs as string),
     ).resolves.toMatchObject({ ok: true, branch: "maestro/jobs" });
 
     const pushed = await git(
