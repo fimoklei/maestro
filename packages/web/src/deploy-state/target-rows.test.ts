@@ -4,7 +4,7 @@ import type {
   SupportedTool,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import type { DriftViewModel } from "../drift/drift-view-model";
+import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
 import { plainText } from "../ui/phrase";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
 import { targetMenuItems } from "./target-menu";
@@ -196,6 +196,22 @@ describe("statusCard", () => {
       readCard(statusCard(row({ head: ON_LATEST, status: unknown }), COMPARED)),
     ).toEqual({
       reason: "Update check did not run.",
+      readAge: "Read just now",
+    });
+  });
+
+  it("explains an Unknown reading as the update check that timed out", () => {
+    const unknown = { word: "Unknown", family: "unknown", glyph: "?" } as const;
+    const drift = driftViewModel({
+      data: { ok: false, reason: "timed-out" },
+      isError: false,
+    });
+    expect(
+      readCard(
+        statusCard(row({ head: ON_LATEST, status: unknown, drift }), COMPARED),
+      ),
+    ).toEqual({
+      reason: "Update check timed out after 1 minute.",
       readAge: "Read just now",
     });
   });

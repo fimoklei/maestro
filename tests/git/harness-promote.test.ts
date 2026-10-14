@@ -10,6 +10,7 @@ import {
   HarnessGitAdapter,
   InFlightLocks,
   PromoteSkill,
+  ReleasedContentReader,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
@@ -41,9 +42,9 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
   const promoter = () =>
     new PromoteSkill({
       resolveRoot: async () => root,
-      git: new HarnessGitAdapter(),
+      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       fetchGate: new HarnessFetchGate({
-        git: new HarnessGitAdapter(),
+        git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
         freshness: {
           read: async () => freshness,
           record: async (_root, next) => {
@@ -78,7 +79,9 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await git(root, "add", ".");
     await git(root, "commit", "-m", "first skill");
     await git(root, "push", "origin", "HEAD:main");
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
   }, 30_000);
 
   afterEach(async () => {
@@ -202,9 +205,13 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await writeSkill("tdd", "edited on disk");
 
     await promoter().execute("tdd");
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
 
-    const trees = await new HarnessGitAdapter().readMovementTrees(root);
+    const trees = await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).readMovementTrees(root);
     expect(trees?.promote.tdd?.tree).toBe(trees?.working.tdd);
     expect(trees?.promote.tdd?.tree).not.toBe(trees?.remote.tdd);
   });
@@ -444,7 +451,9 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
   });
 
   it("never reports a no-op press as pushed when another actor moved the branch after the fetch", async () => {
-    const git2 = new HarnessGitAdapter();
+    const git2 = new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    });
     const head = (await git(remote, "rev-parse", "main")).stdout.trim();
     await writeSkill("tdd", "first edit");
     await expect(

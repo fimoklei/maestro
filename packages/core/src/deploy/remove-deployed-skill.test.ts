@@ -57,7 +57,7 @@ type Overrides = {
   isRegistered?: (path: string) => Promise<boolean>;
   lookup?: DeployedRefLookup;
   lookupFor?: (target: DeployTarget) => DeployedRefLookup | undefined;
-  removed?: boolean;
+  removed?: boolean | "timed-out";
   // The disk after apm's removal, for the post-apm probe to read.
   afterApmRemove?: (copies: ReturnType<typeof inMemoryDeployedContent>) => void;
   locks?: InFlightLocks;
@@ -136,6 +136,9 @@ function buildUseCase(overrides: Overrides = {}) {
       removeSkill: async ({ target, ref }) => {
         calls.removes.push({ target, ref });
         overrides.afterApmRemove?.(copies);
+        if (overrides.removed === "timed-out") {
+          return { ok: false, reason: "timed-out" };
+        }
         return (overrides.removed ?? true) ? { ok: true } : { ok: false };
       },
     },
@@ -451,6 +454,15 @@ describe("RemoveDeployedSkill", () => {
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
       ok: false,
       error: "remove-failed",
+    });
+  });
+
+  it("reports a timed-out uninstall of a per-skill package apart from a failed one", async () => {
+    const { useCase } = buildUseCase({ removed: "timed-out" });
+
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
+      ok: false,
+      error: "remove-timed-out-unrecorded",
     });
   });
 

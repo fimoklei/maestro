@@ -99,3 +99,5 @@ export const localEditsLine = (names: readonly string[], behind: boolean) =>
 // A skill row's mark carries its reading's hint as its tooltip: one fact, no action.
 export const NO_LONGER_RELEASED_HINT = "Not in the latest release.";
 export const UNREACHED_HINT = "Update check did not run.";
+// The driver's read bound (apm-cli-driver.ts).
+export const TIMED_OUT_HINT = "Update check timed out after 1 minute.";

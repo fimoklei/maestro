@@ -10,6 +10,7 @@ import {
   HarnessFetchGate,
   HarnessGitAdapter,
   ReadHarnessState,
+  ReleasedContentReader,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
@@ -69,7 +70,9 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
   };
 
   const readerFor = (root: string) => {
-    const harnessGit = new HarnessGitAdapter();
+    const harnessGit = new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    });
     const freshness = {
       read: async () => FETCHED,
       record: async () => {},

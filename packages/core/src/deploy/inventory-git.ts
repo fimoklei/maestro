@@ -1,12 +1,12 @@
 // The `--` separator keeps tag and name data, never command text.
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { gitOptions, indexOptions } from "../git/non-interactive";
+import { indexOptions } from "../git/non-interactive";
 import { MAESTRO_TAGS } from "../harness/harness-git";
+import type { ReleasedContentReader } from "../harness/released-content";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { InventoryGitPort } from "./deploy-skill";
 
@@ -15,6 +15,7 @@ const run = promisify(execFile);
 export class InventoryGitAdapter implements InventoryGitPort {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
+    released: ReleasedContentReader;
   };
 
   constructor(deps: InventoryGitAdapter["deps"]) {
@@ -75,46 +76,19 @@ export class InventoryGitAdapter implements InventoryGitPort {
     tag: string,
     name: string,
   ): Promise<Record<string, string> | null> {
-    const subtree = harnessSkillSubpath(name);
     try {
       const root = await this.root();
       // Maestro's fetched tag first: a release published from Maestro is
-      // pushed, never tagged locally (#1213).
-      const listing = async (ref: string) =>
-        // -z, so a path holding a quote or a newline survives the split.
-        run(
-          "git",
-          [
-            "-C",
-            root,
-            "ls-tree",
-            "-r",
-            "-z",
-            "--name-only",
-            ref,
-            "--",
-            subtree,
-          ],
-          gitOptions(),
-        ).then(({ stdout }) => ({ ref, stdout }));
-      const { ref, stdout } = await listing(`${MAESTRO_TAGS}/${tag}`).catch(
-        () => listing(`refs/tags/${tag}`),
-      );
-      const paths = stdout.split("\0").filter((path) => path.length > 0);
-      if (paths.length === 0) {
-        return null;
-      }
-      const files: Record<string, string> = {};
-      for (const path of paths) {
-        const { stdout: bytes } = await run(
-          "git",
-          ["-C", root, "show", `${ref}:${path}`],
-          { ...gitOptions(), encoding: "buffer", maxBuffer: 32 * 1024 * 1024 },
-        );
-        files[path.slice(subtree.length + 1)] =
-          `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-      }
-      return files;
+      // pushed, never tagged locally (#1213). The local tag only where the
+      // fetched one is absent, never for a skill the fetched one lacks.
+      const files =
+        (await this.deps.released.skillFiles(
+          root,
+          `${MAESTRO_TAGS}/${tag}`,
+          name,
+        )) ??
+        (await this.deps.released.skillFiles(root, `refs/tags/${tag}`, name));
+      return files === null || Object.keys(files).length === 0 ? null : files;
     } catch {
       return null;
     }

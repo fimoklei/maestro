@@ -116,6 +116,19 @@ describe("RetryTargetOperation", () => {
     expect(await world.operations.read("/repo")).toBeNull();
   });
 
+  it("reports a timed-out retry and keeps the operation", async () => {
+    const { world, retry } = buildUseCase();
+    world.seed({ release: "v0.6.0", skills: ["prototype"] });
+    await world.operations.begin(interrupted);
+    world.refuseWith({ ok: false, reason: "timed-out" });
+
+    expect(await retry.execute({ target })).toEqual({
+      ok: false,
+      error: "retry-timed-out",
+    });
+    expect(await world.operations.read("/repo")).not.toBeNull();
+  });
+
   it("keeps the operation when the retry still did not converge", async () => {
     const { world, retry } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["prototype"] });

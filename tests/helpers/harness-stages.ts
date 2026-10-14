@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import {
   HarnessGitAdapter,
   type HarnessState,
+  ReleasedContentReader,
   type ReviewRequest,
 } from "@maestro/core";
 import { afterEach, beforeEach } from "vitest";
@@ -76,7 +77,9 @@ export function useHarnessStages() {
     await git(root, "commit", "-m", "first skill");
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
   }, 40_000);
 
   afterEach(async () => {

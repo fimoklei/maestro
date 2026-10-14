@@ -111,6 +111,16 @@ describe("RemoveDeployedSkill on a target following one release", () => {
     expect(result).toMatchObject({ ok: false, error: "remove-incomplete" });
   });
 
+  it("reports a timed-out narrowing install as a timed-out removal", async () => {
+    const { world, remove } = buildUseCase();
+    world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
+    world.refuseWith({ ok: false, reason: "timed-out" });
+
+    const result = await removeConfirmed(remove, "caveman");
+
+    expect(result).toMatchObject({ ok: false, error: "remove-timed-out" });
+  });
+
   it("keeps the unfinished removal so a retry can converge on it", async () => {
     const { world, remove } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });

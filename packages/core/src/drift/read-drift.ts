@@ -33,7 +33,7 @@ export type ReadDriftEntry = VersionDrift & { reading: DriftReading };
 
 export type DriftResult =
   | { ok: true; behind: ReadDriftEntry[] }
-  | { ok: false; reason?: "unverified" };
+  | Extract<OutdatedResult, { ok: false }>;
 
 export type HarnessContentPort = {
   readOrigin(root: string): Promise<GitOrigin | null>;

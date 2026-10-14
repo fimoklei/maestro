@@ -1,5 +1,6 @@
 // Content at a commit never changes, so it is remembered for the life of the
 // process, keyed by commit. A ref can move, so it resolves on every call.
+import { createHash } from "node:crypto";
 import { readBlobs } from "../git/cat-file-batch";
 import { runGitText } from "../git/run-git-text";
 import {
@@ -14,6 +15,7 @@ export class ReleasedContentReader {
     Promise<HarnessSkillTree[] | null>
   >();
   private readonly manifests = new Map<string, string | null>();
+  private readonly files = new Map<string, Record<string, string>>();
 
   // Null on a ref the clone cannot resolve or a listing this parser does not
   // recognise; an empty array is a release without a skills directory.
@@ -70,6 +72,30 @@ export class ReleasedContentReader {
       names.map((name) => [name, this.manifests.get(key(name)) ?? null]),
     );
   }
+
+  // Each file's bytes hashed the way apm records a deployed file, keyed
+  // inside the skill folder. Empty for a skill the release lacks; null when
+  // `ref` does not resolve or a file cannot be read.
+  async skillFiles(
+    root: string,
+    ref: string,
+    name: string,
+  ): Promise<Record<string, string> | null> {
+    const commit = await resolveCommit(root, ref);
+    if (commit === null) {
+      return null;
+    }
+    const key = `${commit}\0${name}`;
+    const known = this.files.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const files = await readFilesAt(root, commit, name).catch(() => null);
+    if (files !== null) {
+      this.files.set(key, files);
+    }
+    return files;
+  }
 }
 
 const resolveCommit = (root: string, ref: string): Promise<string | null> =>
@@ -87,6 +113,41 @@ const readTreesAt = async (
     `${commit}:${HARNESS_SKILLS_DIR}`,
   ]);
   return listing === null ? [] : parseSkillTreeListing(listing);
+};
+
+const readFilesAt = async (
+  root: string,
+  commit: string,
+  name: string,
+): Promise<Record<string, string> | null> => {
+  const subtree = harnessSkillSubpath(name);
+  // -z, so a path holding a quote or a newline survives the split. The
+  // commit resolved, so a failed listing is a skill the release lacks.
+  const listing = await runGitText(root, [
+    "ls-tree",
+    "-r",
+    "-z",
+    "--name-only",
+    commit,
+    "--",
+    subtree,
+  ]);
+  const paths = (listing ?? "").split("\0").filter((path) => path !== "");
+  const blobs = await readBlobs(
+    root,
+    paths.map((path) => `${commit}:${path}`),
+  );
+  const files: Record<string, string> = {};
+  for (const [index, path] of paths.entries()) {
+    const bytes = blobs[index];
+    // A file the batch cannot answer leaves no proof of the release's content.
+    if (bytes === null || bytes === undefined) {
+      return null;
+    }
+    files[path.slice(subtree.length + 1)] =
+      `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+  }
+  return files;
 };
 
 // Null on a listing this parser does not recognise: skipping a line would

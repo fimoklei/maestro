@@ -119,7 +119,11 @@ export function rollUpDeployment(
     const status = skillReading(target, skillName);
     if (status === "behind") {
       behindCount++;
-    } else if (status === "unknown" || status === "unverified") {
+    } else if (
+      status === "unknown" ||
+      status === "unverified" ||
+      status === "timed-out"
+    ) {
       unknownCount++;
     } else if (status === "pending") {
       checking = true;

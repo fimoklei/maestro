@@ -58,6 +58,7 @@ export function targetReading(status: DriftStatus): StatusReading | null {
     case "no-longer-released":
       return NO_LONGER_RELEASED;
     case "unknown":
+    case "timed-out":
       return UNKNOWN;
     case "unverified":
       return UNVERIFIED;

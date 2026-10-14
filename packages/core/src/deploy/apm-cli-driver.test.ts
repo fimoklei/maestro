@@ -733,7 +733,7 @@ describe("ApmCliDriver timeouts", () => {
   const repo = { kind: "repo", repoPath: "/repo" } as const;
   const ref = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
 
-  it("ends every hung apm call in the driver's own failure", async () => {
+  it("ends every hung apm call as timed out", async () => {
     vi.useFakeTimers();
     const { run, signals } = hangingRun();
     const driver = new ApmCliDriver({ run });
@@ -747,10 +747,10 @@ describe("ApmCliDriver timeouts", () => {
     await vi.runAllTimersAsync();
 
     expect(await results).toEqual([
-      { ok: false, reason: "failed" },
-      { ok: false, reason: "failed" },
-      { ok: false },
-      { ok: false },
+      { ok: false, reason: "timed-out" },
+      { ok: false, reason: "timed-out" },
+      { ok: false, reason: "timed-out" },
+      { ok: false, reason: "timed-out" },
     ]);
     // The real runner kills the apm process on this signal.
     expect(signals.map((signal) => signal?.aborted)).toEqual([

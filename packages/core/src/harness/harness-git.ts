@@ -38,7 +38,7 @@ import type {
 } from "./read-harness-state";
 import {
   parseSkillTreeListing,
-  ReleasedContentReader,
+  type ReleasedContentReader,
 } from "./released-content";
 import type { HarnessSkillTree } from "./skill-movements";
 
@@ -61,7 +61,13 @@ const PROMOTE_FORMAT = `%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})\
 const TAG_FORMAT = `%(refname:lstrip=${MAESTRO_TAGS.split("/").length})\t%(objectname)\t%(*objectname)`;
 
 export class HarnessGitAdapter implements HarnessGitPort {
-  private readonly released = new ReleasedContentReader();
+  private readonly released: ReleasedContentReader;
+
+  // One reader per server, shared with the inventory adapter, so released
+  // content read once is remembered across requests.
+  constructor(deps: { released: ReleasedContentReader }) {
+    this.released = deps.released;
+  }
 
   async fetch(root: string): Promise<HarnessFetchOutcome> {
     const options = gitOptions();
