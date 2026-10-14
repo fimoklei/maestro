@@ -110,22 +110,14 @@ export class ReadDrift {
     const entries = await this.readLockEntries(target);
     const pins = pinsFrom(entries);
     const rootPackage = rootPackageFrom(entries, origin);
-    const byTag = new Map<string, Promise<Map<string, string> | null>>();
-    const treesAt = (tag: string) => {
-      const cached = byTag.get(tag);
-      if (cached !== undefined) {
-        return cached;
-      }
-      const read = this.deps.git
+    const treesAt = (tag: string) =>
+      this.deps.git
         .readSkillTreesAtTag(root, tag)
         .then((skills) =>
           skills === null
             ? null
             : new Map(skills.map((skill) => [skill.name, skill.treeHash])),
         );
-      byTag.set(tag, read);
-      return read;
-    };
     const releasesOf = async (entry: VersionDrift) => {
       if (
         !RELEASE_TAG_PATTERN.test(entry.current) ||

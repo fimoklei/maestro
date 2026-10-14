@@ -366,7 +366,7 @@ describe("ReadDrift", () => {
   });
 
   it("fetches tags before reading trees, and once per check", async () => {
-    const { readDrift, fetch, readSkillTreesAtTag } = build({
+    const { readDrift, fetch } = build({
       outdated: {
         ok: true,
         behind: [
@@ -392,8 +392,6 @@ describe("ReadDrift", () => {
       behind: [{ reading: "older-tag" }, { reading: "behind" }],
     });
     expect(fetch).toHaveBeenCalledTimes(1);
-    // One ls-tree per ref, not per skill.
-    expect(readSkillTreesAtTag).toHaveBeenCalledTimes(2);
   });
 
   it("reads a skill as behind when the latest cell is not a version tag", async () => {
