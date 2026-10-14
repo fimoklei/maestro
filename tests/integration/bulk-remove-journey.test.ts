@@ -114,6 +114,7 @@ describe("retiring a skill from every target it is deployed to", () => {
       deployedContent: {
         classify: async () => "clean" as const,
         contentDigest: async () => null,
+        linkedSkillPath: async () => null,
       },
       apm: {
         removeSkill: async ({ target, ref }) => {

@@ -104,6 +104,7 @@ describe("remove HTTP route", () => {
               return options?.deployedState ?? "clean";
             },
             contentDigest: async () => null,
+            linkedSkillPath: async () => null,
           },
       apm: {
         removeSkill: async (input) => {

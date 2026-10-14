@@ -170,9 +170,8 @@ export class UpdateTarget {
     copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
     selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
     deployedCleanup: DeployedCleanupPort;
-    // The outcome probe and the linked-folder check; classification is the
-    // guard's.
-    deployedContent: Pick<DeployedContentPort, "classify" | "linkedSkillPath">;
+    // The outcome probe; the pre-write check is the guard's.
+    deployedContent: Pick<DeployedContentPort, "classify">;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with deploy and remove: all three rewrite one apm.lock.yaml.
@@ -420,18 +419,6 @@ export class UpdateTarget {
       ...added,
     ];
 
-    // Refused before any consent is offered: no consent makes the install land.
-    for (const name of desired) {
-      const linkedPath = await this.deps.deployedContent.linkedSkillPath({
-        target,
-        name,
-        ...toolScope,
-      });
-      if (linkedPath !== null) {
-        return { ok: false, error: "destination-symlinked", linkedPath };
-      }
-    }
-
     // The install rewrites the whole Selection, so every selected copy is at
     // risk. A copy equal to the chosen release is not an edit (#952).
     const copies = await this.deps.copyGuard.check({
@@ -441,6 +428,18 @@ export class UpdateTarget {
       ...toolScope,
       release: latest.name,
     });
+    // Refused before any consent is offered: no consent makes the install land.
+    const linked = copies.findings.find(
+      (finding) =>
+        finding.linkedPath !== null && desired.includes(finding.name),
+    );
+    if (linked?.linkedPath) {
+      return {
+        ok: false,
+        error: "destination-symlinked",
+        linkedPath: linked.linkedPath,
+      };
+    }
     const decision = this.deps.copyGuard.admits(
       { write: "update", target },
       copies,

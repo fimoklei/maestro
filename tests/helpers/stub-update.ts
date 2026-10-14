@@ -15,10 +15,7 @@ export const stubUpdate = () =>
     },
     selection: stubSelectionWriter(),
     deployedCleanup: { removeSkillTargets: async () => undefined },
-    deployedContent: {
-      classify: async () => "unreadable",
-      linkedSkillPath: async () => null,
-    },
+    deployedContent: { classify: async () => "unreadable" },
     canonicalPath: async (path) => path,
     locks: new InFlightLocks(),
   });
