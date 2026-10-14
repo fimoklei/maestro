@@ -67,7 +67,7 @@ const isLocalDeletion = ({
 // Promote re-checks with it after its own fetch.
 export const isConcurrentlyChanged = (
   { remote, local }: Pick<SkillTreeHashes, "remote" | "local">,
-  atMergeBase?: string | null,
+  atMergeBase: string | null | undefined,
 ) => remote !== local && (atMergeBase === undefined || remote !== atMergeBase);
 
 export type StageStatus = ProposalStatus | ReviewStatus | ReleaseStatus;

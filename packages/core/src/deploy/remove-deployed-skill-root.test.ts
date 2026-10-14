@@ -29,7 +29,7 @@ function buildUseCase(copy: "clean" | "diverged" = "clean") {
     locks: new InFlightLocks(),
     location: { treeRoot: () => "/repo" },
     selection: world.writer,
-    inventoryOrigin: async () => ({ host: "github.com", ownerRepo: HARNESS }),
+    harnessOrigin: async () => ({ host: "github.com", ownerRepo: HARNESS }),
   };
   return { world, remove: new RemoveDeployedSkill(deps), deps };
 }

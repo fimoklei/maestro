@@ -4,7 +4,7 @@ import type { PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionResult, SelectionWriter } from "./apply-selection";
 import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
-import { parseGitOrigin } from "./git-origin";
+import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
   type CopyFinding,
@@ -239,7 +239,7 @@ export class DeploySkill {
     deployedCleanup: DeployedCleanupPort;
     // Global path only.
     toolPresence: ToolPresencePort;
-    inventoryOriginUrl: () => Promise<string | null>;
+    harnessOrigin: () => Promise<GitOrigin | null>;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with the remove use-case: both rewrite the same apm.lock.yaml.
@@ -410,8 +410,7 @@ export class DeploySkill {
       return results;
     }
 
-    const originUrl = await this.deps.inventoryOriginUrl();
-    const origin = originUrl === null ? null : parseGitOrigin(originUrl);
+    const origin = await this.deps.harnessOrigin();
     if (origin === null) {
       return refuseRest("inventory-origin-unavailable");
     }

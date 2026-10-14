@@ -248,7 +248,7 @@ export class RemoveDeployedSkill {
     location: Pick<DeployedLocation, "treeRoot">;
     // Absent: the per-skill uninstall path (#933, #951).
     selection?: SelectionWriter;
-    inventoryOrigin?: () => Promise<GitOrigin | null>;
+    harnessOrigin?: () => Promise<GitOrigin | null>;
   };
 
   private readonly consent: RemoveConsentIssuer;
@@ -343,7 +343,7 @@ export class RemoveDeployedSkill {
   private async localEditsRefusal(
     target: DeployTarget,
   ): Promise<LocalEditsRefusal> {
-    const origin = (await this.deps.inventoryOrigin?.()) ?? null;
+    const origin = (await this.deps.harnessOrigin?.()) ?? null;
     const current =
       origin === null
         ? undefined
@@ -513,7 +513,7 @@ export class RemoveDeployedSkill {
     | { kind: "per-skill"; ref: string; version: string }
     | { kind: "refused"; error: RemoveDeployedSkillError }
   > {
-    const origin = (await this.deps.inventoryOrigin?.()) ?? null;
+    const origin = (await this.deps.harnessOrigin?.()) ?? null;
     const selection = this.deps.selection;
     if (origin !== null && selection !== undefined) {
       const current = await selection.readTarget(target, origin);

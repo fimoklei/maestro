@@ -90,7 +90,10 @@ const buildDeps = (
       // Never reached: the install runs inside the Selection writer (#951).
       deploySkill: async () => ({ ok: true as const }),
     },
-    inventoryOriginUrl: async () => "git@github.com:fimoklei/agent-harness.git",
+    harnessOrigin: async () => ({
+      host: "github.com",
+      ownerRepo: "fimoklei/agent-harness",
+    }),
     inventoryGit: {
       syncBeforeDeploy: async () => {},
       skillExistsAtTag: async (_tag: string, _name: string) => true,
@@ -752,7 +755,7 @@ describe("DeploySkill", () => {
   });
 
   it("reports an unavailable or unparseable inventory origin", async () => {
-    const { deps } = buildDeps({ inventoryOriginUrl: async () => null });
+    const { deps } = buildDeps({ harnessOrigin: async () => null });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",

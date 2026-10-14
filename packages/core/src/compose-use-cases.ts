@@ -103,10 +103,7 @@ export type UseCases = ReturnType<typeof composeUseCases>;
 export function composeUseCases(ports: UseCasePorts) {
   const { env, fs, git, apm } = ports;
   const harnessGit = git.harness;
-  const copyTreeFs = ports.copyTree;
-  const toolPresence = ports.toolPresence;
-  const deployedCleanup = ports.deployedCleanup;
-  const harnessReview = ports.gh;
+  const { copyTree: copyTreeFs, toolPresence, deployedCleanup } = ports;
   // Resolved per access, not at construction: the config path follows the env.
   const store = new ConfigStore({
     fs,
@@ -149,6 +146,8 @@ export function composeUseCases(ports: UseCasePorts) {
     location: deployedLocation,
     fs: copyTreeFs,
   });
+  // The configured origin names the Harness; an `insteadOf` only moves where
+  // git connects.
   const harnessOrigin = async () => {
     const root = await harnessRoot();
     return root === undefined ? null : await harnessGit.readOrigin(root);
@@ -200,12 +199,6 @@ export function composeUseCases(ports: UseCasePorts) {
     apm,
     operations: new TargetOperationStore({ store }),
   });
-  // The configured origin names the Harness; an `insteadOf` only moves where
-  // git connects.
-  const inventoryOrigin = async () => {
-    const root = await inventoryPath();
-    return root === undefined ? null : await harnessGit.readOrigin(root);
-  };
   const deploy = new DeploySkill({
     inventory,
     registry,
@@ -224,10 +217,7 @@ export function composeUseCases(ports: UseCasePorts) {
     deployedCleanup,
     // Probed per deploy, so a global install targets only tools the machine has.
     toolPresence,
-    inventoryOriginUrl: async () => {
-      const root = await inventoryPath();
-      return root === undefined ? null : git.originUrl(root);
-    },
+    harnessOrigin,
     canonicalPath,
     locks: apmWriteLocks,
   });
@@ -244,7 +234,7 @@ export function composeUseCases(ports: UseCasePorts) {
     locks: apmWriteLocks,
     location: deployedLocation,
     selection,
-    inventoryOrigin,
+    harnessOrigin,
   });
   const retryOperation = new RetryTargetOperation({
     registry,
@@ -260,7 +250,7 @@ export function composeUseCases(ports: UseCasePorts) {
     resolveRoot: harnessRoot,
     git: harnessGit,
     freshness: harnessFreshness,
-    review: harnessReview,
+    review: ports.gh,
   });
   const scaffoldOffers = new ScaffoldOffers();
   const connect = new ConnectInventory({
@@ -337,7 +327,7 @@ export function composeUseCases(ports: UseCasePorts) {
       git: harnessGit,
       freshness: harnessFreshness,
       locks: harnessPromoteLocks,
-      review: harnessReview,
+      review: ports.gh,
     }),
     // Shares the promotion's lock: an edit and a removal from one fetched tip would race.
     promoteDeletion: new PromoteSkillDeletion({
@@ -345,7 +335,7 @@ export function composeUseCases(ports: UseCasePorts) {
       git: harnessGit,
       freshness: harnessFreshness,
       locks: harnessPromoteLocks,
-      review: harnessReview,
+      review: ports.gh,
     }),
     // Shares the promotion lock: it reads the same working tree (#798).
     deleteLocalSkill: new DeleteLocalSkill({
@@ -377,7 +367,7 @@ export function composeUseCases(ports: UseCasePorts) {
     proposals: new ProposalActions({
       resolveRoot: harnessRoot,
       git: harnessGit,
-      review: harnessReview,
+      review: ports.gh,
     }),
     connect,
     scaffold: new ScaffoldHarness({
