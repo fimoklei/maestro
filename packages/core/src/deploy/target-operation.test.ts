@@ -9,11 +9,13 @@ function store() {
     writeFile: async (path: string, contents: string) => {
       files.set(path, contents);
     },
+    // No stamp: nothing is remembered, every read goes to the file.
+    stamp: async () => null,
   };
   const make = () =>
     new TargetOperationStore({
       store: new ConfigStore({
-        fs: fs as never,
+        fs,
         configPath: () => "/home/.maestro/config.json",
       }),
     });
