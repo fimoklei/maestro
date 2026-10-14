@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HarnessFetchGate } from "./harness-fetch-gate";
 import { InMemoryHarnessGit } from "./harness-git.fake";
 import type {
   HarnessReviewPort,
@@ -11,6 +12,8 @@ const FETCHED: HarnessFreshness = {
   outcome: "fetched",
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
+
+const FETCH_TIME = new Date("2026-08-03T09:14:00.000Z");
 
 function stubFreshness(
   initial: HarnessFreshness = {
@@ -62,13 +65,16 @@ function buildRead(
     readViewer?: HarnessReviewPort["readViewer"];
   },
 ) {
+  const freshness = overrides?.freshness ?? stubFreshness(FETCHED);
+  const gate = new HarnessFetchGate({ git, freshness, now: () => FETCH_TIME });
   return new ReadHarnessState({
     resolveRoot:
       overrides?.resolveRoot ??
       (async () =>
         overrides && "root" in overrides ? overrides.root : "/harness"),
     git,
-    freshness: overrides?.freshness ?? stubFreshness(FETCHED),
+    freshness,
+    fetchHarness: (root) => gate.fetch(root, 0),
     review: {
       readReviews:
         overrides?.readReviews ??
@@ -628,12 +634,10 @@ describe("ReadHarnessState stages", () => {
 });
 
 describe("ReadHarnessState refresh", () => {
-  const AT = new Date("2026-08-03T09:14:00.000Z");
-
   it("records the time a fetch succeeded, so the state's age is readable", async () => {
     const read = buildRead(releasedWorld(), { freshness: stubFreshness() });
 
-    const result = await read.refresh(AT);
+    const result = await read.refresh();
 
     expect(result).toMatchObject({
       ok: true,
@@ -656,7 +660,7 @@ describe("ReadHarnessState refresh", () => {
       }),
     });
 
-    const result = await read.refresh(AT);
+    const result = await read.refresh();
 
     expect(result).toMatchObject({
       ok: true,
@@ -674,7 +678,7 @@ describe("ReadHarnessState refresh", () => {
     git.fetchOutcomes = ["fetch-failed"];
     const read = buildRead(git, { freshness: stubFreshness() });
 
-    const result = await read.refresh(AT);
+    const result = await read.refresh();
 
     expect(result).toMatchObject({
       ok: true,
@@ -693,7 +697,7 @@ describe("ReadHarnessState refresh", () => {
       resolveRoot: async () => roots.shift() ?? "/harness-b",
     });
 
-    await expect(read.refresh(AT)).resolves.toMatchObject({
+    await expect(read.refresh()).resolves.toMatchObject({
       ok: true,
       state: { localHeadCommit: "aaa" },
     });
@@ -705,7 +709,7 @@ describe("ReadHarnessState refresh", () => {
     git.cloneSync = "behind";
     git.teammatePushes("bbb", { tdd: "theirs" });
 
-    await expect(buildRead(git).refresh(AT)).resolves.toMatchObject({
+    await expect(buildRead(git).refresh()).resolves.toMatchObject({
       ok: true,
       state: { cloneSync: "current", localHeadCommit: "bbb" },
     });
@@ -715,7 +719,7 @@ describe("ReadHarnessState refresh", () => {
     const git = releasedWorld();
     git.cloneSync = "diverged";
 
-    await expect(buildRead(git).refresh(AT)).resolves.toMatchObject({
+    await expect(buildRead(git).refresh()).resolves.toMatchObject({
       ok: true,
       state: { cloneSync: "diverged" },
     });
@@ -743,7 +747,7 @@ describe("ReadHarnessState refresh", () => {
     });
     const read = buildRead(git);
 
-    const both = Promise.all([read.refresh(AT), read.refresh(AT)]);
+    const both = Promise.all([read.refresh(), read.refresh()]);
     releaseFetch();
     const [first, second] = await both;
 
@@ -755,7 +759,7 @@ describe("ReadHarnessState refresh", () => {
     const git = releasedWorld();
     const read = buildRead(git, { root: undefined });
 
-    await expect(read.refresh(AT)).resolves.toEqual({
+    await expect(read.refresh()).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });

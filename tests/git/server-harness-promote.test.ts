@@ -140,8 +140,9 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       "refs/heads/main",
       "refs/heads/maestro/tdd",
     );
+    // A second app over the same disk: the first would reuse its recent fetch.
     const merged = (await (
-      await app.request("/api/harness/refresh", { method: "POST" })
+      await makeApp(root).request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
     expect(merged.stages.review).toMatchObject({ outcome: "read", rows: [] });
     expect(merged.stages.proposal).toMatchObject({ outcome: "read", rows: [] });
@@ -488,8 +489,9 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         "refs/heads/main",
         "refs/heads/maestro/tdd",
       );
+      // A second app over the same disk: the first would reuse its recent fetch.
       const merged = (await (
-        await app.request("/api/harness/refresh", { method: "POST" })
+        await makeApp(root).request("/api/harness/refresh", { method: "POST" })
       ).json()) as HarnessState;
       expect(merged.stages.review).toMatchObject({ outcome: "read", rows: [] });
       expect(merged.releaseState).toBe("pending-release");

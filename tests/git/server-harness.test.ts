@@ -161,7 +161,8 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
       ORIGIN_URL,
     );
 
-    const failed = await refreshHarness(app);
+    // A second app over the same disk: the first would reuse its recent fetch.
+    const failed = await refreshHarness(makeApp(root));
 
     expect(failed.freshness.outcome).toBe("fetch-failed");
     expect(failed.freshness.lastFetchedAt).toBe(
