@@ -36,6 +36,10 @@ above it (ADR-0001).
 - Where code lives → `docs/agents/codebase-map.md`. Before measuring anything
   → `docs/research/`. Domain terms → `GLOSSARY.md`; decisions → `docs/adr/`
   (`docs/agents/domain.md`). Read `LEARNINGS.md` at session start.
+- Tests while building → `pnpm test:affected`; run `pnpm test` once, before
+  handing work back. The commit gate runs typecheck, lint and the affected
+  tests at commit. A sub-agent brief repeats this line instead of naming its
+  own test commands.
 - Committing → `workflow-commit`. Shipping → `workflow-ship`. Publishing an
   issue (job, spec or ticket) → `docs/agents/issue-tracker.md`.
 - Browser: the cockpit → `agent-browser` (`.claude/rules/design.md` → Verify);
