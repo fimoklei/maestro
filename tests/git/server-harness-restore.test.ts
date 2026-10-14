@@ -15,7 +15,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter, type HarnessState } from "@maestro/core";
+import {
+  HarnessGitAdapter,
+  type HarnessState,
+  ReleasedContentReader,
+} from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
@@ -53,8 +57,11 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
   };
 
   const onDisk = async () =>
-    (await new HarnessGitAdapter().readMovementTrees(root))?.working.tdd ??
-    null;
+    (
+      await new HarnessGitAdapter({
+        released: new ReleasedContentReader(),
+      }).readMovementTrees(root)
+    )?.working.tdd ?? null;
 
   const treeAt = async (ref: string) =>
     (await git(root, "rev-parse", `${ref}:${FOLDER}`)).stdout.trim();
@@ -87,7 +94,9 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     await git(root, "push", "origin", "HEAD:refs/heads/maestro/tdd");
     localHead = await commit("only in the local commit", "local work");
 
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
   }, 30_000);
 
   afterEach(async () => {

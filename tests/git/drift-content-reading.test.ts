@@ -8,6 +8,7 @@ import {
   HarnessGitAdapter,
   NodeFileSystem,
   ReadDrift,
+  ReleasedContentReader,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
@@ -102,7 +103,7 @@ describe("the content reading beside apm's Behind", () => {
       fs: new NodeFileSystem(),
       location: new DeployedLocation({}),
       resolveRoot: async () => root,
-      git: new HarnessGitAdapter(),
+      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
     }).execute({ target: { kind: "repo", repoPath: repo } });
 
   it("separates the skill that moved in the release from the one that did not", async () => {

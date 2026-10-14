@@ -6,7 +6,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { HarnessFreshness, PendingSkillMovement } from "@maestro/core";
-import { HarnessGitAdapter, ReadHarnessState } from "@maestro/core";
+import {
+  HarnessGitAdapter,
+  ReadHarnessState,
+  ReleasedContentReader,
+} from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 import { stubReview } from "../helpers/stub-review";
@@ -67,7 +71,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
   const readerFor = (root: string) =>
     new ReadHarnessState({
       resolveRoot: async () => root,
-      git: new HarnessGitAdapter(),
+      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       freshness: {
         read: async () => FETCHED,
         record: async () => {},
@@ -226,7 +230,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
 
     const read = new ReadHarnessState({
       resolveRoot: async () => root,
-      git: new HarnessGitAdapter(),
+      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       freshness: { read: async () => FETCHED, record: async () => {} },
       review: stubReview(),
     });

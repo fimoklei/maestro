@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter } from "@maestro/core";
+import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
@@ -74,7 +74,9 @@ describe("HarnessGitAdapter catch-up", () => {
     }
   });
 
-  const adapter = new HarnessGitAdapter();
+  const adapter = new HarnessGitAdapter({
+    released: new ReleasedContentReader(),
+  });
 
   it("reads a clone at its upstream as current", async () => {
     await expect(adapter.readCloneSync(root)).resolves.toBe("current");

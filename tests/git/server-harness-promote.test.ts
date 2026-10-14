@@ -5,7 +5,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter, type HarnessState } from "@maestro/core";
+import {
+  HarnessGitAdapter,
+  type HarnessState,
+  ReleasedContentReader,
+} from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
@@ -50,7 +54,9 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     // Released once already, so a merged promotion waits for the next release.
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
   }, 30_000);
 
   afterEach(async () => {
@@ -444,8 +450,11 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
 
     const seenTree = async (app: ReturnType<typeof makeApp>) => {
       await app.request("/api/harness/refresh", { method: "POST" });
-      return (await new HarnessGitAdapter().readMovementTrees(root))?.remote
-        .tdd as string;
+      return (
+        await new HarnessGitAdapter({
+          released: new ReleasedContentReader(),
+        }).readMovementTrees(root)
+      )?.remote.tdd as string;
     };
 
     const deleteOnDisk = async () =>
