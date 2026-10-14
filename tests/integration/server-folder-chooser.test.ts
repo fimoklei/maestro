@@ -2,31 +2,15 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  ChooseFolder,
   type FolderChooserPort,
   type HelperOutcome,
-  InFlightLocks,
-  InventoryReader,
   MacosFolderChooser,
-  NodeFileSystem,
   type RunHelper,
   runHelper,
   WindowsFolderChooser,
 } from "@maestro/core";
-import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { nodeApp } from "../helpers/node-app";
 
 // The helper is a fake runner, so no real chooser ever opens.
 describe("folder chooser HTTP route", () => {
@@ -60,34 +44,11 @@ describe("folder chooser HTTP route", () => {
     return new MacosFolderChooser({ run, helperExists: async () => present });
   }
 
-  function makeApp(chooser: FolderChooserPort | null) {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      folderChooser: new ChooseFolder({ chooser, fs, homeRoot: () => home }),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
+  function makeApp(folderChooser: FolderChooserPort | null) {
+    return nodeApp(
+      { HOME: home, MAESTRO_HOME: join(home, ".maestro") },
+      { folderChooser },
+    );
   }
 
   function choose(app: ReturnType<typeof makeApp>, path: string) {

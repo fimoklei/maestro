@@ -6,23 +6,9 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { join } from "node:path";
-import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
-import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
+import { nodeApp } from "../helpers/node-app";
 import { makeRepoDir } from "../helpers/repo-dir";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
 
 describe("registry HTTP routes", () => {
   let dir: string;
@@ -35,36 +21,7 @@ describe("registry HTTP routes", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  function makeApp() {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, join(dir, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const deployState = stubDeployState({ fs });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState,
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+  const makeApp = () => nodeApp({ HOME: dir, MAESTRO_HOME: dir });
 
   it("GET /api/registry/repos returns an empty registry initially", async () => {
     const app = makeApp();

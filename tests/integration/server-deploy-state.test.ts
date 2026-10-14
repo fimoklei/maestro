@@ -1,28 +1,10 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  type DeployStateExtras,
-  InFlightLocks,
-  InventoryReader,
-  NodeFileSystem,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import type { DeployStateExtras } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
+import { nodeApp } from "../helpers/node-app";
 import { makeRepoDir } from "../helpers/repo-dir";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
 
 describe("deploy-state HTTP route", () => {
   let home: string;
@@ -35,36 +17,23 @@ describe("deploy-state HTTP route", () => {
     await rm(home, { recursive: true, force: true });
   });
 
-  function makeApp(githubPage?: DeployStateExtras["githubPage"]) {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const deployState = stubDeployState({ fs, githubPage });
-    const locks = new InFlightLocks();
-    const app = createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState,
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-    return { app, registry };
+  // A repo with no GitHub page unless a test says otherwise.
+  function makeApp(
+    githubPage: DeployStateExtras["githubPage"] = async () => null,
+  ) {
+    const app = nodeApp(
+      { HOME: home, MAESTRO_HOME: home },
+      { git: { githubPage } },
+    );
+    const register = async (path: string) => {
+      const res = await app.request("/api/registry/repos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      expect(res.status).toBe(201);
+    };
+    return { app, register };
   }
 
   async function makeRepo(lockfile: string | null): Promise<string> {
@@ -94,8 +63,8 @@ describe("deploy-state HTTP route", () => {
 
   it("lists deployed skills with their human tag version", async () => {
     const repo = await makeRepo(tddLockfile);
-    const { app, registry } = makeApp();
-    await registry.register(repo);
+    const { app, register } = makeApp();
+    await register(repo);
 
     const res = await app.request(
       `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
@@ -111,8 +80,8 @@ describe("deploy-state HTTP route", () => {
 
   it("shows an empty list for a registered repo with nothing deployed", async () => {
     const repo = await makeRepo(null);
-    const { app, registry } = makeApp();
-    await registry.register(repo);
+    const { app, register } = makeApp();
+    await register(repo);
 
     const res = await app.request(
       `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
@@ -147,8 +116,8 @@ describe("deploy-state HTTP route", () => {
 
   it("surfaces a visible error for a malformed lockfile", async () => {
     const repo = await makeRepo("dependencies: not-a-list\n");
-    const { app, registry } = makeApp();
-    await registry.register(repo);
+    const { app, register } = makeApp();
+    await register(repo);
 
     const res = await app.request(
       `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
@@ -165,8 +134,8 @@ describe("deploy-state HTTP route", () => {
       githubPage: DeployStateExtras["githubPage"],
     ): Promise<unknown> {
       const repo = await makeRepo(tddLockfile);
-      const { app, registry } = makeApp(githubPage);
-      await registry.register(repo);
+      const { app, register } = makeApp(githubPage);
+      await register(repo);
       const res = await app.request(
         `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
       );

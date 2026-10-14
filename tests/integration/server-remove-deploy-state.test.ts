@@ -1,31 +1,11 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  DeployedCleanupAdapter,
-  DeployedLocation,
-  DeployedRefAdapter,
-  GlobalDeployStateReader,
-  InFlightLocks,
-  InventoryReader,
-  NodeFileSystem,
-  RemoveDeployedSkill,
-  type SupportedTool,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import type { ApmDriverPort, SupportedTool } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
+import { unreachable } from "../helpers/in-memory-app";
+import { nodeApp } from "../helpers/node-app";
 import { makeRepoDir } from "../helpers/repo-dir";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
 
 // The row disappearing after a removal, behind a faithful fake apm that
 // deletes the lockfile when the last dependency goes.
@@ -76,13 +56,10 @@ describe("the deploy-state read after a removal", () => {
     confirms?: boolean;
     detectedTools?: SupportedTool[];
   }) {
-    const fs = new NodeFileSystem();
     const tools = options?.detectedTools ?? ["claude", "codex"];
     const confirms = options?.confirms ?? true;
-    const registry = realRegistry(fs, join(home, "config.json"));
     const state = { repo: [] as string[], global: [] as string[] };
     // HOME is the sandbox, so no test touches the real ~/.apm.
-    const location = new DeployedLocation({ HOME: home });
     const apmRoot = join(home, ".apm");
 
     const writeRepoLockfile = async () => {
@@ -108,66 +85,39 @@ describe("the deploy-state read after a removal", () => {
       );
     };
 
-    const locks = new InFlightLocks();
-    const remove = new RemoveDeployedSkill({
-      registry,
-      locks,
-      deployedRef: new DeployedRefAdapter({ fs, location }),
-      deployedContent: {
-        classify: async () => "clean" as const,
-        contentDigest: async () => null,
-        linkedSkillPath: async () => null,
-      },
-      apm: {
-        removeSkill: async ({ target, ref }) => {
-          if (!confirms) {
-            return { ok: false };
-          }
-          const drop = (names: string[]) =>
-            names.filter((name) => !ref.includes(`/skills/${name}#`));
-          if (target.kind === "repo") {
-            state.repo = drop(state.repo);
-            await writeRepoLockfile();
-          } else {
-            state.global = drop(state.global);
-            await writeGlobalLockfile();
-          }
-          return { ok: true };
-        },
-      },
-      deployedCleanup: new DeployedCleanupAdapter({ location }),
-      toolPresence: { detectGlobalTools: async () => tools },
-      canonicalPath: (path) => fs.realpath(path),
-      location,
-    });
-
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const app = createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState: new GlobalDeployStateReader({
-        fs,
+    const app = nodeApp(
+      { HOME: home, MAESTRO_HOME: home },
+      {
+        apm: unreachable<ApmDriverPort>("apm", {
+          removeSkill: async ({ target, ref }) => {
+            if (!confirms) {
+              return { ok: false };
+            }
+            const drop = (names: string[]) =>
+              names.filter((name) => !ref.includes(`/skills/${name}#`));
+            if (target.kind === "repo") {
+              state.repo = drop(state.repo);
+              await writeRepoLockfile();
+            } else {
+              state.global = drop(state.global);
+              await writeGlobalLockfile();
+            }
+            return { ok: true };
+          },
+        }),
         toolPresence: { detectGlobalTools: async () => tools },
-      }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      remove,
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => apmRoot,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
+      },
+    );
+    const registry = {
+      register: async (path: string) => {
+        const res = await app.request("/api/registry/repos", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path }),
+        });
+        expect(res.status).toBe(201);
+      },
+    };
 
     return {
       app,

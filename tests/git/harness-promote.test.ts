@@ -12,7 +12,7 @@ import {
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
-import { unavailableHarnessReview } from "../helpers/unreachable-harness";
+import { unavailableHarnessReview } from "../helpers/stub-review";
 
 const run = promisify(execFile);
 

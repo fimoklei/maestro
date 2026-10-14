@@ -5,34 +5,10 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  CopySkillFolder,
-  DeployedContentAdapter,
-  DeployedLocation,
-  GlobalDeployStateReader,
-  HarnessGitAdapter,
-  ImportLocalEdits,
-  ImportSkill,
-  InFlightLocks,
-  InventoryReader,
-  NodeCopyTreeFs,
-  NodeFileSystem,
-  releasedSkillsFromGit,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import { HarnessGitAdapter } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone, removeGitTempTree } from "../helpers/git-fixture";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { nodeApp } from "../helpers/node-app";
 
 const run = promisify(execFile);
 
@@ -109,88 +85,17 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
   });
 
   async function makeApp() {
-    const fs = new NodeFileSystem();
-    const copyTreeFs = new NodeCopyTreeFs();
-    const registry = realRegistry(fs, join(base, "config.json"));
-    expect(await registry.register(repo)).toMatchObject({ ok: true });
-    const location = new DeployedLocation({ HOME: base });
-    const content = new DeployedContentAdapter({
-      location,
-      fs: new NodeCopyTreeFs(),
+    const app = nodeApp({
+      HOME: base,
+      MAESTRO_HOME: base,
+      MAESTRO_INVENTORY_PATH: harnessRoot,
     });
-    const git = new HarnessGitAdapter();
-    const resolveRoot = async () => fs.realpath(harnessRoot);
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => harnessRoot,
-      readReleasedSkills: releasedSkillsFromGit(git),
-    });
-    const deployState = new GlobalDeployStateReader({
-      fs,
-      content,
-      toolPresence: {
-        detectGlobalTools: async () => {
-          throw new Error("the global target is not under test here");
-        },
-      },
-    });
-    const importSkill = new ImportSkill({
-      resolveRoot,
-      fs,
-      homeRoot: () => base,
-      copy: new CopySkillFolder({ fs: copyTreeFs }),
-      facts: copyTreeFs,
-      git,
-      deployedTargets: async () => [
-        {
-          treeRoot: await fs.realpath(repo),
-          lockfilePath: join(await fs.realpath(repo), "apm.lock.yaml"),
-        },
-      ],
-    });
-    const locks = new InFlightLocks();
-    return createApp({
-      registry,
-      inventory,
-      importSkill,
-      importLocalEdits: new ImportLocalEdits({
-        registry,
-        deployState,
-        content,
-        tree: {
-          listRawEntries: (path) => fs.listRawEntries(path),
-          readFile: (path) => fs.readFile(path),
-          describe: (path) => copyTreeFs.describe(path),
-        },
-        globalRoot: () => "/nonexistent-apm-root",
-        home: () => base,
-        importSkill,
-        git,
-        resolveRoot,
-        locks: new InFlightLocks(),
-      }),
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      deployState,
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
+    const registered = await post(app, "/api/registry/repos", { path: repo });
+    expect(registered.status).toBe(201);
+    return app;
   }
 
-  const post = (
-    app: Awaited<ReturnType<typeof makeApp>>,
-    path: string,
-    body: unknown,
-  ) =>
+  const post = (app: ReturnType<typeof nodeApp>, path: string, body: unknown) =>
     app.request(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

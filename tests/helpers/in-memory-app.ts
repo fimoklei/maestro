@@ -5,29 +5,35 @@ import { createApp } from "@maestro/server";
 import { InMemoryCopyTree } from "../../packages/core/src/filesystem/copy-tree-fs.fake";
 import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
 import { InMemoryFileSystem } from "../../packages/core/src/registry/file-system.fake";
-import { unavailableHarnessReview } from "./unreachable-harness";
+import { unavailableHarnessReview } from "./stub-review";
 
-// A port no route of the test may reach: any method call throws.
-const unreachable = <Port>(name: string): Port =>
+// A port no route of the test may reach: any method call throws, except the
+// methods a test answers.
+export const unreachable = <Port>(
+  name: string,
+  answers: Partial<Port> = {},
+): Port =>
   // Every property is a throwing method, so it satisfies any method-only port;
   // `then` stays undefined so awaiting the port itself does not call it.
-  new Proxy(
-    {},
-    {
-      get: (_, method) =>
-        method === "then"
+  new Proxy(answers, {
+    get: (target, method) =>
+      method in target
+        ? Reflect.get(target, method)
+        : method === "then"
           ? undefined
           : () => {
               throw new Error(`${name}.${String(method)} was reached`);
             },
-    },
-  ) as Port;
+  }) as Port;
 
-type Overrides = Partial<Omit<UseCasePorts, "git">> & {
+export type Overrides = Partial<Omit<UseCasePorts, "git">> & {
   git?: Partial<UseCasePorts["git"]>;
 };
 
-const inMemoryPorts = ({ git, ...overrides }: Overrides): UseCasePorts => ({
+export const inMemoryPorts = ({
+  git,
+  ...overrides
+}: Overrides): UseCasePorts => ({
   env: { HOME: "/home", MAESTRO_HOME: "/maestro-home" },
   home: () => "/home",
   fs: new InMemoryFileSystem(),

@@ -1,19 +1,5 @@
-import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
-import { createApp } from "@maestro/server";
 import { describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { inMemoryApp } from "../helpers/in-memory-app";
 
 // One table over every POST route, so the shared parse step cannot drift a
 // route's status, code or wording (#434).
@@ -54,35 +40,7 @@ describe("POST body parsing", () => {
     { path: "/api/harness/proposal/withdraw", shape: PROPOSAL_SHAPE },
   ];
 
-  function makeApp() {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, "/nonexistent-maestro/config.json");
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: async () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+  const makeApp = () => inMemoryApp();
 
   const post = (body: string) =>
     ({
