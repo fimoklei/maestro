@@ -1,7 +1,7 @@
 // The one byte-level canary on the real filesystem adapter. Every other
 // deployed-content claim runs in core against an in-memory copy tree.
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DeployedContentAdapter, NodeCopyTreeFs } from "@maestro/core";
@@ -54,5 +54,26 @@ describe("DeployedContentAdapter, on the real filesystem", () => {
         name: "tdd",
       }),
     ).resolves.toBe("clean");
+  });
+
+  it("reads a looping lockfile link as malformed, never as no lockfile", async () => {
+    await mkdir(join(root, ".claude/skills/tdd"), { recursive: true });
+    await writeFile(join(root, ".claude/skills/tdd/SKILL.md"), "skill\n");
+    await symlink(join(root, "loop.yaml"), join(root, "apm.lock.yaml"));
+    await symlink(join(root, "apm.lock.yaml"), join(root, "loop.yaml"));
+
+    const content = new DeployedContentAdapter({
+      fs: new NodeCopyTreeFs(),
+      location: {
+        treeRoot: () => root,
+        lockfilePath: () => join(root, "apm.lock.yaml"),
+      },
+    });
+    await expect(
+      content.classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("lockfile-malformed");
   });
 });

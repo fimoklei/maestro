@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { basename, join } from "node:path";
 import { isRootPackage } from "../deploy-state/root-package-skills";
-import type { CopyTreeFsPort, OpenFile } from "../filesystem/copy-tree-fs";
+import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import { parseLockfile, unreadableCovers } from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
@@ -173,7 +173,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     | { kind: "hashes"; hashes: DeployedFileHashes }
   > {
     const lockfilePath = this.deps.location.lockfilePath(target);
-    const file = await this.openFollowingLinks(lockfilePath);
+    const file = await this.deps.fs.openFollowingLinks(lockfilePath);
     // Present but unreadable is an error, not an absent baseline (#58).
     if (file === "missing") {
       return { kind: "none" };
@@ -221,27 +221,6 @@ export class DeployedContentAdapter implements DeployedContentPort {
     return { kind: "hashes", hashes };
   }
 
-  // Reads through a symlinked file, which the port never follows. "missing"
-  // when nothing is there, a dangling link included; null when unreadable.
-  private async openFollowingLinks(
-    path: string,
-  ): Promise<OpenFile | "missing" | null> {
-    const { fs } = this.deps;
-    const file = await fs.openFile(path);
-    if (file !== null) {
-      return file;
-    }
-    const facts = await fs.describe(path);
-    if (facts === null) {
-      return "missing";
-    }
-    if (facts.kind !== "symlink") {
-      return null;
-    }
-    const target = await fs.realpath(path);
-    return target === null ? "missing" : fs.openFile(target);
-  }
-
   // Keys use forward slashes, matching the lockfile's own keys.
   private async scanSubtrees(
     root: string,
@@ -270,7 +249,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
           continue;
         }
         fileCount++;
-        const file = await this.openFollowingLinks(childAbs);
+        const file = await fs.openFollowingLinks(childAbs);
         if (file === "missing" || file === null) {
           throw new DeployedSubtreeUnreadableError();
         }

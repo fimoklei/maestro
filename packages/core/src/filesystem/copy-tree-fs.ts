@@ -51,6 +51,10 @@ export interface CopyTreeFsPort {
   // Never follows a symlink in the final component.
   openFile(path: string): Promise<OpenFile | null>;
 
+  // Follows every link. "missing" when nothing is there, a dangling link
+  // included; null when unreadable or looping.
+  openFollowingLinks(path: string): Promise<OpenFile | "missing" | null>;
+
   // Keeps the executable bit and nothing else of the source's mode.
   writeFile(to: string, bytes: Buffer, executable: boolean): Promise<void>;
 
@@ -99,25 +103,23 @@ export class NodeCopyTreeFs implements CopyTreeFsPort {
   // O_NOFOLLOW guards the final component only; Node has no openat.
   // ponytail: per-component openat if Node ever exposes it.
   async openFile(path: string): Promise<OpenFile | null> {
-    let handle: FileHandle;
     try {
-      handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+      return openFileOf(
+        await open(path, constants.O_RDONLY | constants.O_NOFOLLOW),
+      );
     } catch {
       return null;
     }
-    return {
-      facts: async () => {
-        try {
-          return factsOf(await handle.stat({ bigint: true }));
-        } catch {
-          return null;
-        }
-      },
-      read: () => handle.readFile(),
-      close: async () => {
-        await handle.close();
-      },
-    };
+  }
+
+  async openFollowingLinks(path: string): Promise<OpenFile | "missing" | null> {
+    try {
+      return openFileOf(await open(path, constants.O_RDONLY));
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === "ENOENT"
+        ? "missing"
+        : null;
+    }
   }
 
   async writeFile(
@@ -137,6 +139,22 @@ export class NodeCopyTreeFs implements CopyTreeFsPort {
   async removePath(path: string): Promise<void> {
     await rm(path, { recursive: true, force: true });
   }
+}
+
+function openFileOf(handle: FileHandle): OpenFile {
+  return {
+    facts: async () => {
+      try {
+        return factsOf(await handle.stat({ bigint: true }));
+      } catch {
+        return null;
+      }
+    },
+    read: () => handle.readFile(),
+    close: async () => {
+      await handle.close();
+    },
+  };
 }
 
 function factsOf(stats: BigIntStats): CopyEntryFacts {

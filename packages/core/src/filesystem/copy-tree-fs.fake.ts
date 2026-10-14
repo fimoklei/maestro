@@ -178,6 +178,23 @@ export class InMemoryCopyTree implements CopyTreeFsPort {
     };
   }
 
+  async openFollowingLinks(path: string): Promise<OpenFile | "missing" | null> {
+    let key = normalize(path);
+    const seen = new Set<string>();
+    for (let next = this.symlinks.get(key); next !== undefined; ) {
+      if (seen.has(key)) {
+        return null;
+      }
+      seen.add(key);
+      key = next;
+      next = this.symlinks.get(key);
+    }
+    if (!this.files.has(key) && !this.directories.has(key)) {
+      return "missing";
+    }
+    return this.openFile(key);
+  }
+
   async writeFile(
     to: string,
     bytes: Buffer,

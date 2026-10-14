@@ -419,6 +419,14 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
       fake.tree.symlink(fake.lockfilePath, "/gone/apm.lock.yaml");
       await expect(classify(fake.content)).resolves.toBe("unverifiable");
     });
+
+    it("reads a looping lockfile link as malformed, never as no lockfile", async () => {
+      const fake = adapterOn();
+      fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "skill\n");
+      fake.tree.symlink(fake.lockfilePath, at("loop.yaml"));
+      fake.tree.symlink(at("loop.yaml"), fake.lockfilePath);
+      await expect(classify(fake.content)).resolves.toBe("lockfile-malformed");
+    });
   });
 
   describe("linkedSkillPath", () => {
