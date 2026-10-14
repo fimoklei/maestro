@@ -58,6 +58,7 @@ const DEPLOY = codes<DeploySkillError>({
   "tag-check-timed-out": true,
   "deploy-timed-out": true,
   "deploy-failed": true,
+  "deploy-not-started": true,
 });
 
 const UPDATE_PREVIEW = codes<UpdatePreviewError>({
@@ -369,6 +370,25 @@ describe("a retry", () => {
         retryNotice(refusal("retry-incomplete"), pending("deploy")).message,
       ),
     ).toEqual(["v0.3.4"]);
+  });
+});
+
+describe("a deploy that failed", () => {
+  it("sends a deploy that left an operation to Retry deploy", () => {
+    expect(readNotice(deployNotice(refusal("deploy-failed")))).toEqual({
+      label: "Deploy did not finish",
+      message:
+        "The deploy did not finish. On the Deploy-state screen, select Retry deploy.",
+      detail: "Some of the skill's files may be on disk.",
+    });
+  });
+
+  it("sends a deploy that wrote nothing back to Deploy skill", () => {
+    expect(readNotice(deployNotice(refusal("deploy-not-started")))).toEqual({
+      label: "Deploy did not start",
+      message:
+        "Nothing was deployed. Select Deploy skill on the Skills screen to try again.",
+    });
   });
 });
 

@@ -45,6 +45,7 @@ export const REASON: Record<ReasonCode, string> = {
   "tag-check-timed-out": "Release check timed out",
   "deploy-timed-out": "Deploy timed out",
   "deploy-failed": "Deploy did not finish",
+  "deploy-not-started": "Deploy did not start",
   "not-deployed": "Nothing deployed here",
   "ref-unresolvable": "Deployed version unknown",
   "cost-not-acknowledged": "Removal not confirmed",

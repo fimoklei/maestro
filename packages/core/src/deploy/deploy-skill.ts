@@ -178,7 +178,9 @@ export type DeploySkillError =
   | "destination-symlinked"
   | "tag-check-timed-out"
   | "deploy-timed-out"
-  | "deploy-failed";
+  // Split by the operation record: pending means files may be on disk.
+  | "deploy-failed"
+  | "deploy-not-started";
 
 export type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
@@ -273,7 +275,7 @@ export class DeploySkill {
       input.target,
       input.confirmedCopyReceipt,
     );
-    return answer?.result ?? { ok: false, error: "deploy-failed" };
+    return answer?.result ?? { ok: false, error: "deploy-not-started" };
   }
 
   // No consent: a bulk deploy never overwrites a copy with local edits; force
@@ -286,9 +288,10 @@ export class DeploySkill {
     try {
       rows = await this.run(input.names, input.target, undefined);
     } catch {
+      // Only the reads before the lock can throw here: nothing was written.
       rows = input.names.map((name) => ({
         name,
-        result: { ok: false, error: "deploy-failed" },
+        result: { ok: false, error: "deploy-not-started" },
       }));
     }
 
@@ -349,7 +352,7 @@ export class DeploySkill {
     }
     return names.map((name) => ({
       name,
-      result: results.get(name) ?? { ok: false, error: "deploy-failed" },
+      result: results.get(name) ?? { ok: false, error: "deploy-not-started" },
     }));
   }
 
@@ -371,7 +374,7 @@ export class DeploySkill {
       try {
         lockKey = await this.deps.canonicalPath(target.repoPath);
       } catch {
-        return every("deploy-failed");
+        return every("deploy-not-started");
       }
     } else {
       lockKey = GLOBAL_LOCK_KEY;
@@ -466,7 +469,7 @@ export class DeploySkill {
                 ? "no-published-tag"
                 : tagResult.reason === "timed-out"
                   ? "tag-check-timed-out"
-                  : "deploy-failed",
+                  : await this.failureAt(lockKey),
           );
         }
         tag = tagResult.tag;
@@ -582,6 +585,7 @@ export class DeploySkill {
               name,
               await this.installRefusal(
                 applied.error,
+                lockKey,
                 target,
                 name,
                 globalTools,
@@ -619,7 +623,19 @@ export class DeploySkill {
       }
       return results;
     } catch {
-      return refuseRest("deploy-failed");
+      return refuseRest(await this.failureAt(lockKey));
+    }
+  }
+
+  // A pending operation means this run may have written: the reader retries
+  // it. Without one, nothing of this run is on disk.
+  private async failureAt(lockKey: string): Promise<DeploySkillError> {
+    try {
+      return (await this.deps.selection.pending(lockKey)) === null
+        ? "deploy-not-started"
+        : "deploy-failed";
+    } catch {
+      return "deploy-failed";
     }
   }
 
@@ -679,6 +695,7 @@ export class DeploySkill {
 
   private async installRefusal(
     error: SelectionError,
+    lockKey: string,
     target: DeployTarget,
     name: string,
     tools: readonly SupportedTool[] | undefined,
@@ -705,7 +722,7 @@ export class DeploySkill {
             ? "deploy-incomplete"
             : error === "apply-timed-out"
               ? "deploy-timed-out"
-              : "deploy-failed",
+              : await this.failureAt(lockKey),
     };
   }
 }

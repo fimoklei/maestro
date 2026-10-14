@@ -268,6 +268,16 @@ describe("deploy HTTP route", () => {
     expect(JSON.stringify(body)).not.toContain("token in stderr");
   });
 
+  it("answers a deploy that did not start with the same 502 as one that did not finish", async () => {
+    const w = await world();
+    w.answers.latestTag = { ok: false, reason: "failed" };
+
+    const res = await w.deploy({ target: repoTarget });
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: "deploy-not-started" });
+  });
+
   it("surfaces a timed-out install as a 504 of its own", async () => {
     const w = await world();
     w.answers.installRefusal = { ok: false, reason: "timed-out" };
