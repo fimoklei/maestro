@@ -22,6 +22,7 @@ import { GlobalDeployStateReader } from "./deploy-state/deploy-state-reader";
 import { ReleaseHeadReader } from "./deploy-state/release-head";
 import { CheckVersionDrift } from "./drift/check-version-drift";
 import { ReadDrift } from "./drift/read-drift";
+import { ReusedOutdated } from "./drift/reused-outdated";
 import { CopySkillFolder } from "./filesystem/copy-skill-folder";
 import type { CopyTreeFsPort } from "./filesystem/copy-tree-fs";
 import { ChooseFolder } from "./folder-chooser/choose-folder";
@@ -104,9 +105,11 @@ export type UseCases = ReturnType<typeof composeUseCases>;
 
 // How old a Harness fetch a Drift or Harness read may reuse.
 const HARNESS_READ_MAX_AGE_MS = 30_000;
+// How old an `apm outdated` answer for one Target a Drift read may reuse.
+const OUTDATED_MAX_AGE_MS = 30_000;
 
 export function composeUseCases(ports: UseCasePorts) {
-  const { env, fs, git, apm } = ports;
+  const { env, fs, git } = ports;
   const harnessGit = git.harness;
   const { copyTree: copyTreeFs, toolPresence, deployedCleanup } = ports;
   // Resolved per access, not at construction: the config path follows the env.
@@ -141,6 +144,20 @@ export function composeUseCases(ports: UseCasePorts) {
   // Shared instance, so guard and cleanup agree on a global deploy's lockfile root and tree.
   const deployedLocation = new DeployedLocation(env);
   const canonicalPath = (path: string) => fs.realpath(path);
+  // Every use case drives apm through this one, so each write drops its answer.
+  const apm = new ReusedOutdated({
+    apm: ports.apm,
+    canonicalPath,
+    now: () => new Date(),
+    maxAgeMs: OUTDATED_MAX_AGE_MS,
+  });
+  // A new release or proposal changes what Behind means for every Target.
+  const droppingOutdated = <Args extends unknown[], Result>(useCase: {
+    execute: (...args: Args) => Promise<Result>;
+  }) => ({
+    execute: (...args: Args) =>
+      useCase.execute(...args).finally(() => apm.dropAll()),
+  });
   // Measured against the latest release too, as Update target measures (#1213).
   const releaseAwareContent = new DeployedContentAdapter({
     location: deployedLocation,
@@ -327,32 +344,38 @@ export function composeUseCases(ports: UseCasePorts) {
       locks: harnessPromoteLocks,
     }),
     // Confirmation's own remote read, never the plan's cached one (#520).
-    publish: new PublishRelease({
-      resolveRoot: harnessRoot,
-      git: harnessGit,
-      freshness: harnessFreshness,
-      // Bound to the root the publication already resolved and locked, so a
-      // harness connected mid-flight cannot answer for it (#521).
-      replan: (root) => harness.planReleaseAt(root),
-      // Own lock, not the apm write lock above: a second confirmation for the
-      // same harness must wait, not race the first one's push (#520).
-      locks: new InFlightLocks(),
-    }),
-    promote: new PromoteSkill({
-      resolveRoot: harnessRoot,
-      git: harnessGit,
-      freshness: harnessFreshness,
-      locks: harnessPromoteLocks,
-      review: ports.gh,
-    }),
+    publish: droppingOutdated(
+      new PublishRelease({
+        resolveRoot: harnessRoot,
+        git: harnessGit,
+        freshness: harnessFreshness,
+        // Bound to the root the publication already resolved and locked, so a
+        // harness connected mid-flight cannot answer for it (#521).
+        replan: (root) => harness.planReleaseAt(root),
+        // Own lock, not the apm write lock above: a second confirmation for the
+        // same harness must wait, not race the first one's push (#520).
+        locks: new InFlightLocks(),
+      }),
+    ),
+    promote: droppingOutdated(
+      new PromoteSkill({
+        resolveRoot: harnessRoot,
+        git: harnessGit,
+        freshness: harnessFreshness,
+        locks: harnessPromoteLocks,
+        review: ports.gh,
+      }),
+    ),
     // Shares the promotion's lock: an edit and a removal from one fetched tip would race.
-    promoteDeletion: new PromoteSkillDeletion({
-      resolveRoot: harnessRoot,
-      git: harnessGit,
-      freshness: harnessFreshness,
-      locks: harnessPromoteLocks,
-      review: ports.gh,
-    }),
+    promoteDeletion: droppingOutdated(
+      new PromoteSkillDeletion({
+        resolveRoot: harnessRoot,
+        git: harnessGit,
+        freshness: harnessFreshness,
+        locks: harnessPromoteLocks,
+        review: ports.gh,
+      }),
+    ),
     // Shares the promotion lock: it reads the same working tree (#798).
     deleteLocalSkill: new DeleteLocalSkill({
       resolveRoot: harnessRoot,

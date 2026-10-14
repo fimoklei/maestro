@@ -55,4 +55,12 @@ export class ReuseGate<T> {
       this.outdated.add(key);
     }
   }
+
+  // The next run of every key goes out, as `invalidate` does for one.
+  invalidateAll(): void {
+    this.settled.clear();
+    for (const key of this.running.keys()) {
+      this.outdated.add(key);
+    }
+  }
 }
