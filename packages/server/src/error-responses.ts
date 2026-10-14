@@ -22,7 +22,10 @@ import type {
   UpdateRunError,
 } from "@maestro/core";
 
-type ErrorStatus = 400 | 403 | 404 | 409 | 422 | 500 | 502 | 503;
+type ErrorStatus = 400 | 403 | 404 | 409 | 422 | 500 | 502 | 503 | 504;
+
+// apm hung and the driver stopped it.
+const TIMED_OUT = { status: 504 } as const;
 
 // A status only: every sentence lives in its feature copy module in `packages/web`.
 type ErrorTable<TCode extends string> = Record<TCode, { status: ErrorStatus }>;
@@ -51,6 +54,8 @@ export const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "no-supported-tool": { status: 409 },
   "auth-required": { status: 502 },
   "destination-symlinked": { status: 409 },
+  "tag-check-timed-out": TIMED_OUT,
+  "deploy-timed-out": TIMED_OUT,
   "deploy-failed": { status: 502 },
 };
 
@@ -65,6 +70,7 @@ export const retryOperationErrorResponses: ErrorTable<RetryTargetOperationError>
     "lockfile-malformed": { status: 409 },
     "manifest-not-recognised": { status: 409 },
     "retry-incomplete": { status: 502 },
+    "retry-timed-out": TIMED_OUT,
     "retry-failed": { status: 502 },
   };
 
@@ -85,6 +91,8 @@ export const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
   "manifest-not-recognised": { status: 409 },
   "operation-unfinished": { status: 409 },
   "remove-incomplete": { status: 502 },
+  "remove-timed-out": TIMED_OUT,
+  "remove-timed-out-unrecorded": TIMED_OUT,
   "remove-failed": { status: 502 },
 };
 
@@ -130,6 +138,7 @@ export const updateRunErrorResponses: ErrorTable<UpdateRunError> = {
   "deployed-unverifiable": deployErrorResponses["deployed-unverifiable"],
   "manifest-not-recognised": deployErrorResponses["manifest-not-recognised"],
   "update-incomplete": { status: 502 },
+  "update-timed-out": TIMED_OUT,
   "update-failed": { status: 502 },
 };
 

@@ -117,6 +117,7 @@ export type UpdateRunError =
   | "deployed-unverifiable"
   | "manifest-not-recognised"
   | "update-incomplete"
+  | "update-timed-out"
   | "update-failed";
 
 export type UpdateRunResult =
@@ -307,7 +308,9 @@ export class UpdateTarget {
             ? applied.error
             : applied.error === "apply-incomplete"
               ? "update-incomplete"
-              : "update-failed",
+              : applied.error === "apply-timed-out"
+                ? "update-timed-out"
+                : "update-failed",
         outcome,
       };
     } catch {

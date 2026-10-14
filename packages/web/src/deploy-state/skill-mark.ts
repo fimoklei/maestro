@@ -2,7 +2,11 @@ import type { DeployedPrimitive } from "@maestro/core";
 import type { DriftStatus } from "../drift/drift-view-model";
 import { targetReading } from "../inventory/skill-status";
 import { reading, type StatusReading } from "../ui/status-reading";
-import { NO_LONGER_RELEASED_HINT, UNREACHED_HINT } from "./deploy-state-copy";
+import {
+  NO_LONGER_RELEASED_HINT,
+  TIMED_OUT_HINT,
+  UNREACHED_HINT,
+} from "./deploy-state-copy";
 import { copyChipText } from "./release-head-copy";
 import { LOCAL_EDITS } from "./target-status";
 
@@ -18,6 +22,7 @@ const COPY_MARKS = {
 const DRIFT_HINTS: Partial<Record<DriftStatus, string>> = {
   "no-longer-released": NO_LONGER_RELEASED_HINT,
   unverified: UNREACHED_HINT,
+  "timed-out": TIMED_OUT_HINT,
 };
 
 export function skillMark(

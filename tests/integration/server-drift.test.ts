@@ -29,7 +29,7 @@ describe("drift HTTP route", () => {
           ok: true;
           behind: Array<{ name: string; current: string; latest: string }>;
         }
-      | { ok: false; reason?: "unverified" },
+      | { ok: false; reason?: "unverified" | "timed-out" },
   ) {
     const calls: Array<
       { kind: "repo"; repoPath: string } | { kind: "global" }
@@ -112,6 +112,20 @@ describe("drift HTTP route", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: false, reason: "unverified" });
+    await rm(repo, { recursive: true, force: true });
+  });
+
+  it("forwards the timed-out reason when apm hung", async () => {
+    const repo = await makeRepoDir("maestro-repo-");
+    const { app, registry } = makeApp({ ok: false, reason: "timed-out" });
+    await registry.register(repo);
+
+    const res = await app.request(
+      `/api/drift?repo=${encodeURIComponent(repo)}`,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: false, reason: "timed-out" });
     await rm(repo, { recursive: true, force: true });
   });
 
