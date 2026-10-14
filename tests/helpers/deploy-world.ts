@@ -7,6 +7,7 @@ import type {
   ResolveLatestTagResult,
 } from "../../packages/core/src/deploy/deploy-skill";
 import { deployTargetSubtrees } from "../../packages/core/src/deploy/deploy-tools";
+import { DeployedLocation } from "../../packages/core/src/deploy/deployed-location";
 import { InMemoryCopyTree } from "../../packages/core/src/filesystem/copy-tree-fs.fake";
 import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
 import { inMemoryApp } from "./in-memory-app";
@@ -20,16 +21,11 @@ const ORIGIN_URL = `git@github.com:${HARNESS}.git`;
 const skillManifest = (name: string) =>
   `---\nname: ${name}\ndescription: ${name} skill\n---\n`;
 
-const treeRoot = (target: DeployTarget) =>
-  target.kind === "repo" ? target.repoPath : HOME;
+const location = new DeployedLocation({ HOME });
+const treeRoot = (target: DeployTarget) => location.treeRoot(target);
 export const lockfilePath = (target: DeployTarget) =>
-  target.kind === "repo"
-    ? `${target.repoPath}/apm.lock.yaml`
-    : `${HOME}/.apm/apm.lock.yaml`;
-const manifestPath = (target: DeployTarget) =>
-  target.kind === "repo"
-    ? `${target.repoPath}/apm.yml`
-    : `${HOME}/.apm/apm.yml`;
+  location.lockfilePath(target);
+const manifestPath = (target: DeployTarget) => location.manifestPath(target);
 
 // The apm.yml an install writes for a Selection.
 export const consumerManifest = (skills: readonly string[]) => `name: consumer

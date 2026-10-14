@@ -4,18 +4,14 @@
 import { createHash } from "node:crypto";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
-import type { SupportedTool } from "./deploy-tools";
+import { deployTargetSubtrees, type SupportedTool } from "./deploy-tools";
 import { DeployedContentAdapter } from "./deployed-content";
+import { DeployedLocation } from "./deployed-location";
 
 const FAKE_HOME = "/home/fake";
 
 const sha = (bytes: Buffer) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-
-const TOOL_DIRS: Record<SupportedTool, string> = {
-  claude: ".claude/skills",
-  codex: ".agents/skills",
-};
 
 // One tool's copy: clean and diverged keep a recorded baseline, unverifiable
 // keeps files but loses that tool's record, not-deployed has no folder, and
@@ -46,18 +42,12 @@ export function inMemoryDeployedContent(
   const lockfiles = new Map<string, Map<string, Record<string, string>>>();
   const malformed = new Set<string>();
 
-  const treeRoot = (target: DeployTarget) =>
-    target.kind === "repo" ? target.repoPath : FAKE_HOME;
-  const lockfilePath = (target: DeployTarget) =>
-    target.kind === "repo"
-      ? `${target.repoPath}/apm.lock.yaml`
-      : `${FAKE_HOME}/.apm/apm.lock.yaml`;
+  const location = new DeployedLocation({ HOME: FAKE_HOME });
+  const treeRoot = (target: DeployTarget) => location.treeRoot(target);
+  const lockfilePath = (target: DeployTarget) => location.lockfilePath(target);
 
   const content = new DeployedContentAdapter({
-    location: {
-      treeRoot,
-      lockfilePath,
-    },
+    location,
     fs: tree,
     ...(options.release === undefined
       ? {}
@@ -113,11 +103,12 @@ export function inMemoryDeployedContent(
       lockfiles.get(lockPath) ?? new Map<string, Record<string, string>>();
     lockfiles.set(lockPath, entries);
     malformed.delete(lockPath);
+    const folder = (tool: SupportedTool) =>
+      `${root}/${deployTargetSubtrees(name, [tool])[0]}`;
     for (const tool of TOOLS) {
-      tree.remove(`${root}/${TOOL_DIRS[tool]}/${name}`);
+      tree.remove(folder(tool));
     }
-    const skillFile = (tool: SupportedTool) =>
-      `${root}/${TOOL_DIRS[tool]}/${name}/SKILL.md`;
+    const skillFile = (tool: SupportedTool) => `${folder(tool)}/SKILL.md`;
 
     if (states === "not-deployed") {
       entries.delete(name);
@@ -128,7 +119,7 @@ export function inMemoryDeployedContent(
       malformed.add(lockPath);
     } else if (states === "unreadable") {
       // A file where the skill directory belongs.
-      tree.write(`${root}/${TOOL_DIRS.claude}/${name}`, "not a directory\n");
+      tree.write(folder("claude"), "not a directory\n");
       entries.set(name, {});
     } else {
       const perTool: Record<SupportedTool, ToolCopyState> =
@@ -152,9 +143,7 @@ export function inMemoryDeployedContent(
         ).flatMap((tool) =>
           tree
             .filePaths()
-            .filter((abs) =>
-              abs.startsWith(`${root}/${TOOL_DIRS[tool]}/${name}/`),
-            )
+            .filter((abs) => abs.startsWith(`${folder(tool)}/`))
             .map((abs) => [
               abs.slice(root.length + 1),
               sha(tree.read(abs) ?? Buffer.alloc(0)),
@@ -167,7 +156,7 @@ export function inMemoryDeployedContent(
           tree.write(skillFile(tool), `${name}, edited\n`);
         }
         if (perTool[tool] === "deleted") {
-          tree.remove(`${root}/${TOOL_DIRS[tool]}/${name}`);
+          tree.remove(folder(tool));
         }
       }
     }
