@@ -67,6 +67,12 @@ export class InMemoryCopyTree implements CopyTreeFsPort {
           ? null
           : (this.files.get(real)?.bytes.toString("utf8") ?? null);
       },
+      stamp: async (path) => {
+        const file = this.files.get((await this.realpath(path)) ?? "");
+        return file === undefined
+          ? null
+          : { modifiedMs: file.version, size: file.bytes.length };
+      },
       listRawEntries: async (path) => {
         const key = normalize(path);
         if (this.unreadable.has(key)) {

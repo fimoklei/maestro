@@ -95,6 +95,8 @@ function target(
       directories.has(path) || files[path] !== undefined,
     isFileEntry: async (path: string) => files[path] !== undefined,
     readFile: async (path: string) => files[path] ?? null,
+    // No stamp: nothing is remembered, every read goes to the file.
+    stamp: async () => null,
     listRawEntries: async (path: string) => {
       const prefix = `${path}/`;
       const names = new Set<string>();

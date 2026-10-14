@@ -10,7 +10,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { FileSystemPort, RawDirEntry } from "./file-system";
+import type { FileStamp, FileSystemPort, RawDirEntry } from "./file-system";
 
 // So two writes in one process never share a temp filename.
 let writeCounter = 0;
@@ -77,6 +77,18 @@ export class NodeFileSystem implements FileSystemPort {
   async readFile(path: string): Promise<string | null> {
     try {
       return await readFile(path, "utf8");
+    } catch (error) {
+      if (isNotFound(error)) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async stamp(path: string): Promise<FileStamp | null> {
+    try {
+      const { mtimeMs, size } = await stat(path);
+      return { modifiedMs: mtimeMs, size };
     } catch (error) {
       if (isNotFound(error)) {
         return null;

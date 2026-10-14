@@ -1,4 +1,4 @@
-import type { FileSystemPort, RawDirEntry } from "./file-system";
+import type { FileStamp, FileSystemPort, RawDirEntry } from "./file-system";
 
 type FakeSeed = {
   // Input path → canonical path. Self-mapped is a genuine directory, a
@@ -25,6 +25,8 @@ export class InMemoryFileSystem implements FileSystemPort {
   private readonly danglingSymlinks: Set<string>;
   private readonly racedIntoExistence: Set<string>;
   private readonly unwritable: Set<string>;
+  // A write counter stands in for the modification time.
+  private readonly writes = new Map<string, number>();
 
   constructor(seed: FakeSeed = {}) {
     this.directories = new Map(Object.entries(seed.directories ?? {}));
@@ -75,6 +77,14 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.files.get(path) ?? null;
   }
 
+  async stamp(path: string): Promise<FileStamp | null> {
+    const contents = this.files.get(path);
+    if (contents === undefined) {
+      return null;
+    }
+    return { modifiedMs: this.writes.get(path) ?? 0, size: contents.length };
+  }
+
   async listRawEntries(path: string): Promise<RawDirEntry[]> {
     if (this.unreadable.has(path)) {
       throw new Error(`EACCES: permission denied, scandir '${path}'`);
@@ -98,7 +108,7 @@ export class InMemoryFileSystem implements FileSystemPort {
   }
 
   async writeFile(path: string, contents: string): Promise<void> {
-    this.files.set(path, contents);
+    this.setFile(path, contents);
   }
 
   async createNewFile(path: string, contents: string): Promise<boolean> {
@@ -108,8 +118,13 @@ export class InMemoryFileSystem implements FileSystemPort {
     if (this.racedIntoExistence.has(path) || (await this.exists(path))) {
       return false;
     }
-    this.files.set(path, contents);
+    this.setFile(path, contents);
     return true;
+  }
+
+  private setFile(path: string, contents: string): void {
+    this.writes.set(path, (this.writes.get(path) ?? 0) + 1);
+    this.files.set(path, contents);
   }
 
   async remove(path: string): Promise<void> {

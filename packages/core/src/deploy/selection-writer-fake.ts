@@ -134,6 +134,8 @@ ${
     writeFile: async (path: string, contents: string) => {
       files.set(path, contents);
     },
+    // No stamp: nothing is remembered, every read goes to the file.
+    stamp: async () => null,
     isFileEntry: async (path: string) => files.has(path),
   };
 
@@ -204,7 +206,7 @@ ${
 
   const operations = new TargetOperationStore({
     store: new ConfigStore({
-      fs: fs as never,
+      fs,
       configPath: () => "/home/.maestro/config.json",
     }),
   });
