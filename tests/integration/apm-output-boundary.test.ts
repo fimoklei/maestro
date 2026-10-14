@@ -12,6 +12,7 @@ import {
   DeployedRefAdapter,
   InFlightLocks,
   InventoryReader,
+  NodeCopyTreeFs,
   NodeFileSystem,
   RemoveDeployedSkill,
 } from "@maestro/core";
@@ -119,7 +120,10 @@ describe("apm output never reaches the client", () => {
       remove: new RemoveDeployedSkill({
         registry,
         deployedRef: new DeployedRefAdapter({ fs, location }),
-        deployedContent: new DeployedContentAdapter({ location }),
+        deployedContent: new DeployedContentAdapter({
+          location,
+          fs: new NodeCopyTreeFs(),
+        }),
         apm,
         deployedCleanup: new DeployedCleanupAdapter({ location }),
         toolPresence: { detectGlobalTools: async () => ["claude"] },

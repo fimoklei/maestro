@@ -16,6 +16,7 @@ import {
   type DeployTarget,
   InFlightLocks,
   InventoryReader,
+  NodeCopyTreeFs,
   NodeFileSystem,
   RecordedPackageAdapter,
   type SupportedTool,
@@ -199,6 +200,7 @@ describe("deploy HTTP route", () => {
         // Real, so the path the notice names is read off disk, never guessed (#748).
         linkedSkillPath: (input) =>
           new DeployedContentAdapter({
+            fs: new NodeCopyTreeFs(),
             location: {
               treeRoot: (target) =>
                 target.kind === "repo" ? target.repoPath : globalRoot,

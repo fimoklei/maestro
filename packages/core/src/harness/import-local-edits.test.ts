@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeployedContentState } from "../deploy/deploy-skill";
+import { copiesIn, type ToolCopyState } from "../deploy/deployed-content.fake";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
 import { ImportLocalEdits } from "./import-local-edits";
@@ -120,26 +121,37 @@ function target(
     },
   };
 
-  const content = {
-    classify: async (input: { name: string; tools?: readonly string[] }) => {
-      const reading = copies[input.name] ?? {};
-      if (reading.both !== undefined && (input.tools?.length ?? 2) === 2) {
-        return reading.both;
-      }
-      const states = (input.tools ?? ["claude", "codex"]).map(
-        (tool) => reading[tool as "claude" | "codex"] ?? "clean",
-      );
-      if (states.length === 1) {
-        return states[0] as Copy;
-      }
-      if (states.includes("diverged")) {
-        return "diverged" as const;
-      }
-      return states.includes("unverifiable")
-        ? ("unverifiable" as const)
-        : ("clean" as const);
-    },
+  // The content port reads a real copy tree built from `copies`, per tool. A
+  // not-deployed tool beside `both: "diverged"` is a folder deleted after apm
+  // recorded it, so the copies read edited only together.
+  const toolCopy = (
+    reading: { claude?: Copy; codex?: Copy; both?: Copy },
+    tool: "claude" | "codex",
+  ): ToolCopyState => {
+    const state = reading[tool] ?? "clean";
+    if (state === "not-deployed" && reading.both === "diverged") {
+      return "deleted";
+    }
+    if (
+      state === "clean" ||
+      state === "diverged" ||
+      state === "unverifiable" ||
+      state === "not-deployed"
+    ) {
+      return state;
+    }
+    throw new Error(`no tool folder reads ${state}`);
   };
+  const statesOf = (name: string) => {
+    const reading = copies[name] ?? {};
+    return {
+      claude: toolCopy(reading, "claude"),
+      codex: toolCopy(reading, "codex"),
+    };
+  };
+  const deployed = copiesIn(statesOf);
+  const contentTarget = overrides.global === true ? GLOBAL_TARGET : REPO_TARGET;
+  const content = deployed.content;
 
   let trees: HarnessSkillTrees = overrides.trees ?? {
     remote: {},
@@ -268,6 +280,7 @@ function target(
 
   const edit = (name: string, tool: "claude" | "codex", state: Copy) => {
     copies[name] = { ...copies[name], [tool]: state };
+    deployed.setCopy(contentTarget, name, statesOf(name));
   };
   const setTrees = (next: HarnessSkillTrees) => {
     trees = next;
@@ -327,7 +340,8 @@ describe("ImportLocalEdits.check", () => {
       copies: {
         "code-review": { claude: "diverged" },
         tdd: { claude: "diverged" },
-        lint: { claude: "unverifiable" },
+        // apm records hashes per entry, so a lost record leaves both folders unverified.
+        lint: { claude: "unverifiable", codex: "unverifiable" },
       },
       lockfile: [
         ...entry("code-review", [

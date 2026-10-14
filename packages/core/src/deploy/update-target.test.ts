@@ -3,6 +3,7 @@ import type { HarnessTag } from "../harness/read-harness-state";
 import type { HarnessSkillTree } from "../harness/skill-movements";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
 import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
+import { inMemoryDeployedContent } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import { copyPaths, selectionWorld } from "./selection-writer-fake";
@@ -61,7 +62,6 @@ type Options = {
   target?: DeployTarget;
   copiesAfter?: Record<string, DeployedContentState>;
   add?: string;
-  bytes?: () => string | null;
   // A symlinked leaf destination, as the disk reports it.
   linked?: { name: string; tool: SupportedTool; path: string };
   // Copies the operator edited on disk, which apm keeps when it drops them.
@@ -84,6 +84,20 @@ function subject(options: Options = {}) {
     world.edits(tool, name);
   }
   const locks = new InFlightLocks();
+  // Copies live on a real in-memory tree: the listed ones in their state, the
+  // rest clean, placed when first read.
+  const copyTarget = options.target ?? REPO;
+  const copies = inMemoryDeployedContent();
+  const placed = new Set<string>();
+  const place = (name: string) => {
+    if (!placed.has(name)) {
+      placed.add(name);
+      copies.setCopy(copyTarget, name, options.copies?.[name] ?? "clean");
+    }
+  };
+  for (const name of Object.keys(options.copies ?? {})) {
+    place(name);
+  }
   // Before the write the recorded baseline decides; afterwards the disk and the
   // deployment record do.
   const classify = async (input: {
@@ -92,14 +106,15 @@ function subject(options: Options = {}) {
     release?: string;
   }) => {
     if (world.calls.length === 0) {
-      return options.copies?.[input.name] ?? "clean";
+      place(input.name);
+      return copies.content.classify({ target: copyTarget, ...input });
     }
     const forced = options.copiesAfter?.[input.name];
     if (forced !== undefined) {
       return forced;
     }
-    const copies = copyPaths([input.name], input.tools ?? SUPPORTED_TOOLS);
-    if (!copies.some((path) => world.files.has(`${TREE_ROOT}/${path}`))) {
+    const written = copyPaths([input.name], input.tools ?? SUPPORTED_TOOLS);
+    if (!written.some((path) => world.files.has(`${TREE_ROOT}/${path}`))) {
       return "not-deployed" as const;
     }
     const lockfile = world.files.get(`${TREE_ROOT}/apm.lock.yaml`) ?? "";
@@ -141,7 +156,10 @@ function subject(options: Options = {}) {
     copyGuard: new LocalCopyGuard({
       content: {
         classify,
-        contentDigest: async () => options.bytes?.() ?? null,
+        contentDigest: async (input) => {
+          place(input.name);
+          return copies.content.contentDigest({ ...input, target: copyTarget });
+        },
       },
     }),
   });
@@ -151,6 +169,7 @@ function subject(options: Options = {}) {
     update,
     world,
     locks,
+    copies,
     preview: () => update.preview({ target, ...add }),
     run: (input: {
       token: string;
@@ -562,10 +581,8 @@ describe("UpdateTarget preflight token", () => {
   });
 
   it("refuses the confirm when a blocked copy was edited again after pricing", async () => {
-    let body = "first edit";
-    const { preview, run } = subject({
+    const { preview, run, copies } = subject({
       copies: { tdd: "diverged" },
-      bytes: () => body,
     });
     const answer = await preview();
     if (!answer.ok) {
@@ -573,7 +590,10 @@ describe("UpdateTarget preflight token", () => {
     }
     const receipt = answer.preview.copyReceipt ?? undefined;
 
-    body = "second edit";
+    copies.editFile(
+      `${REPO.repoPath}/.claude/skills/tdd/SKILL.md`,
+      "second edit\n",
+    );
     await expect(
       run({ token: answer.preview.token, confirmedCopyReceipt: receipt }),
     ).resolves.toMatchObject({ ok: false, error: "status-out-of-date" });
@@ -781,9 +801,11 @@ describe("UpdateTarget.run", () => {
   });
 
   it("refuses a token minted before the copy on disk changed", async () => {
-    const options: Options = {};
-    const running = await confirmed(options);
-    options.copies = { tdd: "diverged" };
+    const running = await confirmed();
+    running.copies.editFile(
+      `${REPO.repoPath}/.claude/skills/tdd/SKILL.md`,
+      "edited\n",
+    );
 
     const result = await running.run({ token: running.token });
 

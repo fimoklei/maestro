@@ -12,6 +12,7 @@ import {
   InFlightLocks,
   type InventoryResult,
   LocalCopyGuard,
+  NodeCopyTreeFs,
   NodeFileSystem,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -118,6 +119,7 @@ describe("update journey against the real destination guard", () => {
       },
       copyGuard: new LocalCopyGuard({
         content: new DeployedContentAdapter({
+          fs: new NodeCopyTreeFs(),
           location: {
             treeRoot: () => root,
             lockfilePath: () => join(root, "apm.lock.yaml"),
@@ -126,6 +128,7 @@ describe("update journey against the real destination guard", () => {
         }),
       }),
       deployedContent: new DeployedContentAdapter({
+        fs: new NodeCopyTreeFs(),
         location: {
           treeRoot: () => root,
           lockfilePath: () => join(root, "apm.lock.yaml"),

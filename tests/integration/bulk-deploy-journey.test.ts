@@ -9,6 +9,7 @@ import {
   GlobalDeployStateReader,
   InFlightLocks,
   InventoryReader,
+  NodeCopyTreeFs,
   NodeFileSystem,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
@@ -83,6 +84,7 @@ describe("bulk deploy journey", () => {
       },
       recordedPackage: { read: async () => ({ kind: "unverified" as const }) },
       deployedContent: new DeployedContentAdapter({
+        fs: new NodeCopyTreeFs(),
         location: rootPackageLocation(globalRoot),
       }),
       deployedCleanup: { removeSkillTargets: async () => undefined },
