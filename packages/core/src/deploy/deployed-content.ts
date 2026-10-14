@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import { basename, join } from "node:path";
 import { isRootPackage } from "../deploy-state/root-package-skills";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
-import { parseLockfile, unreadableCovers } from "../lockfile/lockfile";
+import {
+  type LockfileReading,
+  parseLockfile,
+  unreadableCovers,
+} from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -41,14 +45,11 @@ export class DeployedContentAdapter implements DeployedContentPort {
     name: string;
     tools?: readonly SupportedTool[];
     release?: string;
+    lockfile: LockfileReading;
   }): Promise<DeployedContentState> {
     const subtrees = deployTargetSubtrees(input.name, input.tools);
     // Baseline first: with no recorded hashes the scan skips hashing (#63).
-    const baseline = await this.readBaseline(
-      input.target,
-      input.name,
-      subtrees,
-    );
+    const baseline = this.baseline(input.lockfile, input.name, subtrees);
     const root = this.deps.location.treeRoot(input.target);
     let scan: SubtreeScan;
     try {
@@ -163,34 +164,36 @@ export class DeployedContentAdapter implements DeployedContentPort {
     return null;
   }
 
-  private async readBaseline(
-    target: DeployTarget,
-    name: string,
-    subtrees: string[],
-  ): Promise<
-    | { kind: "none" }
-    | { kind: "malformed" }
-    | { kind: "hashes"; hashes: DeployedFileHashes }
-  > {
+  async readLockfile(target: DeployTarget): Promise<LockfileReading> {
     const lockfilePath = this.deps.location.lockfilePath(target);
     const file = await this.deps.fs.openFollowingLinks(lockfilePath);
     // Present but unreadable is an error, not an absent baseline (#58).
     if (file === "missing") {
-      return { kind: "none" };
+      return "missing";
     }
     if (file === null) {
-      return { kind: "malformed" };
+      return { ok: false };
     }
-    let raw: string;
     try {
-      raw = (await file.read()).toString("utf8");
+      return parseLockfile((await file.read()).toString("utf8"));
     } catch {
-      return { kind: "malformed" };
+      return { ok: false };
     } finally {
-      await file.close();
+      await file.close().catch(() => undefined);
     }
+  }
 
-    const parsed = parseLockfile(raw);
+  private baseline(
+    parsed: LockfileReading,
+    name: string,
+    subtrees: string[],
+  ):
+    | { kind: "none" }
+    | { kind: "malformed" }
+    | { kind: "hashes"; hashes: DeployedFileHashes } {
+    if (parsed === "missing") {
+      return { kind: "none" };
+    }
     if (!parsed.ok) {
       return { kind: "malformed" };
     }

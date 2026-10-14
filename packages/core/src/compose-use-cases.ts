@@ -214,10 +214,7 @@ export function composeUseCases(ports: UseCasePorts) {
     deployedContent,
     // apm's success marker says nothing about what it recorded, so the lockfile
     // is read back before the deploy is called clean (#358).
-    recordedPackage: new RecordedPackageAdapter({
-      fs,
-      location: deployedLocation,
-    }),
+    recordedPackage: new RecordedPackageAdapter(),
     // A direct subtree rm for an untargeted tool's leftover copy (#136), never `apm uninstall -g`.
     deployedCleanup,
     // Probed per deploy, so a global install targets only tools the machine has.

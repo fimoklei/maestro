@@ -140,7 +140,10 @@ function subject(options: Options = {}) {
   const update = new UpdateTarget({
     selection: world.writer,
     deployedCleanup: world.cleanup,
-    deployedContent: { classify },
+    deployedContent: {
+      readLockfile: (target) => copies.content.readLockfile(target),
+      classify,
+    },
     canonicalPath: async (path) => path,
     locks,
     registry: { isRegistered: async () => options.registered ?? true },
@@ -162,6 +165,7 @@ function subject(options: Options = {}) {
     },
     copyGuard: new LocalCopyGuard({
       content: {
+        readLockfile: (target) => copies.content.readLockfile(target),
         classify,
         contentDigest: async (input) => {
           place(input.name);

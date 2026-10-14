@@ -40,6 +40,7 @@ const withLinks = (
 ): DeployedContentPort => {
   const none = deployedCopies([]).content;
   return {
+    readLockfile: (target) => none.readLockfile(target),
     classify: (input) => none.classify(input),
     contentDigest: (input) => none.contentDigest(input),
     linkedSkillPath,
@@ -101,13 +102,16 @@ const buildDeps = (
       readSkillFilesAtTag: async (_tag: string, _name: string) => null,
     },
     deployedContent: {
+      readLockfile: (target: DeployTarget) => noCopies.readLockfile(target),
       classify: async (input: {
         target: DeployTarget;
         name: string;
         tools?: readonly SupportedTool[];
+        lockfile?: unknown;
       }) => {
-        classified.push(input);
-        return noCopies.classify(input);
+        const { lockfile: _shared, ...asked } = input;
+        classified.push(asked);
+        return noCopies.classify(asked);
       },
       contentDigest: async (input: {
         target: DeployTarget;
@@ -132,7 +136,7 @@ const buildDeps = (
       ],
     },
     recordedPackage: {
-      read: async (_input: { target: DeployTarget; name: string }) =>
+      read: async () =>
         ({
           kind: "recorded",
           reading: { kind: "skill", name: "tdd" },
@@ -1609,6 +1613,7 @@ describe("DeploySkill.executeBatch", () => {
     const { deps } = buildDeps({
       inventory: skills("review", "docs"),
       deployedContent: {
+        readLockfile: (target) => copies.readLockfile(target),
         classify: (input) => copies.classify(input),
         contentDigest: (input) => copies.contentDigest(input),
         linkedSkillPath: async ({ name }) =>

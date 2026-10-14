@@ -1,5 +1,6 @@
 // The one guard between a write and a deployed copy carrying work: every write
 // classifies through `check` and is licensed through `admits`.
+import type { LockfileReading } from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -103,7 +104,7 @@ export class LocalCopyGuard {
   private readonly deps: {
     content: Pick<
       DeployedContentPort,
-      "classify" | "contentDigest" | "linkedSkillPath"
+      "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
     >;
   };
   private readonly signer = new ConsentSigner();
@@ -125,26 +126,26 @@ export class LocalCopyGuard {
     const scopes: (SupportedTool | null)[] = input.tools
       ? [...input.tools]
       : [null];
-    const findings: CopyFinding[] = [];
-    const bytes: string[] = [];
-    for (const name of input.names) {
-      for (const tool of scopes) {
-        const verdict = await this.classify(input, name, tool);
-        const linkedPath = await this.deps.content.linkedSkillPath({
-          target: input.target,
-          name,
-          ...(tool === null ? {} : { tools: [tool] }),
-        });
-        findings.push({ name, tool, verdict, linkedPath });
-        if (CONSENTABLE.has(verdict)) {
-          bytes.push(
-            `${name}:${tool ?? ""}:${await this.digest(input, name, tool)}`,
-          );
-        }
-      }
-    }
+    const lockfile = await this.deps.content.readLockfile(input.target);
+    const checked = await Promise.all(
+      input.names.flatMap((name) =>
+        scopes.map(async (tool) => {
+          const verdict = await this.classify(input, lockfile, name, tool);
+          const linkedPath = await this.deps.content.linkedSkillPath({
+            target: input.target,
+            name,
+            ...(tool === null ? {} : { tools: [tool] }),
+          });
+          const bytes = CONSENTABLE.has(verdict)
+            ? `${name}:${tool ?? ""}:${await this.digest(input, name, tool)}`
+            : null;
+          return { finding: { name, tool, verdict, linkedPath }, bytes };
+        }),
+      ),
+    );
+    const bytes = checked.flatMap((c) => (c.bytes === null ? [] : [c.bytes]));
     return {
-      findings,
+      findings: checked.map((c) => c.finding),
       digest: bytes.length === 0 ? null : bytes.sort().join("\n"),
     };
   }
@@ -200,6 +201,7 @@ export class LocalCopyGuard {
   // A check that threw is never reported as a clean copy.
   private async classify(
     input: LocalCopyScope & { release?: string },
+    lockfile: LockfileReading,
     name: string,
     tool: SupportedTool | null,
   ): Promise<CopyVerdict> {
@@ -208,6 +210,7 @@ export class LocalCopyGuard {
         await this.deps.content.classify({
           target: input.target,
           name,
+          lockfile,
           ...(tool === null ? {} : { tools: [tool] }),
           ...(input.release === undefined ? {} : { release: input.release }),
         })
