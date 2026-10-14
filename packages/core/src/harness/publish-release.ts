@@ -1,16 +1,15 @@
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
+import type { HarnessFetchGate } from "./harness-fetch-gate";
 import {
   proposeReleaseVersion,
   type SemverStep,
 } from "./propose-release-version";
 import type {
-  HarnessFreshnessPort,
   HarnessGitPort,
   ReleasePlan,
   ReleasePlanResult,
 } from "./read-harness-state";
-import { recordFetch } from "./record-fetch";
 import { highestReleaseTag } from "./release-tag";
 import { diffSkillTrees } from "./skill-movements";
 
@@ -41,7 +40,7 @@ export class PublishRelease {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
-    freshness: HarnessFreshnessPort;
+    fetchGate: Pick<HarnessFetchGate, "fetch" | "invalidate">;
     // Takes the locked root, never a re-resolved one (#521).
     replan: (root: string) => Promise<ReleasePlanResult>;
     locks: InFlightLocks;
@@ -54,7 +53,6 @@ export class PublishRelease {
   // One lock per harness: two confirmations never race for one version (#520).
   async execute(
     confirmation: ReleaseConfirmation,
-    at: Date,
   ): Promise<PublishReleaseResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
@@ -62,7 +60,7 @@ export class PublishRelease {
     }
 
     const run = await this.deps.locks.run(root, () =>
-      this.publish(root, confirmation, at),
+      this.publish(root, confirmation),
     );
     return run.ok ? run.value : { ok: false, error: "publish-in-progress" };
   }
@@ -70,9 +68,8 @@ export class PublishRelease {
   private async publish(
     root: string,
     confirmation: ReleaseConfirmation,
-    at: Date,
   ): Promise<PublishReleaseResult> {
-    const outcome = await recordFetch(this.deps, root, at);
+    const outcome = await this.deps.fetchGate.fetch(root, 0);
 
     const facts = await this.deps.git.readFacts(root);
     const origin =
@@ -123,19 +120,21 @@ export class PublishRelease {
     const push = await this.deps.git.publishTag(root, tag, head, branch);
     switch (push) {
       case "pushed":
+        // The new tag reaches the clone only through a fetch.
+        this.deps.fetchGate.invalidate(root);
         return { ok: true, tag, revision: head };
       case "already-exists":
         return await this.refuse(
           root,
           "already-released",
-          await this.madeCurrent(root, at),
+          await this.madeCurrent(root),
         );
       // The lease refused, so `--atomic` created nothing.
       case "stale-tip":
         return await this.refuse(
           root,
           "plan-changed",
-          await this.madeCurrent(root, at),
+          await this.madeCurrent(root),
         );
       case "offline":
         return { ok: false, error: "no-answer" };
@@ -156,7 +155,7 @@ export class PublishRelease {
       : { ok: false, error };
   }
 
-  private async madeCurrent(root: string, at: Date): Promise<boolean> {
-    return (await recordFetch(this.deps, root, at)) === "fetched";
+  private async madeCurrent(root: string): Promise<boolean> {
+    return (await this.deps.fetchGate.fetch(root, 0)) === "fetched";
   }
 }

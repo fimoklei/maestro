@@ -64,9 +64,6 @@ export type ApmDriverPort = {
 
 // The git questions apm cannot answer, asked of the local inventory clone.
 export type InventoryGitPort = {
-  // Best-effort fast-forward of the clone before the checks below; never
-  // throws (#666).
-  syncBeforeDeploy(): Promise<void>;
   skillExistsAtTag(tag: string, name: string): Promise<boolean>;
   // Tree-diff, never apm's opaque content_hash.
   skillDivergesFromTag(tag: string, name: string): Promise<boolean>;
@@ -241,6 +238,9 @@ export class DeploySkill {
     registry: { isRegistered(path: string): Promise<boolean> };
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
+    // Best-effort fetch and fast-forward of the clone before the checks
+    // below; never throws (#666).
+    syncHarness: () => Promise<void>;
     // Inject the shared guard so a receipt one flow minted is the proof
     // another checks (#952).
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
@@ -474,7 +474,7 @@ export class DeploySkill {
         }
         tag = tagResult.tag;
       }
-      await this.deps.inventoryGit.syncBeforeDeploy();
+      await this.deps.syncHarness();
 
       const tagged: string[] = [];
       for (const name of known) {

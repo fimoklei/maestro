@@ -4,8 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { catchUpClone } from "../git/catch-up-clone";
-import { gitOptions, indexOptions } from "../git/non-interactive";
+import { indexOptions } from "../git/non-interactive";
 import { MAESTRO_TAGS } from "../harness/harness-git";
 import type { ReleasedContentReader } from "../harness/released-content";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
@@ -21,17 +20,6 @@ export class InventoryGitAdapter implements InventoryGitPort {
 
   constructor(deps: InventoryGitAdapter["deps"]) {
     this.deps = deps;
-  }
-
-  // An offline fetch still catches up to the refs this clone holds (#666).
-  async syncBeforeDeploy(): Promise<void> {
-    const root = await this.root();
-    await run(
-      "git",
-      ["-C", root, "fetch", "origin", "--tags"],
-      gitOptions(),
-    ).catch(() => {});
-    await catchUpClone(root);
   }
 
   async skillExistsAtTag(tag: string, name: string): Promise<boolean> {
