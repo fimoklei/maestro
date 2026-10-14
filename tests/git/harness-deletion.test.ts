@@ -9,6 +9,7 @@ import {
   HarnessGitAdapter,
   InFlightLocks,
   PromoteSkillDeletion,
+  ReleasedContentReader,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
@@ -40,7 +41,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
   const deleter = () =>
     new PromoteSkillDeletion({
       resolveRoot: async () => root,
-      git: new HarnessGitAdapter(),
+      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       freshness: {
         read: async () => freshness,
         record: async (_root, next) => {
@@ -52,9 +53,11 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     });
 
   const seenTree = async (skill: string) =>
-    (await new HarnessGitAdapter().readMovementTrees(root))?.remote[
-      skill
-    ] as string;
+    (
+      await new HarnessGitAdapter({
+        released: new ReleasedContentReader(),
+      }).readMovementTrees(root)
+    )?.remote[skill] as string;
 
   beforeEach(async () => {
     base = await mkdtemp(join(tmpdir(), "maestro-harness-deletion-"));
@@ -77,7 +80,9 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     await git(root, "add", ".");
     await git(root, "commit", "-m", "two skills");
     await git(root, "push", "origin", "HEAD:main");
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
   }, 30_000);
 
   afterEach(async () => {
@@ -115,9 +120,13 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     await deleteOnDisk("tdd");
 
     await deleter().execute("tdd", seen, AT);
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
 
-    const trees = await new HarnessGitAdapter().readMovementTrees(root);
+    const trees = await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).readMovementTrees(root);
     // A branch with no tree for this skill proposes its deletion, which is not
     // the same fact as having no branch at all.
     expect(Object.hasOwn(trees?.promote ?? {}, "tdd")).toBe(true);

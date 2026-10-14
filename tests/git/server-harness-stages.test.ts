@@ -1,6 +1,6 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { HarnessGitAdapter } from "@maestro/core";
+import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   git,
@@ -246,7 +246,9 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     await git(stages.root, "add", ".");
     await git(stages.root, "commit", "-m", "second");
     await git(stages.root, "push", "origin", "HEAD:main");
-    await new HarnessGitAdapter().fetch(stages.root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(stages.root);
     await rm(join(stages.root, ".apm", "skills", "tdd"), {
       recursive: true,
       force: true,

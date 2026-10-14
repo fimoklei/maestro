@@ -1,7 +1,11 @@
 // Discard change returns a Not yet proposed folder to its default-branch copy (#1375).
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { HarnessGitAdapter, NodeFileSystem } from "@maestro/core";
+import {
+  HarnessGitAdapter,
+  NodeFileSystem,
+  ReleasedContentReader,
+} from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   git,
@@ -25,7 +29,9 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
     });
 
   const trees = async () => {
-    const read = await new HarnessGitAdapter().readMovementTrees(stages.root);
+    const read = await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).readMovementTrees(stages.root);
     if (read === null) {
       throw new Error("the clone's trees are unreadable");
     }
