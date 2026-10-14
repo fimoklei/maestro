@@ -10,6 +10,7 @@ import {
   type CopyFinding,
   type CopyVerdict,
   LocalCopyGuard,
+  linkedPathAmong,
   worstVerdict,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
@@ -496,9 +497,7 @@ export class DeploySkill {
       // success, so the link is refused here.
       const candidates: string[] = [];
       for (const name of tagged) {
-        const linkedPath = check.findings.find(
-          (finding) => finding.name === name && finding.linkedPath !== null,
-        )?.linkedPath;
+        const linkedPath = linkedPathAmong(check, [name]);
         if (linkedPath) {
           results.set(name, {
             ok: false,

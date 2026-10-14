@@ -18,6 +18,7 @@ import {
   copyKeys,
   type LocalCopyCheck,
   type LocalCopyGuard,
+  linkedPathAmong,
 } from "./local-copy-guard";
 import { ConsentSigner } from "./signed-consent";
 import type { TargetSelection } from "./target-selection";
@@ -429,16 +430,9 @@ export class UpdateTarget {
       release: latest.name,
     });
     // Refused before any consent is offered: no consent makes the install land.
-    const linked = copies.findings.find(
-      (finding) =>
-        finding.linkedPath !== null && desired.includes(finding.name),
-    );
-    if (linked?.linkedPath) {
-      return {
-        ok: false,
-        error: "destination-symlinked",
-        linkedPath: linked.linkedPath,
-      };
+    const linkedPath = linkedPathAmong(copies, desired);
+    if (linkedPath) {
+      return { ok: false, error: "destination-symlinked", linkedPath };
     }
     const decision = this.deps.copyGuard.admits(
       { write: "update", target },

@@ -79,6 +79,17 @@ export function worstVerdict(
   );
 }
 
+// The first symlinked folder among `names`, which a write refuses over.
+export function linkedPathAmong(
+  check: LocalCopyCheck,
+  names: readonly string[],
+): string | undefined {
+  return (
+    check.findings.find((f) => f.linkedPath !== null && names.includes(f.name))
+      ?.linkedPath ?? undefined
+  );
+}
+
 // Shared with the Update preflight token, so the two never bind different facts.
 export function copyKeys(check: LocalCopyCheck): string[] {
   return check.findings
