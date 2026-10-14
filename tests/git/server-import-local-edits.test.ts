@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter } from "@maestro/core";
+import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone, removeGitTempTree } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
@@ -131,7 +131,9 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
         "utf8",
       ),
     ).toBe(EDITED);
-    const trees = await new HarnessGitAdapter().readMovementTrees(harnessRoot);
+    const trees = await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).readMovementTrees(harnessRoot);
     expect(trees?.working.tdd).not.toBe(trees?.local.tdd);
   });
 

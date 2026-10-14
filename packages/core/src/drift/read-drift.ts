@@ -36,7 +36,6 @@ export type DriftResult =
   | Extract<OutdatedResult, { ok: false }>;
 
 export type HarnessContentPort = {
-  fetch(root: string): Promise<unknown>;
   readOrigin(root: string): Promise<GitOrigin | null>;
   // Resolved in Maestro's tag namespace, never `refs/tags`, which may hold an
   // unpushed local tag (#516).
@@ -55,6 +54,8 @@ export class ReadDrift {
     location: DeployedLocation;
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessContentPort;
+    // The fetch gate, bound to this read's maximum age.
+    fetchHarness: (root: string) => Promise<unknown>;
   };
 
   constructor(deps: ReadDrift["deps"]) {
@@ -100,7 +101,7 @@ export class ReadDrift {
     }
     // Tags must be current before any ref resolves; a failed fetch falls back
     // to the tags on disk.
-    await this.deps.git.fetch(root).catch(() => undefined);
+    await this.deps.fetchHarness(root).catch(() => undefined);
     const origin = await this.deps.git.readOrigin(root);
     if (origin === null) {
       return { pinReadings, packageSkills };

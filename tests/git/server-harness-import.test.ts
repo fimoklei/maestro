@@ -13,7 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter } from "@maestro/core";
+import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
@@ -310,7 +310,9 @@ describe("harness import HTTP route", () => {
       "Fixed in place.",
     );
     expect(await readdir(held)).toEqual(["SKILL.md"]);
-    const trees = await new HarnessGitAdapter().readMovementTrees(harnessRoot);
+    const trees = await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).readMovementTrees(harnessRoot);
     expect(trees?.working["code-review"]).not.toBe(trees?.local["code-review"]);
   }, 30_000);
 
@@ -381,7 +383,9 @@ describe("harness import HTTP route", () => {
     expect(await readFile(join(held, "SKILL.md"), "utf8")).toContain(
       "Fixed in place.",
     );
-    const trees = await new HarnessGitAdapter().readMovementTrees(harnessRoot);
+    const trees = await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).readMovementTrees(harnessRoot);
     expect(trees?.working.caveman).not.toBe(trees?.local.caveman);
   }, 30_000);
 

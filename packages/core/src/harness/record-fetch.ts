@@ -6,7 +6,7 @@ import type {
 } from "./read-harness-state";
 
 export const recordFetch = async (
-  deps: { git: HarnessGitPort; freshness: HarnessFreshnessPort },
+  deps: { git: Pick<HarnessGitPort, "fetch">; freshness: HarnessFreshnessPort },
   root: string,
   at: Date,
 ): Promise<HarnessFetchOutcome> => {

@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter } from "@maestro/core";
+import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
@@ -54,7 +54,9 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     await git(root, "push", "--tags", "origin", "HEAD:main");
     // One adapter fetch sets origin/HEAD and Maestro's tag namespace, as for
     // an author who opened the Harness once.
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
   }, 30_000);
 
   afterEach(async () => {
@@ -161,7 +163,8 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
       ORIGIN_URL,
     );
 
-    const failed = await refreshHarness(app);
+    // A second app over the same disk: the first would reuse its recent fetch.
+    const failed = await refreshHarness(makeApp(root));
 
     expect(failed.freshness.outcome).toBe("fetch-failed");
     expect(failed.freshness.lastFetchedAt).toBe(
