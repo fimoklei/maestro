@@ -178,6 +178,7 @@ export {
   type ReleasePlanError,
 } from "./harness/read-harness-state";
 export { RELEASE_TAG_PATTERN } from "./harness/release-tag";
+export { ReleasedContentReader } from "./harness/released-content";
 export {
   RestoreSkill,
   type RestoreSkillError,
