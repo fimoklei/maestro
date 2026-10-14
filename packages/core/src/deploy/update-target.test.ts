@@ -7,7 +7,7 @@ import {
   SUPPORTED_TOOLS,
   type SupportedTool,
 } from "./deploy-tools";
-import { inMemoryDeployedContent } from "./deployed-content.fake";
+import { inMemoryDeployedContent, placedOnRead } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import { copyPaths, selectionWorld } from "./selection-writer-fake";
@@ -95,12 +95,15 @@ function subject(options: Options = {}) {
   const copyTarget = options.target ?? REPO;
   const copies = inMemoryDeployedContent();
   const placed = new Set<string>();
-  const place = (name: string) => {
-    if (!placed.has(name)) {
-      placed.add(name);
-      copies.setCopy(copyTarget, name, options.copies?.[name] ?? "clean");
+  const onRead = placedOnRead(copies.content, (_target, name) => {
+    if (placed.has(name)) {
+      return false;
     }
-  };
+    placed.add(name);
+    copies.setCopy(copyTarget, name, options.copies?.[name] ?? "clean");
+    return true;
+  });
+  const place = (name: string) => onRead.place(copyTarget, name);
   for (const name of Object.keys(options.copies ?? {})) {
     place(name);
   }
@@ -113,14 +116,11 @@ function subject(options: Options = {}) {
   }
   // Before the write the recorded baseline decides; afterwards a copy is clean
   // while the deployment record lists every file the write placed.
-  const classify = async (input: {
-    name: string;
-    tools?: readonly SupportedTool[];
-    release?: string;
-  }) => {
+  const classify = async (
+    input: Omit<Parameters<typeof copies.content.classify>[0], "target">,
+  ) => {
     if (world.calls.length === 0) {
-      place(input.name);
-      return copies.content.classify({ target: copyTarget, ...input });
+      return onRead.classify({ ...input, target: copyTarget });
     }
     if (options.unreadableAfter === input.name) {
       throw new Error("EACCES: permission denied");
@@ -141,7 +141,7 @@ function subject(options: Options = {}) {
     selection: world.writer,
     deployedCleanup: world.cleanup,
     deployedContent: {
-      readLockfile: (target) => copies.content.readLockfile(target),
+      readLockfile: onRead.readLockfile,
       classify,
     },
     canonicalPath: async (path) => path,
@@ -165,7 +165,7 @@ function subject(options: Options = {}) {
     },
     copyGuard: new LocalCopyGuard({
       content: {
-        readLockfile: (target) => copies.content.readLockfile(target),
+        readLockfile: onRead.readLockfile,
         classify,
         contentDigest: async (input) => {
           place(input.name);

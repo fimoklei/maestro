@@ -103,15 +103,12 @@ const buildDeps = (
     },
     deployedContent: {
       readLockfile: (target: DeployTarget) => noCopies.readLockfile(target),
-      classify: async (input: {
-        target: DeployTarget;
-        name: string;
-        tools?: readonly SupportedTool[];
-        lockfile?: unknown;
-      }) => {
+      classify: async (
+        input: Parameters<DeployedContentPort["classify"]>[0],
+      ) => {
         const { lockfile: _shared, ...asked } = input;
         classified.push(asked);
-        return noCopies.classify(asked);
+        return noCopies.classify(input);
       },
       contentDigest: async (input: {
         target: DeployTarget;

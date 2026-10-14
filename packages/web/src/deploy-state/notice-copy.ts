@@ -64,7 +64,7 @@ const MANIFEST_OTHER_SHAPE =
 
 const FILES_MISSING = "apm reported success, but some files are missing.";
 
-// The driver's write bound; a hung apm stops here (apm-cli-driver.ts).
+// Must match the server's timeout on an apm write.
 const STOPPED_AFTER = "stopped after 5 minutes.";
 
 const FILES_MAY_REMAIN = "Some of the skill's files may still be on disk.";

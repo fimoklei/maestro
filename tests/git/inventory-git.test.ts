@@ -339,6 +339,43 @@ describe("the pre-deploy sync through the Harness fetch gate", () => {
     ).resolves.toBe(false);
   });
 
+  it("finds a release whose commit no remote branch reaches", async () => {
+    await git(author, "checkout", "--detach");
+    await addSkill(author, "orphan");
+    await git(author, "add", ".");
+    await git(author, "commit", "-m", "add orphan skill off any branch");
+    await git(author, "tag", "v0.3.0");
+    await git(author, "push", "origin", "v0.3.0");
+
+    await syncBeforeDeploy();
+
+    await expect(adapter().skillExistsAtTag("v0.3.0", "orphan")).resolves.toBe(
+      true,
+    );
+    await expect(
+      adapter().skillDivergesFromTag("v0.3.0", "orphan"),
+    ).resolves.toBe(true);
+  });
+
+  it("reads a moved release tag at its new commit, not the stale local one", async () => {
+    await git(root, "fetch", "origin", "--tags");
+    await addSkill(author, "fresh");
+    await git(author, "add", ".");
+    await git(author, "commit", "-m", "add fresh skill");
+    await git(author, "tag", "--force", "v0.1.0");
+    await git(author, "push", "origin", "main");
+    await git(author, "push", "--force", "origin", "v0.1.0");
+
+    await syncBeforeDeploy();
+
+    await expect(adapter().skillExistsAtTag("v0.1.0", "fresh")).resolves.toBe(
+      true,
+    );
+    await expect(
+      adapter().skillDivergesFromTag("v0.1.0", "fresh"),
+    ).resolves.toBe(false);
+  });
+
   it("still reports a released skill this clone has neither tracked nor on disk", async () => {
     await addSkill(author, "fresh");
     await git(author, "add", ".");

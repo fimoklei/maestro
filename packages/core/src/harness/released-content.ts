@@ -7,13 +7,18 @@ import {
   HARNESS_SKILLS_DIR,
   harnessSkillSubpath,
 } from "../inventory/harness-layout";
+import { ReuseGate } from "../reuse-gate";
 import type { HarnessSkillTree } from "./skill-movements";
 
+// shortcut: trees, manifests and files stay remembered per commit for the life
+// of the process, with no bound; cap them (least recently used) once a server
+// that reads many releases shows memory growth.
 export class ReleasedContentReader {
-  private readonly trees = new Map<
-    string,
-    Promise<HarnessSkillTree[] | null>
-  >();
+  // Only a full answer is remembered; a failure is asked again next time.
+  private readonly trees = new ReuseGate<HarnessSkillTree[] | null>({
+    now: () => new Date(),
+    keep: (trees) => trees !== null && trees.length > 0,
+  });
   private readonly manifests = new Map<string, string | null>();
   private readonly files = new Map<string, Record<string, string>>();
 
@@ -24,21 +29,11 @@ export class ReleasedContentReader {
     ref: string,
   ): Promise<HarnessSkillTree[] | null> {
     const commit = await resolveCommit(root, ref);
-    if (commit === null) {
-      return null;
-    }
-    const known = this.trees.get(commit);
-    if (known !== undefined) {
-      return known;
-    }
-    const read = readTreesAt(root, commit);
-    this.trees.set(commit, read);
-    const trees = await read;
-    // Only a full answer is remembered; a failure is asked again next time.
-    if (trees === null || trees.length === 0) {
-      this.trees.delete(commit);
-    }
-    return trees;
+    return commit === null
+      ? null
+      : this.trees.run(commit, Number.POSITIVE_INFINITY, () =>
+          readTreesAt(root, commit),
+        );
   }
 
   // Null for a name whose SKILL.md is missing at `ref`, or for every name

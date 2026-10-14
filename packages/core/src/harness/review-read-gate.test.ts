@@ -10,7 +10,7 @@ const ORIGIN = {
   host: "github.com",
   ownerRepo: "fimoklei/agent-harness",
 };
-const OTHER = { host: "github.com", ownerRepo: "fimoklei/other" };
+const ROOT = "/harness";
 const START = Date.parse("2026-08-01T07:00:00.000Z");
 const MAX_AGE = 30_000;
 
@@ -24,6 +24,7 @@ const readOf = (limit: number): HarnessReviewRead => ({
 // A GitHub whose answer changes with every review read it is asked for.
 function build() {
   let now = START;
+  let root: string | undefined = ROOT;
   let next: HarnessReviewRead | null = null;
   let hold: Promise<void> = Promise.resolve();
   const asked = { reviews: 0, viewer: 0 };
@@ -43,13 +44,20 @@ function build() {
     closeRequest: async () => written,
     editRequest: async () => written,
   };
-  const gate = new ReviewReadGate({ review, now: () => new Date(now) });
+  const gate = new ReviewReadGate({
+    review,
+    root: async () => root,
+    now: () => new Date(now),
+  });
   return {
     asked,
     reads: gate.reads(MAX_AGE),
     writes: gate.writes,
     advance: (ms: number) => {
       now += ms;
+    },
+    connect: (path: string | undefined) => {
+      root = path;
     },
     answer: (read: HarnessReviewRead) => {
       next = read;
@@ -101,11 +109,22 @@ describe("ReviewReadGate", () => {
     expect(asked.reviews).toBe(1);
   });
 
-  it("remembers each Harness on its own", async () => {
-    const { asked, reads } = build();
+  it("remembers each Harness root on its own", async () => {
+    const { asked, reads, connect } = build();
     await reads.readReviews(ORIGIN);
 
-    await reads.readReviews(OTHER);
+    connect("/other-harness");
+    await reads.readReviews(ORIGIN);
+
+    expect(asked.reviews).toBe(2);
+  });
+
+  it("reuses nothing while no Harness root resolves", async () => {
+    const { asked, reads, connect } = build();
+    connect(undefined);
+    await reads.readReviews(ORIGIN);
+
+    await reads.readReviews(ORIGIN);
 
     expect(asked.reviews).toBe(2);
   });

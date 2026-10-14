@@ -4,11 +4,6 @@ import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
 import { ReuseGate } from "../reuse-gate";
 import type { OutdatedResult } from "./parse-outdated";
 
-// Thrown inside the gate so a failed read settles nothing.
-class NotReused {
-  constructor(readonly result: OutdatedResult) {}
-}
-
 const keyOf = (target: DeployTarget) =>
   target.kind === "repo" ? `repo:${target.repoPath}` : "global";
 
@@ -24,7 +19,7 @@ export class ReusedOutdated implements ApmDriverPort {
 
   constructor(deps: ReusedOutdated["deps"]) {
     this.deps = deps;
-    this.gate = new ReuseGate({ now: deps.now });
+    this.gate = new ReuseGate({ now: deps.now, keep: (result) => result.ok });
   }
 
   resolveLatestTag(ownerRepo: string) {
@@ -48,20 +43,9 @@ export class ReusedOutdated implements ApmDriverPort {
   }
 
   checkOutdated(target: DeployTarget): Promise<OutdatedResult> {
-    return this.gate
-      .run(keyOf(target), this.deps.maxAgeMs, async () => {
-        const result = await this.deps.apm.checkOutdated(target);
-        if (!result.ok) {
-          throw new NotReused(result);
-        }
-        return result;
-      })
-      .catch((error: unknown) => {
-        if (error instanceof NotReused) {
-          return error.result;
-        }
-        throw error;
-      });
+    return this.gate.run(keyOf(target), this.deps.maxAgeMs, () =>
+      this.deps.apm.checkOutdated(target),
+    );
   }
 
   // A new release changes what Behind means for every Target.

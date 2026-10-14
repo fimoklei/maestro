@@ -4,6 +4,7 @@ import type { SupportedTool } from "./deploy-tools";
 import {
   type CopyStates,
   inMemoryDeployedContent,
+  placedOnRead,
   type ToolCopyState,
 } from "./deployed-content.fake";
 import type { DeployedRefLookup } from "./deployed-ref";
@@ -89,29 +90,26 @@ function buildUseCase(overrides: Overrides = {}) {
   const placed = new Set<string>();
   const placeCopy = (target: DeployTarget, name: string) => {
     const key = `${copies.treeRoot(target)}/${name}`;
-    if (!placed.has(key)) {
-      placed.add(key);
-      copies.setCopy(target, name, copyStatesOf(overrides));
+    if (placed.has(key)) {
+      return false;
     }
+    placed.add(key);
+    copies.setCopy(target, name, copyStatesOf(overrides));
+    return true;
   };
+  const onRead = placedOnRead(copies.content, placeCopy);
   const deployedContent = {
-    readLockfile: (target: DeployTarget) => copies.content.readLockfile(target),
-    classify: async (input: {
-      target: DeployTarget;
-      name: string;
-      tools?: readonly SupportedTool[];
-      release?: string;
-    }) => {
+    readLockfile: onRead.readLockfile,
+    classify: async (input: Parameters<typeof copies.content.classify>[0]) => {
       calls.classifies.push({ target: input.target, tools: input.tools });
-      placeCopy(input.target, input.name);
-      return copies.content.classify(input);
+      return onRead.classify(input);
     },
     contentDigest: async (input: {
       target: DeployTarget;
       name: string;
       tools?: readonly SupportedTool[];
     }) => {
-      placeCopy(input.target, input.name);
+      onRead.place(input.target, input.name);
       return copies.content.contentDigest(input);
     },
     linkedSkillPath: async () => null,

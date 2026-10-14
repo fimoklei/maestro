@@ -18,7 +18,7 @@ export class HarnessFetchGate {
 
   constructor(deps: HarnessFetchGate["deps"]) {
     this.deps = deps;
-    this.gate = new ReuseGate({ now: deps.now });
+    this.gate = new ReuseGate({ now: deps.now, keep: () => true });
   }
 
   fetch(root: string, maxAgeMs: number): Promise<HarnessFetchOutcome> {

@@ -31,7 +31,7 @@ export class InventoryGitAdapter implements InventoryGitPort {
       root,
       "ls-tree",
       "--name-only",
-      tag,
+      await tagRef(root, tag),
       "--",
       harnessSkillSubpath(name),
     ]);
@@ -54,7 +54,16 @@ export class InventoryGitAdapter implements InventoryGitPort {
       // Only exit 1 means a difference; every other failure propagates.
       return await run(
         "git",
-        ["-C", root, "diff-index", "--quiet", "--cached", tag, "--", subtree],
+        [
+          "-C",
+          root,
+          "diff-index",
+          "--quiet",
+          "--cached",
+          await tagRef(root, tag),
+          "--",
+          subtree,
+        ],
         options,
       ).then(
         () => false,
@@ -78,16 +87,11 @@ export class InventoryGitAdapter implements InventoryGitPort {
   ): Promise<Record<string, string> | null> {
     try {
       const root = await this.root();
-      // Maestro's fetched tag first: a release published from Maestro is
-      // pushed, never tagged locally (#1213). The local tag only where the
-      // fetched one is absent, never for a skill the fetched one lacks.
-      const files =
-        (await this.deps.released.skillFiles(
-          root,
-          `${MAESTRO_TAGS}/${tag}`,
-          name,
-        )) ??
-        (await this.deps.released.skillFiles(root, `refs/tags/${tag}`, name));
+      const files = await this.deps.released.skillFiles(
+        root,
+        await tagRef(root, tag),
+        name,
+      );
       return files === null || Object.keys(files).length === 0 ? null : files;
     } catch {
       return null;
@@ -101,4 +105,22 @@ export class InventoryGitAdapter implements InventoryGitPort {
     }
     return root;
   }
+}
+
+// Maestro's fetched tag first: a release published from Maestro is pushed,
+// never tagged locally (#1213), and a moved tag updates only the fetched copy.
+// The local tag only where the fetched one is absent.
+async function tagRef(root: string, tag: string): Promise<string> {
+  const fetched = `${MAESTRO_TAGS}/${tag}`;
+  return run("git", [
+    "-C",
+    root,
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${fetched}^{commit}`,
+  ]).then(
+    () => fetched,
+    () => `refs/tags/${tag}`,
+  );
 }

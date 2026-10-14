@@ -143,7 +143,7 @@ export function composeUseCases(ports: UseCasePorts) {
     // never the raw path, which would run git against something unresolved.
     return await fs.realpath(path).catch(() => undefined);
   };
-  const inventoryGit = git.inventory(inventoryPath);
+  const inventoryGit = git.inventory(harnessRoot);
   // Shared instance, so guard and cleanup agree on a global deploy's lockfile root and tree.
   const deployedLocation = new DeployedLocation(env);
   const canonicalPath = (path: string) => fs.realpath(path);
@@ -214,6 +214,7 @@ export function composeUseCases(ports: UseCasePorts) {
   // Every review write goes through `writes`, so a Proposal action shows at once.
   const reviewGate = new ReviewReadGate({
     review: ports.gh,
+    root: harnessRoot,
     now: () => new Date(),
   });
   // A deploy always fetches, so it never deploys from a stale clone (#666).
@@ -236,7 +237,11 @@ export function composeUseCases(ports: UseCasePorts) {
     fs,
     location: deployedLocation,
     resolveRoot: harnessRoot,
-    git: harnessGit,
+    git: {
+      readOrigin: readHarnessOrigin,
+      readSkillTreesAtTag: (root, tag) =>
+        harnessGit.readSkillTreesAtTag(root, tag),
+    },
     fetchHarness: fetchHarnessForRead,
   });
   // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a

@@ -1,14 +1,17 @@
 // One run per key at a time, and a settled answer reused while it is younger
-// than the caller's maximum age. A rejected run is never reused.
+// than the caller's maximum age. A rejected run, or a value `keep` refuses, is
+// never reused.
 export class ReuseGate<T> {
   private readonly now: () => number;
+  private readonly keep: (value: T) => boolean;
   private readonly running = new Map<string, Promise<T>>();
   private readonly settled = new Map<string, { value: T; at: number }>();
   // Keys whose run in flight started before an invalidation.
   private readonly outdated = new Set<string>();
 
-  constructor(deps: { now: () => Date }) {
+  constructor(deps: { now: () => Date; keep: (value: T) => boolean }) {
     this.now = () => deps.now().getTime();
+    this.keep = deps.keep;
   }
 
   // A maximum age of zero always runs, but still joins a run in flight.
@@ -30,7 +33,11 @@ export class ReuseGate<T> {
     const start = async () => {
       const at = this.now();
       const value = await work();
-      if (this.running.get(key) === running && !this.outdated.has(key)) {
+      if (
+        this.running.get(key) === running &&
+        !this.outdated.has(key) &&
+        this.keep(value)
+      ) {
         this.settled.set(key, { value, at });
       }
       return value;
