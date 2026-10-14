@@ -264,8 +264,9 @@ function factsOfKind(
 }
 
 function normalize(path: string): string {
-  const trimmed = path.replace(/\/+$/, "");
-  return trimmed === "" ? "/" : trimmed;
+  let end = path.length;
+  while (end > 0 && path[end - 1] === "/") end--;
+  return end === 0 ? "/" : path.slice(0, end);
 }
 
 function isWithin(child: string, parent: string): boolean {
