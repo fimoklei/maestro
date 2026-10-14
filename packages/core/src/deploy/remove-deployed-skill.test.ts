@@ -830,16 +830,13 @@ describe("RemoveDeployedSkill on the global target", () => {
     );
   });
 
-  it("reports a tool whose check threw as unchecked, and still answers for the rest", async () => {
-    const { useCase } = buildUseCase({
+  it("reports a tool whose copy cannot be read as unchecked, and still answers for the rest", async () => {
+    const { useCase, copies } = buildUseCase({
       detectedTools: ["claude", "codex"],
-      deployedStateForScope: (tools) => {
-        if (tools?.[0] === "claude") {
-          throw new Error("disk exploded");
-        }
-        return "clean";
-      },
     });
+    copies.tree.setUnreadable(
+      `${copies.treeRoot({ kind: "global" })}/.claude/skills/tdd`,
+    );
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
       globalPreflightOk([
