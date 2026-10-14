@@ -22,21 +22,23 @@ export type DeployTarget =
   | { kind: "repo"; repoPath: string }
   | { kind: "global" };
 
-// "auth-required" is apm's two fixed phrases only; every other apm or git error
-// is "failed".
+// "auth-required" is apm's two fixed phrases only; "timed-out" is a hung apm
+// the driver stopped; every other apm or git error is "failed".
 export type ResolveLatestTagResult =
   | { ok: true; tag: string }
-  | { ok: false; reason: "no-tag" | "auth-required" | "failed" };
+  | { ok: false; reason: "no-tag" | "auth-required" | "timed-out" | "failed" };
 
 // "failed" stays unclassified: a refusal apm did not name is never dressed up
 // as a diagnosed one (#180).
 export type DeploySkillDriverResult =
   | { ok: true }
-  | { ok: false; reason: "destination-symlinked" | "failed" };
+  | { ok: false; reason: "destination-symlinked" | "timed-out" | "failed" };
 
-// No failure reason: every uninstall outcome exits 0 and the only signal is the
-// positive marker.
-export type RemoveSkillDriverResult = { ok: true } | { ok: false };
+// Only a timeout has a reason: every uninstall outcome exits 0 and the only
+// signal is the positive marker.
+export type RemoveSkillDriverResult =
+  | { ok: true }
+  | { ok: false; reason?: "timed-out" };
 
 export type ApmDriverPort = {
   resolveLatestTag(ownerRepo: string): Promise<ResolveLatestTagResult>;
@@ -170,6 +172,8 @@ export type DeploySkillError =
   | "no-supported-tool"
   | "auth-required"
   | "destination-symlinked"
+  | "tag-check-timed-out"
+  | "deploy-timed-out"
   | "deploy-failed";
 
 export type DeploySkillResult =
@@ -456,7 +460,9 @@ export class DeploySkill {
               ? "auth-required"
               : tagResult.reason === "no-tag"
                 ? "no-published-tag"
-                : "deploy-failed",
+                : tagResult.reason === "timed-out"
+                  ? "tag-check-timed-out"
+                  : "deploy-failed",
           );
         }
         tag = tagResult.tag;
@@ -685,7 +691,9 @@ export class DeploySkill {
           ? "manifest-not-recognised"
           : error === "apply-incomplete"
             ? "deploy-incomplete"
-            : "deploy-failed",
+            : error === "apply-timed-out"
+              ? "deploy-timed-out"
+              : "deploy-failed",
     };
   }
 }

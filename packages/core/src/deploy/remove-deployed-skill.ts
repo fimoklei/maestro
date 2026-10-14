@@ -58,6 +58,9 @@ export type RemoveDeployedSkillError =
   | "manifest-not-recognised"
   | "operation-unfinished"
   | "remove-incomplete"
+  // Kept apart: only the release-following path keeps an operation to retry.
+  | "remove-timed-out"
+  | "remove-timed-out-unrecorded"
   | "remove-failed";
 
 // Kept apart: "nothing to compare against" and "could not check" must not
@@ -590,9 +593,7 @@ export class RemoveDeployedSkill {
       const failure =
         plan.kind === "root"
           ? await this.narrowSelection(plan, input, lockKey, detected)
-          : (await this.deps.apm.removeSkill({ target, ref: plan.ref })).ok
-            ? null
-            : "remove-failed";
+          : await this.uninstallPackage(target, plan.ref);
       if (failure !== null) {
         return {
           ok: false,
@@ -652,7 +653,23 @@ export class RemoveDeployedSkill {
       ? "manifest-not-recognised"
       : applied.error === "apply-incomplete"
         ? "remove-incomplete"
-        : "remove-failed";
+        : applied.error === "apply-timed-out"
+          ? "remove-timed-out"
+          : "remove-failed";
+  }
+
+  // Null when apm proved the removal.
+  private async uninstallPackage(
+    target: DeployTarget,
+    ref: string,
+  ): Promise<RemoveDeployedSkillError | null> {
+    const removed = await this.deps.apm.removeSkill({ target, ref });
+    if (removed.ok) {
+      return null;
+    }
+    return removed.reason === "timed-out"
+      ? "remove-timed-out-unrecorded"
+      : "remove-failed";
   }
 
   private async probeOutcome(

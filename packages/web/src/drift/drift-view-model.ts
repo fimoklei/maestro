@@ -15,6 +15,8 @@ export type DriftStatus =
   | "up-to-date"
   | "unknown"
   | "unverified"
+  // The check hung and was stopped; reads as unknown, with its own hint.
+  | "timed-out"
   | "pending";
 
 // "foreign" is never produced by rollUp: a caller derives it from `empty` plus
@@ -37,6 +39,7 @@ type DriftView =
   | { status: "pending" }
   | { status: "unknown" }
   | { status: "unverified" }
+  | { status: "timed-out" }
   | { status: "ready"; behind: ReadDriftEntry[] };
 
 export const lagsPin = (status: DriftStatus): boolean =>
@@ -44,6 +47,8 @@ export const lagsPin = (status: DriftStatus): boolean =>
 
 export interface DriftViewModel {
   skillStatus(name: string): DriftStatus;
+  /** The whole check hung and was stopped. */
+  timedOut: boolean;
   latest(name: string): string | undefined;
   targetIndicator(deployed: DeployedView): TargetDriftIndicator;
   driftCount(deployed: DeployedView): number;
@@ -78,6 +83,9 @@ function mapDriftQuery(
   if (query.data.reason === "unverified") {
     return { status: "unverified" };
   }
+  if (query.data.reason === "timed-out") {
+    return { status: "timed-out" };
+  }
   return { status: "unknown" };
 }
 
@@ -90,6 +98,8 @@ function fromDriftView(view: DriftView): DriftViewModel {
         return "unknown";
       case "unverified":
         return "unverified";
+      case "timed-out":
+        return "timed-out";
       case "ready":
         return (
           view.behind.find((entry) => entry.name === name)?.reading ??
@@ -121,6 +131,7 @@ function fromDriftView(view: DriftView): DriftViewModel {
       case "pending":
         return { state: "pending", behindCount: 0 };
       case "unknown":
+      case "timed-out":
         return { state: "unknown", behindCount: 0 };
       case "unverified":
         return { state: "unverified", behindCount: 0 };
@@ -195,6 +206,7 @@ function fromDriftView(view: DriftView): DriftViewModel {
 
   return {
     skillStatus,
+    timedOut: view.status === "timed-out",
     latest,
     targetIndicator,
     driftCount,

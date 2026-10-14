@@ -73,6 +73,8 @@ type RunFn = (
 const READ_TIMEOUT_MS = 60_000;
 const WRITE_TIMEOUT_MS = 300_000;
 
+class ApmTimedOut extends Error {}
+
 export class ApmCliDriver implements ApmDriverPort {
   private readonly log: (entry: SanitizedLogEntry) => void;
   private readonly run: RunFn;
@@ -106,7 +108,12 @@ export class ApmCliDriver implements ApmDriverPort {
       // The raw error may carry a token in a git URL: only the reason leaves.
       return {
         ok: false,
-        reason: hasAuthPhrase(error) ? "auth-required" : "failed",
+        reason:
+          error instanceof ApmTimedOut
+            ? "timed-out"
+            : hasAuthPhrase(error)
+              ? "auth-required"
+              : "failed",
       };
     }
     this.log({
@@ -141,6 +148,9 @@ export class ApmCliDriver implements ApmDriverPort {
       );
       output = `${stdout}\n${stderr}`;
     } catch (error) {
+      if (error instanceof ApmTimedOut) {
+        return { ok: false, reason: "timed-out" };
+      }
       // Classify from the rejected run's own output, not the exit code (#183).
       return { ok: false, reason: classifyInstallFailure(outputOf(error)) };
     }
@@ -182,6 +192,9 @@ export class ApmCliDriver implements ApmDriverPort {
       );
       output = `${stdout}\n${stderr}`;
     } catch (error) {
+      if (error instanceof ApmTimedOut) {
+        return { ok: false, reason: "timed-out" };
+      }
       output = outputOf(error);
     }
     if (!removeSucceeded(output)) {
@@ -215,9 +228,11 @@ export class ApmCliDriver implements ApmDriverPort {
         durationMs: Date.now() - started,
       });
       return parseOutdated(stdout);
-    } catch {
+    } catch (error) {
       // Not logged: the raw apm error may carry a token.
-      return { ok: false };
+      return error instanceof ApmTimedOut
+        ? { ok: false, reason: "timed-out" }
+        : { ok: false };
     }
   }
 
@@ -230,7 +245,7 @@ export class ApmCliDriver implements ApmDriverPort {
     const controller = new AbortController();
     const timedOut = new Promise<never>((_, reject) => {
       controller.signal.addEventListener("abort", () =>
-        reject(new Error("apm timed out")),
+        reject(new ApmTimedOut()),
       );
     });
     const timer = setTimeout(() => controller.abort(), timeoutMs);

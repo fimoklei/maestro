@@ -851,6 +851,37 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "deploy-failed" });
   });
 
+  it("reports deploy-timed-out for a timed-out install", async () => {
+    const { deps, world } = buildDeps();
+    world.refuseWith({ ok: false, reason: "timed-out" });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-timed-out" });
+  });
+
+  it("reports tag-check-timed-out and deploys nothing when the release lookup times out", async () => {
+    const { deps, deployed } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => ({ ok: false, reason: "timed-out" }),
+        deploySkill: async () => {
+          throw new Error("must not deploy after a timed-out resolve");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "tag-check-timed-out" });
+    expect(deployed).toEqual([]);
+  });
+
   it("falls back to deploy-failed for a generic resolve failure", async () => {
     const { deps, deployed } = buildDeps({
       apm: {
