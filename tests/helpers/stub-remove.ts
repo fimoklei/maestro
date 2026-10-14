@@ -19,6 +19,7 @@ export const stubRemove = (deps: {
     deployedContent: {
       classify: async () => "clean",
       contentDigest: async () => null,
+      linkedSkillPath: async () => null,
     },
     apm: { removeSkill: async () => ({ ok: true as const }) },
     deployedCleanup: { removeSkillTargets: async () => undefined },

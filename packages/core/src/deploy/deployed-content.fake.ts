@@ -236,6 +236,9 @@ export function copiesIn(states: CopyStates | ((name: string) => CopyStates)) {
         place(input.target, input.name);
         return fake.content.contentDigest(input);
       },
+      linkedSkillPath: (
+        input: Parameters<typeof fake.content.linkedSkillPath>[0],
+      ) => fake.content.linkedSkillPath(input),
     },
   };
 }

@@ -53,6 +53,10 @@ function guardOver(
         place(input.target, input.name);
         return fake.content.contentDigest(input);
       },
+      linkedSkillPath: async (input) => {
+        place(input.target, input.name);
+        return fake.content.linkedSkillPath(input);
+      },
     },
   });
   return { guard, calls, fake };
@@ -65,8 +69,8 @@ describe("LocalCopyGuard", () => {
     const check = await guard.check({ ...scope, names: ["tdd", "grill"] });
 
     expect(check.findings).toEqual([
-      { name: "tdd", tool: null, verdict: "clean" },
-      { name: "grill", tool: null, verdict: "clean" },
+      { name: "tdd", tool: null, verdict: "clean", linkedPath: null },
+      { name: "grill", tool: null, verdict: "clean", linkedPath: null },
     ]);
     expect(guard.admits(scope, check)).toEqual({ ok: true });
   });
@@ -208,7 +212,7 @@ describe("LocalCopyGuard", () => {
     const check = await guard.check({ ...scope, names: ["tdd"] });
 
     expect(check.findings).toEqual([
-      { name: "tdd", tool: null, verdict: "unreadable" },
+      { name: "tdd", tool: null, verdict: "unreadable", linkedPath: null },
     ]);
   });
 
@@ -240,8 +244,8 @@ describe("LocalCopyGuard", () => {
       { name: "tdd", tools: ["codex"] },
     ]);
     expect(check.findings).toEqual([
-      { name: "tdd", tool: "claude", verdict: "clean" },
-      { name: "tdd", tool: "codex", verdict: "local-edits" },
+      { name: "tdd", tool: "claude", verdict: "clean", linkedPath: null },
+      { name: "tdd", tool: "codex", verdict: "local-edits", linkedPath: null },
     ]);
     const refused = guard.admits(scope, check);
     expect(refused.ok).toBe(false);
@@ -281,6 +285,7 @@ describe("LocalCopyGuard", () => {
           return copy.content.classify(input);
         },
         contentDigest: async (input) => copy.content.contentDigest(input),
+        linkedSkillPath: async (input) => copy.content.linkedSkillPath(input),
       },
     });
 
@@ -291,6 +296,38 @@ describe("LocalCopyGuard", () => {
       release: "v0.3.4",
     });
     expect(releases).toEqual(["v0.3.4"]);
+  });
+
+  it("names the linked skill folder of each copy it checks", async () => {
+    const copies = deployedCopies([
+      { target: globalTarget, name: "tdd", state: { codex: "not-deployed" } },
+      { target: globalTarget, name: "grill", state: "clean" },
+    ]);
+    copies.tree.symlink("/home/fake/.agents/skills/tdd", "/elsewhere/tdd");
+    const guard = new LocalCopyGuard({ content: copies.content });
+    const check = await guard.check({
+      write: "update",
+      target: globalTarget,
+      names: ["tdd", "grill"],
+      tools: ["claude", "codex"],
+    });
+
+    expect(
+      check.findings.map(({ name, tool, linkedPath }) => ({
+        name,
+        tool,
+        linkedPath,
+      })),
+    ).toEqual([
+      { name: "tdd", tool: "claude", linkedPath: null },
+      {
+        name: "tdd",
+        tool: "codex",
+        linkedPath: "/home/fake/.agents/skills/tdd",
+      },
+      { name: "grill", tool: "claude", linkedPath: null },
+      { name: "grill", tool: "codex", linkedPath: null },
+    ]);
   });
 
   it("takes a malformed receipt as no consent at all", async () => {

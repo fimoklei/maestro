@@ -1599,6 +1599,45 @@ describe("DeploySkill.executeBatch", () => {
     expect(deployed.map((call) => call.skills)).toEqual([["tdd"]]);
   });
 
+  it("leaves a linked skill out of the receipt a held row's own deploy accepts", async () => {
+    // docs is refused over its link, so a single deploy of review never reads
+    // docs' edited copy.
+    const copies = editedCopies({ review: "diverged", docs: "diverged" });
+    const { deps } = buildDeps({
+      inventory: skills("review", "docs"),
+      deployedContent: {
+        classify: (input) => copies.classify(input),
+        contentDigest: (input) => copies.contentDigest(input),
+        linkedSkillPath: async ({ name }) =>
+          name === "docs" ? "/registered/repo/.claude/skills/docs" : null,
+      },
+    });
+    const deploy = new DeploySkill(deps);
+
+    const report = await deploy.executeBatch({
+      names: ["review", "docs"],
+      target: repo("/registered/repo"),
+    });
+    const single = await deploy.execute({
+      type: "skill",
+      name: "review",
+      target: repo("/registered/repo"),
+      confirmedCopyReceipt: report.attention[0]?.copyReceipt,
+    });
+
+    expect(report.failed).toEqual([
+      {
+        error: "destination-symlinked",
+        names: ["docs"],
+        linkedPath: "/registered/repo/.claude/skills/docs",
+      },
+    ]);
+    expect(single).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "review", version: "v0.5.1" },
+    });
+  });
+
   it("carries the linked path and the Update target recovery a single deploy carries", async () => {
     // Routing a single Deploy through bulk once dropped both (aae48156): a
     // skill missing from the followed release must stay attention, so the

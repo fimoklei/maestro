@@ -44,6 +44,7 @@ export const stubRetryOperation = (deps: {
     deployedContent: {
       classify: async () => "not-deployed",
       contentDigest: async () => null,
+      linkedSkillPath: async () => null,
     },
     toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
     canonicalPath: async (path) => path,

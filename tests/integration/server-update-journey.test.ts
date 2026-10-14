@@ -126,6 +126,10 @@ describe("update HTTP journey", () => {
       readReleasedSkills: async () => [],
     });
     const locks = new InFlightLocks();
+    const onDisk = new DeployedContentAdapter({
+      fs: new NodeCopyTreeFs(),
+      location: rootPackageLocation(join(home, ".apm")),
+    });
     const apm = rootPackageApm({
       globalRoot: join(home, ".apm"),
       ...(options?.lands === undefined ? {} : { lands: options.lands }),
@@ -170,6 +174,7 @@ describe("update HTTP journey", () => {
           content: {
             classify: async () => options?.copy ?? "clean",
             contentDigest: async () => null,
+            linkedSkillPath: (input) => onDisk.linkedSkillPath(input),
           },
         }),
         selection,
@@ -177,10 +182,7 @@ describe("update HTTP journey", () => {
           location: rootPackageLocation(join(home, ".apm")),
         }),
         // Read from what apm just wrote, never stubbed (#954).
-        deployedContent: new DeployedContentAdapter({
-          fs: new NodeCopyTreeFs(),
-          location: rootPackageLocation(join(home, ".apm")),
-        }),
+        deployedContent: onDisk,
         canonicalPath: async (path: string) => path,
         locks,
       }),

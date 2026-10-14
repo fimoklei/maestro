@@ -116,6 +116,7 @@ describe("the deploy-state read after a removal", () => {
       deployedContent: {
         classify: async () => "clean" as const,
         contentDigest: async () => null,
+        linkedSkillPath: async () => null,
       },
       apm: {
         removeSkill: async ({ target, ref }) => {
