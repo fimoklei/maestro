@@ -61,7 +61,15 @@ const at = (rel: string) => `${FAKE_REPO}/${rel}`;
 const classify = (
   content: ReturnType<typeof adapterOn>["content"],
   extra: { tools?: ("claude" | "codex")[]; release?: string } = {},
-) => content.classify({ target: fakeRepoTarget, name: "tdd", ...extra });
+) =>
+  content.readLockfile(fakeRepoTarget).then((lockfile) =>
+    content.classify({
+      target: fakeRepoTarget,
+      name: "tdd",
+      lockfile,
+      ...extra,
+    }),
+  );
 
 // A lockfile the test writes by hand, when the shape is the point.
 const writeYaml = (fake: ReturnType<typeof adapterOn>, yaml: string) =>
@@ -560,7 +568,11 @@ describe("DeployedContentAdapter, global target", () => {
     );
 
     await expect(
-      content.classify({ target: { kind: "global" }, name: "tdd" }),
+      content.classify({
+        target: { kind: "global" },
+        name: "tdd",
+        lockfile: await content.readLockfile({ kind: "global" }),
+      }),
     ).resolves.toBe("clean");
   });
 });

@@ -6,7 +6,8 @@ import {
   copiesIn,
   inMemoryDeployedContent,
 } from "../deploy/deployed-content.fake";
-import type { DeployTarget } from "../index";
+import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
+import { DeployedContentAdapter, type DeployTarget } from "../index";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import {
@@ -758,6 +759,54 @@ describe("GlobalDeployStateReader on a root-package target", () => {
 });
 
 describe("DeployStateReader copy chips", () => {
+  it("reads the lockfile once, however many skills it classifies", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+      ".claude/skills/jobs/SKILL.md",
+    ];
+    let lockfileReads = 0;
+    const counted = (path: string) => {
+      if (path === LOCKFILE) lockfileReads++;
+    };
+    const tree = new (class extends InMemoryCopyTree {
+      override openFollowingLinks(path: string) {
+        counted(path);
+        return super.openFollowingLinks(path);
+      }
+    })();
+    tree.write(
+      LOCKFILE,
+      lockfile(rootPackageEntry("v0.3.2", files, ["tdd", "grill", "jobs"])),
+    );
+    for (const [path, body] of Object.entries(onDisk(REPO, files))) {
+      tree.write(path, body);
+    }
+    const disk = tree.fileSystem();
+    const reader = new DeployStateReader({
+      fs: {
+        ...disk,
+        readFile: (path) => {
+          counted(path);
+          return disk.readFile(path);
+        },
+      },
+      content: new DeployedContentAdapter({
+        location: { treeRoot: () => REPO, lockfilePath: () => LOCKFILE },
+        fs: tree,
+      }),
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result.ok && result.primitives.map((p) => p.copy)).toEqual([
+      "unverified",
+      "unverified",
+      "unverified",
+    ]);
+    expect(lockfileReads).toBe(1);
+  });
+
   it("calls the content port as a method, so an adapter keeps its own state", async () => {
     // The real adapter, with tdd's copy edited on disk: a detached method call
     // would lose its state (#949).

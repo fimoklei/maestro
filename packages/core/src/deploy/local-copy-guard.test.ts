@@ -41,6 +41,7 @@ function guardOver(
   };
   const guard = new LocalCopyGuard({
     content: {
+      readLockfile: (target) => fake.content.readLockfile(target),
       classify: async (input) => {
         calls.push({ name: input.name, tools: input.tools });
         if (states[`${input.name}:${input.tools?.[0] ?? ""}`] === "throws") {
@@ -280,6 +281,7 @@ describe("LocalCopyGuard", () => {
     ]);
     const guard = new LocalCopyGuard({
       content: {
+        readLockfile: (target) => copy.content.readLockfile(target),
         classify: async (input) => {
           releases.push(input.release);
           return copy.content.classify(input);
