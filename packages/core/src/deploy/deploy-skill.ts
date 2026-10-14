@@ -463,22 +463,20 @@ export class DeploySkill {
       }
       await this.deps.inventoryGit.syncBeforeDeploy();
 
-      const candidates: string[] = [];
+      const tagged: string[] = [];
       for (const name of known) {
         const refusal = await this.nameRefusal(
           name,
-          target,
           tag,
           current.kind === "root",
-          globalTools,
         );
         if (refusal === null) {
-          candidates.push(name);
+          tagged.push(name);
         } else {
           results.set(name, refusal);
         }
       }
-      if (candidates.length === 0) {
+      if (tagged.length === 0) {
         return results;
       }
 
@@ -487,12 +485,43 @@ export class DeploySkill {
       // all. A copy equal to this release is not an edit (#952).
       const deployed = current.kind === "root" ? current.deployed : [];
       const scope = { write: "deploy", target } as const;
-      const check = await this.copyGuard.check({
-        ...scope,
-        names: union(deployed, candidates),
-        ...toolScope,
-        release: tag,
-      });
+      const checkOver = (names: readonly string[]) =>
+        this.copyGuard.check({
+          ...scope,
+          names: union(deployed, names),
+          ...toolScope,
+          release: tag,
+        });
+      let check = await checkOver(tagged);
+      // A root-package install skips a symlinked destination and still reports
+      // success, so the link is refused here.
+      const candidates: string[] = [];
+      for (const name of tagged) {
+        const linkedPath = check.findings.find(
+          (finding) => finding.name === name && finding.linkedPath !== null,
+        )?.linkedPath;
+        if (linkedPath) {
+          results.set(name, {
+            ok: false,
+            error: "destination-symlinked",
+            linkedPath,
+          });
+        } else {
+          candidates.push(name);
+        }
+      }
+      if (candidates.length === 0) {
+        return results;
+      }
+      // A refused name outside the Selection is no copy at risk, so it must
+      // not bind the receipt a later single deploy checks.
+      if (
+        tagged.some(
+          (name) => !candidates.includes(name) && !deployed.includes(name),
+        )
+      ) {
+        check = await checkOver(candidates);
+      }
       const admitted = this.copyGuard.admits(scope, check, receipt);
       const held = admitted.ok
         ? []
@@ -589,10 +618,8 @@ export class DeploySkill {
   // Null lets the name into the install.
   private async nameRefusal(
     name: string,
-    target: DeployTarget,
     tag: string,
     followsRelease: boolean,
-    tools: readonly SupportedTool[] | undefined,
   ): Promise<DeploySkillResult | null> {
     if (!(await this.deps.inventoryGit.skillExistsAtTag(tag, name))) {
       return {
@@ -603,16 +630,7 @@ export class DeploySkill {
     if (await this.deps.inventoryGit.skillDivergesFromTag(tag, name)) {
       return { ok: false, error: "local-diverged-from-tag" };
     }
-    // A root-package install skips a symlinked destination and still reports
-    // success, so the link is refused here.
-    const linkedPath = await this.deps.deployedContent.linkedSkillPath({
-      target,
-      name,
-      tools,
-    });
-    return linkedPath === null
-      ? null
-      : { ok: false, error: "destination-symlinked", linkedPath };
+    return null;
   }
 
   // A blocked deployed copy holds every name, since the one install rewrites

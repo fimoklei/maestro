@@ -45,6 +45,7 @@ const CLEAN_COPIES = {
     name,
     tool: null,
     verdict: "clean" as const,
+    linkedPath: null,
   })),
   digest: null,
 };
@@ -125,15 +126,7 @@ function subject(options: Options = {}) {
   const update = new UpdateTarget({
     selection: world.writer,
     deployedCleanup: world.cleanup,
-    deployedContent: {
-      classify,
-      linkedSkillPath: async (input) =>
-        options.linked !== undefined &&
-        input.name === options.linked.name &&
-        (input.tools === undefined || input.tools.includes(options.linked.tool))
-          ? options.linked.path
-          : null,
-    },
+    deployedContent: { classify },
     canonicalPath: async (path) => path,
     locks,
     registry: { isRegistered: async () => options.registered ?? true },
@@ -160,6 +153,13 @@ function subject(options: Options = {}) {
           place(input.name);
           return copies.content.contentDigest({ ...input, target: copyTarget });
         },
+        linkedSkillPath: async (input) =>
+          options.linked !== undefined &&
+          input.name === options.linked.name &&
+          (input.tools === undefined ||
+            input.tools.includes(options.linked.tool))
+            ? options.linked.path
+            : null,
       },
     }),
   });

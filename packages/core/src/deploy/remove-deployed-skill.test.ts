@@ -113,6 +113,7 @@ function buildUseCase(overrides: Overrides = {}) {
       placeCopy(input.target, input.name);
       return copies.content.contentDigest(input);
     },
+    linkedSkillPath: async () => null,
   };
   const useCase = new RemoveDeployedSkill({
     registry: {
@@ -1185,6 +1186,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       contentDigest: (
         input: Parameters<typeof copies.content.contentDigest>[0],
       ) => copies.content.contentDigest(input),
+      linkedSkillPath: async () => null,
     };
     const useCase = new RemoveDeployedSkill({
       registry: { isRegistered: async () => false },
@@ -1236,6 +1238,7 @@ describe("RemoveDeployedSkill.preflight", () => {
             throw new Error("disk exploded");
           },
           contentDigest: async () => null,
+          linkedSkillPath: async () => null,
         },
       }),
       deployedContent: {
@@ -1243,6 +1246,7 @@ describe("RemoveDeployedSkill.preflight", () => {
           throw new Error("disk exploded");
         },
         contentDigest: async () => null,
+        linkedSkillPath: async () => null,
       },
       apm: { removeSkill: async () => ({ ok: true }) },
       deployedCleanup: { removeSkillTargets: async () => undefined },

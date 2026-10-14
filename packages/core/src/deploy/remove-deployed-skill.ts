@@ -232,7 +232,10 @@ export class RemoveDeployedSkill {
     copyGuard?: Pick<LocalCopyGuard, "check">;
     // Post-removal probe: tells an absent copy from a clean one, which the
     // guard's verdicts collapse.
-    deployedContent: Pick<DeployedContentPort, "classify" | "contentDigest">;
+    deployedContent: Pick<
+      DeployedContentPort,
+      "classify" | "contentDigest" | "linkedSkillPath"
+    >;
     apm: Pick<ApmDriverPort, "removeSkill">;
     // The only way to clear a copy apm left behind: a bare `apm uninstall -g`
     // deletes beyond its own lockfile (#339).
