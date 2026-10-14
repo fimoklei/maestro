@@ -1,4 +1,10 @@
 // Only what crosses the package boundary; keep core-internal exports off it.
+
+export {
+  composeUseCases,
+  type UseCasePorts,
+  type UseCases,
+} from "./compose-use-cases";
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { SelectionWriter } from "./deploy/apply-selection";
 export {
@@ -208,6 +214,7 @@ export {
   type ScaffoldHarnessError,
 } from "./inventory/scaffold-harness";
 export { ScaffoldOffers } from "./inventory/scaffold-offers";
+export { nodeUseCasePorts } from "./node-use-case-ports";
 export { ConfigStore } from "./registry/config-store";
 export type { FileSystemPort } from "./registry/file-system";
 export { NodeFileSystem } from "./registry/node-file-system";
