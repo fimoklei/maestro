@@ -3,35 +3,10 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  ApmCliDriver,
-  CheckVersionDrift,
-  DeployedCleanupAdapter,
-  DeployedContentAdapter,
-  DeployedLocation,
-  DeployedRefAdapter,
-  InFlightLocks,
-  InventoryReader,
-  NodeCopyTreeFs,
-  NodeFileSystem,
-  RemoveDeployedSkill,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import { ApmCliDriver } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
+import { nodeApp } from "../helpers/node-app";
 import { makeRepoDir } from "../helpers/repo-dir";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift, withoutContentCheck } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
 
 // Synthetic on purpose: never real captures. Named so a leak reports which
 // kind of secret escaped.
@@ -88,60 +63,34 @@ describe("apm output never reaches the client", () => {
     }
   });
 
+  async function register(app: ReturnType<typeof nodeApp>) {
+    const response = await app.request("/api/registry/repos", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: repo }),
+    });
+    expect(response.status).toBe(201);
+  }
+
   // A non-zero exit arrives as a rejection carrying the same two streams.
   async function removeFailingWith(mode: "resolves" | "rejects") {
-    const fs = new NodeFileSystem();
-    const location = new DeployedLocation({ HOME: home });
-    const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const apm = new ApmCliDriver({
-      run: async () => {
-        if (mode === "rejects") {
-          throw Object.assign(new Error("Command failed: apm uninstall"), {
-            ...poisonedApmOutput,
-            code: 1,
-          });
-        }
-        return poisonedApmOutput;
-      },
-    });
-    const locks = new InFlightLocks();
-    const app = createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      remove: new RemoveDeployedSkill({
-        registry,
-        deployedRef: new DeployedRefAdapter({ fs, location }),
-        deployedContent: new DeployedContentAdapter({
-          location,
-          fs: new NodeCopyTreeFs(),
+    const app = nodeApp(
+      { HOME: home, MAESTRO_HOME: home },
+      {
+        apm: new ApmCliDriver({
+          run: async () => {
+            if (mode === "rejects") {
+              throw Object.assign(new Error("Command failed: apm uninstall"), {
+                ...poisonedApmOutput,
+                code: 1,
+              });
+            }
+            return poisonedApmOutput;
+          },
         }),
-        apm,
-        deployedCleanup: new DeployedCleanupAdapter({ location }),
         toolPresence: { detectGlobalTools: async () => ["claude"] },
-        canonicalPath: (path) => fs.realpath(path),
-        locks,
-        location,
-      }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => join(home, "apm"),
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
+      },
+    );
 
     await writeFile(
       join(repo, "apm.lock.yaml"),
@@ -157,7 +106,7 @@ describe("apm output never reaches the client", () => {
       ].join("\n"),
       "utf8",
     );
-    await registry.register(repo);
+    await register(app);
 
     const request = {
       type: "skill",
@@ -214,43 +163,16 @@ describe("apm output never reaches the client", () => {
   // shape check in `parseOutdated` is what keeps these routes honest.
   describe("the drift routes, where apm-derived fields are allowed through", () => {
     async function driftWith(poisoned: { stdout: string; stderr: string }) {
-      const fs = new NodeFileSystem();
-      const registry = realRegistry(fs, join(home, "config.json"));
-      const inventory = new InventoryReader({
-        fs,
-        resolvePath: () => undefined,
-        readReleasedSkills: async () => [],
-      });
-      const locks = new InFlightLocks();
-      const app = createApp({
-        ...stubImports(),
-        registry,
-        inventory,
-        deployState: stubDeployState({ fs }),
-        deploy: stubDeploy({ inventory, registry, locks }),
-        retryOperation: stubRetryOperation({ registry, locks }),
-        remove: stubRemove({ registry, locks }),
-        drift: withoutContentCheck(
-          new CheckVersionDrift({
-            registry,
-            apm: new ApmCliDriver({
-              run: async () => poisoned,
-              prepareGlobalCwd: async () => home,
-            }),
-            canonicalPath: (path) => fs.realpath(path),
+      const app = nodeApp(
+        { HOME: home, MAESTRO_HOME: home },
+        {
+          apm: new ApmCliDriver({
+            run: async () => poisoned,
+            prepareGlobalCwd: async () => home,
           }),
-        ),
-        resolveGlobalRoot: () => join(home, "apm"),
-        harness: stubHarness(),
-        publish: stubPublish(),
-        ...stubPromotes(),
-        connect: stubConnect(),
-        scaffold: stubScaffold(),
-        folderChooser: stubFolderChooser(),
-        update: stubUpdate(),
-        enforceOriginHost: false,
-      });
-      await registry.register(repo);
+        },
+      );
+      await register(app);
 
       const perRepo = await app.request(
         `/api/drift?repo=${encodeURIComponent(repo)}`,

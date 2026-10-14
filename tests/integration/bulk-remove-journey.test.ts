@@ -1,33 +1,16 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import {
-  type BulkRemoveReport,
-  DeployedCleanupAdapter,
-  DeployedLocation,
-  DeployedRefAdapter,
-  type DeployTarget,
-  GlobalDeployStateReader,
-  InFlightLocks,
-  InventoryReader,
-  NodeFileSystem,
-  RemoveDeployedSkill,
-  type SupportedTool,
+import type {
+  ApmDriverPort,
+  BulkRemoveReport,
+  DeployTarget,
+  SupportedTool,
 } from "@maestro/core";
-import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
+import { unreachable } from "../helpers/in-memory-app";
+import { nodeApp } from "../helpers/node-app";
 import { makeRepoDir } from "../helpers/repo-dir";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
 
 // The screen after the run (#409), so the fake apm deletes a target's
 // lockfile with its last dependency, as real apm does.
@@ -76,11 +59,8 @@ describe("retiring a skill from every target it is deployed to", () => {
   });
 
   function makeApp(failRepos: string[] = []) {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, join(home, "config.json"));
     const fails = new Set(failRepos);
     const state = new Map<string, string[]>();
-    const location = new DeployedLocation({ HOME: home });
     const apmRoot = join(home, ".apm");
 
     const lockfilePath = (target: DeployTarget) =>
@@ -106,63 +86,26 @@ describe("retiring a skill from every target it is deployed to", () => {
       );
     };
 
-    const locks = new InFlightLocks();
-    const remove = new RemoveDeployedSkill({
-      registry,
-      locks,
-      deployedRef: new DeployedRefAdapter({ fs, location }),
-      deployedContent: {
-        classify: async () => "clean" as const,
-        contentDigest: async () => null,
-        linkedSkillPath: async () => null,
-      },
-      apm: {
-        removeSkill: async ({ target, ref }) => {
-          if (target.kind === "repo" && fails.has(target.repoPath)) {
-            throw new Error("apm uninstall failed: token in stderr");
-          }
-          const names = state.get(key(target)) ?? [];
-          state.set(
-            key(target),
-            names.filter((name) => !ref.includes(`/skills/${name}#`)),
-          );
-          await writeLockfile(target);
-          return { ok: true };
-        },
-      },
-      deployedCleanup: new DeployedCleanupAdapter({ location }),
-      toolPresence: { detectGlobalTools: async () => TOOLS },
-      canonicalPath: (path) => fs.realpath(path),
-      location,
-    });
-
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const app = createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState: new GlobalDeployStateReader({
-        fs,
+    const app = nodeApp(
+      { HOME: home, MAESTRO_HOME: home },
+      {
+        apm: unreachable<ApmDriverPort>("apm", {
+          removeSkill: async ({ target, ref }) => {
+            if (target.kind === "repo" && fails.has(target.repoPath)) {
+              throw new Error("apm uninstall failed: token in stderr");
+            }
+            const names = state.get(key(target)) ?? [];
+            state.set(
+              key(target),
+              names.filter((name) => !ref.includes(`/skills/${name}#`)),
+            );
+            await writeLockfile(target);
+            return { ok: true };
+          },
+        }),
         toolPresence: { detectGlobalTools: async () => TOOLS },
-      }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      remove,
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => apmRoot,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
+      },
+    );
 
     return {
       app,
@@ -170,7 +113,12 @@ describe("retiring a skill from every target it is deployed to", () => {
         state.set(key(target), [...names]);
         await writeLockfile(target);
         if (target.kind === "repo") {
-          await registry.register(target.repoPath);
+          const response = await app.request("/api/registry/repos", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ path: target.repoPath }),
+          });
+          expect(response.status).toBe(201);
         }
       },
     };

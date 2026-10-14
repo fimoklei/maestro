@@ -11,39 +11,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  ConfigStore,
-  ConnectInventory,
-  GitCloneAdapter,
-  GitHarnessScaffoldAdapter,
-  HarnessGitAdapter,
-  InFlightLocks,
-  InventoryReader,
-  isRepositoryRoot,
-  NodeFileSystem,
-  probeHead,
-  Registry,
-  readConfiguredGitOriginUrl,
-  releasedSkillsFromGit,
-  resolveDefaultBranch,
-  resolveInventoryPath,
-  ScaffoldHarness,
-  ScaffoldOffers,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
-import { centralInventoryPath } from "../helpers/real-registry";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubUpdate } from "../helpers/stub-update";
+import { nodeApp } from "../helpers/node-app";
 
 const run = promisify(execFile);
 
@@ -112,64 +82,7 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     await removeGitTempTree(base);
   });
 
-  function makeApp() {
-    const fs = new NodeFileSystem();
-    const store = new ConfigStore({
-      fs,
-      configPath: () => join(base, "config.json"),
-    });
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: async () => resolveInventoryPath(await store.read(), {}),
-      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
-      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
-    });
-    // Connect's offer is the scaffold's authority to write (#556).
-    const offers = new ScaffoldOffers();
-    const connect = new ConnectInventory({
-      fs,
-      store,
-      originUrl: readConfiguredGitOriginUrl,
-      defaultBranch: resolveDefaultBranch,
-      isRepositoryRoot,
-      probeHead,
-      homeRoot: () => home,
-      clone: new GitCloneAdapter(),
-      offers,
-    });
-    const locks = new InFlightLocks();
-    const registry = new Registry({
-      fs,
-      store,
-      resolveCentralInventoryPath: centralInventoryPath,
-    });
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect,
-      scaffold: new ScaffoldHarness({
-        fs,
-        git: new GitHarnessScaffoldAdapter(),
-        locks: new InFlightLocks(),
-        offers,
-        originUrl: readConfiguredGitOriginUrl,
-        connect: (path) => connect.connect(path),
-      }),
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+  const makeApp = () => nodeApp({ HOME: home, MAESTRO_HOME: base });
 
   const post = (
     app: ReturnType<typeof makeApp>,

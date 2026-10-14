@@ -27,9 +27,9 @@ Runner: **Vitest**, all lanes (ADR-0002).
 
 ## The four lanes
 
-- **Pure (unit)** (`pnpm test:core`) — sibling file next to source, no fs/git/network. Default in the `/tdd` loop; most tests live here.
+- **Pure (unit)** (`pnpm test:core`) — sibling file next to source, no fs/git/network; a test with no source sibling (a route, a script) goes in `tests/unit/`. Default in the `/tdd` loop; most tests live here.
 - **Web component** (`pnpm test:web`) — sibling `.test.tsx` in `packages/web`, **happy-dom** + Testing Library (own `packages/web/vitest.config.ts`); `fetch` stubbed. Browser end-to-end (Playwright) stays deferred.
-- **Integration** (`pnpm test:integration`) — `tests/integration/`, a journey across modules with real I/O. Anything that drives APM or reads real lockfiles is integration.
+- **Integration** (`pnpm test:integration`) — `tests/integration/`, a journey across modules with real I/O; a test without real I/O leaves it. Anything that drives APM or reads real lockfiles is integration.
 - **Git** (`pnpm test:git`) — `tests/git/`. Choose it on one checkable fact: does this test create a real repository? If yes, it lands here and stays out of the coding loop.
 
 Storybook stories are **not** a lane: documentation, not coverage. Behaviour is tested in the sibling `.test.tsx` (`frontend.md`).
@@ -63,6 +63,7 @@ Run from the repo root.
 
 ## Mocking
 
+- Start a new test in the core composition (`composeUseCases`) over the in-memory adapters (`*.fake.ts` in `packages/core`, `tests/helpers/in-memory-app.ts`, `tests/helpers/deploy-world.ts`). Use the real disk or git only through `tests/helpers/node-app.ts`. Fake outside-world ports only, never a Maestro use case.
 - Prefer in-memory data structures (real arrays/objects/Maps).
 - Mock only external deps (fs/git/network, APM) that would otherwise force the file into integration.
 - Type every hand-built server response with `satisfies` and its `@maestro/core`

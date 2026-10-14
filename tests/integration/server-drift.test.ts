@@ -1,28 +1,11 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  CheckVersionDrift,
-  InFlightLocks,
-  InventoryReader,
-  NodeFileSystem,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import type { ApmDriverPort } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
+import { unreachable } from "../helpers/in-memory-app";
+import { nodeApp } from "../helpers/node-app";
 import { makeRepoDir } from "../helpers/repo-dir";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { withoutContentCheck } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
 
 // A check that could not run is a 200 with { ok: false }, never an HTTP error.
 describe("drift HTTP route", () => {
@@ -48,46 +31,31 @@ describe("drift HTTP route", () => {
         }
       | { ok: false; reason?: "unverified" },
   ) {
-    const fs = new NodeFileSystem();
     const calls: Array<
       { kind: "repo"; repoPath: string } | { kind: "global" }
     > = [];
-    const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const drift = new CheckVersionDrift({
-      registry,
-      apm: {
-        checkOutdated: async (target) => {
-          calls.push(target);
-          return outcome;
-        },
+    // No Harness connected, so the content check has no clone to read.
+    const app = nodeApp(
+      { HOME: home, MAESTRO_HOME: home },
+      {
+        apm: unreachable<ApmDriverPort>("apm", {
+          checkOutdated: async (target) => {
+            calls.push(target);
+            return outcome;
+          },
+        }),
       },
-      canonicalPath: (path) => fs.realpath(path),
-    });
-    const locks = new InFlightLocks();
-    const app = createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: withoutContentCheck(drift),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
+    );
+    const registry = {
+      register: async (path: string) => {
+        const res = await app.request("/api/registry/repos", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path }),
+        });
+        expect(res.status).toBe(201);
+      },
+    };
     return { app, registry, calls };
   }
 

@@ -1,22 +1,8 @@
-import { rm } from "node:fs/promises";
-import { join } from "node:path";
-import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
+import { composeUseCases } from "@maestro/core";
 import { createApp } from "@maestro/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { realRegistry } from "../helpers/real-registry";
-import { makeRepoDir } from "../helpers/repo-dir";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { describe, expect, it } from "vitest";
+import { InMemoryFileSystem } from "../../packages/core/src/registry/file-system.fake";
+import { inMemoryPorts } from "../helpers/in-memory-app";
 
 // The Origin/Host guard enabled, as in production: it blocks a malicious
 // site POSTing to localhost (DNS rebinding, CSRF).
@@ -24,46 +10,20 @@ const LOCAL_HOST = "127.0.0.1:3000";
 const LOCAL_ORIGIN = "http://127.0.0.1:3000";
 
 describe("write-route Origin/Host guard", () => {
-  let dir: string;
+  const dir = "/work/app";
 
-  beforeEach(async () => {
-    dir = await makeRepoDir("maestro-security-");
-  });
-
-  afterEach(async () => {
-    await rm(dir, { recursive: true, force: true });
-  });
-
-  function makeApp() {
-    const fs = new NodeFileSystem();
-    const registry = realRegistry(fs, join(dir, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
-    });
-    const deployState = stubDeployState({ fs });
-    const locks = new InFlightLocks();
-    return createApp({
-      ...stubImports(),
-      registry,
-      inventory,
-      deployState,
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
+  const makeApp = () =>
+    createApp({
+      ...composeUseCases(
+        inMemoryPorts({
+          fs: new InMemoryFileSystem({
+            directories: { [dir]: dir },
+            files: { [`${dir}/.git`]: "gitdir: elsewhere" },
+          }),
+        }),
+      ),
       enforceOriginHost: true,
     });
-  }
 
   function post(headers: Record<string, string>) {
     return makeApp().request("/api/registry/repos", {

@@ -31,6 +31,21 @@ const manifestPath = (target: DeployTarget) =>
     ? `${target.repoPath}/apm.yml`
     : `${HOME}/.apm/apm.yml`;
 
+// The apm.yml an install writes for a Selection.
+export const consumerManifest = (skills: readonly string[]) => `name: consumer
+version: 1.0.0
+dependencies:
+  apm:
+    - git: ${HARNESS}
+      ref: ${RELEASE}
+      skills:
+${[...skills]
+  .sort()
+  .map((skill) => `        - ${skill}`)
+  .join("\n")}
+  mcp: []
+`;
+
 const sha256 = (bytes: Buffer) =>
   createHash("sha256").update(bytes).digest("hex");
 
@@ -55,6 +70,8 @@ type Answers = {
   // The inventory clone's own answers about the release tag.
   skillAtTag: boolean;
   divergedFromTag: boolean;
+  // The release's file hashes by path; null is a clone that cannot answer.
+  releasedFiles: Record<string, string> | null;
   // Replaces the install outright, as a driver fed a captured refusal.
   deploySkill: ApmDriverPort["deploySkill"] | null;
 };
@@ -78,6 +95,7 @@ export function deployWorld(
     uninstallAnswer: () => "removed",
     skillAtTag: true,
     divergedFromTag: false,
+    releasedFiles: null,
     deploySkill: null,
   };
 
@@ -120,20 +138,6 @@ export function deployWorld(
     ].join("\n");
   };
 
-  const manifest = (skills: readonly string[]) => `name: consumer
-version: 1.0.0
-dependencies:
-  apm:
-    - git: ${HARNESS}
-      ref: ${RELEASE}
-      skills:
-${[...skills]
-  .sort()
-  .map((skill) => `        - ${skill}`)
-  .join("\n")}
-  mcp: []
-`;
-
   const apm: ApmDriverPort = {
     resolveLatestTag: async () => state.latestTag,
     deploySkill: async (input) => {
@@ -165,7 +169,10 @@ ${[...skills]
         lockfilePath(input.target),
         lockfile(input.target, input.ref.split("#")[1] ?? "", files),
       );
-      disk.write(manifestPath(input.target), manifest(input.skills ?? []));
+      disk.write(
+        manifestPath(input.target),
+        consumerManifest(input.skills ?? []),
+      );
       return { ok: true };
     },
     // The per-skill uninstall: takes the named skill's copies off every tool.
@@ -225,7 +232,7 @@ ${[...skills]
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => state.skillAtTag,
         skillDivergesFromTag: async () => state.divergedFromTag,
-        readSkillFilesAtTag: async () => null,
+        readSkillFilesAtTag: async () => state.releasedFiles,
       }),
     },
   });
@@ -246,5 +253,14 @@ ${[...skills]
     }
   };
 
-  return { app, disk, answers: state, installs, uninstalls, post, register };
+  return {
+    app,
+    disk,
+    harness: harnessGit,
+    answers: state,
+    installs,
+    uninstalls,
+    post,
+    register,
+  };
 }

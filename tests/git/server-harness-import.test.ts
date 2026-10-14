@@ -13,32 +13,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  CopySkillFolder,
-  HarnessGitAdapter,
-  ImportSkill,
-  InFlightLocks,
-  InventoryReader,
-  NodeCopyTreeFs,
-  NodeFileSystem,
-  releasedSkillsFromGit,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import { HarnessGitAdapter } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone } from "../helpers/git-fixture";
-import { realRegistry } from "../helpers/real-registry";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
-import { stubFolderChooser } from "../helpers/stub-folder-chooser";
-import { stubHarness } from "../helpers/stub-harness";
-import { stubImports } from "../helpers/stub-import";
-import { stubPromotes } from "../helpers/stub-promote";
-import { stubPublish } from "../helpers/stub-publish";
-import { stubRemove } from "../helpers/stub-remove";
-import { stubScaffold } from "../helpers/stub-scaffold";
-import { stubUpdate } from "../helpers/stub-update";
+import { nodeApp } from "../helpers/node-app";
 
 describe("harness import HTTP route", () => {
   let base: string;
@@ -65,48 +43,19 @@ describe("harness import HTTP route", () => {
     await rm(base, { recursive: true, force: true });
   });
 
-  function makeApp(
-    deployedTargets: { treeRoot: string; lockfilePath: string }[] = [],
-  ) {
-    const fs = new NodeFileSystem();
-    const copyTreeFs = new NodeCopyTreeFs();
-    const registry = realRegistry(fs, join(base, "config.json"));
-    const inventory = new InventoryReader({
-      fs,
-      resolvePath: () => harnessRoot,
-      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
-      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
+  const makeApp = () =>
+    nodeApp({
+      HOME: base,
+      MAESTRO_HOME: base,
+      MAESTRO_INVENTORY_PATH: harnessRoot,
     });
-    const locks = new InFlightLocks();
-    return createApp({
-      registry,
-      inventory,
-      importLocalEdits: stubImports().importLocalEdits,
-      importSkill: new ImportSkill({
-        resolveRoot: async () => fs.realpath(harnessRoot),
-        fs,
-        homeRoot: () => base,
-        copy: new CopySkillFolder({ fs: copyTreeFs }),
-        facts: copyTreeFs,
-        git: new HarnessGitAdapter(),
-        deployedTargets: async () => deployedTargets,
-      }),
-      harness: stubHarness(),
-      publish: stubPublish(),
-      ...stubPromotes(),
-      connect: stubConnect(),
-      scaffold: stubScaffold(),
-      deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry, locks }),
-      remove: stubRemove({ registry, locks }),
-      retryOperation: stubRetryOperation({ registry, locks }),
-      drift: stubDrift({ registry }),
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
-      folderChooser: stubFolderChooser(),
-      update: stubUpdate(),
-      enforceOriginHost: false,
-    });
-  }
+
+  // A registered repo is a deployed target whose apm.lock.yaml the import reads.
+  const register = async (app: ReturnType<typeof makeApp>, repo: string) => {
+    await mkdir(join(repo, ".git"), { recursive: true });
+    const response = await post(app, "/api/registry/repos", { path: repo });
+    expect(response.status).toBe(201);
+  };
 
   const post = (app: ReturnType<typeof makeApp>, path: string, body: unknown) =>
     app.request(path, {
@@ -216,7 +165,8 @@ describe("harness import HTTP route", () => {
       ].join("\n"),
       "utf8",
     );
-    const app = makeApp([{ treeRoot: repo, lockfilePath }]);
+    const app = makeApp();
+    await register(app, repo);
 
     const response = await importSkill(app, { source: deployed });
 
@@ -231,7 +181,8 @@ describe("harness import HTTP route", () => {
     await writeFile(join(authored, "SKILL.md"), manifest(), "utf8");
     const lockfilePath = join(repo, "apm.lock.yaml");
     await writeFile(lockfilePath, "dependencies: []\n", "utf8");
-    const app = makeApp([{ treeRoot: repo, lockfilePath }]);
+    const app = makeApp();
+    await register(app, repo);
 
     const response = await importSkill(app, { source: authored });
 
@@ -337,7 +288,8 @@ describe("harness import HTTP route", () => {
       ].join("\n"),
       "utf8",
     );
-    const app = makeApp([{ treeRoot: repo, lockfilePath }]);
+    const app = makeApp();
+    await register(app, repo);
 
     const offered = await check(app, { source: deployed });
     expect(await offered.json()).toMatchObject({
@@ -400,7 +352,8 @@ describe("harness import HTTP route", () => {
       ),
       "utf8",
     );
-    const app = makeApp([{ treeRoot: repo, lockfilePath }]);
+    const app = makeApp();
+    await register(app, repo);
 
     const unedited = await check(app, { source: deployed });
     expect(await unedited.json()).toMatchObject({

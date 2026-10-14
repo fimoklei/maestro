@@ -8,7 +8,7 @@ import type { DeployedContentState, DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import { DeployedContentAdapter } from "./deployed-content";
 
-export const FAKE_HOME = "/home/fake";
+const FAKE_HOME = "/home/fake";
 
 const sha = (bytes: Buffer) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
