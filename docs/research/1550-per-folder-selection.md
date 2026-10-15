@@ -63,7 +63,8 @@ lands in this folder".
     (`reference.py:1970-1980`), and nothing in `package_resolution.py` carries
     the old `target_subset` over.
 
-  ADR-0031 rule 9 (write `skills:`, then install the root ref with `--skill`)
+  ADR-0031's Selection write path (write `skills:`, then install the root ref
+  with `--skill`)
   would therefore drop a hand-written `targets:` on every Deploy.
 - **The lockfile echoes it.** Each entry records `target_subset`, marked
   "Audit-only" (`deps/lockfile.py:241`, written at `:414-415`). Only the audit
