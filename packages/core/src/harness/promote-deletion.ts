@@ -2,15 +2,11 @@
 // inferred from absence: it takes a confirmation (#580).
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
+import type { HarnessFetchGate } from "./harness-fetch-gate";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { promoteBranch, promoteCompareUrl } from "./promote-branch";
 import { beforeProposalPush, readOriginFacts } from "./proposal-request";
-import type {
-  HarnessFreshnessPort,
-  HarnessGitPort,
-  WorktreeAmbiguity,
-} from "./read-harness-state";
-import { recordFetch } from "./record-fetch";
+import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
 export type PromoteDeletionError =
   | "not-configured"
@@ -35,7 +31,7 @@ export class PromoteSkillDeletion {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
-    freshness: HarnessFreshnessPort;
+    fetchGate: Pick<HarnessFetchGate, "fetch" | "invalidate">;
     locks: InFlightLocks;
     review: HarnessReviewPort;
   };
@@ -48,7 +44,6 @@ export class PromoteSkillDeletion {
   async execute(
     name: string,
     seenRemoteTree: string,
-    at: Date,
   ): Promise<PromoteDeletionResult> {
     if (!isValidSkillSlug(name)) {
       return { ok: false, error: "invalid-skill" };
@@ -59,7 +54,7 @@ export class PromoteSkillDeletion {
     }
 
     const run = await this.deps.locks.run(root, () =>
-      this.remove(root, name, seenRemoteTree, at),
+      this.remove(root, name, seenRemoteTree),
     );
     return run.ok ? run.value : { ok: false, error: "promote-in-progress" };
   }
@@ -68,9 +63,8 @@ export class PromoteSkillDeletion {
     root: string,
     name: string,
     seenRemoteTree: string,
-    at: Date,
   ): Promise<PromoteDeletionResult> {
-    const outcome = await recordFetch(this.deps, root, at);
+    const outcome = await this.deps.fetchGate.fetch(root, 0);
     if (outcome !== "fetched") {
       return { ok: false, error: "no-answer" };
     }
@@ -129,6 +123,8 @@ export class PromoteSkillDeletion {
     const push = await this.deps.git.pushSkillDeletion(root, name, head);
     switch (push) {
       case "pushed":
+        // The new branch reaches the clone only through a fetch.
+        this.deps.fetchGate.invalidate(root);
         await request.afterPush();
         return {
           ok: true,

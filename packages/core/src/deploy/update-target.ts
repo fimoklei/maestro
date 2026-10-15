@@ -117,6 +117,7 @@ export type UpdateRunError =
   | "deployed-unverifiable"
   | "manifest-not-recognised"
   | "update-incomplete"
+  | "update-timed-out"
   | "update-failed";
 
 export type UpdateRunResult =
@@ -172,7 +173,7 @@ export class UpdateTarget {
     selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
     deployedCleanup: DeployedCleanupPort;
     // The outcome probe; the pre-write check is the guard's.
-    deployedContent: Pick<DeployedContentPort, "classify">;
+    deployedContent: Pick<DeployedContentPort, "readLockfile" | "classify">;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with deploy and remove: all three rewrite one apm.lock.yaml.
@@ -307,7 +308,9 @@ export class UpdateTarget {
             ? applied.error
             : applied.error === "apply-incomplete"
               ? "update-incomplete"
-              : "update-failed",
+              : applied.error === "apply-timed-out"
+                ? "update-timed-out"
+                : "update-failed",
         outcome,
       };
     } catch {
@@ -333,6 +336,7 @@ export class UpdateTarget {
         ? null
         : landed.release === scope.chosenRelease;
     const rows: UpdateOutcomeRow[] = [];
+    const lockfile = await this.deps.deployedContent.readLockfile(scope.target);
     for (const name of [...new Set([...scope.current, ...scope.desired])]) {
       for (const tool of tools) {
         const state = await this.deps.deployedContent
@@ -341,6 +345,7 @@ export class UpdateTarget {
             name,
             tools: [tool],
             release: scope.chosenRelease,
+            lockfile,
           })
           .catch(() => "unreadable" as const);
         rows.push({

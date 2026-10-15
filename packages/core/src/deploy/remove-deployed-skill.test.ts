@@ -4,6 +4,7 @@ import type { SupportedTool } from "./deploy-tools";
 import {
   type CopyStates,
   inMemoryDeployedContent,
+  placedOnRead,
   type ToolCopyState,
 } from "./deployed-content.fake";
 import type { DeployedRefLookup } from "./deployed-ref";
@@ -57,7 +58,7 @@ type Overrides = {
   isRegistered?: (path: string) => Promise<boolean>;
   lookup?: DeployedRefLookup;
   lookupFor?: (target: DeployTarget) => DeployedRefLookup | undefined;
-  removed?: boolean;
+  removed?: boolean | "timed-out";
   // The disk after apm's removal, for the post-apm probe to read.
   afterApmRemove?: (copies: ReturnType<typeof inMemoryDeployedContent>) => void;
   locks?: InFlightLocks;
@@ -89,28 +90,26 @@ function buildUseCase(overrides: Overrides = {}) {
   const placed = new Set<string>();
   const placeCopy = (target: DeployTarget, name: string) => {
     const key = `${copies.treeRoot(target)}/${name}`;
-    if (!placed.has(key)) {
-      placed.add(key);
-      copies.setCopy(target, name, copyStatesOf(overrides));
+    if (placed.has(key)) {
+      return false;
     }
+    placed.add(key);
+    copies.setCopy(target, name, copyStatesOf(overrides));
+    return true;
   };
+  const onRead = placedOnRead(copies.content, placeCopy);
   const deployedContent = {
-    classify: async (input: {
-      target: DeployTarget;
-      name: string;
-      tools?: readonly SupportedTool[];
-      release?: string;
-    }) => {
+    readLockfile: onRead.readLockfile,
+    classify: async (input: Parameters<typeof copies.content.classify>[0]) => {
       calls.classifies.push({ target: input.target, tools: input.tools });
-      placeCopy(input.target, input.name);
-      return copies.content.classify(input);
+      return onRead.classify(input);
     },
     contentDigest: async (input: {
       target: DeployTarget;
       name: string;
       tools?: readonly SupportedTool[];
     }) => {
-      placeCopy(input.target, input.name);
+      onRead.place(input.target, input.name);
       return copies.content.contentDigest(input);
     },
     linkedSkillPath: async () => null,
@@ -135,6 +134,9 @@ function buildUseCase(overrides: Overrides = {}) {
       removeSkill: async ({ target, ref }) => {
         calls.removes.push({ target, ref });
         overrides.afterApmRemove?.(copies);
+        if (overrides.removed === "timed-out") {
+          return { ok: false, reason: "timed-out" };
+        }
         return (overrides.removed ?? true) ? { ok: true } : { ok: false };
       },
     },
@@ -450,6 +452,15 @@ describe("RemoveDeployedSkill", () => {
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
       ok: false,
       error: "remove-failed",
+    });
+  });
+
+  it("reports a timed-out uninstall of a per-skill package apart from a failed one", async () => {
+    const { useCase } = buildUseCase({ removed: "timed-out" });
+
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
+      ok: false,
+      error: "remove-timed-out-unrecorded",
     });
   });
 
@@ -1176,6 +1187,8 @@ describe("RemoveDeployedSkill.preflight", () => {
     const classified: string[] = [];
     const copies = inMemoryDeployedContent();
     const watched = {
+      readLockfile: (target: DeployTarget) =>
+        copies.content.readLockfile(target),
       classify: (input: Parameters<typeof copies.content.classify>[0]) => {
         classified.push(input.name);
         return copies.content.classify(input);
@@ -1231,6 +1244,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       },
       copyGuard: new LocalCopyGuard({
         content: {
+          readLockfile: async () => "missing" as const,
           classify: async () => {
             throw new Error("disk exploded");
           },
@@ -1239,6 +1253,7 @@ describe("RemoveDeployedSkill.preflight", () => {
         },
       }),
       deployedContent: {
+        readLockfile: async () => "missing" as const,
         classify: async () => {
           throw new Error("disk exploded");
         },

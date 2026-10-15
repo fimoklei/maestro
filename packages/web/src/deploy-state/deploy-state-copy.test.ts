@@ -16,6 +16,7 @@ import {
   REPO_NOT_READ_LINE,
   TARGET_LABEL,
   TARGETS_FACT,
+  TIMED_OUT_HINT,
   UNREACHED_HINT,
   VIEW_SKILL_ON_GITHUB,
 } from "./deploy-state-copy";
@@ -117,6 +118,7 @@ describe("Deploy-state copy", () => {
   it("keeps the hints of the two drift marks", () => {
     expect(NO_LONGER_RELEASED_HINT).toBe("Not in the latest release.");
     expect(UNREACHED_HINT).toBe("Update check did not run.");
+    expect(TIMED_OUT_HINT).toBe("Update check timed out after 1 minute.");
   });
 
   it("names every skill with local edits and how to keep them", () => {

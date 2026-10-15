@@ -4,6 +4,7 @@ import type { SupportedTool } from "./deploy-tools";
 import {
   deployedCopies,
   inMemoryDeployedContent,
+  placedOnRead,
 } from "./deployed-content.fake";
 import { LocalCopyGuard } from "./local-copy-guard";
 
@@ -25,7 +26,7 @@ function guardOver(
   const place = (target: DeployTarget, name: string) => {
     const where = `${fake.treeRoot(target)}/${name}`;
     if (placed.has(where)) {
-      return;
+      return false;
     }
     placed.add(where);
     const base = states[`${name}:`] ?? fallback;
@@ -38,23 +39,25 @@ function guardOver(
         );
       }
     }
+    return true;
   };
+  const onRead = placedOnRead(fake.content, place);
   const guard = new LocalCopyGuard({
     content: {
+      readLockfile: onRead.readLockfile,
       classify: async (input) => {
         calls.push({ name: input.name, tools: input.tools });
         if (states[`${input.name}:${input.tools?.[0] ?? ""}`] === "throws") {
           throw new Error("unreadable");
         }
-        place(input.target, input.name);
-        return fake.content.classify(input);
+        return onRead.classify(input);
       },
       contentDigest: async (input) => {
-        place(input.target, input.name);
+        onRead.place(input.target, input.name);
         return fake.content.contentDigest(input);
       },
       linkedSkillPath: async (input) => {
-        place(input.target, input.name);
+        onRead.place(input.target, input.name);
         return fake.content.linkedSkillPath(input);
       },
     },
@@ -280,6 +283,7 @@ describe("LocalCopyGuard", () => {
     ]);
     const guard = new LocalCopyGuard({
       content: {
+        readLockfile: (target) => copy.content.readLockfile(target),
         classify: async (input) => {
           releases.push(input.release);
           return copy.content.classify(input);

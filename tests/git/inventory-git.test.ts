@@ -5,7 +5,12 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { InventoryGitAdapter } from "@maestro/core";
+import {
+  HarnessFetchGate,
+  HarnessGitAdapter,
+  InventoryGitAdapter,
+  ReleasedContentReader,
+} from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
@@ -40,7 +45,10 @@ describe("InventoryGitAdapter", () => {
   });
 
   const adapter = () =>
-    new InventoryGitAdapter({ resolveRoot: async () => root });
+    new InventoryGitAdapter({
+      resolveRoot: async () => root,
+      released: new ReleasedContentReader(),
+    });
 
   it("finds a skill that is part of the tag's tree", async () => {
     await expect(adapter().skillExistsAtTag("v0.1.0", "tdd")).resolves.toBe(
@@ -118,6 +126,7 @@ describe("InventoryGitAdapter", () => {
   it("rejects when no inventory root is configured", async () => {
     const broken = new InventoryGitAdapter({
       resolveRoot: async () => undefined,
+      released: new ReleasedContentReader(),
     });
     await expect(broken.skillExistsAtTag("v0.1.0", "tdd")).rejects.toThrow();
   });
@@ -196,6 +205,7 @@ describe("InventoryGitAdapter", () => {
     it("answers null with no inventory root configured", async () => {
       const broken = new InventoryGitAdapter({
         resolveRoot: async () => undefined,
+        released: new ReleasedContentReader(),
       });
 
       await expect(
@@ -205,7 +215,7 @@ describe("InventoryGitAdapter", () => {
   });
 });
 
-describe("InventoryGitAdapter.syncBeforeDeploy", () => {
+describe("the pre-deploy sync through the Harness fetch gate", () => {
   // #666: Maestro's own clone never moves after a merge on GitHub, so
   // `git diff <tag> -- path` read the just-released skill as diverged.
   let bareRemote: string;
@@ -248,7 +258,21 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
   });
 
   const adapter = () =>
-    new InventoryGitAdapter({ resolveRoot: async () => root });
+    new InventoryGitAdapter({
+      resolveRoot: async () => root,
+      released: new ReleasedContentReader(),
+    });
+
+  // What a deploy runs first: the gate's fetch, never older than this call.
+  const syncBeforeDeploy = () =>
+    new HarnessFetchGate({
+      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
+      freshness: {
+        read: async () => ({ outcome: null, lastFetchedAt: null }),
+        record: async () => {},
+      },
+      now: () => new Date(),
+    }).fetch(root, 0);
 
   it("clears a carried-back change once it is released, and catches up", async () => {
     // #978: deploy never reads a landed change as local work.
@@ -265,7 +289,7 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
       "utf8",
     );
 
-    await adapter().syncBeforeDeploy();
+    await syncBeforeDeploy();
 
     const status = await git(root, "status", "--porcelain");
     const head = await git(root, "rev-parse", "HEAD", "origin/main");
@@ -285,7 +309,7 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
       adapter().skillExistsAtTag("v0.2.0", "fresh"),
     ).rejects.toThrow();
 
-    await adapter().syncBeforeDeploy();
+    await syncBeforeDeploy();
 
     await expect(adapter().skillExistsAtTag("v0.2.0", "fresh")).resolves.toBe(
       true,
@@ -305,13 +329,50 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
     await git(author, "push", "origin", "main", "v0.2.0");
     await addSkill(root, "fresh");
 
-    await adapter().syncBeforeDeploy();
+    await syncBeforeDeploy();
 
     await expect(adapter().skillExistsAtTag("v0.2.0", "fresh")).resolves.toBe(
       true,
     );
     await expect(
       adapter().skillDivergesFromTag("v0.2.0", "fresh"),
+    ).resolves.toBe(false);
+  });
+
+  it("finds a release whose commit no remote branch reaches", async () => {
+    await git(author, "checkout", "--detach");
+    await addSkill(author, "orphan");
+    await git(author, "add", ".");
+    await git(author, "commit", "-m", "add orphan skill off any branch");
+    await git(author, "tag", "v0.3.0");
+    await git(author, "push", "origin", "v0.3.0");
+
+    await syncBeforeDeploy();
+
+    await expect(adapter().skillExistsAtTag("v0.3.0", "orphan")).resolves.toBe(
+      true,
+    );
+    await expect(
+      adapter().skillDivergesFromTag("v0.3.0", "orphan"),
+    ).resolves.toBe(true);
+  });
+
+  it("reads a moved release tag at its new commit, not the stale local one", async () => {
+    await git(root, "fetch", "origin", "--tags");
+    await addSkill(author, "fresh");
+    await git(author, "add", ".");
+    await git(author, "commit", "-m", "add fresh skill");
+    await git(author, "tag", "--force", "v0.1.0");
+    await git(author, "push", "origin", "main");
+    await git(author, "push", "--force", "origin", "v0.1.0");
+
+    await syncBeforeDeploy();
+
+    await expect(adapter().skillExistsAtTag("v0.1.0", "fresh")).resolves.toBe(
+      true,
+    );
+    await expect(
+      adapter().skillDivergesFromTag("v0.1.0", "fresh"),
     ).resolves.toBe(false);
   });
 
@@ -336,7 +397,7 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
       "utf8",
     );
 
-    await adapter().syncBeforeDeploy();
+    await syncBeforeDeploy();
 
     await expect(
       run("git", ["-C", root, "diff", "--", "."]).then(({ stdout }) => stdout),

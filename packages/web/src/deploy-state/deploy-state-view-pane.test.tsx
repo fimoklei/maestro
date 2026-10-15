@@ -558,6 +558,19 @@ describe("Deploy-state pane — Deployed skills", () => {
     expect(mark).toHaveAccessibleDescription("Update check did not run.");
   });
 
+  it("reads unknown with its own hint when the update check timed out", async () => {
+    repoWith({}, { ok: false, reason: "timed-out" });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    const mark = await within(pane).findByRole("img", { name: "Unknown" });
+    await userEvent.hover(mark);
+    await screen.findByRole("tooltip", { hidden: true });
+    expect(mark).toHaveAccessibleDescription(
+      "Update check timed out after 1 minute.",
+    );
+  });
+
   it("offers Remove skill on a no-longer-released skill, never an update", async () => {
     repoWith(
       {},

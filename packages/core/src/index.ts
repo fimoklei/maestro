@@ -114,6 +114,7 @@ export {
   type DiscardSkillChangeError,
 } from "./harness/discard-skill-change";
 export { GhCliAdapter } from "./harness/gh-cli-adapter";
+export { HarnessFetchGate } from "./harness/harness-fetch-gate";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
 export type {
@@ -178,6 +179,7 @@ export {
   type ReleasePlanError,
 } from "./harness/read-harness-state";
 export { RELEASE_TAG_PATTERN } from "./harness/release-tag";
+export { ReleasedContentReader } from "./harness/released-content";
 export {
   RestoreSkill,
   type RestoreSkillError,

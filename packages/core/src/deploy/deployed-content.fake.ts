@@ -10,6 +10,39 @@ import { DeployedLocation } from "./deployed-location";
 
 const FAKE_HOME = "/home/fake";
 
+type ClassifyInput = Parameters<DeployedContentAdapter["classify"]>[0];
+
+// Copies a test places on the use case's first read of them stand for copies
+// that were there all along: a lockfile reading taken before a placement is
+// taken again, and every other classify uses the caller's reading.
+export function placedOnRead(
+  content: DeployedContentAdapter,
+  place: (target: DeployTarget, name: string) => boolean,
+) {
+  let placements = 0;
+  let readAfter = 0;
+  const placeCounted = (target: DeployTarget, name: string) => {
+    if (place(target, name)) {
+      placements += 1;
+    }
+  };
+  return {
+    place: placeCounted,
+    readLockfile: (target: DeployTarget) => {
+      readAfter = placements;
+      return content.readLockfile(target);
+    },
+    classify: async (input: ClassifyInput) => {
+      placeCounted(input.target, input.name);
+      return content.classify(
+        placements > readAfter
+          ? { ...input, lockfile: await content.readLockfile(input.target) }
+          : input,
+      );
+    },
+  };
+}
+
 const sha = (bytes: Buffer) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
@@ -167,7 +200,21 @@ export function inMemoryDeployedContent(
   const editFile = (path: string, contents: string) =>
     tree.write(path, contents);
 
-  return { tree, content, setCopy, editFile, lockfilePath, treeRoot };
+  // The file hashes the fake's lockfile records for `name`'s copy, for a test
+  // whose own lockfile must agree with it.
+  const recordedHashes = (target: DeployTarget, name: string) => ({
+    ...lockfiles.get(lockfilePath(target))?.get(name),
+  });
+
+  return {
+    tree,
+    content,
+    setCopy,
+    editFile,
+    lockfilePath,
+    treeRoot,
+    recordedHashes,
+  };
 }
 
 // What one whole-copy state means for each tool folder.
@@ -202,26 +249,27 @@ export function copiesIn(states: CopyStates | ((name: string) => CopyStates)) {
   const placed = new Set<string>();
   const place = (target: DeployTarget, name: string) => {
     const key = `${fake.treeRoot(target)}/${name}`;
-    if (!placed.has(key)) {
-      placed.add(key);
-      fake.setCopy(
-        target,
-        name,
-        typeof states === "function" ? states(name) : states,
-      );
+    if (placed.has(key)) {
+      return false;
     }
+    placed.add(key);
+    fake.setCopy(
+      target,
+      name,
+      typeof states === "function" ? states(name) : states,
+    );
+    return true;
   };
+  const onRead = placedOnRead(fake.content, place);
   return {
     ...fake,
     content: {
-      classify: (input: Parameters<typeof fake.content.classify>[0]) => {
-        place(input.target, input.name);
-        return fake.content.classify(input);
-      },
+      readLockfile: onRead.readLockfile,
+      classify: onRead.classify,
       contentDigest: (
         input: Parameters<typeof fake.content.contentDigest>[0],
       ) => {
-        place(input.target, input.name);
+        onRead.place(input.target, input.name);
         return fake.content.contentDigest(input);
       },
       linkedSkillPath: (

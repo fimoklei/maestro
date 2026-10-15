@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { DeployedContentState } from "../deploy/deploy-skill";
-import { copiesIn, type ToolCopyState } from "../deploy/deployed-content.fake";
+import {
+  inMemoryDeployedContent,
+  type ToolCopyState,
+} from "../deploy/deployed-content.fake";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
 import { InMemoryHarnessGit } from "./harness-git.fake";
@@ -82,6 +85,21 @@ function target(
     files[`${ROOT}/.apm/skills/${name}/SKILL.md`] = HELD;
   }
 
+  // The lockfile records what the content port recorded for each copy.
+  const withRecordedHashes = (text: string) =>
+    text.replace(/^- virtual_path: \.apm\/skills\/(.+)$/gm, (line, name) => {
+      const hashes = Object.entries(
+        deployed.recordedHashes(contentTarget, name),
+      );
+      return hashes.length === 0
+        ? line
+        : [
+            line,
+            "  deployed_file_hashes:",
+            ...hashes.map(([file, hash]) => `    ${file}: ${hash}`),
+          ].join("\n");
+    });
+
   const fs = {
     realpath: async (path: string) => {
       if (!directories.has(path) && files[path] === undefined) {
@@ -94,7 +112,12 @@ function target(
     exists: async (path: string) =>
       directories.has(path) || files[path] !== undefined,
     isFileEntry: async (path: string) => files[path] !== undefined,
-    readFile: async (path: string) => files[path] ?? null,
+    readFile: async (path: string) =>
+      path === lockfilePath
+        ? withRecordedHashes(files[path] as string)
+        : (files[path] ?? null),
+    // No stamp: nothing is remembered, every read goes to the file.
+    stamp: async () => null,
     listRawEntries: async (path: string) => {
       const prefix = `${path}/`;
       const names = new Set<string>();
@@ -147,8 +170,11 @@ function target(
       codex: toolCopy(reading, "codex"),
     };
   };
-  const deployed = copiesIn(statesOf);
+  const deployed = inMemoryDeployedContent();
   const contentTarget = overrides.global === true ? GLOBAL_TARGET : REPO_TARGET;
+  for (const name of Object.keys(copies)) {
+    deployed.setCopy(contentTarget, name, statesOf(name));
+  }
   const content = deployed.content;
 
   // Every skill committed locally as "tree-1", the content v1.0.0 released.

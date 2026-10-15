@@ -52,6 +52,7 @@ describe("DeployedContentAdapter, on the real filesystem", () => {
       content.classify({
         target: { kind: "repo", repoPath: root },
         name: "tdd",
+        lockfile: await content.readLockfile({ kind: "repo", repoPath: root }),
       }),
     ).resolves.toBe("clean");
   });
@@ -73,6 +74,7 @@ describe("DeployedContentAdapter, on the real filesystem", () => {
       content.classify({
         target: { kind: "repo", repoPath: root },
         name: "tdd",
+        lockfile: await content.readLockfile({ kind: "repo", repoPath: root }),
       }),
     ).resolves.toBe("lockfile-malformed");
   });

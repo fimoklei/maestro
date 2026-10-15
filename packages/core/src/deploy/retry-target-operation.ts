@@ -28,6 +28,7 @@ export type RetryTargetOperationError =
   | "lockfile-malformed"
   | "manifest-not-recognised"
   | "retry-incomplete"
+  | "retry-timed-out"
   | "retry-failed";
 
 export type RetryTargetOperationResult =
@@ -57,7 +58,7 @@ export class RetryTargetOperation {
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
     deployedContent: Pick<
       DeployedContentPort,
-      "classify" | "contentDigest" | "linkedSkillPath"
+      "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
     >;
     toolPresence: ToolPresencePort;
     canonicalPath: (path: string) => Promise<string>;
@@ -169,7 +170,9 @@ export class RetryTargetOperation {
             ? "manifest-not-recognised"
             : applied.error === "apply-incomplete"
               ? "retry-incomplete"
-              : "retry-failed",
+              : applied.error === "apply-timed-out"
+                ? "retry-timed-out"
+                : "retry-failed",
       };
     } catch {
       return { ok: false, error: "retry-failed" };

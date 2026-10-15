@@ -6,7 +6,8 @@ import {
   copiesIn,
   inMemoryDeployedContent,
 } from "../deploy/deployed-content.fake";
-import type { DeployTarget } from "../index";
+import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
+import { DeployedContentAdapter, type DeployTarget } from "../index";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import {
@@ -357,10 +358,14 @@ function rootPackageEntry(
   ref: string,
   deployedFiles: string[],
   subset: string[],
+  hashes: Record<string, string> = {},
 ): string {
   const files = deployedFiles.map((file) => `  - ${file}\n`).join("");
   const skills = subset.map((name) => `  - ${name}\n`).join("");
-  return `- repo_url: fimoklei/agent-harness\n  name: agent-harness\n  host: github.com\n  resolved_commit: 4beb072048aa5952555e8a3941d3d1873abfe6e7\n  resolved_ref: ${ref}\n  package_type: apm_package\n  deployed_files:\n${files}  skill_subset:\n${skills}`;
+  const recorded = Object.entries(hashes)
+    .map(([file, hash]) => `    ${file}: ${hash}\n`)
+    .join("");
+  return `- repo_url: fimoklei/agent-harness\n  name: agent-harness\n  host: github.com\n  resolved_commit: 4beb072048aa5952555e8a3941d3d1873abfe6e7\n  resolved_ref: ${ref}\n  package_type: apm_package\n  deployed_files:\n${files}  skill_subset:\n${skills}${recorded === "" ? "" : `  deployed_file_hashes:\n${recorded}`}`;
 }
 
 function onDisk(root: string, files: string[]): Record<string, string> {
@@ -758,6 +763,54 @@ describe("GlobalDeployStateReader on a root-package target", () => {
 });
 
 describe("DeployStateReader copy chips", () => {
+  it("reads the lockfile once, however many skills it classifies", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+      ".claude/skills/jobs/SKILL.md",
+    ];
+    let lockfileReads = 0;
+    const counted = (path: string) => {
+      if (path === LOCKFILE) lockfileReads++;
+    };
+    const tree = new (class extends InMemoryCopyTree {
+      override openFollowingLinks(path: string) {
+        counted(path);
+        return super.openFollowingLinks(path);
+      }
+    })();
+    tree.write(
+      LOCKFILE,
+      lockfile(rootPackageEntry("v0.3.2", files, ["tdd", "grill", "jobs"])),
+    );
+    for (const [path, body] of Object.entries(onDisk(REPO, files))) {
+      tree.write(path, body);
+    }
+    const disk = tree.fileSystem();
+    const reader = new DeployStateReader({
+      fs: {
+        ...disk,
+        readFile: (path) => {
+          counted(path);
+          return disk.readFile(path);
+        },
+      },
+      content: new DeployedContentAdapter({
+        location: { treeRoot: () => REPO, lockfilePath: () => LOCKFILE },
+        fs: tree,
+      }),
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result.ok && result.primitives.map((p) => p.copy)).toEqual([
+      "unverified",
+      "unverified",
+      "unverified",
+    ]);
+    expect(lockfileReads).toBe(1);
+  });
+
   it("calls the content port as a method, so an adapter keeps its own state", async () => {
     // The real adapter, with tdd's copy edited on disk: a detached method call
     // would lose its state (#949).
@@ -766,7 +819,14 @@ describe("DeployStateReader copy chips", () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     const fs = new InMemoryFileSystem({
       files: {
-        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        [LOCKFILE]: lockfile(
+          rootPackageEntry(
+            "v0.3.2",
+            files,
+            ["tdd"],
+            editedTdd.recordedHashes({ kind: "repo", repoPath: REPO }, "tdd"),
+          ),
+        ),
         ...onDisk(REPO, files),
       },
     });
@@ -784,15 +844,18 @@ describe("DeployStateReader copy chips", () => {
 
   it("leaves a copy whose changes the latest release holds unmarked (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
+    const released = releasedIn041({ kind: "repo", repoPath: REPO });
     const fs = new InMemoryFileSystem({
       files: {
-        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.5", files, ["tdd"], released.hashes),
+        ),
         ...onDisk(REPO, files),
       },
     });
     const reader = new DeployStateReader({
       fs,
-      content: releasedIn041({ kind: "repo", repoPath: REPO }),
+      content: released.content,
       releaseHead: latestIs("v0.4.1"),
     });
 
@@ -805,15 +868,18 @@ describe("DeployStateReader copy chips", () => {
 
   it("keeps Local edits when the latest release could not be read (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
+    const released = releasedIn041({ kind: "repo", repoPath: REPO });
     const fs = new InMemoryFileSystem({
       files: {
-        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.5", files, ["tdd"], released.hashes),
+        ),
         ...onDisk(REPO, files),
       },
     });
     const reader = new DeployStateReader({
       fs,
-      content: releasedIn041({ kind: "repo", repoPath: REPO }),
+      content: released.content,
       releaseHead: latestIs(null),
     });
 
@@ -826,15 +892,18 @@ describe("DeployStateReader copy chips", () => {
 
   it("keeps Local edits for a copy equal to an older release than the latest (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
+    const released = releasedIn041({ kind: "repo", repoPath: REPO });
     const fs = new InMemoryFileSystem({
       files: {
-        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.5", files, ["tdd"], released.hashes),
+        ),
         ...onDisk(REPO, files),
       },
     });
     const reader = new DeployStateReader({
       fs,
-      content: releasedIn041({ kind: "repo", repoPath: REPO }),
+      content: released.content,
       releaseHead: latestIs("v0.4.2"),
     });
 
@@ -850,9 +919,12 @@ describe("DeployStateReader copy chips", () => {
       ".claude/skills/tdd/SKILL.md",
       ".agents/skills/tdd/SKILL.md",
     ];
+    const released = releasedIn041({ kind: "global" }, ["codex"]);
     const fs = new InMemoryFileSystem({
       files: {
-        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        [GLOBAL_LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.5", files, ["tdd"], released.hashes),
+        ),
         ...onDisk("/home", files),
       },
     });
@@ -860,7 +932,7 @@ describe("DeployStateReader copy chips", () => {
       fs,
       toolPresence: fakePresence(["claude", "codex"]),
       treeRoot: () => "/home",
-      content: releasedIn041({ kind: "global" }, ["codex"]),
+      content: released.content,
       releaseHead: latestIs("v0.4.1"),
     });
 
@@ -877,9 +949,12 @@ describe("DeployStateReader copy chips", () => {
 
   it("checks each global tool's copy against the latest release (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
+    const released = releasedIn041({ kind: "global" });
     const fs = new InMemoryFileSystem({
       files: {
-        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.5", files, ["tdd"])),
+        [GLOBAL_LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.5", files, ["tdd"], released.hashes),
+        ),
         ...onDisk("/home", files),
       },
     });
@@ -887,7 +962,7 @@ describe("DeployStateReader copy chips", () => {
       fs,
       toolPresence: fakePresence(["claude"]),
       treeRoot: () => "/home",
-      content: releasedIn041({ kind: "global" }),
+      content: released.content,
       releaseHead: latestIs("v0.4.1"),
     });
 
@@ -904,7 +979,10 @@ describe("DeployStateReader copy chips", () => {
 function releasedIn041(
   target: DeployTarget,
   unreleased: SupportedTool[] = [],
-): DeployStateExtras["content"] {
+): {
+  content: NonNullable<DeployStateExtras["content"]>;
+  hashes: Record<string, string>;
+} {
   const released = "tdd at v0.4.1\n";
   const copies = inMemoryDeployedContent({
     release: (tag) =>
@@ -922,7 +1000,10 @@ function releasedIn041(
       unreleased.includes(tool) ? "unreleased work\n" : released,
     );
   }
-  return copies.content;
+  return {
+    content: copies.content,
+    hashes: copies.recordedHashes(target, "tdd"),
+  };
 }
 
 function latestIs(

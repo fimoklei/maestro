@@ -45,6 +45,8 @@ function world() {
     writeFile: async (path: string, contents: string) => {
       files.set(path, contents);
     },
+    // No stamp: nothing is remembered, every read goes to the file.
+    stamp: async () => null,
     isFileEntry: async (path: string) => files.has(path),
   };
 
@@ -101,7 +103,7 @@ function world() {
 
   const operations = new TargetOperationStore({
     store: new ConfigStore({
-      fs: fs as never,
+      fs,
       configPath: () => "/home/.maestro/config.json",
     }),
   });
@@ -332,6 +334,41 @@ describe("SelectionWriter.apply", () => {
     expect(await stage.operations.read("/repo")).toMatchObject({
       kind: "deploy",
     });
+  });
+
+  it("reports a timed-out install apart from a failed one, keeping the operation", async () => {
+    const apm = {
+      ...stage.deps.apm,
+      deploySkill: async () => ({
+        ok: false as const,
+        reason: "timed-out" as const,
+      }),
+    };
+
+    const result = await new SelectionWriter({ ...stage.deps, apm }).apply(
+      write(),
+    );
+
+    expect(result).toEqual({ ok: false, error: "apply-timed-out" });
+    expect(await stage.operations.read("/repo")).toMatchObject({
+      kind: "deploy",
+    });
+  });
+
+  it("reports a timed-out uninstall apart from a failed one", async () => {
+    const apm = {
+      ...stage.deps.apm,
+      removeSkill: async () => ({
+        ok: false as const,
+        reason: "timed-out" as const,
+      }),
+    };
+
+    const result = await new SelectionWriter({ ...stage.deps, apm }).apply(
+      write({ kind: "remove", previous: ["caveman"], desired: [] }),
+    );
+
+    expect(result).toEqual({ ok: false, error: "apply-timed-out" });
   });
 
   it("passes a symlinked destination through as its own refusal", async () => {

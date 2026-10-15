@@ -65,8 +65,15 @@ type SanitizedLogEntry = {
 type RunFn = (
   file: string,
   args: string[],
-  options?: { cwd?: string; env?: NodeJS.ProcessEnv },
+  options: { cwd?: string; env?: NodeJS.ProcessEnv; signal: AbortSignal },
 ) => Promise<{ stdout: string; stderr: string }>;
+
+// A hung apm ends as a plain failure: callers already map that to their own
+// message, never apm's output. Installs clone, so they get the longer bound.
+const READ_TIMEOUT_MS = 60_000;
+const WRITE_TIMEOUT_MS = 300_000;
+
+class ApmTimedOut extends Error {}
 
 export class ApmCliDriver implements ApmDriverPort {
   private readonly log: (entry: SanitizedLogEntry) => void;
@@ -92,12 +99,21 @@ export class ApmCliDriver implements ApmDriverPort {
     const started = Date.now();
     let stdout: string;
     try {
-      ({ stdout } = await this.run("apm", ["view", ownerRepo, "versions"]));
+      ({ stdout } = await this.runApm(
+        ["view", ownerRepo, "versions"],
+        {},
+        READ_TIMEOUT_MS,
+      ));
     } catch (error) {
       // The raw error may carry a token in a git URL: only the reason leaves.
       return {
         ok: false,
-        reason: hasAuthPhrase(error) ? "auth-required" : "failed",
+        reason:
+          error instanceof ApmTimedOut
+            ? "timed-out"
+            : hasAuthPhrase(error)
+              ? "auth-required"
+              : "failed",
       };
     }
     this.log({
@@ -125,9 +141,16 @@ export class ApmCliDriver implements ApmDriverPort {
     );
     let output: string;
     try {
-      const { stdout, stderr } = await this.run("apm", args, { cwd });
+      const { stdout, stderr } = await this.runApm(
+        args,
+        { cwd },
+        WRITE_TIMEOUT_MS,
+      );
       output = `${stdout}\n${stderr}`;
     } catch (error) {
+      if (error instanceof ApmTimedOut) {
+        return { ok: false, reason: "timed-out" };
+      }
       // Classify from the rejected run's own output, not the exit code (#183).
       return { ok: false, reason: classifyInstallFailure(outputOf(error)) };
     }
@@ -162,9 +185,16 @@ export class ApmCliDriver implements ApmDriverPort {
       target.kind === "repo" ? basename(target.repoPath) : "global";
     let output: string;
     try {
-      const { stdout, stderr } = await this.run("apm", args, { cwd });
+      const { stdout, stderr } = await this.runApm(
+        args,
+        { cwd },
+        WRITE_TIMEOUT_MS,
+      );
       output = `${stdout}\n${stderr}`;
     } catch (error) {
+      if (error instanceof ApmTimedOut) {
+        return { ok: false, reason: "timed-out" };
+      }
       output = outputOf(error);
     }
     if (!removeSucceeded(output)) {
@@ -186,10 +216,11 @@ export class ApmCliDriver implements ApmDriverPort {
       target.kind === "repo" ? target.repoPath : await this.prepareGlobalCwd();
     const args = target.kind === "repo" ? ["outdated"] : ["outdated", "-g"];
     try {
-      const { stdout } = await this.run("apm", args, {
-        cwd,
-        env: { ...process.env, COLUMNS: WIDE_COLUMNS },
-      });
+      const { stdout } = await this.runApm(
+        args,
+        { cwd, env: { ...process.env, COLUMNS: WIDE_COLUMNS } },
+        READ_TIMEOUT_MS,
+      );
       this.log({
         operation: "check-outdated",
         target: target.kind === "repo" ? basename(target.repoPath) : "global",
@@ -197,9 +228,34 @@ export class ApmCliDriver implements ApmDriverPort {
         durationMs: Date.now() - started,
       });
       return parseOutdated(stdout);
-    } catch {
+    } catch (error) {
       // Not logged: the raw apm error may carry a token.
-      return { ok: false };
+      return error instanceof ApmTimedOut
+        ? { ok: false, reason: "timed-out" }
+        : { ok: false };
+    }
+  }
+
+  // The abort kills the real process; the race also ends a runner that ignores it.
+  private async runApm(
+    args: string[],
+    options: { cwd?: string; env?: NodeJS.ProcessEnv },
+    timeoutMs: number,
+  ): Promise<{ stdout: string; stderr: string }> {
+    const controller = new AbortController();
+    const timedOut = new Promise<never>((_, reject) => {
+      controller.signal.addEventListener("abort", () =>
+        reject(new ApmTimedOut()),
+      );
+    });
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await Promise.race([
+        this.run("apm", args, { ...options, signal: controller.signal }),
+        timedOut,
+      ]);
+    } finally {
+      clearTimeout(timer);
     }
   }
 

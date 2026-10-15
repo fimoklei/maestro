@@ -48,6 +48,17 @@ describe("deploy HTTP route", () => {
     );
   });
 
+  it("fetches the Harness right before a deploy, even right after a Harness refresh", async () => {
+    const w = await world();
+    await w.app.request("/api/harness/refresh", { method: "POST" });
+    expect(w.harness.fetches).toBe(1);
+
+    const res = await w.deploy({ target: repoTarget });
+
+    expect(res.status).toBe(200);
+    expect(w.harness.fetches).toBe(2);
+  });
+
   it("reports an install that landed nothing as incomplete, never a success", async () => {
     // apm returned success and placed none of the Selection (#951).
     const w = await world();
@@ -266,6 +277,36 @@ describe("deploy HTTP route", () => {
     const body = await res.json();
     expect(body).toEqual({ error: "deploy-failed" });
     expect(JSON.stringify(body)).not.toContain("token in stderr");
+  });
+
+  it("answers a deploy that did not start with the same 502 as one that did not finish", async () => {
+    const w = await world();
+    w.answers.latestTag = { ok: false, reason: "failed" };
+
+    const res = await w.deploy({ target: repoTarget });
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: "deploy-not-started" });
+  });
+
+  it("surfaces a timed-out install as a 504 of its own", async () => {
+    const w = await world();
+    w.answers.installRefusal = { ok: false, reason: "timed-out" };
+
+    const res = await w.deploy({ target: repoTarget });
+
+    expect(res.status).toBe(504);
+    expect(await res.json()).toEqual({ error: "deploy-timed-out" });
+  });
+
+  it("surfaces a timed-out release lookup as a 504 of its own", async () => {
+    const w = await world();
+    w.answers.latestTag = { ok: false, reason: "timed-out" };
+
+    const res = await w.deploy({ target: repoTarget });
+
+    expect(res.status).toBe(504);
+    expect(await res.json()).toEqual({ error: "tag-check-timed-out" });
   });
 
   it("surfaces missing GitHub auth as a distinct 502", async () => {

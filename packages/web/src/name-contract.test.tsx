@@ -21,6 +21,7 @@ const PLAIN: Record<string, Record<string, string>> = {
   "deploy-state/notice-copy.ts": {
     "`${name} still incomplete`": "notice heading",
     "`${name} outcome unknown`": "notice heading",
+    "`${name} timed out`": "notice heading",
   },
   "deploy-state/remove-ledger-rows.ts": {
     "`target:${name}`": "key",

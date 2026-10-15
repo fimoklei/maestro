@@ -38,8 +38,8 @@ const build = (options: {
     fs: { readFile: async () => options.lock ?? null },
     location: new DeployedLocation({}),
     resolveRoot: async () => ("root" in options ? options.root : "/harness"),
+    fetchHarness: fetch,
     git: {
-      fetch,
       readOrigin: async () =>
         options.origin === undefined ? ORIGIN : options.origin,
       readSkillTreesAtTag,
@@ -353,6 +353,14 @@ describe("ReadDrift", () => {
     expect(result).toEqual({ ok: false, reason: "unverified" });
   });
 
+  it("forwards a timed-out check unchanged", async () => {
+    const result = await run({
+      outdated: { ok: false, reason: "timed-out" },
+    });
+
+    expect(result).toEqual({ ok: false, reason: "timed-out" });
+  });
+
   it("reads no trees when apm reports nothing behind", async () => {
     const { readDrift, readSkillTreesAtTag, fetch } = build({
       outdated: { ok: true, behind: [] },
@@ -366,7 +374,7 @@ describe("ReadDrift", () => {
   });
 
   it("fetches tags before reading trees, and once per check", async () => {
-    const { readDrift, fetch, readSkillTreesAtTag } = build({
+    const { readDrift, fetch } = build({
       outdated: {
         ok: true,
         behind: [
@@ -392,8 +400,6 @@ describe("ReadDrift", () => {
       behind: [{ reading: "older-tag" }, { reading: "behind" }],
     });
     expect(fetch).toHaveBeenCalledTimes(1);
-    // One ls-tree per ref, not per skill.
-    expect(readSkillTreesAtTag).toHaveBeenCalledTimes(2);
   });
 
   it("reads a skill as behind when the latest cell is not a version tag", async () => {

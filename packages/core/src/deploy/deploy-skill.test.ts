@@ -40,6 +40,7 @@ const withLinks = (
 ): DeployedContentPort => {
   const none = deployedCopies([]).content;
   return {
+    readLockfile: (target) => none.readLockfile(target),
     classify: (input) => none.classify(input),
     contentDigest: (input) => none.contentDigest(input),
     linkedSkillPath,
@@ -94,19 +95,19 @@ const buildDeps = (
       host: "github.com",
       ownerRepo: "fimoklei/agent-harness",
     }),
+    syncHarness: async () => {},
     inventoryGit: {
-      syncBeforeDeploy: async () => {},
       skillExistsAtTag: async (_tag: string, _name: string) => true,
       skillDivergesFromTag: async (_tag: string, _name: string) => false,
       readSkillFilesAtTag: async (_tag: string, _name: string) => null,
     },
     deployedContent: {
-      classify: async (input: {
-        target: DeployTarget;
-        name: string;
-        tools?: readonly SupportedTool[];
-      }) => {
-        classified.push(input);
+      readLockfile: (target: DeployTarget) => noCopies.readLockfile(target),
+      classify: async (
+        input: Parameters<DeployedContentPort["classify"]>[0],
+      ) => {
+        const { lockfile: _shared, ...asked } = input;
+        classified.push(asked);
         return noCopies.classify(input);
       },
       contentDigest: async (input: {
@@ -132,7 +133,7 @@ const buildDeps = (
       ],
     },
     recordedPackage: {
-      read: async (_input: { target: DeployTarget; name: string }) =>
+      read: async () =>
         ({
           kind: "recorded",
           reading: { kind: "skill", name: "tdd" },
@@ -344,7 +345,6 @@ describe("DeploySkill", () => {
   it("refuses when the skill is not in the release the target follows", async () => {
     const { deps, deployed, world } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async (tag: string) => tag !== "v0.4.0",
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,
@@ -851,7 +851,38 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "deploy-failed" });
   });
 
-  it("falls back to deploy-failed for a generic resolve failure", async () => {
+  it("reports deploy-timed-out for a timed-out install", async () => {
+    const { deps, world } = buildDeps();
+    world.refuseWith({ ok: false, reason: "timed-out" });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-timed-out" });
+  });
+
+  it("reports tag-check-timed-out and deploys nothing when the release lookup times out", async () => {
+    const { deps, deployed } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => ({ ok: false, reason: "timed-out" }),
+        deploySkill: async () => {
+          throw new Error("must not deploy after a timed-out resolve");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "tag-check-timed-out" });
+    expect(deployed).toEqual([]);
+  });
+
+  it("reports a generic resolve failure as a deploy that did not start", async () => {
     const { deps, deployed } = buildDeps({
       apm: {
         resolveLatestTag: async () => ({ ok: false, reason: "failed" }),
@@ -866,7 +897,7 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+    expect(result).toEqual({ ok: false, error: "deploy-not-started" });
     expect(deployed).toEqual([]);
   });
 
@@ -875,7 +906,6 @@ describe("DeploySkill", () => {
     // skill (#15).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => false,
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,
@@ -894,7 +924,6 @@ describe("DeploySkill", () => {
   it("refuses to deploy a skill whose local tree diverges from the tag", async () => {
     const { deps, deployed } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
         readSkillFilesAtTag: async () => null,
@@ -916,7 +945,6 @@ describe("DeploySkill", () => {
   it("refuses a global deploy when the local tree diverges from the tag", async () => {
     const { deps, deployed } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
         readSkillFilesAtTag: async () => null,
@@ -1135,7 +1163,6 @@ describe("DeploySkill", () => {
   it("consents to the copy only — source divergence still refuses", async () => {
     const { deps, deployed } = buildDeps({
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
         readSkillFilesAtTag: async () => null,
@@ -1276,7 +1303,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "deploy-failed" });
   });
 
-  it("turns an apm tag-resolution failure into a typed deploy-failed error", async () => {
+  it("reports a thrown tag resolution as a deploy that did not start", async () => {
     const { deps, deployed } = buildDeps({
       apm: {
         resolveLatestTag: async () => {
@@ -1291,8 +1318,32 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+    expect(result).toEqual({ ok: false, error: "deploy-not-started" });
     expect(deployed).toEqual([]);
+  });
+
+  it("reports a failure while the install's operation is still pending as a deploy that did not finish", async () => {
+    // The guard reads links before the install too; only the refusal's probe fails.
+    let installs: readonly unknown[] = [];
+    const { deps, deployed, world } = buildDeps({
+      deployedContent: withLinks(async () => {
+        if (installs.length > 0) {
+          throw new Error("lstat failed");
+        }
+        return null;
+      }),
+    });
+    installs = deployed;
+    world.refuseWith({ ok: false, reason: "destination-symlinked" });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+    expect(await world.operations.read("/registered/repo")).not.toBeNull();
   });
 });
 
@@ -1342,7 +1393,6 @@ describe("DeploySkill.executeBatch", () => {
     const { deps, deployed } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async (_tag, name) => name === "review",
         readSkillFilesAtTag: async () => null,
@@ -1399,6 +1449,36 @@ describe("DeploySkill.executeBatch", () => {
       ok: true,
       deployed: { type: "skill", name: "review", version: "v0.5.1" },
     });
+  });
+
+  it("reports a held name as not started when a failure follows a landed install", async () => {
+    // The install landed and cleared its operation; the held name's re-check fails.
+    const edited = editedCopies({ review: "diverged" });
+    let installs: readonly unknown[] = [];
+    const { deps, deployed, world } = buildDeps({
+      inventory: skills("tdd", "review"),
+      deployedContent: {
+        readLockfile: (target) =>
+          installs.length > 0
+            ? Promise.reject(new Error("disk gone"))
+            : edited.readLockfile(target),
+        classify: (input) => edited.classify(input),
+        contentDigest: (input) => edited.contentDigest(input),
+        linkedSkillPath: async () => null,
+      },
+    });
+    installs = deployed;
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(report.deployed).toEqual([{ name: "tdd", version: "v0.5.1" }]);
+    expect(report.failed).toEqual([
+      { error: "deploy-not-started", names: ["review"] },
+    ]);
+    expect(await world.operations.read("/registered/repo")).toBeNull();
   });
 
   it("marks an unverifiable copy as forceable attention", async () => {
@@ -1528,7 +1608,7 @@ describe("DeploySkill.executeBatch", () => {
       target: globalTarget,
       deployed: [],
       attention: [],
-      failed: [{ error: "deploy-failed", names: ["tdd", "review"] }],
+      failed: [{ error: "deploy-not-started", names: ["tdd", "review"] }],
     });
   });
 
@@ -1609,6 +1689,7 @@ describe("DeploySkill.executeBatch", () => {
     const { deps } = buildDeps({
       inventory: skills("review", "docs"),
       deployedContent: {
+        readLockfile: (target) => copies.readLockfile(target),
         classify: (input) => copies.classify(input),
         contentDigest: (input) => copies.contentDigest(input),
         linkedSkillPath: async ({ name }) =>
@@ -1648,7 +1729,6 @@ describe("DeploySkill.executeBatch", () => {
     const { deps, world } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       inventoryGit: {
-        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async (_tag, name) => name !== "tdd",
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,

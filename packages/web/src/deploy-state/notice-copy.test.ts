@@ -55,7 +55,10 @@ const DEPLOY = codes<DeploySkillError>({
   "no-supported-tool": true,
   "auth-required": true,
   "destination-symlinked": true,
+  "tag-check-timed-out": true,
+  "deploy-timed-out": true,
   "deploy-failed": true,
+  "deploy-not-started": true,
 });
 
 const UPDATE_PREVIEW = codes<UpdatePreviewError>({
@@ -84,6 +87,7 @@ const UPDATE_RUN: UpdateRunError[] = [
     "deployed-unverifiable": true,
     "manifest-not-recognised": true,
     "update-incomplete": true,
+    "update-timed-out": true,
     "update-failed": true,
   }),
 ];
@@ -98,6 +102,7 @@ const RETRY = codes<RetryTargetOperationError>({
   "lockfile-malformed": true,
   "manifest-not-recognised": true,
   "retry-incomplete": true,
+  "retry-timed-out": true,
   "retry-failed": true,
 });
 
@@ -135,6 +140,8 @@ const SURFACES: Surface[] = [
       "cost-not-acknowledged": true,
       "remove-in-progress": true,
       "remove-incomplete": true,
+      "remove-timed-out": true,
+      "remove-timed-out-unrecorded": true,
       "remove-failed": true,
       "preflight-failed": true,
       "manifest-not-recognised": true,
@@ -364,6 +371,92 @@ describe("a retry", () => {
       ),
     ).toEqual(["v0.3.4"]);
   });
+});
+
+describe("a deploy that failed", () => {
+  it("sends a deploy that left an operation to Retry deploy", () => {
+    expect(readNotice(deployNotice(refusal("deploy-failed")))).toEqual({
+      label: "Deploy did not finish",
+      message:
+        "The deploy did not finish. On the Deploy-state screen, select Retry deploy.",
+      detail: "Some of the skill's files may be on disk.",
+    });
+  });
+
+  it("sends a deploy that wrote nothing back to Deploy skill", () => {
+    expect(readNotice(deployNotice(refusal("deploy-not-started")))).toEqual({
+      label: "Deploy did not start",
+      message:
+        "Nothing was deployed. Select Deploy skill on the Skills screen to try again.",
+    });
+  });
+});
+
+describe("a timed-out apm call", () => {
+  it("states a timed-out release lookup as nothing deployed", () => {
+    expect(readNotice(deployNotice(refusal("tag-check-timed-out")))).toEqual({
+      label: "Release check timed out",
+      message:
+        "Nothing was deployed. Check your network connection, then deploy again.",
+      detail: "The latest release did not load within 1 minute.",
+    });
+  });
+
+  it("sends a timed-out deploy to Retry deploy", () => {
+    expect(readNotice(deployNotice(refusal("deploy-timed-out")))).toEqual({
+      label: "Deploy timed out",
+      message:
+        "The deploy stopped after 5 minutes. On the Deploy-state screen, select Retry deploy.",
+      detail: "Part of the selection may not be on disk.",
+    });
+  });
+
+  it("sends a timed-out removal with an operation to Retry removal", () => {
+    expect(readNotice(removeNotice(refusal("remove-timed-out")))).toEqual({
+      label: "Removal timed out",
+      message:
+        "The removal stopped after 5 minutes. On the Deploy-state screen, select Retry removal.",
+      detail: "Some of the skill's files may still be on disk.",
+    });
+  });
+
+  it("sends a timed-out removal without an operation back to Remove skill", () => {
+    expect(
+      readNotice(removeNotice(refusal("remove-timed-out-unrecorded"))),
+    ).toEqual({
+      label: "Removal timed out",
+      message:
+        "The removal stopped after 5 minutes. Select Remove skill to start it again.",
+      detail: "Some of the skill's files may still be on disk.",
+    });
+  });
+
+  it("sends a timed-out update to Retry update", () => {
+    expect(
+      readNotice(updateNotice(refusal("update-timed-out"), "Update target")),
+    ).toEqual({
+      label: "Update timed out",
+      message:
+        "The update stopped after 5 minutes. Select Retry update to run it again.",
+      detail: "Some skills may still be on the earlier release.",
+    });
+  });
+
+  it.each([
+    ["deploy", "Deploy", "Retry deploy"],
+    ["remove", "Removal", "Retry removal"],
+    ["update", "Update", "Retry update"],
+  ] as const)(
+    "names the %s's own retry when the retry timed out",
+    (kind, name, retry) => {
+      expect(
+        readNotice(retryNotice(refusal("retry-timed-out"), pending(kind))),
+      ).toEqual({
+        label: `${name} timed out`,
+        message: `The ${name.toLowerCase()} stopped after 5 minutes. Select ${retry} to run it again.`,
+      });
+    },
+  );
 });
 
 describe("Repository not registered", () => {

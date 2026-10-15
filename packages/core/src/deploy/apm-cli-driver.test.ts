@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApmCliDriver } from "./apm-cli-driver";
 
 type RunCall = { file: string; args: string[]; cwd?: string };
@@ -707,6 +707,57 @@ describe("ApmCliDriver.checkOutdated", () => {
         args: ["outdated", "-g"],
         cwd: "/scratch/.apm-scratch",
       },
+    ]);
+  });
+});
+
+// A hung apm never settles; the driver must end the call itself.
+function hangingRun() {
+  const signals: (AbortSignal | undefined)[] = [];
+  const run = (
+    _file: string,
+    _args: string[],
+    options?: { signal?: AbortSignal },
+  ) => {
+    signals.push(options?.signal);
+    return new Promise<never>(() => undefined);
+  };
+  return { run, signals };
+}
+
+describe("ApmCliDriver timeouts", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const repo = { kind: "repo", repoPath: "/repo" } as const;
+  const ref = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
+
+  it("ends every hung apm call as timed out", async () => {
+    vi.useFakeTimers();
+    const { run, signals } = hangingRun();
+    const driver = new ApmCliDriver({ run });
+
+    const results = Promise.all([
+      driver.resolveLatestTag("fimoklei/agent-harness"),
+      driver.deploySkill({ target: repo, ref }),
+      driver.removeSkill({ target: repo, ref }),
+      driver.checkOutdated(repo),
+    ]);
+    await vi.runAllTimersAsync();
+
+    expect(await results).toEqual([
+      { ok: false, reason: "timed-out" },
+      { ok: false, reason: "timed-out" },
+      { ok: false, reason: "timed-out" },
+      { ok: false, reason: "timed-out" },
+    ]);
+    // The real runner kills the apm process on this signal.
+    expect(signals.map((signal) => signal?.aborted)).toEqual([
+      true,
+      true,
+      true,
+      true,
     ]);
   });
 });

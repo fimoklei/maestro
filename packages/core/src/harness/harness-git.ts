@@ -36,6 +36,10 @@ import type {
   SkillPushOutcome,
   WorktreeAmbiguity,
 } from "./read-harness-state";
+import {
+  parseSkillTreeListing,
+  type ReleasedContentReader,
+} from "./released-content";
 import type { HarnessSkillTree } from "./skill-movements";
 
 const run = promisify(execFile);
@@ -57,6 +61,14 @@ const PROMOTE_FORMAT = `%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})\
 const TAG_FORMAT = `%(refname:lstrip=${MAESTRO_TAGS.split("/").length})\t%(objectname)\t%(*objectname)`;
 
 export class HarnessGitAdapter implements HarnessGitPort {
+  private readonly released: ReleasedContentReader;
+
+  // One reader per server, shared with the inventory adapter, so released
+  // content read once is remembered across requests.
+  constructor(deps: { released: ReleasedContentReader }) {
+    this.released = deps.released;
+  }
+
   async fetch(root: string): Promise<HarnessFetchOutcome> {
     const options = gitOptions();
     try {
@@ -596,7 +608,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     tag: string,
   ): Promise<HarnessSkillTree[] | null> {
-    return this.readSkillTrees(root, `${MAESTRO_TAGS}/${tag}`);
+    return this.released.skillTrees(root, `${MAESTRO_TAGS}/${tag}`);
   }
 
   async readSkillManifestsAtTag(
@@ -604,7 +616,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     tag: string,
     names: string[],
   ): Promise<Record<string, string | null>> {
-    return this.readSkillManifests(root, `${MAESTRO_TAGS}/${tag}`, names);
+    return this.released.skillManifests(root, `${MAESTRO_TAGS}/${tag}`, names);
   }
 
   // Null on an unreadable ref or a listing this parser does not recognise.
@@ -630,22 +642,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
       return resolves === null ? null : [];
     }
 
-    const skills: HarnessSkillTree[] = [];
-    for (const entry of listing.split("\0")) {
-      if (entry === "") {
-        continue;
-      }
-      const [meta = "", name = ""] = entry.split("\t");
-      const [mode, type, treeHash] = meta.split(" ");
-      if (!mode || !type || !treeHash || !name) {
-        // Skipping the line would read as a removal nobody made.
-        return null;
-      }
-      if (type === "tree") {
-        skills.push({ name, treeHash });
-      }
-    }
-    return skills;
+    return parseSkillTreeListing(listing);
   }
 
   // ponytail: one `git log` per movement; batch into a single `--name-status`

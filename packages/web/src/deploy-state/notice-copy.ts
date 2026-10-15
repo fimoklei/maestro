@@ -29,6 +29,7 @@ import {
   unfinishedOperationNotice,
 } from "./release-head-copy";
 import {
+  RETRY_UPDATE,
   UPDATE_AGAIN,
   UPDATE_INCOMPLETE_SENTENCE,
   updateAgain,
@@ -62,6 +63,11 @@ const MANIFEST_OTHER_SHAPE =
   "Maestro edits that list only, and it found another shape.";
 
 const FILES_MISSING = "apm reported success, but some files are missing.";
+
+// Must match the server's timeout on an apm write.
+const STOPPED_AFTER = "stopped after 5 minutes.";
+
+const FILES_MAY_REMAIN = "Some of the skill's files may still be on disk.";
 
 const LINK_TARGET_SURVIVES =
   "This removes the link only. The folder it points at remains on disk.";
@@ -173,9 +179,21 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     message: `Nothing was written. ${DELETE_LINKED_FOLDER}`,
     detail: LINK_TARGET_SURVIVES,
   },
-  "deploy-failed": {
+  "tag-check-timed-out": {
     message:
-      "The target may hold a partial deploy. Check the target on the Deploy-state screen, then deploy again.",
+      "Nothing was deployed. Check your network connection, then deploy again.",
+    detail: "The latest release did not load within 1 minute.",
+  },
+  "deploy-timed-out": {
+    message: `The deploy ${STOPPED_AFTER} On the Deploy-state screen, select ${RETRY_DEPLOY}.`,
+    detail: "Part of the selection may not be on disk.",
+  },
+  "deploy-failed": {
+    message: `The deploy did not finish. On the Deploy-state screen, select ${RETRY_DEPLOY}.`,
+    detail: "Some of the skill's files may be on disk.",
+  },
+  "deploy-not-started": {
+    message: `Nothing was deployed. Select ${DEPLOY_SKILL} on the Skills screen to try again.`,
   },
 };
 
@@ -241,6 +259,15 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   "remove-incomplete": {
     message: `The skill's files are still on disk. Select ${RETRY_REMOVAL} to run the same removal again.`,
     detail: FILES_MISSING,
+  },
+  "remove-timed-out": {
+    message: `The removal ${STOPPED_AFTER} On the Deploy-state screen, select ${RETRY_REMOVAL}.`,
+    detail: FILES_MAY_REMAIN,
+  },
+  // No operation was kept, so there is nothing to retry: the reader starts over.
+  "remove-timed-out-unrecorded": {
+    message: `The removal ${STOPPED_AFTER} Select ${REMOVE_SKILL} to start it again.`,
+    detail: FILES_MAY_REMAIN,
   },
   "remove-failed": {
     message:
@@ -360,6 +387,10 @@ const UPDATE: Record<UpdateRunError, Body> = {
   "update-incomplete": {
     message: UPDATE_INCOMPLETE_SENTENCE,
     detail: FILES_MISSING,
+  },
+  "update-timed-out": {
+    message: `The update ${STOPPED_AFTER} Select ${RETRY_UPDATE} to run it again.`,
+    detail: "Some skills may still be on the earlier release.",
   },
   "update-failed": {
     message: `Nothing proved the update finished. Check the target on the Deploy-state screen, ${UPDATE_AGAIN}`,
@@ -547,6 +578,10 @@ function retryCopy(
       label: `${name} still incomplete`,
       message: unfinishedOperationNotice(operation).message,
       detail: FILES_MISSING,
+    },
+    "retry-timed-out": {
+      label: `${name} timed out`,
+      message: `The ${noun} ${STOPPED_AFTER} Select ${retry} to run it again.`,
     },
     "retry-failed": {
       label: `${name} outcome unknown`,

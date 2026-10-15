@@ -48,6 +48,7 @@ function buildRead(
       read: async () => overrides?.freshness ?? FETCHED,
       record: async () => {},
     },
+    fetchHarness: async () => "fetched",
   });
 }
 

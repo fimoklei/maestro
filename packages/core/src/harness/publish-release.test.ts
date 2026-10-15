@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
+import { HarnessFetchGate } from "./harness-fetch-gate";
 import { InMemoryHarnessGit } from "./harness-git.fake";
 import { PublishRelease, type ReleaseConfirmation } from "./publish-release";
 import type {
@@ -14,6 +15,16 @@ const FRESHNESS: HarnessFreshness = {
   outcome: "fetched",
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
+
+const READ_MAX_AGE_MS = 30_000;
+
+// A gate a Drift or Harness read shares with the release.
+const readGate = (git: InMemoryHarnessGit) =>
+  new HarnessFetchGate({
+    git,
+    freshness: { read: async () => FRESHNESS, record: async () => {} },
+    now: () => AT,
+  });
 
 // Distinct from the world in every field a stale dialog would still show.
 const RECOMPUTED: ReleasePlan = {
@@ -53,6 +64,7 @@ function buildPublish(
     root?: string | undefined;
     onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
     replan?: (root: string) => Promise<ReleasePlanResult>;
+    fetchGate?: HarnessFetchGate;
   },
 ) {
   return new PublishRelease({
@@ -61,12 +73,18 @@ function buildPublish(
     locks: new InFlightLocks(),
     replan: overrides?.replan ?? (async () => ({ ok: true, plan: RECOMPUTED })),
     git,
-    freshness: {
-      read: async () => FRESHNESS,
-      record: async (root, freshness) => {
-        overrides?.onFreshnessRecord?.(root, freshness);
-      },
-    },
+    fetchGate:
+      overrides?.fetchGate ??
+      new HarnessFetchGate({
+        git,
+        freshness: {
+          read: async () => FRESHNESS,
+          record: async (root, freshness) => {
+            overrides?.onFreshnessRecord?.(root, freshness);
+          },
+        },
+        now: () => AT,
+      }),
   });
 }
 
@@ -74,7 +92,7 @@ describe("PublishRelease", () => {
   it("refuses when no harness is connected", async () => {
     const publish = buildPublish(releasable(), { root: undefined });
 
-    await expect(publish.execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(publish.execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });
@@ -84,7 +102,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.originUrl = "/srv/mirror.git";
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "no-usable-origin",
     });
@@ -94,7 +112,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.fetchOutcomes = ["offline"];
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -104,7 +122,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.tip = null;
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -114,7 +132,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.tags = null;
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -124,7 +142,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.defaultBranch = null;
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -133,10 +151,10 @@ describe("PublishRelease", () => {
   it("tags the freshly read revision with the chosen step's version", async () => {
     const git = releasable();
 
-    const result = await buildPublish(git).execute(
-      { ...CONFIRMED, step: "minor" },
-      AT,
-    );
+    const result = await buildPublish(git).execute({
+      ...CONFIRMED,
+      step: "minor",
+    });
 
     expect(result).toEqual({ ok: true, tag: "v1.3.0", revision: "head" });
     expect(git.published).toEqual([
@@ -149,15 +167,12 @@ describe("PublishRelease", () => {
     git.tags = [];
 
     await expect(
-      buildPublish(git).execute(
-        {
-          ...CONFIRMED,
-          step: "minor",
-          previousTag: null,
-          previousTagCommit: null,
-        },
-        AT,
-      ),
+      buildPublish(git).execute({
+        ...CONFIRMED,
+        step: "minor",
+        previousTag: null,
+        previousTagCommit: null,
+      }),
     ).resolves.toEqual({
       ok: true,
       tag: "v0.1.0",
@@ -171,7 +186,7 @@ describe("PublishRelease", () => {
       onFreshnessRecord: (root, freshness) => records.push({ root, freshness }),
     });
 
-    await publish.execute(CONFIRMED, AT);
+    await publish.execute(CONFIRMED);
 
     expect(records).toEqual([
       {
@@ -185,7 +200,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.publishOutcome = "already-exists";
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "already-released",
       recomputed: RECOMPUTED,
@@ -196,7 +211,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.publishOutcome = "offline";
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -206,7 +221,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.publishOutcome = "push-failed";
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "publish-failed",
     });
@@ -217,7 +232,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.publishOutcome = "stale-tip";
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "plan-changed",
       recomputed: RECOMPUTED,
@@ -228,7 +243,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.tags = [{ name: "v1.3.0", commit: "new" }];
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "plan-changed",
       recomputed: RECOMPUTED,
@@ -240,7 +255,7 @@ describe("PublishRelease", () => {
     git.commit("moved", { research: "newer" }, { parent: "head" });
     git.tip = "moved";
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "plan-changed",
       recomputed: RECOMPUTED,
@@ -253,7 +268,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.tags = [{ name: "v1.2.3", commit: "moved" }];
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "plan-changed",
       recomputed: RECOMPUTED,
@@ -268,7 +283,7 @@ describe("PublishRelease", () => {
       { name: "v1.2.4", commit: "taken" },
     ];
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "plan-changed",
       recomputed: RECOMPUTED,
@@ -281,7 +296,7 @@ describe("PublishRelease", () => {
     const git = releasable();
     git.publishOutcome = "stale-tip";
 
-    await buildPublish(git).execute(CONFIRMED, AT);
+    await buildPublish(git).execute(CONFIRMED);
 
     expect(git.fetches).toBe(2);
   });
@@ -291,7 +306,7 @@ describe("PublishRelease", () => {
     git.commit("moved", { research: "newer" }, { parent: "head" });
     git.tip = "moved";
 
-    await buildPublish(git).execute(CONFIRMED, AT);
+    await buildPublish(git).execute(CONFIRMED);
 
     expect(git.fetches).toBe(1);
   });
@@ -302,7 +317,7 @@ describe("PublishRelease", () => {
     git.publishOutcome = "stale-tip";
     git.fetchOutcomes = ["fetched", "offline"];
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "plan-changed",
     });
@@ -319,7 +334,7 @@ describe("PublishRelease", () => {
       },
     });
 
-    await publish.execute(CONFIRMED, AT);
+    await publish.execute(CONFIRMED);
 
     expect(roots).toEqual(["/harness"]);
   });
@@ -331,7 +346,7 @@ describe("PublishRelease", () => {
       replan: async () => ({ ok: false, error: "no-answer" }),
     });
 
-    await expect(publish.execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(publish.execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "plan-changed",
     });
@@ -340,7 +355,7 @@ describe("PublishRelease", () => {
   it("refuses to publish a release with nothing to release, and pushes no tag", async () => {
     const git = releasable({});
 
-    await expect(buildPublish(git).execute(CONFIRMED, AT)).resolves.toEqual({
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
       ok: false,
       error: "empty-delta",
       recomputed: RECOMPUTED,
@@ -356,8 +371,8 @@ describe("PublishRelease", () => {
     });
     const publish = buildPublish(git);
 
-    const first = publish.execute(CONFIRMED, AT);
-    const second = await publish.execute(CONFIRMED, AT);
+    const first = publish.execute(CONFIRMED);
+    const second = await publish.execute(CONFIRMED);
 
     expect(second).toEqual({ ok: false, error: "publish-in-progress" });
     releaseFetch();
@@ -366,5 +381,25 @@ describe("PublishRelease", () => {
       tag: "v1.2.4",
       revision: "head",
     });
+  });
+  it("fetches before publishing even right after a read reused within its window", async () => {
+    const git = releasable();
+    const gate = readGate(git);
+    await gate.fetch("/harness", READ_MAX_AGE_MS);
+
+    await buildPublish(git, { fetchGate: gate }).execute(CONFIRMED);
+
+    expect(git.fetches).toBe(2);
+  });
+
+  it("makes the next read fetch after a release, even within its window", async () => {
+    const git = releasable();
+    const gate = readGate(git);
+    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await buildPublish(git, { fetchGate: gate }).execute(CONFIRMED);
+
+    await gate.fetch("/harness", READ_MAX_AGE_MS);
+
+    expect(git.fetches).toBe(3);
   });
 });

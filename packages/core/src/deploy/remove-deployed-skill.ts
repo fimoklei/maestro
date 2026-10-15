@@ -1,3 +1,4 @@
+import type { LockfileReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionWriter } from "./apply-selection";
 import type {
@@ -58,6 +59,9 @@ export type RemoveDeployedSkillError =
   | "manifest-not-recognised"
   | "operation-unfinished"
   | "remove-incomplete"
+  // Kept apart: only the release-following path keeps an operation to retry.
+  | "remove-timed-out"
+  | "remove-timed-out-unrecorded"
   | "remove-failed";
 
 // Kept apart: "nothing to compare against" and "could not check" must not
@@ -234,7 +238,7 @@ export class RemoveDeployedSkill {
     // guard's verdicts collapse.
     deployedContent: Pick<
       DeployedContentPort,
-      "classify" | "contentDigest" | "linkedSkillPath"
+      "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
     >;
     apm: Pick<ApmDriverPort, "removeSkill">;
     // The only way to clear a copy apm left behind: a bare `apm uninstall -g`
@@ -590,9 +594,7 @@ export class RemoveDeployedSkill {
       const failure =
         plan.kind === "root"
           ? await this.narrowSelection(plan, input, lockKey, detected)
-          : (await this.deps.apm.removeSkill({ target, ref: plan.ref })).ok
-            ? null
-            : "remove-failed";
+          : await this.uninstallPackage(target, plan.ref);
       if (failure !== null) {
         return {
           ok: false,
@@ -652,7 +654,23 @@ export class RemoveDeployedSkill {
       ? "manifest-not-recognised"
       : applied.error === "apply-incomplete"
         ? "remove-incomplete"
-        : "remove-failed";
+        : applied.error === "apply-timed-out"
+          ? "remove-timed-out"
+          : "remove-failed";
+  }
+
+  // Null when apm proved the removal.
+  private async uninstallPackage(
+    target: DeployTarget,
+    ref: string,
+  ): Promise<RemoveDeployedSkillError | null> {
+    const removed = await this.deps.apm.removeSkill({ target, ref });
+    if (removed.ok) {
+      return null;
+    }
+    return removed.reason === "timed-out"
+      ? "remove-timed-out-unrecorded"
+      : "remove-failed";
   }
 
   private async probeOutcome(
@@ -660,24 +678,37 @@ export class RemoveDeployedSkill {
     name: string,
     detected: readonly SupportedTool[] | undefined,
   ): Promise<RemoveOutcome> {
+    const lockfile = await this.deps.deployedContent.readLockfile(target);
     if (detected === undefined) {
-      return { scope: "repo", state: await this.probeTarget(target, name) };
+      return {
+        scope: "repo",
+        state: await this.probeTarget(target, lockfile, name),
+      };
     }
     const tools: RemoveToolOutcome[] = [];
     for (const tool of detected) {
-      tools.push({ tool, state: await this.probeTarget(target, name, [tool]) });
+      tools.push({
+        tool,
+        state: await this.probeTarget(target, lockfile, name, [tool]),
+      });
     }
     return { scope: "global", tools };
   }
 
   private async probeTarget(
     target: DeployTarget,
+    lockfile: LockfileReading,
     name: string,
     tools?: readonly SupportedTool[],
   ): Promise<RemoveTargetState> {
     try {
       return PROBE_STATES[
-        await this.deps.deployedContent.classify({ target, name, tools })
+        await this.deps.deployedContent.classify({
+          target,
+          name,
+          tools,
+          lockfile,
+        })
       ];
     } catch {
       return "unknown";

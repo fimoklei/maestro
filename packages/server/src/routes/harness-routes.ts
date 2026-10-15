@@ -32,7 +32,7 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
 
   // A POST: fetching writes refs, so it belongs behind the Origin/Host guard.
   app.post("/api/harness/refresh", async (c) =>
-    harnessResponse(c, await deps.harness.refresh(new Date())),
+    harnessResponse(c, await deps.harness.refresh()),
   );
 
   app.get("/api/harness/release-plan", async (c) => {
@@ -51,7 +51,7 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.publish.execute(body.data, new Date());
+    const result = await deps.publish.execute(body.data);
     if (!result.ok) {
       const { status } = publishReleaseErrorResponses[result.error];
       // Carries the replacing plan, so the dialog can take a new confirmation (#521).

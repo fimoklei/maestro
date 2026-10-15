@@ -1,6 +1,6 @@
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
-import type { PackageReading } from "../lockfile/lockfile";
+import type { LockfileReading, PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionResult, SelectionWriter } from "./apply-selection";
 import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
@@ -22,21 +22,23 @@ export type DeployTarget =
   | { kind: "repo"; repoPath: string }
   | { kind: "global" };
 
-// "auth-required" is apm's two fixed phrases only; every other apm or git error
-// is "failed".
+// "auth-required" is apm's two fixed phrases only; "timed-out" is a hung apm
+// the driver stopped; every other apm or git error is "failed".
 export type ResolveLatestTagResult =
   | { ok: true; tag: string }
-  | { ok: false; reason: "no-tag" | "auth-required" | "failed" };
+  | { ok: false; reason: "no-tag" | "auth-required" | "timed-out" | "failed" };
 
 // "failed" stays unclassified: a refusal apm did not name is never dressed up
 // as a diagnosed one (#180).
 export type DeploySkillDriverResult =
   | { ok: true }
-  | { ok: false; reason: "destination-symlinked" | "failed" };
+  | { ok: false; reason: "destination-symlinked" | "timed-out" | "failed" };
 
-// No failure reason: every uninstall outcome exits 0 and the only signal is the
-// positive marker.
-export type RemoveSkillDriverResult = { ok: true } | { ok: false };
+// Only a timeout has a reason: every uninstall outcome exits 0 and the only
+// signal is the positive marker.
+export type RemoveSkillDriverResult =
+  | { ok: true }
+  | { ok: false; reason?: "timed-out" };
 
 export type ApmDriverPort = {
   resolveLatestTag(ownerRepo: string): Promise<ResolveLatestTagResult>;
@@ -62,9 +64,6 @@ export type ApmDriverPort = {
 
 // The git questions apm cannot answer, asked of the local inventory clone.
 export type InventoryGitPort = {
-  // Best-effort fast-forward of the clone before the checks below; never
-  // throws (#666).
-  syncBeforeDeploy(): Promise<void>;
   skillExistsAtTag(tag: string, name: string): Promise<boolean>;
   // Tree-diff, never apm's opaque content_hash.
   skillDivergesFromTag(tag: string, name: string): Promise<boolean>;
@@ -87,6 +86,8 @@ export type DeployedContentState =
   | "lockfile-malformed";
 
 export type DeployedContentPort = {
+  // Never rejects: a present but unreadable lockfile reads as malformed (#58).
+  readLockfile(target: DeployTarget): Promise<LockfileReading>;
   // `tools` scopes the scan and its baseline, so an untargeted tool's absent
   // copy cannot force a false `diverged` (#136).
   classify(input: {
@@ -96,6 +97,8 @@ export type DeployedContentPort = {
     // A copy equal to this release in full is `clean`; an unreadable release
     // grants no such pass (#952).
     release?: string;
+    // Read once per target and shared by every skill classified against it.
+    lockfile: LockfileReading;
   }): Promise<DeployedContentState>;
   // Consent is given for content, not a verdict: two different edits both
   // read `diverged`. Null where nothing could be read.
@@ -121,7 +124,7 @@ export type RecordedPackageResult =
 
 export type RecordedPackagePort = {
   read(input: {
-    target: DeployTarget;
+    lockfile: LockfileReading;
     name: string;
   }): Promise<RecordedPackageResult>;
 };
@@ -170,7 +173,11 @@ export type DeploySkillError =
   | "no-supported-tool"
   | "auth-required"
   | "destination-symlinked"
-  | "deploy-failed";
+  | "tag-check-timed-out"
+  | "deploy-timed-out"
+  // Split by the operation record: pending means files may be on disk.
+  | "deploy-failed"
+  | "deploy-not-started";
 
 export type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
@@ -231,6 +238,9 @@ export class DeploySkill {
     registry: { isRegistered(path: string): Promise<boolean> };
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
+    // Best-effort fetch and fast-forward of the clone before the checks
+    // below; never throws (#666).
+    syncHarness: () => Promise<void>;
     // Inject the shared guard so a receipt one flow minted is the proof
     // another checks (#952).
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
@@ -265,7 +275,7 @@ export class DeploySkill {
       input.target,
       input.confirmedCopyReceipt,
     );
-    return answer?.result ?? { ok: false, error: "deploy-failed" };
+    return answer?.result ?? { ok: false, error: "deploy-not-started" };
   }
 
   // No consent: a bulk deploy never overwrites a copy with local edits; force
@@ -278,9 +288,10 @@ export class DeploySkill {
     try {
       rows = await this.run(input.names, input.target, undefined);
     } catch {
+      // Only the reads before the lock can throw here: nothing was written.
       rows = input.names.map((name) => ({
         name,
-        result: { ok: false, error: "deploy-failed" },
+        result: { ok: false, error: "deploy-not-started" },
       }));
     }
 
@@ -341,7 +352,7 @@ export class DeploySkill {
     }
     return names.map((name) => ({
       name,
-      result: results.get(name) ?? { ok: false, error: "deploy-failed" },
+      result: results.get(name) ?? { ok: false, error: "deploy-not-started" },
     }));
   }
 
@@ -363,7 +374,7 @@ export class DeploySkill {
       try {
         lockKey = await this.deps.canonicalPath(target.repoPath);
       } catch {
-        return every("deploy-failed");
+        return every("deploy-not-started");
       }
     } else {
       lockKey = GLOBAL_LOCK_KEY;
@@ -456,12 +467,14 @@ export class DeploySkill {
               ? "auth-required"
               : tagResult.reason === "no-tag"
                 ? "no-published-tag"
-                : "deploy-failed",
+                : tagResult.reason === "timed-out"
+                  ? "tag-check-timed-out"
+                  : await this.failureAt(lockKey),
           );
         }
         tag = tagResult.tag;
       }
-      await this.deps.inventoryGit.syncBeforeDeploy();
+      await this.deps.syncHarness();
 
       const tagged: string[] = [];
       for (const name of known) {
@@ -572,6 +585,7 @@ export class DeploySkill {
               name,
               await this.installRefusal(
                 applied.error,
+                lockKey,
                 target,
                 name,
                 globalTools,
@@ -609,7 +623,19 @@ export class DeploySkill {
       }
       return results;
     } catch {
-      return refuseRest("deploy-failed");
+      return refuseRest(await this.failureAt(lockKey));
+    }
+  }
+
+  // A pending operation means this run may have written: the reader retries
+  // it. Without one, nothing of this run is on disk.
+  private async failureAt(lockKey: string): Promise<DeploySkillError> {
+    try {
+      return (await this.deps.selection.pending(lockKey)) === null
+        ? "deploy-not-started"
+        : "deploy-failed";
+    } catch {
+      return "deploy-failed";
     }
   }
 
@@ -641,13 +667,21 @@ export class DeploySkill {
   ): Promise<string[]> {
     // Files apm placed under a package type it could not manage are apm's own,
     // not local work; refusing over them would strand the target (#358).
-    const apmOwns = new Set<string>();
-    for (const name of candidates) {
-      const standing = await this.deps.recordedPackage.read({ target, name });
-      if (standing.kind === "recorded" && standing.reading.kind !== "skill") {
-        apmOwns.add(name);
-      }
-    }
+    const lockfile = await this.deps.deployedContent.readLockfile(target);
+    const standings = await Promise.all(
+      candidates.map(async (name) => ({
+        name,
+        standing: await this.deps.recordedPackage.read({ lockfile, name }),
+      })),
+    );
+    const apmOwns = new Set(
+      standings
+        .filter(
+          ({ standing }) =>
+            standing.kind === "recorded" && standing.reading.kind !== "skill",
+        )
+        .map(({ name }) => name),
+    );
     const blocking = findings.filter(
       (f) =>
         f.verdict !== "clean" &&
@@ -661,6 +695,7 @@ export class DeploySkill {
 
   private async installRefusal(
     error: SelectionError,
+    lockKey: string,
     target: DeployTarget,
     name: string,
     tools: readonly SupportedTool[] | undefined,
@@ -685,7 +720,9 @@ export class DeploySkill {
           ? "manifest-not-recognised"
           : error === "apply-incomplete"
             ? "deploy-incomplete"
-            : "deploy-failed",
+            : error === "apply-timed-out"
+              ? "deploy-timed-out"
+              : await this.failureAt(lockKey),
     };
   }
 }

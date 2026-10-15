@@ -4,7 +4,7 @@ import { requestJson } from "../api/http";
 
 export type DriftResponse =
   | { behind: ReadDriftEntry[] }
-  | { ok: false; reason?: "unverified" };
+  | { ok: false; reason?: "unverified" | "timed-out" };
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 

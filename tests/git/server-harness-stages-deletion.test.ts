@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { HarnessGitAdapter } from "@maestro/core";
+import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   git,
@@ -185,7 +185,9 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       await git(stages.root, "add", "-A");
       await git(stages.root, "commit", "-m", "delete tdd");
       await git(stages.root, "push", "origin", "HEAD:main");
-      await new HarnessGitAdapter().fetch(stages.root);
+      await new HarnessGitAdapter({
+        released: new ReleasedContentReader(),
+      }).fetch(stages.root);
 
       const merged = await refresh(app);
       expect(rowsOf(merged.stages.release)).toMatchObject([
@@ -196,7 +198,9 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
       await git(stages.root, "tag", "v0.2.0");
       await git(stages.root, "push", "--tags", "origin", "HEAD:main");
-      await new HarnessGitAdapter().fetch(stages.root);
+      await new HarnessGitAdapter({
+        released: new ReleasedContentReader(),
+      }).fetch(stages.root);
 
       const released = await refresh(app);
       expect(await primitiveNames(app)).toEqual([]);

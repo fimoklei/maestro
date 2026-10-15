@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter } from "@maestro/core";
+import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
@@ -51,7 +51,9 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     await git(root, "add", ".");
     await git(root, "commit", "-m", "second skill");
     await git(root, "push", "origin", "HEAD:main");
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
   }, 30_000);
 
   afterEach(async () => {
@@ -446,7 +448,9 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
         "refs/heads/trunk",
       ]);
       await run("git", ["-C", remote, "branch", "-D", "main"]);
-      await new HarnessGitAdapter().fetch(root);
+      await new HarnessGitAdapter({
+        released: new ReleasedContentReader(),
+      }).fetch(root);
     }, 30_000);
 
     it("tags the tip of whatever branch the remote calls default", async () => {
@@ -490,7 +494,9 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       await git(root, "add", ".");
       await git(root, "commit", "-m", "third skill");
       await git(root, "push", "origin", "HEAD:main");
-      await new HarnessGitAdapter().fetch(root);
+      await new HarnessGitAdapter({
+        released: new ReleasedContentReader(),
+      }).fetch(root);
     }, 30_000);
 
     it("prices the release from a tag the default branch cannot reach", async () => {

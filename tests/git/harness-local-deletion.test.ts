@@ -6,11 +6,13 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   DeleteLocalSkill,
+  HarnessFetchGate,
   type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
   NodeFileSystem,
   PromoteSkillDeletion,
+  ReleasedContentReader,
   releasedSkillsFromGit,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -43,7 +45,7 @@ describe("deleting a Harness skill from the clone", () => {
     new DeleteLocalSkill({
       resolveRoot: async () => root,
       fs: new NodeFileSystem(),
-      git: new HarnessGitAdapter(),
+      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       locks: new InFlightLocks(),
     });
 
@@ -64,7 +66,11 @@ describe("deleting a Harness skill from the clone", () => {
 
   const skills = async () =>
     Object.keys(
-      (await new HarnessGitAdapter().readMovementTrees(root))?.working ?? {},
+      (
+        await new HarnessGitAdapter({
+          released: new ReleasedContentReader(),
+        }).readMovementTrees(root)
+      )?.working ?? {},
     ).sort();
 
   beforeEach(async () => {
@@ -86,7 +92,9 @@ describe("deleting a Harness skill from the clone", () => {
     await git(root, "add", ".");
     await git(root, "commit", "-m", "one skill");
     await git(root, "push", "origin", "HEAD:main");
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
     await writeSkill("scratch", "never proposed");
   }, 30_000);
 
@@ -132,22 +140,28 @@ describe("deleting a Harness skill from the clone", () => {
     expect(await skills()).toEqual(["scratch"]);
     expect((await git(remote, "rev-parse", "main")).stdout.trim()).toBe(before);
 
-    const trees = await new HarnessGitAdapter().readMovementTrees(root);
+    const trees = await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).readMovementTrees(root);
     let freshness: HarnessFreshness = { outcome: null, lastFetchedAt: null };
     const step2 = new PromoteSkillDeletion({
       resolveRoot: async () => root,
-      git: new HarnessGitAdapter(),
-      freshness: {
-        read: async () => freshness,
-        record: async (_root, next) => {
-          freshness = next;
+      git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
+      fetchGate: new HarnessFetchGate({
+        git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
+        freshness: {
+          read: async () => freshness,
+          record: async (_root, next) => {
+            freshness = next;
+          },
         },
-      },
+        now: () => AT,
+      }),
       locks: new InFlightLocks(),
       review: unavailableHarnessReview(),
     });
     await expect(
-      step2.execute("jobs", trees?.remote.jobs as string, AT),
+      step2.execute("jobs", trees?.remote.jobs as string),
     ).resolves.toMatchObject({ ok: true, branch: "maestro/jobs" });
 
     const pushed = await git(
@@ -164,11 +178,15 @@ describe("deleting a Harness skill from the clone", () => {
   it("keeps a released skill in Inventory after step 1", async () => {
     await git(root, "tag", "v1.0.0");
     await git(root, "push", "origin", "v1.0.0");
-    await new HarnessGitAdapter().fetch(root);
+    await new HarnessGitAdapter({
+      released: new ReleasedContentReader(),
+    }).fetch(root);
 
     await expect(confirm("jobs")).resolves.toEqual({ ok: true, name: "jobs" });
 
-    const released = await releasedSkillsFromGit(new HarnessGitAdapter())(root);
+    const released = await releasedSkillsFromGit(
+      new HarnessGitAdapter({ released: new ReleasedContentReader() }),
+    )(root);
     expect(released?.map((skill) => skill.name)).toEqual(["jobs"]);
   });
 

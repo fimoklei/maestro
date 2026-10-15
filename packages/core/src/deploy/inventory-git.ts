@@ -1,13 +1,12 @@
 // The `--` separator keeps tag and name data, never command text.
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { catchUpClone } from "../git/catch-up-clone";
-import { gitOptions, indexOptions } from "../git/non-interactive";
+import { indexOptions } from "../git/non-interactive";
 import { MAESTRO_TAGS } from "../harness/harness-git";
+import type { ReleasedContentReader } from "../harness/released-content";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { InventoryGitPort } from "./deploy-skill";
 
@@ -16,21 +15,11 @@ const run = promisify(execFile);
 export class InventoryGitAdapter implements InventoryGitPort {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
+    released: ReleasedContentReader;
   };
 
   constructor(deps: InventoryGitAdapter["deps"]) {
     this.deps = deps;
-  }
-
-  // An offline fetch still catches up to the refs this clone holds (#666).
-  async syncBeforeDeploy(): Promise<void> {
-    const root = await this.root();
-    await run(
-      "git",
-      ["-C", root, "fetch", "origin", "--tags"],
-      gitOptions(),
-    ).catch(() => {});
-    await catchUpClone(root);
   }
 
   async skillExistsAtTag(tag: string, name: string): Promise<boolean> {
@@ -42,7 +31,7 @@ export class InventoryGitAdapter implements InventoryGitPort {
       root,
       "ls-tree",
       "--name-only",
-      tag,
+      await tagRef(root, tag),
       "--",
       harnessSkillSubpath(name),
     ]);
@@ -65,7 +54,16 @@ export class InventoryGitAdapter implements InventoryGitPort {
       // Only exit 1 means a difference; every other failure propagates.
       return await run(
         "git",
-        ["-C", root, "diff-index", "--quiet", "--cached", tag, "--", subtree],
+        [
+          "-C",
+          root,
+          "diff-index",
+          "--quiet",
+          "--cached",
+          await tagRef(root, tag),
+          "--",
+          subtree,
+        ],
         options,
       ).then(
         () => false,
@@ -87,46 +85,14 @@ export class InventoryGitAdapter implements InventoryGitPort {
     tag: string,
     name: string,
   ): Promise<Record<string, string> | null> {
-    const subtree = harnessSkillSubpath(name);
     try {
       const root = await this.root();
-      // Maestro's fetched tag first: a release published from Maestro is
-      // pushed, never tagged locally (#1213).
-      const listing = async (ref: string) =>
-        // -z, so a path holding a quote or a newline survives the split.
-        run(
-          "git",
-          [
-            "-C",
-            root,
-            "ls-tree",
-            "-r",
-            "-z",
-            "--name-only",
-            ref,
-            "--",
-            subtree,
-          ],
-          gitOptions(),
-        ).then(({ stdout }) => ({ ref, stdout }));
-      const { ref, stdout } = await listing(`${MAESTRO_TAGS}/${tag}`).catch(
-        () => listing(`refs/tags/${tag}`),
+      const files = await this.deps.released.skillFiles(
+        root,
+        await tagRef(root, tag),
+        name,
       );
-      const paths = stdout.split("\0").filter((path) => path.length > 0);
-      if (paths.length === 0) {
-        return null;
-      }
-      const files: Record<string, string> = {};
-      for (const path of paths) {
-        const { stdout: bytes } = await run(
-          "git",
-          ["-C", root, "show", `${ref}:${path}`],
-          { ...gitOptions(), encoding: "buffer", maxBuffer: 32 * 1024 * 1024 },
-        );
-        files[path.slice(subtree.length + 1)] =
-          `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-      }
-      return files;
+      return files === null || Object.keys(files).length === 0 ? null : files;
     } catch {
       return null;
     }
@@ -139,4 +105,22 @@ export class InventoryGitAdapter implements InventoryGitPort {
     }
     return root;
   }
+}
+
+// Maestro's fetched tag first: a release published from Maestro is pushed,
+// never tagged locally (#1213), and a moved tag updates only the fetched copy.
+// The local tag only where the fetched one is absent.
+async function tagRef(root: string, tag: string): Promise<string> {
+  const fetched = `${MAESTRO_TAGS}/${tag}`;
+  return run("git", [
+    "-C",
+    root,
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${fetched}^{commit}`,
+  ]).then(
+    () => fetched,
+    () => `refs/tags/${tag}`,
+  );
 }

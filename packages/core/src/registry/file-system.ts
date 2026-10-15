@@ -5,6 +5,12 @@ export type RawDirEntry = {
   isSymlink: boolean;
 };
 
+// Equal stamps mean the file is taken as unchanged.
+export type FileStamp = { modifiedMs: number; size: number };
+
+export const sameStamp = (a: FileStamp, b: FileStamp): boolean =>
+  a.modifiedMs === b.modifiedMs && a.size === b.size;
+
 export interface FileSystemPort {
   // Rejects when the path does not exist.
   realpath(path: string): Promise<string>;
@@ -23,6 +29,9 @@ export interface FileSystemPort {
 
   // Null when the file does not exist; other read failures reject.
   readFile(path: string): Promise<string | null>;
+
+  // Null when the file does not exist; other failures reject.
+  stamp(path: string): Promise<FileStamp | null>;
 
   // Unfiltered. Empty when the directory does not exist.
   listRawEntries(path: string): Promise<RawDirEntry[]>;
