@@ -525,6 +525,84 @@ and dropped the entry. So `targets:` is neither an orphaning trap nor a
 per-tool remove lever; per-tool cleanup stays the scoped `rm` behind
 `DeployedCleanupPort` (ADR-0013). Global not re-measured (same code path).
 
+## Prompts and undelivered paths
+
+Measured 2026-10-16 and 2026-10-18 in sandbox spikes against a local
+fixture Harness (single-file refs against the public
+`microsoft/apm-sample-package#v1.0.0`), project scope and `-g`. The captures were not committed;
+re-verify by re-running the method in `docs/research/1559-apm-prompts.md`
+and `docs/research/1564-apm-ignored-paths.md`, which hold the full tables.
+
+### What an install delivers
+
+- **The deploy plan is a closed allowlist** (source,
+  `install/deployable_source_plan.py:65-234`; every integrator drops a file
+  the plan lacks, `integration/base_integrator.py:175-185`). Prompts come
+  only from root `*.prompt.md` and `.apm/prompts/*.prompt.md`: the plan
+  admits `.apm/prompts/**`, but the integrators glob without recursion
+  (`integration/prompt_integrator.py:35`, `command_integrator.py:189-193`).
+  Measured: 14 other candidate paths, among them
+  `.maestro/prompts/<name>.md`, `prompts/`, `library/`, root `commands/`
+  and `.apm/prompts/sub/`, reached no tool folder and no `deployed_files`
+  in 24 installs (Deploy, a second Deploy, Update, Remove; two tools, eight
+  tools, auto-detect).
+- **`--skill` scopes skills only.** A root install delivers every prompt in
+  the Harness to every prompt-capable tool of the target. A single-file ref
+  (`…/.apm/prompts/<name>.prompt.md#vX.Y.Z`, or `git` + `path` + `ref`) is
+  its own package beside the root one, not a filter: both write the same
+  file, the last install owns it, and removing either leaves the file. A
+  single-file ref needs the GitHub API, so the `pnpm smoke` redirect cannot
+  serve it.
+- **`includes: auto` has no effect on delivery**; install reads it only for
+  the consumer's policy check (source, `install/phases/policy_gate.py:96-103`).
+  The recursive `**/*.prompt.md` globs belong to `apm compile`, `apm run`
+  and link resolution, none of which writes a deployed file during install.
+- **A `SKILL.md` at the Harness root ships the whole repo except `.apm/`**
+  as skill files (source, `deployable_source_plan.py:154-172`). Every
+  path above stays undelivered only while the root has no `SKILL.md`. A
+  file inside `.apm/skills/<name>/` ships with that skill.
+- **The Harness's own `targets:` narrows delivery.** apm intersects the
+  consumer's `-t` with the package's declared targets (source,
+  `install/target_filter.py:72-120`; measured with `targets: [claude,
+  codex]`). The scaffold leaves `targets:` commented out.
+- `apm_modules/` (and `~/.apm/apm_modules/` at `-g`) holds the full
+  checkout, every undelivered file included. No tool reads it.
+
+### Where a prompt lands
+
+| Tool | Project | `-g` | Copy |
+|---|---|---|---|
+| claude | `.claude/commands/<name>.md` | `~/.claude/commands/<name>.md` | command transform |
+| copilot | `.github/prompts/<name>.prompt.md` | `~/.copilot/prompts/<name>.prompt.md` | byte-identical |
+| cursor, opencode, windsurf, grok-build | own `commands/` or `workflows/` folder | own user folder | command transform |
+| gemini | `.gemini/commands/<name>.toml` | `~/.gemini/commands/<name>.toml` | TOML; `$ARGUMENTS` → `{{args}}` |
+| codex | — | — | no prompt primitive |
+
+With an explicit `-t`, apm creates any missing tool folder.
+
+**The command transform** rebuilds the front matter from `description`,
+`allowed-tools`, `model`, `argument-hint` and `input`, and drops any other
+key with a warning. `input:` becomes `arguments:` plus `argument-hint`, and
+`${input:x}` becomes `$x` only for declared names. Keys are sorted, quoting
+is normalised, the final newline is dropped, and a prompt without front
+matter gets a `---\n{}\n---\n\n` header. `$ARGUMENTS` and `$1` pass through.
+Compare a transformed copy with its `deployed_file_hashes` entry, never with
+its source.
+
+### Lockfile, drift and edits
+
+- A prompt has no lockfile entry of its own: its copies are paths and
+  hashes under the Harness entry, one `deployments` row per file, whose
+  `target` is the tool's own name (`claude`, `copilot`, …), unlike the
+  `agents` target of a skill's shared copy.
+- `apm outdated` reports the Harness tag only: never which prompt changed,
+  and never content. A locally edited prompt copy still reads up to date.
+- An upgrade or same-ref install **silently overwrites** an edited copy of
+  a prompt still in the release. A prompt the release drops is cleaned
+  from every tool unless its copy was edited; an edited copy is kept, and it
+  then blocks `apm uninstall` (exit 1, the rest
+  already deleted), as an edited skill copy does (§ Uninstall signals).
+
 ## Skill body budget — stated in the docs, checked nowhere
 
 apm's producer guide ("Author a skill", read 2026-07-28) says *"Keep
@@ -687,3 +765,9 @@ against apm 0.26.0 and re-checked on 0.29.0 as noted per bullet.
   global reader assumes `~/.claude/skills/`.
 - Uninstall over a copy with no `deployed_file_hashes` (a pre-tracking
   lockfile): whether apm retains or deletes an edited file there.
+- Prompts on the copilot-app (SQLite) and copilot-cowork targets (source:
+  cowork has no prompt primitive).
+- Whether a single-file prompt ref reads `outdated` at a newer tag that
+  leaves its prompt unchanged: source says it does; unmeasured.
+- Project auto-detect with only `.github/` present: one run failed with
+  `No harness detected`, exit 2; not investigated.
