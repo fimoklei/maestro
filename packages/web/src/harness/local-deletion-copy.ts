@@ -1,4 +1,4 @@
-import type { DeleteLocalSkillError } from "@maestro/core";
+import type { DeleteLocalError } from "@maestro/core";
 import { HARNESS_BUSY } from "../ui/busy-copy";
 import { DELETE_SKILL, rereadLabel } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
@@ -24,7 +24,7 @@ const SEE_IT_NOW: Record<LocalDeletionContext["screen"], string> = {
 const localDeletionHeadings = ({
   skill,
   screen,
-}: LocalDeletionContext): NoticeTable<DeleteLocalSkillError> => ({
+}: LocalDeletionContext): NoticeTable<DeleteLocalError> => ({
   "not-configured": harnessHeadings["not-configured"],
   "invalid-skill": promoteHeadings["invalid-skill"],
   "already-gone": {

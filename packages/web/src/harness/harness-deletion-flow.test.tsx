@@ -133,7 +133,7 @@ describe("Harness deletion proposal", () => {
 
     await waitFor(() =>
       expect(deletions).toEqual([
-        { name: "old-skill", seenRemoteTree: "abc123" },
+        { type: "skill", name: "old-skill", seenRemoteTree: "abc123" },
       ]),
     );
   });
@@ -229,7 +229,9 @@ describe("Harness deletion proposal", () => {
       within(menu).getByRole("menuitem", { name: /^update proposal$/i }),
     );
 
-    await waitFor(() => expect(promotions).toEqual([{ name: "old-skill" }]));
+    await waitFor(() =>
+      expect(promotions).toEqual([{ type: "skill", name: "old-skill" }]),
+    );
     expect(deletions).toEqual([]);
     expect(screen.queryByRole("dialog")).toBeNull();
   });

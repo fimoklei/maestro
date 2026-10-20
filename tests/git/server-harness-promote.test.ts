@@ -75,11 +75,14 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       { gh: review },
     );
 
-  const promote = async (app: ReturnType<typeof makeApp>, body: unknown) =>
+  const promote = async (
+    app: ReturnType<typeof makeApp>,
+    body: Record<string, unknown>,
+  ) =>
     app.request("/api/harness/promote", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type: "skill", ...body }),
     });
 
   const promoted = async (...args: string[]) =>
@@ -441,12 +444,12 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
   describe("publishing a deletion", () => {
     const publishDeletion = async (
       app: ReturnType<typeof makeApp>,
-      body: unknown,
+      body: Record<string, unknown>,
     ) =>
       app.request("/api/harness/promote/deletion", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ type: "skill", ...body }),
       });
 
     const seenTree = async (app: ReturnType<typeof makeApp>) => {

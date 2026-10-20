@@ -15,9 +15,9 @@ describe("Delete skill over HTTP", { timeout: 40_000 }, () => {
   const check = async (
     app: HarnessStagesApp,
   ): Promise<Record<string, SkillDeletionCheck>> => {
-    const response = await app.request("/api/harness/skill/delete/check");
+    const response = await app.request("/api/harness/primitive/delete/check");
     expect(response.status).toBe(200);
-    return ((await response.json()) as { skills: never }).skills;
+    return ((await response.json()) as { skill: never }).skill;
   };
 
   const seenTree = async (app: HarnessStagesApp, name: string) => {
@@ -28,11 +28,11 @@ describe("Delete skill over HTTP", { timeout: 40_000 }, () => {
     return skill.workingTree;
   };
 
-  const remove = (app: HarnessStagesApp, body: unknown) =>
-    app.request("/api/harness/skill/delete", {
+  const remove = (app: HarnessStagesApp, body: Record<string, unknown>) =>
+    app.request("/api/harness/primitive/delete", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type: "skill", ...body }),
     });
 
   const folderExists = (name: string) =>

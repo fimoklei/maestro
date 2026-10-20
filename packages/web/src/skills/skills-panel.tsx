@@ -102,5 +102,5 @@ function cloneReading(
   }
   return check.data === undefined
     ? { kind: "checking" }
-    : { kind: "read", skills: check.data.skills };
+    : { kind: "read", skills: check.data.skill };
 }

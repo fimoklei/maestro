@@ -8,7 +8,7 @@ import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
 import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
-export type RestoreSkillError =
+export type RestoreError =
   | "not-configured"
   | "invalid-skill"
   | WorktreeAmbiguity
@@ -23,11 +23,11 @@ export type RestoreSkillError =
   | "restore-in-progress"
   | "restore-failed";
 
-export type RestoreSkillResult =
+export type RestoreResult =
   | { ok: true; name: string; commit: string }
-  | { ok: false; error: RestoreSkillError };
+  | { ok: false; error: RestoreError };
 
-export class RestoreSkill {
+export class Restore {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     fs: Pick<FileSystemPort, "realpath">;
@@ -46,7 +46,7 @@ export class RestoreSkill {
     locks: InFlightLocks;
   };
 
-  constructor(deps: RestoreSkill["deps"]) {
+  constructor(deps: Restore["deps"]) {
     this.deps = deps;
   }
 
@@ -54,7 +54,7 @@ export class RestoreSkill {
   async execute(
     ref: PrimitiveRef,
     seenHeadCommit: string,
-  ): Promise<RestoreSkillResult> {
+  ): Promise<RestoreResult> {
     if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
@@ -72,7 +72,7 @@ export class RestoreSkill {
     root: string,
     ref: PrimitiveRef,
     seenHeadCommit: string,
-  ): Promise<RestoreSkillResult> {
+  ): Promise<RestoreResult> {
     // First: an ambiguous working tree makes every fact below unreadable.
     const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
     if (ambiguity !== null) {
@@ -136,7 +136,7 @@ export class RestoreSkill {
     ref: PrimitiveRef,
     commit: string,
     dir: string,
-  ): Promise<RestoreSkillResult> {
+  ): Promise<RestoreResult> {
     const destination = join(dir, primitiveEntry(ref));
     let staging: string;
     try {

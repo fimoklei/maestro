@@ -9,7 +9,7 @@ import {
   type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
-  PromoteSkillDeletion,
+  PromoteDeletion,
   ReleasedContentReader,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -40,7 +40,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
   };
 
   const deleter = () =>
-    new PromoteSkillDeletion({
+    new PromoteDeletion({
       resolveRoot: async () => root,
       git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       fetchGate: new HarnessFetchGate({

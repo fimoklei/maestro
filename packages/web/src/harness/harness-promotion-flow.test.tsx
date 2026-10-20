@@ -46,7 +46,9 @@ describe("Harness promotion", () => {
 
     await promoteRow("lint-rules");
 
-    await waitFor(() => expect(promotions).toEqual([{ name: "lint-rules" }]));
+    await waitFor(() =>
+      expect(promotions).toEqual([{ type: "skill", name: "lint-rules" }]),
+    );
   });
 
   it("warns that a teammate already changed the skill, and still lets it be promoted", async () => {
@@ -81,7 +83,9 @@ describe("Harness promotion", () => {
 
     await promoteRow("lint-rules");
 
-    await waitFor(() => expect(promotions).toEqual([{ name: "lint-rules" }]));
+    await waitFor(() =>
+      expect(promotions).toEqual([{ type: "skill", name: "lint-rules" }]),
+    );
   });
 
   it("moves the promoted row to Pending review, with no request yet claimed", async () => {

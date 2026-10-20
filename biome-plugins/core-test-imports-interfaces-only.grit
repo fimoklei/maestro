@@ -64,7 +64,7 @@ JsModuleSource() as $source where {
       $source <: r"[\"']\.\./filesystem/copy-skill-folder[\"']"
     },
     and {
-      $filename <: r".*/core/src/harness/restore-skill\.test\.ts",
+      $filename <: r".*/core/src/harness/restore\.test\.ts",
       $source <: r"[\"']\.\./filesystem/copy-tree-fs[\"']"
     },
     and {

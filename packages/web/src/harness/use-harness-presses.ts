@@ -194,29 +194,44 @@ export function useHarnessPresses(
         setConfirming(row.skill);
         return;
       }
-      promoteWrite.run({ name: row.skill });
+      promoteWrite.run({ type: row.type, name: row.skill });
     },
-    create: (skill) => proposalWrite.run({ action: "create", name: skill }),
+    create: (skill) =>
+      proposalWrite.run({ action: "create", type: "skill", name: skill }),
     reopen: (skill, number) =>
-      proposalWrite.run({ action: "reopen", name: skill, number }),
+      proposalWrite.run({
+        action: "reopen",
+        type: "skill",
+        name: skill,
+        number,
+      }),
     withdraw: (skill, number) => {
       proposalAction.reset();
       setWithdrawing({ skill, number });
     },
     deleteLocal: (row) => {
       deleteLocal.reset();
-      setLocalDeletion({ skill: row.skill, localOnly: row.localOnly });
+      setLocalDeletion({
+        type: row.type,
+        skill: row.skill,
+        localOnly: row.localOnly,
+      });
     },
     discard: (row) => {
       if (!offersDiscard(row)) {
         return;
       }
       discard.reset();
-      setDiscarding({ name: row.skill, seenRemoteTree: row.remoteTree });
+      setDiscarding({
+        type: row.type,
+        name: row.skill,
+        seenRemoteTree: row.remoteTree,
+      });
     },
     restore: (row, commit) => {
       restore.reset();
       setRestoring({
+        type: row.type,
         skill: row.skill,
         commit,
         hasRequest: row.requests.length > 0,

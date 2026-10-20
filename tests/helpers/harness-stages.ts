@@ -106,7 +106,7 @@ export function useHarnessStages() {
     app.request("/api/harness/promote", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ type: "skill", name }),
     });
 
   const proposalAction = (
@@ -117,7 +117,7 @@ export function useHarnessStages() {
     app.request(`/api/harness/proposal/${action}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type: "skill", ...body }),
     });
 
   const branchTree = async (name: string) =>

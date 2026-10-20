@@ -109,11 +109,14 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       { gh: review },
     );
 
-  const restore = async (app: ReturnType<typeof makeApp>, body: unknown) =>
-    app.request("/api/harness/skill/restore", {
+  const restore = async (
+    app: ReturnType<typeof makeApp>,
+    body: Record<string, unknown>,
+  ) =>
+    app.request("/api/harness/primitive/restore", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type: "skill", ...body }),
     });
 
   const readState = async (app: ReturnType<typeof makeApp>) =>
