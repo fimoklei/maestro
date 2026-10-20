@@ -302,12 +302,10 @@ describe("ReleaseDialog", () => {
     const onPublish = vi.fn();
     renderReady({ delta: [] }, { onPublish });
 
-    expect(
-      screen.getByText(/no skill has changed since the last release/i),
-    ).toBeInTheDocument();
-    const publish = screen.getByRole("button", {
-      name: "Publish release — no changes since last release",
-    });
+    const publish = screen.getByRole("button", { name: "Publish release" });
+    expect(publish).toHaveAccessibleDescription(
+      "No skill has changed since the last release.",
+    );
     expect(publish).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(publish);
     expect(onPublish).not.toHaveBeenCalled();
@@ -363,12 +361,9 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    expect(screen.getByText(/loading the release plan/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: "Publish release — release plan still loading",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    const publish = screen.getByRole("button", { name: "Publish release" });
+    expect(publish).toHaveAccessibleDescription("Loading the release plan…");
+    expect(publish).toHaveAttribute("aria-disabled", "true");
   });
 
   it("states a plan that could not be computed as a readable error", () => {
@@ -393,10 +388,12 @@ describe("ReleaseDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       /select re-read harness/i,
     );
-    expect(
-      screen.getByRole("button", {
-        name: "Publish release — release plan did not load",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    const publish = screen.getByRole("button", { name: "Publish release" });
+    expect(publish).toHaveAccessibleDescription(
+      expect.stringMatching(
+        /no answer from GitHub.*Select Re-read Harness, then open the release again\./,
+      ),
+    );
+    expect(publish).toHaveAttribute("aria-disabled", "true");
   });
 });

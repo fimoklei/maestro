@@ -1,5 +1,5 @@
 import type { ReleasePlan, SemverStep } from "@maestro/core";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { BRANCH_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
 import { loadingText } from "../ui/busy-copy";
 import { Card } from "../ui/card";
@@ -11,11 +11,7 @@ import { machine, named, phrase } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { SegmentedControl } from "../ui/segmented-control";
 import { StatusLine } from "../ui/status-line";
-import {
-  FINDING_TEXT,
-  RELEASE_UNAVAILABLE,
-  skillChecksNotice,
-} from "./dialog-copy";
+import { FINDING_TEXT, skillChecksNotice } from "./dialog-copy";
 import { ReleaseDelta } from "./release-delta";
 
 // Loading and error travel with the plan so the modal stays mounted: a focus
@@ -59,6 +55,9 @@ export function ReleaseDialog({
         ].join("@")
       : null;
   const [shownPlanId, setShownPlanId] = useState(planId);
+  // A blocked Publish release keeps its label and points at the line that says why.
+  const loadingId = useId();
+  const emptyId = useId();
   if (planId !== shownPlanId) {
     setShownPlanId(planId);
     setChosenStep(null);
@@ -75,7 +74,14 @@ export function ReleaseDialog({
         label: PUBLISH_RELEASE,
         verb: "publish",
         tone: "danger",
-        unavailable: unavailableCause(load),
+        unavailable:
+          load.kind === "loading"
+            ? { describedBy: loadingId }
+            : load.kind === "error"
+              ? { failure: true }
+              : load.plan.delta.length === 0
+                ? { describedBy: emptyId }
+                : null,
         onRun: () =>
           load.kind === "ready" &&
           onPublish(chosenStep ?? load.plan.proposedStep, load.plan),
@@ -87,9 +93,10 @@ export function ReleaseDialog({
       onClose={onClose}
     >
       {load.kind === "loading" ? (
-        <StatusLine>{loadingText("release plan")}</StatusLine>
+        <StatusLine id={loadingId}>{loadingText("release plan")}</StatusLine>
       ) : load.kind === "ready" ? (
         <PlanBody
+          emptyId={emptyId}
           plan={load.plan}
           step={chosenStep ?? load.plan.proposedStep}
           onStepChange={setChosenStep}
@@ -99,19 +106,15 @@ export function ReleaseDialog({
   );
 }
 
-function unavailableCause(load: ReleasePlanLoad): string | null {
-  if (load.kind === "loading") return RELEASE_UNAVAILABLE.loading;
-  if (load.kind === "error") return RELEASE_UNAVAILABLE.error;
-  return load.plan.delta.length === 0 ? RELEASE_UNAVAILABLE.empty : null;
-}
-
 // Every version comes from the plan's map, so the browser never re-derives
 // semver.
 function PlanBody({
+  emptyId,
   plan,
   step,
   onStepChange,
 }: {
+  emptyId: string;
   plan: ReleasePlan;
   step: SemverStep;
   onStepChange: (step: SemverStep) => void;
@@ -119,7 +122,7 @@ function PlanBody({
   return (
     <>
       {plan.delta.length === 0 ? (
-        <p className="m-0 text-gray-11">
+        <p id={emptyId} className="m-0 text-gray-11">
           No skill has changed since the last release.
         </p>
       ) : (

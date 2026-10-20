@@ -186,8 +186,10 @@ Pick the form from this table. Add no other form, and no banner.
   row's detail pane.
 - Open a menu button with Enter, Space or Down Arrow, landing on the first
   item.
-- Keep an unavailable control focusable with `aria-disabled`. A button states
-  why; a menu item carries its plain label and no reason. A ⋮ or ⋯ menu keeps
+- Keep an unavailable control focusable with `aria-disabled`. A button keeps
+  its plain label and points with `aria-describedby` to visible text that
+  states why (`GatedButton`); a tooltip may repeat that text, never replace
+  it. A menu item carries its plain label and no reason. A ⋮ or ⋯ menu keeps
   only an item another write or an unsettled read locks; it omits the rest.
 - Make every pointer target at least 24×24px. Hold every screen at 200% zoom
   and a narrow width.

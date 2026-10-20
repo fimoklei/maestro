@@ -41,6 +41,8 @@ export type Band = {
   labelsBelowRem: number;
   /** Band width in rem below which the counts hide; the dot and read age stay. */
   countsBelowRem: number;
+  /** The summary word's id, for a blocked control that points at it. */
+  wordId?: string;
 };
 
 // A rule applies while the band is narrower than it, and also while any rule of
@@ -106,7 +108,9 @@ export function BandRow({
                 STATUS_TOKENS[summary.family].dot,
               )}
             />
-            {summary.word === null ? null : <span>{summary.word}</span>}
+            {summary.word === null ? null : (
+              <span id={band?.wordId}>{summary.word}</span>
+            )}
             {summary.counts.map(({ word, count, filter }) =>
               // A hidden count stays for screen readers, never as an unseen button.
               countsHidden || filter === undefined ? (

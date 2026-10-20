@@ -63,9 +63,11 @@ describe("Harness release", () => {
     });
     renderHarness();
 
+    // Never read: no notice and no read age, so band 2's reading says why.
     const release = await screen.findByRole("button", {
-      name: "Create a release — GitHub not read",
+      name: "Create a release",
     });
+    expect(release).toHaveAccessibleDescription("Offline");
     expect(release).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(release);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -116,32 +118,38 @@ describe("Harness release", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps Release out of reach while a refresh is still moving the refs", async () => {
-    // A refresh rewrites the very refs a plan reads. Planning across one can
-    // price a release from a revision that no longer stands (#519).
+  it("opens its plan while a re-read runs, and reads the plan again once it lands", async () => {
+    // A plan read across a re-read can price a revision that no longer
+    // stands; Publish release re-checks every ref against the remote, and the
+    // plan re-reads so the dialog states the current one (#519, #1592).
     let finishRefresh = () => {};
     const heldUntil = new Promise<void>((resolve) => {
       finishRefresh = resolve;
     });
-    stubHarnessServer({
+    const calls = stubHarnessServer({
       read: { body: FETCHED },
       refresh: { body: FETCHED, heldUntil },
+      plan: { body: PLAN },
     });
     renderHarness();
+    const planReads = () =>
+      calls.filter((call) => call === "GET /api/harness/release-plan").length;
 
-    const release = await screen.findByRole("button", {
-      name: "Create a release — re-reading Harness",
-    });
-    expect(release).toHaveAttribute("aria-disabled", "true");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Re-read Harness" }),
+      ).toHaveAttribute("aria-busy", "true"),
+    );
+    const release = screen.getByRole("button", { name: "Create a release" });
+    expect(release).not.toHaveAttribute("aria-disabled");
     await userEvent.click(release);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(planReads()).toBe(1));
 
     finishRefresh();
 
-    await waitFor(() =>
-      expect(release).toHaveAccessibleName("Create a release"),
-    );
-    expect(release).not.toHaveAttribute("aria-disabled");
+    await waitFor(() => expect(planReads()).toBe(2));
+    expect(dialog).toBeInTheDocument();
   });
 
   it("never stands the last plan in for the one being fetched again", async () => {

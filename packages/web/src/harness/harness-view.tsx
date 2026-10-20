@@ -1,6 +1,13 @@
 import type { ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
-import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type RefObject,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { BandAction } from "../ui/band-action";
 import {
@@ -30,7 +37,6 @@ import { HarnessDialogs } from "./harness-dialogs";
 import {
   harnessAnnouncement,
   releaseEnabled,
-  releaseUnavailable,
   type StageSection,
   stageSections,
 } from "./harness-view-model";
@@ -92,6 +98,9 @@ export function HarnessView({
   const reread = table.reread;
   const { open } = table;
 
+  // What a blocked Create a release points at: the notice, else band 2's reading.
+  const noticeId = useId();
+  const readingId = useId();
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
@@ -282,15 +291,23 @@ export function HarnessView({
               onClick={importFlow.start}
             />
             {/* Closed while the remote's answer is unknown — an offline or
-                failed fetch — and while a re-read is still rewriting the refs
-                a plan reads. Advisory findings never gate it (#519). */}
+                failed fetch. Open during a re-read: Publish release checks
+                every ref against the remote. Advisory findings never gate it
+                (#519). */}
             <GatedButton
               variant="primary"
               label={CREATE_RELEASE}
-              unavailable={releaseUnavailable(
-                state.freshness,
-                refresh.isPending,
-              )}
+              unavailable={
+                releaseEnabled(state.freshness)
+                  ? null
+                  : {
+                      describedBy:
+                        harnessStateNotice(harness.error) === null &&
+                        staleStatusNotice(state.freshness, reread) !== null
+                          ? noticeId
+                          : readingId,
+                    }
+              }
               onClick={() => setPlanOpen(true)}
             />
           </>
@@ -343,6 +360,7 @@ export function HarnessView({
         },
         labelsBelowRem: LABELS_BELOW_REM,
         countsBelowRem: COUNTS_BELOW_REM,
+        wordId: readingId,
       }}
       rereading={refresh.isPending}
       firstReadRows={8}
@@ -386,6 +404,7 @@ export function HarnessView({
           restored={presses.restore.data}
           dismissRestored={presses.restore.reset}
           rereadRef={table.rereadRef}
+          noticeId={noticeId}
         />
       }
     >
@@ -468,6 +487,7 @@ function Notices({
   restored,
   dismissRestored,
   rereadRef,
+  noticeId,
 }: {
   state: ReturnType<typeof useHarness>["data"];
   readError: unknown;
@@ -480,6 +500,7 @@ function Notices({
   restored: { hasRequest: boolean; statusRead: boolean } | undefined;
   dismissRestored: () => void;
   rereadRef: RefObject<HTMLButtonElement | null>;
+  noticeId: string;
 }) {
   // One notice, the one that blocks most; the next shows once it clears.
   // A full success is a toast, so only a partial one reaches the band.
@@ -535,9 +556,10 @@ function Notices({
   return (
     <div className={shown === undefined ? "flex flex-col" : "p-panel"}>
       {clear === undefined ? (
-        <Notice trigger="load" notice={shown?.notice ?? null} />
+        <Notice id={noticeId} trigger="load" notice={shown?.notice ?? null} />
       ) : (
         <Notice
+          id={noticeId}
           trigger="user-action"
           notice={shown?.notice ?? null}
           onDismiss={dismiss}
