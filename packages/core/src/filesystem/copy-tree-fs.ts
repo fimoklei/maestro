@@ -101,7 +101,6 @@ export class NodeCopyTreeFs implements CopyTreeFsPort {
   }
 
   // O_NOFOLLOW guards the final component only; Node has no openat.
-  // ponytail: per-component openat if Node ever exposes it.
   async openFile(path: string): Promise<OpenFile | null> {
     try {
       return openFileOf(

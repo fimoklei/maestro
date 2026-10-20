@@ -62,7 +62,7 @@ already tested:
 
 Together those are exactly `{name, description}` at a ref — Inventory's whole
 payload. 480 ms for a 36-skill harness on a cached query is acceptable; the
-`ponytail:` upgrade path is B, and it should not be built before a harness
+upgrade path is B, and it should not be built before a harness
 makes A measurably slow.
 
 ### Failure modes
