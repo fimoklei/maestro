@@ -375,6 +375,8 @@ export function useRefreshHarness() {
       // mutation open across a remount.
       void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
       queryClient.setQueryData(HARNESS_KEY, state);
+      // A plan opened during the re-read read the refs it rewrote (#1592).
+      void queryClient.invalidateQueries({ queryKey: RELEASE_PLAN_KEY });
     },
   });
 }
