@@ -10,6 +10,7 @@ import { plainText } from "./phrase";
 
 describe("busy labels", () => {
   it.each([
+    ["copy", "Copying…"],
     ["deploy", "Deploying…"],
     ["update", "Updating…"],
     ["remove", "Removing…"],

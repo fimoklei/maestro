@@ -1,5 +1,4 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
-import type { Primitive } from "./use-inventory";
 
 export type PrimitiveType = "skill" | "hook" | "mcp" | "bundle";
 
@@ -14,7 +13,7 @@ export const TYPE_WORD: Record<PrimitiveType | HarnessPrimitiveType, string> = {
 
 // Name only, case-insensitive — matching descriptions would surprise the
 // user with rows whose visible name looks unrelated (#287).
-export function filterByName<T extends Primitive>(
+export function filterByName<T extends { name: string }>(
   primitives: T[],
   query: string,
 ): T[] {

@@ -1,4 +1,4 @@
-import type { SkillDeletionCheck } from "@maestro/core";
+import type { InventorySkill, SkillDeletionCheck } from "@maestro/core";
 import { Puzzle, Table2, Tag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
@@ -26,7 +26,6 @@ import {
   UP_TO_DATE,
 } from "../inventory/skill-status";
 import { filterByName } from "../inventory/type-filter";
-import type { Primitive } from "../inventory/use-inventory";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import {
@@ -156,7 +155,7 @@ export function SkillsView({
   onDeleted,
 }: {
   /** Undefined until the Inventory has been read once. */
-  primitives: Primitive[] | undefined;
+  primitives: InventorySkill[] | undefined;
   repos: RegisteredRepo[];
   registryReady: boolean;
   // Every deploy target, for the per-row status and reach (#272). Empty until

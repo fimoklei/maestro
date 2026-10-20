@@ -1,17 +1,18 @@
+import type { InventorySkill } from "@maestro/core";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
 import type { SkillDeployment } from "../inventory/skill-deployments";
-import type { Primitive } from "../inventory/use-inventory";
 import { openFootMenu, sentence } from "../test-utils";
 import type { FootItem } from "../ui/foot-actions";
 import { SkillDetailPane } from "./skill-detail-pane";
 
-const tdd: Primitive = {
+const tdd: InventorySkill = {
   type: "skill",
   name: "tdd",
+  path: ".apm/skills/tdd",
   description: "Test-driven development.",
 };
 

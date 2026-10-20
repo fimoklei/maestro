@@ -1,5 +1,5 @@
+import type { InventorySkill } from "@maestro/core";
 import type { SkillDeployment } from "../inventory/skill-deployments";
-import type { Primitive } from "../inventory/use-inventory";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import { NoValue } from "../ui/no-value";
@@ -14,7 +14,7 @@ import { ReachCard } from "./reach-card";
 export type RowAction = "deploy" | "remove" | "delete";
 
 // The Skills table's columns, and the columns Display can switch off.
-export type SkillRow = Primitive & {
+export type SkillRow = InventorySkill & {
   status: StatusReading | null;
   // Null while the status is unconfirmed, so a partial reach never shows.
   targets: number | null;

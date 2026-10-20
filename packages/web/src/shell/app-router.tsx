@@ -1,4 +1,4 @@
-import type { PrimitiveRef } from "@maestro/core";
+import type { InventoryPrimitive, PrimitiveRef } from "@maestro/core";
 import type { ComponentType } from "react";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router";
 import { ConnectView } from "../connect-gate/connect-view";
@@ -9,7 +9,7 @@ import {
   FIRST_INVENTORY_PATH,
   INVENTORY_VIEWS,
 } from "../inventory/inventory-views";
-import type { Primitive } from "../inventory/use-inventory";
+import { PromptsPanel } from "../prompts/prompts-panel";
 import { RepositoriesView } from "../registry/repositories-view";
 import { AppearancePage } from "../settings/appearance-page";
 import { HarnessLocationPage } from "../settings/harness-location-page";
@@ -62,8 +62,9 @@ function HarnessScreen() {
 }
 
 // Keyed by the wire type, so a view type without a screen fails to compile.
-const SCREEN_OF: Record<Primitive["type"], ComponentType> = {
+const SCREEN_OF: Record<InventoryPrimitive["type"], ComponentType> = {
   skill: SkillsPanel,
+  prompt: PromptsPanel,
 };
 
 // Each view's screen, by its segment. An unknown segment opens the first view.

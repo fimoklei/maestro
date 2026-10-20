@@ -1,0 +1,85 @@
+import type { InventoryPrompt } from "@maestro/core";
+import { TYPE_WORD } from "../inventory/type-filter";
+import { LATEST_RELEASE_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
+import { COPY_PROMPT } from "../ui/control-labels";
+import { DetailPane, type PaneNotice } from "../ui/detail-pane";
+import { PromptText } from "./prompt-text";
+import { NOT_COPIED, nameNotValidNotice, PATH_FACT } from "./prompts-copy";
+
+// Facts, the description, the findings, then the text to copy. Copy prompt
+// leads the ⋮ order, so it is the pane's primary.
+export function PromptDetailPane({
+  prompt,
+  latestRelease,
+  copyRefused,
+  onCopy,
+  position,
+  onPage,
+  initialFocus,
+  onClose,
+  getTriggerElement,
+}: {
+  prompt: InventoryPrompt;
+  /** The Harness's latest release: null where none exists, undefined until read. */
+  latestRelease: string | null | undefined;
+  /** The last Copy prompt of this prompt was refused by the browser. */
+  copyRefused: boolean;
+  onCopy: () => void;
+  position?: { index: number; count: number } | null;
+  onPage?: (step: -1 | 1) => void;
+  initialFocus?: string | null;
+  onClose: () => void;
+  getTriggerElement: (name: string) => HTMLElement | null;
+}) {
+  const notices: PaneNotice[] = [
+    ...(prompt.nameValid
+      ? []
+      : [
+          {
+            content: { level: "warning", ...nameNotValidNotice(prompt.name) },
+            trigger: "load",
+          } satisfies PaneNotice,
+        ]),
+    ...(copyRefused
+      ? [
+          {
+            content: { level: "error", ...NOT_COPIED },
+            trigger: "user-action",
+          } satisfies PaneNotice,
+        ]
+      : []),
+  ];
+  return (
+    <DetailPane
+      title={prompt.name}
+      activeKey={prompt.name}
+      position={position}
+      onPage={onPage}
+      initialFocus={initialFocus}
+      onClose={onClose}
+      getTriggerElement={getTriggerElement}
+      facts={[
+        { label: "Type", value: TYPE_WORD[prompt.type] },
+        latestRelease === undefined
+          ? null
+          : {
+              label: LATEST_RELEASE_FACT,
+              value: latestRelease ?? NOT_RELEASED_YET,
+              machine: latestRelease !== null,
+            },
+        {
+          label: PATH_FACT,
+          value: prompt.path,
+          machine: true,
+          fullValue: prompt.path,
+        },
+      ]}
+      paragraph={prompt.description === "" ? [] : [prompt.description]}
+      clampParagraph
+      notices={notices}
+      subList={<PromptText text={prompt.text} onCopy={onCopy} />}
+      foot={[{ label: COPY_PROMPT, onSelect: onCopy }]}
+      leadsWithNextStep
+    />
+  );
+}

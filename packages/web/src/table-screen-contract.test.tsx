@@ -18,6 +18,7 @@ import {
   withStages,
 } from "./harness/harness-flow-fixture";
 import { pullRequest } from "./harness/stage-row-fixture";
+import { PromptsPanel } from "./prompts/prompts-panel";
 import {
   type FakeRegistry,
   renderRepositories,
@@ -138,6 +139,44 @@ const skillsLeaves = (): RowLeaves => {
         </MemoryRouter>,
       );
     },
+    first: "alpha",
+    next: "beta",
+    drop: () => {
+      names = ["beta"];
+    },
+  };
+};
+
+// The Inventory read answers these prompts; every other read never answers.
+const renderPrompts = (names: () => readonly string[]) => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) =>
+      String(input) === "/api/inventory/primitives"
+        ? jsonResponse({
+            primitives: names().map((name) => ({
+              type: "prompt",
+              name,
+              description: "A prompt.",
+              path: `.maestro/prompts/${name}.md`,
+              text: "Do the thing.",
+              nameValid: true,
+            })),
+          })
+        : new Promise<Response>(() => {}),
+    ),
+  );
+  return renderWithQuery(
+    <MemoryRouter>
+      <PromptsPanel />
+    </MemoryRouter>,
+  );
+};
+
+const promptsLeaves = (): RowLeaves => {
+  let names = ["alpha", "beta"];
+  return {
+    render: () => renderPrompts(() => names),
     first: "alpha",
     next: "beta",
     drop: () => {
@@ -321,7 +360,12 @@ const PANE_SUB_LISTS: PaneSubList[] = [
   },
 ];
 
-const TDD = { type: "skill" as const, name: "tdd", description: "Test first." };
+const TDD = {
+  type: "skill" as const,
+  name: "tdd",
+  path: ".apm/skills/tdd",
+  description: "Test first.",
+};
 
 const ON_TABLE_SCREEN: Row[] = [
   {
@@ -585,6 +629,30 @@ const ON_TABLE_SCREEN: Row[] = [
       pane: true,
       write: null,
       item: { label: "Deploy skill", dialog: true, opensPane: true },
+    },
+  },
+  {
+    file: "prompts/prompts-view.tsx",
+    name: "Prompts",
+    leaves: promptsLeaves(),
+    render: () => renderPrompts(() => ["pr-review"]),
+    empty: {
+      render: () => renderPrompts(() => []),
+      title: "No released prompts yet",
+    },
+    // Only a badly named file has a card, and its badge is never in the row;
+    // prompts-panel.test.tsx covers that card.
+    card: null,
+    reading: null,
+    columns: ["Name", "Description", "Actions"],
+    // Copy prompt writes the clipboard, never the server, so no write is held.
+    actions: {
+      render: () => renderPrompts(() => ["pr-review"]),
+      name: "pr-review",
+      destructive: [],
+      pane: true,
+      write: null,
+      item: { label: "Copy prompt", dialog: false, opensPane: false },
     },
   },
   {

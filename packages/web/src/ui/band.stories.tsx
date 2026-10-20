@@ -2,9 +2,21 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { GitBranch, RefreshCw, Tag } from "lucide-react";
 import type { Band } from "./band";
 import { BandRow } from "./band";
+import type { BandSummaryInput } from "./band-summary";
 import { GitHubMark } from "./github-mark-link";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
+
+type CountedSummary = Extract<BandSummaryInput, { healthy: string }>;
+
+const HARNESS_SUMMARY: CountedSummary = {
+  freshness: { readAt: [Date.now() - 4 * 60_000], outcome: "fetched" },
+  healthy: "All released",
+  counts: [
+    { word: "Pending review", count: 0, family: "attention" },
+    { word: "Pending release", count: 0, family: "attention" },
+  ],
+};
 
 const HARNESS: Band = {
   facts: [
@@ -34,20 +46,13 @@ const HARNESS: Band = {
       drop: { rank: 1, belowRem: 54 },
     },
   ],
-  summary: {
-    freshness: { readAt: [Date.now() - 4 * 60_000], outcome: "fetched" },
-    healthy: "All released",
-    counts: [
-      { word: "Pending review", count: 0, family: "attention" },
-      { word: "Pending release", count: 0, family: "attention" },
-    ],
-  },
+  summary: HARNESS_SUMMARY,
   labelsBelowRem: 62,
   countsBelowRem: 20,
 };
-const withSummary = (summary: Partial<Band["summary"]>): Band => ({
+const withSummary = (summary: Partial<CountedSummary>): Band => ({
   ...HARNESS,
-  summary: { ...HARNESS.summary, ...summary },
+  summary: { ...HARNESS_SUMMARY, ...summary },
 });
 
 function Row({ band, width }: { band: Band; width: number }) {

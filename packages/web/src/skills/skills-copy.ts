@@ -121,7 +121,6 @@ const ofTargets = (count: number, total: number) =>
 
 // The skill detail pane's facts (#1065, #1435).
 export const STATUS_FACT = "Status";
-export const LATEST_RELEASE_FACT = "Latest release";
 export const BEHIND_FACT = "Behind";
 
 export function skillStateLine(state: SkillState): Copy {
