@@ -1,32 +1,26 @@
-import type {
-  HarnessChange,
-  HarnessMovementKind,
-  PendingMovement,
-} from "@maestro/core";
+import type { HarnessChange, PendingMovement } from "@maestro/core";
 import { TYPE_WORD } from "../inventory/type-filter";
 import { GroupedList } from "../ui/grouped-list";
 import { SubListHeading } from "../ui/sub-list-heading";
-import { CHANGE_WORDS } from "./stage-copy";
+import { CHANGE_WORD } from "./change-words";
 
-// In the dialog's group order. A movement shows the Change its row shows on
-// the Harness screen.
-const GROUPS: Record<HarnessMovementKind, HarnessChange> = {
-  added: "addition",
-  changed: "edit",
-  renamed: "rename",
-  removed: "deletion",
-};
+// The dialog's group order.
+const GROUPS: readonly HarnessChange[] = [
+  "addition",
+  "edit",
+  "rename",
+  "deletion",
+];
 
 // Type, then Author, in spacing steps: 88px and 80px.
 const SLOTS = [22, 20];
 
 export function ReleaseDelta({ movements }: { movements: PendingMovement[] }) {
-  // A Record over HarnessMovementKind has exactly those kinds as keys.
-  const groups = (Object.keys(GROUPS) as HarnessMovementKind[]).map((kind) => {
-    const rows = movements.filter((movement) => movement.kind === kind);
+  const groups = GROUPS.map((change) => {
+    const rows = movements.filter((movement) => movement.change === change);
     return {
       tone: "neutral" as const,
-      legend: `${CHANGE_WORDS[GROUPS[kind]]} · ${rows.length}`,
+      legend: `${CHANGE_WORD[change]} · ${rows.length}`,
       rows: rows.map((movement) => ({
         key: `${movement.type}:${movement.name}`,
         name:

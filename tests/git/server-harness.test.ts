@@ -271,7 +271,13 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     expect(plan.defaultBranch).toBe("main");
     expect(plan.revision).toMatch(/^[0-9a-f]{40}$/);
     expect(plan.delta).toEqual([
-      { type: "skill", kind: "changed", name: "tdd", author: "Mate" },
+      {
+        type: "skill",
+        kind: "changed",
+        change: "edit",
+        name: "tdd",
+        author: "Mate",
+      },
     ]);
     expect(plan.findings).toEqual([]);
   });

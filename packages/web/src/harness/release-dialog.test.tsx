@@ -22,8 +22,20 @@ const row = (name: string) => {
 
 const PLAN: ReleasePlan = {
   delta: [
-    { type: "skill", kind: "added", name: "research", author: "Grace" },
-    { type: "skill", kind: "changed", name: "tdd", author: "Ada" },
+    {
+      type: "skill",
+      kind: "added",
+      change: "addition",
+      name: "research",
+      author: "Grace",
+    },
+    {
+      type: "skill",
+      kind: "changed",
+      change: "edit",
+      name: "tdd",
+      author: "Ada",
+    },
   ],
   previousTag: "v1.2.3",
   previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
@@ -166,8 +178,20 @@ describe("ReleaseDialog", () => {
   it("shows the whole merged delta with each change's type and author", () => {
     renderReady({
       delta: [
-        { type: "skill", kind: "added", name: "research", author: "Grace" },
-        { type: "prompt", kind: "changed", name: "review", author: "Ada" },
+        {
+          type: "skill",
+          kind: "added",
+          change: "addition",
+          name: "research",
+          author: "Grace",
+        },
+        {
+          type: "prompt",
+          kind: "changed",
+          change: "edit",
+          name: "review",
+          author: "Ada",
+        },
       ],
     });
 
@@ -185,6 +209,7 @@ describe("ReleaseDialog", () => {
         {
           type: "skill",
           kind: "renamed",
+          change: "rename",
           name: "test-first",
           previousName: "tdd",
           author: "Ada",
@@ -198,17 +223,42 @@ describe("ReleaseDialog", () => {
   it("groups the delta by its change words, in order, each with its count", () => {
     renderReady({
       delta: [
-        { type: "skill", kind: "removed", name: "grilling", author: "Linus" },
-        { type: "skill", kind: "changed", name: "tdd", author: "Ada" },
+        {
+          type: "skill",
+          kind: "removed",
+          change: "deletion",
+          name: "grilling",
+          author: "Linus",
+        },
+        {
+          type: "skill",
+          kind: "changed",
+          change: "edit",
+          name: "tdd",
+          author: "Ada",
+        },
         {
           type: "prompt",
           kind: "renamed",
+          change: "rename",
           name: "triage",
           previousName: "sort",
           author: "Ada",
         },
-        { type: "skill", kind: "added", name: "research", author: "Grace" },
-        { type: "prompt", kind: "added", name: "review", author: "Ada" },
+        {
+          type: "skill",
+          kind: "added",
+          change: "addition",
+          name: "research",
+          author: "Grace",
+        },
+        {
+          type: "prompt",
+          kind: "added",
+          change: "addition",
+          name: "review",
+          author: "Ada",
+        },
       ],
     });
 
@@ -227,7 +277,13 @@ describe("ReleaseDialog", () => {
   it("draws no group nothing moved into", () => {
     renderReady({
       delta: [
-        { type: "skill", kind: "removed", name: "grilling", author: "Linus" },
+        {
+          type: "skill",
+          kind: "removed",
+          change: "deletion",
+          name: "grilling",
+          author: "Linus",
+        },
       ],
     });
 
@@ -249,7 +305,15 @@ describe("ReleaseDialog", () => {
 
   it("says plainly that an author is unknown rather than leaving a gap", () => {
     renderReady({
-      delta: [{ type: "skill", kind: "added", name: "research", author: null }],
+      delta: [
+        {
+          type: "skill",
+          kind: "added",
+          change: "addition",
+          name: "research",
+          author: null,
+        },
+      ],
     });
 
     expect(row("research")).toHaveTextContent("Unknown");

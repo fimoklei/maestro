@@ -497,6 +497,7 @@ const SURFACES: {
               {
                 type: "skill",
                 kind: "added",
+                change: "addition",
                 name: "research",
                 author: "Grace",
               },

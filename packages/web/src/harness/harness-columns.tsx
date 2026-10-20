@@ -8,11 +8,11 @@ import { RowMenu } from "../ui/row-menu";
 import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
+import { CHANGE_WORD } from "./change-words";
 import { pullRequestCard } from "./pull-request-card";
 import { PullRequestLinks } from "./pull-request-links";
 import {
   alsoInWords,
-  CHANGE_WORDS,
   changeSentence,
   crossStageLine,
   detailSentence,
@@ -91,7 +91,7 @@ export const harnessColumns = ({
         header: "Change",
         cell: ({ row }) => (
           <span className="text-gray-12">
-            {CHANGE_WORDS[row.original.change]}
+            {CHANGE_WORD[row.original.change]}
           </span>
         ),
         // Every change word fits. Hidden after Pull

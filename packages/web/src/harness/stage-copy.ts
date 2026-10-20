@@ -1,6 +1,5 @@
 // One row per status, so a new status fails typecheck until it has copy.
 import type {
-  HarnessChange,
   HarnessPrimitiveType,
   HarnessStage,
   HarnessStageRow,
@@ -96,15 +95,6 @@ export const statusReading = (row: HarnessStageRow): StatusReading => {
     family,
     family === "attention" ? WARNING_GLYPH : undefined,
   );
-};
-
-// The one word per change on every screen, the release dialog's groups too.
-// "Deleted", never "Removed": remove belongs to deployed copies alone.
-export const CHANGE_WORDS: Record<HarnessChange, string> = {
-  addition: "Added",
-  edit: "Changed",
-  rename: "Renamed",
-  deletion: "Deleted",
 };
 
 /** The default branch as a sentence names it: its name set apart, else words. */
