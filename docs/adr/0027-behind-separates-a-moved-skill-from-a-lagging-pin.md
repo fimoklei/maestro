@@ -18,7 +18,7 @@ and the reader learns to ignore the word.
 ADR-0001 forbids recomputing the version diff, so Behind stays `apm outdated`'s
 judgment. But the content question is not a version computation. ADR-0021
 already established the answer: a skill directory is one unit, and its git tree
-hash is the whole of its content. `diffSkillTrees` reads that delta for the
+hash is the whole of its content. `diffPrimitives` reads that delta for the
 *Pending release* table, and skill trees are readable at any ref.
 
 ## Decision
