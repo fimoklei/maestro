@@ -25,7 +25,7 @@ describe("POST body parsing", () => {
     message:
       "Maestro could not change the pull request. Reload the page, then try again.",
     detail:
-      'The request carries a primitive type and name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
+      'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
   };
 
   const routes = [
