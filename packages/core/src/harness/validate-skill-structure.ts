@@ -13,10 +13,10 @@ export const splitFrontmatter = (
   raw: string,
 ): { block: string; body: string } | null => {
   // Both delimiters are whole lines: `---junk` closes nothing.
-  const match = /^---\n([\s\S]*?)\n---[ \t]*(?:\r?\n|$)/.exec(raw);
-  return match === null || match[1] === undefined
+  const match = /^---\r?\n(?:([\s\S]*?)\r?\n)?---[ \t]*(?:\r?\n|$)/.exec(raw);
+  return match === null
     ? null
-    : { block: match[1], body: raw.slice(match[0].length) };
+    : { block: match[1] ?? "", body: raw.slice(match[0].length) };
 };
 
 export const readFrontmatter = (
