@@ -20,7 +20,7 @@ agent *must do* when driving apm.
 
 ## Decision
 
-Seven entries. Each names what APM says, what this route does, and the verdict:
+Eight entries. Each names what APM says, what this route does, and the verdict:
 **deliberate**, **drift**, or **not a departure**.
 
 ### 1. The version lives on a git tag, not in the package manifest — deliberate
@@ -152,6 +152,24 @@ Seven entries. Each names what APM says, what this route does, and the verdict:
   target (#833 review, 2026-09-11).
 - **Accepted cost:** Maestro writes one list in a manifest APM owns
   (ADR-0001). Comments in `apm.yml` may not survive the write.
+
+### 8. A prompt lives in the Harness but APM never delivers it — deliberate
+
+- **APM:** a prompt is a `*.prompt.md` file at the package root or in
+  `.apm/prompts/`. A root install delivers every one to every prompt-capable
+  tool of the target; `--skill` does not narrow it.
+- **This route:** a prompt is one `<name>.md` file directly in
+  `.maestro/prompts/` of the Harness. No install delivers that folder and
+  the lockfile never lists it (24 installs, project and user scope,
+  research #1564). A prompt has no
+  targets: the operator copies its latest released text from **Prompts**. It
+  changes through the route a skill takes: proposal, review, merge, release
+  (#1590).
+- **Why:** the operator chooses where a prompt goes by pasting it. APM would
+  deliver every prompt to every target, as a slash command (#1403, #1560). A prompt that must become a slash command becomes a skill.
+- **Accepted cost:** Maestro keeps a folder APM knows nothing about. The
+  folder stays undelivered only while the Harness root holds no `SKILL.md`
+  (#1587).
 
 ## Consequences
 

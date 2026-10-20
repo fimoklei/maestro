@@ -6,7 +6,7 @@ Glossary for Maestro's domain language. The canonical reference when other docs 
 
 **Maestro**:
 The product — a visual cockpit to see and steer your AI agent setup across repositories and tools. Maestro sits on top of [APM](https://microsoft.github.io/apm/) and does not replace it.
-_Avoid_: harness (that is the inventory repo, not the product), package manager, prompt library.
+_Avoid_: harness (that is the inventory repo, not the product), package manager, prompt library (prompts are one primitive it holds, not the product).
 
 **Cockpit**:
 Maestro's core surface: the place where you see what you have, see what is deployed where, and deploy or update from one location. The thing APM lacks.
@@ -17,12 +17,16 @@ The Agent Package Manager (`microsoft/apm`) — the engine underneath Maestro. O
 _Avoid_: installer (too narrow), backend.
 
 **Primitive**:
-An umbrella term for the reusable agent-capability units Maestro manages: **Skill**, **Hook**, and **MCP server**. The unit you see in the inventory and choose to deploy.
+An umbrella term for the reusable agent-capability units Maestro manages: **Skill**, **Prompt**, **MCP server** and **Hook**. The unit you see in the inventory; every one but a prompt deploys.
 _Avoid_: artifact (too generic), capability (too abstract), asset.
 
 **Skill**:
 A directory containing a `SKILL.md` file (YAML frontmatter + Markdown body) that teaches an AI coding assistant how to perform a specific task according to your standards. Conforms to the open skill surface.
-_Avoid_: prompt, rule, instruction.
+_Avoid_: prompt (a different primitive), rule, instruction.
+
+**Prompt**:
+A reusable text you copy from Prompts and paste into an AI coding assistant. The Harness keeps each prompt as one `<name>.md` file in `.maestro/prompts/`. APM never delivers it, so a prompt has no targets (ADR-0019 §8).
+_Avoid_: snippet, template, command, prompt in APM's sense (a `.prompt.md` file APM delivers to every prompt-capable tool of a target).
 
 **Hook**:
 A primitive that runs a script at a defined point in the assistant's lifecycle (e.g. a code-quality check). Packaged with its config and scripts.
@@ -37,11 +41,11 @@ The collection of primitives in the latest published release of the connected **
 _Avoid_: skills repo, library, catalog (a catalog is passive; the inventory is the governed source).
 
 **Inventory view**:
-A screen that shows one primitive type of the **Central inventory** — Skills first; Prompts, MCP servers and Hooks follow. A view, not a collection of its own: every view reads the same inventory.
+A screen that shows one primitive type of the **Central inventory** — Skills, then Prompts; MCP servers and Hooks follow. A view, not a collection of its own: every view reads the same inventory.
 _Avoid_: sub-inventory, skills inventory.
 
 **Harness**:
-The Git repository the team writes primitives into — the same repository the **Central inventory** names, seen from the author's side instead of the consumer's. Skills live at `.apm/skills/<name>`, and a repository counts as a harness when `apm.yml` sits in its root (ADR-0021).
+The Git repository the team writes primitives into — the same repository the **Central inventory** names, seen from the author's side instead of the consumer's. Skills live at `.apm/skills/<name>` and prompts at `.maestro/prompts/<name>.md`, and a repository counts as a harness when `apm.yml` sits in its root (ADR-0021).
 _Avoid_: harness in APM's sense (there it means the agent platform — Claude, Copilot, Cursor — the end primitives *arrive* at, not depart from), skills repo.
 
 **Working harness**:
@@ -49,7 +53,7 @@ The harness as it stands right now, uncommitted edits included. The only state M
 _Avoid_: draft, scratchpad, local inventory.
 
 **Released harness**:
-The harness at its latest published tag. The only state consumers deploy from, and the only one the **Curated / Production-ready** bar applies to (ADR-0021, ADR-0003).
+The harness at its latest published tag. The only state consumers deploy or copy from, and the only one the **Curated / Production-ready** bar applies to (ADR-0021, ADR-0003).
 _Avoid_: published inventory, catalogue, main (a merge is not a release).
 
 **Inventory source**:
@@ -93,7 +97,7 @@ Recovery of a locally deleted skill folder in the Working Harness from the last 
 _Avoid_: undo deletion, which implies recovering the exact pre-deletion state; restore for returning a folder to the default branch, which is **Discard change**.
 
 **Proposal**:
-One skill's change offered for review: the branch **Propose change** pushed, and the pull request opened over it. A proposal ends when its pull request is merged; the branch itself may outlive it, and a later change to that skill on the default branch never revives it. Without a pull-request check, Maestro cannot see the end and reads the branch as before (#890).
+One skill's or prompt's change offered for review: the branch **Propose change** pushed, and the pull request opened over it. A proposal ends when its pull request is merged; the branch itself may outlive it, and a later change to it on the default branch never revives it. Without a pull-request check, Maestro cannot see the end and reads the branch as before (#890).
 _Avoid_: promotion (the mechanism), branch (the carrier, not the offer).
 
 **Skill content**:
@@ -114,7 +118,7 @@ _Avoid_: subset (APM's word for the mechanism), bundle, skill list.
 
 **Chosen release**:
 The release a target chose for an **Update target** that the deployment record does not show yet. Maestro remembers it from the moment the Update starts until the record names that release, so **Update incomplete** and **Retry update** survive a restart (ADR-0031).
-_Avoid_: **Pending release** (ADR-0031's name for it; now only the Harness stage *Merged, not yet released*), in-flight release.
+_Avoid_: pending release in ADR-0031's sense (its first name for this release; **Pending release** now names only the Harness stage), in-flight release.
 
 **Empty target**:
 A target with nothing deployed to it yet — its deploy-state read cleanly and found zero primitives. Its own state, distinct from **Drift**'s "unknown" (a check that could not run) and from "in sync" (deployed primitives that all match the central inventory): an empty target has nothing to be behind, so a confirmed-empty deploy-state overrides the drift check. The first reading a freshly-registered consuming repo shows.
@@ -153,7 +157,7 @@ A deployed primitive whose materialized files have diverged from the pinned tag'
 _Avoid_: local edit, dirty.
 
 **Shadow skill** _(future-relevance)_:
-Any AI-instruction artifact in use outside the central inventory — personal dotfiles, ad-hoc rules, copied prompts. The anti-pattern the team/org-scale version of Maestro exists to eliminate. Not an MVP1 concern (solo has no shadow problem yet).
+Any AI-instruction artifact in use outside the central inventory — personal dotfiles, ad-hoc rules, prompts kept in notes or chat history. The anti-pattern the team/org-scale version of Maestro exists to eliminate. Not an MVP1 concern (solo has no shadow problem yet).
 _Avoid_: unofficial skill, rogue rule.
 
 **Required / Optional primitive** _(future)_:
@@ -171,7 +175,7 @@ details may name the exact APM mechanism or file.
 |---|---|---|
 | Harness | **Harness** | Use **Working Harness** or **Released Harness** when the state matters. |
 | Central inventory | **Inventory** | Reserve **Inventory** for the whole collection and its sidebar heading. A sentence about the collection says **Inventory** (*Skill not in the Inventory*). |
-| Inventory view | **Skills** (later **Prompts**, **MCP servers**, **Hooks**) | Each view is named by its type and listed under the **Inventory** heading. A sentence about the screen names the view (*Select Deploy skill on Skills*). |
+| Inventory view | **Skills**, **Prompts** (later **MCP servers**, **Hooks**) | Each view is named by its type and listed under the **Inventory** heading. A sentence about the screen names the view (*Select Deploy skill on Skills*). |
 | Inventory source | **Harness location** | Do not use *source* for the configured Harness location. The controls on that screen are **Re-read Skills**, **Change Harness location** and **Set Harness location**. |
 | Drift | **Behind** | A target's reading, stated in its **Status** column. On a skill's row it means one of the skill's targets is behind and the skill changed in the newer release; a skill has no release of its own. Use *an update is available* as explanation, not as a second status name. The `?` marker reads **Update check did not run**; *drift* never reaches the screen. **Behind** claims a newer release exists and nothing more (ADR-0027); the changed count beside it carries the content fact. *Older tag* is retired (ADR-0031). |
 | Changed / unchanged skill | **Changed** / **Unchanged** | The two sections of the **Update target** preview, and the count in a target's Status hover card (`2 of 5 deployed skills changed`). Explain *unchanged* as *identical at both releases*; never *same content*, which is **Content drift**'s territory. |
@@ -179,21 +183,22 @@ details may name the exact APM mechanism or file.
 | Target | **Target** | Prefer the concrete repository or tool name after the concept is established. |
 | Deploy | **Deploy** / **Deployed** | *Deploy* is the action and *deployed* is the state; *install* is APM's mechanism. |
 | Skill | **Skill** | Use `SKILL.md` only when the file itself matters. |
-| Primitive | — | Name **skills, hooks, and MCP servers**; use **items** only for a generic count. |
+| Primitive | — | Name **skills, prompts, MCP servers and hooks**; use **items** only for a generic count. |
 | Source (generic) | — | Name the concrete thing: **Harness location**, **original folder**, or **latest release**. |
 | APM lockfile | **Deployment record** | Show `apm.lock.yaml` only in technical details. |
 | Pinned version | **Deployed version** | Do not introduce *pin* as a user action or state. |
 | Promote | **Propose change** / **proposed change** | *Propose change* is the action, the first item of its row's menu and the first button in the row's detail pane; the noun is a **proposed change**. Pushing alone does not mean a pull request exists or review has started. |
 | Proposal recovery actions | **Update proposal** / **Create pull request** / **Reopen proposal** / **Withdraw proposal** | The row menu's four presses beside *Propose change* and *Open pull request*. *Update proposal* sends new content to the existing proposal; *Create pull request* opens the request a prepared branch has none of; *Withdraw proposal* closes the request and keeps both the local files and the branch. |
 | Harness row | **Name** / **Status** / **Type** / **Change** / **Pull request** / **Also in** | The columns of the **Harness** table, one group per stage; band 2 states **Origin**, **Release** and **Branch**. The pull request number links to GitHub, and its hover card reads the request's state as **Open**, **Draft**, **Merged** or **Closed** (#994). |
-| Effect of a Harness change | **Change** | The Harness table column stating what merging does to the Harness: **Addition**, **Edit**, **Deletion** or **Rename** (Rename only in **Pending release**; before merge a renamed folder reads as one Addition and one Deletion). Its hover card describes the effect in one sentence: *This change adds {skill} to {owner/repo}.*, *… edits {skill} in …*, *… deletes {skill} from …*, *… renames {old} to {skill} in …* **Status** states only where the change stands. A pull request title opens with the matching verb: *Add skill:*, *Edit skill:*, *Delete skill:*. Never *Update* (taken by **Update skill**, **Update proposal**, **Update target**) or *reason*: the column states what the change does, not why. |
-| Local work awaiting proposal | **Pending proposal** | Local skill content differs from the current open or prepared proposal, otherwise from the Harness default branch. |
+| Effect of a Harness change | **Change** | The column and fact stating what merging does to the Harness: **Added**, **Changed**, **Renamed** or **Deleted**, the same four words on every screen. **Renamed** appears only in **Pending release**; before merge a rename reads as one Added and one Deleted. The hover card says it in one sentence: *This change adds {name} to {owner/repo}.*, *… edits {name} in …*, *… deletes {name} from …*, *… renames {old} to {name} in …*. **Status** states only where the change stands. A pull request title opens with the matching verb and the type: *Add skill:*, *Edit prompt:*, *Delete skill:*. Never *Update* (taken by **Update skill**, **Update proposal**, **Update target**) or *reason*: the column states what the change does, not why. |
+| Local work awaiting proposal | **Pending proposal** | Local skill or prompt content differs from the current open or prepared proposal, otherwise from the Harness default branch. |
 | Open proposal | **Pending review** | A matching open pull request into the Harness default branch exists. Its status is **Draft**, **Waiting for review**, **Changes requested**, or **Approved, awaiting merge**, according to the verified facts. |
 | Reviewer asked for changes | **Changes requested** | GitHub's review verdict on an open proposal. It survives an update to the proposal; only GitHub clears it. **Draft** outranks it when both apply. |
-| Unreleased skill change | **Pending release** | This skill differs between the Harness default branch and the latest release. Explain as *Merged, not yet released*; approval alone is not a merge. |
+| Unreleased change | **Pending release** | This skill or prompt differs between the Harness default branch and the latest release. Explain as *Merged, not yet released*; approval alone is not a merge. |
 | Harness skill deletion | **Delete** / **Deletion** / **Deleted** | *Delete* is the verb, *deletion* is the noun, and *deleted* is the state. Use these forms throughout the Harness journey, including proposed deletions; never *remove* for this concept. The confirmation reads *Delete {skill}* and confirms with **Delete skill**. *Delete skill* always removes the folder from the Working Harness; when the skill is on the Harness default branch, **Propose change** then offers the deletion for review (#1335). |
+| Harness prompt deletion | **Delete prompt** | The same words and journey as **Delete skill**, except that it removes the prompt's file, not a folder, and names no targets. **Prompts** keeps listing the prompt until the next release (#1590). |
 | Discard an unproposed Harness edit | **Discard change** | After a confirmation, replaces a **Not yet proposed** skill folder in the Working Harness with its copy on the default branch. Deployed copies remain unchanged. Say *replace*, never *restore*: *restore* belongs to **Restore skill** (Skill restoration). Never **Discard local edits**, which acts on a deployed copy (#1375). |
-| Skill restoration | **Restore skill** / **Restore {skill}** | The action and confirmation button read **Restore skill**; the dialog title reads **Restore {skill}**. Never **Undo deletion**. |
+| Skill restoration | **Restore skill** / **Restore prompt** / **Restore {name}** | The action and confirmation button read **Restore skill**, or **Restore prompt** for a prompt; the dialog title reads **Restore {name}**. Never **Undo deletion**. |
 | Proposal without a pull request | **Pull request missing** | A prepared proposal has no matching pull request, confirmed by a complete check. It is not Pending review. |
 | Merged proposal, default branch not yet read | **Proposal merged** | GitHub merged the pull request and the Harness default branch has not been read since. It is the normal end of a review, so it carries no amber marking; the row leaves Pending review on the next read. Never **Pull request missing**, which claims no request ever existed. |
 | Closed unmerged proposal | **Proposal closed** | A closed proposal still holds work not incorporated into the default branch. Keep it visible outside Pending review. |
@@ -202,10 +207,10 @@ details may name the exact APM mechanism or file.
 | Stale Harness status | **Status out of date** | Previously verified information whose re-read failed; never present it as current. |
 | Unknown Harness status | **Status unknown** / **Review status unknown** | No verified status is available; use the review-specific name when only review status is unknown. Unknown is not empty. |
 | Unavailable review status | **Review status unavailable** | The pull-request check is unavailable; do not infer whether a proposal exists. |
-| Freshness reading | **Read** | The one word for reading, on every screen: *Read 4 min ago*, *Not read yet*, *Read failed — never read*. Band 2 of Skills, Harness, Deploy-state and Repositories ends with the read age, shown without the word *Read* (*4 min ago*, *last read 2 h ago* after a failure; its clock icon is named *Read*), while *Not read yet*, *Read failed* and *Offline* read in its summary; it dates the oldest reading behind the screen's statuses (on Skills, the skills read and every target read), and Deploy-state's **Compared** fact dates the same reading. Every table hover card, including those on Skills, ends with its read age (#1454). *Fetch* and *fetched* are retired from user-facing copy; they survive only as the wire field `lastFetchedAt` and the `fetched` / `fetch-failed` outcome values. |
-| Re-read | **Re-read {screen name}** | The one re-read control on a screen, and the single action in that screen's failed-read notice: **Re-read Deploy-state**, **Re-read Skills**, **Re-read Repositories**, **Re-read Harness**. *Refresh* and *Retry check* are retired — never on a control, never in a sentence. |
+| Freshness reading | **Read** | The one word for reading, on every screen: *Read 4 min ago*, *Not read yet*, *Read failed — never read*. Band 2 of Skills, Prompts, Harness, Deploy-state and Repositories ends with the read age, shown without the word *Read* (*4 min ago*, *last read 2 h ago* after a failure; its clock icon is named *Read*), while *Not read yet*, *Read failed* and *Offline* read in its summary; it dates the oldest reading behind the screen's statuses (on Skills, the skills read and every target read), and Deploy-state's **Compared** fact dates the same reading. Every table hover card, including those on Skills, ends with its read age (#1454). *Fetch* and *fetched* are retired from user-facing copy; they survive only as the wire field `lastFetchedAt` and the `fetched` / `fetch-failed` outcome values. |
+| Re-read | **Re-read {screen name}** | The one re-read control on a screen, and the single action in that screen's failed-read notice: **Re-read Deploy-state**, **Re-read Skills**, **Re-read Prompts**, **Re-read Repositories**, **Re-read Harness**. *Refresh* and *Retry check* are retired — never on a control, never in a sentence. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
-| Release dialog | **Create a release** / **Publish release for {origin}** / **Publish release** | *Create a release*, in the Harness's band 1, opens the dialog; the dialog reads *Publish release for {origin}*; *Publish release* confirms publication. References to either control use its exact label; *Plan release* is retired. Never a bare *Release* on a button or in the title. |
+| Release dialog | **Create a release** / **Publish release for {repo name}** / **Publish release** | *Create a release*, in the Harness's band 1, opens the dialog; the dialog reads *Publish release for {repo name}*, the origin's last path segment, and lists every change under **Added**, **Changed**, **Renamed** and **Deleted**; *Publish release* confirms publication. References to either control use its exact label; *Plan release* is retired. Never a bare *Release* on a button or in the title. |
 | Import dialog | **Import skill** | The Harness control that opens the dialog and the dialog's confirm; no control label ends in an ellipsis. |
 | Import dialog, replacing | **Update skill** | The dialog reads *Update a skill* and confirms with *Update skill* when it replaces a skill the Harness holds; it reads *Import a skill* and *Import skill* when it adds one. The control that opens it keeps its ellipsis either way. What an update lands sits under **Pending proposal**. The Deploy-state row once carried the same label for the other direction; that button retires for **Update target** on the target (#932). |
 | Import from a target | **Import local edits** / **Import {n} skills** | The Deploy-state target action that brings its skills' **Local edits** into the Harness as updates; the dialog reads *Import local edits from {target}*. It never adds a new skill; a skill it refuses can still come back through **Import skill** (#1249). |
@@ -240,6 +245,7 @@ details may name the exact APM mechanism or file.
 | Overwrite a protected copy | **Deploy {name} again** | The bulk deploy Report's row action for a copy the deploy refused because it has local edits or is **Unverified**; never *Reinstall fresh* or *Re-deploy*. It sends the receipt the refusal handed back, never a force flag. The Deploy-state row has no such control: discarding is **Discard local edits** inside the Update preview (#932). |
 | Up-to-date | **Up to date** | One skill's drift status. Never hyphenated on screen. |
 | Inventory row reading | **Local edits** / **Behind** / **Unknown** / **Up to date** / **Not deployed** | The **Status** column on **Skills**: one badge per skill, the worst reading across its targets; **Local edits** outranks **Behind**, and an edited copy never reads **Up to date** or **Behind**. Its hover card marks each target as the detail pane does (#1435). *Unknown* is a check or a read that could not answer; nothing shows until every read has answered. **Targets** beside it counts the targets the skill is deployed to, `—` at zero (#992). |
+| Badly named prompt | **Name not valid** | A finding on **Prompts**, ⚠ in the Attention family, for a prompt whose file name breaks the name rule: lowercase letters, digits and single hyphens. It blocks nothing; **Copy prompt** still works. The detail pane's warning reads **Prompt name not valid** (#1590). |
 | View options | **Filter** / **Display** | The two icon-only controls in band 2 beside **Re-read Skills** and **Re-read Deploy-state**. **Filter** narrows by status (Deploy-state: also by kind) and carries the count of active filters; a band 2 count chip sets the same status filter; **Display** groups the rows (on Skills by status, worst status first) and switches columns off and on. |
 | Target roll-up | **In sync** / **Local edits** | A whole target's Status on **Deploy-state**. A target with an **Unfinished operation** reads its notice's heading, **Deploy incomplete**, **Removal incomplete** or **Update incomplete**, in the Attention family, above every other reading and never **In sync**; a target whose read failed stays **Unknown** (#1454). A target where any deployed skill has **Local edits** reads **Local edits**, below those and **Attention** and above **Behind** and **Pinned per skill**; an **Unverified** copy leaves the target's reading alone (#1131). A single skill is **Up to date**, never *in sync*; a skill row in the target's pane carries one mark, first match wins: **Local edits**, **Unverified**, **No longer released**, **Behind**, **Up to date** (#993). A target row in a skill's detail pane on Skills carries the same mark, or the target's unfinished-operation word (#1454). **Attention** colours a target's reading only; it never changes which skills a bulk deploy plans (#792). |
 | System folder picker | **Folder chooser** | The operating system's own window that **Browse** opens beside a folder field; never *picker* or *dialog* on screen. Where the computer has none, **Browse** is absent and the field takes a typed path (ADR-0032). |
@@ -272,7 +278,7 @@ Decided so far:
 
 ## Relationships
 
-- The **central inventory** (the `agent-harness` repo) contains many **Primitives** (skills, hooks, MCP servers).
+- The **central inventory** (the `agent-harness` repo) contains many **Primitives** (skills, prompts, MCP servers, hooks).
 - A **Bundle** is composed from primitives in the central inventory; a primitive belongs to zero or more bundles.
 - **Maestro** (the product, the `maestro` repo) is separate from the central inventory it conducts; one Maestro can conduct any inventory.
 - A **Target** — either **local** (a consuming repo) or **global** (a tool config) — follows one **Target release** with one **Selection**. A **Deploy** adds to the selection, a **Remove** takes from it, and **Update target** moves the whole selection to a newer release. The mechanism is **APM**.
