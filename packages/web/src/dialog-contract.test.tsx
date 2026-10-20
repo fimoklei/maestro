@@ -129,7 +129,7 @@ const LOCAL_DELETION: DeletionMode = {
   kind: "local",
   origin: "fimoklei/harness",
   screen: "harness",
-  folder: ".apm/skills/research",
+  path: ".apm/skills/research",
   check: "ready",
   localOnly: false,
   uncommitted: false,
@@ -144,7 +144,8 @@ const deletionDialog = (
   }: Options & { deleteError?: NoticeContent | null } = {},
 ) => (
   <DeletionDialog
-    skill="research"
+    type="skill"
+    name="research"
     mode={mode}
     onClose={onClose}
     onConfirm={vi.fn()}
@@ -362,8 +363,9 @@ const ON_DIALOG: Row[] = [
     heading: "Restore research",
     render: ({ running, onClose }) => (
       <RestoreDialog
-        skill="research"
-        folder=".apm/skills/research"
+        type="skill"
+        name="research"
+        path=".apm/skills/research"
         commit="0123456789abcdef0123456789abcdef01234567"
         hasRequest={false}
         onClose={onClose}
@@ -383,8 +385,9 @@ const ON_DIALOG: Row[] = [
     heading: "Discard change for research",
     render: ({ running, onClose }) => (
       <DiscardDialog
-        skill="research"
-        folder=".apm/skills/research"
+        type="skill"
+        name="research"
+        path=".apm/skills/research"
         defaultBranch="main"
         onClose={onClose}
         onConfirm={vi.fn()}

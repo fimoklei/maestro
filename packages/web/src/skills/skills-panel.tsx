@@ -4,13 +4,14 @@ import { HttpError } from "../api/http";
 import { DEPLOY_STATE_KEY } from "../deploy-state/use-deploy-state";
 import { harnessHeadings } from "../harness/notice-copy";
 import { useDeletionCheck, useHarness } from "../harness/use-harness";
+import { cloneReading } from "../inventory/clone-reading";
 import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
 import { useInventoryOf } from "../inventory/use-inventory";
 import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { queryReading } from "../ui/freshness";
 import type { ReadFailure } from "../ui/use-table-screen";
-import { type CloneReading, SkillsView } from "./skills-view";
+import { SkillsView } from "./skills-view";
 import { useDeploymentTargets } from "./use-deployment-targets";
 
 // Container: wires the inventory server-state hooks to the presentational
@@ -76,7 +77,7 @@ export function SkillsPanel() {
       onOpenHarness={() => navigate("/harness")}
       // Deploy-state is the index route; it opens the row it is sent (#1065).
       onShowTarget={(rowId) => navigate("/", { state: { openTarget: rowId } })}
-      clone={cloneReading(harness, check)}
+      clone={cloneReading(harness, check, "skill")}
       // The work lands on the Harness view, as Import local edits does
       // (#1385).
       onDeleted={(name) =>
@@ -86,23 +87,4 @@ export function SkillsPanel() {
       }
     />
   );
-}
-
-// "No Working Harness" is the Harness read's own answer, not the check's.
-function cloneReading(
-  harness: ReturnType<typeof useHarness>,
-  check: ReturnType<typeof useDeletionCheck>,
-): CloneReading {
-  if (
-    harness.error instanceof HttpError &&
-    harness.error.code === "not-configured"
-  ) {
-    return { kind: "no-harness" };
-  }
-  if (check.isError) {
-    return { kind: "failed" };
-  }
-  return check.data === undefined
-    ? { kind: "checking" }
-    : { kind: "read", skills: check.data.skill };
 }

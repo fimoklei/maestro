@@ -1,16 +1,10 @@
 import { RemoveSkillFlow } from "../deploy-state/remove-skill-flow";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useUpdateTarget } from "../deploy-state/use-update-target";
-import {
-  LocalDeletionDialog,
-  type LocalDeletionTarget,
-} from "../harness/harness-dialogs";
-import { localDeletionNotice } from "../harness/local-deletion-copy";
-import { useDeleteLocalSkill } from "../harness/use-harness";
+import { PaneDeletion } from "../inventory/pane-deletion";
 import type { SkillDeployment } from "../inventory/skill-deployments";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { UPDATE_TARGET } from "../ui/control-labels";
-import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployRun } from "./bulk-deploy-action";
 import { BulkRemoveRun } from "./bulk-remove-skill-action";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
@@ -55,6 +49,7 @@ export function SkillPaneDialog({
             path: dialog.path,
             localOnly: dialog.localOnly,
           }}
+          screen="skills"
           onClose={onClose}
           onDeleted={onDeleted}
         />
@@ -120,36 +115,6 @@ function PaneUpdate({
       add={skillName}
       defaultOpen
       onClose={onClose}
-    />
-  );
-}
-
-// Its own write, so a refusal names the Skills controls (#1385).
-function PaneDeletion({
-  target,
-  onClose,
-  onDeleted,
-}: {
-  target: LocalDeletionTarget;
-  onClose: () => void;
-  onDeleted: () => void;
-}) {
-  const write = useWriteAction(useDeleteLocalSkill(), {
-    report: useScreenReport(),
-    action: "delete",
-    show: "row",
-    // The Harness view's row states the outcome.
-    name: () => null,
-    failure: (error) =>
-      localDeletionNotice(error, { skill: target.skill, screen: "skills" }),
-  });
-  return (
-    <LocalDeletionDialog
-      target={target}
-      screen="skills"
-      write={write}
-      onClose={onClose}
-      onDeleted={onDeleted}
     />
   );
 }
