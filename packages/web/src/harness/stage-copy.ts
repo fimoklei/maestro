@@ -88,11 +88,13 @@ export const statusReading = (row: HarnessStageRow): StatusReading => {
   );
 };
 
+// The one word per change on every screen, the release dialog's groups too.
+// "Deleted", never "Removed": remove belongs to deployed copies alone.
 export const CHANGE_WORDS: Record<HarnessChange, string> = {
-  addition: "Addition",
-  edit: "Edit",
-  deletion: "Deletion",
-  rename: "Rename",
+  addition: "Added",
+  edit: "Changed",
+  rename: "Renamed",
+  deletion: "Deleted",
 };
 
 /** The default branch as a sentence names it: its name set apart, else words. */

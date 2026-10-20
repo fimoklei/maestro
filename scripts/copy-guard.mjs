@@ -63,6 +63,8 @@ const RETIRED = [
   /\bclean cop(?:y|ies)\b/i,
   // The Deploy-state row has no bare Deploy again; the bulk Report's is `Deploy {name} again` (#1468).
   /\bDeploy again\b/,
+  // A change reads Added, Changed, Renamed or Deleted on every screen (#1603).
+  /\bAddition\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.
   /\b(?:seamless|effortless|supercharge|powerful|magic|unlock|leverage|AI-powered|intelligent|smartly|empower|robust|Oops|Whoops|Let's)/i,
   /!(?=\s|$)/,

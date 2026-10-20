@@ -1,6 +1,6 @@
 import type { ReleasePlan, SemverStep } from "@maestro/core";
 import { useId, useState } from "react";
-import { BRANCH_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
+import { BRANCH_FACT, NOT_RELEASED_YET, ORIGIN_FACT } from "../ui/band-copy";
 import { loadingText } from "../ui/busy-copy";
 import { Card } from "../ui/card";
 import { PUBLISH_RELEASE } from "../ui/control-labels";
@@ -58,6 +58,8 @@ export function ReleaseDialog({
   // A blocked Publish release keeps its label and points at the line that says why.
   const loadingId = useId();
   const emptyId = useId();
+  // The origin's last path segment; the card names the whole origin.
+  const repoName = origin.slice(origin.lastIndexOf("/") + 1);
   if (planId !== shownPlanId) {
     setShownPlanId(planId);
     setChosenStep(null);
@@ -65,7 +67,7 @@ export function ReleaseDialog({
 
   return (
     <Dialog
-      title={`${PUBLISH_RELEASE} for ${origin}`}
+      title={`${PUBLISH_RELEASE} for ${repoName}`}
       version={null}
       width={480}
       phase={publishing ? "running" : "idle"}
@@ -96,6 +98,7 @@ export function ReleaseDialog({
         <StatusLine id={loadingId}>{loadingText("release plan")}</StatusLine>
       ) : load.kind === "ready" ? (
         <PlanBody
+          origin={origin}
           emptyId={emptyId}
           plan={load.plan}
           step={chosenStep ?? load.plan.proposedStep}
@@ -109,28 +112,24 @@ export function ReleaseDialog({
 // Every version comes from the plan's map, so the browser never re-derives
 // semver.
 function PlanBody({
+  origin,
   emptyId,
   plan,
   step,
   onStepChange,
 }: {
+  origin: string;
   emptyId: string;
   plan: ReleasePlan;
   step: SemverStep;
   onStepChange: (step: SemverStep) => void;
 }) {
+  const empty = plan.delta.length === 0;
   return (
     <>
-      {plan.delta.length === 0 ? (
-        <p id={emptyId} className="m-0 text-gray-11">
-          No skill has changed since the last release.
-        </p>
-      ) : (
-        <ReleaseDelta movements={plan.delta} />
-      )}
-
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
+          <Fact label={ORIGIN_FACT} value={origin} title={origin} />
           <Fact
             label="Previous tag"
             value={plan.previousTag ?? NOT_RELEASED_YET}
@@ -140,28 +139,40 @@ function PlanBody({
               need not be unique in a repository this size (#519). */}
           <Fact label="Revision" value={plan.revision} wrap />
         </dl>
-        <div className="mt-panel flex flex-wrap items-end justify-between gap-x-panel gap-y-cell">
-          <div className="flex flex-col gap-tight">
-            <span className="font-ui text-gray-11 text-meta">Releasing as</span>
-            <span className="font-mono text-gray-12 text-title">
-              {plan.versions[step]}
-            </span>
-            {/* Maestro's proposal is a fact about the delta, so it stands
+        {/* An empty plan has no version to release. */}
+        {empty ? null : (
+          <div className="mt-panel flex flex-wrap items-end justify-between gap-x-panel gap-y-cell">
+            <div className="flex flex-col gap-tight">
+              <span className="font-ui text-gray-11 text-meta">
+                Releasing as
+              </span>
+              <span className="font-mono text-gray-12 text-title">
+                {plan.versions[step]}
+              </span>
+              {/* Maestro's proposal is a fact about the delta, so it stands
                 unchanged beside whatever the author picks. */}
-            <span className="font-ui text-meta text-gray-11">
-              <PhraseText
-                copy={phrase`Suggested: ${machine(plan.versions[plan.proposedStep])}. ${plan.reason}`}
-              />
-            </span>
+              <span className="font-ui text-meta text-gray-11">
+                <PhraseText
+                  copy={phrase`Suggested: ${machine(plan.versions[plan.proposedStep])}. ${plan.reason}`}
+                />
+              </span>
+            </div>
+            <SegmentedControl
+              label="Version step"
+              segments={STEP_SEGMENTS}
+              value={step}
+              onChange={onStepChange}
+            />
           </div>
-          <SegmentedControl
-            label="Version step"
-            segments={STEP_SEGMENTS}
-            value={step}
-            onChange={onStepChange}
-          />
-        </div>
+        )}
       </Card>
+      {empty ? (
+        <p id={emptyId} className="m-0 text-gray-11">
+          No changes yet. Changes merged after the last release appear here.
+        </p>
+      ) : (
+        <ReleaseDelta movements={plan.delta} />
+      )}
       <Notice
         trigger="load"
         notice={

@@ -719,4 +719,31 @@ describe("Harness release", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("says nothing was published when no change merged since the release", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: { body: { error: "empty-delta" }, status: 409 },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    const alert = await within(await screen.findByRole("dialog")).findByRole(
+      "alert",
+    );
+    expect(alert).toHaveTextContent("Nothing to release");
+    expect(alert).toHaveTextContent(
+      "Nothing was published. No change has merged since the last release.",
+    );
+  });
 });

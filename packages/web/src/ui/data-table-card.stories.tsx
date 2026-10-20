@@ -52,7 +52,7 @@ export const WithoutReading: Story = {
       ],
       readAge: null,
     },
-    children: <span>Addition</span>,
+    children: <span>Added</span>,
   },
 };
 
