@@ -70,11 +70,11 @@ const PLAIN: Record<string, Record<string, string>> = {
       "menu label",
   },
   "harness/release-delta.tsx": {
-    "`${row.original.previousName} → ${row.original.name}`": "table cell",
-    "`${movement.kind}:${movement.name}`": "key",
+    "`${movement.previousName} → ${movement.name}`": "list row",
+    "`${movement.type}:${movement.name}`": "key",
   },
   "harness/release-dialog.tsx": {
-    "`${PUBLISH_RELEASE} for ${origin}`": "dialog title",
+    "`${PUBLISH_RELEASE} for ${repoName}`": "dialog title",
   },
   "harness/restore-dialog.tsx": {
     "`Restore ${name}`": "dialog title",
@@ -321,7 +321,8 @@ describe("a name or machine value written straight into JSX text", () => {
 });
 
 // A `<Fact>` whose value is a bare name is set in the UI font: a fact is mono
-// unless told otherwise. A composite value (`maestro/${skill}`) is a machine value.
+// unless told otherwise. A composite value (`maestro/${skill}`) is a machine value,
+// and so is the Origin: an address, set in mono as band 2 sets it.
 const bareNameFacts = (text: string) =>
   [...text.matchAll(/<Fact\b[^>]*?\bvalue=\{([^{}]*)\}[^>]*?\/?>/gs)]
     .filter(
@@ -329,7 +330,8 @@ const bareNameFacts = (text: string) =>
         /^[\w.]+$/.test(expr) &&
         NAME.test(expr) &&
         !machineShaped(expr) &&
-        !whole.includes("machine={false}"),
+        !whole.includes("machine={false}") &&
+        !whole.includes("label={ORIGIN_FACT}"),
     )
     .map(([whole]) => whole.replace(/\s+/g, " "));
 

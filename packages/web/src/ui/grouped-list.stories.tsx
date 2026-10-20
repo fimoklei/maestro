@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ComponentProps } from "react";
 import { GroupedList } from "./grouped-list";
 
 const meta = {
@@ -15,7 +16,7 @@ const meta = {
 
 export default meta;
 
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<ComponentProps<typeof GroupedList>>;
 
 export const Checklist: Story = {
   args: {
@@ -92,5 +93,34 @@ export const ReadOnly: Story = {
       },
     ],
     checklist: null,
+  },
+};
+
+export const ReadOnlyWithSlots: Story = {
+  args: {
+    live: null,
+    checklist: null,
+    slots: [22, 20],
+    groups: [
+      {
+        tone: "neutral",
+        legend: "Added · 2",
+        rows: [
+          { key: "research", name: "research", slots: ["Skill", "Grace"] },
+          { key: "review", name: "review", slots: ["Prompt", "Ada"] },
+        ],
+      },
+      {
+        tone: "neutral",
+        legend: "Renamed · 1",
+        rows: [
+          {
+            key: "test-first",
+            name: "red-green → test-first",
+            slots: ["Skill", "Unknown"],
+          },
+        ],
+      },
+    ],
   },
 };

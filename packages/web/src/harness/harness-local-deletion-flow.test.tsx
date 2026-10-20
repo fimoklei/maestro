@@ -348,7 +348,7 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
     ).toBeNull();
   });
 
-  it("turns the row into a Deletion in place, with Restore skill on it", async () => {
+  it("turns the row into a Deleted row in place, with Restore skill on it", async () => {
     const localDeletions: Record<string, unknown>[] = [];
     const deletions: Record<string, unknown>[] = [];
     stubHarnessServer({
@@ -376,7 +376,7 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
     expect(deletions).toEqual([]);
     await waitFor(() =>
       expect(screen.getByRole("row", { name: /jobs/ })).toHaveTextContent(
-        "Deletion",
+        "Deleted",
       ),
     );
     const menu = await openRowMenu("jobs");

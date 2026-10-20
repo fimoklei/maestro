@@ -94,7 +94,7 @@ export const harnessColumns = ({
             {CHANGE_WORDS[row.original.change]}
           </span>
         ),
-        // The longest word, Addition or Deletion, fits. Hidden after Pull
+        // Every change word fits. Hidden after Pull
         // request: the pane names the change too.
         meta: { width: 20, priority: 4 },
       }),

@@ -360,7 +360,7 @@ describe("Harness freshness and failed reads", () => {
       await screen.findByText("Review status unavailable"),
     ).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-      "Addition",
+      "Added",
     );
   });
 

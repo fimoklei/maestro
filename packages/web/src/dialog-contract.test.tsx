@@ -297,7 +297,7 @@ const ON_DIALOG: Row[] = [
   },
   {
     file: "harness/release-dialog.tsx",
-    heading: "Publish release for github.com/fimoklei/agent-harness",
+    heading: "Publish release for agent-harness",
     render: ({ running, onClose }) =>
       releaseDialog({ kind: "loading" }, { running, onClose }),
     changed: async (onClose) => {
