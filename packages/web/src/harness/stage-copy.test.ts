@@ -7,9 +7,9 @@ import type {
 import { describe, expect, it } from "vitest";
 import { machineValues, unselectedControls } from "../test-utils";
 import { plainText } from "../ui/phrase";
+import { CHANGE_WORD } from "./change-words";
 import {
   alsoInWords,
-  CHANGE_WORDS,
   changeSentence,
   crossStageLine,
   deployedCopiesLine,
@@ -177,7 +177,7 @@ describe("status readings", () => {
 // What merging the row's change does to the Harness (#1399).
 describe("the Change column", () => {
   it("names each change by a word of its own", () => {
-    expect(new Set(Object.values(CHANGE_WORDS)).size).toBe(CHANGES.length);
+    expect(new Set(Object.values(CHANGE_WORD)).size).toBe(CHANGES.length);
   });
 
   it.each(CHANGES)(

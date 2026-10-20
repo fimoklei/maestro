@@ -361,6 +361,7 @@ export function useRestoreSkill() {
         },
       );
       return {
+        type: request.type,
         name: restored.name,
         hasRequest: request.hasRequest,
         // A local success is never presented as a verified remote one: the

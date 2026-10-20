@@ -241,6 +241,7 @@ describe("inventory connect HTTP route", () => {
           },
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -258,7 +259,10 @@ describe("inventory connect HTTP route", () => {
       primitiveCount: 0,
     });
     const primitives = await app.request("/api/inventory/primitives");
-    expect(await primitives.json()).toEqual({ primitives: [] });
+    expect(await primitives.json()).toEqual({
+      primitives: [],
+      unreadTypes: [],
+    });
   });
 
   it("rejects a malformed body with a 400", async () => {

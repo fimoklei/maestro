@@ -29,7 +29,11 @@ export function PaneDeletion({
     // The Harness view's row states the outcome.
     name: () => null,
     failure: (error) =>
-      localDeletionNotice(error, { skill: target.skill, screen }),
+      localDeletionNotice(error, {
+        type: target.type,
+        name: target.skill,
+        screen,
+      }),
   });
   return (
     <LocalDeletionDialog

@@ -69,7 +69,10 @@ function stubApi(primitives: unknown[], repos: unknown[]) {
       if (url.startsWith("/api/deploy-state")) {
         return jsonResponse({ primitives: [], skipped: [] }, 200);
       }
-      return withoutHarness(input) ?? jsonResponse({ primitives }, 200);
+      return (
+        withoutHarness(input) ??
+        jsonResponse({ primitives, unreadTypes: [] }, 200)
+      );
     }),
   );
 }
@@ -198,6 +201,7 @@ describe("SkillsPanel", () => {
                       pendingRelease: null,
                     },
                   ],
+                  unreadTypes: [],
                 },
                 200,
               )),
@@ -233,6 +237,7 @@ describe("SkillsPanel", () => {
                       pendingRelease: null,
                     },
                   ],
+                  unreadTypes: [],
                 },
                 200,
               )),
@@ -263,6 +268,7 @@ describe("SkillsPanel", () => {
                       pendingRelease: null,
                     },
                   ],
+                  unreadTypes: [],
                 },
                 200,
               )),
@@ -369,6 +375,7 @@ describe("SkillsPanel", () => {
                   pendingRelease: null,
                 },
               ],
+              unreadTypes: [],
             });
       }),
     );
@@ -434,6 +441,7 @@ describe("SkillsPanel", () => {
                   pendingRelease: null,
                 },
               ],
+              unreadTypes: [],
             })
           );
         }),
@@ -510,6 +518,7 @@ describe("SkillsPanel", () => {
               pendingRelease: null,
             },
           ],
+          unreadTypes: [],
         });
       }),
     );

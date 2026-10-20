@@ -3,9 +3,9 @@ import type {
   ManifestAdvisory,
   StructuralProblem,
 } from "@maestro/core";
-import { RESTORE_LABEL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type Copy, type Phrase, phrase } from "../ui/phrase";
+import { ITEM_WORDS } from "./item-words";
 import type { defaultBranchCopy } from "./stage-copy";
 
 // Reported, never blocking: the skill still ships or imports (#519).
@@ -46,25 +46,17 @@ export const DELETE_UNAVAILABLE = {
 
 export const DELETION_CHECKING = "Checking for uncommitted changes…";
 
-/** The facts that name an item and what holds it on disk: a skill is a folder, a prompt one file. */
-export const ITEM_FACTS: Record<
-  HarnessPrimitiveType,
-  { name: string; path: string }
-> = {
-  skill: { name: "Skill", path: "Folder" },
-  prompt: { name: "Prompt", path: "File" },
-};
+export const restoreBody = (type: HarnessPrimitiveType): Phrase =>
+  phrase`${ITEM_WORDS[type].restoreLabel} brings back the ${ITEM_WORDS[type].holder} from your last local commit. Later changes do not come back.`;
 
-export const RESTORE_BODY: Record<HarnessPrimitiveType, Phrase> = {
-  skill: phrase`${RESTORE_LABEL.skill} brings back the folder from your last local commit. Later changes do not come back.`,
-  prompt: phrase`${RESTORE_LABEL.prompt} brings back the file from your last local commit. Later changes do not come back.`,
-};
-
-// A prompt deploys to no target, so it has no deployed copies to mention.
+// An item no target holds has no deployed copies to mention.
 export const discardBody = (
   type: HarnessPrimitiveType,
   branch: ReturnType<typeof defaultBranchCopy>,
-): Phrase =>
-  type === "skill"
-    ? phrase`This replaces the skill folder in your clone with its copy on ${branch}. You cannot recover your changes. Deployed copies remain unchanged.`
-    : phrase`This replaces the prompt file in your clone with its copy on ${branch}. You cannot recover your changes.`;
+): Phrase => {
+  const w = ITEM_WORDS[type];
+  const replaces = phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy on ${branch}. You cannot recover your changes.`;
+  return w.deploys
+    ? phrase`${replaces} Deployed copies remain unchanged.`
+    : replaces;
+};

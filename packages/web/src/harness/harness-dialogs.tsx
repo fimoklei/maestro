@@ -242,7 +242,7 @@ export function LocalDeletionDialog({
 }) {
   const check = useDeletionCheck();
   const harness = useHarness();
-  const context = { skill, screen };
+  const context = { type, name: skill, screen };
   const folder = folderInClone(check.data?.[type][skill]);
   const seenWorkingTree = folder?.workingTree ?? null;
   const checkFailure = check.isError

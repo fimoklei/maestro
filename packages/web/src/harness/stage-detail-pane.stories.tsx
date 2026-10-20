@@ -76,7 +76,7 @@ export const RefusedPress: Story = {
     row: tableRow(stageRow("pending-proposal", "tdd", "not-yet-proposed"), [
       { label: "Propose change", onSelect: () => {} },
     ]),
-    failure: promoteNotice(new Error("offline")),
+    failure: promoteNotice(new Error("offline"), "skill"),
   },
 };
 

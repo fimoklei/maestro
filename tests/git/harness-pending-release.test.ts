@@ -148,8 +148,20 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
 
   // One test per strategy, so a failure names the one that disagreed.
   const DELIVERED: PendingMovement[] = [
-    { type: "skill", kind: "added", name: "research", author: "Mate" },
-    { type: "skill", kind: "changed", name: "tdd", author: "Mate" },
+    {
+      type: "skill",
+      kind: "added",
+      change: "addition",
+      name: "research",
+      author: "Mate",
+    },
+    {
+      type: "skill",
+      kind: "changed",
+      change: "edit",
+      name: "tdd",
+      author: "Mate",
+    },
   ];
 
   it("reads the delta of work landed as a merge commit", async () => {
@@ -181,8 +193,20 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     await git(root, "push", "origin", "HEAD:main");
 
     await expect(movementsOf(root)).resolves.toEqual([
-      { type: "skill", kind: "added", name: "research", author: "Author" },
-      { type: "skill", kind: "added", name: "tdd", author: "Author" },
+      {
+        type: "skill",
+        kind: "added",
+        change: "addition",
+        name: "research",
+        author: "Author",
+      },
+      {
+        type: "skill",
+        kind: "added",
+        change: "addition",
+        name: "tdd",
+        author: "Author",
+      },
     ]);
   });
 
@@ -200,8 +224,20 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
 
     // The tag is compared, not the branch it hangs off.
     await expect(movementsOf(root)).resolves.toEqual([
-      { type: "skill", kind: "added", name: "research", author: "Author" },
-      { type: "skill", kind: "changed", name: "tdd", author: "Author" },
+      {
+        type: "skill",
+        kind: "added",
+        change: "addition",
+        name: "research",
+        author: "Author",
+      },
+      {
+        type: "skill",
+        kind: "changed",
+        change: "edit",
+        name: "tdd",
+        author: "Author",
+      },
     ]);
   });
 
@@ -212,7 +248,13 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     await git(root, "push", "origin", "HEAD:main");
 
     await expect(movementsOf(root)).resolves.toEqual([
-      { type: "skill", kind: "removed", name: "tdd", author: "Author" },
+      {
+        type: "skill",
+        kind: "removed",
+        change: "deletion",
+        name: "tdd",
+        author: "Author",
+      },
     ]);
   });
 
@@ -228,7 +270,13 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     await git(root, "checkout", "main");
 
     await expect(movementsOf(root)).resolves.toEqual([
-      { type: "skill", kind: "removed", name: "grilling", author: "Mate" },
+      {
+        type: "skill",
+        kind: "removed",
+        change: "deletion",
+        name: "grilling",
+        author: "Mate",
+      },
     ]);
   });
 
@@ -264,6 +312,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       {
         type: "skill",
         kind: "renamed",
+        change: "rename",
         name: "test-first",
         previousName: "tdd",
         author: "Author",

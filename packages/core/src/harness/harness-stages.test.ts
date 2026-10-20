@@ -73,6 +73,14 @@ const reviewOf = (
   complete = true,
 ): HarnessReviewRead => ({ outcome: "read", requests, complete, limit: 100 });
 
+// The Change each movement's Pending release row shows.
+const CHANGE_OF = {
+  added: "addition",
+  changed: "edit",
+  renamed: "rename",
+  removed: "deletion",
+} as const;
+
 const stages = (over: Partial<SkillStageInput> = {}) => {
   const { trees = SETTLED, release = [], ...rest } = over;
   return buildStages({
@@ -86,7 +94,11 @@ const stages = (over: Partial<SkillStageInput> = {}) => {
     release:
       release === null
         ? null
-        : release.map((movement) => ({ type: "skill", ...movement })),
+        : release.map((movement) => ({
+            type: "skill",
+            change: CHANGE_OF[movement.kind],
+            ...movement,
+          })),
   });
 };
 
@@ -1068,7 +1080,9 @@ describe("a skill and a prompt with one name", () => {
       atMergeBase: null,
       review: reviewOf([request({ headBranch: "maestro/prompt.tdd" })]),
       viewer: { outcome: "read", login: "fimoklei" },
-      release: [{ type: "skill", kind: "changed", name: "tdd" }],
+      release: [
+        { type: "skill", kind: "changed", change: "edit", name: "tdd" },
+      ],
     });
 
     expect(

@@ -53,6 +53,8 @@ type ReleaseStatus = "not-yet-released";
 // folders read as an addition and a deletion.
 export type HarnessChange = "addition" | "edit" | "deletion" | "rename";
 
+type ReleaseMovement = HarnessMovement & { change: HarnessChange };
+
 // `null` is a skill absent at that ref; it compares like any other value.
 type SkillTreeHashes = {
   /** The skill's tree at `origin/HEAD` — the merged truth. */
@@ -141,13 +143,6 @@ export type HarnessStages = {
   release: HarnessStageRead;
 };
 
-const RELEASE_CHANGE: Record<HarnessMovement["kind"], HarnessChange> = {
-  added: "addition",
-  changed: "edit",
-  renamed: "rename",
-  removed: "deletion",
-};
-
 const changeOf = (deletion: boolean, remote: string | null): HarnessChange => {
   if (deletion) {
     return "deletion";
@@ -164,7 +159,7 @@ export type StageInput = {
   atMergeBase: Record<string, string> | null;
   review: HarnessReviewRead;
   viewer: ViewerRead;
-  release: HarnessMovement[] | null;
+  release: ReleaseMovement[] | null;
 };
 
 export const buildStages = (input: StageInput): HarnessStages => {
@@ -206,7 +201,7 @@ const matchRequests = ({
 
 const everyPrimitive = (
   trees: HarnessMovementTrees | null,
-  release: HarnessMovement[] | null,
+  release: ReleaseMovement[] | null,
 ): PrimitiveRef[] => {
   const refs = new Map<string, PrimitiveRef>();
   const add = (ref: PrimitiveRef) =>
@@ -299,7 +294,7 @@ const isOnDisk = (
 ): boolean => trees !== null && Object.hasOwn(trees[type].working, name);
 
 const releaseStage = (
-  release: HarnessMovement[] | null,
+  release: ReleaseMovement[] | null,
   trees: HarnessMovementTrees | null,
 ): HarnessStageRead => {
   if (release === null) {
@@ -313,7 +308,7 @@ const releaseStage = (
         "pending-release",
         movement,
         "not-yet-released",
-        RELEASE_CHANGE[movement.kind],
+        movement.change,
       ),
       onDisk: isOnDisk(trees, movement),
       previousName: movement.previousName ?? null,

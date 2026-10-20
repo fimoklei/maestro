@@ -83,6 +83,36 @@ describe("released prompts on the Inventory read", () => {
     ]);
   });
 
+  it("reads a prompt saved with Windows line endings, keeping its body byte for byte", async () => {
+    const inventory = inventoryOver(
+      {},
+      {
+        windows: "---\r\ndescription: Windows prompt\r\n---\r\nRun $1.\r\n",
+      },
+    );
+
+    const [prompt] = await promptsOf(inventory);
+
+    expect(prompt).toMatchObject({
+      description: "Windows prompt",
+      text: "Run $1.\r\n",
+    });
+  });
+
+  it("copies only the text after an empty frontmatter block", async () => {
+    const inventory = inventoryOver(
+      {},
+      { bare: "---\n---\nJust $ARGUMENTS\n" },
+    );
+
+    const [prompt] = await promptsOf(inventory);
+
+    expect(prompt).toMatchObject({
+      description: "",
+      text: "Just $ARGUMENTS\n",
+    });
+  });
+
   it("lists a prompt with broken frontmatter with an empty description and the text after the block", async () => {
     const inventory = inventoryOver(
       {},
@@ -128,6 +158,7 @@ describe("released prompts on the Inventory read", () => {
         },
         expect.objectContaining({ type: "prompt", name: "review" }),
       ],
+      unreadTypes: [],
     });
   });
 
@@ -148,6 +179,7 @@ describe("released prompts on the Inventory read", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 

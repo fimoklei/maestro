@@ -51,7 +51,7 @@ function renderPanel(primitives: readonly InventoryPrimitive[]) {
       if (url === "/api/harness") return jsonResponse(HARNESS);
       if (url === "/api/harness/primitive/delete/check")
         return jsonResponse({ skill: {}, prompt: {} });
-      return jsonResponse({ primitives });
+      return jsonResponse({ primitives, unreadTypes: [] });
     }),
   );
   return renderWithQuery(

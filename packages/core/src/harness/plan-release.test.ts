@@ -82,8 +82,13 @@ describe("ReadHarnessState.planRelease", () => {
         proposedStep: "minor",
         versions: { major: "v2.0.0", minor: "v1.3.0", patch: "v1.2.4" },
         delta: [
-          { kind: "added", name: "research", author: "Grace" },
-          { kind: "changed", name: "tdd", author: "Ada" },
+          {
+            kind: "added",
+            change: "addition",
+            name: "research",
+            author: "Grace",
+          },
+          { kind: "changed", change: "edit", name: "tdd", author: "Ada" },
         ],
         findings: [],
       },
@@ -101,7 +106,16 @@ describe("ReadHarnessState.planRelease", () => {
 
     await expect(buildRead(git).planRelease()).resolves.toMatchObject({
       ok: true,
-      plan: { delta: [{ kind: "removed", name: "grilling", author: "Linus" }] },
+      plan: {
+        delta: [
+          {
+            kind: "removed",
+            change: "deletion",
+            name: "grilling",
+            author: "Linus",
+          },
+        ],
+      },
     });
   });
 

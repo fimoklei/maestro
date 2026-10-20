@@ -8,18 +8,18 @@ import { RowMenu } from "../ui/row-menu";
 import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
+import { CHANGE_WORD } from "./change-words";
+import { ITEM_WORDS } from "./item-words";
 import { pullRequestCard } from "./pull-request-card";
 import { PullRequestLinks } from "./pull-request-links";
 import {
   alsoInWords,
-  CHANGE_WORDS,
   changeSentence,
   crossStageLine,
   detailSentence,
   reviewerLine,
   STAGE_NAMES,
   type StageContext,
-  TYPE_NOUN,
 } from "./stage-copy";
 
 // One row of the Harness table (#994). A primitive can hold a row in every
@@ -37,7 +37,7 @@ export const rowId = (row: Pick<HarnessStageRow, "stage" | "type" | "name">) =>
 // The ⋮ trigger is named by its type and stage too: a skill and a prompt
 // called tdd, in three stages, would otherwise share one name.
 const rowMenuLabel = (row: HarnessStageRow) =>
-  `Actions for ${row.name} ${TYPE_NOUN[row.type]} in ${STAGE_NAMES[row.stage]}`;
+  `Actions for ${row.name} ${ITEM_WORDS[row.type].noun} in ${STAGE_NAMES[row.stage]}`;
 
 // The Status cell's hover card: the row's sentences in short, and in full in
 // the pane (#994). The keyboard opens this card alone, so it also says what
@@ -91,7 +91,7 @@ export const harnessColumns = ({
         header: "Change",
         cell: ({ row }) => (
           <span className="text-gray-12">
-            {CHANGE_WORDS[row.original.change]}
+            {CHANGE_WORD[row.original.change]}
           </span>
         ),
         // Every change word fits. Hidden after Pull

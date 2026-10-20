@@ -3,9 +3,21 @@
 // they never disagree (#845).
 import { diffPrimitives, type HarnessMovement } from "./harness-movements";
 import { type HarnessObject, primitiveKey } from "./harness-primitive";
+import type { HarnessChange } from "./harness-stages";
 import type { HarnessGitPort, HarnessTag } from "./read-harness-state";
 
-export type PendingMovement = HarnessMovement & { author: string | null };
+/** A movement with the Change its Pending release row shows. */
+export type PendingMovement = HarnessMovement & {
+  change: HarnessChange;
+  author: string | null;
+};
+
+const RELEASE_CHANGE: Record<HarnessMovement["kind"], HarnessChange> = {
+  added: "addition",
+  changed: "edit",
+  renamed: "rename",
+  removed: "deletion",
+};
 
 export type ReleaseDelta = {
   movements: PendingMovement[];
@@ -48,6 +60,7 @@ export const readReleaseDelta = async (
     current,
     movements: movements.map((movement) => ({
       ...movement,
+      change: RELEASE_CHANGE[movement.kind],
       author:
         authored[primitiveKey(movement)] ??
         atRelease[primitiveKey(movement)] ??

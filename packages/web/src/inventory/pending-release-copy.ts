@@ -1,7 +1,8 @@
 import type { PendingRelease, PrimitiveRef } from "@maestro/core";
 import { CHANGE_WORD } from "../harness/change-words";
 import { harnessRow } from "../harness/harness-route";
-import { STAGE_NAMES, TYPE_NOUN } from "../harness/stage-copy";
+import { ITEM_WORDS } from "../harness/item-words";
+import { STAGE_NAMES } from "../harness/stage-copy";
 import { CREATE_RELEASE } from "../ui/control-labels";
 import type { Fact } from "../ui/detail-pane";
 import { link, machine, named, type Phrase, phrase } from "../ui/phrase";
@@ -30,7 +31,7 @@ export const pendingReleaseLine = (
   const sentences: Record<Pending["change"], Phrase> = {
     edit: phrase`Select ${CREATE_RELEASE} on the ${harness} to publish the change.`,
     deletion: phrase`Select ${CREATE_RELEASE} on the ${harness} to publish the deletion.`,
-    rename: phrase`This ${TYPE_NOUN[ref.type]} was renamed to ${named(pending.renamedTo ?? ref.name)} on ${machine(pending.defaultBranch)}. Select ${CREATE_RELEASE} on the ${harness} to publish it.`,
+    rename: phrase`This ${ITEM_WORDS[ref.type].noun} was renamed to ${named(pending.renamedTo ?? ref.name)} on ${machine(pending.defaultBranch)}. Select ${CREATE_RELEASE} on the ${harness} to publish it.`,
   };
   return sentences[pending.change];
 };

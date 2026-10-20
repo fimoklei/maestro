@@ -1,4 +1,5 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
+import { DEFAULT_BRANCH_FACT } from "../ui/band-copy";
 import { Card } from "../ui/card";
 import { DISCARD_CHANGE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
@@ -6,7 +7,8 @@ import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
 import { phrase } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
-import { discardBody, ITEM_FACTS } from "./dialog-copy";
+import { discardBody } from "./dialog-copy";
+import { ITEM_WORDS } from "./item-words";
 import { defaultBranchCopy } from "./stage-copy";
 
 // The confirmation a discard takes before the edited item is replaced
@@ -58,14 +60,14 @@ export function DiscardDialog({
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           <Fact
-            label={ITEM_FACTS[type].name}
+            label={ITEM_WORDS[type].Noun}
             value={name}
             wrap
             machine={false}
           />
-          <Fact label={ITEM_FACTS[type].path} value={path} wrap />
+          <Fact label={ITEM_WORDS[type].Holder} value={path} wrap />
           <Fact
-            label="Default branch"
+            label={DEFAULT_BRANCH_FACT}
             value={defaultBranch ?? "Unknown"}
             wrap
             machine={defaultBranch !== null}

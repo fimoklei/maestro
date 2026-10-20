@@ -1,4 +1,4 @@
-import type { ProposalActionResult } from "@maestro/core";
+import type { PrimitiveRef, ProposalActionResult } from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
@@ -46,6 +46,9 @@ type Deps = Pick<
   | "scaffold"
 >;
 
+// A body carries more than the item; the use cases take the item alone.
+const refOf = ({ type, name }: PrimitiveRef): PrimitiveRef => ({ type, name });
+
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   // Takes the primitive's type and name only; the harness is resolved server-side (#577).
   app.post("/api/harness/promote", async (c) => {
@@ -53,10 +56,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.promote.execute({
-      type: body.data.type,
-      name: body.data.name,
-    });
+    const result = await deps.promote.execute(refOf(body.data));
     if (!result.ok) {
       const { status } = promoteErrorResponses[result.error];
       return c.json({ error: result.error }, status);
@@ -74,7 +74,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.promoteDeletion.execute(
-      { type: body.data.type, name: body.data.name },
+      refOf(body.data),
       body.data.seenRemoteTree,
     );
     if (!result.ok) {
@@ -107,7 +107,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.deleteLocal.execute(
-      { type: body.data.type, name: body.data.name },
+      refOf(body.data),
       body.data.seenWorkingTree,
     );
     if (!result.ok) {
@@ -124,7 +124,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.restore.execute(
-      { type: body.data.type, name: body.data.name },
+      refOf(body.data),
       body.data.seenHeadCommit,
     );
     if (!result.ok) {
@@ -142,7 +142,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.discard.execute(
-      { type: body.data.type, name: body.data.name },
+      refOf(body.data),
       body.data.seenRemoteTree,
     );
     if (!result.ok) {
@@ -166,13 +166,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    return proposalResponse(
-      c,
-      await deps.proposals.create({
-        type: body.data.type,
-        name: body.data.name,
-      }),
-    );
+    return proposalResponse(c, await deps.proposals.create(refOf(body.data)));
   });
 
   app.post("/api/harness/proposal/reopen", async (c) => {
@@ -182,10 +176,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.reopen(
-        { type: body.data.type, name: body.data.name },
-        body.data.number,
-      ),
+      await deps.proposals.reopen(refOf(body.data), body.data.number),
     );
   });
 
@@ -196,10 +187,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.withdraw(
-        { type: body.data.type, name: body.data.name },
-        body.data.number,
-      ),
+      await deps.proposals.withdraw(refOf(body.data), body.data.number),
     );
   });
 

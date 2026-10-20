@@ -119,24 +119,36 @@ describe("releasedPrimitivesFromGit", () => {
     await expect(read(ROOT)).resolves.toBeNull();
   });
 
-  it("reports unreadable when the prompt files cannot be read", async () => {
-    const read = releasedPrimitivesFromGit(
-      gitOver({ tags: RELEASED, objects: [prompt("pr-review")], texts: null }),
-    );
-
-    await expect(read(ROOT)).resolves.toBeNull();
-  });
-
-  // A listed prompt with no text would otherwise vanish from the list.
-  it("reports unreadable when a listed prompt has no text", async () => {
+  it("keeps the skills and marks the prompts unread when the prompt files cannot be read", async () => {
     const read = releasedPrimitivesFromGit(
       gitOver({
         tags: RELEASED,
-        objects: [prompt("pr-review"), prompt("triage")],
+        objects: [skill("tdd"), prompt("pr-review")],
+        manifests: { tdd: "tdd manifest" },
+        texts: null,
+      }),
+    );
+
+    await expect(read(ROOT)).resolves.toEqual({
+      skills: [{ name: "tdd", manifest: "tdd manifest" }],
+      prompts: null,
+    });
+  });
+
+  // A listed prompt with no text would otherwise vanish from the list.
+  it("keeps the skills and marks the prompts unread when a listed prompt has no text", async () => {
+    const read = releasedPrimitivesFromGit(
+      gitOver({
+        tags: RELEASED,
+        objects: [skill("tdd"), prompt("pr-review"), prompt("triage")],
+        manifests: { tdd: "tdd manifest" },
         texts: { "pr-review": "review text" },
       }),
     );
 
-    await expect(read(ROOT)).resolves.toBeNull();
+    await expect(read(ROOT)).resolves.toEqual({
+      skills: [{ name: "tdd", manifest: "tdd manifest" }],
+      prompts: null,
+    });
   });
 });

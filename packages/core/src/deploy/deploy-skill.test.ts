@@ -80,6 +80,7 @@ const buildDeps = (
             pendingRelease: null,
           },
         ],
+        unreadTypes: [],
       }),
     },
     registry: {
@@ -675,6 +676,7 @@ describe("DeploySkill", () => {
               nameValid: true,
             },
           ],
+          unreadTypes: [],
         }),
       },
     });
@@ -710,6 +712,7 @@ describe("DeploySkill", () => {
               pendingRelease: null,
             },
           ],
+          unreadTypes: [],
         }),
       },
     });
@@ -1187,6 +1190,7 @@ describe("DeploySkill", () => {
               pendingRelease: null,
             },
           ],
+          unreadTypes: [],
         }),
       },
     });
@@ -1411,6 +1415,7 @@ describe("DeploySkill.executeBatch", () => {
         path: `.apm/skills/${name}`,
         pendingRelease: null,
       })),
+      unreadTypes: [],
     }),
   });
 

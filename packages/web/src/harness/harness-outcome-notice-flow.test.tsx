@@ -15,7 +15,7 @@ import {
 } from "./harness-flow-fixture";
 import {
   releasePublishedNotice,
-  skillRestoredNotice,
+  restoredNotice,
   staleStatusNotice,
 } from "./notice-copy";
 
@@ -32,7 +32,7 @@ if (stale === null) {
   throw new Error("an offline read past a fetch states a notice");
 }
 const STATUS_OUT_OF_DATE = stale.label;
-const SKILL_RESTORED = skillRestoredNotice(false, noop).label;
+const SKILL_RESTORED = restoredNotice("skill", false, noop).label;
 const RELEASE_PUBLISHED = releasePublishedNotice("v1.3.0", noop).label;
 
 describe("Harness outcome notices", () => {

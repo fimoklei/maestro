@@ -129,6 +129,7 @@ const skillsLeaves = (): RowLeaves => {
                     name,
                     description: "A skill.",
                   })),
+                  unreadTypes: [],
                 })
               : new Promise<Response>(() => {}),
         ),
@@ -163,6 +164,7 @@ const renderPrompts = (names: () => readonly string[]) => {
               text: "Do the thing.",
               nameValid: true,
             })),
+            unreadTypes: [],
           })
         : new Promise<Response>(() => {}),
     ),
@@ -546,7 +548,7 @@ const ON_TABLE_SCREEN: Row[] = [
         vi.fn(async (input: RequestInfo | URL) =>
           String(input).startsWith("/api/registry")
             ? jsonResponse({ repos: [] })
-            : jsonResponse({ primitives: [] }),
+            : jsonResponse({ primitives: [], unreadTypes: [] }),
         ),
       );
       renderWithQuery(
@@ -562,7 +564,7 @@ const ON_TABLE_SCREEN: Row[] = [
           vi.fn(async (input: RequestInfo | URL) =>
             String(input).startsWith("/api/registry")
               ? jsonResponse({ repos: [] })
-              : jsonResponse({ primitives: [] }),
+              : jsonResponse({ primitives: [], unreadTypes: [] }),
           ),
         );
         renderWithQuery(

@@ -45,8 +45,14 @@ export type InventoryPrimitive = InventorySkill | InventoryPrompt;
 
 // An empty `primitives` only ever means a successful read found nothing
 // released; `unreadable` is a connected harness whose release could not be read.
+// `unreadTypes` names the types whose released files could not be read; the
+// other types still list.
 export type InventoryResult =
-  | { ok: true; primitives: InventoryPrimitive[] }
+  | {
+      ok: true;
+      primitives: InventoryPrimitive[];
+      unreadTypes: InventoryPrimitive["type"][];
+    }
   | { ok: false; error: "not-configured" | "unreadable" };
 
 // The frontmatter `name` is prose; the directory name is the identity.
@@ -162,9 +168,13 @@ export class InventoryReader {
         pendingRelease: pendingReleaseOf({ type: "skill", name }, pending),
       });
     }
-    for (const { name, text } of released.prompts) {
+    for (const { name, text } of released.prompts ?? []) {
       primitives.push(promptOf(name, text, pending));
     }
-    return { ok: true, primitives };
+    return {
+      ok: true,
+      primitives,
+      unreadTypes: released.prompts === null ? ["prompt"] : [],
+    };
   }
 }

@@ -9,9 +9,10 @@ export type ReleasedSkill = { name: string; manifest: string | null };
 // `text` is the whole file, frontmatter included.
 type ReleasedPrompt = { name: string; text: string };
 
+// `prompts` is null when their files cannot be read; the skills still list.
 type ReleasedPrimitives = {
   skills: ReleasedSkill[];
-  prompts: ReleasedPrompt[];
+  prompts: ReleasedPrompt[] | null;
 };
 
 // Null is an unreadable release; empty lists are "looked, found none".
@@ -37,6 +38,23 @@ type ReleasedPrimitivesGitPort = {
   ): Promise<Record<string, string> | null>;
 };
 
+// A listed prompt without its text leaves every prompt unread, so none
+// vanishes from the list unseen.
+const promptsOf = (
+  names: string[],
+  texts: Record<string, string>,
+): ReleasedPrompt[] | null => {
+  const prompts: ReleasedPrompt[] = [];
+  for (const name of names) {
+    const text = texts[name];
+    if (text === undefined) {
+      return null;
+    }
+    prompts.push({ name, text });
+  }
+  return prompts;
+};
+
 export const releasedPrimitivesFromGit =
   (git: ReleasedPrimitivesGitPort): ReadReleasedPrimitives =>
   async (root) => {
@@ -60,23 +78,11 @@ export const releasedPrimitivesFromGit =
       git.readSkillManifestsAtTag(root, tag.name, skillNames),
       git.readPromptTextsAtTag(root, tag.name, promptNames),
     ]);
-    if (texts === null) {
-      return null;
-    }
-    const prompts: ReleasedPrompt[] = [];
-    for (const name of promptNames) {
-      const text = texts[name];
-      // A listed prompt whose file cannot be read leaves the release unread.
-      if (text === undefined) {
-        return null;
-      }
-      prompts.push({ name, text });
-    }
     return {
       skills: skillNames.map((name) => ({
         name,
         manifest: manifests[name] ?? null,
       })),
-      prompts,
+      prompts: texts === null ? null : promptsOf(promptNames, texts),
     };
   };
