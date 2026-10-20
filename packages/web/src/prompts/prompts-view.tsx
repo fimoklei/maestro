@@ -146,7 +146,11 @@ export function PromptsView({
     ...prompt,
     actions: [
       { action: "copy", label: COPY_PROMPT },
-      ...deleteItem(clone, prompt.name, DELETE_PROMPT),
+      // Every write refuses a bad name, and a menu omits what only a rename
+      // unlocks: the pane's Prompt name not valid warning says to rename it.
+      ...(prompt.nameValid
+        ? deleteItem(clone, prompt.name, DELETE_PROMPT)
+        : []),
     ],
     readAge,
   }));
