@@ -21,11 +21,11 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
   const folder = (...parts: string[]) =>
     join(stages.root, ".apm", "skills", ...parts);
 
-  const discard = (app: HarnessStagesApp, body: unknown) =>
-    app.request("/api/harness/skill/discard", {
+  const discard = (app: HarnessStagesApp, body: Record<string, unknown>) =>
+    app.request("/api/harness/primitive/discard", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type: "skill", ...body }),
     });
 
   const trees = async () => {

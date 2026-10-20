@@ -8,7 +8,7 @@ import type {
   ReviewRequest,
   ReviewWriteOutcome,
 } from "./harness-review-port";
-import { PromoteSkill } from "./promote-skill";
+import { Promote } from "./promote";
 import type { HarnessFreshness } from "./read-harness-state";
 
 const AT = new Date("2026-08-09T12:00:00.000Z");
@@ -72,7 +72,7 @@ function buildPromote(
     fetchGate?: HarnessFetchGate;
   },
 ) {
-  return new PromoteSkill({
+  return new Promote({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     locks: new InFlightLocks(),
@@ -106,7 +106,7 @@ function buildPromote(
   });
 }
 
-describe("PromoteSkill", () => {
+describe("Promote", () => {
   it("pushes the skill and answers with the branch and its pull-request page", async () => {
     const git = newSkillWorld();
 

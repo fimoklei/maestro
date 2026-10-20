@@ -19,7 +19,7 @@ import {
 } from "./proposal-request";
 import type { HarnessGitPort } from "./read-harness-state";
 
-export type PromoteSkillError =
+export type PromoteError =
   | "not-configured"
   | "no-usable-origin"
   | "invalid-skill"
@@ -34,9 +34,9 @@ export type PromoteSkillError =
   | "promote-failed"
   | "promote-in-progress";
 
-export type PromoteSkillResult =
+export type PromoteResult =
   | { ok: true; branch: string; pullRequestUrl: string }
-  | { ok: false; error: PromoteSkillError };
+  | { ok: false; error: PromoteError };
 
 type Checked =
   | {
@@ -46,9 +46,9 @@ type Checked =
       base: string;
       kind: Exclude<ProposalKind, "deletion">;
     }
-  | { ok: false; error: PromoteSkillError };
+  | { ok: false; error: PromoteError };
 
-export class PromoteSkill {
+export class Promote {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
@@ -57,12 +57,12 @@ export class PromoteSkill {
     review: HarnessReviewPort;
   };
 
-  constructor(deps: PromoteSkill["deps"]) {
+  constructor(deps: Promote["deps"]) {
     this.deps = deps;
   }
 
   // One promotion per harness at a time.
-  async execute(ref: PrimitiveRef): Promise<PromoteSkillResult> {
+  async execute(ref: PrimitiveRef): Promise<PromoteResult> {
     if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
@@ -78,7 +78,7 @@ export class PromoteSkill {
   private async promote(
     root: string,
     ref: PrimitiveRef,
-  ): Promise<PromoteSkillResult> {
+  ): Promise<PromoteResult> {
     const outcome = await this.deps.fetchGate.fetch(root, 0);
     if (outcome !== "fetched") {
       return { ok: false, error: "no-answer" };

@@ -31,7 +31,7 @@ describe("Harness local deletion", () => {
   // The folder as the dialog's check reads it.
   const checked = (workingTree: string) => ({
     body: {
-      skills: {
+      skill: {
         "old-skill": {
           inClone: true,
           workingTree,
@@ -39,6 +39,7 @@ describe("Harness local deletion", () => {
           localOnly: true,
         },
       },
+      prompt: {},
     },
   });
   const CLEAN = [checked("tree-1")];
@@ -122,7 +123,7 @@ describe("Harness local deletion", () => {
 
     await waitFor(() =>
       expect(localDeletions).toEqual([
-        { name: "old-skill", seenWorkingTree: "tree-1" },
+        { type: "skill", name: "old-skill", seenWorkingTree: "tree-1" },
       ]),
     );
     // Neither push route was taken: this deletion never reaches GitHub.
@@ -255,8 +256,8 @@ describe("Harness local deletion", () => {
     await userEvent.click(confirmButton(dialog));
     await waitFor(() =>
       expect(localDeletions).toEqual([
-        { name: "old-skill", seenWorkingTree: "tree-1" },
-        { name: "old-skill", seenWorkingTree: "tree-2" },
+        { type: "skill", name: "old-skill", seenWorkingTree: "tree-1" },
+        { type: "skill", name: "old-skill", seenWorkingTree: "tree-2" },
       ]),
     );
   });
@@ -283,7 +284,7 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
   const checked = (uncommitted: boolean) => [
     {
       body: {
-        skills: {
+        skill: {
           jobs: {
             inClone: true,
             workingTree: "tree-1",
@@ -291,6 +292,7 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
             localOnly: false,
           },
         },
+        prompt: {},
       },
     },
   ];
@@ -368,7 +370,7 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(localDeletions).toEqual([
-      { name: "jobs", seenWorkingTree: "tree-1" },
+      { type: "skill", name: "jobs", seenWorkingTree: "tree-1" },
     ]);
     // Step 2 waits for its own press.
     expect(deletions).toEqual([]);

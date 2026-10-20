@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
-import { DeleteLocalSkill } from "./delete-local-skill";
+import { DeleteLocal } from "./delete-local";
 import { InMemoryHarnessGit, skillRef, treeHash } from "./harness-git.fake";
 
 const ROOT = "/harness";
@@ -28,7 +28,7 @@ function build(
   },
 ) {
   const removed: string[] = [];
-  const deletion = new DeleteLocalSkill({
+  const deletion = new DeleteLocal({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : ROOT,
     fs: {
@@ -46,7 +46,7 @@ function build(
   return { deletion, removed };
 }
 
-describe("DeleteLocalSkill", () => {
+describe("DeleteLocal", () => {
   it("removes the skill's own folder from the Working Harness", async () => {
     const { deletion, removed } = build(localOnlyWorld());
 
@@ -196,7 +196,7 @@ describe("DeleteLocalSkill", () => {
   });
 });
 
-describe("DeleteLocalSkill.inspect", () => {
+describe("DeleteLocal.inspect", () => {
   const inspectWorld = () => {
     const git = new InMemoryHarnessGit().settled({
       jobs: "jobs-v1",

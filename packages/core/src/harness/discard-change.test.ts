@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
-import { DiscardSkillChange } from "./discard-skill-change";
+import { DiscardChange } from "./discard-change";
 import { InMemoryHarnessGit, skillRef, treeHash } from "./harness-git.fake";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
 import type { WorktreeAmbiguity } from "./read-harness-state";
@@ -73,7 +73,7 @@ function build(overrides?: {
   const moved: [string, string][] = [];
   const removed: string[] = [];
   let failsLeft = overrides?.failMoveInto === undefined ? 0 : 1;
-  const discard = new DiscardSkillChange({
+  const discard = new DiscardChange({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : ROOT,
     readStages: async () =>
@@ -99,7 +99,7 @@ function build(overrides?: {
   return { discard, moved, removed, written: git.written };
 }
 
-describe("DiscardSkillChange", () => {
+describe("DiscardChange", () => {
   it("swaps the folder for its default-branch copy and clears the staging folder", async () => {
     const { discard, moved, removed, written } = build();
 

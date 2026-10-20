@@ -3,7 +3,7 @@ import { InFlightLocks } from "../deploy/in-flight-locks";
 import type { CopyEntryFacts } from "../filesystem/copy-tree-fs";
 import { InMemoryHarnessGit, skillRef } from "./harness-git.fake";
 import type { WorktreeAmbiguity } from "./read-harness-state";
-import { RestoreSkill } from "./restore-skill";
+import { Restore } from "./restore";
 
 const ROOT = "/harness";
 const SKILLS = "/harness/.apm/skills";
@@ -59,7 +59,7 @@ function build(overrides?: {
   const removed: string[] = [];
   const describes = overrides?.describes ?? [null, null];
   let described = 0;
-  const restore = new RestoreSkill({
+  const restore = new Restore({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : ROOT,
     fs: { realpath: overrides?.realpath ?? (async (path) => path) },
@@ -83,7 +83,7 @@ function build(overrides?: {
   return { restore, git, moved, removed };
 }
 
-describe("RestoreSkill", () => {
+describe("Restore", () => {
   it("writes the committed folder into place from the confirmed commit", async () => {
     const { restore, moved, git } = build();
 

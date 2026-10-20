@@ -1,15 +1,15 @@
 import type {
-  DeleteLocalSkillError,
-  DiscardSkillChangeError,
+  DeleteLocalError,
+  DiscardChangeError,
   HarnessStateError,
   ImportSkillError,
   LocalEditsRefusal,
   PromoteDeletionError,
-  PromoteSkillError,
+  PromoteError,
   ProposalActionError,
   PublishReleaseError,
   ReleasePlanError,
-  RestoreSkillError,
+  RestoreError,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
@@ -96,7 +96,7 @@ const SURFACES: Surface[] = [
   {
     name: "promoteNotice",
     read: promoteNotice,
-    codes: codes<PromoteSkillError>({
+    codes: codes<PromoteError>({
       "not-configured": true,
       "no-usable-origin": true,
       "invalid-skill": true,
@@ -138,7 +138,7 @@ const SURFACES: Surface[] = [
     name: `localDeletionNotice on ${screen}`,
     read: (error: unknown) =>
       localDeletionNotice(error, { skill: "tdd", screen }),
-    codes: codes<DeleteLocalSkillError>({
+    codes: codes<DeleteLocalError>({
       "not-configured": true,
       "invalid-skill": true,
       "already-gone": true,
@@ -200,7 +200,7 @@ const SURFACES: Surface[] = [
   {
     name: "restoreNotice",
     read: restoreNotice,
-    codes: codes<RestoreSkillError>({
+    codes: codes<RestoreError>({
       "not-configured": true,
       "invalid-skill": true,
       "head-moved": true,
@@ -222,7 +222,7 @@ const SURFACES: Surface[] = [
   {
     name: "discardNotice",
     read: (error: unknown) => discardNotice(error, "tdd"),
-    codes: codes<DiscardSkillChangeError>({
+    codes: codes<DiscardChangeError>({
       "not-configured": true,
       "invalid-skill": true,
       "sparse-checkout": true,

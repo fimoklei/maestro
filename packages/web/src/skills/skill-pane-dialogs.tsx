@@ -139,7 +139,7 @@ function PaneDeletion({
   });
   return (
     <LocalDeletionDialog
-      target={{ skill, localOnly }}
+      target={{ type: "skill", skill, localOnly }}
       screen="skills"
       write={write}
       onClose={onClose}

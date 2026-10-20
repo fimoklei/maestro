@@ -104,20 +104,25 @@ export {
   UNKNOWN_PAGE,
 } from "./git/github-page";
 export {
-  DeleteLocalSkill,
-  type DeleteLocalSkillError,
+  DeleteLocal,
+  type DeleteLocalError,
   type DeletionCheckResult,
   type SkillDeletionCheck,
-} from "./harness/delete-local-skill";
+} from "./harness/delete-local";
 export {
-  DiscardSkillChange,
-  type DiscardSkillChangeError,
-} from "./harness/discard-skill-change";
+  DiscardChange,
+  type DiscardChangeError,
+} from "./harness/discard-change";
 export { GhCliAdapter } from "./harness/gh-cli-adapter";
 export { HarnessFetchGate } from "./harness/harness-fetch-gate";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
 export type { HarnessMovementKind } from "./harness/harness-movements";
+export {
+  HARNESS_PRIMITIVE_TYPES,
+  type HarnessPrimitiveType,
+  type PrimitiveRef,
+} from "./harness/harness-primitive";
 export type {
   HarnessReviewPort,
   HarnessReviewRead,
@@ -151,13 +156,13 @@ export {
   type ImportSourceBlocker,
 } from "./harness/import-skill";
 export {
-  type PromoteDeletionError,
-  PromoteSkillDeletion,
-} from "./harness/promote-deletion";
+  Promote,
+  type PromoteError,
+} from "./harness/promote";
 export {
-  PromoteSkill,
-  type PromoteSkillError,
-} from "./harness/promote-skill";
+  PromoteDeletion,
+  type PromoteDeletionError,
+} from "./harness/promote-deletion";
 export {
   type ProposalActionError,
   type ProposalActionResult,
@@ -185,9 +190,9 @@ export {
   ReleasedContentReader,
 } from "./harness/released-content";
 export {
-  RestoreSkill,
-  type RestoreSkillError,
-} from "./harness/restore-skill";
+  Restore,
+  type RestoreError,
+} from "./harness/restore";
 export type { ManifestAdvisory } from "./harness/skill-manifest";
 export type { StructuralProblem } from "./harness/validate-skill-structure";
 export {

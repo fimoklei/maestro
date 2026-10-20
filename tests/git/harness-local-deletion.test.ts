@@ -5,13 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import {
-  DeleteLocalSkill,
+  DeleteLocal,
   HarnessFetchGate,
   type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
   NodeFileSystem,
-  PromoteSkillDeletion,
+  PromoteDeletion,
   ReleasedContentReader,
   releasedSkillsFromGit,
 } from "@maestro/core";
@@ -42,7 +42,7 @@ describe("deleting a Harness skill from the clone", () => {
   };
 
   const deleter = () =>
-    new DeleteLocalSkill({
+    new DeleteLocal({
       resolveRoot: async () => root,
       fs: new NodeFileSystem(),
       git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
@@ -144,7 +144,7 @@ describe("deleting a Harness skill from the clone", () => {
       released: new ReleasedContentReader(),
     }).readMovementTrees(root);
     let freshness: HarnessFreshness = { outcome: null, lastFetchedAt: null };
-    const step2 = new PromoteSkillDeletion({
+    const step2 = new PromoteDeletion({
       resolveRoot: async () => root,
       git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       fetchGate: new HarnessFetchGate({
