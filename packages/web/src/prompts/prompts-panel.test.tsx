@@ -55,10 +55,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// `failing` names the reads that answer 503.
+// `failing` names the reads that answer 503; `unreadTypes` the types the
+// Inventory read could not read.
 function stubApi(
   primitives: readonly InventoryPrimitive[],
   failing: readonly string[] = [],
+  unreadTypes: readonly InventoryPrimitive["type"][] = [],
 ) {
   vi.stubGlobal(
     "fetch",
@@ -70,7 +72,7 @@ function stubApi(
       // No prompt in the clone, so Delete prompt stays out of these tests.
       if (url === "/api/harness/primitive/delete/check")
         return jsonResponse({ skill: {}, prompt: {} });
-      return jsonResponse({ primitives });
+      return jsonResponse({ primitives, unreadTypes });
     }),
   );
 }
@@ -126,6 +128,14 @@ describe("PromptsPanel", () => {
     renderPanel();
 
     expect(await screen.findByText("Read failed")).toBeInTheDocument();
+  });
+
+  it("starts band 2 with Read failed when the prompt files could not be read", async () => {
+    stubApi([TDD], [], ["prompt"]);
+    renderPanel();
+
+    expect(await screen.findByText("Read failed")).toBeInTheDocument();
+    expect(screen.getByText("Inventory not read")).toBeInTheDocument();
   });
 
   it("states the empty screen when the latest release holds no prompt", async () => {

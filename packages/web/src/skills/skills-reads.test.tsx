@@ -36,6 +36,7 @@ function stubServer({
       if (url.startsWith("/api/inventory/primitives"))
         return jsonResponse({
           primitives: [{ type: "skill", name: "tdd", description: "TDD" }],
+          unreadTypes: [],
         });
       if (url.startsWith("/api/registry"))
         return jsonResponse({ repos: [{ path: "/projects/alpha" }] });

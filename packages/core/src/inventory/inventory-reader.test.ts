@@ -42,6 +42,7 @@ describe("InventoryReader", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -72,6 +73,7 @@ describe("InventoryReader", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -93,6 +95,7 @@ describe("InventoryReader", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -116,6 +119,7 @@ describe("InventoryReader", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -137,6 +141,7 @@ describe("InventoryReader", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -160,6 +165,7 @@ describe("InventoryReader", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -167,6 +173,7 @@ describe("InventoryReader", () => {
     await expect(readerOver([]).read()).resolves.toEqual({
       ok: true,
       primitives: [],
+      unreadTypes: [],
     });
   });
 
@@ -210,6 +217,7 @@ describe("InventoryReader", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -217,6 +225,32 @@ describe("InventoryReader", () => {
     await expect(readerOver(null).read()).resolves.toEqual({
       ok: false,
       error: "unreadable",
+    });
+  });
+
+  it("lists the skills and names prompts unread when the prompt files cannot be read", async () => {
+    const reader = new InventoryReader({
+      fs: connected(),
+      resolvePath: () => INVENTORY,
+      readPendingRelease: async () => null,
+      readReleased: async () => ({
+        skills: [{ name: "tdd", manifest: skillFile("tdd", "TDD loop") }],
+        prompts: null,
+      }),
+    });
+
+    await expect(reader.read()).resolves.toEqual({
+      ok: true,
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
+        },
+      ],
+      unreadTypes: ["prompt"],
     });
   });
 

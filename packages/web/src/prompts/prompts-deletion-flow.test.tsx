@@ -65,7 +65,7 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/inventory/primitives")) {
-        return jsonResponse({ primitives: [PR_REVIEW] });
+        return jsonResponse({ primitives: [PR_REVIEW], unreadTypes: [] });
       }
       if (url === "/api/harness/primitive/delete/check") {
         const check = options.check ?? { body: IN_CLONE };

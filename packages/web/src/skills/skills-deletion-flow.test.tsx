@@ -56,6 +56,7 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
               pendingRelease: null,
             },
           ],
+          unreadTypes: [],
         });
       }
       if (url === "/api/harness/primitive/delete/check") {

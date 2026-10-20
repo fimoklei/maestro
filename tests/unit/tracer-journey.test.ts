@@ -34,6 +34,7 @@ describe("the tracer journey through one cockpit", () => {
           pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
 
     // The path comes from the registry's own answer.
