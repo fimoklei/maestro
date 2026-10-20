@@ -11,14 +11,22 @@ import {
   splitFrontmatter,
 } from "../harness/validate-skill-structure";
 import type { FileSystemPort } from "../registry/file-system";
+import {
+  type PendingRelease,
+  type PendingReleaseDelta,
+  pendingReleaseOf,
+  type ReadPendingRelease,
+} from "./pending-release";
 import type { ReadReleasedPrimitives } from "./released-primitives";
 
-// `path` is where the primitive lives in the Harness.
+// `path` is where the primitive lives in the Harness. `pendingRelease` is a
+// merged change to it that waits for the next release.
 export type InventorySkill = {
   type: "skill";
   name: string;
   description: string;
   path: string;
+  pendingRelease: PendingRelease;
 };
 
 // `text` is what Copy prompt copies. `nameValid` is false for a file name that
@@ -28,6 +36,7 @@ export type InventoryPrompt = {
   name: string;
   description: string;
   path: string;
+  pendingRelease: PendingRelease;
   text: string;
   nameValid: boolean;
 };
@@ -55,11 +64,16 @@ function parseDescription(raw: string): string | null {
 }
 
 // The text after a closed frontmatter block, byte for byte; else the whole file.
-const promptOf = (name: string, raw: string): InventoryPrompt => ({
+const promptOf = (
+  name: string,
+  raw: string,
+  pending: PendingReleaseDelta | null,
+): InventoryPrompt => ({
   type: "prompt",
   name,
   description: parseDescription(raw) ?? "",
   path: primitivePath({ type: "prompt", name }),
+  pendingRelease: pendingReleaseOf({ type: "prompt", name }, pending),
   text: splitFrontmatter(raw)?.body ?? raw,
   nameValid: isValidSkillSlug(name),
 });
@@ -73,17 +87,20 @@ export class InventoryReader {
     path: string,
   ) => Promise<string | null> | string | null;
   private readonly readReleased: ReadReleasedPrimitives;
+  private readonly readPendingRelease: ReadPendingRelease;
 
   constructor(deps: {
     fs: FileSystemPort;
     resolvePath: () => Promise<string | undefined> | (string | undefined);
     originUrl?: (path: string) => Promise<string | null> | string | null;
     readReleased: ReadReleasedPrimitives;
+    readPendingRelease: ReadPendingRelease;
   }) {
     this.fs = deps.fs;
     this.resolvePath = deps.resolvePath;
     this.originUrl = deps.originUrl ?? (() => null);
     this.readReleased = deps.readReleased;
+    this.readPendingRelease = deps.readPendingRelease;
   }
 
   // Canonicalised, so browser path comparisons match server registration.
@@ -128,6 +145,8 @@ export class InventoryReader {
     if (released === null) {
       return { ok: false, error: "unreadable" };
     }
+    // The release still lists without its pending facts.
+    const pending = await this.readPendingRelease(root).catch(() => null);
 
     const primitives: InventoryPrimitive[] = [];
     for (const { name, manifest } of released.skills) {
@@ -140,10 +159,11 @@ export class InventoryReader {
         name,
         description,
         path: primitivePath({ type: "skill", name }),
+        pendingRelease: pendingReleaseOf({ type: "skill", name }, pending),
       });
     }
     for (const { name, text } of released.prompts) {
-      primitives.push(promptOf(name, text));
+      primitives.push(promptOf(name, text, pending));
     }
     return { ok: true, primitives };
   }

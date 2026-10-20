@@ -7,18 +7,21 @@ const primitives: InventorySkill[] = [
     type: "skill",
     name: "tdd",
     path: ".apm/skills/tdd",
+    pendingRelease: null,
     description: "Test-driven development.",
   },
   {
     type: "skill",
     name: "caveman",
     path: ".apm/skills/caveman",
+    pendingRelease: null,
     description: "Terse mode.",
   },
   {
     type: "skill",
     name: "Research",
     path: ".apm/skills/Research",
+    pendingRelease: null,
     description: "Investigate a question.",
   },
 ];

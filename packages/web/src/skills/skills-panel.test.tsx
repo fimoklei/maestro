@@ -77,7 +77,17 @@ function stubApi(primitives: unknown[], repos: unknown[]) {
 describe("SkillsPanel", () => {
   it("titles the page with a single h1", async () => {
     // Heading navigation has no starting point without one.
-    stubApi([{ type: "skill", name: "tdd", description: "TDD loop" }], []);
+    stubApi(
+      [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          pendingRelease: null,
+        },
+      ],
+      [],
+    );
     renderPanel();
 
     expect(
@@ -91,8 +101,18 @@ describe("SkillsPanel", () => {
   it("lists every central skill with its name and description", async () => {
     stubApi(
       [
-        { type: "skill", name: "tdd", description: "TDD loop" },
-        { type: "skill", name: "diagnose", description: "Diagnosis loop" },
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          pendingRelease: null,
+        },
+        {
+          type: "skill",
+          name: "diagnose",
+          description: "Diagnosis loop",
+          pendingRelease: null,
+        },
       ],
       [],
     );
@@ -108,8 +128,18 @@ describe("SkillsPanel", () => {
     // A real table keeps table semantics for assistive tech (#80, #285).
     stubApi(
       [
-        { type: "skill", name: "tdd", description: "TDD loop" },
-        { type: "skill", name: "diagnose", description: "Diagnosis loop" },
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          pendingRelease: null,
+        },
+        {
+          type: "skill",
+          name: "diagnose",
+          description: "Diagnosis loop",
+          pendingRelease: null,
+        },
       ],
       [],
     );
@@ -122,7 +152,14 @@ describe("SkillsPanel", () => {
 
   it("offers a deploy action with a repo choice from the detail pane", async () => {
     stubApi(
-      [{ type: "skill", name: "tdd", description: "TDD loop" }],
+      [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          pendingRelease: null,
+        },
+      ],
       [{ path: "/projects/alpha" }],
     );
     renderPanel();
@@ -154,7 +191,12 @@ describe("SkillsPanel", () => {
             : jsonResponse(
                 {
                   primitives: [
-                    { type: "skill", name: "tdd", description: "TDD loop" },
+                    {
+                      type: "skill",
+                      name: "tdd",
+                      description: "TDD loop",
+                      pendingRelease: null,
+                    },
                   ],
                 },
                 200,
@@ -184,7 +226,12 @@ describe("SkillsPanel", () => {
             : jsonResponse(
                 {
                   primitives: [
-                    { type: "skill", name: "tdd", description: "TDD loop" },
+                    {
+                      type: "skill",
+                      name: "tdd",
+                      description: "TDD loop",
+                      pendingRelease: null,
+                    },
                   ],
                 },
                 200,
@@ -209,7 +256,12 @@ describe("SkillsPanel", () => {
             : jsonResponse(
                 {
                   primitives: [
-                    { type: "skill", name: "tdd", description: "TDD loop" },
+                    {
+                      type: "skill",
+                      name: "tdd",
+                      description: "TDD loop",
+                      pendingRelease: null,
+                    },
                   ],
                 },
                 200,
@@ -310,7 +362,12 @@ describe("SkillsPanel", () => {
           ? jsonResponse({ error: "unreadable" }, 503)
           : jsonResponse({
               primitives: [
-                { type: "skill", name: "tdd", description: "TDD loop" },
+                {
+                  type: "skill",
+                  name: "tdd",
+                  description: "TDD loop",
+                  pendingRelease: null,
+                },
               ],
             });
       }),
@@ -370,7 +427,12 @@ describe("SkillsPanel", () => {
             withoutHarness(input) ??
             jsonResponse({
               primitives: [
-                { type: "skill", name: "tdd", description: "TDD loop" },
+                {
+                  type: "skill",
+                  name: "tdd",
+                  description: "TDD loop",
+                  pendingRelease: null,
+                },
               ],
             })
           );
@@ -440,7 +502,14 @@ describe("SkillsPanel", () => {
           return jsonResponse({ primitives: [], skipped: [] });
         if (hang) return new Promise<Response>(() => undefined);
         return jsonResponse({
-          primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+          primitives: [
+            {
+              type: "skill",
+              name: "tdd",
+              description: "TDD loop",
+              pendingRelease: null,
+            },
+          ],
         });
       }),
     );

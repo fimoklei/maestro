@@ -1,6 +1,7 @@
 import type { InventorySkill } from "@maestro/core";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
@@ -13,6 +14,7 @@ const tdd: InventorySkill = {
   type: "skill",
   name: "tdd",
   path: ".apm/skills/tdd",
+  pendingRelease: null,
   description: "Test-driven development.",
 };
 
@@ -43,6 +45,7 @@ function renderPane(overrides: {
   localEditsCount?: number;
   unknownCount?: number;
   latestRelease?: string | null;
+  pendingRelease?: InventorySkill["pendingRelease"];
   pending?: boolean;
   unreadable?: boolean;
   footItems?: FootItem[];
@@ -58,7 +61,7 @@ function renderPane(overrides: {
       : overrides.targetCount;
   return render(
     <SkillDetailPane
-      primitive={tdd}
+      primitive={{ ...tdd, pendingRelease: overrides.pendingRelease ?? null }}
       rollup={{
         targetCount: targetCount ?? 0,
         behindCount: overrides.behindCount ?? 0,
@@ -76,6 +79,8 @@ function renderPane(overrides: {
       getTriggerElement={overrides.getTriggerElement ?? (() => null)}
       listHeadingRef={null}
     />,
+    // The pending release sentence links the Harness screen.
+    { wrapper: MemoryRouter },
   );
 }
 
@@ -150,6 +155,91 @@ describe("SkillDetailPane", () => {
     expect(fact("Status")).toBe("Behind");
     expect(fact("Latest release")).toBe("v1.4.0");
     expect(fact("Behind")).toBe("2 of 3");
+  });
+
+  it("reads Type, Status, Stage, Change, Latest release, Targets and Behind while a merged change waits", () => {
+    renderPane({
+      deployments: [
+        dep("Claude Code", "v1.3.2", "behind"),
+        dep("acme-web", "v1.4.0", "up-to-date"),
+      ],
+      behindCount: 1,
+      latestRelease: "v1.4.0",
+      pendingRelease: {
+        change: "edit",
+        renamedTo: null,
+        defaultBranch: "main",
+      },
+    });
+
+    expect(
+      within(pane())
+        .getAllByRole("term")
+        .map((term) => [
+          term.textContent,
+          term.nextElementSibling?.textContent,
+        ]),
+    ).toEqual([
+      ["Type", "Skill"],
+      ["Status", "Behind"],
+      ["Stage", "Pending release"],
+      ["Change", "Changed"],
+      ["Latest release", "v1.4.0"],
+      ["Targets", "2"],
+      ["Behind", "1 of 2"],
+    ]);
+  });
+
+  it("puts the release sentence before the deploy sentence", () => {
+    renderPane({
+      deployments: [
+        {
+          ...dep("Codex", "v1.3.2", "behind"),
+          edited: true,
+          mark: skillMark("local-edits", "behind"),
+        },
+      ],
+      localEditsCount: 1,
+      latestRelease: "v1.4.0",
+      pendingRelease: {
+        change: "deletion",
+        renamedTo: null,
+        defaultBranch: "main",
+      },
+    });
+
+    const release = screen.getByText(
+      sentence(
+        "Select Create a release on the Harness screen to publish the deletion.",
+      ),
+    );
+    const deploy = screen.getByText(opening("1 of 1 target has local edits."));
+    expect(
+      release.compareDocumentPosition(deploy) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      within(release).getByRole("link", { name: "Harness screen" }),
+    ).toHaveAttribute("href", "/harness");
+  });
+
+  it("names the new name and branch of a merged skill rename", () => {
+    renderPane({
+      pendingRelease: {
+        change: "rename",
+        renamedTo: "test-first",
+        defaultBranch: "main",
+      },
+    });
+
+    expect(fact("Change")).toBe("Renamed");
+    expect(
+      screen.getByText(
+        sentence(
+          "This skill was renamed to test-first on main. Select Create a release on the Harness screen to publish it.",
+        ),
+      ),
+    ).toBeInTheDocument();
   });
 
   it("says when the Harness has no release yet", () => {

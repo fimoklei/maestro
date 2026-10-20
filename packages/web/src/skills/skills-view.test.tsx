@@ -83,12 +83,14 @@ const primitives: InventorySkill[] = [
     type: "skill",
     name: "tdd",
     path: ".apm/skills/tdd",
+    pendingRelease: null,
     description: "Test-driven development.",
   },
   {
     type: "skill",
     name: "caveman",
     path: ".apm/skills/caveman",
+    pendingRelease: null,
     description: "Terse mode.",
   },
 ];
@@ -650,24 +652,28 @@ describe("SkillsView — sorting", () => {
         type: "skill",
         name: "search-a",
         path: ".apm/skills/search-a",
+        pendingRelease: null,
         description: "A.",
       },
       {
         type: "skill",
         name: "unrelated",
         path: ".apm/skills/unrelated",
+        pendingRelease: null,
         description: "Z.",
       },
       {
         type: "skill",
         name: "search-c",
         path: ".apm/skills/search-c",
+        pendingRelease: null,
         description: "C.",
       },
       {
         type: "skill",
         name: "search-b",
         path: ".apm/skills/search-b",
+        pendingRelease: null,
         description: "B.",
       },
     ];

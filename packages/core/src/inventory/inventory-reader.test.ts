@@ -17,6 +17,7 @@ const readerOver = (released: ReleasedSkill[] | null) =>
   new InventoryReader({
     fs: connected(),
     resolvePath: () => INVENTORY,
+    readPendingRelease: async () => null,
     readReleased: async () =>
       released === null ? null : { skills: released, prompts: [] },
   });
@@ -38,6 +39,7 @@ describe("InventoryReader", () => {
           name: "tdd",
           description: "Test-driven development loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });
@@ -60,12 +62,14 @@ describe("InventoryReader", () => {
           name: "tdd",
           description: "TDD loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
         {
           type: "skill",
           name: "diagnose",
           description: "Disciplined diagnosis loop",
           path: ".apm/skills/diagnose",
+          pendingRelease: null,
         },
       ],
     });
@@ -86,6 +90,7 @@ describe("InventoryReader", () => {
           name: "tdd",
           description: "TDD loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });
@@ -108,6 +113,7 @@ describe("InventoryReader", () => {
           name: "tdd",
           description: "TDD loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });
@@ -128,6 +134,7 @@ describe("InventoryReader", () => {
           name: "tdd",
           description: "TDD loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });
@@ -150,6 +157,7 @@ describe("InventoryReader", () => {
           name: "tdd",
           description: "TDD loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });
@@ -184,6 +192,7 @@ describe("InventoryReader", () => {
     const reader = new InventoryReader({
       fs,
       resolvePath: () => INVENTORY,
+      readPendingRelease: async () => null,
       readReleased: async () => ({
         skills: [{ name: "tdd", manifest: skillFile("tdd", "TDD loop") }],
         prompts: [],
@@ -198,6 +207,7 @@ describe("InventoryReader", () => {
           name: "tdd",
           description: "TDD loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });
@@ -214,6 +224,7 @@ describe("InventoryReader", () => {
     const reader = new InventoryReader({
       fs: connected(),
       resolvePath: () => INVENTORY,
+      readPendingRelease: async () => null,
       readReleased: async () => {
         throw new Error("git exploded");
       },
@@ -229,6 +240,7 @@ describe("InventoryReader", () => {
     const reader = new InventoryReader({
       fs: new InMemoryFileSystem(),
       resolvePath: () => undefined,
+      readPendingRelease: async () => null,
       readReleased: async () => ({ skills: [], prompts: [] }),
     });
 
@@ -248,6 +260,7 @@ describe("InventoryReader", () => {
     const reader = new InventoryReader({
       fs,
       resolvePath: () => "/home/me/agent-harness",
+      readPendingRelease: async () => null,
       readReleased: async () => ({ skills: [], prompts: [] }),
     });
 
@@ -260,6 +273,7 @@ describe("InventoryReader", () => {
         files: { [INVENTORY]: "i am a file, not a dir" },
       }),
       resolvePath: () => INVENTORY,
+      readPendingRelease: async () => null,
       readReleased: async () => ({ skills: [], prompts: [] }),
     });
 

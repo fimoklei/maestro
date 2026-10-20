@@ -1,4 +1,4 @@
-import type { PrimitiveRef, ReleasePlan, SemverStep } from "@maestro/core";
+import type { ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
 import {
   type RefObject,
@@ -34,6 +34,7 @@ import { useWriteAction } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
+import type { OpenPrimitive } from "./harness-route";
 import {
   harnessAnnouncement,
   releaseEnabled,
@@ -75,8 +76,8 @@ const COUNTS_BELOW_REM = 20;
 export function HarnessView({
   openPrimitive,
 }: {
-  /** A primitive that just landed elsewhere, opened as its Pending proposal. */
-  openPrimitive: PrimitiveRef | null;
+  /** A primitive another screen sent here, opened in the stage it names. */
+  openPrimitive: OpenPrimitive | null;
 }) {
   const harness = useHarness();
   const state = harness.data;
@@ -93,7 +94,10 @@ export function HarnessView({
     openOnArrival:
       openPrimitive === null
         ? null
-        : rowId({ stage: "pending-proposal", ...openPrimitive }),
+        : rowId({
+            ...openPrimitive,
+            stage: openPrimitive.stage ?? "pending-proposal",
+          }),
   });
   const reread = table.reread;
   const { open } = table;

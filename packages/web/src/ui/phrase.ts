@@ -1,7 +1,12 @@
 // A sentence whose names and machine values render apart from the words
 // around them, while a screen reader hears the sentence unchanged.
 
-type Mark = { kind: "name" | "machine"; text: string };
+/** A screen in the cockpit, with the router state it opens with. */
+export type LinkTarget = { pathname: string; state: unknown };
+
+type Mark =
+  | { kind: "name" | "machine"; text: string }
+  | { kind: "link"; text: string; to: LinkTarget };
 
 export type Phrase = { readonly parts: readonly (string | Mark)[] };
 
@@ -12,6 +17,13 @@ export const named = (text: string): Mark => ({ kind: "name", text });
 
 /** A version, tag, path, ref, hash or command. */
 export const machine = (text: string): Mark => ({ kind: "machine", text });
+
+/** Words that open another cockpit screen; the words name the destination. */
+export const link = (text: string, to: LinkTarget): Mark => ({
+  kind: "link",
+  text,
+  to,
+});
 
 // en-GB fixes the form to no Oxford comma, whatever locale the reader runs.
 const listFormat = new Intl.ListFormat("en-GB");

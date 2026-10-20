@@ -58,6 +58,7 @@ describe("released prompts on the Inventory read", () => {
         name: "pr-review",
         description: "Review a pull request",
         path: ".maestro/prompts/pr-review.md",
+        pendingRelease: null,
         text: "Review [PR LINK] for $ARGUMENTS.\nFocus on $1.\n",
         nameValid: true,
       },
@@ -100,6 +101,7 @@ describe("released prompts on the Inventory read", () => {
       expect.objectContaining({
         name: "PR_Review",
         path: ".maestro/prompts/PR_Review.md",
+        pendingRelease: null,
         text: "Review it\n",
         nameValid: false,
       }),
@@ -122,6 +124,7 @@ describe("released prompts on the Inventory read", () => {
           name: "review",
           description: "Review skill",
           path: ".apm/skills/review",
+          pendingRelease: null,
         },
         expect.objectContaining({ type: "prompt", name: "review" }),
       ],
@@ -142,6 +145,7 @@ describe("released prompts on the Inventory read", () => {
           name: "tdd",
           description: "TDD loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });

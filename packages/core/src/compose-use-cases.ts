@@ -56,6 +56,7 @@ import { ConnectInventory } from "./inventory/connect-inventory";
 import type { HarnessScaffoldGitPort } from "./inventory/harness-scaffold-git";
 import type { HeadProbe } from "./inventory/head-commit";
 import { InventoryReader } from "./inventory/inventory-reader";
+import { pendingReleaseFromGit } from "./inventory/pending-release";
 import { releasedPrimitivesFromGit } from "./inventory/released-primitives";
 import { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 import { ScaffoldHarness } from "./inventory/scaffold-harness";
@@ -135,6 +136,7 @@ export function composeUseCases(ports: UseCasePorts) {
     resolvePath: inventoryPath,
     originUrl: git.originUrl,
     readReleased: releasedPrimitivesFromGit(harnessGit),
+    readPendingRelease: pendingReleaseFromGit(harnessGit),
   });
   const harnessRoot = async () => {
     const path = await inventoryPath();

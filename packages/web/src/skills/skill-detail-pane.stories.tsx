@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { MemoryRouter } from "react-router";
 import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
 import type { DeployedRollup } from "../inventory/deployed-rollup";
@@ -39,6 +40,7 @@ const meta = {
       type: "skill",
       name: "tdd",
       path: ".apm/skills/tdd",
+      pendingRelease: null,
       description:
         'Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.',
     },
@@ -120,4 +122,25 @@ export const SomeTargetsNotRead: Story = {
     footItems: [{ label: "Deploy skill", onSelect: () => {} }],
     deployments: [target("Claude Code", "v1.4.0", "up-to-date")],
   },
+};
+
+// The next-step sentence links the Harness screen, so it needs a router.
+export const PendingRelease: Story = {
+  args: {
+    primitive: {
+      ...meta.args.primitive,
+      pendingRelease: {
+        change: "edit",
+        renamedTo: null,
+        defaultBranch: "main",
+      },
+    },
+  },
+  decorators: [
+    (Story) => (
+      <MemoryRouter>
+        <Story />
+      </MemoryRouter>
+    ),
+  ],
 };
