@@ -150,7 +150,7 @@ describe("Prompts — Delete prompt", () => {
     );
   });
 
-  it("opens the Harness view with the Deletion row once step 1 lands", async () => {
+  it("opens the Harness view with the Deleted row once step 1 lands", async () => {
     const deletions = stubServer({});
     renderPrompts();
     const menu = await openRowMenu();
@@ -184,7 +184,7 @@ describe("Prompts — Delete prompt", () => {
     const pane = await screen.findByRole("complementary", {
       name: "pr-review detail",
     });
-    expect(within(pane).getByText("Deletion")).toBeInTheDocument();
+    expect(within(pane).getByText("Deleted")).toBeInTheDocument();
     expect(within(pane).getByText("Not yet proposed")).toBeInTheDocument();
     expect(deletions).toEqual([
       { type: "prompt", name: "pr-review", seenWorkingTree: "blob-1" },
