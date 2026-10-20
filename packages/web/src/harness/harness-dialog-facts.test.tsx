@@ -81,7 +81,7 @@ describe("Harness confirmation facts", () => {
     });
     renderHarness();
 
-    const dialog = await press(/^delete skill$/i);
+    const dialog = await press(/^delete prompt$/i);
 
     expect(within(dialog).getByText(PATH)).toBeVisible();
   });
@@ -96,7 +96,7 @@ describe("Harness confirmation facts", () => {
     });
     renderHarness();
 
-    const dialog = await press(/^restore skill$/i);
+    const dialog = await press(/^restore prompt$/i);
 
     expect(within(dialog).getByText(PATH)).toBeVisible();
   });

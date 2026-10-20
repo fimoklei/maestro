@@ -1,12 +1,16 @@
+import type { HarnessPrimitiveType } from "@maestro/core";
 import { Card } from "../ui/card";
-import { RESTORE_SKILL } from "../ui/control-labels";
+import { RESTORE_LABEL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
+import { PhraseText } from "../ui/phrase-text";
+import { ITEM_FACTS, RESTORE_BODY } from "./dialog-copy";
 
 export function RestoreDialog({
-  skill,
-  folder,
+  type,
+  name,
+  path,
   commit,
   hasRequest,
   onClose,
@@ -14,10 +18,11 @@ export function RestoreDialog({
   restoring,
   restoreError,
 }: {
-  skill: string;
-  folder: string;
+  type: HarnessPrimitiveType;
+  name: string;
+  path: string;
   commit: string;
-  // A proposal over this skill is untouched by a restore, said here rather
+  // A proposal over this item is untouched by a restore, said here rather
   // than left for the author to wonder about after the press.
   hasRequest: boolean;
   onClose: () => void;
@@ -27,13 +32,13 @@ export function RestoreDialog({
 }) {
   return (
     <Dialog
-      title={`Restore ${skill}`}
+      title={`Restore ${name}`}
       version={null}
       width={480}
       phase={restoring ? "running" : "idle"}
       // Uncommitted work is thrown away: confirmed like a deletion.
       action={{
-        label: RESTORE_SKILL,
+        label: RESTORE_LABEL[type],
         verb: "restore",
         tone: "danger",
         unavailable: null,
@@ -46,16 +51,20 @@ export function RestoreDialog({
       onClose={onClose}
     >
       <p className="m-0">
-        {RESTORE_SKILL} brings back the folder from your last local commit.
-        Later changes do not come back.
+        <PhraseText copy={RESTORE_BODY[type]} />
       </p>
       {hasRequest ? (
         <p className="m-0 text-gray-11">Your proposal remains unchanged.</p>
       ) : null}
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact label="Skill" value={skill} wrap machine={false} />
-          <Fact label="Folder" value={folder} wrap />
+          <Fact
+            label={ITEM_FACTS[type].name}
+            value={name}
+            wrap
+            machine={false}
+          />
+          <Fact label={ITEM_FACTS[type].path} value={path} wrap />
           {/* The whole hash: the one commit the confirmation is given
               against, re-read at the press. */}
           <Fact

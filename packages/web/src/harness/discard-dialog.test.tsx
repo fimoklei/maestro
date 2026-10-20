@@ -13,8 +13,9 @@ const renderDialog = (
 ) =>
   render(
     <DiscardDialog
-      skill="research"
-      folder=".apm/skills/research"
+      type="skill"
+      name="research"
+      path=".apm/skills/research"
       defaultBranch={
         "defaultBranch" in overrides
           ? (overrides.defaultBranch ?? null)
@@ -126,5 +127,44 @@ describe("DiscardDialog", () => {
     });
 
     expect(screen.getByText("Change already proposed")).toBeInTheDocument();
+  });
+
+  describe("a prompt", () => {
+    const renderPrompt = () =>
+      render(
+        <DiscardDialog
+          type="prompt"
+          name="pr-review"
+          path=".maestro/prompts/pr-review.md"
+          defaultBranch="main"
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+          discarding={false}
+          discardError={null}
+        />,
+      );
+
+    it("says it replaces the prompt file and names no deployed copies", () => {
+      renderPrompt();
+
+      expect(
+        screen.getByText(
+          sentence(
+            "This replaces the prompt file in your clone with its copy on main. You cannot recover your changes.",
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Deployed copies/)).not.toBeInTheDocument();
+    });
+
+    it("shows the prompt and its file as facts", () => {
+      renderPrompt();
+
+      expect(screen.getByText("Prompt")).toBeInTheDocument();
+      expect(screen.getByText("File")).toBeInTheDocument();
+      expect(
+        screen.getByText(".maestro/prompts/pr-review.md"),
+      ).toBeInTheDocument();
+    });
   });
 });

@@ -5,8 +5,9 @@ const meta = {
   title: "Harness/DiscardDialog",
   component: DiscardDialog,
   args: {
-    skill: "code-review",
-    folder: ".apm/skills/code-review",
+    type: "skill",
+    name: "code-review",
+    path: ".apm/skills/code-review",
     defaultBranch: "main",
     onClose: () => {},
     onConfirm: () => {},

@@ -7,16 +7,17 @@ import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { named, phrase } from "../ui/phrase";
 import { harnessHeadings, promoteHeadings } from "./notice-copy";
 
-/** Delete skill opens from the Harness view and from Skills. */
+/** Delete skill opens from the Harness view and from Skills; Delete prompt from Prompts. */
 export type LocalDeletionContext = {
   skill: string;
-  screen: "harness" | "skills";
+  screen: "harness" | "skills" | "prompts";
 };
 
-// Each screen's own control that shows the skill as it is now.
+// Each screen's own control that shows the item as it is now.
 const SEE_IT_NOW: Record<LocalDeletionContext["screen"], string> = {
   harness: `Select ${rereadLabel("Harness")} to see the skill as it is now.`,
   skills: "Select Harness to see the skill as it is now.",
+  prompts: "Select Harness to see the prompt as it is now.",
 };
 
 // Nothing here reaches GitHub, so no sentence names a push or a pull request
