@@ -455,7 +455,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         await new HarnessGitAdapter({
           released: new ReleasedContentReader(),
         }).readMovementTrees(root)
-      )?.remote.tdd as string;
+      )?.skill.remote.tdd as string;
     };
 
     const deleteOnDisk = async () =>

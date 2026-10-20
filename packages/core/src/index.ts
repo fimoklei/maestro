@@ -117,6 +117,7 @@ export { GhCliAdapter } from "./harness/gh-cli-adapter";
 export { HarnessFetchGate } from "./harness/harness-fetch-gate";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
+export type { HarnessMovementKind } from "./harness/harness-movements";
 export type {
   HarnessReviewPort,
   HarnessReviewRead,
@@ -173,19 +174,21 @@ export {
   type HarnessState,
   type HarnessStateError,
   type HarnessStateResult,
-  type PendingSkillMovement,
   ReadHarnessState,
   type ReleasePlan,
   type ReleasePlanError,
 } from "./harness/read-harness-state";
+export type { PendingMovement } from "./harness/release-delta";
 export { RELEASE_TAG_PATTERN } from "./harness/release-tag";
-export { ReleasedContentReader } from "./harness/released-content";
+export {
+  type HarnessSkillTree,
+  ReleasedContentReader,
+} from "./harness/released-content";
 export {
   RestoreSkill,
   type RestoreSkillError,
 } from "./harness/restore-skill";
 export type { ManifestAdvisory } from "./harness/skill-manifest";
-export type { SkillMovementKind } from "./harness/skill-movements";
 export type { StructuralProblem } from "./harness/validate-skill-structure";
 export {
   resolveApmGlobalRoot,

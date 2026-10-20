@@ -1,6 +1,6 @@
 import type { ReleaseHeadGitPort } from "../deploy-state/release-head";
 import { highestReleaseTag } from "../harness/release-tag";
-import type { HarnessSkillTree } from "../harness/skill-movements";
+import type { HarnessSkillTree } from "../harness/released-content";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionWriter } from "./apply-selection";
 import type {

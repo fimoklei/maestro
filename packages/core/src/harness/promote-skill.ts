@@ -1,12 +1,17 @@
-// Pushes one skill's working-tree content to its own branch, built on the
+// Pushes one primitive's working-tree content to its own branch, built on the
 // fetched default-branch tip. The author's repository state is never touched.
 import type { GitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
+import {
+  type HarnessObject,
+  type PrimitiveRef,
+  proposalBranch,
+  proposalCompareUrl,
+} from "./harness-primitive";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { isConcurrentlyChanged } from "./harness-stages";
-import { promoteBranch, promoteCompareUrl } from "./promote-branch";
 import {
   beforeProposalPush,
   type ProposalKind,
@@ -57,8 +62,8 @@ export class PromoteSkill {
   }
 
   // One promotion per harness at a time.
-  async execute(name: string): Promise<PromoteSkillResult> {
-    if (!isValidSkillSlug(name)) {
+  async execute(ref: PrimitiveRef): Promise<PromoteSkillResult> {
+    if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
@@ -66,19 +71,19 @@ export class PromoteSkill {
       return { ok: false, error: "not-configured" };
     }
 
-    const run = await this.deps.locks.run(root, () => this.promote(root, name));
+    const run = await this.deps.locks.run(root, () => this.promote(root, ref));
     return run.ok ? run.value : { ok: false, error: "promote-in-progress" };
   }
 
   private async promote(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
   ): Promise<PromoteSkillResult> {
     const outcome = await this.deps.fetchGate.fetch(root, 0);
     if (outcome !== "fetched") {
       return { ok: false, error: "no-answer" };
     }
-    const first = await this.checkNotConcurrent(root, name);
+    const first = await this.checkNotConcurrent(root, ref);
     if (!first.ok) {
       return first;
     }
@@ -89,7 +94,7 @@ export class PromoteSkill {
     if (refetched !== "fetched") {
       return { ok: false, error: "no-answer" };
     }
-    const second = await this.checkNotConcurrent(root, name);
+    const second = await this.checkNotConcurrent(root, ref);
     if (!second.ok) {
       return second;
     }
@@ -99,7 +104,7 @@ export class PromoteSkill {
       {
         origin: second.origin,
         base: second.base,
-        name,
+        ref,
       },
       second.kind,
     );
@@ -107,9 +112,9 @@ export class PromoteSkill {
       return request;
     }
 
-    const push = await this.deps.git.pushSkillPromotion(
+    const push = await this.deps.git.pushPromotion(
       root,
-      name,
+      ref,
       second.head,
       second.kind,
     );
@@ -120,8 +125,8 @@ export class PromoteSkill {
         await request.afterPush();
         return {
           ok: true,
-          branch: promoteBranch(name),
-          pullRequestUrl: promoteCompareUrl(second.origin, second.base, name),
+          branch: proposalBranch(ref),
+          pullRequestUrl: proposalCompareUrl(second.origin, second.base, ref),
         };
       case "skill-missing":
         return { ok: false, error: "skill-missing" };
@@ -136,10 +141,10 @@ export class PromoteSkill {
     }
   }
 
-  // Scoped to this skill via the merge base: unrelated commits never block (#579).
+  // Scoped to this primitive via the merge base: unrelated commits never block (#579).
   private async checkNotConcurrent(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
   ): Promise<Checked> {
     const facts = await readOriginFacts(this.deps.git, root);
     if (!facts.ok) {
@@ -151,32 +156,28 @@ export class PromoteSkill {
     }
 
     const mergeBase = await this.deps.git.mergeBaseCommit(root, head);
-    const [remoteTrees, localTrees, mergeBaseTrees] = await Promise.all([
-      this.deps.git.readSkillTrees(root, head),
-      this.deps.git.readSkillTrees(root, "HEAD"),
+    const [remote, local, atMergeBase] = await Promise.all([
+      this.deps.git.readPrimitives(root, head),
+      this.deps.git.readPrimitives(root, "HEAD"),
       mergeBase === null
         ? Promise.resolve(null)
-        : this.deps.git.readSkillTrees(root, mergeBase),
+        : this.deps.git.readPrimitives(root, mergeBase),
     ]);
-    if (remoteTrees === null || localTrees === null) {
+    if (remote === null || local === null) {
       return { ok: false, error: "no-answer" };
     }
     const concurrentChange = isConcurrentlyChanged(
-      {
-        remote:
-          remoteTrees.find((tree) => tree.name === name)?.treeHash ?? null,
-        local: localTrees.find((tree) => tree.name === name)?.treeHash ?? null,
-      },
-      mergeBaseTrees === null
-        ? undefined
-        : (mergeBaseTrees.find((tree) => tree.name === name)?.treeHash ?? null),
+      { remote: hashOf(remote, ref), local: hashOf(local, ref) },
+      atMergeBase === null ? undefined : hashOf(atMergeBase, ref),
     );
     if (concurrentChange) {
       return { ok: false, error: "concurrent-change" };
     }
-    const kind = remoteTrees.some((tree) => tree.name === name)
-      ? "edit"
-      : "addition";
+    const kind = hashOf(remote, ref) === null ? "addition" : "edit";
     return { ok: true, origin, head, base, kind };
   }
 }
+
+const hashOf = (objects: HarnessObject[], ref: PrimitiveRef): string | null =>
+  objects.find((object) => object.type === ref.type && object.name === ref.name)
+    ?.hash ?? null;

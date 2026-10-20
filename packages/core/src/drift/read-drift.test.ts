@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { DeployedLocation } from "../deploy/deployed-location";
 import type { GitOrigin } from "../deploy/git-origin";
-import type { HarnessSkillTree } from "../harness/skill-movements";
+import type { HarnessSkillTree } from "../index";
 import type { OutdatedResult } from "./parse-outdated";
 import { ReadDrift } from "./read-drift";
 

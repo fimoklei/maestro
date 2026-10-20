@@ -15,8 +15,8 @@ const releasingAs = () => {
 
 const PLAN: ReleasePlan = {
   delta: [
-    { kind: "added", name: "research", author: "Grace" },
-    { kind: "changed", name: "tdd", author: "Ada" },
+    { type: "skill", kind: "added", name: "research", author: "Grace" },
+    { type: "skill", kind: "changed", name: "tdd", author: "Ada" },
   ],
   previousTag: "v1.2.3",
   previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
@@ -155,6 +155,7 @@ describe("ReleaseDialog", () => {
     renderReady({
       delta: [
         {
+          type: "skill",
           kind: "renamed",
           name: "test-first",
           previousName: "tdd",
@@ -170,7 +171,9 @@ describe("ReleaseDialog", () => {
 
   it("groups the delta by what moved, and draws no group nothing moved into", () => {
     renderReady({
-      delta: [{ kind: "removed", name: "grilling", author: "Linus" }],
+      delta: [
+        { type: "skill", kind: "removed", name: "grilling", author: "Linus" },
+      ],
     });
 
     expect(screen.getByText("Deleted")).toBeInTheDocument();
@@ -182,7 +185,7 @@ describe("ReleaseDialog", () => {
 
   it("says plainly that an author is unknown rather than leaving a gap", () => {
     renderReady({
-      delta: [{ kind: "added", name: "research", author: null }],
+      delta: [{ type: "skill", kind: "added", name: "research", author: null }],
     });
 
     expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(

@@ -14,6 +14,10 @@ export const stageRow = (
 ): HarnessStageRow => ({
   stage,
   skill,
+  type: "skill",
+  name: skill,
+  path: `.apm/skills/${skill}`,
+  branch: `maestro/${skill}`,
   status,
   change: "edit",
   requests: [],

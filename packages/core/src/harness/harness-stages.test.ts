@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { GitOrigin } from "../deploy/git-origin";
+import type { HarnessMovement } from "./harness-movements";
 import type {
   HarnessReviewRead,
   ReviewRequest,
@@ -11,7 +12,22 @@ import {
   type HarnessStageRow,
   type StageInput,
 } from "./harness-stages";
-import type { HarnessSkillTrees } from "./read-harness-state";
+import type { HarnessHashes } from "./read-harness-state";
+
+type HarnessSkillTrees = HarnessHashes;
+
+const NO_PROMPTS: HarnessHashes = {
+  remote: {},
+  promote: {},
+  local: {},
+  working: {},
+};
+
+// Skill-only stage input: the trees and movements of one type.
+type SkillStageInput = Omit<StageInput, "trees" | "release"> & {
+  trees: HarnessSkillTrees | null;
+  release: Omit<HarnessMovement, "type">[] | null;
+};
 
 const ORIGIN: GitOrigin = {
   host: "github.com",
@@ -57,17 +73,22 @@ const reviewOf = (
   complete = true,
 ): HarnessReviewRead => ({ outcome: "read", requests, complete, limit: 100 });
 
-const stages = (over: Partial<StageInput> = {}) =>
-  buildStages({
+const stages = (over: Partial<SkillStageInput> = {}) => {
+  const { trees = SETTLED, release = [], ...rest } = over;
+  return buildStages({
     origin: ORIGIN,
     defaultBranch: "main",
-    trees: SETTLED,
     atMergeBase: null,
     review: EMPTY_READ,
     viewer: { outcome: "read", login: "fimoklei" },
-    release: [],
-    ...over,
+    ...rest,
+    trees: trees === null ? null : { skill: trees, prompt: NO_PROMPTS },
+    release:
+      release === null
+        ? null
+        : release.map((movement) => ({ type: "skill", ...movement })),
   });
+};
 
 const rowsOf = (stage: HarnessStageRead): HarnessStageRow[] =>
   stage.outcome === "read" ? stage.rows : [];
@@ -980,7 +1001,7 @@ describe("Another contributor's open proposal", () => {
     expect(oneRow(read.proposal).waitingOn).toBeNull();
   });
 
-  it.each<[string, Partial<StageInput>]>([
+  it.each<[string, Partial<SkillStageInput>]>([
     ["gh is unavailable", { viewer: { outcome: "unavailable" } }],
     ["the sign-in read failed", { viewer: { outcome: "failed" } }],
     [
@@ -1028,5 +1049,40 @@ describe("Another contributor's open proposal", () => {
     const viewer: ViewerRead = { outcome: "unavailable" };
     const read = stages({ trees, review: theirs, viewer });
     expect(oneRow(read.review).requests[0]?.byOther).toBe(false);
+  });
+});
+
+describe("a skill and a prompt with one name", () => {
+  const edited: HarnessHashes = {
+    remote: { tdd: "released" },
+    promote: {},
+    local: { tdd: "released" },
+    working: { tdd: "edited" },
+  };
+
+  it("hold their own rows, branches and requests, and never name each other in Also in", () => {
+    const read = buildStages({
+      origin: ORIGIN,
+      defaultBranch: "main",
+      trees: { skill: edited, prompt: edited },
+      atMergeBase: null,
+      review: reviewOf([request({ headBranch: "maestro/prompt.tdd" })]),
+      viewer: { outcome: "read", login: "fimoklei" },
+      release: [{ type: "skill", kind: "changed", name: "tdd" }],
+    });
+
+    expect(
+      rowsOf(read.proposal).map((row) => [row.type, row.name, row.branch]),
+    ).toEqual([
+      ["prompt", "tdd", "maestro/prompt.tdd"],
+      ["skill", "tdd", "maestro/tdd"],
+    ]);
+    const prompt = rowsOf(read.proposal).find((row) => row.type === "prompt");
+    const skill = rowsOf(read.proposal).find((row) => row.type === "skill");
+    expect(prompt?.requests.map((link) => link.number)).toEqual([45]);
+    expect(skill?.requests).toEqual([]);
+    expect(prompt?.path).toBe(".maestro/prompts/tdd.md");
+    expect(skill?.alsoIn).toEqual(["pending-release"]);
+    expect(prompt?.alsoIn).toEqual(["pending-review"]);
   });
 });

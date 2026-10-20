@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import type { CopyEntryFacts } from "../filesystem/copy-tree-fs";
-import { InMemoryHarnessGit } from "./harness-git.fake";
+import { InMemoryHarnessGit, skillRef } from "./harness-git.fake";
 import type { WorktreeAmbiguity } from "./read-harness-state";
 import { RestoreSkill } from "./restore-skill";
 
@@ -87,23 +87,27 @@ describe("RestoreSkill", () => {
   it("writes the committed folder into place from the confirmed commit", async () => {
     const { restore, moved, git } = build();
 
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: true,
       name: "tdd",
       commit: HEAD,
     });
 
-    expect(git.written).toEqual([{ name: "tdd", commit: HEAD, into: STAGING }]);
+    expect(git.written).toEqual([
+      { type: "skill", name: "tdd", commit: HEAD, into: STAGING },
+    ]);
     expect(moved).toEqual([[`${STAGING}/tdd`, `${SKILLS}/tdd`]]);
   });
 
   it("clears its staging directory whether the move worked or not", async () => {
     const done = build();
-    await done.restore.execute("tdd", HEAD);
+    await done.restore.execute(skillRef("tdd"), HEAD);
     expect(done.removed).toEqual([STAGING]);
 
     const failed = build({ moveFails: true });
-    await expect(failed.restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(
+      failed.restore.execute(skillRef("tdd"), HEAD),
+    ).resolves.toEqual({
       ok: false,
       error: "restore-failed",
     });
@@ -112,7 +116,7 @@ describe("RestoreSkill", () => {
 
   it("never fetches or pushes anything", async () => {
     const { restore, git } = build();
-    await restore.execute("tdd", HEAD);
+    await restore.execute(skillRef("tdd"), HEAD);
     expect(git.fetches).toBe(0);
     expect(git.pushed).toEqual([]);
     expect(git.published).toEqual([]);
@@ -120,16 +124,18 @@ describe("RestoreSkill", () => {
 
   it("refuses a name that is not a skill slug", async () => {
     const { restore, git } = build();
-    await expect(restore.execute("../escape", HEAD)).resolves.toEqual({
-      ok: false,
-      error: "invalid-skill",
-    });
+    await expect(restore.execute(skillRef("../escape"), HEAD)).resolves.toEqual(
+      {
+        ok: false,
+        error: "invalid-skill",
+      },
+    );
     expect(git.written).toEqual([]);
   });
 
   it("refuses when no Harness is connected", async () => {
     const { restore } = build({ root: undefined });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });
@@ -137,7 +143,7 @@ describe("RestoreSkill", () => {
 
   it("refuses when local HEAD moved after the confirmation read it", async () => {
     const { restore, git } = build({ head: "commit-xyz" });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "head-moved",
     });
@@ -146,7 +152,7 @@ describe("RestoreSkill", () => {
 
   it("refuses when local HEAD cannot be read at all", async () => {
     const { restore } = build({ head: null });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "restore-failed",
     });
@@ -154,7 +160,7 @@ describe("RestoreSkill", () => {
 
   it("refuses a skill with a staged edit or a staged deletion", async () => {
     const { restore, git } = build({ staged: true });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "staged-changes",
     });
@@ -164,7 +170,7 @@ describe("RestoreSkill", () => {
   // Fail-closed: an unasked question is not a clean index.
   it("refuses when the staged question could not be asked", async () => {
     const { restore } = build({ staged: null });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "staged-changes",
     });
@@ -172,7 +178,7 @@ describe("RestoreSkill", () => {
 
   it("refuses when the confirmed commit does not hold the skill", async () => {
     const { restore, git } = build({ atHead: ["jobs"] });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "not-in-commit",
     });
@@ -181,7 +187,7 @@ describe("RestoreSkill", () => {
 
   it("refuses when the commit's skills could not be read", async () => {
     const { restore } = build({ atHead: null });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "restore-failed",
     });
@@ -189,7 +195,7 @@ describe("RestoreSkill", () => {
 
   it("refuses when anything already sits at the destination", async () => {
     const { restore, git } = build({ describes: [FOLDER] });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-exists",
     });
@@ -199,7 +205,7 @@ describe("RestoreSkill", () => {
   // Something created the folder between the first look and the move.
   it("refuses a destination that appeared while the copy was built", async () => {
     const { restore, moved, removed } = build({ describes: [null, FOLDER] });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-exists",
     });
@@ -211,7 +217,7 @@ describe("RestoreSkill", () => {
     const { restore, git } = build({
       realpath: async (path) => (path === SKILLS ? "/elsewhere/skills" : path),
     });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
@@ -220,7 +226,7 @@ describe("RestoreSkill", () => {
 
   it("refuses when the committed copy could not be written", async () => {
     const { restore, moved, removed } = build({ write: "failed" });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "restore-failed",
     });
@@ -231,7 +237,7 @@ describe("RestoreSkill", () => {
   // The trees said the skill is there, so this is a broken read, not absence.
   it("refuses when the committed subtree could no longer be read", async () => {
     const { restore, moved, removed } = build({ write: "missing" });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "source-unreadable",
     });
@@ -249,7 +255,7 @@ describe("RestoreSkill", () => {
         return path;
       },
     });
-    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-unreadable",
     });
@@ -275,7 +281,7 @@ describe("RestoreSkill", () => {
           staged: true,
         });
 
-        await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+        await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
           ok: false,
           error: ambiguity,
         });
@@ -290,7 +296,7 @@ describe("RestoreSkill", () => {
     const { restore } = build({ locks });
 
     const held = locks.run(ROOT, async () => {
-      await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+      await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
         ok: false,
         error: "restore-in-progress",
       });

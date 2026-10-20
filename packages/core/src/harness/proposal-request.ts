@@ -1,5 +1,10 @@
-// The pull-request step around a push to `maestro/<skill>`.
+// The pull-request step around a push to a primitive's proposal branch.
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
+import {
+  type HarnessPrimitiveType,
+  type PrimitiveRef,
+  proposalBranch,
+} from "./harness-primitive";
 import {
   type HarnessReviewPort,
   matchesProposal,
@@ -8,37 +13,53 @@ import {
   waitingOn,
 } from "./harness-review-port";
 import type { HarnessChange } from "./harness-stages";
-import { promoteBranch } from "./promote-branch";
 import type { HarnessFacts } from "./read-harness-state";
 
-export type ProposalTarget = { origin: GitOrigin; base: string; name: string };
+export type ProposalTarget = {
+  origin: GitOrigin;
+  base: string;
+  ref: PrimitiveRef;
+};
 
 // Before merge a rename is an addition and a deletion, so no proposal is one.
 export type ProposalKind = Exclude<HarnessChange, "rename">;
 
-const TITLE_PREFIX: Record<ProposalKind, string> = {
-  addition: "Add skill:",
-  edit: "Edit skill:",
-  deletion: "Delete skill:",
+const TITLE_PREFIX: Record<
+  HarnessPrimitiveType,
+  Record<ProposalKind, string>
+> = {
+  skill: {
+    addition: "Add skill:",
+    edit: "Edit skill:",
+    deletion: "Delete skill:",
+  },
+  prompt: {
+    addition: "Add prompt:",
+    edit: "Edit prompt:",
+    deletion: "Delete prompt:",
+  },
 };
 
 // Every prefix Maestro ever wrote, so a title from before the kinds still
 // counts as Maestro's own words (#1399).
-const OWN_PREFIXES = [...Object.values(TITLE_PREFIX), "Promote skill:"];
+const OWN_PREFIXES = [
+  ...Object.values(TITLE_PREFIX).flatMap((byKind) => Object.values(byKind)),
+  "Promote skill:",
+];
 
 // Also the subject of the commit a push lands: GitHub's compare page titles a
 // one-commit request by it, where no request is opened for the author.
-export const proposalTitle = (name: string, kind: ProposalKind): string =>
-  `${TITLE_PREFIX[kind]} ${name}`;
+export const proposalTitle = (ref: PrimitiveRef, kind: ProposalKind): string =>
+  `${TITLE_PREFIX[ref.type][kind]} ${ref.name}`;
 
 const proposalText = (
-  name: string,
+  ref: PrimitiveRef,
   kind: ProposalKind,
 ): { title: string; body: string } => ({
-  title: proposalTitle(name, kind),
+  title: proposalTitle(ref, kind),
   body:
     kind === "deletion"
-      ? `Deletes ${name} from the Harness. Targets keep the skill until each one runs Update target after the next release.`
+      ? `Deletes ${ref.name} from the Harness. Targets keep the skill until each one runs Update target after the next release.`
       : "Proposed from the Maestro cockpit.",
 });
 
@@ -76,7 +97,7 @@ export const openProposals = (
       request.state === "open" &&
       matchesProposal(request, {
         ownerRepo: target.origin.ownerRepo,
-        branch: promoteBranch(target.name),
+        branch: proposalBranch(target.ref),
         base: target.base,
       }),
   );
@@ -87,9 +108,9 @@ export const requestProposal = (
   kind: ProposalKind,
 ): Promise<ReviewWriteOutcome> =>
   review.createRequest(target.origin, {
-    head: promoteBranch(target.name),
+    head: proposalBranch(target.ref),
     base: target.base,
-    ...proposalText(target.name, kind),
+    ...proposalText(target.ref, kind),
   });
 
 // Only Maestro's own title of another kind changes: any other title is
@@ -101,12 +122,12 @@ const retitle = async (
   request: ReviewRequest,
 ): Promise<void> => {
   const own = OWN_PREFIXES.some((prefix) => request.title.startsWith(prefix));
-  if (!own || request.title.startsWith(TITLE_PREFIX[kind])) {
+  if (!own || request.title.startsWith(TITLE_PREFIX[target.ref.type][kind])) {
     return;
   }
   // A failed retitle is not reported: the pushed branch is the truth.
   await review.editRequest(target.origin, request.number, {
-    title: proposalText(target.name, kind).title,
+    title: proposalText(target.ref, kind).title,
   });
 };
 

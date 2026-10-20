@@ -1,6 +1,11 @@
 // The three GitHub-only proposal mutations, each rechecked against a fresh read.
 import { isValidSkillSlug } from "../deploy/package-ref";
 import {
+  type HarnessObject,
+  type PrimitiveRef,
+  proposalBranch,
+} from "./harness-primitive";
+import {
   type HarnessReviewPort,
   isOthers,
   matchesProposal,
@@ -8,7 +13,6 @@ import {
   type ViewerRead,
   waitingOn,
 } from "./harness-review-port";
-import { promoteBranch } from "./promote-branch";
 import {
   openProposals,
   type ProposalKind,
@@ -17,7 +21,6 @@ import {
   requestProposal,
 } from "./proposal-request";
 import type { HarnessGitPort } from "./read-harness-state";
-import type { HarnessSkillTree } from "./skill-movements";
 
 export type ProposalActionError =
   | "not-configured"
@@ -56,7 +59,7 @@ type CheckedFacts = Ready | { ok: false; error: ProposalActionError };
 export class ProposalActions {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    git: Pick<HarnessGitPort, "readFacts" | "readSkillTrees">;
+    git: Pick<HarnessGitPort, "readFacts" | "readPrimitives">;
     review: HarnessReviewPort;
   };
 
@@ -65,8 +68,8 @@ export class ProposalActions {
   }
 
   // Pushes nothing: no newer local edit rides along.
-  async create(name: string): Promise<ProposalActionResult> {
-    const checked = await this.checkedFacts(name);
+  async create(ref: PrimitiveRef): Promise<ProposalActionResult> {
+    const checked = await this.checkedFacts(ref);
     if (!checked.ok) {
       return checked;
     }
@@ -77,9 +80,9 @@ export class ProposalActions {
       return { ok: false, error: "request-exists" };
     }
     // The pushed branch alone says which kind it proposes; an unread one names none.
-    const pushed = await this.deps.git.readSkillTrees(
+    const pushed = await this.deps.git.readPrimitives(
       checked.root,
-      `refs/remotes/origin/${promoteBranch(name)}`,
+      `refs/remotes/origin/${proposalBranch(ref)}`,
     );
     if (pushed === null) {
       return { ok: false, error: "no-answer" };
@@ -96,24 +99,31 @@ export class ProposalActions {
   // Judged against the default branch, as the Change column is.
   private async kindOf(
     checked: Ready,
-    pushed: HarnessSkillTree[],
+    pushed: HarnessObject[],
   ): Promise<ProposalKind | null> {
-    const { name } = checked.target;
-    if (!pushed.some((skill) => skill.name === name)) {
+    const { ref } = checked.target;
+    const holds = (objects: HarnessObject[]) =>
+      objects.some(
+        (object) => object.type === ref.type && object.name === ref.name,
+      );
+    if (!holds(pushed)) {
       return "deletion";
     }
     const remote =
       checked.head === null
         ? null
-        : await this.deps.git.readSkillTrees(checked.root, checked.head);
+        : await this.deps.git.readPrimitives(checked.root, checked.head);
     if (remote === null) {
       return null;
     }
-    return remote.some((skill) => skill.name === name) ? "edit" : "addition";
+    return holds(remote) ? "edit" : "addition";
   }
 
-  async reopen(name: string, number: number): Promise<ProposalActionResult> {
-    const checked = await this.checkedFacts(name);
+  async reopen(
+    ref: PrimitiveRef,
+    number: number,
+  ): Promise<ProposalActionResult> {
+    const checked = await this.checkedFacts(ref);
     if (!checked.ok) {
       return checked;
     }
@@ -136,8 +146,11 @@ export class ProposalActions {
   }
 
   // Leaves the remote branch and the author's files as they are.
-  async withdraw(name: string, number: number): Promise<ProposalActionResult> {
-    const checked = await this.checkedFacts(name);
+  async withdraw(
+    ref: PrimitiveRef,
+    number: number,
+  ): Promise<ProposalActionResult> {
+    const checked = await this.checkedFacts(ref);
     if (!checked.ok) {
       return checked;
     }
@@ -155,8 +168,8 @@ export class ProposalActions {
     );
   }
 
-  private async checkedFacts(name: string): Promise<CheckedFacts> {
-    if (!isValidSkillSlug(name)) {
+  private async checkedFacts(ref: PrimitiveRef): Promise<CheckedFacts> {
+    if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
@@ -175,8 +188,8 @@ export class ProposalActions {
     if (review.outcome === "failed" || !review.complete) {
       return { ok: false, error: "review-unknown" };
     }
-    const branch = promoteBranch(name);
-    const target = { origin, base, name };
+    const branch = proposalBranch(ref);
+    const target = { origin, base, ref };
     const open = openProposals(review.requests, target);
     const viewer = await this.deps.review.readViewer(origin);
     return {

@@ -8,8 +8,11 @@ Where to look first. Layer rules and package shape: `.claude/rules/architecture.
   files are named by the issue that asked.
 - **Adapter wiring** (which real class backs a port): `realDeps()` in
   `packages/server/src/app.ts`. Routes: `packages/server/src/routes/<feature>-routes.ts`.
-- **Harness git** port and `HarnessGitAdapter`: `packages/core/src/harness/harness-git.ts`;
-  there is no `-adapter` file. `gh`: `gh-cli-adapter.ts` beside it.
+- **Harness git**: the port in `packages/core/src/harness/read-harness-state.ts`,
+  `HarnessGitAdapter` in `harness-git.ts` (no `-adapter` file), the git steps
+  that differ by primitive type in `harness-primitive-git.ts`, and what differs
+  by type (path, branch, listing) in `harness-primitive.ts`. `gh`:
+  `gh-cli-adapter.ts` beside it.
 - **Drift / Behind**: read in `packages/core/src/drift/` (from `apm outdated`);
   served by `/api/drift` in `deploy-routes.ts`, not a `drift-routes.ts`. The
   target's reading lives in `packages/web/src/deploy-state/target-status.ts`.

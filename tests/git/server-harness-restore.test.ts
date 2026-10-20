@@ -61,7 +61,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       await new HarnessGitAdapter({
         released: new ReleasedContentReader(),
       }).readMovementTrees(root)
-    )?.working.tdd ?? null;
+    )?.skill.working.tdd ?? null;
 
   const treeAt = async (ref: string) =>
     (await git(root, "rev-parse", `${ref}:${FOLDER}`)).stdout.trim();

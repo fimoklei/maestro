@@ -6,3 +6,6 @@ export const HARNESS_SKILLS_DIR = ".apm/skills";
 
 export const harnessSkillSubpath = (name: string): string =>
   `${HARNESS_SKILLS_DIR}/${name}`;
+
+// Outside `.apm/`, so APM never delivers a prompt.
+export const HARNESS_PROMPTS_DIR = ".maestro/prompts";

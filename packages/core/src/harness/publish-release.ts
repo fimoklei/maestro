@@ -10,8 +10,8 @@ import type {
   ReleasePlan,
   ReleasePlanResult,
 } from "./read-harness-state";
+import { readReleaseDelta } from "./release-delta";
 import { highestReleaseTag } from "./release-tag";
-import { diffSkillTrees } from "./skill-movements";
 
 export type PublishReleaseError =
   | "not-configured"
@@ -105,15 +105,11 @@ export class PublishRelease {
     }
 
     // After the staleness check, so a stale plan reports `plan-changed` (#970).
-    const previous =
-      released === null
-        ? []
-        : await this.deps.git.readSkillTrees(root, released.commit);
-    const current = await this.deps.git.readSkillTrees(root, head);
-    if (previous === null || current === null) {
+    const delta = await readReleaseDelta(this.deps.git, root, released, head);
+    if (delta === null) {
       return { ok: false, error: "no-answer" };
     }
-    if (diffSkillTrees(previous, current).length === 0) {
+    if (delta.movements.length === 0) {
       return await this.refuse(root, "empty-delta", true);
     }
 

@@ -30,6 +30,10 @@ const HARNESS: HarnessState = {
 const IMPORTED_ROW: HarnessStageRow = {
   stage: "pending-proposal",
   skill: "code-review",
+  type: "skill",
+  name: "code-review",
+  path: ".apm/skills/code-review",
+  branch: "maestro/code-review",
   status: "not-yet-proposed",
   change: "edit",
   requests: [],

@@ -1,11 +1,24 @@
 import { describe, expect, it } from "vitest";
+import type { HarnessMovement } from "./harness-movements";
 import { proposeReleaseVersion } from "./propose-release-version";
-import type { SkillMovement } from "./skill-movements";
 
-const added: SkillMovement = { kind: "added", name: "planner" };
-const changed: SkillMovement = { kind: "changed", name: "reviewer" };
-const removed: SkillMovement = { kind: "removed", name: "old" };
-const renamed: SkillMovement = {
+const added: HarnessMovement = {
+  type: "skill",
+  kind: "added",
+  name: "planner",
+};
+const changed: HarnessMovement = {
+  type: "skill",
+  kind: "changed",
+  name: "reviewer",
+};
+const removed: HarnessMovement = {
+  type: "skill",
+  kind: "removed",
+  name: "old",
+};
+const renamed: HarnessMovement = {
+  type: "skill",
   kind: "renamed",
   name: "new",
   previousName: "old",
@@ -47,6 +60,30 @@ describe("proposeReleaseVersion", () => {
     const proposal = proposeReleaseVersion("v1.2.3", [changed]);
     expect(proposal.proposedStep).toBe("patch");
     expect(proposal.versions.patch).toBe("v1.2.4");
+  });
+
+  it("proposes patch for any prompt change, since no target holds a prompt", () => {
+    const prompt = (kind: HarnessMovement["kind"]): HarnessMovement => ({
+      type: "prompt",
+      kind,
+      name: "pr-review",
+    });
+    const proposal = proposeReleaseVersion("v1.2.3", [
+      prompt("added"),
+      prompt("removed"),
+    ]);
+    expect(proposal.proposedStep).toBe("patch");
+  });
+
+  it("lets the larger skill step win in a release that mixes types", () => {
+    const prompt: HarnessMovement = {
+      type: "prompt",
+      kind: "changed",
+      name: "pr-review",
+    };
+    expect(
+      proposeReleaseVersion("v1.2.3", [prompt, removed]).proposedStep,
+    ).toBe("major");
   });
 
   it("offers all three steps computed from the previous tag", () => {

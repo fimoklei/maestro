@@ -2,7 +2,7 @@
 // content, never ancestry; every unknown stays null.
 import type { HarnessTag } from "../harness/read-harness-state";
 import { highestReleaseTag, RELEASE_TAG_PATTERN } from "../harness/release-tag";
-import type { HarnessSkillTree } from "../harness/skill-movements";
+import type { HarnessSkillTree } from "../harness/released-content";
 import type { ReleaseHead } from "./deploy-state-types";
 
 export type ReleaseHeadGitPort = {
