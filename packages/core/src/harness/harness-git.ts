@@ -211,7 +211,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
       );
       // A save halfway through `git add` mixes two revisions: refuse a tree
       // that moved, since a pushed branch cannot be taken back.
-      // ponytail: detects the race, does not prevent it.
       if (
         (await this.hashWorkingSkill(root, subpath, indexDir)) !== skillTree
       ) {
@@ -645,8 +644,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return parseSkillTreeListing(listing);
   }
 
-  // ponytail: one `git log` per movement; batch into a single `--name-status`
-  // walk if a first release of a large harness makes the read slow.
   async readSkillAuthors(
     root: string,
     ref: string,
