@@ -258,7 +258,7 @@ describe("Harness promotion", () => {
     await screen.findByText("lint-rules");
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Actions for lint-rules in Pending review",
+        name: "Actions for lint-rules skill in Pending review",
       }),
     );
     const menu = await screen.findByRole("menu");

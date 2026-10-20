@@ -201,7 +201,7 @@ describe("Harness freshness and failed reads", () => {
     expect(release).not.toBeDisabled();
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Actions for tdd in Pending proposal",
+        name: "Actions for tdd skill in Pending proposal",
       }),
     );
     const menu = await screen.findByRole("menu");

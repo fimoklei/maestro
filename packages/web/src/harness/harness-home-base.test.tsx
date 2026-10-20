@@ -480,7 +480,7 @@ describe("Harness home base", () => {
     expect(screen.getByText("All released")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Skills you import or edit in your clone will appear here.",
+        "Skills and prompts you import or edit in your clone will appear here.",
       ),
     ).toBeInTheDocument();
     // The empty state repeats Import skill from band 1 (#994).
@@ -599,7 +599,7 @@ describe("Harness home base", () => {
 
     await userEvent.click(
       await screen.findByRole("button", {
-        name: "Actions for tdd in Pending proposal",
+        name: "Actions for tdd skill in Pending proposal",
       }),
     );
     const menu = await screen.findByRole("menu");

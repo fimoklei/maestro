@@ -19,6 +19,7 @@ import {
   reviewerLine,
   STAGE_NAMES,
   type StageContext,
+  TYPE_NOUN,
 } from "./stage-copy";
 
 // One row of the Harness table (#994). A primitive can hold a row in every
@@ -33,10 +34,10 @@ export type HarnessTableRow = HarnessStageRow & {
 export const rowId = (row: Pick<HarnessStageRow, "stage" | "type" | "name">) =>
   `${row.stage}:${row.type}:${row.name}`;
 
-// The ⋮ trigger is named by its stage too: three menus called "Actions for
-// tdd" would name the same thing three times.
+// The ⋮ trigger is named by its type and stage too: a skill and a prompt
+// called tdd, in three stages, would otherwise share one name.
 const rowMenuLabel = (row: HarnessStageRow) =>
-  `Actions for ${row.name} in ${STAGE_NAMES[row.stage]}`;
+  `Actions for ${row.name} ${TYPE_NOUN[row.type]} in ${STAGE_NAMES[row.stage]}`;
 
 // The Status cell's hover card: the row's sentences in short, and in full in
 // the pane (#994). The keyboard opens this card alone, so it also says what
