@@ -80,3 +80,25 @@ describe("useViewOptions statusCounts", () => {
     expect(result.current.filterCount).toBe(0);
   });
 });
+
+describe("useViewOptions on a table with no Status column", () => {
+  it("offers no Status filter and no grouping, only the columns", () => {
+    const { result } = renderHook(() =>
+      useViewOptions(PLANTS, {
+        kind: { label: "Kind", options: [], of: () => "tree" },
+        status: null,
+        groupings: [],
+        initialGrouping: "none",
+        columns: [{ value: "status", label: "Status" }],
+      }),
+    );
+    const [filter, display] = result.current.menus;
+
+    expect(filter.sections.map((section) => section.label)).toEqual(["Kind"]);
+    expect(display.sections.map((section) => section.label)).toEqual([
+      "Columns",
+    ]);
+    expect(PLANTS.filter(result.current.shown)).toHaveLength(PLANTS.length);
+    expect(result.current.statusCounts(CHIPS)).toEqual([]);
+  });
+});

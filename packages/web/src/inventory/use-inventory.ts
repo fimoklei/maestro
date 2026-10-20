@@ -1,10 +1,8 @@
-import type { GitHubPage } from "@maestro/core";
+import type { GitHubPage, InventoryPrimitive } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-export type Primitive = { type: "skill"; name: string; description: string };
-
-type InventoryResponse = { primitives: Primitive[] };
+type InventoryResponse = { primitives: InventoryPrimitive[] };
 
 // Exported so the connect mutation invalidates this exact cache entry.
 export const INVENTORY_KEY = ["inventory", "primitives"] as const;
@@ -25,13 +23,13 @@ export function useInventory({ enabled = true }: { enabled?: boolean } = {}) {
 }
 
 /** One type's primitives, from the same cached read: a view switch sends no request. */
-export function useInventoryOf<T extends Primitive["type"]>(type: T) {
+export function useInventoryOf<T extends InventoryPrimitive["type"]>(type: T) {
   return useQuery({
     queryKey: INVENTORY_KEY,
     queryFn: fetchInventoryPrimitives,
     select: (data) =>
       data.primitives.filter(
-        (primitive): primitive is Extract<Primitive, { type: T }> =>
+        (primitive): primitive is Extract<InventoryPrimitive, { type: T }> =>
           primitive.type === type,
       ),
   });

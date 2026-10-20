@@ -72,6 +72,7 @@ export function BandRow({
   const width = useWidthRem(ref, (element) => element);
   const now = useNow();
   const summary = band === undefined ? null : bandSummary(band.summary, now);
+  const family = summary?.family ?? null;
   const searchRule: DropRule | undefined = band?.search && {
     rank: "search",
     belowRem: band.search.iconBelowRem,
@@ -100,54 +101,56 @@ export function BandRow({
     <div ref={ref} className="flex min-w-0 flex-1 items-center gap-panel">
       {summary === null ? null : (
         <>
-          <span className="flex flex-none items-center gap-inline whitespace-nowrap text-row text-gray-11">
-            <span
-              aria-hidden="true"
-              className={cn(
-                "size-2 flex-none rounded-full",
-                STATUS_TOKENS[summary.family].dot,
+          {family === null ? null : (
+            <span className="flex flex-none items-center gap-inline whitespace-nowrap text-row text-gray-11">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "size-2 flex-none rounded-full",
+                  STATUS_TOKENS[family].dot,
+                )}
+              />
+              {summary.word === null ? null : (
+                <span id={band?.wordId}>{summary.word}</span>
               )}
-            />
-            {summary.word === null ? null : (
-              <span id={band?.wordId}>{summary.word}</span>
-            )}
-            {summary.counts.map(({ word, count, filter }) =>
-              // A hidden count stays for screen readers, never as an unseen button.
-              countsHidden || filter === undefined ? (
-                <span
-                  key={word}
-                  data-count
-                  className={cn(countsHidden && "sr-only")}
-                >{`${word} ${count}`}</span>
-              ) : (
-                <button
-                  key={word}
-                  data-count
-                  type="button"
-                  aria-pressed={filter.pressed}
-                  onClick={filter.onToggle}
-                  className={cn(
-                    "flex items-center gap-tight rounded-chip border px-1.5",
-                    filter.pressed
-                      ? "border-gray-7 bg-gray-5"
-                      : "border-transparent bg-gray-3 hover:bg-gray-4",
-                  )}
-                >
-                  {`${word} ${count}`}
-                  {filter.pressed ? (
-                    <X
-                      aria-hidden="true"
-                      strokeWidth={1.5}
-                      className="size-3"
-                    />
-                  ) : null}
-                </button>
-              ),
-            )}
-          </span>
+              {summary.counts.map(({ word, count, filter }) =>
+                // A hidden count stays for screen readers, never as an unseen button.
+                countsHidden || filter === undefined ? (
+                  <span
+                    key={word}
+                    data-count
+                    className={cn(countsHidden && "sr-only")}
+                  >{`${word} ${count}`}</span>
+                ) : (
+                  <button
+                    key={word}
+                    data-count
+                    type="button"
+                    aria-pressed={filter.pressed}
+                    onClick={filter.onToggle}
+                    className={cn(
+                      "flex items-center gap-tight rounded-chip border px-1.5",
+                      filter.pressed
+                        ? "border-gray-7 bg-gray-5"
+                        : "border-transparent bg-gray-3 hover:bg-gray-4",
+                    )}
+                  >
+                    {`${word} ${count}`}
+                    {filter.pressed ? (
+                      <X
+                        aria-hidden="true"
+                        strokeWidth={1.5}
+                        className="size-3"
+                      />
+                    ) : null}
+                  </button>
+                ),
+              )}
+            </span>
+          )}
           {facts.length === 0 ? null : (
             <>
-              <Separator />
+              {family === null ? null : <Separator />}
               <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
                 {facts.map(({ drop: _drop, ...fact }) => (
                   <BandFact
@@ -161,7 +164,7 @@ export function BandRow({
           )}
           {summary.age === null ? null : (
             <>
-              <Separator />
+              {family === null && facts.length === 0 ? null : <Separator />}
               <span className="flex flex-none items-center gap-tight whitespace-nowrap text-gray-11 text-meta">
                 <Clock
                   role="img"

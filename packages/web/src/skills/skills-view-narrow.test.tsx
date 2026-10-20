@@ -46,6 +46,7 @@ describe("Skills band 2 at a narrow window", () => {
         primitives={["tdd", "caveman", "brain"].map((name) => ({
           type: "skill",
           name,
+          path: `.apm/skills/${name}`,
           description: "",
         }))}
         repos={[]}
