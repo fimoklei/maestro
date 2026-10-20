@@ -41,6 +41,23 @@ gh api -X POST repos/fimoklei/maestro/issues/<ticket>/dependencies/blocked_by -F
 
 Loop over literal issue numbers (`for n in 914 915 916`), one call per ticket: zsh never word-splits `$ids`, so a list held in one variable reaches `gh` as a single argument. Done when `gh api repos/fimoklei/maestro/issues/<spec>/sub_issues --jq '.[].number'` lists every new ticket.
 
+## Wayfinding operations
+
+Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+
+- **Map**: an issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. Edit the body with `gh issue edit <map> --body-file <path>`.
+- **Child ticket**: a sub-issue of the map (recipe above, the map as parent), labelled `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`).
+- **Blocking**: a native blocked-by link (recipe above). A ticket is unblocked when every blocker is closed.
+- **Frontier query**: the map's open, unassigned, unblocked children, in map order; the first wins.
+
+  ```sh
+  gh api "repos/fimoklei/maestro/issues/<map>/sub_issues?per_page=100" \
+    --jq '.[] | select(.state=="open" and (.assignees|length)==0 and .issue_dependencies_summary.blocked_by==0) | [.number, .title] | @tsv'
+  ```
+
+- **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
+- **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
+
 ## When a skill says "fetch the relevant ticket"
 
 Run `gh issue view <number> --json number,title,body,labels,comments`.
