@@ -186,20 +186,19 @@ export const PROPOSAL_BODY: RequestShape = {
 
 export const DELETION_BODY: RequestShape = {
   message:
-    "Nothing was proposed. Reload the page, then remove the skill again.",
+    "Nothing was proposed. Reload the page, then propose the deletion again.",
   detail:
     'The request carries a type, a name and the origin/HEAD tree it was confirmed against: { type: "skill" | "prompt", name: string, seenRemoteTree: string }.',
 };
 
 export const LOCAL_DELETION_BODY: RequestShape = {
-  message: "Nothing was deleted. Reload the page, then delete the skill again.",
+  message: "Nothing was deleted. Reload the page, then delete it again.",
   detail:
     'The request carries a type, a name and the working tree it was confirmed against: { type: "skill" | "prompt", name: string, seenWorkingTree: string }.',
 };
 
 export const RESTORE_BODY: RequestShape = {
-  message:
-    "Nothing was restored. Reload the page, then restore the skill again.",
+  message: "Nothing was restored. Reload the page, then restore it again.",
   detail:
     'The request carries a type, a name and the local commit it was confirmed against: { type: "skill" | "prompt", name: string, seenHeadCommit: string }.',
 };
