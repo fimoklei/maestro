@@ -41,7 +41,7 @@ export const withStages = (
 
 // A release plan with one added skill, priced from v1.2.3.
 export const PLAN = {
-  delta: [{ kind: "added", name: "research", author: "Grace" }],
+  delta: [{ type: "skill", kind: "added", name: "research", author: "Grace" }],
   previousTag: "v1.2.3",
   previousTagCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   proposedStep: "minor",
@@ -275,7 +275,7 @@ export function renderHarness() {
   // — the open-time refresh must still be one request.
   return renderWithQuery(
     <StrictMode>
-      <HarnessView openSkill={null} />
+      <HarnessView openPrimitive={null} />
       <ToastHost />
     </StrictMode>,
   );
@@ -367,12 +367,13 @@ export const ON_DISK: HarnessState = {
 };
 
 export const openRowMenu = async (
-  skill: string,
+  name: string,
   stage = "Pending proposal",
+  type: "skill" | "prompt" = "skill",
 ) => {
   await userEvent.click(
     await screen.findByRole("button", {
-      name: `Actions for ${skill} in ${stage}`,
+      name: `Actions for ${name} ${type} in ${stage}`,
     }),
   );
   return screen.findByRole("menu");

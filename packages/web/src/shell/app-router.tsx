@@ -1,4 +1,4 @@
-import type { InventoryPrimitive } from "@maestro/core";
+import type { InventoryPrimitive, PrimitiveRef } from "@maestro/core";
 import type { ComponentType } from "react";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router";
 import { ConnectView } from "../connect-gate/connect-view";
@@ -55,8 +55,10 @@ export function AppRoutes() {
 
 // Import local edits names the one skill it landed (#1249).
 function HarnessScreen() {
-  const state = useLocation().state as { openSkill?: string } | null;
-  return <HarnessView openSkill={state?.openSkill ?? null} />;
+  const state = useLocation().state as {
+    openPrimitive?: PrimitiveRef;
+  } | null;
+  return <HarnessView openPrimitive={state?.openPrimitive ?? null} />;
 }
 
 // Keyed by the wire type, so a view type without a screen fails to compile.

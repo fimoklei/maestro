@@ -108,7 +108,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     }
     const stage = result.state.stages.release;
     return stage.outcome === "read"
-      ? stage.rows.map((row) => `${row.skill}:${row.change}`)
+      ? stage.rows.map((row) => `${row.name}:${row.change}`)
       : [stage.outcome];
   };
 

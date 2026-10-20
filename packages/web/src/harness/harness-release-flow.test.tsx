@@ -226,7 +226,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView openSkill={null} />
+        <HarnessView openPrimitive={null} />
         <InventoryProbe />
         <ToastHost />
       </StrictMode>,
@@ -266,7 +266,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView openSkill={null} />
+        <HarnessView openPrimitive={null} />
         <InventoryProbe />
         <ToastHost />
       </StrictMode>,
@@ -306,7 +306,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView openSkill={null} />
+        <HarnessView openPrimitive={null} />
         <InventoryProbe />
         <ToastHost />
       </StrictMode>,
@@ -399,7 +399,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView openSkill={null} />
+        <HarnessView openPrimitive={null} />
         <IdleInventoryProbe />
       </StrictMode>,
     );
@@ -652,6 +652,10 @@ describe("Harness release", () => {
   it.each([
     ["a missing version map", { versions: undefined }],
     ["a movement that is not one", { delta: [null] }],
+    [
+      "a movement with no type",
+      { delta: [{ kind: "added", name: "research", author: null }] },
+    ],
     ["a step the dialog has no version for", { proposedStep: "sideways" }],
   ])("plans again rather than paint %s", async (_name, broken) => {
     const calls = stubHarnessServer({

@@ -98,8 +98,6 @@ type ProposalComparison =
 
 export type HarnessStageRow = {
   stage: HarnessStage;
-  // The name again, until the cockpit reads `type` and `name`.
-  skill: string;
   type: HarnessPrimitiveType;
   name: string;
   // The primitive's folder or file in the Harness.
@@ -127,7 +125,7 @@ export type HarnessStageRow = {
   restorable: boolean;
   // The skill's folder is in the working tree, so Delete skill has something
   // to remove. False where the refs could not be read.
-  folderOnDisk: boolean;
+  onDisk: boolean;
   previousName: string | null;
 };
 
@@ -266,7 +264,6 @@ const blankRow = (
   change: HarnessChange,
 ): HarnessStageRow => ({
   stage,
-  skill: ref.name,
   type: ref.type,
   name: ref.name,
   path: primitivePath(ref),
@@ -282,7 +279,7 @@ const blankRow = (
   localOnly: false,
   remoteTree: null,
   restorable: false,
-  folderOnDisk: false,
+  onDisk: false,
   previousName: null,
 });
 
@@ -318,7 +315,7 @@ const releaseStage = (
         "not-yet-released",
         RELEASE_CHANGE[movement.kind],
       ),
-      folderOnDisk: isOnDisk(trees, movement),
+      onDisk: isOnDisk(trees, movement),
       previousName: movement.previousName ?? null,
     })),
   };
@@ -400,7 +397,7 @@ const proposalStage = (
         changeOf(isLocalDeletion(hashes), hashes.remote),
       ),
       restorable: isRestorable(trees, ref),
-      folderOnDisk: isOnDisk(trees, ref),
+      onDisk: isOnDisk(trees, ref),
       requests: sole === undefined ? [] : [link(sole)],
       comparison:
         proposal === null
@@ -466,7 +463,7 @@ const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
     );
     const local = {
       restorable: isRestorable(trees, ref),
-      folderOnDisk: isOnDisk(trees, ref),
+      onDisk: isOnDisk(trees, ref),
     };
     if (open.length > 1) {
       rows.push({

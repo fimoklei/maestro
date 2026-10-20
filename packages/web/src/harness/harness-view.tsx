@@ -1,4 +1,4 @@
-import type { ReleasePlan, SemverStep } from "@maestro/core";
+import type { PrimitiveRef, ReleasePlan, SemverStep } from "@maestro/core";
 import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
 import {
   type RefObject,
@@ -73,10 +73,10 @@ const LABELS_BELOW_REM = 62;
 const COUNTS_BELOW_REM = 20;
 
 export function HarnessView({
-  openSkill,
+  openPrimitive,
 }: {
-  /** A skill that just landed elsewhere, opened as its Pending proposal. */
-  openSkill: string | null;
+  /** A primitive that just landed elsewhere, opened as its Pending proposal. */
+  openPrimitive: PrimitiveRef | null;
 }) {
   const harness = useHarness();
   const state = harness.data;
@@ -91,9 +91,9 @@ export function HarnessView({
     failure: harnessStateNotice(harness.error) ?? refreshNotice(refresh.error),
     onReread: fetchRemote,
     openOnArrival:
-      openSkill === null
+      openPrimitive === null
         ? null
-        : rowId({ stage: "pending-proposal", skill: openSkill }),
+        : rowId({ stage: "pending-proposal", ...openPrimitive }),
   });
   const reread = table.reread;
   const { open } = table;
@@ -144,7 +144,7 @@ export function HarnessView({
   const importFlow = useImportFlow(table.report, ({ name }) => {
     // An import writes the working tree, so its row is Pending proposal's —
     // even where the skill also holds a later one (#865).
-    open(rowId({ stage: "pending-proposal", skill: name }));
+    open(rowId({ stage: "pending-proposal", type: "skill", name }));
     importSaid.current = true;
   });
   const presses = useHarnessPresses(state, table.report);

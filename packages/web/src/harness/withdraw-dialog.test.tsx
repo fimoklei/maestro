@@ -7,6 +7,7 @@ describe("WithdrawDialog", () => {
     render(
       <WithdrawDialog
         skill="research"
+        branch="maestro/research"
         number={45}
         onClose={vi.fn()}
         onConfirm={vi.fn()}

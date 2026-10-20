@@ -137,16 +137,16 @@ describe("ReadHarnessState", () => {
             outcome: "read",
             rows: [
               {
-                skill: "grilling",
+                name: "grilling",
                 status: "not-yet-released",
                 change: "deletion",
               },
               {
-                skill: "research",
+                name: "research",
                 status: "not-yet-released",
                 change: "addition",
               },
-              { skill: "tdd", status: "not-yet-released", change: "edit" },
+              { name: "tdd", status: "not-yet-released", change: "edit" },
             ],
           },
         },
@@ -275,16 +275,16 @@ describe("ReadHarnessState stages", () => {
         stages: {
           proposal: {
             rows: [
-              { skill: "docs", status: "not-yet-proposed" },
+              { name: "docs", status: "not-yet-proposed" },
               // The author's own proposal is never a teammate's change.
               {
-                skill: "tdd",
+                name: "tdd",
                 status: "new-local-work",
                 concurrentChange: false,
               },
             ],
           },
-          review: { rows: [{ skill: "tdd", status: "pull-request-missing" }] },
+          review: { rows: [{ name: "tdd", status: "pull-request-missing" }] },
         },
       },
     });
@@ -301,7 +301,7 @@ describe("ReadHarnessState stages", () => {
       state: {
         stages: {
           review: {
-            rows: [{ skill: "fresh", status: "pull-request-missing" }],
+            rows: [{ name: "fresh", status: "pull-request-missing" }],
           },
         },
       },
@@ -322,7 +322,7 @@ describe("ReadHarnessState stages", () => {
           proposal: {
             rows: [
               {
-                skill: "tdd",
+                name: "tdd",
                 status: "new-local-work",
                 concurrentChange: false,
               },
@@ -331,7 +331,7 @@ describe("ReadHarnessState stages", () => {
           review: {
             rows: [
               {
-                skill: "tdd",
+                name: "tdd",
                 status: "pull-request-missing",
                 change: "deletion",
               },
@@ -352,7 +352,7 @@ describe("ReadHarnessState stages", () => {
         stages: {
           proposal: {
             rows: [
-              { skill: "tdd", status: "not-yet-proposed", change: "deletion" },
+              { name: "tdd", status: "not-yet-proposed", change: "deletion" },
             ],
           },
         },
@@ -372,12 +372,12 @@ describe("ReadHarnessState stages", () => {
           proposal: {
             rows: [
               {
-                skill: "new-name",
+                name: "new-name",
                 status: "not-yet-proposed",
                 change: "addition",
               },
               {
-                skill: "old-name",
+                name: "old-name",
                 status: "not-yet-proposed",
                 change: "deletion",
               },
@@ -421,7 +421,7 @@ describe("ReadHarnessState stages", () => {
       ok: true,
       state: {
         stages: {
-          proposal: { rows: [{ skill: "tdd", concurrentChange: true }] },
+          proposal: { rows: [{ name: "tdd", concurrentChange: true }] },
         },
       },
     });
@@ -458,7 +458,7 @@ describe("ReadHarnessState stages", () => {
           proposal: {
             rows: [
               {
-                skill: "tdd",
+                name: "tdd",
                 status: "not-yet-proposed",
                 concurrentChange: true,
               },
@@ -480,7 +480,7 @@ describe("ReadHarnessState stages", () => {
           proposal: {
             rows: [
               {
-                skill: "tdd",
+                name: "tdd",
                 status: "not-yet-proposed",
                 change: "edit",
                 concurrentChange: false,
@@ -503,7 +503,7 @@ describe("ReadHarnessState stages", () => {
       ok: true,
       state: {
         stages: {
-          proposal: { rows: [{ skill: "tdd", concurrentChange: false }] },
+          proposal: { rows: [{ name: "tdd", concurrentChange: false }] },
         },
       },
     });
@@ -527,7 +527,7 @@ describe("ReadHarnessState stages", () => {
       ok: true,
       state: {
         stages: {
-          proposal: { rows: [{ skill: "tdd", concurrentChange: false }] },
+          proposal: { rows: [{ name: "tdd", concurrentChange: false }] },
         },
       },
     });
@@ -588,7 +588,7 @@ describe("ReadHarnessState stages", () => {
           review: {
             rows: [
               {
-                skill: "tdd",
+                name: "tdd",
                 status: "proposed-by-other",
                 waitingOn: "teammate",
               },
@@ -624,7 +624,7 @@ describe("ReadHarnessState stages", () => {
       ok: true,
       state: {
         stages: {
-          proposal: { rows: [{ skill: "tdd", status: "not-yet-proposed" }] },
+          proposal: { rows: [{ name: "tdd", status: "not-yet-proposed" }] },
           review: { outcome: "unavailable" },
           release: { outcome: "read" },
         },

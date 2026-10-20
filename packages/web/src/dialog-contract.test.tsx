@@ -346,6 +346,7 @@ const ON_DIALOG: Row[] = [
           deletionDialog({
             kind: "propose",
             origin: "fimoklei/harness",
+            branch: "maestro/research",
             seenRemoteTree: "0123456789abcdef0123456789abcdef01234567",
             openRequest: { number: 45, author: "Grace" },
           }),
@@ -448,6 +449,7 @@ const ON_DIALOG: Row[] = [
     render: ({ running, onClose }) => (
       <WithdrawDialog
         skill="research"
+        branch="maestro/research"
         number={45}
         onClose={onClose}
         onConfirm={vi.fn()}

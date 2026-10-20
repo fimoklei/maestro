@@ -15,9 +15,9 @@ export type RowActionHandlers = {
   // Takes the row, not the name: two stages carry the press, and a refusal
   // belongs to the one it was made in (#865).
   promote: (row: HarnessStageRow) => void;
-  create: (skill: string) => void;
-  reopen: (skill: string, number: number) => void;
-  withdraw: (skill: string, number: number) => void;
+  create: (row: HarnessStageRow) => void;
+  reopen: (row: HarnessStageRow, number: number) => void;
+  withdraw: (row: HarnessStageRow, number: number) => void;
   // Takes the row: whether the skill is local-only picks the dialog's copy.
   deleteLocal: (row: HarnessStageRow) => void;
   // Takes the row: its default-branch tree is what the author confirms.
@@ -85,7 +85,7 @@ function deleteItem(
   enabled: boolean,
   allowed: boolean,
 ): FootItem[] {
-  return allowed && row.folderOnDisk
+  return allowed && row.onDisk
     ? [
         {
           label: DELETE_SKILL,
@@ -172,7 +172,7 @@ function stageItems(
           label: "Create pull request",
           disabled: !enabled,
           busy: busy("create", null),
-          onSelect: () => handlers.create(row.skill),
+          onSelect: () => handlers.create(row),
         },
       ];
     case "proposal-closed": {
@@ -182,12 +182,12 @@ function stageItems(
           label: named("Reopen proposal", request, many),
           disabled: !enabled,
           busy: busy("reopen", request.number),
-          onSelect: () => handlers.reopen(row.skill, request.number),
+          onSelect: () => handlers.reopen(row, request.number),
         }));
       // A deletion opens no proposal dialog, and reopening it once the folder
       // is restored would propose deleting a skill the author kept (#1384).
       if (row.change === "deletion") {
-        return [...links, ...(row.folderOnDisk ? [] : reopens)];
+        return [...links, ...(row.onDisk ? [] : reopens)];
       }
       return [
         ...links,
@@ -214,7 +214,7 @@ function stageItems(
               label: "Withdraw proposal",
               disabled: !enabled,
               danger: true,
-              onSelect: () => handlers.withdraw(row.skill, sole.number),
+              onSelect: () => handlers.withdraw(row, sole.number),
             },
           ];
   }

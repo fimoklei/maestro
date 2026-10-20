@@ -23,7 +23,7 @@ describe("Harness discard", () => {
     proposal: [
       row("pending-proposal", "code-review", "not-yet-proposed", {
         remoteTree: "remote-code-review",
-        folderOnDisk: true,
+        onDisk: true,
       }),
     ],
   });

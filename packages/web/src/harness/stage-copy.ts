@@ -1,6 +1,7 @@
 // One row per status, so a new status fails typecheck until it has copy.
 import type {
   HarnessChange,
+  HarnessPrimitiveType,
   HarnessStage,
   HarnessStageRow,
   RequestedReviewer,
@@ -38,7 +39,7 @@ export const harnessCounts = (stages: readonly HarnessStage[]): BandCount[] =>
 
 export const JOURNEY_EMPTY = {
   title: "No changes yet",
-  body: "Skills you import or edit in your clone will appear here.",
+  body: "Skills and prompts you import or edit in your clone will appear here.",
 } as const;
 
 const FAMILIES: Record<StageStatus, StatusFamily> = {
@@ -112,7 +113,7 @@ export function changeSentence(
   row: HarnessStageRow,
   { origin }: StageContext,
 ): Copy {
-  const skill = named(row.skill);
+  const skill = named(row.name);
   const harness = machine(origin);
   switch (row.change) {
     case "addition":
@@ -128,6 +129,12 @@ export function changeSentence(
   }
 }
 
+// The type as a sentence names it: "this skill", "this prompt".
+export const TYPE_NOUN: Record<HarnessPrimitiveType, string> = {
+  skill: "skill",
+  prompt: "prompt",
+};
+
 const requestNumbers = (row: HarnessStageRow): string[] =>
   row.requests.map((request) => `#${request.number}`);
 
@@ -141,7 +148,7 @@ const listOf = (parts: string[]): string => {
 const first = (row: HarnessStageRow): string => requestNumbers(row)[0] ?? "";
 
 const waitSentence = (row: HarnessStageRow, login: string): Copy =>
-  phrase`${named(login)} has pull request ${first(row)} open for this skill. Wait until it is merged or closed.`;
+  phrase`${named(login)} has pull request ${first(row)} open for this ${TYPE_NOUN[row.type]}. Wait until it is merged or closed.`;
 
 // Cause first, then `Select {control} to {result}` with the row's own control
 // (#838). A status with no cockpit control names the place instead.
@@ -153,8 +160,9 @@ export function detailSentence(
   const release = releasedVersion === null ? null : machine(releasedVersion);
   const publish = `Select ${CREATE_RELEASE} to publish it.`;
   const deletion = row.change === "deletion";
-  // One next action; Restore skill stays in the row menu (#1396).
-  const deleteLocally = phrase`This skill is deleted in your clone but still on ${branch}. Select ${PROPOSE_CHANGE} to propose the deletion.`;
+  const noun = TYPE_NOUN[row.type];
+  // One next action; Restore stays in the row menu (#1396).
+  const deleteLocally = phrase`This ${noun} is deleted in your clone but still on ${branch}. Select ${PROPOSE_CHANGE} to propose the deletion.`;
   // Local work behind another contributor's request offers no Propose change.
   if (row.waitingOn !== null) {
     return waitSentence(row, row.waitingOn);
@@ -165,22 +173,22 @@ export function detailSentence(
         return deleteLocally;
       }
       if (row.change === "addition") {
-        return phrase`This skill is not on ${branch} yet. Select ${PROPOSE_CHANGE} to send it for review.`;
+        return phrase`This ${noun} is not on ${branch} yet. Select ${PROPOSE_CHANGE} to send it for review.`;
       }
       return offersDiscard(row)
         ? phrase`Your local copy differs from ${branch}. Select ${PROPOSE_CHANGE} to send it for review, or select ${DISCARD_CHANGE} to match ${branch} again.`
         : phrase`Your local copy differs from ${branch}. Select ${PROPOSE_CHANGE} to send it for review.`;
     case "new-local-work":
       return first(row) === ""
-        ? "You edited this skill after preparing its proposal. Select Update proposal to send the edits."
-        : `You edited this skill after pull request ${first(row)}. Select Update proposal to send the edits.`;
+        ? `You edited this ${noun} after preparing its proposal. Select Update proposal to send the edits.`
+        : `You edited this ${noun} after pull request ${first(row)}. Select Update proposal to send the edits.`;
     case "draft":
       return deletion
-        ? `Pull request ${first(row)} proposes deleting this skill and is still a draft. Select View pull request to mark it ready for review.`
+        ? `Pull request ${first(row)} proposes deleting this ${noun} and is still a draft. Select View pull request to mark it ready for review.`
         : `Pull request ${first(row)} is a draft. Select View pull request to mark it ready for review.`;
     case "waiting-for-review":
       return deletion
-        ? `Pull request ${first(row)} proposes deleting this skill and is waiting for a reviewer.`
+        ? `Pull request ${first(row)} proposes deleting this ${noun} and is waiting for a reviewer.`
         : `Pull request ${first(row)} is open and waiting for a reviewer.`;
     case "changes-requested":
       return deletion
@@ -188,7 +196,7 @@ export function detailSentence(
         : `A reviewer asked for changes on pull request ${first(row)}. Select Update proposal to send your changes.`;
     case "approved-awaiting-merge":
       return deletion
-        ? `Pull request ${first(row)} proposes deleting this skill and is approved. Select View pull request to merge it.`
+        ? `Pull request ${first(row)} proposes deleting this ${noun} and is approved. Select View pull request to merge it.`
         : `Pull request ${first(row)} is approved. Select View pull request to merge it.`;
     case "pull-request-missing":
       return "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.";
@@ -197,8 +205,9 @@ export function detailSentence(
         ? `Pull request ${first(row)} merged the deletion. Select ${rereadLabel("Harness")} to read GitHub again.`
         : `Pull request ${first(row)} was merged. Select ${rereadLabel("Harness")} to read GitHub again.`;
     case "proposal-closed": {
-      if (deletion && row.folderOnDisk) {
-        return `Pull request ${first(row)} was closed without merging. The folder is back in your clone, so the skill stays in the Harness.`;
+      if (deletion && row.onDisk) {
+        const restored = row.type === "skill" ? "folder" : "file";
+        return `Pull request ${first(row)} was closed without merging. The ${restored} is back in your clone, so the ${noun} stays in the Harness.`;
       }
       // Only its author reopens it, so the menu offers no Reopen proposal.
       const [closed] = row.requests;
@@ -215,7 +224,7 @@ export function detailSentence(
           : "Several pull requests match this branch."
       } Open the extra pull requests on GitHub and close them.`;
     case "proposed-by-other":
-      return `Another contributor has pull request ${first(row)} open for this skill. Wait until it is merged or closed.`;
+      return `Another contributor has pull request ${first(row)} open for this ${noun}. Wait until it is merged or closed.`;
     case "not-yet-released":
       return releaseSentence(row, branch, release, publish);
   }
@@ -227,23 +236,24 @@ function releaseSentence(
   release: ReturnType<typeof machine> | null,
   publish: string,
 ): Copy {
+  const noun = TYPE_NOUN[row.type];
   switch (row.change) {
     case "addition":
       return release === null
-        ? phrase`This skill is on ${branch} and in no release yet. ${publish}`
-        : phrase`This skill was added to ${branch} after release ${release}. ${publish}`;
+        ? phrase`This ${noun} is on ${branch} and in no release yet. ${publish}`
+        : phrase`This ${noun} was added to ${branch} after release ${release}. ${publish}`;
     case "edit":
       return release === null
-        ? phrase`This skill is on ${branch} and in no release yet. ${publish}`
-        : phrase`This skill changed on ${branch} after release ${release}. ${publish}`;
+        ? phrase`This ${noun} is on ${branch} and in no release yet. ${publish}`
+        : phrase`This ${noun} changed on ${branch} after release ${release}. ${publish}`;
     case "rename":
       return row.previousName === null
-        ? phrase`This skill was renamed on ${branch}. ${publish}`
-        : phrase`This skill was renamed from ${named(row.previousName)} on ${branch}. ${publish}`;
+        ? phrase`This ${noun} was renamed on ${branch}. ${publish}`
+        : phrase`This ${noun} was renamed from ${named(row.previousName)} on ${branch}. ${publish}`;
     case "deletion":
       return release === null
-        ? phrase`This skill is no longer on ${branch}. Select ${CREATE_RELEASE} to publish the deletion.`
-        : phrase`This skill was deleted from ${branch} after release ${release}. Select ${CREATE_RELEASE} to publish the deletion.`;
+        ? phrase`This ${noun} is no longer on ${branch}. Select ${CREATE_RELEASE} to publish the deletion.`
+        : phrase`This ${noun} was deleted from ${branch} after release ${release}. Select ${CREATE_RELEASE} to publish the deletion.`;
   }
 }
 
@@ -300,9 +310,11 @@ export const alsoInWords = (row: HarnessStageRow): string =>
   (row.alsoIn ?? []).map((stage) => STAGE_NAMES[stage]).join(", ");
 
 // Deployed copies come from a release only, so local work on a skill the
-// default branch holds has not reached them (#1160).
+// default branch holds has not reached them (#1160). No target deploys a prompt.
 export const deployedCopiesLine = (row: HarnessStageRow): string | null =>
-  row.stage === "pending-proposal" && row.change === "edit"
+  row.type === "skill" &&
+  row.stage === "pending-proposal" &&
+  row.change === "edit"
     ? `Deployed copies change only after a release and ${UPDATE_TARGET}.`
     : null;
 

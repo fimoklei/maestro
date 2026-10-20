@@ -39,14 +39,14 @@ export function StageDetailPane({
   const alsoIn = alsoInWords(row);
   return (
     <DetailPane
-      title={row.skill}
+      title={row.name}
       activeKey={row.id}
       position={position}
       onPage={onPage}
       onClose={onClose}
       getTriggerElement={getTriggerElement}
       facts={[
-        { label: "Type", value: TYPE_WORD.skill },
+        { label: "Type", value: TYPE_WORD[row.type] },
         { label: "Stage", value: STAGE_NAMES[row.stage] },
         { label: "Change", value: CHANGE_WORDS[row.change] },
         { label: "Status", value: <StatusBadge reading={row.reading} /> },
