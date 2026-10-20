@@ -7,7 +7,7 @@ import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { named, phrase } from "../ui/phrase";
 import { harnessHeadings, promoteHeadings } from "./notice-copy";
 
-/** Delete skill opens from the Harness view and from Skills; Delete prompt from Prompts. */
+/** Delete skill and Delete prompt open from the Harness view and from their Inventory views. */
 export type LocalDeletionContext = {
   skill: string;
   screen: "harness" | "skills" | "prompts";

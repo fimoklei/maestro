@@ -105,7 +105,7 @@ const meta = {
     onReread: () => {},
     clone: {
       kind: "read",
-      skills: Object.fromEntries(
+      checks: Object.fromEntries(
         primitives.map((primitive) => [
           primitive.name,
           {
