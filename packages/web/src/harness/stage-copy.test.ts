@@ -32,7 +32,6 @@ const row = (
   over: Partial<HarnessStageRow> = {},
 ): HarnessStageRow => ({
   stage,
-  skill: "tdd",
   type: "skill",
   name: "tdd",
   path: ".apm/skills/tdd",
@@ -48,7 +47,7 @@ const row = (
   localOnly: false,
   remoteTree: null,
   restorable: false,
-  folderOnDisk: false,
+  onDisk: false,
   previousName: null,
   ...over,
 });
@@ -358,12 +357,12 @@ describe("Detail sentences", () => {
     ["a deletion whose folder is gone", "deletion" as const, false],
   ])(
     "names no reopen on another contributor's closed request for %s",
-    (_, change, folderOnDisk) => {
+    (_, change, onDisk) => {
       const sentence = plainText(
         detail("proposal-closed", {
           requests: [{ ...request, author: "teammate", byOther: true }],
           change,
-          folderOnDisk,
+          onDisk,
         }),
       );
 
@@ -376,7 +375,7 @@ describe("Detail sentences", () => {
   it("names no control on a closed deletion whose folder is back", () => {
     expect(
       plainText(
-        detail("proposal-closed", { change: "deletion", folderOnDisk: true }),
+        detail("proposal-closed", { change: "deletion", onDisk: true }),
       ),
     ).not.toMatch(/Select/);
   });

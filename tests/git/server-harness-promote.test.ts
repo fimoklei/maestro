@@ -136,7 +136,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     ).json()) as HarnessState;
     expect(promoted.stages.review).toMatchObject({
       outcome: "read",
-      rows: [{ skill: "tdd", status: "pull-request-missing", change: "edit" }],
+      rows: [{ name: "tdd", status: "pull-request-missing", change: "edit" }],
     });
     expect(promoted.stages.proposal).toMatchObject({
       outcome: "read",
@@ -157,7 +157,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(merged.stages.proposal).toMatchObject({ outcome: "read", rows: [] });
     expect(merged.stages.release).toMatchObject({
       outcome: "read",
-      rows: [{ skill: "tdd", status: "not-yet-released", change: "edit" }],
+      rows: [{ name: "tdd", status: "not-yet-released", change: "edit" }],
     });
     expect(merged.releaseState).toBe("pending-release");
   });
@@ -178,7 +178,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     ).json()) as HarnessState;
     expect(state.stages.review).toMatchObject({
       outcome: "read",
-      rows: [{ skill: "tdd", status: "pull-request-missing" }],
+      rows: [{ name: "tdd", status: "pull-request-missing" }],
     });
   });
 
@@ -245,7 +245,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       outcome: "read",
       rows: [
         {
-          skill: "tdd",
+          name: "tdd",
           status: "not-yet-proposed",
           change: "edit",
           concurrentChange: true,
@@ -267,7 +267,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       outcome: "read",
       rows: [
         {
-          skill: "tdd",
+          name: "tdd",
           status: "not-yet-proposed",
           change: "edit",
           concurrentChange: false,
@@ -490,7 +490,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(reviewed.stages.review).toMatchObject({
         outcome: "read",
         rows: [
-          { skill: "tdd", status: "pull-request-missing", change: "deletion" },
+          { name: "tdd", status: "pull-request-missing", change: "deletion" },
         ],
       });
       expect(seen).toEqual(expect.any(String));
@@ -509,9 +509,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(merged.releaseState).toBe("pending-release");
       expect(merged.stages.release).toMatchObject({
         outcome: "read",
-        rows: [
-          { skill: "tdd", status: "not-yet-released", change: "deletion" },
-        ],
+        rows: [{ name: "tdd", status: "not-yet-released", change: "deletion" }],
       });
     });
 

@@ -546,6 +546,41 @@ describe("Harness home base", () => {
     expect(type.nextElementSibling).toHaveTextContent("Skill");
   });
 
+  // #1597: a row is named by stage, type and name, so one name never shares
+  // a row across types.
+  it("gives a skill and a prompt with one name a row each", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [
+            row("pending-proposal", "tdd", "new-local-work"),
+            row("pending-proposal", "tdd", "new-local-work", {
+              type: "prompt",
+              path: ".maestro/prompts/tdd.md",
+              branch: "maestro/prompt.tdd",
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    await screen.findAllByText("tdd");
+    const rows = await stageRows("Pending proposal");
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((each) => each.id)).size).toBe(2);
+    const types: string[] = [];
+    for (const each of rows) {
+      await userEvent.click(within(each).getByText("tdd"));
+      const pane = await screen.findByRole("complementary", {
+        name: "tdd detail",
+      });
+      const type = within(pane).getByText("Type", { selector: "dt" });
+      types.push(type.nextElementSibling?.textContent ?? "");
+    }
+    expect(types.sort()).toEqual(["Prompt", "Skill"]);
+  });
+
   // #1045: the next step is one press away, from the row and from its pane.
   it("puts Propose change first in the row menu and at the foot of the pane", async () => {
     stubHarnessServer({
@@ -554,7 +589,7 @@ describe("Harness home base", () => {
           proposal: [
             row("pending-proposal", "tdd", "not-yet-proposed", {
               localOnly: true,
-              folderOnDisk: true,
+              onDisk: true,
             }),
           ],
         }),

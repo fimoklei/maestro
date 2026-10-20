@@ -79,8 +79,10 @@ export function SkillsPanel() {
       clone={cloneReading(harness, check)}
       // The work lands on the Harness view, as Import local edits does
       // (#1385).
-      onDeleted={(skill) =>
-        navigate("/harness", { state: { openSkill: skill } })
+      onDeleted={(name) =>
+        navigate("/harness", {
+          state: { openPrimitive: { type: "skill", name } },
+        })
       }
     />
   );

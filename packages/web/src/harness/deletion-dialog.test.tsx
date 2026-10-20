@@ -9,6 +9,7 @@ const TREE = "0123456789abcdef0123456789abcdef01234567";
 const PROPOSE: DeletionMode = {
   kind: "propose",
   origin: "fimoklei/harness",
+  branch: "maestro/research",
   seenRemoteTree: TREE,
   openRequest: null,
 };

@@ -112,7 +112,7 @@ export function changeSentence(
   row: HarnessStageRow,
   { origin }: StageContext,
 ): Copy {
-  const skill = named(row.skill);
+  const skill = named(row.name);
   const harness = machine(origin);
   switch (row.change) {
     case "addition":
@@ -197,7 +197,7 @@ export function detailSentence(
         ? `Pull request ${first(row)} merged the deletion. Select ${rereadLabel("Harness")} to read GitHub again.`
         : `Pull request ${first(row)} was merged. Select ${rereadLabel("Harness")} to read GitHub again.`;
     case "proposal-closed": {
-      if (deletion && row.folderOnDisk) {
+      if (deletion && row.onDisk) {
         return `Pull request ${first(row)} was closed without merging. The folder is back in your clone, so the skill stays in the Harness.`;
       }
       // Only its author reopens it, so the menu offers no Reopen proposal.

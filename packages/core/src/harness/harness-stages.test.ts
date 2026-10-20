@@ -103,7 +103,7 @@ const oneRow = (stage: HarnessStageRead): HarnessStageRow => {
 };
 
 const statuses = (stage: HarnessStageRead) =>
-  rowsOf(stage).map((row) => `${row.skill}:${row.status}`);
+  rowsOf(stage).map((row) => `${row.name}:${row.status}`);
 
 describe("Pending proposal membership", () => {
   it("reads a skill that is the same everywhere as nothing waiting", () => {
@@ -827,9 +827,9 @@ describe("Folder on disk", () => {
       review: reviewOf([request()]),
       release: [{ kind: "changed", name: "tdd" }],
     });
-    expect(oneRow(built.proposal).folderOnDisk).toBe(true);
-    expect(oneRow(built.review).folderOnDisk).toBe(true);
-    expect(oneRow(built.release).folderOnDisk).toBe(true);
+    expect(oneRow(built.proposal).onDisk).toBe(true);
+    expect(oneRow(built.review).onDisk).toBe(true);
+    expect(oneRow(built.release).onDisk).toBe(true);
   });
 
   it("marks a row whose folder is gone from the working tree in every stage", () => {
@@ -838,9 +838,9 @@ describe("Folder on disk", () => {
       review: reviewOf([request()]),
       release: [{ kind: "removed", name: "tdd" }],
     });
-    expect(oneRow(built.proposal).folderOnDisk).toBe(false);
-    expect(oneRow(built.review).folderOnDisk).toBe(false);
-    expect(oneRow(built.release).folderOnDisk).toBe(false);
+    expect(oneRow(built.proposal).onDisk).toBe(false);
+    expect(oneRow(built.review).onDisk).toBe(false);
+    expect(oneRow(built.release).onDisk).toBe(false);
   });
 
   it("never claims a folder on disk when the refs could not be read", () => {
@@ -848,7 +848,7 @@ describe("Folder on disk", () => {
       trees: null,
       release: [{ kind: "changed", name: "tdd" }],
     });
-    expect(oneRow(built.release).folderOnDisk).toBe(false);
+    expect(oneRow(built.release).onDisk).toBe(false);
   });
 });
 
@@ -955,7 +955,7 @@ describe("The change a row carries", () => {
     };
     expect(
       rowsOf(stages({ trees }).proposal).map(
-        (row) => `${row.skill}:${row.change}`,
+        (row) => `${row.name}:${row.change}`,
       ),
     ).toEqual(["tdd:addition", "testing:deletion"]);
   });
