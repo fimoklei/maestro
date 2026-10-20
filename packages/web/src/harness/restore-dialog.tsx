@@ -5,7 +5,8 @@ import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
-import { ITEM_FACTS, RESTORE_BODY } from "./dialog-copy";
+import { restoreBody } from "./dialog-copy";
+import { ITEM_WORDS } from "./item-words";
 
 export function RestoreDialog({
   type,
@@ -51,7 +52,7 @@ export function RestoreDialog({
       onClose={onClose}
     >
       <p className="m-0">
-        <PhraseText copy={RESTORE_BODY[type]} />
+        <PhraseText copy={restoreBody(type)} />
       </p>
       {hasRequest ? (
         <p className="m-0 text-gray-11">Your proposal remains unchanged.</p>
@@ -59,12 +60,12 @@ export function RestoreDialog({
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           <Fact
-            label={ITEM_FACTS[type].name}
+            label={ITEM_WORDS[type].Noun}
             value={name}
             wrap
             machine={false}
           />
-          <Fact label={ITEM_FACTS[type].path} value={path} wrap />
+          <Fact label={ITEM_WORDS[type].Holder} value={path} wrap />
           {/* The whole hash: the one commit the confirmation is given
               against, re-read at the press. */}
           <Fact

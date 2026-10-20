@@ -54,7 +54,9 @@ export function useHarnessPresses(
     action: "propose",
     show: "row",
     name: skillName,
-    failure: promoteNotice,
+    // A failure follows a press, so the variables are set.
+    failure: (error) =>
+      promoteNotice(error, promote.variables?.type ?? "skill"),
   });
   const promotedSkill = promote.variables ?? null;
   const promoteFailure = promoteWrite.failure;
@@ -70,7 +72,8 @@ export function useHarnessPresses(
     action: "delete",
     show: "row",
     name: skillName,
-    failure: deletionNotice,
+    failure: (error) =>
+      deletionNotice(error, deletion.variables?.type ?? "skill"),
   });
   const deleteLocal = useDeleteLocalSkill();
   const deleteLocalWrite = useWriteAction(deleteLocal, {
@@ -80,7 +83,8 @@ export function useHarnessPresses(
     name: skillName,
     failure: (error) =>
       localDeletionNotice(error, {
-        skill: deleteLocal.variables?.name ?? "",
+        type: deleteLocal.variables?.type ?? "skill",
+        name: deleteLocal.variables?.name ?? "",
         screen: "harness",
       }),
   });
@@ -106,7 +110,8 @@ export function useHarnessPresses(
     show: "toast",
     name: (restored) =>
       restored.statusRead ? phrase`${named(restored.name)}` : null,
-    failure: restoreNotice,
+    failure: (error) =>
+      restoreNotice(error, restore.variables?.type ?? "skill"),
   });
   const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
 
@@ -116,7 +121,11 @@ export function useHarnessPresses(
     action: "discard",
     show: "row",
     name: skillName,
-    failure: (error) => discardNotice(error, discard.variables?.name ?? ""),
+    failure: (error) =>
+      discardNotice(error, {
+        type: discard.variables?.type ?? "skill",
+        name: discard.variables?.name ?? "",
+      }),
   });
   // Frozen at the press, like a restore: a later read never rewrites the tree
   // the author confirms.

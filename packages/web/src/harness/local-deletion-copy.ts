@@ -1,80 +1,86 @@
-import type { DeleteLocalError } from "@maestro/core";
+import type { DeleteLocalError, HarnessPrimitiveType } from "@maestro/core";
 import { HARNESS_BUSY } from "../ui/busy-copy";
-import { DELETE_SKILL, rereadLabel } from "../ui/control-labels";
+import { rereadLabel } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { named, phrase } from "../ui/phrase";
-import { harnessHeadings, promoteHeadings } from "./notice-copy";
+import { ITEM_WORDS } from "./item-words";
+import { harnessHeadings, invalidNameHeading } from "./notice-copy";
 
 /** Delete skill and Delete prompt open from the Harness view and from their Inventory views. */
 export type LocalDeletionContext = {
-  skill: string;
+  type: HarnessPrimitiveType;
+  name: string;
   screen: "harness" | "skills" | "prompts";
 };
 
 // Each screen's own control that shows the item as it is now.
 const SEE_IT_NOW: Record<LocalDeletionContext["screen"], string> = {
-  harness: `Select ${rereadLabel("Harness")} to see the skill as it is now.`,
-  skills: "Select Harness to see the skill as it is now.",
-  prompts: "Select Harness to see the prompt as it is now.",
+  harness: `Select ${rereadLabel("Harness")} to see the`,
+  skills: "Select Harness to see the",
+  prompts: "Select Harness to see the",
 };
 
 // Nothing here reaches GitHub, so no sentence names a push or a pull request
 // (#798).
 const localDeletionHeadings = ({
-  skill,
+  type,
+  name,
   screen,
-}: LocalDeletionContext): NoticeTable<DeleteLocalError> => ({
-  "not-configured": harnessHeadings["not-configured"],
-  "invalid-skill": promoteHeadings["invalid-skill"],
-  "already-gone": {
-    level: "error",
-    label: "Folder already deleted",
-    message: SEE_IT_NOW[screen],
-    detail: phrase`Something removed the ${named(skill)} folder from your clone after this dialog opened.`,
-  },
-  "confirmation-stale": {
-    level: "error",
-    label: "Confirmation out of date",
-    message: `Nothing was deleted. The dialog now shows the folder as it is. Select ${DELETE_SKILL} to delete it.`,
-    detail: phrase`The ${named(skill)} folder changed after this dialog opened.`,
-  },
-  "no-answer": {
-    level: "error",
-    label: "Clone not read",
-    message: `Nothing was deleted. Select ${CLOSE}, then select ${DELETE_SKILL} again.`,
-    detail: "Git could not read your clone.",
-  },
-  "destination-unsafe": {
-    level: "error",
-    label: "Folder outside the Harness",
-    message: `Nothing was deleted. Replace the link with a real folder, then select ${DELETE_SKILL} again.`,
-    detail: "The skill folder resolves outside the Harness skills folder.",
-  },
-  "delete-failed": {
-    level: "error",
-    label: "Skill not deleted",
-    message: `The Harness is as it was. Make the folder writable, then select ${DELETE_SKILL} again.`,
-  },
-  "delete-in-progress": {
-    level: "error",
-    label: HARNESS_BUSY,
-    message: `Wait for that change to finish, then select ${DELETE_SKILL} again.`,
-    detail: "Maestro changes one Harness at a time.",
-  },
-});
+}: LocalDeletionContext): NoticeTable<DeleteLocalError> => {
+  const w = ITEM_WORDS[type];
+  return {
+    "not-configured": harnessHeadings["not-configured"],
+    "invalid-skill": invalidNameHeading(w),
+    "already-gone": {
+      level: "error",
+      label: `${w.Holder} already deleted`,
+      message: `${SEE_IT_NOW[screen]} ${w.noun} as it is now.`,
+      detail: phrase`Something removed the ${named(name)} ${w.holder} from your clone after this dialog opened.`,
+    },
+    "confirmation-stale": {
+      level: "error",
+      label: "Confirmation out of date",
+      message: `Nothing was deleted. The dialog now shows the ${w.holder} as it is. Select ${w.deleteLabel} to delete it.`,
+      detail: phrase`The ${named(name)} ${w.holder} changed after this dialog opened.`,
+    },
+    "no-answer": {
+      level: "error",
+      label: "Clone not read",
+      message: `Nothing was deleted. Select ${CLOSE}, then select ${w.deleteLabel} again.`,
+      detail: "Git could not read your clone.",
+    },
+    "destination-unsafe": {
+      level: "error",
+      label: `${w.Holder} outside the Harness`,
+      message: `Nothing was deleted. Replace the link with a real ${w.holder}, then select ${w.deleteLabel} again.`,
+      detail: `The ${w.noun} ${w.holder} resolves outside the Harness ${w.home}.`,
+    },
+    "delete-failed": {
+      level: "error",
+      label: `${w.Noun} not deleted`,
+      message: `The Harness is as it was. Make the ${w.holder} writable, then select ${w.deleteLabel} again.`,
+    },
+    "delete-in-progress": {
+      level: "error",
+      label: HARNESS_BUSY,
+      message: `Wait for that change to finish, then select ${w.deleteLabel} again.`,
+      detail: "Maestro changes one Harness at a time.",
+    },
+  };
+};
 
 export const localDeletionNotice = (
   error: unknown,
   context: LocalDeletionContext,
 ): NoticeContent | null =>
   noticeFromTable(localDeletionHeadings(context), error, {
-    label: "Skill not deleted",
-    message: `The Maestro server did not answer, and the Harness is as it was. Select ${DELETE_SKILL} again.`,
+    label: `${ITEM_WORDS[context.type].Noun} not deleted`,
+    message: `The Maestro server did not answer, and the Harness is as it was. Select ${ITEM_WORDS[context.type].deleteLabel} again.`,
   });
 
-// A check that failed, or found no folder, before anything was pressed.
+// A check that failed, or found no file or folder, before anything was pressed.
 export const deletionCheckNotice = (
   outcome: "no-answer" | "already-gone",
   context: LocalDeletionContext,

@@ -1,4 +1,8 @@
-import type { ReleasePlan, SemverStep } from "@maestro/core";
+import type {
+  HarnessPrimitiveType,
+  ReleasePlan,
+  SemverStep,
+} from "@maestro/core";
 import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
 import {
   type RefObject,
@@ -46,7 +50,7 @@ import {
   publishReleaseNotice,
   refreshNotice,
   releasePublishedNotice,
-  skillRestoredNotice,
+  restoredNotice,
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
@@ -521,7 +525,9 @@ function Notices({
   published: { tag: string; inventoryRefreshed: boolean } | undefined;
   dismissPublished: () => void;
   rereadInventory: () => void;
-  restored: { hasRequest: boolean; statusRead: boolean } | undefined;
+  restored:
+    | { type: HarnessPrimitiveType; hasRequest: boolean; statusRead: boolean }
+    | undefined;
   dismissRestored: () => void;
   rereadRef: RefObject<HTMLButtonElement | null>;
   noticeId: string;
@@ -554,7 +560,7 @@ function Notices({
       notice:
         restored === undefined || restored.statusRead
           ? null
-          : skillRestoredNotice(restored.hasRequest, reread),
+          : restoredNotice(restored.type, restored.hasRequest, reread),
       clear: dismissRestored,
     },
     {

@@ -66,7 +66,7 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "harness/harness-columns.tsx": {
     "`${row.stage}:${row.type}:${row.name}`": "key",
-    "`Actions for ${row.name} ${TYPE_NOUN[row.type]} in ${STAGE_NAMES[row.stage]}`":
+    "`Actions for ${row.name} ${ITEM_WORDS[row.type].noun} in ${STAGE_NAMES[row.stage]}`":
       "menu label",
   },
   "harness/release-delta.tsx": {

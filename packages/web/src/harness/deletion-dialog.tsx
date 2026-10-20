@@ -11,11 +11,8 @@ import {
   openRequestNotice,
   uncommittedNotice,
 } from "./deletion-copy";
-import {
-  DELETE_UNAVAILABLE,
-  DELETION_CHECKING,
-  ITEM_FACTS,
-} from "./dialog-copy";
+import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
+import { ITEM_WORDS } from "./item-words";
 import type { LocalDeletionContext } from "./local-deletion-copy";
 
 // The two roads a Harness item's deletion takes. Proposing it needs the exact
@@ -115,7 +112,7 @@ export function DeletionDialog({
           {/* A name has no break in it, and the branch carries the same name
               again. */}
           <Fact
-            label={ITEM_FACTS[type].name}
+            label={ITEM_WORDS[type].Noun}
             value={name}
             wrap
             machine={false}
@@ -134,7 +131,7 @@ export function DeletionDialog({
               />
             </>
           ) : (
-            <Fact label={ITEM_FACTS[type].path} value={mode.path} wrap />
+            <Fact label={ITEM_WORDS[type].Holder} value={mode.path} wrap />
           )}
         </dl>
       </Card>
