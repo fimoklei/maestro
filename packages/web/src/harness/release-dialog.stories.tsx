@@ -73,7 +73,7 @@ export const WithFindings: Story = {
       plan: {
         ...PLAN,
         proposedStep: "patch",
-        reason: "Only existing skills changed.",
+        reason: "No skill was added, deleted or renamed.",
         delta: [{ type: "skill", kind: "changed", name: "tdd", author: "Ada" }],
         findings: [
           { skill: "grilling", problem: "missing-manifest" },

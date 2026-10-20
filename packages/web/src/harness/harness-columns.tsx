@@ -84,7 +84,7 @@ export const harnessColumns = ({
       cell: ({ row }) => (
         <span className="text-gray-11">{TYPE_WORD[row.original.type]}</span>
       ),
-      meta: { width: 14, priority: 1 },
+      meta: { width: 22, priority: 1 },
     }),
     {
       ...helper.accessor("change", {

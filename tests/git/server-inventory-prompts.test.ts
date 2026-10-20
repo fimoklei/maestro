@@ -1,17 +1,22 @@
-// A prompt merged, released, then read at the tag. The remote is a bare repo
-// on disk, so the journey is offline.
+// A prompt merged, released, then read at the tag, while a target that holds
+// the previous release stays Up to date. The remote is a bare repo on disk, so
+// the journey is offline.
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import {
+  type ApmDriverPort,
   HarnessGitAdapter,
+  type HarnessState,
   type InventoryPrimitive,
   ReleasedContentReader,
+  type ReleasePlan,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
+import { unreachable } from "../helpers/in-memory-app";
 import { nodeApp } from "../helpers/node-app";
 import { stubReview } from "../helpers/stub-review";
 
@@ -21,6 +26,10 @@ const ORIGIN_URL = "https://github.com/fimoklei/agent-harness.git";
 
 const PROMPT_BODY =
   "Review [PR LINK] for $ARGUMENTS.\n\nStart with $1, then the rest.\n";
+
+// A target that installed tdd from v0.1.0, the release before the prompt.
+const TARGET_LOCKFILE =
+  "lockfile_version: '1'\ndependencies:\n- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_ref: v0.1.0\n  virtual_path: .apm/skills/tdd\n  package_type: claude_skill\n";
 
 describe("released prompts on the Inventory", { timeout: 30_000 }, () => {
   let base: string;
@@ -65,10 +74,19 @@ describe("released prompts on the Inventory", { timeout: 30_000 }, () => {
     await removeGitTempTree(base);
   });
 
+  // apm sees only that a newer tag exists; Maestro reads the content.
   const makeApp = () =>
     nodeApp(
       { HOME: base, MAESTRO_HOME: base, MAESTRO_INVENTORY_PATH: root },
-      { gh: stubReview() },
+      {
+        gh: stubReview(),
+        apm: unreachable<ApmDriverPort>("apm", {
+          checkOutdated: async () => ({
+            ok: true,
+            behind: [{ name: "tdd", current: "v0.1.0", latest: "v0.1.1" }],
+          }),
+        }),
+      },
     );
 
   const primitivesOf = async (app: ReturnType<typeof makeApp>) => {
@@ -78,7 +96,7 @@ describe("released prompts on the Inventory", { timeout: 30_000 }, () => {
       .primitives;
   };
 
-  it("lists a merged prompt only once a release carries it, with its text after the frontmatter", async () => {
+  it("waits in Pending release, releases as a patch, reads at the tag and leaves a target Up to date", async () => {
     await mkdir(join(root, ".maestro", "prompts"), { recursive: true });
     await writeFile(
       join(root, ".maestro", "prompts", "pr-review.md"),
@@ -92,20 +110,29 @@ describe("released prompts on the Inventory", { timeout: 30_000 }, () => {
     );
     await commitAndPush("add prompt");
     const app = makeApp();
-    await app.request("/api/harness/refresh", { method: "POST" });
+    const refreshed = (await (
+      await app.request("/api/harness/refresh", { method: "POST" })
+    ).json()) as HarnessState;
 
-    // Merged but never released: still off the list.
+    // Merged but never released: waiting in Pending release, off the list.
+    expect(
+      refreshed.stages.release.outcome === "read"
+        ? refreshed.stages.release.rows.map((row) => ({
+            type: row.type,
+            name: row.name,
+            change: row.change,
+          }))
+        : null,
+    ).toEqual([{ type: "prompt", name: "pr-review", change: "addition" }]);
     expect((await primitivesOf(app)).map(({ type }) => type)).toEqual([
       "skill",
     ]);
 
     const plan = (await (
       await app.request("/api/harness/release-plan")
-    ).json()) as {
-      previousTag: string | null;
-      previousTagCommit: string | null;
-      revision: string;
-    };
+    ).json()) as ReleasePlan;
+    expect(plan.proposedStep).toBe("patch");
+    expect(plan.reason).toBe("No skill was added, deleted or renamed.");
     const released = await app.request("/api/harness/release", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -134,5 +161,31 @@ describe("released prompts on the Inventory", { timeout: 30_000 }, () => {
         nameValid: true,
       },
     ]);
+
+    const target = join(base, "target");
+    await mkdir(target);
+    await run("git", ["init", "-b", "main", target]);
+    await writeFile(join(target, "apm.lock.yaml"), TARGET_LOCKFILE, "utf8");
+    const registered = await app.request("/api/registry/repos", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: target }),
+    });
+    expect(registered.status).toBe(201);
+    const drift = await app.request(
+      `/api/drift?repo=${encodeURIComponent(target)}`,
+    );
+
+    // older-tag is the Up to date reading: tdd's content never moved.
+    expect(await drift.json()).toEqual({
+      behind: [
+        {
+          name: "tdd",
+          current: "v0.1.0",
+          latest: "v0.1.1",
+          reading: "older-tag",
+        },
+      ],
+    });
   });
 });

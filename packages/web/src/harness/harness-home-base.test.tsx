@@ -581,6 +581,33 @@ describe("Harness home base", () => {
     expect(types.sort()).toEqual(["Prompt", "Skill"]);
   });
 
+  // #1599: a merged prompt change waits in Pending release beside skills.
+  it("lists a merged prompt change in Pending release with the Type Prompt", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          release: [
+            row("pending-release", "tdd", "not-yet-released"),
+            row("pending-release", "pr-review", "not-yet-released", {
+              type: "prompt",
+              path: ".maestro/prompts/pr-review.md",
+              branch: "maestro/prompt.pr-review",
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    await screen.findByText("pr-review");
+    const rows = await stageRows("Pending release");
+    const prompt = rows.find((each) => within(each).queryByText("pr-review"));
+    if (prompt === undefined) {
+      throw new Error("no pr-review row in Pending release");
+    }
+    expect(within(prompt).getByText("Prompt")).toBeVisible();
+  });
+
   // #1045: the next step is one press away, from the row and from its pane.
   it("puts Propose change first in the row menu and at the foot of the pane", async () => {
     stubHarnessServer({
