@@ -9,8 +9,11 @@ labelled `job`; the Legend below holds the rules, and
 
 One person can **see** their whole agent setup (the central inventory and what
 is deployed where) and **steer** it (deploy, update) from one cockpit, without
-per-repo handwork. **Kill question:** do I still open lockfiles or run `apm` by
-hand to *know* or *change* what is deployed? If yes, the product is failing.
+per-repo handwork. The same cockpit holds the prompts they reuse. Prompts live
+in the Harness; the person finds and copies one without deploying it. **Kill
+question:** do I still open lockfiles or run `apm` by hand to *know* or
+*change* what is deployed, or dig through notes for a prompt I reuse? If yes,
+the product is failing.
 
 ## Themes
 
@@ -50,6 +53,7 @@ Valid jobs, deliberately not being done.
 | Compounding loop (corrections → primitives) | Needs adoption and a working manual loop first. |
 | Adoption dashboards across teams | Measuring use means gathering from other people's machines; Maestro is local-only and collects nothing. |
 | Support every AI coding tool | Two tools (Claude Code, Codex) first; breadth later. |
+| Deploy prompts as slash commands | APM delivers every prompt to every target; a prompt that must become a slash command becomes a skill ([#1403](https://github.com/fimoklei/maestro/issues/1403)). |
 | Auto-generate primitives from PR comments | Needs data integration and a working manual loop first. |
 | SaaS backend / RBAC / audit / compliance | Too heavy before solo daily value is proven. |
 
