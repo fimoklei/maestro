@@ -27,6 +27,8 @@ export function RowMenu({
   busy: boolean;
 }) {
   const grid = useContext(RowMenuControlContext);
+  // A row whose state calls for no action has no ⋮, never an empty menu.
+  if (items.length === 0) return null;
   return (
     <ActionsMenu
       label={label}
