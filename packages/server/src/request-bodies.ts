@@ -167,48 +167,48 @@ export const PROMOTE_BODY: RequestShape = {
   message:
     "Nothing was proposed. Reload the page, then propose the change again.",
   detail:
-    'The request carries a primitive type and name: { type: "skill" | "prompt", name: string }.',
+    'The request carries a type and a name: { type: "skill" | "prompt", name: string }.',
 };
 
 export const PROPOSAL_CREATE_BODY: RequestShape = {
   message:
     "No pull request was created. Reload the page, then create it again.",
   detail:
-    'The request carries a primitive type and name: { type: "skill" | "prompt", name: string }.',
+    'The request carries a type and a name: { type: "skill" | "prompt", name: string }.',
 };
 
 export const PROPOSAL_BODY: RequestShape = {
   message:
     "Maestro could not change the pull request. Reload the page, then try again.",
   detail:
-    'The request carries a primitive type and name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
+    'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
 };
 
 export const DELETION_BODY: RequestShape = {
   message:
     "Nothing was proposed. Reload the page, then remove the skill again.",
   detail:
-    'The request carries a primitive type and name and the origin/HEAD tree it was confirmed against: { type: "skill" | "prompt", name: string, seenRemoteTree: string }.',
+    'The request carries a type, a name and the origin/HEAD tree it was confirmed against: { type: "skill" | "prompt", name: string, seenRemoteTree: string }.',
 };
 
 export const LOCAL_DELETION_BODY: RequestShape = {
   message: "Nothing was deleted. Reload the page, then delete the skill again.",
   detail:
-    'The request carries a primitive type and name and the working tree it was confirmed against: { type: "skill" | "prompt", name: string, seenWorkingTree: string }.',
+    'The request carries a type, a name and the working tree it was confirmed against: { type: "skill" | "prompt", name: string, seenWorkingTree: string }.',
 };
 
 export const RESTORE_BODY: RequestShape = {
   message:
     "Nothing was restored. Reload the page, then restore the skill again.",
   detail:
-    'The request carries a primitive type and name and the local commit it was confirmed against: { type: "skill" | "prompt", name: string, seenHeadCommit: string }.',
+    'The request carries a type, a name and the local commit it was confirmed against: { type: "skill" | "prompt", name: string, seenHeadCommit: string }.',
 };
 
 export const DISCARD_BODY: RequestShape = {
   message:
     "Nothing was discarded. Reload the page, then discard the change again.",
   detail:
-    'The request carries a primitive type and name and the default-branch tree it was confirmed against: { type: "skill" | "prompt", name: string, seenRemoteTree: string }.',
+    'The request carries a type, a name and the default-branch tree it was confirmed against: { type: "skill" | "prompt", name: string, seenRemoteTree: string }.',
 };
 
 export const RELEASE_BODY: RequestShape = {
