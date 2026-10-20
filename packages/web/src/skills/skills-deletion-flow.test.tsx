@@ -1,4 +1,4 @@
-import type { HarnessState } from "@maestro/core";
+import type { HarnessState, PrimitiveRef } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -25,6 +25,7 @@ const IN_CLONE = {
   skills: {
     tdd: {
       inClone: true,
+      path: ".apm/skills/tdd",
       workingTree: "tree-1",
       uncommitted: false,
       localOnly: false,
@@ -72,8 +73,10 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
 }
 
 function HarnessScreen() {
-  const state = useLocation().state as { openSkill?: string } | null;
-  return <HarnessView openSkill={state?.openSkill ?? null} />;
+  const state = useLocation().state as {
+    openPrimitive?: PrimitiveRef;
+  } | null;
+  return <HarnessView openPrimitive={state?.openPrimitive ?? null} />;
 }
 
 function renderSkills() {

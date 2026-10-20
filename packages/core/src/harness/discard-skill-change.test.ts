@@ -13,7 +13,6 @@ const SEEN = treeHash("remote tdd");
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-proposal",
-  skill: "tdd",
   type: "skill",
   name: "tdd",
   path: ".apm/skills/tdd",
@@ -29,7 +28,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   localOnly: false,
   remoteTree: SEEN,
   restorable: false,
-  folderOnDisk: true,
+  onDisk: true,
   previousName: null,
   ...over,
 });

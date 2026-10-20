@@ -41,7 +41,7 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
   // The tree the row offers, as the dialog confirms it.
   const seenRemoteTree = async (app: HarnessStagesApp) => {
     const row = rowsOf((await refresh(app)).stages.proposal).find(
-      (each) => each.skill === "tdd",
+      (each) => each.name === "tdd",
     );
     if (row?.status !== "not-yet-proposed" || row.remoteTree === null) {
       throw new Error("tdd is not waiting as Not yet proposed");
@@ -80,7 +80,7 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
       "another skill's edit",
     );
     const rows = rowsOf((await stages.read(app)).stages.proposal);
-    expect(rows.map((row) => row.skill)).toEqual(["scratch"]);
+    expect(rows.map((row) => row.name)).toEqual(["scratch"]);
   });
 
   it.each([

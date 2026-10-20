@@ -116,13 +116,13 @@ const withMenu = (row: ReturnType<typeof stageRow>) =>
     ),
   );
 
-const closedDeletion = (folderOnDisk: boolean) => ({
+const closedDeletion = (onDisk: boolean) => ({
   ...withMenu(
     stageRow("pending-review", "wizard", "proposal-closed", {
       change: "deletion",
       requests: [pullRequest(52, "wizard")],
-      folderOnDisk,
-      restorable: !folderOnDisk,
+      onDisk,
+      restorable: !onDisk,
     }),
   ),
   group: "Pending review",
@@ -159,7 +159,7 @@ export const WaitingLocalWork: Story = {
         requests: [theirs],
         waitingOn: "sanne",
         remoteTree: "remote-code-review",
-        folderOnDisk: true,
+        onDisk: true,
         alsoIn: ["pending-review"],
       }),
     ),

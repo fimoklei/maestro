@@ -88,7 +88,10 @@ export function ImportLocalEditsAction({
               const names = landed.map((row) => row.name);
               onClose();
               navigate("/harness", {
-                state: names.length === 1 ? { openSkill: names[0] } : null,
+                state:
+                  names.length === 1
+                    ? { openPrimitive: { type: "skill", name: names[0] } }
+                    : null,
               });
             },
           },

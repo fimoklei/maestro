@@ -56,7 +56,6 @@ const PLAIN: Record<string, Record<string, string>> = {
   "harness/deletion-dialog.tsx": {
     "`Delete ${skill}`": "dialog title",
     "`Uncommitted changes in ${skill}`": "notice heading",
-    "`maestro/${skill}`": "branch, a machine value in a fact",
     "`Pull request #${request.number} will delete ${skill} instead`":
       "notice heading",
   },
@@ -64,13 +63,8 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`${DISCARD_CHANGE} for ${skill}`": "dialog title",
   },
   "harness/harness-columns.tsx": {
-    "`${row.stage}:${row.skill}`": "key",
-    "`Actions for ${row.skill} in ${STAGE_NAMES[row.stage]}`": "menu label",
-  },
-  "harness/harness-dialogs.tsx": {
-    "`${SKILLS_DIR}/${props.restoring.skill}`": "folder path",
-    "`${SKILLS_DIR}/${props.discarding.name}`": "folder path",
-    "`${SKILLS_DIR}/${skill}`": "folder path",
+    "`${row.stage}:${row.type}:${row.name}`": "key",
+    "`Actions for ${row.name} in ${STAGE_NAMES[row.stage]}`": "menu label",
   },
   "harness/release-delta.tsx": {
     "`${row.original.previousName} → ${row.original.name}`": "table cell",
@@ -84,7 +78,6 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "harness/withdraw-dialog.tsx": {
     "`Withdraw proposal for ${skill}`": "dialog title",
-    "`maestro/${skill}`": "branch, a machine value in a fact",
   },
   "skills/bulk-deploy-action.tsx": {
     '`Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`':
@@ -468,6 +461,7 @@ const SURFACES: {
       deletionDialog({
         kind: "propose",
         origin: "fimoklei/harness",
+        branch: "maestro/research",
         seenRemoteTree: "0123456789abcdef0123456789abcdef01234567",
         openRequest: { number: 45, author: "app/renovate" },
       }),
@@ -479,6 +473,7 @@ const SURFACES: {
       deletionDialog({
         kind: "propose",
         origin: "fimoklei/harness",
+        branch: "maestro/research",
         seenRemoteTree: "0123456789abcdef0123456789abcdef01234567",
         openRequest: null,
       }),

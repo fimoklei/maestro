@@ -136,7 +136,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       state.stages.proposal.outcome === "read"
         ? state.stages.proposal.rows
         : [];
-    expect(rows.map((row) => [row.skill, row.change, row.restorable])).toEqual([
+    expect(rows.map((row) => [row.name, row.change, row.restorable])).toEqual([
       ["tdd", "deletion", true],
     ]);
   });
@@ -218,7 +218,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       state.stages.proposal.outcome === "read"
         ? state.stages.proposal.rows
         : [];
-    expect(rows.map((row) => [row.skill, row.status, row.restorable])).toEqual([
+    expect(rows.map((row) => [row.name, row.status, row.restorable])).toEqual([
       ["tdd", "new-local-work", false],
     ]);
   });

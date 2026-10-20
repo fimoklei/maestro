@@ -2,6 +2,7 @@
 // that reaches the remote and replaces it.
 
 import type {
+  HarnessPrimitiveType,
   HarnessState,
   ImportCheck,
   ImportMode,
@@ -129,6 +130,11 @@ function recomputedPlan(error: unknown): ReleasePlan | null {
 }
 
 const STEPS = ["major", "minor", "patch"] as const;
+// Spelled as keys, so a new type fails the typecheck until it is listed.
+const PRIMITIVE_TYPES = Object.keys({
+  skill: null,
+  prompt: null,
+} satisfies Record<HarnessPrimitiveType, null>);
 const MOVEMENT_KINDS = ["added", "changed", "removed", "renamed"] as const;
 const PROBLEMS = [
   "missing-manifest",
@@ -157,6 +163,7 @@ const isArrayOf = (
   );
 
 const isMovement = (entry: Record<string, unknown>): boolean =>
+  isOneOf(entry.type, PRIMITIVE_TYPES) &&
   isOneOf(entry.kind, MOVEMENT_KINDS) &&
   typeof entry.name === "string" &&
   isNullableString(entry.author);

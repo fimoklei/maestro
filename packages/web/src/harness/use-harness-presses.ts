@@ -2,6 +2,7 @@ import type {
   HarnessStage,
   HarnessStageRow,
   HarnessState,
+  PrimitiveRef,
 } from "@maestro/core";
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
@@ -12,6 +13,7 @@ import type {
   DiscardTarget,
   LocalDeletionTarget,
   RestoreTarget,
+  WithdrawTarget,
 } from "./harness-dialogs";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
@@ -36,6 +38,10 @@ import {
 } from "./use-harness";
 
 const skillName = (_data: unknown, { name }: { name: string }) => name;
+
+// The row a press on a skill lands on. Request bodies name no type yet.
+const skillRow = (stage: HarnessStage, name: string) =>
+  rowId({ stage, type: "skill", name });
 
 export function useHarnessPresses(
   state: HarnessState | undefined,
@@ -78,9 +84,13 @@ export function useHarnessPresses(
         screen: "harness",
       }),
   });
-  const [confirming, setConfirming] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<PrimitiveRef | null>(null);
   const pendingDeletion =
-    proposalRows(state).find((row) => row.skill === confirming) ?? null;
+    confirming === null
+      ? null
+      : (proposalRows(state).find(
+          (row) => row.type === confirming.type && row.name === confirming.name,
+        ) ?? null);
   // Frozen at the press: two stages carry Delete skill, and the row it came
   // from turns into a Deletion once the folder is gone.
   const [localDeletion, setLocalDeletion] =
@@ -122,10 +132,7 @@ export function useHarnessPresses(
   });
   const proposalSkill = proposalAction.variables?.name ?? null;
   const proposalFailure = proposalWrite.failure;
-  const [withdrawing, setWithdrawing] = useState<{
-    skill: string;
-    number: number;
-  } | null>(null);
+  const [withdrawing, setWithdrawing] = useState<WithdrawTarget | null>(null);
 
   // One refusal at a time, stated on the row the press was made from. A
   // withdrawal's refusal belongs to its dialog, where the confirmation still
@@ -137,7 +144,7 @@ export function useHarnessPresses(
       promotedFrom !== null
     ) {
       return {
-        id: rowId({ stage: promotedFrom, skill: promotedSkill }),
+        id: skillRow(promotedFrom, promotedSkill),
         notice: promoteFailure,
       };
     }
@@ -147,7 +154,7 @@ export function useHarnessPresses(
       proposalSkill !== null
     ) {
       return {
-        id: rowId({ stage: "pending-review", skill: proposalSkill }),
+        id: skillRow("pending-review", proposalSkill),
         notice: proposalFailure,
       };
     }
@@ -160,7 +167,7 @@ export function useHarnessPresses(
   const running: (RunningPress & { id: string }) | null =
     promote.isPending && promotedSkill !== null && promotedFrom !== null
       ? {
-          id: rowId({ stage: promotedFrom, skill: promotedSkill }),
+          id: skillRow(promotedFrom, promotedSkill),
           action: "propose",
           number: null,
         }
@@ -168,7 +175,7 @@ export function useHarnessPresses(
           proposing !== undefined &&
           proposing.action !== "withdraw"
         ? {
-            id: rowId({ stage: "pending-review", skill: proposing.name }),
+            id: skillRow("pending-review", proposing.name),
             action: proposing.action,
             number: proposing.number ?? null,
           }
@@ -182,42 +189,49 @@ export function useHarnessPresses(
       ? (deletion.variables?.name ?? null)
       : null;
   const movedTo =
-    movedSkill === null
-      ? null
-      : rowId({ stage: "pending-review", skill: movedSkill });
+    movedSkill === null ? null : skillRow("pending-review", movedSkill);
 
   const handlers: RowActionHandlers = {
     promote: (row) => {
       setPromotedFrom(row.stage);
       if (row.change === "deletion") {
         deletion.reset();
-        setConfirming(row.skill);
+        setConfirming({ type: row.type, name: row.name });
         return;
       }
-      promoteWrite.run({ name: row.skill });
+      promoteWrite.run({ name: row.name });
     },
     create: (skill) => proposalWrite.run({ action: "create", name: skill }),
     reopen: (skill, number) =>
       proposalWrite.run({ action: "reopen", name: skill, number }),
-    withdraw: (skill, number) => {
+    withdraw: (row, number) => {
       proposalAction.reset();
-      setWithdrawing({ skill, number });
+      setWithdrawing({ skill: row.name, branch: row.branch, number });
     },
     deleteLocal: (row) => {
       deleteLocal.reset();
-      setLocalDeletion({ skill: row.skill, localOnly: row.localOnly });
+      setLocalDeletion({
+        skill: row.name,
+        path: row.path,
+        localOnly: row.localOnly,
+      });
     },
     discard: (row) => {
       if (!offersDiscard(row)) {
         return;
       }
       discard.reset();
-      setDiscarding({ name: row.skill, seenRemoteTree: row.remoteTree });
+      setDiscarding({
+        name: row.name,
+        path: row.path,
+        seenRemoteTree: row.remoteTree,
+      });
     },
     restore: (row, commit) => {
       restore.reset();
       setRestoring({
-        skill: row.skill,
+        skill: row.name,
+        path: row.path,
         commit,
         hasRequest: row.requests.length > 0,
       });

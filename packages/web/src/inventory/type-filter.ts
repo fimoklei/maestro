@@ -1,10 +1,12 @@
+import type { HarnessPrimitiveType } from "@maestro/core";
 import type { Primitive } from "./use-inventory";
 
 export type PrimitiveType = "skill" | "hook" | "mcp" | "bundle";
 
 // A row's Type cell: the plain word, no hue and no icon (#987).
-export const TYPE_WORD: Record<PrimitiveType, string> = {
+export const TYPE_WORD: Record<PrimitiveType | HarnessPrimitiveType, string> = {
   skill: "Skill",
+  prompt: "Prompt",
   hook: "Hook",
   mcp: "MCP server",
   bundle: "Bundle",

@@ -10,6 +10,7 @@ import {
   type HarnessPrimitiveType,
   type PrimitiveRef,
   primitiveEntry,
+  primitivePath,
 } from "./harness-primitive";
 import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
 import type { HarnessGitPort, HarnessHashes } from "./read-harness-state";
@@ -41,6 +42,8 @@ export type SkillDeletionCheck =
   | { inClone: false }
   | {
       inClone: true;
+      // The folder or file in the Harness, as the dialog names it.
+      path: string;
       workingTree: string;
       // The working tree differs from the last commit.
       uncommitted: boolean;
@@ -77,7 +80,10 @@ export class DeleteLocalSkill {
       const hashes = trees[type];
       const names = new Set(Object.values(hashes).flatMap(Object.keys));
       return Object.fromEntries(
-        [...names].map((name) => [name, checkPrimitive(hashes, name)]),
+        [...names].map((name) => [
+          name,
+          checkPrimitive(hashes, { type, name }),
+        ]),
       );
     };
     return {
@@ -114,7 +120,7 @@ export class DeleteLocalSkill {
     if (trees === null) {
       return { ok: false, error: "no-answer" };
     }
-    const check = checkPrimitive(trees[ref.type], ref.name);
+    const check = checkPrimitive(trees[ref.type], ref);
     if (!check.inClone) {
       return { ok: false, error: "already-gone" };
     }
@@ -160,8 +166,9 @@ export class DeleteLocalSkill {
 
 const checkPrimitive = (
   trees: HarnessHashes,
-  name: string,
+  ref: PrimitiveRef,
 ): SkillDeletionCheck => {
+  const { name } = ref;
   const workingTree = Object.hasOwn(trees.working, name)
     ? trees.working[name]
     : undefined;
@@ -170,6 +177,7 @@ const checkPrimitive = (
   }
   return {
     inClone: true,
+    path: primitivePath(ref),
     workingTree,
     uncommitted: workingTree !== trees.local[name],
     localOnly:

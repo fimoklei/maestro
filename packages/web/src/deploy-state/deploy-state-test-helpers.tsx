@@ -1,3 +1,4 @@
+import type { PrimitiveRef } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -97,8 +98,12 @@ export const landed = (names: string[]) =>
 
 // Stands in for the Harness screen: shows which skill it was asked to open.
 function HarnessProbe() {
-  const state = useLocation().state as { openSkill?: string } | null;
-  return <p>harness view {state?.openSkill ?? "with no skill open"}</p>;
+  const state = useLocation().state as {
+    openPrimitive?: PrimitiveRef;
+  } | null;
+  return (
+    <p>harness view {state?.openPrimitive?.name ?? "with no skill open"}</p>
+  );
 }
 
 export function renderDeployState(state?: { openTarget: string }) {

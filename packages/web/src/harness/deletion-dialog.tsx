@@ -20,6 +20,7 @@ export type DeletionMode =
   | {
       kind: "propose";
       origin: string;
+      branch: string;
       seenRemoteTree: string;
       openRequest: { number: number; author: string } | null;
     }
@@ -116,7 +117,7 @@ export function DeletionDialog({
           <Fact label="Skill" value={skill} wrap machine={false} />
           {mode.kind === "propose" ? (
             <>
-              <Fact label="Branch" value={`maestro/${skill}`} wrap />
+              <Fact label="Branch" value={mode.branch} wrap />
               {/* The whole hash: the exact origin/HEAD copy the confirmation
                   is given against (#580). The hint says the same thing the
                   confirmation-stale notice does (#885). */}

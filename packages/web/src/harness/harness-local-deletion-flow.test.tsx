@@ -22,7 +22,7 @@ describe("Harness local deletion", () => {
     proposal: [
       row("pending-proposal", "old-skill", "not-yet-proposed", {
         localOnly: true,
-        folderOnDisk: true,
+        onDisk: true,
       }),
       row("pending-proposal", "code-review", "not-yet-proposed"),
     ],
@@ -267,7 +267,7 @@ describe("Harness local deletion", () => {
 describe("Harness step 1 of deleting a skill on the default branch", () => {
   const EDITED = row("pending-proposal", "jobs", "not-yet-proposed", {
     remoteTree: "remote-jobs",
-    folderOnDisk: true,
+    onDisk: true,
   });
 
   const DELETED = withStages(ON_DISK, {
@@ -389,7 +389,7 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
         body: withStages(ON_DISK, {
           release: [
             row("pending-release", "jobs", "not-yet-released", {
-              folderOnDisk: true,
+              onDisk: true,
             }),
           ],
         }),

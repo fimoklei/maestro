@@ -216,18 +216,21 @@ describe("DeleteLocalSkill.inspect", () => {
         skill: {
           jobs: {
             inClone: true,
+            path: ".apm/skills/jobs",
             workingTree: treeHash("jobs-v1"),
             uncommitted: false,
             localOnly: false,
           },
           edited: {
             inClone: true,
+            path: ".apm/skills/edited",
             workingTree: treeHash("edited-v2"),
             uncommitted: true,
             localOnly: false,
           },
           tdd: {
             inClone: true,
+            path: ".apm/skills/tdd",
             workingTree: SEEN,
             uncommitted: true,
             localOnly: true,
@@ -236,6 +239,22 @@ describe("DeleteLocalSkill.inspect", () => {
         },
         prompt: {},
       },
+    });
+  });
+
+  // #1597: the dialog states the path the server names, per type.
+  it("names the Harness path of each folder or file in the clone", async () => {
+    const git = inspectWorld();
+    git.workingPrompts = { tdd: "prompt-tdd" };
+    const { deletion } = build(git);
+
+    const inspected = await deletion.inspect();
+    if (!inspected.ok) throw new Error("expected checks");
+    expect(inspected.checks.skill.tdd).toMatchObject({
+      path: ".apm/skills/tdd",
+    });
+    expect(inspected.checks.prompt.tdd).toMatchObject({
+      path: ".maestro/prompts/tdd.md",
     });
   });
 

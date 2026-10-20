@@ -6,6 +6,7 @@ const meta = {
   component: WithdrawDialog,
   args: {
     skill: "code-review",
+    branch: "maestro/code-review",
     number: 45,
     onClose: () => {},
     onConfirm: () => {},

@@ -115,17 +115,19 @@ const rowDialog = (
   action: RowAction,
   name: string,
   clone: CloneReading,
-): PaneDialog => {
+): PaneDialog | null => {
   switch (action) {
     case "deploy":
       return { kind: "deploy" };
     case "remove":
       return { kind: "remove-all" };
-    case "delete":
-      return {
-        kind: "delete",
-        localOnly: inClone(clone, name)?.localOnly ?? false,
-      };
+    case "delete": {
+      // Offered only once the clone's read holds the folder.
+      const folder = inClone(clone, name);
+      return folder === null
+        ? null
+        : { kind: "delete", path: folder.path, localOnly: folder.localOnly };
+    }
   }
 };
 

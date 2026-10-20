@@ -35,13 +35,13 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     const state = await refresh(app);
 
     expect(rowsOf(state.stages.proposal)).toMatchObject([
-      { skill: "tdd", status: "new-local-work" },
+      { name: "tdd", status: "new-local-work" },
     ]);
     expect(rowsOf(state.stages.review)).toMatchObject([
-      { skill: "tdd", status: "waiting-for-review" },
+      { name: "tdd", status: "waiting-for-review" },
     ]);
     expect(rowsOf(state.stages.release)).toMatchObject([
-      { skill: "tdd", status: "not-yet-released", change: "edit" },
+      { name: "tdd", status: "not-yet-released", change: "edit" },
     ]);
     expect(rowsOf(state.stages.proposal)[0]?.requests).toEqual([
       {
@@ -98,7 +98,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
     expect(rowsOf(again.stages.review)).toMatchObject([
       {
-        skill: "tdd",
+        name: "tdd",
         requests: [
           {
             number: 45,
@@ -119,7 +119,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     const state = await refresh(app);
 
     expect(rowsOf(state.stages.review)).toMatchObject([
-      { skill: "tdd", status: "pull-request-missing", requests: [] },
+      { name: "tdd", status: "pull-request-missing", requests: [] },
     ]);
   });
 
@@ -137,7 +137,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     const state = await refresh(app);
 
     expect(rowsOf(state.stages.review)).toMatchObject([
-      { skill: "tdd", status: "proposal-closed" },
+      { name: "tdd", status: "proposal-closed" },
     ]);
   });
 
@@ -233,7 +233,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     const state = await refresh(app);
 
     expect(rowsOf(state.stages.proposal)).toMatchObject([
-      { skill: "tdd", status: "not-yet-proposed" },
+      { name: "tdd", status: "not-yet-proposed" },
     ]);
     expect(state.stages.review).toEqual({ outcome: "unavailable" });
     expect(state.stages.release.outcome).toBe("read");
@@ -257,10 +257,10 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     const state = await refresh(app);
 
     expect(rowsOf(state.stages.proposal)).toMatchObject([
-      { skill: "tdd", status: "not-yet-proposed", change: "deletion" },
+      { name: "tdd", status: "not-yet-proposed", change: "deletion" },
     ]);
     expect(rowsOf(state.stages.release)).toMatchObject([
-      { skill: "tdd", status: "not-yet-released", change: "edit" },
+      { name: "tdd", status: "not-yet-released", change: "edit" },
     ]);
   });
 

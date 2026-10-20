@@ -119,6 +119,10 @@ export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
 export type { HarnessMovementKind } from "./harness/harness-movements";
 export type {
+  HarnessPrimitiveType,
+  PrimitiveRef,
+} from "./harness/harness-primitive";
+export type {
   HarnessReviewPort,
   HarnessReviewRead,
   NewReviewRequest,

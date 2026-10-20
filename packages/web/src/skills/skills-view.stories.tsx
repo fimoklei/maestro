@@ -104,6 +104,7 @@ const meta = {
           primitive.name,
           {
             inClone: true,
+            path: `.apm/skills/${primitive.name}`,
             workingTree: "tree",
             uncommitted: false,
             localOnly: false,

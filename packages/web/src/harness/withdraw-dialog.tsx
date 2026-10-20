@@ -8,6 +8,7 @@ import type { NoticeContent } from "../ui/notice";
 // Presentational — the host owns the mutation and what the row said.
 export function WithdrawDialog({
   skill,
+  branch,
   number,
   onClose,
   onConfirm,
@@ -15,6 +16,7 @@ export function WithdrawDialog({
   withdrawError,
 }: {
   skill: string;
+  branch: string;
   number: number;
   onClose: () => void;
   onConfirm: () => void;
@@ -47,7 +49,7 @@ export function WithdrawDialog({
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
           <Fact label="Skill" value={skill} wrap machine={false} />
-          <Fact label="Branch" value={`maestro/${skill}`} wrap />
+          <Fact label="Branch" value={branch} wrap />
           <Fact label="Pull request" value={`#${number}`} wrap />
         </dl>
       </Card>
