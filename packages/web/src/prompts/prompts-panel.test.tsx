@@ -63,6 +63,9 @@ function stubApi(
       if (failing.some((path) => url.startsWith(path)))
         return jsonResponse({ error: "unreadable" }, 503);
       if (url === "/api/harness") return jsonResponse(HARNESS);
+      // No prompt in the clone, so Delete prompt stays out of these tests.
+      if (url === "/api/harness/primitive/delete/check")
+        return jsonResponse({ skill: {}, prompt: {} });
       return jsonResponse({ primitives });
     }),
   );

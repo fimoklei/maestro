@@ -8,12 +8,17 @@ import { WARNING_GLYPH } from "../ui/status-family";
 import { reading } from "../ui/status-reading";
 import { NAME_NOT_VALID, NAME_RULE } from "./prompts-copy";
 
-export type RowAction = "copy";
+export type RowAction = "copy" | "delete";
 
 /** One Prompts row: the released prompt, its ⋮ items and the read age its hover card ends with. */
 export type PromptRow = InventoryPrompt & {
-  /** The ⋮ menu's items, in order. */
-  actions: { action: RowAction; label: string }[];
+  /** The ⋮ menu's items, in order; the pane's foot holds the same ones. */
+  actions: {
+    action: RowAction;
+    label: string;
+    danger?: boolean;
+    disabled?: boolean;
+  }[];
   readAge: string | null;
 };
 

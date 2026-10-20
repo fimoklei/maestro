@@ -1,8 +1,8 @@
 import type { InventoryPrompt } from "@maestro/core";
 import { TYPE_WORD } from "../inventory/type-filter";
 import { LATEST_RELEASE_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
-import { COPY_PROMPT } from "../ui/control-labels";
 import { DetailPane, type PaneNotice } from "../ui/detail-pane";
+import type { FootItem } from "../ui/foot-actions";
 import { PromptText } from "./prompt-text";
 import { NOT_COPIED, nameNotValidNotice, PATH_FACT } from "./prompts-copy";
 
@@ -13,6 +13,7 @@ export function PromptDetailPane({
   latestRelease,
   copyRefused,
   onCopy,
+  footItems,
   position,
   onPage,
   initialFocus,
@@ -25,6 +26,8 @@ export function PromptDetailPane({
   /** The last Copy prompt of this prompt was refused by the browser. */
   copyRefused: boolean;
   onCopy: () => void;
+  /** The row's ⋮ items, Copy prompt first. */
+  footItems: readonly FootItem[];
   position?: { index: number; count: number } | null;
   onPage?: (step: -1 | 1) => void;
   initialFocus?: string | null;
@@ -78,7 +81,7 @@ export function PromptDetailPane({
       clampParagraph
       notices={notices}
       subList={<PromptText text={prompt.text} onCopy={onCopy} />}
-      foot={[{ label: COPY_PROMPT, onSelect: onCopy }]}
+      foot={footItems}
       leadsWithNextStep
     />
   );

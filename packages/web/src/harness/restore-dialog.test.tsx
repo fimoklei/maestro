@@ -14,8 +14,9 @@ const renderDialog = (
 ) =>
   render(
     <RestoreDialog
-      skill="research"
-      folder=".apm/skills/research"
+      type="skill"
+      name="research"
+      path=".apm/skills/research"
       commit={COMMIT}
       hasRequest={overrides.hasRequest ?? false}
       onClose={vi.fn()}
@@ -115,5 +116,53 @@ describe("RestoreDialog", () => {
     });
 
     expect(screen.getByText("Skill has staged changes")).toBeInTheDocument();
+  });
+
+  describe("a prompt", () => {
+    const renderPrompt = () =>
+      render(
+        <RestoreDialog
+          type="prompt"
+          name="pr-review"
+          path=".maestro/prompts/pr-review.md"
+          commit={COMMIT}
+          hasRequest={false}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+          restoring={false}
+          restoreError={null}
+        />,
+      );
+
+    it("titles the dialog with the prompt and confirms with Restore prompt", () => {
+      renderPrompt();
+
+      expect(
+        screen.getByRole("dialog", { name: "Restore pr-review" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Restore prompt" }),
+      ).toBeInTheDocument();
+    });
+
+    it("says it brings back the file from the last local commit", () => {
+      renderPrompt();
+
+      expect(
+        screen.getByText(
+          "Restore prompt brings back the file from your last local commit. Later changes do not come back.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the prompt and its file as facts", () => {
+      renderPrompt();
+
+      expect(screen.getByText("Prompt")).toBeInTheDocument();
+      expect(screen.getByText("File")).toBeInTheDocument();
+      expect(
+        screen.getByText(".maestro/prompts/pr-review.md"),
+      ).toBeInTheDocument();
+    });
   });
 });

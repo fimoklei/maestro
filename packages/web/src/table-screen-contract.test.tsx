@@ -649,7 +649,7 @@ const ON_TABLE_SCREEN: Row[] = [
     actions: {
       render: () => renderPrompts(() => ["pr-review"]),
       name: "pr-review",
-      destructive: [],
+      destructive: ["Delete prompt"],
       pane: true,
       write: null,
       item: { label: "Copy prompt", dialog: false, opensPane: false },

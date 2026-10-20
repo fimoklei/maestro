@@ -53,14 +53,16 @@ const PLAIN: Record<string, Record<string, string>> = {
   "drift/use-drift.ts": {
     "`/api/drift?repo=${encodeURIComponent(repo)}`": "request URL",
   },
-  "harness/deletion-dialog.tsx": {
-    "`Delete ${skill}`": "dialog title",
-    "`Uncommitted changes in ${skill}`": "notice heading",
-    "`Pull request #${request.number} will delete ${skill} instead`":
+  "harness/deletion-copy.ts": {
+    "`Uncommitted changes in ${name}`": "notice heading",
+    "`Pull request #${request.number} will delete ${name} instead`":
       "notice heading",
   },
+  "harness/deletion-dialog.tsx": {
+    "`Delete ${name}`": "dialog title",
+  },
   "harness/discard-dialog.tsx": {
-    "`${DISCARD_CHANGE} for ${skill}`": "dialog title",
+    "`${DISCARD_CHANGE} for ${name}`": "dialog title",
   },
   "harness/harness-columns.tsx": {
     "`${row.stage}:${row.type}:${row.name}`": "key",
@@ -75,7 +77,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`${PUBLISH_RELEASE} for ${origin}`": "dialog title",
   },
   "harness/restore-dialog.tsx": {
-    "`Restore ${skill}`": "dialog title",
+    "`Restore ${name}`": "dialog title",
   },
   "harness/withdraw-dialog.tsx": {
     "`Withdraw proposal for ${skill}`": "dialog title",
@@ -363,7 +365,8 @@ const deletionDialog = (
   mode: ComponentProps<typeof DeletionDialog>["mode"],
 ) => (
   <DeletionDialog
-    skill="research"
+    type="skill"
+    name="research"
     mode={mode}
     onClose={vi.fn()}
     onConfirm={vi.fn()}
@@ -435,7 +438,7 @@ const SURFACES: {
         kind: "local",
         origin: "fimoklei/harness",
         screen: "harness",
-        folder: ".apm/skills/research",
+        path: ".apm/skills/research",
         check: "ready",
         localOnly: false,
         uncommitted: true,
@@ -449,7 +452,7 @@ const SURFACES: {
         kind: "local",
         origin: "fimoklei/harness",
         screen: "harness",
-        folder: ".apm/skills/research",
+        path: ".apm/skills/research",
         check: "ready",
         localOnly: true,
         uncommitted: false,

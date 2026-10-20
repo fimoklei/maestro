@@ -5,8 +5,9 @@ const meta = {
   title: "Harness/RestoreDialog",
   component: RestoreDialog,
   args: {
-    skill: "old-skill",
-    folder: ".apm/skills/old-skill",
+    type: "skill",
+    name: "old-skill",
+    path: ".apm/skills/old-skill",
     commit: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
     hasRequest: false,
     onClose: () => {},
