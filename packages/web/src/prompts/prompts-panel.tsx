@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import { harnessHeadings } from "../harness/notice-copy";
-import { useHarness } from "../harness/use-harness";
+import { useDeletionCheck, useHarness } from "../harness/use-harness";
+import { cloneReading } from "../inventory/clone-reading";
 import { inventoryNotRead } from "../inventory/inventory-copy";
 import { useInventoryOf } from "../inventory/use-inventory";
 import { useRereadInventory } from "../shell/use-reread-inventory";
@@ -14,6 +15,7 @@ export function PromptsPanel() {
   const harness = useHarness();
   const invalidate = useRereadInventory();
   const navigate = useNavigate();
+  const check = useDeletionCheck();
   // A disconnected Harness is a different list, so no old row stays and the
   // screen states it as the Harness screen does; any other failure keeps the
   // previous rows.
@@ -45,6 +47,13 @@ export function PromptsPanel() {
       reading={inventory.isFetching}
       onReread={invalidate}
       onOpenHarness={() => navigate("/harness")}
+      clone={cloneReading(harness, check, "prompt")}
+      // The work lands on the Harness view, as Delete skill's does (#1385).
+      onDeleted={(name) =>
+        navigate("/harness", {
+          state: { openPrimitive: { type: "prompt", name } },
+        })
+      }
     />
   );
 }
