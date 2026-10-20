@@ -4,6 +4,7 @@
 - **Amended:** 2026-09-11 — rules 9 and 10 and the manifest write, after the #833 review
 - **Amended:** 2026-09-12 — the last removal, the operation record, and the two
   recovery notices that no longer retire, after the #957 canary (#951)
+- **Amended:** 2026-10-20 — limit 3, now that the Harness holds prompts (#1590)
 - **Date:** 2026-09-11 (wayfinder map #833: gate #930, spike #929, research #928)
 
 ## Context
@@ -97,8 +98,9 @@ The gaps #929 measured, and the rule for each:
 1. No all-or-nothing install. The cockpit shows a half-landed Update honestly,
    and Retry converges (#929 measured it).
 2. *No content changes* is Maestro's own reading from hashes, never APM's.
-3. `includes: auto` deploys every primitive type the Harness holds; the
-   Harness stays skills-only, and the cockpit counts what lands outside it.
+3. The Harness holds skills and prompts. `includes: auto` deploys what APM
+   delivers; prompts sit where APM never delivers them (ADR-0019 §8).
+   **Extra files** stays a signal for stray hand-made files.
 4. Only the latest release can be adopted and an empty target pins it. A
    broken latest release has one way out: tag a new release in the Harness.
    Rolling back stays a LATER job.

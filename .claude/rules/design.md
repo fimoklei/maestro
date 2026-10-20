@@ -211,14 +211,17 @@ Pick the form from this table. Add no other form, and no banner.
   Below 1024px a band-1 action beside the primary shows its icon alone
   (`BandAction`); the primary keeps its label.
 - Build band 2 on `BandRow`: on the left the summary (a dot in the worst
-  state's family, then the counts above 0 or the summary word), the screen's
+  state's family, then the counts above 0 or the summary word; a count whose
+  0 blocks a band 1 action shows at 0 until every count is 0), the screen's
   facts, then the read age (clock icon named `Read`, then the age); separators
   between the three; an optional search first, then its controls, on the right. On a
   narrow band shrink the search from 15rem to 12rem, then give way in this
   order: the facts' labels (icon and value stay), whole facts by the screen's
   own drop ranks, lowest first (the Skills fact on Skills last), the search into an
-  icon named by its action, then the counts.
-  Never drop the summary dot or the read age.
+  icon named by its action, then the counts. A table with no Status column
+  shows a summary only for *Not read yet*, *Read failed* or *Offline*: that
+  word and a dot in its family; otherwise band 2 starts with the facts.
+  Never drop the summary dot where a summary shows, or the read age.
 - Put no button in a table row. A link to an external page may sit in one.
 - Link a row's own GitHub page from a `GitHub` column: GitHub's mark in slate
   11, named `View {name} on GitHub`, mouse only; the same destination is a ⋮
