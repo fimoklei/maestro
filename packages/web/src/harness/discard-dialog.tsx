@@ -1,4 +1,5 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
+import { DEFAULT_BRANCH_FACT } from "../ui/band-copy";
 import { Card } from "../ui/card";
 import { DISCARD_CHANGE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
@@ -65,7 +66,7 @@ export function DiscardDialog({
           />
           <Fact label={ITEM_FACTS[type].path} value={path} wrap />
           <Fact
-            label="Default branch"
+            label={DEFAULT_BRANCH_FACT}
             value={defaultBranch ?? "Unknown"}
             wrap
             machine={defaultBranch !== null}

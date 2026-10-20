@@ -101,7 +101,7 @@ describe("ReleaseDialog", () => {
     expect(facts.slice(0, 4)).toEqual([
       "Origin",
       "Previous tag",
-      "Branch",
+      "Default branch",
       "Revision",
     ]);
     expect(screen.getByText("Origin").nextElementSibling).toHaveTextContent(
