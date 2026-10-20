@@ -226,6 +226,7 @@ describe("inventory connect HTTP route", () => {
     const res = await app.request("/api/inventory/primitives");
 
     expect(res.status).toBe(200);
+    // The fixture's default branch is an empty tree, so tdd waits as a deletion.
     expect(await res.json()).toEqual({
       primitives: [
         {
@@ -233,6 +234,11 @@ describe("inventory connect HTTP route", () => {
           name: "tdd",
           description: "Test-driven development loop",
           path: ".apm/skills/tdd",
+          pendingRelease: {
+            change: "deletion",
+            renamedTo: null,
+            defaultBranch: "main",
+          },
         },
       ],
     });

@@ -31,6 +31,7 @@ describe("the tracer journey through one cockpit", () => {
           name: "tdd",
           description: "Test-driven development loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });

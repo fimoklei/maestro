@@ -1,9 +1,10 @@
-import type { InventoryPrimitive, PrimitiveRef } from "@maestro/core";
+import type { InventoryPrimitive } from "@maestro/core";
 import type { ComponentType } from "react";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router";
 import { ConnectView } from "../connect-gate/connect-view";
 import { WelcomeView } from "../connect-gate/welcome-view";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
+import type { OpenPrimitive } from "../harness/harness-route";
 import { HarnessView } from "../harness/harness-view";
 import {
   FIRST_INVENTORY_PATH,
@@ -53,10 +54,11 @@ export function AppRoutes() {
   );
 }
 
-// Import local edits names the one skill it landed (#1249).
+// Import local edits names the one skill it landed (#1249); an Inventory pane
+// names the Pending release row its change waits in.
 function HarnessScreen() {
   const state = useLocation().state as {
-    openPrimitive?: PrimitiveRef;
+    openPrimitive?: OpenPrimitive;
   } | null;
   return <HarnessView openPrimitive={state?.openPrimitive ?? null} />;
 }

@@ -159,6 +159,7 @@ const renderPrompts = (names: () => readonly string[]) => {
               name,
               description: "A prompt.",
               path: `.maestro/prompts/${name}.md`,
+              pendingRelease: null,
               text: "Do the thing.",
               nameValid: true,
             })),
@@ -364,6 +365,7 @@ const TDD = {
   type: "skill" as const,
   name: "tdd",
   path: ".apm/skills/tdd",
+  pendingRelease: null,
   description: "Test first.",
 };
 

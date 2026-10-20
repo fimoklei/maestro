@@ -216,6 +216,7 @@ export {
   type InventoryResult,
   type InventorySkill,
 } from "./inventory/inventory-reader";
+export type { PendingRelease } from "./inventory/pending-release";
 export {
   type ReleasedSkill,
   releasedPrimitivesFromGit,

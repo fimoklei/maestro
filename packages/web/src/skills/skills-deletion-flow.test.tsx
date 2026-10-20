@@ -48,7 +48,14 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
       }
       if (url.startsWith("/api/inventory/primitives")) {
         return jsonResponse({
-          primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+          primitives: [
+            {
+              type: "skill",
+              name: "tdd",
+              description: "TDD loop",
+              pendingRelease: null,
+            },
+          ],
         });
       }
       if (url === "/api/harness/primitive/delete/check") {

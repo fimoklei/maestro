@@ -90,6 +90,7 @@ describe("inventory HTTP route", () => {
           name: "tdd",
           description: "Test-driven development loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });
@@ -116,6 +117,7 @@ describe("inventory HTTP route", () => {
           name: "tdd",
           description: "Test-driven development loop",
           path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
     });

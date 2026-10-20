@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { MemoryRouter } from "react-router";
 import { COPY_PROMPT, DELETE_PROMPT } from "../ui/control-labels";
 import { PromptDetailPane } from "./prompt-detail-pane";
 
@@ -12,6 +13,7 @@ const meta = {
       description:
         "Review a pull request against its issue and our copy rules.",
       path: ".maestro/prompts/pr-review.md",
+      pendingRelease: null,
       text: "Review the pull request at [PR LINK].\n\nRead the diff and the linked issue first.\n\n$ARGUMENTS",
       nameValid: true,
     },
@@ -47,6 +49,7 @@ export const NameNotValid: Story = {
       name: "Review_PR",
       description: "",
       path: ".maestro/prompts/Review_PR.md",
+      pendingRelease: null,
       text: "Check the pull request at [PR LINK].",
       nameValid: false,
     },
@@ -54,3 +57,24 @@ export const NameNotValid: Story = {
 };
 
 export const CopyRefused: Story = { args: { copyRefused: true } };
+
+// The next-step sentence links the Harness screen, so it needs a router.
+export const PendingRename: Story = {
+  args: {
+    prompt: {
+      ...meta.args.prompt,
+      pendingRelease: {
+        change: "rename",
+        renamedTo: "pr-check",
+        defaultBranch: "main",
+      },
+    },
+  },
+  decorators: [
+    (Story) => (
+      <MemoryRouter>
+        <Story />
+      </MemoryRouter>
+    ),
+  ],
+};

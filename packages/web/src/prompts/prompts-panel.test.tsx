@@ -12,6 +12,7 @@ const PR_REVIEW = {
   name: "pr-review",
   description: "Review a pull request.",
   path: ".maestro/prompts/pr-review.md",
+  pendingRelease: null,
   text: "Review the pull request at [PR LINK].\n\n$ARGUMENTS\n",
   nameValid: true,
 } satisfies InventoryPrimitive;
@@ -21,6 +22,7 @@ const STANDUP = {
   name: "standup",
   description: "Summarise yesterday.",
   path: ".maestro/prompts/standup.md",
+  pendingRelease: null,
   text: "Summarise $1.",
   nameValid: true,
 } satisfies InventoryPrimitive;
@@ -30,6 +32,7 @@ const TDD = {
   name: "tdd",
   description: "Test first.",
   path: ".apm/skills/tdd",
+  pendingRelease: null,
 } satisfies InventoryPrimitive;
 
 const BADLY_NAMED = {
@@ -37,6 +40,7 @@ const BADLY_NAMED = {
   name: "Review_PR",
   description: "",
   path: ".maestro/prompts/Review_PR.md",
+  pendingRelease: null,
   text: "Check the pull request at [PR LINK].",
   nameValid: false,
 } satisfies InventoryPrimitive;

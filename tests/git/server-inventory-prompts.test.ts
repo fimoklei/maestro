@@ -151,12 +151,14 @@ describe("released prompts on the Inventory", { timeout: 30_000 }, () => {
         name: "tdd",
         description: "Test-driven development loop",
         path: ".apm/skills/tdd",
+        pendingRelease: null,
       },
       {
         type: "prompt",
         name: "pr-review",
         description: "Review a pull request",
         path: ".maestro/prompts/pr-review.md",
+        pendingRelease: null,
         text: PROMPT_BODY,
         nameValid: true,
       },
@@ -187,5 +189,48 @@ describe("released prompts on the Inventory", { timeout: 30_000 }, () => {
         },
       ],
     });
+  });
+
+  it("keeps a released prompt under its old name while its merged rename waits", async () => {
+    await mkdir(join(root, ".maestro", "prompts"), { recursive: true });
+    await writeFile(
+      join(root, ".maestro", "prompts", "pr-review.md"),
+      PROMPT_BODY,
+      "utf8",
+    );
+    await commitAndPush("add prompt");
+    await git(root, "tag", "v0.2.0");
+    await git(root, "push", "--tags", "origin");
+    await git(
+      root,
+      "mv",
+      join(".maestro", "prompts", "pr-review.md"),
+      join(".maestro", "prompts", "pr-check.md"),
+    );
+    await commitAndPush("rename prompt");
+    const app = makeApp();
+    await app.request("/api/harness/refresh", { method: "POST" });
+
+    const prompts = (await primitivesOf(app)).filter(
+      (primitive) => primitive.type === "prompt",
+    );
+
+    expect(
+      prompts.map(({ name, text, pendingRelease }) => ({
+        name,
+        text,
+        pendingRelease,
+      })),
+    ).toEqual([
+      {
+        name: "pr-review",
+        text: PROMPT_BODY,
+        pendingRelease: {
+          change: "rename",
+          renamedTo: "pr-check",
+          defaultBranch: "main",
+        },
+      },
+    ]);
   });
 });

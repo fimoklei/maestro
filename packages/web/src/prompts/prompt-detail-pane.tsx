@@ -1,4 +1,8 @@
 import type { InventoryPrompt } from "@maestro/core";
+import {
+  pendingReleaseFacts,
+  pendingReleaseLine,
+} from "../inventory/pending-release-copy";
 import { TYPE_WORD } from "../inventory/type-filter";
 import { LATEST_RELEASE_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
 import { DetailPane, type PaneNotice } from "../ui/detail-pane";
@@ -52,6 +56,7 @@ export function PromptDetailPane({
         ]
       : []),
   ];
+  const pending = prompt.pendingRelease;
   return (
     <DetailPane
       title={prompt.name}
@@ -63,6 +68,7 @@ export function PromptDetailPane({
       getTriggerElement={getTriggerElement}
       facts={[
         { label: "Type", value: TYPE_WORD[prompt.type] },
+        ...(pending === null ? [] : pendingReleaseFacts(pending)),
         latestRelease === undefined
           ? null
           : {
@@ -77,7 +83,10 @@ export function PromptDetailPane({
           fullValue: prompt.path,
         },
       ]}
-      paragraph={prompt.description === "" ? [] : [prompt.description]}
+      paragraph={[
+        ...(pending === null ? [] : [pendingReleaseLine(prompt, pending)]),
+        ...(prompt.description === "" ? [] : [prompt.description]),
+      ]}
       clampParagraph
       notices={notices}
       subList={<PromptText text={prompt.text} onCopy={onCopy} />}

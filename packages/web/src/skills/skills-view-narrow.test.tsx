@@ -47,6 +47,7 @@ describe("Skills band 2 at a narrow window", () => {
           type: "skill",
           name,
           path: `.apm/skills/${name}`,
+          pendingRelease: null,
           description: "",
         }))}
         repos={[]}
