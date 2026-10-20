@@ -232,6 +232,7 @@ describe("inventory connect HTTP route", () => {
           type: "skill",
           name: "tdd",
           description: "Test-driven development loop",
+          path: ".apm/skills/tdd",
         },
       ],
     });
