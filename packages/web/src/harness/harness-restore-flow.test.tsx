@@ -173,7 +173,7 @@ describe("Harness restore", () => {
 
     await waitFor(() =>
       expect(restores).toEqual([
-        { name: "old-skill", seenHeadCommit: "local-head" },
+        { type: "skill", name: "old-skill", seenHeadCommit: "local-head" },
       ]),
     );
     // Nothing was pushed: the commit it came from is already in the clone.
@@ -227,7 +227,7 @@ describe("Harness restore", () => {
 
     await waitFor(() =>
       expect(restores).toEqual([
-        { name: "old-skill", seenHeadCommit: "local-head" },
+        { type: "skill", name: "old-skill", seenHeadCommit: "local-head" },
       ]),
     );
   });

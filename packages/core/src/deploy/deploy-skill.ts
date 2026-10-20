@@ -413,7 +413,9 @@ export class DeploySkill {
       );
     }
     for (const name of names) {
-      if (!inventory.primitives.some((p) => p.name === name)) {
+      if (
+        !inventory.primitives.some((p) => p.type === "skill" && p.name === name)
+      ) {
         results.set(name, { ok: false, error: "unknown-skill" });
       }
     }

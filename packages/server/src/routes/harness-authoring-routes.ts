@@ -38,25 +38,25 @@ type Deps = Pick<
   | "inventory"
   | "promote"
   | "promoteDeletion"
-  | "deleteLocalSkill"
-  | "restoreSkill"
-  | "discardSkillChange"
+  | "deleteLocal"
+  | "restore"
+  | "discard"
   | "proposals"
   | "importSkill"
   | "scaffold"
 >;
 
-// Every request names a skill until the request bodies carry a type.
-const skill = (name: string) => ({ type: "skill" as const, name });
-
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
-  // Takes the skill's name only; the harness is resolved server-side (#577).
+  // Takes the primitive's type and name only; the harness is resolved server-side (#577).
   app.post("/api/harness/promote", async (c) => {
     const body = await parseBody(c, promoteBodySchema, PROMOTE_BODY);
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.promote.execute(skill(body.data.name));
+    const result = await deps.promote.execute({
+      type: body.data.type,
+      name: body.data.name,
+    });
     if (!result.ok) {
       const { status } = promoteErrorResponses[result.error];
       return c.json({ error: result.error }, status);
@@ -74,7 +74,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.promoteDeletion.execute(
-      skill(body.data.name),
+      { type: body.data.type, name: body.data.name },
       body.data.seenRemoteTree,
     );
     if (!result.ok) {
@@ -87,17 +87,17 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  app.get("/api/harness/skill/delete/check", async (c) => {
-    const result = await deps.deleteLocalSkill.inspect();
+  app.get("/api/harness/primitive/delete/check", async (c) => {
+    const result = await deps.deleteLocal.inspect();
     if (!result.ok) {
       const { status } = localDeletionErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    return c.json({ skills: result.checks.skill });
+    return c.json(result.checks);
   });
 
   // The name is a claim: core re-reads the local refs and folder before deleting (#798).
-  app.post("/api/harness/skill/delete", async (c) => {
+  app.post("/api/harness/primitive/delete", async (c) => {
     const body = await parseBody(
       c,
       localDeletionBodySchema,
@@ -106,8 +106,8 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.deleteLocalSkill.execute(
-      skill(body.data.name),
+    const result = await deps.deleteLocal.execute(
+      { type: body.data.type, name: body.data.name },
       body.data.seenWorkingTree,
     );
     if (!result.ok) {
@@ -118,13 +118,13 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   });
 
   // The commit is compared with a freshly read HEAD, so the browser names no source.
-  app.post("/api/harness/skill/restore", async (c) => {
+  app.post("/api/harness/primitive/restore", async (c) => {
     const body = await parseBody(c, restoreBodySchema, RESTORE_BODY);
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.restoreSkill.execute(
-      skill(body.data.name),
+    const result = await deps.restore.execute(
+      { type: body.data.type, name: body.data.name },
       body.data.seenHeadCommit,
     );
     if (!result.ok) {
@@ -136,13 +136,13 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
 
   // The tree is the default-branch copy the author confirmed; core refuses one
   // that moved since (#1375).
-  app.post("/api/harness/skill/discard", async (c) => {
+  app.post("/api/harness/primitive/discard", async (c) => {
     const body = await parseBody(c, discardBodySchema, DISCARD_BODY);
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.discardSkillChange.execute(
-      skill(body.data.name),
+    const result = await deps.discard.execute(
+      { type: body.data.type, name: body.data.name },
       body.data.seenRemoteTree,
     );
     if (!result.ok) {
@@ -168,7 +168,10 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.create(skill(body.data.name)),
+      await deps.proposals.create({
+        type: body.data.type,
+        name: body.data.name,
+      }),
     );
   });
 
@@ -179,7 +182,10 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.reopen(skill(body.data.name), body.data.number),
+      await deps.proposals.reopen(
+        { type: body.data.type, name: body.data.name },
+        body.data.number,
+      ),
     );
   });
 
@@ -190,7 +196,10 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.withdraw(skill(body.data.name), body.data.number),
+      await deps.proposals.withdraw(
+        { type: body.data.type, name: body.data.name },
+        body.data.number,
+      ),
     );
   });
 

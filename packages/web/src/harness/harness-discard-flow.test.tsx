@@ -88,7 +88,11 @@ describe("Harness discard", () => {
 
     await waitFor(() =>
       expect(discards).toEqual([
-        { name: "code-review", seenRemoteTree: "remote-code-review" },
+        {
+          type: "skill",
+          name: "code-review",
+          seenRemoteTree: "remote-code-review",
+        },
       ]),
     );
     expect(promotions).toEqual([]);

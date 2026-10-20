@@ -177,14 +177,14 @@ export function stubHarnessServer(options: {
         }
         return jsonResponse(answered.body, answered.status);
       }
-      if (url === "/api/harness/skill/delete/check") {
+      if (url === "/api/harness/primitive/delete/check") {
         const checks = options.deletionChecks ?? [{ body: {}, status: 500 }];
         const check = checks[Math.min(checkCalls, checks.length - 1)];
         checkCalls += 1;
         await check?.heldUntil;
         return jsonResponse(check?.body, check?.status);
       }
-      if (url === "/api/harness/skill/delete") {
+      if (url === "/api/harness/primitive/delete") {
         options.localDeletions?.push(JSON.parse(String(init?.body)));
         const first = options.localDeletion ?? { body: {}, status: 500 };
         const gone =
@@ -197,7 +197,7 @@ export function stubHarnessServer(options: {
         }
         return jsonResponse(gone.body, gone.status);
       }
-      if (url === "/api/harness/skill/restore") {
+      if (url === "/api/harness/primitive/restore") {
         options.restores?.push(JSON.parse(String(init?.body)));
         const back = options.restore ?? { body: {}, status: 500 };
         if ((back.status ?? 200) < 400) {
@@ -205,7 +205,7 @@ export function stubHarnessServer(options: {
         }
         return jsonResponse(back.body, back.status);
       }
-      if (url === "/api/harness/skill/discard") {
+      if (url === "/api/harness/primitive/discard") {
         options.discards?.push(JSON.parse(String(init?.body)));
         const back = options.discard ?? { body: {}, status: 500 };
         if ((back.status ?? 200) < 400) {

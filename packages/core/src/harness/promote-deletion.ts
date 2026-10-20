@@ -31,7 +31,7 @@ export type PromoteDeletionResult =
   | { ok: true; branch: string; pullRequestUrl: string }
   | { ok: false; error: PromoteDeletionError };
 
-export class PromoteSkillDeletion {
+export class PromoteDeletion {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
@@ -40,7 +40,7 @@ export class PromoteSkillDeletion {
     review: HarnessReviewPort;
   };
 
-  constructor(deps: PromoteSkillDeletion["deps"]) {
+  constructor(deps: PromoteDeletion["deps"]) {
     this.deps = deps;
   }
 

@@ -119,7 +119,10 @@ describe("proposal actions", () => {
 
     await waitFor(() =>
       expect(proposals).toEqual([
-        { action: "withdraw", body: { name: "tdd", number: 45 } },
+        {
+          action: "withdraw",
+          body: { type: "skill", name: "tdd", number: 45 },
+        },
       ]),
     );
   });
@@ -173,7 +176,9 @@ describe("proposal actions", () => {
     );
 
     await waitFor(() =>
-      expect(proposals).toEqual([{ action: "create", body: { name: "tdd" } }]),
+      expect(proposals).toEqual([
+        { action: "create", body: { type: "skill", name: "tdd" } },
+      ]),
     );
   });
 
@@ -235,7 +240,7 @@ describe("proposal actions", () => {
 
     await waitFor(() =>
       expect(proposals).toEqual([
-        { action: "reopen", body: { name: "tdd", number: 45 } },
+        { action: "reopen", body: { type: "skill", name: "tdd", number: 45 } },
       ]),
     );
   });
@@ -310,7 +315,10 @@ describe("proposal actions", () => {
 
     await waitFor(() =>
       expect(proposals).toEqual([
-        { action: "withdraw", body: { name: "tdd", number: 45 } },
+        {
+          action: "withdraw",
+          body: { type: "skill", name: "tdd", number: 45 },
+        },
       ]),
     );
   });

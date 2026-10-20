@@ -53,11 +53,11 @@ async function world() {
     body: JSON.stringify({ path: REPO }),
   });
   expect(registered.status).toBe(201);
-  const post = (path: string, body: unknown) =>
+  const post = (path: string, body: Record<string, unknown>) =>
     app.request(path, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type: "skill", ...body }),
     });
   const readDrift = async () => {
     const res = await app.request(
@@ -102,7 +102,10 @@ describe("apm outdated reuse in the composition", () => {
     const { post, readDrift, outdatedRuns } = await world();
     await readDrift();
 
-    const promoted = await post("/api/harness/promote", { name: "research" });
+    const promoted = await post("/api/harness/promote", {
+      type: "skill",
+      name: "research",
+    });
     expect(promoted.status).toBe(200);
     await readDrift();
 
@@ -114,6 +117,7 @@ describe("apm outdated reuse in the composition", () => {
     await readDrift();
 
     const promoted = await post("/api/harness/promote/deletion", {
+      type: "skill",
       name: "old-skill",
       seenRemoteTree: treeHash("legacy"),
     });

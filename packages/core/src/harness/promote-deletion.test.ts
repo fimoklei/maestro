@@ -8,7 +8,7 @@ import type {
   ReviewRequest,
   ReviewWriteOutcome,
 } from "./harness-review-port";
-import { PromoteSkillDeletion } from "./promote-deletion";
+import { PromoteDeletion } from "./promote-deletion";
 import type { HarnessFreshness } from "./read-harness-state";
 
 const AT = new Date("2026-08-09T12:00:00.000Z");
@@ -75,7 +75,7 @@ function buildDeletion(
     fetchGate?: HarnessFetchGate;
   },
 ) {
-  return new PromoteSkillDeletion({
+  return new PromoteDeletion({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     locks: new InFlightLocks(),
@@ -98,7 +98,7 @@ function buildDeletion(
   });
 }
 
-describe("PromoteSkillDeletion", () => {
+describe("PromoteDeletion", () => {
   it("opens the pull request the pushed removal has no proposal for", async () => {
     const created: NewReviewRequest[] = [];
     const deletion = buildDeletion(deletedWorld(), {

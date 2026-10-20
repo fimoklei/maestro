@@ -28,16 +28,16 @@ import type { CopyTreeFsPort } from "./filesystem/copy-tree-fs";
 import { ChooseFolder } from "./folder-chooser/choose-folder";
 import type { FolderChooserPort } from "./folder-chooser/folder-chooser-port";
 import type { GitHubPage } from "./git/github-page";
-import { DeleteLocalSkill } from "./harness/delete-local-skill";
-import { DiscardSkillChange } from "./harness/discard-skill-change";
+import { DeleteLocal } from "./harness/delete-local";
+import { DiscardChange } from "./harness/discard-change";
 import { HarnessFetchGate } from "./harness/harness-fetch-gate";
 import { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 import type { HarnessGitAdapter } from "./harness/harness-git";
 import type { HarnessReviewPort } from "./harness/harness-review-port";
 import { ImportLocalEdits } from "./harness/import-local-edits";
 import { ImportSkill } from "./harness/import-skill";
-import { PromoteSkillDeletion } from "./harness/promote-deletion";
-import { PromoteSkill } from "./harness/promote-skill";
+import { Promote } from "./harness/promote";
+import { PromoteDeletion } from "./harness/promote-deletion";
 import { ProposalActions } from "./harness/proposal-actions";
 import { PublishRelease } from "./harness/publish-release";
 import {
@@ -45,7 +45,7 @@ import {
   ReadHarnessState,
 } from "./harness/read-harness-state";
 import { rememberOrigin } from "./harness/remembered-origin";
-import { RestoreSkill } from "./harness/restore-skill";
+import { Restore } from "./harness/restore";
 import { ReviewReadGate } from "./harness/review-read-gate";
 import {
   resolveApmGlobalRoot,
@@ -56,7 +56,7 @@ import { ConnectInventory } from "./inventory/connect-inventory";
 import type { HarnessScaffoldGitPort } from "./inventory/harness-scaffold-git";
 import type { HeadProbe } from "./inventory/head-commit";
 import { InventoryReader } from "./inventory/inventory-reader";
-import { releasedSkillsFromGit } from "./inventory/released-skills";
+import { releasedPrimitivesFromGit } from "./inventory/released-primitives";
 import { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 import { ScaffoldHarness } from "./inventory/scaffold-harness";
 import { ScaffoldOffers } from "./inventory/scaffold-offers";
@@ -82,7 +82,9 @@ export type UseCasePorts = {
         | "readOrigin"
         | "readTags"
         | "readSkillTreesAtTag"
+        | "readPrimitivesAtTag"
         | "readSkillManifestsAtTag"
+        | "readPromptTextsAtTag"
       >;
     // Bound to the Harness root the composition resolves per call.
     inventory: (
@@ -132,7 +134,7 @@ export function composeUseCases(ports: UseCasePorts) {
     fs,
     resolvePath: inventoryPath,
     originUrl: git.originUrl,
-    readReleasedSkills: releasedSkillsFromGit(harnessGit),
+    readReleased: releasedPrimitivesFromGit(harnessGit),
   });
   const harnessRoot = async () => {
     const path = await inventoryPath();
@@ -379,7 +381,7 @@ export function composeUseCases(ports: UseCasePorts) {
       }),
     ),
     promote: droppingOutdated(
-      new PromoteSkill({
+      new Promote({
         resolveRoot: harnessRoot,
         git: harnessGit,
         fetchGate: harnessFetchGate,
@@ -389,7 +391,7 @@ export function composeUseCases(ports: UseCasePorts) {
     ),
     // Shares the promotion's lock: an edit and a removal from one fetched tip would race.
     promoteDeletion: droppingOutdated(
-      new PromoteSkillDeletion({
+      new PromoteDeletion({
         resolveRoot: harnessRoot,
         git: harnessGit,
         fetchGate: harnessFetchGate,
@@ -398,14 +400,14 @@ export function composeUseCases(ports: UseCasePorts) {
       }),
     ),
     // Shares the promotion lock: it reads the same working tree (#798).
-    deleteLocalSkill: new DeleteLocalSkill({
+    deleteLocal: new DeleteLocal({
       resolveRoot: harnessRoot,
       fs,
       git: harnessGit,
       locks: harnessPromoteLocks,
     }),
     // Behind the same lock, so a restoration never races a push reading the tree.
-    restoreSkill: new RestoreSkill({
+    restore: new Restore({
       resolveRoot: harnessRoot,
       fs,
       copyFs: copyTreeFs,
@@ -413,7 +415,7 @@ export function composeUseCases(ports: UseCasePorts) {
       locks: harnessPromoteLocks,
     }),
     // Rechecks the stage the row was read in, behind the same lock.
-    discardSkillChange: new DiscardSkillChange({
+    discard: new DiscardChange({
       resolveRoot: harnessRoot,
       readStages: async () => {
         const read = await harness.execute();

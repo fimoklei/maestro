@@ -15,7 +15,7 @@ const ROW_READS = [
   "/api/deploy-state?repo=",
   "/api/drift/global",
   "/api/drift?repo=",
-  "/api/harness/skill/delete/check",
+  "/api/harness/primitive/delete/check",
 ];
 
 // Answers every read at once, and records each request in order.
@@ -44,8 +44,8 @@ function stubServer({
       if (url.startsWith("/api/deploy-state"))
         return jsonResponse({ primitives: [], skipped: [] });
       if (url.startsWith("/api/drift")) return jsonResponse({ behind: [] });
-      if (url.startsWith("/api/harness/skill/delete/check"))
-        return jsonResponse({ skills: {} });
+      if (url.startsWith("/api/harness/primitive/delete/check"))
+        return jsonResponse({ skill: {}, prompt: {} });
       return jsonResponse({ error: "not-configured" }, 409);
     }),
   );

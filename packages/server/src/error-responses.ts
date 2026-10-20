@@ -1,21 +1,21 @@
 import type {
   ChooseFolderError,
   ConnectInventoryError,
-  DeleteLocalSkillError,
+  DeleteLocalError,
   DeploySkillError,
-  DiscardSkillChangeError,
+  DiscardChangeError,
   HarnessStateError,
   ImportSkillError,
   LocalEditsError,
   PromoteDeletionError,
-  PromoteSkillError,
+  PromoteError,
   ProposalActionError,
   PublishReleaseError,
   ReleasePlanError,
   RemoveDeployedSkillError,
   RemovePreflightError,
   RepoPathError,
-  RestoreSkillError,
+  RestoreError,
   RetryTargetOperationError,
   ScaffoldHarnessError,
   UpdatePreviewError,
@@ -213,7 +213,7 @@ export const publishReleaseErrorResponses: ErrorTable<PublishReleaseError> = {
   "publish-in-progress": { status: 409 },
 };
 
-export const promoteErrorResponses: ErrorTable<PromoteSkillError> = {
+export const promoteErrorResponses: ErrorTable<PromoteError> = {
   ...harnessErrorResponses,
   "invalid-skill": { status: 400 },
   "no-answer": { status: 409 },
@@ -259,7 +259,7 @@ export const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
   "promote-in-progress": promoteErrorResponses["promote-in-progress"],
 };
 
-export const localDeletionErrorResponses: ErrorTable<DeleteLocalSkillError> = {
+export const localDeletionErrorResponses: ErrorTable<DeleteLocalError> = {
   "not-configured": { status: 409 },
   "invalid-skill": { status: 400 },
   "already-gone": { status: 409 },
@@ -270,7 +270,7 @@ export const localDeletionErrorResponses: ErrorTable<DeleteLocalSkillError> = {
   "delete-in-progress": { status: 409 },
 };
 
-export const restoreErrorResponses: ErrorTable<RestoreSkillError> = {
+export const restoreErrorResponses: ErrorTable<RestoreError> = {
   "not-configured": { status: 409 },
   "invalid-skill": { status: 400 },
   "head-moved": { status: 409 },
@@ -289,7 +289,7 @@ export const restoreErrorResponses: ErrorTable<RestoreSkillError> = {
   "restore-failed": { status: 500 },
 };
 
-export const discardErrorResponses: ErrorTable<DiscardSkillChangeError> = {
+export const discardErrorResponses: ErrorTable<DiscardChangeError> = {
   "not-configured": { status: 409 },
   "invalid-skill": { status: 400 },
   "sparse-checkout": deletionErrorResponses["sparse-checkout"],

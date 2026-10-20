@@ -10,7 +10,7 @@ import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
 import type { HarnessStages } from "./harness-stages";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
-export type DiscardSkillChangeError =
+export type DiscardChangeError =
   | "not-configured"
   | "invalid-skill"
   | WorktreeAmbiguity
@@ -23,11 +23,11 @@ export type DiscardSkillChangeError =
   | "discard-in-progress"
   | "discard-failed";
 
-export type DiscardSkillChangeResult =
+export type DiscardChangeResult =
   | { ok: true; name: string }
-  | { ok: false; error: DiscardSkillChangeError };
+  | { ok: false; error: DiscardChangeError };
 
-export class DiscardSkillChange {
+export class DiscardChange {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     // The stages the rows were read from: whether a change is proposed takes
@@ -48,7 +48,7 @@ export class DiscardSkillChange {
     locks: InFlightLocks;
   };
 
-  constructor(deps: DiscardSkillChange["deps"]) {
+  constructor(deps: DiscardChange["deps"]) {
     this.deps = deps;
   }
 
@@ -56,7 +56,7 @@ export class DiscardSkillChange {
   async execute(
     ref: PrimitiveRef,
     seenRemoteTree: string,
-  ): Promise<DiscardSkillChangeResult> {
+  ): Promise<DiscardChangeResult> {
     if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
@@ -74,7 +74,7 @@ export class DiscardSkillChange {
     root: string,
     ref: PrimitiveRef,
     seenRemoteTree: string,
-  ): Promise<DiscardSkillChangeResult> {
+  ): Promise<DiscardChangeResult> {
     const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
     if (ambiguity !== null) {
       return { ok: false, error: ambiguity };
@@ -128,7 +128,7 @@ export class DiscardSkillChange {
     ref: PrimitiveRef,
     commit: string,
     target: string,
-  ): Promise<DiscardSkillChangeResult> {
+  ): Promise<DiscardChangeResult> {
     let staging: string;
     try {
       staging = await this.deps.copyFs.createStagingDir(dirname(target));

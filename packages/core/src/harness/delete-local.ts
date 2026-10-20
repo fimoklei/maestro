@@ -15,7 +15,7 @@ import {
 import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
 import type { HarnessGitPort, HarnessHashes } from "./read-harness-state";
 
-export type DeleteLocalSkillError =
+export type DeleteLocalError =
   | "not-configured"
   | "invalid-skill"
   | "already-gone"
@@ -27,9 +27,9 @@ export type DeleteLocalSkillError =
   | "delete-failed"
   | "delete-in-progress";
 
-export type DeleteLocalSkillResult =
+export type DeleteLocalResult =
   | { ok: true; name: string }
-  | { ok: false; error: DeleteLocalSkillError };
+  | { ok: false; error: DeleteLocalError };
 
 // Per type, then per name.
 type DeletionChecks = Record<
@@ -55,7 +55,7 @@ export type DeletionCheckResult =
   | { ok: true; checks: DeletionChecks }
   | { ok: false; error: "not-configured" | "no-answer" };
 
-export class DeleteLocalSkill {
+export class DeleteLocal {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     fs: Pick<FileSystemPort, "realpath" | "remove">;
@@ -63,7 +63,7 @@ export class DeleteLocalSkill {
     locks: InFlightLocks;
   };
 
-  constructor(deps: DeleteLocalSkill["deps"]) {
+  constructor(deps: DeleteLocal["deps"]) {
     this.deps = deps;
   }
 
@@ -96,7 +96,7 @@ export class DeleteLocalSkill {
   async execute(
     ref: PrimitiveRef,
     seenWorkingTree: string,
-  ): Promise<DeleteLocalSkillResult> {
+  ): Promise<DeleteLocalResult> {
     if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
@@ -114,7 +114,7 @@ export class DeleteLocalSkill {
     root: string,
     ref: PrimitiveRef,
     seenWorkingTree: string,
-  ): Promise<DeleteLocalSkillResult> {
+  ): Promise<DeleteLocalResult> {
     // Re-read at the press, never taken from the row.
     const trees = await this.deps.git.readMovementTrees(root).catch(() => null);
     if (trees === null) {

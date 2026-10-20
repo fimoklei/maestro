@@ -50,6 +50,7 @@ export function SkillPaneDialog({
       return (
         <PaneDeletion
           target={{
+            type: "skill",
             skill: skillName,
             path: dialog.path,
             localOnly: dialog.localOnly,

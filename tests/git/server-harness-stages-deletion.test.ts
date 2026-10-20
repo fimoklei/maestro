@@ -32,7 +32,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       app.request("/api/harness/promote/deletion", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, seenRemoteTree }),
+        body: JSON.stringify({ type: "skill", name, seenRemoteTree }),
       });
 
     const primitiveNames = async (app: HarnessStagesApp): Promise<string[]> => {

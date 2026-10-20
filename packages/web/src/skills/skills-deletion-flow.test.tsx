@@ -22,7 +22,7 @@ const DELETED: HarnessState = withStages(RELEASED, {
 });
 
 const IN_CLONE = {
-  skills: {
+  skill: {
     tdd: {
       inClone: true,
       path: ".apm/skills/tdd",
@@ -31,6 +31,7 @@ const IN_CLONE = {
       localOnly: false,
     },
   },
+  prompt: {},
 };
 
 type Answer = { body: unknown; status?: number; heldUntil?: Promise<void> };
@@ -50,12 +51,12 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
           primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
         });
       }
-      if (url === "/api/harness/skill/delete/check") {
+      if (url === "/api/harness/primitive/delete/check") {
         const check = options.check ?? { body: IN_CLONE };
         await check.heldUntil;
         return jsonResponse(check.body, check.status);
       }
-      if (url === "/api/harness/skill/delete") {
+      if (url === "/api/harness/primitive/delete") {
         deletions.push(JSON.parse(String(init?.body)));
         deleted = true;
         return jsonResponse({ name: "tdd" });
@@ -152,7 +153,9 @@ describe("Skills — Delete skill", () => {
     });
     expect(within(pane).getByText("Deletion")).toBeInTheDocument();
     expect(within(pane).getByText("Not yet proposed")).toBeInTheDocument();
-    expect(deletions).toEqual([{ name: "tdd", seenWorkingTree: "tree-1" }]);
+    expect(deletions).toEqual([
+      { type: "skill", name: "tdd", seenWorkingTree: "tree-1" },
+    ]);
   });
 
   const never = new Promise<void>(() => {});
@@ -193,7 +196,7 @@ describe("Skills — Delete skill", () => {
     ],
     [
       "where the skill is not in the clone",
-      { check: { body: { skills: { tdd: { inClone: false } } } } },
+      { check: { body: { skill: { tdd: { inClone: false } }, prompt: {} } } },
     ],
   ])(
     "omits Delete skill %s, from the row menu and the pane foot",

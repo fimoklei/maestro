@@ -39,9 +39,9 @@ import {
 
 const skillName = (_data: unknown, { name }: { name: string }) => name;
 
-// The row a press on a skill lands on. Request bodies name no type yet.
-const skillRow = (stage: HarnessStage, name: string) =>
-  rowId({ stage, type: "skill", name });
+// The row a press lands on, named by the request it sent.
+const pressedRow = (stage: HarnessStage, { type, name }: PrimitiveRef) =>
+  rowId({ stage, type, name });
 
 export function useHarnessPresses(
   state: HarnessState | undefined,
@@ -56,7 +56,7 @@ export function useHarnessPresses(
     name: skillName,
     failure: promoteNotice,
   });
-  const promotedSkill = promote.variables?.name ?? null;
+  const promotedSkill = promote.variables ?? null;
   const promoteFailure = promoteWrite.failure;
   // The stage the press was made in. Propose change sits in two of them, and a
   // refusal belongs to the row it was pressed from, not to the skill (#865).
@@ -130,7 +130,7 @@ export function useHarnessPresses(
     name: skillName,
     failure: proposalNotice,
   });
-  const proposalSkill = proposalAction.variables?.name ?? null;
+  const proposalSkill = proposalAction.variables ?? null;
   const proposalFailure = proposalWrite.failure;
   const [withdrawing, setWithdrawing] = useState<WithdrawTarget | null>(null);
 
@@ -144,7 +144,7 @@ export function useHarnessPresses(
       promotedFrom !== null
     ) {
       return {
-        id: skillRow(promotedFrom, promotedSkill),
+        id: pressedRow(promotedFrom, promotedSkill),
         notice: promoteFailure,
       };
     }
@@ -154,7 +154,7 @@ export function useHarnessPresses(
       proposalSkill !== null
     ) {
       return {
-        id: skillRow("pending-review", proposalSkill),
+        id: pressedRow("pending-review", proposalSkill),
         notice: proposalFailure,
       };
     }
@@ -167,7 +167,7 @@ export function useHarnessPresses(
   const running: (RunningPress & { id: string }) | null =
     promote.isPending && promotedSkill !== null && promotedFrom !== null
       ? {
-          id: skillRow(promotedFrom, promotedSkill),
+          id: pressedRow(promotedFrom, promotedSkill),
           action: "propose",
           number: null,
         }
@@ -175,7 +175,7 @@ export function useHarnessPresses(
           proposing !== undefined &&
           proposing.action !== "withdraw"
         ? {
-            id: skillRow("pending-review", proposing.name),
+            id: pressedRow("pending-review", proposing),
             action: proposing.action,
             number: proposing.number ?? null,
           }
@@ -186,10 +186,10 @@ export function useHarnessPresses(
   const movedSkill = promote.isSuccess
     ? promotedSkill
     : deletion.isSuccess
-      ? (deletion.variables?.name ?? null)
+      ? (deletion.variables ?? null)
       : null;
   const movedTo =
-    movedSkill === null ? null : skillRow("pending-review", movedSkill);
+    movedSkill === null ? null : pressedRow("pending-review", movedSkill);
 
   const handlers: RowActionHandlers = {
     promote: (row) => {
@@ -199,18 +199,30 @@ export function useHarnessPresses(
         setConfirming({ type: row.type, name: row.name });
         return;
       }
-      promoteWrite.run({ name: row.name });
+      promoteWrite.run({ type: row.type, name: row.name });
     },
-    create: (skill) => proposalWrite.run({ action: "create", name: skill }),
-    reopen: (skill, number) =>
-      proposalWrite.run({ action: "reopen", name: skill, number }),
+    create: (row) =>
+      proposalWrite.run({ action: "create", type: row.type, name: row.name }),
+    reopen: (row, number) =>
+      proposalWrite.run({
+        action: "reopen",
+        type: row.type,
+        name: row.name,
+        number,
+      }),
     withdraw: (row, number) => {
       proposalAction.reset();
-      setWithdrawing({ skill: row.name, branch: row.branch, number });
+      setWithdrawing({
+        type: row.type,
+        name: row.name,
+        branch: row.branch,
+        number,
+      });
     },
     deleteLocal: (row) => {
       deleteLocal.reset();
       setLocalDeletion({
+        type: row.type,
         skill: row.name,
         path: row.path,
         localOnly: row.localOnly,
@@ -222,6 +234,7 @@ export function useHarnessPresses(
       }
       discard.reset();
       setDiscarding({
+        type: row.type,
         name: row.name,
         path: row.path,
         seenRemoteTree: row.remoteTree,
@@ -230,6 +243,7 @@ export function useHarnessPresses(
     restore: (row, commit) => {
       restore.reset();
       setRestoring({
+        type: row.type,
         skill: row.name,
         path: row.path,
         commit,
