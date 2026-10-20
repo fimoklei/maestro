@@ -13,7 +13,7 @@ export type LocalDeletionContext = {
   screen: "harness" | "skills" | "prompts";
 };
 
-// Each screen's own control that shows the skill as it is now.
+// Each screen's own control that shows the item as it is now.
 const SEE_IT_NOW: Record<LocalDeletionContext["screen"], string> = {
   harness: `Select ${rereadLabel("Harness")} to see the skill as it is now.`,
   skills: "Select Harness to see the skill as it is now.",

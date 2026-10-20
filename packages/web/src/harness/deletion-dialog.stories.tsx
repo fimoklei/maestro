@@ -5,7 +5,8 @@ const meta = {
   title: "Harness/DeletionDialog",
   component: DeletionDialog,
   args: {
-    skill: "old-skill",
+    type: "skill",
+    name: "old-skill",
     mode: {
       kind: "propose",
       origin: "fimoklei/harness",
@@ -34,7 +35,7 @@ export const LocalOnly: Story = {
       kind: "local",
       origin: "fimoklei/harness",
       screen: "harness",
-      folder: ".apm/skills/old-skill",
+      path: ".apm/skills/old-skill",
       check: "ready",
       localOnly: true,
       uncommitted: true,
@@ -50,7 +51,7 @@ export const StepOne: Story = {
       kind: "local",
       origin: "fimoklei/harness",
       screen: "harness",
-      folder: ".apm/skills/old-skill",
+      path: ".apm/skills/old-skill",
       check: "ready",
       localOnly: false,
       uncommitted: false,
@@ -64,7 +65,7 @@ export const StepOneUncommitted: Story = {
       kind: "local",
       origin: "fimoklei/harness",
       screen: "harness",
-      folder: ".apm/skills/old-skill",
+      path: ".apm/skills/old-skill",
       check: "ready",
       localOnly: false,
       uncommitted: true,
@@ -79,7 +80,7 @@ export const LocalChecking: Story = {
       kind: "local",
       origin: "fimoklei/harness",
       screen: "harness",
-      folder: ".apm/skills/old-skill",
+      path: ".apm/skills/old-skill",
       check: "checking",
       localOnly: false,
       uncommitted: false,
@@ -129,6 +130,38 @@ export const WorkingTreeAmbiguous: Story = {
       message:
         "Nothing was pushed. Finish or abort the merge, then Delete skill again.",
       detail: "A half-merged working tree does not state what should go.",
+    },
+  },
+};
+
+// A prompt is one file and deploys to no target, so the copy names a file
+// and no targets.
+export const PromptProposal: Story = {
+  args: {
+    type: "prompt",
+    name: "pr-review",
+    mode: {
+      kind: "propose",
+      origin: "fimoklei/harness",
+      branch: "maestro/prompt.pr-review",
+      seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+      openRequest: null,
+    },
+  },
+};
+
+export const PromptFromPrompts: Story = {
+  args: {
+    type: "prompt",
+    name: "pr-review",
+    mode: {
+      kind: "local",
+      origin: "fimoklei/harness",
+      screen: "prompts",
+      path: ".maestro/prompts/pr-review.md",
+      check: "ready",
+      localOnly: false,
+      uncommitted: true,
     },
   },
 };

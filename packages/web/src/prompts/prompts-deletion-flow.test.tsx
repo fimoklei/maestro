@@ -160,6 +160,15 @@ describe("Prompts — Delete prompt", () => {
     const dialog = within(
       await screen.findByRole("dialog", { name: "Delete pr-review" }),
     );
+    expect(
+      dialog.getByText(
+        sentence(
+          "Delete prompt removes the pr-review file from your clone of fimoklei/agent-harness. The prompt stays in fimoklei/agent-harness.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(dialog.getByText("Prompt")).toBeInTheDocument();
+    expect(dialog.getByText("File")).toBeInTheDocument();
     // The sentence a dialog opened from Harness leaves out.
     expect(
       dialog.getByText(
@@ -168,7 +177,7 @@ describe("Prompts — Delete prompt", () => {
         ),
       ),
     ).toBeInTheDocument();
-    const confirm = dialog.getByRole("button", { name: /^delete/i });
+    const confirm = dialog.getByRole("button", { name: /^delete prompt/i });
     await waitFor(() => expect(confirm).not.toHaveAttribute("aria-disabled"));
     await userEvent.click(confirm);
 

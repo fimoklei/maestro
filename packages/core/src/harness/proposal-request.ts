@@ -52,6 +52,13 @@ const OWN_PREFIXES = [
 export const proposalTitle = (ref: PrimitiveRef, kind: ProposalKind): string =>
   `${TITLE_PREFIX[ref.type][kind]} ${ref.name}`;
 
+// A prompt deploys to no target, so its deletion body names none.
+const DELETION_AFTERWORD: Record<HarnessPrimitiveType, string> = {
+  skill:
+    " Targets keep the skill until each one runs Update target after the next release.",
+  prompt: "",
+};
+
 const proposalText = (
   ref: PrimitiveRef,
   kind: ProposalKind,
@@ -59,7 +66,7 @@ const proposalText = (
   title: proposalTitle(ref, kind),
   body:
     kind === "deletion"
-      ? `Deletes ${ref.name} from the Harness. Targets keep the skill until each one runs Update target after the next release.`
+      ? `Deletes ${ref.name} from the Harness.${DELETION_AFTERWORD[ref.type]}`
       : "Proposed from the Maestro cockpit.",
 });
 

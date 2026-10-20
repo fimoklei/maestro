@@ -4,10 +4,10 @@
 
 import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
 import {
-  DELETE_SKILL,
+  DELETE_LABEL,
   DISCARD_CHANGE,
   PROPOSE_CHANGE,
-  RESTORE_SKILL,
+  RESTORE_LABEL,
 } from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
 
@@ -68,7 +68,7 @@ export function rowItems(
     ...(row.restorable && commit !== null
       ? [
           {
-            label: RESTORE_SKILL,
+            label: RESTORE_LABEL[row.type],
             disabled: !restore.enabled,
             danger: true,
             onSelect: () => handlers.restore(row, commit),
@@ -88,7 +88,7 @@ function deleteItem(
   return allowed && row.onDisk
     ? [
         {
-          label: DELETE_SKILL,
+          label: DELETE_LABEL[row.type],
           disabled: !enabled,
           danger: true,
           onSelect: () => handlers.deleteLocal(row),
