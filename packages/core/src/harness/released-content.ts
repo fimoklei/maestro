@@ -8,7 +8,7 @@ import {
   harnessSkillSubpath,
 } from "../inventory/harness-layout";
 import { ReuseGate } from "../reuse-gate";
-import type { HarnessObject } from "./harness-primitive";
+import { type HarnessObject, primitivePath } from "./harness-primitive";
 import { listPrimitivesAt } from "./harness-primitive-git";
 
 export type HarnessSkillTree = { name: string; treeHash: string };
@@ -27,6 +27,7 @@ export class ReleasedContentReader {
     keep: (objects) => objects !== null && objects.length > 0,
   });
   private readonly manifests = new Map<string, string | null>();
+  private readonly prompts = new Map<string, string | null>();
   private readonly files = new Map<string, Record<string, string>>();
 
   // Null on a ref the clone cannot resolve or a listing this parser does not
@@ -84,6 +85,45 @@ export class ReleasedContentReader {
     return Object.fromEntries(
       names.map((name) => [name, this.manifests.get(key(name)) ?? null]),
     );
+  }
+
+  // Each prompt file's text at `ref`, keyed by name; a name without a file
+  // there is absent. Null when `ref` does not resolve or a file cannot be read.
+  async promptTexts(
+    root: string,
+    ref: string,
+    names: readonly string[],
+  ): Promise<Record<string, string> | null> {
+    const commit = await resolveCommit(root, ref);
+    if (commit === null) {
+      return null;
+    }
+    const key = (name: string) => `${commit}\0${name}`;
+    const unread = [...new Set(names)].filter(
+      (name) => !this.prompts.has(key(name)),
+    );
+    if (unread.length > 0) {
+      const blobs = await readBlobs(
+        root,
+        unread.map(
+          (name) => `${commit}:${primitivePath({ type: "prompt", name })}`,
+        ),
+      ).catch(() => null);
+      if (blobs === null) {
+        return null;
+      }
+      unread.forEach((name, index) => {
+        this.prompts.set(key(name), blobs[index]?.toString("utf8") ?? null);
+      });
+    }
+    const texts: Record<string, string> = {};
+    for (const name of names) {
+      const text = this.prompts.get(key(name));
+      if (typeof text === "string") {
+        texts[name] = text;
+      }
+    }
+    return texts;
   }
 
   // Each file's bytes hashed the way apm records a deployed file, keyed

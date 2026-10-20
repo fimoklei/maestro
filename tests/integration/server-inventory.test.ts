@@ -89,6 +89,7 @@ describe("inventory HTTP route", () => {
           type: "skill",
           name: "tdd",
           description: "Test-driven development loop",
+          path: ".apm/skills/tdd",
         },
       ],
     });
@@ -114,6 +115,7 @@ describe("inventory HTTP route", () => {
           type: "skill",
           name: "tdd",
           description: "Test-driven development loop",
+          path: ".apm/skills/tdd",
         },
       ],
     });

@@ -409,6 +409,27 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       : this.readSkillManifests(root, commit, names);
   }
 
+  async readPromptTextsAtTag(
+    root: string,
+    tag: string,
+    names: string[],
+  ): Promise<Record<string, string> | null> {
+    this.at(root);
+    const commit = this.tags?.find((t) => t.name === tag)?.commit;
+    const content = commit === undefined ? null : this.contentAt(commit);
+    if (content === null) {
+      return null;
+    }
+    const texts: Record<string, string> = {};
+    for (const name of names) {
+      const text = content.prompts[name];
+      if (text !== undefined) {
+        texts[name] = text;
+      }
+    }
+    return texts;
+  }
+
   async readTags(root: string): Promise<HarnessTag[] | null> {
     this.at(root);
     return this.tags;

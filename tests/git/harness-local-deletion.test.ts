@@ -13,7 +13,7 @@ import {
   NodeFileSystem,
   PromoteDeletion,
   ReleasedContentReader,
-  releasedSkillsFromGit,
+  releasedPrimitivesFromGit,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
@@ -187,10 +187,10 @@ describe("deleting a Harness skill from the clone", () => {
 
     await expect(confirm("jobs")).resolves.toEqual({ ok: true, name: "jobs" });
 
-    const released = await releasedSkillsFromGit(
+    const released = await releasedPrimitivesFromGit(
       new HarnessGitAdapter({ released: new ReleasedContentReader() }),
     )(root);
-    expect(released?.map((skill) => skill.name)).toEqual(["jobs"]);
+    expect(released?.skills.map((skill) => skill.name)).toEqual(["jobs"]);
   });
 
   // Whichever guard catches it, nothing outside the Harness is removed.

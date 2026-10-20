@@ -1,18 +1,43 @@
 // Reads the central inventory from the local clone's latest release, never the
-// working tree and never the network. A malformed SKILL.md is skipped.
+// working tree and never the network. A malformed SKILL.md is skipped; a
+// prompt with missing or broken frontmatter is listed with no description.
 import { z } from "zod";
 import { parseGitOrigin } from "../deploy/git-origin";
+import { isValidSkillSlug } from "../deploy/package-ref";
 import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
-import { readFrontmatter } from "../harness/validate-skill-structure";
+import { primitivePath } from "../harness/harness-primitive";
+import {
+  readFrontmatter,
+  splitFrontmatter,
+} from "../harness/validate-skill-structure";
 import type { FileSystemPort } from "../registry/file-system";
-import type { ReadReleasedSkills } from "./released-skills";
+import type { ReadReleasedPrimitives } from "./released-primitives";
 
-type Primitive = { type: "skill"; name: string; description: string };
+// `path` is where the primitive lives in the Harness.
+export type InventorySkill = {
+  type: "skill";
+  name: string;
+  description: string;
+  path: string;
+};
 
-// An empty `primitives` only ever means a successful read found no released
-// skill; `unreadable` is a connected harness whose release could not be read.
+// `text` is what Copy prompt copies. `nameValid` is false for a file name that
+// breaks the name rule; the prompt is still listed and copyable.
+export type InventoryPrompt = {
+  type: "prompt";
+  name: string;
+  description: string;
+  path: string;
+  text: string;
+  nameValid: boolean;
+};
+
+export type InventoryPrimitive = InventorySkill | InventoryPrompt;
+
+// An empty `primitives` only ever means a successful read found nothing
+// released; `unreadable` is a connected harness whose release could not be read.
 export type InventoryResult =
-  | { ok: true; primitives: Primitive[] }
+  | { ok: true; primitives: InventoryPrimitive[] }
   | { ok: false; error: "not-configured" | "unreadable" };
 
 // The frontmatter `name` is prose; the directory name is the identity.
@@ -20,14 +45,24 @@ const frontmatterSchema = z.object({
   description: z.string(),
 });
 
-function parseSkillFrontmatter(raw: string): { description: string } | null {
+function parseDescription(raw: string): string | null {
   const frontmatter = readFrontmatter(raw);
   if (frontmatter === null) {
     return null;
   }
   const result = frontmatterSchema.safeParse(frontmatter.data);
-  return result.success ? result.data : null;
+  return result.success ? result.data.description : null;
 }
+
+// The text after a closed frontmatter block, byte for byte; else the whole file.
+const promptOf = (name: string, raw: string): InventoryPrompt => ({
+  type: "prompt",
+  name,
+  description: parseDescription(raw) ?? "",
+  path: primitivePath({ type: "prompt", name }),
+  text: splitFrontmatter(raw)?.body ?? raw,
+  nameValid: isValidSkillSlug(name),
+});
 
 export class InventoryReader {
   private readonly fs: FileSystemPort;
@@ -37,18 +72,18 @@ export class InventoryReader {
   private readonly originUrl: (
     path: string,
   ) => Promise<string | null> | string | null;
-  private readonly readReleasedSkills: ReadReleasedSkills;
+  private readonly readReleased: ReadReleasedPrimitives;
 
   constructor(deps: {
     fs: FileSystemPort;
     resolvePath: () => Promise<string | undefined> | (string | undefined);
     originUrl?: (path: string) => Promise<string | null> | string | null;
-    readReleasedSkills: ReadReleasedSkills;
+    readReleased: ReadReleasedPrimitives;
   }) {
     this.fs = deps.fs;
     this.resolvePath = deps.resolvePath;
     this.originUrl = deps.originUrl ?? (() => null);
-    this.readReleasedSkills = deps.readReleasedSkills;
+    this.readReleased = deps.readReleased;
   }
 
   // Canonicalised, so browser path comparisons match server registration.
@@ -89,25 +124,26 @@ export class InventoryReader {
     }
 
     // Fail-closed: a thrown git call is an unread release, never an empty one.
-    const released = await this.readReleasedSkills(root).catch(() => null);
+    const released = await this.readReleased(root).catch(() => null);
     if (released === null) {
       return { ok: false, error: "unreadable" };
     }
 
-    const primitives: Primitive[] = [];
-    for (const { name, manifest } of released) {
-      if (manifest === null) {
-        continue;
-      }
-      const parsed = parseSkillFrontmatter(manifest);
-      if (parsed === null) {
+    const primitives: InventoryPrimitive[] = [];
+    for (const { name, manifest } of released.skills) {
+      const description = manifest === null ? null : parseDescription(manifest);
+      if (description === null) {
         continue;
       }
       primitives.push({
         type: "skill",
         name,
-        description: parsed.description,
+        description,
+        path: primitivePath({ type: "skill", name }),
       });
+    }
+    for (const { name, text } of released.prompts) {
+      primitives.push(promptOf(name, text));
     }
     return { ok: true, primitives };
   }
