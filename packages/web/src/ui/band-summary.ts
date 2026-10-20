@@ -15,6 +15,8 @@ export type BandCount = {
   family: "failed" | "attention";
   /** Present only where the screen has a status filter. */
   filter?: { pressed: boolean; onToggle: () => void };
+  /** Its 0 blocks a band 1 action: it shows at 0 until every count is 0, under `id` for that action to point at. */
+  gate?: { id: string };
 };
 
 /** A count chip a screen offers: its word, family, and the status words it covers. */
@@ -73,8 +75,12 @@ export function bandSummary(
   if (input.counts === null) {
     return { family: null, word: null, counts: [], age: since };
   }
+  const allZero = input.counts.every((each) => each.count === 0);
   const shown = input.counts.filter(
-    (each) => each.count > 0 || each.filter?.pressed === true,
+    (each) =>
+      each.count > 0 ||
+      each.filter?.pressed === true ||
+      (each.gate !== undefined && !allZero),
   );
   if (shown.every((each) => each.count === 0)) {
     return {

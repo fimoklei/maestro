@@ -123,9 +123,12 @@ describe("Harness freshness and failed reads", () => {
   });
 
   it("keeps Create a release available while a re-read runs", async () => {
+    const waiting = withStages(RELEASED, {
+      release: [row("pending-release", "research", "not-yet-released")],
+    });
     stubHarnessServer({
-      read: { body: RELEASED },
-      refresh: { body: RELEASED, heldUntil: new Promise<void>(() => {}) },
+      read: { body: waiting },
+      refresh: { body: waiting, heldUntil: new Promise<void>(() => {}) },
     });
     renderHarness();
 
