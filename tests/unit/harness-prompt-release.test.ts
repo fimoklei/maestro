@@ -192,6 +192,28 @@ describe("releasing prompt changes", () => {
     expect(plan.versions.patch).toBe("v1.0.1");
   });
 
+  it("reads Pending release and the release plan from one diff, empty when nothing merged", async () => {
+    const quiet = world({});
+    expect(await releaseRows(quiet.useCases)).toEqual([]);
+    expect((await planOf(quiet.useCases)).delta).toEqual([]);
+
+    const edited = world({
+      prompts: { ...RELEASED_PROMPTS, "pr-review": "Review twice\n" },
+    });
+    expect(
+      (await releaseRows(edited.useCases)).map(({ type, name }) => ({
+        type,
+        name,
+      })),
+    ).toEqual([{ type: "prompt", name: "pr-review" }]);
+    expect(
+      (await planOf(edited.useCases)).delta.map(({ type, name }) => ({
+        type,
+        name,
+      })),
+    ).toEqual([{ type: "prompt", name: "pr-review" }]);
+  });
+
   it("lets a skill deletion win over a prompt change in a mixed release", async () => {
     const { useCases } = world({
       skills: {},
