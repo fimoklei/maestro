@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVISORY_TEXT,
-  CREATE_RELEASE_UNAVAILABLE,
   DELETE_UNAVAILABLE,
   FINDING_TEXT,
   FOLDER_MISSING,
-  RELEASE_UNAVAILABLE,
   skillChecksNotice,
 } from "./dialog-copy";
 
@@ -39,21 +37,6 @@ describe("Harness dialog copy", () => {
     expect(ADVISORY_TEXT).toEqual({
       "long-manifest": "SKILL.md is over 500 lines.",
       "long-description": "The description is over 1,024 characters.",
-    });
-  });
-
-  it("states why Create a release cannot open its plan", () => {
-    expect(CREATE_RELEASE_UNAVAILABLE).toEqual({
-      rereading: "re-reading Harness",
-      notRead: "GitHub not read",
-    });
-  });
-
-  it("states why Publish release cannot run yet", () => {
-    expect(RELEASE_UNAVAILABLE).toEqual({
-      loading: "release plan still loading",
-      error: "release plan did not load",
-      empty: "no changes since last release",
     });
   });
 

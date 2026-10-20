@@ -5,7 +5,7 @@ import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { ACTION_STILL_RUNNING, CANCEL, CLOSE } from "./dialog-copy";
-import { GatedButton } from "./gated-button";
+import { type CauseText, GatedButton } from "./gated-button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
@@ -29,8 +29,11 @@ type DialogAction = {
   verb: ActionKey;
   /** `danger` is a destructive dialog: danger button, focus opens on Cancel. */
   tone: "primary" | "danger";
-  /** Why it cannot run yet, in five words or fewer; `null` when it can. */
-  unavailable: string | null;
+  /**
+   * Why it cannot run yet: five words or fewer, the text that says it, or the
+   * dialog's own failure notice; `null` when it can.
+   */
+  unavailable: string | CauseText | { failure: true } | null;
   onRun: () => void;
 };
 
@@ -218,6 +221,7 @@ export function Dialog({
                   action={action}
                   variant={variant}
                   running={running}
+                  failureId={failureId}
                 />
               )}
             </div>
@@ -233,10 +237,12 @@ function ActionButton({
   action,
   variant,
   running,
+  failureId,
 }: {
   action: DialogAction;
   variant: "primary" | "danger" | "quiet";
   running: boolean;
+  failureId: string;
 }) {
   if (action.unavailable === null) {
     return (
@@ -250,7 +256,12 @@ function ActionButton({
       type="submit"
       variant={variant}
       label={action.label}
-      unavailable={action.unavailable}
+      unavailable={
+        typeof action.unavailable === "object" &&
+        "failure" in action.unavailable
+          ? { describedBy: failureId }
+          : action.unavailable
+      }
     />
   );
 }

@@ -402,6 +402,38 @@ describe("Dialog", () => {
       expect(onRun).not.toHaveBeenCalled();
     });
 
+    it("keeps its label and is described by visible text in the body", async () => {
+      const onRun = vi.fn();
+      renderDialog({
+        action: action({ unavailable: { describedBy: "loading" }, onRun }),
+        children: <p id="loading">Loading the restore plan…</p>,
+      });
+
+      const confirm = screen.getByRole("button", { name: "Restore skill" });
+      expect(confirm).toHaveAccessibleDescription("Loading the restore plan…");
+      expect(confirm).toHaveAttribute("aria-disabled", "true");
+      await userEvent.click(confirm);
+
+      expect(onRun).not.toHaveBeenCalled();
+    });
+
+    it("can be described by the dialog's failure notice", () => {
+      renderDialog({
+        action: action({ unavailable: { failure: true } }),
+        failure: {
+          level: "error",
+          label: "Restore plan not loaded",
+          message: "Close this dialog, then open it again.",
+        },
+      });
+
+      expect(
+        screen.getByRole("button", { name: "Restore skill" }),
+      ).toHaveAccessibleDescription(
+        expect.stringContaining("Restore plan not loaded"),
+      );
+    });
+
     it("is not run by Enter in a field", async () => {
       const onRun = vi.fn();
       renderDialog({
