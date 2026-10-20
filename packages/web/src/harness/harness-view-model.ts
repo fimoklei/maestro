@@ -50,7 +50,7 @@ const proposalMeta = (
       ? phrase`Compared with ${branchValue}`
       : `Compared with ${only}`;
   }
-  return phrase`Compared with each skill's proposal or ${branchValue}`;
+  return phrase`Compared with each change's proposal or ${branchValue}`;
 };
 
 const reviewMeta = (read: HarnessStageRead): string | null => {

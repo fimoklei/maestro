@@ -185,6 +185,37 @@ describe("Harness row menu", () => {
       expect(menu.labels).not.toContain("Delete skill");
     });
 
+    // No pull request and no file: the menu would open empty (#1590).
+    it.each(["skill", "prompt"] as const)(
+      "leaves no ⋮ on a Deleted %s in Pending release with no pull request",
+      async (type) => {
+        stubHarnessServer({
+          read: {
+            body: withStages(
+              { ...RELEASED, freshness: FETCHED },
+              {
+                release: [
+                  row("pending-release", "tdd", "not-yet-released", {
+                    type,
+                    change: "deletion",
+                    onDisk: false,
+                  }),
+                ],
+              },
+            ),
+          },
+        });
+        renderHarness();
+        await settled();
+
+        expect(
+          screen.queryByRole("button", {
+            name: `Actions for tdd ${type} in Pending release`,
+          }),
+        ).toBeNull();
+      },
+    );
+
     it.each([
       "waiting-for-review",
       "proposal-closed",

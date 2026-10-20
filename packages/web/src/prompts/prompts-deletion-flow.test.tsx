@@ -31,6 +31,14 @@ const PR_REVIEW = {
   nameValid: true,
 } satisfies InventoryPrimitive;
 
+// A file the listing keeps although every write refuses its name.
+const BAD_NAME = {
+  ...PR_REVIEW,
+  name: "PR_Review",
+  path: ".maestro/prompts/PR_Review.md",
+  nameValid: false,
+} satisfies InventoryPrimitive;
+
 const DELETED: HarnessState = withStages(RELEASED, {
   proposal: [
     row("pending-proposal", "pr-review", "not-yet-proposed", {
@@ -45,6 +53,13 @@ const DELETED: HarnessState = withStages(RELEASED, {
 const IN_CLONE = {
   skill: {},
   prompt: {
+    PR_Review: {
+      inClone: true,
+      path: BAD_NAME.path,
+      workingTree: "blob-2",
+      uncommitted: false,
+      localOnly: false,
+    },
     "pr-review": {
       inClone: true,
       path: PR_REVIEW.path,
@@ -65,7 +80,10 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/inventory/primitives")) {
-        return jsonResponse({ primitives: [PR_REVIEW], unreadTypes: [] });
+        return jsonResponse({
+          primitives: [PR_REVIEW, BAD_NAME],
+          unreadTypes: [],
+        });
       }
       if (url === "/api/harness/primitive/delete/check") {
         const check = options.check ?? { body: IN_CLONE };
@@ -107,19 +125,21 @@ function renderPrompts() {
   );
 }
 
-async function openRowMenu() {
+async function openRowMenu(name = "pr-review") {
   await userEvent.click(
-    await screen.findByRole("button", { name: "Actions for pr-review" }),
+    await screen.findByRole("button", { name: `Actions for ${name}` }),
   );
   return within(await screen.findByRole("menu"));
 }
 
-async function openPane() {
-  await userEvent.click(
-    await screen.findByRole("gridcell", { name: "pr-review" }),
-  );
-  return screen.findByRole("complementary");
+async function openPane(name = "pr-review") {
+  // A bad name's cell also carries its ⚠ mark.
+  await userEvent.click(await screen.findByText(name, { selector: "td *" }));
+  return screen.findByRole("complementary", { name: `${name} detail` });
 }
+
+const menuLabels = (menu: ReturnType<typeof within>) =>
+  menu.getAllByRole("menuitem").map((item: HTMLElement) => item.textContent);
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -149,6 +169,31 @@ describe("Prompts — Delete prompt", () => {
         foot.getByRole("menuitem", { name: "Delete prompt" }),
       ).not.toHaveAttribute("aria-disabled"),
     );
+  });
+
+  // Every write refuses an invalid name; the pane's warning says to rename it.
+  it("leaves Delete prompt off a badly named prompt's row menu", async () => {
+    stubServer({});
+    renderPrompts();
+    const valid = await openRowMenu();
+    await waitFor(() => expect(menuLabels(valid)).toContain("Delete prompt"));
+    await userEvent.keyboard("{Escape}");
+
+    const menu = await openRowMenu("PR_Review");
+    expect(menuLabels(menu)).toEqual(["Copy prompt"]);
+    expect(menu.queryByRole("separator")).toBeNull();
+  });
+
+  it("leaves no ⋯ at a badly named prompt's pane foot", async () => {
+    stubServer({});
+    renderPrompts();
+    await openFootMenu(await openPane(), "pr-review");
+    await userEvent.keyboard("{Escape}");
+
+    const pane = await openPane("PR_Review");
+    expect(
+      within(pane).queryByRole("button", { name: "Actions for PR_Review" }),
+    ).toBeNull();
   });
 
   it("opens the Harness view with the Deleted row once step 1 lands", async () => {

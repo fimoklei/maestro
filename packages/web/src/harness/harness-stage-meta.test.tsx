@@ -77,7 +77,7 @@ describe("Harness stage headers", () => {
 
     const meta = await metaOf(
       "Pending proposal",
-      "Compared with each skill's proposal or main",
+      "Compared with each change's proposal or main",
     );
     expect(within(meta).getByText("main")).toHaveClass("font-mono");
   });
