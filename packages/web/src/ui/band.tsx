@@ -113,17 +113,19 @@ export function BandRow({
               {summary.word === null ? null : (
                 <span id={band?.wordId}>{summary.word}</span>
               )}
-              {summary.counts.map(({ word, count, filter }) =>
+              {summary.counts.map(({ word, count, filter, gate }) =>
                 // A hidden count stays for screen readers, never as an unseen button.
                 countsHidden || filter === undefined ? (
                   <span
                     key={word}
+                    id={gate?.id}
                     data-count
                     className={cn(countsHidden && "sr-only")}
                   >{`${word} ${count}`}</span>
                 ) : (
                   <button
                     key={word}
+                    id={gate?.id}
                     data-count
                     type="button"
                     aria-pressed={filter.pressed}

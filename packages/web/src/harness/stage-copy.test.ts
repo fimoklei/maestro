@@ -776,17 +776,25 @@ describe("pull request words", () => {
 });
 
 describe("harnessCounts", () => {
-  it("counts the Pending review and Pending release rows as attention", () => {
+  it("counts the Pending review and Pending release rows as attention, Pending release as Create a release's gate", () => {
     expect(
-      harnessCounts([
-        "pending-proposal",
-        "pending-review",
-        "pending-release",
-        "pending-release",
-      ]),
+      harnessCounts(
+        [
+          "pending-proposal",
+          "pending-review",
+          "pending-release",
+          "pending-release",
+        ],
+        "release-count",
+      ),
     ).toEqual([
       { word: "Pending review", count: 1, family: "attention" },
-      { word: "Pending release", count: 2, family: "attention" },
+      {
+        word: "Pending release",
+        count: 2,
+        family: "attention",
+        gate: { id: "release-count" },
+      },
     ]);
   });
 });

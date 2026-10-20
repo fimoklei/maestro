@@ -43,6 +43,12 @@ describe("Harness outcome notices", () => {
         restorable: true,
       }),
     ],
+    // PLAN's added skill, so Create a release has something to publish.
+    release: [
+      row("pending-release", "research", "not-yet-released", {
+        change: "addition",
+      }),
+    ],
   });
 
   // GitHub out of reach and the clone behind: two notices that both apply.

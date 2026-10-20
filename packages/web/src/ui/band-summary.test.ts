@@ -96,6 +96,24 @@ describe("bandSummary", () => {
       age: "2 h ago",
     });
   });
+
+  it("keeps a gate count at 0 while another count is above 0", () => {
+    const gate: BandCount = { ...zero(BEHIND), gate: { id: "behind-count" } };
+    expect(summary(READ, [UNKNOWN, gate])).toMatchObject({
+      family: "failed",
+      word: null,
+      counts: [UNKNOWN, gate],
+    });
+  });
+
+  it("drops a gate count for the healthy word when every count is 0", () => {
+    const gate: BandCount = { ...zero(BEHIND), gate: { id: "behind-count" } };
+    expect(summary(READ, [zero(UNKNOWN), gate])).toMatchObject({
+      family: "good",
+      word: "In sync",
+      counts: [],
+    });
+  });
 });
 
 describe("bandSummary for a table with no Status column", () => {
