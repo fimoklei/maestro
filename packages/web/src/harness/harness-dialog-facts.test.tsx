@@ -29,7 +29,7 @@ describe("Harness confirmation facts", () => {
     });
 
   const press = async (item: RegExp, stage = "Pending proposal") => {
-    const menu = await openRowMenu("notes", stage);
+    const menu = await openRowMenu("notes", stage, "prompt");
     await userEvent.click(within(menu).getByRole("menuitem", { name: item }));
     return screen.findByRole("dialog");
   };

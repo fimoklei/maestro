@@ -367,12 +367,13 @@ export const ON_DISK: HarnessState = {
 };
 
 export const openRowMenu = async (
-  skill: string,
+  name: string,
   stage = "Pending proposal",
+  type: "skill" | "prompt" = "skill",
 ) => {
   await userEvent.click(
     await screen.findByRole("button", {
-      name: `Actions for ${skill} in ${stage}`,
+      name: `Actions for ${name} ${type} in ${stage}`,
     }),
   );
   return screen.findByRole("menu");

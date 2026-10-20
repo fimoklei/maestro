@@ -19,6 +19,7 @@ import {
   requestedReviewers,
   reviewerLine,
   reviewWord,
+  type StageContext,
   statusReading,
 } from "./stage-copy";
 import { pullRequest } from "./stage-row-fixture";
@@ -86,9 +87,7 @@ const OWN_STATUSES = ALL_STATUSES.filter(
 const detail = (
   status: StageStatus,
   over: Partial<HarnessStageRow> = {},
-  context:
-    | typeof CONTEXT
-    | (typeof CONTEXT & { releasedVersion: null }) = CONTEXT,
+  context: StageContext = CONTEXT,
 ) =>
   detailSentence(
     row("pending-review", status, {
@@ -291,6 +290,143 @@ describe("Detail sentences", () => {
     ] as const) {
       expect(plainText(detail(status)), status).toContain("#45");
     }
+  });
+
+  it("names the row's own type wherever a sentence names one", () => {
+    const prompt = {
+      type: "prompt",
+      name: "pr-review",
+      path: ".maestro/prompts/pr-review.md",
+      branch: "maestro/prompt.pr-review",
+    } as const;
+    for (const status of ALL_STATUSES) {
+      for (const change of CHANGES) {
+        for (const waitingOn of [null, "octocat"]) {
+          const over = { change, waitingOn, onDisk: true };
+          const skill = plainText(detail(status, over));
+          const text = plainText(detail(status, { ...over, ...prompt }));
+          const at = `${status} ${change} ${waitingOn}`;
+
+          expect(text, at).not.toMatch(/skill|folder/);
+          expect(/\bprompt\b/.test(text), at).toBe(/\bskill\b/.test(skill));
+        }
+      }
+    }
+  });
+
+  it.each<[StageStatus, Partial<HarnessStageRow>, string, string | null]>([
+    [
+      "not-yet-proposed",
+      { waitingOn: "octocat" },
+      "octocat has pull request #45 open for this prompt. Wait until it is merged or closed.",
+      null,
+    ],
+    [
+      "not-yet-proposed",
+      { change: "deletion" },
+      "This prompt is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+      null,
+    ],
+    [
+      "not-yet-proposed",
+      { change: "addition" },
+      "This prompt is not on main yet. Select Propose change to send it for review.",
+      null,
+    ],
+    [
+      "new-local-work",
+      { requests: [] },
+      "You edited this prompt after preparing its proposal. Select Update proposal to send the edits.",
+      null,
+    ],
+    [
+      "new-local-work",
+      {},
+      "You edited this prompt after pull request #45. Select Update proposal to send the edits.",
+      null,
+    ],
+    [
+      "draft",
+      { change: "deletion" },
+      "Pull request #45 proposes deleting this prompt and is still a draft. Select View pull request to mark it ready for review.",
+      null,
+    ],
+    [
+      "waiting-for-review",
+      { change: "deletion" },
+      "Pull request #45 proposes deleting this prompt and is waiting for a reviewer.",
+      null,
+    ],
+    [
+      "approved-awaiting-merge",
+      { change: "deletion" },
+      "Pull request #45 proposes deleting this prompt and is approved. Select View pull request to merge it.",
+      null,
+    ],
+    [
+      "proposed-by-other",
+      {},
+      "Another contributor has pull request #45 open for this prompt. Wait until it is merged or closed.",
+      null,
+    ],
+    [
+      "not-yet-released",
+      { change: "addition" },
+      "This prompt was added to main after release v1.4.0. Select Create a release to publish it.",
+      "This prompt is on main and in no release yet. Select Create a release to publish it.",
+    ],
+    [
+      "not-yet-released",
+      { change: "edit" },
+      "This prompt changed on main after release v1.4.0. Select Create a release to publish it.",
+      "This prompt is on main and in no release yet. Select Create a release to publish it.",
+    ],
+    [
+      "not-yet-released",
+      { change: "rename" },
+      "This prompt was renamed from testing on main. Select Create a release to publish it.",
+      null,
+    ],
+    [
+      "not-yet-released",
+      { change: "rename", previousName: null },
+      "This prompt was renamed on main. Select Create a release to publish it.",
+      null,
+    ],
+    [
+      "not-yet-released",
+      { change: "deletion" },
+      "This prompt was deleted from main after release v1.4.0. Select Create a release to publish the deletion.",
+      "This prompt is no longer on main. Select Create a release to publish the deletion.",
+    ],
+  ])(
+    "words a prompt's %s row as approved (%o)",
+    (status, over, text, unreleased) => {
+      const prompt = { type: "prompt", name: "pr-review", ...over } as const;
+
+      expect(plainText(detail(status, prompt))).toBe(text);
+      if (unreleased !== null) {
+        expect(
+          plainText(
+            detail(status, prompt, { ...CONTEXT, releasedVersion: null }),
+          ),
+        ).toBe(unreleased);
+      }
+    },
+  );
+
+  it("says a prompt's file is back after its deletion was closed", () => {
+    expect(
+      plainText(
+        detail("proposal-closed", {
+          type: "prompt",
+          change: "deletion",
+          onDisk: true,
+        }),
+      ),
+    ).toBe(
+      "Pull request #45 was closed without merging. The file is back in your clone, so the prompt stays in the Harness.",
+    );
   });
 
   it("states what a rename was renamed from", () => {
@@ -547,6 +683,17 @@ describe("deployed copies line", () => {
         row("pending-proposal", "not-yet-proposed", {
           remoteTree: "abc",
           change: "deletion",
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("says nothing for a prompt, which no target deploys", () => {
+    expect(
+      deployedCopiesLine(
+        row("pending-proposal", "not-yet-proposed", {
+          type: "prompt",
+          remoteTree: "abc",
         }),
       ),
     ).toBeNull();
