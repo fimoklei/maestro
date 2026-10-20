@@ -73,7 +73,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
     level: "error",
     label: "Nothing to release",
     message:
-      "Nothing was published. No skill has changed since the last release.",
+      "Nothing was published. No change has merged since the last release.",
   },
   "already-released": {
     level: "error",

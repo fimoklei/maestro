@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router";
+import { COPY_PROMPT, DELETE_PROMPT } from "../ui/control-labels";
 import { PromptDetailPane } from "./prompt-detail-pane";
 
 const meta = {
@@ -19,6 +20,10 @@ const meta = {
     latestRelease: "v1.4.0",
     copyRefused: false,
     onCopy: () => {},
+    footItems: [
+      { label: COPY_PROMPT, onSelect: () => {} },
+      { label: DELETE_PROMPT, danger: true, onSelect: () => {} },
+    ],
     onClose: () => {},
     getTriggerElement: () => null,
   },

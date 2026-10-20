@@ -96,6 +96,23 @@ export const Attention: Story = {
   },
 };
 
+// A count whose 0 blocks a band 1 action stays at 0 beside another count.
+export const GateAtZero: Story = {
+  args: {
+    band: withSummary({
+      counts: [
+        { word: "Pending review", count: 2, family: "attention" },
+        {
+          word: "Pending release",
+          count: 0,
+          family: "attention",
+          gate: { id: "pending-release-count" },
+        },
+      ],
+    }),
+  },
+};
+
 // A count chip filtering the table: pressed, with a ×.
 export const ActiveChip: Story = {
   args: {

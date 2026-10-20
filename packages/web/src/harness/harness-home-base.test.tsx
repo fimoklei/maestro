@@ -287,9 +287,11 @@ describe("Harness home base", () => {
 
     expect(await stageHeader("Pending release")).toBeInTheDocument();
     const research = screen.getByRole("row", { name: /research/ });
-    expect(research).toHaveTextContent("Addition");
+    expect(research).toHaveTextContent("Added");
     expect(research).toHaveTextContent("Not yet released");
-    expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent("Edit");
+    expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent(
+      "Changed",
+    );
   });
 
   it("holds offline apart from a read that failed, and dates both", async () => {
@@ -908,13 +910,13 @@ describe("Harness home base", () => {
       await stageHeader("Pending proposal");
 
       expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent(
-        "Addition",
+        "Added",
       );
       const lintRules = screen.getByRole("row", { name: /lint-rules/ });
-      expect(lintRules).toHaveTextContent("Deletion");
+      expect(lintRules).toHaveTextContent("Deleted");
       expect(lintRules).toHaveTextContent("Waiting for review");
       expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-        "Rename",
+        "Renamed",
       );
     });
 
@@ -925,7 +927,7 @@ describe("Harness home base", () => {
 
       await userEvent.hover(
         within(screen.getByRole("row", { name: /research/ })).getByText(
-          "Rename",
+          "Renamed",
         ),
       );
 
@@ -984,7 +986,7 @@ describe("Harness home base", () => {
       const pane = await openPane("tdd");
 
       expect(within(pane).getByText("Change")).toBeInTheDocument();
-      expect(within(pane).getByText("Addition")).toBeInTheDocument();
+      expect(within(pane).getByText("Added")).toBeInTheDocument();
     });
   });
 
@@ -1023,7 +1025,7 @@ describe("Harness home base", () => {
 
       await userEvent.hover(
         within(screen.getByRole("row", { name: /code-review/ })).getByText(
-          "Edit",
+          "Changed",
         ),
       );
 

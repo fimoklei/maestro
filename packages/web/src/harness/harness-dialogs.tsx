@@ -119,7 +119,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
       {deletionRow !== null && mode !== null ? (
         <DeletionDialog
-          skill={deletionRow.name}
+          type={deletionRow.type}
+          name={deletionRow.name}
           mode={mode}
           onClose={props.onDeletionClose}
           // The dialog closes on success only: a refusal is stated in it,
@@ -140,8 +141,9 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
       {props.restoring !== null ? (
         <RestoreDialog
-          skill={props.restoring.skill}
-          folder={props.restoring.path}
+          type={props.restoring.type}
+          name={props.restoring.skill}
+          path={props.restoring.path}
           commit={props.restoring.commit}
           hasRequest={props.restoring.hasRequest}
           onClose={props.onRestoreClose}
@@ -165,8 +167,9 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
       {props.discarding !== null ? (
         <DiscardDialog
-          skill={props.discarding.name}
-          folder={props.discarding.path}
+          type={props.discarding.type}
+          name={props.discarding.name}
+          path={props.discarding.path}
           defaultBranch={props.defaultBranch}
           onClose={props.onDiscardClose}
           // Closes on success only: a refusal is stated in the dialog.
@@ -249,14 +252,15 @@ export function LocalDeletionDialog({
       : null;
   return (
     <DeletionDialog
-      skill={skill}
+      type={type}
+      name={skill}
       mode={{
         kind: "local",
         // Both screens read the Harness already; the plain word stands in
         // until that read lands. The host is dropped: owner/repo names it.
         origin: harness.data?.origin.replace(/^[^/]+\//, "") ?? "the Harness",
         screen,
-        folder: path,
+        path,
         check: check.isFetching
           ? "checking"
           : seenWorkingTree === null

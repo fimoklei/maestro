@@ -1,11 +1,20 @@
-import { type MouseEvent, type ReactNode, type RefObject, useId } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  useId,
+  useState,
+} from "react";
 import { cn } from "./cn";
+import { FOCUS_RING } from "./focus-ring";
+import { Icon } from "./icon";
 import { MachineValue } from "./machine-value";
 import { LIST_TOKENS, STATUS_TOKENS, type StatusFamily } from "./status-family";
 
 // A dialog's rows grouped by status family: a checklist, or a read-only
 // preflight in the same legend, edge and row style. A failed group holds what
-// cannot run.
+// cannot run. A read-only list may add fixed right-hand slots; its groups fold.
 
 type GroupedListRow = {
   /** What the checked set holds for this row. */
@@ -41,31 +50,64 @@ type Checklist = {
   firstBox: RefObject<HTMLInputElement | null> | null;
 };
 
-export function GroupedList({
-  groups,
-  checklist,
-  live,
-}: {
-  groups: readonly GroupedListGroup[];
-  /** Null for a read-only list. */
-  checklist: Checklist | null;
-  /** Names the live region for rows that arrive after the dialog opens; null: none. */
-  live: string | null;
-}) {
-  const drawn = groups.filter((group) => group.rows.length > 0);
-  const list = (
-    <>
-      {drawn.map((group, index) => (
-        <Group
-          // biome-ignore lint/suspicious/noArrayIndexKey: groups keep their order and a legend may be null
-          key={index}
-          group={group}
-          checklist={checklist}
-          takesFocus={index === 0}
-        />
-      ))}
-    </>
-  );
+type SlottedRow = {
+  key: string;
+  name: string;
+  /** One value per slot, in the slots' order. */
+  slots: readonly string[];
+};
+
+type SlottedGroup = {
+  tone: StatusFamily;
+  legend: string;
+  rows: readonly SlottedRow[];
+};
+
+// Slots and folding exist only on a read-only list, so a checklist can never
+// hide a checked box inside a folded group.
+type ListShape =
+  | {
+      groups: readonly GroupedListGroup[];
+      /** Null for a read-only list. */
+      checklist: Checklist | null;
+      slots?: never;
+    }
+  | {
+      groups: readonly SlottedGroup[];
+      checklist: null;
+      /** Each right-hand slot's fixed width, in spacing steps. Its groups fold. */
+      slots: readonly number[];
+    };
+
+export function GroupedList(
+  props: ListShape & {
+    /** Names the live region for rows that arrive after the dialog opens; null: none. */
+    live: string | null;
+  },
+) {
+  const { live } = props;
+  const list =
+    props.slots === undefined
+      ? props.groups
+          .filter((group) => group.rows.length > 0)
+          .map((group, index) => (
+            <Group
+              // biome-ignore lint/suspicious/noArrayIndexKey: groups keep their order and a legend may be null
+              key={index}
+              group={group}
+              checklist={props.checklist}
+              takesFocus={index === 0}
+            />
+          ))
+      : props.groups
+          .filter((group) => group.rows.length > 0)
+          .map((group) => (
+            <FoldingGroup
+              key={group.legend}
+              group={group}
+              slots={props.slots}
+            />
+          ));
   // Named apart, or a reader hears identical regions.
   return live === null ? (
     list
@@ -73,6 +115,72 @@ export function GroupedList({
     <div role="status" aria-label={live}>
       {list}
     </div>
+  );
+}
+
+function FoldingGroup({
+  group,
+  slots,
+}: {
+  group: SlottedGroup;
+  slots: readonly number[];
+}) {
+  const [open, setOpen] = useState(true);
+  const listId = useId();
+  const { edge } = LIST_TOKENS[group.tone];
+  return (
+    <fieldset className="m-0 flex min-w-0 flex-col gap-tight">
+      <legend className="p-0">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={listId}
+          onClick={() => setOpen(!open)}
+          className={cn(
+            "-ml-tight inline-flex min-h-6 cursor-pointer items-center gap-tight rounded-control pr-tight font-ui text-meta hover:bg-gray-4",
+            STATUS_TOKENS[group.tone].ink,
+            FOCUS_RING,
+          )}
+        >
+          <Icon of={open ? ChevronDown : ChevronRight} />
+          {group.legend}
+        </button>
+      </legend>
+      <ul
+        id={listId}
+        hidden={!open}
+        className={cn(
+          "m-0 list-none flex-col overflow-hidden rounded-control border p-0",
+          open && "flex",
+          edge,
+        )}
+      >
+        {group.rows.map((row, index) => (
+          <li
+            key={row.key}
+            className={cn(
+              "flex min-h-row items-center gap-x-inline px-cell py-tight",
+              LIST_TOKENS[group.tone].fill,
+              index < group.rows.length - 1 && cn("border-b", edge),
+            )}
+          >
+            <span className="min-w-0 flex-1 truncate text-gray-12 text-row">
+              {row.name}
+            </span>
+            {slots.map((width, slot) => (
+              <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: a slot is its position
+                key={slot}
+                className="flex-none truncate text-gray-11 text-meta"
+                style={{ width: `calc(var(--spacing) * ${width})` }}
+              >
+                {row.slots[slot]}
+              </span>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </fieldset>
   );
 }
 

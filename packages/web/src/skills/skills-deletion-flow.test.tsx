@@ -127,7 +127,7 @@ describe("Skills — Delete skill", () => {
     );
   });
 
-  it("opens the Harness view with the Deletion row once step 1 lands", async () => {
+  it("opens the Harness view with the Deleted row once step 1 lands", async () => {
     const deletions = stubServer({});
     renderSkills();
     const menu = await openRowMenu();
@@ -158,7 +158,7 @@ describe("Skills — Delete skill", () => {
     const pane = await screen.findByRole("complementary", {
       name: "tdd detail",
     });
-    expect(within(pane).getByText("Deletion")).toBeInTheDocument();
+    expect(within(pane).getByText("Deleted")).toBeInTheDocument();
     expect(within(pane).getByText("Not yet proposed")).toBeInTheDocument();
     expect(deletions).toEqual([
       { type: "skill", name: "tdd", seenWorkingTree: "tree-1" },

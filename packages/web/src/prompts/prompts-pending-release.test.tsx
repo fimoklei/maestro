@@ -46,11 +46,13 @@ function HarnessProbe() {
 function renderPanel(primitives: readonly InventoryPrimitive[]) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) =>
-      String(input) === "/api/harness"
-        ? jsonResponse(HARNESS)
-        : jsonResponse({ primitives }),
-    ),
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/harness") return jsonResponse(HARNESS);
+      if (url === "/api/harness/primitive/delete/check")
+        return jsonResponse({ skill: {}, prompt: {} });
+      return jsonResponse({ primitives });
+    }),
   );
   return renderWithQuery(
     <MemoryRouter initialEntries={["/inventory/prompts"]}>

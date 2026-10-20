@@ -102,9 +102,11 @@ export function HarnessView({
   const reread = table.reread;
   const { open } = table;
 
-  // What a blocked Create a release points at: the notice, else band 2's reading.
+  // What a blocked Create a release points at: the notice, else band 2's
+  // reading, or its Pending release count.
   const noticeId = useId();
   const readingId = useId();
+  const releaseCountId = useId();
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
@@ -254,6 +256,21 @@ export function HarnessView({
                   (a, b) => readingRank(a.reading) - readingRank(b.reading),
                 ),
         );
+  const bandCounts = harnessCounts(
+    sections.flatMap((section) =>
+      section.read.outcome === "read"
+        ? section.read.rows.map(() => section.stage)
+        : [],
+    ),
+    releaseCountId,
+  );
+  // The stages read the same release diff as the plan, so a confirmed 0 here
+  // is an empty dialog there.
+  const releaseRead = sections.find(
+    (section) => section.stage === "pending-release",
+  )?.read;
+  const nothingToRelease =
+    releaseRead?.outcome === "read" && releaseRead.rows.length === 0;
   const byTitle = (key: string): StageSection | undefined =>
     sections.find((section) => section.title === key);
 
@@ -302,15 +319,24 @@ export function HarnessView({
               variant="primary"
               label={CREATE_RELEASE}
               unavailable={
-                releaseEnabled(state.freshness)
-                  ? null
-                  : {
+                !releaseEnabled(state.freshness)
+                  ? {
                       describedBy:
                         harnessStateNotice(harness.error) === null &&
                         staleStatusNotice(state.freshness, reread) !== null
                           ? noticeId
                           : readingId,
                     }
+                  : nothingToRelease
+                    ? {
+                        // Every count at 0 reads All released instead.
+                        describedBy: bandCounts.every(
+                          (count) => count.count === 0,
+                        )
+                          ? readingId
+                          : releaseCountId,
+                      }
+                    : null
               }
               onClick={() => setPlanOpen(true)}
             />
@@ -354,13 +380,7 @@ export function HarnessView({
                   outcome: state.freshness.outcome,
                 },
           healthy: ALL_RELEASED,
-          counts: harnessCounts(
-            sections.flatMap((section) =>
-              section.read.outcome === "read"
-                ? section.read.rows.map(() => section.stage)
-                : [],
-            ),
-          ),
+          counts: bandCounts,
         },
         labelsBelowRem: LABELS_BELOW_REM,
         countsBelowRem: COUNTS_BELOW_REM,

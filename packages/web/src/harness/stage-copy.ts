@@ -29,13 +29,23 @@ export const STAGE_NAMES: Record<HarnessStage, string> = {
 // Band 2's healthy word: nothing waits in review or release.
 export const ALL_RELEASED = "All released";
 
-/** Band 2's counts: the rows waiting in review and in release, by stage. */
-export const harnessCounts = (stages: readonly HarnessStage[]): BandCount[] =>
-  (["pending-review", "pending-release"] as const).map((stage) => ({
-    word: STAGE_NAMES[stage],
-    count: countOf(stages, stage),
+/** Band 2's counts: the rows waiting in review and in release, by stage. Pending release at 0 blocks Create a release. */
+export const harnessCounts = (
+  stages: readonly HarnessStage[],
+  releaseCountId: string,
+): BandCount[] => [
+  {
+    word: STAGE_NAMES["pending-review"],
+    count: countOf(stages, "pending-review"),
     family: "attention",
-  }));
+  },
+  {
+    word: STAGE_NAMES["pending-release"],
+    count: countOf(stages, "pending-release"),
+    family: "attention",
+    gate: { id: releaseCountId },
+  },
+];
 
 export const JOURNEY_EMPTY = {
   title: "No changes yet",
@@ -88,11 +98,13 @@ export const statusReading = (row: HarnessStageRow): StatusReading => {
   );
 };
 
+// The one word per change on every screen, the release dialog's groups too.
+// "Deleted", never "Removed": remove belongs to deployed copies alone.
 export const CHANGE_WORDS: Record<HarnessChange, string> = {
-  addition: "Addition",
-  edit: "Edit",
-  deletion: "Deletion",
-  rename: "Rename",
+  addition: "Added",
+  edit: "Changed",
+  rename: "Renamed",
+  deletion: "Deleted",
 };
 
 /** The default branch as a sentence names it: its name set apart, else words. */
