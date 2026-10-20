@@ -3,7 +3,7 @@ import type {
   RemoveOutcome,
   RemoveTargetState,
 } from "@maestro/core";
-import type { PrimitiveType } from "../inventory/type-filter";
+import type { DeployableType } from "../inventory/type-filter";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import type { ReportGroup } from "../ui/report";
 import type {
@@ -64,14 +64,14 @@ function statusFor(warning: RemoveRowWarning | null): {
     : { status: WARNING_STATUS[warning], drift: true };
 }
 
-const REMOVED_THING: Record<PrimitiveType, string> = {
+const REMOVED_THING: Record<DeployableType, string> = {
   skill: "skill",
   hook: "hook",
   mcp: "MCP server",
   bundle: "bundle",
 };
 
-export function removeLedgerLeadIn(type: PrimitiveType): string {
+export function removeLedgerLeadIn(type: DeployableType): string {
   return `Removes the ${REMOVED_THING[type]} from:`;
 }
 
