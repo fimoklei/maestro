@@ -1,17 +1,17 @@
-import type { PendingSkillMovement, SkillMovementKind } from "@maestro/core";
+import type { HarnessMovementKind, PendingMovement } from "@maestro/core";
 import { createDataTableColumns, DataTable } from "../ui/data-table";
 import { MachineValue } from "../ui/machine-value";
 import { SubListHeading } from "../ui/sub-list-heading";
 
 // "Deleted", never "Removed": remove belongs to deployed copies alone.
-const KINDS: Record<SkillMovementKind, string> = {
+const KINDS: Record<HarnessMovementKind, string> = {
   added: "Added",
   changed: "Changed",
   renamed: "Renamed",
   removed: "Deleted",
 };
 
-const columns = createDataTableColumns<PendingSkillMovement>((helper) => [
+const columns = createDataTableColumns<PendingMovement>((helper) => [
   helper.accessor("name", {
     header: "Skill",
     enableSorting: false,
@@ -35,11 +35,7 @@ const columns = createDataTableColumns<PendingSkillMovement>((helper) => [
   }),
 ]);
 
-export function ReleaseDelta({
-  movements,
-}: {
-  movements: PendingSkillMovement[];
-}) {
+export function ReleaseDelta({ movements }: { movements: PendingMovement[] }) {
   return (
     <section className="flex flex-col gap-inline">
       <SubListHeading

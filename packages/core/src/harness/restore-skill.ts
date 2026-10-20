@@ -1,10 +1,11 @@
-// Puts one deleted skill folder back from the last local commit: no fetch, branch or push (#888).
+// Puts one deleted primitive back from the last local commit: no fetch, branch or push (#888).
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import type { FileSystemPort } from "../registry/file-system";
-import { resolveHarnessSkillsDir } from "./harness-skills-dir";
+import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
+import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
 export type RestoreSkillError =
@@ -37,9 +38,9 @@ export class RestoreSkill {
     git: Pick<
       HarnessGitPort,
       | "readLocalHeadCommit"
-      | "readStagedSkillDifference"
-      | "readSkillTrees"
-      | "writeSkillTreeInto"
+      | "readStagedDifference"
+      | "readPrimitives"
+      | "writePrimitiveInto"
       | "readWorktreeAmbiguity"
     >;
     locks: InFlightLocks;
@@ -51,10 +52,10 @@ export class RestoreSkill {
 
   // Shares the harness-root lock with the publish path.
   async execute(
-    name: string,
+    ref: PrimitiveRef,
     seenHeadCommit: string,
   ): Promise<RestoreSkillResult> {
-    if (!isValidSkillSlug(name)) {
+    if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
@@ -62,14 +63,14 @@ export class RestoreSkill {
       return { ok: false, error: "not-configured" };
     }
     const run = await this.deps.locks.run(root, () =>
-      this.put(root, name, seenHeadCommit),
+      this.put(root, ref, seenHeadCommit),
     );
     return run.ok ? run.value : { ok: false, error: "restore-in-progress" };
   }
 
   private async put(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     seenHeadCommit: string,
   ): Promise<RestoreSkillResult> {
     // First: an ambiguous working tree makes every fact below unreadable.
@@ -87,21 +88,29 @@ export class RestoreSkill {
       return { ok: false, error: "head-moved" };
     }
 
-    const staged = await this.deps.git.readStagedSkillDifference(root, name);
+    const staged = await this.deps.git.readStagedDifference(root, ref);
     if (staged !== false) {
       return { ok: false, error: "staged-changes" };
     }
 
     // The confirmed commit, so check and write read the same one.
-    const committed = await this.deps.git.readSkillTrees(root, head);
+    const committed = await this.deps.git.readPrimitives(root, head);
     if (committed === null) {
       return { ok: false, error: "restore-failed" };
     }
-    if (!committed.some((tree) => tree.name === name)) {
+    if (
+      !committed.some(
+        (object) => object.type === ref.type && object.name === ref.name,
+      )
+    ) {
       return { ok: false, error: "not-in-commit" };
     }
 
-    const resolved = await resolveHarnessSkillsDir(this.deps.fs, root);
+    const resolved = await resolveHarnessPrimitiveDir(
+      this.deps.fs,
+      root,
+      ref.type,
+    );
     if (!resolved.ok) {
       return {
         ok: false,
@@ -111,34 +120,34 @@ export class RestoreSkill {
             : "destination-unsafe",
       };
     }
-    const { skills } = resolved;
-    const destination = join(skills, name);
+    const { dir } = resolved;
+    const destination = join(dir, primitiveEntry(ref));
     // `describe` does not follow links: a dangling link counts as present.
     if ((await this.deps.copyFs.describe(destination)) !== null) {
       return { ok: false, error: "destination-exists" };
     }
 
-    return await this.writeThroughStaging(root, name, head, skills);
+    return await this.writeThroughStaging(root, ref, head, dir);
   }
 
-  // One rename publishes it, so an interruption leaves no half-written folder.
+  // One rename publishes it, so an interruption leaves nothing half-written.
   private async writeThroughStaging(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     commit: string,
-    skills: string,
+    dir: string,
   ): Promise<RestoreSkillResult> {
-    const destination = join(skills, name);
+    const destination = join(dir, primitiveEntry(ref));
     let staging: string;
     try {
-      staging = await this.deps.copyFs.createStagingDir(skills);
+      staging = await this.deps.copyFs.createStagingDir(dir);
     } catch {
       return { ok: false, error: "restore-failed" };
     }
     try {
-      const written = await this.deps.git.writeSkillTreeInto(
+      const written = await this.deps.git.writePrimitiveInto(
         root,
-        name,
+        ref,
         commit,
         staging,
       );
@@ -153,8 +162,11 @@ export class RestoreSkill {
       if ((await this.deps.copyFs.describe(destination)) !== null) {
         return { ok: false, error: "destination-exists" };
       }
-      await this.deps.copyFs.movePath(join(staging, name), destination);
-      return { ok: true, name, commit };
+      await this.deps.copyFs.movePath(
+        join(staging, primitiveEntry(ref)),
+        destination,
+      );
+      return { ok: true, name: ref.name, commit };
     } catch {
       return { ok: false, error: "restore-failed" };
     } finally {

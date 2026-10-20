@@ -13,7 +13,7 @@ import { type SameTreeFs, sameTree } from "../filesystem/same-tree";
 import type { Registry } from "../registry/registry";
 import type { ImportSkill, ImportSkillError } from "./import-skill";
 import type { HarnessGitPort } from "./read-harness-state";
-import type { HarnessSkillTree } from "./skill-movements";
+import type { HarnessSkillTree } from "./released-content";
 
 export type LocalEditsRefusal =
   | ImportSkillError
@@ -295,8 +295,8 @@ export class ImportLocalEdits {
     const working =
       root === undefined
         ? undefined
-        : (await this.deps.git.readMovementTrees(root).catch(() => null))
-            ?.working;
+        : (await this.deps.git.readMovementTrees(root).catch(() => null))?.skill
+            .working;
     const released = new Map<string, Promise<HarnessSkillTree[] | null>>();
     return async (name, copy) => {
       const onLatest = copy.tools.some(

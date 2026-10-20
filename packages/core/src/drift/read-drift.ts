@@ -10,7 +10,7 @@ import {
   isRootPackage,
 } from "../deploy-state/root-package-skills";
 import { RELEASE_TAG_PATTERN } from "../harness/release-tag";
-import type { HarnessSkillTree } from "../harness/skill-movements";
+import type { HarnessSkillTree } from "../harness/released-content";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import {
   claudeSkillName,

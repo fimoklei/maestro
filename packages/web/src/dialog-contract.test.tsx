@@ -71,7 +71,7 @@ const FAILED: NoticeContent = {
 };
 
 const PLAN: ReleasePlan = {
-  delta: [{ kind: "changed", name: "tdd", author: "Ada" }],
+  delta: [{ type: "skill", kind: "changed", name: "tdd", author: "Ada" }],
   previousTag: "v1.2.3",
   previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
   proposedStep: "minor",

@@ -1,7 +1,7 @@
 // Read from git, never the working tree: Inventory shows what can be deployed.
 import type { HarnessTag } from "../harness/read-harness-state";
 import { highestReleaseTag } from "../harness/release-tag";
-import type { HarnessSkillTree } from "../harness/skill-movements";
+import type { HarnessSkillTree } from "../harness/released-content";
 
 // `manifest` is the raw SKILL.md, or null where the release ships none.
 export type ReleasedSkill = { name: string; manifest: string | null };

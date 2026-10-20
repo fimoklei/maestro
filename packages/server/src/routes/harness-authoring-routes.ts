@@ -46,6 +46,9 @@ type Deps = Pick<
   | "scaffold"
 >;
 
+// Every request names a skill until the request bodies carry a type.
+const skill = (name: string) => ({ type: "skill" as const, name });
+
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   // Takes the skill's name only; the harness is resolved server-side (#577).
   app.post("/api/harness/promote", async (c) => {
@@ -53,7 +56,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.promote.execute(body.data.name);
+    const result = await deps.promote.execute(skill(body.data.name));
     if (!result.ok) {
       const { status } = promoteErrorResponses[result.error];
       return c.json({ error: result.error }, status);
@@ -71,7 +74,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.promoteDeletion.execute(
-      body.data.name,
+      skill(body.data.name),
       body.data.seenRemoteTree,
     );
     if (!result.ok) {
@@ -90,7 +93,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       const { status } = localDeletionErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    return c.json({ skills: result.skills });
+    return c.json({ skills: result.checks.skill });
   });
 
   // The name is a claim: core re-reads the local refs and folder before deleting (#798).
@@ -104,7 +107,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.deleteLocalSkill.execute(
-      body.data.name,
+      skill(body.data.name),
       body.data.seenWorkingTree,
     );
     if (!result.ok) {
@@ -121,7 +124,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.restoreSkill.execute(
-      body.data.name,
+      skill(body.data.name),
       body.data.seenHeadCommit,
     );
     if (!result.ok) {
@@ -139,7 +142,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.discardSkillChange.execute(
-      body.data.name,
+      skill(body.data.name),
       body.data.seenRemoteTree,
     );
     if (!result.ok) {
@@ -163,7 +166,10 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    return proposalResponse(c, await deps.proposals.create(body.data.name));
+    return proposalResponse(
+      c,
+      await deps.proposals.create(skill(body.data.name)),
+    );
   });
 
   app.post("/api/harness/proposal/reopen", async (c) => {
@@ -173,7 +179,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.reopen(body.data.name, body.data.number),
+      await deps.proposals.reopen(skill(body.data.name), body.data.number),
     );
   });
 
@@ -184,7 +190,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.withdraw(body.data.name, body.data.number),
+      await deps.proposals.withdraw(skill(body.data.name), body.data.number),
     );
   });
 

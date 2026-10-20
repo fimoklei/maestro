@@ -71,7 +71,7 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ name: "tdd" });
     const after = await trees();
-    expect(after.working.tdd).toBe(after.remote.tdd);
+    expect(after.skill.working.tdd).toBe(after.skill.remote.tdd);
     expect(await readFile(folder("tdd", "kept.md"), "utf8")).toBe("kept\n");
     expect(await new NodeFileSystem().exists(folder("tdd", "added.md"))).toBe(
       false,
@@ -100,7 +100,7 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
         await writeSkill("tdd", "edited after proposing");
       }
       await refresh(app);
-      const before = (await trees()).working.tdd;
+      const before = (await trees()).skill.working.tdd;
 
       const response = await discard(app, {
         name: "tdd",
@@ -109,7 +109,7 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
 
       expect(response.status).toBe(409);
       expect(await response.json()).toEqual({ error: "already-proposed" });
-      expect((await trees()).working.tdd).toBe(before);
+      expect((await trees()).skill.working.tdd).toBe(before);
     },
   );
 
@@ -117,7 +117,7 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
     const app = makeApp();
     await editTdd();
     await seenRemoteTree(app);
-    const before = (await trees()).working.tdd;
+    const before = (await trees()).skill.working.tdd;
 
     const response = await discard(app, {
       name: "tdd",
@@ -126,7 +126,7 @@ describe("Discard change over HTTP", { timeout: 40_000 }, () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ error: "confirmation-stale" });
-    expect((await trees()).working.tdd).toBe(before);
+    expect((await trees()).skill.working.tdd).toBe(before);
   });
 
   // Discard is local: GitHub's answer is the same before and after it.

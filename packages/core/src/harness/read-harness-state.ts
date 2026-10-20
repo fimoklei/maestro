@@ -1,6 +1,12 @@
 // No git stdout, stderr, or remote text reaches this use-case, so none can reach a response.
 import { parseGitOrigin } from "../deploy/git-origin";
 import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
+import type {
+  HarnessObject,
+  HarnessPrimitiveType,
+  PrimitiveRef,
+} from "./harness-primitive";
+import { primitiveKey } from "./harness-primitive";
 import type { HarnessReviewPort, ViewerRead } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
 import type { ProposalKind } from "./proposal-request";
@@ -8,9 +14,13 @@ import {
   proposeReleaseVersion,
   type SemverStep,
 } from "./propose-release-version";
+import {
+  type PendingMovement,
+  type ReleaseDelta,
+  readReleaseDelta,
+} from "./release-delta";
 import { highestReleaseTag } from "./release-tag";
-import type { HarnessSkillTree, SkillMovement } from "./skill-movements";
-import { diffSkillTrees } from "./skill-movements";
+import type { HarnessSkillTree } from "./released-content";
 import {
   type StructuralFinding,
   validateSkillStructure,
@@ -82,13 +92,16 @@ export type HarnessPromoteRef = {
   commit: string | null;
 };
 
-// Tree hash per skill name; in `promote` the key is the branch.
-export type HarnessSkillTrees = {
+// Hash per primitive name, for one type; in `promote` the name is the one its
+// branch carries.
+export type HarnessHashes = {
   remote: Record<string, string>;
   promote: Record<string, HarnessPromoteRef>;
   local: Record<string, string>;
   working: Record<string, string>;
 };
+
+export type HarnessMovementTrees = Record<HarnessPrimitiveType, HarnessHashes>;
 
 export interface HarnessGitPort {
   fetch(root: string): Promise<HarnessFetchOutcome>;
@@ -97,14 +110,18 @@ export interface HarnessGitPort {
   // never throws (#978).
   catchUp(root: string): Promise<void>;
   readCloneSync(root: string): Promise<CloneSync>;
-  // Null is an unreadable ref, never an empty harness.
+  // Skills only, for deploy, drift and import. Null is an unreadable ref,
+  // never an empty harness.
   readSkillTrees(root: string, ref: string): Promise<HarnessSkillTree[] | null>;
-  readSkillAuthors(
+  // Every type. Null is an unreadable ref; a missing type folder is none of that type.
+  readPrimitives(root: string, ref: string): Promise<HarnessObject[] | null>;
+  // Keyed by `primitiveKey`.
+  readAuthors(
     root: string,
     ref: string,
-    names: string[],
+    refs: PrimitiveRef[],
   ): Promise<Record<string, string | null>>;
-  readMovementTrees(root: string): Promise<HarnessSkillTrees | null>;
+  readMovementTrees(root: string): Promise<HarnessMovementTrees | null>;
   // Takes the exact commit, never `origin/HEAD`, which can move under a concurrent fetch (#579).
   mergeBaseCommit(root: string, remoteCommit: string): Promise<string | null>;
   // Null where the file is absent; an empty string is a present-but-blank manifest.
@@ -121,28 +138,29 @@ export interface HarnessGitPort {
     defaultBranch: string,
   ): Promise<PublishTagOutcome>;
   // Never checks out, stages in the real index, moves HEAD, or force-pushes (#574, #578).
-  pushSkillPromotion(
+  pushPromotion(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     baseCommit: string,
     kind: Exclude<ProposalKind, "deletion">,
   ): Promise<PromoteSkillOutcome>;
-  pushSkillDeletion(
+  pushDeletion(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     baseCommit: string,
   ): Promise<SkillPushOutcome>;
   readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null>;
   readLocalHeadCommit(root: string): Promise<string | null>;
   // Null where the question could not be asked (fail-closed).
-  readStagedSkillDifference(
+  readStagedDifference(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
   ): Promise<boolean | null>;
-  // Never touches HEAD, the real index, or the working tree.
-  writeSkillTreeInto(
+  // Writes the primitive under its own folder or file name. Never touches
+  // HEAD, the real index, or the working tree.
+  writePrimitiveInto(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     commit: string,
     into: string,
   ): Promise<"written" | "missing" | "failed">;
@@ -160,8 +178,6 @@ type HarnessReleaseState =
   | "pending-release"
   | "never-released"
   | "unknown";
-
-export type PendingSkillMovement = SkillMovement & { author: string | null };
 
 export type HarnessState = {
   origin: string;
@@ -185,7 +201,7 @@ export type HarnessStateResult =
 
 // `findings` are advisory and never disable a release (#519).
 export type ReleasePlan = {
-  delta: PendingSkillMovement[];
+  delta: PendingMovement[];
   previousTag: string | null;
   // Catches a tag force-moved under an unchanged name.
   previousTagCommit: string | null;
@@ -276,17 +292,13 @@ export class ReadHarnessState {
       return { ok: false, error: "no-answer" };
     }
 
-    // One read serves both the delta and the checks: two reads can disagree.
-    const current = await this.deps.git.readSkillTrees(root, head);
-    if (current === null) {
-      return { ok: false, error: "no-answer" };
-    }
-
     const released = highestReleaseTag(tags);
-    const delta = await this.movementsSince(root, released, head, current);
-    if (delta === null) {
+    // One read serves both the delta and the checks: two reads can disagree.
+    const read = await readReleaseDelta(this.deps.git, root, released, head);
+    if (read === null) {
       return { ok: false, error: "no-answer" };
     }
+    const delta = read.movements;
 
     const proposal = proposeReleaseVersion(released?.name ?? null, delta);
     return {
@@ -302,7 +314,7 @@ export class ReadHarnessState {
         versions: proposal.versions,
         revision: head,
         defaultBranch: facts.defaultBranch,
-        findings: await this.structuralFindings(root, head, current),
+        findings: await this.structuralFindings(root, head, read.current),
       },
     };
   }
@@ -311,9 +323,12 @@ export class ReadHarnessState {
   private async structuralFindings(
     root: string,
     head: string,
-    trees: HarnessSkillTree[],
+    current: HarnessObject[],
   ): Promise<StructuralFinding[]> {
-    const names = trees.map((tree) => tree.name).sort();
+    const names = current
+      .filter((object) => object.type === "skill")
+      .map((object) => object.name)
+      .sort();
     const manifests = await this.deps.git.readSkillManifests(root, head, names);
     return names.flatMap((name) => {
       const problem = validateSkillStructure(manifests[name] ?? null);
@@ -336,17 +351,14 @@ export class ReadHarnessState {
     const released = tags === null ? null : highestReleaseTag(tags);
     const head = facts.defaultBranchCommit;
     // A delta nobody could compute is null, never empty.
-    const current =
+    const delta: ReleaseDelta | null =
       tags !== null && head !== null
-        ? await this.deps.git.readSkillTrees(root, head)
+        ? await readReleaseDelta(this.deps.git, root, released, head)
         : null;
-    const movements =
-      current === null || head === null
-        ? null
-        : await this.movementsSince(root, released, head, current);
+    const movements = delta?.movements ?? null;
     const trees = await this.deps.git.readMovementTrees(root);
     const atMergeBase =
-      head === null ? null : await this.skillTreesAtMergeBase(root, head);
+      head === null ? null : await this.hashesAtMergeBase(root, head);
     // One batched read for the whole Harness, never one per skill.
     const review = await this.deps.review.readReviews(origin);
     // Without requests there is nobody to compare the sign-in with.
@@ -383,7 +395,8 @@ export class ReadHarnessState {
 
   // Tells a teammate's change apart from the author's unpushed commit (#579).
   // `head` is the commit this read settled on, never a fresh `origin/HEAD`.
-  private async skillTreesAtMergeBase(
+  // Keyed by `primitiveKey`.
+  private async hashesAtMergeBase(
     root: string,
     head: string,
   ): Promise<Record<string, string> | null> {
@@ -391,49 +404,12 @@ export class ReadHarnessState {
     if (mergeBase === null) {
       return null;
     }
-    const trees = await this.deps.git.readSkillTrees(root, mergeBase);
-    return trees === null
+    const objects = await this.deps.git.readPrimitives(root, mergeBase);
+    return objects === null
       ? null
-      : Object.fromEntries(trees.map((tree) => [tree.name, tree.treeHash]));
-  }
-
-  // The delta is content, not reachability: a tag off the default branch compares like any other.
-  private async movementsSince(
-    root: string,
-    released: HarnessTag | null,
-    head: string,
-    current: HarnessSkillTree[],
-  ): Promise<PendingSkillMovement[] | null> {
-    const previous =
-      released === null
-        ? []
-        : await this.deps.git.readSkillTrees(root, released.commit);
-    if (previous === null) {
-      return null;
-    }
-    const movements = diffSkillTrees(previous, current);
-
-    const authored = await this.deps.git.readSkillAuthors(
-      root,
-      head,
-      movements.map((movement) => movement.name),
-    );
-    // A skill the default branch never saw has its author on the release ref.
-    const orphaned = movements
-      .filter(
-        (movement) =>
-          movement.kind === "removed" && authored[movement.name] == null,
-      )
-      .map((movement) => movement.name);
-    const atRelease =
-      released !== null && orphaned.length > 0
-        ? await this.deps.git.readSkillAuthors(root, released.commit, orphaned)
-        : {};
-
-    return movements.map((movement) => ({
-      ...movement,
-      author: authored[movement.name] ?? atRelease[movement.name] ?? null,
-    }));
+      : Object.fromEntries(
+          objects.map((object) => [primitiveKey(object), object.hash]),
+        );
   }
 }
 
@@ -441,7 +417,7 @@ export class ReadHarnessState {
 const releaseState = (
   released: HarnessTag | null,
   defaultBranchCommit: string | null,
-  movements: SkillMovement[],
+  movements: PendingMovement[],
 ): HarnessReleaseState => {
   if (defaultBranchCommit === null) {
     return "unknown";

@@ -8,7 +8,10 @@ import {
   harnessSkillSubpath,
 } from "../inventory/harness-layout";
 import { ReuseGate } from "../reuse-gate";
-import type { HarnessSkillTree } from "./skill-movements";
+import type { HarnessObject } from "./harness-primitive";
+import { listPrimitivesAt } from "./harness-primitive-git";
+
+export type HarnessSkillTree = { name: string; treeHash: string };
 
 // shortcut: trees, manifests and files stay remembered per commit for the life
 // of the process, with no bound; cap them (least recently used) once a server
@@ -18,6 +21,10 @@ export class ReleasedContentReader {
   private readonly trees = new ReuseGate<HarnessSkillTree[] | null>({
     now: () => new Date(),
     keep: (trees) => trees !== null && trees.length > 0,
+  });
+  private readonly primitiveLists = new ReuseGate<HarnessObject[] | null>({
+    now: () => new Date(),
+    keep: (objects) => objects !== null && objects.length > 0,
   });
   private readonly manifests = new Map<string, string | null>();
   private readonly files = new Map<string, Record<string, string>>();
@@ -33,6 +40,17 @@ export class ReleasedContentReader {
       ? null
       : this.trees.run(commit, Number.POSITIVE_INFINITY, () =>
           readTreesAt(root, commit),
+        );
+  }
+
+  // Every type. Null on a ref the clone cannot resolve; a missing type folder
+  // is none of that type.
+  async primitives(root: string, ref: string): Promise<HarnessObject[] | null> {
+    const commit = await resolveCommit(root, ref);
+    return commit === null
+      ? null
+      : this.primitiveLists.run(commit, Number.POSITIVE_INFINITY, () =>
+          listPrimitivesAt(root, commit),
         );
   }
 

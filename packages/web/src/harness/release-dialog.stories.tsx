@@ -4,15 +4,16 @@ import { ReleaseDialog } from "./release-dialog";
 
 const PLAN: ReleasePlan = {
   delta: [
-    { kind: "added", name: "research", author: "Grace" },
-    { kind: "changed", name: "tdd", author: "Ada" },
+    { type: "skill", kind: "added", name: "research", author: "Grace" },
+    { type: "skill", kind: "changed", name: "tdd", author: "Ada" },
     {
+      type: "skill",
       kind: "renamed",
       name: "test-first",
       previousName: "tdd-legacy",
       author: "Ada",
     },
-    { kind: "removed", name: "grilling", author: "Linus" },
+    { type: "skill", kind: "removed", name: "grilling", author: "Linus" },
   ],
   previousTag: "v1.2.3",
   previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
@@ -55,8 +56,8 @@ export const FirstRelease: Story = {
         reason: "First release.",
         versions: { major: "v1.0.0", minor: "v0.1.0", patch: "v0.0.1" },
         delta: [
-          { kind: "added", name: "research", author: "Grace" },
-          { kind: "added", name: "tdd", author: "Ada" },
+          { type: "skill", kind: "added", name: "research", author: "Grace" },
+          { type: "skill", kind: "added", name: "tdd", author: "Ada" },
         ],
         findings: [],
       },
@@ -73,7 +74,7 @@ export const WithFindings: Story = {
         ...PLAN,
         proposedStep: "patch",
         reason: "Only existing skills changed.",
-        delta: [{ kind: "changed", name: "tdd", author: "Ada" }],
+        delta: [{ type: "skill", kind: "changed", name: "tdd", author: "Ada" }],
         findings: [
           { skill: "grilling", problem: "missing-manifest" },
           { skill: "research", problem: "invalid-frontmatter" },

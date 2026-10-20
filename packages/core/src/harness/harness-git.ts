@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
 import { catchUpClone, readCloneSync } from "../git/catch-up-clone";
 import { readConfiguredGitOriginUrl } from "../git/configured-origin";
-import { gitOptions, indexOptions, NO_HOOKS } from "../git/non-interactive";
+import { gitOptions, NO_HOOKS } from "../git/non-interactive";
 import { runGitText } from "../git/run-git-text";
 import { readRemoteDefaultBranch } from "../inventory/default-branch";
 import {
@@ -17,19 +17,32 @@ import {
 import { classifyFetchFailure } from "./classify-fetch-failure";
 import { classifyPushFailure } from "./classify-push-failure";
 import {
-  readLocalHeadCommit as readLocalHead,
-  readStagedSkillDifference as readStagedDifference,
-  writeSkillTreeInto as writeSkillTree,
-} from "./harness-git-restore";
-import { PROMOTE_NAMESPACE, promoteBranch } from "./promote-branch";
+  type HarnessObject,
+  type HarnessPrimitiveType,
+  PROPOSAL_REFS,
+  type PrimitiveRef,
+  proposalBranch,
+  proposalBranchLeaf,
+} from "./harness-primitive";
+import {
+  commitPrimitiveOnto,
+  hashWorkingPrimitive,
+  listPrimitivesAt,
+  listWorkingPrimitives,
+  primitiveOnDisk,
+  readAuthors,
+  readPrimitiveHash,
+  readProposalRefs,
+  readStagedDifference,
+  writePrimitiveInto,
+} from "./harness-primitive-git";
 import { type ProposalKind, proposalTitle } from "./proposal-request";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
-  HarnessPromoteRef,
-  HarnessSkillTrees,
+  HarnessMovementTrees,
   HarnessTag,
   PromoteSkillOutcome,
   PublishTagOutcome,
@@ -37,10 +50,10 @@ import type {
   WorktreeAmbiguity,
 } from "./read-harness-state";
 import {
+  type HarnessSkillTree,
   parseSkillTreeListing,
   type ReleasedContentReader,
 } from "./released-content";
-import type { HarnessSkillTree } from "./skill-movements";
 
 const run = promisify(execFile);
 
@@ -51,11 +64,6 @@ const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 export const MAESTRO_TAGS = "refs/maestro/tags";
 const TAG_REFSPEC = `+refs/tags/*:${MAESTRO_TAGS}/*`;
 const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
-
-const PROMOTE_BRANCHES = `refs/remotes/origin/${PROMOTE_NAMESPACE}`;
-
-// Tab-separated so a name containing spaces stays one field.
-const PROMOTE_FORMAT = `%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})\t%(objectname)`;
 
 // The third field is the commit an annotated tag points at; empty for a lightweight tag.
 const TAG_FORMAT = `%(refname:lstrip=${MAESTRO_TAGS.split("/").length})\t%(objectname)\t%(*objectname)`;
@@ -157,43 +165,40 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
   // Built in throwaway indexes only: never checks out, stages in the author's
   // index, moves HEAD, or names a local branch (#574, #578).
-  async pushSkillPromotion(
+  async pushPromotion(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     base: string,
     kind: Exclude<ProposalKind, "deletion">,
   ): Promise<PromoteSkillOutcome> {
-    const subpath = harnessSkillSubpath(name);
-    if (!(await pathExists(join(root, subpath)))) {
+    if (!(await primitiveOnDisk(root, ref))) {
       // A deletion is its own confirmed route (#580), never inferred here.
       return "skill-missing";
     }
 
     // Before any object is written: a push to another destination than the
-    // fetch would publish this skill somewhere else.
+    // fetch would publish this primitive somewhere else.
     if (!(await this.pushLandsWhereItFetched(root))) {
       return "push-elsewhere";
     }
 
     const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-promote-"));
     try {
-      const skillTree = await this.hashWorkingSkill(root, subpath, indexDir);
+      const object = await hashWorkingPrimitive(root, ref, indexDir);
 
       // Re-fetched right before trusting it: another author's promotion may
       // have landed since the last fetch (#578).
-      const branchRef = `${PROMOTE_BRANCHES}/${name}`;
-      await this.refreshPromoteBranchRef(root, name);
+      const branchRef = `${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`;
+      await this.refreshProposalRef(root, ref);
       const existingTip = await runGitText(root, ["rev-parse", branchRef]);
       if (existingTip !== null) {
-        const existingTree = await runGitText(root, [
-          "rev-parse",
-          `${branchRef}:${subpath}`,
-        ]);
-        // Unchanged content leaves no new commit. Re-hash first: the directory
+        const existing = await readPrimitiveHash(root, branchRef, ref);
+        // Unchanged content leaves no new commit. Re-hash first: the content
         // can still change under a concurrent save.
-        if (existingTree === skillTree) {
+        if (existing === object.hash) {
           if (
-            (await this.hashWorkingSkill(root, subpath, indexDir)) !== skillTree
+            (await hashWorkingPrimitive(root, ref, indexDir)).hash !==
+            object.hash
           ) {
             return "source-changed";
           }
@@ -201,22 +206,22 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await this.commitSkillOnto(
+      const commit = await commitPrimitiveOnto(
         root,
-        { subpath, tree: skillTree },
+        { ref, object },
         base,
         existingTip ?? base,
         indexDir,
-        proposalTitle(name, kind),
+        proposalTitle(ref, kind),
       );
-      // A save halfway through `git add` mixes two revisions: refuse a tree
+      // A save halfway through `git add` mixes two revisions: refuse content
       // that moved, since a pushed branch cannot be taken back.
       if (
-        (await this.hashWorkingSkill(root, subpath, indexDir)) !== skillTree
+        (await hashWorkingPrimitive(root, ref, indexDir)).hash !== object.hash
       ) {
         return "source-changed";
       }
-      return await this.pushPromotion(root, name, commit);
+      return await this.pushProposal(root, ref, commit);
     } catch {
       // Only the class crosses, never git's words or a path.
       return "push-failed";
@@ -225,14 +230,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  async pushSkillDeletion(
+  async pushDeletion(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     base: string,
   ): Promise<SkillPushOutcome> {
-    const subpath = harnessSkillSubpath(name);
-    // Re-read: the author may restore the directory while confirmation is in flight.
-    if (await pathExists(join(root, subpath))) {
+    // Re-read: the author may restore it while confirmation is in flight.
+    if (await primitiveOnDisk(root, ref)) {
       return "source-changed";
     }
     if (!(await this.pushLandsWhereItFetched(root))) {
@@ -241,32 +245,29 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
     const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-delete-"));
     try {
-      const branchRef = `${PROMOTE_BRANCHES}/${name}`;
-      await this.refreshPromoteBranchRef(root, name);
+      const branchRef = `${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`;
+      await this.refreshProposalRef(root, ref);
       const existingTip = await runGitText(root, ["rev-parse", branchRef]);
       if (existingTip !== null) {
-        const existingTree = await runGitText(root, [
-          "rev-parse",
-          `${branchRef}:${subpath}`,
-        ]);
-        if (existingTree === null) {
+        const existing = await readPrimitiveHash(root, branchRef, ref);
+        if (existing === null) {
           return "pushed";
         }
       }
 
-      const commit = await this.commitSkillOnto(
+      const commit = await commitPrimitiveOnto(
         root,
-        { subpath, tree: null },
+        { ref, object: null },
         base,
         existingTip ?? base,
         indexDir,
-        proposalTitle(name, "deletion"),
+        proposalTitle(ref, "deletion"),
       );
       // Reappeared since the guard: refuse, a pushed branch cannot be taken back.
-      if (await pathExists(join(root, subpath))) {
+      if (await primitiveOnDisk(root, ref)) {
         return "source-changed";
       }
-      return await this.pushPromotion(root, name, commit);
+      return await this.pushProposal(root, ref, commit);
     } catch {
       return "push-failed";
     } finally {
@@ -327,9 +328,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 
   // Failure (offline, branch deleted) leaves the existing local ref standing.
-  private async refreshPromoteBranchRef(
+  private async refreshProposalRef(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
   ): Promise<void> {
     await run(
       "git",
@@ -338,90 +339,17 @@ export class HarnessGitAdapter implements HarnessGitPort {
         root,
         "fetch",
         "origin",
-        `+refs/heads/${promoteBranch(name)}:${PROMOTE_BRANCHES}/${name}`,
+        `+refs/heads/${proposalBranch(ref)}:${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
       ],
       gitOptions(),
     ).catch(() => {});
   }
 
-  // Seeded from HEAD: git exempts only tracked files from the ignore rules, so
-  // an index built from nothing would drop tracked-but-ignored files.
-  private async hashWorkingSkill(
-    root: string,
-    subpath: string,
-    indexDir: string,
-  ): Promise<string> {
-    const options = indexOptions(join(indexDir, "working"));
-    // Only an unborn HEAD fails here.
-    await run("git", ["-C", root, "read-tree", "HEAD"], options).catch(
-      () => {},
-    );
-    await run("git", ["-C", root, "add", "-A", "--", subpath], options);
-    const { stdout } = await run("git", ["-C", root, "write-tree"], options);
-    return (
-      await run(
-        "git",
-        ["-C", root, "rev-parse", `${stdout.trim()}:${subpath}`],
-        options,
-      )
-    ).stdout.trim();
-  }
-
-  // `read-tree --prefix` refuses a path the index already holds, so the base's
-  // copy is dropped first; `tree: null` stops there (a removal). `parent` is the
-  // promote branch's tip when one exists, so the push fast-forwards (#578).
-  private async commitSkillOnto(
-    root: string,
-    skill: { subpath: string; tree: string | null },
-    treeBase: string,
-    parent: string,
-    indexDir: string,
-    subject: string,
-  ): Promise<string> {
-    const options = indexOptions(join(indexDir, "promote"));
-    await run("git", ["-C", root, "read-tree", treeBase], options);
-    await run(
-      "git",
-      [
-        "-C",
-        root,
-        "rm",
-        "-r",
-        "-f",
-        "-q",
-        "--cached",
-        "--ignore-unmatch",
-        "--",
-        skill.subpath,
-      ],
-      options,
-    );
-    if (skill.tree !== null) {
-      await run(
-        "git",
-        ["-C", root, "read-tree", `--prefix=${skill.subpath}/`, skill.tree],
-        options,
-      );
-    }
-    const { stdout: tree } = await run(
-      "git",
-      ["-C", root, "write-tree"],
-      options,
-    );
-    // No author, no signing flag: the author's own git config applies (#574).
-    const { stdout: commit } = await run(
-      "git",
-      ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", subject],
-      options,
-    );
-    return commit.trim();
-  }
-
   // Never `--force`: a branch this commit does not descend from is a refusal,
   // not a history to overwrite (#578).
-  private async pushPromotion(
+  private async pushProposal(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     commit: string,
   ): Promise<SkillPushOutcome> {
     try {
@@ -433,7 +361,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
           ...NO_HOOKS,
           "push",
           "origin",
-          `${commit}:refs/heads/${promoteBranch(name)}`,
+          `${commit}:refs/heads/${proposalBranch(ref)}`,
         ],
         gitOptions(),
       );
@@ -443,7 +371,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         classifyGitError(error, classifyFetchFailure) === "offline"
           ? "offline"
           : "push-failed";
-      return await this.settlePromotion(root, name, commit, failure);
+      return await this.settlePromotion(root, ref, commit, failure);
     }
   }
 
@@ -452,11 +380,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // being an ancestor of the tip also counts as pushed.
   private async settlePromotion(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     commit: string,
     failure: SkillPushOutcome,
   ): Promise<SkillPushOutcome> {
-    const branchRef = `refs/heads/${promoteBranch(name)}`;
+    const branchRef = `refs/heads/${proposalBranch(ref)}`;
     const listing = await run(
       "git",
       ["-C", root, "ls-remote", "origin", branchRef],
@@ -480,7 +408,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         root,
         "fetch",
         "origin",
-        `+${branchRef}:${PROMOTE_BRANCHES}/${name}`,
+        `+${branchRef}:${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
       ],
       gitOptions(),
     ).then(
@@ -511,19 +439,27 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 
   // Null where a ref could not be read, so an unreadable clone never reads as one with nothing waiting.
-  async readMovementTrees(root: string): Promise<HarnessSkillTrees | null> {
-    const remote = await this.readSkillTrees(root, REMOTE_HEAD);
-    const local = await this.readSkillTrees(root, "HEAD");
-    const working = await this.workingSkillTrees(root);
+  async readMovementTrees(root: string): Promise<HarnessMovementTrees | null> {
+    const remote = await listPrimitivesAt(root, REMOTE_HEAD);
+    const local = await listPrimitivesAt(root, "HEAD");
+    const working = await listWorkingPrimitives(root);
     if (remote === null || local === null || working === null) {
       return null;
     }
-    return {
-      remote: byName(remote),
-      promote: await this.promoteRefs(root),
-      local: byName(local),
-      working: byName(working),
-    };
+    const promote = await readProposalRefs(root);
+    const hashesOf = (objects: HarnessObject[], type: HarnessPrimitiveType) =>
+      Object.fromEntries(
+        objects
+          .filter((object) => object.type === type)
+          .map((object) => [object.name, object.hash]),
+      );
+    const typed = (type: HarnessPrimitiveType) => ({
+      remote: hashesOf(remote, type),
+      promote: promote[type],
+      local: hashesOf(local, type),
+      working: hashesOf(working, type),
+    });
+    return { skill: typed("skill"), prompt: typed("prompt") };
   }
 
   // Takes the exact commit, never `origin/HEAD`: a concurrent fetch can re-point
@@ -538,65 +474,15 @@ export class HarnessGitAdapter implements HarnessGitPort {
   catchUp = catchUpClone;
   readCloneSync = readCloneSync;
 
-  readLocalHeadCommit = readLocalHead;
-  readStagedSkillDifference = readStagedDifference;
-  writeSkillTreeInto = writeSkillTree;
-
-  // Each branch is read only for the skill it is named for; a null tree is a
-  // branch proposing to delete its skill.
-  private async promoteRefs(
-    root: string,
-  ): Promise<Record<string, HarnessPromoteRef>> {
-    const listing = await runGitText(root, [
-      "for-each-ref",
-      `--format=${PROMOTE_FORMAT}`,
-      PROMOTE_BRANCHES,
-    ]);
-    if (listing === null) {
-      return {};
-    }
-
-    const named = await Promise.all(
-      listing.split("\n").map(async (line) => {
-        const [skill = "", commit = ""] = line.split("\t");
-        const tree = await runGitText(root, [
-          "rev-parse",
-          `${PROMOTE_BRANCHES}/${skill}:${harnessSkillSubpath(skill)}`,
-        ]);
-        return [skill, { tree, commit: commit || null }] as const;
-      }),
-    );
-    return Object.fromEntries(named);
+  // The clone's own HEAD, not `origin/HEAD`.
+  readLocalHeadCommit(root: string): Promise<string | null> {
+    return runGitText(root, ["rev-parse", "HEAD"]);
   }
 
-  // A throwaway index, so the author's staged work never moves.
-  private async workingSkillTrees(
-    root: string,
-  ): Promise<HarnessSkillTree[] | null> {
-    // Every other failure below must throw: read as "nothing on disk" it would
-    // show the whole harness as locally deleted.
-    if (!(await pathExists(join(root, HARNESS_SKILLS_DIR)))) {
-      return [];
-    }
-
-    const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
-    const options = indexOptions(join(indexDir, "index"));
-    try {
-      // Seeded from HEAD, as in `hashWorkingSkill`.
-      await run("git", ["-C", root, "read-tree", "HEAD"], options).catch(
-        () => {},
-      );
-      await run(
-        "git",
-        ["-C", root, "add", "-A", "--", HARNESS_SKILLS_DIR],
-        options,
-      );
-      const { stdout } = await run("git", ["-C", root, "write-tree"], options);
-      return await this.readSkillTrees(root, stdout.trim());
-    } finally {
-      await rm(indexDir, { recursive: true, force: true });
-    }
-  }
+  readPrimitives = listPrimitivesAt;
+  readAuthors = readAuthors;
+  readStagedDifference = readStagedDifference;
+  writePrimitiveInto = writePrimitiveInto;
 
   async readOrigin(root: string): Promise<GitOrigin | null> {
     const url = await readConfiguredGitOriginUrl(root);
@@ -608,6 +494,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
     tag: string,
   ): Promise<HarnessSkillTree[] | null> {
     return this.released.skillTrees(root, `${MAESTRO_TAGS}/${tag}`);
+  }
+
+  async readPrimitivesAtTag(
+    root: string,
+    tag: string,
+  ): Promise<HarnessObject[] | null> {
+    return this.released.primitives(root, `${MAESTRO_TAGS}/${tag}`);
   }
 
   async readSkillManifestsAtTag(
@@ -631,7 +524,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     ]);
     if (listing === null) {
       // Tells an unresolvable ref from one with no skills directory. `^{tree}`:
-      // `workingSkillTrees` passes a bare tree hash (#580).
+      // a caller may pass a bare tree hash (#580).
       const resolves = await this.readOutput(root, [
         "rev-parse",
         "--verify",
@@ -642,27 +535,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
 
     return parseSkillTreeListing(listing);
-  }
-
-  async readSkillAuthors(
-    root: string,
-    ref: string,
-    names: string[],
-  ): Promise<Record<string, string | null>> {
-    const authors = await Promise.all(
-      names.map(async (name) => [
-        name,
-        await runGitText(root, [
-          "log",
-          "-1",
-          "--format=%an",
-          ref,
-          "--",
-          `${HARNESS_SKILLS_DIR}/${name}`,
-        ]),
-      ]),
-    );
-    return Object.fromEntries(authors);
   }
 
   // Null where the SKILL.md is missing at `ref`.
@@ -735,6 +607,3 @@ const pathExists = (path: string): Promise<boolean> =>
     () => true,
     () => false,
   );
-
-const byName = (skills: HarnessSkillTree[]): Record<string, string> =>
-  Object.fromEntries(skills.map((skill) => [skill.name, skill.treeHash]));

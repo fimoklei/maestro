@@ -6,12 +6,16 @@ import type {
   ReviewRequest,
   ViewerRead,
 } from "./harness-review-port";
-import { beforeProposalPush, type ProposalKind } from "./proposal-request";
+import {
+  beforeProposalPush,
+  type ProposalKind,
+  type ProposalTarget,
+} from "./proposal-request";
 
-const TARGET = {
+const TARGET: ProposalTarget = {
   origin: { host: "github.com", ownerRepo: "fimoklei/agent-harness" },
   base: "main",
-  name: "tdd",
+  ref: { type: "skill", name: "tdd" },
 };
 
 const request = (

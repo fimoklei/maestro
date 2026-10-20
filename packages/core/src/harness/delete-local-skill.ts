@@ -1,4 +1,4 @@
-// Removes a skill's folder from the Working Harness's disk: no commit or push
+// Removes a primitive's folder or file from the Working Harness's disk: no commit or push
 // (#798). A skill on the default branch goes the same way; Propose change then
 // carries the deletion to the Curator (#1370).
 import { join } from "node:path";
@@ -6,8 +6,13 @@ import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { isWithinRoot } from "../filesystem/path-containment";
 import type { FileSystemPort } from "../registry/file-system";
-import { resolveHarnessSkillsDir } from "./harness-skills-dir";
-import type { HarnessGitPort, HarnessSkillTrees } from "./read-harness-state";
+import {
+  type HarnessPrimitiveType,
+  type PrimitiveRef,
+  primitiveEntry,
+} from "./harness-primitive";
+import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
+import type { HarnessGitPort, HarnessHashes } from "./read-harness-state";
 
 export type DeleteLocalSkillError =
   | "not-configured"
@@ -25,6 +30,12 @@ export type DeleteLocalSkillResult =
   | { ok: true; name: string }
   | { ok: false; error: DeleteLocalSkillError };
 
+// Per type, then per name.
+type DeletionChecks = Record<
+  HarnessPrimitiveType,
+  Record<string, SkillDeletionCheck>
+>;
+
 // A folder outside the clone has nothing to delete, so it carries no facts.
 export type SkillDeletionCheck =
   | { inClone: false }
@@ -38,7 +49,7 @@ export type SkillDeletionCheck =
     };
 
 export type DeletionCheckResult =
-  | { ok: true; skills: Record<string, SkillDeletionCheck> }
+  | { ok: true; checks: DeletionChecks }
   | { ok: false; error: "not-configured" | "no-answer" };
 
 export class DeleteLocalSkill {
@@ -62,20 +73,25 @@ export class DeleteLocalSkill {
     if (trees === null) {
       return { ok: false, error: "no-answer" };
     }
-    const names = new Set(Object.values(trees).flatMap(Object.keys));
-    const skills: Record<string, SkillDeletionCheck> = {};
-    for (const name of names) {
-      skills[name] = checkSkill(trees, name);
-    }
-    return { ok: true, skills };
+    const checksOf = (type: HarnessPrimitiveType) => {
+      const hashes = trees[type];
+      const names = new Set(Object.values(hashes).flatMap(Object.keys));
+      return Object.fromEntries(
+        [...names].map((name) => [name, checkPrimitive(hashes, name)]),
+      );
+    };
+    return {
+      ok: true,
+      checks: { skill: checksOf("skill"), prompt: checksOf("prompt") },
+    };
   }
 
   // Shares the harness-root lock with the publish path.
   async execute(
-    name: string,
+    ref: PrimitiveRef,
     seenWorkingTree: string,
   ): Promise<DeleteLocalSkillResult> {
-    if (!isValidSkillSlug(name)) {
+    if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
@@ -83,14 +99,14 @@ export class DeleteLocalSkill {
       return { ok: false, error: "not-configured" };
     }
     const run = await this.deps.locks.run(root, () =>
-      this.remove(root, name, seenWorkingTree),
+      this.remove(root, ref, seenWorkingTree),
     );
     return run.ok ? run.value : { ok: false, error: "delete-in-progress" };
   }
 
   private async remove(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     seenWorkingTree: string,
   ): Promise<DeleteLocalSkillResult> {
     // Re-read at the press, never taken from the row.
@@ -98,7 +114,7 @@ export class DeleteLocalSkill {
     if (trees === null) {
       return { ok: false, error: "no-answer" };
     }
-    const check = checkSkill(trees, name);
+    const check = checkPrimitive(trees[ref.type], ref.name);
     if (!check.inClone) {
       return { ok: false, error: "already-gone" };
     }
@@ -106,7 +122,7 @@ export class DeleteLocalSkill {
       return { ok: false, error: "confirmation-stale" };
     }
 
-    const folder = await this.resolveFolder(root, name);
+    const folder = await this.resolveTarget(root, ref);
     if (folder === null) {
       return { ok: false, error: "destination-unsafe" };
     }
@@ -115,29 +131,35 @@ export class DeleteLocalSkill {
     } catch {
       return { ok: false, error: "delete-failed" };
     }
-    return { ok: true, name };
+    return { ok: true, name: ref.name };
   }
 
-  // A symlinked skill folder resolves to its target and fails the containment test.
-  private async resolveFolder(
+  // A symlinked folder or file resolves to its target and fails the containment test.
+  private async resolveTarget(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
   ): Promise<string | null> {
-    const resolved = await resolveHarnessSkillsDir(this.deps.fs, root);
+    const resolved = await resolveHarnessPrimitiveDir(
+      this.deps.fs,
+      root,
+      ref.type,
+    );
     if (!resolved.ok) {
       return null;
     }
     try {
-      const folder = await this.deps.fs.realpath(join(resolved.skills, name));
-      return isWithinRoot(folder, resolved.skills) ? folder : null;
+      const target = await this.deps.fs.realpath(
+        join(resolved.dir, primitiveEntry(ref)),
+      );
+      return isWithinRoot(target, resolved.dir) ? target : null;
     } catch {
       return null;
     }
   }
 }
 
-const checkSkill = (
-  trees: HarnessSkillTrees,
+const checkPrimitive = (
+  trees: HarnessHashes,
   name: string,
 ): SkillDeletionCheck => {
   const workingTree = Object.hasOwn(trees.working, name)

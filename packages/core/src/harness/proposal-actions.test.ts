@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryHarnessGit, type Skills } from "./harness-git.fake";
+import { InMemoryHarnessGit, type Skills, skillRef } from "./harness-git.fake";
 import type {
   HarnessReviewRead,
   NewReviewRequest,
@@ -106,7 +106,7 @@ describe("ProposalActions · create", () => {
     async (_, remoteTree, title) => {
       const { actions, calls } = build({ remoteTree });
 
-      expect(await actions.create("tdd")).toEqual({ ok: true });
+      expect(await actions.create(skillRef("tdd"))).toEqual({ ok: true });
       expect(calls.created).toEqual([
         {
           head: "maestro/tdd",
@@ -121,7 +121,7 @@ describe("ProposalActions · create", () => {
   it("reads only the skill's pushed branch and the default branch, never the clone", async () => {
     const { actions, git } = build();
 
-    await actions.create("tdd");
+    await actions.create(skillRef("tdd"));
 
     expect(git.treeReads).toEqual(["refs/remotes/origin/maestro/tdd", "head"]);
   });
@@ -131,7 +131,7 @@ describe("ProposalActions · create", () => {
       promoteTree: { other: "other" },
     });
 
-    expect(await actions.create("tdd")).toEqual({ ok: true });
+    expect(await actions.create(skillRef("tdd"))).toEqual({ ok: true });
     expect(calls.created).toEqual([
       {
         head: "maestro/tdd",
@@ -146,7 +146,7 @@ describe("ProposalActions · create", () => {
   it("opens nothing when the skill's pushed branch could not be read", async () => {
     const { actions, calls } = build({ promoteTree: null });
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -167,7 +167,7 @@ describe("ProposalActions · create", () => {
   ])("opens nothing when the default branch %s", async (_, over) => {
     const { actions, calls } = build(over);
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -177,7 +177,7 @@ describe("ProposalActions · create", () => {
   it("refuses when a matching request is already open", async () => {
     const { actions, calls } = build({ review: readOf([request()]) });
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "request-exists",
     });
@@ -189,7 +189,7 @@ describe("ProposalActions · create", () => {
       review: readOf([request({ state: "closed" })]),
     });
 
-    expect(await actions.create("tdd")).toEqual({ ok: true });
+    expect(await actions.create(skillRef("tdd"))).toEqual({ ok: true });
     expect(calls.created).toHaveLength(1);
   });
 
@@ -202,7 +202,7 @@ describe("ProposalActions · create", () => {
       ]),
     });
 
-    expect(await actions.create("tdd")).toEqual({ ok: true });
+    expect(await actions.create(skillRef("tdd"))).toEqual({ ok: true });
     expect(calls.created).toHaveLength(1);
   });
 });
@@ -213,7 +213,7 @@ describe("ProposalActions · reopen", () => {
       review: readOf([request({ state: "closed" })]),
     });
 
-    expect(await actions.reopen("tdd", 45)).toEqual({ ok: true });
+    expect(await actions.reopen(skillRef("tdd"), 45)).toEqual({ ok: true });
     expect(calls.reopened).toEqual([45]);
   });
 
@@ -222,7 +222,7 @@ describe("ProposalActions · reopen", () => {
       review: readOf([request({ number: 44, state: "closed" })]),
     });
 
-    expect(await actions.reopen("tdd", 45)).toEqual({
+    expect(await actions.reopen(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "request-gone",
     });
@@ -234,7 +234,7 @@ describe("ProposalActions · reopen", () => {
       review: readOf([request({ state: "merged" })]),
     });
 
-    expect(await actions.reopen("tdd", 45)).toEqual({
+    expect(await actions.reopen(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "request-gone",
     });
@@ -250,7 +250,7 @@ describe("ProposalActions · reopen", () => {
       ]),
     });
 
-    expect(await actions.reopen("tdd", 45)).toEqual({
+    expect(await actions.reopen(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "extra-requests",
     });
@@ -263,7 +263,7 @@ describe("ProposalActions · reopen", () => {
       write: { ok: false, error: "failed" },
     });
 
-    expect(await actions.reopen("tdd", 45)).toEqual({
+    expect(await actions.reopen(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "action-failed",
     });
@@ -274,7 +274,7 @@ describe("ProposalActions · withdraw", () => {
   it("closes the sole open request and nothing else", async () => {
     const { actions, calls } = build({ review: readOf([request()]) });
 
-    expect(await actions.withdraw("tdd", 45)).toEqual({ ok: true });
+    expect(await actions.withdraw(skillRef("tdd"), 45)).toEqual({ ok: true });
     expect(calls.closed).toEqual([45]);
   });
 
@@ -283,7 +283,7 @@ describe("ProposalActions · withdraw", () => {
       review: readOf([request({ number: 41 }), request({ number: 44 })]),
     });
 
-    expect(await actions.withdraw("tdd", 41)).toEqual({
+    expect(await actions.withdraw(skillRef("tdd"), 41)).toEqual({
       ok: false,
       error: "extra-requests",
     });
@@ -295,7 +295,7 @@ describe("ProposalActions · withdraw", () => {
       review: readOf([request({ number: 44 })]),
     });
 
-    expect(await actions.withdraw("tdd", 45)).toEqual({
+    expect(await actions.withdraw(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "request-gone",
     });
@@ -309,7 +309,7 @@ describe("ProposalActions · another contributor's proposal", () => {
   it("refuses to withdraw another contributor's open request", async () => {
     const { actions, calls } = build({ review: readOf([theirs]) });
 
-    expect(await actions.withdraw("tdd", 45)).toEqual({
+    expect(await actions.withdraw(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "proposed-by-other",
     });
@@ -319,7 +319,7 @@ describe("ProposalActions · another contributor's proposal", () => {
   it("refuses to create a request while another contributor's is open", async () => {
     const { actions, calls } = build({ review: readOf([theirs]) });
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "proposed-by-other",
     });
@@ -330,7 +330,7 @@ describe("ProposalActions · another contributor's proposal", () => {
     const closed = request({ state: "closed", author: "teammate" });
     const { actions, calls } = build({ review: readOf([closed]) });
 
-    expect(await actions.reopen("tdd", 45)).toEqual({
+    expect(await actions.reopen(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "proposed-by-other",
     });
@@ -342,7 +342,7 @@ describe("ProposalActions · another contributor's proposal", () => {
       review: readOf([theirs, request({ number: 40, state: "closed" })]),
     });
 
-    expect(await actions.reopen("tdd", 40)).toEqual({
+    expect(await actions.reopen(skillRef("tdd"), 40)).toEqual({
       ok: false,
       error: "proposed-by-other",
     });
@@ -354,7 +354,7 @@ describe("ProposalActions · another contributor's proposal", () => {
       review: readOf([request({ author: "FimoKlei" })]),
     });
 
-    expect(await actions.withdraw("tdd", 45)).toEqual({ ok: true });
+    expect(await actions.withdraw(skillRef("tdd"), 45)).toEqual({ ok: true });
     expect(calls.closed).toEqual([45]);
   });
 
@@ -364,7 +364,7 @@ describe("ProposalActions · another contributor's proposal", () => {
       viewer: { outcome: "unavailable" },
     });
 
-    expect(await actions.withdraw("tdd", 45)).toEqual({ ok: true });
+    expect(await actions.withdraw(skillRef("tdd"), 45)).toEqual({ ok: true });
     expect(calls.closed).toEqual([45]);
   });
 });
@@ -373,11 +373,11 @@ describe("ProposalActions · what authorizes an action", () => {
   it("refuses every action with no harness connected", async () => {
     const { actions, calls } = build({ root: undefined });
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "not-configured",
     });
-    expect(await actions.withdraw("tdd", 45)).toEqual({
+    expect(await actions.withdraw(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "not-configured",
     });
@@ -387,7 +387,7 @@ describe("ProposalActions · what authorizes an action", () => {
   it("refuses a name that is not a skill", async () => {
     const { actions, calls } = build();
 
-    expect(await actions.create("../etc")).toEqual({
+    expect(await actions.create(skillRef("../etc"))).toEqual({
       ok: false,
       error: "invalid-skill",
     });
@@ -401,7 +401,7 @@ describe("ProposalActions · what authorizes an action", () => {
       },
     });
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "no-usable-origin",
     });
@@ -414,7 +414,7 @@ describe("ProposalActions · what authorizes an action", () => {
       },
     });
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -423,7 +423,7 @@ describe("ProposalActions · what authorizes an action", () => {
   it("refuses when GitHub cannot be asked at all", async () => {
     const { actions, calls } = build({ review: { outcome: "unavailable" } });
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "review-unavailable",
     });
@@ -433,7 +433,7 @@ describe("ProposalActions · what authorizes an action", () => {
   it("refuses when the review read did not answer", async () => {
     const { actions, calls } = build({ review: { outcome: "failed" } });
 
-    expect(await actions.withdraw("tdd", 45)).toEqual({
+    expect(await actions.withdraw(skillRef("tdd"), 45)).toEqual({
       ok: false,
       error: "review-unknown",
     });
@@ -445,7 +445,7 @@ describe("ProposalActions · what authorizes an action", () => {
       review: { outcome: "read", requests: [], complete: false, limit: 100 },
     });
 
-    expect(await actions.create("tdd")).toEqual({
+    expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,
       error: "review-unknown",
     });

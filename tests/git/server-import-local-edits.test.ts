@@ -134,7 +134,7 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
     const trees = await new HarnessGitAdapter({
       released: new ReleasedContentReader(),
     }).readMovementTrees(harnessRoot);
-    expect(trees?.working.tdd).not.toBe(trees?.local.tdd);
+    expect(trees?.skill.working.tdd).not.toBe(trees?.skill.local.tdd);
   });
 
   it("refuses a repository outside the registry before reading it", async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { DeleteLocalSkill } from "./delete-local-skill";
-import { InMemoryHarnessGit, treeHash } from "./harness-git.fake";
+import { InMemoryHarnessGit, skillRef, treeHash } from "./harness-git.fake";
 
 const ROOT = "/harness";
 const FOLDER = "/harness/.apm/skills/tdd";
@@ -50,7 +50,7 @@ describe("DeleteLocalSkill", () => {
   it("removes the skill's own folder from the Working Harness", async () => {
     const { deletion, removed } = build(localOnlyWorld());
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: true,
       name: "tdd",
     });
@@ -61,7 +61,7 @@ describe("DeleteLocalSkill", () => {
     const git = localOnlyWorld();
     const { deletion } = build(git);
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: true,
       name: "tdd",
     });
@@ -75,7 +75,7 @@ describe("DeleteLocalSkill", () => {
     git.working = { jobs: "local-jobs" };
     const { deletion, removed } = build(git);
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "already-gone",
     });
@@ -109,7 +109,7 @@ describe("DeleteLocalSkill", () => {
     holds(git);
     const { deletion, removed } = build(git);
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: true,
       name: "tdd",
     });
@@ -122,7 +122,7 @@ describe("DeleteLocalSkill", () => {
     git.unreadable.add("HEAD");
     const { deletion, removed } = build(git);
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -133,7 +133,7 @@ describe("DeleteLocalSkill", () => {
     const { deletion, removed } = build(localOnlyWorld());
 
     await expect(
-      deletion.execute("tdd", treeHash("earlier-tdd")),
+      deletion.execute(skillRef("tdd"), treeHash("earlier-tdd")),
     ).resolves.toEqual({
       ok: false,
       error: "confirmation-stale",
@@ -146,7 +146,7 @@ describe("DeleteLocalSkill", () => {
       realpath: async (path) => (path.endsWith("/tdd") ? "/elsewhere" : path),
     });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
@@ -156,7 +156,7 @@ describe("DeleteLocalSkill", () => {
   it("reports a removal the filesystem refused", async () => {
     const { deletion } = build(localOnlyWorld(), { removeFails: true });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "delete-failed",
     });
@@ -169,7 +169,7 @@ describe("DeleteLocalSkill", () => {
     const held = locks.run(ROOT, () => new Promise<void>(() => {}));
     void held;
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "delete-in-progress",
     });
@@ -178,7 +178,7 @@ describe("DeleteLocalSkill", () => {
   it("refuses a name that is not a skill slug", async () => {
     const { deletion, removed } = build(localOnlyWorld());
 
-    await expect(deletion.execute("../etc", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("../etc"), SEEN)).resolves.toEqual({
       ok: false,
       error: "invalid-skill",
     });
@@ -188,7 +188,7 @@ describe("DeleteLocalSkill", () => {
   it("refuses with no Harness connected", async () => {
     const { deletion, removed } = build(localOnlyWorld(), { root: undefined });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });
@@ -212,26 +212,29 @@ describe("DeleteLocalSkill.inspect", () => {
 
     await expect(deletion.inspect()).resolves.toEqual({
       ok: true,
-      skills: {
-        jobs: {
-          inClone: true,
-          workingTree: treeHash("jobs-v1"),
-          uncommitted: false,
-          localOnly: false,
+      checks: {
+        skill: {
+          jobs: {
+            inClone: true,
+            workingTree: treeHash("jobs-v1"),
+            uncommitted: false,
+            localOnly: false,
+          },
+          edited: {
+            inClone: true,
+            workingTree: treeHash("edited-v2"),
+            uncommitted: true,
+            localOnly: false,
+          },
+          tdd: {
+            inClone: true,
+            workingTree: SEEN,
+            uncommitted: true,
+            localOnly: true,
+          },
+          gone: { inClone: false },
         },
-        edited: {
-          inClone: true,
-          workingTree: treeHash("edited-v2"),
-          uncommitted: true,
-          localOnly: false,
-        },
-        tdd: {
-          inClone: true,
-          workingTree: SEEN,
-          uncommitted: true,
-          localOnly: true,
-        },
-        gone: { inClone: false },
+        prompt: {},
       },
     });
   });
@@ -244,7 +247,7 @@ describe("DeleteLocalSkill.inspect", () => {
 
     const result = await deletion.inspect();
 
-    expect(result.ok && result.skills.fresh).toEqual({ inClone: false });
+    expect(result.ok && result.checks.skill.fresh).toEqual({ inClone: false });
   });
 
   it("answers no-answer when the clone cannot be read", async () => {

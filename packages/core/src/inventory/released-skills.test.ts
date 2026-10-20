@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HarnessTag } from "../harness/read-harness-state";
-import type { HarnessSkillTree } from "../harness/skill-movements";
+import type { HarnessSkillTree } from "../index";
 import { releasedSkillsFromGit } from "./released-skills";
 
 const ROOT = "/inv";

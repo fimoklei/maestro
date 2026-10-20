@@ -492,7 +492,14 @@ const SURFACES: {
         load={{
           kind: "ready",
           plan: {
-            delta: [{ kind: "added", name: "research", author: "Grace" }],
+            delta: [
+              {
+                type: "skill",
+                kind: "added",
+                name: "research",
+                author: "Grace",
+              },
+            ],
             previousTag: "v1.2.3",
             previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
             proposedStep: "minor",

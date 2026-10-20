@@ -33,6 +33,10 @@ const row = (
 ): HarnessStageRow => ({
   stage,
   skill: "tdd",
+  type: "skill",
+  name: "tdd",
+  path: ".apm/skills/tdd",
+  branch: "maestro/tdd",
   status,
   change: "edit",
   requests: [],
