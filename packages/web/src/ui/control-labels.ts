@@ -2,6 +2,7 @@
 // control cannot drift apart.
 export const COPY_PROMPT = "Copy prompt";
 export const CREATE_RELEASE = "Create a release";
+export const DELETE_PROMPT = "Delete prompt";
 export const DELETE_SKILL = "Delete skill";
 export const DEPLOY_SKILL = "Deploy skill";
 export const DISCARD_CHANGE = "Discard change";

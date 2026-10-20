@@ -2,6 +2,12 @@ import type { InventoryPrompt } from "@maestro/core";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import {
+  type CloneReading,
+  deleteItem,
+  inClone,
+} from "../inventory/clone-reading";
+import { PaneDeletion } from "../inventory/pane-deletion";
 import { filterByName } from "../inventory/type-filter";
 import type { HarnessFacts } from "../skills/skills-band";
 import {
@@ -11,7 +17,7 @@ import {
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
-import { COPY_PROMPT } from "../ui/control-labels";
+import { COPY_PROMPT, DELETE_PROMPT } from "../ui/control-labels";
 import { type Reading, readFreshness, useFreshnessLine } from "../ui/freshness";
 import { GitHubMark } from "../ui/github-mark-link";
 import { Icon } from "../ui/icon";
@@ -33,6 +39,7 @@ import {
   DISPLAY_OPTIONS,
   type PromptRow,
   promptsColumns,
+  type RowAction,
 } from "./prompts-columns";
 import {
   FINDING_LABEL,
@@ -46,6 +53,14 @@ import {
   SEARCH_LABEL,
 } from "./prompts-copy";
 
+// Step 1 of Delete prompt, offered only once the clone's read holds the file.
+type Deletion = { path: string; localOnly: boolean };
+
+const deletionOf = (clone: CloneReading, name: string): Deletion | null => {
+  const file = inClone(clone, name);
+  return file === null ? null : { path: file.path, localOnly: file.localOnly };
+};
+
 // Presentational; the container supplies the reads (#1598).
 export function PromptsView({
   prompts,
@@ -55,6 +70,8 @@ export function PromptsView({
   reading,
   onReread,
   onOpenHarness,
+  clone,
+  onDeleted,
 }: {
   /** Undefined until the Inventory has been read once. */
   prompts: InventoryPrompt[] | undefined;
@@ -69,6 +86,10 @@ export function PromptsView({
   onReread: () => void;
   // Supplied by the container, so this component stays routerless and storyable.
   onOpenHarness?: () => void;
+  /** Gates Delete prompt on each row. */
+  clone: CloneReading;
+  /** Step 1 of a deletion landed; the next step is on the Harness view. */
+  onDeleted: (prompt: string) => void;
 }) {
   const screen = useTableScreen({
     name: PROMPTS_FACT,
@@ -79,6 +100,15 @@ export function PromptsView({
     openOnArrival: null,
   });
   const [query, setQuery] = useState("");
+  const [deletion, setDeletion] = useState<Deletion | null>(null);
+  // Opening a row any other way drops a menu item's dialog.
+  const state = {
+    ...screen,
+    open: (name: string | null) => {
+      setDeletion(null);
+      screen.open(name);
+    },
+  };
   // Without a clipboard (no secure context, no permission) the write rejects.
   const copying = useMutation({
     mutationFn: (prompt: InventoryPrompt) =>
@@ -97,8 +127,16 @@ export function PromptsView({
   const copy = (prompt: InventoryPrompt) =>
     copyWrite.run(prompt, { onError: () => screen.open(prompt.name) });
   // Columns built once: rebuilt cells would drop the focus ⋮ gets back.
-  const copyRef = useRef(copy);
-  copyRef.current = copy;
+  const act = (prompt: InventoryPrompt, action: RowAction) => {
+    if (action === "copy") {
+      copy(prompt);
+      return;
+    }
+    screen.open(prompt.name);
+    setDeletion(deletionOf(clone, prompt.name));
+  };
+  const actRef = useRef(act);
+  actRef.current = act;
 
   const freshness = readFreshness(reads);
   // A hover card dates the reading it states.
@@ -106,7 +144,10 @@ export function PromptsView({
   const all = prompts ?? [];
   const rows: PromptRow[] = all.map((prompt) => ({
     ...prompt,
-    actions: [{ action: "copy", label: COPY_PROMPT }],
+    actions: [
+      { action: "copy", label: COPY_PROMPT },
+      ...deleteItem(clone, prompt.name, DELETE_PROMPT),
+    ],
     readAge,
   }));
 
@@ -124,7 +165,10 @@ export function PromptsView({
   });
 
   const columns = useMemo(
-    () => promptsColumns({ onAction: (row) => copyRef.current(row) }),
+    () =>
+      promptsColumns({
+        onAction: (row, action) => actRef.current(row, action),
+      }),
     [],
   );
 
@@ -136,7 +180,7 @@ export function PromptsView({
 
   return (
     <TableScreen
-      state={screen}
+      state={state}
       band={{
         facts: [
           ...(harness === undefined
@@ -202,13 +246,35 @@ export function PromptsView({
           ),
       }}
       pane={(row, frame) => (
-        <PromptDetailPane
-          prompt={row}
-          latestRelease={harness?.latestRelease}
-          copyRefused={refused === row.name}
-          onCopy={() => copy(row)}
-          {...frame}
-        />
+        <>
+          <PromptDetailPane
+            prompt={row}
+            latestRelease={harness?.latestRelease}
+            copyRefused={refused === row.name}
+            onCopy={() => copy(row)}
+            footItems={row.actions.map(({ action, ...item }) => ({
+              ...item,
+              onSelect: () =>
+                action === "copy"
+                  ? copy(row)
+                  : setDeletion(deletionOf(clone, row.name)),
+            }))}
+            {...frame}
+            // A dialog the row's ⋮ opened holds focus itself.
+            initialFocus={deletion === null ? undefined : null}
+          />
+          {deletion === null ? null : (
+            <PaneDeletion
+              // Keyed by prompt: a refusal from the previous prompt can never
+              // carry over to the next one.
+              key={row.name}
+              target={{ type: "prompt", skill: row.name, ...deletion }}
+              screen="prompts"
+              onClose={() => setDeletion(null)}
+              onDeleted={() => onDeleted(row.name)}
+            />
+          )}
+        </>
       )}
     />
   );
