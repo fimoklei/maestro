@@ -511,6 +511,14 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return this.released.skillManifests(root, `${MAESTRO_TAGS}/${tag}`, names);
   }
 
+  async readPromptTextsAtTag(
+    root: string,
+    tag: string,
+    names: string[],
+  ): Promise<Record<string, string> | null> {
+    return this.released.promptTexts(root, `${MAESTRO_TAGS}/${tag}`, names);
+  }
+
   // Null on an unreadable ref or a listing this parser does not recognise.
   async readSkillTrees(
     root: string,

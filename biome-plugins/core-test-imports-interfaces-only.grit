@@ -68,10 +68,6 @@ JsModuleSource() as $source where {
       $source <: r"[\"']\.\./filesystem/copy-tree-fs[\"']"
     },
     and {
-      $filename <: r".*/core/src/inventory/released-skills\.test\.ts",
-      $source <: r"[\"']\.\./harness/read-harness-state[\"']"
-    },
-    and {
       $filename <: r".*/core/src/registry/registry\.test\.ts",
       $source <: r"[\"']\.\./inventory/resolve-inventory-path[\"']"
     }

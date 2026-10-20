@@ -56,7 +56,7 @@ import { ConnectInventory } from "./inventory/connect-inventory";
 import type { HarnessScaffoldGitPort } from "./inventory/harness-scaffold-git";
 import type { HeadProbe } from "./inventory/head-commit";
 import { InventoryReader } from "./inventory/inventory-reader";
-import { releasedSkillsFromGit } from "./inventory/released-skills";
+import { releasedPrimitivesFromGit } from "./inventory/released-primitives";
 import { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 import { ScaffoldHarness } from "./inventory/scaffold-harness";
 import { ScaffoldOffers } from "./inventory/scaffold-offers";
@@ -82,7 +82,9 @@ export type UseCasePorts = {
         | "readOrigin"
         | "readTags"
         | "readSkillTreesAtTag"
+        | "readPrimitivesAtTag"
         | "readSkillManifestsAtTag"
+        | "readPromptTextsAtTag"
       >;
     // Bound to the Harness root the composition resolves per call.
     inventory: (
@@ -132,7 +134,7 @@ export function composeUseCases(ports: UseCasePorts) {
     fs,
     resolvePath: inventoryPath,
     originUrl: git.originUrl,
-    readReleasedSkills: releasedSkillsFromGit(harnessGit),
+    readReleased: releasedPrimitivesFromGit(harnessGit),
   });
   const harnessRoot = async () => {
     const path = await inventoryPath();

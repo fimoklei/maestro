@@ -76,6 +76,7 @@ const buildDeps = (
             type: "skill" as const,
             name: "tdd",
             description: "Test-driven development",
+            path: ".apm/skills/tdd",
           },
         ],
       }),
@@ -656,17 +657,53 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  // A prompt is never deployed; its name proves no skill exists.
+  it("rejects a skill name that only a released prompt holds", async () => {
+    const { deps, deployed } = buildDeps({
+      inventory: {
+        read: async () => ({
+          ok: true as const,
+          primitives: [
+            {
+              type: "prompt" as const,
+              name: "pr-review",
+              description: "",
+              path: ".maestro/prompts/pr-review.md",
+              text: "Review\n",
+              nameValid: true,
+            },
+          ],
+        }),
+      },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "pr-review",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "unknown-skill" });
+    expect(deployed).toEqual([]);
+  });
+
   it("deploys one named skill out of an inventory that holds several", async () => {
     const { deps, deployed } = buildDeps({
       inventory: {
         read: async () => ({
           ok: true as const,
           primitives: [
-            { type: "skill" as const, name: "jobs", description: "The board" },
+            {
+              type: "skill" as const,
+              name: "jobs",
+              description: "The board",
+              path: ".apm/skills/jobs",
+            },
             {
               type: "skill" as const,
               name: "tdd",
               description: "Test-driven development",
+              path: ".apm/skills/tdd",
             },
           ],
         }),
@@ -1131,8 +1168,18 @@ describe("DeploySkill", () => {
         read: async () => ({
           ok: true as const,
           primitives: [
-            { type: "skill" as const, name: "tdd", description: "One" },
-            { type: "skill" as const, name: "grill", description: "Two" },
+            {
+              type: "skill" as const,
+              name: "tdd",
+              description: "One",
+              path: ".apm/skills/tdd",
+            },
+            {
+              type: "skill" as const,
+              name: "grill",
+              description: "Two",
+              path: ".apm/skills/grill",
+            },
           ],
         }),
       },
@@ -1355,6 +1402,7 @@ describe("DeploySkill.executeBatch", () => {
         type: "skill" as const,
         name,
         description: name,
+        path: `.apm/skills/${name}`,
       })),
     }),
   });

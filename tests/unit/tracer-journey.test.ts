@@ -30,6 +30,7 @@ describe("the tracer journey through one cockpit", () => {
           type: "skill",
           name: "tdd",
           description: "Test-driven development loop",
+          path: ".apm/skills/tdd",
         },
       ],
     });

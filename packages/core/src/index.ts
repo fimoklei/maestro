@@ -205,13 +205,16 @@ export { resolveDefaultBranch } from "./inventory/default-branch";
 export { GitHarnessScaffoldAdapter } from "./inventory/harness-scaffold-git";
 export { probeHead } from "./inventory/head-commit";
 export {
+  type InventoryPrimitive,
+  type InventoryPrompt,
   InventoryReader,
   type InventoryResult,
+  type InventorySkill,
 } from "./inventory/inventory-reader";
 export {
   type ReleasedSkill,
-  releasedSkillsFromGit,
-} from "./inventory/released-skills";
+  releasedPrimitivesFromGit,
+} from "./inventory/released-primitives";
 export { isRepositoryRoot } from "./inventory/repository-root";
 export { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 export {
