@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { measureAs, openFootMenu, sentence } from "../test-utils";
 import {
+  HARNESS_NOW,
   harnessRegion,
   installHarnessHooks,
   openPane,
@@ -25,10 +26,21 @@ afterEach(() => {
 });
 
 // Band 2: Origin, Release and Branch, then the freshness line (#994).
-const band2 = async () =>
+const findBand2 = async () =>
   (await screen.findByRole("button", { name: "Re-read Harness" })).closest(
     '[data-band="2"]',
   ) as HTMLElement;
+
+// Band 2 once the open-time read settles, so it holds what that read found.
+const band2 = async () => {
+  const band = await findBand2();
+  await waitFor(() =>
+    expect(
+      within(band).getByRole("button", { name: "Re-read Harness" }),
+    ).not.toHaveAttribute("aria-busy"),
+  );
+  return band;
+};
 
 describe("Harness home base", () => {
   it("names the repository it is about", async () => {
@@ -160,7 +172,7 @@ describe("Harness home base", () => {
 
   // Band 2's own facts. A stage meta slot dates the same read in the same
   // words, so the text alone does not pick out band 2 (#850).
-  const stripFacts = band2;
+  const stripFacts = findBand2;
 
   it("fetches when it opens, so the state is the team's and not yesterday's", async () => {
     const calls = stubHarnessServer({
@@ -229,6 +241,7 @@ describe("Harness home base", () => {
   });
 
   it("announces a long read as every table screen does", async () => {
+    vi.useFakeTimers({ now: HARNESS_NOW, shouldAdvanceTime: true });
     let release = () => {};
     const heldUntil = new Promise<void>((resolve) => {
       release = resolve;

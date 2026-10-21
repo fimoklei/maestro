@@ -386,12 +386,19 @@ export const promoteRow = async (skill: string) => {
   );
 };
 
-// A fixed clock, so "4 min ago" is the same sentence on every run, and no stub
+export const HARNESS_NOW = new Date("2026-08-03T12:00:00.000Z");
+
+// A fixed date, so "4 min ago" is the same sentence on every run, and no stub
 // outlives its test. Call once at the top of each file.
+// Only Date is faked: faked timers make every findBy and waitFor poll wait on
+// the fake clock. A test that steps time fakes the timers itself.
 export function installHarnessHooks() {
   beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(new Date("2026-08-03T12:00:00.000Z"));
+    vi.useFakeTimers({
+      now: HARNESS_NOW,
+      toFake: ["Date"],
+      shouldAdvanceTime: true,
+    });
   });
 
   afterEach(() => {
