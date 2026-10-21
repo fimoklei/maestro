@@ -14,6 +14,7 @@ import {
 } from "../test-utils";
 import { harnessRegion } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
+import { pullRequest } from "./stage-row-fixture";
 
 const HARNESS: HarnessState = {
   origin: "github.com/fimoklei/agent-harness",
@@ -63,6 +64,8 @@ function stubPromptServer(options: {
   importStatus?: number;
   importBody?: unknown;
   taken?: readonly string[];
+  /** The Harness read once an import succeeded. */
+  imported?: HarnessState;
 }) {
   const calls: string[] = [];
   const imports: unknown[] = [];
@@ -92,7 +95,7 @@ function stubPromptServer(options: {
       return jsonResponse(
         imports.length === 0 || options.importStatus !== undefined
           ? HARNESS
-          : IMPORTED_HARNESS,
+          : (options.imported ?? IMPORTED_HARNESS),
       );
     }),
   );
@@ -370,6 +373,71 @@ describe("Harness import prompt flow", () => {
       within(updating).getByRole("button", { name: "Update prompt" }),
     );
     await waitFor(() => expect(imports).toHaveLength(1));
+  });
+
+  it("shows an updated prompt with an open pull request under Pending proposal, ready for Update proposal", async () => {
+    const request = {
+      ...pullRequest(45),
+      headBranch: "maestro/prompt.review-pr",
+    };
+    stubPromptServer({
+      taken: ["review-pr"],
+      importBody: { mode: "update", name: "review-pr" },
+      imported: {
+        ...HARNESS,
+        stages: {
+          ...HARNESS.stages,
+          proposal: {
+            outcome: "read",
+            bound: null,
+            rows: [
+              {
+                ...IMPORTED_ROW,
+                status: "new-local-work",
+                change: "edit",
+                requests: [request],
+                comparison: { kind: "proposal", number: 45 },
+              },
+            ],
+          },
+          review: {
+            outcome: "read",
+            bound: null,
+            rows: [
+              {
+                ...IMPORTED_ROW,
+                stage: "pending-review",
+                status: "waiting-for-review",
+                change: "edit",
+                requests: [request],
+                comparison: null,
+              },
+            ],
+          },
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.tab();
+    await screen.findByRole("dialog", { name: "Update a prompt" });
+    await user.type(field(dialog, "Description"), "Review");
+    await user.type(field(dialog, "Prompt text"), "Go.");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Update prompt" }),
+    );
+
+    const pane = await screen.findByRole("complementary", {
+      name: "review-pr detail",
+    });
+    expect(within(pane).getByText("Pending proposal")).toBeInTheDocument();
+    expect(within(pane).getByText("Changed")).toBeInTheDocument();
+    expect(
+      within(pane).getByRole("button", { name: "Update proposal" }),
+    ).toBeInTheDocument();
   });
 
   it("returns to Import a prompt when a taken name changes to a free one", async () => {
