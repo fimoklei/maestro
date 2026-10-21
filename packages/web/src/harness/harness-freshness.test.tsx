@@ -223,7 +223,8 @@ describe("Harness freshness and failed reads", () => {
     );
   });
 
-  // Import skill lives in the panel header, so a confirmed empty Pending
+  // Import, the menu holding Import skill, lives in the panel header, so a
+  // confirmed empty Pending
   // proposal drops out like the other two stages (#1224).
   it("draws no Pending proposal group when only Pending proposal is empty", async () => {
     stubHarnessServer({
@@ -243,7 +244,7 @@ describe("Harness freshness and failed reads", () => {
     ).toBe(false);
     expect(screen.queryByText("No changes yet")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /^import skill$/i }),
+      screen.getByRole("button", { name: /^import$/i }),
     ).toBeInTheDocument();
   });
 
@@ -294,7 +295,7 @@ describe("Harness freshness and failed reads", () => {
     ).toHaveLength(0);
     // Import touches the working tree only, so it survives an unread stage.
     expect(
-      screen.getByRole("button", { name: /^import skill$/i }),
+      screen.getByRole("button", { name: /^import$/i }),
     ).toBeInTheDocument();
   });
 

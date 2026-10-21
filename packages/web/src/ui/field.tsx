@@ -5,6 +5,8 @@ import {
   useId,
 } from "react";
 import { cn } from "./cn";
+import type { Copy } from "./phrase";
+import { PhraseText } from "./phrase-text";
 
 // The caller owns when the refusal appears: on submit, or right after a pick.
 
@@ -16,7 +18,7 @@ export interface FieldProps
   /** Visible, always — a placeholder is not a label. */
   label: string;
   /** What the reader must know before acting, in one sentence. */
-  hint?: string;
+  hint?: Copy;
   /** One sentence, shown once the field has been judged. */
   error?: string;
   value: string;
@@ -67,7 +69,7 @@ export function Field({
       </label>
       {hint === undefined ? null : (
         <span id={hintId} className="font-ui text-meta text-gray-11">
-          {hint}
+          <PhraseText copy={hint} />
         </span>
       )}
       <div className="flex items-center gap-inline">

@@ -14,3 +14,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+// The trigger of a band menu, such as Import: a chevron follows the label.
+export const Menu: Story = { args: { label: "Import", menu: true } };

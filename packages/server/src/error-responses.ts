@@ -5,6 +5,7 @@ import type {
   DeploySkillError,
   DiscardChangeError,
   HarnessStateError,
+  ImportPromptError,
   ImportSkillError,
   LocalEditsError,
   PromoteDeletionError,
@@ -333,6 +334,22 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
   "harness-copy-uncommitted": { status: 409 },
   "harness-unreadable": { status: 422 },
   "nothing-to-carry-back": { status: 409 },
+};
+
+// Never a filesystem message, and never the path it wrote.
+export const importPromptErrorResponses: ErrorTable<ImportPromptError> = {
+  "not-configured": { status: 409 },
+  "empty-name": { status: 422 },
+  "invalid-name": { status: 400 },
+  "empty-description": { status: 422 },
+  "multiline-description": { status: 422 },
+  "long-description": { status: 422 },
+  "empty-text": { status: 422 },
+  "long-text": { status: 422 },
+  "destination-unsafe": { status: 409 },
+  "destination-unreadable": { status: 409 },
+  "import-in-progress": { status: 409 },
+  "write-failed": { status: 500 },
 };
 
 // A per-skill refusal is data in a 200; only a refused run is a status.

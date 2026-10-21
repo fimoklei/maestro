@@ -18,6 +18,7 @@ import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog, type DeletionMode } from "./harness/deletion-dialog";
 import { DiscardDialog } from "./harness/discard-dialog";
 import { ImportDialog } from "./harness/import-dialog";
+import { ImportPromptDialog } from "./harness/import-prompt-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import { WithdrawDialog } from "./harness/withdraw-dialog";
@@ -192,6 +193,23 @@ const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
     onImport={vi.fn()}
     importing={false}
     importError={null}
+    {...props}
+  />
+);
+
+const importPromptDialog = (
+  props: Partial<ComponentProps<typeof ImportPromptDialog>>,
+) => (
+  <ImportPromptDialog
+    draft={{ name: "", description: "", text: "" }}
+    fieldErrors={{}}
+    changed={false}
+    importing={false}
+    failure={null}
+    onEdit={vi.fn()}
+    onPaste={() => false}
+    onImport={vi.fn()}
+    onClose={vi.fn()}
     {...props}
   />
 );
@@ -588,6 +606,38 @@ const ON_DIALOG: Row[] = [
           }),
       },
     ],
+  },
+  {
+    file: "harness/import-prompt-dialog.tsx",
+    heading: "Import a prompt",
+    render: ({ running, onClose }) =>
+      importPromptDialog({
+        draft: {
+          name: "review-pr",
+          description: "Review a pull request.",
+          text: "Review $ARGUMENTS.",
+        },
+        changed: true,
+        importing: running,
+        onClose,
+      }),
+    // The owner reports a typed field as a change.
+    changed: async (onClose) => {
+      render(
+        importPromptDialog({
+          draft: { name: "", description: "", text: "Review." },
+          changed: true,
+          onClose,
+        }),
+      );
+    },
+    emptyForm: {
+      submit: "Import prompt",
+      render: (onRun) => importPromptDialog({ onImport: onRun }),
+    },
+    loading: null,
+    loadFailed: null,
+    notices: [],
   },
   {
     file: "skills/bulk-remove-dialog.tsx",

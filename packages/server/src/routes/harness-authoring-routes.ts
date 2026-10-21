@@ -6,6 +6,7 @@ import {
   deletionErrorResponses,
   discardErrorResponses,
   importErrorResponses,
+  importPromptErrorResponses,
   localDeletionErrorResponses,
   promoteErrorResponses,
   proposalErrorResponses,
@@ -19,7 +20,9 @@ import {
   deletionBodySchema,
   discardBodySchema,
   IMPORT_BODY,
+  IMPORT_PROMPT_BODY,
   importBodySchema,
+  importPromptBodySchema,
   LOCAL_DELETION_BODY,
   localDeletionBodySchema,
   PATH_BODY,
@@ -43,6 +46,7 @@ type Deps = Pick<
   | "discard"
   | "proposals"
   | "importSkill"
+  | "importPrompt"
   | "scaffold"
 >;
 
@@ -223,6 +227,20 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       name: result.name,
       skipped: result.skipped,
     });
+  });
+
+  // Writes into the Working Harness the server resolves; the browser names no path.
+  app.post("/api/harness/prompt/import", async (c) => {
+    const body = await parseBody(c, importPromptBodySchema, IMPORT_PROMPT_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importPrompt.execute(body.data);
+    if (!result.ok) {
+      const { status } = importPromptErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ mode: result.mode, name: result.name });
   });
 
   // The path is re-checked from scratch: the offer that carried it is not evidence (#556).

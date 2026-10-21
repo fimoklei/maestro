@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-react";
-import { Button } from "./button";
+import { ChevronDown, type LucideIcon } from "lucide-react";
+import { Button, type ButtonProps } from "./button";
 import { Icon } from "./icon";
 
 // Band 1's one collapse rule (#1456): an action beside the primary shows its
@@ -8,20 +8,25 @@ import { Icon } from "./icon";
 export function BandAction({
   icon,
   label,
-  onClick,
-}: {
+  menu = false,
+  ...rest
+}: Omit<ButtonProps, "children" | "variant" | "size"> & {
   icon: LucideIcon;
   label: string;
-  onClick: () => void;
+  /** Opens a menu: a chevron follows the label. Rest props come from the menu's trigger. */
+  menu?: boolean;
 }) {
   return (
     <Button
       variant="quiet"
-      onClick={onClick}
       className="max-lg:w-8 max-lg:justify-center max-lg:px-0"
+      {...rest}
     >
       <Icon of={icon} className="lg:hidden" />
       <span className="max-lg:sr-only">{label}</span>
+      {menu ? (
+        <Icon of={ChevronDown} className="text-gray-11 max-lg:hidden" />
+      ) : null}
     </Button>
   );
 }

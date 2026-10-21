@@ -1,0 +1,298 @@
+import type { HarnessStageRow, HarnessState } from "@maestro/core";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  htmlElement,
+  jsonResponse,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
+import { harnessRegion } from "./harness-flow-fixture";
+import { HarnessView } from "./harness-view";
+
+const HARNESS: HarnessState = {
+  origin: "github.com/fimoklei/agent-harness",
+  releasedVersion: "v0.5.0",
+  defaultBranch: "main",
+  releaseState: "released",
+  freshness: { outcome: "fetched", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
+  cloneSync: "current",
+  localHeadCommit: "local-head",
+  stages: {
+    proposal: { outcome: "read", rows: [], bound: null },
+    review: { outcome: "read", rows: [], bound: null },
+    release: { outcome: "read", rows: [], bound: null },
+  },
+};
+
+const IMPORTED_ROW: HarnessStageRow = {
+  stage: "pending-proposal",
+  type: "prompt",
+  name: "review-pr",
+  path: ".maestro/prompts/review-pr.md",
+  branch: "maestro/prompt.review-pr",
+  status: "not-yet-proposed",
+  change: "addition",
+  requests: [],
+  reviewers: [],
+  comparison: { kind: "default-branch" },
+  alsoIn: [],
+  concurrentChange: false,
+  waitingOn: null,
+  localOnly: true,
+  remoteTree: null,
+  restorable: false,
+  onDisk: true,
+  previousName: null,
+};
+
+const IMPORTED_HARNESS: HarnessState = {
+  ...HARNESS,
+  stages: {
+    ...HARNESS.stages,
+    proposal: { outcome: "read", bound: null, rows: [IMPORTED_ROW] },
+  },
+};
+
+function stubPromptServer(options: {
+  importStatus?: number;
+  importBody?: unknown;
+}) {
+  const calls: string[] = [];
+  const imports: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push(`${init?.method ?? "GET"} ${url}`);
+      if (url === "/api/harness/prompt/import") {
+        imports.push(JSON.parse(String(init?.body)));
+        return jsonResponse(
+          options.importBody ?? { mode: "add", name: "review-pr" },
+          options.importStatus,
+        );
+      }
+      return jsonResponse(
+        imports.length === 0 || options.importStatus !== undefined
+          ? HARNESS
+          : IMPORTED_HARNESS,
+      );
+    }),
+  );
+  return { calls, imports };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+const PASTED = [
+  "---",
+  "description: Review the open pull request",
+  "model: opus",
+  "---",
+  "Review $ARGUMENTS.",
+  "Use $1 as the focus.",
+  "",
+].join("\n");
+
+async function openImportPrompt(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: "Import" }));
+  await user.click(
+    await screen.findByRole("menuitem", { name: "Import prompt" }),
+  );
+  return screen.findByRole("dialog", { name: "Import a prompt" });
+}
+
+const field = (dialog: HTMLElement, name: string) =>
+  within(dialog).getByRole("textbox", { name });
+
+describe("Harness import prompt flow", () => {
+  it.each([
+    ["Enter", "{Enter}"],
+    ["Space", " "],
+    ["Down Arrow", "{ArrowDown}"],
+  ])("opens the Import menu with %s on its first item", async (_, key) => {
+    stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const trigger = await screen.findByRole("button", { name: "Import" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    htmlElement(trigger).focus();
+    await user.keyboard(key);
+
+    const first = await screen.findByRole("menuitem", {
+      name: "Import skill",
+    });
+    await waitFor(() => expect(first).toHaveFocus());
+    await user.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: "Import prompt" }),
+    ).toHaveFocus();
+  });
+
+  it("opens Import a skill from the menu", async () => {
+    stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    await user.click(await screen.findByRole("button", { name: "Import" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Import skill" }),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Import a skill" }),
+    ).toBeInTheDocument();
+  });
+
+  it("imports pasted text, moving its description out of the text", async () => {
+    const { imports } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    const text = field(dialog, "Prompt text");
+    expect(text).not.toHaveAttribute("placeholder");
+    expect(
+      within(dialog).getByText(
+        sentence("Maestro uses this as the file name in .maestro/prompts."),
+      ),
+    ).toBeInTheDocument();
+    expect(field(dialog, "Description")).toHaveAccessibleDescription(
+      "One line, shown in the Prompts table.",
+    );
+    expect(text).toHaveAccessibleDescription("Saved exactly as you enter it.");
+
+    await user.click(text);
+    await user.paste(PASTED);
+
+    expect(field(dialog, "Description")).toHaveValue(
+      "Review the open pull request",
+    );
+    expect(text).toHaveValue("Review $ARGUMENTS.\nUse $1 as the focus.\n");
+    // No name is guessed from pasted text.
+    expect(field(dialog, "Name")).toHaveValue("");
+
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.type(text, "Be brief.");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    );
+
+    await waitFor(() =>
+      expect(imports).toEqual([
+        {
+          name: "review-pr",
+          description: "Review the open pull request",
+          text: "Review $ARGUMENTS.\nUse $1 as the focus.\nBe brief.",
+        },
+      ]),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    const pane = await screen.findByRole("complementary", {
+      name: "review-pr detail",
+    });
+    expect(within(pane).getByText("Pending proposal")).toBeInTheDocument();
+    expect(within(pane).getByText("Added")).toBeInTheDocument();
+    expect(harnessRegion()).toHaveTextContent("Imported review-pr.");
+  });
+
+  it("shows field errors only after an empty submit, and clears each once valid", async () => {
+    const { calls } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    const name = field(dialog, "Name");
+    const description = field(dialog, "Description");
+    const text = field(dialog, "Prompt text");
+    expect(name).toBeValid();
+    await user.click(name);
+    await user.tab();
+    expect(name).toBeValid();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    );
+
+    expect(name).toBeInvalid();
+    expect(name).toHaveAccessibleDescription(/Enter a name\./);
+    expect(description).toHaveAccessibleDescription(/Enter a description\./);
+    expect(text).toHaveAccessibleDescription(/Enter the prompt text\./);
+    expect(calls.filter((call) => call.includes("/prompt/"))).toEqual([]);
+
+    await user.type(name, "Review");
+    expect(name).toHaveAccessibleDescription(
+      /A prompt name uses lowercase letters, digits and single hyphens, like pr-review\./,
+    );
+    await user.clear(name);
+    await user.type(name, "review-pr");
+    expect(name).toBeValid();
+    await user.type(description, "Review");
+    expect(description).toBeValid();
+    await user.type(text, "Go.");
+    expect(text).toBeValid();
+  });
+
+  it("refuses a text over 100 KB without a request", async () => {
+    const { calls } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.type(field(dialog, "Description"), "Review");
+    await user.click(field(dialog, "Prompt text"));
+    await user.paste("é".repeat(60_000));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    );
+
+    expect(
+      await within(dialog).findByText("Prompt over 100 KB"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Shorten the text to 100 KB or less. Then select Import prompt.",
+      ),
+    ).toBeInTheDocument();
+    expect(calls.filter((call) => call.includes("/prompt/"))).toEqual([]);
+  });
+
+  it("keeps the dialog open with Harness busy when the lock is held", async () => {
+    stubPromptServer({
+      importStatus: 409,
+      importBody: { error: "import-in-progress" },
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.type(field(dialog, "Description"), "Review");
+    await user.type(field(dialog, "Prompt text"), "Go.");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    );
+
+    expect(await within(dialog).findByText("Harness busy")).toBeInTheDocument();
+  });
+
+  it("closes on Cancel without a write", async () => {
+    const { calls } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Prompt text"), "Go.");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(calls.filter((call) => call.includes("/prompt/"))).toEqual([]);
+  });
+});

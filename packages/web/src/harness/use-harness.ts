@@ -11,6 +11,7 @@ import type {
   SemverStep,
   SkillDeletionCheck,
 } from "@maestro/core";
+import type { PromptDraft } from "@maestro/core/prompt-file";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, requestJson } from "../api/http";
 import {
@@ -216,6 +217,21 @@ export function useImportSkill() {
         body: JSON.stringify(request),
       }),
     // Returned, so the dialog closes onto a read that already holds the row.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+  });
+}
+
+export type ImportPromptOutcome = { mode: ImportMode; name: string };
+
+// Invalidated rather than written, like Import skill: the read places the row.
+export function useImportPrompt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: PromptDraft) =>
+      requestJson<ImportPromptOutcome>("/api/harness/prompt/import", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });
 }

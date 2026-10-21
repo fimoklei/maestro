@@ -2,12 +2,7 @@ import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  htmlElement,
-  jsonResponse,
-  renderWithQuery,
-  sentence,
-} from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
 import { harnessRegion } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 import { pullRequest } from "./stage-row-fixture";
@@ -152,14 +147,18 @@ const dialogImport = () =>
     name: "Import skill",
   });
 
+// Band 1's Import menu, then its Import skill item.
+async function openImportSkill(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: "Import" }));
+  await user.click(
+    await screen.findByRole("menuitem", { name: "Import skill" }),
+  );
+}
+
 // Picks the skill folder through Browse, which the stubbed chooser answers,
 // and waits for the check's proposal to fill the name.
 async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
-  // Band 1's, first; an empty Harness repeats it in its empty state.
-  const [importSkill] = await screen.findAllByRole("button", {
-    name: "Import skill",
-  });
-  await user.click(htmlElement(importSkill));
+  await openImportSkill(user);
   await user.click(await screen.findByRole("button", { name: "Browse" }));
   await waitFor(() =>
     expect(screen.getByRole("textbox", { name: "Folder path" })).toHaveValue(
@@ -301,10 +300,7 @@ describe("Harness import flow", () => {
     const user = userEvent.setup();
     renderWithQuery(<HarnessView openPrimitive={null} />);
 
-    const [importSkill] = await screen.findAllByRole("button", {
-      name: "Import skill",
-    });
-    await user.click(htmlElement(importSkill));
+    await openImportSkill(user);
     await user.click(dialogImport());
 
     const folder = screen.getByRole("textbox", { name: "Folder path" });
@@ -325,10 +321,7 @@ describe("Harness import flow", () => {
     const user = userEvent.setup();
     renderWithQuery(<HarnessView openPrimitive={null} />);
 
-    const [importSkill] = await screen.findAllByRole("button", {
-      name: "Import skill",
-    });
-    await user.click(htmlElement(importSkill));
+    await openImportSkill(user);
     await user.type(
       await screen.findByRole("textbox", { name: "Folder path" }),
       `${SOURCE}{Enter}`,
@@ -421,10 +414,7 @@ describe("Harness import flow", () => {
     const user = userEvent.setup();
     renderWithQuery(<HarnessView openPrimitive={null} />);
 
-    const [importSkill] = await screen.findAllByRole("button", {
-      name: "Import skill",
-    });
-    await user.click(htmlElement(importSkill));
+    await openImportSkill(user);
     await user.type(
       await screen.findByRole("textbox", { name: "Folder path" }),
       SOURCE,

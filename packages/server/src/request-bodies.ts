@@ -1,6 +1,7 @@
 // Every POST body the server accepts, and the request-shape refusals for a wrong one.
 
 import { HARNESS_PRIMITIVE_TYPES } from "@maestro/core";
+import { promptFieldProblems } from "@maestro/core/prompt-file";
 import type { Context } from "hono";
 import { z } from "zod";
 import { refusalCodes } from "./error-responses";
@@ -24,6 +25,11 @@ export const importBodySchema = z.object({
   source: z.string(),
   name: z.string().optional(),
 });
+
+// The edge applies the prompt field rules; core applies them again.
+export const importPromptBodySchema = z
+  .object({ name: z.string(), description: z.string(), text: z.string() })
+  .refine((draft) => promptFieldProblems(draft).length === 0);
 
 // Global carries no path, so no untrusted path crosses the boundary on it.
 const targetSchema = z.discriminatedUnion("kind", [
@@ -228,6 +234,13 @@ export const IMPORT_BODY: RequestShape = {
     "Nothing was imported. Reload the page, then import the skill again.",
   detail:
     "The request carries a source folder and an optional name: { source: string, name?: string }.",
+};
+
+export const IMPORT_PROMPT_BODY: RequestShape = {
+  message:
+    "Nothing was imported. Reload the page, then import the prompt again.",
+  detail:
+    "The request carries a name, a description and a text: { name: string, description: string, text: string }.",
 };
 
 export const TARGET_BODY: RequestShape = {
