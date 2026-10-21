@@ -11,6 +11,7 @@ import {
   discardErrorResponses,
   importErrorResponses,
   importPromptErrorResponses,
+  isImportPromptRefusal,
   localDeletionErrorResponses,
   promoteErrorResponses,
   proposalErrorResponses,
@@ -257,6 +258,10 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     const result = await deps.importPrompt.execute(body.data);
     if (!result.ok) {
+      // Core judges the fields again; the schema owns their HTTP refusal.
+      if (!isImportPromptRefusal(result.error)) {
+        return c.json({ error: "invalid-body", ...IMPORT_PROMPT_BODY }, 400);
+      }
       const { status } = importPromptErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
