@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
+import { machine, phrase } from "./phrase";
 import { TextAreaField } from "./text-area-field";
 
 describe("TextAreaField", () => {
@@ -33,6 +35,24 @@ describe("TextAreaField", () => {
     const area = screen.getByRole("textbox");
     expect(area).toBeInvalid();
     expect(area).toHaveAccessibleDescription(/Enter the prompt text\./);
+  });
+
+  it("sets a path inside the hint as a machine value", () => {
+    render(
+      <TextAreaField
+        label="Prompt text"
+        hint={phrase`Saved as ${machine("review-pr.md")}.`}
+        value=""
+        onChange={() => {}}
+      />,
+    );
+
+    const hint = screen.getByText(sentence("Saved as review-pr.md."));
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "aria-describedby",
+      hint.id,
+    );
+    expect(screen.getByText("review-pr.md")).toHaveClass("font-mono");
   });
 
   it("hands each edit to its owner", async () => {

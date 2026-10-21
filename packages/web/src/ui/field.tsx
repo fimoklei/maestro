@@ -1,14 +1,7 @@
-import {
-  type InputHTMLAttributes,
-  type ReactNode,
-  type Ref,
-  useId,
-} from "react";
+import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 import { cn } from "./cn";
+import { FieldFrame } from "./field-frame";
 import type { Copy } from "./phrase";
-import { PhraseText } from "./phrase-text";
-
-// The caller owns when the refusal appears: on submit, or right after a pick.
 
 export interface FieldProps
   extends Omit<
@@ -42,65 +35,44 @@ export function Field({
   value,
   onChange,
   trailing,
-  describedBy: extraDescribedBy,
+  describedBy,
   mono = false,
   invalid = false,
   inputRef,
   className,
   ...rest
 }: FieldProps) {
-  const id = useId();
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-  const refused = invalid || error !== undefined;
-  const describedBy =
-    [
-      hint === undefined ? null : hintId,
-      error === undefined ? null : errorId,
-      extraDescribedBy ?? null,
-    ]
-      .filter((each) => each !== null)
-      .join(" ") || undefined;
-
   return (
-    <div className="flex flex-col gap-tight">
-      <label htmlFor={id} className="font-medium font-ui text-gray-12 text-row">
-        {label}
-      </label>
-      {hint === undefined ? null : (
-        <span id={hintId} className="font-ui text-meta text-gray-11">
-          <PhraseText copy={hint} />
-        </span>
+    <FieldFrame
+      label={label}
+      hint={hint}
+      error={error}
+      describedBy={describedBy}
+      invalid={invalid}
+    >
+      {(control) => (
+        <div className="flex items-center gap-inline">
+          <input
+            ref={inputRef}
+            id={control.id}
+            type="text"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            aria-invalid={control.refused ? true : undefined}
+            aria-describedby={control.describedBy}
+            className={cn(
+              // No outline-none: it poisons --tw-outline-style and hides the one
+              // focus ring every control shares (#227).
+              "h-control min-w-0 flex-1 rounded-control border bg-gray-1 px-inline text-gray-12 text-row",
+              mono ? "font-mono" : "font-ui",
+              control.refused ? "border-red-7" : "border-gray-9",
+              className,
+            )}
+            {...rest}
+          />
+          {trailing}
+        </div>
       )}
-      <div className="flex items-center gap-inline">
-        <input
-          ref={inputRef}
-          id={id}
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          aria-invalid={refused ? true : undefined}
-          aria-describedby={describedBy}
-          className={cn(
-            // No outline-none: it poisons --tw-outline-style and hides the one
-            // focus ring every control shares (#227).
-            "h-control min-w-0 flex-1 rounded-control border bg-gray-1 px-inline text-gray-12 text-row",
-            mono ? "font-mono" : "font-ui",
-            refused ? "border-red-7" : "border-gray-9",
-            className,
-          )}
-          {...rest}
-        />
-        {trailing}
-      </div>
-      {error === undefined ? null : (
-        // One line, glyph and sentence together: the mark carries the severity
-        // without colour (WCAG 1.4.1) and is hidden from a reader who hears it.
-        <span id={errorId} className="font-ui text-meta text-red-11">
-          <span aria-hidden="true">✕ </span>
-          {error}
-        </span>
-      )}
-    </div>
+    </FieldFrame>
   );
 }
