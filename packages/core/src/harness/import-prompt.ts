@@ -7,7 +7,7 @@ import {
   ensureHarnessPrimitiveDir,
   resolveHarnessPrimitiveDir,
 } from "./harness-primitive-dir";
-import type { ImportMode } from "./import-skill";
+import type { ImportMode } from "./import-mode";
 import {
   type PromptDraft,
   type PromptFieldProblem,
@@ -25,8 +25,11 @@ export type ImportPromptError =
   | "import-in-progress"
   | "write-failed";
 
+// What the import route answers on success.
+export type ImportPromptSuccess = { mode: ImportMode; name: string };
+
 export type ImportPromptResult =
-  | { ok: true; mode: ImportMode; name: string }
+  | ({ ok: true } & ImportPromptSuccess)
   | { ok: false; error: ImportPromptError };
 
 // Taken only while `<name>.md` is in the Working Harness: a name deleted

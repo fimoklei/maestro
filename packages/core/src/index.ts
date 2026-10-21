@@ -147,14 +147,15 @@ export {
   type LocalEditsRefusal,
   type LocalEditsSkill,
 } from "./harness/import-local-edits";
+export type { ImportMode } from "./harness/import-mode";
 export {
   ImportPrompt,
   type ImportPromptCheck,
   type ImportPromptError,
+  type ImportPromptSuccess,
 } from "./harness/import-prompt";
 export {
   type ImportCheck,
-  type ImportMode,
   type ImportNameBlocker,
   ImportSkill,
   type ImportSkillError,

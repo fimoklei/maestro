@@ -1,4 +1,8 @@
-import type { PrimitiveRef, ProposalActionResult } from "@maestro/core";
+import type {
+  ImportPromptSuccess,
+  PrimitiveRef,
+  ProposalActionResult,
+} from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
@@ -256,7 +260,10 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       const { status } = importPromptErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    return c.json({ mode: result.mode, name: result.name });
+    return c.json({
+      mode: result.mode,
+      name: result.name,
+    } satisfies ImportPromptSuccess);
   });
 
   // The path is re-checked from scratch: the offer that carried it is not evidence (#556).

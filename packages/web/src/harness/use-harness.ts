@@ -7,6 +7,7 @@ import type {
   ImportCheck,
   ImportMode,
   ImportPromptCheck,
+  ImportPromptSuccess,
   PrimitiveRef,
   ReleasePlan,
   SemverStep,
@@ -238,14 +239,12 @@ export function useImportPromptCheck(name: string | null) {
   });
 }
 
-export type ImportPromptOutcome = { mode: ImportMode; name: string };
-
 // Invalidated rather than written, like Import skill: the read places the row.
 export function useImportPrompt() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: PromptDraft) =>
-      requestJson<ImportPromptOutcome>("/api/harness/prompt/import", {
+      requestJson<ImportPromptSuccess>("/api/harness/prompt/import", {
         method: "POST",
         body: JSON.stringify(request),
       }),

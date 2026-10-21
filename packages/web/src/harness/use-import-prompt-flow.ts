@@ -1,3 +1,4 @@
+import type { ImportPromptSuccess } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
@@ -16,11 +17,7 @@ import {
   PROMPT_TAKEN_NOTICE,
   type PromptSource,
 } from "./import-prompt-copy";
-import {
-  type ImportPromptOutcome,
-  useImportPrompt,
-  useImportPromptCheck,
-} from "./use-harness";
+import { useImportPrompt, useImportPromptCheck } from "./use-harness";
 
 const EMPTY: PromptDraft = { name: "", description: "", text: "" };
 
@@ -47,7 +44,7 @@ const utf8 = new TextDecoder("utf-8", { fatal: true });
 export function useImportPromptFlow(
   /** Into the Harness screen's status region. */
   report: (write: string) => void,
-  onImported: (outcome: ImportPromptOutcome) => void,
+  onImported: (outcome: ImportPromptSuccess) => void,
 ) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PromptDraft>(EMPTY);
