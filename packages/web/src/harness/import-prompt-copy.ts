@@ -15,6 +15,29 @@ export const PROMPT_FIELD_HINTS = {
   text: "Saved exactly as you enter it.",
 } as const;
 
+/** Where the prompt text comes from: the dialog's two tabs. */
+export type PromptSource = "paste" | "file";
+
+export const PROMPT_SOURCES: readonly { value: PromptSource; label: string }[] =
+  [
+    { value: "paste", label: "Paste text" },
+    { value: "file", label: "Choose file" },
+  ];
+
+export const CHOOSE_FILE_HINT = "Use a .md or .txt file of 100 KB or less.";
+
+/** The chosen file's size beside its name, in the KB of the 100 KB limit. */
+// Rounded up, so a file just over the limit never reads as 100.0 KB.
+export const fileSize = (bytes: number): string =>
+  `${(Math.ceil(bytes / 102.4) / 10).toFixed(1)} KB`;
+
+/** The chosen file is not UTF-8; nothing reached the fields. */
+export const NOT_TEXT_FILE_NOTICE: NoticeContent = {
+  level: "error",
+  label: "Not a text file",
+  message: "Maestro reads only UTF-8 text. Choose another file.",
+};
+
 // Over 100 KB is a notice, not a field error: its way through is longer.
 type FieldError = Exclude<PromptFieldProblem, "long-text">;
 

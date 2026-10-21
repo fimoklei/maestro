@@ -2,6 +2,7 @@ import type { HarnessPrimitiveType } from "@maestro/core";
 
 // Control labels that a sentence names, shared so the sentence and the
 // control cannot drift apart.
+export const CHOOSE_ANOTHER_FILE = "Choose another file";
 export const COPY_PROMPT = "Copy prompt";
 export const CREATE_RELEASE = "Create a release";
 export const DELETE_PROMPT = "Delete prompt";

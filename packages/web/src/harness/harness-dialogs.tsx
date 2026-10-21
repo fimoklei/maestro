@@ -119,6 +119,11 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           failure={props.promptImportFlow.failure}
           updating={props.promptImportFlow.updating}
           takenNotice={props.promptImportFlow.takenNotice}
+          source={props.promptImportFlow.source}
+          chosenFile={props.promptImportFlow.chosenFile}
+          fileNotice={props.promptImportFlow.fileNotice}
+          onSource={props.promptImportFlow.setSource}
+          onFile={props.promptImportFlow.chooseFile}
           onEdit={props.promptImportFlow.edit}
           onNameLeave={props.promptImportFlow.checkName}
           onPaste={props.promptImportFlow.paste}

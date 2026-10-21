@@ -7,8 +7,8 @@ interface Segment<V extends string> {
 }
 
 export interface SegmentedControlProps<V extends string> {
-  /** Accessible name for the group of segments, e.g. "Filter by type". */
-  label: string;
+  /** Accessible name for the group of segments, e.g. "Filter by type"; null names none. */
+  label: string | null;
   segments: readonly Segment<V>[];
   value: V;
   onChange: (value: V) => void;
@@ -26,7 +26,7 @@ export function SegmentedControl<V extends string>({
     <fieldset
       className={cn("inline-flex gap-1 rounded-control p-0.5", className)}
     >
-      <legend className="sr-only">{label}</legend>
+      {label === null ? null : <legend className="sr-only">{label}</legend>}
       {segments.map((segment) => {
         const active = segment.value === value;
         return (

@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import { plainText } from "../ui/phrase";
 import {
+  CHOOSE_FILE_HINT,
   importPromptNotice,
   longTextNotice,
+  NOT_TEXT_FILE_NOTICE,
   PROMPT_FIELD_ERRORS,
   PROMPT_FIELD_HINTS,
+  PROMPT_SOURCES,
   PROMPT_TAKEN_NOTICE,
 } from "./import-prompt-copy";
 
@@ -45,6 +48,19 @@ describe("Import prompt copy", () => {
     expect(
       importPromptNotice(refusal("long-text"), "Import prompt"),
     ).toMatchObject({ label: "Prompt over 100 KB" });
+  });
+
+  it("states the Choose file tab and its refusal in the approved words", () => {
+    expect(PROMPT_SOURCES.map((each) => each.label)).toEqual([
+      "Paste text",
+      "Choose file",
+    ]);
+    expect(CHOOSE_FILE_HINT).toBe("Use a .md or .txt file of 100 KB or less.");
+    expect(NOT_TEXT_FILE_NOTICE).toEqual({
+      level: "error",
+      label: "Not a text file",
+      message: "Maestro reads only UTF-8 text. Choose another file.",
+    });
   });
 
   it("states a taken name under Name in the approved words", () => {

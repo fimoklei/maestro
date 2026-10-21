@@ -213,6 +213,11 @@ const importPromptDialog = (
     failure={null}
     updating={false}
     takenNotice={null}
+    source="paste"
+    chosenFile={null}
+    fileNotice={null}
+    onSource={vi.fn()}
+    onFile={vi.fn()}
     onNameLeave={vi.fn()}
     onEdit={vi.fn()}
     onPaste={() => false}
@@ -646,7 +651,8 @@ const ON_DIALOG: Row[] = [
     loading: null,
     loadFailed: null,
     // The taken-name notice is information, placed under Name, the region
-    // it describes; only a refusal sits above the footer.
+    // it describes; Not a text file refuses one control, the chosen file, and
+    // sits under it. Only a refusal of the submit sits above the footer.
     notices: [
       {
         label: "Prompt over 100 KB",

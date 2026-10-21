@@ -124,6 +124,36 @@ async function openImportPrompt(user: ReturnType<typeof userEvent.setup>) {
 const field = (dialog: HTMLElement, name: string) =>
   within(dialog).getByRole("textbox", { name });
 
+// 2,440 bytes: shown as 2.4 KB.
+const REVIEW_PR_BODY = `Review pull request $ARGUMENTS.\n${"Note each change the spec did not ask for.\n".repeat(54)}`;
+
+const REVIEW_PR_FILE = [
+  "---",
+  "description: >-",
+  "  Review the open pull request",
+  "  against the spec",
+  "model: opus",
+  "---",
+  REVIEW_PR_BODY,
+].join("\n");
+
+// The browser's file input sits hidden behind Choose file; it has no role.
+const fileInput = (dialog: HTMLElement): HTMLInputElement => {
+  const input = dialog.querySelector('input[type="file"]');
+  if (!(input instanceof HTMLInputElement)) throw new Error("no file input");
+  return input;
+};
+
+// Choose file opens the browser's file chooser; upload stands in for the pick.
+async function chooseFile(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  file: File,
+) {
+  await user.click(within(dialog).getByRole("button", { name: "Choose file" }));
+  await user.upload(fileInput(dialog), file);
+}
+
 describe("Harness import prompt flow", () => {
   it.each([
     ["Enter", "{Enter}"],
@@ -380,6 +410,111 @@ describe("Harness import prompt flow", () => {
     expect(
       within(dialog).getByRole("button", { name: "Import prompt" }),
     ).toBeInTheDocument();
+  });
+
+  it("fills the fields from a chosen file, then checks the suggested name", async () => {
+    const { checks } = stubPromptServer({ taken: ["review-pr"] });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    expect(
+      within(dialog).getByRole("button", { name: "Paste text" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Choose file" }),
+    );
+    expect(
+      within(dialog).getByRole("button", {
+        name: "Choose file",
+        pressed: true,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Use a .md or .txt file of 100 KB or less."),
+    ).toBeInTheDocument();
+    expect(fileInput(dialog)).toHaveAttribute("accept", ".md,.txt");
+
+    await chooseFile(
+      user,
+      dialog,
+      new File([REVIEW_PR_FILE], "review-pr.prompt.md"),
+    );
+
+    await waitFor(() => expect(field(dialog, "Name")).toHaveValue("review-pr"));
+    expect(field(dialog, "Description")).toHaveValue(
+      "Review the open pull request against the spec",
+    );
+    expect(field(dialog, "Prompt text")).toHaveValue(REVIEW_PR_BODY);
+    expect(dialog).toHaveTextContent("review-pr.prompt.md · 2.4 KB");
+    expect(
+      within(dialog).getByRole("button", { name: "Choose another file" }),
+    ).toBeInTheDocument();
+    expect(checks).toEqual([{ name: "review-pr" }]);
+    expect(
+      await screen.findByRole("dialog", { name: "Update a prompt" }),
+    ).toBeInTheDocument();
+  });
+
+  it("refuses a file that is not UTF-8 without a request", async () => {
+    const { calls } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await chooseFile(
+      user,
+      dialog,
+      new File([new Uint8Array([0x52, 0x65, 0xff, 0xfe, 0x0a])], "notes.md"),
+    );
+
+    expect(
+      await within(dialog).findByText("Not a text file"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Maestro reads only UTF-8 text. Choose another file.",
+      ),
+    ).toBeInTheDocument();
+    // Rounded up: a file of a few bytes never reads as 0.0 KB.
+    expect(dialog).toHaveTextContent("notes.md · 0.1 KB");
+    expect(field(dialog, "Name")).toHaveValue("");
+    expect(field(dialog, "Prompt text")).toHaveValue("");
+    expect(
+      calls.filter((call) => call.includes("/api/harness/prompt/")),
+    ).toEqual([]);
+  });
+
+  it("imports a chosen file's CRLF text as the file holds it", async () => {
+    const { imports } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await chooseFile(
+      user,
+      dialog,
+      new File(
+        [
+          "---\r\ndescription: Review\r\n---\r\nRead the diff.\r\nBe brief.\r\n",
+        ],
+        "review-pr.md",
+      ),
+    );
+    await waitFor(() => expect(field(dialog, "Name")).toHaveValue("review-pr"));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    );
+
+    await waitFor(() =>
+      expect(imports).toEqual([
+        {
+          name: "review-pr",
+          description: "Review",
+          text: "Read the diff.\r\nBe brief.\r\n",
+        },
+      ]),
+    );
   });
 
   it("names Update prompt in the over-100 KB notice in update mode", async () => {

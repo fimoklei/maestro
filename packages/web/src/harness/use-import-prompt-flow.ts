@@ -11,8 +11,10 @@ import {
   importPromptNotice,
   isFieldError,
   longTextNotice,
+  NOT_TEXT_FILE_NOTICE,
   PROMPT_FIELD_ERRORS,
   PROMPT_TAKEN_NOTICE,
+  type PromptSource,
 } from "./import-prompt-copy";
 import {
   type ImportPromptOutcome,
@@ -36,6 +38,11 @@ const PROBLEM_FIELD: Record<
 
 export type PromptFieldErrors = Partial<Record<keyof PromptDraft, string>>;
 
+/** The file last chosen, as the Choose file tab shows it. */
+export type ChosenFile = { name: string; bytes: number; isText: boolean };
+
+const utf8 = new TextDecoder("utf-8", { fatal: true });
+
 // Import prompt's UI-state: the three fields, and whether a submit has judged them.
 export function useImportPromptFlow(
   /** Into the Harness screen's status region. */
@@ -44,6 +51,8 @@ export function useImportPromptFlow(
 ) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PromptDraft>(EMPTY);
+  const [source, setSource] = useState<PromptSource>("paste");
+  const [chosenFile, setChosenFile] = useState<ChosenFile | null>(null);
   // Errors show from the first submit on, and each clears once its field holds.
   const [submitted, setSubmitted] = useState(false);
   // The name last left; its check speaks only while the field still holds it.
@@ -77,6 +86,8 @@ export function useImportPromptFlow(
   const close = () => {
     setOpen(false);
     setDraft(EMPTY);
+    setSource("paste");
+    setChosenFile(null);
     setSubmitted(false);
     setCheckedName(null);
     importPrompt.reset();
@@ -98,6 +109,25 @@ export function useImportPromptFlow(
     changed: draft.name !== "" || draft.description !== "" || draft.text !== "",
     start: () => setOpen(true),
     edit,
+    source,
+    setSource,
+    chosenFile,
+    fileNotice: chosenFile?.isText === false ? NOT_TEXT_FILE_NOTICE : null,
+    // The text stays as the file holds it, CRLF included, until the field is
+    // edited; a refused file leaves the fields as they were.
+    chooseFile: async (file: File) => {
+      let raw: string;
+      try {
+        raw = utf8.decode(await file.arrayBuffer());
+      } catch {
+        setChosenFile({ name: file.name, bytes: file.size, isText: false });
+        return;
+      }
+      setChosenFile({ name: file.name, bytes: file.size, isText: true });
+      const drafted = draftPrompt(raw, file.name);
+      edit(drafted);
+      setCheckedName(drafted.name === "" ? null : drafted.name);
+    },
     // Left with an invalid name, the check states no error: submit does.
     checkName: () => setCheckedName(draft.name === "" ? null : draft.name),
     // A pasted front matter block gives up its description and leaves the
