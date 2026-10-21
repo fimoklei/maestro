@@ -31,6 +31,11 @@ describe("valueImportsFromCore", () => {
     expect(valueImportsFromCore(src)).toHaveLength(1);
   });
 
+  it("allows a value import from the prompt-file subpath", () => {
+    const src = `import { draftPrompt } from "@maestro/core/prompt-file";`;
+    expect(valueImportsFromCore(src)).toEqual([]);
+  });
+
   it("allows a multi-line type-only import from core", () => {
     const src = [
       "import type {",
