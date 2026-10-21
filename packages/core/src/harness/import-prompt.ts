@@ -1,0 +1,93 @@
+// Writes one prompt file into the Working Harness: no branch, commit or push.
+import { join } from "node:path";
+import type { InFlightLocks } from "../deploy/in-flight-locks";
+import { HARNESS_PROMPTS_DIR } from "../inventory/harness-layout";
+import type { FileSystemPort } from "../registry/file-system";
+import { primitiveEntry } from "./harness-primitive";
+import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
+import type { ImportMode } from "./import-skill";
+import {
+  type PromptDraft,
+  type PromptFieldProblem,
+  promptFieldProblems,
+  writePromptFile,
+} from "./prompt-file";
+
+export type ImportPromptError =
+  | "not-configured"
+  | PromptFieldProblem
+  // The prompts folder resolves outside the Harness.
+  | "destination-unsafe"
+  | "destination-unreadable"
+  | "import-in-progress"
+  | "write-failed";
+
+export type ImportPromptResult =
+  | { ok: true; mode: ImportMode; name: string }
+  | { ok: false; error: ImportPromptError };
+
+export class ImportPrompt {
+  private readonly deps: {
+    resolveRoot: () => Promise<string | undefined>;
+    fs: Pick<FileSystemPort, "realpath" | "exists" | "ensureDir" | "writeFile">;
+    locks: InFlightLocks;
+  };
+
+  constructor(deps: ImportPrompt["deps"]) {
+    this.deps = deps;
+  }
+
+  // A taken name is no blocker: the write replaces that prompt.
+  async execute(input: PromptDraft): Promise<ImportPromptResult> {
+    // Judged again: never trust the fields the browser checked.
+    const [problem] = promptFieldProblems(input);
+    if (problem !== undefined) {
+      return { ok: false, error: problem };
+    }
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    const run = await this.deps.locks.run(root, () => this.write(root, input));
+    return run.ok ? run.value : { ok: false, error: "import-in-progress" };
+  }
+
+  private async write(
+    root: string,
+    { name, description, text }: PromptDraft,
+  ): Promise<ImportPromptResult> {
+    try {
+      await this.deps.fs.ensureDir(join(root, HARNESS_PROMPTS_DIR));
+    } catch {
+      return { ok: false, error: "destination-unreadable" };
+    }
+    const resolved = await resolveHarnessPrimitiveDir(
+      this.deps.fs,
+      root,
+      "prompt",
+    );
+    if (!resolved.ok) {
+      return {
+        ok: false,
+        error:
+          resolved.reason === "outside-root"
+            ? "destination-unsafe"
+            : "destination-unreadable",
+      };
+    }
+    const path = join(resolved.dir, primitiveEntry({ type: "prompt", name }));
+    const mode: ImportMode = (await this.deps.fs.exists(path))
+      ? "update"
+      : "add";
+    try {
+      // Atomic: a symlinked file is replaced, never written through.
+      await this.deps.fs.writeFile(
+        path,
+        writePromptFile({ description, text }),
+      );
+    } catch {
+      return { ok: false, error: "write-failed" };
+    }
+    return { ok: true, mode, name };
+  }
+}

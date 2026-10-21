@@ -148,6 +148,10 @@ export {
   type LocalEditsSkill,
 } from "./harness/import-local-edits";
 export {
+  ImportPrompt,
+  type ImportPromptError,
+} from "./harness/import-prompt";
+export {
   type ImportCheck,
   type ImportMode,
   type ImportNameBlocker,
