@@ -202,6 +202,20 @@ describe("ImportPrompt.execute", () => {
     expect(await fs.readFile("/elsewhere/prompts/review-pr.md")).toBeNull();
   });
 
+  it("creates no prompts folder behind a .maestro link that leaves the Harness", async () => {
+    const { importPrompt, fs } = build({
+      seed: {
+        directories: { [ROOT]: ROOT, "/harness/.maestro": "/elsewhere" },
+      },
+    });
+
+    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+      ok: false,
+      error: "destination-unsafe",
+    });
+    expect(await fs.exists(PROMPTS)).toBe(false);
+  });
+
   it("refuses a Harness it cannot read", async () => {
     const { importPrompt, fs } = build({ seed: {} });
 

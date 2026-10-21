@@ -54,6 +54,8 @@ function harness(
     // The Harness clone's folders on disk; null is a clone nobody could read.
     harnessWorking?: Skills | null;
     homeRoot?: string;
+    // Link path → the path it resolves to.
+    links?: Record<string, string>;
   } = {},
 ) {
   const files: Record<string, string> = {
@@ -70,6 +72,10 @@ function harness(
 
   const fs = {
     realpath: async (path: string) => {
+      const target = overrides.links?.[path];
+      if (target !== undefined) {
+        return target;
+      }
       if (!directories.has(path) && files[path] === undefined) {
         throw new Error("ENOENT");
       }
@@ -810,6 +816,16 @@ describe("ImportSkill.execute", () => {
       },
     ]);
     expect(disk.fs.ensureDir).toHaveBeenCalledWith(`${ROOT}/.apm/skills`);
+  });
+
+  it("creates no skills folder behind a .apm link that leaves the Harness", async () => {
+    const linked = harness({ links: { [`${ROOT}/.apm`]: "/elsewhere" } });
+
+    await expect(
+      linked.importSkill.execute({ source: SOURCE }),
+    ).resolves.toEqual({ ok: false, error: "destination-unsafe" });
+    expect(linked.directories.has(`${ROOT}/.apm/skills`)).toBe(false);
+    expect(linked.copied).toEqual([]);
   });
 
   it("rewrites the copied manifest's name to the directory name", async () => {

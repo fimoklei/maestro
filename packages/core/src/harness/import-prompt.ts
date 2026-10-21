@@ -1,10 +1,12 @@
 // Writes one prompt file into the Working Harness: no branch, commit or push.
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
-import { HARNESS_PROMPTS_DIR } from "../inventory/harness-layout";
 import type { FileSystemPort } from "../registry/file-system";
 import { primitiveEntry } from "./harness-primitive";
-import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
+import {
+  ensureHarnessPrimitiveDir,
+  resolveHarnessPrimitiveDir,
+} from "./harness-primitive-dir";
 import type { ImportMode } from "./import-skill";
 import {
   type PromptDraft,
@@ -94,12 +96,7 @@ export class ImportPrompt {
     root: string,
     { name, description, text }: PromptDraft,
   ): Promise<ImportPromptResult> {
-    try {
-      await this.deps.fs.ensureDir(join(root, HARNESS_PROMPTS_DIR));
-    } catch {
-      return { ok: false, error: "destination-unreadable" };
-    }
-    const resolved = await resolveHarnessPrimitiveDir(
+    const resolved = await ensureHarnessPrimitiveDir(
       this.deps.fs,
       root,
       "prompt",
