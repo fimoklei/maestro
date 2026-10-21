@@ -26,7 +26,7 @@ describe("proposal actions", () => {
   const openRowMenu = async (skill: string, stage = "Pending review") => {
     await userEvent.click(
       await screen.findByRole("button", {
-        name: `Actions for ${skill} in ${stage}`,
+        name: `Actions for ${skill} skill in ${stage}`,
       }),
     );
     return screen.findByRole("menu");
@@ -57,8 +57,35 @@ describe("proposal actions", () => {
         (trigger) => trigger.getAttribute("aria-label"),
       ),
     ).toEqual([
-      "Actions for tdd in Pending proposal",
-      "Actions for tdd in Pending review",
+      "Actions for tdd skill in Pending proposal",
+      "Actions for tdd skill in Pending review",
+    ]);
+  });
+
+  it("names a skill's and a prompt's menus apart when they share a name and a stage", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          proposal: [
+            row("pending-proposal", "tdd", "not-yet-proposed"),
+            row("pending-proposal", "tdd", "not-yet-proposed", {
+              type: "prompt",
+              path: ".maestro/prompts/tdd.md",
+              branch: "maestro/prompt.tdd",
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    expect(
+      (await screen.findAllByRole("button", { name: /^Actions for tdd/ })).map(
+        (trigger) => trigger.getAttribute("aria-label"),
+      ),
+    ).toEqual([
+      "Actions for tdd skill in Pending proposal",
+      "Actions for tdd prompt in Pending proposal",
     ]);
   });
 
@@ -119,7 +146,10 @@ describe("proposal actions", () => {
 
     await waitFor(() =>
       expect(proposals).toEqual([
-        { action: "withdraw", body: { name: "tdd", number: 45 } },
+        {
+          action: "withdraw",
+          body: { type: "skill", name: "tdd", number: 45 },
+        },
       ]),
     );
   });
@@ -173,7 +203,9 @@ describe("proposal actions", () => {
     );
 
     await waitFor(() =>
-      expect(proposals).toEqual([{ action: "create", body: { name: "tdd" } }]),
+      expect(proposals).toEqual([
+        { action: "create", body: { type: "skill", name: "tdd" } },
+      ]),
     );
   });
 
@@ -235,7 +267,7 @@ describe("proposal actions", () => {
 
     await waitFor(() =>
       expect(proposals).toEqual([
-        { action: "reopen", body: { name: "tdd", number: 45 } },
+        { action: "reopen", body: { type: "skill", name: "tdd", number: 45 } },
       ]),
     );
   });
@@ -284,7 +316,7 @@ describe("proposal actions", () => {
     renderHarness();
 
     const trigger = await screen.findByRole("button", {
-      name: "Actions for tdd in Pending review",
+      name: "Actions for tdd skill in Pending review",
     });
     trigger.focus();
     await userEvent.keyboard("{Enter}");
@@ -310,7 +342,10 @@ describe("proposal actions", () => {
 
     await waitFor(() =>
       expect(proposals).toEqual([
-        { action: "withdraw", body: { name: "tdd", number: 45 } },
+        {
+          action: "withdraw",
+          body: { type: "skill", name: "tdd", number: 45 },
+        },
       ]),
     );
   });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { InventoryReader } from "./inventory-reader";
-import type { ReleasedSkill } from "./released-skills";
+import type { ReleasedSkill } from "./released-primitives";
 
 const INVENTORY = "/inv";
 
@@ -17,7 +17,9 @@ const readerOver = (released: ReleasedSkill[] | null) =>
   new InventoryReader({
     fs: connected(),
     resolvePath: () => INVENTORY,
-    readReleasedSkills: async () => released,
+    readPendingRelease: async () => null,
+    readReleased: async () =>
+      released === null ? null : { skills: released, prompts: [] },
   });
 
 describe("InventoryReader", () => {
@@ -36,8 +38,11 @@ describe("InventoryReader", () => {
           type: "skill",
           name: "tdd",
           description: "Test-driven development loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -53,13 +58,22 @@ describe("InventoryReader", () => {
     await expect(reader.read()).resolves.toEqual({
       ok: true,
       primitives: [
-        { type: "skill", name: "tdd", description: "TDD loop" },
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
+        },
         {
           type: "skill",
           name: "diagnose",
           description: "Disciplined diagnosis loop",
+          path: ".apm/skills/diagnose",
+          pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -72,7 +86,16 @@ describe("InventoryReader", () => {
 
     await expect(reader.read()).resolves.toEqual({
       ok: true,
-      primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
+        },
+      ],
+      unreadTypes: [],
     });
   });
 
@@ -87,7 +110,16 @@ describe("InventoryReader", () => {
 
     await expect(reader.read()).resolves.toEqual({
       ok: true,
-      primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
+        },
+      ],
+      unreadTypes: [],
     });
   });
 
@@ -100,7 +132,16 @@ describe("InventoryReader", () => {
 
     await expect(reader.read()).resolves.toEqual({
       ok: true,
-      primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
+        },
+      ],
+      unreadTypes: [],
     });
   });
 
@@ -115,7 +156,16 @@ describe("InventoryReader", () => {
 
     await expect(reader.read()).resolves.toEqual({
       ok: true,
-      primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
+        },
+      ],
+      unreadTypes: [],
     });
   });
 
@@ -123,6 +173,7 @@ describe("InventoryReader", () => {
     await expect(readerOver([]).read()).resolves.toEqual({
       ok: true,
       primitives: [],
+      unreadTypes: [],
     });
   });
 
@@ -148,14 +199,25 @@ describe("InventoryReader", () => {
     const reader = new InventoryReader({
       fs,
       resolvePath: () => INVENTORY,
-      readReleasedSkills: async () => [
-        { name: "tdd", manifest: skillFile("tdd", "TDD loop") },
-      ],
+      readPendingRelease: async () => null,
+      readReleased: async () => ({
+        skills: [{ name: "tdd", manifest: skillFile("tdd", "TDD loop") }],
+        prompts: [],
+      }),
     });
 
     await expect(reader.read()).resolves.toEqual({
       ok: true,
-      primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
+        },
+      ],
+      unreadTypes: [],
     });
   });
 
@@ -166,11 +228,38 @@ describe("InventoryReader", () => {
     });
   });
 
+  it("lists the skills and names prompts unread when the prompt files cannot be read", async () => {
+    const reader = new InventoryReader({
+      fs: connected(),
+      resolvePath: () => INVENTORY,
+      readPendingRelease: async () => null,
+      readReleased: async () => ({
+        skills: [{ name: "tdd", manifest: skillFile("tdd", "TDD loop") }],
+        prompts: null,
+      }),
+    });
+
+    await expect(reader.read()).resolves.toEqual({
+      ok: true,
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "TDD loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
+        },
+      ],
+      unreadTypes: ["prompt"],
+    });
+  });
+
   it("reports unreadable when the release read throws", async () => {
     const reader = new InventoryReader({
       fs: connected(),
       resolvePath: () => INVENTORY,
-      readReleasedSkills: async () => {
+      readPendingRelease: async () => null,
+      readReleased: async () => {
         throw new Error("git exploded");
       },
     });
@@ -185,7 +274,8 @@ describe("InventoryReader", () => {
     const reader = new InventoryReader({
       fs: new InMemoryFileSystem(),
       resolvePath: () => undefined,
-      readReleasedSkills: async () => [],
+      readPendingRelease: async () => null,
+      readReleased: async () => ({ skills: [], prompts: [] }),
     });
 
     await expect(reader.read()).resolves.toEqual({
@@ -204,7 +294,8 @@ describe("InventoryReader", () => {
     const reader = new InventoryReader({
       fs,
       resolvePath: () => "/home/me/agent-harness",
-      readReleasedSkills: async () => [],
+      readPendingRelease: async () => null,
+      readReleased: async () => ({ skills: [], prompts: [] }),
     });
 
     await expect(reader.configuredPath()).resolves.toBe(INVENTORY);
@@ -216,7 +307,8 @@ describe("InventoryReader", () => {
         files: { [INVENTORY]: "i am a file, not a dir" },
       }),
       resolvePath: () => INVENTORY,
-      readReleasedSkills: async () => [],
+      readPendingRelease: async () => null,
+      readReleased: async () => ({ skills: [], prompts: [] }),
     });
 
     await expect(reader.read()).resolves.toEqual({

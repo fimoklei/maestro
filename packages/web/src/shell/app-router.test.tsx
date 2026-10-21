@@ -45,7 +45,8 @@ describe("AppRoutes", () => {
     ["/inventory", "Skills · Maestro"],
     ["/inventory/", "Skills · Maestro"],
     ["/inventory/skills", "Skills · Maestro"],
-    ["/inventory/prompts", "Skills · Maestro"],
+    ["/inventory/prompts", "Prompts · Maestro"],
+    ["/inventory/hooks", "Skills · Maestro"],
     ["/repositories", "Repositories · Maestro"],
     ["/harness", "Harness · Maestro"],
     ["/settings/harness-location", "Harness location · Settings · Maestro"],
@@ -60,7 +61,7 @@ describe("AppRoutes", () => {
     await waitFor(() => expect(document.title).toBe(title));
   });
 
-  it.each(["/inventory", "/inventory/prompts"])(
+  it.each(["/inventory", "/inventory/hooks"])(
     "opens Skills from %s",
     async (path) => {
       stubEmptyServer();
@@ -78,6 +79,24 @@ describe("AppRoutes", () => {
       ).toHaveAttribute("aria-current", "page");
     },
   );
+
+  it("opens Prompts, after Skills in the sidebar, from /inventory/prompts", async () => {
+    stubEmptyServer();
+    renderAt("/inventory/prompts");
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Prompts" }),
+    ).toBeInTheDocument();
+    const inventory = screen.getByRole("navigation", { name: "Inventory" });
+    expect(
+      within(inventory)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Skills", "Prompts"]);
+    expect(
+      within(inventory).getByRole("button", { name: "Prompts" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
 
   it("retitles the document when the reader moves to another screen", async () => {
     stubEmptyServer();

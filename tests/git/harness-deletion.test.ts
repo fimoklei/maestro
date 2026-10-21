@@ -9,7 +9,7 @@ import {
   type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
-  PromoteSkillDeletion,
+  PromoteDeletion,
   ReleasedContentReader,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -40,7 +40,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
   };
 
   const deleter = () =>
-    new PromoteSkillDeletion({
+    new PromoteDeletion({
       resolveRoot: async () => root,
       git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       fetchGate: new HarnessFetchGate({
@@ -62,7 +62,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
       await new HarnessGitAdapter({
         released: new ReleasedContentReader(),
       }).readMovementTrees(root)
-    )?.remote[skill] as string;
+    )?.skill.remote[skill] as string;
 
   beforeEach(async () => {
     base = await mkdtemp(join(tmpdir(), "maestro-harness-deletion-"));
@@ -104,7 +104,9 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     const seen = await seenTree("tdd");
     await deleteOnDisk("tdd");
 
-    await expect(deleter().execute("tdd", seen)).resolves.toEqual({
+    await expect(
+      deleter().execute({ type: "skill", name: "tdd" }, seen),
+    ).resolves.toEqual({
       ok: true,
       branch: "maestro/tdd",
       pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
@@ -124,7 +126,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     const seen = await seenTree("tdd");
     await deleteOnDisk("tdd");
 
-    await deleter().execute("tdd", seen);
+    await deleter().execute({ type: "skill", name: "tdd" }, seen);
     await new HarnessGitAdapter({
       released: new ReleasedContentReader(),
     }).fetch(root);
@@ -134,9 +136,9 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     }).readMovementTrees(root);
     // A branch with no tree for this skill proposes its deletion, which is not
     // the same fact as having no branch at all.
-    expect(Object.hasOwn(trees?.promote ?? {}, "tdd")).toBe(true);
-    expect(trees?.promote.tdd?.tree ?? null).toBeNull();
-    expect(trees?.remote.tdd).toBe(seen);
+    expect(Object.hasOwn(trees?.skill.promote ?? {}, "tdd")).toBe(true);
+    expect(trees?.skill.promote.tdd?.tree ?? null).toBeNull();
+    expect(trees?.skill.remote.tdd).toBe(seen);
   });
 
   it("leaves HEAD, the real index, and the working tree exactly as they were", async () => {
@@ -148,7 +150,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     const status = (await git(root, "status", "--porcelain")).stdout;
     const branches = (await git(root, "branch", "--list")).stdout;
 
-    await deleter().execute("tdd", seen);
+    await deleter().execute({ type: "skill", name: "tdd" }, seen);
 
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
     expect((await git(root, "status", "--porcelain")).stdout).toBe(status);
@@ -171,7 +173,9 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     await git(other, "push", "origin", "HEAD:main");
     await deleteOnDisk("tdd");
 
-    await expect(deleter().execute("tdd", seen)).resolves.toEqual({
+    await expect(
+      deleter().execute({ type: "skill", name: "tdd" }, seen),
+    ).resolves.toEqual({
       ok: false,
       error: "confirmation-stale",
     });
@@ -184,7 +188,9 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
   it("refuses a skill that is still on disk, which is an edit and not a removal", async () => {
     const seen = await seenTree("tdd");
 
-    await expect(deleter().execute("tdd", seen)).resolves.toEqual({
+    await expect(
+      deleter().execute({ type: "skill", name: "tdd" }, seen),
+    ).resolves.toEqual({
       ok: false,
       error: "not-deleted",
     });
@@ -197,7 +203,9 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
   it("refuses a name local HEAD never tracked, so an untracked name is no deletion", async () => {
     const seen = await seenTree("tdd");
 
-    await expect(deleter().execute("absent", seen)).resolves.toEqual({
+    await expect(
+      deleter().execute({ type: "skill", name: "absent" }, seen),
+    ).resolves.toEqual({
       ok: false,
       error: "not-deleted",
     });
@@ -208,7 +216,9 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
       const seen = await seenTree("tdd");
       await deleteOnDisk("tdd");
 
-      await expect(deleter().execute("tdd", seen)).resolves.toEqual({
+      await expect(
+        deleter().execute({ type: "skill", name: "tdd" }, seen),
+      ).resolves.toEqual({
         ok: false,
         error,
       });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
-import { DiscardSkillChange } from "./discard-skill-change";
-import { InMemoryHarnessGit, treeHash } from "./harness-git.fake";
+import { DiscardChange } from "./discard-change";
+import { InMemoryHarnessGit, skillRef, treeHash } from "./harness-git.fake";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
 import type { WorktreeAmbiguity } from "./read-harness-state";
 
@@ -13,7 +13,10 @@ const SEEN = treeHash("remote tdd");
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-proposal",
-  skill: "tdd",
+  type: "skill",
+  name: "tdd",
+  path: ".apm/skills/tdd",
+  branch: "maestro/tdd",
   status: "not-yet-proposed",
   change: "edit",
   requests: [],
@@ -25,7 +28,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   localOnly: false,
   remoteTree: SEEN,
   restorable: false,
-  folderOnDisk: true,
+  onDisk: true,
   previousName: null,
   ...over,
 });
@@ -69,7 +72,7 @@ function build(overrides?: {
   const moved: [string, string][] = [];
   const removed: string[] = [];
   let failsLeft = overrides?.failMoveInto === undefined ? 0 : 1;
-  const discard = new DiscardSkillChange({
+  const discard = new DiscardChange({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : ROOT,
     readStages: async () =>
@@ -95,17 +98,17 @@ function build(overrides?: {
   return { discard, moved, removed, written: git.written };
 }
 
-describe("DiscardSkillChange", () => {
+describe("DiscardChange", () => {
   it("swaps the folder for its default-branch copy and clears the staging folder", async () => {
     const { discard, moved, removed, written } = build();
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: true,
       name: "tdd",
     });
 
     expect(written).toEqual([
-      { name: "tdd", commit: REMOTE_COMMIT, into: STAGING },
+      { type: "skill", name: "tdd", commit: REMOTE_COMMIT, into: STAGING },
     ]);
     expect(moved).toEqual([
       [`${SKILLS}/tdd`, `${STAGING}/discarded`],
@@ -119,7 +122,7 @@ describe("DiscardSkillChange", () => {
       failMoveInto: `${SKILLS}/tdd`,
     });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "discard-failed",
     });
@@ -142,7 +145,7 @@ describe("DiscardSkillChange", () => {
   ])("answers no-answer when %s", async (_, stages) => {
     const { discard, moved } = build({ stages });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -154,7 +157,7 @@ describe("DiscardSkillChange", () => {
       stages: stagesWith([row({ status: "new-local-work" })]),
     });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "already-proposed",
     });
@@ -177,7 +180,7 @@ describe("DiscardSkillChange", () => {
       },
     });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "already-proposed",
     });
@@ -193,7 +196,7 @@ describe("DiscardSkillChange", () => {
   ])("has nothing to discard when %s", async (_, stages) => {
     const { discard, moved } = build({ stages });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "nothing-to-discard",
     });
@@ -213,7 +216,7 @@ describe("DiscardSkillChange", () => {
   ])("refuses a stale confirmation when %s", async (_, overrides) => {
     const { discard, moved, written } = build(overrides);
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "confirmation-stale",
     });
@@ -227,7 +230,7 @@ describe("DiscardSkillChange", () => {
   ])("answers no-answer on %s", async (_, overrides) => {
     const { discard, moved } = build(overrides);
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -237,7 +240,7 @@ describe("DiscardSkillChange", () => {
   it("refuses an ambiguous working tree before reading anything else", async () => {
     const { discard, moved } = build({ ambiguity: "merge-in-progress" });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "merge-in-progress",
     });
@@ -250,7 +253,7 @@ describe("DiscardSkillChange", () => {
         path === `${SKILLS}/tdd` ? "/elsewhere/tdd" : path,
     });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
@@ -260,7 +263,7 @@ describe("DiscardSkillChange", () => {
   it("fails without moving anything when the copy cannot be written", async () => {
     const { discard, moved, removed } = build({ write: "failed" });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "discard-failed",
     });
@@ -271,7 +274,7 @@ describe("DiscardSkillChange", () => {
   it("rejects a name that is not a skill slug before resolving the Harness", async () => {
     const { discard } = build({ root: undefined });
 
-    await expect(discard.execute("../x", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("../x"), SEEN)).resolves.toEqual({
       ok: false,
       error: "invalid-skill",
     });
@@ -280,7 +283,7 @@ describe("DiscardSkillChange", () => {
   it("answers not-configured without a Harness", async () => {
     const { discard } = build({ root: undefined });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });
@@ -298,7 +301,7 @@ describe("DiscardSkillChange", () => {
     );
     const { discard } = build({ locks });
 
-    await expect(discard.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "discard-in-progress",
     });

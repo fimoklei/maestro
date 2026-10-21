@@ -22,7 +22,7 @@ import {
   parseLockfile,
 } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
-import { resolveHarnessSkillsDir } from "./harness-skills-dir";
+import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
 import type { HarnessGitPort } from "./read-harness-state";
 import {
   type ManifestAdvisory,
@@ -179,8 +179,12 @@ export class ImportSkill {
     } catch {
       return null;
     }
-    const resolved = await resolveHarnessSkillsDir(this.deps.fs, root);
-    return resolved.ok ? resolved.skills : null;
+    const resolved = await resolveHarnessPrimitiveDir(
+      this.deps.fs,
+      root,
+      "skill",
+    );
+    return resolved.ok ? resolved.dir : null;
   }
 
   private async inspect(
@@ -312,8 +316,8 @@ export class ImportSkill {
     if (trees === null) {
       return "harness-unreadable";
     }
-    const working = trees.working[name];
-    return working !== undefined && working === trees.local[name]
+    const working = trees.skill.working[name];
+    return working !== undefined && working === trees.skill.local[name]
       ? null
       : "harness-copy-uncommitted";
   }

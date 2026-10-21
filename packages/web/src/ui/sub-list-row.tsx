@@ -33,15 +33,13 @@ export function SubListRow({
       <span className="text-gray-11">
         <MachineValue>{value}</MachineValue>
       </span>
-      {items.length === 0 ? null : (
-        <RowMenu
-          label={menuLabel}
-          // In the pane already: no item moves focus into it.
-          items={items.map((item) => ({ ...item, movesFocus: false }))}
-          tabStop
-          busy={false}
-        />
-      )}
+      <RowMenu
+        label={menuLabel}
+        // In the pane already: no item moves focus into it.
+        items={items.map((item) => ({ ...item, movesFocus: false }))}
+        tabStop
+        busy={false}
+      />
     </li>
   );
 }

@@ -363,6 +363,21 @@ describe("PublishRelease", () => {
     expect(git.published).toEqual([]);
   });
 
+  it("publishes a release whose only change is a prompt", async () => {
+    const git = new InMemoryHarnessGit();
+    git.commit("old", {});
+    git.commit("head", {}, { parent: "old", prompts: { "pr-review": "v2" } });
+    git.tip = "head";
+    git.head = "head";
+    git.tags = [{ name: "v1.2.3", commit: "old" }];
+
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
+      ok: true,
+      tag: "v1.2.4",
+      revision: "head",
+    });
+  });
+
   it("refuses a second confirmation for the same harness while one is already running", async () => {
     let releaseFetch = () => {};
     const git = releasable();

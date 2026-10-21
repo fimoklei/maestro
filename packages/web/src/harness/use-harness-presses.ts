@@ -2,6 +2,7 @@ import type {
   HarnessStage,
   HarnessStageRow,
   HarnessState,
+  PrimitiveRef,
 } from "@maestro/core";
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
@@ -12,6 +13,7 @@ import type {
   DiscardTarget,
   LocalDeletionTarget,
   RestoreTarget,
+  WithdrawTarget,
 } from "./harness-dialogs";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
@@ -37,6 +39,10 @@ import {
 
 const skillName = (_data: unknown, { name }: { name: string }) => name;
 
+// The row a press lands on, named by the request it sent.
+const pressedRow = (stage: HarnessStage, { type, name }: PrimitiveRef) =>
+  rowId({ stage, type, name });
+
 export function useHarnessPresses(
   state: HarnessState | undefined,
   /** Into the Harness screen's status region. */
@@ -48,9 +54,11 @@ export function useHarnessPresses(
     action: "propose",
     show: "row",
     name: skillName,
-    failure: promoteNotice,
+    // A failure follows a press, so the variables are set.
+    failure: (error) =>
+      promoteNotice(error, promote.variables?.type ?? "skill"),
   });
-  const promotedSkill = promote.variables?.name ?? null;
+  const promotedSkill = promote.variables ?? null;
   const promoteFailure = promoteWrite.failure;
   // The stage the press was made in. Propose change sits in two of them, and a
   // refusal belongs to the row it was pressed from, not to the skill (#865).
@@ -64,7 +72,8 @@ export function useHarnessPresses(
     action: "delete",
     show: "row",
     name: skillName,
-    failure: deletionNotice,
+    failure: (error) =>
+      deletionNotice(error, deletion.variables?.type ?? "skill"),
   });
   const deleteLocal = useDeleteLocalSkill();
   const deleteLocalWrite = useWriteAction(deleteLocal, {
@@ -74,13 +83,18 @@ export function useHarnessPresses(
     name: skillName,
     failure: (error) =>
       localDeletionNotice(error, {
-        skill: deleteLocal.variables?.name ?? "",
+        type: deleteLocal.variables?.type ?? "skill",
+        name: deleteLocal.variables?.name ?? "",
         screen: "harness",
       }),
   });
-  const [confirming, setConfirming] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<PrimitiveRef | null>(null);
   const pendingDeletion =
-    proposalRows(state).find((row) => row.skill === confirming) ?? null;
+    confirming === null
+      ? null
+      : (proposalRows(state).find(
+          (row) => row.type === confirming.type && row.name === confirming.name,
+        ) ?? null);
   // Frozen at the press: two stages carry Delete skill, and the row it came
   // from turns into a Deletion once the folder is gone.
   const [localDeletion, setLocalDeletion] =
@@ -96,7 +110,8 @@ export function useHarnessPresses(
     show: "toast",
     name: (restored) =>
       restored.statusRead ? phrase`${named(restored.name)}` : null,
-    failure: restoreNotice,
+    failure: (error) =>
+      restoreNotice(error, restore.variables?.type ?? "skill"),
   });
   const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
 
@@ -106,7 +121,11 @@ export function useHarnessPresses(
     action: "discard",
     show: "row",
     name: skillName,
-    failure: (error) => discardNotice(error, discard.variables?.name ?? ""),
+    failure: (error) =>
+      discardNotice(error, {
+        type: discard.variables?.type ?? "skill",
+        name: discard.variables?.name ?? "",
+      }),
   });
   // Frozen at the press, like a restore: a later read never rewrites the tree
   // the author confirms.
@@ -120,12 +139,9 @@ export function useHarnessPresses(
     name: skillName,
     failure: proposalNotice,
   });
-  const proposalSkill = proposalAction.variables?.name ?? null;
+  const proposalSkill = proposalAction.variables ?? null;
   const proposalFailure = proposalWrite.failure;
-  const [withdrawing, setWithdrawing] = useState<{
-    skill: string;
-    number: number;
-  } | null>(null);
+  const [withdrawing, setWithdrawing] = useState<WithdrawTarget | null>(null);
 
   // One refusal at a time, stated on the row the press was made from. A
   // withdrawal's refusal belongs to its dialog, where the confirmation still
@@ -137,7 +153,7 @@ export function useHarnessPresses(
       promotedFrom !== null
     ) {
       return {
-        id: rowId({ stage: promotedFrom, skill: promotedSkill }),
+        id: pressedRow(promotedFrom, promotedSkill),
         notice: promoteFailure,
       };
     }
@@ -147,7 +163,7 @@ export function useHarnessPresses(
       proposalSkill !== null
     ) {
       return {
-        id: rowId({ stage: "pending-review", skill: proposalSkill }),
+        id: pressedRow("pending-review", proposalSkill),
         notice: proposalFailure,
       };
     }
@@ -160,7 +176,7 @@ export function useHarnessPresses(
   const running: (RunningPress & { id: string }) | null =
     promote.isPending && promotedSkill !== null && promotedFrom !== null
       ? {
-          id: rowId({ stage: promotedFrom, skill: promotedSkill }),
+          id: pressedRow(promotedFrom, promotedSkill),
           action: "propose",
           number: null,
         }
@@ -168,7 +184,7 @@ export function useHarnessPresses(
           proposing !== undefined &&
           proposing.action !== "withdraw"
         ? {
-            id: rowId({ stage: "pending-review", skill: proposing.name }),
+            id: pressedRow("pending-review", proposing),
             action: proposing.action,
             number: proposing.number ?? null,
           }
@@ -179,45 +195,66 @@ export function useHarnessPresses(
   const movedSkill = promote.isSuccess
     ? promotedSkill
     : deletion.isSuccess
-      ? (deletion.variables?.name ?? null)
+      ? (deletion.variables ?? null)
       : null;
   const movedTo =
-    movedSkill === null
-      ? null
-      : rowId({ stage: "pending-review", skill: movedSkill });
+    movedSkill === null ? null : pressedRow("pending-review", movedSkill);
 
   const handlers: RowActionHandlers = {
     promote: (row) => {
       setPromotedFrom(row.stage);
       if (row.change === "deletion") {
         deletion.reset();
-        setConfirming(row.skill);
+        setConfirming({ type: row.type, name: row.name });
         return;
       }
-      promoteWrite.run({ name: row.skill });
+      promoteWrite.run({ type: row.type, name: row.name });
     },
-    create: (skill) => proposalWrite.run({ action: "create", name: skill }),
-    reopen: (skill, number) =>
-      proposalWrite.run({ action: "reopen", name: skill, number }),
-    withdraw: (skill, number) => {
+    create: (row) =>
+      proposalWrite.run({ action: "create", type: row.type, name: row.name }),
+    reopen: (row, number) =>
+      proposalWrite.run({
+        action: "reopen",
+        type: row.type,
+        name: row.name,
+        number,
+      }),
+    withdraw: (row, number) => {
       proposalAction.reset();
-      setWithdrawing({ skill, number });
+      setWithdrawing({
+        type: row.type,
+        name: row.name,
+        branch: row.branch,
+        number,
+      });
     },
     deleteLocal: (row) => {
       deleteLocal.reset();
-      setLocalDeletion({ skill: row.skill, localOnly: row.localOnly });
+      setLocalDeletion({
+        type: row.type,
+        skill: row.name,
+        path: row.path,
+        localOnly: row.localOnly,
+      });
     },
     discard: (row) => {
       if (!offersDiscard(row)) {
         return;
       }
       discard.reset();
-      setDiscarding({ name: row.skill, seenRemoteTree: row.remoteTree });
+      setDiscarding({
+        type: row.type,
+        name: row.name,
+        path: row.path,
+        seenRemoteTree: row.remoteTree,
+      });
     },
     restore: (row, commit) => {
       restore.reset();
       setRestoring({
-        skill: row.skill,
+        type: row.type,
+        skill: row.name,
+        path: row.path,
         commit,
         hasRequest: row.requests.length > 0,
       });

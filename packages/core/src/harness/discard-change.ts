@@ -1,15 +1,16 @@
-// Puts a Not yet proposed skill folder back to its default-branch copy: no
+// Puts a Not yet proposed primitive back to its default-branch copy: no
 // commit, fetch or push (#1375).
 import { dirname, join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import type { FileSystemPort } from "../registry/file-system";
-import { resolveHarnessSkillsDir } from "./harness-skills-dir";
+import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
+import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
 import type { HarnessStages } from "./harness-stages";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
-export type DiscardSkillChangeError =
+export type DiscardChangeError =
   | "not-configured"
   | "invalid-skill"
   | WorktreeAmbiguity
@@ -22,11 +23,11 @@ export type DiscardSkillChangeError =
   | "discard-in-progress"
   | "discard-failed";
 
-export type DiscardSkillChangeResult =
+export type DiscardChangeResult =
   | { ok: true; name: string }
-  | { ok: false; error: DiscardSkillChangeError };
+  | { ok: false; error: DiscardChangeError };
 
-export class DiscardSkillChange {
+export class DiscardChange {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     // The stages the rows were read from: whether a change is proposed takes
@@ -41,22 +42,22 @@ export class DiscardSkillChange {
       HarnessGitPort,
       | "readWorktreeAmbiguity"
       | "readFacts"
-      | "readSkillTrees"
-      | "writeSkillTreeInto"
+      | "readPrimitives"
+      | "writePrimitiveInto"
     >;
     locks: InFlightLocks;
   };
 
-  constructor(deps: DiscardSkillChange["deps"]) {
+  constructor(deps: DiscardChange["deps"]) {
     this.deps = deps;
   }
 
   // Shares the harness-root lock with the publish path.
   async execute(
-    name: string,
+    ref: PrimitiveRef,
     seenRemoteTree: string,
-  ): Promise<DiscardSkillChangeResult> {
-    if (!isValidSkillSlug(name)) {
+  ): Promise<DiscardChangeResult> {
+    if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
@@ -64,16 +65,16 @@ export class DiscardSkillChange {
       return { ok: false, error: "not-configured" };
     }
     const run = await this.deps.locks.run(root, () =>
-      this.discard(root, name, seenRemoteTree),
+      this.discard(root, ref, seenRemoteTree),
     );
     return run.ok ? run.value : { ok: false, error: "discard-in-progress" };
   }
 
   private async discard(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     seenRemoteTree: string,
-  ): Promise<DiscardSkillChangeResult> {
+  ): Promise<DiscardChangeResult> {
     const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
     if (ambiguity !== null) {
       return { ok: false, error: ambiguity };
@@ -84,12 +85,13 @@ export class DiscardSkillChange {
     if (stages === null || stages.proposal.outcome !== "read") {
       return { ok: false, error: "no-answer" };
     }
-    const row = stages.proposal.rows.find((each) => each.skill === name);
+    const isRef = (each: { type: string; name: string }) =>
+      each.type === ref.type && each.name === ref.name;
+    const row = stages.proposal.rows.find(isRef);
     // A pushed proposal of the folder as it is leaves no Pending proposal row,
     // only its Pending review one.
     const inReview =
-      stages.review.outcome === "read" &&
-      stages.review.rows.some((each) => each.skill === name);
+      stages.review.outcome === "read" && stages.review.rows.some(isRef);
     if (row?.status === "new-local-work" || (row === undefined && inReview)) {
       return { ok: false, error: "already-proposed" };
     }
@@ -103,55 +105,58 @@ export class DiscardSkillChange {
     // One commit, so the check and the write read the same copy.
     const commit = (await this.deps.git.readFacts(root)).defaultBranchCommit;
     const atCommit =
-      commit === null ? null : await this.deps.git.readSkillTrees(root, commit);
+      commit === null ? null : await this.deps.git.readPrimitives(root, commit);
     if (commit === null || atCommit === null) {
       return { ok: false, error: "no-answer" };
     }
-    const tree = atCommit.find((each) => each.name === name)?.treeHash;
-    if (tree !== seenRemoteTree) {
+    const hash = atCommit.find(isRef)?.hash;
+    if (hash !== seenRemoteTree) {
       return { ok: false, error: "confirmation-stale" };
     }
 
-    const folder = await this.resolveFolder(root, name);
-    if (folder === null) {
+    const target = await this.resolveTarget(root, ref);
+    if (target === null) {
       return { ok: false, error: "destination-unsafe" };
     }
-    return await this.swap(root, name, commit, folder);
+    return await this.swap(root, ref, commit, target);
   }
 
-  // Both moves are renames within the skills folder, so the folder is never
+  // Both moves are renames within the type's folder, so the primitive is never
   // half-written, and a failed second move puts the edited one back.
   private async swap(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     commit: string,
-    folder: string,
-  ): Promise<DiscardSkillChangeResult> {
+    target: string,
+  ): Promise<DiscardChangeResult> {
     let staging: string;
     try {
-      staging = await this.deps.copyFs.createStagingDir(dirname(folder));
+      staging = await this.deps.copyFs.createStagingDir(dirname(target));
     } catch {
       return { ok: false, error: "discard-failed" };
     }
     const discarded = join(staging, "discarded");
     try {
-      const written = await this.deps.git.writeSkillTreeInto(
+      const written = await this.deps.git.writePrimitiveInto(
         root,
-        name,
+        ref,
         commit,
         staging,
       );
       if (written !== "written") {
         return { ok: false, error: "discard-failed" };
       }
-      await this.deps.copyFs.movePath(folder, discarded);
+      await this.deps.copyFs.movePath(target, discarded);
       try {
-        await this.deps.copyFs.movePath(join(staging, name), folder);
+        await this.deps.copyFs.movePath(
+          join(staging, primitiveEntry(ref)),
+          target,
+        );
       } catch {
-        await this.deps.copyFs.movePath(discarded, folder);
+        await this.deps.copyFs.movePath(discarded, target);
         return { ok: false, error: "discard-failed" };
       }
-      return { ok: true, name };
+      return { ok: true, name: ref.name };
     } catch {
       return { ok: false, error: "discard-failed" };
     } finally {
@@ -159,18 +164,22 @@ export class DiscardSkillChange {
     }
   }
 
-  // A linked folder resolves elsewhere: replacing it would touch another tree.
-  private async resolveFolder(
+  // A link resolves elsewhere: replacing it would touch another tree.
+  private async resolveTarget(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
   ): Promise<string | null> {
-    const resolved = await resolveHarnessSkillsDir(this.deps.fs, root);
+    const resolved = await resolveHarnessPrimitiveDir(
+      this.deps.fs,
+      root,
+      ref.type,
+    );
     if (!resolved.ok) {
       return null;
     }
-    const folder = join(resolved.skills, name);
+    const target = join(resolved.dir, primitiveEntry(ref));
     try {
-      return (await this.deps.fs.realpath(folder)) === folder ? folder : null;
+      return (await this.deps.fs.realpath(target)) === target ? target : null;
     } catch {
       return null;
     }

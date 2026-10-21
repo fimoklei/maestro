@@ -7,6 +7,7 @@
 - **Amended:** 2026-09-10, [Keep the Harness author journey honest after a merge and a hand-made commit](https://github.com/fimoklei/maestro/issues/890) — points 11 and 12.
 - **Amended:** 2026-10-04, [Delete a released skill from the Harness, from the cockpit](https://github.com/fimoklei/maestro/issues/1370) — point 13.
 - **Amended:** 2026-10-12 ([#1475](https://github.com/fimoklei/maestro/issues/1475)) — the screen this record calls Inventory is now **Skills**, the first Inventory view, at `/inventory/skills`. **Inventory** names the whole collection and its sidebar heading. Its re-read control is **Re-read Skills**.
+- **Amended:** 2026-10-20, [Keep, find and copy prompts in the Harness](https://github.com/fimoklei/maestro/issues/1590) — points 2, 4 and 13: the Harness also holds prompts, which are copied, never deployed.
 
 ## Context
 
@@ -49,13 +50,15 @@ consumers deploy only from the released state.**
 1. **Working harness** — the repo as it stands right now, uncommitted edits
    included. Maestro writes here, and only here. It carries no quality promise.
 2. **Released harness** — the harness at its latest published tag. The only
-   thing consumers deploy from, and the only state the curated bar applies to.
+   thing consumers deploy or copy from, and the only state the curated bar applies to.
 3. **The curated bar moves, it does not disappear.** `GLOSSARY.md`'s
    *Curated / Production-ready* rule now attaches to the released harness.
    "Central" keeps meaning curated, because a consumer never sees anything else.
-4. **The harness shape is `.apm/skills/<name>`**, and a harness is recognised by
+4. **The harness shape is `.apm/skills/<name>` for skills and
+   `.maestro/prompts/<name>.md` for prompts**, and a harness is recognised by
    `apm.yml` in the repo root — APM's own marker, never a skills directory.
-   Grounds and rejected alternatives are in #360.
+   Grounds and rejected alternatives are in #360; ADR-0019 §8 covers the
+   prompts folder.
 5. **"Harness" is this repo's name**, in the glossary as well as on the screen.
    `GLOSSARY.md` gains it as a term with an *Avoid* line naming APM's opposite
    meaning. This resolves ADR-0019 §4 from drift to a decision.
@@ -97,9 +100,10 @@ consumers deploy only from the released state.**
     default branch stays visible: it is what consumers install, and one commit
     removes it. Maestro never writes that `.gitignore` into an existing Harness.
 13. **Inventory may start an author action, but the work always lands on the
-    Harness view.** **Delete skill** is the only such action: it starts on the
-    Inventory skill, and after its first step the cockpit opens the Harness
-    view with the **Deleted locally** row selected.
+    Harness view.** **Delete skill** and **Delete prompt** are the only such
+    actions: each starts on its Inventory view, Skills or Prompts, and after
+    its first step the cockpit opens the Harness view with the **Deleted
+    locally** row selected.
 
 ## Consequences
 

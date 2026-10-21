@@ -1,11 +1,14 @@
-import type { ReadDriftEntry, ReleaseHead } from "@maestro/core";
+import type {
+  InventorySkill,
+  ReadDriftEntry,
+  ReleaseHead,
+} from "@maestro/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
-import type { Primitive } from "../inventory/use-inventory";
 import {
   chooseDeployTarget,
   htmlElement,
@@ -75,9 +78,21 @@ const tddBehind: ReadDriftEntry = {
   reading: "behind",
 };
 
-const primitives: Primitive[] = [
-  { type: "skill", name: "tdd", description: "Test-driven development." },
-  { type: "skill", name: "caveman", description: "Terse mode." },
+const primitives: InventorySkill[] = [
+  {
+    type: "skill",
+    name: "tdd",
+    path: ".apm/skills/tdd",
+    pendingRelease: null,
+    description: "Test-driven development.",
+  },
+  {
+    type: "skill",
+    name: "caveman",
+    path: ".apm/skills/caveman",
+    pendingRelease: null,
+    description: "Terse mode.",
+  },
 ];
 
 afterEach(() => {
@@ -324,8 +339,17 @@ describe("SkillsView — band 2", () => {
     stubPendingFetch();
     const edited = deployedTo(["tdd", "caveman"]);
     edited.primitives = [
-      { type: "skill", name: "tdd", version: "v1.0.0", copy: "local-edits" },
-      { type: "skill", name: "caveman", version: "v1.0.0" },
+      {
+        type: "skill",
+        name: "tdd",
+        version: "v1.0.0",
+        copy: "local-edits",
+      },
+      {
+        type: "skill",
+        name: "caveman",
+        version: "v1.0.0",
+      },
     ];
     renderView({ targets: [edited] });
 
@@ -623,11 +647,35 @@ describe("SkillsView — sorting", () => {
 
   it("sorts the narrowed subset, not the whole inventory", async () => {
     stubPendingFetch();
-    const many: Primitive[] = [
-      { type: "skill", name: "search-a", description: "A." },
-      { type: "skill", name: "unrelated", description: "Z." },
-      { type: "skill", name: "search-c", description: "C." },
-      { type: "skill", name: "search-b", description: "B." },
+    const many: InventorySkill[] = [
+      {
+        type: "skill",
+        name: "search-a",
+        path: ".apm/skills/search-a",
+        pendingRelease: null,
+        description: "A.",
+      },
+      {
+        type: "skill",
+        name: "unrelated",
+        path: ".apm/skills/unrelated",
+        pendingRelease: null,
+        description: "Z.",
+      },
+      {
+        type: "skill",
+        name: "search-c",
+        path: ".apm/skills/search-c",
+        pendingRelease: null,
+        description: "C.",
+      },
+      {
+        type: "skill",
+        name: "search-b",
+        path: ".apm/skills/search-b",
+        pendingRelease: null,
+        description: "B.",
+      },
     ];
     renderView({ primitives: many });
 

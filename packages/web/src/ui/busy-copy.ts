@@ -3,6 +3,7 @@
 import { type Copy, type Phrase, phrase } from "./phrase";
 
 export type ActionKey =
+  | "copy"
   | "deploy"
   | "update"
   | "remove"
@@ -22,6 +23,7 @@ export type ActionKey =
   | "setLocation";
 
 export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
+  copy: { busy: "Copying…", done: "Copied" },
   deploy: { busy: "Deploying…", done: "Deployed" },
   update: { busy: "Updating…", done: "Updated" },
   remove: { busy: "Removing…", done: "Removed" },

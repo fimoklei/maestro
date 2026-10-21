@@ -1,6 +1,12 @@
-import type { ManifestAdvisory, StructuralProblem } from "@maestro/core";
+import type {
+  HarnessPrimitiveType,
+  ManifestAdvisory,
+  StructuralProblem,
+} from "@maestro/core";
 import type { NoticeContent } from "../ui/notice";
-import type { Copy } from "../ui/phrase";
+import { type Copy, type Phrase, phrase } from "../ui/phrase";
+import { ITEM_WORDS } from "./item-words";
+import type { defaultBranchCopy } from "./stage-copy";
 
 // Reported, never blocking: the skill still ships or imports (#519).
 export const skillChecksNotice = (
@@ -28,18 +34,6 @@ export const ADVISORY_TEXT: Record<ManifestAdvisory, string> = {
   "long-description": "The description is over 1,024 characters.",
 };
 
-/** Why band 1's Create a release cannot open its plan. */
-export const CREATE_RELEASE_UNAVAILABLE = {
-  rereading: "re-reading Harness",
-  notRead: "GitHub not read",
-} as const;
-
-export const RELEASE_UNAVAILABLE = {
-  loading: "release plan still loading",
-  error: "release plan did not load",
-  empty: "no changes since last release",
-} as const;
-
 // Import skill's Folder path, submitted empty.
 export const FOLDER_MISSING = "Enter the skill folder's absolute path.";
 
@@ -51,3 +45,18 @@ export const DELETE_UNAVAILABLE = {
 } as const;
 
 export const DELETION_CHECKING = "Checking for uncommitted changes…";
+
+export const restoreBody = (type: HarnessPrimitiveType): Phrase =>
+  phrase`${ITEM_WORDS[type].restoreLabel} brings back the ${ITEM_WORDS[type].holder} from your last local commit. Later changes do not come back.`;
+
+// An item no target holds has no deployed copies to mention.
+export const discardBody = (
+  type: HarnessPrimitiveType,
+  branch: ReturnType<typeof defaultBranchCopy>,
+): Phrase => {
+  const w = ITEM_WORDS[type];
+  const replaces = phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy on ${branch}. You cannot recover your changes.`;
+  return w.deploys
+    ? phrase`${replaces} Deployed copies remain unchanged.`
+    : replaces;
+};

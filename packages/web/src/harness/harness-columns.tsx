@@ -8,11 +8,12 @@ import { RowMenu } from "../ui/row-menu";
 import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
+import { CHANGE_WORD } from "./change-words";
+import { ITEM_WORDS } from "./item-words";
 import { pullRequestCard } from "./pull-request-card";
 import { PullRequestLinks } from "./pull-request-links";
 import {
   alsoInWords,
-  CHANGE_WORDS,
   changeSentence,
   crossStageLine,
   detailSentence,
@@ -21,8 +22,8 @@ import {
   type StageContext,
 } from "./stage-copy";
 
-// One row of the Harness table (#994). A skill can hold a row in every stage,
-// so its name alone names up to three rows: the id carries the stage too.
+// One row of the Harness table (#994). A primitive can hold a row in every
+// stage, and a skill and a prompt can share a name: the id carries both.
 export type HarnessTableRow = HarnessStageRow & {
   id: string;
   group: string;
@@ -30,13 +31,13 @@ export type HarnessTableRow = HarnessStageRow & {
   items: FootItem[];
 };
 
-export const rowId = (row: Pick<HarnessStageRow, "stage" | "skill">) =>
-  `${row.stage}:${row.skill}`;
+export const rowId = (row: Pick<HarnessStageRow, "stage" | "type" | "name">) =>
+  `${row.stage}:${row.type}:${row.name}`;
 
-// The ⋮ trigger is named by its stage too: three menus called "Actions for
-// tdd" would name the same thing three times.
+// The ⋮ trigger is named by its type and stage too: a skill and a prompt
+// called tdd, in three stages, would otherwise share one name.
 const rowMenuLabel = (row: HarnessStageRow) =>
-  `Actions for ${row.skill} in ${STAGE_NAMES[row.stage]}`;
+  `Actions for ${row.name} ${ITEM_WORDS[row.type].noun} in ${STAGE_NAMES[row.stage]}`;
 
 // The Status cell's hover card: the row's sentences in short, and in full in
 // the pane (#994). The keyboard opens this card alone, so it also says what
@@ -63,8 +64,8 @@ export const harnessColumns = ({
 }) =>
   createDataTableColumns<HarnessTableRow>((helper) => [
     {
-      ...helper.accessor("skill", { header: "Name" }),
-      name: (row) => row.skill,
+      ...helper.accessor("name", { header: "Name" }),
+      name: (row) => row.name,
     },
     {
       ...helper.accessor("reading", {
@@ -80,19 +81,20 @@ export const harnessColumns = ({
     helper.display({
       id: "type",
       header: "Type",
-      // Every row is a skill today; hooks and MCP servers slot in (#347).
-      cell: () => <span className="text-gray-11">{TYPE_WORD.skill}</span>,
-      meta: { width: 14, priority: 1 },
+      cell: ({ row }) => (
+        <span className="text-gray-11">{TYPE_WORD[row.original.type]}</span>
+      ),
+      meta: { width: 22, priority: 1 },
     }),
     {
       ...helper.accessor("change", {
         header: "Change",
         cell: ({ row }) => (
           <span className="text-gray-12">
-            {CHANGE_WORDS[row.original.change]}
+            {CHANGE_WORD[row.original.change]}
           </span>
         ),
-        // The longest word, Addition or Deletion, fits. Hidden after Pull
+        // Every change word fits. Hidden after Pull
         // request: the pane names the change too.
         meta: { width: 20, priority: 4 },
       }),

@@ -171,7 +171,12 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await git(root, "remote", "remove", "origin");
 
     await expect(
-      adapter().pushSkillPromotion(root, "tdd", head, "edit"),
+      adapter().pushPromotion(
+        root,
+        { type: "skill", name: "tdd" },
+        head,
+        "edit",
+      ),
     ).resolves.toBe("push-elsewhere");
   });
 
@@ -232,10 +237,10 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       const hash = (
         await git(root, "rev-parse", "HEAD:.apm/skills/tdd")
       ).stdout.trim();
-      expect(trees.remote).toEqual({ tdd: hash });
-      expect(trees.local).toEqual({ tdd: hash });
-      expect(trees.working).toEqual({ tdd: hash });
-      expect(trees.promote).toEqual({});
+      expect(trees.skill.remote).toEqual({ tdd: hash });
+      expect(trees.skill.local).toEqual({ tdd: hash });
+      expect(trees.skill.working).toEqual({ tdd: hash });
+      expect(trees.skill.promote).toEqual({});
     });
 
     it("includes a skill that exists only as untracked files on disk", async () => {
@@ -243,8 +248,8 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
       const trees = await movementTrees(root);
 
-      expect(Object.keys(trees.working).sort()).toEqual(["draft", "tdd"]);
-      expect(trees.local).not.toHaveProperty("draft");
+      expect(Object.keys(trees.skill.working).sort()).toEqual(["draft", "tdd"]);
+      expect(trees.skill.local).not.toHaveProperty("draft");
     });
 
     it("reads an edited skill as different content without committing it", async () => {
@@ -252,7 +257,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
       const trees = await movementTrees(root);
 
-      expect(trees.working.tdd).not.toBe(trees.local.tdd);
+      expect(trees.skill.working.tdd).not.toBe(trees.skill.local.tdd);
     });
 
     it("leaves the author's real index and working tree untouched", async () => {
@@ -277,8 +282,8 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
       const trees = await movementTrees(root);
 
-      expect(Object.keys(trees.promote)).toEqual(["tdd"]);
-      expect(trees.promote.tdd?.tree).not.toBe(trees.remote.tdd);
+      expect(Object.keys(trees.skill.promote)).toEqual(["tdd"]);
+      expect(trees.skill.promote.tdd?.tree).not.toBe(trees.skill.remote.tdd);
     });
 
     it("reads a promote branch's tip commit beside its tree", async () => {
@@ -296,9 +301,9 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
       const trees = await movementTrees(root);
 
-      expect(trees.promote.tdd).toEqual({ tree, commit: tip });
-      expect(trees.promote.unproposed?.tree ?? null).toBeNull();
-      expect(trees.promote.unproposed?.commit ?? null).toBeNull();
+      expect(trees.skill.promote.tdd).toEqual({ tree, commit: tip });
+      expect(trees.skill.promote.unproposed?.tree ?? null).toBeNull();
+      expect(trees.skill.promote.unproposed?.commit ?? null).toBeNull();
     });
 
     it("names a promote branch that proposes deleting its skill", async () => {
@@ -313,8 +318,8 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
       const trees = await movementTrees(root);
 
-      expect(Object.hasOwn(trees.promote, "tdd")).toBe(true);
-      expect(trees.promote.tdd).toEqual({
+      expect(Object.hasOwn(trees.skill.promote, "tdd")).toBe(true);
+      expect(trees.skill.promote.tdd).toEqual({
         tree: null,
         commit: (
           await git(root, "rev-parse", "refs/remotes/origin/maestro/tdd")
@@ -338,7 +343,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
       const trees = await movementTrees(root);
 
-      expect(trees.working.tdd).not.toBe(trees.remote.tdd);
+      expect(trees.skill.working.tdd).not.toBe(trees.skill.remote.tdd);
     });
 
     it("hashes a tracked skill file the same even when a rule ignores it", async () => {
@@ -355,7 +360,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
       const trees = await movementTrees(root);
 
-      expect(trees.working.tdd).toBe(trees.local.tdd);
+      expect(trees.skill.working.tdd).toBe(trees.skill.local.tdd);
     });
 
     it("refuses to read a failed git call as a harness with nothing on disk", async () => {
@@ -377,11 +382,10 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       await git(root, "push", "origin", "HEAD:main");
       await adapter().fetch(root);
 
+      const none = { remote: {}, promote: {}, local: {}, working: {} };
       await expect(adapter().readMovementTrees(root)).resolves.toEqual({
-        remote: {},
-        promote: {},
-        local: {},
-        working: {},
+        skill: none,
+        prompt: none,
       });
     });
   });

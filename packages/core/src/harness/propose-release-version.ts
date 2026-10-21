@@ -1,6 +1,7 @@
 // Proposes one repository-wide version from the team delta (#519).
+
+import type { HarnessMovement } from "./harness-movements";
 import { RELEASE_TAG_PATTERN } from "./release-tag";
-import type { SkillMovement } from "./skill-movements";
 
 export type SemverStep = "major" | "minor" | "patch";
 
@@ -37,21 +38,23 @@ const bump = (parts: SemverParts, step: SemverStep): string => {
 const REASONS: Record<SemverStep, string> = {
   major: "A skill was deleted or renamed.",
   minor: "A skill was added.",
-  patch: "Only existing skills changed.",
+  patch: "No skill was added, deleted or renamed.",
 };
 
 const NOTHING_CHANGED = "Nothing has changed since the last release.";
 
-const stepFromMovements = (movements: SkillMovement[]): SemverStep => {
-  if (movements.some((m) => m.kind === "removed" || m.kind === "renamed")) {
+// Only a skill change steps past patch: no target holds a prompt.
+const stepFromMovements = (movements: HarnessMovement[]): SemverStep => {
+  const skills = movements.filter((m) => m.type === "skill");
+  if (skills.some((m) => m.kind === "removed" || m.kind === "renamed")) {
     return "major";
   }
-  return movements.some((m) => m.kind === "added") ? "minor" : "patch";
+  return skills.some((m) => m.kind === "added") ? "minor" : "patch";
 };
 
 export const proposeReleaseVersion = (
   previousTag: string | null,
-  movements: SkillMovement[],
+  movements: HarnessMovement[],
 ): VersionProposal => {
   const parts = parseTag(previousTag);
   const zero: SemverParts = { major: 0n, minor: 0n, patch: 0n };

@@ -18,7 +18,10 @@ export function registerInventoryRoutes(app: Hono, deps: Deps) {
         result.error === "unreadable" ? 503 : 409,
       );
     }
-    return c.json({ primitives: result.primitives });
+    return c.json({
+      primitives: result.primitives,
+      unreadTypes: result.unreadTypes,
+    });
   });
 
   // A GET: returning the user's own configured path is intentional.

@@ -313,7 +313,9 @@ describe("harness import HTTP route", () => {
     const trees = await new HarnessGitAdapter({
       released: new ReleasedContentReader(),
     }).readMovementTrees(harnessRoot);
-    expect(trees?.working["code-review"]).not.toBe(trees?.local["code-review"]);
+    expect(trees?.skill.working["code-review"]).not.toBe(
+      trees?.skill.local["code-review"],
+    );
   }, 30_000);
 
   // A Root package record names no one skill, so the name comes from its
@@ -386,7 +388,7 @@ describe("harness import HTTP route", () => {
     const trees = await new HarnessGitAdapter({
       released: new ReleasedContentReader(),
     }).readMovementTrees(harnessRoot);
-    expect(trees?.working.caveman).not.toBe(trees?.local.caveman);
+    expect(trees?.skill.working.caveman).not.toBe(trees?.skill.local.caveman);
   }, 30_000);
 
   it("leaves nothing behind when the copy is refused mid-tree", async () => {

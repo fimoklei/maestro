@@ -1,16 +1,21 @@
+import type { HarnessPrimitiveType } from "@maestro/core";
 import { Card } from "../ui/card";
-import { DELETE_SKILL, PROPOSE_CHANGE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
-import { InlineName } from "../ui/inline-name";
 import { Notice, type NoticeContent } from "../ui/notice";
-import { named, phrase } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { StatusLine } from "../ui/status-line";
+import {
+  DELETION_COPY,
+  deleteFromOrigin,
+  openRequestNotice,
+  uncommittedNotice,
+} from "./deletion-copy";
 import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
+import { ITEM_WORDS } from "./item-words";
 import type { LocalDeletionContext } from "./local-deletion-copy";
 
-// The two roads a Harness skill's deletion takes. Proposing it needs the exact
+// The two roads a Harness item's deletion takes. Proposing it needs the exact
 // origin/HEAD copy the confirmation is given against (#580), and the open
 // request it turns into a deletion; removing it on disk needs the folder that
 // goes (#798), read fresh while the dialog stands. `localOnly` picks the copy:
@@ -20,6 +25,7 @@ export type DeletionMode =
   | {
       kind: "propose";
       origin: string;
+      branch: string;
       seenRemoteTree: string;
       openRequest: { number: number; author: string } | null;
     }
@@ -27,35 +33,38 @@ export type DeletionMode =
       kind: "local";
       origin: string;
       screen: LocalDeletionContext["screen"];
-      folder: string;
+      path: string;
       check: "checking" | "failed" | "ready";
       localOnly: boolean;
       uncommitted: boolean;
     };
 
 export function DeletionDialog({
-  skill,
+  type,
+  name,
   mode,
   onClose,
   onConfirm,
   deleting,
   deleteError,
 }: {
-  skill: string;
+  type: HarnessPrimitiveType;
+  name: string;
   mode: DeletionMode;
   onClose: () => void;
   onConfirm: () => void;
   deleting: boolean;
   deleteError: NoticeContent | null;
 }) {
+  const copy = DELETION_COPY[type];
   return (
     <Dialog
-      title={`Delete ${skill}`}
+      title={`Delete ${name}`}
       version={null}
       width={480}
       phase={deleting ? "running" : "idle"}
       action={{
-        label: DELETE_SKILL,
+        label: copy.label,
         verb: "delete",
         tone: "danger",
         unavailable:
@@ -75,48 +84,42 @@ export function DeletionDialog({
           {/* The warning says what this press does instead. */}
           {mode.openRequest === null ? (
             <p className="m-0">
-              {DELETE_SKILL} proposes this deletion to{" "}
-              <InlineName>{mode.origin}</InlineName> for review.
+              <PhraseText copy={copy.proposes(mode.origin)} />
             </p>
           ) : null}
           <p className="m-0 text-gray-11">
-            Your targets keep the skill. After the next release, select Update
-            target on each target to remove it.
+            <PhraseText copy={copy.keeps(name)} />
           </p>
         </>
       ) : mode.localOnly ? (
-        // No second sentence: the other modes name what keeps the skill,
+        // No second sentence: the other modes name what keeps the item,
         // and here nothing does.
         <p className="m-0">
-          {DELETE_SKILL} removes the folder from disk. No other copy of{" "}
-          <InlineName>{skill}</InlineName> exists.
+          <PhraseText copy={copy.localOnly(name)} />
         </p>
       ) : (
         <>
           <p className="m-0">
-            {DELETE_SKILL} removes the <InlineName>{skill}</InlineName> folder
-            from your clone of <InlineName>{mode.origin}</InlineName>. The skill
-            stays in <InlineName>{mode.origin}</InlineName> and in your targets.
+            <PhraseText copy={copy.inClone(name, mode.origin)} />
           </p>
           <p className="m-0 text-gray-11">
-            <PhraseText
-              copy={
-                mode.screen === "harness"
-                  ? phrase`To also delete it from ${named(mode.origin)}, select ${PROPOSE_CHANGE}.`
-                  : phrase`To also delete it from ${named(mode.origin)}, go to the Harness screen and select ${PROPOSE_CHANGE}.`
-              }
-            />
+            <PhraseText copy={deleteFromOrigin(mode.origin, mode.screen)} />
           </p>
         </>
       )}
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          {/* A skill name has no break in it, and the branch carries the
-              same name again. */}
-          <Fact label="Skill" value={skill} wrap machine={false} />
+          {/* A name has no break in it, and the branch carries the same name
+              again. */}
+          <Fact
+            label={ITEM_WORDS[type].Noun}
+            value={name}
+            wrap
+            machine={false}
+          />
           {mode.kind === "propose" ? (
             <>
-              <Fact label="Branch" value={`maestro/${skill}`} wrap />
+              <Fact label="Branch" value={mode.branch} wrap />
               {/* The whole hash: the exact origin/HEAD copy the confirmation
                   is given against (#580). The hint says the same thing the
                   confirmation-stale notice does (#885). */}
@@ -128,7 +131,7 @@ export function DeletionDialog({
               />
             </>
           ) : (
-            <Fact label="Folder" value={mode.folder} wrap />
+            <Fact label={ITEM_WORDS[type].Holder} value={mode.path} wrap />
           )}
         </dl>
       </Card>
@@ -139,36 +142,12 @@ export function DeletionDialog({
         trigger="load"
         notice={
           mode.kind === "propose"
-            ? openRequestNotice(skill, mode.openRequest)
+            ? openRequestNotice(type, name, mode.openRequest)
             : mode.uncommitted && !mode.localOnly
-              ? uncommittedNotice(skill, mode.origin)
+              ? uncommittedNotice(type, name, mode.origin)
               : null
         }
       />
     </Dialog>
   );
-}
-
-function uncommittedNotice(skill: string, origin: string): NoticeContent {
-  return {
-    level: "warning",
-    label: `Uncommitted changes in ${skill}`,
-    message: `${DELETE_SKILL} discards them. To keep them, commit them in your Git tool first.`,
-    detail: phrase`The skill's files in your clone of ${named(origin)} differ from its last commit.`,
-  };
-}
-
-// Several Contributors share one proposal branch, so the request may be a
-// teammate's, or an app's.
-function openRequestNotice(
-  skill: string,
-  request: { number: number; author: string } | null,
-): NoticeContent | null {
-  return request === null
-    ? null
-    : {
-        level: "warning",
-        label: `Pull request #${request.number} will delete ${skill} instead`,
-        message: phrase`${named(request.author)} opened it to propose changes to ${named(skill)}. ${DELETE_SKILL} replaces those changes with the deletion.`,
-      };
 }

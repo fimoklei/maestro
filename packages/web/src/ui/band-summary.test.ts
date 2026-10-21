@@ -96,4 +96,55 @@ describe("bandSummary", () => {
       age: "2 h ago",
     });
   });
+
+  it("keeps a gate count at 0 while another count is above 0", () => {
+    const gate: BandCount = { ...zero(BEHIND), gate: { id: "behind-count" } };
+    expect(summary(READ, [UNKNOWN, gate])).toMatchObject({
+      family: "failed",
+      word: null,
+      counts: [UNKNOWN, gate],
+    });
+  });
+
+  it("drops a gate count for the healthy word when every count is 0", () => {
+    const gate: BandCount = { ...zero(BEHIND), gate: { id: "behind-count" } };
+    expect(summary(READ, [zero(UNKNOWN), gate])).toMatchObject({
+      family: "good",
+      word: "In sync",
+      counts: [],
+    });
+  });
+});
+
+describe("bandSummary for a table with no Status column", () => {
+  const noStatus = (freshness: Freshness) =>
+    bandSummary({ freshness, counts: null }, NOW);
+
+  it("shows no summary while the read is current, only the read age", () => {
+    expect(noStatus(READ)).toEqual({
+      family: null,
+      word: null,
+      counts: [],
+      age: "2 h ago",
+    });
+  });
+
+  it("reads grey and Not read yet before the first reading", () => {
+    expect(noStatus({ readAt: [null], outcome: null })).toMatchObject({
+      family: "unknown",
+      word: "Not read yet",
+    });
+  });
+
+  it("reads red and Read failed or Offline when the read failed", () => {
+    expect(noStatus({ ...READ, outcome: "fetch-failed" })).toMatchObject({
+      family: "failed",
+      word: "Read failed",
+      age: "last read 2 h ago",
+    });
+    expect(noStatus({ ...READ, outcome: "offline" })).toMatchObject({
+      family: "failed",
+      word: "Offline",
+    });
+  });
 });

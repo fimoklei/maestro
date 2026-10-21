@@ -75,11 +75,14 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       { gh: review },
     );
 
-  const promote = async (app: ReturnType<typeof makeApp>, body: unknown) =>
+  const promote = async (
+    app: ReturnType<typeof makeApp>,
+    body: Record<string, unknown>,
+  ) =>
     app.request("/api/harness/promote", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type: "skill", ...body }),
     });
 
   const promoted = async (...args: string[]) =>
@@ -133,7 +136,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     ).json()) as HarnessState;
     expect(promoted.stages.review).toMatchObject({
       outcome: "read",
-      rows: [{ skill: "tdd", status: "pull-request-missing", change: "edit" }],
+      rows: [{ name: "tdd", status: "pull-request-missing", change: "edit" }],
     });
     expect(promoted.stages.proposal).toMatchObject({
       outcome: "read",
@@ -154,7 +157,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(merged.stages.proposal).toMatchObject({ outcome: "read", rows: [] });
     expect(merged.stages.release).toMatchObject({
       outcome: "read",
-      rows: [{ skill: "tdd", status: "not-yet-released", change: "edit" }],
+      rows: [{ name: "tdd", status: "not-yet-released", change: "edit" }],
     });
     expect(merged.releaseState).toBe("pending-release");
   });
@@ -175,7 +178,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     ).json()) as HarnessState;
     expect(state.stages.review).toMatchObject({
       outcome: "read",
-      rows: [{ skill: "tdd", status: "pull-request-missing" }],
+      rows: [{ name: "tdd", status: "pull-request-missing" }],
     });
   });
 
@@ -242,7 +245,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       outcome: "read",
       rows: [
         {
-          skill: "tdd",
+          name: "tdd",
           status: "not-yet-proposed",
           change: "edit",
           concurrentChange: true,
@@ -264,7 +267,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       outcome: "read",
       rows: [
         {
-          skill: "tdd",
+          name: "tdd",
           status: "not-yet-proposed",
           change: "edit",
           concurrentChange: false,
@@ -441,12 +444,12 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
   describe("publishing a deletion", () => {
     const publishDeletion = async (
       app: ReturnType<typeof makeApp>,
-      body: unknown,
+      body: Record<string, unknown>,
     ) =>
       app.request("/api/harness/promote/deletion", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ type: "skill", ...body }),
       });
 
     const seenTree = async (app: ReturnType<typeof makeApp>) => {
@@ -455,7 +458,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         await new HarnessGitAdapter({
           released: new ReleasedContentReader(),
         }).readMovementTrees(root)
-      )?.remote.tdd as string;
+      )?.skill.remote.tdd as string;
     };
 
     const deleteOnDisk = async () =>
@@ -487,7 +490,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(reviewed.stages.review).toMatchObject({
         outcome: "read",
         rows: [
-          { skill: "tdd", status: "pull-request-missing", change: "deletion" },
+          { name: "tdd", status: "pull-request-missing", change: "deletion" },
         ],
       });
       expect(seen).toEqual(expect.any(String));
@@ -506,9 +509,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(merged.releaseState).toBe("pending-release");
       expect(merged.stages.release).toMatchObject({
         outcome: "read",
-        rows: [
-          { skill: "tdd", status: "not-yet-released", change: "deletion" },
-        ],
+        rows: [{ name: "tdd", status: "not-yet-released", change: "deletion" }],
       });
     });
 

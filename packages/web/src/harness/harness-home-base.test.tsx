@@ -287,9 +287,11 @@ describe("Harness home base", () => {
 
     expect(await stageHeader("Pending release")).toBeInTheDocument();
     const research = screen.getByRole("row", { name: /research/ });
-    expect(research).toHaveTextContent("Addition");
+    expect(research).toHaveTextContent("Added");
     expect(research).toHaveTextContent("Not yet released");
-    expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent("Edit");
+    expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent(
+      "Changed",
+    );
   });
 
   it("holds offline apart from a read that failed, and dates both", async () => {
@@ -480,7 +482,7 @@ describe("Harness home base", () => {
     expect(screen.getByText("All released")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Skills you import or edit in your clone will appear here.",
+        "Skills and prompts you import or edit in your clone will appear here.",
       ),
     ).toBeInTheDocument();
     // The empty state repeats Import skill from band 1 (#994).
@@ -546,6 +548,68 @@ describe("Harness home base", () => {
     expect(type.nextElementSibling).toHaveTextContent("Skill");
   });
 
+  // #1597: a row is named by stage, type and name, so one name never shares
+  // a row across types.
+  it("gives a skill and a prompt with one name a row each", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [
+            row("pending-proposal", "tdd", "new-local-work"),
+            row("pending-proposal", "tdd", "new-local-work", {
+              type: "prompt",
+              path: ".maestro/prompts/tdd.md",
+              branch: "maestro/prompt.tdd",
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    await screen.findAllByText("tdd");
+    const rows = await stageRows("Pending proposal");
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((each) => each.id)).size).toBe(2);
+    const types: string[] = [];
+    for (const each of rows) {
+      await userEvent.click(within(each).getByText("tdd"));
+      const pane = await screen.findByRole("complementary", {
+        name: "tdd detail",
+      });
+      const type = within(pane).getByText("Type", { selector: "dt" });
+      types.push(type.nextElementSibling?.textContent ?? "");
+    }
+    expect(types.sort()).toEqual(["Prompt", "Skill"]);
+  });
+
+  // #1599: a merged prompt change waits in Pending release beside skills.
+  it("lists a merged prompt change in Pending release with the Type Prompt", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          release: [
+            row("pending-release", "tdd", "not-yet-released"),
+            row("pending-release", "pr-review", "not-yet-released", {
+              type: "prompt",
+              path: ".maestro/prompts/pr-review.md",
+              branch: "maestro/prompt.pr-review",
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    await screen.findByText("pr-review");
+    const rows = await stageRows("Pending release");
+    const prompt = rows.find((each) => within(each).queryByText("pr-review"));
+    if (prompt === undefined) {
+      throw new Error("no pr-review row in Pending release");
+    }
+    expect(within(prompt).getByText("Prompt")).toBeVisible();
+  });
+
   // #1045: the next step is one press away, from the row and from its pane.
   it("puts Propose change first in the row menu and at the foot of the pane", async () => {
     stubHarnessServer({
@@ -554,7 +618,7 @@ describe("Harness home base", () => {
           proposal: [
             row("pending-proposal", "tdd", "not-yet-proposed", {
               localOnly: true,
-              folderOnDisk: true,
+              onDisk: true,
             }),
           ],
         }),
@@ -564,7 +628,7 @@ describe("Harness home base", () => {
 
     await userEvent.click(
       await screen.findByRole("button", {
-        name: "Actions for tdd in Pending proposal",
+        name: "Actions for tdd skill in Pending proposal",
       }),
     );
     const menu = await screen.findByRole("menu");
@@ -846,13 +910,13 @@ describe("Harness home base", () => {
       await stageHeader("Pending proposal");
 
       expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent(
-        "Addition",
+        "Added",
       );
       const lintRules = screen.getByRole("row", { name: /lint-rules/ });
-      expect(lintRules).toHaveTextContent("Deletion");
+      expect(lintRules).toHaveTextContent("Deleted");
       expect(lintRules).toHaveTextContent("Waiting for review");
       expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-        "Rename",
+        "Renamed",
       );
     });
 
@@ -863,7 +927,7 @@ describe("Harness home base", () => {
 
       await userEvent.hover(
         within(screen.getByRole("row", { name: /research/ })).getByText(
-          "Rename",
+          "Renamed",
         ),
       );
 
@@ -922,7 +986,7 @@ describe("Harness home base", () => {
       const pane = await openPane("tdd");
 
       expect(within(pane).getByText("Change")).toBeInTheDocument();
-      expect(within(pane).getByText("Addition")).toBeInTheDocument();
+      expect(within(pane).getByText("Added")).toBeInTheDocument();
     });
   });
 
@@ -961,7 +1025,7 @@ describe("Harness home base", () => {
 
       await userEvent.hover(
         within(screen.getByRole("row", { name: /code-review/ })).getByText(
-          "Edit",
+          "Changed",
         ),
       );
 

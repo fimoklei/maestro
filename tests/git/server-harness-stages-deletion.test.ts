@@ -32,7 +32,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       app.request("/api/harness/promote/deletion", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, seenRemoteTree }),
+        body: JSON.stringify({ type: "skill", name, seenRemoteTree }),
       });
 
     const primitiveNames = async (app: HarnessStagesApp): Promise<string[]> => {
@@ -79,7 +79,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       const state = await refresh(app);
       expect(rowsOf(state.stages.proposal)).toEqual([]);
       expect(rowsOf(state.stages.review)).toMatchObject([
-        { skill: "tdd", status: "waiting-for-review", change: "deletion" },
+        { name: "tdd", status: "waiting-for-review", change: "deletion" },
       ]);
     });
 
@@ -117,7 +117,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
       const waiting = await refresh(app);
       expect(rowsOf(waiting.stages.proposal)).toMatchObject([
-        { skill: "tdd", status: "new-local-work", change: "edit" },
+        { name: "tdd", status: "new-local-work", change: "edit" },
       ]);
 
       expect((await promote(app, "tdd")).status).toBe(200);
@@ -126,7 +126,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       const state = await refresh(app);
       expect(rowsOf(state.stages.proposal)).toEqual([]);
       expect(rowsOf(state.stages.review)).toMatchObject([
-        { skill: "tdd", status: "waiting-for-review", change: "edit" },
+        { name: "tdd", status: "waiting-for-review", change: "edit" },
       ]);
     });
 
@@ -191,7 +191,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
       const merged = await refresh(app);
       expect(rowsOf(merged.stages.release)).toMatchObject([
-        { skill: "tdd", status: "not-yet-released", change: "deletion" },
+        { name: "tdd", status: "not-yet-released", change: "deletion" },
       ]);
       // Merged is not released.
       expect(await primitiveNames(app)).toEqual(["tdd"]);

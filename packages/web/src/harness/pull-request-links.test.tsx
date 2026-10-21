@@ -6,7 +6,10 @@ import { pullRequest } from "./stage-row-fixture";
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-review",
-  skill: "code-review",
+  type: "skill",
+  name: "code-review",
+  path: ".apm/skills/code-review",
+  branch: "maestro/code-review",
   status: "changes-requested",
   change: "edit",
   requests: [pullRequest(47, "code-review")],
@@ -21,7 +24,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   localOnly: false,
   remoteTree: null,
   restorable: false,
-  folderOnDisk: false,
+  onDisk: false,
   previousName: null,
   ...over,
 });

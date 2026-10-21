@@ -1,4 +1,10 @@
-import type { HarnessStageRow, ReleasePlan, SemverStep } from "@maestro/core";
+import type {
+  HarnessPrimitiveType,
+  HarnessStageRow,
+  PrimitiveRef,
+  ReleasePlan,
+  SemverStep,
+} from "@maestro/core";
 import type { ComponentProps } from "react";
 import { HttpError } from "../api/http";
 import { useFolderChooser } from "../ui/use-folder-chooser";
@@ -28,17 +34,29 @@ import { WithdrawDialog } from "./withdraw-dialog";
 // Frozen when the press was made: a later read moves the rows underneath, it
 // never moves this (#915).
 export type RestoreTarget = {
+  type: HarnessPrimitiveType;
   skill: string;
+  path: string;
   commit: string;
   hasRequest: boolean;
 };
 
-// The request itself, frozen at the press.
-export type DiscardTarget = { name: string; seenRemoteTree: string };
+// The request, and the path the row named, frozen at the press.
+export type DiscardTarget = PrimitiveRef & {
+  path: string;
+  seenRemoteTree: string;
+};
 
 // `localOnly` picks the dialog's copy: a skill in no ref, or step 1 of a
 // deletion the default branch still holds (#1370).
-export type LocalDeletionTarget = { skill: string; localOnly: boolean };
+export type LocalDeletionTarget = {
+  type: HarnessPrimitiveType;
+  skill: string;
+  path: string;
+  localOnly: boolean;
+};
+
+export type WithdrawTarget = PrimitiveRef & { branch: string; number: number };
 
 type Presses = ReturnType<typeof useHarnessPresses>;
 
@@ -58,7 +76,7 @@ export type HarnessDialogsProps = {
   discard: Presses["discardWrite"];
   onDiscardClose: () => void;
   defaultBranch: string | null;
-  withdrawing: { skill: string; number: number } | null;
+  withdrawing: WithdrawTarget | null;
   proposalAction: Presses["proposalWrite"];
   onWithdrawClose: () => void;
   planOpen: boolean;
@@ -101,7 +119,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
       {deletionRow !== null && mode !== null ? (
         <DeletionDialog
-          skill={deletionRow.skill}
+          type={deletionRow.type}
+          name={deletionRow.name}
           mode={mode}
           onClose={props.onDeletionClose}
           // The dialog closes on success only: a refusal is stated in it,
@@ -109,7 +128,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           onConfirm={() =>
             props.deletion.run(
               {
-                name: deletionRow.skill,
+                type: deletionRow.type,
+                name: deletionRow.name,
                 seenRemoteTree: mode.seenRemoteTree,
               },
               { onSuccess: props.onDeletionClose },
@@ -121,8 +141,9 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
       {props.restoring !== null ? (
         <RestoreDialog
-          skill={props.restoring.skill}
-          folder={`${SKILLS_DIR}/${props.restoring.skill}`}
+          type={props.restoring.type}
+          name={props.restoring.skill}
+          path={props.restoring.path}
           commit={props.restoring.commit}
           hasRequest={props.restoring.hasRequest}
           onClose={props.onRestoreClose}
@@ -132,6 +153,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
             props.restoring !== null &&
             props.restore.run(
               {
+                type: props.restoring.type,
                 name: props.restoring.skill,
                 seenHeadCommit: props.restoring.commit,
                 hasRequest: props.restoring.hasRequest,
@@ -145,16 +167,22 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
       {props.discarding !== null ? (
         <DiscardDialog
-          skill={props.discarding.name}
-          folder={`${SKILLS_DIR}/${props.discarding.name}`}
+          type={props.discarding.type}
+          name={props.discarding.name}
+          path={props.discarding.path}
           defaultBranch={props.defaultBranch}
           onClose={props.onDiscardClose}
           // Closes on success only: a refusal is stated in the dialog.
           onConfirm={() =>
             props.discarding !== null &&
-            props.discard.run(props.discarding, {
-              onSuccess: props.onDiscardClose,
-            })
+            props.discard.run(
+              {
+                type: props.discarding.type,
+                name: props.discarding.name,
+                seenRemoteTree: props.discarding.seenRemoteTree,
+              },
+              { onSuccess: props.onDiscardClose },
+            )
           }
           discarding={props.discard.phase === "running"}
           discardError={props.discard.failure}
@@ -162,7 +190,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
       {props.withdrawing !== null ? (
         <WithdrawDialog
-          skill={props.withdrawing.skill}
+          skill={props.withdrawing.name}
+          branch={props.withdrawing.branch}
           number={props.withdrawing.number}
           onClose={props.onWithdrawClose}
           onConfirm={() =>
@@ -170,7 +199,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
             props.proposalAction.run(
               {
                 action: "withdraw",
-                name: props.withdrawing.skill,
+                type: props.withdrawing.type,
+                name: props.withdrawing.name,
                 number: props.withdrawing.number,
               },
               { onSuccess: props.onWithdrawClose },
@@ -198,7 +228,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
 // afresh, and a stale refusal reads it again before the next confirmation.
 // Skills opens it too (#1385); `screen` picks the control its notices name.
 export function LocalDeletionDialog({
-  target: { skill, localOnly },
+  target: { type, skill, path, localOnly },
   screen,
   write,
   onClose,
@@ -212,8 +242,8 @@ export function LocalDeletionDialog({
 }) {
   const check = useDeletionCheck();
   const harness = useHarness();
-  const context = { skill, screen };
-  const folder = folderInClone(check.data?.skills[skill]);
+  const context = { type, name: skill, screen };
+  const folder = folderInClone(check.data?.[type][skill]);
   const seenWorkingTree = folder?.workingTree ?? null;
   const checkFailure = check.isError
     ? deletionCheckNotice("no-answer", context)
@@ -222,14 +252,15 @@ export function LocalDeletionDialog({
       : null;
   return (
     <DeletionDialog
-      skill={skill}
+      type={type}
+      name={skill}
       mode={{
         kind: "local",
         // Both screens read the Harness already; the plain word stands in
         // until that read lands. The host is dropped: owner/repo names it.
         origin: harness.data?.origin.replace(/^[^/]+\//, "") ?? "the Harness",
         screen,
-        folder: `${SKILLS_DIR}/${skill}`,
+        path,
         check: check.isFetching
           ? "checking"
           : seenWorkingTree === null
@@ -242,7 +273,7 @@ export function LocalDeletionDialog({
       onConfirm={() =>
         seenWorkingTree !== null &&
         write.run(
-          { name: skill, seenWorkingTree },
+          { type, name: skill, seenWorkingTree },
           {
             onSuccess: onDeleted,
             onError: (error) => {
@@ -268,9 +299,6 @@ function ImportDialogHost(
   return <ImportDialog {...props} chooser={useFolderChooser()} />;
 }
 
-// Spelled here rather than imported: `web` takes only types from `core`.
-const SKILLS_DIR = ".apm/skills";
-
 // The proposed deletion this row confirms, or null where it offers none.
 function deletionMode(
   row: HarnessStageRow | null,
@@ -285,6 +313,7 @@ function deletionMode(
   return {
     kind: "propose",
     origin,
+    branch: row.branch,
     seenRemoteTree: row.remoteTree,
     openRequest:
       open === undefined ? null : { number: open.number, author: open.author },

@@ -8,11 +8,21 @@ export type StructuralProblem =
 
 export type StructuralFinding = { skill: string; problem: StructuralProblem };
 
+/** A closed frontmatter block and the text after it; null without one. */
+export const splitFrontmatter = (
+  raw: string,
+): { block: string; body: string } | null => {
+  // Both delimiters are whole lines: `---junk` closes nothing.
+  const match = /^---\r?\n(?:([\s\S]*?)\r?\n)?---[ \t]*(?:\r?\n|$)/.exec(raw);
+  return match === null
+    ? null
+    : { block: match[1] ?? "", body: raw.slice(match[0].length) };
+};
+
 export const readFrontmatter = (
   raw: string,
 ): { block: string; data: Record<string, unknown> } | null => {
-  // Both delimiters are whole lines: `---junk` closes nothing.
-  const block = /^---\n([\s\S]*?)\n---[ \t]*(?:\r?\n|$)/.exec(raw)?.[1];
+  const block = splitFrontmatter(raw)?.block;
   if (block === undefined) {
     return null;
   }

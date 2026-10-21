@@ -89,8 +89,11 @@ describe("inventory HTTP route", () => {
           type: "skill",
           name: "tdd",
           description: "Test-driven development loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -114,8 +117,11 @@ describe("inventory HTTP route", () => {
           type: "skill",
           name: "tdd",
           description: "Test-driven development loop",
+          path: ".apm/skills/tdd",
+          pendingRelease: null,
         },
       ],
+      unreadTypes: [],
     });
   });
 
@@ -150,7 +156,7 @@ describe("inventory HTTP route", () => {
     const res = await app.request("/api/inventory/primitives");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ primitives: [] });
+    expect(await res.json()).toEqual({ primitives: [], unreadTypes: [] });
   });
 
   it("GET /api/inventory/config returns the local clone and GitHub repository", async () => {

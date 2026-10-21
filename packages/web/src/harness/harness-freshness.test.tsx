@@ -103,9 +103,10 @@ describe("Harness freshness and failed reads", () => {
     });
     renderHarness();
 
-    await screen.findByRole("button", {
-      name: "Create a release — re-reading Harness",
-    });
+    await screen.findByRole("button", { name: "Create a release" });
+    expect(
+      screen.getByRole("button", { name: "Re-read Harness" }),
+    ).toHaveAttribute("aria-busy", "true");
     expect(
       screen.queryByText("Harness clone not updated"),
     ).not.toBeInTheDocument();
@@ -121,29 +122,24 @@ describe("Harness freshness and failed reads", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("names Create a release unavailable while a re-read runs, and keeps it focusable", async () => {
-    let release = () => {};
-    const heldUntil = new Promise<void>((resolve) => {
-      release = resolve;
+  it("keeps Create a release available while a re-read runs", async () => {
+    const waiting = withStages(RELEASED, {
+      release: [row("pending-release", "research", "not-yet-released")],
     });
     stubHarnessServer({
-      read: { body: RELEASED },
-      refresh: { body: RELEASED, heldUntil },
+      read: { body: waiting },
+      refresh: { body: waiting, heldUntil: new Promise<void>(() => {}) },
     });
     renderHarness();
 
-    const held = await screen.findByRole("button", {
-      name: "Create a release — re-reading Harness",
+    const release = await screen.findByRole("button", {
+      name: "Create a release",
     });
-    expect(held).toHaveAttribute("aria-disabled", "true");
-    expect(held).not.toBeDisabled();
-    await userEvent.click(held);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-
-    release();
     expect(
-      await screen.findByRole("button", { name: "Create a release" }),
-    ).not.toHaveAttribute("aria-disabled");
+      screen.getByRole("button", { name: "Re-read Harness" }),
+    ).toHaveAttribute("aria-busy", "true");
+    expect(release).not.toHaveAttribute("aria-disabled");
+    expect(release).not.toHaveAttribute("aria-describedby");
   });
 
   it("marks an out-of-date read red in band 2, after the Harness facts", async () => {
@@ -197,13 +193,18 @@ describe("Harness freshness and failed reads", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: "Create a release — GitHub not read",
+      name: "Create a release",
     });
+    expect(release).toHaveAccessibleDescription(
+      expect.stringMatching(
+        /^Status out of date.*GitHub gave no answer, so these rows are from the last read\./,
+      ),
+    );
     expect(release).toHaveAttribute("aria-disabled", "true");
     expect(release).not.toBeDisabled();
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Actions for tdd in Pending proposal",
+        name: "Actions for tdd skill in Pending proposal",
       }),
     );
     const menu = await screen.findByRole("menu");
@@ -359,7 +360,7 @@ describe("Harness freshness and failed reads", () => {
       await screen.findByText("Review status unavailable"),
     ).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-      "Addition",
+      "Added",
     );
   });
 

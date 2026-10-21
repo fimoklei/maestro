@@ -1,12 +1,16 @@
+import type { InventorySkill } from "@maestro/core";
 import type { Ref } from "react";
 import type { DeployedRollup } from "../inventory/deployed-rollup";
+import {
+  pendingReleaseFacts,
+  pendingReleaseLine,
+} from "../inventory/pending-release-copy";
 import type { SkillDeployment } from "../inventory/skill-deployments";
 import { skillState, skillStatus } from "../inventory/skill-status";
 import { TYPE_WORD } from "../inventory/type-filter";
-import type { Primitive } from "../inventory/use-inventory";
 import { wholeTargetName } from "../shell/target-name";
 import type { ActionsMenuItem } from "../ui/actions-menu";
-import { NOT_RELEASED_YET } from "../ui/band-copy";
+import { LATEST_RELEASE_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
 import { cn } from "../ui/cn";
 import { DetailPane } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
@@ -16,7 +20,6 @@ import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow, SubListSkeleton } from "../ui/sub-list-row";
 import {
   BEHIND_FACT,
-  LATEST_RELEASE_FACT,
   NOT_DEPLOYED_ANYWHERE,
   ofTotal,
   SOME_TARGETS_NOT_READ,
@@ -41,7 +44,7 @@ export function SkillDetailPane({
   onClose,
   getTriggerElement,
 }: {
-  primitive: Primitive;
+  primitive: InventorySkill;
   /** The row's roll-up, which the Status and Targets columns read. */
   rollup: DeployedRollup;
   /** The Harness's latest release: null where none exists, undefined until read. */
@@ -68,6 +71,7 @@ export function SkillDetailPane({
   const status = skillStatus(rollup);
   const state = skillState(rollup, deployments, latestRelease);
   const listed = deployments.length > 0 || pending;
+  const release = primitive.pendingRelease;
   return (
     <DetailPane
       title={primitive.name}
@@ -82,6 +86,7 @@ export function SkillDetailPane({
         status === null
           ? null
           : { label: STATUS_FACT, value: <StatusBadge reading={status} /> },
+        ...(release === null ? [] : pendingReleaseFacts(release)),
         latestRelease === undefined
           ? null
           : {
@@ -99,13 +104,14 @@ export function SkillDetailPane({
               value: ofTotal(rollup.behindCount, rollup.targetCount),
             },
       ]}
-      // The state comes first: trigger-phrase descriptions run for
-      // paragraphs, and three lines show before the rest opens on ask.
-      paragraph={
-        state === null
-          ? [primitive.description]
-          : [skillStateLine(state), primitive.description]
-      }
+      // The next steps come first, the release before the deploy: trigger-phrase
+      // descriptions run for paragraphs, and three lines show before the rest
+      // opens on ask.
+      paragraph={[
+        ...(release === null ? [] : [pendingReleaseLine(primitive, release)]),
+        ...(state === null ? [] : [skillStateLine(state)]),
+        primitive.description,
+      ]}
       clampParagraph
       foot={footItems}
       leadsWithNextStep={!selectionActive}

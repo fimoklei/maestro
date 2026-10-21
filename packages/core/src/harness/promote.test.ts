@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { HarnessFetchGate } from "./harness-fetch-gate";
-import { InMemoryHarnessGit } from "./harness-git.fake";
+import { InMemoryHarnessGit, skillRef } from "./harness-git.fake";
 import type {
   HarnessReviewRead,
   NewReviewRequest,
   ReviewRequest,
   ReviewWriteOutcome,
 } from "./harness-review-port";
-import { PromoteSkill } from "./promote-skill";
+import { Promote } from "./promote";
 import type { HarnessFreshness } from "./read-harness-state";
 
 const AT = new Date("2026-08-09T12:00:00.000Z");
@@ -72,7 +72,7 @@ function buildPromote(
     fetchGate?: HarnessFetchGate;
   },
 ) {
-  return new PromoteSkill({
+  return new Promote({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     locks: new InFlightLocks(),
@@ -106,18 +106,18 @@ function buildPromote(
   });
 }
 
-describe("PromoteSkill", () => {
+describe("Promote", () => {
   it("pushes the skill and answers with the branch and its pull-request page", async () => {
     const git = newSkillWorld();
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: true,
       branch: "maestro/tdd",
       pullRequestUrl:
         "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
     });
     expect(git.pushed).toEqual([
-      { name: "tdd", base: "head", kind: "addition" },
+      { type: "skill", name: "tdd", base: "head", kind: "addition" },
     ]);
   });
 
@@ -129,7 +129,9 @@ describe("PromoteSkill", () => {
     git.head = "local";
     git.working = { tdd: "mine", jobs: "unpushed" };
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toMatchObject({
+    await expect(
+      buildPromote(git).execute(skillRef("tdd")),
+    ).resolves.toMatchObject({
       ok: true,
     });
     expect(git.pushed.map((push) => push.base)).toEqual(["head"]);
@@ -155,7 +157,7 @@ describe("PromoteSkill", () => {
         onCreate: (made) => created.push(made),
       });
 
-      await expect(promote.execute("tdd")).resolves.toMatchObject({
+      await expect(promote.execute(skillRef("tdd"))).resolves.toMatchObject({
         ok: true,
       });
       expect(created).toEqual([
@@ -177,7 +179,7 @@ describe("PromoteSkill", () => {
       onCreate: (made) => created.push(made),
     });
 
-    await expect(promote.execute("tdd")).resolves.toMatchObject({
+    await expect(promote.execute(skillRef("tdd"))).resolves.toMatchObject({
       ok: true,
     });
     expect(created).toEqual([]);
@@ -193,7 +195,7 @@ describe("PromoteSkill", () => {
       onEdit: (number, title) => edited.push([number, title]),
     });
 
-    await expect(promote.execute("tdd")).resolves.toMatchObject({
+    await expect(promote.execute(skillRef("tdd"))).resolves.toMatchObject({
       ok: true,
     });
     expect(edited).toEqual([[45, "Add skill: tdd"]]);
@@ -208,7 +210,7 @@ describe("PromoteSkill", () => {
       },
     });
 
-    await expect(promote.execute("tdd")).resolves.toEqual({
+    await expect(promote.execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "proposed-by-other",
     });
@@ -224,7 +226,7 @@ describe("PromoteSkill", () => {
       },
     });
 
-    await expect(promote.execute("tdd")).resolves.toEqual({
+    await expect(promote.execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "extra-requests",
     });
@@ -236,7 +238,7 @@ describe("PromoteSkill", () => {
     const git = newSkillWorld();
     const promote = buildPromote(git, { review: { outcome: "unavailable" } });
 
-    await expect(promote.execute("tdd")).resolves.toMatchObject({
+    await expect(promote.execute(skillRef("tdd"))).resolves.toMatchObject({
       ok: true,
     });
     expect(git.pushed).toHaveLength(1);
@@ -247,7 +249,7 @@ describe("PromoteSkill", () => {
       createOutcome: { ok: false, error: "failed" },
     });
 
-    await expect(promote.execute("tdd")).resolves.toMatchObject({
+    await expect(promote.execute(skillRef("tdd"))).resolves.toMatchObject({
       ok: true,
     });
   });
@@ -255,7 +257,7 @@ describe("PromoteSkill", () => {
   it("refuses when no harness is connected", async () => {
     const promote = buildPromote(newSkillWorld(), { root: undefined });
 
-    await expect(promote.execute("tdd")).resolves.toEqual({
+    await expect(promote.execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });
@@ -265,7 +267,7 @@ describe("PromoteSkill", () => {
     const git = newSkillWorld();
     git.originUrl = "/srv/mirror.git";
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "no-usable-origin",
     });
@@ -274,7 +276,9 @@ describe("PromoteSkill", () => {
   it("refuses a name that is not a plain skill directory, without reaching git", async () => {
     const git = newSkillWorld();
 
-    await expect(buildPromote(git).execute("../secrets")).resolves.toEqual({
+    await expect(
+      buildPromote(git).execute(skillRef("../secrets")),
+    ).resolves.toEqual({
       ok: false,
       error: "invalid-skill",
     });
@@ -286,7 +290,7 @@ describe("PromoteSkill", () => {
     const git = newSkillWorld();
     git.fetchOutcomes = ["offline"];
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -299,7 +303,7 @@ describe("PromoteSkill", () => {
       onFreshnessRecord: (_root, freshness) => recorded.push(freshness),
     });
 
-    await promote.execute("tdd");
+    await promote.execute(skillRef("tdd"));
 
     // Once per fetch: the recheck right before the push fetches again (#579).
     expect(recorded).toEqual([
@@ -316,7 +320,7 @@ describe("PromoteSkill", () => {
       onFreshnessRecord: (_root, freshness) => recorded.push(freshness),
     });
 
-    await promote.execute("tdd");
+    await promote.execute(skillRef("tdd"));
 
     expect(recorded).toEqual([
       { outcome: "fetch-failed", lastFetchedAt: FRESHNESS.lastFetchedAt },
@@ -328,7 +332,7 @@ describe("PromoteSkill", () => {
     git.defaultBranch = null;
     git.tip = null;
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -338,7 +342,7 @@ describe("PromoteSkill", () => {
     const git = newSkillWorld();
     git.working = {};
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "skill-missing",
     });
@@ -360,7 +364,7 @@ describe("PromoteSkill", () => {
     const git = newSkillWorld();
     git.pushOutcome = outcome;
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error,
     });
@@ -375,7 +379,7 @@ describe("PromoteSkill", () => {
     git.head = "mine";
     git.working = { tdd: "mine" };
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "concurrent-change",
     });
@@ -390,7 +394,7 @@ describe("PromoteSkill", () => {
     git.head = "mine";
     git.working = { tdd: "edited" };
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "concurrent-change",
     });
@@ -405,7 +409,7 @@ describe("PromoteSkill", () => {
     git.head = "mine";
     git.working = { tdd: "mine" };
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "concurrent-change",
     });
@@ -419,7 +423,9 @@ describe("PromoteSkill", () => {
     git.head = "mine";
     git.working = { tdd: "mine" };
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toMatchObject({
+    await expect(
+      buildPromote(git).execute(skillRef("tdd")),
+    ).resolves.toMatchObject({
       ok: true,
     });
     expect(git.pushed.map((push) => push.base)).toEqual(["head"]);
@@ -435,7 +441,9 @@ describe("PromoteSkill", () => {
     git.head = "mine";
     git.working = { tdd: "mine", jobs: "old" };
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toMatchObject({
+    await expect(
+      buildPromote(git).execute(skillRef("tdd")),
+    ).resolves.toMatchObject({
       ok: true,
     });
     expect(git.pushed.map((push) => push.base)).toEqual(["head"]);
@@ -448,7 +456,7 @@ describe("PromoteSkill", () => {
     git.arrivals.push(() => {});
     git.teammatePushes("head-2", { tdd: "theirs" });
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toEqual({
+    await expect(buildPromote(git).execute(skillRef("tdd"))).resolves.toEqual({
       ok: false,
       error: "concurrent-change",
     });
@@ -462,7 +470,9 @@ describe("PromoteSkill", () => {
     git.arrivals.push(() => {});
     git.teammatePushes("head-2", { tdd: "same", jobs: "theirs" });
 
-    await expect(buildPromote(git).execute("tdd")).resolves.toMatchObject({
+    await expect(
+      buildPromote(git).execute(skillRef("tdd")),
+    ).resolves.toMatchObject({
       ok: true,
     });
     expect(git.pushed.map((push) => push.base)).toEqual(["head-2"]);
@@ -475,7 +485,7 @@ describe("PromoteSkill", () => {
     git.arrivals.push(() => {});
     git.teammatePushes("head-2", { tdd: "same", jobs: "theirs" });
 
-    await buildPromote(git).execute("tdd");
+    await buildPromote(git).execute(skillRef("tdd"));
 
     expect(git.mergeBaseAsks).toEqual(["head-1", "head-2"]);
   });
@@ -489,8 +499,8 @@ describe("PromoteSkill", () => {
     });
     const promote = buildPromote(git);
 
-    const first = promote.execute("tdd");
-    const second = await promote.execute("jobs");
+    const first = promote.execute(skillRef("tdd"));
+    const second = await promote.execute(skillRef("jobs"));
     release();
 
     expect(second).toEqual({ ok: false, error: "promote-in-progress" });
@@ -502,7 +512,7 @@ describe("PromoteSkill", () => {
     const gate = readGate(git);
     await gate.fetch("/harness", READ_MAX_AGE_MS);
 
-    await buildPromote(git, { fetchGate: gate }).execute("tdd");
+    await buildPromote(git, { fetchGate: gate }).execute(skillRef("tdd"));
 
     // The first check's fetch and the recheck's, never the read's.
     expect(git.fetches).toBe(3);
@@ -513,7 +523,7 @@ describe("PromoteSkill", () => {
     const gate = readGate(git);
     await gate.fetch("/harness", READ_MAX_AGE_MS);
     await expect(
-      buildPromote(git, { fetchGate: gate }).execute("tdd"),
+      buildPromote(git, { fetchGate: gate }).execute(skillRef("tdd")),
     ).resolves.toMatchObject({ ok: true });
 
     await gate.fetch("/harness", READ_MAX_AGE_MS);

@@ -46,7 +46,9 @@ describe("Harness promotion", () => {
 
     await promoteRow("lint-rules");
 
-    await waitFor(() => expect(promotions).toEqual([{ name: "lint-rules" }]));
+    await waitFor(() =>
+      expect(promotions).toEqual([{ type: "skill", name: "lint-rules" }]),
+    );
   });
 
   it("warns that a teammate already changed the skill, and still lets it be promoted", async () => {
@@ -81,7 +83,9 @@ describe("Harness promotion", () => {
 
     await promoteRow("lint-rules");
 
-    await waitFor(() => expect(promotions).toEqual([{ name: "lint-rules" }]));
+    await waitFor(() =>
+      expect(promotions).toEqual([{ type: "skill", name: "lint-rules" }]),
+    );
   });
 
   it("moves the promoted row to Pending review, with no request yet claimed", async () => {
@@ -254,7 +258,7 @@ describe("Harness promotion", () => {
     await screen.findByText("lint-rules");
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Actions for lint-rules in Pending review",
+        name: "Actions for lint-rules skill in Pending review",
       }),
     );
     const menu = await screen.findByRole("menu");
@@ -276,7 +280,7 @@ describe("Harness promotion", () => {
       ],
     });
     stubHarnessServer({ read: { body: OPEN_REQUEST } });
-    const first = renderWithQuery(<HarnessView openSkill={null} />);
+    const first = renderWithQuery(<HarnessView openPrimitive={null} />);
     const before = await openRowMenu("lint-rules", "Pending review");
     expect(
       within(before).getByRole("menuitem", { name: /view pull request/i }),
@@ -286,7 +290,7 @@ describe("Harness promotion", () => {
     );
 
     first.unmount();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     const after = await openRowMenu("lint-rules", "Pending review");
     expect(

@@ -15,6 +15,8 @@ export type BandCount = {
   family: "failed" | "attention";
   /** Present only where the screen has a status filter. */
   filter?: { pressed: boolean; onToggle: () => void };
+  /** Its 0 blocks a band 1 action: it shows at 0 until every count is 0, under `id` for that action to point at. */
+  gate?: { id: string };
 };
 
 /** A count chip a screen offers: its word, family, and the status words it covers. */
@@ -22,16 +24,14 @@ export type StatusChip = Pick<BandCount, "word" | "family"> & {
   covers: readonly string[];
 };
 
-/** What a screen states for band 2's summary: its reading, healthy word and counts, worst first. */
-export type BandSummaryInput = {
-  freshness: Freshness;
-  healthy: string;
-  counts: readonly BandCount[];
-};
+/** What a screen states for band 2's summary: its reading, healthy word and counts, worst first; null counts for a table with no Status column. */
+export type BandSummaryInput =
+  | { freshness: Freshness; healthy: string; counts: readonly BandCount[] }
+  | { freshness: Freshness; counts: null };
 
-/** The dot's family, its word (null while counts speak), the counts to show and the read age. */
+/** The dot's family (null: no summary), its word (null while counts speak), the counts to show and the read age. */
 export type BandSummaryReading = {
-  family: StatusFamily;
+  family: StatusFamily | null;
   word: string | null;
   counts: readonly BandCount[];
   age: string | null;
@@ -45,13 +45,16 @@ export const countOf = (
 
 // The worst state on the screen, first match wins (spec #1492).
 export function bandSummary(
-  { freshness, healthy, counts }: BandSummaryInput,
+  input: BandSummaryInput,
   now: Date,
 ): BandSummaryReading {
+  const { freshness } = input;
   const since = oldestAgo(freshness.readAt, now);
   const { outcome } = freshness;
   // A pressed chip stays, so the band can always unpress it (US17).
-  const pressed = counts.filter((each) => each.filter?.pressed === true);
+  const pressed = (input.counts ?? []).filter(
+    (each) => each.filter?.pressed === true,
+  );
   if (outcome === "fetch-failed" || outcome === "offline") {
     return {
       family: "failed",
@@ -68,11 +71,24 @@ export function bandSummary(
       age: null,
     };
   }
-  const shown = counts.filter(
-    (each) => each.count > 0 || each.filter?.pressed === true,
+  // With no Status column, a current read leaves band 2 to its facts.
+  if (input.counts === null) {
+    return { family: null, word: null, counts: [], age: since };
+  }
+  const allZero = input.counts.every((each) => each.count === 0);
+  const shown = input.counts.filter(
+    (each) =>
+      each.count > 0 ||
+      each.filter?.pressed === true ||
+      (each.gate !== undefined && !allZero),
   );
   if (shown.every((each) => each.count === 0)) {
-    return { family: "good", word: healthy, counts: shown, age: since };
+    return {
+      family: "good",
+      word: input.healthy,
+      counts: shown,
+      age: since,
+    };
   }
   const family = shown.some(
     (each) => each.count > 0 && each.family === "failed",

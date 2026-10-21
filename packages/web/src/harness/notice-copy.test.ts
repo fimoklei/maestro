@@ -1,15 +1,16 @@
 import type {
-  DeleteLocalSkillError,
-  DiscardSkillChangeError,
+  DeleteLocalError,
+  DiscardChangeError,
+  HarnessPrimitiveType,
   HarnessStateError,
   ImportSkillError,
   LocalEditsRefusal,
   PromoteDeletionError,
-  PromoteSkillError,
+  PromoteError,
   ProposalActionError,
   PublishReleaseError,
   ReleasePlanError,
-  RestoreSkillError,
+  RestoreError,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
@@ -30,8 +31,8 @@ import {
   refreshNotice,
   releasePlanNotice,
   releasePublishedNotice,
+  restoredNotice,
   restoreNotice,
-  skillRestoredNotice,
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
@@ -63,6 +64,20 @@ type Surface = {
   info?: readonly string[];
 };
 
+const TYPES: readonly HarnessPrimitiveType[] = ["skill", "prompt"];
+
+// One surface per type: each type's notices keep every rule below.
+const byType = (
+  name: string,
+  read: (error: unknown, type: HarnessPrimitiveType) => NoticeContent | null,
+  surfaceCodes: readonly string[],
+): Surface[] =>
+  TYPES.map((type) => ({
+    name: `${name} for ${type}`,
+    read: (error: unknown) => read(error, type),
+    codes: surfaceCodes,
+  }));
+
 const SURFACES: Surface[] = [
   {
     name: "harnessStateNotice",
@@ -93,10 +108,10 @@ const SURFACES: Surface[] = [
       "publish-in-progress": true,
     }),
   },
-  {
-    name: "promoteNotice",
-    read: promoteNotice,
-    codes: codes<PromoteSkillError>({
+  ...byType(
+    "promoteNotice",
+    promoteNotice,
+    codes<PromoteError>({
       "not-configured": true,
       "no-usable-origin": true,
       "invalid-skill": true,
@@ -110,11 +125,11 @@ const SURFACES: Surface[] = [
       "promote-failed": true,
       "promote-in-progress": true,
     }),
-  },
-  {
-    name: "deletionNotice",
-    read: deletionNotice,
-    codes: codes<PromoteDeletionError>({
+  ),
+  ...byType(
+    "deletionNotice",
+    deletionNotice,
+    codes<PromoteDeletionError>({
       "not-configured": true,
       "no-usable-origin": true,
       "invalid-skill": true,
@@ -133,12 +148,19 @@ const SURFACES: Surface[] = [
       "promote-failed": true,
       "promote-in-progress": true,
     }),
-  },
-  ...(["harness", "skills"] as const).map((screen) => ({
-    name: `localDeletionNotice on ${screen}`,
+  ),
+  ...(
+    [
+      ["harness", "skill"],
+      ["skills", "skill"],
+      ["harness", "prompt"],
+      ["prompts", "prompt"],
+    ] as const
+  ).map(([screen, type]) => ({
+    name: `localDeletionNotice on ${screen} for ${type}`,
     read: (error: unknown) =>
-      localDeletionNotice(error, { skill: "tdd", screen }),
-    codes: codes<DeleteLocalSkillError>({
+      localDeletionNotice(error, { type, name: "tdd", screen }),
+    codes: codes<DeleteLocalError>({
       "not-configured": true,
       "invalid-skill": true,
       "already-gone": true,
@@ -197,10 +219,10 @@ const SURFACES: Surface[] = [
       "action-failed": true,
     }),
   },
-  {
-    name: "restoreNotice",
-    read: restoreNotice,
-    codes: codes<RestoreSkillError>({
+  ...byType(
+    "restoreNotice",
+    restoreNotice,
+    codes<RestoreError>({
       "not-configured": true,
       "invalid-skill": true,
       "head-moved": true,
@@ -218,11 +240,11 @@ const SURFACES: Surface[] = [
       "restore-in-progress": true,
       "restore-failed": true,
     }),
-  },
-  {
-    name: "discardNotice",
-    read: (error: unknown) => discardNotice(error, "tdd"),
-    codes: codes<DiscardSkillChangeError>({
+  ),
+  ...byType(
+    "discardNotice",
+    (error, type) => discardNotice(error, { type, name: "tdd" }),
+    codes<DiscardChangeError>({
       "not-configured": true,
       "invalid-skill": true,
       "sparse-checkout": true,
@@ -238,7 +260,7 @@ const SURFACES: Surface[] = [
       "discard-in-progress": true,
       "discard-failed": true,
     }),
-  },
+  ),
 ];
 
 const surface = (name: string) => {
@@ -293,7 +315,9 @@ describe("the fallbacks", () => {
   // One fallback per surface: each failure costs something different (#688).
   it("state a different cost on every surface", () => {
     const messages = SURFACES.filter(
-      ({ name }) => name !== "localDeletionNotice on skills",
+      ({ name }) =>
+        !name.endsWith(" for prompt") &&
+        name !== "localDeletionNotice on skills for skill",
     ).map(({ read }) => readNotice(read(refusal(UNKNOWN_CODE)))?.message);
 
     expect(new Set(messages).size).toBe(messages.length);
@@ -302,10 +326,12 @@ describe("the fallbacks", () => {
 
 describe("a refusal that left the working tree as it was", () => {
   // Every sentence opens by saying so (#915).
-  it.each([
-    ["restoreNotice", "Nothing was restored."],
-    ["discardNotice", "Nothing was discarded."],
-  ])("%s opens every sentence with %j", (name, opening) => {
+  it.each(
+    TYPES.flatMap((type) => [
+      [`restoreNotice for ${type}`, "Nothing was restored."],
+      [`discardNotice for ${type}`, "Nothing was discarded."],
+    ]),
+  )("%s opens every sentence with %j", (name, opening) => {
     for (const [code, notice] of noticesOf(surface(name))) {
       expect(notice?.message.startsWith(`${opening} `), code).toBe(true);
     }
@@ -313,10 +339,15 @@ describe("a refusal that left the working tree as it was", () => {
 });
 
 describe("the refused skill", () => {
-  it.each([
-    ["discardNotice", ["already-proposed", "nothing-to-discard"]],
-    ["localDeletionNotice on harness", ["already-gone", "confirmation-stale"]],
-  ])("%s names it where the detail speaks of it", (name, named) => {
+  it.each(
+    TYPES.flatMap((type) => [
+      [`discardNotice for ${type}`, ["already-proposed", "nothing-to-discard"]],
+      [
+        `localDeletionNotice on harness for ${type}`,
+        ["already-gone", "confirmation-stale"],
+      ],
+    ]),
+  )("%s names it where the detail speaks of it", (name, named) => {
     for (const code of named) {
       expect(surface(name).read(refusal(code))?.detail, code).toSatisfy(
         (detail: NoticeContent["detail"]) =>
@@ -330,8 +361,11 @@ describe("Delete skill on each screen", () => {
   // Each screen names its own control that shows the skill as it is now.
   it("sends a folder already gone to that screen's way back", () => {
     const gone = (screen: "harness" | "skills") =>
-      localDeletionNotice(refusal("already-gone"), { skill: "tdd", screen })
-        ?.message;
+      localDeletionNotice(refusal("already-gone"), {
+        type: "skill",
+        name: "tdd",
+        screen,
+      })?.message;
 
     expect(gone("harness")).toBe(
       "Select Re-read Harness to see the skill as it is now.",
@@ -344,8 +378,12 @@ describe("Delete skill on each screen", () => {
 
 describe("the deletion vocabulary", () => {
   it("never calls a Harness deletion a removal", () => {
-    for (const [code, notice] of noticesOf(surface("deletionNotice"))) {
-      expect(wordsOf(notice), code).not.toMatch(/remov/i);
+    for (const type of TYPES) {
+      for (const [code, notice] of noticesOf(
+        surface(`deletionNotice for ${type}`),
+      )) {
+        expect(wordsOf(notice), code).not.toMatch(/remov/i);
+      }
     }
   });
 });
@@ -367,7 +405,7 @@ describe("CONCURRENT_CHANGE_NOTICE", () => {
   // (#465).
   it("carries the promote refusal's words at info level", () => {
     expect(CONCURRENT_CHANGE_NOTICE).toEqual({
-      ...promoteNotice(refusal("concurrent-change")),
+      ...promoteNotice(refusal("concurrent-change"), "skill"),
       level: "info",
     });
   });
@@ -462,21 +500,21 @@ describe("releasePublishedNotice", () => {
   });
 });
 
-describe("skillRestoredNotice", () => {
+describe("restoredNotice", () => {
   const retry = () => {};
 
   // A full restore is a toast; only a status the cockpit could not read again
   // stays in the band, with the way back to it (#915).
   it("warns with Re-read Harness as its action", () => {
-    expect(skillRestoredNotice(false, retry)).toMatchObject({
+    expect(restoredNotice("skill", false, retry)).toMatchObject({
       level: "warning",
       action: { label: "Re-read Harness", onClick: retry },
     });
   });
 
   it("says something different where a proposal is open", () => {
-    const withRequest = skillRestoredNotice(true, retry);
-    const without = skillRestoredNotice(false, retry);
+    const withRequest = restoredNotice("skill", true, retry);
+    const without = restoredNotice("skill", false, retry);
 
     expect(withRequest.detail).not.toEqual(without.detail);
     expect(withRequest).toEqual({ ...without, detail: withRequest.detail });
@@ -543,5 +581,85 @@ describe("localEditsRefusal", () => {
 
     expect(sentence).toContain("~/.claude/skills/tdd");
     expect(sentence).toContain("~/.agents/skills/tdd");
+  });
+});
+
+describe("a prompt's notices", () => {
+  const promptSurfaces = SURFACES.filter(({ name }) =>
+    name.endsWith(" for prompt"),
+  );
+
+  // A prompt is one file: no sentence may send its reader to a skill or to a
+  // folder of its own (#1590).
+  it.each(promptSurfaces.map(({ name }) => [name]))(
+    "%s never says skill, and no folder but the Harness or prompts folder",
+    (name) => {
+      for (const [code, notice] of noticesOf(surface(name))) {
+        expect(wordsOf(notice), code).not.toMatch(
+          /skill|(?<!prompts |Harness )folder/i,
+        );
+      }
+    },
+  );
+
+  it("names the prompt name rule with a prompt example", () => {
+    expect(
+      readNotice(promoteNotice(refusal("invalid-skill"), "prompt")),
+    ).toMatchObject({
+      label: "Unusable prompt name",
+      message:
+        "A prompt name uses lowercase letters, digits and single hyphens, like pr-review.",
+    });
+  });
+
+  it("states a file deleted from the clone after the dialog opened", () => {
+    expect(
+      readNotice(
+        localDeletionNotice(refusal("already-gone"), {
+          type: "prompt",
+          name: "pr-review",
+          screen: "prompts",
+        }),
+      ),
+    ).toMatchObject({
+      label: "File already deleted",
+      message: "Select Harness to see the prompt as it is now.",
+      detail:
+        "Something removed the pr-review file from your clone after this dialog opened.",
+    });
+  });
+
+  it("asks for Delete prompt again once the clone is read", () => {
+    expect(
+      readNotice(
+        localDeletionNotice(refusal("no-answer"), {
+          type: "prompt",
+          name: "pr-review",
+          screen: "harness",
+        }),
+      )?.message,
+    ).toBe(
+      "Nothing was deleted. Select Close, then select Delete prompt again.",
+    );
+  });
+
+  it("states a prompt file that resolves outside the Harness", () => {
+    expect(
+      readNotice(restoreNotice(refusal("destination-unsafe"), "prompt")),
+    ).toMatchObject({
+      label: "File outside the Harness",
+      message:
+        "Nothing was restored. Replace the link with a real file, then select Restore prompt again.",
+      detail:
+        "The prompt file resolves outside the Harness .maestro/prompts folder.",
+    });
+  });
+
+  it("states a restored prompt whose status is out of date", () => {
+    expect(restoredNotice("prompt", false, () => {})).toMatchObject({
+      label: "Prompt restored",
+      message:
+        "The prompt file is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
+    });
   });
 });

@@ -1,4 +1,4 @@
-import type { ProposalActionResult } from "@maestro/core";
+import type { PrimitiveRef, ProposalActionResult } from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
@@ -38,22 +38,25 @@ type Deps = Pick<
   | "inventory"
   | "promote"
   | "promoteDeletion"
-  | "deleteLocalSkill"
-  | "restoreSkill"
-  | "discardSkillChange"
+  | "deleteLocal"
+  | "restore"
+  | "discard"
   | "proposals"
   | "importSkill"
   | "scaffold"
 >;
 
+// A body carries more than the item; the use cases take the item alone.
+const refOf = ({ type, name }: PrimitiveRef): PrimitiveRef => ({ type, name });
+
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
-  // Takes the skill's name only; the harness is resolved server-side (#577).
+  // Takes the primitive's type and name only; the harness is resolved server-side (#577).
   app.post("/api/harness/promote", async (c) => {
     const body = await parseBody(c, promoteBodySchema, PROMOTE_BODY);
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.promote.execute(body.data.name);
+    const result = await deps.promote.execute(refOf(body.data));
     if (!result.ok) {
       const { status } = promoteErrorResponses[result.error];
       return c.json({ error: result.error }, status);
@@ -71,7 +74,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.promoteDeletion.execute(
-      body.data.name,
+      refOf(body.data),
       body.data.seenRemoteTree,
     );
     if (!result.ok) {
@@ -84,17 +87,17 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  app.get("/api/harness/skill/delete/check", async (c) => {
-    const result = await deps.deleteLocalSkill.inspect();
+  app.get("/api/harness/primitive/delete/check", async (c) => {
+    const result = await deps.deleteLocal.inspect();
     if (!result.ok) {
       const { status } = localDeletionErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    return c.json({ skills: result.skills });
+    return c.json(result.checks);
   });
 
   // The name is a claim: core re-reads the local refs and folder before deleting (#798).
-  app.post("/api/harness/skill/delete", async (c) => {
+  app.post("/api/harness/primitive/delete", async (c) => {
     const body = await parseBody(
       c,
       localDeletionBodySchema,
@@ -103,8 +106,8 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.deleteLocalSkill.execute(
-      body.data.name,
+    const result = await deps.deleteLocal.execute(
+      refOf(body.data),
       body.data.seenWorkingTree,
     );
     if (!result.ok) {
@@ -115,13 +118,13 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   });
 
   // The commit is compared with a freshly read HEAD, so the browser names no source.
-  app.post("/api/harness/skill/restore", async (c) => {
+  app.post("/api/harness/primitive/restore", async (c) => {
     const body = await parseBody(c, restoreBodySchema, RESTORE_BODY);
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.restoreSkill.execute(
-      body.data.name,
+    const result = await deps.restore.execute(
+      refOf(body.data),
       body.data.seenHeadCommit,
     );
     if (!result.ok) {
@@ -133,13 +136,13 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
 
   // The tree is the default-branch copy the author confirmed; core refuses one
   // that moved since (#1375).
-  app.post("/api/harness/skill/discard", async (c) => {
+  app.post("/api/harness/primitive/discard", async (c) => {
     const body = await parseBody(c, discardBodySchema, DISCARD_BODY);
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.discardSkillChange.execute(
-      body.data.name,
+    const result = await deps.discard.execute(
+      refOf(body.data),
       body.data.seenRemoteTree,
     );
     if (!result.ok) {
@@ -163,7 +166,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    return proposalResponse(c, await deps.proposals.create(body.data.name));
+    return proposalResponse(c, await deps.proposals.create(refOf(body.data)));
   });
 
   app.post("/api/harness/proposal/reopen", async (c) => {
@@ -173,7 +176,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.reopen(body.data.name, body.data.number),
+      await deps.proposals.reopen(refOf(body.data), body.data.number),
     );
   });
 
@@ -184,7 +187,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.withdraw(body.data.name, body.data.number),
+      await deps.proposals.withdraw(refOf(body.data), body.data.number),
     );
   });
 

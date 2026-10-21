@@ -36,6 +36,7 @@ import {
   RowMenuControlContext,
 } from "./row-menu-control";
 import { Skeleton } from "./skeleton";
+import type { StatusReading } from "./status-reading";
 import { useNow } from "./use-now";
 import { useWidthRem } from "./use-width-rem";
 
@@ -63,6 +64,8 @@ export type DataTableColumn<T extends RowData> = ColumnDef<Features, T, any> & {
   card?: DataTableCardColumn<T>;
   /** The row's name, which the table draws on one line in this column. */
   name?: (row: T) => string;
+  /** A finding's glyph before the name; null: none. */
+  nameMark?: (row: T) => StatusReading | null;
 };
 
 const columnIdOf = <T extends RowData>(column: DataTableColumn<T>) =>
@@ -214,6 +217,7 @@ export function DataTable<T extends RowData>({
   const named = columns.find((column) => column.name !== undefined);
   const nameColumn = named === undefined ? undefined : columnIdOf(named);
   const nameOf = named?.name;
+  const markOf = named?.nameMark;
   // The active row opens one card: the first shown column's that says so.
   const keyboardCard = leafColumns.find(
     (column) => cards.get(column.id)?.keyboard,
@@ -423,7 +427,10 @@ export function DataTable<T extends RowData>({
             const card = cards.get(cell.column.id);
             const value =
               cell.column.id === nameColumn && nameOf !== undefined ? (
-                <DataTableName name={nameOf(row.original)} />
+                <DataTableName
+                  name={nameOf(row.original)}
+                  mark={markOf?.(row.original) ?? null}
+                />
               ) : (
                 <table.FlexRender cell={cell} />
               );

@@ -1,11 +1,29 @@
+import type { InventorySkill } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { filterByName } from "./type-filter";
-import type { Primitive } from "./use-inventory";
 
-const primitives: Primitive[] = [
-  { type: "skill", name: "tdd", description: "Test-driven development." },
-  { type: "skill", name: "caveman", description: "Terse mode." },
-  { type: "skill", name: "Research", description: "Investigate a question." },
+const primitives: InventorySkill[] = [
+  {
+    type: "skill",
+    name: "tdd",
+    path: ".apm/skills/tdd",
+    pendingRelease: null,
+    description: "Test-driven development.",
+  },
+  {
+    type: "skill",
+    name: "caveman",
+    path: ".apm/skills/caveman",
+    pendingRelease: null,
+    description: "Terse mode.",
+  },
+  {
+    type: "skill",
+    name: "Research",
+    path: ".apm/skills/Research",
+    pendingRelease: null,
+    description: "Investigate a question.",
+  },
 ];
 
 describe("filterByName", () => {

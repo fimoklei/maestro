@@ -13,7 +13,10 @@ export const stageRow = (
   over: Partial<HarnessStageRow> = {},
 ): HarnessStageRow => ({
   stage,
-  skill,
+  type: "skill",
+  name: skill,
+  path: `.apm/skills/${skill}`,
+  branch: `maestro/${skill}`,
   status,
   change: "edit",
   requests: [],
@@ -25,7 +28,7 @@ export const stageRow = (
   localOnly: false,
   remoteTree: null,
   restorable: false,
-  folderOnDisk: false,
+  onDisk: false,
   previousName: null,
   ...over,
 });

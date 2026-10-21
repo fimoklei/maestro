@@ -1,5 +1,16 @@
-// Stage membership is independent: one skill may hold a row in every stage.
+// Stage membership is independent: one primitive may hold a row in every
+// stage. A primitive is a type plus a name, so a skill and a prompt with one
+// name never share a row, a request or an "Also in".
 import type { GitOrigin } from "../deploy/git-origin";
+import type { HarnessMovement } from "./harness-movements";
+import {
+  HARNESS_PRIMITIVE_TYPES,
+  type HarnessPrimitiveType,
+  type PrimitiveRef,
+  primitiveKey,
+  primitivePath,
+  proposalBranch,
+} from "./harness-primitive";
 import {
   type HarnessReviewRead,
   isOthers,
@@ -9,9 +20,7 @@ import {
   type ViewerRead,
   waitingOn,
 } from "./harness-review-port";
-import { promoteBranch } from "./promote-branch";
-import type { HarnessSkillTrees } from "./read-harness-state";
-import type { SkillMovement } from "./skill-movements";
+import type { HarnessHashes, HarnessMovementTrees } from "./read-harness-state";
 
 export type HarnessStage =
   | "pending-proposal"
@@ -43,6 +52,8 @@ type ReleaseStatus = "not-yet-released";
 // default branch. A rename is one change only once merged; before that its
 // folders read as an addition and a deletion.
 export type HarnessChange = "addition" | "edit" | "deletion" | "rename";
+
+type ReleaseMovement = HarnessMovement & { change: HarnessChange };
 
 // `null` is a skill absent at that ref; it compares like any other value.
 type SkillTreeHashes = {
@@ -89,7 +100,12 @@ type ProposalComparison =
 
 export type HarnessStageRow = {
   stage: HarnessStage;
-  skill: string;
+  type: HarnessPrimitiveType;
+  name: string;
+  // The primitive's folder or file in the Harness.
+  path: string;
+  // Its proposal branch.
+  branch: string;
   status: StageStatus;
   // This stage's own change. Never read across stages.
   change: HarnessChange;
@@ -111,7 +127,7 @@ export type HarnessStageRow = {
   restorable: boolean;
   // The skill's folder is in the working tree, so Delete skill has something
   // to remove. False where the refs could not be read.
-  folderOnDisk: boolean;
+  onDisk: boolean;
   previousName: string | null;
 };
 
@@ -127,13 +143,6 @@ export type HarnessStages = {
   release: HarnessStageRead;
 };
 
-const RELEASE_CHANGE: Record<SkillMovement["kind"], HarnessChange> = {
-  added: "addition",
-  changed: "edit",
-  renamed: "rename",
-  removed: "deletion",
-};
-
 const changeOf = (deletion: boolean, remote: string | null): HarnessChange => {
   if (deletion) {
     return "deletion";
@@ -145,11 +154,12 @@ export type StageInput = {
   origin: GitOrigin;
   defaultBranch: string | null;
   // Null makes the two local stages unknown, never empty.
-  trees: HarnessSkillTrees | null;
+  trees: HarnessMovementTrees | null;
+  // Keyed by `primitiveKey`.
   atMergeBase: Record<string, string> | null;
   review: HarnessReviewRead;
   viewer: ViewerRead;
-  release: SkillMovement[] | null;
+  release: ReleaseMovement[] | null;
 };
 
 export const buildStages = (input: StageInput): HarnessStages => {
@@ -160,7 +170,8 @@ export const buildStages = (input: StageInput): HarnessStages => {
   return withCrossStage({ proposal, review, release }, input, matches);
 };
 
-type SkillMatches = Map<string, ReviewRequest[]>;
+// Keyed by `primitiveKey`.
+type Matches = Map<string, ReviewRequest[]>;
 
 const matchRequests = ({
   origin,
@@ -168,18 +179,18 @@ const matchRequests = ({
   trees,
   review,
   release,
-}: StageInput): SkillMatches => {
-  const matches: SkillMatches = new Map();
+}: StageInput): Matches => {
+  const matches: Matches = new Map();
   if (review.outcome !== "read" || defaultBranch === null) {
     return matches;
   }
-  for (const skill of everySkill(trees, release)) {
+  for (const ref of everyPrimitive(trees, release)) {
     matches.set(
-      skill,
+      primitiveKey(ref),
       review.requests.filter((request) =>
         matchesProposal(request, {
           ownerRepo: origin.ownerRepo,
-          branch: promoteBranch(skill),
+          branch: proposalBranch(ref),
           base: defaultBranch,
         }),
       ),
@@ -188,22 +199,33 @@ const matchRequests = ({
   return matches;
 };
 
-const everySkill = (
-  trees: HarnessSkillTrees | null,
-  release: SkillMovement[] | null,
-): string[] => {
-  const names = new Set<string>();
+const everyPrimitive = (
+  trees: HarnessMovementTrees | null,
+  release: ReleaseMovement[] | null,
+): PrimitiveRef[] => {
+  const refs = new Map<string, PrimitiveRef>();
+  const add = (ref: PrimitiveRef) =>
+    refs.set(primitiveKey(ref), { type: ref.type, name: ref.name });
   if (trees !== null) {
-    for (const map of Object.values(trees)) {
-      for (const name of Object.keys(map)) {
-        names.add(name);
+    for (const type of HARNESS_PRIMITIVE_TYPES) {
+      for (const map of Object.values(trees[type])) {
+        for (const name of Object.keys(map)) {
+          add({ type, name });
+        }
       }
     }
   }
   for (const movement of release ?? []) {
-    names.add(movement.name);
+    add(movement);
   }
-  return [...names].sort();
+  // Code-unit order by name, as the skill-only listing sorted.
+  return [...refs.values()].sort((a, b) =>
+    a.name === b.name
+      ? a.type.localeCompare(b.type, "en")
+      : a.name < b.name
+        ? -1
+        : 1,
+  );
 };
 
 const linkFor =
@@ -217,25 +239,30 @@ const linkFor =
     byOther: isOthers(request, viewer),
   });
 
-const openOf = (matches: SkillMatches, skill: string): ReviewRequest[] =>
-  (matches.get(skill) ?? []).filter((request) => request.state === "open");
+const openOf = (matches: Matches, ref: PrimitiveRef): ReviewRequest[] =>
+  (matches.get(primitiveKey(ref)) ?? []).filter(
+    (request) => request.state === "open",
+  );
 
 // A bounded read may hide a second open request, so it holds nothing.
 const waitFor = (
   { review, viewer }: StageInput,
-  matches: SkillMatches,
-  skill: string,
+  matches: Matches,
+  ref: PrimitiveRef,
 ): string | null =>
-  isCompleteRead(review) ? waitingOn(openOf(matches, skill), viewer) : null;
+  isCompleteRead(review) ? waitingOn(openOf(matches, ref), viewer) : null;
 
 const blankRow = (
   stage: HarnessStage,
-  skill: string,
+  ref: PrimitiveRef,
   status: StageStatus,
   change: HarnessChange,
 ): HarnessStageRow => ({
   stage,
-  skill,
+  type: ref.type,
+  name: ref.name,
+  path: primitivePath(ref),
+  branch: proposalBranch(ref),
   status,
   change,
   requests: [],
@@ -247,23 +274,28 @@ const blankRow = (
   localOnly: false,
   remoteTree: null,
   restorable: false,
-  folderOnDisk: false,
+  onDisk: false,
   previousName: null,
 });
 
 // Local places only, so every stage gives the same answer.
-const isRestorable = (trees: HarnessSkillTrees, skill: string): boolean =>
+const isRestorable = (
+  trees: HarnessMovementTrees,
+  { type, name }: PrimitiveRef,
+): boolean =>
   isLocalDeletion({
-    local: trees.local[skill] ?? null,
-    working: trees.working[skill] ?? null,
+    local: trees[type].local[name] ?? null,
+    working: trees[type].working[name] ?? null,
   });
 
-const isOnDisk = (trees: HarnessSkillTrees | null, skill: string): boolean =>
-  trees !== null && Object.hasOwn(trees.working, skill);
+const isOnDisk = (
+  trees: HarnessMovementTrees | null,
+  { type, name }: PrimitiveRef,
+): boolean => trees !== null && Object.hasOwn(trees[type].working, name);
 
 const releaseStage = (
-  release: SkillMovement[] | null,
-  trees: HarnessSkillTrees | null,
+  release: ReleaseMovement[] | null,
+  trees: HarnessMovementTrees | null,
 ): HarnessStageRead => {
   if (release === null) {
     return { outcome: "unknown" };
@@ -274,11 +306,11 @@ const releaseStage = (
     rows: release.map((movement) => ({
       ...blankRow(
         "pending-release",
-        movement.name,
+        movement,
         "not-yet-released",
-        RELEASE_CHANGE[movement.kind],
+        movement.change,
       ),
-      folderOnDisk: isOnDisk(trees, movement.name),
+      onDisk: isOnDisk(trees, movement),
       previousName: movement.previousName ?? null,
     })),
   };
@@ -288,17 +320,17 @@ const releaseStage = (
 // review read proving that, content equal to origin/HEAD is the fallback.
 // A bounded (incomplete) read proves nothing spent.
 const currentProposal = (
-  trees: HarnessSkillTrees,
-  skill: string,
-  matches: SkillMatches,
+  hashes: HarnessHashes,
+  ref: PrimitiveRef,
+  matches: Matches,
   completeRead: boolean,
 ): { tree: string | null } | null => {
-  const branch = trees.promote[skill];
+  const branch = hashes.promote[ref.name];
   if (branch === undefined) {
     return null;
   }
   const { tree } = branch;
-  const matching = matches.get(skill) ?? [];
+  const matching = matches.get(primitiveKey(ref)) ?? [];
   // An open request outranks everything.
   if (matching.some((request) => request.state === "open")) {
     return { tree };
@@ -314,7 +346,7 @@ const currentProposal = (
   if (spent) {
     return null;
   }
-  return tree !== (trees.remote[skill] ?? null) ? { tree } : null;
+  return tree !== (hashes.remote[ref.name] ?? null) ? { tree } : null;
 };
 
 const isCompleteRead = (review: HarnessReviewRead): boolean =>
@@ -322,7 +354,7 @@ const isCompleteRead = (review: HarnessReviewRead): boolean =>
 
 const proposalStage = (
   input: StageInput,
-  matches: SkillMatches,
+  matches: Matches,
 ): HarnessStageRead => {
   const { trees, atMergeBase, review } = input;
   const link = linkFor(input.viewer);
@@ -331,14 +363,15 @@ const proposalStage = (
   }
   const complete = isCompleteRead(review);
   const rows: HarnessStageRow[] = [];
-  for (const skill of everySkill(trees, null)) {
-    const branch = trees.promote[skill];
+  for (const ref of everyPrimitive(trees, null)) {
+    const typed = trees[ref.type];
+    const branch = typed.promote[ref.name];
     const hashes = {
-      remote: trees.remote[skill] ?? null,
-      local: trees.local[skill] ?? null,
-      working: trees.working[skill] ?? null,
+      remote: typed.remote[ref.name] ?? null,
+      local: typed.local[ref.name] ?? null,
+      working: typed.working[ref.name] ?? null,
     };
-    const proposal = currentProposal(trees, skill, matches, complete);
+    const proposal = currentProposal(typed, ref, matches, complete);
     // Against the default branch, also differing from local HEAD separates an
     // own edit from a clone merely behind.
     const waiting =
@@ -348,18 +381,18 @@ const proposalStage = (
     if (!waiting) {
       continue;
     }
-    const open = openOf(matches, skill);
+    const open = openOf(matches, ref);
     // With several open requests, linking one would be arbitrary.
     const sole = open.length === 1 ? open[0] : undefined;
     rows.push({
       ...blankRow(
         "pending-proposal",
-        skill,
+        ref,
         proposal === null ? "not-yet-proposed" : "new-local-work",
         changeOf(isLocalDeletion(hashes), hashes.remote),
       ),
-      restorable: isRestorable(trees, skill),
-      folderOnDisk: isOnDisk(trees, skill),
+      restorable: isRestorable(trees, ref),
+      onDisk: isOnDisk(trees, ref),
       requests: sole === undefined ? [] : [link(sole)],
       comparison:
         proposal === null
@@ -367,9 +400,11 @@ const proposalStage = (
           : { kind: "proposal", number: sole?.number ?? null },
       concurrentChange: isConcurrentlyChanged(
         hashes,
-        atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),
+        atMergeBase === null
+          ? undefined
+          : (atMergeBase[primitiveKey(ref)] ?? null),
       ),
-      waitingOn: waitFor(input, matches, skill),
+      waitingOn: waitFor(input, matches, ref),
       localOnly:
         hashes.remote === null && hashes.local === null && branch === undefined,
       remoteTree: hashes.remote,
@@ -400,10 +435,7 @@ const ENDED = [
   ReviewStatus,
 ])[];
 
-const reviewStage = (
-  input: StageInput,
-  matches: SkillMatches,
-): HarnessStageRead => {
+const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
   const { trees, review } = input;
   const link = linkFor(input.viewer);
   if (review.outcome === "unavailable") {
@@ -414,22 +446,23 @@ const reviewStage = (
   }
   const complete = isCompleteRead(review);
   const rows: HarnessStageRow[] = [];
-  for (const skill of everySkill(trees, null)) {
-    const matching = matches.get(skill) ?? [];
+  for (const ref of everyPrimitive(trees, null)) {
+    const typed = trees[ref.type];
+    const matching = matches.get(primitiveKey(ref)) ?? [];
     const open = matching.filter((request) => request.state === "open");
-    const proposal = currentProposal(trees, skill, matches, complete);
+    const proposal = currentProposal(typed, ref, matches, complete);
     // The branch's deletion fact and the disk's can disagree, so both travel.
     const change = changeOf(
       proposal !== null && proposal.tree === null,
-      trees.remote[skill] ?? null,
+      typed.remote[ref.name] ?? null,
     );
     const local = {
-      restorable: isRestorable(trees, skill),
-      folderOnDisk: isOnDisk(trees, skill),
+      restorable: isRestorable(trees, ref),
+      onDisk: isOnDisk(trees, ref),
     };
     if (open.length > 1) {
       rows.push({
-        ...blankRow("pending-review", skill, "multiple-pull-requests", change),
+        ...blankRow("pending-review", ref, "multiple-pull-requests", change),
         ...local,
         requests: open.map(link),
       });
@@ -437,11 +470,11 @@ const reviewStage = (
     }
     const sole = open.length === 1 ? open[0] : undefined;
     if (sole !== undefined) {
-      const waiting = waitFor(input, matches, skill);
+      const waiting = waitFor(input, matches, ref);
       rows.push({
         ...blankRow(
           "pending-review",
-          skill,
+          ref,
           waiting === null ? openStatus(sole) : "proposed-by-other",
           change,
         ),
@@ -463,7 +496,7 @@ const reviewStage = (
     })[0];
     if (settled !== undefined) {
       rows.push({
-        ...blankRow("pending-review", skill, settled.status, change),
+        ...blankRow("pending-review", ref, settled.status, change),
         ...local,
         requests: settled.requests.map(link),
       });
@@ -472,7 +505,7 @@ const reviewStage = (
     // A bounded read cannot prove a request absent.
     if (review.complete) {
       rows.push({
-        ...blankRow("pending-review", skill, "pull-request-missing", change),
+        ...blankRow("pending-review", ref, "pull-request-missing", change),
         ...local,
       });
     }
@@ -487,7 +520,7 @@ const reviewStage = (
 const withCrossStage = (
   stages: HarnessStages,
   { review }: StageInput,
-  matches: SkillMatches,
+  matches: Matches,
 ): HarnessStages => {
   const reads = [stages.proposal, stages.review, stages.release];
   const allRead = reads.every((stage) => stage.outcome === "read");
@@ -498,9 +531,10 @@ const withCrossStage = (
       continue;
     }
     for (const row of stage.rows) {
-      const held = holders.get(row.skill) ?? new Set<HarnessStage>();
+      const key = primitiveKey(row);
+      const held = holders.get(key) ?? new Set<HarnessStage>();
       held.add(row.stage);
-      holders.set(row.skill, held);
+      holders.set(key, held);
     }
   }
   const settle = (stage: HarnessStageRead): HarnessStageRead => {
@@ -511,15 +545,15 @@ const withCrossStage = (
       ...stage,
       rows: stage.rows.map((row) => {
         // A bounded read proves membership only where it found a request.
+        const key = primitiveKey(row);
         const known =
-          allRead && (!bounded || (matches.get(row.skill)?.length ?? 0) > 0);
+          allRead && (!bounded || (matches.get(key)?.length ?? 0) > 0);
         return {
           ...row,
           alsoIn: known
             ? STAGE_ORDER.filter(
                 (held) =>
-                  held !== row.stage &&
-                  holders.get(row.skill)?.has(held) === true,
+                  held !== row.stage && holders.get(key)?.has(held) === true,
               )
             : null,
         };

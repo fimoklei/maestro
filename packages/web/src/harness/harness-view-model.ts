@@ -7,7 +7,6 @@ import type {
 import { NOT_RELEASED_YET } from "../ui/band-copy";
 import { freshnessLine } from "../ui/freshness";
 import { type Copy, machine, phrase } from "../ui/phrase";
-import { CREATE_RELEASE_UNAVAILABLE } from "./dialog-copy";
 import { defaultBranchCopy, STAGE_NAMES } from "./stage-copy";
 
 // The stage header's meta slot carries at most one reading, never two (#838),
@@ -51,7 +50,7 @@ const proposalMeta = (
       ? phrase`Compared with ${branchValue}`
       : `Compared with ${only}`;
   }
-  return phrase`Compared with each skill's proposal or ${branchValue}`;
+  return phrase`Compared with each change's proposal or ${branchValue}`;
 };
 
 const reviewMeta = (read: HarnessStageRead): string | null => {
@@ -124,14 +123,3 @@ export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
 // publish a delta that has already moved (#519).
 export const releaseEnabled = (freshness: HarnessFreshness): boolean =>
   freshness.outcome !== "offline" && freshness.outcome !== "fetch-failed";
-
-/** Why Create a release cannot open its plan now; null when it can. */
-export const releaseUnavailable = (
-  freshness: HarnessFreshness,
-  rereading: boolean,
-): string | null =>
-  rereading
-    ? CREATE_RELEASE_UNAVAILABLE.rereading
-    : releaseEnabled(freshness)
-      ? null
-      : CREATE_RELEASE_UNAVAILABLE.notRead;

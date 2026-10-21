@@ -53,7 +53,7 @@ Valid jobs, deliberately not being done.
 | Compounding loop (corrections → primitives) | Needs adoption and a working manual loop first. |
 | Adoption dashboards across teams | Measuring use means gathering from other people's machines; Maestro is local-only and collects nothing. |
 | Support every AI coding tool | Two tools (Claude Code, Codex) first; breadth later. |
-| Deploy prompts as slash commands | APM delivers every prompt to every target; a prompt that must become a slash command becomes a skill ([#1403](https://github.com/fimoklei/maestro/issues/1403)). |
+| Deploy prompts as slash commands | APM would deliver every prompt to every target, so the Harness keeps prompts where APM never delivers them (ADR-0019 §8). A prompt that must become a slash command becomes a skill ([#1403](https://github.com/fimoklei/maestro/issues/1403)). |
 | Auto-generate primitives from PR comments | Needs data integration and a working manual loop first. |
 | SaaS backend / RBAC / audit / compliance | Too heavy before solo daily value is proven. |
 

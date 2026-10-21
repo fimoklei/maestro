@@ -103,7 +103,7 @@ const NAMED_CONTROLS = [
   ),
   CANCEL,
   CLOSE,
-  ...["Deploy-state", "Skills", "Repositories", "Harness"].map(
+  ...["Deploy-state", "Skills", "Prompts", "Repositories", "Harness"].map(
     controlLabels.rereadLabel,
   ),
 ];

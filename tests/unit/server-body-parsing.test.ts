@@ -25,7 +25,7 @@ describe("POST body parsing", () => {
     message:
       "Maestro could not change the pull request. Reload the page, then try again.",
     detail:
-      "The request carries a skill name and a pull-request number: { name: string, number: number }.",
+      'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
   };
 
   const routes = [
@@ -71,6 +71,32 @@ describe("POST body parsing", () => {
         error: "invalid-body",
         ...route.shape,
       });
+    });
+  }
+
+  // A per-item request names the primitive's type as well as its name.
+  const perItemRoutes = [
+    { path: "/api/harness/promote", body: {} },
+    { path: "/api/harness/promote/deletion", body: { seenRemoteTree: "t" } },
+    { path: "/api/harness/primitive/delete", body: { seenWorkingTree: "t" } },
+    { path: "/api/harness/primitive/restore", body: { seenHeadCommit: "c" } },
+    { path: "/api/harness/primitive/discard", body: { seenRemoteTree: "t" } },
+    { path: "/api/harness/proposal/create", body: {} },
+    { path: "/api/harness/proposal/reopen", body: { number: 7 } },
+    { path: "/api/harness/proposal/withdraw", body: { number: 7 } },
+  ];
+
+  for (const route of perItemRoutes) {
+    it(`refuses a body on ${route.path} that names no known type`, async () => {
+      for (const type of [undefined, "agent"]) {
+        const res = await makeApp().request(
+          route.path,
+          post(JSON.stringify({ ...route.body, name: "tdd", type })),
+        );
+
+        expect(res.status).toBe(400);
+        expect(await res.json()).toMatchObject({ error: "invalid-body" });
+      }
     });
   }
 

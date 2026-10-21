@@ -1,6 +1,17 @@
-import type { ReleasePlan, SemverStep } from "@maestro/core";
+import type {
+  HarnessPrimitiveType,
+  ReleasePlan,
+  SemverStep,
+} from "@maestro/core";
 import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
-import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type RefObject,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { BandAction } from "../ui/band-action";
 import {
@@ -27,10 +38,10 @@ import { useWriteAction } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
+import type { OpenPrimitive } from "./harness-route";
 import {
   harnessAnnouncement,
   releaseEnabled,
-  releaseUnavailable,
   type StageSection,
   stageSections,
 } from "./harness-view-model";
@@ -39,7 +50,7 @@ import {
   publishReleaseNotice,
   refreshNotice,
   releasePublishedNotice,
-  skillRestoredNotice,
+  restoredNotice,
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
@@ -67,10 +78,10 @@ const LABELS_BELOW_REM = 62;
 const COUNTS_BELOW_REM = 20;
 
 export function HarnessView({
-  openSkill,
+  openPrimitive,
 }: {
-  /** A skill that just landed elsewhere, opened as its Pending proposal. */
-  openSkill: string | null;
+  /** A primitive another screen sent here, opened in the stage it names. */
+  openPrimitive: OpenPrimitive | null;
 }) {
   const harness = useHarness();
   const state = harness.data;
@@ -85,13 +96,21 @@ export function HarnessView({
     failure: harnessStateNotice(harness.error) ?? refreshNotice(refresh.error),
     onReread: fetchRemote,
     openOnArrival:
-      openSkill === null
+      openPrimitive === null
         ? null
-        : rowId({ stage: "pending-proposal", skill: openSkill }),
+        : rowId({
+            ...openPrimitive,
+            stage: openPrimitive.stage ?? "pending-proposal",
+          }),
   });
   const reread = table.reread;
   const { open } = table;
 
+  // What a blocked Create a release points at: the notice, else band 2's
+  // reading, or its Pending release count.
+  const noticeId = useId();
+  const readingId = useId();
+  const releaseCountId = useId();
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
@@ -135,7 +154,7 @@ export function HarnessView({
   const importFlow = useImportFlow(table.report, ({ name }) => {
     // An import writes the working tree, so its row is Pending proposal's —
     // even where the skill also holds a later one (#865).
-    open(rowId({ stage: "pending-proposal", skill: name }));
+    open(rowId({ stage: "pending-proposal", type: "skill", name }));
     importSaid.current = true;
   });
   const presses = useHarnessPresses(state, table.report);
@@ -241,6 +260,21 @@ export function HarnessView({
                   (a, b) => readingRank(a.reading) - readingRank(b.reading),
                 ),
         );
+  const bandCounts = harnessCounts(
+    sections.flatMap((section) =>
+      section.read.outcome === "read"
+        ? section.read.rows.map(() => section.stage)
+        : [],
+    ),
+    releaseCountId,
+  );
+  // The stages read the same release diff as the plan, so a confirmed 0 here
+  // is an empty dialog there.
+  const releaseRead = sections.find(
+    (section) => section.stage === "pending-release",
+  )?.read;
+  const nothingToRelease =
+    releaseRead?.outcome === "read" && releaseRead.rows.length === 0;
   const byTitle = (key: string): StageSection | undefined =>
     sections.find((section) => section.title === key);
 
@@ -282,15 +316,32 @@ export function HarnessView({
               onClick={importFlow.start}
             />
             {/* Closed while the remote's answer is unknown — an offline or
-                failed fetch — and while a re-read is still rewriting the refs
-                a plan reads. Advisory findings never gate it (#519). */}
+                failed fetch. Open during a re-read: Publish release checks
+                every ref against the remote. Advisory findings never gate it
+                (#519). */}
             <GatedButton
               variant="primary"
               label={CREATE_RELEASE}
-              unavailable={releaseUnavailable(
-                state.freshness,
-                refresh.isPending,
-              )}
+              unavailable={
+                !releaseEnabled(state.freshness)
+                  ? {
+                      describedBy:
+                        harnessStateNotice(harness.error) === null &&
+                        staleStatusNotice(state.freshness, reread) !== null
+                          ? noticeId
+                          : readingId,
+                    }
+                  : nothingToRelease
+                    ? {
+                        // Every count at 0 reads All released instead.
+                        describedBy: bandCounts.every(
+                          (count) => count.count === 0,
+                        )
+                          ? readingId
+                          : releaseCountId,
+                      }
+                    : null
+              }
               onClick={() => setPlanOpen(true)}
             />
           </>
@@ -333,16 +384,11 @@ export function HarnessView({
                   outcome: state.freshness.outcome,
                 },
           healthy: ALL_RELEASED,
-          counts: harnessCounts(
-            sections.flatMap((section) =>
-              section.read.outcome === "read"
-                ? section.read.rows.map(() => section.stage)
-                : [],
-            ),
-          ),
+          counts: bandCounts,
         },
         labelsBelowRem: LABELS_BELOW_REM,
         countsBelowRem: COUNTS_BELOW_REM,
+        wordId: readingId,
       }}
       rereading={refresh.isPending}
       firstReadRows={8}
@@ -386,6 +432,7 @@ export function HarnessView({
           restored={presses.restore.data}
           dismissRestored={presses.restore.reset}
           rereadRef={table.rereadRef}
+          noticeId={noticeId}
         />
       }
     >
@@ -468,6 +515,7 @@ function Notices({
   restored,
   dismissRestored,
   rereadRef,
+  noticeId,
 }: {
   state: ReturnType<typeof useHarness>["data"];
   readError: unknown;
@@ -477,9 +525,12 @@ function Notices({
   published: { tag: string; inventoryRefreshed: boolean } | undefined;
   dismissPublished: () => void;
   rereadInventory: () => void;
-  restored: { hasRequest: boolean; statusRead: boolean } | undefined;
+  restored:
+    | { type: HarnessPrimitiveType; hasRequest: boolean; statusRead: boolean }
+    | undefined;
   dismissRestored: () => void;
   rereadRef: RefObject<HTMLButtonElement | null>;
+  noticeId: string;
 }) {
   // One notice, the one that blocks most; the next shows once it clears.
   // A full success is a toast, so only a partial one reaches the band.
@@ -509,7 +560,7 @@ function Notices({
       notice:
         restored === undefined || restored.statusRead
           ? null
-          : skillRestoredNotice(restored.hasRequest, reread),
+          : restoredNotice(restored.type, restored.hasRequest, reread),
       clear: dismissRestored,
     },
     {
@@ -535,9 +586,10 @@ function Notices({
   return (
     <div className={shown === undefined ? "flex flex-col" : "p-panel"}>
       {clear === undefined ? (
-        <Notice trigger="load" notice={shown?.notice ?? null} />
+        <Notice id={noticeId} trigger="load" notice={shown?.notice ?? null} />
       ) : (
         <Notice
+          id={noticeId}
           trigger="user-action"
           notice={shown?.notice ?? null}
           onDismiss={dismiss}

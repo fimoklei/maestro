@@ -61,7 +61,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       await new HarnessGitAdapter({
         released: new ReleasedContentReader(),
       }).readMovementTrees(root)
-    )?.working.tdd ?? null;
+    )?.skill.working.tdd ?? null;
 
   const treeAt = async (ref: string) =>
     (await git(root, "rev-parse", `${ref}:${FOLDER}`)).stdout.trim();
@@ -109,11 +109,14 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       { gh: review },
     );
 
-  const restore = async (app: ReturnType<typeof makeApp>, body: unknown) =>
-    app.request("/api/harness/skill/restore", {
+  const restore = async (
+    app: ReturnType<typeof makeApp>,
+    body: Record<string, unknown>,
+  ) =>
+    app.request("/api/harness/primitive/restore", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type: "skill", ...body }),
     });
 
   const readState = async (app: ReturnType<typeof makeApp>) =>
@@ -136,7 +139,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       state.stages.proposal.outcome === "read"
         ? state.stages.proposal.rows
         : [];
-    expect(rows.map((row) => [row.skill, row.change, row.restorable])).toEqual([
+    expect(rows.map((row) => [row.name, row.change, row.restorable])).toEqual([
       ["tdd", "deletion", true],
     ]);
   });
@@ -218,7 +221,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       state.stages.proposal.outcome === "read"
         ? state.stages.proposal.rows
         : [];
-    expect(rows.map((row) => [row.skill, row.status, row.restorable])).toEqual([
+    expect(rows.map((row) => [row.name, row.status, row.restorable])).toEqual([
       ["tdd", "new-local-work", false],
     ]);
   });

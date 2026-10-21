@@ -29,7 +29,7 @@ JsModuleSource() as $source where {
     },
     and {
       $filename <: r".*/core/src/deploy-state/release-head\.test\.ts",
-      $source <: r"[\"']\.\./harness/(?:read-harness-state|skill-movements)[\"']"
+      $source <: r"[\"']\.\./harness/read-harness-state[\"']"
     },
     and {
       $filename <: r".*/core/src/deploy-state/root-package-skills\.test\.ts",
@@ -41,7 +41,7 @@ JsModuleSource() as $source where {
     },
     and {
       $filename <: r".*/core/src/deploy/update-target\.test\.ts",
-      $source <: r"[\"']\.\./harness/(?:read-harness-state|skill-movements)[\"']"
+      $source <: r"[\"']\.\./harness/read-harness-state[\"']"
     },
     and {
       $filename <: r".*/core/src/drift/check-version-drift\.test\.ts",
@@ -49,7 +49,7 @@ JsModuleSource() as $source where {
     },
     and {
       $filename <: r".*/core/src/drift/read-drift\.test\.ts",
-      $source <: r"[\"']\.\./(?:deploy/deployed-location|deploy/git-origin|harness/skill-movements)[\"']"
+      $source <: r"[\"']\.\./(?:deploy/deployed-location|deploy/git-origin)[\"']"
     },
     and {
       $filename <: r".*/core/src/harness/harness-stages\.test\.ts",
@@ -64,12 +64,8 @@ JsModuleSource() as $source where {
       $source <: r"[\"']\.\./filesystem/copy-skill-folder[\"']"
     },
     and {
-      $filename <: r".*/core/src/harness/restore-skill\.test\.ts",
+      $filename <: r".*/core/src/harness/restore\.test\.ts",
       $source <: r"[\"']\.\./filesystem/copy-tree-fs[\"']"
-    },
-    and {
-      $filename <: r".*/core/src/inventory/released-skills\.test\.ts",
-      $source <: r"[\"']\.\./harness/(?:read-harness-state|skill-movements)[\"']"
     },
     and {
       $filename <: r".*/core/src/registry/registry\.test\.ts",

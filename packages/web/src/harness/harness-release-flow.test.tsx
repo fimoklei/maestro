@@ -11,7 +11,9 @@ import {
   PLAN,
   RELEASED,
   renderHarness,
+  row,
   stubHarnessServer,
+  withStages,
 } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 
@@ -43,14 +45,24 @@ function IdleInventoryProbe() {
 installHarnessHooks();
 
 describe("Harness release", () => {
-  const FETCHED: HarnessState = {
-    ...RELEASED,
-    releaseState: "pending-release",
-    freshness: {
-      outcome: "fetched",
-      lastFetchedAt: "2026-08-03T11:56:00.000Z",
+  // PLAN's one added skill, waiting in Pending release.
+  const FETCHED: HarnessState = withStages(
+    {
+      ...RELEASED,
+      releaseState: "pending-release",
+      freshness: {
+        outcome: "fetched",
+        lastFetchedAt: "2026-08-03T11:56:00.000Z",
+      },
     },
-  };
+    {
+      release: [
+        row("pending-release", "research", "not-yet-released", {
+          change: "addition",
+        }),
+      ],
+    },
+  );
 
   it("keeps Release out of reach until a fetch has answered", async () => {
     stubHarnessServer({
@@ -63,12 +75,50 @@ describe("Harness release", () => {
     });
     renderHarness();
 
+    // Never read: no notice and no read age, so band 2's reading says why.
     const release = await screen.findByRole("button", {
-      name: "Create a release — GitHub not read",
+      name: "Create a release",
     });
+    expect(release).toHaveAccessibleDescription("Offline");
     expect(release).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(release);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("blocks Create a release on Pending release 0, pointing at that count", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(FETCHED, {
+          review: [row("pending-review", "tdd", "waiting-for-review")],
+        }),
+      },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", {
+      name: "Create a release",
+    });
+    await waitFor(() =>
+      expect(release).toHaveAccessibleDescription("Pending release 0"),
+    );
+    expect(release).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText("Pending review 1")).toBeInTheDocument();
+    await userEvent.click(release);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("blocks Create a release on All released when every count is 0", async () => {
+    stubHarnessServer({ read: { body: withStages(FETCHED, {}) } });
+    renderHarness();
+
+    const release = await screen.findByRole("button", {
+      name: "Create a release",
+    });
+    await waitFor(() =>
+      expect(release).toHaveAccessibleDescription("All released"),
+    );
+    expect(release).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByText(/Pending release 0/)).toBeNull();
   });
 
   it("opens a consequences-first plan when the author asks to release", async () => {
@@ -116,32 +166,38 @@ describe("Harness release", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps Release out of reach while a refresh is still moving the refs", async () => {
-    // A refresh rewrites the very refs a plan reads. Planning across one can
-    // price a release from a revision that no longer stands (#519).
+  it("opens its plan while a re-read runs, and reads the plan again once it lands", async () => {
+    // A plan read across a re-read can price a revision that no longer
+    // stands; Publish release re-checks every ref against the remote, and the
+    // plan re-reads so the dialog states the current one (#519, #1592).
     let finishRefresh = () => {};
     const heldUntil = new Promise<void>((resolve) => {
       finishRefresh = resolve;
     });
-    stubHarnessServer({
+    const calls = stubHarnessServer({
       read: { body: FETCHED },
       refresh: { body: FETCHED, heldUntil },
+      plan: { body: PLAN },
     });
     renderHarness();
+    const planReads = () =>
+      calls.filter((call) => call === "GET /api/harness/release-plan").length;
 
-    const release = await screen.findByRole("button", {
-      name: "Create a release — re-reading Harness",
-    });
-    expect(release).toHaveAttribute("aria-disabled", "true");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Re-read Harness" }),
+      ).toHaveAttribute("aria-busy", "true"),
+    );
+    const release = screen.getByRole("button", { name: "Create a release" });
+    expect(release).not.toHaveAttribute("aria-disabled");
     await userEvent.click(release);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(planReads()).toBe(1));
 
     finishRefresh();
 
-    await waitFor(() =>
-      expect(release).toHaveAccessibleName("Create a release"),
-    );
-    expect(release).not.toHaveAttribute("aria-disabled");
+    await waitFor(() => expect(planReads()).toBe(2));
+    expect(dialog).toBeInTheDocument();
   });
 
   it("never stands the last plan in for the one being fetched again", async () => {
@@ -218,7 +274,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView openSkill={null} />
+        <HarnessView openPrimitive={null} />
         <InventoryProbe />
         <ToastHost />
       </StrictMode>,
@@ -258,7 +314,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView openSkill={null} />
+        <HarnessView openPrimitive={null} />
         <InventoryProbe />
         <ToastHost />
       </StrictMode>,
@@ -298,7 +354,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView openSkill={null} />
+        <HarnessView openPrimitive={null} />
         <InventoryProbe />
         <ToastHost />
       </StrictMode>,
@@ -391,7 +447,7 @@ describe("Harness release", () => {
     });
     renderWithQuery(
       <StrictMode>
-        <HarnessView openSkill={null} />
+        <HarnessView openPrimitive={null} />
         <IdleInventoryProbe />
       </StrictMode>,
     );
@@ -644,6 +700,10 @@ describe("Harness release", () => {
   it.each([
     ["a missing version map", { versions: undefined }],
     ["a movement that is not one", { delta: [null] }],
+    [
+      "a movement with no type",
+      { delta: [{ kind: "added", name: "research", author: null }] },
+    ],
     ["a step the dialog has no version for", { proposedStep: "sideways" }],
   ])("plans again rather than paint %s", async (_name, broken) => {
     const calls = stubHarnessServer({
@@ -706,5 +766,32 @@ describe("Harness release", () => {
         /Maestro rebuilt the plan against the newest release/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("says nothing was published when no change merged since the release", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: { body: { error: "empty-delta" }, status: 409 },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    const alert = await within(await screen.findByRole("dialog")).findByRole(
+      "alert",
+    );
+    expect(alert).toHaveTextContent("Nothing to release");
+    expect(alert).toHaveTextContent(
+      "Nothing was published. No change has merged since the last release.",
+    );
   });
 });

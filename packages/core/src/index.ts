@@ -104,19 +104,25 @@ export {
   UNKNOWN_PAGE,
 } from "./git/github-page";
 export {
-  DeleteLocalSkill,
-  type DeleteLocalSkillError,
+  DeleteLocal,
+  type DeleteLocalError,
   type DeletionCheckResult,
   type SkillDeletionCheck,
-} from "./harness/delete-local-skill";
+} from "./harness/delete-local";
 export {
-  DiscardSkillChange,
-  type DiscardSkillChangeError,
-} from "./harness/discard-skill-change";
+  DiscardChange,
+  type DiscardChangeError,
+} from "./harness/discard-change";
 export { GhCliAdapter } from "./harness/gh-cli-adapter";
 export { HarnessFetchGate } from "./harness/harness-fetch-gate";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
+export type { HarnessMovementKind } from "./harness/harness-movements";
+export {
+  HARNESS_PRIMITIVE_TYPES,
+  type HarnessPrimitiveType,
+  type PrimitiveRef,
+} from "./harness/harness-primitive";
 export type {
   HarnessReviewPort,
   HarnessReviewRead,
@@ -150,13 +156,13 @@ export {
   type ImportSourceBlocker,
 } from "./harness/import-skill";
 export {
-  type PromoteDeletionError,
-  PromoteSkillDeletion,
-} from "./harness/promote-deletion";
+  Promote,
+  type PromoteError,
+} from "./harness/promote";
 export {
-  PromoteSkill,
-  type PromoteSkillError,
-} from "./harness/promote-skill";
+  PromoteDeletion,
+  type PromoteDeletionError,
+} from "./harness/promote-deletion";
 export {
   type ProposalActionError,
   type ProposalActionResult,
@@ -173,19 +179,21 @@ export {
   type HarnessState,
   type HarnessStateError,
   type HarnessStateResult,
-  type PendingSkillMovement,
   ReadHarnessState,
   type ReleasePlan,
   type ReleasePlanError,
 } from "./harness/read-harness-state";
+export type { PendingMovement } from "./harness/release-delta";
 export { RELEASE_TAG_PATTERN } from "./harness/release-tag";
-export { ReleasedContentReader } from "./harness/released-content";
 export {
-  RestoreSkill,
-  type RestoreSkillError,
-} from "./harness/restore-skill";
+  type HarnessSkillTree,
+  ReleasedContentReader,
+} from "./harness/released-content";
+export {
+  Restore,
+  type RestoreError,
+} from "./harness/restore";
 export type { ManifestAdvisory } from "./harness/skill-manifest";
-export type { SkillMovementKind } from "./harness/skill-movements";
 export type { StructuralProblem } from "./harness/validate-skill-structure";
 export {
   resolveApmGlobalRoot,
@@ -202,13 +210,17 @@ export { resolveDefaultBranch } from "./inventory/default-branch";
 export { GitHarnessScaffoldAdapter } from "./inventory/harness-scaffold-git";
 export { probeHead } from "./inventory/head-commit";
 export {
+  type InventoryPrimitive,
+  type InventoryPrompt,
   InventoryReader,
   type InventoryResult,
+  type InventorySkill,
 } from "./inventory/inventory-reader";
+export type { PendingRelease } from "./inventory/pending-release";
 export {
   type ReleasedSkill,
-  releasedSkillsFromGit,
-} from "./inventory/released-skills";
+  releasedPrimitivesFromGit,
+} from "./inventory/released-primitives";
 export { isRepositoryRoot } from "./inventory/repository-root";
 export { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 export {

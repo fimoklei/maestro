@@ -1,4 +1,4 @@
-import type { HarnessState } from "@maestro/core";
+import type { HarnessState, PrimitiveRef } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -22,14 +22,16 @@ const DELETED: HarnessState = withStages(RELEASED, {
 });
 
 const IN_CLONE = {
-  skills: {
+  skill: {
     tdd: {
       inClone: true,
+      path: ".apm/skills/tdd",
       workingTree: "tree-1",
       uncommitted: false,
       localOnly: false,
     },
   },
+  prompt: {},
 };
 
 type Answer = { body: unknown; status?: number; heldUntil?: Promise<void> };
@@ -46,15 +48,23 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
       }
       if (url.startsWith("/api/inventory/primitives")) {
         return jsonResponse({
-          primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+          primitives: [
+            {
+              type: "skill",
+              name: "tdd",
+              description: "TDD loop",
+              pendingRelease: null,
+            },
+          ],
+          unreadTypes: [],
         });
       }
-      if (url === "/api/harness/skill/delete/check") {
+      if (url === "/api/harness/primitive/delete/check") {
         const check = options.check ?? { body: IN_CLONE };
         await check.heldUntil;
         return jsonResponse(check.body, check.status);
       }
-      if (url === "/api/harness/skill/delete") {
+      if (url === "/api/harness/primitive/delete") {
         deletions.push(JSON.parse(String(init?.body)));
         deleted = true;
         return jsonResponse({ name: "tdd" });
@@ -72,8 +82,10 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
 }
 
 function HarnessScreen() {
-  const state = useLocation().state as { openSkill?: string } | null;
-  return <HarnessView openSkill={state?.openSkill ?? null} />;
+  const state = useLocation().state as {
+    openPrimitive?: PrimitiveRef;
+  } | null;
+  return <HarnessView openPrimitive={state?.openPrimitive ?? null} />;
 }
 
 function renderSkills() {
@@ -116,7 +128,7 @@ describe("Skills — Delete skill", () => {
     );
   });
 
-  it("opens the Harness view with the Deletion row once step 1 lands", async () => {
+  it("opens the Harness view with the Deleted row once step 1 lands", async () => {
     const deletions = stubServer({});
     renderSkills();
     const menu = await openRowMenu();
@@ -147,9 +159,11 @@ describe("Skills — Delete skill", () => {
     const pane = await screen.findByRole("complementary", {
       name: "tdd detail",
     });
-    expect(within(pane).getByText("Deletion")).toBeInTheDocument();
+    expect(within(pane).getByText("Deleted")).toBeInTheDocument();
     expect(within(pane).getByText("Not yet proposed")).toBeInTheDocument();
-    expect(deletions).toEqual([{ name: "tdd", seenWorkingTree: "tree-1" }]);
+    expect(deletions).toEqual([
+      { type: "skill", name: "tdd", seenWorkingTree: "tree-1" },
+    ]);
   });
 
   const never = new Promise<void>(() => {});
@@ -190,7 +204,7 @@ describe("Skills — Delete skill", () => {
     ],
     [
       "where the skill is not in the clone",
-      { check: { body: { skills: { tdd: { inClone: false } } } } },
+      { check: { body: { skill: { tdd: { inClone: false } }, prompt: {} } } },
     ],
   ])(
     "omits Delete skill %s, from the row menu and the pane foot",

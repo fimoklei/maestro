@@ -29,7 +29,10 @@ const HARNESS: HarnessState = {
 
 const IMPORTED_ROW: HarnessStageRow = {
   stage: "pending-proposal",
-  skill: "code-review",
+  type: "skill",
+  name: "code-review",
+  path: ".apm/skills/code-review",
+  branch: "maestro/code-review",
   status: "not-yet-proposed",
   change: "edit",
   requests: [],
@@ -41,7 +44,7 @@ const IMPORTED_ROW: HarnessStageRow = {
   localOnly: false,
   remoteTree: null,
   restorable: false,
-  folderOnDisk: false,
+  onDisk: false,
   previousName: null,
 };
 
@@ -171,7 +174,9 @@ describe("Harness import flow", () => {
       "fetch",
       vi.fn(async () => jsonResponse(IMPORTED_HARNESS)),
     );
-    renderWithQuery(<HarnessView openSkill="code-review" />);
+    renderWithQuery(
+      <HarnessView openPrimitive={{ type: "skill", name: "code-review" }} />,
+    );
 
     const pane = await screen.findByRole("complementary", {
       name: "code-review detail",
@@ -182,7 +187,7 @@ describe("Harness import flow", () => {
   it("imports the picked folder, closes, and opens the new row in its pane", async () => {
     const { imports } = stubImportServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
     expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
@@ -217,7 +222,7 @@ describe("Harness import flow", () => {
       importBody: { error: "internal" },
     });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
     await user.click(screen.getByRole("button", { name: "Import skill" }));
@@ -251,7 +256,7 @@ describe("Harness import flow", () => {
       },
     });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
     await user.click(
@@ -275,7 +280,7 @@ describe("Harness import flow", () => {
       check: { ...CLEAN_CHECK, nameBlocker: "name-taken" },
     });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
 
@@ -294,7 +299,7 @@ describe("Harness import flow", () => {
   it("states a missing folder under its field on submit", async () => {
     const { calls } = stubImportServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     const [importSkill] = await screen.findAllByRole("button", {
       name: "Import skill",
@@ -318,7 +323,7 @@ describe("Harness import flow", () => {
   it("checks a typed folder on submit", async () => {
     const { imports } = stubImportServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     const [importSkill] = await screen.findAllByRole("button", {
       name: "Import skill",
@@ -345,7 +350,7 @@ describe("Harness import flow", () => {
       checkAnswers: [() => landed.then(() => jsonResponse(CLEAN_CHECK))],
     });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
     await user.click(dialogImport());
@@ -362,7 +367,7 @@ describe("Harness import flow", () => {
       checkAnswers: [async () => jsonResponse({}, 500)],
     });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
     await waitFor(() =>
@@ -382,7 +387,7 @@ describe("Harness import flow", () => {
       check: { ...CLEAN_CHECK, advisories: ["long-manifest"] },
     });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
 
@@ -397,7 +402,7 @@ describe("Harness import flow", () => {
     // opens on — never a later-mounted twin (#865).
     stubImportServer({ imported: IN_EVERY_STAGE });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
     await user.click(screen.getByRole("button", { name: "Import skill" }));
@@ -414,7 +419,7 @@ describe("Harness import flow", () => {
   it("checks a typed folder once the author leaves the field", async () => {
     const { calls } = stubImportServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     const [importSkill] = await screen.findAllByRole("button", {
       name: "Import skill",
@@ -437,7 +442,7 @@ describe("Harness import flow", () => {
   it("asks again with the typed name", async () => {
     const { calls } = stubImportServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openSkill={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} />);
 
     await openImportWithSource(user);
     const field = await screen.findByLabelText(/name in the harness/i);

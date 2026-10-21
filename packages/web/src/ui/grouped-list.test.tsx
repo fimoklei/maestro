@@ -256,4 +256,73 @@ describe("GroupedList read-only", () => {
 
     expect(screen.queryByRole("status")).toBeNull();
   });
+
+  it("draws no fold control on a list without slots", () => {
+    render(<GroupedList groups={PREFLIGHT} checklist={null} live={null} />);
+
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+describe("GroupedList with fixed slots", () => {
+  const SLOTTED = [
+    {
+      tone: "neutral" as const,
+      legend: "Added · 2",
+      rows: [
+        { key: "research", name: "research", slots: ["Skill", "Grace"] },
+        { key: "review", name: "review", slots: ["Prompt", "Ada"] },
+      ],
+    },
+    {
+      tone: "neutral" as const,
+      legend: "Deleted · 1",
+      rows: [{ key: "grill", name: "grill", slots: ["Skill", "Linus"] }],
+    },
+  ];
+
+  const slotted = () =>
+    render(
+      <GroupedList
+        groups={SLOTTED}
+        checklist={null}
+        slots={[22, 20]}
+        live={null}
+      />,
+    );
+
+  it("shows each row's name, then its slot values in order", () => {
+    slotted();
+
+    const row = screen.getByText("review").closest("li");
+    expect(row).toHaveTextContent(/^reviewPromptAda$/);
+  });
+
+  it("starts every group open, its legend on a fold control", () => {
+    slotted();
+
+    expect(screen.getByRole("button", { name: "Added · 2" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      within(screen.getByRole("group", { name: "Added · 2" })).getByText(
+        "research",
+      ),
+    ).toBeVisible();
+  });
+
+  it("folds one group and leaves the others open", async () => {
+    slotted();
+    const fold = screen.getByRole("button", { name: "Added · 2" });
+
+    await userEvent.click(fold);
+
+    expect(fold).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("research")).not.toBeVisible();
+    expect(screen.getByText("grill")).toBeVisible();
+
+    await userEvent.click(fold);
+    expect(screen.getByText("research")).toBeVisible();
+  });
 });

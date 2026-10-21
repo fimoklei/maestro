@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { HarnessFetchGate } from "./harness-fetch-gate";
-import { InMemoryHarnessGit, treeHash } from "./harness-git.fake";
+import { InMemoryHarnessGit, skillRef, treeHash } from "./harness-git.fake";
 import type {
   HarnessReviewRead,
   NewReviewRequest,
   ReviewRequest,
   ReviewWriteOutcome,
 } from "./harness-review-port";
-import { PromoteSkillDeletion } from "./promote-deletion";
+import { PromoteDeletion } from "./promote-deletion";
 import type { HarnessFreshness } from "./read-harness-state";
 
 const AT = new Date("2026-08-09T12:00:00.000Z");
@@ -75,7 +75,7 @@ function buildDeletion(
     fetchGate?: HarnessFetchGate;
   },
 ) {
-  return new PromoteSkillDeletion({
+  return new PromoteDeletion({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     locks: new InFlightLocks(),
@@ -98,14 +98,16 @@ function buildDeletion(
   });
 }
 
-describe("PromoteSkillDeletion", () => {
+describe("PromoteDeletion", () => {
   it("opens the pull request the pushed removal has no proposal for", async () => {
     const created: NewReviewRequest[] = [];
     const deletion = buildDeletion(deletedWorld(), {
       onCreate: (made) => created.push(made),
     });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toMatchObject({
+    await expect(
+      deletion.execute(skillRef("tdd"), SEEN),
+    ).resolves.toMatchObject({
       ok: true,
     });
     expect(created).toEqual([
@@ -125,7 +127,9 @@ describe("PromoteSkillDeletion", () => {
       onCreate: (made) => created.push(made),
     });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toMatchObject({
+    await expect(
+      deletion.execute(skillRef("tdd"), SEEN),
+    ).resolves.toMatchObject({
       ok: true,
     });
     expect(created).toEqual([]);
@@ -141,7 +145,9 @@ describe("PromoteSkillDeletion", () => {
       onEdit: (number, title) => edited.push([number, title]),
     });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toMatchObject({
+    await expect(
+      deletion.execute(skillRef("tdd"), SEEN),
+    ).resolves.toMatchObject({
       ok: true,
     });
     expect(edited).toEqual([[45, "Delete skill: tdd"]]);
@@ -153,7 +159,9 @@ describe("PromoteSkillDeletion", () => {
       editOutcome: { ok: false, error: "failed" },
     });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toMatchObject({
+    await expect(
+      deletion.execute(skillRef("tdd"), SEEN),
+    ).resolves.toMatchObject({
       ok: true,
       branch: "maestro/tdd",
     });
@@ -168,7 +176,7 @@ describe("PromoteSkillDeletion", () => {
       },
     });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "proposed-by-other",
     });
@@ -184,7 +192,7 @@ describe("PromoteSkillDeletion", () => {
       },
     });
 
-    await expect(deletion.execute("tdd", SEEN)).resolves.toEqual({
+    await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "extra-requests",
     });
@@ -194,14 +202,16 @@ describe("PromoteSkillDeletion", () => {
   it("pushes the removal and answers with the branch and its pull-request page", async () => {
     const git = deletedWorld();
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: true,
       branch: "maestro/tdd",
       pullRequestUrl:
         "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
     });
     expect(git.pushed).toEqual([
-      { name: "tdd", base: "head", kind: "deletion" },
+      { type: "skill", name: "tdd", base: "head", kind: "deletion" },
     ]);
   });
 
@@ -212,7 +222,7 @@ describe("PromoteSkillDeletion", () => {
     git.working = { jobs: "unpushed" };
 
     await expect(
-      buildDeletion(git).execute("tdd", SEEN),
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
     ).resolves.toMatchObject({ ok: true });
     expect(git.pushed.map((push) => push.base)).toEqual(["head"]);
   });
@@ -222,7 +232,9 @@ describe("PromoteSkillDeletion", () => {
     const git = deletedWorld();
     git.teammatePushes("theirs", { tdd: "theirs" });
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error: "confirmation-stale",
     });
@@ -233,7 +245,9 @@ describe("PromoteSkillDeletion", () => {
     const git = deletedWorld();
     git.teammatePushes("gone", {});
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error: "confirmation-stale",
     });
@@ -243,7 +257,9 @@ describe("PromoteSkillDeletion", () => {
     const git = deletedWorld();
     git.working = { tdd: "on-disk" };
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error: "not-deleted",
     });
@@ -255,7 +271,9 @@ describe("PromoteSkillDeletion", () => {
     git.commit("local", {});
     git.head = "local";
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error: "not-deleted",
     });
@@ -272,7 +290,9 @@ describe("PromoteSkillDeletion", () => {
     const git = deletedWorld();
     git.ambiguity = why;
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error: why,
     });
@@ -281,14 +301,19 @@ describe("PromoteSkillDeletion", () => {
 
   it("reports a harness that is not connected", async () => {
     await expect(
-      buildDeletion(deletedWorld(), { root: undefined }).execute("tdd", SEEN),
+      buildDeletion(deletedWorld(), { root: undefined }).execute(
+        skillRef("tdd"),
+        SEEN,
+      ),
     ).resolves.toEqual({ ok: false, error: "not-configured" });
   });
 
   it("refuses a name that is not a skill before it reaches the harness", async () => {
     const git = deletedWorld();
 
-    await expect(buildDeletion(git).execute("../etc", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("../etc"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error: "invalid-skill",
     });
@@ -299,7 +324,9 @@ describe("PromoteSkillDeletion", () => {
     const git = deletedWorld();
     git.originUrl = null;
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error: "no-usable-origin",
     });
@@ -309,7 +336,9 @@ describe("PromoteSkillDeletion", () => {
     const git = deletedWorld();
     git.fetchOutcomes = ["offline"];
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -326,7 +355,9 @@ describe("PromoteSkillDeletion", () => {
     const git = deletedWorld();
     git.pushOutcome = outcome;
 
-    await expect(buildDeletion(git).execute("tdd", SEEN)).resolves.toEqual({
+    await expect(
+      buildDeletion(git).execute(skillRef("tdd"), SEEN),
+    ).resolves.toEqual({
       ok: false,
       error,
     });
@@ -337,7 +368,10 @@ describe("PromoteSkillDeletion", () => {
     const gate = readGate(git);
     await gate.fetch("/harness", READ_MAX_AGE_MS);
 
-    await buildDeletion(git, { fetchGate: gate }).execute("tdd", SEEN);
+    await buildDeletion(git, { fetchGate: gate }).execute(
+      skillRef("tdd"),
+      SEEN,
+    );
 
     expect(git.fetches).toBe(2);
   });
@@ -347,7 +381,7 @@ describe("PromoteSkillDeletion", () => {
     const gate = readGate(git);
     await gate.fetch("/harness", READ_MAX_AGE_MS);
     await expect(
-      buildDeletion(git, { fetchGate: gate }).execute("tdd", SEEN),
+      buildDeletion(git, { fetchGate: gate }).execute(skillRef("tdd"), SEEN),
     ).resolves.toMatchObject({ ok: true });
 
     await gate.fetch("/harness", READ_MAX_AGE_MS);

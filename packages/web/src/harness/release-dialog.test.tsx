@@ -13,10 +13,29 @@ const releasingAs = () => {
   return value;
 };
 
+// A change's row in the Pending release list.
+const row = (name: string) => {
+  const item = screen.getByText(name).closest("li");
+  if (item === null) throw new Error(`${name} has no row`);
+  return item;
+};
+
 const PLAN: ReleasePlan = {
   delta: [
-    { kind: "added", name: "research", author: "Grace" },
-    { kind: "changed", name: "tdd", author: "Ada" },
+    {
+      type: "skill",
+      kind: "added",
+      change: "addition",
+      name: "research",
+      author: "Grace",
+    },
+    {
+      type: "skill",
+      kind: "changed",
+      change: "edit",
+      name: "tdd",
+      author: "Ada",
+    },
   ],
   previousTag: "v1.2.3",
   previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
@@ -49,10 +68,10 @@ const renderReady = (
   );
 
 describe("ReleaseDialog", () => {
-  it("titles the panel with the confirm button's verb and the origin", () => {
+  it("titles the panel with the confirm button's verb and the repo name", () => {
     renderReady();
 
-    const title = "Publish release for github.com/fimoklei/agent-harness";
+    const title = "Publish release for agent-harness";
     expect(
       screen.getByRole("heading", { name: title, level: 2 }),
     ).toBeInTheDocument();
@@ -87,6 +106,21 @@ describe("ReleaseDialog", () => {
     expect(releasingAs()).toHaveClass("font-mono");
   });
 
+  it("names the full origin as the card's first fact", () => {
+    renderReady();
+
+    const facts = screen.getAllByRole("term").map((term) => term.textContent);
+    expect(facts.slice(0, 4)).toEqual([
+      "Origin",
+      "Previous tag",
+      "Default branch",
+      "Revision",
+    ]);
+    expect(screen.getByText("Origin").nextElementSibling).toHaveTextContent(
+      "github.com/fimoklei/agent-harness",
+    );
+  });
+
   it("names the previous tag, default branch, and exact revision", () => {
     renderReady();
 
@@ -107,22 +141,25 @@ describe("ReleaseDialog", () => {
     ).toHaveTextContent("Not released yet");
   });
 
-  it("puts what ships before the step, so the choice follows its consequences", () => {
+  it("starts with the version card, so the step stays in view above the list", () => {
     renderReady({
       findings: [{ skill: "broken", problem: "missing-manifest" }],
     });
 
-    // The whole delta is one grid, so the step follows all of it.
-    const delta = screen.getByRole("grid", { name: "Pending release table" });
-    const advisory = screen.getByText("Skill checks found issues");
     const step = screen.getByRole("button", { name: "Major" });
+    const delta = screen.getByRole("heading", {
+      level: 3,
+      name: /pending release/i,
+    });
+    const advisory = screen.getByText("Skill checks found issues");
 
     expect(
-      delta.compareDocumentPosition(step) & Node.DOCUMENT_POSITION_FOLLOWING,
+      step.compareDocumentPosition(delta) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     // A notice in a dialog sits above the footer.
     expect(
-      step.compareDocumentPosition(advisory) & Node.DOCUMENT_POSITION_FOLLOWING,
+      row("tdd").compareDocumentPosition(advisory) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -138,13 +175,28 @@ describe("ReleaseDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the whole merged delta with its authors", () => {
-    renderReady();
+  it("shows the whole merged delta with each change's type and author", () => {
+    renderReady({
+      delta: [
+        {
+          type: "skill",
+          kind: "added",
+          change: "addition",
+          name: "research",
+          author: "Grace",
+        },
+        {
+          type: "prompt",
+          kind: "changed",
+          change: "edit",
+          name: "review",
+          author: "Ada",
+        },
+      ],
+    });
 
-    expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-      "Grace",
-    );
-    expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent("Ada");
+    expect(row("research")).toHaveTextContent(/^researchSkillGrace$/);
+    expect(row("review")).toHaveTextContent(/^reviewPromptAda$/);
     expect(
       screen.getByRole("heading", { level: 3, name: /pending release/i }),
     ).toBeInTheDocument();
@@ -155,7 +207,9 @@ describe("ReleaseDialog", () => {
     renderReady({
       delta: [
         {
+          type: "skill",
           kind: "renamed",
+          change: "rename",
           name: "test-first",
           previousName: "tdd",
           author: "Ada",
@@ -163,40 +217,124 @@ describe("ReleaseDialog", () => {
       ],
     });
 
-    expect(screen.getByRole("row", { name: /test-first/ })).toHaveTextContent(
-      "tdd",
-    );
+    expect(row("tdd → test-first")).toBeInTheDocument();
   });
 
-  it("groups the delta by what moved, and draws no group nothing moved into", () => {
+  it("groups the delta by its change words, in order, each with its count", () => {
     renderReady({
-      delta: [{ kind: "removed", name: "grilling", author: "Linus" }],
+      delta: [
+        {
+          type: "skill",
+          kind: "removed",
+          change: "deletion",
+          name: "grilling",
+          author: "Linus",
+        },
+        {
+          type: "skill",
+          kind: "changed",
+          change: "edit",
+          name: "tdd",
+          author: "Ada",
+        },
+        {
+          type: "prompt",
+          kind: "renamed",
+          change: "rename",
+          name: "triage",
+          previousName: "sort",
+          author: "Ada",
+        },
+        {
+          type: "skill",
+          kind: "added",
+          change: "addition",
+          name: "research",
+          author: "Grace",
+        },
+        {
+          type: "prompt",
+          kind: "added",
+          change: "addition",
+          name: "review",
+          author: "Ada",
+        },
+      ],
     });
 
-    expect(screen.getByText("Deleted")).toBeInTheDocument();
-    expect(screen.queryByText("Removed")).not.toBeInTheDocument();
-    expect(screen.queryByText("Added")).not.toBeInTheDocument();
-    expect(screen.queryByText("Changed")).not.toBeInTheDocument();
-    expect(screen.queryByText("Renamed")).not.toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("group", { name: / · / })
+        .map((group) => within(group).getByRole("button").textContent),
+    ).toEqual(["Added · 2", "Changed · 1", "Renamed · 1", "Deleted · 1"]);
+    expect(
+      within(screen.getByRole("group", { name: "Deleted · 1" })).getByText(
+        "grilling",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("draws no group nothing moved into", () => {
+    renderReady({
+      delta: [
+        {
+          type: "skill",
+          kind: "removed",
+          change: "deletion",
+          name: "grilling",
+          author: "Linus",
+        },
+      ],
+    });
+
+    expect(screen.getAllByRole("group", { name: / · / })).toHaveLength(1);
+    expect(screen.queryByText(/Removed/)).not.toBeInTheDocument();
+  });
+
+  it("folds a group and opens it again", async () => {
+    renderReady();
+    const fold = screen.getByRole("button", { name: "Added · 1" });
+
+    expect(fold).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(fold);
+    expect(screen.getByText("research")).not.toBeVisible();
+    expect(screen.getByText("tdd")).toBeVisible();
+    await userEvent.click(fold);
+    expect(screen.getByText("research")).toBeVisible();
   });
 
   it("says plainly that an author is unknown rather than leaving a gap", () => {
     renderReady({
-      delta: [{ kind: "added", name: "research", author: null }],
+      delta: [
+        {
+          type: "skill",
+          kind: "added",
+          change: "addition",
+          name: "research",
+          author: null,
+        },
+      ],
     });
 
-    expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-      "Unknown",
-    );
+    expect(row("research")).toHaveTextContent("Unknown");
   });
 
-  it("draws no delta table when nothing merged since the release", () => {
+  it("states an empty plan, and offers no version to release", () => {
     renderReady({ delta: [] });
 
-    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
     expect(
-      screen.getByText("No skill has changed since the last release."),
+      screen.getByText(
+        "No changes yet. Changes merged after the last release appear here.",
+      ),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Releasing as")).not.toBeInTheDocument();
+    expect(screen.queryByText(sentence(/^Suggested:/))).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Major" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Origin")).toBeInTheDocument();
+    expect(screen.getByText("Previous tag")).toBeInTheDocument();
   });
 
   it("lets the author pick a different step, and shows that version", async () => {
@@ -302,12 +440,10 @@ describe("ReleaseDialog", () => {
     const onPublish = vi.fn();
     renderReady({ delta: [] }, { onPublish });
 
-    expect(
-      screen.getByText(/no skill has changed since the last release/i),
-    ).toBeInTheDocument();
-    const publish = screen.getByRole("button", {
-      name: "Publish release — no changes since last release",
-    });
+    const publish = screen.getByRole("button", { name: "Publish release" });
+    expect(publish).toHaveAccessibleDescription(
+      "No changes yet. Changes merged after the last release appear here.",
+    );
     expect(publish).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(publish);
     expect(onPublish).not.toHaveBeenCalled();
@@ -363,12 +499,9 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    expect(screen.getByText(/loading the release plan/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: "Publish release — release plan still loading",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    const publish = screen.getByRole("button", { name: "Publish release" });
+    expect(publish).toHaveAccessibleDescription("Loading the release plan…");
+    expect(publish).toHaveAttribute("aria-disabled", "true");
   });
 
   it("states a plan that could not be computed as a readable error", () => {
@@ -393,10 +526,12 @@ describe("ReleaseDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       /select re-read harness/i,
     );
-    expect(
-      screen.getByRole("button", {
-        name: "Publish release — release plan did not load",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    const publish = screen.getByRole("button", { name: "Publish release" });
+    expect(publish).toHaveAccessibleDescription(
+      expect.stringMatching(
+        /no answer from GitHub.*Select Re-read Harness, then open the release again\./,
+      ),
+    );
+    expect(publish).toHaveAttribute("aria-disabled", "true");
   });
 });

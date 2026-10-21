@@ -71,7 +71,15 @@ const FAILED: NoticeContent = {
 };
 
 const PLAN: ReleasePlan = {
-  delta: [{ kind: "changed", name: "tdd", author: "Ada" }],
+  delta: [
+    {
+      type: "skill",
+      kind: "changed",
+      change: "edit",
+      name: "tdd",
+      author: "Ada",
+    },
+  ],
   previousTag: "v1.2.3",
   previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
   proposedStep: "minor",
@@ -129,7 +137,7 @@ const LOCAL_DELETION: DeletionMode = {
   kind: "local",
   origin: "fimoklei/harness",
   screen: "harness",
-  folder: ".apm/skills/research",
+  path: ".apm/skills/research",
   check: "ready",
   localOnly: false,
   uncommitted: false,
@@ -144,7 +152,8 @@ const deletionDialog = (
   }: Options & { deleteError?: NoticeContent | null } = {},
 ) => (
   <DeletionDialog
-    skill="research"
+    type="skill"
+    name="research"
     mode={mode}
     onClose={onClose}
     onConfirm={vi.fn()}
@@ -296,7 +305,7 @@ const ON_DIALOG: Row[] = [
   },
   {
     file: "harness/release-dialog.tsx",
-    heading: "Publish release for github.com/fimoklei/agent-harness",
+    heading: "Publish release for agent-harness",
     render: ({ running, onClose }) =>
       releaseDialog({ kind: "loading" }, { running, onClose }),
     changed: async (onClose) => {
@@ -346,6 +355,7 @@ const ON_DIALOG: Row[] = [
           deletionDialog({
             kind: "propose",
             origin: "fimoklei/harness",
+            branch: "maestro/research",
             seenRemoteTree: "0123456789abcdef0123456789abcdef01234567",
             openRequest: { number: 45, author: "Grace" },
           }),
@@ -361,8 +371,9 @@ const ON_DIALOG: Row[] = [
     heading: "Restore research",
     render: ({ running, onClose }) => (
       <RestoreDialog
-        skill="research"
-        folder=".apm/skills/research"
+        type="skill"
+        name="research"
+        path=".apm/skills/research"
         commit="0123456789abcdef0123456789abcdef01234567"
         hasRequest={false}
         onClose={onClose}
@@ -382,8 +393,9 @@ const ON_DIALOG: Row[] = [
     heading: "Discard change for research",
     render: ({ running, onClose }) => (
       <DiscardDialog
-        skill="research"
-        folder=".apm/skills/research"
+        type="skill"
+        name="research"
+        path=".apm/skills/research"
         defaultBranch="main"
         onClose={onClose}
         onConfirm={vi.fn()}
@@ -448,6 +460,7 @@ const ON_DIALOG: Row[] = [
     render: ({ running, onClose }) => (
       <WithdrawDialog
         skill="research"
+        branch="maestro/research"
         number={45}
         onClose={onClose}
         onConfirm={vi.fn()}

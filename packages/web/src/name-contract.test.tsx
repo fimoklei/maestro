@@ -53,38 +53,34 @@ const PLAIN: Record<string, Record<string, string>> = {
   "drift/use-drift.ts": {
     "`/api/drift?repo=${encodeURIComponent(repo)}`": "request URL",
   },
-  "harness/deletion-dialog.tsx": {
-    "`Delete ${skill}`": "dialog title",
-    "`Uncommitted changes in ${skill}`": "notice heading",
-    "`maestro/${skill}`": "branch, a machine value in a fact",
-    "`Pull request #${request.number} will delete ${skill} instead`":
+  "harness/deletion-copy.ts": {
+    "`Uncommitted changes in ${name}`": "notice heading",
+    "`Pull request #${request.number} will delete ${name} instead`":
       "notice heading",
   },
+  "harness/deletion-dialog.tsx": {
+    "`Delete ${name}`": "dialog title",
+  },
   "harness/discard-dialog.tsx": {
-    "`${DISCARD_CHANGE} for ${skill}`": "dialog title",
+    "`${DISCARD_CHANGE} for ${name}`": "dialog title",
   },
   "harness/harness-columns.tsx": {
-    "`${row.stage}:${row.skill}`": "key",
-    "`Actions for ${row.skill} in ${STAGE_NAMES[row.stage]}`": "menu label",
-  },
-  "harness/harness-dialogs.tsx": {
-    "`${SKILLS_DIR}/${props.restoring.skill}`": "folder path",
-    "`${SKILLS_DIR}/${props.discarding.name}`": "folder path",
-    "`${SKILLS_DIR}/${skill}`": "folder path",
+    "`${row.stage}:${row.type}:${row.name}`": "key",
+    "`Actions for ${row.name} ${ITEM_WORDS[row.type].noun} in ${STAGE_NAMES[row.stage]}`":
+      "menu label",
   },
   "harness/release-delta.tsx": {
-    "`${row.original.previousName} → ${row.original.name}`": "table cell",
-    "`${movement.kind}:${movement.name}`": "key",
+    "`${movement.previousName} → ${movement.name}`": "list row",
+    "`${movement.type}:${movement.name}`": "key",
   },
   "harness/release-dialog.tsx": {
-    "`${PUBLISH_RELEASE} for ${origin}`": "dialog title",
+    "`${PUBLISH_RELEASE} for ${repoName}`": "dialog title",
   },
   "harness/restore-dialog.tsx": {
-    "`Restore ${skill}`": "dialog title",
+    "`Restore ${name}`": "dialog title",
   },
   "harness/withdraw-dialog.tsx": {
     "`Withdraw proposal for ${skill}`": "dialog title",
-    "`maestro/${skill}`": "branch, a machine value in a fact",
   },
   "skills/bulk-deploy-action.tsx": {
     '`Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`':
@@ -325,7 +321,8 @@ describe("a name or machine value written straight into JSX text", () => {
 });
 
 // A `<Fact>` whose value is a bare name is set in the UI font: a fact is mono
-// unless told otherwise. A composite value (`maestro/${skill}`) is a machine value.
+// unless told otherwise. A composite value (`maestro/${skill}`) is a machine value,
+// and so is the Origin: an address, set in mono as band 2 sets it.
 const bareNameFacts = (text: string) =>
   [...text.matchAll(/<Fact\b[^>]*?\bvalue=\{([^{}]*)\}[^>]*?\/?>/gs)]
     .filter(
@@ -333,7 +330,8 @@ const bareNameFacts = (text: string) =>
         /^[\w.]+$/.test(expr) &&
         NAME.test(expr) &&
         !machineShaped(expr) &&
-        !whole.includes("machine={false}"),
+        !whole.includes("machine={false}") &&
+        !whole.includes("label={ORIGIN_FACT}"),
     )
     .map(([whole]) => whole.replace(/\s+/g, " "));
 
@@ -369,7 +367,8 @@ const deletionDialog = (
   mode: ComponentProps<typeof DeletionDialog>["mode"],
 ) => (
   <DeletionDialog
-    skill="research"
+    type="skill"
+    name="research"
     mode={mode}
     onClose={vi.fn()}
     onConfirm={vi.fn()}
@@ -441,7 +440,7 @@ const SURFACES: {
         kind: "local",
         origin: "fimoklei/harness",
         screen: "harness",
-        folder: ".apm/skills/research",
+        path: ".apm/skills/research",
         check: "ready",
         localOnly: false,
         uncommitted: true,
@@ -455,7 +454,7 @@ const SURFACES: {
         kind: "local",
         origin: "fimoklei/harness",
         screen: "harness",
-        folder: ".apm/skills/research",
+        path: ".apm/skills/research",
         check: "ready",
         localOnly: true,
         uncommitted: false,
@@ -468,6 +467,7 @@ const SURFACES: {
       deletionDialog({
         kind: "propose",
         origin: "fimoklei/harness",
+        branch: "maestro/research",
         seenRemoteTree: "0123456789abcdef0123456789abcdef01234567",
         openRequest: { number: 45, author: "app/renovate" },
       }),
@@ -479,6 +479,7 @@ const SURFACES: {
       deletionDialog({
         kind: "propose",
         origin: "fimoklei/harness",
+        branch: "maestro/research",
         seenRemoteTree: "0123456789abcdef0123456789abcdef01234567",
         openRequest: null,
       }),
@@ -492,7 +493,15 @@ const SURFACES: {
         load={{
           kind: "ready",
           plan: {
-            delta: [{ kind: "added", name: "research", author: "Grace" }],
+            delta: [
+              {
+                type: "skill",
+                kind: "added",
+                change: "addition",
+                name: "research",
+                author: "Grace",
+              },
+            ],
             previousTag: "v1.2.3",
             previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
             proposedStep: "minor",

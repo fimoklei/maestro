@@ -1,10 +1,14 @@
-// Pushes one skill's removal to its promote branch. A deletion is never
+// Pushes one primitive's removal to its proposal branch. A deletion is never
 // inferred from absence: it takes a confirmation (#580).
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
+import {
+  type PrimitiveRef,
+  proposalBranch,
+  proposalCompareUrl,
+} from "./harness-primitive";
 import type { HarnessReviewPort } from "./harness-review-port";
-import { promoteBranch, promoteCompareUrl } from "./promote-branch";
 import { beforeProposalPush, readOriginFacts } from "./proposal-request";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
@@ -27,7 +31,7 @@ export type PromoteDeletionResult =
   | { ok: true; branch: string; pullRequestUrl: string }
   | { ok: false; error: PromoteDeletionError };
 
-export class PromoteSkillDeletion {
+export class PromoteDeletion {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
@@ -36,16 +40,16 @@ export class PromoteSkillDeletion {
     review: HarnessReviewPort;
   };
 
-  constructor(deps: PromoteSkillDeletion["deps"]) {
+  constructor(deps: PromoteDeletion["deps"]) {
     this.deps = deps;
   }
 
   // Shares the promotion lock, keyed by harness root.
   async execute(
-    name: string,
+    ref: PrimitiveRef,
     seenRemoteTree: string,
   ): Promise<PromoteDeletionResult> {
-    if (!isValidSkillSlug(name)) {
+    if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
@@ -54,14 +58,14 @@ export class PromoteSkillDeletion {
     }
 
     const run = await this.deps.locks.run(root, () =>
-      this.remove(root, name, seenRemoteTree),
+      this.remove(root, ref, seenRemoteTree),
     );
     return run.ok ? run.value : { ok: false, error: "promote-in-progress" };
   }
 
   private async remove(
     root: string,
-    name: string,
+    ref: PrimitiveRef,
     seenRemoteTree: string,
   ): Promise<PromoteDeletionResult> {
     const outcome = await this.deps.fetchGate.fetch(root, 0);
@@ -85,24 +89,28 @@ export class PromoteSkillDeletion {
     }
 
     // Re-read at the press, never taken from the row (#575).
-    const localTrees = await this.deps.git.readSkillTrees(root, "HEAD");
+    const local = await this.deps.git.readPrimitives(root, "HEAD");
     const trees = await this.deps.git.readMovementTrees(root);
-    if (localTrees === null || trees === null) {
+    if (local === null || trees === null) {
       return { ok: false, error: "no-answer" };
     }
     if (
-      !localTrees.some((tree) => tree.name === name) ||
-      Object.hasOwn(trees.working, name)
+      !local.some(
+        (object) => object.type === ref.type && object.name === ref.name,
+      ) ||
+      Object.hasOwn(trees[ref.type].working, ref.name)
     ) {
       return { ok: false, error: "not-deleted" };
     }
 
     // From the refs just fetched: the confirmed hash may be stale.
-    const remoteTrees = await this.deps.git.readSkillTrees(root, head);
-    if (remoteTrees === null) {
+    const remoteObjects = await this.deps.git.readPrimitives(root, head);
+    if (remoteObjects === null) {
       return { ok: false, error: "no-answer" };
     }
-    const remote = remoteTrees.find((tree) => tree.name === name)?.treeHash;
+    const remote = remoteObjects.find(
+      (object) => object.type === ref.type && object.name === ref.name,
+    )?.hash;
     if (remote !== seenRemoteTree) {
       return { ok: false, error: "confirmation-stale" };
     }
@@ -112,7 +120,7 @@ export class PromoteSkillDeletion {
       {
         origin,
         base: branch,
-        name,
+        ref,
       },
       "deletion",
     );
@@ -120,7 +128,7 @@ export class PromoteSkillDeletion {
       return request;
     }
 
-    const push = await this.deps.git.pushSkillDeletion(root, name, head);
+    const push = await this.deps.git.pushDeletion(root, ref, head);
     switch (push) {
       case "pushed":
         // The new branch reaches the clone only through a fetch.
@@ -128,8 +136,8 @@ export class PromoteSkillDeletion {
         await request.afterPush();
         return {
           ok: true,
-          branch: promoteBranch(name),
-          pullRequestUrl: promoteCompareUrl(origin, branch, name),
+          branch: proposalBranch(ref),
+          pullRequestUrl: proposalCompareUrl(origin, branch, ref),
         };
       case "push-elsewhere":
         return { ok: false, error: "push-elsewhere" };

@@ -1,18 +1,21 @@
-import type { Primitive } from "./use-inventory";
+import type { HarnessPrimitiveType } from "@maestro/core";
 
-export type PrimitiveType = "skill" | "hook" | "mcp" | "bundle";
+// The types a target can hold; a prompt is never deployed.
+export type DeployableType = "skill" | "hook" | "mcp" | "bundle";
 
 // A row's Type cell: the plain word, no hue and no icon (#987).
-export const TYPE_WORD: Record<PrimitiveType, string> = {
-  skill: "Skill",
-  hook: "Hook",
-  mcp: "MCP server",
-  bundle: "Bundle",
-};
+export const TYPE_WORD: Record<DeployableType | HarnessPrimitiveType, string> =
+  {
+    skill: "Skill",
+    prompt: "Prompt",
+    hook: "Hook",
+    mcp: "MCP server",
+    bundle: "Bundle",
+  };
 
 // Name only, case-insensitive — matching descriptions would surprise the
 // user with rows whose visible name looks unrelated (#287).
-export function filterByName<T extends Primitive>(
+export function filterByName<T extends { name: string }>(
   primitives: T[],
   query: string,
 ): T[] {

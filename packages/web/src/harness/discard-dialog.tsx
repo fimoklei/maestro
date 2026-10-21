@@ -1,3 +1,5 @@
+import type { HarnessPrimitiveType } from "@maestro/core";
+import { DEFAULT_BRANCH_FACT } from "../ui/band-copy";
 import { Card } from "../ui/card";
 import { DISCARD_CHANGE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
@@ -5,21 +7,25 @@ import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
 import { phrase } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
+import { discardBody } from "./dialog-copy";
+import { ITEM_WORDS } from "./item-words";
 import { defaultBranchCopy } from "./stage-copy";
 
-// The confirmation a discard takes before the edited folder is replaced
+// The confirmation a discard takes before the edited item is replaced
 // (#1375). Presentational — the host owns the mutation and what the row said.
 export function DiscardDialog({
-  skill,
-  folder,
+  type,
+  name,
+  path,
   defaultBranch,
   onClose,
   onConfirm,
   discarding,
   discardError,
 }: {
-  skill: string;
-  folder: string;
+  type: HarnessPrimitiveType;
+  name: string;
+  path: string;
   // Null where the read could not name it.
   defaultBranch: string | null;
   onClose: () => void;
@@ -30,7 +36,7 @@ export function DiscardDialog({
   const branch = defaultBranchCopy(defaultBranch);
   return (
     <Dialog
-      title={`${DISCARD_CHANGE} for ${skill}`}
+      title={`${DISCARD_CHANGE} for ${name}`}
       version={null}
       width={480}
       phase={discarding ? "running" : "idle"}
@@ -49,16 +55,19 @@ export function DiscardDialog({
       onClose={onClose}
     >
       <p className="m-0">
-        <PhraseText
-          copy={phrase`This replaces the skill folder in your clone with its copy on ${branch}. You cannot recover your changes. Deployed copies remain unchanged.`}
-        />
+        <PhraseText copy={discardBody(type, branch)} />
       </p>
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact label="Skill" value={skill} wrap machine={false} />
-          <Fact label="Folder" value={folder} wrap />
           <Fact
-            label="Default branch"
+            label={ITEM_WORDS[type].Noun}
+            value={name}
+            wrap
+            machine={false}
+          />
+          <Fact label={ITEM_WORDS[type].Holder} value={path} wrap />
+          <Fact
+            label={DEFAULT_BRANCH_FACT}
             value={defaultBranch ?? "Unknown"}
             wrap
             machine={defaultBranch !== null}

@@ -2,9 +2,11 @@
 // that reaches the remote and replaces it.
 
 import type {
+  HarnessPrimitiveType,
   HarnessState,
   ImportCheck,
   ImportMode,
+  PrimitiveRef,
   ReleasePlan,
   SemverStep,
   SkillDeletionCheck,
@@ -129,6 +131,11 @@ function recomputedPlan(error: unknown): ReleasePlan | null {
 }
 
 const STEPS = ["major", "minor", "patch"] as const;
+// Spelled as keys, so a new type fails the typecheck until it is listed.
+const PRIMITIVE_TYPES = Object.keys({
+  skill: null,
+  prompt: null,
+} satisfies Record<HarnessPrimitiveType, null>);
 const MOVEMENT_KINDS = ["added", "changed", "removed", "renamed"] as const;
 const PROBLEMS = [
   "missing-manifest",
@@ -157,6 +164,7 @@ const isArrayOf = (
   );
 
 const isMovement = (entry: Record<string, unknown>): boolean =>
+  isOneOf(entry.type, PRIMITIVE_TYPES) &&
   isOneOf(entry.kind, MOVEMENT_KINDS) &&
   typeof entry.name === "string" &&
   isNullableString(entry.author);
@@ -214,11 +222,12 @@ export function useImportSkill() {
 
 type PromoteOutcome = { branch: string; pullRequestUrl: string };
 
-// A name travels, never a path; the row's new stage is read from git (#577).
+// A type and a name travel, never a path; the row's new stage is read from
+// git (#577).
 export function usePromoteSkill() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: { name: string }) =>
+    mutationFn: (request: PrimitiveRef) =>
       requestJson<PromoteOutcome>("/api/harness/promote", {
         method: "POST",
         body: JSON.stringify(request),
@@ -241,9 +250,8 @@ export function useProposalAction() {
       ...body
     }: {
       action: ProposalAction;
-      name: string;
       number?: number;
-    }) =>
+    } & PrimitiveRef) =>
       requestJson<{ ok: true }>(`/api/harness/proposal/${action}`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -259,7 +267,7 @@ export function useProposalAction() {
 export function usePromoteDeletion() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: { name: string; seenRemoteTree: string }) =>
+    mutationFn: (request: PrimitiveRef & { seenRemoteTree: string }) =>
       requestJson<PromoteOutcome>("/api/harness/promote/deletion", {
         method: "POST",
         body: JSON.stringify(request),
@@ -277,9 +285,9 @@ export function useDeletionCheck() {
   return useQuery({
     queryKey: DELETION_CHECK_KEY,
     queryFn: () =>
-      requestJson<{ skills: Record<string, SkillDeletionCheck> }>(
-        "/api/harness/skill/delete/check",
-      ),
+      requestJson<
+        Record<HarnessPrimitiveType, Record<string, SkillDeletionCheck>>
+      >("/api/harness/primitive/delete/check"),
     staleTime: 0,
     gcTime: 0,
   });
@@ -294,8 +302,8 @@ export const folderInClone = (check: SkillDeletionCheck | undefined) =>
 export function useDeleteLocalSkill() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: { name: string; seenWorkingTree: string }) =>
-      requestJson<{ name: string }>("/api/harness/skill/delete", {
+    mutationFn: (request: PrimitiveRef & { seenWorkingTree: string }) =>
+      requestJson<{ name: string }>("/api/harness/primitive/delete", {
         method: "POST",
         body: JSON.stringify(request),
       }),
@@ -310,8 +318,8 @@ export function useDeleteLocalSkill() {
 export function useDiscardSkillChange() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: { name: string; seenRemoteTree: string }) =>
-      requestJson<{ name: string }>("/api/harness/skill/discard", {
+    mutationFn: (request: PrimitiveRef & { seenRemoteTree: string }) =>
+      requestJson<{ name: string }>("/api/harness/primitive/discard", {
         method: "POST",
         body: JSON.stringify(request),
       }),
@@ -326,16 +334,15 @@ export function useDiscardSkillChange() {
 export function useRestoreSkill() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (request: {
-      name: string;
-      seenHeadCommit: string;
-      hasRequest: boolean;
-    }) => {
+    mutationFn: async (
+      request: PrimitiveRef & { seenHeadCommit: string; hasRequest: boolean },
+    ) => {
       const restored = await requestJson<{ name: string; commit: string }>(
-        "/api/harness/skill/restore",
+        "/api/harness/primitive/restore",
         {
           method: "POST",
           body: JSON.stringify({
+            type: request.type,
             name: request.name,
             seenHeadCommit: request.seenHeadCommit,
           }),
@@ -354,6 +361,7 @@ export function useRestoreSkill() {
         },
       );
       return {
+        type: request.type,
         name: restored.name,
         hasRequest: request.hasRequest,
         // A local success is never presented as a verified remote one: the
@@ -375,6 +383,8 @@ export function useRefreshHarness() {
       // mutation open across a remount.
       void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
       queryClient.setQueryData(HARNESS_KEY, state);
+      // A plan opened during the re-read read the refs it rewrote (#1592).
+      void queryClient.invalidateQueries({ queryKey: RELEASE_PLAN_KEY });
     },
   });
 }

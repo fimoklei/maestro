@@ -1,13 +1,17 @@
-import type { SkillDeletionCheck } from "@maestro/core";
+import type { InventorySkill } from "@maestro/core";
 import { Puzzle, Table2, Tag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
-import { folderInClone } from "../harness/use-harness";
 import {
   hiddenStagedCount,
   setStagedMany,
   toggleStaged,
 } from "../inventory/bulk-selection";
+import {
+  type CloneReading,
+  deleteItem,
+  inClone,
+} from "../inventory/clone-reading";
 import {
   type DeploymentTarget,
   rollUpDeployment,
@@ -26,7 +30,6 @@ import {
   UP_TO_DATE,
 } from "../inventory/skill-status";
 import { filterByName } from "../inventory/type-filter";
-import type { Primitive } from "../inventory/use-inventory";
 import type { RegisteredRepo } from "../registry/use-registry";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import {
@@ -87,45 +90,24 @@ import {
 
 // Presentational; the container supplies the reads (#992, #1040).
 
-// What this computer's clone says about deleting each skill (#1385).
-export type CloneReading =
-  | { kind: "no-harness" | "checking" | "failed" }
-  | { kind: "read"; skills: Record<string, SkillDeletionCheck> };
-
-const inClone = (clone: CloneReading, name: string) =>
-  folderInClone(clone.kind === "read" ? clone.skills[name] : undefined);
-
-// Last, as a danger item. As on Harness, dim while the clone's read is
-// unsettled and omitted where the clone can never take it (#1485).
-const deleteItem = (clone: CloneReading, name: string) =>
-  clone.kind === "no-harness" ||
-  (clone.kind === "read" && inClone(clone, name) === null)
-    ? []
-    : [
-        {
-          action: "delete" as const,
-          label: DELETE_SKILL,
-          danger: true,
-          disabled: clone.kind !== "read",
-        },
-      ];
-
 // The row's ⋮ and the pane's foot open the same dialog per action (#1065).
 const rowDialog = (
   action: RowAction,
   name: string,
   clone: CloneReading,
-): PaneDialog => {
+): PaneDialog | null => {
   switch (action) {
     case "deploy":
       return { kind: "deploy" };
     case "remove":
       return { kind: "remove-all" };
-    case "delete":
-      return {
-        kind: "delete",
-        localOnly: inClone(clone, name)?.localOnly ?? false,
-      };
+    case "delete": {
+      // Offered only once the clone's read holds the folder.
+      const folder = inClone(clone, name);
+      return folder === null
+        ? null
+        : { kind: "delete", path: folder.path, localOnly: folder.localOnly };
+    }
   }
 };
 
@@ -154,7 +136,7 @@ export function SkillsView({
   onDeleted,
 }: {
   /** Undefined until the Inventory has been read once. */
-  primitives: Primitive[] | undefined;
+  primitives: InventorySkill[] | undefined;
   repos: RegisteredRepo[];
   registryReady: boolean;
   // Every deploy target, for the per-row status and reach (#272). Empty until
@@ -236,7 +218,7 @@ export function SkillsView({
               },
             ]
           : []),
-        ...deleteItem(clone, primitive.name),
+        ...deleteItem(clone, primitive.name, DELETE_SKILL),
       ],
     };
   });

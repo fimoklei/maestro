@@ -10,6 +10,18 @@ describe("validateSkillStructure", () => {
     ).toBeNull();
   });
 
+  it("passes a manifest saved with Windows line endings", () => {
+    expect(
+      validateSkillStructure("---\r\ndescription: Plans a release\r\n---\r\n"),
+    ).toBeNull();
+  });
+
+  it("reports an empty frontmatter block as invalid frontmatter", () => {
+    expect(validateSkillStructure("---\n---\nBody text.\n")).toBe(
+      "invalid-frontmatter",
+    );
+  });
+
   it("reports a missing SKILL.md", () => {
     expect(validateSkillStructure(null)).toBe("missing-manifest");
   });

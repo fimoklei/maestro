@@ -26,11 +26,11 @@ export interface ViewOptionsConfig<T extends RowData> {
     options: readonly Option[];
     of: (row: T) => string;
   } | null;
-  /** Status words worst first, as Filter lists them and Status groups them. */
+  /** Status words worst first, as Filter lists them and Status groups them; null on a table with no Status column. */
   status: {
     words: readonly string[];
     of: (row: T) => string | null;
-  };
+  } | null;
   /** The screen's own groupings; None and Status are added. */
   groupings: readonly (Option & { groups: Groups<T> })[];
   initialGrouping: string;
@@ -73,21 +73,25 @@ export function useViewOptions<T extends RowData>(
   const groupings = [
     { value: "none", label: NONE, groups: undefined },
     ...config.groupings,
-    {
-      value: "status",
-      label: STATUS_LABEL,
-      groups: {
-        key: (row: T) => status.of(row) ?? NOT_READ_YET,
-        order: status.words,
-      },
-    },
+    ...(status === null
+      ? []
+      : [
+          {
+            value: "status",
+            label: STATUS_LABEL,
+            groups: {
+              key: (row: T) => status.of(row) ?? NOT_READ_YET,
+              order: status.words,
+            },
+          },
+        ]),
   ];
   const unavailable = rows.length === 0 ? config.unavailable : undefined;
   const filterCount = (kindValue === "all" ? 0 : 1) + statuses.size;
 
   return {
     shown: (row) => {
-      const word = status.of(row);
+      const word = status === null ? null : status.of(row);
       return (
         (kind === null || kindValue === "all" || kind.of(row) === kindValue) &&
         (statuses.size === 0 || (word !== null && statuses.has(word)))
@@ -101,6 +105,7 @@ export function useViewOptions<T extends RowData>(
       setStatuses(new Set());
     },
     statusCounts: (chips) => {
+      if (status === null) return [];
       const words = rows.map(status.of);
       return chips.map(({ covers, ...chip }) => {
         const pressed = covers.every((word) => statuses.has(word));
@@ -140,14 +145,21 @@ export function useViewOptions<T extends RowData>(
                   onChange: setKind,
                 },
               ]),
-          {
-            kind: "check",
-            label: STATUS_LABEL,
-            options: status.words.map((word) => ({ value: word, label: word })),
-            values: statuses,
-            onToggle: (value) =>
-              setStatuses((current) => toggle(current, value)),
-          },
+          ...(status === null
+            ? []
+            : [
+                {
+                  kind: "check" as const,
+                  label: STATUS_LABEL,
+                  options: status.words.map((word) => ({
+                    value: word,
+                    label: word,
+                  })),
+                  values: statuses,
+                  onToggle: (value: string) =>
+                    setStatuses((current) => toggle(current, value)),
+                },
+              ]),
         ],
       },
       {
@@ -155,13 +167,18 @@ export function useViewOptions<T extends RowData>(
         icon: <Icon of={SlidersHorizontal} />,
         unavailable,
         sections: [
-          {
-            kind: "radio",
-            label: GROUP_BY_LABEL,
-            options: groupings,
-            value: grouping,
-            onChange: setGrouping,
-          },
+          // None alone groups nothing, so it is no choice.
+          ...(groupings.length === 1
+            ? []
+            : [
+                {
+                  kind: "radio" as const,
+                  label: GROUP_BY_LABEL,
+                  options: groupings,
+                  value: grouping,
+                  onChange: setGrouping,
+                },
+              ]),
           {
             kind: "check",
             label: COLUMNS_LABEL,

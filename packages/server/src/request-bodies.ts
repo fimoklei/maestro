@@ -1,5 +1,6 @@
 // Every POST body the server accepts, and the request-shape refusals for a wrong one.
 
+import { HARNESS_PRIMITIVE_TYPES } from "@maestro/core";
 import type { Context } from "hono";
 import { z } from "zod";
 import { refusalCodes } from "./error-responses";
@@ -114,41 +115,47 @@ export const publishReleaseBodySchema = z.object({
   revision: z.string(),
 });
 
-// A name, never a path: the harness the skill belongs to is resolved
-// server-side, so the browser cannot point a promotion at another repository.
-export const promoteBodySchema = z.object({ name: z.string() });
+// A type and a name, never a path: the harness the primitive belongs to is
+// resolved server-side, so the browser cannot point a promotion at another
+// repository.
+const primitiveRefShape = {
+  type: z.enum(HARNESS_PRIMITIVE_TYPES),
+  name: z.string(),
+};
+
+export const promoteBodySchema = z.object(primitiveRefShape);
 
 // The number is a claim, never an authorisation: it is rechecked against a fresh read (#827).
 export const proposalBodySchema = z.object({
-  name: z.string(),
+  ...primitiveRefShape,
   number: z.number().int().positive(),
 });
 
 // The hash is compared against a freshly fetched remote, never used as the
 // thing to remove (#580).
 export const deletionBodySchema = z.object({
-  name: z.string(),
+  ...primitiveRefShape,
   seenRemoteTree: z.string(),
 });
 
 // The tree is compared against a freshly read working tree, never used as the
 // thing to delete.
 export const localDeletionBodySchema = z.object({
-  name: z.string(),
+  ...primitiveRefShape,
   seenWorkingTree: z.string(),
 });
 
 // The tree is compared against a freshly read default branch, and is the copy
 // that replaces the folder (#1375).
 export const discardBodySchema = z.object({
-  name: z.string(),
+  ...primitiveRefShape,
   seenRemoteTree: z.string(),
 });
 
 // The commit is compared against a freshly read HEAD, never used as the thing
 // to restore.
 export const restoreBodySchema = z.object({
-  name: z.string(),
+  ...primitiveRefShape,
   seenHeadCommit: z.string(),
 });
 
@@ -159,47 +166,48 @@ export type RequestShape = { message: string; detail: string };
 export const PROMOTE_BODY: RequestShape = {
   message:
     "Nothing was proposed. Reload the page, then propose the change again.",
-  detail: "The request carries a skill name: { name: string }.",
+  detail:
+    'The request carries a type and a name: { type: "skill" | "prompt", name: string }.',
 };
 
 export const PROPOSAL_CREATE_BODY: RequestShape = {
   message:
     "No pull request was created. Reload the page, then create it again.",
-  detail: "The request carries a skill name: { name: string }.",
+  detail:
+    'The request carries a type and a name: { type: "skill" | "prompt", name: string }.',
 };
 
 export const PROPOSAL_BODY: RequestShape = {
   message:
     "Maestro could not change the pull request. Reload the page, then try again.",
   detail:
-    "The request carries a skill name and a pull-request number: { name: string, number: number }.",
+    'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
 };
 
 export const DELETION_BODY: RequestShape = {
   message:
-    "Nothing was proposed. Reload the page, then remove the skill again.",
+    "Nothing was proposed. Reload the page, then propose the deletion again.",
   detail:
-    "The request carries a skill name and the origin/HEAD tree it was confirmed against.",
+    'The request carries a type, a name and the origin/HEAD tree it was confirmed against: { type: "skill" | "prompt", name: string, seenRemoteTree: string }.',
 };
 
 export const LOCAL_DELETION_BODY: RequestShape = {
-  message: "Nothing was deleted. Reload the page, then delete the skill again.",
+  message: "Nothing was deleted. Reload the page, then delete it again.",
   detail:
-    "The request carries a skill name and the working tree it was confirmed against.",
+    'The request carries a type, a name and the working tree it was confirmed against: { type: "skill" | "prompt", name: string, seenWorkingTree: string }.',
 };
 
 export const RESTORE_BODY: RequestShape = {
-  message:
-    "Nothing was restored. Reload the page, then restore the skill again.",
+  message: "Nothing was restored. Reload the page, then restore it again.",
   detail:
-    "The request carries a skill name and the local commit it was confirmed against.",
+    'The request carries a type, a name and the local commit it was confirmed against: { type: "skill" | "prompt", name: string, seenHeadCommit: string }.',
 };
 
 export const DISCARD_BODY: RequestShape = {
   message:
     "Nothing was discarded. Reload the page, then discard the change again.",
   detail:
-    "The request carries a skill name and the default-branch tree it was confirmed against: { name: string, seenRemoteTree: string }.",
+    'The request carries a type, a name and the default-branch tree it was confirmed against: { type: "skill" | "prompt", name: string, seenRemoteTree: string }.',
 };
 
 export const RELEASE_BODY: RequestShape = {

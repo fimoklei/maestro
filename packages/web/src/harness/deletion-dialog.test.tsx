@@ -1,3 +1,4 @@
+import type { HarnessPrimitiveType } from "@maestro/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { sentence } from "../test-utils";
@@ -9,6 +10,7 @@ const TREE = "0123456789abcdef0123456789abcdef01234567";
 const PROPOSE: DeletionMode = {
   kind: "propose",
   origin: "fimoklei/harness",
+  branch: "maestro/research",
   seenRemoteTree: TREE,
   openRequest: null,
 };
@@ -22,7 +24,7 @@ const LOCAL: DeletionMode = {
   kind: "local",
   origin: "fimoklei/harness",
   screen: "harness",
-  folder: ".apm/skills/research",
+  path: ".apm/skills/research",
   check: "ready",
   localOnly: true,
   uncommitted: true,
@@ -36,6 +38,8 @@ const STEP_ONE: DeletionMode = {
 
 const renderDialog = (
   overrides: {
+    type?: HarnessPrimitiveType;
+    name?: string;
     mode?: DeletionMode;
     deleting?: boolean;
     deleteError?: NoticeContent | null;
@@ -43,7 +47,8 @@ const renderDialog = (
 ) =>
   render(
     <DeletionDialog
-      skill="research"
+      type={overrides.type ?? "skill"}
+      name={overrides.name ?? "research"}
       mode={overrides.mode ?? PROPOSE}
       onClose={vi.fn()}
       onConfirm={vi.fn()}
@@ -286,6 +291,157 @@ describe("DeletionDialog", () => {
 
       expect(
         screen.queryByText("Uncommitted changes in research"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  // The skill dialog's wording, a file where a skill has a folder, and no
+  // targets: a prompt deploys nowhere.
+  describe("a prompt", () => {
+    const PROMPT_IN_CLONE: DeletionMode = {
+      ...STEP_ONE,
+      path: ".maestro/prompts/pr-review.md",
+    };
+    const PROMPT_PROPOSE: DeletionMode = {
+      ...PROPOSE,
+      branch: "maestro/prompt.pr-review",
+    };
+    const renderPrompt = (mode: DeletionMode) =>
+      renderDialog({ type: "prompt", name: "pr-review", mode });
+
+    it("titles the dialog with the prompt and confirms with Delete prompt", () => {
+      renderPrompt(PROMPT_IN_CLONE);
+
+      expect(
+        screen.getByRole("dialog", { name: "Delete pr-review" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Delete prompt" }),
+      ).toBeInTheDocument();
+    });
+
+    it("says it removes the file from the clone and the prompt stays in the origin", () => {
+      renderPrompt(PROMPT_IN_CLONE);
+
+      expect(
+        screen.getByText(
+          sentence(
+            "Delete prompt removes the pr-review file from your clone of fimoklei/harness. The prompt stays in fimoklei/harness.",
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          sentence(
+            "To also delete it from fimoklei/harness, select Propose change.",
+          ),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("names the Harness screen when opened from Prompts", () => {
+      renderPrompt({ ...PROMPT_IN_CLONE, screen: "prompts" });
+
+      expect(
+        screen.getByText(
+          sentence(
+            "To also delete it from fimoklei/harness, go to the Harness screen and select Propose change.",
+          ),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the prompt and its file as facts", () => {
+      renderPrompt(PROMPT_IN_CLONE);
+
+      expect(screen.getByText("Prompt")).toBeInTheDocument();
+      expect(screen.getByText("File")).toBeInTheDocument();
+      expect(
+        screen.getByText(".maestro/prompts/pr-review.md"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Skill")).not.toBeInTheDocument();
+      expect(screen.queryByText("Folder")).not.toBeInTheDocument();
+    });
+
+    it("says the file leaves the disk and no other copy exists", () => {
+      renderPrompt({ ...PROMPT_IN_CLONE, localOnly: true });
+
+      expect(
+        screen.getByText(
+          sentence(
+            "Delete prompt removes the file from disk. No other copy of pr-review exists.",
+          ),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("warns of uncommitted changes in the prompt file", () => {
+      renderPrompt({ ...PROMPT_IN_CLONE, uncommitted: true });
+
+      expect(
+        screen.getByText("Uncommitted changes in pr-review"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Delete prompt discards them. To keep them, commit them in your Git tool first.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          sentence(
+            "The prompt file in your clone of fimoklei/harness differs from its last commit.",
+          ),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("proposes the deletion and says the Prompts screen keeps the prompt until the release", () => {
+      renderPrompt(PROMPT_PROPOSE);
+
+      expect(
+        screen.getByText(
+          sentence(
+            "Delete prompt proposes this deletion to fimoklei/harness for review.",
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          sentence(
+            "The Prompts screen keeps pr-review until the next release.",
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/targets/)).not.toBeInTheDocument();
+    });
+
+    it("shows the prompt, its branch and the default branch commit as facts", () => {
+      renderPrompt(PROMPT_PROPOSE);
+
+      expect(screen.getByText("Prompt")).toBeInTheDocument();
+      expect(screen.getByText("maestro/prompt.pr-review")).toBeInTheDocument();
+      expect(screen.getByText("Default branch commit")).toBeInTheDocument();
+      expect(screen.getByText(TREE)).toBeInTheDocument();
+    });
+
+    it("warns that an open pull request becomes the deletion", () => {
+      renderPrompt({
+        ...PROMPT_PROPOSE,
+        openRequest: { number: 45, author: "app/renovate" },
+      });
+
+      expect(
+        screen.getByText("Pull request #45 will delete pr-review instead"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          sentence(
+            "app/renovate opened it to propose changes to pr-review. Delete prompt replaces those changes with the deletion.",
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/proposes this deletion/),
       ).not.toBeInTheDocument();
     });
   });

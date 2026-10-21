@@ -23,7 +23,7 @@ describe("Harness discard", () => {
     proposal: [
       row("pending-proposal", "code-review", "not-yet-proposed", {
         remoteTree: "remote-code-review",
-        folderOnDisk: true,
+        onDisk: true,
       }),
     ],
   });
@@ -88,7 +88,11 @@ describe("Harness discard", () => {
 
     await waitFor(() =>
       expect(discards).toEqual([
-        { name: "code-review", seenRemoteTree: "remote-code-review" },
+        {
+          type: "skill",
+          name: "code-review",
+          seenRemoteTree: "remote-code-review",
+        },
       ]),
     );
     expect(promotions).toEqual([]);

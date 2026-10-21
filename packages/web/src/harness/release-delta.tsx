@@ -1,45 +1,36 @@
-import type { PendingSkillMovement, SkillMovementKind } from "@maestro/core";
-import { createDataTableColumns, DataTable } from "../ui/data-table";
-import { MachineValue } from "../ui/machine-value";
+import type { HarnessChange, PendingMovement } from "@maestro/core";
+import { TYPE_WORD } from "../inventory/type-filter";
+import { GroupedList } from "../ui/grouped-list";
 import { SubListHeading } from "../ui/sub-list-heading";
+import { CHANGE_WORD } from "./change-words";
 
-// "Deleted", never "Removed": remove belongs to deployed copies alone.
-const KINDS: Record<SkillMovementKind, string> = {
-  added: "Added",
-  changed: "Changed",
-  renamed: "Renamed",
-  removed: "Deleted",
-};
+// The dialog's group order.
+const GROUPS: readonly HarnessChange[] = [
+  "addition",
+  "edit",
+  "rename",
+  "deletion",
+];
 
-const columns = createDataTableColumns<PendingSkillMovement>((helper) => [
-  helper.accessor("name", {
-    header: "Skill",
-    enableSorting: false,
-    cell: ({ row }) => (
-      <span className="text-gray-12">
-        <MachineValue>
-          {row.original.previousName === undefined
-            ? row.original.name
-            : `${row.original.previousName} → ${row.original.name}`}
-        </MachineValue>
-      </span>
-    ),
-  }),
-  helper.accessor("author", {
-    header: "Author",
-    enableSorting: false,
-    cell: ({ row }) => (
-      <span className="text-gray-11">{row.original.author ?? "Unknown"}</span>
-    ),
-    meta: { className: "w-1/3" },
-  }),
-]);
+// Type, then Author, in spacing steps: 88px and 80px.
+const SLOTS = [22, 20];
 
-export function ReleaseDelta({
-  movements,
-}: {
-  movements: PendingSkillMovement[];
-}) {
+export function ReleaseDelta({ movements }: { movements: PendingMovement[] }) {
+  const groups = GROUPS.map((change) => {
+    const rows = movements.filter((movement) => movement.change === change);
+    return {
+      tone: "neutral" as const,
+      legend: `${CHANGE_WORD[change]} · ${rows.length}`,
+      rows: rows.map((movement) => ({
+        key: `${movement.type}:${movement.name}`,
+        name:
+          movement.previousName === undefined
+            ? movement.name
+            : `${movement.previousName} → ${movement.name}`,
+        slots: [TYPE_WORD[movement.type], movement.author ?? "Unknown"],
+      })),
+    };
+  });
   return (
     <section className="flex flex-col gap-inline">
       <SubListHeading
@@ -47,18 +38,7 @@ export function ReleaseDelta({
         count={movements.length}
         headingRef={null}
       />
-      <div className="overflow-hidden rounded-control border border-edge">
-        <DataTable
-          label="Pending release table"
-          columns={columns}
-          data={movements}
-          getRowId={(movement) => `${movement.kind}:${movement.name}`}
-          groups={{
-            key: (movement) => KINDS[movement.kind],
-            order: Object.values(KINDS),
-          }}
-        />
-      </div>
+      <GroupedList groups={groups} checklist={null} slots={SLOTS} live={null} />
     </section>
   );
 }

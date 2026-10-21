@@ -1,17 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { resolveHarnessSkillsDir } from "./harness-skills-dir";
+import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
 
 const fsWith = (realpath: (path: string) => Promise<string>) => ({ realpath });
 
-describe("resolveHarnessSkillsDir", () => {
+describe("resolveHarnessPrimitiveDir", () => {
   it("returns the real skills folder inside the harness", async () => {
     const fs = fsWith(async (path) =>
       path.replace("/link-to-harness", "/real/harness"),
     );
 
-    expect(await resolveHarnessSkillsDir(fs, "/link-to-harness")).toEqual({
+    expect(
+      await resolveHarnessPrimitiveDir(fs, "/link-to-harness", "skill"),
+    ).toEqual({
       ok: true,
-      skills: "/real/harness/.apm/skills",
+      dir: "/real/harness/.apm/skills",
+    });
+  });
+
+  it("returns the real prompts folder for a prompt", async () => {
+    const fs = fsWith(async (path) => path);
+
+    expect(await resolveHarnessPrimitiveDir(fs, "/harness", "prompt")).toEqual({
+      ok: true,
+      dir: "/harness/.maestro/prompts",
     });
   });
 
@@ -20,7 +31,7 @@ describe("resolveHarnessSkillsDir", () => {
       path === "/harness/.apm/skills" ? "/elsewhere/skills" : path,
     );
 
-    expect(await resolveHarnessSkillsDir(fs, "/harness")).toEqual({
+    expect(await resolveHarnessPrimitiveDir(fs, "/harness", "skill")).toEqual({
       ok: false,
       reason: "outside-root",
     });
@@ -34,7 +45,7 @@ describe("resolveHarnessSkillsDir", () => {
       return path;
     });
 
-    expect(await resolveHarnessSkillsDir(fs, "/harness")).toEqual({
+    expect(await resolveHarnessPrimitiveDir(fs, "/harness", "skill")).toEqual({
       ok: false,
       reason: "unreadable",
     });
@@ -48,7 +59,7 @@ describe("resolveHarnessSkillsDir", () => {
       return path;
     });
 
-    expect(await resolveHarnessSkillsDir(fs, "/harness")).toEqual({
+    expect(await resolveHarnessPrimitiveDir(fs, "/harness", "skill")).toEqual({
       ok: false,
       reason: "unreadable",
     });

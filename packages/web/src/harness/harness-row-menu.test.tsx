@@ -92,7 +92,7 @@ const menuOf = async (
   await settled();
   const [first] = rows;
   if (first === undefined) throw new Error("no row");
-  return menuItems(await openRowMenu(first.skill, STAGE_TITLE[first.stage]));
+  return menuItems(await openRowMenu(first.name, STAGE_TITLE[first.stage]));
 };
 
 describe("Harness row menu", () => {
@@ -115,7 +115,7 @@ describe("Harness row menu", () => {
     const proposal = (over: Partial<HarnessStageRow> = {}) =>
       stageRow("pending-proposal", "not-yet-proposed", {
         requests: [],
-        folderOnDisk: true,
+        onDisk: true,
         ...over,
       });
 
@@ -158,7 +158,7 @@ describe("Harness row menu", () => {
         proposal({
           change: "deletion",
           remoteTree: "remote-tdd",
-          folderOnDisk: false,
+          onDisk: false,
         }),
       ]);
 
@@ -167,7 +167,7 @@ describe("Harness row menu", () => {
 
     it("offers it on Pending release after the links when the folder is on disk", async () => {
       const menu = await menuOf([
-        stageRow("pending-release", "not-yet-released", { folderOnDisk: true }),
+        stageRow("pending-release", "not-yet-released", { onDisk: true }),
       ]);
 
       expect(menu.labels).toEqual(["View pull request", "Delete skill"]);
@@ -178,12 +178,43 @@ describe("Harness row menu", () => {
       const menu = await menuOf([
         stageRow("pending-release", "not-yet-released", {
           change: "deletion",
-          folderOnDisk: false,
+          onDisk: false,
         }),
       ]);
 
       expect(menu.labels).not.toContain("Delete skill");
     });
+
+    // No pull request and no file: the menu would open empty (#1590).
+    it.each(["skill", "prompt"] as const)(
+      "leaves no ⋮ on a Deleted %s in Pending release with no pull request",
+      async (type) => {
+        stubHarnessServer({
+          read: {
+            body: withStages(
+              { ...RELEASED, freshness: FETCHED },
+              {
+                release: [
+                  row("pending-release", "tdd", "not-yet-released", {
+                    type,
+                    change: "deletion",
+                    onDisk: false,
+                  }),
+                ],
+              },
+            ),
+          },
+        });
+        renderHarness();
+        await settled();
+
+        expect(
+          screen.queryByRole("button", {
+            name: `Actions for tdd ${type} in Pending release`,
+          }),
+        ).toBeNull();
+      },
+    );
 
     it.each([
       "waiting-for-review",
@@ -194,7 +225,7 @@ describe("Harness row menu", () => {
       async (status) => {
         const menu = await menuOf([
           stageRow("pending-review", status, {
-            folderOnDisk: true,
+            onDisk: true,
             remoteTree: "remote-tdd",
           }),
         ]);
@@ -208,7 +239,7 @@ describe("Harness row menu", () => {
     const unproposed = (over: Partial<HarnessStageRow> = {}) =>
       stageRow("pending-proposal", "not-yet-proposed", {
         requests: [],
-        folderOnDisk: true,
+        onDisk: true,
         remoteTree: "remote-tdd",
         ...over,
       });
@@ -228,7 +259,7 @@ describe("Harness row menu", () => {
       ["behind an open proposal", { status: "new-local-work" as const }],
       [
         "that proposes a deletion",
-        { change: "deletion" as const, folderOnDisk: false },
+        { change: "deletion" as const, onDisk: false },
       ],
     ])("never offers it on a row %s", async (_what, over) => {
       const menu = await menuOf([unproposed(over)]);
@@ -239,7 +270,7 @@ describe("Harness row menu", () => {
     it("never offers it outside Pending proposal", async () => {
       const menu = await menuOf([
         stageRow("pending-review", "waiting-for-review", {
-          folderOnDisk: true,
+          onDisk: true,
           remoteTree: "remote-tdd",
         }),
       ]);
@@ -260,7 +291,7 @@ describe("Harness row menu", () => {
         [
           stageRow("pending-proposal", "not-yet-proposed", {
             requests: [],
-            folderOnDisk: true,
+            onDisk: true,
             remoteTree: "remote-tdd",
           }),
         ],
@@ -305,7 +336,7 @@ describe("Harness row menu", () => {
           requests: [theirs],
           waitingOn: "teammate",
           remoteTree: "remote-tdd",
-          folderOnDisk: true,
+          onDisk: true,
         }),
       ]);
 
@@ -372,7 +403,7 @@ describe("Harness row menu", () => {
       const menu = await menuOf([
         stageRow("pending-review", "proposal-closed", {
           change: "deletion",
-          folderOnDisk: false,
+          onDisk: false,
           restorable: true,
         }),
       ]);
@@ -390,7 +421,7 @@ describe("Harness row menu", () => {
       const menu = await menuOf([
         stageRow("pending-review", "proposal-closed", {
           change: "deletion",
-          folderOnDisk: true,
+          onDisk: true,
         }),
       ]);
 
