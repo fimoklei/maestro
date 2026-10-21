@@ -8,13 +8,13 @@ import { Icon } from "./icon";
 export function BandAction({
   icon,
   label,
-  menu = false,
+  menu,
   ...rest
 }: Omit<ButtonProps, "children" | "variant" | "size"> & {
   icon: LucideIcon;
   label: string;
   /** Opens a menu: a chevron follows the label. Rest props come from the menu's trigger. */
-  menu?: boolean;
+  menu: boolean;
 }) {
   return (
     <Button

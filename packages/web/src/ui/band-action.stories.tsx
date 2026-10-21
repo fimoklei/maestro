@@ -6,7 +6,12 @@ import { BandAction } from "./band-action";
 const meta = {
   title: "Core/BandAction",
   component: BandAction,
-  args: { icon: FolderInput, label: "Import skill", onClick: () => {} },
+  args: {
+    icon: FolderInput,
+    label: "Import skill",
+    menu: false,
+    onClick: () => {},
+  },
 } satisfies Meta<typeof BandAction>;
 
 export default meta;

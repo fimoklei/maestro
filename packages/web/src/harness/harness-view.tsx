@@ -324,7 +324,9 @@ export function HarnessView({
             {/* Both items open a dialog, so focus returns to Import, its opener. */}
             <ActionsMenu
               label={IMPORT}
-              trigger={<BandAction icon={FolderInput} label={IMPORT} menu />}
+              trigger={
+                <BandAction icon={FolderInput} label={IMPORT} menu={true} />
+              }
               items={[
                 { label: IMPORT_SKILL, onSelect: importFlow.start },
                 { label: IMPORT_PROMPT, onSelect: promptImportFlow.start },
