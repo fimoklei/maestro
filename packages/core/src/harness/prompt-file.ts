@@ -57,6 +57,14 @@ export type PromptFieldProblem =
   | "empty-text"
   | "long-text";
 
+/** The rule the name breaks, or null when it holds. */
+export const promptNameProblem = (
+  name: string,
+): "empty-name" | "invalid-name" | null => {
+  if (name === "") return "empty-name";
+  return isValidSkillSlug(name) ? null : "invalid-name";
+};
+
 const MAX_DESCRIPTION_LENGTH = 1024;
 const MAX_TEXT_BYTES = 102_400;
 
@@ -67,10 +75,9 @@ export const promptFieldProblems = ({
   text,
 }: PromptDraft): PromptFieldProblem[] => {
   const problems: PromptFieldProblem[] = [];
-  if (name === "") {
-    problems.push("empty-name");
-  } else if (!isValidSkillSlug(name)) {
-    problems.push("invalid-name");
+  const nameProblem = promptNameProblem(name);
+  if (nameProblem !== null) {
+    problems.push(nameProblem);
   }
   if (description.trim() === "") {
     problems.push("empty-description");

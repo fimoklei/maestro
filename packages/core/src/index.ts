@@ -149,6 +149,7 @@ export {
 } from "./harness/import-local-edits";
 export {
   ImportPrompt,
+  type ImportPromptCheck,
   type ImportPromptError,
 } from "./harness/import-prompt";
 export {

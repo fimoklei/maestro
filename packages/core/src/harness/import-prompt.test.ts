@@ -234,3 +234,65 @@ describe("ImportPrompt.execute", () => {
     expect(await fs.exists(PROMPTS)).toBe(false);
   });
 });
+
+describe("ImportPrompt.check", () => {
+  const TAKEN = {
+    directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
+    files: { [`${PROMPTS}/review-pr.md`]: "old" },
+  };
+
+  it("reports a name whose file is in the prompts folder as taken", async () => {
+    const { importPrompt } = build({ seed: TAKEN });
+
+    await expect(importPrompt.check("review-pr")).resolves.toEqual({
+      ok: true,
+      check: { mode: "update", nameBlocker: null },
+    });
+  });
+
+  it("reports a name whose file is gone from the working Harness as free", async () => {
+    const { importPrompt } = build({
+      seed: {
+        directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
+        files: { [`${PROMPTS}/other.md`]: "kept" },
+      },
+    });
+
+    await expect(importPrompt.check("review-pr")).resolves.toEqual({
+      ok: true,
+      check: { mode: "add", nameBlocker: null },
+    });
+  });
+
+  it("reports a name as free before the prompts folder exists, creating nothing", async () => {
+    const { importPrompt, fs } = build();
+
+    await expect(importPrompt.check("review-pr")).resolves.toEqual({
+      ok: true,
+      check: { mode: "add", nameBlocker: null },
+    });
+    expect(await fs.exists(PROMPTS)).toBe(false);
+  });
+
+  it.each([
+    ["../review-pr", "invalid-name"],
+    ["Review-PR", "invalid-name"],
+    ["", "empty-name"],
+  ])("reports %j as a name blocker", async (name, nameBlocker) => {
+    const { importPrompt } = build({ seed: TAKEN });
+
+    await expect(importPrompt.check(name)).resolves.toEqual({
+      ok: true,
+      check: { mode: "add", nameBlocker },
+    });
+  });
+
+  it("refuses without a connected Harness", async () => {
+    const { importPrompt } = build({ root: undefined });
+
+    await expect(importPrompt.check("review-pr")).resolves.toEqual({
+      ok: false,
+      error: "not-configured",
+    });
+  });
+});

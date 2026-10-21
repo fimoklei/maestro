@@ -10,6 +10,7 @@ import {
   type PromptDraft,
   type PromptFieldProblem,
   promptFieldProblems,
+  promptNameProblem,
   writePromptFile,
 } from "./prompt-file";
 
@@ -26,6 +27,17 @@ export type ImportPromptResult =
   | { ok: true; mode: ImportMode; name: string }
   | { ok: false; error: ImportPromptError };
 
+// Taken only while `<name>.md` is in the Working Harness: a name deleted
+// there is free again.
+export type ImportPromptCheck = {
+  mode: ImportMode;
+  nameBlocker: "empty-name" | "invalid-name" | null;
+};
+
+export type ImportPromptCheckResult =
+  | { ok: true; check: ImportPromptCheck }
+  | { ok: false; error: "not-configured" };
+
 export class ImportPrompt {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
@@ -35,6 +47,32 @@ export class ImportPrompt {
 
   constructor(deps: ImportPrompt["deps"]) {
     this.deps = deps;
+  }
+
+  async check(name: string): Promise<ImportPromptCheckResult> {
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    const nameBlocker = promptNameProblem(name);
+    if (nameBlocker !== null) {
+      return { ok: true, check: { mode: "add", nameBlocker } };
+    }
+    // A missing or unsafe folder holds no prompt; the import states why.
+    const resolved = await resolveHarnessPrimitiveDir(
+      this.deps.fs,
+      root,
+      "prompt",
+    );
+    const taken =
+      resolved.ok &&
+      (await this.deps.fs.exists(
+        join(resolved.dir, primitiveEntry({ type: "prompt", name })),
+      ));
+    return {
+      ok: true,
+      check: { mode: taken ? "update" : "add", nameBlocker: null },
+    };
   }
 
   // A taken name is no blocker: the write replaces that prompt.
