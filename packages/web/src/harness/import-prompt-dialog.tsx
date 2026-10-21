@@ -1,9 +1,9 @@
 import type { PromptDraft } from "@maestro/core/prompt-file";
-import type { ClipboardEvent } from "react";
-import { IMPORT_PROMPT } from "../ui/control-labels";
+import { type ClipboardEvent, useId } from "react";
+import { IMPORT_PROMPT, UPDATE_PROMPT } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Field } from "../ui/field";
-import type { NoticeContent } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
 import { TextAreaField } from "../ui/text-area-field";
 import { PROMPT_FIELD_HINTS } from "./import-prompt-copy";
 import type { PromptFieldErrors } from "./use-import-prompt-flow";
@@ -14,7 +14,10 @@ export function ImportPromptDialog({
   changed,
   importing,
   failure,
+  updating,
+  takenNotice,
   onEdit,
+  onNameLeave,
   onPaste,
   onImport,
   onClose,
@@ -24,12 +27,17 @@ export function ImportPromptDialog({
   changed: boolean;
   importing: boolean;
   failure: NoticeContent | null;
+  /** The name is taken: the submit replaces that prompt. */
+  updating: boolean;
+  takenNotice: NoticeContent | null;
   onEdit: (change: Partial<PromptDraft>) => void;
+  onNameLeave: () => void;
   /** The text as it reads after the paste; true when the paste was taken over. */
   onPaste: (next: string) => boolean;
   onImport: () => void;
   onClose: () => void;
 }) {
+  const takenNoticeId = useId();
   const pasteText = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const area = event.currentTarget;
     const next =
@@ -41,13 +49,13 @@ export function ImportPromptDialog({
 
   return (
     <Dialog
-      title="Import a prompt"
+      title={updating ? "Update a prompt" : "Import a prompt"}
       version={null}
       width={480}
       phase={importing ? "running" : "idle"}
       action={{
-        label: IMPORT_PROMPT,
-        verb: "import",
+        label: updating ? UPDATE_PROMPT : IMPORT_PROMPT,
+        verb: updating ? "update" : "import",
         tone: "primary",
         unavailable: null,
         onRun: onImport,
@@ -58,15 +66,20 @@ export function ImportPromptDialog({
       fieldsChanged={changed}
       onClose={onClose}
     >
-      <Field
-        label="Name"
-        hint={PROMPT_FIELD_HINTS.name}
-        error={fieldErrors.name}
-        value={draft.name}
-        onChange={(name) => onEdit({ name })}
-        disabled={importing}
-        mono
-      />
+      <div className="flex flex-col gap-inline">
+        <Field
+          label="Name"
+          hint={PROMPT_FIELD_HINTS.name}
+          error={fieldErrors.name}
+          value={draft.name}
+          onChange={(name) => onEdit({ name })}
+          onBlur={onNameLeave}
+          describedBy={takenNotice === null ? undefined : takenNoticeId}
+          disabled={importing}
+          mono
+        />
+        <Notice id={takenNoticeId} trigger="user-action" notice={takenNotice} />
+      </div>
       <Field
         label="Description"
         hint={PROMPT_FIELD_HINTS.description}

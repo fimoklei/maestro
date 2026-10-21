@@ -18,6 +18,7 @@ export const REGISTER_REPOSITORY = "Register repository";
 export const REMOVE_SKILL = "Remove skill";
 const RESTORE_PROMPT = "Restore prompt";
 const RESTORE_SKILL = "Restore skill";
+export const UPDATE_PROMPT = "Update prompt";
 export const UPDATE_SKILL = "Update skill";
 export const UPDATE_TARGET = "Update target";
 export const UPDATE_TARGETS = "Update targets";

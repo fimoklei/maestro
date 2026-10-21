@@ -4,15 +4,21 @@ import {
   promptFieldProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
+import { IMPORT_PROMPT, UPDATE_PROMPT } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { useWriteAction } from "../ui/use-write-action";
 import {
   importPromptNotice,
   isFieldError,
-  LONG_TEXT_NOTICE,
+  longTextNotice,
   PROMPT_FIELD_ERRORS,
+  PROMPT_TAKEN_NOTICE,
 } from "./import-prompt-copy";
-import { type ImportPromptOutcome, useImportPrompt } from "./use-harness";
+import {
+  type ImportPromptOutcome,
+  useImportPrompt,
+  useImportPromptCheck,
+} from "./use-harness";
 
 const EMPTY: PromptDraft = { name: "", description: "", text: "" };
 
@@ -40,13 +46,19 @@ export function useImportPromptFlow(
   const [draft, setDraft] = useState<PromptDraft>(EMPTY);
   // Errors show from the first submit on, and each clears once its field holds.
   const [submitted, setSubmitted] = useState(false);
+  // The name last left; its check speaks only while the field still holds it.
+  const [checkedName, setCheckedName] = useState<string | null>(null);
+  const check = useImportPromptCheck(checkedName);
+  // A failed check reads as adding: the import itself states any refusal.
+  const updating = checkedName === draft.name && check.data?.mode === "update";
+  const confirm = updating ? UPDATE_PROMPT : IMPORT_PROMPT;
   const importPrompt = useImportPrompt();
   const write = useWriteAction(importPrompt, {
     report,
     action: "import",
     show: "row",
     name: (outcome) => outcome.name,
-    failure: importPromptNotice,
+    failure: (error) => importPromptNotice(error, confirm),
   });
 
   const problems = promptFieldProblems(draft);
@@ -59,13 +71,14 @@ export function useImportPromptFlow(
   }
   const tooLong = submitted && problems.includes("long-text");
   const failure: NoticeContent | null = tooLong
-    ? LONG_TEXT_NOTICE
+    ? longTextNotice(confirm)
     : write.failure;
 
   const close = () => {
     setOpen(false);
     setDraft(EMPTY);
     setSubmitted(false);
+    setCheckedName(null);
     importPrompt.reset();
   };
 
@@ -79,10 +92,14 @@ export function useImportPromptFlow(
     draft,
     fieldErrors,
     failure,
+    updating,
+    takenNotice: updating ? PROMPT_TAKEN_NOTICE : null,
     phase: write.phase,
     changed: draft.name !== "" || draft.description !== "" || draft.text !== "",
     start: () => setOpen(true),
     edit,
+    // Left with an invalid name, the check states no error: submit does.
+    checkName: () => setCheckedName(draft.name === "" ? null : draft.name),
     // A pasted front matter block gives up its description and leaves the
     // text; text without one pastes as it is. False leaves the paste alone.
     paste: (next: string): boolean => {

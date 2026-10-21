@@ -18,6 +18,10 @@ import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog, type DeletionMode } from "./harness/deletion-dialog";
 import { DiscardDialog } from "./harness/discard-dialog";
 import { ImportDialog } from "./harness/import-dialog";
+import {
+  longTextNotice,
+  PROMPT_TAKEN_NOTICE,
+} from "./harness/import-prompt-copy";
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
@@ -32,6 +36,7 @@ import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
 import { htmlElement } from "./test-utils";
+import { UPDATE_PROMPT } from "./ui/control-labels";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
 
@@ -206,6 +211,9 @@ const importPromptDialog = (
     changed={false}
     importing={false}
     failure={null}
+    updating={false}
+    takenNotice={null}
+    onNameLeave={vi.fn()}
     onEdit={vi.fn()}
     onPaste={() => false}
     onImport={vi.fn()}
@@ -637,7 +645,19 @@ const ON_DIALOG: Row[] = [
     },
     loading: null,
     loadFailed: null,
-    notices: [],
+    // The taken-name notice is information, placed under Name, the region
+    // it describes; only a refusal sits above the footer.
+    notices: [
+      {
+        label: "Prompt over 100 KB",
+        render: () =>
+          importPromptDialog({
+            updating: true,
+            takenNotice: PROMPT_TAKEN_NOTICE,
+            failure: longTextNotice(UPDATE_PROMPT),
+          }),
+      },
+    ],
   },
   {
     file: "skills/bulk-remove-dialog.tsx",

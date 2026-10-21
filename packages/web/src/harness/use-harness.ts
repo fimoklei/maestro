@@ -6,6 +6,7 @@ import type {
   HarnessState,
   ImportCheck,
   ImportMode,
+  ImportPromptCheck,
   PrimitiveRef,
   ReleasePlan,
   SemverStep,
@@ -218,6 +219,22 @@ export function useImportSkill() {
       }),
     // Returned, so the dialog closes onto a read that already holds the row.
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+  });
+}
+
+// Asked once the name is left, not per keystroke; null asks nothing.
+export function useImportPromptCheck(name: string | null) {
+  return useQuery({
+    queryKey: ["harness", "prompt-check", name] as const,
+    queryFn: () =>
+      requestJson<ImportPromptCheck>("/api/harness/prompt/check", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    enabled: name !== null,
+    // The disk is the author's to change while the dialog is open.
+    staleTime: 0,
+    gcTime: 0,
   });
 }
 

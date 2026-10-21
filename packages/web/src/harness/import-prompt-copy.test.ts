@@ -3,9 +3,10 @@ import { HttpError } from "../api/http";
 import { plainText } from "../ui/phrase";
 import {
   importPromptNotice,
-  LONG_TEXT_NOTICE,
+  longTextNotice,
   PROMPT_FIELD_ERRORS,
   PROMPT_FIELD_HINTS,
+  PROMPT_TAKEN_NOTICE,
 } from "./import-prompt-copy";
 
 const refusal = (code: string) => new HttpError(409, "refused", code);
@@ -33,13 +34,34 @@ describe("Import prompt copy", () => {
   });
 
   it("refuses a text over 100 KB with its own notice", () => {
-    expect(LONG_TEXT_NOTICE).toEqual({
+    expect(longTextNotice("Import prompt")).toEqual({
       level: "error",
       label: "Prompt over 100 KB",
       message: "Shorten the text to 100 KB or less. Then select Import prompt.",
     });
-    expect(importPromptNotice(refusal("long-text"))).toMatchObject({
-      label: "Prompt over 100 KB",
+    expect(longTextNotice("Update prompt").message).toBe(
+      "Shorten the text to 100 KB or less. Then select Update prompt.",
+    );
+    expect(
+      importPromptNotice(refusal("long-text"), "Import prompt"),
+    ).toMatchObject({ label: "Prompt over 100 KB" });
+  });
+
+  it("states a taken name under Name in the approved words", () => {
+    expect(PROMPT_TAKEN_NOTICE).toEqual({
+      level: "info",
+      label: "Prompt already in the Harness",
+      message: "Select Update prompt to replace its text and description.",
+      detail: "To keep it, pick another name.",
+    });
+  });
+
+  it("names Update prompt in a refusal while updating", () => {
+    expect(
+      importPromptNotice(refusal("import-in-progress"), "Update prompt"),
+    ).toMatchObject({
+      message:
+        "Wait for that change to finish, then select Update prompt again.",
     });
   });
 
@@ -75,7 +97,7 @@ describe("Import prompt copy", () => {
       "The Maestro server did not answer, and nothing reached the Harness. Select Import prompt again.",
     ],
   ])("states %s in Maestro's own words", (code, label, message) => {
-    expect(importPromptNotice(refusal(code))).toMatchObject({
+    expect(importPromptNotice(refusal(code), "Import prompt")).toMatchObject({
       level: "error",
       label,
       message,

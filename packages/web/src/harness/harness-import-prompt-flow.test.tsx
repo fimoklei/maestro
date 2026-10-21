@@ -1,4 +1,8 @@
-import type { HarnessStageRow, HarnessState } from "@maestro/core";
+import type {
+  HarnessStageRow,
+  HarnessState,
+  ImportPromptCheck,
+} from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -58,14 +62,26 @@ const IMPORTED_HARNESS: HarnessState = {
 function stubPromptServer(options: {
   importStatus?: number;
   importBody?: unknown;
+  taken?: readonly string[];
 }) {
   const calls: string[] = [];
   const imports: unknown[] = [];
+  const checks: unknown[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       calls.push(`${init?.method ?? "GET"} ${url}`);
+      if (url === "/api/harness/prompt/check") {
+        const { name } = JSON.parse(String(init?.body)) as { name: string };
+        checks.push({ name });
+        return jsonResponse({
+          mode: options.taken?.includes(name) ? "update" : "add",
+          nameBlocker: /^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)
+            ? null
+            : "invalid-name",
+        } satisfies ImportPromptCheck);
+      }
       if (url === "/api/harness/prompt/import") {
         imports.push(JSON.parse(String(init?.body)));
         return jsonResponse(
@@ -80,7 +96,7 @@ function stubPromptServer(options: {
       );
     }),
   );
-  return { calls, imports };
+  return { calls, imports, checks };
 }
 
 afterEach(() => {
@@ -224,7 +240,7 @@ describe("Harness import prompt flow", () => {
     expect(name).toHaveAccessibleDescription(/Enter a name\./);
     expect(description).toHaveAccessibleDescription(/Enter a description\./);
     expect(text).toHaveAccessibleDescription(/Enter the prompt text\./);
-    expect(calls.filter((call) => call.includes("/prompt/"))).toEqual([]);
+    expect(calls.filter((call) => call.includes("/prompt/import"))).toEqual([]);
 
     await user.type(name, "Review");
     expect(name).toHaveAccessibleDescription(
@@ -261,7 +277,7 @@ describe("Harness import prompt flow", () => {
         "Shorten the text to 100 KB or less. Then select Import prompt.",
       ),
     ).toBeInTheDocument();
-    expect(calls.filter((call) => call.includes("/prompt/"))).toEqual([]);
+    expect(calls.filter((call) => call.includes("/prompt/import"))).toEqual([]);
   });
 
   it("keeps the dialog open with Harness busy when the lock is held", async () => {
@@ -293,6 +309,99 @@ describe("Harness import prompt flow", () => {
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(calls.filter((call) => call.includes("/prompt/"))).toEqual([]);
+    expect(calls.filter((call) => call.includes("/prompt/import"))).toEqual([]);
+  });
+
+  it("switches to update mode when the name left is taken", async () => {
+    const { checks, imports } = stubPromptServer({ taken: ["review-pr"] });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    const name = field(dialog, "Name");
+    await user.type(name, "review-pr");
+    await user.tab();
+
+    const updating = await screen.findByRole("dialog", {
+      name: "Update a prompt",
+    });
+    expect(
+      within(updating).getByRole("button", { name: "Update prompt" }),
+    ).toBeInTheDocument();
+    expect(name).toBeValid();
+    expect(name).toHaveAccessibleDescription(
+      /Prompt already in the Harness.*Select Update prompt to replace its text and description\..*To keep it, pick another name\./,
+    );
+    expect(checks).toEqual([{ name: "review-pr" }]);
+
+    await user.type(field(dialog, "Description"), "Review");
+    await user.type(field(dialog, "Prompt text"), "Go.");
+    await user.click(
+      within(updating).getByRole("button", { name: "Update prompt" }),
+    );
+    await waitFor(() => expect(imports).toHaveLength(1));
+  });
+
+  it("returns to Import a prompt when a taken name changes to a free one", async () => {
+    stubPromptServer({ taken: ["review-pr"] });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    const name = field(dialog, "Name");
+    await user.type(name, "review-pr");
+    await user.tab();
+    await screen.findByRole("dialog", { name: "Update a prompt" });
+
+    await user.clear(name);
+    await user.type(name, "review-code");
+    await user.tab();
+
+    await screen.findByRole("dialog", { name: "Import a prompt" });
+    expect(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText("Prompt already in the Harness"),
+    ).toBeNull();
+  });
+
+  it("shows no field error when an invalid name is left", async () => {
+    stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    const name = field(dialog, "Name");
+    await user.type(name, "Review");
+    await user.tab();
+
+    expect(name).toBeValid();
+    expect(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names Update prompt in the over-100 KB notice in update mode", async () => {
+    stubPromptServer({ taken: ["review-pr"] });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.tab();
+    await screen.findByRole("dialog", { name: "Update a prompt" });
+    await user.type(field(dialog, "Description"), "Review");
+    await user.click(field(dialog, "Prompt text"));
+    await user.paste("é".repeat(60_000));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Update prompt" }),
+    );
+
+    expect(
+      await within(dialog).findByText(
+        "Shorten the text to 100 KB or less. Then select Update prompt.",
+      ),
+    ).toBeInTheDocument();
   });
 });
