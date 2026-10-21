@@ -8,6 +8,7 @@ import {
   NOT_TEXT_FILE_NOTICE,
   PROMPT_FIELD_ERRORS,
   PROMPT_FIELD_HINTS,
+  PROMPT_SOURCE_LABEL,
   PROMPT_SOURCES,
   PROMPT_TAKEN_NOTICE,
 } from "./import-prompt-copy";
@@ -51,6 +52,7 @@ describe("Import prompt copy", () => {
   });
 
   it("states the Choose file tab and its refusal in the approved words", () => {
+    expect(PROMPT_SOURCE_LABEL).toBe("Prompt source");
     expect(PROMPT_SOURCES.map((each) => each.label)).toEqual([
       "Paste text",
       "Choose file",

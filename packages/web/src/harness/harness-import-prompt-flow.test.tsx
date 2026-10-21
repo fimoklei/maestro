@@ -418,8 +418,11 @@ describe("Harness import prompt flow", () => {
     renderWithQuery(<HarnessView openPrimitive={null} />);
 
     const dialog = await openImportPrompt(user);
+    const sources = within(dialog).getByRole("group", {
+      name: "Prompt source",
+    });
     expect(
-      within(dialog).getByRole("button", { name: "Paste text" }),
+      within(sources).getByRole("button", { name: "Paste text" }),
     ).toHaveAttribute("aria-pressed", "true");
     await user.click(
       within(dialog).getByRole("button", { name: "Choose file" }),

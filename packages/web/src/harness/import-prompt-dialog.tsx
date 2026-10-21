@@ -18,6 +18,7 @@ import {
   CHOOSE_FILE_HINT,
   fileSize,
   PROMPT_FIELD_HINTS,
+  PROMPT_SOURCE_LABEL,
   PROMPT_SOURCES,
   type PromptSource,
 } from "./import-prompt-copy";
@@ -100,7 +101,7 @@ export function ImportPromptDialog({
       onClose={onClose}
     >
       <SegmentedControl
-        label={null}
+        label={PROMPT_SOURCE_LABEL}
         segments={PROMPT_SOURCES}
         value={source}
         onChange={pickSource}

@@ -18,6 +18,9 @@ export const PROMPT_FIELD_HINTS = {
 /** Where the prompt text comes from: the dialog's two tabs. */
 export type PromptSource = "paste" | "file";
 
+/** The accessible name of the Paste text / Choose file switch. */
+export const PROMPT_SOURCE_LABEL = "Prompt source";
+
 export const PROMPT_SOURCES: readonly { value: PromptSource; label: string }[] =
   [
     { value: "paste", label: "Paste text" },
