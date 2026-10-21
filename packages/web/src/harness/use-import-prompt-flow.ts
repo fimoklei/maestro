@@ -1,11 +1,10 @@
-import type { ImportPromptSuccess } from "@maestro/core";
+import type { ImportMode, ImportPromptSuccess } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
   promptFieldProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
-import { IMPORT_PROMPT, UPDATE_PROMPT } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { useWriteAction } from "../ui/use-write-action";
 import {
@@ -14,6 +13,7 @@ import {
   longTextNotice,
   NOT_TEXT_FILE_NOTICE,
   PROMPT_FIELD_ERRORS,
+  PROMPT_IMPORT_MODES,
   PROMPT_TAKEN_NOTICE,
   type PromptSource,
 } from "./import-prompt-copy";
@@ -33,12 +33,21 @@ const PROBLEM_FIELD: Record<
   "empty-text": "text",
 };
 
-export type PromptFieldErrors = Partial<Record<keyof PromptDraft, string>>;
+type PromptFieldErrors = Partial<Record<keyof PromptDraft, string>>;
 
 /** The file last chosen, as the Choose file tab shows it. */
 export type ChosenFile = { name: string; bytes: number; isText: boolean };
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
+
+/** The Prompt text field as the paste finds it. */
+export type PasteTarget = {
+  value: string;
+  selectionStart: number;
+  selectionEnd: number;
+};
+
+export type ImportPromptFlow = ReturnType<typeof useImportPromptFlow>;
 
 // Import prompt's UI-state: the three fields, and whether a submit has judged them.
 export function useImportPromptFlow(
@@ -56,8 +65,11 @@ export function useImportPromptFlow(
   const [checkedName, setCheckedName] = useState<string | null>(null);
   const check = useImportPromptCheck(checkedName);
   // A failed check reads as adding: the import itself states any refusal.
-  const updating = checkedName === draft.name && check.data?.mode === "update";
-  const confirm = updating ? UPDATE_PROMPT : IMPORT_PROMPT;
+  const mode: ImportMode =
+    checkedName === draft.name && check.data?.mode === "update"
+      ? "update"
+      : "add";
+  const { confirm } = PROMPT_IMPORT_MODES[mode];
   const importPrompt = useImportPrompt();
   const write = useWriteAction(importPrompt, {
     report,
@@ -100,8 +112,8 @@ export function useImportPromptFlow(
     draft,
     fieldErrors,
     failure,
-    updating,
-    takenNotice: updating ? PROMPT_TAKEN_NOTICE : null,
+    mode,
+    takenNotice: mode === "update" ? PROMPT_TAKEN_NOTICE : null,
     phase: write.phase,
     changed: draft.name !== "" || draft.description !== "" || draft.text !== "",
     start: () => setOpen(true),
@@ -130,8 +142,11 @@ export function useImportPromptFlow(
     // A pasted front matter block gives up its description and leaves the
     // text; text without one pastes as it is. False leaves the paste alone.
     // A taken-over paste is saved with LF, as the browser saves its own.
-    paste: (pasted: string): boolean => {
-      const next = pasted.replace(/\r\n?/g, "\n");
+    paste: (field: PasteTarget, pasted: string): boolean => {
+      const next =
+        field.value.slice(0, field.selectionStart) +
+        pasted.replace(/\r\n?/g, "\n") +
+        field.value.slice(field.selectionEnd);
       const drafted = draftPrompt(next, null);
       if (drafted.text === next) return false;
       edit({

@@ -1,8 +1,9 @@
-import type { ImportPromptError } from "@maestro/core";
+import type { ImportMode, ImportPromptError } from "@maestro/core";
 import type { PromptFieldProblem } from "@maestro/core/prompt-file";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
+import type { ActionKey } from "../ui/busy-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
-import { type IMPORT_PROMPT, UPDATE_PROMPT } from "../ui/control-labels";
+import { IMPORT_PROMPT, UPDATE_PROMPT } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, phrase, plainText } from "../ui/phrase";
@@ -65,6 +66,15 @@ const IMPORTED_NOTHING = "Nothing was imported.";
 
 /** The dialog's submit control: Update prompt once the name is taken. */
 export type PromptConfirm = typeof IMPORT_PROMPT | typeof UPDATE_PROMPT;
+
+/** The dialog's title, submit label and busy verb, by whether the name is taken. */
+export const PROMPT_IMPORT_MODES = {
+  add: { title: "Import a prompt", confirm: IMPORT_PROMPT, verb: "import" },
+  update: { title: "Update a prompt", confirm: UPDATE_PROMPT, verb: "update" },
+} as const satisfies Record<
+  ImportMode,
+  { title: string; confirm: PromptConfirm; verb: ActionKey }
+>;
 
 const importPromptHeadings = (
   confirm: PromptConfirm,

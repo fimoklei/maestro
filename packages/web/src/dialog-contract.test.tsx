@@ -209,20 +209,20 @@ const importPromptDialog = (
     draft={{ name: "", description: "", text: "" }}
     fieldErrors={{}}
     changed={false}
-    importing={false}
+    phase="idle"
     failure={null}
-    updating={false}
+    mode="add"
     takenNotice={null}
     source="paste"
     chosenFile={null}
     fileNotice={null}
-    onSource={vi.fn()}
-    onFile={vi.fn()}
-    onNameLeave={vi.fn()}
-    onEdit={vi.fn()}
-    onPaste={() => false}
-    onImport={vi.fn()}
-    onClose={vi.fn()}
+    setSource={vi.fn()}
+    chooseFile={vi.fn()}
+    checkName={vi.fn()}
+    edit={vi.fn()}
+    paste={() => false}
+    submit={vi.fn()}
+    close={vi.fn()}
     {...props}
   />
 );
@@ -631,8 +631,8 @@ const ON_DIALOG: Row[] = [
           text: "Review $ARGUMENTS.",
         },
         changed: true,
-        importing: running,
-        onClose,
+        phase: running ? "running" : "idle",
+        close: onClose,
       }),
     // The owner reports a typed field as a change.
     changed: async (onClose) => {
@@ -640,13 +640,13 @@ const ON_DIALOG: Row[] = [
         importPromptDialog({
           draft: { name: "", description: "", text: "Review." },
           changed: true,
-          onClose,
+          close: onClose,
         }),
       );
     },
     emptyForm: {
       submit: "Import prompt",
-      render: (onRun) => importPromptDialog({ onImport: onRun }),
+      render: (onRun) => importPromptDialog({ submit: onRun }),
     },
     loading: null,
     loadFailed: null,
@@ -658,7 +658,7 @@ const ON_DIALOG: Row[] = [
         label: "Prompt over 100 KB",
         render: () =>
           importPromptDialog({
-            updating: true,
+            mode: "update",
             takenNotice: PROMPT_TAKEN_NOTICE,
             failure: longTextNotice(UPDATE_PROMPT),
           }),

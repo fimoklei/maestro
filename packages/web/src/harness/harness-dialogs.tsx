@@ -30,7 +30,7 @@ import {
 } from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
 import type { useImportFlow } from "./use-import-flow";
-import type { useImportPromptFlow } from "./use-import-prompt-flow";
+import type { ImportPromptFlow } from "./use-import-prompt-flow";
 import { WithdrawDialog } from "./withdraw-dialog";
 
 // Frozen when the press was made: a later read moves the rows underneath, it
@@ -65,7 +65,7 @@ type Presses = ReturnType<typeof useHarnessPresses>;
 export type HarnessDialogsProps = {
   origin: string;
   importFlow: ReturnType<typeof useImportFlow>;
-  promptImportFlow: ReturnType<typeof useImportPromptFlow>;
+  promptImportFlow: ImportPromptFlow;
   deletionRow: HarnessStageRow | null;
   deletion: Presses["deletionWrite"];
   onDeletionClose: () => void;
@@ -111,25 +111,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
         />
       ) : null}
       {props.promptImportFlow.open ? (
-        <ImportPromptDialog
-          draft={props.promptImportFlow.draft}
-          fieldErrors={props.promptImportFlow.fieldErrors}
-          changed={props.promptImportFlow.changed}
-          importing={props.promptImportFlow.phase === "running"}
-          failure={props.promptImportFlow.failure}
-          updating={props.promptImportFlow.updating}
-          takenNotice={props.promptImportFlow.takenNotice}
-          source={props.promptImportFlow.source}
-          chosenFile={props.promptImportFlow.chosenFile}
-          fileNotice={props.promptImportFlow.fileNotice}
-          onSource={props.promptImportFlow.setSource}
-          onFile={props.promptImportFlow.chooseFile}
-          onEdit={props.promptImportFlow.edit}
-          onNameLeave={props.promptImportFlow.checkName}
-          onPaste={props.promptImportFlow.paste}
-          onImport={props.promptImportFlow.submit}
-          onClose={props.promptImportFlow.close}
-        />
+        <ImportPromptDialog {...props.promptImportFlow} />
       ) : null}
       {props.localDeletion !== null ? (
         <LocalDeletionDialog

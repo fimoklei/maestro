@@ -1,104 +1,100 @@
-import type { PromptDraft } from "@maestro/core/prompt-file";
 import { FileText } from "lucide-react";
 import { type ClipboardEvent, useId, useRef } from "react";
 import { Button } from "../ui/button";
-import {
-  CHOOSE_ANOTHER_FILE,
-  IMPORT_PROMPT,
-  UPDATE_PROMPT,
-} from "../ui/control-labels";
+import { CHOOSE_ANOTHER_FILE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Field } from "../ui/field";
 import { Icon } from "../ui/icon";
 import { MachineValue } from "../ui/machine-value";
-import { Notice, type NoticeContent } from "../ui/notice";
+import { Notice } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
 import { TextAreaField } from "../ui/text-area-field";
 import {
   CHOOSE_FILE_HINT,
   fileSize,
   PROMPT_FIELD_HINTS,
+  PROMPT_IMPORT_MODES,
   PROMPT_SOURCE_LABEL,
   PROMPT_SOURCES,
   type PromptSource,
 } from "./import-prompt-copy";
-import type { ChosenFile, PromptFieldErrors } from "./use-import-prompt-flow";
+import type { ImportPromptFlow } from "./use-import-prompt-flow";
+
+// The flow's slice the dialog reads; the Harness screen passes the flow itself.
+type ImportPromptDialogProps = Pick<
+  ImportPromptFlow,
+  | "draft"
+  | "fieldErrors"
+  | "changed"
+  | "phase"
+  | "failure"
+  | "mode"
+  | "takenNotice"
+  | "source"
+  | "setSource"
+  | "chosenFile"
+  | "fileNotice"
+  | "chooseFile"
+  | "edit"
+  | "checkName"
+  | "paste"
+  | "submit"
+  | "close"
+>;
 
 export function ImportPromptDialog({
   draft,
   fieldErrors,
   changed,
-  importing,
+  phase,
   failure,
-  updating,
+  mode,
   takenNotice,
   source,
+  setSource,
   chosenFile,
   fileNotice,
-  onSource,
-  onFile,
-  onEdit,
-  onNameLeave,
-  onPaste,
-  onImport,
-  onClose,
-}: {
-  draft: PromptDraft;
-  fieldErrors: PromptFieldErrors;
-  changed: boolean;
-  importing: boolean;
-  failure: NoticeContent | null;
-  /** The name is taken: the submit replaces that prompt. */
-  updating: boolean;
-  takenNotice: NoticeContent | null;
-  source: PromptSource;
-  chosenFile: ChosenFile | null;
-  /** The chosen file is refused. */
-  fileNotice: NoticeContent | null;
-  onSource: (source: PromptSource) => void;
-  onFile: (file: File) => void;
-  onEdit: (change: Partial<PromptDraft>) => void;
-  onNameLeave: () => void;
-  /** The text as it reads after the paste; true when the paste was taken over. */
-  onPaste: (next: string) => boolean;
-  onImport: () => void;
-  onClose: () => void;
-}) {
+  chooseFile,
+  edit,
+  checkName,
+  paste,
+  submit,
+  close,
+}: ImportPromptDialogProps) {
   const takenNoticeId = useId();
   const hintId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
+  const importing = phase === "running";
+  const { title, confirm, verb } = PROMPT_IMPORT_MODES[mode];
   // Choose file opens the browser's file chooser at once, again on each press.
   const pickSource = (next: PromptSource) => {
-    onSource(next);
+    setSource(next);
     if (next === "file") fileInput.current?.click();
   };
   const pasteText = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    const area = event.currentTarget;
-    const next =
-      area.value.slice(0, area.selectionStart) +
-      event.clipboardData.getData("text/plain") +
-      area.value.slice(area.selectionEnd);
-    if (onPaste(next)) event.preventDefault();
+    if (paste(event.currentTarget, event.clipboardData.getData("text/plain"))) {
+      event.preventDefault();
+    }
   };
 
   return (
     <Dialog
-      title={updating ? "Update a prompt" : "Import a prompt"}
+      title={title}
       version={null}
       width={480}
       phase={importing ? "running" : "idle"}
       action={{
-        label: updating ? UPDATE_PROMPT : IMPORT_PROMPT,
-        verb: updating ? "update" : "import",
+        label: confirm,
+        verb,
         tone: "primary",
         unavailable: null,
-        onRun: onImport,
+        onRun: submit,
       }}
       failure={failure}
       // Every field states its own hint and its own refusal beside it.
       describedBy={null}
       fieldsChanged={changed}
-      onClose={onClose}
+      onClose={close}
     >
       <SegmentedControl
         label={PROMPT_SOURCE_LABEL}
@@ -116,7 +112,7 @@ export function ImportPromptDialog({
           const file = event.currentTarget.files?.[0];
           // Cleared, so choosing the same file again reads it again.
           event.currentTarget.value = "";
-          if (file !== undefined) onFile(file);
+          if (file !== undefined) chooseFile(file);
         }}
       />
       {source === "file" ? (
@@ -155,8 +151,8 @@ export function ImportPromptDialog({
           hint={PROMPT_FIELD_HINTS.name}
           error={fieldErrors.name}
           value={draft.name}
-          onChange={(name) => onEdit({ name })}
-          onBlur={onNameLeave}
+          onChange={(name) => edit({ name })}
+          onBlur={checkName}
           describedBy={takenNotice === null ? undefined : takenNoticeId}
           disabled={importing}
           mono
@@ -168,7 +164,7 @@ export function ImportPromptDialog({
         hint={PROMPT_FIELD_HINTS.description}
         error={fieldErrors.description}
         value={draft.description}
-        onChange={(description) => onEdit({ description })}
+        onChange={(description) => edit({ description })}
         disabled={importing}
       />
       <TextAreaField
@@ -176,7 +172,7 @@ export function ImportPromptDialog({
         hint={PROMPT_FIELD_HINTS.text}
         error={fieldErrors.text}
         value={draft.text}
-        onChange={(text) => onEdit({ text })}
+        onChange={(text) => edit({ text })}
         onPaste={pasteText}
         disabled={importing}
       />
