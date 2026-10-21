@@ -6,10 +6,8 @@ import { parseGitOrigin } from "../deploy/git-origin";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
 import { primitivePath } from "../harness/harness-primitive";
-import {
-  readFrontmatter,
-  splitFrontmatter,
-} from "../harness/validate-skill-structure";
+import { readPromptFile } from "../harness/prompt-file";
+import { readFrontmatter } from "../harness/validate-skill-structure";
 import type { FileSystemPort } from "../registry/file-system";
 import {
   type PendingRelease,
@@ -69,7 +67,6 @@ function parseDescription(raw: string): string | null {
   return result.success ? result.data.description : null;
 }
 
-// The text after a closed frontmatter block, byte for byte; else the whole file.
 const promptOf = (
   name: string,
   raw: string,
@@ -77,10 +74,9 @@ const promptOf = (
 ): InventoryPrompt => ({
   type: "prompt",
   name,
-  description: parseDescription(raw) ?? "",
+  ...readPromptFile(raw),
   path: primitivePath({ type: "prompt", name }),
   pendingRelease: pendingReleaseOf({ type: "prompt", name }, pending),
-  text: splitFrontmatter(raw)?.body ?? raw,
   nameValid: isValidSkillSlug(name),
 });
 
