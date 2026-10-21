@@ -488,6 +488,32 @@ describe("Harness import prompt flow", () => {
     ).toEqual([]);
   });
 
+  it("imports pasted CRLF text with LF line endings", async () => {
+    const { imports } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.click(field(dialog, "Prompt text"));
+    await user.paste(
+      "---\r\ndescription: Review\r\n---\r\nRead the diff.\r\nBe brief.\r",
+    );
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    );
+
+    await waitFor(() =>
+      expect(imports).toEqual([
+        {
+          name: "review-pr",
+          description: "Review",
+          text: "Read the diff.\nBe brief.\n",
+        },
+      ]),
+    );
+  });
+
   it("imports a chosen file's CRLF text as the file holds it", async () => {
     const { imports } = stubPromptServer({});
     const user = userEvent.setup();

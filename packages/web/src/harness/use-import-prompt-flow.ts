@@ -132,7 +132,9 @@ export function useImportPromptFlow(
     checkName: () => setCheckedName(draft.name === "" ? null : draft.name),
     // A pasted front matter block gives up its description and leaves the
     // text; text without one pastes as it is. False leaves the paste alone.
-    paste: (next: string): boolean => {
+    // A taken-over paste is saved with LF, as the browser saves its own.
+    paste: (pasted: string): boolean => {
+      const next = pasted.replace(/\r\n?/g, "\n");
       const drafted = draftPrompt(next, null);
       if (drafted.text === next) return false;
       edit({
