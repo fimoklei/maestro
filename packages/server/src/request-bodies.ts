@@ -31,6 +31,8 @@ export const importPromptBodySchema = z
   .object({ name: z.string(), description: z.string(), text: z.string() })
   .refine((draft) => promptFieldProblems(draft).length === 0);
 
+export const promptCheckBodySchema = z.object({ name: z.string() });
+
 // Global carries no path, so no untrusted path crosses the boundary on it.
 const targetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("repo"), repoPath: z.string() }),
@@ -241,6 +243,12 @@ export const IMPORT_PROMPT_BODY: RequestShape = {
     "Nothing was imported. Reload the page, then import the prompt again.",
   detail:
     "The request carries a name, a description and a text: { name: string, description: string, text: string }.",
+};
+
+export const PROMPT_CHECK_BODY: RequestShape = {
+  message:
+    "Nothing was checked. Reload the page, then check the prompt name again.",
+  detail: "The request carries a name: { name: string }.",
 };
 
 export const TARGET_BODY: RequestShape = {

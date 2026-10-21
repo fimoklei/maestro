@@ -27,10 +27,12 @@ import {
   localDeletionBodySchema,
   PATH_BODY,
   PROMOTE_BODY,
+  PROMPT_CHECK_BODY,
   PROPOSAL_BODY,
   PROPOSAL_CREATE_BODY,
   parseBody,
   promoteBodySchema,
+  promptCheckBodySchema,
   proposalBodySchema,
   RESTORE_BODY,
   restoreBodySchema,
@@ -227,6 +229,20 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       name: result.name,
       skipped: result.skipped,
     });
+  });
+
+  // Free or taken in the Working Harness; an invalid name is data, not a status.
+  app.post("/api/harness/prompt/check", async (c) => {
+    const body = await parseBody(c, promptCheckBodySchema, PROMPT_CHECK_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importPrompt.check(body.data.name);
+    if (!result.ok) {
+      const { status } = importPromptErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json(result.check);
   });
 
   // Writes into the Working Harness the server resolves; the browser names no path.

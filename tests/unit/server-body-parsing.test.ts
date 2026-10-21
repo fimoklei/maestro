@@ -35,6 +35,12 @@ describe("POST body parsing", () => {
       "The request carries a name, a description and a text: { name: string, description: string, text: string }.",
   };
 
+  const PROMPT_CHECK_SHAPE = {
+    message:
+      "Nothing was checked. Reload the page, then check the prompt name again.",
+    detail: "The request carries a name: { name: string }.",
+  };
+
   const routes = [
     { path: "/api/inventory/connect", shape: PATH_SHAPE },
     { path: "/api/folder-chooser", shape: PATH_SHAPE },
@@ -46,6 +52,7 @@ describe("POST body parsing", () => {
     { path: "/api/harness/proposal/reopen", shape: PROPOSAL_SHAPE },
     { path: "/api/harness/proposal/withdraw", shape: PROPOSAL_SHAPE },
     { path: "/api/harness/prompt/import", shape: PROMPT_SHAPE },
+    { path: "/api/harness/prompt/check", shape: PROMPT_CHECK_SHAPE },
   ];
 
   const makeApp = () => inMemoryApp();
