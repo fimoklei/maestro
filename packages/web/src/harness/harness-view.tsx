@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
+import { ActionsMenu } from "../ui/actions-menu";
 import { BandAction } from "../ui/band-action";
 import {
   BRANCH_FACT,
@@ -22,7 +23,12 @@ import {
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
-import { CREATE_RELEASE, IMPORT_SKILL } from "../ui/control-labels";
+import {
+  CREATE_RELEASE,
+  IMPORT,
+  IMPORT_PROMPT,
+  IMPORT_SKILL,
+} from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
 import { GatedButton } from "../ui/gated-button";
 import { GitHubMark } from "../ui/github-mark-link";
@@ -71,6 +77,7 @@ import {
 } from "./use-harness";
 import { useHarnessPresses } from "./use-harness-presses";
 import { useImportFlow } from "./use-import-flow";
+import { useImportPromptFlow } from "./use-import-prompt-flow";
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
 // counts; the dot and Read never drop.
@@ -155,6 +162,10 @@ export function HarnessView({
     // An import writes the working tree, so its row is Pending proposal's —
     // even where the skill also holds a later one (#865).
     open(rowId({ stage: "pending-proposal", type: "skill", name }));
+    importSaid.current = true;
+  });
+  const promptImportFlow = useImportPromptFlow(table.report, ({ name }) => {
+    open(rowId({ stage: "pending-proposal", type: "prompt", name }));
     importSaid.current = true;
   });
   const presses = useHarnessPresses(state, table.report);
@@ -310,10 +321,16 @@ export function HarnessView({
       action={
         state === undefined ? null : (
           <>
-            <BandAction
-              icon={FolderInput}
-              label={IMPORT_SKILL}
-              onClick={importFlow.start}
+            {/* Both items open a dialog, so focus returns to Import, its opener. */}
+            <ActionsMenu
+              label={IMPORT}
+              trigger={
+                <BandAction icon={FolderInput} label={IMPORT} menu={true} />
+              }
+              items={[
+                { label: IMPORT_SKILL, onSelect: importFlow.start },
+                { label: IMPORT_PROMPT, onSelect: promptImportFlow.start },
+              ]}
             />
             {/* Closed while the remote's answer is unknown — an offline or
                 failed fetch. Open during a re-read: Publish release checks
@@ -440,6 +457,7 @@ export function HarnessView({
         <HarnessDialogs
           origin={state.origin}
           importFlow={importFlow}
+          promptImportFlow={promptImportFlow}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletionWrite}
           onDeletionClose={presses.closeConfirmation}

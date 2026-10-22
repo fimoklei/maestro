@@ -18,6 +18,11 @@ import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog, type DeletionMode } from "./harness/deletion-dialog";
 import { DiscardDialog } from "./harness/discard-dialog";
 import { ImportDialog } from "./harness/import-dialog";
+import {
+  longTextNotice,
+  PROMPT_TAKEN_NOTICE,
+} from "./harness/import-prompt-copy";
+import { ImportPromptDialog } from "./harness/import-prompt-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import { WithdrawDialog } from "./harness/withdraw-dialog";
@@ -31,6 +36,7 @@ import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
 import { htmlElement } from "./test-utils";
+import { UPDATE_PROMPT } from "./ui/control-labels";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
 
@@ -192,6 +198,31 @@ const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
     onImport={vi.fn()}
     importing={false}
     importError={null}
+    {...props}
+  />
+);
+
+const importPromptDialog = (
+  props: Partial<ComponentProps<typeof ImportPromptDialog>>,
+) => (
+  <ImportPromptDialog
+    draft={{ name: "", description: "", text: "" }}
+    fieldErrors={{}}
+    changed={false}
+    phase="idle"
+    failure={null}
+    mode="add"
+    takenNotice={null}
+    source="paste"
+    chosenFile={null}
+    fileNotice={null}
+    setSource={vi.fn()}
+    chooseFile={vi.fn()}
+    checkName={vi.fn()}
+    edit={vi.fn()}
+    paste={() => false}
+    submit={vi.fn()}
+    close={vi.fn()}
     {...props}
   />
 );
@@ -585,6 +616,51 @@ const ON_DIALOG: Row[] = [
               kind: "ready",
               check: { ...CHECK, advisories: ["long-manifest"] },
             },
+          }),
+      },
+    ],
+  },
+  {
+    file: "harness/import-prompt-dialog.tsx",
+    heading: "Import a prompt",
+    render: ({ running, onClose }) =>
+      importPromptDialog({
+        draft: {
+          name: "review-pr",
+          description: "Review a pull request.",
+          text: "Review $ARGUMENTS.",
+        },
+        changed: true,
+        phase: running ? "running" : "idle",
+        close: onClose,
+      }),
+    // The owner reports a typed field as a change.
+    changed: async (onClose) => {
+      render(
+        importPromptDialog({
+          draft: { name: "", description: "", text: "Review." },
+          changed: true,
+          close: onClose,
+        }),
+      );
+    },
+    emptyForm: {
+      submit: "Import prompt",
+      render: (onRun) => importPromptDialog({ submit: onRun }),
+    },
+    loading: null,
+    loadFailed: null,
+    // The taken-name notice is information, placed under Name, the region
+    // it describes; Not a text file refuses one control, the chosen file, and
+    // sits under it. Only a refusal of the submit sits above the footer.
+    notices: [
+      {
+        label: "Prompt over 100 KB",
+        render: () =>
+          importPromptDialog({
+            mode: "update",
+            takenNotice: PROMPT_TAKEN_NOTICE,
+            failure: longTextNotice(UPDATE_PROMPT),
           }),
       },
     ],

@@ -1,4 +1,8 @@
-import type { PrimitiveRef, ProposalActionResult } from "@maestro/core";
+import type {
+  ImportPromptSuccess,
+  PrimitiveRef,
+  ProposalActionResult,
+} from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
@@ -6,6 +10,8 @@ import {
   deletionErrorResponses,
   discardErrorResponses,
   importErrorResponses,
+  importPromptErrorResponses,
+  isImportPromptRefusal,
   localDeletionErrorResponses,
   promoteErrorResponses,
   proposalErrorResponses,
@@ -19,15 +25,19 @@ import {
   deletionBodySchema,
   discardBodySchema,
   IMPORT_BODY,
+  IMPORT_PROMPT_BODY,
   importBodySchema,
+  importPromptBodySchema,
   LOCAL_DELETION_BODY,
   localDeletionBodySchema,
   PATH_BODY,
   PROMOTE_BODY,
+  PROMPT_CHECK_BODY,
   PROPOSAL_BODY,
   PROPOSAL_CREATE_BODY,
   parseBody,
   promoteBodySchema,
+  promptCheckBodySchema,
   proposalBodySchema,
   RESTORE_BODY,
   restoreBodySchema,
@@ -43,6 +53,7 @@ type Deps = Pick<
   | "discard"
   | "proposals"
   | "importSkill"
+  | "importPrompt"
   | "scaffold"
 >;
 
@@ -223,6 +234,41 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       name: result.name,
       skipped: result.skipped,
     });
+  });
+
+  // Free or taken in the Working Harness; an invalid name is data, not a status.
+  app.post("/api/harness/prompt/check", async (c) => {
+    const body = await parseBody(c, promptCheckBodySchema, PROMPT_CHECK_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importPrompt.check(body.data.name);
+    if (!result.ok) {
+      const { status } = importPromptErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json(result.check);
+  });
+
+  // Writes into the Working Harness the server resolves; the browser names no path.
+  app.post("/api/harness/prompt/import", async (c) => {
+    const body = await parseBody(c, importPromptBodySchema, IMPORT_PROMPT_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importPrompt.execute(body.data);
+    if (!result.ok) {
+      // Core judges the fields again; the schema owns their HTTP refusal.
+      if (!isImportPromptRefusal(result.error)) {
+        return c.json({ error: "invalid-body", ...IMPORT_PROMPT_BODY }, 400);
+      }
+      const { status } = importPromptErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({
+      mode: result.mode,
+      name: result.name,
+    } satisfies ImportPromptSuccess);
   });
 
   // The path is re-checked from scratch: the offer that carried it is not evidence (#556).

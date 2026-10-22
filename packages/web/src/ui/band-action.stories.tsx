@@ -6,7 +6,12 @@ import { BandAction } from "./band-action";
 const meta = {
   title: "Core/BandAction",
   component: BandAction,
-  args: { icon: FolderInput, label: "Import skill", onClick: () => {} },
+  args: {
+    icon: FolderInput,
+    label: "Import skill",
+    menu: false,
+    onClick: () => {},
+  },
 } satisfies Meta<typeof BandAction>;
 
 export default meta;
@@ -14,3 +19,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+// The trigger of a band menu, such as Import: a chevron follows the label.
+export const Menu: Story = { args: { label: "Import", menu: true } };

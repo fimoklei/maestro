@@ -6,11 +6,14 @@ import type {
   HarnessState,
   ImportCheck,
   ImportMode,
+  ImportPromptCheck,
+  ImportPromptSuccess,
   PrimitiveRef,
   ReleasePlan,
   SemverStep,
   SkillDeletionCheck,
 } from "@maestro/core";
+import type { PromptDraft } from "@maestro/core/prompt-file";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, requestJson } from "../api/http";
 import {
@@ -216,6 +219,35 @@ export function useImportSkill() {
         body: JSON.stringify(request),
       }),
     // Returned, so the dialog closes onto a read that already holds the row.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+  });
+}
+
+// Asked once the name is left, not per keystroke; null asks nothing.
+export function useImportPromptCheck(name: string | null) {
+  return useQuery({
+    queryKey: ["harness", "prompt-check", name] as const,
+    queryFn: () =>
+      requestJson<ImportPromptCheck>("/api/harness/prompt/check", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    enabled: name !== null,
+    // The disk is the author's to change while the dialog is open.
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+// Invalidated rather than written, like Import skill: the read places the row.
+export function useImportPrompt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: PromptDraft) =>
+      requestJson<ImportPromptSuccess>("/api/harness/prompt/import", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });
 }

@@ -1100,3 +1100,31 @@ describe("a skill and a prompt with one name", () => {
     expect(prompt?.alsoIn).toEqual(["pending-review"]);
   });
 });
+
+describe("a prompt imported under a deleted name", () => {
+  it("reads as Changed, not Deleted, in Pending proposal", () => {
+    // Deleted in the Working Harness, then written again by Import prompt.
+    const prompt: HarnessHashes = {
+      remote: { "review-pr": "released" },
+      promote: {},
+      local: {},
+      working: { "review-pr": "imported" },
+    };
+    const read = buildStages({
+      origin: ORIGIN,
+      defaultBranch: "main",
+      trees: { skill: NO_PROMPTS, prompt },
+      atMergeBase: null,
+      review: EMPTY_READ,
+      viewer: { outcome: "read", login: "fimoklei" },
+      release: [],
+    });
+
+    const row = oneRow(read.proposal);
+    expect([row.type, row.name, row.change]).toEqual([
+      "prompt",
+      "review-pr",
+      "edit",
+    ]);
+  });
+});

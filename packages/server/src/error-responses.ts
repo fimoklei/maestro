@@ -5,6 +5,7 @@ import type {
   DeploySkillError,
   DiscardChangeError,
   HarnessStateError,
+  ImportPromptError,
   ImportSkillError,
   LocalEditsError,
   PromoteDeletionError,
@@ -21,6 +22,7 @@ import type {
   UpdatePreviewError,
   UpdateRunError,
 } from "@maestro/core";
+import type { PromptFieldProblem } from "@maestro/core/prompt-file";
 
 type ErrorStatus = 400 | 403 | 404 | 409 | 422 | 500 | 502 | 503 | 504;
 
@@ -334,6 +336,23 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
   "harness-unreadable": { status: 422 },
   "nothing-to-carry-back": { status: 409 },
 };
+
+// Never a filesystem message, and never the path it wrote.
+// A broken field never gets here: the request schema refuses it first.
+type ImportPromptRefusal = Exclude<ImportPromptError, PromptFieldProblem>;
+
+export const importPromptErrorResponses: ErrorTable<ImportPromptRefusal> = {
+  "not-configured": { status: 409 },
+  "destination-unsafe": { status: 409 },
+  "destination-unreadable": { status: 409 },
+  "import-in-progress": { status: 409 },
+  "write-failed": { status: 500 },
+};
+
+export const isImportPromptRefusal = (
+  code: ImportPromptError,
+): code is ImportPromptRefusal =>
+  Object.hasOwn(importPromptErrorResponses, code);
 
 // A per-skill refusal is data in a 200; only a refused run is a status.
 export const importLocalEditsErrorResponses: ErrorTable<LocalEditsError> = {

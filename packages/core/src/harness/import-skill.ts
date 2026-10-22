@@ -22,7 +22,8 @@ import {
   parseLockfile,
 } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
-import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
+import { ensureHarnessPrimitiveDir } from "./harness-primitive-dir";
+import type { ImportMode } from "./import-mode";
 import type { HarnessGitPort } from "./read-harness-state";
 import {
   type ManifestAdvisory,
@@ -56,10 +57,8 @@ export type ImportSkillError =
   | ImportNameBlocker
   | CopySkillFolderError;
 
-// Add a new skill, or replace one with an edited copy of its own deployed output (#732).
-export type ImportMode = "add" | "update";
-
 export type ImportCheck = {
+  // Update replaces a skill with an edited copy of its own deployed output (#732).
   mode: ImportMode;
   // In update mode, the recorded skill's name, never the caller's.
   name: string;
@@ -174,12 +173,7 @@ export class ImportSkill {
 
   // Null where a symlinked `.apm` resolves outside the harness.
   private async skillsDir(root: string): Promise<string | null> {
-    try {
-      await this.deps.fs.ensureDir(join(root, HARNESS_SKILLS_DIR));
-    } catch {
-      return null;
-    }
-    const resolved = await resolveHarnessPrimitiveDir(
+    const resolved = await ensureHarnessPrimitiveDir(
       this.deps.fs,
       root,
       "skill",

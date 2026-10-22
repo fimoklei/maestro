@@ -28,6 +28,19 @@ describe("POST body parsing", () => {
       'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
   };
 
+  const PROMPT_SHAPE = {
+    message:
+      "Nothing was imported. Reload the page, then import the prompt again.",
+    detail:
+      "The request carries a name, a description and a text: { name: string, description: string, text: string }.",
+  };
+
+  const PROMPT_CHECK_SHAPE = {
+    message:
+      "Nothing was checked. Reload the page, then check the prompt name again.",
+    detail: "The request carries a name: { name: string }.",
+  };
+
   const routes = [
     { path: "/api/inventory/connect", shape: PATH_SHAPE },
     { path: "/api/folder-chooser", shape: PATH_SHAPE },
@@ -38,6 +51,8 @@ describe("POST body parsing", () => {
     { path: "/api/deploy/bulk", shape: BULK_SHAPE },
     { path: "/api/harness/proposal/reopen", shape: PROPOSAL_SHAPE },
     { path: "/api/harness/proposal/withdraw", shape: PROPOSAL_SHAPE },
+    { path: "/api/harness/prompt/import", shape: PROMPT_SHAPE },
+    { path: "/api/harness/prompt/check", shape: PROMPT_CHECK_SHAPE },
   ];
 
   const makeApp = () => inMemoryApp();
@@ -99,6 +114,33 @@ describe("POST body parsing", () => {
       }
     });
   }
+
+  // The edge applies the prompt field rules core applies again.
+  it.each([
+    ["an uppercase name", { name: "Review-PR" }],
+    ["a name that climbs out", { name: "../x" }],
+    ["a description holding a line break", { description: "a\n---" }],
+    ["an empty text", { text: "" }],
+    ["a text over 100 KB", { text: "é".repeat(60_000) }],
+  ])("refuses %s on the prompt import at the edge", async (_, change) => {
+    const res = await makeApp().request(
+      "/api/harness/prompt/import",
+      post(
+        JSON.stringify({
+          name: "review-pr",
+          description: "Review a pull request.",
+          text: "Review $ARGUMENTS.",
+          ...change,
+        }),
+      ),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "invalid-body",
+      ...PROMPT_SHAPE,
+    });
+  });
 
   // The expected shape rides in `detail` (#681).
   it("keeps the expected shape out of every request-shape sentence", async () => {

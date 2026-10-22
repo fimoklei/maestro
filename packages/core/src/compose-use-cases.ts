@@ -35,6 +35,7 @@ import { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 import type { HarnessGitAdapter } from "./harness/harness-git";
 import type { HarnessReviewPort } from "./harness/harness-review-port";
 import { ImportLocalEdits } from "./harness/import-local-edits";
+import { ImportPrompt } from "./harness/import-prompt";
 import { ImportSkill } from "./harness/import-skill";
 import { Promote } from "./harness/promote";
 import { PromoteDeletion } from "./harness/promote-deletion";
@@ -351,6 +352,12 @@ export function composeUseCases(ports: UseCasePorts) {
     inventory,
     harness,
     importSkill,
+    // Shares the lock Delete takes: an import never writes while another Harness change runs.
+    importPrompt: new ImportPrompt({
+      resolveRoot: harnessRoot,
+      fs,
+      locks: harnessPromoteLocks,
+    }),
     // Measured by Deploy-state's own reader; shares the lock Delete and Restore take.
     importLocalEdits: new ImportLocalEdits({
       registry,

@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { sentence } from "../test-utils";
 import { Field } from "./field";
+import { machine, phrase } from "./phrase";
 
 describe("Field", () => {
   it("names the field with its visible label", () => {
@@ -45,6 +47,27 @@ describe("Field", () => {
     expect(hint.compareDocumentPosition(input)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it("sets a path inside the hint as a machine value", () => {
+    render(
+      <Field
+        label="Name"
+        hint={phrase`Maestro uses this as the file name in ${machine(".maestro/prompts")}.`}
+        value=""
+        onChange={() => {}}
+      />,
+    );
+
+    // happy-dom's description pads an inline span, so the text is read whole.
+    const hint = screen.getByText(
+      sentence("Maestro uses this as the file name in .maestro/prompts."),
+    );
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "aria-describedby",
+      hint.id,
+    );
+    expect(screen.getByText(".maestro/prompts")).toHaveClass("font-mono");
   });
 
   it("reads the hint out with the field", () => {
