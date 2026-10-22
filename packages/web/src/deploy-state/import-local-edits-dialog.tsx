@@ -1,5 +1,5 @@
 import type { LocalEditsSkill } from "@maestro/core";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { copiesDiffer, localEditsRefusal } from "../harness/notice-copy";
 import { Dialog } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
@@ -19,8 +19,8 @@ import {
   importReportHeading,
   NO_LOCAL_EDITS,
   NO_SKILL_QUALIFIES,
-  NONE_SELECTED,
   NOT_IMPORTED,
+  NOTHING_CHECKED,
   noLocalEditsLine,
   undoesNewerLegend,
   undoesNewerLine,
@@ -78,8 +78,9 @@ export function ImportLocalEditsDialog({
   ).length;
   const undoing = flagged.filter((skill) => checked.has(skill.name)).length;
   const empty = skills !== null && skills.length === 0;
-  const offered =
-    outcomes === null && skills !== null && !empty && failure === null;
+  const checking = skills === null && failure === null;
+  const offered = outcomes === null && !empty && failure === null;
+  const checkingId = useId();
 
   return (
     <Dialog
@@ -95,11 +96,12 @@ export function ImportLocalEditsDialog({
               label: importConfirmLabel(count, undoing),
               verb: "import",
               tone: "primary",
-              unavailable:
-                eligible.length === 0 && flagged.length === 0
-                  ? NO_SKILL_QUALIFIES
+              unavailable: checking
+                ? { describedBy: checkingId }
+                : eligible.length === 0 && flagged.length === 0
+                  ? { line: NO_SKILL_QUALIFIES }
                   : count === 0
-                    ? NONE_SELECTED
+                    ? { line: NOTHING_CHECKED }
                     : null,
               onRun: onConfirm,
             }
@@ -148,7 +150,7 @@ export function ImportLocalEditsDialog({
         />
       ) : skills === null ? (
         failure === null ? (
-          <StatusLine>{CHECKING_LOCAL_EDITS}</StatusLine>
+          <StatusLine id={checkingId}>{CHECKING_LOCAL_EDITS}</StatusLine>
         ) : null
       ) : empty ? (
         <EmptyState
