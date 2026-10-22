@@ -61,6 +61,19 @@ export const Unavailable: Story = {
   },
 };
 
+// The dialog draws the cause beside the action and describes the action by it.
+export const UnavailableWithLine: Story = {
+  args: {
+    action: {
+      label: "Update target",
+      verb: "update",
+      tone: "primary",
+      unavailable: { line: "Check Discard local edits to update this target." },
+      onRun: () => {},
+    },
+  },
+};
+
 export const Failure: Story = {
   args: {
     failure: {

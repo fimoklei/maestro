@@ -21,6 +21,19 @@ export const Unavailable: Story = {
   args: { unavailable: "No Harness connected" },
 };
 
+// Keeps its plain label; the empty state beside it says why.
+export const UnavailableWithCauseText: Story = {
+  args: { label: "Filter", unavailable: { describedBy: "empty-state" } },
+  render: (args) => (
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <IconButton {...args}>
+        <Filter aria-hidden="true" size={16} strokeWidth={1.5} />
+      </IconButton>
+      <span id="empty-state">No skills yet</span>
+    </div>
+  ),
+};
+
 export const InBandTwo: Story = {
   render: () => (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

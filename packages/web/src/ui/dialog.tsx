@@ -23,6 +23,9 @@ const WIDTH = {
   640: "max-w-[640px]",
 } as const;
 
+/** A sentence the dialog shows beside its blocked action, stating why. */
+type CauseLine = { line: string };
+
 type DialogAction = {
   label: string;
   /** Picks the busy label from `busy-copy`. */
@@ -30,10 +33,10 @@ type DialogAction = {
   /** `danger` is a destructive dialog: danger button, focus opens on Cancel. */
   tone: "primary" | "danger";
   /**
-   * Why it cannot run yet: five words or fewer, the text that says it, or the
-   * dialog's own failure notice; `null` when it can.
+   * Why it cannot run yet: five words or fewer, the text that says it, the
+   * dialog's own failure notice, or a new line it shows; `null` when it can.
    */
-  unavailable: string | CauseText | { failure: true } | null;
+  unavailable: string | CauseText | { failure: true } | CauseLine | null;
   onRun: () => void;
 };
 
@@ -78,6 +81,8 @@ export function Dialog({
       ? "primary"
       : "quiet";
   const failureId = useId();
+  const lineId = useId();
+  const busyId = useId();
   const bodyless = children === null;
 
   // Below a long body a new failure would sit out of view; focus stays put.
@@ -171,7 +176,13 @@ export function Dialog({
             <IconButton
               label={CLOSE}
               variant="ghost"
-              unavailable={running ? ACTION_STILL_RUNNING : undefined}
+              unavailable={
+                !running
+                  ? undefined
+                  : action === null
+                    ? ACTION_STILL_RUNNING
+                    : { describedBy: busyId }
+              }
               onClick={onClose}
             >
               <Icon of={X} />
@@ -222,6 +233,8 @@ export function Dialog({
                   variant={variant}
                   running={running}
                   failureId={failureId}
+                  lineId={lineId}
+                  busyId={busyId}
                 />
               )}
             </div>
@@ -238,17 +251,48 @@ function ActionButton({
   variant,
   running,
   failureId,
+  lineId,
+  busyId,
 }: {
   action: DialogAction;
   variant: "primary" | "danger" | "quiet";
   running: boolean;
   failureId: string;
+  lineId: string;
+  busyId: string;
 }) {
+  // The ✕ is described by the busy label while the action runs.
+  if (running) {
+    return (
+      <Button type="submit" variant={variant} busy>
+        <span id={busyId}>{ACTIONS[action.verb].busy}</span>
+      </Button>
+    );
+  }
   if (action.unavailable === null) {
     return (
-      <Button type="submit" variant={variant} busy={running}>
-        {running ? ACTIONS[action.verb].busy : action.label}
+      <Button type="submit" variant={variant}>
+        {action.label}
       </Button>
+    );
+  }
+  const { unavailable } = action;
+  if (typeof unavailable === "object" && "line" in unavailable) {
+    return (
+      <div className="flex min-w-0 items-center gap-inline">
+        <p
+          id={lineId}
+          className="m-0 min-w-0 text-right font-ui text-gray-11 text-meta"
+        >
+          {unavailable.line}
+        </p>
+        <GatedButton
+          type="submit"
+          variant={variant}
+          label={action.label}
+          unavailable={{ describedBy: lineId }}
+        />
+      </div>
     );
   }
   return (
@@ -257,10 +301,9 @@ function ActionButton({
       variant={variant}
       label={action.label}
       unavailable={
-        typeof action.unavailable === "object" &&
-        "failure" in action.unavailable
+        typeof unavailable === "object" && "failure" in unavailable
           ? { describedBy: failureId }
-          : action.unavailable
+          : unavailable
       }
     />
   );

@@ -8,6 +8,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { expectVisibleCause } from "../test-utils";
 import { Dialog, type DialogProps } from "./dialog";
 
 type DialogAction = NonNullable<DialogProps["action"]>;
@@ -228,11 +229,31 @@ describe("Dialog", () => {
 
       await userEvent.keyboard("{Escape}");
       await clickOutside();
-      await userEvent.click(
-        screen.getByRole("button", { name: "Close — action still running" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
       const cancel = screen.getByRole("button", { name: "Cancel" });
       expect(cancel).toBeDisabled();
+
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("keeps the ✕ named Close and describes it by the busy label", () => {
+      renderDialog({ phase: "running" });
+
+      expectVisibleCause(
+        screen.getByRole("button", { name: "Close" }),
+        "Restoring…",
+      );
+    });
+
+    it("blocks the ✕ when it runs with no action to show a busy label", async () => {
+      const onClose = vi.fn();
+      renderDialog({ phase: "running", action: null, onClose });
+
+      const x = screen.getByRole("button", {
+        name: "Close — action still running",
+      });
+      expect(x).toHaveAttribute("aria-disabled", "true");
+      await userEvent.click(x);
 
       expect(onClose).not.toHaveBeenCalled();
     });
@@ -415,6 +436,56 @@ describe("Dialog", () => {
       await userEvent.click(confirm);
 
       expect(onRun).not.toHaveBeenCalled();
+    });
+
+    it("shows a new line beside it and is described by that line", async () => {
+      const onRun = vi.fn();
+      renderDialog({
+        action: action({
+          unavailable: { line: "Connect a Harness to restore skills." },
+          onRun,
+        }),
+      });
+
+      const confirm = screen.getByRole("button", { name: "Restore skill" });
+      expect(
+        screen.getByText("Connect a Harness to restore skills."),
+      ).toBeVisible();
+      expectVisibleCause(confirm, "Connect a Harness to restore skills.");
+      await userEvent.click(confirm);
+
+      expect(onRun).not.toHaveBeenCalled();
+    });
+
+    it("drops the line once the action can run", () => {
+      const { rerender } = renderDialog({
+        action: action({
+          unavailable: { line: "Connect a Harness to restore skills." },
+        }),
+      });
+
+      rerender(
+        <Dialog
+          title="Restore research"
+          version={null}
+          width={480}
+          phase="idle"
+          action={action()}
+          failure={null}
+          describedBy={null}
+          fieldsChanged={false}
+          onClose={vi.fn()}
+        >
+          <p>Body sentence.</p>
+        </Dialog>,
+      );
+
+      expect(
+        screen.queryByText("Connect a Harness to restore skills."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Restore skill" }),
+      ).not.toHaveAttribute("aria-describedby");
     });
 
     it("can be described by the dialog's failure notice", () => {
