@@ -1,7 +1,7 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { expectVisibleCause, sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 
@@ -211,6 +211,32 @@ describe("DeletionDialog", () => {
     });
   });
 
+  describe("Delete skill while it cannot run", () => {
+    const deleteSkill = () =>
+      screen.getByRole("button", { name: "Delete skill" });
+
+    it("points to the checking line while the check reads the clone", () => {
+      renderDialog({ mode: { ...LOCAL, check: "checking" } });
+
+      expectVisibleCause(deleteSkill(), "Checking for uncommitted changes…");
+    });
+
+    it("shows a line when the clone was not read", () => {
+      renderDialog({ mode: { ...LOCAL, check: "failed" } });
+
+      expectVisibleCause(deleteSkill(), "Maestro could not read your clone.");
+    });
+
+    it("shows a line when the skill is not in the clone", () => {
+      renderDialog({ mode: { ...LOCAL, check: "not-in-clone" } });
+
+      expectVisibleCause(
+        deleteSkill(),
+        "Maestro could not find this skill in your clone.",
+      );
+    });
+  });
+
   // Step 1 of deleting a skill that is on the default branch (#1370).
   describe("a skill on the default branch", () => {
     it("says it removes the folder from the clone and what keeps the skill", () => {
@@ -393,6 +419,15 @@ describe("DeletionDialog", () => {
           ),
         ),
       ).toBeInTheDocument();
+    });
+
+    it("names the prompt when it is not in the clone", () => {
+      renderPrompt({ ...PROMPT_IN_CLONE, check: "not-in-clone" });
+
+      expectVisibleCause(
+        screen.getByRole("button", { name: "Delete prompt" }),
+        "Maestro could not find this prompt in your clone.",
+      );
     });
 
     it("proposes the deletion and says the Prompts screen keeps the prompt until the release", () => {

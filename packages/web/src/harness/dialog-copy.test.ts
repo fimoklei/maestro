@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVISORY_TEXT,
-  DELETE_UNAVAILABLE,
+  CLONE_NOT_READ,
   FINDING_TEXT,
   FOLDER_MISSING,
+  notInClone,
   skillChecksNotice,
 } from "./dialog-copy";
 
@@ -44,12 +45,13 @@ describe("Harness dialog copy", () => {
     expect(FOLDER_MISSING).toBe("Enter the skill folder's absolute path.");
   });
 
-  it("states why Delete skill cannot run yet, in screen names", () => {
-    expect(DELETE_UNAVAILABLE).toEqual({
-      checking: "checking your clone",
-      failed: "clone not read",
-      "no-harness": "no Harness connected",
-      "not-in-clone": "not in your clone",
-    });
+  it("states why Delete skill cannot run when the clone was not read", () => {
+    expect(CLONE_NOT_READ).toBe("Maestro could not read your clone.");
+  });
+
+  it("states why Delete skill cannot run when the skill is not in the clone", () => {
+    expect(notInClone("skill")).toBe(
+      "Maestro could not find this skill in your clone.",
+    );
   });
 });

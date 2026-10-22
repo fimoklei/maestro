@@ -2,7 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { sentence } from "../test-utils";
+import { expectVisibleCause, sentence } from "../test-utils";
 import {
   installHarnessHooks,
   ON_DISK,
@@ -191,9 +191,10 @@ describe("Harness local deletion", () => {
     renderHarness();
     const dialog = await openLocalDeletion();
 
-    expect(
-      within(dialog).getByText("Checking for uncommitted changes…"),
-    ).toBeInTheDocument();
+    expectVisibleCause(
+      confirmButton(dialog),
+      "Checking for uncommitted changes…",
+    );
     await userEvent.click(confirmButton(dialog));
     expect(localDeletions).toEqual([]);
 
@@ -221,6 +222,31 @@ describe("Harness local deletion", () => {
     expect(
       within(dialog).getByText("Git could not read your clone."),
     ).toBeInTheDocument();
+    expectVisibleCause(
+      confirmButton(dialog),
+      "Maestro could not read your clone.",
+    );
+    await userEvent.click(confirmButton(dialog));
+    expect(localDeletions).toEqual([]);
+  });
+
+  it("states that the skill is not in the clone when the check no longer finds it, and deletes nothing", async () => {
+    const localDeletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: LOCAL_ONLY },
+      localDeletion: { body: { name: "old-skill" } },
+      localDeletions,
+      deletionChecks: [{ body: { skill: {}, prompt: {} } }],
+    });
+    renderHarness();
+    const dialog = await openLocalDeletion();
+
+    await waitFor(() =>
+      expectVisibleCause(
+        confirmButton(dialog),
+        "Maestro could not find this skill in your clone.",
+      ),
+    );
     await userEvent.click(confirmButton(dialog));
     expect(localDeletions).toEqual([]);
   });
