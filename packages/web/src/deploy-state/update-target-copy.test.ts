@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { machineValues, unselectedControls } from "../test-utils";
 import * as updateTargetCopy from "./update-target-copy";
-import { outcomeDetail, releaseMoveLine } from "./update-target-copy";
+import {
+  CHECK_EVERY_BOX,
+  outcomeDetail,
+  releaseMoveLine,
+} from "./update-target-copy";
+
+describe("the Update target cause line", () => {
+  it("keeps the approved sentence for a missing consent", () => {
+    expect(CHECK_EVERY_BOX).toBe(
+      "To update this target, check every box above.",
+    );
+  });
+});
 
 // Contract tests: the words live once, in the copy module and the rendered
 // tests of the Update target dialog, its outcome report and the target pane.

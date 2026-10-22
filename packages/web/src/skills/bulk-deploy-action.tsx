@@ -1,5 +1,6 @@
 import type { BulkDeployReport } from "@maestro/core";
 import { useState } from "react";
+import { NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
 import type { DeployStateRead } from "../deploy-state/deployed-view";
 import { deployNotice, deployNoticeFor } from "../deploy-state/notice-copy";
 import { toolNameList } from "../deploy-state/tool-presentation";
@@ -33,7 +34,6 @@ import {
   DEPLOY_SKILLS,
   globalOptionLabel,
   NO_TARGET_CHOSEN,
-  NO_TOOL_DETECTED_CAUSE,
   TARGETS_LOADING,
 } from "./skills-copy";
 import { useBulkDeploy } from "./use-bulk-deploy";
@@ -229,11 +229,11 @@ export function BulkDeployRun({
       }}
       unavailable={
         !registryReady || targetLoading
-          ? TARGETS_LOADING
+          ? { line: TARGETS_LOADING }
           : selected === null
-            ? NO_TARGET_CHOSEN
+            ? { line: NO_TARGET_CHOSEN }
             : isGlobal && globalDisabled
-              ? NO_TOOL_DETECTED_CAUSE
+              ? { line: NO_TOOL_DETECTED }
               : null
       }
       fieldsChanged={chosen !== null}

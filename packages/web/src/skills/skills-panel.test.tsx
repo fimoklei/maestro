@@ -4,7 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useRereadInventory } from "../shell/use-reread-inventory";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import {
+  expectVisibleCause,
+  jsonResponse,
+  renderWithQuery,
+} from "../test-utils";
 import { SkillsPanel } from "./skills-panel";
 
 // Drops the cached read the way the Harness location screen's own button does,
@@ -169,11 +173,10 @@ describe("SkillsPanel", () => {
 
     const dialog = await openDeployDialog("tdd");
 
-    expect(
-      await dialog.findByRole("button", {
-        name: "Deploy skill — no target",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      await dialog.findByRole("button", { name: "Deploy skill" }),
+      "Choose a target.",
+    );
     await userEvent.click(dialog.getByRole("combobox", { name: "Target" }));
     await userEvent.click(await screen.findByRole("option", { name: /alpha/ }));
     expect(
@@ -211,9 +214,10 @@ describe("SkillsPanel", () => {
 
     const dialog = await openDeployDialog("tdd");
 
-    expect(
-      await dialog.findByRole("button", { name: /targets still loading/ }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      await dialog.findByRole("button", { name: "Deploy skill" }),
+      "Loading targets…",
+    );
   });
 
   it("holds the status unresolved while the registry is still loading", async () => {
@@ -278,9 +282,10 @@ describe("SkillsPanel", () => {
 
     const dialog = await openDeployDialog("tdd");
 
-    expect(
-      await dialog.findByRole("button", { name: /targets still loading/ }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      await dialog.findByRole("button", { name: "Deploy skill" }),
+      "Loading targets…",
+    );
   });
 
   it("shows an actionable message when the inventory is not configured", async () => {

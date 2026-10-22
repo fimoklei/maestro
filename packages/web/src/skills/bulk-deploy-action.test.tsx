@@ -1,8 +1,9 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   chooseDeployTarget,
+  expectVisibleCause,
   jsonResponse,
   renderWithQuery,
 } from "../test-utils";
@@ -55,8 +56,15 @@ async function openDialog() {
   return screen.getByRole("dialog");
 }
 
+// A blocked deploy keeps its name, so wait for the block to lift.
 const runnable = (dialog: HTMLElement) =>
-  within(dialog).findByRole("button", { name: /^Deploy skills?$/ });
+  waitFor(() => {
+    const button = within(dialog).getByRole("button", {
+      name: /^Deploy skills?$/,
+    });
+    expect(button).not.toHaveAttribute("aria-disabled");
+    return button;
+  });
 
 async function deploy(target: string | RegExp = /^Global/) {
   const dialog = await openDialog();
@@ -395,11 +403,10 @@ describe("BulkDeployAction", () => {
 
     const dialog = await openDialog();
 
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Deploy skill — targets still loading",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Deploy skill" }),
+      "Loading targets…",
+    );
   });
 
   it("keeps the deploy unavailable until the chosen target's state has loaded", async () => {
@@ -434,11 +441,10 @@ describe("BulkDeployAction", () => {
 
     const dialog = await openDialog();
     await chooseDeployTarget(dialog, /repo$/);
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Deploy skill — targets still loading",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Deploy skill" }),
+      "Loading targets…",
+    );
 
     resolveDeployState?.();
     expect(await runnable(dialog)).not.toHaveAttribute("aria-disabled");
@@ -954,11 +960,10 @@ describe("BulkDeployAction — the target it deploys to", () => {
     stubTools([]);
     const dialog = await openOne([]);
 
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Deploy skill — no target",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Deploy skill" }),
+      "Choose a target.",
+    );
     await openTargets(dialog);
     expect(
       await screen.findByRole("option", {
@@ -994,11 +999,12 @@ describe("BulkDeployAction — the target it deploys to", () => {
     tools = [];
     await queryClient.invalidateQueries();
 
-    expect(
-      await within(dialog).findByRole("button", {
-        name: "Deploy skill — no tool detected",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    await waitFor(() =>
+      expectVisibleCause(
+        within(dialog).getByRole("button", { name: "Deploy skill" }),
+        "Install Claude Code or Codex to deploy skills globally.",
+      ),
+    );
   });
 
   // Global needs no repo, so a deploy never waits on a registration.
@@ -1170,9 +1176,9 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
       within(dialog).getByRole("combobox", { name: "Target" }),
     ).toHaveTextContent("Choose a target");
     const deployButton = within(dialog).getByRole("button", {
-      name: "Deploy skill — no target",
+      name: "Deploy skill",
     });
-    expect(deployButton).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(deployButton, "Choose a target.");
 
     await userEvent.click(deployButton);
 
@@ -1200,15 +1206,24 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
     expect(
       within(dialog).getByRole("combobox", { name: "Target" }),
     ).toHaveTextContent("Choose a target");
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Deploy skill — no target",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Deploy skill" }),
+      "Choose a target.",
+    );
   });
 
   const groupNamed = (dialog: HTMLElement, name: string) =>
     within(dialog).getByRole("group", { name });
+
+  it("keeps the plural label and its cause until a target is chosen", async () => {
+    stubWorld();
+    const dialog = await open(twoRepos, ["tdd", "review"]);
+
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Deploy skills" }),
+      "Choose a target.",
+    );
+  });
 
   it("lists the staged skills with no reading before a target is chosen", async () => {
     stubWorld();
@@ -1292,11 +1307,10 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
 
     await chooseDeployTarget(dialog, /projects\/alpha$/);
 
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Deploy skill — targets still loading",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Deploy skill" }),
+      "Loading targets…",
+    );
     expect(
       within(dialog).queryByRole("group", {
         name: /^(To deploy|Already up to date)/,
@@ -1353,11 +1367,10 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
     expect(
       within(dialog).queryByRole("group", { name: /^Already up to date/ }),
     ).not.toBeInTheDocument();
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Deploy skill — targets still loading",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Deploy skill" }),
+      "Loading targets…",
+    );
   });
 
   it("marks nothing while the Global state is still loading", async () => {
@@ -1366,11 +1379,10 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
 
     await chooseDeployTarget(dialog, /^Global/);
 
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Deploy skill — targets still loading",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Deploy skill" }),
+      "Loading targets…",
+    );
     expect(
       within(dialog).queryByRole("group", {
         name: /^(To deploy|Already up to date)/,
