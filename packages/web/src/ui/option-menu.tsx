@@ -2,6 +2,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import type { ReactNode } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
+import type { CauseText } from "./gated-button";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { IconButton } from "./icon-button";
 import { Tooltip } from "./tooltip";
@@ -26,8 +27,8 @@ export interface OptionMenuProps {
   sections: readonly OptionSection[];
   /** How many options are set; shown on the control so a filter is never invisible. */
   count?: number;
-  /** Why the control cannot be used, in five words or fewer. */
-  unavailable?: string;
+  /** Why the control cannot be used: five words or fewer, or the text that says it. */
+  unavailable?: string | CauseText;
 }
 
 const itemClasses = cn(

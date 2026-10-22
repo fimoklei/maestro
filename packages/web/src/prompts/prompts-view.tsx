@@ -45,7 +45,6 @@ import {
   FINDING_LABEL,
   NAME_NOT_VALID,
   NO_FILTER_MATCH,
-  NO_PROMPTS_YET,
   NO_RELEASED_PROMPTS,
   NO_SEARCH_MATCH,
   PROMPTS_FACT,
@@ -165,7 +164,6 @@ export function PromptsView({
     groupings: [],
     initialGrouping: "none",
     columns: DISPLAY_OPTIONS,
-    unavailable: NO_PROMPTS_YET,
   });
 
   const columns = useMemo(

@@ -76,7 +76,6 @@ import {
   NO_FILTER_MATCH,
   NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
-  NO_SKILLS_YET,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
   removeFromToolsLabel,
@@ -232,7 +231,6 @@ export function SkillsView({
     groupings: [],
     initialGrouping: "none",
     columns: DISPLAY_OPTIONS,
-    unavailable: NO_SKILLS_YET,
   });
 
   const columns = useMemo(

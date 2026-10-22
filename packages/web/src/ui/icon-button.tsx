@@ -45,7 +45,7 @@ export function IconButton({
         aria-disabled={blocked ? true : undefined}
         aria-describedby={
           typeof unavailable === "object"
-            ? unavailable.describedBy
+            ? unavailable.describedBy || undefined
             : describedBy
         }
         onClick={blocked ? undefined : onClick}
