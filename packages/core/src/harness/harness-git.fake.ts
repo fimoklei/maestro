@@ -51,7 +51,7 @@ export const skillRef = (name: string): PrimitiveRef => ({
 });
 
 // The blob hash git would give this text; never a tree hash of the same text.
-export const blobHash = (text: string): string =>
+const blobHash = (text: string): string =>
   createHash("sha1").update(`blob\0${text}`).digest("hex");
 
 const treesOf = (skills: Skills): HarnessSkillTree[] =>
