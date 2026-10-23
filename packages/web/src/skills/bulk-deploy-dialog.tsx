@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { DEPLOY_SKILL } from "../ui/control-labels";
-import { Dialog, type DialogRun } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
@@ -55,24 +55,20 @@ export function BulkDeployDialog({
   onClose: () => void;
 }) {
   const labelId = useId();
-  const run: DialogRun =
-    report === null
-      ? {
-          phase: busy ? "running" : "idle",
-          action: {
+  const run = dialogRun({
+    source:
+      report === null
+        ? {
             label: count === 1 ? DEPLOY_SKILL : DEPLOY_SKILLS,
             verb: "deploy",
             tone: "primary",
             unavailable,
             onRun: onDeploy,
-          },
-        }
-      : {
-          phase: busy
-            ? { running: { describedBy: report.runningId } }
-            : "outcome",
-          action: null,
-        };
+          }
+        : { bodyBusyId: report.runningId },
+    running: busy,
+    outcome: report !== null,
+  });
 
   return (
     <Dialog

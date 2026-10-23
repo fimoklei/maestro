@@ -1,7 +1,7 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { useId } from "react";
 import { REMOVE_SKILL } from "../ui/control-labels";
-import { Dialog, type DialogRun } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
@@ -148,20 +148,13 @@ export function RemoveSkillDialog({
       </>
     ) : null;
 
-  const settled = refused || report !== null ? "outcome" : "idle";
-  const run: DialogRun =
-    restated !== null
-      ? {
-          phase: isRemoving
-            ? { running: { describedBy: restatedConfirmId } }
-            : settled,
-          action: null,
-        }
-      : refused && !isRemoving
-        ? { phase: "outcome", action: null }
-        : {
-            phase: isRemoving ? "running" : settled,
-            action: {
+  const run = dialogRun({
+    source:
+      restated !== null
+        ? { bodyBusyId: restatedConfirmId }
+        : refused && !isRemoving
+          ? null
+          : {
               label: REMOVE_SKILL,
               verb: "remove",
               tone: "danger",
@@ -171,7 +164,9 @@ export function RemoveSkillDialog({
                 : null,
               onRun: onConfirm,
             },
-          };
+    running: isRemoving,
+    outcome: refused || report !== null,
+  });
 
   return (
     <Dialog

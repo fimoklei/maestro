@@ -7,7 +7,7 @@ import type {
 import { type ReactNode, useId, useState } from "react";
 import { cn } from "../ui/cn";
 import { UPDATE_TARGET } from "../ui/control-labels";
-import { Dialog, type DialogRun } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
@@ -253,27 +253,21 @@ export function UpdateTargetDialog({
     : consentComplete
       ? null
       : { line: CHECK_EVERY_BOX };
-  const run: DialogRun =
-    report === null && (preview !== null || blocked)
-      ? {
-          phase: isRunning ? "running" : "idle",
-          action: {
+  const run = dialogRun({
+    source:
+      report === null && (preview !== null || blocked)
+        ? {
             label: UPDATE_TARGET,
             verb: "update",
             tone: "primary",
             unavailable,
             onRun: onConfirm,
-          },
-        }
-      : {
-          // Without the footer action, only Retry update can run.
-          phase: isRunning
-            ? { running: { describedBy: retryId } }
-            : report === null
-              ? "idle"
-              : "outcome",
-          action: null,
-        };
+          }
+        : // Without the footer action, only Retry update can run.
+          { bodyBusyId: retryId },
+    running: isRunning,
+    outcome: report !== null,
+  });
 
   return (
     <Dialog

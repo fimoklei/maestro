@@ -1,7 +1,7 @@
 import type { LocalEditsSkill } from "@maestro/core";
 import { useEffect, useId, useRef } from "react";
 import { copiesDiffer, localEditsRefusal } from "../harness/notice-copy";
-import { Dialog, type DialogRun } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
@@ -83,12 +83,10 @@ export function ImportLocalEditsDialog({
   // hide its busy label.
   const offered =
     isRunning || (outcomes === null && !empty && failure === null);
-  const settled = outcomes === null && !empty ? "idle" : "outcome";
   const checkingId = useId();
-  const run: DialogRun = offered
-    ? {
-        phase: isRunning ? "running" : settled,
-        action: {
+  const run = dialogRun({
+    source: offered
+      ? {
           label: importConfirmLabel(count, undoing),
           verb: "import",
           tone: "primary",
@@ -100,9 +98,11 @@ export function ImportLocalEditsDialog({
                 ? { line: NOTHING_CHECKED }
                 : null,
           onRun: onConfirm,
-        },
-      }
-    : { phase: settled, action: null };
+        }
+      : null,
+    running: isRunning,
+    outcome: outcomes !== null || empty,
+  });
 
   return (
     <Dialog

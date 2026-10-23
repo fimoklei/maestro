@@ -43,15 +43,41 @@ type DialogAction = {
 /**
  * The phase and the footer action together. A write runs from the footer
  * action, or, with no footer action, from a control in the body whose busy
- * label `running` points to.
+ * label ✕ points to while it runs.
  */
 export type DialogRun =
   | { phase: "idle" | "running" | "outcome"; action: DialogAction }
   | {
-      phase: "idle" | "outcome" | { running: CauseText };
+      phase: "idle" | "outcome";
       /** No footer action, as once an outcome is shown. */
       action: null;
+    }
+  | { phase: "running-in-body"; action: null; busyLabel: CauseText };
+
+/** Builds a dialog's run from where its write starts, whether it runs, and whether an outcome shows. */
+export function dialogRun({
+  source,
+  running,
+  outcome,
+}: {
+  /** The footer action; a body control, by its busy label's id; or none, when nothing can run. */
+  source: DialogAction | { bodyBusyId: string } | null;
+  running: boolean;
+  outcome: boolean;
+}): DialogRun {
+  const settled = outcome ? "outcome" : "idle";
+  if (source !== null && "onRun" in source) {
+    return { phase: running ? "running" : settled, action: source };
+  }
+  if (source !== null && running) {
+    return {
+      phase: "running-in-body",
+      action: null,
+      busyLabel: { describedBy: source.bodyBusyId },
     };
+  }
+  return { phase: settled, action: null };
+}
 
 export type DialogProps = DialogRun & {
   /** Names in the title are set in Geist. */
@@ -72,15 +98,15 @@ export function Dialog({
   title,
   version,
   width,
-  phase,
-  action,
   failure,
   describedBy,
   fieldsChanged,
   onClose,
   children,
+  ...run
 }: DialogProps) {
-  const running = phase === "running" || typeof phase === "object";
+  const { phase, action } = run;
+  const running = phase === "running" || phase === "running-in-body";
   const leave = phase === "outcome" || failure !== null ? CLOSE : CANCEL;
   const lone = phase === "outcome" && action === null;
   const danger = action?.tone === "danger";
@@ -187,8 +213,8 @@ export function Dialog({
               label={CLOSE}
               variant="ghost"
               unavailable={
-                typeof phase === "object"
-                  ? phase.running
+                run.phase === "running-in-body"
+                  ? run.busyLabel
                   : running
                     ? { describedBy: busyId }
                     : undefined

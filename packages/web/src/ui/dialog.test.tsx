@@ -252,7 +252,8 @@ describe("Dialog", () => {
     it("describes the ✕ by the busy label of a body control that runs the write", async () => {
       const onClose = vi.fn();
       renderDialog({
-        phase: { running: { describedBy: "retry" } },
+        phase: "running-in-body",
+        busyLabel: { describedBy: "retry" },
         action: null,
         onClose,
         children: (
