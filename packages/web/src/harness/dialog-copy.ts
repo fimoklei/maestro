@@ -37,12 +37,6 @@ export const ADVISORY_TEXT: Record<ManifestAdvisory, string> = {
 // Import skill's Folder path, submitted empty.
 export const FOLDER_MISSING = "Enter the skill folder's absolute path.";
 
-// Beside a blocked Delete skill; its checking cause is the checking line.
-export const CLONE_NOT_READ = "Maestro could not read your clone.";
-
-export const notInClone = (type: HarnessPrimitiveType): string =>
-  `Maestro could not find this ${ITEM_WORDS[type].noun} in your clone.`;
-
 export const DELETION_CHECKING = "Checking for uncommitted changes…";
 
 export const restoreBody = (type: HarnessPrimitiveType): Phrase =>

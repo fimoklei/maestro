@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVISORY_TEXT,
-  CLONE_NOT_READ,
   FINDING_TEXT,
   FOLDER_MISSING,
-  notInClone,
   skillChecksNotice,
 } from "./dialog-copy";
 
@@ -43,15 +41,5 @@ describe("Harness dialog copy", () => {
 
   it("asks for the skill folder when Import skill is submitted without one", () => {
     expect(FOLDER_MISSING).toBe("Enter the skill folder's absolute path.");
-  });
-
-  it("states why Delete skill cannot run when the clone was not read", () => {
-    expect(CLONE_NOT_READ).toBe("Maestro could not read your clone.");
-  });
-
-  it("states why Delete skill cannot run when the skill is not in the clone", () => {
-    expect(notInClone("skill")).toBe(
-      "Maestro could not find this skill in your clone.",
-    );
   });
 });

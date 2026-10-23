@@ -12,7 +12,7 @@ import {
   openRequestNotice,
   uncommittedNotice,
 } from "./deletion-copy";
-import { CLONE_NOT_READ, DELETION_CHECKING, notInClone } from "./dialog-copy";
+import { DELETION_CHECKING } from "./dialog-copy";
 import { ITEM_WORDS } from "./item-words";
 import type { LocalDeletionContext } from "./local-deletion-copy";
 
@@ -74,10 +74,8 @@ export function DeletionDialog({
             ? null
             : mode.check === "checking"
               ? { describedBy: checkingId }
-              : {
-                  line:
-                    mode.check === "failed" ? CLONE_NOT_READ : notInClone(type),
-                },
+              : // The caller states a failed or empty check in `deleteError`.
+                { failure: true },
         onRun: onConfirm,
       }}
       failure={deleteError}

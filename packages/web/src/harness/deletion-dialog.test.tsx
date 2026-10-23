@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { expectVisibleCause, sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
+import { deletionCheckNotice } from "./local-deletion-copy";
 
 const TREE = "0123456789abcdef0123456789abcdef01234567";
 
@@ -221,19 +222,30 @@ describe("DeletionDialog", () => {
       expectVisibleCause(deleteSkill(), "Checking for uncommitted changes…");
     });
 
-    it("shows a line when the clone was not read", () => {
-      renderDialog({ mode: { ...LOCAL, check: "failed" } });
+    it("points to the failure notice when the clone was not read", () => {
+      renderDialog({
+        mode: { ...LOCAL, check: "failed" },
+        deleteError: deletionCheckNotice("no-answer", {
+          type: "skill",
+          name: "research",
+          screen: "harness",
+        }),
+      });
 
-      expectVisibleCause(deleteSkill(), "Maestro could not read your clone.");
+      expectVisibleCause(deleteSkill(), /^Clone not read/);
     });
 
-    it("shows a line when the skill is not in the clone", () => {
-      renderDialog({ mode: { ...LOCAL, check: "not-in-clone" } });
+    it("points to the failure notice when the skill is not in the clone", () => {
+      renderDialog({
+        mode: { ...LOCAL, check: "not-in-clone" },
+        deleteError: deletionCheckNotice("already-gone", {
+          type: "skill",
+          name: "research",
+          screen: "harness",
+        }),
+      });
 
-      expectVisibleCause(
-        deleteSkill(),
-        "Maestro could not find this skill in your clone.",
-      );
+      expectVisibleCause(deleteSkill(), /^Folder already deleted/);
     });
   });
 
@@ -421,12 +433,21 @@ describe("DeletionDialog", () => {
       ).toBeInTheDocument();
     });
 
-    it("names the prompt when it is not in the clone", () => {
-      renderPrompt({ ...PROMPT_IN_CLONE, check: "not-in-clone" });
+    it("points to the failure notice when the prompt is not in the clone", () => {
+      renderDialog({
+        type: "prompt",
+        name: "pr-review",
+        mode: { ...PROMPT_IN_CLONE, check: "not-in-clone" },
+        deleteError: deletionCheckNotice("already-gone", {
+          type: "prompt",
+          name: "pr-review",
+          screen: "prompts",
+        }),
+      });
 
       expectVisibleCause(
         screen.getByRole("button", { name: "Delete prompt" }),
-        "Maestro could not find this prompt in your clone.",
+        /^File already deleted/,
       );
     });
 

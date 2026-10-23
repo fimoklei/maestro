@@ -222,10 +222,7 @@ describe("Harness local deletion", () => {
     expect(
       within(dialog).getByText("Git could not read your clone."),
     ).toBeInTheDocument();
-    expectVisibleCause(
-      confirmButton(dialog),
-      "Maestro could not read your clone.",
-    );
+    expectVisibleCause(confirmButton(dialog), /^Clone not read/);
     await userEvent.click(confirmButton(dialog));
     expect(localDeletions).toEqual([]);
   });
@@ -242,10 +239,7 @@ describe("Harness local deletion", () => {
     const dialog = await openLocalDeletion();
 
     await waitFor(() =>
-      expectVisibleCause(
-        confirmButton(dialog),
-        "Maestro could not find this skill in your clone.",
-      ),
+      expectVisibleCause(confirmButton(dialog), /^Folder already deleted/),
     );
     await userEvent.click(confirmButton(dialog));
     expect(localDeletions).toEqual([]);
