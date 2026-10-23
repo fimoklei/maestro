@@ -540,6 +540,30 @@ describe("RemoveSkillFlow", () => {
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     });
 
+    it("describes ✕ by the panel's busy label while that confirm runs", async () => {
+      const first = restated();
+      let attempts = 0;
+      renderFlow({
+        remove: () => {
+          attempts += 1;
+          return attempts === 1 ? first() : never();
+        },
+      });
+
+      const alert = await fail();
+      await userEvent.click(
+        within(alert).getByRole("button", { name: "Remove skill" }),
+      );
+
+      await waitFor(() =>
+        expectVisibleCause(
+          // The header ✕ comes first; the leave control is the last Close.
+          screen.getAllByRole("button", { name: "Close" })[0] as HTMLElement,
+          "Removing…",
+        ),
+      );
+    });
+
     // All or nothing: a fresh cost paired with an older consent is #364.
     it("states a failure, offering no new consent, for a restatement it cannot read", async () => {
       for (const body of [

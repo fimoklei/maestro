@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { DEPLOY_SKILL } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
+import { Dialog, type DialogRun } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
@@ -44,32 +44,42 @@ export function BulkDeployDialog({
   busy: boolean;
   /** The request itself failed; the run is not proved either way. */
   failure: NoticeContent | null;
-  /** The run's result. Once set, the dialog only reads and closes. */
-  report: { heading: string; groups: ReportGroup[] } | null;
+  /**
+   * The run's result. Once set, the dialog only reads and closes, or runs a
+   * row's Deploy again, whose busy button carries `runningId`.
+   */
+  report: { heading: string; groups: ReportGroup[]; runningId: string } | null;
   /** A reinstall from the Report that was refused: it changed nothing. */
   reportFailure: NoticeContent | null;
   onDeploy: () => void;
   onClose: () => void;
 }) {
   const labelId = useId();
+  const run: DialogRun =
+    report === null
+      ? {
+          phase: busy ? "running" : "idle",
+          action: {
+            label: count === 1 ? DEPLOY_SKILL : DEPLOY_SKILLS,
+            verb: "deploy",
+            tone: "primary",
+            unavailable,
+            onRun: onDeploy,
+          },
+        }
+      : {
+          phase: busy
+            ? { running: { describedBy: report.runningId } }
+            : "outcome",
+          action: null,
+        };
 
   return (
     <Dialog
       title={bulkDeployTitle(count)}
       version={null}
       width={640}
-      phase={busy ? "running" : report !== null ? "outcome" : "idle"}
-      action={
-        report !== null
-          ? null
-          : {
-              label: count === 1 ? DEPLOY_SKILL : DEPLOY_SKILLS,
-              verb: "deploy",
-              tone: "primary",
-              unavailable,
-              onRun: onDeploy,
-            }
-      }
+      {...run}
       // A failed request never reads as zeroed counts: those would claim a
       // clean run nobody saw (#292).
       failure={report === null ? failure : reportFailure}

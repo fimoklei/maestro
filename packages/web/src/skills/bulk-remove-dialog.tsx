@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Dialog } from "../ui/dialog";
+import { Dialog, type DialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Notice } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
@@ -63,30 +63,34 @@ export function BulkRemoveDialog({
           .filter((id) => id !== null)
           .join(" ");
 
+  // A run starts only from the confirm, so it keeps the confirm while it runs.
+  const run: DialogRun =
+    confirmOffered || isRemoving
+      ? {
+          phase: isRemoving ? "running" : "idle",
+          action: {
+            label: grouped?.confirmLabel ?? removeFromCountLabel(targetCount),
+            verb: "remove",
+            tone: "danger",
+            // Nothing to walk is not a run: a refusal never blocks the
+            // others, but with none left the control would remove nothing.
+            unavailable:
+              grouped === null
+                ? { describedBy: checkingId }
+                : grouped.removableCount === 0
+                  ? { describedBy: refusedId }
+                  : null,
+            onRun: onConfirm,
+          },
+        }
+      : { phase: "outcome", action: null };
+
   return (
     <Dialog
       title={bulkRemoveTitle(skillName, targetCount)}
       version={null}
       width={640}
-      phase={isRemoving ? "running" : confirmOffered ? "idle" : "outcome"}
-      action={
-        confirmOffered
-          ? {
-              label: grouped?.confirmLabel ?? removeFromCountLabel(targetCount),
-              verb: "remove",
-              tone: "danger",
-              // Nothing to walk is not a run: a refusal never blocks the
-              // others, but with none left the control would remove nothing.
-              unavailable:
-                grouped === null
-                  ? { describedBy: checkingId }
-                  : grouped.removableCount === 0
-                    ? { describedBy: refusedId }
-                    : null,
-              onRun: onConfirm,
-            }
-          : null
-      }
+      {...run}
       failure={
         failure === null
           ? null

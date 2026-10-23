@@ -4,7 +4,7 @@ import { type ReactNode, useContext, useEffect, useId, useRef } from "react";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
-import { ACTION_STILL_RUNNING, CANCEL, CLOSE } from "./dialog-copy";
+import { CANCEL, CLOSE } from "./dialog-copy";
 import { type CauseText, GatedButton } from "./gated-button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
@@ -33,22 +33,32 @@ type DialogAction = {
   /** `danger` is a destructive dialog: danger button, focus opens on Cancel. */
   tone: "primary" | "danger";
   /**
-   * Why it cannot run yet: five words or fewer, the text that says it, the
-   * dialog's own failure notice, or a new line it shows; `null` when it can.
+   * Why it cannot run yet: the text that says it, the dialog's own failure
+   * notice, or a new line it shows; `null` when it can.
    */
-  unavailable: string | CauseText | { failure: true } | CauseLine | null;
+  unavailable: CauseText | { failure: true } | CauseLine | null;
   onRun: () => void;
 };
 
-export type DialogProps = {
+/**
+ * The phase and the footer action together. A write runs from the footer
+ * action, or, with no footer action, from a control in the body whose busy
+ * label `running` points to.
+ */
+export type DialogRun =
+  | { phase: "idle" | "running" | "outcome"; action: DialogAction }
+  | {
+      phase: "idle" | "outcome" | { running: CauseText };
+      /** No footer action, as once an outcome is shown. */
+      action: null;
+    };
+
+export type DialogProps = DialogRun & {
   /** Names in the title are set in Geist. */
   title: string;
   /** The one mono part, appended to the title. */
   version: string | null;
   width: 480 | 640;
-  phase: "idle" | "running" | "outcome";
-  /** `null`: no action, as once an outcome is shown. */
-  action: DialogAction | null;
   /** Stated directly above the footer. */
   failure: NoticeContent | null;
   describedBy: string | null;
@@ -70,7 +80,7 @@ export function Dialog({
   onClose,
   children,
 }: DialogProps) {
-  const running = phase === "running";
+  const running = phase === "running" || typeof phase === "object";
   const leave = phase === "outcome" || failure !== null ? CLOSE : CANCEL;
   const lone = phase === "outcome" && action === null;
   const danger = action?.tone === "danger";
@@ -177,11 +187,11 @@ export function Dialog({
               label={CLOSE}
               variant="ghost"
               unavailable={
-                !running
-                  ? undefined
-                  : action === null
-                    ? ACTION_STILL_RUNNING
-                    : { describedBy: busyId }
+                typeof phase === "object"
+                  ? phase.running
+                  : running
+                    ? { describedBy: busyId }
+                    : undefined
               }
               onClick={onClose}
             >
@@ -277,7 +287,7 @@ function ActionButton({
     );
   }
   const { unavailable } = action;
-  if (typeof unavailable === "object" && "line" in unavailable) {
+  if ("line" in unavailable) {
     return (
       <div className="flex min-w-0 items-center gap-inline">
         <p
@@ -301,9 +311,7 @@ function ActionButton({
       variant={variant}
       label={action.label}
       unavailable={
-        typeof unavailable === "object" && "failure" in unavailable
-          ? { describedBy: failureId }
-          : unavailable
+        "failure" in unavailable ? { describedBy: failureId } : unavailable
       }
     />
   );

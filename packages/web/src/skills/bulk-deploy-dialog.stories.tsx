@@ -84,6 +84,7 @@ export const DidNotRun: Story = {
 export const PartialReport: Story = {
   args: {
     report: {
+      runningId: "deploy-again",
       heading:
         "Deployed to maestro · 2 failed · 1 attention · 2 deployed · 1 skipped",
       groups: [

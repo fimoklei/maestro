@@ -1,7 +1,7 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { useId } from "react";
 import { REMOVE_SKILL } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
+import { Dialog, type DialogRun } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
@@ -91,6 +91,7 @@ export function RemoveSkillDialog({
   // does not reliably.
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
+  const restatedConfirmId = `${dialogId}-restated-confirm`;
   // No ledger after a refusal, or after a failure: the report, if any, replaces it.
   const ledgered = !refused && error === null;
   const rows = ledgered
@@ -139,6 +140,7 @@ export function RemoveSkillDialog({
                 label: REMOVE_SKILL,
                 onClick: onConfirm,
                 busy: isRemoving ? "remove" : undefined,
+                id: restatedConfirmId,
               },
             }}
           />
@@ -146,18 +148,20 @@ export function RemoveSkillDialog({
       </>
     ) : null;
 
-  return (
-    <Dialog
-      title={`Remove ${skillName}`}
-      version={version}
-      width={640}
-      phase={
-        isRemoving ? "running" : refused || report !== null ? "outcome" : "idle"
-      }
-      action={
-        refused || restated !== null
-          ? null
-          : {
+  const settled = refused || report !== null ? "outcome" : "idle";
+  const run: DialogRun =
+    restated !== null
+      ? {
+          phase: isRemoving
+            ? { running: { describedBy: restatedConfirmId } }
+            : settled,
+          action: null,
+        }
+      : refused && !isRemoving
+        ? { phase: "outcome", action: null }
+        : {
+            phase: isRemoving ? "running" : settled,
+            action: {
               label: REMOVE_SKILL,
               verb: "remove",
               tone: "danger",
@@ -166,8 +170,15 @@ export function RemoveSkillDialog({
                 ? { line: CHECKING_LOCAL_EDITS }
                 : null,
               onRun: onConfirm,
-            }
-      }
+            },
+          };
+
+  return (
+    <Dialog
+      title={`Remove ${skillName}`}
+      version={version}
+      width={640}
+      {...run}
       failure={failure}
       // Leftover rows arrive after open, so only their own region announces them.
       describedBy={

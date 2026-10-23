@@ -49,20 +49,8 @@ export const Running: Story = {
   args: { phase: "running" },
 };
 
-export const Unavailable: Story = {
-  args: {
-    action: {
-      label: "Update target",
-      verb: "update",
-      tone: "primary",
-      unavailable: "consent still needed",
-      onRun: () => {},
-    },
-  },
-};
-
 // The dialog draws the cause beside the action and describes the action by it.
-export const UnavailableWithLine: Story = {
+export const Unavailable: Story = {
   args: {
     action: {
       label: "Update target",

@@ -1,7 +1,7 @@
 import type { LocalEditsSkill } from "@maestro/core";
 import { useEffect, useId, useRef } from "react";
 import { copiesDiffer, localEditsRefusal } from "../harness/notice-copy";
-import { Dialog } from "../ui/dialog";
+import { Dialog, type DialogRun } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
@@ -79,34 +79,37 @@ export function ImportLocalEditsDialog({
   const undoing = flagged.filter((skill) => checked.has(skill.name)).length;
   const empty = skills !== null && skills.length === 0;
   const checking = skills === null && failure === null;
-  const offered = outcomes === null && !empty && failure === null;
+  // A running import keeps its confirm: a check that fails mid-run must not
+  // hide its busy label.
+  const offered =
+    isRunning || (outcomes === null && !empty && failure === null);
+  const settled = outcomes === null && !empty ? "idle" : "outcome";
   const checkingId = useId();
+  const run: DialogRun = offered
+    ? {
+        phase: isRunning ? "running" : settled,
+        action: {
+          label: importConfirmLabel(count, undoing),
+          verb: "import",
+          tone: "primary",
+          unavailable: checking
+            ? { describedBy: checkingId }
+            : eligible.length === 0 && flagged.length === 0
+              ? { line: NO_SKILL_QUALIFIES }
+              : count === 0
+                ? { line: NOTHING_CHECKED }
+                : null,
+          onRun: onConfirm,
+        },
+      }
+    : { phase: settled, action: null };
 
   return (
     <Dialog
       title={importLocalEditsTitle(targetName)}
       version={null}
       width={640}
-      phase={
-        isRunning ? "running" : outcomes === null && !empty ? "idle" : "outcome"
-      }
-      action={
-        offered
-          ? {
-              label: importConfirmLabel(count, undoing),
-              verb: "import",
-              tone: "primary",
-              unavailable: checking
-                ? { describedBy: checkingId }
-                : eligible.length === 0 && flagged.length === 0
-                  ? { line: NO_SKILL_QUALIFIES }
-                  : count === 0
-                    ? { line: NOTHING_CHECKED }
-                    : null,
-              onRun: onConfirm,
-            }
-          : null
-      }
+      {...run}
       failure={failure}
       describedBy={null}
       fieldsChanged={checksChanged}

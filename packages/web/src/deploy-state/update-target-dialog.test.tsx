@@ -366,7 +366,11 @@ describe("UpdateTargetDialog outcome", () => {
       tool: "claude" | "codex" | null;
       state: "updated" | "removed" | "not-updated" | "not-removed" | "unknown";
     }[],
-    props: { incomplete?: boolean; onRetry?: () => void } = {},
+    props: {
+      incomplete?: boolean;
+      onRetry?: () => void;
+      isRunning?: boolean;
+    } = {},
   ) =>
     render(
       <UpdateTargetDialog
@@ -433,6 +437,19 @@ describe("UpdateTargetDialog outcome", () => {
     await userEvent.click(screen.getByRole("button", { name: "Retry update" }));
 
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("describes ✕ by Retry update's busy label while the retry runs", () => {
+    showOutcome([{ name: "grill", tool: null, state: "not-updated" }], {
+      incomplete: true,
+      isRunning: true,
+    });
+
+    expectVisibleCause(
+      // The header ✕ comes first; the leave control is the last Close.
+      screen.getAllByRole("button", { name: "Close" })[0] as HTMLElement,
+      "Updating…",
+    );
   });
 
   it("names the confirm by its busy word while the update is running", () => {

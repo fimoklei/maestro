@@ -382,6 +382,10 @@ describe("BulkDeployAction", () => {
     expect(deployCalls).toHaveBeenCalledTimes(1);
     await userEvent.keyboard("{Escape}");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Close" }),
+      "Deploying…",
+    );
 
     answer?.();
     await vi.waitFor(() =>

@@ -32,20 +32,6 @@ describe("IconButton", () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
-  it("stays focusable and states why while it is unavailable", async () => {
-    const onClick = vi.fn();
-    renderButton({ unavailable: "No Harness connected", onClick });
-
-    const button = screen.getByRole("button", {
-      name: "Re-read Skills — No Harness connected",
-    });
-    expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(button).not.toBeDisabled();
-
-    await userEvent.click(button);
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
   it("keeps its plain label and is described by visible text that says why", async () => {
     const onClick = vi.fn();
     render(

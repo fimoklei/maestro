@@ -7,7 +7,7 @@ import type {
 import { type ReactNode, useId, useState } from "react";
 import { cn } from "../ui/cn";
 import { UPDATE_TARGET } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
+import { Dialog, type DialogRun } from "../ui/dialog";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
@@ -201,6 +201,7 @@ export function UpdateTargetDialog({
   const [consented, setConsented] = useState<readonly string[]>([]);
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
+  const retryId = `${dialogId}-retry`;
 
   const heading = updateDialogTitle(targetName);
   const report =
@@ -243,6 +244,7 @@ export function UpdateTargetDialog({
           label: RETRY_UPDATE,
           onClick: onRetry,
           busy: isRunning ? "update" : undefined,
+          id: retryId,
         },
       }
     : error && { ...error, level: "error" };
@@ -251,24 +253,34 @@ export function UpdateTargetDialog({
     : consentComplete
       ? null
       : { line: CHECK_EVERY_BOX };
+  const run: DialogRun =
+    report === null && (preview !== null || blocked)
+      ? {
+          phase: isRunning ? "running" : "idle",
+          action: {
+            label: UPDATE_TARGET,
+            verb: "update",
+            tone: "primary",
+            unavailable,
+            onRun: onConfirm,
+          },
+        }
+      : {
+          // Without the footer action, only Retry update can run.
+          phase: isRunning
+            ? { running: { describedBy: retryId } }
+            : report === null
+              ? "idle"
+              : "outcome",
+          action: null,
+        };
 
   return (
     <Dialog
       title={heading}
       version={null}
       width={640}
-      phase={isRunning ? "running" : report === null ? "idle" : "outcome"}
-      action={
-        report === null && (preview !== null || blocked)
-          ? {
-              label: UPDATE_TARGET,
-              verb: "update",
-              tone: "primary",
-              unavailable,
-              onRun: onConfirm,
-            }
-          : null
-      }
+      {...run}
       failure={failure}
       describedBy={preview === null ? null : leadInId}
       fieldsChanged={consented.length > 0}

@@ -17,12 +17,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const Unavailable: Story = {
-  args: { unavailable: "No Harness connected" },
-};
-
 // Keeps its plain label; the empty state beside it says why.
-export const UnavailableWithCauseText: Story = {
+export const Unavailable: Story = {
   args: { label: "Filter", unavailable: { describedBy: "empty-state" } },
   render: (args) => (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

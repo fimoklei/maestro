@@ -27,8 +27,8 @@ export interface OptionMenuProps {
   sections: readonly OptionSection[];
   /** How many options are set; shown on the control so a filter is never invisible. */
   count?: number;
-  /** Why the control cannot be used: five words or fewer, or the text that says it. */
-  unavailable?: string | CauseText;
+  /** The text that says why the control cannot be used. */
+  unavailable?: CauseText;
 }
 
 const itemClasses = cn(

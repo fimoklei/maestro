@@ -9,9 +9,13 @@ import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { expectVisibleCause } from "../test-utils";
-import { Dialog, type DialogProps } from "./dialog";
+import { Dialog, type DialogProps, type DialogRun } from "./dialog";
 
 type DialogAction = NonNullable<DialogProps["action"]>;
+type WithAction = Extract<DialogRun, { action: DialogAction }>;
+// The run is given whole, or the footer action stays and only its phase moves.
+type Overrides = Partial<Omit<DialogProps, keyof DialogRun>> &
+  (Partial<WithAction> | Exclude<DialogRun, WithAction>);
 
 import { Select } from "./select";
 
@@ -24,7 +28,7 @@ const action = (overrides: Partial<DialogAction> = {}): DialogAction => ({
   ...overrides,
 });
 
-const renderDialog = (overrides: Partial<DialogProps> = {}) =>
+const renderDialog = (overrides: Overrides = {}) =>
   render(
     <Dialog
       title="Restore research"
@@ -245,17 +249,27 @@ describe("Dialog", () => {
       );
     });
 
-    it("blocks the ✕ when it runs with no action to show a busy label", async () => {
+    it("describes the ✕ by the busy label of a body control that runs the write", async () => {
       const onClose = vi.fn();
-      renderDialog({ phase: "running", action: null, onClose });
-
-      const x = screen.getByRole("button", {
-        name: "Close — action still running",
+      renderDialog({
+        phase: { running: { describedBy: "retry" } },
+        action: null,
+        onClose,
+        children: (
+          <button type="button" id="retry" aria-busy="true">
+            Updating…
+          </button>
+        ),
       });
-      expect(x).toHaveAttribute("aria-disabled", "true");
+
+      const x = screen.getByRole("button", { name: "Close" });
+      expectVisibleCause(x, "Updating…");
       await userEvent.click(x);
+      await userEvent.keyboard("{Escape}");
+      await clickOutside();
 
       expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
     });
 
     it("puts the spinner and the verb's busy label on the action", async () => {
@@ -407,23 +421,7 @@ describe("Dialog", () => {
   });
 
   describe("an action that cannot run yet", () => {
-    it("stays focusable and names its cause", async () => {
-      const onRun = vi.fn();
-      renderDialog({
-        action: action({ unavailable: "checking for local edits", onRun }),
-      });
-
-      const confirm = screen.getByRole("button", {
-        name: "Restore skill — checking for local edits",
-      });
-      expect(confirm).toHaveAttribute("aria-disabled", "true");
-      expect(confirm).not.toBeDisabled();
-      await userEvent.click(confirm);
-
-      expect(onRun).not.toHaveBeenCalled();
-    });
-
-    it("keeps its label and is described by visible text in the body", async () => {
+    it("stays focusable, keeps its label and is described by visible text in the body", async () => {
       const onRun = vi.fn();
       renderDialog({
         action: action({ unavailable: { describedBy: "loading" }, onRun }),
@@ -431,8 +429,8 @@ describe("Dialog", () => {
       });
 
       const confirm = screen.getByRole("button", { name: "Restore skill" });
-      expect(confirm).toHaveAccessibleDescription("Loading the restore plan…");
-      expect(confirm).toHaveAttribute("aria-disabled", "true");
+      expectVisibleCause(confirm, "Loading the restore plan…");
+      expect(confirm).not.toBeDisabled();
       await userEvent.click(confirm);
 
       expect(onRun).not.toHaveBeenCalled();
@@ -508,7 +506,7 @@ describe("Dialog", () => {
     it("is not run by Enter in a field", async () => {
       const onRun = vi.fn();
       renderDialog({
-        action: action({ unavailable: "folder not found", onRun }),
+        action: action({ unavailable: { line: "Choose a folder." }, onRun }),
         children: <input aria-label="Folder path" />,
       });
 
