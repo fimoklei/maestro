@@ -132,7 +132,7 @@ function* offencesIn(path, text) {
   }
 }
 
-function findOffenders(root) {
+export function findOffenders(root) {
   const web = join(root, "packages", "web", "src");
   let paths;
   try {
