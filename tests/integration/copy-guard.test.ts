@@ -100,6 +100,59 @@ describe("copy guard", () => {
     expect(stdout).toBe(`packages/web/src/b-copy.ts:2: ${word}\n`);
   });
 
+  describe("control labels", () => {
+    beforeEach(() => {
+      plant(
+        "packages/web/src/ui/control-labels.ts",
+        [
+          'export const IMPORT = "Import";',
+          'export const UPDATE_TARGET = "Update target";',
+          'const RESTORE_SKILL = "Restore skill";',
+          "export const RESTORE_LABEL = { skill: RESTORE_SKILL };",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    it.each([
+      [
+        "After the release, select Update target on each target.",
+        "Update target",
+      ],
+      ["The skill is back. Select Restore skill to undo.", "Restore skill"],
+    ])("fails a sentence naming %j as plain text", (sentence, label) => {
+      plant(
+        "packages/web/src/k-copy.ts",
+        `export const n = 1;\nexport const k = ${JSON.stringify(sentence)};\n`,
+      );
+
+      const { status, stdout } = runGuard();
+
+      expect(status).toBe(1);
+      expect(stdout).toBe(`packages/web/src/k-copy.ts:2: ${label}\n`);
+    });
+
+    it("passes the constant, a one-word label, a label with no sentence and the server", () => {
+      plant(
+        "packages/web/src/l-copy.ts",
+        [
+          'import { UPDATE_TARGET } from "./ui/control-labels";',
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: planted source text
+          "export const a = `After the release, select ${UPDATE_TARGET} on each target.`;",
+          'export const b = "Import copies the folder. Nothing else moves.";',
+          'export const c = "Update target status";',
+          "",
+        ].join("\n"),
+      );
+      plant(
+        "packages/server/src/m.ts",
+        'export const m = "Nothing was checked. Select Update target again.";\n',
+      );
+
+      expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    });
+  });
+
   it("reads JSX text, attributes and the text parts of a template", () => {
     plant(
       "packages/web/src/c.tsx",

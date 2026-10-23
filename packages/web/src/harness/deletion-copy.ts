@@ -1,5 +1,9 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
-import { DELETE_LABEL, PROPOSE_CHANGE } from "../ui/control-labels";
+import {
+  DELETE_LABEL,
+  PROPOSE_CHANGE,
+  UPDATE_TARGET,
+} from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { named, type Phrase, phrase } from "../ui/phrase";
 import type { LocalDeletionContext } from "./local-deletion-copy";
@@ -26,7 +30,7 @@ export const DELETION_COPY: Record<HarnessPrimitiveType, DeletionWording> = {
     proposes: (origin) =>
       phrase`${DELETE_LABEL.skill} proposes this deletion to ${named(origin)} for review.`,
     keeps: () =>
-      phrase`Your targets keep the skill. After the next release, select Update target on each target to remove it.`,
+      phrase`Your targets keep the skill. After the next release, select ${UPDATE_TARGET} on each target to remove it.`,
     uncommittedDetail: (origin) =>
       phrase`The skill's files in your clone of ${named(origin)} differ from its last commit.`,
   },

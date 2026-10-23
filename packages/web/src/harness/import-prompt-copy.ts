@@ -3,7 +3,11 @@ import type { PromptFieldProblem } from "@maestro/core/prompt-file";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { ActionKey } from "../ui/busy-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
-import { IMPORT_PROMPT, UPDATE_PROMPT } from "../ui/control-labels";
+import {
+  CHOOSE_ANOTHER_FILE,
+  IMPORT_PROMPT,
+  UPDATE_PROMPT,
+} from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, phrase, plainText } from "../ui/phrase";
@@ -39,7 +43,7 @@ export const fileSize = (bytes: number): string =>
 export const NOT_TEXT_FILE_NOTICE: NoticeContent = {
   level: "error",
   label: "Not a text file",
-  message: "Maestro reads only UTF-8 text. Choose another file.",
+  message: `Maestro reads only UTF-8 text. ${CHOOSE_ANOTHER_FILE}.`,
 };
 
 // Over 100 KB is a notice, not a field error: its way through is longer.
