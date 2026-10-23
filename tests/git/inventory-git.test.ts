@@ -272,7 +272,7 @@ describe("the pre-deploy sync through the Harness fetch gate", () => {
         record: async () => {},
       },
       now: () => new Date(),
-    }).fetch(root, 0);
+    }).fetchFresh(root);
 
   it("clears a carried-back change once it is released, and catches up", async () => {
     // #978: deploy never reads a landed change as local work.

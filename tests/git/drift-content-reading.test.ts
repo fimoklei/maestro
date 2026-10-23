@@ -116,7 +116,7 @@ describe("the content reading beside apm's Behind", () => {
       location: new DeployedLocation({}),
       resolveRoot: async () => root,
       git: harnessGit,
-      fetchHarness: (harnessRoot) => gate.fetch(harnessRoot, 0),
+      fetchHarness: (harnessRoot) => gate.fetchFresh(harnessRoot),
     }).execute({ target: { kind: "repo", repoPath: repo } });
   };
 

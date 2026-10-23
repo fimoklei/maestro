@@ -63,13 +63,22 @@ describe("Harness fetches behind the gate", () => {
     });
   });
 
-  it("reuses a Drift read's fetch for a Harness refresh right after it", async () => {
+  it("fetches again for a Harness refresh right after a Drift read", async () => {
     const { app, harness, readDrift } = await world();
 
     await readDrift();
     const res = await app.request("/api/harness/refresh", { method: "POST" });
 
     expect(res.status).toBe(200);
+    expect(harness.fetches).toBe(2);
+  });
+
+  it("reuses a Drift read's fetch for a Drift read right after it", async () => {
+    const { harness, readDrift } = await world();
+
+    await readDrift();
+    await readDrift();
+
     expect(harness.fetches).toBe(1);
   });
 });

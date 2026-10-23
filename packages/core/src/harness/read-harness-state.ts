@@ -228,7 +228,6 @@ export class ReadHarnessState {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
     freshness: HarnessFreshnessPort;
-    // The fetch gate, bound to this read's maximum age.
     fetchHarness: (root: string) => Promise<HarnessFetchOutcome>;
     // A failed review read degrades one stage, never the others. Read half
     // only: a Harness read must never change a proposal.

@@ -5,7 +5,7 @@ import type { HarnessFreshness } from "./read-harness-state";
 
 const ROOT = "/harness";
 const START = Date.parse("2026-08-01T07:00:00.000Z");
-const MAX_AGE = 30_000;
+const WINDOW = 30_000;
 
 function buildGate(git = new InMemoryHarnessGit()) {
   let now = START;
@@ -46,7 +46,7 @@ describe("HarnessFetchGate", () => {
     const release = holdFetches(git);
 
     const all = Promise.all(
-      Array.from({ length: 10 }, () => gate.fetch(ROOT, MAX_AGE)),
+      Array.from({ length: 10 }, () => gate.fetchRecent(ROOT)),
     );
     release();
     const outcomes = await all;
@@ -55,52 +55,63 @@ describe("HarnessFetchGate", () => {
     expect(outcomes).toEqual(Array.from({ length: 10 }, () => "fetched"));
   });
 
-  it("reuses a fetch within the maximum age", async () => {
+  it("reuses a recent fetch within the window", async () => {
     const { git, gate, advance } = buildGate();
-    await gate.fetch(ROOT, MAX_AGE);
+    await gate.fetchRecent(ROOT);
 
-    advance(MAX_AGE - 1);
-    await expect(gate.fetch(ROOT, MAX_AGE)).resolves.toBe("fetched");
+    advance(WINDOW - 1);
+    await expect(gate.fetchRecent(ROOT)).resolves.toBe("fetched");
 
     expect(git.fetches).toBe(1);
   });
 
-  it("fetches again once the last fetch is older than the maximum age", async () => {
+  it("fetches again for a recent read once the last fetch is outside the window", async () => {
     const { git, gate, advance } = buildGate();
-    await gate.fetch(ROOT, MAX_AGE);
+    await gate.fetchRecent(ROOT);
 
-    advance(MAX_AGE);
-    await gate.fetch(ROOT, MAX_AGE);
+    advance(WINDOW);
+    await gate.fetchRecent(ROOT);
 
     expect(git.fetches).toBe(2);
   });
 
-  it("fetches at a maximum age of zero even when the last fetch is fresh", async () => {
+  it("fetches for a fresh read even when the last fetch is within the window", async () => {
     const { git, gate } = buildGate();
-    await gate.fetch(ROOT, MAX_AGE);
+    await gate.fetchRecent(ROOT);
 
-    await gate.fetch(ROOT, 0);
+    await gate.fetchFresh(ROOT);
 
     expect(git.fetches).toBe(2);
   });
 
-  it("shares an in-flight fetch with a call at a maximum age of zero", async () => {
+  it("shares an in-flight fetch with a fresh read", async () => {
     const { git, gate } = buildGate();
     const release = holdFetches(git);
 
-    const both = Promise.all([gate.fetch(ROOT, MAX_AGE), gate.fetch(ROOT, 0)]);
+    const both = Promise.all([gate.fetchRecent(ROOT), gate.fetchFresh(ROOT)]);
     release();
     await both;
 
     expect(git.fetches).toBe(1);
   });
 
-  it("fetches again after the root is invalidated, even within the maximum age", async () => {
+  it("answers two concurrent fresh reads with one fetch", async () => {
     const { git, gate } = buildGate();
-    await gate.fetch(ROOT, MAX_AGE);
+    const release = holdFetches(git);
+
+    const both = Promise.all([gate.fetchFresh(ROOT), gate.fetchFresh(ROOT)]);
+    release();
+    await both;
+
+    expect(git.fetches).toBe(1);
+  });
+
+  it("fetches again after the root is invalidated, even within the window", async () => {
+    const { git, gate } = buildGate();
+    await gate.fetchRecent(ROOT);
 
     gate.invalidate(ROOT);
-    await gate.fetch(ROOT, MAX_AGE);
+    await gate.fetchRecent(ROOT);
 
     expect(git.fetches).toBe(2);
   });
@@ -108,10 +119,10 @@ describe("HarnessFetchGate", () => {
   it("fetches again after an invalidation mid-flight, never beside the running fetch", async () => {
     const { git, gate } = buildGate();
     const release = holdFetches(git);
-    const first = gate.fetch(ROOT, MAX_AGE);
+    const first = gate.fetchRecent(ROOT);
 
     gate.invalidate(ROOT);
-    const second = gate.fetch(ROOT, MAX_AGE);
+    const second = gate.fetchRecent(ROOT);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(git.fetches).toBe(1);
 
@@ -123,7 +134,7 @@ describe("HarnessFetchGate", () => {
   it("records a successful fetch at the clock's time", async () => {
     const { gate, freshness } = buildGate();
 
-    await gate.fetch(ROOT, MAX_AGE);
+    await gate.fetchRecent(ROOT);
 
     await expect(freshness.read(ROOT)).resolves.toEqual({
       outcome: "fetched",
@@ -135,10 +146,10 @@ describe("HarnessFetchGate", () => {
     const git = new InMemoryHarnessGit();
     git.fetchOutcomes = ["fetched", "offline"];
     const { gate, freshness, advance } = buildGate(git);
-    await gate.fetch(ROOT, MAX_AGE);
+    await gate.fetchRecent(ROOT);
 
-    advance(MAX_AGE);
-    await expect(gate.fetch(ROOT, MAX_AGE)).resolves.toBe("offline");
+    advance(WINDOW);
+    await expect(gate.fetchRecent(ROOT)).resolves.toBe("offline");
 
     await expect(freshness.read(ROOT)).resolves.toEqual({
       outcome: "offline",
@@ -152,7 +163,7 @@ describe("HarnessFetchGate", () => {
     git.teammatePushes("bbb", { tdd: "theirs" });
     const { gate } = buildGate(git);
 
-    await gate.fetch(ROOT, MAX_AGE);
+    await gate.fetchRecent(ROOT);
 
     expect(git.caughtUp).toEqual(["bbb"]);
   });

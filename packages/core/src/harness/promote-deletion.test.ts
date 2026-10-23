@@ -23,8 +23,6 @@ const TDD = "---\ndescription: Test first.\n---\n";
 // `seen` is the origin/HEAD tree the row showed the author.
 const SEEN = treeHash(TDD);
 
-const READ_MAX_AGE_MS = 30_000;
-
 // A gate a Drift or Harness read shares with the push.
 const readGate = (git: InMemoryHarnessGit) =>
   new HarnessFetchGate({
@@ -366,7 +364,7 @@ describe("PromoteDeletion", () => {
   it("fetches before the removal even right after a read reused within its window", async () => {
     const git = deletedWorld();
     const gate = readGate(git);
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
 
     await buildDeletion(git, { fetchGate: gate }).execute(
       skillRef("tdd"),
@@ -379,12 +377,12 @@ describe("PromoteDeletion", () => {
   it("makes the next read fetch after the removal is pushed, even within its window", async () => {
     const git = deletedWorld();
     const gate = readGate(git);
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
     await expect(
       buildDeletion(git, { fetchGate: gate }).execute(skillRef("tdd"), SEEN),
     ).resolves.toMatchObject({ ok: true });
 
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
 
     expect(git.fetches).toBe(3);
   });

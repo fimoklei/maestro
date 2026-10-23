@@ -13,8 +13,6 @@ import type { HarnessFreshness } from "./read-harness-state";
 
 const AT = new Date("2026-08-09T12:00:00.000Z");
 
-const READ_MAX_AGE_MS = 30_000;
-
 // A gate a Drift or Harness read shares with the push.
 const readGate = (git: InMemoryHarnessGit) =>
   new HarnessFetchGate({
@@ -510,7 +508,7 @@ describe("Promote", () => {
   it("fetches before the push even right after a read reused within its window", async () => {
     const git = newSkillWorld();
     const gate = readGate(git);
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
 
     await buildPromote(git, { fetchGate: gate }).execute(skillRef("tdd"));
 
@@ -521,12 +519,12 @@ describe("Promote", () => {
   it("makes the next read fetch after the promotion is pushed, even within its window", async () => {
     const git = newSkillWorld();
     const gate = readGate(git);
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
     await expect(
       buildPromote(git, { fetchGate: gate }).execute(skillRef("tdd")),
     ).resolves.toMatchObject({ ok: true });
 
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
 
     expect(git.fetches).toBe(4);
   });
