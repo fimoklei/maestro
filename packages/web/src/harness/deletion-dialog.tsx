@@ -1,4 +1,5 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
+import { useId } from "react";
 import { Card } from "../ui/card";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
@@ -11,7 +12,7 @@ import {
   openRequestNotice,
   uncommittedNotice,
 } from "./deletion-copy";
-import { DELETE_UNAVAILABLE, DELETION_CHECKING } from "./dialog-copy";
+import { DELETION_CHECKING } from "./dialog-copy";
 import { ITEM_WORDS } from "./item-words";
 import type { LocalDeletionContext } from "./local-deletion-copy";
 
@@ -34,7 +35,7 @@ export type DeletionMode =
       origin: string;
       screen: LocalDeletionContext["screen"];
       path: string;
-      check: "checking" | "failed" | "ready";
+      check: "checking" | "failed" | "not-in-clone" | "ready";
       localOnly: boolean;
       uncommitted: boolean;
     };
@@ -57,6 +58,7 @@ export function DeletionDialog({
   deleteError: NoticeContent | null;
 }) {
   const copy = DELETION_COPY[type];
+  const checkingId = useId();
   return (
     <Dialog
       title={`Delete ${name}`}
@@ -68,9 +70,12 @@ export function DeletionDialog({
         verb: "delete",
         tone: "danger",
         unavailable:
-          mode.kind === "local" && mode.check !== "ready"
-            ? DELETE_UNAVAILABLE[mode.check]
-            : null,
+          mode.kind !== "local" || mode.check === "ready"
+            ? null
+            : mode.check === "checking"
+              ? { describedBy: checkingId }
+              : // The caller states a failed or empty check in `deleteError`.
+                { failure: true },
         onRun: onConfirm,
       }}
       failure={deleteError}
@@ -136,7 +141,7 @@ export function DeletionDialog({
         </dl>
       </Card>
       {mode.kind === "local" && mode.check === "checking" ? (
-        <StatusLine>{DELETION_CHECKING}</StatusLine>
+        <StatusLine id={checkingId}>{DELETION_CHECKING}</StatusLine>
       ) : null}
       <Notice
         trigger="load"

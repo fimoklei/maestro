@@ -125,7 +125,7 @@ Cause line: words beyond the cause (#1593)
 | Hover card | The status reason in one sentence, then the read age | `2 of 5 deployed skills changed in v1.4.0.` |
 | Status chip | Two to four words, no verb, from `GLOSSARY.md` | `Not yet proposed` |
 | Control label | Verb plus object, from `GLOSSARY.md`; a reach beyond the row in words | `Propose change`, `Remove from all 3 targets` |
-| Blocked control | A button keeps its plain label and points with `aria-describedby` to visible text that states the cause. A menu item keeps its plain label and no cause. A call site not yet moved reads `{label} — {cause}`, cause in five words or fewer | `Create a release`, described by `Status out of date` |
+| Blocked control | A button keeps its plain label and points with `aria-describedby` to visible text that states the cause. A menu item keeps its plain label and no cause | `Create a release`, described by `Status out of date` |
 | Group header meta | The fact, no routine read age | `Compared with main` |
 | Empty state | `No {things} yet`, then one sentence saying what appears here | `No changes yet` |
 | Busy label | `{Verb}ing…`, the verb of the control's own label, no object | `Deploying…` |

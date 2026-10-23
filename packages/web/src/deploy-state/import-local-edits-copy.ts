@@ -16,8 +16,6 @@ import { REASON } from "./reason-copy";
 export const importLocalEditsTitle = (target: string): string =>
   `${IMPORT_LOCAL_EDITS} from ${target}`;
 
-export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
-
 export const canBeImportedLegend = (count: number): string =>
   `Can be imported · ${count}`;
 
@@ -25,8 +23,8 @@ export const cannotBeImportedLegend = (count: number): string =>
   `${LIST_TOKENS.failed.glyph} Cannot be imported · ${count}`;
 
 const IMPORT_SKILLS = "Import skills";
-export const NONE_SELECTED = "none selected";
-export const NO_SKILL_QUALIFIES = "no skill qualifies";
+export const NO_SKILL_QUALIFIES = "You cannot import any of these skills.";
+export const NOTHING_CHECKED = "Check at least one skill.";
 
 export const NO_LOCAL_EDITS = "No local edits";
 

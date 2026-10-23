@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  expectVisibleCause,
   fakeTimeouts,
   hoverOpen,
   htmlElement,
@@ -619,6 +620,43 @@ describe("Deploy-state — failed reads", () => {
     expect(
       within(grid()).getByText(sentence(/hooks\/pre-commit is deployed as/i)),
     ).toBeInTheDocument();
+  });
+
+  it("points Filter and Display to the Global and Repositories lines when there are no targets", async () => {
+    stubServer(() => ({
+      global: {
+        tools: [],
+        skipped: [
+          {
+            reason: "unsupported-type",
+            virtualPath: "hooks/pre-commit",
+            packageType: "claude_hook",
+          },
+        ],
+      },
+    }));
+    renderDeployState();
+
+    await screen.findByText(/install claude code or codex/i);
+    for (const name of ["Filter", "Display"]) {
+      expectVisibleCause(
+        screen.getByRole("button", { name }),
+        /^Install Claude Code or Codex to deploy skills globally\..*No repositories yet\./,
+      );
+    }
+  });
+
+  it("points Filter and Display to the empty state on a cold start", async () => {
+    stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
+    renderDeployState();
+
+    await screen.findByRole("heading", { level: 2, name: "No targets yet" });
+    for (const name of ["Filter", "Display"]) {
+      expectVisibleCause(
+        screen.getByRole("button", { name }),
+        "No targets yet",
+      );
+    }
   });
 });
 

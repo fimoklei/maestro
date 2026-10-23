@@ -2,7 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 import { createQueryClient } from "./api/query-client";
 import type { DeployedView } from "./deploy-state/deployed-view";
 import * as controlLabels from "./ui/control-labels";
@@ -111,6 +111,46 @@ export function readNotice<T extends NoticeCopy & { items?: readonly Copy[] }>(
       ? {}
       : { items: notice.items.map(plainText) }),
   };
+}
+
+const hides = (element: Element) =>
+  element.hasAttribute("hidden") ||
+  element.getAttribute("aria-hidden") === "true" ||
+  element.classList.contains("sr-only");
+
+/**
+ * Fails unless a blocked control is described by text on the screen that reads
+ * `cause`: every element its `aria-describedby` names exists, is not hidden
+ * (`hidden`, `aria-hidden` or `sr-only`, on it or an ancestor) and has text.
+ */
+export function expectVisibleCause(
+  control: HTMLElement,
+  cause: string | RegExp,
+): void {
+  if (control.getAttribute("aria-disabled") !== "true") {
+    throw new Error("The control is not blocked: no aria-disabled.");
+  }
+  const ids = (control.getAttribute("aria-describedby") ?? "")
+    .split(/\s+/)
+    .filter((id) => id !== "");
+  if (ids.length === 0) {
+    throw new Error("The control has no aria-describedby.");
+  }
+  for (const id of ids) {
+    const target = control.ownerDocument.getElementById(id);
+    if (target === null) {
+      throw new Error(`The description points to a missing element: #${id}.`);
+    }
+    for (let at: Element | null = target; at !== null; at = at.parentElement) {
+      if (hides(at)) {
+        throw new Error(`The description points to hidden text: #${id}.`);
+      }
+    }
+    if ((target.textContent ?? "").trim() === "") {
+      throw new Error(`The description points to empty text: #${id}.`);
+    }
+  }
+  expect(control).toHaveAccessibleDescription(cause);
 }
 
 /** Matches the element whose whole text reads `text`, names set apart or not. */

@@ -1,11 +1,12 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { useId } from "react";
 import { REMOVE_SKILL } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
 
+import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   REMOVE_KEEPS,
@@ -16,9 +17,6 @@ import {
   removeOutcomeReport,
 } from "./remove-ledger-rows";
 import type { RemovePreflightView } from "./remove-preflight-view";
-
-// Names no cost: an unfinished check has claimed nothing.
-const CHECKING = "checking for local edits";
 
 // No per-tool remove: apm's uninstall has no -t, and faking one orphans the
 // other tools' files.
@@ -93,6 +91,7 @@ export function RemoveSkillDialog({
   // does not reliably.
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
+  const restatedConfirmId = `${dialogId}-restated-confirm`;
   // No ledger after a refusal, or after a failure: the report, if any, replaces it.
   const ledgered = !refused && error === null;
   const rows = ledgered
@@ -141,6 +140,7 @@ export function RemoveSkillDialog({
                 label: REMOVE_SKILL,
                 onClick: onConfirm,
                 busy: isRemoving ? "remove" : undefined,
+                id: restatedConfirmId,
               },
             }}
           />
@@ -148,25 +148,32 @@ export function RemoveSkillDialog({
       </>
     ) : null;
 
-  return (
-    <Dialog
-      title={`Remove ${skillName}`}
-      version={version}
-      width={640}
-      phase={
-        isRemoving ? "running" : refused || report !== null ? "outcome" : "idle"
-      }
-      action={
-        refused || restated !== null
+  const run = dialogRun({
+    source:
+      restated !== null
+        ? { bodyBusyId: restatedConfirmId }
+        : refused && !isRemoving
           ? null
           : {
               label: REMOVE_SKILL,
               verb: "remove",
               tone: "danger",
-              unavailable: awaitingCheck ? CHECKING : null,
+              // A line of its own: the rows name no cost while the check runs.
+              unavailable: awaitingCheck
+                ? { line: CHECKING_LOCAL_EDITS }
+                : null,
               onRun: onConfirm,
-            }
-      }
+            },
+    running: isRemoving,
+    outcome: refused || report !== null,
+  });
+
+  return (
+    <Dialog
+      title={`Remove ${skillName}`}
+      version={version}
+      width={640}
+      {...run}
       failure={failure}
       // Leftover rows arrive after open, so only their own region announces them.
       describedBy={

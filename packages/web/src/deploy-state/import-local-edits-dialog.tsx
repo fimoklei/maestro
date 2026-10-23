@@ -1,15 +1,15 @@
 import type { LocalEditsSkill } from "@maestro/core";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { copiesDiffer, localEditsRefusal } from "../harness/notice-copy";
-import { Dialog } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { StatusLine } from "../ui/status-line";
+import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
 import {
-  CHECKING_LOCAL_EDITS,
   canBeImportedLegend,
   cannotBeImportedLegend,
   IMPORTED,
@@ -19,8 +19,8 @@ import {
   importReportHeading,
   NO_LOCAL_EDITS,
   NO_SKILL_QUALIFIES,
-  NONE_SELECTED,
   NOT_IMPORTED,
+  NOTHING_CHECKED,
   noLocalEditsLine,
   undoesNewerLegend,
   undoesNewerLine,
@@ -78,33 +78,38 @@ export function ImportLocalEditsDialog({
   ).length;
   const undoing = flagged.filter((skill) => checked.has(skill.name)).length;
   const empty = skills !== null && skills.length === 0;
+  const checking = skills === null && failure === null;
+  // A running import keeps its confirm: a check that fails mid-run must not
+  // hide its busy label.
   const offered =
-    outcomes === null && skills !== null && !empty && failure === null;
+    isRunning || (outcomes === null && !empty && failure === null);
+  const checkingId = useId();
+  const run = dialogRun({
+    source: offered
+      ? {
+          label: importConfirmLabel(count, undoing),
+          verb: "import",
+          tone: "primary",
+          unavailable: checking
+            ? { describedBy: checkingId }
+            : eligible.length === 0 && flagged.length === 0
+              ? { line: NO_SKILL_QUALIFIES }
+              : count === 0
+                ? { line: NOTHING_CHECKED }
+                : null,
+          onRun: onConfirm,
+        }
+      : null,
+    running: isRunning,
+    outcome: outcomes !== null || empty,
+  });
 
   return (
     <Dialog
       title={importLocalEditsTitle(targetName)}
       version={null}
       width={640}
-      phase={
-        isRunning ? "running" : outcomes === null && !empty ? "idle" : "outcome"
-      }
-      action={
-        offered
-          ? {
-              label: importConfirmLabel(count, undoing),
-              verb: "import",
-              tone: "primary",
-              unavailable:
-                eligible.length === 0 && flagged.length === 0
-                  ? NO_SKILL_QUALIFIES
-                  : count === 0
-                    ? NONE_SELECTED
-                    : null,
-              onRun: onConfirm,
-            }
-          : null
-      }
+      {...run}
       failure={failure}
       describedBy={null}
       fieldsChanged={checksChanged}
@@ -148,13 +153,14 @@ export function ImportLocalEditsDialog({
         />
       ) : skills === null ? (
         failure === null ? (
-          <StatusLine>{CHECKING_LOCAL_EDITS}</StatusLine>
+          <StatusLine id={checkingId}>{CHECKING_LOCAL_EDITS}</StatusLine>
         ) : null
       ) : empty ? (
         <EmptyState
           title={NO_LOCAL_EDITS}
           description={noLocalEditsLine(targetName)}
           headingLevel={3}
+          headingId={null}
         />
       ) : (
         <GroupedList

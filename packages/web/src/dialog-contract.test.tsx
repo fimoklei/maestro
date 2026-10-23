@@ -35,7 +35,7 @@ import { UnregisterDialog } from "./registry/unregister-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
-import { htmlElement } from "./test-utils";
+import { expectVisibleCause, htmlElement } from "./test-utils";
 import { UPDATE_PROMPT } from "./ui/control-labels";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
@@ -174,6 +174,7 @@ const updateDialog = (
   <UpdateTargetDialog
     targetName="agent-harness"
     preview={null}
+    blocked={false}
     isLoading={false}
     error={null}
     isRunning={false}
@@ -509,7 +510,7 @@ const ON_DIALOG: Row[] = [
     file: "deploy-state/update-target-dialog.tsx",
     heading: "Update agent-harness",
     render: ({ running, onClose }) =>
-      updateDialog({ isRunning: running, onCancel: onClose }),
+      updateDialog({ preview: PREVIEW, isRunning: running, onCancel: onClose }),
     changed: async (onClose) => {
       render(updateDialog({ preview: PREVIEW, onCancel: onClose }));
       await userEvent.click(
@@ -920,9 +921,10 @@ describe("every dialog", () => {
       await userEvent.keyboard("{Escape}");
 
       expect(onClose).not.toHaveBeenCalled();
-      expect(
-        screen.getByRole("button", { name: "Close — action still running" }),
-      ).toBeInTheDocument();
+      expectVisibleCause(
+        screen.getByRole("button", { name: "Close" }),
+        /^\S.*…$/,
+      );
     });
 
     it.runIf(/tone: "danger"/.test(sourceOf(row.file)))(

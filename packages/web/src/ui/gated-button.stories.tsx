@@ -7,7 +7,7 @@ const meta = {
   args: {
     variant: "primary",
     label: "Create a release",
-    unavailable: "GitHub not read",
+    unavailable: null,
   },
 } satisfies Meta<typeof GatedButton>;
 
@@ -15,10 +15,10 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Unavailable: Story = {};
+export const Available: Story = {};
 
 // The cause is visible text beside the button; the button keeps its label.
-export const DescribedByVisibleText: Story = {
+export const Unavailable: Story = {
   args: { unavailable: { describedBy: "gated-button-cause" } },
   render: (args) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -31,5 +31,3 @@ export const DescribedByVisibleText: Story = {
     </div>
   ),
 };
-
-export const Available: Story = { args: { unavailable: null } };

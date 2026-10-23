@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { expectVisibleCause } from "../test-utils";
 import { IconButton } from "./icon-button";
 
 function renderButton(props: Partial<Parameters<typeof IconButton>[0]> = {}) {
@@ -31,16 +32,24 @@ describe("IconButton", () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
-  it("stays focusable and states why while it is unavailable", async () => {
+  it("keeps its plain label and is described by visible text that says why", async () => {
     const onClick = vi.fn();
-    renderButton({ unavailable: "No Harness connected", onClick });
+    render(
+      <>
+        <IconButton
+          label="Filter"
+          unavailable={{ describedBy: "empty" }}
+          onClick={onClick}
+        >
+          <svg aria-hidden="true" />
+        </IconButton>
+        <h2 id="empty">No skills yet</h2>
+      </>,
+    );
 
-    const button = screen.getByRole("button", {
-      name: "Re-read Skills — No Harness connected",
-    });
-    expect(button).toHaveAttribute("aria-disabled", "true");
+    const button = screen.getByRole("button", { name: "Filter" });
+    expectVisibleCause(button, "No skills yet");
     expect(button).not.toBeDisabled();
-
     await userEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
   });

@@ -8,9 +8,14 @@ import {
 import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { Dialog, type DialogProps } from "./dialog";
+import { expectVisibleCause } from "../test-utils";
+import { Dialog, type DialogProps, type DialogRun } from "./dialog";
 
 type DialogAction = NonNullable<DialogProps["action"]>;
+type WithAction = Extract<DialogRun, { action: DialogAction }>;
+// The run is given whole, or the footer action stays and only its phase moves.
+type Overrides = Partial<Omit<DialogProps, keyof DialogRun>> &
+  (Partial<WithAction> | Exclude<DialogRun, WithAction>);
 
 import { Select } from "./select";
 
@@ -23,7 +28,7 @@ const action = (overrides: Partial<DialogAction> = {}): DialogAction => ({
   ...overrides,
 });
 
-const renderDialog = (overrides: Partial<DialogProps> = {}) =>
+const renderDialog = (overrides: Overrides = {}) =>
   render(
     <Dialog
       title="Restore research"
@@ -228,13 +233,44 @@ describe("Dialog", () => {
 
       await userEvent.keyboard("{Escape}");
       await clickOutside();
-      await userEvent.click(
-        screen.getByRole("button", { name: "Close — action still running" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
       const cancel = screen.getByRole("button", { name: "Cancel" });
       expect(cancel).toBeDisabled();
 
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("keeps the ✕ named Close and describes it by the busy label", () => {
+      renderDialog({ phase: "running" });
+
+      expectVisibleCause(
+        screen.getByRole("button", { name: "Close" }),
+        "Restoring…",
+      );
+    });
+
+    it("describes the ✕ by the busy label of a body control that runs the write", async () => {
+      const onClose = vi.fn();
+      renderDialog({
+        phase: "running-in-body",
+        busyLabel: { describedBy: "retry" },
+        action: null,
+        onClose,
+        children: (
+          <button type="button" id="retry" aria-busy="true">
+            Updating…
+          </button>
+        ),
+      });
+
+      const x = screen.getByRole("button", { name: "Close" });
+      expectVisibleCause(x, "Updating…");
+      await userEvent.click(x);
+      await userEvent.keyboard("{Escape}");
+      await clickOutside();
+
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
     });
 
     it("puts the spinner and the verb's busy label on the action", async () => {
@@ -386,23 +422,7 @@ describe("Dialog", () => {
   });
 
   describe("an action that cannot run yet", () => {
-    it("stays focusable and names its cause", async () => {
-      const onRun = vi.fn();
-      renderDialog({
-        action: action({ unavailable: "checking for local edits", onRun }),
-      });
-
-      const confirm = screen.getByRole("button", {
-        name: "Restore skill — checking for local edits",
-      });
-      expect(confirm).toHaveAttribute("aria-disabled", "true");
-      expect(confirm).not.toBeDisabled();
-      await userEvent.click(confirm);
-
-      expect(onRun).not.toHaveBeenCalled();
-    });
-
-    it("keeps its label and is described by visible text in the body", async () => {
+    it("stays focusable, keeps its label and is described by visible text in the body", async () => {
       const onRun = vi.fn();
       renderDialog({
         action: action({ unavailable: { describedBy: "loading" }, onRun }),
@@ -410,11 +430,61 @@ describe("Dialog", () => {
       });
 
       const confirm = screen.getByRole("button", { name: "Restore skill" });
-      expect(confirm).toHaveAccessibleDescription("Loading the restore plan…");
-      expect(confirm).toHaveAttribute("aria-disabled", "true");
+      expectVisibleCause(confirm, "Loading the restore plan…");
+      expect(confirm).not.toBeDisabled();
       await userEvent.click(confirm);
 
       expect(onRun).not.toHaveBeenCalled();
+    });
+
+    it("shows a new line beside it and is described by that line", async () => {
+      const onRun = vi.fn();
+      renderDialog({
+        action: action({
+          unavailable: { line: "Connect a Harness to restore skills." },
+          onRun,
+        }),
+      });
+
+      const confirm = screen.getByRole("button", { name: "Restore skill" });
+      expect(
+        screen.getByText("Connect a Harness to restore skills."),
+      ).toBeVisible();
+      expectVisibleCause(confirm, "Connect a Harness to restore skills.");
+      await userEvent.click(confirm);
+
+      expect(onRun).not.toHaveBeenCalled();
+    });
+
+    it("drops the line once the action can run", () => {
+      const { rerender } = renderDialog({
+        action: action({
+          unavailable: { line: "Connect a Harness to restore skills." },
+        }),
+      });
+
+      rerender(
+        <Dialog
+          title="Restore research"
+          version={null}
+          width={480}
+          phase="idle"
+          action={action()}
+          failure={null}
+          describedBy={null}
+          fieldsChanged={false}
+          onClose={vi.fn()}
+        >
+          <p>Body sentence.</p>
+        </Dialog>,
+      );
+
+      expect(
+        screen.queryByText("Connect a Harness to restore skills."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Restore skill" }),
+      ).not.toHaveAttribute("aria-describedby");
     });
 
     it("can be described by the dialog's failure notice", () => {
@@ -437,7 +507,7 @@ describe("Dialog", () => {
     it("is not run by Enter in a field", async () => {
       const onRun = vi.fn();
       renderDialog({
-        action: action({ unavailable: "folder not found", onRun }),
+        action: action({ unavailable: { line: "Choose a folder." }, onRun }),
         children: <input aria-label="Folder path" />,
       });
 

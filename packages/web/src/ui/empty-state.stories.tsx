@@ -8,6 +8,7 @@ const meta = {
   component: EmptyState,
   args: {
     headingLevel: 2,
+    headingId: null,
     title: "No repositories yet",
     description:
       "The repositories you deploy skills to appear here, with the state of each folder.",

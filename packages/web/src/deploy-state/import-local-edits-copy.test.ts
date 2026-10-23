@@ -11,6 +11,7 @@ import {
   localEditsImportNotice,
   NO_LOCAL_EDITS,
   NO_SKILL_QUALIFIES,
+  NOTHING_CHECKED,
   noLocalEditsLine,
   undoesNewerLegend,
   undoesNewerLine,
@@ -47,7 +48,8 @@ describe("Import local edits copy", () => {
 
   it("names the refused group, an empty target and the landed skills' next step", () => {
     expect(cannotBeImportedLegend(2)).toBe("✕ Cannot be imported · 2");
-    expect(NO_SKILL_QUALIFIES).toBe("no skill qualifies");
+    expect(NO_SKILL_QUALIFIES).toBe("You cannot import any of these skills.");
+    expect(NOTHING_CHECKED).toBe("Check at least one skill.");
     expect(NO_LOCAL_EDITS).toBe("No local edits");
     expect(plainText(noLocalEditsLine("…/me/project"))).toBe(
       "No skill on …/me/project changed after deployment.",

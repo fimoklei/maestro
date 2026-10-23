@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { expectVisibleCause, sentence } from "../test-utils";
 import { UpdateTargetDialog } from "./update-target-dialog";
 
 const row = (name: string) => ({
@@ -44,6 +44,7 @@ function show(patch: Partial<UpdatePreview> = {}, onConfirm = vi.fn()) {
     <UpdateTargetDialog
       targetName="agent-harness"
       preview={preview(patch)}
+      blocked={false}
       isLoading={false}
       error={null}
       onCancel={vi.fn()}
@@ -214,10 +215,8 @@ describe("UpdateTargetDialog", () => {
       copyReceipt: "b".repeat(64),
     });
 
-    const held = () =>
-      screen.getByRole("button", {
-        name: "Update target — consent not given",
-      });
+    const held = () => screen.getByRole("button", { name: "Update target" });
+    expectVisibleCause(held(), "To update this target, check every box above.");
     await user.click(held());
     expect(onConfirm).not.toHaveBeenCalled();
     await user.click(
@@ -247,6 +246,7 @@ describe("UpdateTargetDialog", () => {
           },
           copyReceipt: "b".repeat(64),
         })}
+        blocked={false}
         isLoading={false}
         error={null}
         onCancel={onCancel}
@@ -322,6 +322,7 @@ describe("UpdateTargetDialog", () => {
       <UpdateTargetDialog
         targetName="agent-harness"
         preview={null}
+        blocked={false}
         isLoading={true}
         error={null}
         onCancel={vi.fn()}
@@ -339,7 +340,7 @@ describe("UpdateTargetDialog", () => {
         targetName="agent-harness"
         preview={null}
         isLoading={false}
-        blocked="no GitHub origin"
+        blocked
         error={{
           label: "No GitHub origin",
           message: "Point the Harness clone's origin at its GitHub repository.",
@@ -349,10 +350,10 @@ describe("UpdateTargetDialog", () => {
       />,
     );
 
-    const button = screen.getByRole("button", {
-      name: "Update target — no GitHub origin",
-    });
-    expect(button).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      screen.getByRole("button", { name: "Update target" }),
+      /^No GitHub origin/,
+    );
   });
 });
 
@@ -368,12 +369,17 @@ describe("UpdateTargetDialog outcome", () => {
       tool: "claude" | "codex" | null;
       state: "updated" | "removed" | "not-updated" | "not-removed" | "unknown";
     }[],
-    props: { incomplete?: boolean; onRetry?: () => void } = {},
+    props: {
+      incomplete?: boolean;
+      onRetry?: () => void;
+      isRunning?: boolean;
+    } = {},
   ) =>
     render(
       <UpdateTargetDialog
         targetName="agent-harness"
         preview={preview()}
+        blocked={false}
         isLoading={false}
         error={null}
         outcome={outcome}
@@ -437,11 +443,25 @@ describe("UpdateTargetDialog outcome", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
+  it("describes ✕ by Retry update's busy label while the retry runs", () => {
+    showOutcome([{ name: "grill", tool: null, state: "not-updated" }], {
+      incomplete: true,
+      isRunning: true,
+    });
+
+    expectVisibleCause(
+      // The header ✕ comes first; the leave control is the last Close.
+      screen.getAllByRole("button", { name: "Close" })[0] as HTMLElement,
+      "Updating…",
+    );
+  });
+
   it("names the confirm by its busy word while the update is running", () => {
     render(
       <UpdateTargetDialog
         targetName="agent-harness"
         preview={preview()}
+        blocked={false}
         isLoading={false}
         error={null}
         isRunning

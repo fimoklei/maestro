@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { expectVisibleCause } from "../test-utils";
 import { OptionMenu, type OptionMenuProps } from "./option-menu";
 
 const sections = (
@@ -103,12 +104,20 @@ describe("OptionMenu", () => {
   });
 
   it("stays focusable, states why and opens nothing while unavailable", async () => {
-    renderMenu({ unavailable: "no skills yet" });
+    render(
+      <>
+        <OptionMenu
+          label="Filter"
+          icon={<svg aria-hidden="true" />}
+          sections={sections()}
+          unavailable={{ describedBy: "empty" }}
+        />
+        <h2 id="empty">No skills yet</h2>
+      </>,
+    );
 
-    const trigger = screen.getByRole("button", {
-      name: "Filter — no skills yet",
-    });
-    expect(trigger).toHaveAttribute("aria-disabled", "true");
+    const trigger = screen.getByRole("button", { name: "Filter" });
+    expectVisibleCause(trigger, "No skills yet");
 
     await userEvent.click(trigger);
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();

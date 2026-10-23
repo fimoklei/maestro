@@ -5,7 +5,12 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
-import { htmlElement, jsonResponse, renderWithQuery } from "../test-utils";
+import {
+  expectVisibleCause,
+  htmlElement,
+  jsonResponse,
+  renderWithQuery,
+} from "../test-utils";
 import { BulkRemoveRun } from "./bulk-remove-skill-action";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 
@@ -359,12 +364,8 @@ describe("BulkRemoveRun", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await openIt();
 
-    expect(
-      screen.getByRole("button", {
-        name: "Remove from 1 target — checking for local edits",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("dialog")).toHaveTextContent(
+    expectVisibleCause(
+      screen.getByRole("button", { name: "Remove from 1 target" }),
       "Checking 1 target — 0 answered",
     );
   });
@@ -701,9 +702,9 @@ describe("BulkRemoveRun — while the checks run", () => {
       await screen.findByText("Checking 3 targets — 1 answered"),
     ).toBeInTheDocument();
     const confirm = screen.getByRole("button", {
-      name: "Remove from 3 targets — checking for local edits",
+      name: "Remove from 3 targets",
     });
-    expect(confirm).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(confirm, "Checking 3 targets — 1 answered");
     await userEvent.click(confirm);
     expect(calls.filter((call) => call.url.endsWith("/remove/bulk"))).toEqual(
       [],
@@ -855,11 +856,10 @@ describe("BulkRemoveRun — once the checks answer", () => {
     renderAction([LEGACY]);
     await openDialog();
 
-    expect(
-      await screen.findByRole("button", {
-        name: "Remove from 0 targets — no target can be removed",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      await screen.findByRole("button", { name: "Remove from 0 targets" }),
+      "✕ Cannot be removed · 1",
+    );
   });
 
   // One removal covers every tool, so Global states the most certain loss among them.

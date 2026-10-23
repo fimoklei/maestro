@@ -78,6 +78,9 @@ export const ORIGIN_NOT_READ = originNotRead("Deploy-state");
 // A selected skill's folder on GitHub, as its ⋮ item.
 export const VIEW_SKILL_ON_GITHUB = "View skill on GitHub";
 
+// Import local edits' checking line, and the line beside a blocked Remove skill.
+export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
+
 // The Global group's line while no supported tool is detected.
 export const NO_TOOL_DETECTED =
   "Install Claude Code or Codex to deploy skills globally.";

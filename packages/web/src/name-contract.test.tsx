@@ -406,6 +406,7 @@ const SURFACES: {
           copyReceipt: "b".repeat(64),
           token: "a".repeat(64),
         }}
+        blocked={false}
         isLoading={false}
         error={null}
         isRunning={false}

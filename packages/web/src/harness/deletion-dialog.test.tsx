@@ -1,9 +1,10 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { expectVisibleCause, sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
+import { deletionCheckNotice } from "./local-deletion-copy";
 
 const TREE = "0123456789abcdef0123456789abcdef01234567";
 
@@ -211,6 +212,43 @@ describe("DeletionDialog", () => {
     });
   });
 
+  describe("Delete skill while it cannot run", () => {
+    const deleteSkill = () =>
+      screen.getByRole("button", { name: "Delete skill" });
+
+    it("points to the checking line while the check reads the clone", () => {
+      renderDialog({ mode: { ...LOCAL, check: "checking" } });
+
+      expectVisibleCause(deleteSkill(), "Checking for uncommitted changes…");
+    });
+
+    it("points to the failure notice when the clone was not read", () => {
+      renderDialog({
+        mode: { ...LOCAL, check: "failed" },
+        deleteError: deletionCheckNotice("no-answer", {
+          type: "skill",
+          name: "research",
+          screen: "harness",
+        }),
+      });
+
+      expectVisibleCause(deleteSkill(), /^Clone not read/);
+    });
+
+    it("points to the failure notice when the skill is not in the clone", () => {
+      renderDialog({
+        mode: { ...LOCAL, check: "not-in-clone" },
+        deleteError: deletionCheckNotice("already-gone", {
+          type: "skill",
+          name: "research",
+          screen: "harness",
+        }),
+      });
+
+      expectVisibleCause(deleteSkill(), /^Folder already deleted/);
+    });
+  });
+
   // Step 1 of deleting a skill that is on the default branch (#1370).
   describe("a skill on the default branch", () => {
     it("says it removes the folder from the clone and what keeps the skill", () => {
@@ -393,6 +431,24 @@ describe("DeletionDialog", () => {
           ),
         ),
       ).toBeInTheDocument();
+    });
+
+    it("points to the failure notice when the prompt is not in the clone", () => {
+      renderDialog({
+        type: "prompt",
+        name: "pr-review",
+        mode: { ...PROMPT_IN_CLONE, check: "not-in-clone" },
+        deleteError: deletionCheckNotice("already-gone", {
+          type: "prompt",
+          name: "pr-review",
+          screen: "prompts",
+        }),
+      });
+
+      expectVisibleCause(
+        screen.getByRole("button", { name: "Delete prompt" }),
+        /^File already deleted/,
+      );
     });
 
     it("proposes the deletion and says the Prompts screen keeps the prompt until the release", () => {

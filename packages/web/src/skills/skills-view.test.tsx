@@ -11,6 +11,7 @@ import { driftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
 import {
   chooseDeployTarget,
+  expectVisibleCause,
   hoverOpen,
   htmlElement,
   jsonResponse,
@@ -474,12 +475,20 @@ describe("SkillsView — band 2", () => {
   it("keeps Filter and Display focusable but unavailable while no skill is read", () => {
     renderView({ primitives: undefined });
 
-    expect(
-      screen.getByRole("button", { name: "Filter — no skills yet" }),
-    ).toHaveAttribute("aria-disabled", "true");
-    expect(
-      screen.getByRole("button", { name: "Display — no skills yet" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    for (const name of ["Filter", "Display"]) {
+      expectVisibleCause(screen.getByRole("button", { name }), "Not read yet");
+    }
+  });
+
+  it("points Filter and Display to the empty state when there are no skills", () => {
+    renderView({ primitives: [] });
+
+    for (const name of ["Filter", "Display"]) {
+      expectVisibleCause(
+        screen.getByRole("button", { name }),
+        "No released skills yet",
+      );
+    }
   });
 
   it("re-reads Skills from its icon-only control", async () => {

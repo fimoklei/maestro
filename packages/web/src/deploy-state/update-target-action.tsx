@@ -4,7 +4,6 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import { updateNotice, updatePreviewNotice } from "./notice-copy";
 import { updateOutcomeRows } from "./update-outcome-report";
-import { NO_GITHUB_ORIGIN } from "./update-target-copy";
 import { UpdateTargetDialog } from "./update-target-dialog";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdatePreflight } from "./use-update-preflight";
@@ -80,11 +79,11 @@ export function UpdateTargetAction({
           outcome={outcome}
           incomplete={outcome !== null && update.isError}
           onRetry={() => retry.run(target)}
+          // An origin-less Harness cannot attribute the target's release, so
+          // no update can be priced (#960).
           blocked={
             preflight.error instanceof HttpError &&
             preflight.error.code === "inventory-origin-unavailable"
-              ? NO_GITHUB_ORIGIN
-              : null
           }
           error={
             retry.failure(target) ??

@@ -4,7 +4,6 @@ import { CLEAR_FILTERS } from "../ui/view-options-copy";
 
 // The Prompts band 2 and table (#1598).
 export const SEARCH_LABEL = "Search Prompts";
-export const NO_PROMPTS_YET = "no prompts yet";
 export const PROMPTS_FACT = "Prompts";
 /** The Prompts fact: `X of N` once a search or filter hides a prompt. */
 export const promptsFactValue = (shown: number, total: number): string =>

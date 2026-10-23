@@ -49,13 +49,14 @@ export const Running: Story = {
   args: { phase: "running" },
 };
 
+// The dialog draws the cause beside the action and describes the action by it.
 export const Unavailable: Story = {
   args: {
     action: {
       label: "Update target",
       verb: "update",
       tone: "primary",
-      unavailable: "consent still needed",
+      unavailable: { line: "Check Discard local edits to update this target." },
       onRun: () => {},
     },
   },

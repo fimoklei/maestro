@@ -4,7 +4,7 @@ import { type ReactNode, useContext, useEffect, useId, useRef } from "react";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
-import { ACTION_STILL_RUNNING, CANCEL, CLOSE } from "./dialog-copy";
+import { CANCEL, CLOSE } from "./dialog-copy";
 import { type CauseText, GatedButton } from "./gated-button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
@@ -23,6 +23,9 @@ const WIDTH = {
   640: "max-w-[640px]",
 } as const;
 
+/** A sentence the dialog shows beside its blocked action, stating why. */
+type CauseLine = { line: string };
+
 type DialogAction = {
   label: string;
   /** Picks the busy label from `busy-copy`. */
@@ -30,22 +33,58 @@ type DialogAction = {
   /** `danger` is a destructive dialog: danger button, focus opens on Cancel. */
   tone: "primary" | "danger";
   /**
-   * Why it cannot run yet: five words or fewer, the text that says it, or the
-   * dialog's own failure notice; `null` when it can.
+   * Why it cannot run yet: the text that says it, the dialog's own failure
+   * notice, or a new line it shows; `null` when it can.
    */
-  unavailable: string | CauseText | { failure: true } | null;
+  unavailable: CauseText | { failure: true } | CauseLine | null;
   onRun: () => void;
 };
 
-export type DialogProps = {
+/**
+ * The phase and the footer action together. A write runs from the footer
+ * action, or, with no footer action, from a control in the body whose busy
+ * label ✕ points to while it runs.
+ */
+export type DialogRun =
+  | { phase: "idle" | "running" | "outcome"; action: DialogAction }
+  | {
+      phase: "idle" | "outcome";
+      /** No footer action, as once an outcome is shown. */
+      action: null;
+    }
+  | { phase: "running-in-body"; action: null; busyLabel: CauseText };
+
+/** Builds a dialog's run from where its write starts, whether it runs, and whether an outcome shows. */
+export function dialogRun({
+  source,
+  running,
+  outcome,
+}: {
+  /** The footer action; a body control, by its busy label's id; or none, when nothing can run. */
+  source: DialogAction | { bodyBusyId: string } | null;
+  running: boolean;
+  outcome: boolean;
+}): DialogRun {
+  const settled = outcome ? "outcome" : "idle";
+  if (source !== null && "onRun" in source) {
+    return { phase: running ? "running" : settled, action: source };
+  }
+  if (source !== null && running) {
+    return {
+      phase: "running-in-body",
+      action: null,
+      busyLabel: { describedBy: source.bodyBusyId },
+    };
+  }
+  return { phase: settled, action: null };
+}
+
+export type DialogProps = DialogRun & {
   /** Names in the title are set in Geist. */
   title: string;
   /** The one mono part, appended to the title. */
   version: string | null;
   width: 480 | 640;
-  phase: "idle" | "running" | "outcome";
-  /** `null`: no action, as once an outcome is shown. */
-  action: DialogAction | null;
   /** Stated directly above the footer. */
   failure: NoticeContent | null;
   describedBy: string | null;
@@ -59,15 +98,15 @@ export function Dialog({
   title,
   version,
   width,
-  phase,
-  action,
   failure,
   describedBy,
   fieldsChanged,
   onClose,
   children,
+  ...run
 }: DialogProps) {
-  const running = phase === "running";
+  const { phase, action } = run;
+  const running = phase === "running" || phase === "running-in-body";
   const leave = phase === "outcome" || failure !== null ? CLOSE : CANCEL;
   const lone = phase === "outcome" && action === null;
   const danger = action?.tone === "danger";
@@ -78,6 +117,8 @@ export function Dialog({
       ? "primary"
       : "quiet";
   const failureId = useId();
+  const lineId = useId();
+  const busyId = useId();
   const bodyless = children === null;
 
   // Below a long body a new failure would sit out of view; focus stays put.
@@ -171,7 +212,13 @@ export function Dialog({
             <IconButton
               label={CLOSE}
               variant="ghost"
-              unavailable={running ? ACTION_STILL_RUNNING : undefined}
+              unavailable={
+                run.phase === "running-in-body"
+                  ? run.busyLabel
+                  : running
+                    ? { describedBy: busyId }
+                    : undefined
+              }
               onClick={onClose}
             >
               <Icon of={X} />
@@ -222,6 +269,8 @@ export function Dialog({
                   variant={variant}
                   running={running}
                   failureId={failureId}
+                  lineId={lineId}
+                  busyId={busyId}
                 />
               )}
             </div>
@@ -238,17 +287,48 @@ function ActionButton({
   variant,
   running,
   failureId,
+  lineId,
+  busyId,
 }: {
   action: DialogAction;
   variant: "primary" | "danger" | "quiet";
   running: boolean;
   failureId: string;
+  lineId: string;
+  busyId: string;
 }) {
+  // The ✕ is described by the busy label while the action runs.
+  if (running) {
+    return (
+      <Button type="submit" variant={variant} busy>
+        <span id={busyId}>{ACTIONS[action.verb].busy}</span>
+      </Button>
+    );
+  }
   if (action.unavailable === null) {
     return (
-      <Button type="submit" variant={variant} busy={running}>
-        {running ? ACTIONS[action.verb].busy : action.label}
+      <Button type="submit" variant={variant}>
+        {action.label}
       </Button>
+    );
+  }
+  const { unavailable } = action;
+  if ("line" in unavailable) {
+    return (
+      <div className="flex min-w-0 items-center gap-inline">
+        <p
+          id={lineId}
+          className="m-0 min-w-0 text-right font-ui text-gray-11 text-meta"
+        >
+          {unavailable.line}
+        </p>
+        <GatedButton
+          type="submit"
+          variant={variant}
+          label={action.label}
+          unavailable={{ describedBy: lineId }}
+        />
+      </div>
     );
   }
   return (
@@ -257,10 +337,7 @@ function ActionButton({
       variant={variant}
       label={action.label}
       unavailable={
-        typeof action.unavailable === "object" &&
-        "failure" in action.unavailable
-          ? { describedBy: failureId }
-          : action.unavailable
+        "failure" in unavailable ? { describedBy: failureId } : unavailable
       }
     />
   );

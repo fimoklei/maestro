@@ -29,18 +29,6 @@ describe("GatedButton", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("names a written cause after an em dash", () => {
-    render(
-      <GatedButton label="Create a release" unavailable="GitHub not read" />,
-    );
-
-    expect(
-      screen.getByRole("button", {
-        name: "Create a release — GitHub not read",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
-  });
-
   it("runs and carries no description when available", async () => {
     const onClick = vi.fn();
     render(

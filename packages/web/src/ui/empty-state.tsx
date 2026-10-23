@@ -10,6 +10,8 @@ export interface EmptyStateProps {
   description: Copy;
   /** The heading's rank in the screen's outline. */
   headingLevel: 2 | 3;
+  /** The heading's id, for a blocked control that points at it; null when none does. */
+  headingId: string | null;
   /** A 16px Lucide icon; decorative. */
   icon?: ReactNode;
   /** The screen's primary action, repeated where the reader is looking. */
@@ -20,6 +22,7 @@ export function EmptyState({
   title,
   description,
   headingLevel,
+  headingId,
   icon,
   action,
 }: EmptyStateProps) {
@@ -34,7 +37,10 @@ export function EmptyState({
           {icon}
         </div>
       ) : null}
-      <Heading className="m-0 font-semibold font-ui text-gray-12 text-heading tracking-heading">
+      <Heading
+        id={headingId ?? undefined}
+        className="m-0 font-semibold font-ui text-gray-12 text-heading tracking-heading"
+      >
         {title}
       </Heading>
       <p className="m-0 max-w-[46ch] font-ui text-gray-11 text-prose">

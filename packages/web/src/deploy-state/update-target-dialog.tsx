@@ -7,7 +7,7 @@ import type {
 import { type ReactNode, useId, useState } from "react";
 import { cn } from "../ui/cn";
 import { UPDATE_TARGET } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
@@ -23,7 +23,7 @@ import {
   ADDED_BY_THIS_DEPLOY,
   BECOMES_EMPTY,
   CHANGED,
-  CONSENT_NOT_GIVEN,
+  CHECK_EVERY_BOX,
   consentRowName,
   countingSentence,
   DISCARD_LOCAL_EDITS,
@@ -175,7 +175,7 @@ export function UpdateTargetDialog({
   preview,
   isLoading,
   error,
-  blocked = null,
+  blocked,
   outcome,
   isRunning = false,
   incomplete = false,
@@ -188,8 +188,8 @@ export function UpdateTargetDialog({
   preview: UpdatePreview | null;
   isLoading: boolean;
   error: DeployStateNotice | null;
-  /** Why no update can be priced, as a Blocked control cause. */
-  blocked?: string | null;
+  /** No update can be priced; the failure notice states why. */
+  blocked: boolean;
   outcome?: readonly UpdateOutcomeRow[] | null;
   isRunning?: boolean;
   incomplete?: boolean;
@@ -201,6 +201,7 @@ export function UpdateTargetDialog({
   const [consented, setConsented] = useState<readonly string[]>([]);
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
+  const retryId = `${dialogId}-retry`;
 
   const heading = updateDialogTitle(targetName);
   const report =
@@ -243,28 +244,37 @@ export function UpdateTargetDialog({
           label: RETRY_UPDATE,
           onClick: onRetry,
           busy: isRunning ? "update" : undefined,
+          id: retryId,
         },
       }
     : error && { ...error, level: "error" };
-  const unavailable = blocked ?? (consentComplete ? null : CONSENT_NOT_GIVEN);
+  const unavailable = blocked
+    ? { failure: true as const }
+    : consentComplete
+      ? null
+      : { line: CHECK_EVERY_BOX };
+  const run = dialogRun({
+    source:
+      report === null && (preview !== null || blocked)
+        ? {
+            label: UPDATE_TARGET,
+            verb: "update",
+            tone: "primary",
+            unavailable,
+            onRun: onConfirm,
+          }
+        : // Without the footer action, only Retry update can run.
+          { bodyBusyId: retryId },
+    running: isRunning,
+    outcome: report !== null,
+  });
 
   return (
     <Dialog
       title={heading}
       version={null}
       width={640}
-      phase={isRunning ? "running" : report === null ? "idle" : "outcome"}
-      action={
-        report === null && (preview !== null || blocked !== null)
-          ? {
-              label: UPDATE_TARGET,
-              verb: "update",
-              tone: "primary",
-              unavailable,
-              onRun: onConfirm,
-            }
-          : null
-      }
+      {...run}
       failure={failure}
       describedBy={preview === null ? null : leadInId}
       fieldsChanged={consented.length > 0}

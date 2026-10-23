@@ -36,6 +36,7 @@ const meta = {
     preview: PREVIEW,
     isLoading: false,
     error: null,
+    blocked: false,
     onCancel: () => {},
     onConfirm: () => {},
   },

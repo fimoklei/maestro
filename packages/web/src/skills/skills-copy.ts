@@ -22,7 +22,6 @@ export const NO_RELEASED_SKILLS = {
 
 // The Skills band 2 and table (#1040).
 export const SEARCH_LABEL = "Search Skills";
-export const NO_SKILLS_YET = "no skills yet";
 export const STAGE_COLUMN_LABEL = "Select for bulk deploy";
 export const stageRowLabel = (name: string) => `Select ${name} for bulk deploy`;
 export const SELECT_ALL_LABEL = "Select all for bulk deploy";
@@ -35,15 +34,12 @@ export const BULK_DEPLOY_TARGET = "Target";
 export const CHOOSE_A_TARGET = "Choose a target";
 export const bulkDeployDidNotRun = (target: string) =>
   `Deploy to ${target} did not run`;
-export const TARGETS_LOADING = "targets still loading";
-export const NO_TARGET_CHOSEN = "no target";
+export const TARGETS_LOADING = "Loading targets…";
+export const NO_TARGET_CHOSEN = "Choose a target.";
 export const toDeployLegend = (count: number): string => `To deploy · ${count}`;
 export const upToDateLegend = (count: number): string =>
   `Already up to date · ${count}`;
 export const UP_TO_DATE_NOTE = "Deploy skips these skills.";
-export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
-export const TARGETS_STILL_CHECKING = "checking for local edits";
-export const NO_TARGET_REMOVABLE = "no target can be removed";
 
 // The bulk Remove dialog's title (#1436), in one and many.
 export const bulkRemoveTitle = (skillName: string, count: number): string =>

@@ -39,7 +39,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PickTarget: Story = {
-  args: { unavailable: "no target" },
+  args: { unavailable: { line: "Choose a target." } },
 };
 
 export const TargetChosen: Story = {
@@ -65,7 +65,7 @@ export const TargetChosen: Story = {
 };
 
 export const LoadingTargets: Story = {
-  args: { unavailable: "targets still loading" },
+  args: { unavailable: { line: "Loading targets…" } },
 };
 
 export const Deploying: Story = { args: { busy: true } };
@@ -84,6 +84,7 @@ export const DidNotRun: Story = {
 export const PartialReport: Story = {
   args: {
     report: {
+      runningId: "deploy-again",
       heading:
         "Deployed to maestro · 2 failed · 1 attention · 2 deployed · 1 skipped",
       groups: [

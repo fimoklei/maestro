@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Dialog } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Notice } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
@@ -7,12 +7,7 @@ import { LIST_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
-import {
-  bulkRemoveTitle,
-  NO_TARGET_REMOVABLE,
-  removeFromCountLabel,
-  TARGETS_STILL_CHECKING,
-} from "./skills-copy";
+import { bulkRemoveTitle, removeFromCountLabel } from "./skills-copy";
 
 // The bulk remove's confirmation (#422, #423) and the Report that replaces it
 // (#424). Presentational — the host owns the checks, the request and the
@@ -54,6 +49,7 @@ export function BulkRemoveDialog({
   const cleanId = `${dialogId}-clean`;
   const costId = `${dialogId}-cost`;
   const refusedId = `${dialogId}-refused`;
+  const checkingId = `${dialogId}-checking`;
 
   // The weighing is described; the Report and the failure announce themselves.
   const described =
@@ -67,30 +63,35 @@ export function BulkRemoveDialog({
           .filter((id) => id !== null)
           .join(" ");
 
+  // A run starts only from the confirm, so it keeps the confirm while it runs.
+  const offered = confirmOffered || isRemoving;
+  const run = dialogRun({
+    source: offered
+      ? {
+          label: grouped?.confirmLabel ?? removeFromCountLabel(targetCount),
+          verb: "remove",
+          tone: "danger",
+          // Nothing to walk is not a run: a refusal never blocks the
+          // others, but with none left the control would remove nothing.
+          unavailable:
+            grouped === null
+              ? { describedBy: checkingId }
+              : grouped.removableCount === 0
+                ? { describedBy: refusedId }
+                : null,
+          onRun: onConfirm,
+        }
+      : null,
+    running: isRemoving,
+    outcome: !offered,
+  });
+
   return (
     <Dialog
       title={bulkRemoveTitle(skillName, targetCount)}
       version={null}
       width={640}
-      phase={isRemoving ? "running" : confirmOffered ? "idle" : "outcome"}
-      action={
-        confirmOffered
-          ? {
-              label: grouped?.confirmLabel ?? removeFromCountLabel(targetCount),
-              verb: "remove",
-              tone: "danger",
-              // Nothing to walk is not a run: a refusal never blocks the
-              // others, but with none left the control would remove nothing.
-              unavailable:
-                grouped === null
-                  ? TARGETS_STILL_CHECKING
-                  : grouped.removableCount === 0
-                    ? NO_TARGET_REMOVABLE
-                    : null,
-              onRun: onConfirm,
-            }
-          : null
-      }
+      {...run}
       failure={
         failure === null
           ? null
@@ -108,7 +109,9 @@ export function BulkRemoveDialog({
       {done !== null ? (
         <Report heading={done.heading} groups={reportGroups(done)} />
       ) : failure?.kind === "outcome-unknown" ? null : grouped === null ? (
-        <StatusLine>{view.kind === "checking" ? view.line : null}</StatusLine>
+        <StatusLine id={checkingId}>
+          {view.kind === "checking" ? view.line : null}
+        </StatusLine>
       ) : (
         // Stays through the run and beside a failure: it is what the confirm
         // acts on.
