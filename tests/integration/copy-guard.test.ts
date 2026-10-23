@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { findOffenders } from "../../scripts/copy-guard.mjs";
 
 const guard = resolve(import.meta.dirname, "../../scripts/copy-guard.mjs");
 
@@ -22,13 +23,6 @@ function plant(path: string, content: string): void {
   writeFileSync(full, content);
 }
 
-function runGuard(): { status: number | null; stdout: string } {
-  const { status, stdout } = spawnSync(process.execPath, [guard, root], {
-    encoding: "utf8",
-  });
-  return { status, stdout };
-}
-
 describe("copy guard", () => {
   it("passes copy that uses the current screen words", () => {
     plant(
@@ -44,7 +38,7 @@ describe("copy guard", () => {
       ].join("\n"),
     );
 
-    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    expect(findOffenders(root)).toEqual([]);
   });
 
   it.each([
@@ -94,10 +88,9 @@ describe("copy guard", () => {
       `export const n = 1;\nexport const b = ${JSON.stringify(sentence)};\n`,
     );
 
-    const { status, stdout } = runGuard();
-
-    expect(status).toBe(1);
-    expect(stdout).toBe(`packages/web/src/b-copy.ts:2: ${word}\n`);
+    expect(findOffenders(root)).toEqual([
+      `packages/web/src/b-copy.ts:2: ${word}`,
+    ]);
   });
 
   describe("control labels", () => {
@@ -126,10 +119,9 @@ describe("copy guard", () => {
         `export const n = 1;\nexport const k = ${JSON.stringify(sentence)};\n`,
       );
 
-      const { status, stdout } = runGuard();
-
-      expect(status).toBe(1);
-      expect(stdout).toBe(`packages/web/src/k-copy.ts:2: ${label}\n`);
+      expect(findOffenders(root)).toEqual([
+        `packages/web/src/k-copy.ts:2: ${label}`,
+      ]);
     });
 
     it("passes the constant, a one-word label, a label with no sentence and the server", () => {
@@ -149,7 +141,7 @@ describe("copy guard", () => {
         'export const m = "Nothing was checked. Select Update target again.";\n',
       );
 
-      expect(runGuard()).toEqual({ status: 0, stdout: "" });
+      expect(findOffenders(root)).toEqual([]);
     });
   });
 
@@ -166,11 +158,10 @@ describe("copy guard", () => {
       ].join("\n"),
     );
 
-    const { status, stdout } = runGuard();
+    const report = findOffenders(root).join("\n");
 
-    expect(status).toBe(1);
-    expect(stdout).toContain("packages/web/src/c.tsx:2: refreshed");
-    expect(stdout).toContain("packages/web/src/c.tsx:3: picker");
+    expect(report).toContain("packages/web/src/c.tsx:2: refreshed");
+    expect(report).toContain("packages/web/src/c.tsx:3: picker");
   });
 
   it("fails a one-word lowercase retired word that reaches a sentence", () => {
@@ -187,12 +178,10 @@ describe("copy guard", () => {
       ].join("\n"),
     );
 
-    const { status, stdout } = runGuard();
-
-    expect(status).toBe(1);
-    expect(stdout).toBe(
-      "packages/web/src/g.tsx:2: primitive\npackages/web/src/g.tsx:4: drift\n",
-    );
+    expect(findOffenders(root)).toEqual([
+      "packages/web/src/g.tsx:2: primitive",
+      "packages/web/src/g.tsx:4: drift",
+    ]);
   });
 
   it("passes a lowercase code compared, keyed or passed inside a sentence", () => {
@@ -212,7 +201,7 @@ describe("copy guard", () => {
       ].join("\n"),
     );
 
-    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    expect(findOffenders(root)).toEqual([]);
   });
 
   it("fails a one-word retired word shown as a display value, returned or held in a const", () => {
@@ -229,18 +218,12 @@ describe("copy guard", () => {
       ].join("\n"),
     );
 
-    const { status, stdout } = runGuard();
-
-    expect(status).toBe(1);
-    expect(stdout).toBe(
-      [
-        "packages/web/src/i.ts:1: primitives",
-        "packages/web/src/i.ts:3: slugs",
-        "packages/web/src/i.ts:5: picker",
-        "packages/web/src/i.ts:6: symlink",
-        "",
-      ].join("\n"),
-    );
+    expect(findOffenders(root)).toEqual([
+      "packages/web/src/i.ts:1: primitives",
+      "packages/web/src/i.ts:3: slugs",
+      "packages/web/src/i.ts:5: picker",
+      "packages/web/src/i.ts:6: symlink",
+    ]);
   });
 
   it("passes a code held as a value: a state, a query key, a type, an event or a hyphenated code", () => {
@@ -259,7 +242,7 @@ describe("copy guard", () => {
       ].join("\n"),
     );
 
-    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    expect(findOffenders(root)).toEqual([]);
   });
 
   it("reads server messages as well", () => {
@@ -268,10 +251,9 @@ describe("copy guard", () => {
       'export const d = { message: "Nothing was fetched. Reload the page." };\n',
     );
 
-    const { status, stdout } = runGuard();
+    const report = findOffenders(root).join("\n");
 
-    expect(status).toBe(1);
-    expect(stdout).toContain("packages/server/src/d.ts:1: fetched");
+    expect(report).toContain("packages/server/src/d.ts:1: fetched");
   });
 
   it("ignores retired words in comments, identifiers, codes and routes", () => {
@@ -288,7 +270,7 @@ describe("copy guard", () => {
       ].join("\n"),
     );
 
-    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    expect(findOffenders(root)).toEqual([]);
   });
 
   it("ignores tests, stories, test helpers, fixtures and other folders", () => {
@@ -307,6 +289,23 @@ describe("copy guard", () => {
       plant(path, sentence);
     }
 
-    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    expect(findOffenders(root)).toEqual([]);
+  });
+
+  it("runs as a command: silent exit 0 on a clean tree, exit 1 and one line per offender", () => {
+    const run = () =>
+      spawnSync(process.execPath, [guard, root], { encoding: "utf8" });
+
+    expect(run()).toMatchObject({ status: 0, stdout: "" });
+
+    plant(
+      "packages/web/src/b-copy.ts",
+      'export const n = 1;\nexport const b = "Maestro refreshed Inventory.";\n',
+    );
+
+    expect(run()).toMatchObject({
+      status: 1,
+      stdout: "packages/web/src/b-copy.ts:2: refreshed\n",
+    });
   });
 });

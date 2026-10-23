@@ -89,7 +89,7 @@ function firstMatch(patterns, line) {
   return null;
 }
 
-function findOffenders(root) {
+export function findOffenders(root) {
   const offenders = [];
   const report = (path, line, match) =>
     offenders.push(

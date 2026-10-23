@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { findOffenders } from "../../scripts/design-guard.mjs";
 
 const guard = resolve(import.meta.dirname, "../../scripts/design-guard.mjs");
 
@@ -20,13 +21,6 @@ function plant(path: string, content: string): void {
   const full = join(root, path);
   mkdirSync(dirname(full), { recursive: true });
   writeFileSync(full, content);
-}
-
-function runGuard(): { status: number | null; stdout: string } {
-  const { status, stdout } = spawnSync(process.execPath, [guard, root], {
-    encoding: "utf8",
-  });
-  return { status, stdout };
 }
 
 const CLEAN = [
@@ -52,7 +46,7 @@ describe("design guard", () => {
   it("passes feature code that composes the shared modules", () => {
     plant("packages/web/src/feature/a.tsx", CLEAN);
 
-    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    expect(findOffenders(root)).toEqual([]);
   });
 
   it.each([
@@ -115,10 +109,9 @@ describe("design guard", () => {
       ].join("\n"),
     );
 
-    const { status, stdout } = runGuard();
-
-    expect(status).toBe(1);
-    expect(stdout).toBe(`packages/web/src/feature/b.tsx:2: ${message}\n`);
+    expect(findOffenders(root)).toEqual([
+      `packages/web/src/feature/b.tsx:2: ${message}`,
+    ]);
   });
 
   it("fails an icon stroke set through a spread object", () => {
@@ -127,12 +120,9 @@ describe("design guard", () => {
       "const ICON = { size: 16, strokeWidth: 1.5 } as const;\n",
     );
 
-    const { status, stdout } = runGuard();
-
-    expect(status).toBe(1);
-    expect(stdout).toBe(
-      "packages/web/src/feature/c.tsx:1: icon styled by hand: use Icon (ui/icon) for the standard size and stroke\n",
-    );
+    expect(findOffenders(root)).toEqual([
+      "packages/web/src/feature/c.tsx:1: icon styled by hand: use Icon (ui/icon) for the standard size and stroke",
+    ]);
   });
 
   it.each([
@@ -141,12 +131,9 @@ describe("design guard", () => {
   ])("fails %s and names the write action", (line) => {
     plant("packages/web/src/feature/d.ts", `${line}\n`);
 
-    const { status, stdout } = runGuard();
-
-    expect(status).toBe(1);
-    expect(stdout).toBe(
-      'packages/web/src/feature/d.ts:1: toast called directly: declare show: "toast" on useWriteAction (ui/use-write-action)\n',
-    );
+    expect(findOffenders(root)).toEqual([
+      'packages/web/src/feature/d.ts:1: toast called directly: declare show: "toast" on useWriteAction (ui/use-write-action)',
+    ]);
   });
 
   it.each([
@@ -155,12 +142,9 @@ describe("design guard", () => {
   ])("fails %s and names the purpose-built region", (line) => {
     plant("packages/web/src/feature/g.tsx", `${line}\n`);
 
-    const { status, stdout } = runGuard();
-
-    expect(status).toBe(1);
-    expect(stdout).toBe(
-      "packages/web/src/feature/g.tsx:1: generic status region outside ui: report through the table screen's region (useWriteAction, useScreenReport), or useScreenStatus (ui/screen-status) in Settings\n",
-    );
+    expect(findOffenders(root)).toEqual([
+      "packages/web/src/feature/g.tsx:1: generic status region outside ui: report through the table screen's region (useWriteAction, useScreenReport), or useScreenStatus (ui/screen-status) in Settings",
+    ]);
   });
 
   it("leaves ui, tests, stories, helpers, fixtures and other packages alone", () => {
@@ -184,7 +168,7 @@ describe("design guard", () => {
       plant(path, offending);
     }
 
-    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    expect(findOffenders(root)).toEqual([]);
   });
 
   it("ignores colour words in comments and copy", () => {
@@ -197,6 +181,21 @@ describe("design guard", () => {
       ].join("\n"),
     );
 
-    expect(runGuard()).toEqual({ status: 0, stdout: "" });
+    expect(findOffenders(root)).toEqual([]);
+  });
+
+  it("runs as a command: silent exit 0 on a clean tree, exit 1 and one line per offender", () => {
+    const run = () =>
+      spawnSync(process.execPath, [guard, root], { encoding: "utf8" });
+
+    expect(run()).toMatchObject({ status: 0, stdout: "" });
+
+    plant("packages/web/src/feature/d.ts", 'import { toast } from "sonner";\n');
+
+    expect(run()).toMatchObject({
+      status: 1,
+      stdout:
+        'packages/web/src/feature/d.ts:1: toast called directly: declare show: "toast" on useWriteAction (ui/use-write-action)\n',
+    });
   });
 });

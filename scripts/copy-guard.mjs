@@ -233,7 +233,7 @@ function multiWordLabels(root) {
   return labels;
 }
 
-function findOffenders(root) {
+export function findOffenders(root) {
   const labels = multiWordLabels(root);
   const offenders = [];
   for (const dir of SCANNED) {
