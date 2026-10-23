@@ -34,13 +34,12 @@ export const BULK_DEPLOY_TARGET = "Target";
 export const CHOOSE_A_TARGET = "Choose a target";
 export const bulkDeployDidNotRun = (target: string) =>
   `Deploy to ${target} did not run`;
-export const TARGETS_LOADING = "targets still loading";
-export const NO_TARGET_CHOSEN = "no target";
+export const TARGETS_LOADING = "Loading targets…";
+export const NO_TARGET_CHOSEN = "Choose a target.";
 export const toDeployLegend = (count: number): string => `To deploy · ${count}`;
 export const upToDateLegend = (count: number): string =>
   `Already up to date · ${count}`;
 export const UP_TO_DATE_NOTE = "Deploy skips these skills.";
-export const NO_TOOL_DETECTED_CAUSE = "no tool detected";
 
 // The bulk Remove dialog's title (#1436), in one and many.
 export const bulkRemoveTitle = (skillName: string, count: number): string =>

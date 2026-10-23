@@ -10,11 +10,7 @@ import { CANCEL } from "../ui/dialog-copy";
 import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
 
-// An origin-less Harness cannot attribute the target's release, so no update
-// can be priced (#960).
-export const NO_GITHUB_ORIGIN = "no GitHub origin";
-
-export const CONSENT_NOT_GIVEN = "consent not given";
+export const CHECK_EVERY_BOX = "To update this target, check every box above.";
 
 export const updateDialogTitle = (target: string): string => `Update ${target}`;
 

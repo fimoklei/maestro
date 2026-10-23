@@ -2,11 +2,23 @@ import { describe, expect, it } from "vitest";
 import { machineValues, unselectedControls } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import * as skillsCopy from "./skills-copy";
-import { globalOptionLabel, skillStateLine } from "./skills-copy";
+import {
+  globalOptionLabel,
+  NO_TARGET_CHOSEN,
+  skillStateLine,
+  TARGETS_LOADING,
+} from "./skills-copy";
 
 // Contract tests: the words live once, in the copy module and the rendered
 // tests of the Skills screen, its pane and its bulk dialogs. These prove the
 // rules every sentence keeps, and the branches no rendered test reaches.
+
+describe("the bulk Deploy cause lines", () => {
+  it("keeps the approved sentences", () => {
+    expect(TARGETS_LOADING).toBe("Loading targets…");
+    expect(NO_TARGET_CHOSEN).toBe("Choose a target.");
+  });
+});
 
 describe("globalOptionLabel", () => {
   it("names both detected tools", () => {

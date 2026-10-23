@@ -23,7 +23,7 @@ import {
   ADDED_BY_THIS_DEPLOY,
   BECOMES_EMPTY,
   CHANGED,
-  CONSENT_NOT_GIVEN,
+  CHECK_EVERY_BOX,
   consentRowName,
   countingSentence,
   DISCARD_LOCAL_EDITS,
@@ -175,7 +175,7 @@ export function UpdateTargetDialog({
   preview,
   isLoading,
   error,
-  blocked = null,
+  blocked = false,
   outcome,
   isRunning = false,
   incomplete = false,
@@ -188,8 +188,8 @@ export function UpdateTargetDialog({
   preview: UpdatePreview | null;
   isLoading: boolean;
   error: DeployStateNotice | null;
-  /** Why no update can be priced, as a Blocked control cause. */
-  blocked?: string | null;
+  /** No update can be priced; the failure notice states why. */
+  blocked?: boolean;
   outcome?: readonly UpdateOutcomeRow[] | null;
   isRunning?: boolean;
   incomplete?: boolean;
@@ -246,7 +246,11 @@ export function UpdateTargetDialog({
         },
       }
     : error && { ...error, level: "error" };
-  const unavailable = blocked ?? (consentComplete ? null : CONSENT_NOT_GIVEN);
+  const unavailable = blocked
+    ? { failure: true as const }
+    : consentComplete
+      ? null
+      : { line: CHECK_EVERY_BOX };
 
   return (
     <Dialog
@@ -255,7 +259,7 @@ export function UpdateTargetDialog({
       width={640}
       phase={isRunning ? "running" : report === null ? "idle" : "outcome"}
       action={
-        report === null && (preview !== null || blocked !== null)
+        report === null && (preview !== null || blocked)
           ? {
               label: UPDATE_TARGET,
               verb: "update",

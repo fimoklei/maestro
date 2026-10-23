@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { expectVisibleCause, sentence } from "../test-utils";
 import { UpdateTargetDialog } from "./update-target-dialog";
 
 const row = (name: string) => ({
@@ -214,10 +214,8 @@ describe("UpdateTargetDialog", () => {
       copyReceipt: "b".repeat(64),
     });
 
-    const held = () =>
-      screen.getByRole("button", {
-        name: "Update target — consent not given",
-      });
+    const held = () => screen.getByRole("button", { name: "Update target" });
+    expectVisibleCause(held(), "To update this target, check every box above.");
     await user.click(held());
     expect(onConfirm).not.toHaveBeenCalled();
     await user.click(
@@ -339,7 +337,7 @@ describe("UpdateTargetDialog", () => {
         targetName="agent-harness"
         preview={null}
         isLoading={false}
-        blocked="no GitHub origin"
+        blocked
         error={{
           label: "No GitHub origin",
           message: "Point the Harness clone's origin at its GitHub repository.",
@@ -349,10 +347,10 @@ describe("UpdateTargetDialog", () => {
       />,
     );
 
-    const button = screen.getByRole("button", {
-      name: "Update target — no GitHub origin",
-    });
-    expect(button).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      screen.getByRole("button", { name: "Update target" }),
+      /^No GitHub origin/,
+    );
   });
 });
 

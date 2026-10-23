@@ -37,8 +37,8 @@ export function BulkDeployDialog({
   /** The staged skills, grouped by what the deploy will do with them. */
   skills: readonly GroupedListGroup[];
   onSelect: (value: string) => void;
-  /** Why the chosen target cannot take a deploy yet; `null` when it can. */
-  unavailable: string | null;
+  /** The line the dialog shows while no deploy can run; `null` when it can. */
+  unavailable: { line: string } | null;
   /** A target was picked, so a click outside must not drop the choice. */
   fieldsChanged: boolean;
   busy: boolean;
