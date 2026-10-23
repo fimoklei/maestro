@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse } from "../test-utils";
+import { expectVisibleCause, jsonResponse } from "../test-utils";
 import {
   importRoutes,
   landed,
@@ -140,11 +140,10 @@ describe("Deploy-state — Import local edits on a skill row", () => {
     expect(
       within(flagged).getByRole("checkbox", { name: "tdd" }),
     ).not.toBeChecked();
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Import skills — none selected",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Import skills" }),
+      "Check at least one skill.",
+    );
   });
 
   it("shows a refused skill disabled with its sentence, and blocks the confirm", async () => {
@@ -164,11 +163,10 @@ describe("Deploy-state — Import local edits on a skill row", () => {
     expect(box).toHaveAccessibleDescription(
       "Deployed by another Harness. Make the change in that Harness.",
     );
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Import skills — no skill qualifies",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Import skills" }),
+      "You cannot import any of these skills.",
+    );
   });
 
   it("stays open with its Report when the import refuses the skill", async () => {

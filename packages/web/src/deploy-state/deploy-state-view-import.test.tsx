@@ -1,7 +1,12 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { htmlElement, jsonResponse, sentence } from "../test-utils";
+import {
+  expectVisibleCause,
+  htmlElement,
+  jsonResponse,
+  sentence,
+} from "../test-utils";
 import {
   findRow,
   importRoutes,
@@ -78,9 +83,10 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
 
-    expect(
-      within(dialog).getByText("Checking for local edits…"),
-    ).toBeInTheDocument();
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Import skills" }),
+      "Checking for local edits…",
+    );
   });
 
   it("lists every eligible skill checked, and the confirm follows the checks", async () => {
@@ -109,11 +115,10 @@ describe("Deploy-state — Import local edits on a repository", () => {
     await userEvent.click(
       within(group).getByRole("checkbox", { name: "code-review" }),
     );
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Import skills — none selected",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      within(dialog).getByRole("button", { name: "Import skills" }),
+      "Check at least one skill.",
+    );
   });
 
   it("ignores a click outside once a check has changed", async () => {
@@ -311,11 +316,10 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
 
-    expect(
-      await within(dialog).findByRole("button", {
-        name: "Import skills — no skill qualifies",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expectVisibleCause(
+      await within(dialog).findByRole("button", { name: "Import skills" }),
+      "You cannot import any of these skills.",
+    );
     expect(within(dialog).getByRole("checkbox", { name: "tdd" })).toHaveFocus();
     expect(
       within(dialog).queryByRole("group", { name: /Can be imported/ }),
