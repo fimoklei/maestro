@@ -3,7 +3,12 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  expectVisibleCause,
+  jsonResponse,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import { PromptsPanel } from "./prompts-panel";
 
@@ -148,6 +153,29 @@ describe("PromptsPanel", () => {
     expect(
       screen.getByText("Prompts from the latest release appear here."),
     ).toBeInTheDocument();
+  });
+
+  it("points Filter and Display to the empty state when there are no prompts", async () => {
+    stubApi([TDD]);
+    renderPanel();
+
+    await screen.findByRole("heading", { name: "No released prompts yet" });
+    for (const name of ["Filter", "Display"]) {
+      expectVisibleCause(
+        screen.getByRole("button", { name }),
+        "No released prompts yet",
+      );
+    }
+  });
+
+  it("points Filter and Display to the failed-read notice when the read failed", async () => {
+    stubApi([], ["/api/inventory"]);
+    renderPanel();
+
+    await screen.findByText("Read failed");
+    for (const name of ["Filter", "Display"]) {
+      expectVisibleCause(screen.getByRole("button", { name }), /not read/);
+    }
   });
 });
 

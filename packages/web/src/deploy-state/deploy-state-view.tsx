@@ -257,7 +257,6 @@ export function DeployStateView() {
     ],
     initialGrouping: BY_TARGET.value,
     columns: COLUMN_OPTIONS,
-    unavailable: "no targets yet",
   });
 
   return (

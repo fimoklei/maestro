@@ -36,8 +36,6 @@ export interface ViewOptionsConfig<T extends RowData> {
   initialGrouping: string;
   /** The columns Display can switch off, by column id. */
   columns: readonly Option[];
-  /** Why neither menu can be used, in five words or fewer. */
-  unavailable?: string;
 }
 
 export type ViewOptions<T extends RowData> = {
@@ -45,6 +43,8 @@ export type ViewOptions<T extends RowData> = {
   groups: Groups<T> | undefined;
   hidden: ReadonlySet<string>;
   filterCount: number;
+  /** No row to narrow, group or hide: neither menu can be used. */
+  blocked: boolean;
   /** Sets every filter back to All, so each row shows again. */
   clearFilters: () => void;
   /** Band 2's counts over every row, each wired to the status filter. */
@@ -86,7 +86,6 @@ export function useViewOptions<T extends RowData>(
           },
         ]),
   ];
-  const unavailable = rows.length === 0 ? config.unavailable : undefined;
   const filterCount = (kindValue === "all" ? 0 : 1) + statuses.size;
 
   return {
@@ -100,6 +99,7 @@ export function useViewOptions<T extends RowData>(
     groups: groupings.find((each) => each.value === grouping)?.groups,
     hidden,
     filterCount,
+    blocked: rows.length === 0,
     clearFilters: () => {
       setKind("all");
       setStatuses(new Set());
@@ -131,7 +131,6 @@ export function useViewOptions<T extends RowData>(
       {
         label: FILTER_LABEL,
         icon: <Icon of={ListFilter} />,
-        unavailable,
         count: filterCount,
         sections: [
           ...(kind === null
@@ -165,7 +164,6 @@ export function useViewOptions<T extends RowData>(
       {
         label: DISPLAY_LABEL,
         icon: <Icon of={SlidersHorizontal} />,
-        unavailable,
         sections: [
           // None alone groups nothing, so it is no choice.
           ...(groupings.length === 1

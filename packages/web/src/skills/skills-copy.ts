@@ -22,7 +22,6 @@ export const NO_RELEASED_SKILLS = {
 
 // The Skills band 2 and table (#1040).
 export const SEARCH_LABEL = "Search Skills";
-export const NO_SKILLS_YET = "no skills yet";
 export const STAGE_COLUMN_LABEL = "Select for bulk deploy";
 export const stageRowLabel = (name: string) => `Select ${name} for bulk deploy`;
 export const SELECT_ALL_LABEL = "Select all for bulk deploy";
