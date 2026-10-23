@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { htmlElement } from "../test-utils";
+import { hoverOpen, htmlElement } from "../test-utils";
 import {
   type FakeRegistry,
   renderRepositories,
@@ -94,7 +94,7 @@ describe("Repositories — GitHub column", () => {
 
     const cell = await githubCell(NAME);
     await waitFor(() => expect(cell).toHaveTextContent("Unknown"));
-    await userEvent.hover(within(cell).getByText("Unknown"));
+    await hoverOpen(within(cell).getByText("Unknown"));
 
     expect(
       await screen.findByText(

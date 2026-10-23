@@ -61,8 +61,9 @@ meaning stays with review.
   (`Merge it on GitHub.`).
 - The Change column states what a change does; the Status states only where it
   stands.
-- Before writing a sentence, grep `packages/web/src` for the control or status
-  it names and reuse the form you find. Same meaning, same words.
+- Before writing a sentence, grep `packages/web/src` for a shipped sentence with
+  the same meaning and reuse it word for word. Otherwise grep for the control or
+  status it names and reuse the form you find.
 - Approved sentences live in the copy module's sibling test as exact strings.
   Add a new sentence there; change an existing one there.
 - Render changed copy in the cockpit. Read it at a narrow width and at 200% zoom
@@ -75,7 +76,7 @@ Write level statements and commands that end in a full stop.
 
 ## Calibration
 
-Each pair is a shipped string and its fix. Match the right-hand form.
+Each pair is a shipped or drafted string and its fix. Match the right-hand form.
 
 ```text
 Notice: the outcome alone hides the next step
@@ -105,6 +106,14 @@ Empty state: off-form, with a control label that differs from the button (#867)
 Status chip: the word disagrees with what happened (#889)
   Weak           Pull request missing   (shown after the pull request was merged)
   Outcome-first  Proposal merged
+
+Cause line: a shipped sentence already says it (#1593)
+  Weak           Maestro detected no tool for Global on this machine.
+  Outcome-first  Install Claude Code or Codex to deploy skills globally.
+
+Cause line: words beyond the cause (#1593)
+  Weak           Choose a target to deploy to.
+  Outcome-first  Choose a target.
 ```
 
 ## Forms
@@ -120,6 +129,7 @@ Status chip: the word disagrees with what happened (#889)
 | Group header meta | The fact, no routine read age | `Compared with main` |
 | Empty state | `No {things} yet`, then one sentence saying what appears here | `No changes yet` |
 | Busy label | `{Verb}ing…`, the verb of the control's own label, no object | `Deploying…` |
+| Cause line | A blocked control's visible cause, beside it: the shortest true statement or command | `Choose a target.` |
 | Status announcement | Start: the busy label. End: `{Done word} {name}.` A failure is the notice, a toast replaces the end | `Deployed tdd.` |
 | Loading text | `Loading the {screen name}…` — heard, not seen; visible only inside a dialog | `Loading the Skills…` |
 | Dialog | Title and confirm button share a verb. A dialog that acts on a subject the reader already chose titles `{Verb} {name}`, or `{Verb} {object} for {name}` where the verb carries its own object. A dialog that asks the reader to choose the subject titles `{Verb} a {thing}`. Confirm button `{Verb} {thing}`. The body states what changes, then what stays | `Delete {skill}` / `Delete skill`; `Withdraw proposal for {skill}` / `Withdraw proposal`; `Update a skill` / `Update skill`; `Your targets keep the skill until you update them.` |

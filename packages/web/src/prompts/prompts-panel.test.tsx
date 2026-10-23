@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   expectVisibleCause,
+  hoverOpen,
   jsonResponse,
   renderWithQuery,
   sentence,
@@ -292,7 +293,7 @@ describe("PromptsPanel — Name not valid", () => {
       screen.getByRole("gridcell", { name: "pr-review" }),
     ).toBeInTheDocument();
 
-    await userEvent.hover(within(cell).getByText("Review_PR"));
+    await hoverOpen(within(cell).getByText("Review_PR"));
 
     const rule = await screen.findByText(
       sentence(

@@ -2,7 +2,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { measureAs } from "../test-utils";
+import { fakeTimeouts, hoverOpen, measureAs, passTime } from "../test-utils";
 import { createDataTableColumns, DataTable } from "./data-table";
 
 type Fruit = { name: string; colour: string };
@@ -756,7 +756,7 @@ describe("DataTable name column", () => {
     renderTable({ columns: named });
 
     const name = within(grid()).getByText("cherry");
-    await userEvent.hover(name);
+    await hoverOpen(name);
 
     const tooltip = await screen.findByRole("tooltip", { hidden: true });
     expect(tooltip).toHaveTextContent("cherry");
@@ -772,8 +772,9 @@ describe("DataTable name column", () => {
     renderTable({ columns: named });
 
     const name = within(grid()).getByText("cherry");
+    fakeTimeouts();
     await userEvent.hover(name);
-    await act(() => new Promise((done) => setTimeout(done, 500)));
+    passTime(500);
 
     expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull();
     expect(name).not.toHaveAttribute("title");

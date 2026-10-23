@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, sentence } from "../test-utils";
+import { hoverOpen, jsonResponse, sentence } from "../test-utils";
 import {
   cellsOf,
   factValue,
@@ -168,7 +168,7 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
     const pane = await openPane(LABEL);
 
-    await userEvent.hover(within(pane).getByText(REPO));
+    await hoverOpen(within(pane).getByText(REPO));
 
     expect(
       await screen.findByRole("tooltip", { hidden: true }),
@@ -553,7 +553,7 @@ describe("Deploy-state pane — Deployed skills", () => {
 
     const pane = await openPane(LABEL);
     const mark = await within(pane).findByRole("img", { name: "Unverified" });
-    await userEvent.hover(mark);
+    await hoverOpen(mark);
     await screen.findByRole("tooltip", { hidden: true });
     expect(mark).toHaveAccessibleDescription("Update check did not run.");
   });
@@ -564,7 +564,7 @@ describe("Deploy-state pane — Deployed skills", () => {
 
     const pane = await openPane(LABEL);
     const mark = await within(pane).findByRole("img", { name: "Unknown" });
-    await userEvent.hover(mark);
+    await hoverOpen(mark);
     await screen.findByRole("tooltip", { hidden: true });
     expect(mark).toHaveAccessibleDescription(
       "Update check timed out after 1 minute.",

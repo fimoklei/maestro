@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { expect, vi } from "vitest";
@@ -40,6 +40,34 @@ export function renderWithQuery(ui: ReactNode) {
 }
 
 const ignoreReport = () => {};
+
+/** Puts setTimeout on a clock `passTime` moves at once; real time moves it too. */
+export function fakeTimeouts() {
+  vi.useFakeTimers({
+    toFake: ["setTimeout", "clearTimeout"],
+    shouldAdvanceTime: true,
+  });
+}
+
+/** Moves a faked clock by `ms` without waiting them out. */
+export function passTime(ms: number) {
+  act(() => vi.advanceTimersByTime(ms));
+}
+
+/** Hovers `element` past the 400 ms a hover card or tooltip waits to open. */
+export async function hoverOpen(element: Element) {
+  const ownClock = !vi.isFakeTimers();
+  if (!ownClock && !("clock" in setTimeout)) {
+    throw new Error("hoverOpen moves setTimeout; this test fakes Date alone.");
+  }
+  if (ownClock) fakeTimeouts();
+  try {
+    await userEvent.hover(element);
+    passTime(400);
+  } finally {
+    if (ownClock) vi.useRealTimers();
+  }
+}
 
 /** Picks a target in the bulk deploy dialog, which never chooses for the reader. */
 export async function chooseDeployTarget(
