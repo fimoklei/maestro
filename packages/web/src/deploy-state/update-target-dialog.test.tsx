@@ -44,6 +44,7 @@ function show(patch: Partial<UpdatePreview> = {}, onConfirm = vi.fn()) {
     <UpdateTargetDialog
       targetName="agent-harness"
       preview={preview(patch)}
+      blocked={false}
       isLoading={false}
       error={null}
       onCancel={vi.fn()}
@@ -245,6 +246,7 @@ describe("UpdateTargetDialog", () => {
           },
           copyReceipt: "b".repeat(64),
         })}
+        blocked={false}
         isLoading={false}
         error={null}
         onCancel={onCancel}
@@ -320,6 +322,7 @@ describe("UpdateTargetDialog", () => {
       <UpdateTargetDialog
         targetName="agent-harness"
         preview={null}
+        blocked={false}
         isLoading={true}
         error={null}
         onCancel={vi.fn()}
@@ -376,6 +379,7 @@ describe("UpdateTargetDialog outcome", () => {
       <UpdateTargetDialog
         targetName="agent-harness"
         preview={preview()}
+        blocked={false}
         isLoading={false}
         error={null}
         outcome={outcome}
@@ -457,6 +461,7 @@ describe("UpdateTargetDialog outcome", () => {
       <UpdateTargetDialog
         targetName="agent-harness"
         preview={preview()}
+        blocked={false}
         isLoading={false}
         error={null}
         isRunning

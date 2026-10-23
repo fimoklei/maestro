@@ -160,6 +160,7 @@ export function ImportLocalEditsDialog({
           title={NO_LOCAL_EDITS}
           description={noLocalEditsLine(targetName)}
           headingLevel={3}
+          headingId={null}
         />
       ) : (
         <GroupedList

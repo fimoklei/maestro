@@ -175,7 +175,7 @@ export function UpdateTargetDialog({
   preview,
   isLoading,
   error,
-  blocked = false,
+  blocked,
   outcome,
   isRunning = false,
   incomplete = false,
@@ -189,7 +189,7 @@ export function UpdateTargetDialog({
   isLoading: boolean;
   error: DeployStateNotice | null;
   /** No update can be priced; the failure notice states why. */
-  blocked?: boolean;
+  blocked: boolean;
   outcome?: readonly UpdateOutcomeRow[] | null;
   isRunning?: boolean;
   incomplete?: boolean;

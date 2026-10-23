@@ -174,6 +174,7 @@ const updateDialog = (
   <UpdateTargetDialog
     targetName="agent-harness"
     preview={null}
+    blocked={false}
     isLoading={false}
     error={null}
     isRunning={false}
