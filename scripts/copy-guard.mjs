@@ -1,5 +1,6 @@
 // `pnpm copy-guard [root]`: prints `file:line: word` for every retired screen
-// word in a string or JSX text the cockpit ships.
+// word in a string or JSX text the cockpit ships, and for every multi-word
+// control label a web sentence spells as plain text.
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -188,16 +189,70 @@ function* textsOf(path, text) {
   }
 }
 
+const CONTROL_LABELS = join(
+  "packages",
+  "web",
+  "src",
+  "ui",
+  "control-labels.ts",
+);
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// A one-word label is left out: `Import` is also the verb of a sentence.
+function multiWordLabels(root) {
+  let text;
+  try {
+    text = readFileSync(join(root, CONTROL_LABELS), "utf8");
+  } catch {
+    return [];
+  }
+  const source = ts.createSourceFile(
+    CONTROL_LABELS,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const labels = [];
+  const stack = [source];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.initializer &&
+      ts.isStringLiteral(node.initializer) &&
+      /\s/.test(node.initializer.text)
+    ) {
+      const label = node.initializer.text;
+      labels.push({
+        label,
+        pattern: new RegExp(`(?<![\\w-])${escapeRegExp(label)}(?![\\w-])`),
+      });
+    }
+    stack.push(...node.getChildren(source));
+  }
+  return labels;
+}
+
 function findOffenders(root) {
+  const labels = multiWordLabels(root);
   const offenders = [];
   for (const dir of SCANNED) {
     for (const path of filesUnder(join(root, dir))) {
       if (!/\.tsx?$/.test(path) || NOT_SHIPPED.test(path)) continue;
       const file = relative(root, path).split(sep).join("/");
+      // A web sentence names a control through its label constant; the server
+      // cannot import them.
+      const namesControls =
+        file.startsWith("packages/web/") &&
+        file !== CONTROL_LABELS.split(sep).join("/");
       for (const { line, text } of textsOf(path, readFileSync(path, "utf8"))) {
         for (const pattern of RETIRED) {
           const match = text.match(pattern);
           if (match) offenders.push({ file, line, word: match[0] });
+        }
+        if (!namesControls || !text.includes(".")) continue;
+        for (const { label, pattern } of labels) {
+          if (pattern.test(text)) offenders.push({ file, line, word: label });
         }
       }
     }
@@ -214,7 +269,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const offenders = findOffenders(root);
   for (const offender of offenders) console.log(offender);
   if (offenders.length > 0) {
-    console.error(`copy-guard: ${offenders.length} retired screen words`);
+    console.error(
+      `copy-guard: ${offenders.length} retired screen words or plain control labels`,
+    );
     process.exitCode = 1;
   }
 }
