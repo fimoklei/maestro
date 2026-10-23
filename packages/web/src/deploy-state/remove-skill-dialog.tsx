@@ -6,7 +6,7 @@ import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
 
-import { CHECKING_LOCAL_EDITS } from "./import-local-edits-copy";
+import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   REMOVE_KEEPS,

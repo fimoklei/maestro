@@ -16,8 +16,6 @@ import { REASON } from "./reason-copy";
 export const importLocalEditsTitle = (target: string): string =>
   `${IMPORT_LOCAL_EDITS} from ${target}`;
 
-export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
-
 export const canBeImportedLegend = (count: number): string =>
   `Can be imported · ${count}`;
 

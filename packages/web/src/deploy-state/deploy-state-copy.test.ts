@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { rereadLabel } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import {
+  CHECKING_LOCAL_EDITS,
   deployStateNotRead,
   localEditsLine,
   NO_FILTER_MATCH,
@@ -133,6 +134,10 @@ describe("Deploy-state copy", () => {
     expect(plainText(localEditsLine([long, "tdd"], false))).toBe(
       `2 skills have changes that are not in the latest release: ${long} and tdd. ${keep}`,
     );
+  });
+
+  it("says the local edits are being checked", () => {
+    expect(CHECKING_LOCAL_EDITS).toBe("Checking for local edits…");
   });
 
   it("advises importing local edits before a behind target updates", () => {

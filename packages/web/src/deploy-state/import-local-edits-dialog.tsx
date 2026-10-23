@@ -8,8 +8,8 @@ import type { NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { StatusLine } from "../ui/status-line";
+import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
 import {
-  CHECKING_LOCAL_EDITS,
   canBeImportedLegend,
   cannotBeImportedLegend,
   IMPORTED,
