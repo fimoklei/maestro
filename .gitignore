@@ -16,6 +16,9 @@ storybook-static/
 # Full output of the last verify/test run, kept for reading after a failure.
 .logs/
 
+# Vitest report files (`--reporter=json` without `--outputFile`).
+.vitest/
+
 # Per-branch git worktrees created by agent sessions (local checkouts, not source).
 .claude/worktrees/
 
