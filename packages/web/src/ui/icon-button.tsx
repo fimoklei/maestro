@@ -36,9 +36,7 @@ export function IconButton({
         aria-label={label}
         busy={busy}
         aria-disabled={blocked ? true : undefined}
-        aria-describedby={
-          blocked ? unavailable.describedBy || undefined : describedBy
-        }
+        aria-describedby={blocked ? unavailable.describedBy : describedBy}
         onClick={blocked ? undefined : onClick}
         {...rest}
       >

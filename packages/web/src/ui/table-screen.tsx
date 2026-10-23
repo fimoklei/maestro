@@ -36,7 +36,7 @@ type PaneFrame = {
   getTriggerElement: () => HTMLElement | null;
 };
 
-export interface TableScreenProps<T extends RowData> {
+type TableScreenBase<T extends RowData> = {
   state: TableScreenState;
   /** Band 1's primary action. */
   action?: ReactNode;
@@ -52,8 +52,6 @@ export interface TableScreenProps<T extends RowData> {
   firstReadRows: number;
   /** The screen's own narrowing, such as a search; an open pane survives it. */
   shown?: (row: T) => boolean;
-  /** Filter and Display, from `useViewOptions`; they narrow, group and switch columns. */
-  view?: ViewOptions<T>;
   /** Rows carry a checkbox for a bulk action. */
   selection?: DataTableProps<T>["selection"];
   /** Follows the last row while rows are chosen, held in view as the table scrolls. */
@@ -64,11 +62,25 @@ export interface TableScreenProps<T extends RowData> {
   empty?: Omit<EmptyStateProps, "headingLevel" | "headingId">;
   /** The open row's pane, built on `DetailPane`; none: rows do not open. */
   pane?: (row: T, frame: PaneFrame) => ReactNode;
-  /** A screen-specific failed-read notice, in place of the screen-wide one. */
-  notice?: ReactNode;
   /** The screen's dialogs. */
   children?: ReactNode;
-}
+};
+
+// Filter and Display point at the frame's own failed-read notice, so a screen
+// with its own notice has no view options.
+export type TableScreenProps<T extends RowData> = TableScreenBase<T> &
+  (
+    | {
+        /** Filter and Display, from `useViewOptions`; they narrow, group and switch columns. */
+        view?: ViewOptions<T>;
+        notice?: never;
+      }
+    | {
+        view?: never;
+        /** A screen-specific failed-read notice, in place of the screen-wide one. */
+        notice: ReactNode;
+      }
+  );
 
 // The panel frame every table screen shares: bands, the one status region,
 // the failed-read notice, the skeleton, the table or its empty state, and the
@@ -134,16 +146,20 @@ export function TableScreen<T extends RowData>({
               ),
             }
         : empty;
-  // Filter and Display point to what the frame drew in place of rows.
-  const drawnCause = () => {
-    if (state.notice !== null) return notice === undefined ? [noticeId] : [];
-    if (!state.settled) return band === undefined ? [] : [wordId];
-    if (!showTable) return emptyState === undefined ? [] : [emptyId];
-    return state.skeleton ? [] : speaking.map(lineId);
+  // Filter and Display point to what the frame drew in place of rows; while
+  // skeleton rows stand in, it drew no cause, so they stay usable.
+  const drawnCause = (): CauseText | undefined => {
+    if (state.notice !== null) return { describedBy: noticeId };
+    if (!state.settled) {
+      return band === undefined ? undefined : { describedBy: wordId };
+    }
+    if (!showTable) {
+      return emptyState === undefined ? undefined : { describedBy: emptyId };
+    }
+    if (state.skeleton || speaking.length === 0) return undefined;
+    return { describedBy: speaking.map(lineId).join(" ") };
   };
-  const viewCause: CauseText | undefined = view?.blocked
-    ? { describedBy: drawnCause().join(" ") }
-    : undefined;
+  const viewCause = view?.blocked ? drawnCause() : undefined;
 
   // Focus whose row left goes to the row now in its place, which the grid's
   // cursor keeps, else Re-read; focus whose opener left goes to the pane first.

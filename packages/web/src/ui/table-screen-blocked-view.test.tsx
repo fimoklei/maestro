@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { expectVisibleCause } from "../test-utils";
 import type { Band } from "./band";
 import { createDataTableColumns, type DataTableProps } from "./data-table";
@@ -40,15 +40,17 @@ const PLACES: NonNullable<DataTableProps<Plant>["groups"]> = {
 function EmptyGarden({
   settled = true,
   failed = false,
+  reading = false,
   groups,
 }: {
   settled?: boolean;
   failed?: boolean;
+  reading?: boolean;
   groups?: DataTableProps<Plant>["groups"];
 }) {
   const state = useTableScreen({
     name: "Garden",
-    reading: false,
+    reading,
     settled,
     failure: failed
       ? {
@@ -113,6 +115,23 @@ describe("TableScreen Filter and Display on a screen with no rows", () => {
 
     for (const menu of menus()) {
       expectVisibleCause(menu, "No beds are dug yet. No pots are bought yet.");
+    }
+  });
+
+  it("stay open to use while a re-read's skeleton stands in for the empty state", () => {
+    vi.useFakeTimers();
+    try {
+      render(<EmptyGarden reading groups={PLACES} />);
+      act(() => {
+        vi.advanceTimersByTime(1300);
+      });
+
+      expect(screen.queryByText("No beds are dug yet.")).toBeNull();
+      for (const menu of menus()) {
+        expect(menu).not.toHaveAttribute("aria-disabled");
+      }
+    } finally {
+      vi.useRealTimers();
     }
   });
 
