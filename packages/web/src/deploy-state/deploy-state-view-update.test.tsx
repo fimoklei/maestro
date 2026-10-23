@@ -3,7 +3,7 @@ import { focusManager } from "@tanstack/react-query";
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, sentence } from "../test-utils";
+import { hoverOpen, jsonResponse, sentence } from "../test-utils";
 import {
   findRow,
   openPane,
@@ -154,7 +154,7 @@ describe("Deploy-state — Update target on a repository", () => {
     expect(items.map((item) => item.textContent)).toEqual(["Deploy skill"]);
     await userEvent.keyboard("{Escape}");
 
-    await userEvent.hover(within(row).getByText("In sync"));
+    await hoverOpen(within(row).getByText("In sync"));
     expect(
       await screen.findByText("On the latest release."),
     ).toBeInTheDocument();

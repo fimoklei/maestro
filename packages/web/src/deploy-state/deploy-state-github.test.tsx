@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { htmlElement } from "../test-utils";
+import { hoverOpen, htmlElement } from "../test-utils";
 import {
   cellsOf,
   factValue,
@@ -152,7 +152,7 @@ describe("Deploy-state — GitHub column", () => {
     renderDeployState();
     await findRow(NAME);
 
-    await userEvent.hover(within(githubCell(NAME)).getByText("Unknown"));
+    await hoverOpen(within(githubCell(NAME)).getByText("Unknown"));
 
     const cause = await screen.findByText(
       /The origin of this repository could not be read/,

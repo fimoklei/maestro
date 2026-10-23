@@ -27,9 +27,12 @@ import {
 import { SkillsPanel } from "./skills/skills-panel";
 import { SkillsView } from "./skills/skills-view";
 import {
+  fakeTimeouts,
+  hoverOpen,
   htmlElement,
   jsonResponse,
   measureAs,
+  passTime,
   readyView,
   renderWithQuery,
 } from "./test-utils";
@@ -1113,7 +1116,7 @@ describe("every table screen", () => {
     it("opens to the pointer: badge, body, then read age", async () => {
       card.render();
 
-      await userEvent.hover(
+      await hoverOpen(
         await within(await screen.findByRole("grid")).findByText(card.badge),
       );
 
@@ -1132,7 +1135,7 @@ describe("every table screen", () => {
 
     it("ends every sentence in a full stop, the read age aside", async () => {
       card.render();
-      await userEvent.hover(
+      await hoverOpen(
         await within(await screen.findByRole("grid")).findByText(card.badge),
       );
       await expectOneStatusCard(card);
@@ -1153,7 +1156,7 @@ describe("every table screen", () => {
       const name = await within(await screen.findByRole("grid")).findByText(
         card.name,
       );
-      await userEvent.hover(name);
+      await hoverOpen(name);
 
       expect(
         await screen.findByRole("tooltip", { hidden: true }),
@@ -1168,12 +1171,13 @@ describe("every table screen", () => {
 
   describe.each(reading)("$file Status cell", ({ reading }) => {
     it("marks a status still being read as busy, with a skeleton past 1.3 s", async () => {
+      fakeTimeouts();
       reading.render();
       const status = await statusCell(reading.name);
 
       expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
       expect(status.querySelector("[class*='animate-pulse']")).toBeNull();
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      passTime(1500);
       expect(status.querySelector("[class*='animate-pulse']")).not.toBeNull();
     });
   });
