@@ -35,7 +35,7 @@ export class PromoteDeletion {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
-    fetchGate: Pick<HarnessFetchGate, "fetch" | "invalidate">;
+    fetchGate: Pick<HarnessFetchGate, "fetchFresh" | "invalidate">;
     locks: InFlightLocks;
     review: HarnessReviewPort;
   };
@@ -68,7 +68,7 @@ export class PromoteDeletion {
     ref: PrimitiveRef,
     seenRemoteTree: string,
   ): Promise<PromoteDeletionResult> {
-    const outcome = await this.deps.fetchGate.fetch(root, 0);
+    const outcome = await this.deps.fetchGate.fetchFresh(root);
     if (outcome !== "fetched") {
       return { ok: false, error: "no-answer" };
     }

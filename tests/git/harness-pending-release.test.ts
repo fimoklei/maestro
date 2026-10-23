@@ -86,7 +86,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       resolveRoot: async () => root,
       git: harnessGit,
       freshness,
-      fetchHarness: (harnessRoot) => gate.fetch(harnessRoot, 0),
+      fetchHarness: (harnessRoot) => gate.fetchFresh(harnessRoot),
       review: stubReview(),
     });
   };

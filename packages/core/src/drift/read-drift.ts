@@ -54,7 +54,7 @@ export class ReadDrift {
     location: DeployedLocation;
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessContentPort;
-    // The fetch gate, bound to this read's maximum age.
+    // May reuse a recent fetch of the Harness.
     fetchHarness: (root: string) => Promise<unknown>;
   };
 

@@ -52,7 +52,7 @@ export class Promote {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
-    fetchGate: Pick<HarnessFetchGate, "fetch" | "invalidate">;
+    fetchGate: Pick<HarnessFetchGate, "fetchFresh" | "invalidate">;
     locks: InFlightLocks;
     review: HarnessReviewPort;
   };
@@ -79,7 +79,7 @@ export class Promote {
     root: string,
     ref: PrimitiveRef,
   ): Promise<PromoteResult> {
-    const outcome = await this.deps.fetchGate.fetch(root, 0);
+    const outcome = await this.deps.fetchGate.fetchFresh(root);
     if (outcome !== "fetched") {
       return { ok: false, error: "no-answer" };
     }
@@ -90,7 +90,7 @@ export class Promote {
 
     // Re-fetched and rechecked right before the push, so a teammate's change
     // cannot slip through the gap (#579).
-    const refetched = await this.deps.fetchGate.fetch(root, 0);
+    const refetched = await this.deps.fetchGate.fetchFresh(root);
     if (refetched !== "fetched") {
       return { ok: false, error: "no-answer" };
     }

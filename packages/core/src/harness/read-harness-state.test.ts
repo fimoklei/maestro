@@ -74,7 +74,7 @@ function buildRead(
         overrides && "root" in overrides ? overrides.root : "/harness"),
     git,
     freshness,
-    fetchHarness: (root) => gate.fetch(root, 0),
+    fetchHarness: (root) => gate.fetchFresh(root),
     review: {
       readReviews:
         overrides?.readReviews ??
