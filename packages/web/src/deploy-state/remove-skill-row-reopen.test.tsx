@@ -1,5 +1,6 @@
 import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { expectVisibleCause } from "../test-utils";
 import {
   CONFIRM,
   checkFor,
@@ -58,11 +59,10 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       await openRemoveDialog();
-      expect(
-        screen.getByRole("button", {
-          name: `${CONFIRM} — checking for local edits`,
-        }),
-      ).toHaveAttribute("aria-disabled", "true");
+      expectVisibleCause(
+        screen.getByRole("button", { name: CONFIRM }),
+        "Checking for local edits…",
+      );
 
       releaseSecondCheck();
 

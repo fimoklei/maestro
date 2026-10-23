@@ -6,6 +6,7 @@ import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
 
+import { CHECKING_LOCAL_EDITS } from "./import-local-edits-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   REMOVE_KEEPS,
@@ -16,9 +17,6 @@ import {
   removeOutcomeReport,
 } from "./remove-ledger-rows";
 import type { RemovePreflightView } from "./remove-preflight-view";
-
-// Names no cost: an unfinished check has claimed nothing.
-const CHECKING = "checking for local edits";
 
 // No per-tool remove: apm's uninstall has no -t, and faking one orphans the
 // other tools' files.
@@ -163,7 +161,10 @@ export function RemoveSkillDialog({
               label: REMOVE_SKILL,
               verb: "remove",
               tone: "danger",
-              unavailable: awaitingCheck ? CHECKING : null,
+              // A line of its own: the rows name no cost while the check runs.
+              unavailable: awaitingCheck
+                ? { line: CHECKING_LOCAL_EDITS }
+                : null,
               onRun: onConfirm,
             }
       }

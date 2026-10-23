@@ -8,7 +8,12 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  expectVisibleCause,
+  jsonResponse,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import { RemoveSkillFlow } from "./remove-skill-flow";
 
@@ -117,7 +122,12 @@ function renderFlow({
 }
 
 // The confirm, once the check has answered and offered the removal.
-const answered = () => screen.findByRole("button", { name: "Remove skill" });
+const answered = () =>
+  waitFor(() => {
+    const button = screen.getByRole("button", { name: "Remove skill" });
+    expect(button).not.toHaveAttribute("aria-disabled");
+    return button;
+  });
 
 async function confirm() {
   await userEvent.click(await answered());
@@ -668,10 +678,8 @@ describe("RemoveSkillFlow", () => {
     it("holds the confirm, naming the check as its cause, and leaves cancel usable", async () => {
       const { removeCalls } = renderFlow({ preflight: never });
 
-      const confirm = screen.getByRole("button", {
-        name: "Remove skill — checking for local edits",
-      });
-      expect(confirm).toHaveAttribute("aria-disabled", "true");
+      const confirm = screen.getByRole("button", { name: "Remove skill" });
+      expectVisibleCause(confirm, "Checking for local edits…");
       await userEvent.click(confirm);
       expect(removeCalls()).toEqual([]);
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();

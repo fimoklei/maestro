@@ -269,9 +269,11 @@ export function LocalDeletionDialog({
         path,
         check: check.isFetching
           ? "checking"
-          : seenWorkingTree === null
-            ? "failed"
-            : "ready",
+          : seenWorkingTree !== null
+            ? "ready"
+            : check.isError
+              ? "failed"
+              : "not-in-clone",
         localOnly,
         uncommitted: folder?.uncommitted === true,
       }}
