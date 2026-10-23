@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { delimiter } from "node:path";
 import { fileURLToPath } from "node:url";
 import { configDefaults, defineConfig } from "vitest/config";
+import { readPmset, testMaxWorkers } from "./scripts/lib/test-workers.mjs";
 
 // One runner, four lanes (see .claude/rules/testing.md): pure/unit, integration,
 // the web component lane (happy-dom, its own config for the React plugin), and git.
@@ -15,8 +16,13 @@ const gitExecPath = execFileSync("git", ["--exec-path"], {
 }).trim();
 export default defineConfig({
   test: {
-    // The slowest test nears the 5s default under load; a worker cap only slowed
-    // the suite (docs/research/1095-vitest-worker-cap.md). Inline lanes inherit
+    // One pool serves every lane, so this caps the whole run, the web lane too.
+    maxWorkers: testMaxWorkers({
+      env: process.env,
+      platform: process.platform,
+      readPowerSource: readPmset,
+    }),
+    // The slowest test nears the 5s default under load. Inline lanes inherit
     // it (vitest 5); the web lane's config file does not, so it repeats it.
     testTimeout: 20_000,
     // Runs once per run, before any lane: a killed run never reaches its

@@ -145,8 +145,8 @@ Ranked by payoff for this repo.
 
 ### 5. Pool, isolation, sharding
 
-- Already settled here: one shared pool of `availableParallelism() - 1`
-  (1095). `threads` on web (1096). `--no-isolate` breaks 415 web tests (1096).
+- Already settled here: one shared pool of `availableParallelism() - 1`,
+  4 on battery power (1095, #1610). `threads` on web (1096). `--no-isolate` breaks 415 web tests (1096).
   Vitest's own advice is the same: isolation off only "for projects without
   side effects", and `threads` "may improve performance in larger suites"
   ([improving performance](https://vitest.dev/guide/improving-performance)).

@@ -6,7 +6,12 @@ vitest 4.1.11, Node 24.18.0, after #1093's git-lane fix.
 ## Finding
 
 No. Every cap below the default made a lone suite slower, and no cap made two
-concurrent suites meaningfully faster. `vitest.config.ts` keeps the default.
+concurrent suites meaningfully faster. `vitest.config.ts` keeps the default
+on mains power.
+
+Update 2026-10-22 (#1610, vitest 5.0.3): on battery power a run is capped at
+4 workers, to save the battery. On battery the cap cost no time: core, web
+and integration lanes took 53 s capped, 58–59 s uncapped.
 
 The premise was that the four lanes each start a worker pool and together
 oversubscribe the CPU. They do not: vitest 4.1 runs all projects in one pool
