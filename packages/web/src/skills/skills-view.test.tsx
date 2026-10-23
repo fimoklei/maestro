@@ -11,6 +11,7 @@ import { driftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
 import {
   chooseDeployTarget,
+  hoverOpen,
   htmlElement,
   jsonResponse,
   measureAs,
@@ -160,7 +161,7 @@ describe("SkillsView — the table", () => {
     stubPendingFetch();
     renderView();
 
-    await userEvent.hover(within(grid()).getByText("caveman"));
+    await hoverOpen(within(grid()).getByText("caveman"));
 
     expect(
       await screen.findByRole("tooltip", { hidden: true }),
@@ -1693,7 +1694,7 @@ describe("SkillsView — hover card", () => {
     stubPendingFetch();
     renderView({ targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])] });
 
-    await userEvent.hover(within(grid()).getByText("Behind"));
+    await hoverOpen(within(grid()).getByText("Behind"));
 
     const card = await screen.findByText(sentence("Deployed to 1 target."));
     const row = within(card.parentElement as HTMLElement).getByRole("listitem");
@@ -1706,7 +1707,7 @@ describe("SkillsView — hover card", () => {
     stubPendingFetch();
     renderView({ targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])] });
 
-    await userEvent.hover(within(grid()).getByText("Behind"));
+    await hoverOpen(within(grid()).getByText("Behind"));
 
     const reach = await screen.findByText(sentence("Deployed to 1 target."));
     const card = reach.closest(
@@ -1739,7 +1740,7 @@ describe("SkillsView — hover card", () => {
       ],
     });
 
-    await userEvent.hover(within(grid()).getByText("Behind"));
+    await hoverOpen(within(grid()).getByText("Behind"));
 
     const reach = await screen.findByText(sentence("Deployed to 2 targets."));
     const card = reach.closest(
@@ -1764,7 +1765,7 @@ describe("SkillsView — hover card", () => {
       ],
     });
 
-    await userEvent.hover(within(grid()).getByText("Behind"));
+    await hoverOpen(within(grid()).getByText("Behind"));
 
     const reach = await screen.findByText(sentence("Deployed to 2 targets."));
     const card = reach.closest(
@@ -1777,7 +1778,7 @@ describe("SkillsView — hover card", () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });
 
-    await userEvent.hover(within(grid()).getByText("Up to date"));
+    await hoverOpen(within(grid()).getByText("Up to date"));
 
     const reach = await screen.findByText(sentence("Deployed to 1 target."));
     const card = reach.closest(
@@ -1811,7 +1812,7 @@ describe("SkillsView — hover card", () => {
       ],
     });
 
-    await userEvent.hover(within(grid()).getByText("2"));
+    await hoverOpen(within(grid()).getByText("2"));
 
     expect(
       await screen.findByText(sentence("Deployed to 2 targets.")),

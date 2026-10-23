@@ -1,7 +1,14 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { htmlElement, measureAs, sentence } from "../test-utils";
+import {
+  fakeTimeouts,
+  hoverOpen,
+  htmlElement,
+  measureAs,
+  passTime,
+  sentence,
+} from "../test-utils";
 import {
   cellsOf,
   findRow,
@@ -90,7 +97,7 @@ describe("Deploy-state — one table of every target", () => {
     renderDeployState();
 
     const name = await screen.findByText("…/repos/agent-harness");
-    await userEvent.hover(name);
+    await hoverOpen(name);
 
     expect(
       await screen.findByRole("tooltip", { hidden: true }),
@@ -460,7 +467,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
     renderDeployState();
 
     await findRow("…/me/a");
-    await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
+    await hoverOpen(await within(rowOf("…/me/a")).findByText("Behind"));
 
     const reason = await screen.findByText(
       sentence(
@@ -502,7 +509,7 @@ describe("Deploy-state — Release, Status and Skills", () => {
 
     await findRow("…/me/a");
     expect(await screen.findByText("1 h ago")).toBeInTheDocument();
-    await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
+    await hoverOpen(await within(rowOf("…/me/a")).findByText("Behind"));
 
     const reason = await screen.findByText(
       sentence(
@@ -621,11 +628,12 @@ describe("Deploy-state — Re-read and freshness", () => {
       global: TWO_TOOLS,
       drift: { global: new Promise(() => {}) },
     }));
+    fakeTimeouts();
     renderDeployState();
     await findRow("Codex");
 
     // Past the 1.3 s after which a running read draws skeleton rows.
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    passTime(1500);
     expect(rowOf("Codex")).toBeInTheDocument();
     expect(grid()).not.toHaveAttribute("aria-busy");
   });
@@ -635,6 +643,7 @@ describe("Deploy-state — Re-read and freshness", () => {
       global: TWO_TOOLS,
       drift: { global: new Promise(() => {}) },
     }));
+    fakeTimeouts();
     renderDeployState();
     await findRow("Claude Code");
     const status = htmlElement(
@@ -645,7 +654,7 @@ describe("Deploy-state — Re-read and freshness", () => {
     expect(
       status.querySelector(".animate-pulse, [class*='animate-pulse']"),
     ).toBeNull();
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    passTime(1500);
     expect(status.querySelector("[class*='animate-pulse']")).not.toBeNull();
   });
 
@@ -700,7 +709,7 @@ describe("Deploy-state — Re-read and freshness", () => {
       renderDeployState();
       await findRow("…/me/a");
       expect(await screen.findByText("just now")).toBeInTheDocument();
-      await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
+      await hoverOpen(await within(rowOf("…/me/a")).findByText("Behind"));
       const card = (
         await screen.findByText(
           sentence(
