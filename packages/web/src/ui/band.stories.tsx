@@ -106,7 +106,7 @@ export const GateAtZero: Story = {
           word: "Pending release",
           count: 0,
           family: "attention",
-          gate: { id: "pending-release-count" },
+          gate: true,
         },
       ],
     }),

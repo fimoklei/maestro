@@ -1,5 +1,4 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
-import { useId } from "react";
 import { Card } from "../ui/card";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
@@ -58,7 +57,6 @@ export function DeletionDialog({
   deleteError: NoticeContent | null;
 }) {
   const copy = DELETION_COPY[type];
-  const checkingId = useId();
   return (
     <Dialog
       title={`Delete ${name}`}
@@ -73,9 +71,10 @@ export function DeletionDialog({
           mode.kind !== "local" || mode.check === "ready"
             ? null
             : mode.check === "checking"
-              ? { describedBy: checkingId }
-              : // The caller states a failed or empty check in `deleteError`.
-                { failure: true },
+              ? DELETION_CHECKING
+              : // The caller states a failed or empty check in `deleteError`;
+                // without it the action still stays blocked.
+                (deleteError?.label ?? ""),
         onRun: onConfirm,
       }}
       failure={deleteError}
@@ -141,7 +140,7 @@ export function DeletionDialog({
         </dl>
       </Card>
       {mode.kind === "local" && mode.check === "checking" ? (
-        <StatusLine id={checkingId}>{DELETION_CHECKING}</StatusLine>
+        <StatusLine>{DELETION_CHECKING}</StatusLine>
       ) : null}
       <Notice
         trigger="load"

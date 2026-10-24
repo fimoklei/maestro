@@ -64,6 +64,9 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   },
 };
 
+/** A blocked release, said as a tooltip cause and as a refusal heading. */
+export const NOTHING_TO_RELEASE = "Nothing to release";
+
 const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   ...harnessHeadings,
   "no-answer": {
@@ -73,7 +76,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   },
   "empty-delta": {
     level: "error",
-    label: "Nothing to release",
+    label: NOTHING_TO_RELEASE,
     message:
       "Nothing was published. No change has merged since the last release.",
   },

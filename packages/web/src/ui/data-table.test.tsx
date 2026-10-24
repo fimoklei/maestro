@@ -355,6 +355,7 @@ describe("DataTable", () => {
         key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
         order: ["Red", "Green", "Blue", "Yellow"],
         message: (key) => (key === "Blue" ? "No blue fruit yet." : null),
+        messageText: (key) => (key === "Blue" ? "No blue fruit yet." : null),
       },
     });
 
@@ -373,6 +374,7 @@ describe("DataTable", () => {
         key: (fruit) => fruit.colour,
         order: ["Blue"],
         message: () => "No blue fruit yet.",
+        messageText: () => "No blue fruit yet.",
       },
     });
 
@@ -646,6 +648,7 @@ describe("DataTable column priority", () => {
         key: () => "Ferns",
         order: ["Ferns", "Mosses"],
         message: (key) => (key === "Mosses" ? "No mosses." : null),
+        messageText: (key) => (key === "Mosses" ? "No mosses." : null),
       },
     });
 

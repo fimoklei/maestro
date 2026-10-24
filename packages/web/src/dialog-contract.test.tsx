@@ -35,7 +35,7 @@ import { UnregisterDialog } from "./registry/unregister-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
-import { expectVisibleCause, htmlElement } from "./test-utils";
+import { expectTooltipCause, htmlElement } from "./test-utils";
 import { UPDATE_PROMPT } from "./ui/control-labels";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
@@ -922,7 +922,7 @@ describe("every dialog", () => {
       await userEvent.keyboard("{Escape}");
 
       expect(onClose).not.toHaveBeenCalled();
-      expectVisibleCause(
+      expectTooltipCause(
         screen.getByRole("button", { name: "Close" }),
         /^\S.*…$/,
       );

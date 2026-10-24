@@ -20,8 +20,6 @@ export type NoticeAction = {
   onClick: () => void;
   /** Its write is running: picks the busy label from `busy-copy`. */
   busy?: ActionKey;
-  /** The button's id, so a dialog's ✕ can point to its busy label. */
-  id?: string;
   /** The pane's one primary action, where its notice names the next step. */
   primary?: boolean;
 };
@@ -159,7 +157,6 @@ export function Notice({
             // cost in a sentence, and that pushed the notice 12px out of the
             // 291px detail pane (#615).
             className="self-start whitespace-normal text-left"
-            id={action.id}
             busy={action.busy !== undefined}
             onClick={action.onClick}
           >

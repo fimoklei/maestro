@@ -29,10 +29,7 @@ export const STAGE_NAMES: Record<HarnessStage, string> = {
 export const ALL_RELEASED = "All released";
 
 /** Band 2's counts: the rows waiting in review and in release, by stage. Pending release at 0 blocks Create a release. */
-export const harnessCounts = (
-  stages: readonly HarnessStage[],
-  releaseCountId: string,
-): BandCount[] => [
+export const harnessCounts = (stages: readonly HarnessStage[]): BandCount[] => [
   {
     word: STAGE_NAMES["pending-review"],
     count: countOf(stages, "pending-review"),
@@ -42,7 +39,7 @@ export const harnessCounts = (
     word: STAGE_NAMES["pending-release"],
     count: countOf(stages, "pending-release"),
     family: "attention",
-    gate: { id: releaseCountId },
+    gate: true,
   },
 ];
 

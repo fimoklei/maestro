@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import {
-  expectVisibleCause,
+  expectTooltipCause,
   jsonResponse,
   renderWithQuery,
 } from "../test-utils";
@@ -173,7 +173,7 @@ describe("SkillsPanel", () => {
 
     const dialog = await openDeployDialog("tdd");
 
-    expectVisibleCause(
+    expectTooltipCause(
       await dialog.findByRole("button", { name: "Deploy skill" }),
       "Choose a target.",
     );
@@ -214,7 +214,7 @@ describe("SkillsPanel", () => {
 
     const dialog = await openDeployDialog("tdd");
 
-    expectVisibleCause(
+    expectTooltipCause(
       await dialog.findByRole("button", { name: "Deploy skill" }),
       "Loading targets…",
     );
@@ -282,7 +282,7 @@ describe("SkillsPanel", () => {
 
     const dialog = await openDeployDialog("tdd");
 
-    expectVisibleCause(
+    expectTooltipCause(
       await dialog.findByRole("button", { name: "Deploy skill" }),
       "Loading targets…",
     );

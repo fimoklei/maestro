@@ -5,6 +5,7 @@ import * as skillsCopy from "./skills-copy";
 import {
   globalOptionLabel,
   NO_TARGET_CHOSEN,
+  NO_TARGET_REMOVABLE,
   skillStateLine,
   TARGETS_LOADING,
 } from "./skills-copy";
@@ -13,10 +14,11 @@ import {
 // tests of the Skills screen, its pane and its bulk dialogs. These prove the
 // rules every sentence keeps, and the branches no rendered test reaches.
 
-describe("the bulk Deploy cause lines", () => {
+describe("the bulk causes", () => {
   it("keeps the approved sentences", () => {
     expect(TARGETS_LOADING).toBe("Loading targets…");
     expect(NO_TARGET_CHOSEN).toBe("Choose a target.");
+    expect(NO_TARGET_REMOVABLE).toBe("No target can be removed.");
   });
 });
 

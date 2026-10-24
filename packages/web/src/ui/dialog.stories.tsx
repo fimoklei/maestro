@@ -49,14 +49,14 @@ export const Running: Story = {
   args: { phase: "running" },
 };
 
-// The dialog draws the cause beside the action and describes the action by it.
+// The action keeps its label; its tooltip states the cause.
 export const Unavailable: Story = {
   args: {
     action: {
       label: "Update target",
       verb: "update",
       tone: "primary",
-      unavailable: { line: "Check Discard local edits to update this target." },
+      unavailable: "Check Discard local edits to update this target.",
       onRun: () => {},
     },
   },

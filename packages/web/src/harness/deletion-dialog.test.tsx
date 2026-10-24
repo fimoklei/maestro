@@ -1,7 +1,7 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { expectVisibleCause, sentence } from "../test-utils";
+import { expectTooltipCause, sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { deletionCheckNotice } from "./local-deletion-copy";
@@ -219,10 +219,10 @@ describe("DeletionDialog", () => {
     it("points to the checking line while the check reads the clone", () => {
       renderDialog({ mode: { ...LOCAL, check: "checking" } });
 
-      expectVisibleCause(deleteSkill(), "Checking for uncommitted changes…");
+      expectTooltipCause(deleteSkill(), "Checking for uncommitted changes…");
     });
 
-    it("points to the failure notice when the clone was not read", () => {
+    it("gives the failure notice's heading when the clone was not read", () => {
       renderDialog({
         mode: { ...LOCAL, check: "failed" },
         deleteError: deletionCheckNotice("no-answer", {
@@ -232,10 +232,10 @@ describe("DeletionDialog", () => {
         }),
       });
 
-      expectVisibleCause(deleteSkill(), /^Clone not read/);
+      expectTooltipCause(deleteSkill(), /^Clone not read/);
     });
 
-    it("points to the failure notice when the skill is not in the clone", () => {
+    it("gives the failure notice's heading when the skill is not in the clone", () => {
       renderDialog({
         mode: { ...LOCAL, check: "not-in-clone" },
         deleteError: deletionCheckNotice("already-gone", {
@@ -245,7 +245,7 @@ describe("DeletionDialog", () => {
         }),
       });
 
-      expectVisibleCause(deleteSkill(), /^Folder already deleted/);
+      expectTooltipCause(deleteSkill(), /^Folder already deleted/);
     });
   });
 
@@ -433,7 +433,7 @@ describe("DeletionDialog", () => {
       ).toBeInTheDocument();
     });
 
-    it("points to the failure notice when the prompt is not in the clone", () => {
+    it("gives the failure notice's heading when the prompt is not in the clone", () => {
       renderDialog({
         type: "prompt",
         name: "pr-review",
@@ -445,7 +445,7 @@ describe("DeletionDialog", () => {
         }),
       });
 
-      expectVisibleCause(
+      expectTooltipCause(
         screen.getByRole("button", { name: "Delete prompt" }),
         /^File already deleted/,
       );

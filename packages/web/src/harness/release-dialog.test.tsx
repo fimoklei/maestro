@@ -2,7 +2,7 @@ import type { ReleasePlan } from "@maestro/core";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { expectTooltipCause, sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { ReleaseDialog } from "./release-dialog";
 
@@ -442,10 +442,7 @@ describe("ReleaseDialog", () => {
     renderReady({ delta: [], blocked: "empty-delta" }, { onPublish });
 
     const publish = screen.getByRole("button", { name: "Publish release" });
-    expect(publish).toHaveAccessibleDescription(
-      "No changes yet. Changes merged after the last release appear here.",
-    );
-    expect(publish).toHaveAttribute("aria-disabled", "true");
+    expectTooltipCause(publish, "Nothing to release");
     await userEvent.click(publish);
     expect(onPublish).not.toHaveBeenCalled();
   });
@@ -562,11 +559,7 @@ describe("ReleaseDialog", () => {
       /select re-read harness/i,
     );
     const publish = screen.getByRole("button", { name: "Publish release" });
-    expect(publish).toHaveAccessibleDescription(
-      expect.stringMatching(
-        /no answer from GitHub.*Select Re-read Harness, then open the release again\./,
-      ),
-    );
-    expect(publish).toHaveAttribute("aria-disabled", "true");
+    // The failure notice's heading is the cause.
+    expectTooltipCause(publish, "no answer from GitHub");
   });
 });

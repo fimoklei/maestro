@@ -1,5 +1,5 @@
 import type { BulkDeployReport } from "@maestro/core";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
 import type { DeployStateRead } from "../deploy-state/deployed-view";
 import { deployNotice, deployNoticeFor } from "../deploy-state/notice-copy";
@@ -85,7 +85,6 @@ export function BulkDeployRun({
   const bulk = useBulkDeploy();
   // Reuses the single-deploy path with the row's own receipt (#66).
   const forceDeploy = useDeploySkill();
-  const forceRunningId = useId();
   // The skill a refused row asked Update target to add (#955). Set, the Update
   // dialog takes this one's place: the Report described a target it may move.
   const [updateFor, setUpdateFor] = useState<string | null>(null);
@@ -230,11 +229,11 @@ export function BulkDeployRun({
       }}
       unavailable={
         !registryReady || targetLoading
-          ? { line: TARGETS_LOADING }
+          ? TARGETS_LOADING
           : selected === null
-            ? { line: NO_TARGET_CHOSEN }
+            ? NO_TARGET_CHOSEN
             : isGlobal && globalDisabled
-              ? { line: NO_TOOL_DETECTED }
+              ? NO_TOOL_DETECTED
               : null
       }
       fieldsChanged={chosen !== null}
@@ -269,11 +268,9 @@ export function BulkDeployRun({
                   running: forceDeploy.isPending
                     ? forceDeploy.variables.name
                     : null,
-                  runningId: forceRunningId,
                 },
                 onUpdate: setUpdateFor,
               }),
-              runningId: forceRunningId,
             }
       }
       reportFailure={forceWrite.failure}
@@ -366,8 +363,6 @@ type Force = {
   run: (name: string, confirmedCopyReceipt?: string) => void;
   /** The skill whose Deploy again is in flight: a second press would send a second deploy (#757). */
   running: string | null;
-  /** The busy button's id, so the dialog's ✕ can point to it. */
-  runningId: string;
 };
 
 function deployAgain(
@@ -382,7 +377,6 @@ function deployAgain(
         label: ACTIONS.deploy.busy,
         onClick,
         status: "busy",
-        id: force.runningId,
       }
     : { label: `Deploy ${name} again`, onClick, status: "locked" };
 }

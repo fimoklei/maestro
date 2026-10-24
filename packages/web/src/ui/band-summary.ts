@@ -15,8 +15,8 @@ export type BandCount = {
   family: "failed" | "attention";
   /** Present only where the screen has a status filter. */
   filter?: { pressed: boolean; onToggle: () => void };
-  /** Its 0 blocks a band 1 action: it shows at 0 until every count is 0, under `id` for that action to point at. */
-  gate?: { id: string };
+  /** Its 0 blocks a band 1 action: it shows at 0 until every count is 0. */
+  gate?: true;
 };
 
 /** A count chip a screen offers: its word, family, and the status words it covers. */

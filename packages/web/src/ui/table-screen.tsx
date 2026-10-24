@@ -4,18 +4,17 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
-  useId,
   useRef,
   useState,
 } from "react";
 import { type Band, BandRow } from "./band";
+import { bandSummary } from "./band-summary";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { rereadLabel } from "./control-labels";
 import { DataTable, type DataTableProps } from "./data-table";
 import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
-import type { CauseText } from "./gated-button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice } from "./notice";
@@ -57,17 +56,17 @@ type TableScreenBase<T extends RowData> = {
   /** Follows the last row while rows are chosen, held in view as the table scrolls. */
   selectionBar?: ReactNode;
   /** In place of the table when the narrowing leaves no row; an active filter adds Clear filters. */
-  noMatch?: Omit<EmptyStateProps, "headingLevel" | "headingId">;
+  noMatch?: Omit<EmptyStateProps, "headingLevel">;
   /** In place of the table once a read answered with no rows; none: nothing. */
-  empty?: Omit<EmptyStateProps, "headingLevel" | "headingId">;
+  empty?: Omit<EmptyStateProps, "headingLevel">;
   /** The open row's pane, built on `DetailPane`; none: rows do not open. */
   pane?: (row: T, frame: PaneFrame) => ReactNode;
   /** The screen's dialogs. */
   children?: ReactNode;
 };
 
-// Filter and Display point at the frame's own failed-read notice, so a screen
-// with its own notice has no view options.
+// Filter and Display take their cause from the frame's own failed-read
+// notice, so a screen with its own notice has no view options.
 export type TableScreenProps<T extends RowData> = TableScreenBase<T> &
   (
     | {
@@ -125,11 +124,6 @@ export function TableScreen<T extends RowData>({
       (key) => (shownGroups.message?.(key) ?? null) !== null,
     ) ?? [];
   const showTable = state.skeleton || visible.length > 0 || speaking.length > 0;
-  const ids = useId();
-  const noticeId = `${ids}-notice`;
-  const wordId = band?.wordId ?? `${ids}-word`;
-  const emptyId = `${ids}-empty`;
-  const lineId = (key: string) => `${ids}-line-${speaking.indexOf(key)}`;
   // One notice per band: a failed read replaces the empty state.
   const emptyState =
     !state.settled || state.notice !== null
@@ -146,18 +140,24 @@ export function TableScreen<T extends RowData>({
               ),
             }
         : empty;
-  // Filter and Display point to what the frame drew in place of rows; while
+  // Filter and Display give the words the frame drew in place of rows; while
   // skeleton rows stand in, it drew no cause, so they stay usable.
-  const drawnCause = (): CauseText | undefined => {
-    if (state.notice !== null) return { describedBy: noticeId };
+  const drawnCause = (): string | undefined => {
+    if (state.notice !== null) return state.notice.label;
     if (!state.settled) {
-      return band === undefined ? undefined : { describedBy: wordId };
+      // The summary's word never depends on the read's age.
+      return band === undefined
+        ? undefined
+        : (bandSummary(band.summary, new Date()).word ?? undefined);
     }
-    if (!showTable) {
-      return emptyState === undefined ? undefined : { describedBy: emptyId };
-    }
+    if (!showTable) return emptyState?.title;
     if (state.skeleton || speaking.length === 0) return undefined;
-    return { describedBy: speaking.map(lineId).join(" ") };
+    // The first line alone: the rest says how to fill the other groups.
+    return (
+      speaking
+        .map((key) => shownGroups?.messageText?.(key) ?? null)
+        .find((text) => text !== null) ?? undefined
+    );
   };
   const viewCause = view?.blocked ? drawnCause() : undefined;
 
@@ -204,9 +204,7 @@ export function TableScreen<T extends RowData>({
           title={state.name}
           action={action}
           band2={
-            <BandRow
-              band={band === undefined ? undefined : { ...band, wordId }}
-            >
+            <BandRow band={band}>
               <IconButton
                 ref={state.rereadRef}
                 label={rereadLabel(state.name)}
@@ -239,7 +237,7 @@ export function TableScreen<T extends RowData>({
                 // Mounted before a failure is, so it is announced (#465); the
                 // padding comes only with the notice.
                 <div className={state.notice === null ? undefined : "p-panel"}>
-                  <Notice id={noticeId} trigger="load" notice={state.notice} />
+                  <Notice trigger="load" notice={state.notice} />
                 </div>
               )}
               {showTable ? (
@@ -264,11 +262,7 @@ export function TableScreen<T extends RowData>({
                     getRowId={rowId}
                     loading={state.skeleton}
                     skeletonRows={Math.min(rows.length || firstReadRows, 30)}
-                    groups={
-                      shownGroups === undefined
-                        ? undefined
-                        : { ...shownGroups, lineId }
-                    }
+                    groups={shownGroups}
                     columnVisibility={
                       view === undefined
                         ? undefined
@@ -294,11 +288,7 @@ export function TableScreen<T extends RowData>({
               ) : (
                 <>
                   {emptyState === undefined ? null : (
-                    <EmptyState
-                      headingLevel={2}
-                      headingId={emptyId}
-                      {...emptyState}
-                    />
+                    <EmptyState headingLevel={2} {...emptyState} />
                   )}
                   {selectionBar}
                 </>

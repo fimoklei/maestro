@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { expectVisibleCause, jsonResponse } from "../test-utils";
+import { expectTooltipCause, jsonResponse } from "../test-utils";
 import {
   importRoutes,
   landed,
@@ -140,7 +140,7 @@ describe("Deploy-state — Import local edits on a skill row", () => {
     expect(
       within(flagged).getByRole("checkbox", { name: "tdd" }),
     ).not.toBeChecked();
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Import skills" }),
       "Check at least one skill.",
     );
@@ -163,7 +163,7 @@ describe("Deploy-state — Import local edits on a skill row", () => {
     expect(box).toHaveAccessibleDescription(
       "Deployed by another Harness. Make the change in that Harness.",
     );
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Import skills" }),
       "You cannot import any of these skills.",
     );
