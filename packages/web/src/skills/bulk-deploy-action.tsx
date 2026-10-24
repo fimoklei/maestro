@@ -24,7 +24,7 @@ import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
-import { useScreenReport, useWriteAction } from "../ui/use-write-action";
+import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
 import { bulkDeploySkillGroups } from "./bulk-deploy-skill-groups";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
@@ -94,21 +94,19 @@ export function BulkDeployRun({
     { name: string; version: string }[]
   >([]);
   const update = useUpdateTarget();
-  const report = useScreenReport();
+  const screen = useScreenWrites();
   // The Report states the run, its request failure included.
   const bulkWrite = useWriteAction(bulk, {
-    report,
+    screen,
     action: "deploy",
-    show: "row",
-    name: () => null,
+    subject: () => null,
     failure: () => null,
   });
   // The Report states the reinstall: its row moves to Deployed.
   const forceWrite = useWriteAction(forceDeploy, {
-    report,
+    screen,
     action: "deploy",
-    show: "row",
-    name: () => null,
+    subject: () => null,
     failure: (error) => ({ ...deployNotice(error), level: "error" as const }),
   });
 

@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sentence } from "../test-utils";
 import {
   type FakeRegistry,
   REGISTER,
@@ -153,7 +154,13 @@ describe("Register repository", () => {
       { path: "/home/me/acme-web" },
     ]);
     expect(await screen.findByText("/home/me/acme-web")).toBeInTheDocument();
-    expect(statusRegion()).toHaveTextContent("Registered …/me/acme-web.");
+    await waitFor(() =>
+      expect(statusRegion()).toHaveTextContent("Registered …/me/acme-web."),
+    );
+    // The row is the feedback: no toast says it again.
+    expect(
+      screen.getAllByText(sentence("Registered …/me/acme-web.")),
+    ).toHaveLength(1);
   });
 
   it("announces the new repository wherever the registry lists it", async () => {
