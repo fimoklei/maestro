@@ -426,14 +426,26 @@ const openStatus = (request: ReviewRequest): ReviewStatus => {
     : "waiting-for-review";
 };
 
-// Order matters: merged is read first.
-const ENDED = [
-  ["merged", "proposal-merged"],
-  ["closed", "proposal-closed"],
-] as const satisfies readonly (readonly [
-  ReviewRequest["state"],
-  ReviewStatus,
-])[];
+type EndedRequest = ReviewRequest & {
+  state: Exclude<ReviewRequest["state"], "open">;
+};
+
+const ENDED_STATUS = {
+  merged: "proposal-merged",
+  closed: "proposal-closed",
+} as const satisfies Record<EndedRequest["state"], ReviewStatus>;
+
+// The highest number is the newest request, whatever it ended as.
+const newestEnded = (matching: ReviewRequest[]): EndedRequest | undefined =>
+  matching
+    .filter((request): request is EndedRequest => request.state !== "open")
+    .reduce<EndedRequest | undefined>(
+      (newest, request) =>
+        newest === undefined || request.number > newest.number
+          ? request
+          : newest,
+      undefined,
+    );
 
 const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
   const { trees, review } = input;
@@ -488,17 +500,14 @@ const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
     if (proposal === null) {
       continue;
     }
-    // Merged first: origin/HEAD lagging one read behind must not read as a
-    // missing request.
-    const settled = ENDED.flatMap(([state, status]) => {
-      const requests = matching.filter((request) => request.state === state);
-      return requests.length === 0 ? [] : [{ status, requests }];
-    })[0];
-    if (settled !== undefined) {
+    // Any ended request holds the row: origin/HEAD lagging one read behind a
+    // merge must not read as a missing request.
+    const ended = newestEnded(matching);
+    if (ended !== undefined) {
       rows.push({
-        ...blankRow("pending-review", ref, settled.status, change),
+        ...blankRow("pending-review", ref, ENDED_STATUS[ended.state], change),
         ...local,
-        requests: settled.requests.map(link),
+        requests: [link(ended)],
       });
       continue;
     }
