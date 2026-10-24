@@ -1,14 +1,39 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { type ReactNode, useMemo } from "react";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
+import { useTableScreen } from "../ui/use-table-screen";
+import { ScreenWritesContext } from "../ui/use-write-action";
 import { SelectedSkills } from "./selected-skills";
 
 // Sonner keeps toasts in a module-global store that leaks across tests.
 export const clearToasts = () => toast.dismiss();
+
+/** A settled table screen's writes and its toast host, around a flow mounted alone. */
+export function ScreenHost({ children }: { children: ReactNode }) {
+  const state = useTableScreen({
+    name: "Deploy-state",
+    reading: false,
+    settled: true,
+    failure: null,
+    onReread: () => {},
+    openOnArrival: null,
+  });
+  const writes = useMemo(
+    () => ({ report: state.report, settle: state.settle }),
+    [state.report, state.settle],
+  );
+  return (
+    <ScreenWritesContext.Provider value={writes}>
+      {children}
+      <ToastHost />
+    </ScreenWritesContext.Provider>
+  );
+}
 
 const PENDING_DRIFT = driftViewModel({ data: undefined, isError: false });
 
@@ -89,7 +114,7 @@ export function renderRow({
   name?: string;
 } = {}) {
   const list = (primitives: (typeof tdd)[]) => (
-    <>
+    <ScreenHost>
       <SelectedSkills
         row={{
           primitives,
@@ -102,8 +127,7 @@ export function renderRow({
         onRemoved={onRemoved}
         headingRef={null}
       />
-      <ToastHost />
-    </>
+    </ScreenHost>
   );
   const { rerender } = renderWithQuery(list(primitives));
   const withoutTdd = () => rerender(list([]));
