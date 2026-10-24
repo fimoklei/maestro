@@ -102,6 +102,7 @@ const SURFACES: Surface[] = [
       "no-usable-origin": true,
       "no-answer": true,
       "empty-delta": true,
+      "root-skill-file": true,
       "already-released": true,
       "plan-changed": true,
       "publish-failed": true,

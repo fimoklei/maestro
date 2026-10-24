@@ -558,9 +558,15 @@ and `docs/research/1564-apm-ignored-paths.md`, which hold the full tables.
   The recursive `**/*.prompt.md` globs belong to `apm compile`, `apm run`
   and link resolution, none of which writes a deployed file during install.
 - **A `SKILL.md` at the Harness root ships the whole repo except `.apm/`**
-  as skill files (source, `deployable_source_plan.py:154-172`). Every
-  path above stays undelivered only while the root has no `SKILL.md`. A
-  file inside `.apm/skills/<name>/` ships with that skill.
+  as one skill named after the package (source,
+  `deployable_source_plan.py:154-172`). Every path above stays undelivered
+  only while the root has no `SKILL.md`. A file inside `.apm/skills/<name>/`
+  ships with that skill. Measured 2026-10-24 (#1587), a project-scope root
+  install with `--skill`: the entry reads `package_type: hybrid`, and
+  `.claude/skills/<package>/` receives `SKILL.md`, `README.md`, `apm.yml`
+  and `.maestro/prompts/*` beside the selected skills. apm prints `--skill
+  filter ignored`, yet honours the Selection; a later install and a named
+  uninstall succeed.
 - **The Harness's own `targets:` narrows delivery.** apm intersects the
   consumer's `-t` with the package's declared targets (source,
   `install/target_filter.py:72-120`; measured with `targets: [claude,

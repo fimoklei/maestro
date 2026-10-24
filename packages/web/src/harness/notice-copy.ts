@@ -33,6 +33,7 @@ import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, named, type Phrase, phrase, plainText } from "../ui/phrase";
+import { ROOT_SKILL_FILE } from "./dialog-copy";
 import { ITEM_WORDS, type ItemWords } from "./item-words";
 
 // A new code in core fails typecheck here until it has a row.
@@ -75,6 +76,12 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
     label: "Nothing to release",
     message:
       "Nothing was published. No change has merged since the last release.",
+  },
+  "root-skill-file": {
+    level: "error",
+    label: ROOT_SKILL_FILE,
+    message:
+      "Nothing was published. Remove SKILL.md from the root of the default branch on GitHub.",
   },
   "already-released": {
     level: "error",

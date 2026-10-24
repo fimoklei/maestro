@@ -42,6 +42,7 @@ const PLAN: ReleasePlan = {
   revision: "0123456789abcdef0123456789abcdef01234567",
   defaultBranch: "main",
   findings: [],
+  blocked: null,
 };
 
 const meta = {
@@ -136,7 +137,17 @@ export const NoChanges: Story = {
         reason: "Nothing has changed since the last release.",
         delta: [],
         findings: [],
+        blocked: "empty-delta",
       },
+    },
+  },
+};
+
+export const RootSkillFile: Story = {
+  args: {
+    load: {
+      kind: "ready",
+      plan: { ...PLAN, findings: [], blocked: "root-skill-file" },
     },
   },
 };

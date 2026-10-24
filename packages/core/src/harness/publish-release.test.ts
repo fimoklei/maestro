@@ -35,6 +35,7 @@ const RECOMPUTED: ReleasePlan = {
   revision: "moved",
   defaultBranch: "main",
   findings: [],
+  blocked: "empty-delta",
 };
 
 // Both travel so a remote that moved under either one is refused.
@@ -46,10 +47,16 @@ const CONFIRMED: ReleaseConfirmation = {
 };
 
 // v1.2.3 tags `old`; origin/HEAD `head` added `research` since.
-const releasable = (atHead: Record<string, string> = { research: "new" }) => {
+const releasable = (
+  atHead: Record<string, string> = { research: "new" },
+  rootFiles?: string[],
+) => {
   const git = new InMemoryHarnessGit();
   git.commit("old", {});
-  git.commit("head", atHead, { parent: "old" });
+  git.commit("head", atHead, {
+    parent: "old",
+    ...(rootFiles === undefined ? {} : { rootFiles }),
+  });
   git.tip = "head";
   git.head = "head";
   git.tags = [{ name: "v1.2.3", commit: "old" }];
@@ -359,6 +366,57 @@ describe("PublishRelease", () => {
       recomputed: RECOMPUTED,
     });
     expect(git.published).toEqual([]);
+  });
+
+  it("refuses a commit with a SKILL.md at the root, and pushes no tag", async () => {
+    const git = releasable(undefined, ["SKILL.md", "apm.yml"]);
+
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
+      ok: false,
+      error: "root-skill-file",
+      recomputed: RECOMPUTED,
+    });
+    expect(git.published).toEqual([]);
+  });
+
+  it("publishes a release whose root holds files other than SKILL.md", async () => {
+    const git = releasable(undefined, ["README.md", "apm.yml"]);
+
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
+      ok: true,
+      tag: "v1.2.4",
+      revision: "head",
+    });
+  });
+
+  it("has no answer when the root of the commit could not be listed", async () => {
+    const git = releasable();
+    git.unlistableRoots.add("head");
+
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+    expect(git.published).toEqual([]);
+  });
+
+  it("publishes again once the root SKILL.md is gone from the default branch", async () => {
+    const git = new InMemoryHarnessGit();
+    git.commit("old", {});
+    git.commit(
+      "stray",
+      { research: "new" },
+      { parent: "old", rootFiles: ["SKILL.md"] },
+    );
+    git.commit("head", { research: "new" }, { parent: "stray" });
+    git.tip = "head";
+    git.tags = [{ name: "v1.2.3", commit: "old" }];
+
+    await expect(buildPublish(git).execute(CONFIRMED)).resolves.toEqual({
+      ok: true,
+      tag: "v1.2.4",
+      revision: "head",
+    });
   });
 
   it("publishes a release whose only change is a prompt", async () => {

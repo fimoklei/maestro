@@ -91,6 +91,7 @@ describe("ReadHarnessState.planRelease", () => {
           { kind: "changed", change: "edit", name: "tdd", author: "Ada" },
         ],
         findings: [],
+        blocked: null,
       },
     });
   });
@@ -151,6 +152,42 @@ describe("ReadHarnessState.planRelease", () => {
           { skill: "nomanifest", problem: "missing-manifest" },
         ],
       },
+    });
+  });
+
+  it("blocks a release with nothing to release", async () => {
+    const git = releasedAt({ tdd: manifest("tdd") }, { tdd: manifest("tdd") });
+
+    await expect(buildRead(git).planRelease()).resolves.toMatchObject({
+      ok: true,
+      plan: { delta: [], blocked: "empty-delta" },
+    });
+  });
+
+  it("blocks a release while the default branch holds a SKILL.md at its root", async () => {
+    const git = new InMemoryHarnessGit();
+    git.commit("old", {});
+    git.commit(
+      "head",
+      { tdd: manifest("tdd") },
+      { parent: "old", rootFiles: ["SKILL.md", "apm.yml"] },
+    );
+    git.tip = "head";
+    git.tags = [{ name: "v1.2.3", commit: "old" }];
+
+    await expect(buildRead(git).planRelease()).resolves.toMatchObject({
+      ok: true,
+      plan: { revision: "head", blocked: "root-skill-file" },
+    });
+  });
+
+  it("has no answer when the root of the default branch could not be listed", async () => {
+    const git = releasedAt({}, { tdd: manifest("tdd") });
+    git.unlistableRoots.add("head");
+
+    await expect(buildRead(git).planRelease()).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
     });
   });
 

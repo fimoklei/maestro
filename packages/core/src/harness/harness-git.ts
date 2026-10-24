@@ -480,6 +480,20 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 
   readPrimitives = listPrimitivesAt;
+
+  async readRootFiles(root: string, ref: string): Promise<string[] | null> {
+    // `-z`: otherwise git quotes any non-ASCII name.
+    const listing = await this.readOutput(root, ["ls-tree", "-z", ref]);
+    return listing === null
+      ? null
+      : listing.split("\0").flatMap((line) => {
+          const [meta = "", name] = line.split("\t");
+          return name !== undefined && meta.split(" ")[1] === "blob"
+            ? [name]
+            : [];
+        });
+  }
+
   readAuthors = readAuthors;
   readStagedDifference = readStagedDifference;
   writePrimitiveInto = writePrimitiveInto;

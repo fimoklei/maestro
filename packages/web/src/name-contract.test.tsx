@@ -511,6 +511,7 @@ const SURFACES: {
             revision: "0123456789abcdef0123456789abcdef01234567",
             defaultBranch: "main",
             findings: [{ skill: "broken", problem: "missing-manifest" }],
+            blocked: null,
           },
         }}
         onClose={vi.fn()}

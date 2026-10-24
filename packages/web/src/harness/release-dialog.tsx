@@ -15,7 +15,12 @@ import { machine, named, phrase } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { SegmentedControl } from "../ui/segmented-control";
 import { StatusLine } from "../ui/status-line";
-import { FINDING_TEXT, skillChecksNotice } from "./dialog-copy";
+import {
+  FINDING_TEXT,
+  ROOT_SKILL_FILE,
+  rootSkillFileNotice,
+  skillChecksNotice,
+} from "./dialog-copy";
 import { ReleaseDelta } from "./release-delta";
 
 // Loading and error travel with the plan so the modal stays mounted: a focus
@@ -59,9 +64,9 @@ export function ReleaseDialog({
         ].join("@")
       : null;
   const [shownPlanId, setShownPlanId] = useState(planId);
-  // A blocked Publish release keeps its label and points at the line that says why.
+  // A blocked Publish release keeps its label and points at the text that says why.
   const loadingId = useId();
-  const emptyId = useId();
+  const blockedId = useId();
   // The origin's last path segment; the card names the whole origin.
   const repoName = origin.slice(origin.lastIndexOf("/") + 1);
   if (planId !== shownPlanId) {
@@ -85,14 +90,21 @@ export function ReleaseDialog({
             ? { describedBy: loadingId }
             : load.kind === "error"
               ? { failure: true }
-              : load.plan.delta.length === 0
-                ? { describedBy: emptyId }
+              : load.plan.blocked !== null
+                ? { describedBy: blockedId }
                 : null,
         onRun: () =>
           load.kind === "ready" &&
           onPublish(chosenStep ?? load.plan.proposedStep, load.plan),
       }}
-      failure={publishError ?? (load.kind === "error" ? load.notice : null)}
+      failure={
+        // The plan's own notice already states this refusal, with the branch.
+        load.kind === "ready" &&
+        load.plan.blocked === "root-skill-file" &&
+        publishError?.label === ROOT_SKILL_FILE
+          ? null
+          : (publishError ?? (load.kind === "error" ? load.notice : null))
+      }
       // The plan is the body, and it arrives after the panel is announced.
       describedBy={null}
       fieldsChanged={chosenStep !== null}
@@ -103,7 +115,7 @@ export function ReleaseDialog({
       ) : load.kind === "ready" ? (
         <PlanBody
           origin={origin}
-          emptyId={emptyId}
+          blockedId={blockedId}
           plan={load.plan}
           step={chosenStep ?? load.plan.proposedStep}
           onStepChange={setChosenStep}
@@ -117,13 +129,13 @@ export function ReleaseDialog({
 // semver.
 function PlanBody({
   origin,
-  emptyId,
+  blockedId,
   plan,
   step,
   onStepChange,
 }: {
   origin: string;
-  emptyId: string;
+  blockedId: string;
   plan: ReleasePlan;
   step: SemverStep;
   onStepChange: (step: SemverStep) => void;
@@ -143,8 +155,8 @@ function PlanBody({
               need not be unique in a repository this size (#519). */}
           <Fact label="Revision" value={plan.revision} wrap />
         </dl>
-        {/* An empty plan has no version to release. */}
-        {empty ? null : (
+        {/* A blocked plan has no version to release. */}
+        {plan.blocked !== null ? null : (
           <div className="mt-panel flex flex-wrap items-end justify-between gap-x-panel gap-y-cell">
             <div className="flex flex-col gap-tight">
               <span className="font-ui text-gray-11 text-meta">
@@ -171,12 +183,22 @@ function PlanBody({
         )}
       </Card>
       {empty ? (
-        <p id={emptyId} className="m-0 text-gray-11">
+        <p
+          id={plan.blocked === "empty-delta" ? blockedId : undefined}
+          className="m-0 text-gray-11"
+        >
           No changes yet. Changes merged after the last release appear here.
         </p>
       ) : (
         <ReleaseDelta movements={plan.delta} />
       )}
+      {plan.blocked === "root-skill-file" ? (
+        <Notice
+          trigger="load"
+          id={blockedId}
+          notice={rootSkillFileNotice(plan.defaultBranch)}
+        />
+      ) : null}
       <Notice
         trigger="load"
         notice={

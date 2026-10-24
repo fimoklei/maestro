@@ -19,6 +19,7 @@ import {
   type ReleaseDelta,
   readReleaseDelta,
 } from "./release-delta";
+import { type ReleaseBlock, readReleaseReadiness } from "./release-readiness";
 import { highestReleaseTag } from "./release-tag";
 import type { HarnessSkillTree } from "./released-content";
 import {
@@ -115,6 +116,9 @@ export interface HarnessGitPort {
   readSkillTrees(root: string, ref: string): Promise<HarnessSkillTree[] | null>;
   // Every type. Null is an unreadable ref; a missing type folder is none of that type.
   readPrimitives(root: string, ref: string): Promise<HarnessObject[] | null>;
+  // The files directly at the root of `ref`'s tree, never a folder. Null is an
+  // unreadable ref.
+  readRootFiles(root: string, ref: string): Promise<string[] | null>;
   // Keyed by `primitiveKey`.
   readAuthors(
     root: string,
@@ -199,7 +203,7 @@ export type HarnessStateResult =
   | { ok: true; state: HarnessState }
   | { ok: false; error: HarnessStateError };
 
-// `findings` are advisory and never disable a release (#519).
+// `findings` are advisory and never disable a release (#519); `blocked` alone does.
 export type ReleasePlan = {
   delta: PendingMovement[];
   previousTag: string | null;
@@ -211,6 +215,7 @@ export type ReleasePlan = {
   revision: string;
   defaultBranch: string;
   findings: StructuralFinding[];
+  blocked: ReleaseBlock | null;
 };
 
 // `no-answer`: nothing to compare against, never an empty release.
@@ -269,35 +274,21 @@ export class ReadHarnessState {
   // A refused publication recomputes here against the root it already holds,
   // never a harness connected while its push was in flight (#521).
   async planReleaseAt(root: string): Promise<ReleasePlanResult> {
-    const facts = await this.deps.git.readFacts(root);
     const freshness = await this.deps.freshness.read(root);
-    const origin =
-      facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
-    if (origin === null) {
-      return { ok: false, error: "no-usable-origin" };
+    const ready = await readReleaseReadiness(
+      this.deps.git,
+      root,
+      freshness.lastFetchedAt !== null,
+    );
+    if (!ready.ok) {
+      return ready;
     }
-
-    // A failed tag read is not a first release: proposing v0.1.0 over it could
-    // collide with an existing version (#519).
-    const confirmed = freshness.lastFetchedAt !== null;
-    const head = facts.defaultBranchCommit;
-    const tags = facts.tags;
-    if (
-      !confirmed ||
-      head === null ||
-      facts.defaultBranch === null ||
-      tags === null
-    ) {
+    const { released, head, defaultBranch, content } = ready.readiness;
+    // One read serves the delta, the block and the checks: two reads can disagree.
+    if (content === null) {
       return { ok: false, error: "no-answer" };
     }
-
-    const released = highestReleaseTag(tags);
-    // One read serves both the delta and the checks: two reads can disagree.
-    const read = await readReleaseDelta(this.deps.git, root, released, head);
-    if (read === null) {
-      return { ok: false, error: "no-answer" };
-    }
-    const delta = read.movements;
+    const delta = content.delta.movements;
 
     const proposal = proposeReleaseVersion(released?.name ?? null, delta);
     return {
@@ -312,8 +303,13 @@ export class ReadHarnessState {
         reason: proposal.reason,
         versions: proposal.versions,
         revision: head,
-        defaultBranch: facts.defaultBranch,
-        findings: await this.structuralFindings(root, head, read.current),
+        defaultBranch,
+        findings: await this.structuralFindings(
+          root,
+          head,
+          content.delta.current,
+        ),
+        blocked: content.blocked,
       },
     };
   }

@@ -727,6 +727,8 @@ describe("Harness release", () => {
       },
     ],
     ["a step the dialog has no version for", { proposedStep: "sideways" }],
+    ["no word on whether it can be published", { blocked: undefined }],
+    ["a block the dialog has no words for", { blocked: "sideways" }],
   ])("plans again rather than paint %s", async (_name, broken) => {
     const calls = stubHarnessServer({
       read: { body: FETCHED },
@@ -814,6 +816,74 @@ describe("Harness release", () => {
     expect(alert).toHaveTextContent("Nothing to release");
     expect(alert).toHaveTextContent(
       "Nothing was published. No change has merged since the last release.",
+    );
+  });
+
+  it("states a refusal over a root SKILL.md once, through the plan that says so", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: {
+        body: {
+          error: "root-skill-file",
+          plan: { ...PLAN, blocked: "root-skill-file" },
+        },
+        status: 409,
+      },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    // The refusal and the recomputed plan state one block, so it shows once.
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("button", { name: /^publish release$/i }),
+      ).toHaveAttribute("aria-disabled", "true"),
+    );
+    expect(
+      within(dialog).getAllByText("SKILL.md at the Harness root"),
+    ).toHaveLength(1);
+    expect(
+      within(dialog).getByText(
+        sentence(/^Remove SKILL\.md from the root of main on GitHub\. /),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing was published when a root SKILL.md refusal carries no plan", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: { body: { error: "root-skill-file" }, status: 409 },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText(sentence(/^Suggested: v1\.3\.0\./));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    const alert = await within(await screen.findByRole("dialog")).findByRole(
+      "alert",
+    );
+    expect(alert).toHaveTextContent("SKILL.md at the Harness root");
+    expect(alert).toHaveTextContent(
+      "Nothing was published. Remove SKILL.md from the root of the default branch on GitHub.",
     );
   });
 });

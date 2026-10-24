@@ -170,4 +170,26 @@ describe("Harness primitives by type", { timeout: 30_000 }, () => {
       "Review [PR LINK] and $1\n",
     );
   });
+
+  it("lists the files at the root of a commit, never a nested SKILL.md", async () => {
+    await writeFile(join(root, "SKILL.md"), "---\ndescription: x\n---\n");
+    await writeFile(join(root, "Read me ü.md"), "Hi\n");
+    await commitAll("root files");
+    const git = adapter();
+
+    expect((await git.readRootFiles(root, "HEAD"))?.sort()).toEqual([
+      "Read me ü.md",
+      "SKILL.md",
+    ]);
+    expect(await git.readRootFiles(root, "v0.1.0")).toEqual([]);
+    expect(await git.readRootFiles(root, "no-such-ref")).toBeNull();
+  });
+
+  it("lists files only, so a folder named SKILL.md is not one", async () => {
+    await mkdir(join(root, "SKILL.md"));
+    await writeFile(join(root, "SKILL.md", "notes.md"), "Hi\n");
+    await commitAll("a folder named like a file");
+
+    expect(await adapter().readRootFiles(root, "HEAD")).toEqual([]);
+  });
 });

@@ -190,6 +190,7 @@ export {
   type ReleasePlanError,
 } from "./harness/read-harness-state";
 export type { PendingMovement } from "./harness/release-delta";
+export type { ReleaseBlock } from "./harness/release-readiness";
 export { RELEASE_TAG_PATTERN } from "./harness/release-tag";
 export {
   type HarnessSkillTree,
