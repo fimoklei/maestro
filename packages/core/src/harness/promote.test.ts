@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
+import { harnessDisk } from "./harness-disk.fake";
 import { HarnessFetchGate } from "./harness-fetch-gate";
 import { InMemoryHarnessGit, skillRef } from "./harness-git.fake";
 import type {
@@ -70,17 +71,11 @@ function buildPromote(
     onEdit?: (number: number, title: string) => void;
     createOutcome?: ReviewWriteOutcome;
     fetchGate?: HarnessFetchGate;
-    // A link: not a plain folder or file, so never followed.
-    links?: string[];
+    disk?: Parameters<typeof harnessDisk>[0];
   },
 ) {
   return new Promote({
-    fs: {
-      realpath: async (path) => path,
-      exists: async () => true,
-      isDirectoryEntry: async (path) => !overrides?.links?.includes(path),
-      isFileEntry: async (path) => !overrides?.links?.includes(path),
-    },
+    fs: harnessDisk(overrides?.disk),
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     locks: new InFlightLocks(),
@@ -363,7 +358,9 @@ describe("Promote", () => {
 
     await expect(
       buildPromote(git, {
-        links: ["/harness/.maestro/prompts/pr-review.md"],
+        disk: {
+          links: { "/harness/.maestro/prompts/pr-review.md": "/elsewhere.md" },
+        },
       }).execute({ type: "prompt", name: "pr-review" }),
     ).resolves.toEqual({ ok: false, error: "destination-unsafe" });
     expect(git.pushed).toEqual([]);

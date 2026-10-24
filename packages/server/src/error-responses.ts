@@ -269,6 +269,7 @@ export const localDeletionErrorResponses: ErrorTable<DeleteLocalError> = {
   "no-answer": { status: 409 },
   "confirmation-stale": { status: 409 },
   "destination-unsafe": { status: 409 },
+  "destination-unreadable": { status: 409 },
   "delete-failed": { status: 500 },
   "delete-in-progress": { status: 409 },
 };
@@ -305,6 +306,7 @@ export const discardErrorResponses: ErrorTable<DiscardChangeError> = {
   "nothing-to-discard": { status: 409 },
   "confirmation-stale": { status: 409 },
   "destination-unsafe": { status: 409 },
+  "destination-unreadable": { status: 409 },
   "discard-in-progress": { status: 409 },
   "discard-failed": { status: 500 },
 };

@@ -4,6 +4,7 @@ import type { FileSystemPort } from "../registry/file-system";
 import {
   ensureHarnessPrimitiveDir,
   inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
 } from "./harness-primitive-dir";
 import type { ImportMode } from "./import-mode";
 import {
@@ -44,15 +45,7 @@ export type ImportPromptCheckResult =
 export class ImportPrompt {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<
-      FileSystemPort,
-      | "realpath"
-      | "exists"
-      | "isFileEntry"
-      | "isDirectoryEntry"
-      | "ensureDir"
-      | "writeFile"
-    >;
+    fs: PrimitiveEntryFs & Pick<FileSystemPort, "ensureDir" | "writeFile">;
     locks: InFlightLocks;
   };
 

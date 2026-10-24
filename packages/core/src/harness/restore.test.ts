@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import type { CopyEntryFacts } from "../filesystem/copy-tree-fs";
+import { harnessDisk } from "./harness-disk.fake";
 import { InMemoryHarnessGit, skillRef } from "./harness-git.fake";
 import type { WorktreeAmbiguity } from "./read-harness-state";
 import { Restore } from "./restore";
@@ -27,9 +28,8 @@ function build(overrides?: {
   atHead?: string[] | null;
   describes?: (CopyEntryFacts | null)[];
   write?: "missing" | "failed";
-  realpath?: (path: string) => Promise<string>;
-  // What sits at the destination before the restore starts.
-  destination?: "plain" | "link";
+  // The disk before the restore starts; by default, no `tdd` on it.
+  disk?: Parameters<typeof harnessDisk>[0];
   moveFails?: boolean;
   locks?: InFlightLocks;
   ambiguity?: WorktreeAmbiguity | null;
@@ -66,15 +66,7 @@ function build(overrides?: {
   const restore = new Restore({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : ROOT,
-    fs: {
-      realpath: overrides?.realpath ?? (async (path) => path),
-      exists: async (path) =>
-        path === DESTINATION ? overrides?.destination !== undefined : true,
-      isDirectoryEntry: async (path) =>
-        path !== DESTINATION || overrides?.destination === "plain",
-      isFileEntry: async (path) =>
-        path !== DESTINATION || overrides?.destination === "plain",
-    },
+    fs: harnessDisk(overrides?.disk),
     copyFs: {
       describe: async () => describes[described++] ?? null,
       createStagingDir: async () => STAGING,
@@ -206,7 +198,7 @@ describe("Restore", () => {
   });
 
   it("refuses when anything already sits at the destination", async () => {
-    const { restore, git } = build({ destination: "plain" });
+    const { restore, git } = build({ disk: { entries: [DESTINATION] } });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-exists",
@@ -216,7 +208,9 @@ describe("Restore", () => {
 
   // Real git lists no link, so the skill reads as deleted and Restore is offered.
   it("refuses a destination that is a link", async () => {
-    const { restore, git } = build({ destination: "link" });
+    const { restore, git } = build({
+      disk: { links: { [DESTINATION]: "/elsewhere/tdd" } },
+    });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
@@ -237,7 +231,7 @@ describe("Restore", () => {
 
   it("refuses when the skills folder does not resolve inside the Harness", async () => {
     const { restore, git } = build({
-      realpath: async (path) => (path === SKILLS ? "/elsewhere/skills" : path),
+      disk: { links: { [SKILLS]: "/elsewhere/skills" } },
     });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
@@ -270,12 +264,7 @@ describe("Restore", () => {
   // An unread destination is never an empty one.
   it("refuses when the skills folder cannot be read at all", async () => {
     const { restore, git } = build({
-      realpath: async (path) => {
-        if (path === SKILLS) {
-          throw new Error("ENOENT");
-        }
-        return path;
-      },
+      disk: { unreadable: [SKILLS] },
     });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,

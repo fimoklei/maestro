@@ -3,7 +3,6 @@
 import type { GitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
-import type { FileSystemPort } from "../registry/file-system";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
 import {
   type HarnessObject,
@@ -11,7 +10,10 @@ import {
   proposalBranch,
   proposalCompareUrl,
 } from "./harness-primitive";
-import { inspectPrimitiveEntry } from "./harness-primitive-dir";
+import {
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
+} from "./harness-primitive-dir";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { isConcurrentlyChanged } from "./harness-stages";
 import {
@@ -55,10 +57,7 @@ type Checked =
 export class Promote {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<
-      FileSystemPort,
-      "realpath" | "exists" | "isFileEntry" | "isDirectoryEntry"
-    >;
+    fs: PrimitiveEntryFs;
     git: HarnessGitPort;
     fetchGate: Pick<HarnessFetchGate, "fetch" | "invalidate">;
     locks: InFlightLocks;

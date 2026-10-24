@@ -4,9 +4,11 @@ import { dirname, join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
-import type { FileSystemPort } from "../registry/file-system";
 import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
-import { inspectPrimitiveEntry } from "./harness-primitive-dir";
+import {
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
+} from "./harness-primitive-dir";
 import type { HarnessStages } from "./harness-stages";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
@@ -20,6 +22,7 @@ export type DiscardChangeError =
   // The default branch no longer holds the tree the confirmation named.
   | "confirmation-stale"
   | "destination-unsafe"
+  | "destination-unreadable"
   | "discard-in-progress"
   | "discard-failed";
 
@@ -33,10 +36,7 @@ export class DiscardChange {
     // The stages the rows were read from: whether a change is proposed takes
     // the review read as well as the refs.
     readStages: () => Promise<HarnessStages | null>;
-    fs: Pick<
-      FileSystemPort,
-      "realpath" | "exists" | "isFileEntry" | "isDirectoryEntry"
-    >;
+    fs: PrimitiveEntryFs;
     copyFs: Pick<
       CopyTreeFsPort,
       "createStagingDir" | "movePath" | "removePath"
@@ -123,8 +123,12 @@ export class DiscardChange {
       return { ok: false, error: "confirmation-stale" };
     }
 
-    if (entry.kind !== "plain") {
-      return { ok: false, error: "destination-unsafe" };
+    if (entry.kind === "unreadable") {
+      return { ok: false, error: "destination-unreadable" };
+    }
+    // Off the disk when the rows were read: a deletion, which stays.
+    if (entry.kind === "absent") {
+      return { ok: false, error: "nothing-to-discard" };
     }
     return await this.swap(root, ref, commit, entry.path);
   }

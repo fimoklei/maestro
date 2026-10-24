@@ -126,6 +126,16 @@ export const linkInHarness = (
   detail: `The ${w.noun} ${w.holder} or the Harness ${w.home} is a link.`,
 });
 
+/** A type folder that exists but cannot be read. */
+export const typeFolderNotRead = (
+  w: ItemWords,
+  message: string,
+): NoticeTable<"destination-unreadable">["destination-unreadable"] => ({
+  level: "error",
+  label: `${w.Noun}s folder not read`,
+  message,
+});
+
 const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
   ...harnessHeadings,
   "invalid-skill": invalidNameHeading(w),
@@ -398,6 +408,10 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
     "destination-unsafe": linkInHarness(
       w,
       `Replace the link with a real ${w.holder}, then select ${DISCARD_CHANGE} again.`,
+    ),
+    "destination-unreadable": typeFolderNotRead(
+      w,
+      `Make the Harness ${w.home} readable, then select ${DISCARD_CHANGE} again.`,
     ),
     "discard-in-progress": {
       level: "error",

@@ -10,6 +10,7 @@ import {
   harnessHeadings,
   invalidNameHeading,
   linkInHarness,
+  typeFolderNotRead,
 } from "./notice-copy";
 
 /** Delete skill and Delete prompt open from the Harness view and from their Inventory views. */
@@ -58,6 +59,10 @@ const localDeletionHeadings = ({
     "destination-unsafe": linkInHarness(
       w,
       `Nothing was deleted. Replace the link with a real ${w.holder}, then select ${w.deleteLabel} again.`,
+    ),
+    "destination-unreadable": typeFolderNotRead(
+      w,
+      `Nothing was deleted. Make the Harness ${w.home} readable, then select ${w.deleteLabel} again.`,
     ),
     "delete-failed": {
       level: "error",

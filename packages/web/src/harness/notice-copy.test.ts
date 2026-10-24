@@ -168,6 +168,7 @@ const SURFACES: Surface[] = [
       "no-answer": true,
       "confirmation-stale": true,
       "destination-unsafe": true,
+      "destination-unreadable": true,
       "delete-failed": true,
       "delete-in-progress": true,
     }),
@@ -258,6 +259,7 @@ const SURFACES: Surface[] = [
       "nothing-to-discard": true,
       "confirmation-stale": true,
       "destination-unsafe": true,
+      "destination-unreadable": true,
       "discard-in-progress": true,
       "discard-failed": true,
     }),
@@ -687,6 +689,39 @@ describe("a prompt's notices", () => {
     ).toMatchObject({
       label: "Link in the Harness",
       detail: "The skill folder or the Harness .apm/skills folder is a link.",
+    });
+  });
+
+  it("states a skills folder that cannot be read, deleting nothing", () => {
+    expect(
+      readNotice(
+        localDeletionNotice(refusal("destination-unreadable"), {
+          type: "skill",
+          name: "tdd",
+          screen: "harness",
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Skills folder not read",
+      message:
+        "Nothing was deleted. Make the Harness .apm/skills folder readable, then select Delete skill again.",
+    });
+  });
+
+  it("states a prompts folder that cannot be read, discarding nothing", () => {
+    expect(
+      readNotice(
+        discardNotice(refusal("destination-unreadable"), {
+          type: "prompt",
+          name: "pr-review",
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Prompts folder not read",
+      message:
+        "Nothing was discarded. Make the Harness .maestro/prompts folder readable, then select Discard change again.",
     });
   });
 

@@ -16,6 +16,8 @@ type FakeSeed = {
   // Absent to exists(), yet taken for an exclusive create.
   racedIntoExistence?: string[];
   unwritable?: string[];
+  // Reject a remove when listed.
+  unremovable?: string[];
 };
 
 export class InMemoryFileSystem implements FileSystemPort {
@@ -28,6 +30,7 @@ export class InMemoryFileSystem implements FileSystemPort {
   private readonly danglingSymlinks: Set<string>;
   private readonly racedIntoExistence: Set<string>;
   private readonly unwritable: Set<string>;
+  private readonly unremovable: Set<string>;
   // A write counter stands in for the modification time.
   private readonly writes = new Map<string, number>();
 
@@ -41,9 +44,13 @@ export class InMemoryFileSystem implements FileSystemPort {
     this.danglingSymlinks = new Set(seed.danglingSymlinks ?? []);
     this.racedIntoExistence = new Set(seed.racedIntoExistence ?? []);
     this.unwritable = new Set(seed.unwritable ?? []);
+    this.unremovable = new Set(seed.unremovable ?? []);
   }
 
   async realpath(path: string): Promise<string> {
+    if (this.unreadable.has(path)) {
+      throw new Error(`EACCES: permission denied, realpath '${path}'`);
+    }
     const dir = this.directories.get(path);
     if (dir !== undefined) {
       return dir;
@@ -142,6 +149,9 @@ export class InMemoryFileSystem implements FileSystemPort {
   }
 
   async remove(path: string): Promise<void> {
+    if (this.unremovable.has(path)) {
+      throw new Error(`EACCES: permission denied, rm '${path}'`);
+    }
     this.files.delete(path);
     this.fileSymlinks.delete(path);
     this.directories.delete(path);

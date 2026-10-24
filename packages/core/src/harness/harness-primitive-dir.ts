@@ -32,6 +32,11 @@ async function resolveHarnessPrimitiveDir(
     : { ok: false, reason: "outside-root" };
 }
 
+export type PrimitiveEntryFs = Pick<
+  FileSystemPort,
+  "realpath" | "exists" | "isFileEntry" | "isDirectoryEntry"
+>;
+
 export type PrimitiveEntry =
   | { kind: "plain" | "absent"; dir: string; path: string }
   | { kind: "unsafe" }
@@ -39,10 +44,7 @@ export type PrimitiveEntry =
 
 /** Where a primitive sits on disk; any link, even one inside its folder, is unsafe. */
 export async function inspectPrimitiveEntry(
-  fs: Pick<
-    FileSystemPort,
-    "realpath" | "exists" | "isFileEntry" | "isDirectoryEntry"
-  >,
+  fs: PrimitiveEntryFs,
   root: string,
   ref: PrimitiveRef,
 ): Promise<PrimitiveEntry> {

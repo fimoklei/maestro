@@ -3,9 +3,11 @@ import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
-import type { FileSystemPort } from "../registry/file-system";
 import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
-import { inspectPrimitiveEntry } from "./harness-primitive-dir";
+import {
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
+} from "./harness-primitive-dir";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
 export type RestoreError =
@@ -30,10 +32,7 @@ export type RestoreResult =
 export class Restore {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<
-      FileSystemPort,
-      "realpath" | "exists" | "isFileEntry" | "isDirectoryEntry"
-    >;
+    fs: PrimitiveEntryFs;
     copyFs: Pick<
       CopyTreeFsPort,
       "describe" | "createStagingDir" | "movePath" | "removePath"

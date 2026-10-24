@@ -37,7 +37,7 @@ import {
   useRestorePrimitive,
 } from "./use-harness";
 
-const skillName = (_data: unknown, { name }: { name: string }) => name;
+const primitiveName = (_data: unknown, { name }: { name: string }) => name;
 
 // The row a press lands on, named by the request it sent.
 const pressedRow = (stage: HarnessStage, { type, name }: PrimitiveRef) =>
@@ -53,7 +53,7 @@ export function useHarnessPresses(
     report,
     action: "propose",
     show: "row",
-    name: skillName,
+    name: primitiveName,
     // A failure follows a press, so the variables are set.
     failure: (error) =>
       promoteNotice(error, promote.variables?.type ?? "skill"),
@@ -71,7 +71,7 @@ export function useHarnessPresses(
     report,
     action: "delete",
     show: "row",
-    name: skillName,
+    name: primitiveName,
     failure: (error) =>
       deletionNotice(error, deletion.variables?.type ?? "skill"),
   });
@@ -80,7 +80,7 @@ export function useHarnessPresses(
     report,
     action: "delete",
     show: "row",
-    name: skillName,
+    name: primitiveName,
     failure: (error) =>
       localDeletionNotice(error, {
         type: deleteLocal.variables?.type ?? "skill",
@@ -120,7 +120,7 @@ export function useHarnessPresses(
     report,
     action: "discard",
     show: "row",
-    name: skillName,
+    name: primitiveName,
     failure: (error) =>
       discardNotice(error, {
         type: discard.variables?.type ?? "skill",
@@ -136,7 +136,7 @@ export function useHarnessPresses(
     report,
     action: ({ action }) => action,
     show: "row",
-    name: skillName,
+    name: primitiveName,
     failure: proposalNotice,
   });
   const proposalSkill = proposalAction.variables ?? null;

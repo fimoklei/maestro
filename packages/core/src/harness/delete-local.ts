@@ -9,7 +9,10 @@ import {
   type PrimitiveRef,
   primitivePath,
 } from "./harness-primitive";
-import { inspectPrimitiveEntry } from "./harness-primitive-dir";
+import {
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
+} from "./harness-primitive-dir";
 import type { HarnessGitPort, HarnessHashes } from "./read-harness-state";
 
 export type DeleteLocalError =
@@ -21,6 +24,7 @@ export type DeleteLocalError =
   | "confirmation-stale"
   // A link, or outside the type's folder: removing it would delete something else.
   | "destination-unsafe"
+  | "destination-unreadable"
   | "delete-failed"
   | "delete-in-progress";
 
@@ -55,10 +59,7 @@ export type DeletionCheckResult =
 export class DeleteLocal {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<
-      FileSystemPort,
-      "realpath" | "exists" | "isFileEntry" | "isDirectoryEntry" | "remove"
-    >;
+    fs: PrimitiveEntryFs & Pick<FileSystemPort, "remove">;
     git: Pick<HarnessGitPort, "readMovementTrees">;
     locks: InFlightLocks;
   };
@@ -117,7 +118,7 @@ export class DeleteLocal {
   ): Promise<DeleteLocalResult> {
     // Before the listing: real git lists no link, which would read as already gone.
     const entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
-    if (entry.kind === "unsafe" || entry.kind === "unreadable") {
+    if (entry.kind === "unsafe") {
       return { ok: false, error: "destination-unsafe" };
     }
     // Re-read at the press, never taken from the row.
@@ -131,6 +132,12 @@ export class DeleteLocal {
     }
     if (check.workingTree !== seenWorkingTree) {
       return { ok: false, error: "confirmation-stale" };
+    }
+    if (entry.kind === "unreadable") {
+      return { ok: false, error: "destination-unreadable" };
+    }
+    if (entry.kind === "absent") {
+      return { ok: false, error: "already-gone" };
     }
 
     try {

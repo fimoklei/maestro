@@ -1,7 +1,7 @@
 // The git steps that differ by primitive type: a skill is a folder (a tree),
 // a prompt one file (a blob). Nothing leaves as stdout or stderr.
 import { execFile } from "node:child_process";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -57,11 +57,15 @@ const readOutput = async (
   }
 };
 
-/** Whether the primitive's folder or file is in the working tree. */
+/** Whether anything, a link included, sits at the primitive's path; never follows a link. */
 export const primitiveOnDisk = (
   root: string,
   ref: PrimitiveRef,
-): Promise<boolean> => pathExists(join(root, primitivePath(ref)));
+): Promise<boolean> =>
+  lstat(join(root, primitivePath(ref))).then(
+    () => true,
+    () => false,
+  );
 
 // Null on an unreadable ref or a listing the parser does not recognise. A
 // missing type folder is zero primitives of that type, never null.
