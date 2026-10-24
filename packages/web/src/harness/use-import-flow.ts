@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { FOLDER_MISSING } from "./dialog-copy";
-import { rowId } from "./harness-columns";
+import { proposalRow } from "./harness-route";
 import { isImportable } from "./import-view-model";
 import { importNotice } from "./notice-copy";
 import {
@@ -12,10 +12,8 @@ import {
   useImportSkill,
 } from "./use-harness";
 
-// An import writes the working tree, so its row is Pending proposal's — even
-// where the skill also holds a later one (#865).
 const importedRow = ({ name }: ImportOutcome) =>
-  rowId({ stage: "pending-proposal", type: "skill", name });
+  proposalRow({ type: "skill", name });
 
 // Import skill's UI-state: the folder, the name, and the check both are sent
 // to. Every refusal comes from the server's check, so nothing here decides

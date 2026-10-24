@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -121,7 +122,8 @@ export function TableScreen<T extends RowData>({
   const openIndex = openId === null ? -1 : order.indexOf(openId);
   const shownGroups = view === undefined ? groups : view.groups;
   // In view: its pane is open, or a Filter shows it and its group is open.
-  state.inView.current = (id) =>
+  // A layout effect, so it is current before the screen's settling effect.
+  const inView = (id: string) =>
     (openRow !== null && openId === id) ||
     visible.some(
       (row) =>
@@ -130,6 +132,9 @@ export function TableScreen<T extends RowData>({
           shownGroups !== undefined && state.collapsed.has(shownGroups.key(row))
         ),
     );
+  useLayoutEffect(() => {
+    state.inView.current = inView;
+  });
   const writes = useMemo(
     () => ({ report: state.report, settle: state.settle }),
     [state.report, state.settle],

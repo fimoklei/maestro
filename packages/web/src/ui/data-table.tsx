@@ -626,7 +626,7 @@ export function DataTable<T extends RowData>({
                   ))}
                 </tr>
               ))
-            : blocks !== undefined && blocks.length > 0
+            : groups !== undefined && blocks !== undefined && blocks.length > 0
               ? blocks.map((block) => (
                   <Fragment key={block.key}>
                     <GroupHeader
@@ -634,23 +634,23 @@ export function DataTable<T extends RowData>({
                       count={
                         block.all.length === 0 ? undefined : block.all.length
                       }
-                      meta={groups?.meta?.(block.key)}
+                      meta={groups.meta?.(block.key)}
                       columnCount={spanCount}
                       collapsed={
                         block.all.length === 0
                           ? undefined
-                          : groups?.collapsed.has(block.key)
+                          : groups.collapsed.has(block.key)
                       }
-                      onToggle={() => groups?.onToggle(block.key)}
+                      onToggle={() => groups.onToggle(block.key)}
                     />
                     {block.all.length === 0 ? (
                       <tr className="h-row border-divider border-b">
                         <GridCell
-                          id={groups?.lineId?.(block.key)}
+                          id={groups.lineId?.(block.key)}
                           colSpan={spanCount}
                           className="px-inline py-tight text-gray-11"
                         >
-                          {groups?.message?.(block.key)}
+                          {groups.message?.(block.key)}
                         </GridCell>
                       </tr>
                     ) : (

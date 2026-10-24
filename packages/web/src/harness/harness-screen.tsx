@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router";
-import type { HarnessArrival } from "./harness-route";
+import { harnessArrival } from "./harness-route";
 import { HarnessView } from "./harness-view";
 
 // Import local edits names the one skill it landed (#1249); an Inventory pane
@@ -9,18 +9,19 @@ import { HarnessView } from "./harness-view";
 export function HarnessScreen() {
   const { pathname, state } = useLocation();
   const navigate = useNavigate();
-  const arrival = state as HarnessArrival | null;
-  const written = arrival?.written ?? null;
+  // Once per history entry: a new `written` each render would settle again.
+  const arrival = useMemo(() => harnessArrival(state), [state]);
+  const written = arrival.written ?? null;
   useEffect(() => {
     if (written === null) return;
     navigate(pathname, {
       replace: true,
-      state: { openPrimitive: arrival?.openPrimitive },
+      state: { openPrimitive: arrival.openPrimitive },
     });
   }, [written, arrival, navigate, pathname]);
   return (
     <HarnessView
-      openPrimitive={arrival?.openPrimitive ?? null}
+      openPrimitive={arrival.openPrimitive ?? null}
       written={written}
     />
   );

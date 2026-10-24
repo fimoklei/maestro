@@ -90,9 +90,7 @@ export function BulkDeployRun({
   // dialog takes this one's place: the Report described a target it may move.
   const [updateFor, setUpdateFor] = useState<string | null>(null);
   // The Attention rows Deploy again has since deployed: they read as Deployed.
-  const [redeployed, setRedeployed] = useState<
-    { name: string; version: string }[]
-  >([]);
+  const [redeployed, setRedeployed] = useState<SkillRelease[]>([]);
   const update = useUpdateTarget();
   const screen = useScreenWrites();
   // The Report states the run, its request failure included.
@@ -298,6 +296,9 @@ export function BulkDeployRun({
   );
 }
 
+/** A skill at the release a run deployed. */
+type SkillRelease = { name: string; version: string };
+
 type BulkReportCounts = {
   deployed: number;
   skipped: number;
@@ -311,7 +312,7 @@ type BulkDeployReportView =
       tone: "ran";
       targetLabel: string;
       // Every success, at the release the target already follows (#956).
-      deployed: { name: string; version: string }[];
+      deployed: SkillRelease[];
       skipped: string[];
       attention: BulkDeployReport["attention"];
       failed: BulkDeployReport["failed"];
@@ -338,7 +339,7 @@ function bulkDeployReportView(input: {
   report: BulkDeployReport;
   skippedClean: string[];
   // Attention rows a later Deploy again succeeded on.
-  redeployed: { name: string; version: string }[];
+  redeployed: SkillRelease[];
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;

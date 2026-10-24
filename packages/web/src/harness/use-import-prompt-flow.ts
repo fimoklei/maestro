@@ -7,7 +7,7 @@ import {
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
-import { rowId } from "./harness-columns";
+import { proposalRow } from "./harness-route";
 import {
   importPromptNotice,
   isFieldError,
@@ -20,9 +20,8 @@ import {
 } from "./import-prompt-copy";
 import { useImportPrompt, useImportPromptCheck } from "./use-harness";
 
-// The working tree's row, like Import skill's.
 const importedRow = ({ name }: ImportPromptSuccess) =>
-  rowId({ stage: "pending-proposal", type: "prompt", name });
+  proposalRow({ type: "prompt", name });
 
 const EMPTY: PromptDraft = { name: "", description: "", text: "" };
 

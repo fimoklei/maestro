@@ -49,9 +49,6 @@ export function PaneDeletion({
       screen={screen}
       write={write}
       onClose={onClose}
-      // The hand-over leaves this screen; closing the dialog first would
-      // show its pane again before Harness paints.
-      onDeleted={() => {}}
     />
   );
 }
