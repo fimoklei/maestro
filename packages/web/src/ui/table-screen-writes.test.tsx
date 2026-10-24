@@ -14,7 +14,6 @@ import { ToastHost } from "./toast";
 import { useTableScreen } from "./use-table-screen";
 import {
   type Subject,
-  useScreenReport,
   useScreenWrites,
   useWriteAction,
   type WriteResult,
@@ -43,13 +42,11 @@ function deferred() {
 
 function Orchard({
   answer,
-  show,
-  said,
+  subject,
 }: {
   answer: Promise<void>;
-  show: "toast" | "row";
-  /** False: the dialog's own outcome states the result. */
-  said: boolean;
+  /** Null: the dialog's own outcome states the result. */
+  subject: Subject | null;
 }) {
   const [rows, setRows] = useState<Fruit[]>([{ name: "pear" }]);
   const [planting, setPlanting] = useState(false);
@@ -82,8 +79,7 @@ function Orchard({
         {planting ? (
           <PlantDialog
             answer={answer}
-            show={show}
-            said={said}
+            subject={subject}
             onClose={() => setPlanting(false)}
             onPlanted={(name) => {
               setRows((current) => [...current, { name }]);
@@ -100,23 +96,20 @@ function Orchard({
 
 function PlantDialog({
   answer,
-  show,
-  said,
+  subject,
   onClose,
   onPlanted,
 }: {
   answer: Promise<void>;
-  show: "toast" | "row";
-  said: boolean;
+  subject: Subject | null;
   onClose: () => void;
   onPlanted: (name: string) => void;
 }) {
   const plant = useMutation({ mutationFn: (_name: string) => answer });
   const write = useWriteAction(plant, {
-    report: useScreenReport(),
+    screen: useScreenWrites(),
     action: "deploy",
-    show,
-    name: (_data, name) => (said ? name : null),
+    subject: () => subject,
     failure: () => NOT_PLANTED,
   });
   return (
@@ -149,12 +142,10 @@ const region = () =>
     .find((each) => each.classList.contains("sr-only"));
 const dialog = () => screen.getByRole("dialog", { name: "Plant fruit" });
 
-async function startPlanting(
-  answer: Promise<void>,
-  show: "toast" | "row",
-  said = true,
-) {
-  renderWithQuery(<Orchard answer={answer} show={show} said={said} />);
+const PLUM: Subject = { name: "plum", row: "plum" };
+
+async function startPlanting(answer: Promise<void>, subject: Subject | null) {
+  renderWithQuery(<Orchard answer={answer} subject={subject} />);
   await userEvent.click(screen.getByRole("button", { name: "Plant fruit" }));
   await userEvent.click(
     within(dialog()).getByRole("button", { name: "Plant fruit" }),
@@ -167,7 +158,7 @@ afterEach(() => toast.dismiss());
 describe("a write on a table screen", () => {
   it("spins the pressed control, says its busy label and blocks closing while it runs", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "row");
+    await startPlanting(answer.promise, PLUM);
 
     expect(
       within(dialog()).getByRole("button", { name: "Deploying…" }),
@@ -182,7 +173,7 @@ describe("a write on a table screen", () => {
 
   it("closes a dialog that adds a row, selects the row and says the done sentence once", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "row");
+    await startPlanting(answer.promise, PLUM);
 
     answer.resolve();
 
@@ -196,7 +187,7 @@ describe("a write on a table screen", () => {
 
   it("says a success the reader may miss in a toast, the region silent", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "toast");
+    await startPlanting(answer.promise, { name: "plum", row: null });
 
     answer.resolve();
 
@@ -208,7 +199,7 @@ describe("a write on a table screen", () => {
 
   it("stays silent where the dialog's own outcome states the result", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "toast", false);
+    await startPlanting(answer.promise, null);
 
     answer.resolve();
 
@@ -218,7 +209,7 @@ describe("a write on a table screen", () => {
 
   it("keeps a failed dialog open with its notice, Close to leave, announced only by the notice", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "row");
+    await startPlanting(answer.promise, PLUM);
 
     answer.reject();
 

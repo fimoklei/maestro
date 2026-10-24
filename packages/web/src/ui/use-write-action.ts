@@ -2,8 +2,7 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 import { ACTIONS, type ActionKey, doneSentence } from "./busy-copy";
 import type { NoticeContent } from "./notice";
-import { type Copy, type Phrase, plainText } from "./phrase";
-import { showSuccess } from "./toast";
+import type { Copy, Phrase } from "./phrase";
 
 type Report = (write: string) => void;
 
@@ -67,19 +66,12 @@ type Feedback<TData, TVariables> =
       subject: (data: TData, variables: TVariables) => Subject | null;
       /** Takes the result to the screen the write ends on, whose table screen settles it. */
       handOver: (result: WriteResult, data: TData) => void;
-    }
-  | {
-      /** The table screen's region: `state.report`, or `useScreenReport()`. */
-      report: Report;
-      show: "toast" | "row";
-      /** What the done sentence names; null where a Report, a notice or the next screen states the outcome. */
-      name: (data: TData, variables: TVariables) => Copy | null;
     };
 
 // A write's feedback: its busy label in the screen's region at once. A
 // subject goes to the table screen, which picks region or toast once the read
-// after the write lands, or is handed over to the screen the write ends on; a
-// hand-picked `show` picks at once. A failure is its notice alone.
+// after the write lands, or is handed over to the screen the write ends on.
+// A failure is its notice alone.
 export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
   mutation: UseMutationResult<TData, unknown, TVariables>,
   options: Feedback<TData, TVariables> & {
@@ -90,30 +82,21 @@ export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
 ): WriteAction<TData, TVariables, TFailure> {
   const report = "screen" in options ? options.screen.report : options.report;
   const landed = (key: ActionKey, data: TData, variables: TVariables) => {
-    if ("subject" in options) {
-      const subject = options.subject(data, variables);
-      const result =
-        subject === null
-          ? null
-          : {
-              sentence: doneSentence(key, subjectName(subject)),
-              row: subject.row,
-            };
-      if ("screen" in options && result !== null) {
-        options.screen.settle(result);
-        return;
-      }
-      report("");
-      if ("handOver" in options && result !== null) {
-        options.handOver(result, data);
-      }
+    const subject = options.subject(data, variables);
+    const result =
+      subject === null
+        ? null
+        : {
+            sentence: doneSentence(key, subjectName(subject)),
+            row: subject.row,
+          };
+    if ("screen" in options && result !== null) {
+      options.screen.settle(result);
       return;
     }
-    const named = options.name(data, variables);
-    if (named === null || options.show === "toast") report("");
-    else report(plainText(doneSentence(key, named)));
-    if (named !== null && options.show === "toast") {
-      showSuccess(doneSentence(key, named));
+    report("");
+    if ("handOver" in options && result !== null) {
+      options.handOver(result, data);
     }
   };
   return {
