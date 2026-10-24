@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { repoTargetName } from "../shell/target-name";
 import { useFolderChooser } from "../ui/use-folder-chooser";
-import { useWriteAction } from "../ui/use-write-action";
+import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { registerMessage } from "./repositories-copy";
 import { useCheckRepo, useRegisterRepo } from "./use-registry";
 
@@ -9,12 +9,12 @@ import { useCheckRepo, useRegisterRepo } from "./use-registry";
 // the registration. A refusal belongs to the path it was given for, so an
 // edit clears it and a late answer for an older path never lands.
 export function useRegisterDialog({
-  report,
+  screen,
   onAdded,
   registered,
 }: {
-  /** Into the screen's status region. */
-  report: (write: string) => void;
+  /** The table screen's writes. */
+  screen: ScreenWrites;
   /** The stored path of the new registration, for its row to take focus. */
   onAdded: (path: string) => void;
   /** The paths registered before, which tell the new entry apart. */
@@ -36,14 +36,18 @@ export function useRegisterDialog({
   const check = useCheckRepo();
   const registerRepo = useRegisterRepo();
   const register = useWriteAction(registerRepo, {
-    report,
+    screen,
     action: "register",
-    show: "row",
-    name: ({ repos }, sent) =>
-      repoTargetName(
-        addedPath(repos, sent),
-        repos.map((repo) => repo.path),
-      ),
+    subject: ({ repos }, sent) => {
+      const added = addedPath(repos, sent);
+      return {
+        name: repoTargetName(
+          added,
+          repos.map((repo) => repo.path),
+        ),
+        row: added,
+      };
+    },
     // The refusal under the field says it.
     failure: () => null,
   });

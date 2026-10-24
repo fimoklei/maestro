@@ -114,10 +114,13 @@ export function PromptsView({
       navigator.clipboard.writeText(prompt.text),
   });
   const copyWrite = useWriteAction(copying, {
-    report: screen.report,
+    screen,
     action: "copy",
-    show: "toast",
-    name: (_done, prompt) => phrase`${named(prompt.name)}`,
+    // The copy lands on the clipboard, not in a row.
+    subject: (_done, prompt) => ({
+      name: phrase`${named(prompt.name)}`,
+      row: null,
+    }),
     // The refusal is the pane's notice.
     failure: () => null,
   });
