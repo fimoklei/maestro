@@ -91,8 +91,8 @@ describe("Import prompt copy", () => {
     ],
     [
       "destination-unsafe",
-      "Prompts folder outside the Harness",
-      "Nothing was imported. Replace the link with a real folder, then select Import prompt again.",
+      "Link in the Harness",
+      "Nothing was imported. Replace the link with a real file or folder, then select Import prompt again.",
     ],
     [
       "destination-unreadable",

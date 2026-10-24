@@ -48,6 +48,8 @@ function build(overrides?: {
   atRemote?: Record<string, string> | null;
   write?: "missing" | "failed";
   realpath?: (path: string) => Promise<string>;
+  // A link: not a plain folder or file, so never followed.
+  links?: string[];
   failMoveInto?: string;
   locks?: InFlightLocks;
 }) {
@@ -79,7 +81,12 @@ function build(overrides?: {
       overrides && "stages" in overrides
         ? (overrides.stages ?? null)
         : stagesWith([row()]),
-    fs: { realpath: overrides?.realpath ?? (async (path) => path) },
+    fs: {
+      realpath: overrides?.realpath ?? (async (path) => path),
+      exists: async () => true,
+      isDirectoryEntry: async (path) => !overrides?.links?.includes(path),
+      isFileEntry: async (path) => !overrides?.links?.includes(path),
+    },
     copyFs: {
       createStagingDir: async () => STAGING,
       movePath: async (from, to) => {
@@ -251,9 +258,32 @@ describe("DiscardChange", () => {
     const { discard, moved } = build({
       realpath: async (path) =>
         path === `${SKILLS}/tdd` ? "/elsewhere/tdd" : path,
+      links: [`${SKILLS}/tdd`],
     });
 
     await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
+      ok: false,
+      error: "destination-unsafe",
+    });
+    expect(moved).toEqual([]);
+  });
+
+  // Real git lists no link as a prompt, so its row reads as a deletion.
+  it("refuses a linked prompt the listing reads as deleted", async () => {
+    const prompt = { type: "prompt", name: "pr-review" } as const;
+    const file = "/harness/.maestro/prompts/pr-review.md";
+    const { discard, moved } = build({
+      stages: stagesWith([
+        row({
+          ...prompt,
+          path: ".maestro/prompts/pr-review.md",
+          change: "deletion",
+        }),
+      ]),
+      links: [file],
+    });
+
+    await expect(discard.execute(prompt, SEEN)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });

@@ -117,6 +117,7 @@ const SURFACES: Surface[] = [
       "invalid-skill": true,
       "no-answer": true,
       "skill-missing": true,
+      "destination-unsafe": true,
       "push-elsewhere": true,
       "source-changed": true,
       "concurrent-change": true,
@@ -643,15 +644,49 @@ describe("a prompt's notices", () => {
     );
   });
 
-  it("states a prompt file that resolves outside the Harness", () => {
+  it("states a prompt file that is a link", () => {
     expect(
       readNotice(restoreNotice(refusal("destination-unsafe"), "prompt")),
     ).toMatchObject({
-      label: "File outside the Harness",
+      label: "Link in the Harness",
       message:
         "Nothing was restored. Replace the link with a real file, then select Restore prompt again.",
       detail:
-        "The prompt file resolves outside the Harness .maestro/prompts folder.",
+        "The prompt file or the Harness .maestro/prompts folder is a link.",
+    });
+  });
+
+  it.each([
+    [
+      "prompt",
+      "Nothing was pushed. Replace the link with a real file, then select Propose change again.",
+      "The prompt file or the Harness .maestro/prompts folder is a link.",
+    ],
+    [
+      "skill",
+      "Nothing was pushed. Replace the link with a real folder, then select Propose change again.",
+      "The skill folder or the Harness .apm/skills folder is a link.",
+    ],
+  ] as const)(
+    "states a %s that is a link, pushing nothing",
+    (type, message, detail) => {
+      expect(
+        readNotice(promoteNotice(refusal("destination-unsafe"), type)),
+      ).toMatchObject({ label: "Link in the Harness", message, detail });
+    },
+  );
+
+  it("states a skill folder that is a link, discarding nothing", () => {
+    expect(
+      readNotice(
+        discardNotice(refusal("destination-unsafe"), {
+          type: "skill",
+          name: "tdd",
+        }),
+      ),
+    ).toMatchObject({
+      label: "Link in the Harness",
+      detail: "The skill folder or the Harness .apm/skills folder is a link.",
     });
   });
 

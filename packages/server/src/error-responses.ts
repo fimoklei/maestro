@@ -220,6 +220,7 @@ export const promoteErrorResponses: ErrorTable<PromoteError> = {
   "invalid-skill": { status: 400 },
   "no-answer": { status: 409 },
   "skill-missing": { status: 422 },
+  "destination-unsafe": { status: 409 },
   "push-elsewhere": { status: 422 },
   "source-changed": { status: 409 },
   "concurrent-change": { status: 409 },

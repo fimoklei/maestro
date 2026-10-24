@@ -9,6 +9,7 @@ const ROOT = "/harness";
 const SKILLS = "/harness/.apm/skills";
 const STAGING = "/harness/.apm/skills/.maestro-copy-1";
 const HEAD = "commit-abc";
+const DESTINATION = "/harness/.apm/skills/tdd";
 
 const FOLDER: CopyEntryFacts = {
   kind: "directory",
@@ -27,6 +28,8 @@ function build(overrides?: {
   describes?: (CopyEntryFacts | null)[];
   write?: "missing" | "failed";
   realpath?: (path: string) => Promise<string>;
+  // What sits at the destination before the restore starts.
+  destination?: "plain" | "link";
   moveFails?: boolean;
   locks?: InFlightLocks;
   ambiguity?: WorktreeAmbiguity | null;
@@ -57,12 +60,21 @@ function build(overrides?: {
 
   const moved: [string, string][] = [];
   const removed: string[] = [];
-  const describes = overrides?.describes ?? [null, null];
+  // The late re-check, right before the move.
+  const describes = overrides?.describes ?? [null];
   let described = 0;
   const restore = new Restore({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : ROOT,
-    fs: { realpath: overrides?.realpath ?? (async (path) => path) },
+    fs: {
+      realpath: overrides?.realpath ?? (async (path) => path),
+      exists: async (path) =>
+        path === DESTINATION ? overrides?.destination !== undefined : true,
+      isDirectoryEntry: async (path) =>
+        path !== DESTINATION || overrides?.destination === "plain",
+      isFileEntry: async (path) =>
+        path !== DESTINATION || overrides?.destination === "plain",
+    },
     copyFs: {
       describe: async () => describes[described++] ?? null,
       createStagingDir: async () => STAGING,
@@ -194,7 +206,7 @@ describe("Restore", () => {
   });
 
   it("refuses when anything already sits at the destination", async () => {
-    const { restore, git } = build({ describes: [FOLDER] });
+    const { restore, git } = build({ destination: "plain" });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-exists",
@@ -202,9 +214,19 @@ describe("Restore", () => {
     expect(git.written).toEqual([]);
   });
 
+  // Real git lists no link, so the skill reads as deleted and Restore is offered.
+  it("refuses a destination that is a link", async () => {
+    const { restore, git } = build({ destination: "link" });
+    await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
+      ok: false,
+      error: "destination-unsafe",
+    });
+    expect(git.written).toEqual([]);
+  });
+
   // Something created the folder between the first look and the move.
   it("refuses a destination that appeared while the copy was built", async () => {
-    const { restore, moved, removed } = build({ describes: [null, FOLDER] });
+    const { restore, moved, removed } = build({ describes: [FOLDER] });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
       ok: false,
       error: "destination-exists",

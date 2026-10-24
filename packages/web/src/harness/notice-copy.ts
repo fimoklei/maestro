@@ -115,6 +115,17 @@ export const invalidNameHeading = (
   message: `A ${w.noun} name uses lowercase letters, digits and single hyphens, like ${w.example}.`,
 });
 
+/** A link where Maestro needs a real folder or file, or a linked type folder. */
+export const linkInHarness = (
+  w: ItemWords,
+  message: string,
+): NoticeTable<"destination-unsafe">["destination-unsafe"] => ({
+  level: "error",
+  label: "Link in the Harness",
+  message,
+  detail: `The ${w.noun} ${w.holder} or the Harness ${w.home} is a link.`,
+});
+
 const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
   ...harnessHeadings,
   "invalid-skill": invalidNameHeading(w),
@@ -128,6 +139,10 @@ const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
     label: `${w.Noun} no longer in the Harness`,
     message: `Nothing was pushed. Select ${rereadLabel("Harness")} to read the list again.`,
   },
+  "destination-unsafe": linkInHarness(
+    w,
+    `Nothing was pushed. Replace the link with a real ${w.holder}, then select ${PROPOSE_CHANGE} again.`,
+  ),
   "push-elsewhere": {
     level: "error",
     label: "Different push remote",
@@ -292,12 +307,10 @@ const restorationHeadings = (w: ItemWords): NoticeTable<RestoreError> => {
       message: `Move the ${w.holder} in the Harness clone, then select ${RESTORE} again.`,
       detail: `Something already sits where this ${w.noun} ${w.holder} belongs.`,
     },
-    "destination-unsafe": {
-      level: "error",
-      label: `${w.Holder} outside the Harness`,
-      message: `Replace the link with a real ${w.holder}, then select ${RESTORE} again.`,
-      detail: `The ${w.noun} ${w.holder} resolves outside the Harness ${w.home}.`,
-    },
+    "destination-unsafe": linkInHarness(
+      w,
+      `Replace the link with a real ${w.holder}, then select ${RESTORE} again.`,
+    ),
     "restore-in-progress": {
       level: "error",
       label: HARNESS_BUSY,
@@ -382,12 +395,10 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
       message: `Select ${rereadLabel("Harness")}, then select ${DISCARD_CHANGE} again.`,
       detail: "The default branch moved after this confirmation.",
     },
-    "destination-unsafe": {
-      level: "error",
-      label: `${w.Holder} outside the Harness`,
-      message: `Replace the link with a real ${w.holder}, then select ${DISCARD_CHANGE} again.`,
-      detail: `The ${w.noun} ${w.holder} resolves outside the Harness ${w.home}.`,
-    },
+    "destination-unsafe": linkInHarness(
+      w,
+      `Replace the link with a real ${w.holder}, then select ${DISCARD_CHANGE} again.`,
+    ),
     "discard-in-progress": {
       level: "error",
       label: HARNESS_BUSY,

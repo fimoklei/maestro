@@ -355,7 +355,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
   });
 
   describe("an occupied destination", () => {
-    const refuses = async () => {
+    const refuses = async (error = "destination-exists") => {
       const app = makeApp();
 
       const response = await restore(app, {
@@ -364,7 +364,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       });
 
       expect(response.status).toBe(409);
-      expect(await response.json()).toEqual({ error: "destination-exists" });
+      expect(await response.json()).toEqual({ error });
     };
 
     it("refuses a file standing where the folder was", async () => {
@@ -385,13 +385,13 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       expect(await readdir(join(root, FOLDER))).toEqual([]);
     });
 
-    it("refuses a link, without following it out of the skills folder", async () => {
+    it("refuses a link as unsafe, without following it out of the skills folder", async () => {
       await deleteFolder();
       const outside = join(base, "outside");
       await mkdir(outside);
       await symlink(outside, join(root, FOLDER));
 
-      await refuses();
+      await refuses("destination-unsafe");
 
       expect((await lstat(join(root, FOLDER))).isSymbolicLink()).toBe(true);
       expect(await readlink(join(root, FOLDER))).toBe(outside);

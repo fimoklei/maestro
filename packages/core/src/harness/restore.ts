@@ -5,7 +5,7 @@ import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import type { FileSystemPort } from "../registry/file-system";
 import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
-import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
+import { inspectPrimitiveEntry } from "./harness-primitive-dir";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
 export type RestoreError =
@@ -30,7 +30,10 @@ export type RestoreResult =
 export class Restore {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<FileSystemPort, "realpath">;
+    fs: Pick<
+      FileSystemPort,
+      "realpath" | "exists" | "isFileEntry" | "isDirectoryEntry"
+    >;
     copyFs: Pick<
       CopyTreeFsPort,
       "describe" | "createStagingDir" | "movePath" | "removePath"
@@ -106,28 +109,19 @@ export class Restore {
       return { ok: false, error: "not-in-commit" };
     }
 
-    const resolved = await resolveHarnessPrimitiveDir(
-      this.deps.fs,
-      root,
-      ref.type,
-    );
-    if (!resolved.ok) {
-      return {
-        ok: false,
-        error:
-          resolved.reason === "unreadable"
-            ? "destination-unreadable"
-            : "destination-unsafe",
-      };
+    const entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
+    if (entry.kind === "unreadable") {
+      return { ok: false, error: "destination-unreadable" };
     }
-    const { dir } = resolved;
-    const destination = join(dir, primitiveEntry(ref));
-    // `describe` does not follow links: a dangling link counts as present.
-    if ((await this.deps.copyFs.describe(destination)) !== null) {
+    // Real git lists no link, so a linked primitive reads as deleted.
+    if (entry.kind === "unsafe") {
+      return { ok: false, error: "destination-unsafe" };
+    }
+    if (entry.kind === "plain") {
       return { ok: false, error: "destination-exists" };
     }
 
-    return await this.writeThroughStaging(root, ref, head, dir);
+    return await this.writeThroughStaging(root, ref, head, entry.dir);
   }
 
   // One rename publishes it, so an interruption leaves nothing half-written.

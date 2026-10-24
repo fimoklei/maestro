@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { DeleteLocal } from "./delete-local";
-import { InMemoryHarnessGit, skillRef, treeHash } from "./harness-git.fake";
+import {
+  blobHash,
+  InMemoryHarnessGit,
+  skillRef,
+  treeHash,
+} from "./harness-git.fake";
 
 const ROOT = "/harness";
 const FOLDER = "/harness/.apm/skills/tdd";
 const SEEN = treeHash("working-tdd");
+const PROMPT = { type: "prompt", name: "pr-review" } as const;
+const PROMPT_FILE = "/harness/.maestro/prompts/pr-review.md";
 
 // `tdd` exists only on disk; `jobs` has a local commit origin/HEAD lacks.
 const localOnlyWorld = () => {
@@ -23,6 +30,8 @@ function build(
   overrides?: {
     root?: string | undefined;
     realpath?: (path: string) => Promise<string>;
+    // A link: not a plain folder or file, so never followed.
+    links?: string[];
     removeFails?: boolean;
     locks?: InFlightLocks;
   },
@@ -33,6 +42,9 @@ function build(
       overrides && "root" in overrides ? overrides.root : ROOT,
     fs: {
       realpath: overrides?.realpath ?? (async (path) => path),
+      exists: async () => true,
+      isDirectoryEntry: async (path) => !overrides?.links?.includes(path),
+      isFileEntry: async (path) => !overrides?.links?.includes(path),
       remove: async (path) => {
         if (overrides?.removeFails === true) {
           throw new Error("EACCES");
@@ -144,12 +156,40 @@ describe("DeleteLocal", () => {
   it("refuses a folder that resolves outside the Harness skills directory", async () => {
     const { deletion, removed } = build(localOnlyWorld(), {
       realpath: async (path) => (path.endsWith("/tdd") ? "/elsewhere" : path),
+      links: [FOLDER],
     });
 
     await expect(deletion.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
+    expect(removed).toEqual([]);
+  });
+
+  it("refuses a prompt that links to another prompt in its folder", async () => {
+    const git = localOnlyWorld();
+    git.workingPrompts = { "pr-review": "review", other: "other" };
+    const { deletion, removed } = build(git, {
+      realpath: async (path) =>
+        path === PROMPT_FILE ? "/harness/.maestro/prompts/other.md" : path,
+      links: [PROMPT_FILE],
+    });
+
+    await expect(deletion.execute(PROMPT, blobHash("review"))).resolves.toEqual(
+      { ok: false, error: "destination-unsafe" },
+    );
+    expect(removed).toEqual([]);
+  });
+
+  // Real git lists no link as a prompt, so it must not read as already gone.
+  it("refuses a linked prompt the clone's listing leaves out", async () => {
+    const { deletion, removed } = build(localOnlyWorld(), {
+      links: [PROMPT_FILE],
+    });
+
+    await expect(deletion.execute(PROMPT, blobHash("review"))).resolves.toEqual(
+      { ok: false, error: "destination-unsafe" },
+    );
     expect(removed).toEqual([]);
   });
 
@@ -256,6 +296,18 @@ describe("DeleteLocal.inspect", () => {
     expect(inspected.checks.prompt.tdd).toMatchObject({
       path: ".maestro/prompts/tdd.md",
     });
+  });
+
+  // Real git lists a link as mode 120000, which is no prompt.
+  it("lists no prompt whose working file is a link", async () => {
+    const git = inspectWorld();
+    git.workingPrompts = { "pr-review": "review", commit: "commit" };
+    git.workingPromptLinks.add("pr-review");
+    const { deletion } = build(git);
+
+    const inspected = await deletion.inspect();
+    if (!inspected.ok) throw new Error("expected checks");
+    expect(Object.keys(inspected.checks.prompt)).toEqual(["commit"]);
   });
 
   it("reports a skill only a proposal branch holds as not in the clone", async () => {

@@ -145,7 +145,7 @@ describe("Harness local deletion", () => {
     await userEvent.click(confirm);
 
     expect(
-      await within(dialog).findByText(/Folder outside the Harness/i),
+      await within(dialog).findByText("Link in the Harness"),
     ).toBeInTheDocument();
     expect(confirm).toBeEnabled();
     // Still on the board behind the dialog: a refusal removed nothing.
