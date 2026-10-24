@@ -1,3 +1,5 @@
+import type { HarnessStageRow } from "@maestro/core";
+
 export const SCENARIO_NAMES: string[];
 
 export function parseScenarioArg(argv: readonly string[]): string[] | null;
@@ -60,14 +62,16 @@ export function scenarioMismatch(
   observed: CockpitReading,
 ): string | null;
 
+export type HarnessReadRow = Pick<
+  HarnessStageRow,
+  "type" | "name" | "change" | "restorable"
+>;
+
 export interface HarnessRead {
   releaseState: string;
   stages: Record<
     "proposal" | "release",
-    | {
-        outcome: "read";
-        rows: { skill: string; change: string; restorable: boolean }[];
-      }
+    | { outcome: "read"; rows: HarnessReadRow[] }
     | { outcome: "unknown" | "unavailable" }
   >;
 }

@@ -1,7 +1,9 @@
+import type { HarnessChange } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   globalLeftoverMismatch,
   type HarnessRead,
+  type HarnessReadRow,
   harnessMismatch,
   harnessOfflineMismatch,
   parseScenarioArg,
@@ -226,14 +228,14 @@ describe("scenarioMismatch", () => {
 });
 
 describe("harnessMismatch", () => {
-  const row = (skill: string, change: string, restorable = false) => ({
-    skill,
-    change,
-    restorable,
-  });
+  const row = (
+    name: string,
+    change: HarnessChange,
+    restorable = false,
+  ): HarnessReadRow => ({ type: "skill", name, change, restorable });
   const harness = (
-    proposal: ReturnType<typeof row>[],
-    release: ReturnType<typeof row>[],
+    proposal: HarnessReadRow[],
+    release: HarnessReadRow[],
     releaseState = "pending-release",
   ): HarnessRead => ({
     releaseState,
@@ -274,6 +276,19 @@ describe("harnessMismatch", () => {
       ),
     ).toBe(
       'scenario "harness-outcomes": code-review expected an "edit" row in the release stage, got none; release state expected "pending-release", got "released"',
+    );
+  });
+
+  it("ignores a prompt that shares the skill's name", () => {
+    expect(
+      harnessMismatch(
+        harness(
+          [{ ...row("test-plan", "deletion", true), type: "prompt" }],
+          [row("code-review", "edit")],
+        ),
+      ),
+    ).toBe(
+      'scenario "harness-outcomes": test-plan expected a restorable "deletion" row in the proposal stage, got none',
     );
   });
 
