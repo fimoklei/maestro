@@ -209,6 +209,7 @@ export const publishReleaseErrorResponses: ErrorTable<PublishReleaseError> = {
   ...harnessErrorResponses,
   "no-answer": { status: 409 },
   "empty-delta": { status: 409 },
+  "root-skill-file": { status: 409 },
   "already-released": { status: 409 },
   "plan-changed": { status: 409 },
   "publish-failed": { status: 502 },

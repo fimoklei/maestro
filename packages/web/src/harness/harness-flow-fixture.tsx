@@ -58,6 +58,7 @@ export const PLAN = {
   revision: "0123456789abcdef0123456789abcdef01234567",
   defaultBranch: "main",
   findings: [{ skill: "broken", problem: "missing-manifest" }],
+  blocked: null,
 } satisfies ReleasePlan;
 
 export function stubHarnessServer(options: {

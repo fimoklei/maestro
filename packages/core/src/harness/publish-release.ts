@@ -1,4 +1,3 @@
-import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
 import {
@@ -10,14 +9,13 @@ import type {
   ReleasePlan,
   ReleasePlanResult,
 } from "./read-harness-state";
-import { readReleaseDelta } from "./release-delta";
-import { highestReleaseTag } from "./release-tag";
+import { type ReleaseBlock, readReleaseReadiness } from "./release-readiness";
 
 export type PublishReleaseError =
   | "not-configured"
   | "no-usable-origin"
   | "no-answer"
-  | "empty-delta"
+  | ReleaseBlock
   | "already-released"
   | "plan-changed"
   | "publish-failed"
@@ -71,25 +69,15 @@ export class PublishRelease {
   ): Promise<PublishReleaseResult> {
     const outcome = await this.deps.fetchGate.fetchFresh(root);
 
-    const facts = await this.deps.git.readFacts(root);
-    const origin =
-      facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
-    if (origin === null) {
-      return { ok: false, error: "no-usable-origin" };
+    const read = await readReleaseReadiness(
+      this.deps.git,
+      root,
+      outcome === "fetched",
+    );
+    if (!read.ok) {
+      return read;
     }
-
-    const head = facts.defaultBranchCommit;
-    const branch = facts.defaultBranch;
-    if (
-      outcome !== "fetched" ||
-      head === null ||
-      branch === null ||
-      facts.tags === null
-    ) {
-      return { ok: false, error: "no-answer" };
-    }
-
-    const released = highestReleaseTag(facts.tags);
+    const { released, tags, head, defaultBranch, content } = read.readiness;
     // Versions depend on the previous tag alone (#520).
     const { versions } = proposeReleaseVersion(released?.name ?? null, []);
     const tag = versions[confirmation.step];
@@ -99,21 +87,20 @@ export class PublishRelease {
       (released?.name ?? null) !== confirmation.previousTag ||
       (released?.commit ?? null) !== confirmation.previousTagCommit ||
       head !== confirmation.revision ||
-      facts.tags.some((existing) => existing.name === tag);
+      tags.some((existing) => existing.name === tag);
     if (stale) {
       return await this.refuse(root, "plan-changed", true);
     }
 
-    // After the staleness check, so a stale plan reports `plan-changed` (#970).
-    const delta = await readReleaseDelta(this.deps.git, root, released, head);
-    if (delta === null) {
+    // Decided after the staleness check, so a stale plan reports `plan-changed` (#970).
+    if (content === null) {
       return { ok: false, error: "no-answer" };
     }
-    if (delta.movements.length === 0) {
-      return await this.refuse(root, "empty-delta", true);
+    if (content.blocked !== null) {
+      return await this.refuse(root, content.blocked, true);
     }
 
-    const push = await this.deps.git.publishTag(root, tag, head, branch);
+    const push = await this.deps.git.publishTag(root, tag, head, defaultBranch);
     switch (push) {
       case "pushed":
         // The new tag reaches the clone only through a fetch.

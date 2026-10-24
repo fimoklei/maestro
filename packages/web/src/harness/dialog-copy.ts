@@ -3,8 +3,9 @@ import type {
   ManifestAdvisory,
   StructuralProblem,
 } from "@maestro/core";
+import { CREATE_RELEASE, rereadLabel } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
-import { type Copy, type Phrase, phrase } from "../ui/phrase";
+import { type Copy, machine, type Phrase, phrase } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
 import type { defaultBranchCopy } from "./stage-copy";
 
@@ -20,6 +21,18 @@ export const skillChecksNotice = (
       ? "You can still publish the release."
       : `You can still ${step} the skill.`,
   items,
+});
+
+export const ROOT_SKILL_FILE = "SKILL.md at the Harness root";
+const ROOT_SKILL_FILE_CAUSE =
+  "Every target would get the whole Harness as one skill.";
+
+/** The release plan's block on a root SKILL.md, before anything is published. */
+export const rootSkillFileNotice = (defaultBranch: string): NoticeContent => ({
+  level: "error",
+  label: ROOT_SKILL_FILE,
+  message: phrase`Remove SKILL.md from the root of ${machine(defaultBranch)} on GitHub. Select ${rereadLabel("Harness")}, then select ${CREATE_RELEASE} again.`,
+  detail: ROOT_SKILL_FILE_CAUSE,
 });
 
 // Follows the skill's name in the release's checks notice.

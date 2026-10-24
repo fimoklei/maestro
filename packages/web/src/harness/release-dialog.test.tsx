@@ -45,6 +45,7 @@ const PLAN: ReleasePlan = {
   revision: "0123456789abcdef0123456789abcdef01234567",
   defaultBranch: "main",
   findings: [],
+  blocked: null,
 };
 
 const renderReady = (
@@ -320,7 +321,7 @@ describe("ReleaseDialog", () => {
   });
 
   it("states an empty plan, and offers no version to release", () => {
-    renderReady({ delta: [] });
+    renderReady({ delta: [], blocked: "empty-delta" });
 
     expect(screen.queryByRole("group")).not.toBeInTheDocument();
     expect(
@@ -438,7 +439,7 @@ describe("ReleaseDialog", () => {
 
   it("holds publish back when nothing has changed since the last release", async () => {
     const onPublish = vi.fn();
-    renderReady({ delta: [] }, { onPublish });
+    renderReady({ delta: [], blocked: "empty-delta" }, { onPublish });
 
     const publish = screen.getByRole("button", { name: "Publish release" });
     expect(publish).toHaveAccessibleDescription(
@@ -447,6 +448,40 @@ describe("ReleaseDialog", () => {
     expect(publish).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(publish);
     expect(onPublish).not.toHaveBeenCalled();
+  });
+
+  it("holds publish back while the default branch holds a SKILL.md at its root", async () => {
+    const onPublish = vi.fn();
+    renderReady(
+      { blocked: "root-skill-file", defaultBranch: "trunk" },
+      { onPublish },
+    );
+
+    const notice = screen.getByText("SKILL.md at the Harness root");
+    expect(notice).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        sentence(/^Remove SKILL\.md from the root of trunk on GitHub\. /),
+      ),
+    ).toBeInTheDocument();
+    const publish = screen.getByRole("button", { name: "Publish release" });
+    expect(publish).toHaveAttribute("aria-disabled", "true");
+    expect(publish).toHaveAccessibleDescription(
+      expect.stringContaining("SKILL.md at the Harness root"),
+    );
+    await userEvent.click(publish);
+    expect(onPublish).not.toHaveBeenCalled();
+  });
+
+  it("decides whether it can publish from the plan's block alone, never the delta", async () => {
+    const onPublish = vi.fn();
+    renderReady({ delta: [], blocked: null }, { onPublish });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Publish release" }),
+    );
+
+    expect(onPublish).toHaveBeenCalled();
   });
 
   it("says Publishing… and cannot be closed while a release is in flight", async () => {

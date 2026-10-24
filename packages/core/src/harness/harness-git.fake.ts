@@ -39,7 +39,11 @@ export type Prompts = Record<string, string>;
 
 type Content = { skills: Skills; prompts: Prompts };
 
-type Commit = Content & { parent: string | null; author: string };
+type Commit = Content & {
+  parent: string | null;
+  author: string;
+  rootFiles: string[];
+};
 
 // The tree hash git would give this content.
 export const treeHash = (content: string | null): string =>
@@ -119,6 +123,8 @@ export class InMemoryHarnessGit implements HarnessGitPort {
   readonly workingPromptLinks = new Set<string>();
   // Refs (commit ids, "HEAD", "working") whose skills cannot be listed.
   readonly unreadable = new Set<string>();
+  // Commit ids whose root alone cannot be listed.
+  readonly unlistableRoots = new Set<string>();
   cloneSync: CloneSync = "current";
   ambiguity: WorktreeAmbiguity | null = null;
   // Per branch name, as `promote`: a difference staged in the author's index;
@@ -161,13 +167,19 @@ export class InMemoryHarnessGit implements HarnessGitPort {
   commit(
     id: string,
     skills: Skills,
-    options: { parent?: string; author?: string; prompts?: Prompts } = {},
+    options: {
+      parent?: string;
+      author?: string;
+      prompts?: Prompts;
+      rootFiles?: string[];
+    } = {},
   ): string {
     this.commits.set(id, {
       parent: options.parent ?? null,
       skills,
       prompts: options.prompts ?? {},
       author: options.author ?? "fimoklei",
+      rootFiles: options.rootFiles ?? ["apm.yml"],
     });
     return id;
   }
@@ -299,6 +311,19 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     this.treeReads.push(ref);
     const content = this.contentAt(ref);
     return content === null ? null : objectsOf(content);
+  }
+
+  async readRootFiles(root: string, ref: string): Promise<string[] | null> {
+    this.at(root);
+    const id = this.resolve(ref);
+    if (
+      id === null ||
+      this.unlistableRoots.has(id) ||
+      this.unreadable.has(id)
+    ) {
+      return null;
+    }
+    return this.commits.get(id)?.rootFiles ?? null;
   }
 
   async readPrimitivesAtTag(

@@ -11,6 +11,7 @@ import type {
   ImportPromptSuccess,
   PrimitiveDeletionCheck,
   PrimitiveRef,
+  ReleaseBlock,
   ReleasePlan,
   SemverStep,
 } from "@maestro/core";
@@ -130,11 +131,17 @@ function recomputedPlan(error: unknown): ReleasePlan | null {
     versions !== null &&
     STEPS.every((step) => typeof versions[step] === "string") &&
     isArrayOf(shape.delta, isMovement) &&
-    isArrayOf(shape.findings, isFinding);
+    isArrayOf(shape.findings, isFinding) &&
+    (shape.blocked === null || isOneOf(shape.blocked, BLOCKS));
   return complete ? (plan as ReleasePlan) : null;
 }
 
 const STEPS = ["major", "minor", "patch"] as const;
+// Spelled as keys, so a new block fails the typecheck until it is listed.
+const BLOCKS = Object.keys({
+  "empty-delta": null,
+  "root-skill-file": null,
+} satisfies Record<ReleaseBlock, null>);
 // Spelled as keys, so a new type fails the typecheck until it is listed.
 const PRIMITIVE_TYPES = Object.keys({
   skill: null,

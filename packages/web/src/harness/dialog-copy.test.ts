@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { plainText } from "../ui/phrase";
 import {
   ADVISORY_TEXT,
   FINDING_TEXT,
   FOLDER_MISSING,
+  rootSkillFileNotice,
   skillChecksNotice,
 } from "./dialog-copy";
 
@@ -21,6 +23,19 @@ describe("Harness dialog copy", () => {
     );
     expect(skillChecksNotice("publish", []).message).toBe(
       "You can still publish the release.",
+    );
+  });
+
+  it("blocks a release on a root SKILL.md, naming the file and the branch", () => {
+    const notice = rootSkillFileNotice("main");
+
+    expect(notice.level).toBe("error");
+    expect(notice.label).toBe("SKILL.md at the Harness root");
+    expect(plainText(notice.message)).toBe(
+      "Remove SKILL.md from the root of main on GitHub. Select Re-read Harness, then select Create a release again.",
+    );
+    expect(notice.detail).toBe(
+      "Every target would get the whole Harness as one skill.",
     );
   });
 
