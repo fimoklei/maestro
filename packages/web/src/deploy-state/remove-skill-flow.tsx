@@ -8,7 +8,7 @@ import { useState } from "react";
 import { HttpError } from "../api/http";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
-import { useScreenReport, useWriteAction } from "../ui/use-write-action";
+import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
@@ -150,11 +150,10 @@ export function RemoveSkillFlow({
       : { kind: "global" };
   const preflight = useRemovePreflight(skillName, wireTarget);
   const removeWrite = useWriteAction(remove, {
-    report: useScreenReport(),
+    screen: useScreenWrites(),
     action: "remove",
-    show: "toast",
-    name: ({ removed }) =>
-      removedName({
+    subject: ({ removed }) => ({
+      name: removedName({
         name: removed.name,
         version: removed.version,
         // No scope in the response falls back to what the user consented to.
@@ -165,6 +164,9 @@ export function RemoveSkillFlow({
               ? target
               : { kind: "repo", name: target.name },
       }),
+      // The skill is no table row, and it leaves the open pane's list.
+      row: null,
+    }),
     // `news` states it: a retry clears the mutation's error mid-attempt.
     failure: () => null,
   });

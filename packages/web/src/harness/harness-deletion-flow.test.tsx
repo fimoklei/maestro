@@ -144,7 +144,16 @@ describe("Harness deletion proposal", () => {
       answer = resolve;
     });
     stubHarnessServer({
-      read: { body: DELETED },
+      read: {
+        body: DELETED,
+        afterPromote: withStages(DELETED, {
+          review: [
+            row("pending-review", "old-skill", "pull-request-missing", {
+              change: "deletion",
+            }),
+          ],
+        }),
+      },
       deletion: { body: REMOVED, heldUntil: held },
     });
     renderHarness();

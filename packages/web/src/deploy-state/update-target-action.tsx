@@ -48,10 +48,9 @@ export function UpdateTargetAction({
         },
   );
   const updateWrite = useWriteAction(update, {
-    report: screen.report,
+    screen,
     action: "update",
-    show: "row",
-    name: () => null,
+    subject: () => null,
     failure: (error) =>
       updateOutcomeRows(error) === null
         ? updateNotice(error, updateLabel)

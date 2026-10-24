@@ -7,7 +7,11 @@ import type {
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
 import { named, phrase } from "../ui/phrase";
-import { useWriteAction } from "../ui/use-write-action";
+import {
+  type ScreenWrites,
+  type Subject,
+  useWriteAction,
+} from "../ui/use-write-action";
 import { rowId } from "./harness-columns";
 import type {
   DiscardTarget,
@@ -37,23 +41,27 @@ import {
   useRestorePrimitive,
 } from "./use-harness";
 
-const primitiveName = (_data: unknown, { name }: { name: string }) => name;
-
 // The row a press lands on, named by the request it sent.
 const pressedRow = (stage: HarnessStage, { type, name }: PrimitiveRef) =>
   rowId({ stage, type, name });
 
+// A press names its primitive, and the row in the stage it lands in.
+const landsIn =
+  (stage: HarnessStage) =>
+  (_data: unknown, pressed: PrimitiveRef): Subject => ({
+    name: pressed.name,
+    row: pressedRow(stage, pressed),
+  });
+
 export function useHarnessPresses(
   state: HarnessState | undefined,
-  /** Into the Harness screen's status region. */
-  report: (write: string) => void,
+  screen: ScreenWrites,
 ) {
   const promote = usePromotePrimitive();
   const promoteWrite = useWriteAction(promote, {
-    report,
+    screen,
     action: "propose",
-    show: "row",
-    name: primitiveName,
+    subject: landsIn("pending-review"),
     // A failure follows a press, so the variables are set.
     failure: (error) =>
       promoteNotice(error, promote.variables?.type ?? "skill"),
@@ -68,19 +76,18 @@ export function useHarnessPresses(
   // confirmation carrying the origin/HEAD tree the row was painted from (#580).
   const deletion = usePromoteDeletion();
   const deletionWrite = useWriteAction(deletion, {
-    report,
+    screen,
     action: "delete",
-    show: "row",
-    name: primitiveName,
+    subject: landsIn("pending-review"),
     failure: (error) =>
       deletionNotice(error, deletion.variables?.type ?? "skill"),
   });
   const deleteLocal = useDeleteLocalPrimitive();
   const deleteLocalWrite = useWriteAction(deleteLocal, {
-    report,
+    screen,
     action: "delete",
-    show: "row",
-    name: primitiveName,
+    // The working tree's row: a Deletion in place, or gone where it was local only.
+    subject: landsIn("pending-proposal"),
     failure: (error) =>
       localDeletionNotice(error, {
         type: deleteLocal.variables?.type ?? "skill",
@@ -105,11 +112,15 @@ export function useHarnessPresses(
   const restore = useRestorePrimitive();
   // A status left unread is the outcome notice above the table instead.
   const restoreWrite = useWriteAction(restore, {
-    report,
+    screen,
     action: "restore",
-    show: "toast",
-    name: (restored) =>
-      restored.statusRead ? phrase`${named(restored.name)}` : null,
+    subject: (restored) =>
+      restored.statusRead
+        ? {
+            name: phrase`${named(restored.name)}`,
+            row: pressedRow("pending-proposal", restored),
+          }
+        : null,
     failure: (error) =>
       restoreNotice(error, restore.variables?.type ?? "skill"),
   });
@@ -117,10 +128,9 @@ export function useHarnessPresses(
 
   const discard = useDiscardChange();
   const discardWrite = useWriteAction(discard, {
-    report,
+    screen,
     action: "discard",
-    show: "row",
-    name: primitiveName,
+    subject: landsIn("pending-proposal"),
     failure: (error) =>
       discardNotice(error, {
         type: discard.variables?.type ?? "skill",
@@ -133,10 +143,10 @@ export function useHarnessPresses(
 
   const proposalAction = useProposalAction();
   const proposalWrite = useWriteAction(proposalAction, {
-    report,
+    screen,
     action: ({ action }) => action,
-    show: "row",
-    name: primitiveName,
+    // Each leaves the branch as it is, so the row stays in Pending review.
+    subject: landsIn("pending-review"),
     failure: proposalNotice,
   });
   const proposalSkill = proposalAction.variables ?? null;

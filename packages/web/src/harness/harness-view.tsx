@@ -130,10 +130,10 @@ export function HarnessView({
   const publish = usePublishRelease();
   // An Inventory left unread is the outcome notice above the table instead.
   const publishWrite = useWriteAction(publish, {
-    report: table.report,
+    screen: table,
     action: "publish",
-    show: "toast",
-    name: (published) => (published.inventoryRefreshed ? published.tag : null),
+    subject: (published) =>
+      published.inventoryRefreshed ? { name: published.tag, row: null } : null,
     failure: publishReleaseNotice,
   });
   const rereadInventory = useRereadInventory();
@@ -161,20 +161,9 @@ export function HarnessView({
     );
   };
 
-  // The import's done sentence already says what moved. It lands before the
-  // import's own re-read paints, so that read reports no move (#1160).
-  const importSaid = useRef(false);
-  const importFlow = useImportFlow(table.report, ({ name }) => {
-    // An import writes the working tree, so its row is Pending proposal's —
-    // even where the skill also holds a later one (#865).
-    open(rowId({ stage: "pending-proposal", type: "skill", name }));
-    importSaid.current = true;
-  });
-  const promptImportFlow = useImportPromptFlow(table.report, ({ name }) => {
-    open(rowId({ stage: "pending-proposal", type: "prompt", name }));
-    importSaid.current = true;
-  });
-  const presses = useHarnessPresses(state, table.report);
+  const importFlow = useImportFlow(table, open);
+  const promptImportFlow = useImportPromptFlow(table, open);
+  const presses = useHarnessPresses(state, table);
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -295,8 +284,9 @@ export function HarnessView({
   const byTitle = (key: string): StageSection | undefined =>
     sections.find((section) => section.title === key);
 
-  // A press moves a row between stages and the table repaints under the
+  // A read moves rows between stages and the table repaints under the
   // keyboard, so the move is reported; the first read is not a move (#868).
+  // A press's own done sentence outranks it.
   const counts =
     state === undefined
       ? null
@@ -308,11 +298,9 @@ export function HarnessView({
   const heardCounts = useRef<string | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: fires on each landed read
   useEffect(() => {
-    const said = importSaid.current;
-    importSaid.current = false;
     if (counts === null || state === undefined) return;
     if (
-      !said &&
+      !table.settling &&
       heardCounts.current !== null &&
       heardCounts.current !== counts
     ) {
