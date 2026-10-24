@@ -65,20 +65,21 @@ export function RepositoriesView() {
     },
     openOnArrival: null,
   });
-  const { report } = screen;
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
   const register = useRegisterDialog({
-    report,
+    screen,
     onAdded: screen.markAdded,
     registered: paths,
   });
   const unregisterWrite = useWriteAction(unregister, {
-    report,
+    screen,
     action: "unregister",
-    show: "toast",
-    name: (_data, path) => phrase`${named(repoTargetName(path, paths))}`,
+    subject: (_data, path) => ({
+      name: phrase`${named(repoTargetName(path, paths))}`,
+      row: path,
+    }),
     failure: unregisterNotice,
   });
 
