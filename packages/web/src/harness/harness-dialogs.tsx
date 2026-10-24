@@ -1,5 +1,4 @@
 import type {
-  HarnessPrimitiveType,
   HarnessStageRow,
   PrimitiveRef,
   ReleasePlan,
@@ -35,9 +34,7 @@ import { WithdrawDialog } from "./withdraw-dialog";
 
 // Frozen when the press was made: a later read moves the rows underneath, it
 // never moves this (#915).
-export type RestoreTarget = {
-  type: HarnessPrimitiveType;
-  skill: string;
+export type RestoreTarget = PrimitiveRef & {
   path: string;
   commit: string;
   hasRequest: boolean;
@@ -51,9 +48,7 @@ export type DiscardTarget = PrimitiveRef & {
 
 // `localOnly` picks the dialog's copy: a skill in no ref, or step 1 of a
 // deletion the default branch still holds (#1370).
-export type LocalDeletionTarget = {
-  type: HarnessPrimitiveType;
-  skill: string;
+export type LocalDeletionTarget = PrimitiveRef & {
   path: string;
   localOnly: boolean;
 };
@@ -148,7 +143,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       {props.restoring !== null ? (
         <RestoreDialog
           type={props.restoring.type}
-          name={props.restoring.skill}
+          name={props.restoring.name}
           path={props.restoring.path}
           commit={props.restoring.commit}
           hasRequest={props.restoring.hasRequest}
@@ -160,7 +155,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
             props.restore.run(
               {
                 type: props.restoring.type,
-                name: props.restoring.skill,
+                name: props.restoring.name,
                 seenHeadCommit: props.restoring.commit,
                 hasRequest: props.restoring.hasRequest,
               },
@@ -234,7 +229,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
 // afresh, and a stale refusal reads it again before the next confirmation.
 // Skills opens it too (#1385); `screen` picks the control its notices name.
 export function LocalDeletionDialog({
-  target: { type, skill, path, localOnly },
+  target: { type, name, path, localOnly },
   screen,
   write,
   onClose,
@@ -248,8 +243,8 @@ export function LocalDeletionDialog({
 }) {
   const check = useDeletionCheck();
   const harness = useHarness();
-  const context = { type, name: skill, screen };
-  const folder = folderInClone(check.data?.[type][skill]);
+  const context = { type, name, screen };
+  const folder = folderInClone(check.data?.[type][name]);
   const seenWorkingTree = folder?.workingTree ?? null;
   const checkFailure = check.isError
     ? deletionCheckNotice("no-answer", context)
@@ -259,7 +254,7 @@ export function LocalDeletionDialog({
   return (
     <DeletionDialog
       type={type}
-      name={skill}
+      name={name}
       mode={{
         kind: "local",
         // Both screens read the Harness already; the plain word stands in
@@ -281,7 +276,7 @@ export function LocalDeletionDialog({
       onConfirm={() =>
         seenWorkingTree !== null &&
         write.run(
-          { type, name: skill, seenWorkingTree },
+          { type, name, seenWorkingTree },
           {
             onSuccess: onDeleted,
             onError: (error) => {

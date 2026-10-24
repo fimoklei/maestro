@@ -1,4 +1,4 @@
-import type { HarnessStageRow, HarnessState } from "@maestro/core";
+import type { HarnessStageRow, HarnessState, ReleasePlan } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
@@ -41,7 +41,15 @@ export const withStages = (
 
 // A release plan with one added skill, priced from v1.2.3.
 export const PLAN = {
-  delta: [{ type: "skill", kind: "added", name: "research", author: "Grace" }],
+  delta: [
+    {
+      type: "skill",
+      kind: "added",
+      change: "addition",
+      name: "research",
+      author: "Grace",
+    },
+  ],
   previousTag: "v1.2.3",
   previousTagCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   proposedStep: "minor",
@@ -50,7 +58,7 @@ export const PLAN = {
   revision: "0123456789abcdef0123456789abcdef01234567",
   defaultBranch: "main",
   findings: [{ skill: "broken", problem: "missing-manifest" }],
-};
+} satisfies ReleasePlan;
 
 export function stubHarnessServer(options: {
   read: {

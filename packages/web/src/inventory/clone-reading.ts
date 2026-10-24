@@ -1,4 +1,7 @@
-import type { HarnessPrimitiveType, SkillDeletionCheck } from "@maestro/core";
+import type {
+  HarnessPrimitiveType,
+  PrimitiveDeletionCheck,
+} from "@maestro/core";
 import { HttpError } from "../api/http";
 import {
   folderInClone,
@@ -9,7 +12,7 @@ import {
 /** What this computer's clone says about deleting each primitive of one type (#1385). */
 export type CloneReading =
   | { kind: "no-harness" | "checking" | "failed" }
-  | { kind: "read"; checks: Record<string, SkillDeletionCheck> };
+  | { kind: "read"; checks: Record<string, PrimitiveDeletionCheck> };
 
 // "No Working Harness" is the Harness read's own answer, not the check's.
 export function cloneReading(

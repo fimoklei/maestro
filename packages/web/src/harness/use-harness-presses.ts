@@ -29,12 +29,12 @@ import {
   type RunningPress,
 } from "./row-actions";
 import {
-  useDeleteLocalSkill,
-  useDiscardSkillChange,
+  useDeleteLocalPrimitive,
+  useDiscardChange,
   usePromoteDeletion,
-  usePromoteSkill,
+  usePromotePrimitive,
   useProposalAction,
-  useRestoreSkill,
+  useRestorePrimitive,
 } from "./use-harness";
 
 const skillName = (_data: unknown, { name }: { name: string }) => name;
@@ -48,7 +48,7 @@ export function useHarnessPresses(
   /** Into the Harness screen's status region. */
   report: (write: string) => void,
 ) {
-  const promote = usePromoteSkill();
+  const promote = usePromotePrimitive();
   const promoteWrite = useWriteAction(promote, {
     report,
     action: "propose",
@@ -75,7 +75,7 @@ export function useHarnessPresses(
     failure: (error) =>
       deletionNotice(error, deletion.variables?.type ?? "skill"),
   });
-  const deleteLocal = useDeleteLocalSkill();
+  const deleteLocal = useDeleteLocalPrimitive();
   const deleteLocalWrite = useWriteAction(deleteLocal, {
     report,
     action: "delete",
@@ -102,7 +102,7 @@ export function useHarnessPresses(
 
   // The press freezes what it was made against, so a check landing while the
   // confirmation stands cannot rewrite the source or close it (#915).
-  const restore = useRestoreSkill();
+  const restore = useRestorePrimitive();
   // A status left unread is the outcome notice above the table instead.
   const restoreWrite = useWriteAction(restore, {
     report,
@@ -115,7 +115,7 @@ export function useHarnessPresses(
   });
   const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
 
-  const discard = useDiscardSkillChange();
+  const discard = useDiscardChange();
   const discardWrite = useWriteAction(discard, {
     report,
     action: "discard",
@@ -232,7 +232,7 @@ export function useHarnessPresses(
       deleteLocal.reset();
       setLocalDeletion({
         type: row.type,
-        skill: row.name,
+        name: row.name,
         path: row.path,
         localOnly: row.localOnly,
       });
@@ -253,7 +253,7 @@ export function useHarnessPresses(
       restore.reset();
       setRestoring({
         type: row.type,
-        skill: row.name,
+        name: row.name,
         path: row.path,
         commit,
         hasRequest: row.requests.length > 0,

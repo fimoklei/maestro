@@ -93,8 +93,8 @@ The act of undoing a **Deploy**: the primitive disappears from each target and f
 _Avoid_: undeploy (constructed jargon), uninstall (APM's verb for the mechanism), delete (ambiguous with deleting from the central inventory).
 
 **Skill restoration**:
-Recovery of a locally deleted skill folder in the Working Harness from the last local commit, without changing its proposal.
-_Avoid_: undo deletion, which implies recovering the exact pre-deletion state; restore for returning a folder to the default branch, which is **Discard change**.
+Recovery of a locally deleted skill folder or prompt file in the Working Harness from the last local commit, without changing its proposal.
+_Avoid_: undo deletion, which implies recovering the exact pre-deletion state; restore for returning a folder or file to the default branch, which is **Discard change**.
 
 **Proposal**:
 One skill's or prompt's change offered for review: the branch **Propose change** pushed, and the pull request opened over it. A proposal ends when its pull request is merged; the branch itself may outlive it, and a later change to it on the default branch never revives it. Without a pull-request check, Maestro cannot see the end and reads the branch as before (#890).
@@ -198,7 +198,7 @@ details may name the exact APM mechanism or file.
 | Unreleased change | **Pending release** | This skill or prompt differs between the Harness default branch and the latest release. Explain as *Merged, not yet released*; approval alone is not a merge. |
 | Harness skill deletion | **Delete** / **Deletion** / **Deleted** | *Delete* is the verb, *deletion* is the noun, and *deleted* is the state. Use these forms throughout the Harness journey, including proposed deletions; never *remove* for this concept. The confirmation reads *Delete {skill}* and confirms with **Delete skill**. *Delete skill* always removes the folder from the Working Harness; when the skill is on the Harness default branch, **Propose change** then offers the deletion for review (#1335). |
 | Harness prompt deletion | **Delete prompt** | The same words and journey as **Delete skill**, except that it removes the prompt's file, not a folder, and names no targets. **Prompts** keeps listing the prompt until the next release (#1590). |
-| Discard an unproposed Harness edit | **Discard change** | After a confirmation, replaces a **Not yet proposed** skill folder in the Working Harness with its copy on the default branch. Deployed copies remain unchanged. Say *replace*, never *restore*: *restore* belongs to **Restore skill** (Skill restoration). Never **Discard local edits**, which acts on a deployed copy (#1375). |
+| Discard an unproposed Harness edit | **Discard change** | After a confirmation, replaces a **Not yet proposed** skill folder or prompt file in the Working Harness with its copy on the default branch. Deployed copies remain unchanged. Say *replace*, never *restore*: *restore* belongs to **Restore skill** and **Restore prompt** (Skill restoration). Never **Discard local edits**, which acts on a deployed copy (#1375). |
 | Skill restoration | **Restore skill** / **Restore prompt** / **Restore {name}** | The action and confirmation button read **Restore skill**, or **Restore prompt** for a prompt; the dialog title reads **Restore {name}**. Never **Undo deletion**. |
 | Proposal without a pull request | **Pull request missing** | A prepared proposal has no matching pull request, confirmed by a complete check. It is not Pending review. |
 | Merged proposal, default branch not yet read | **Proposal merged** | GitHub merged the pull request and the Harness default branch has not been read since. It is the normal end of a review, so it carries no amber marking; the row leaves Pending review on the next read. Never **Pull request missing**, which claims no request ever existed. |

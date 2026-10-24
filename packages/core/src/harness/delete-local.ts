@@ -31,11 +31,11 @@ export type DeleteLocalResult =
 // Per type, then per name.
 type DeletionChecks = Record<
   HarnessPrimitiveType,
-  Record<string, SkillDeletionCheck>
+  Record<string, PrimitiveDeletionCheck>
 >;
 
 // A folder outside the clone has nothing to delete, so it carries no facts.
-export type SkillDeletionCheck =
+export type PrimitiveDeletionCheck =
   | { inClone: false }
   | {
       inClone: true;
@@ -145,7 +145,7 @@ export class DeleteLocal {
 const checkPrimitive = (
   trees: HarnessHashes,
   ref: PrimitiveRef,
-): SkillDeletionCheck => {
+): PrimitiveDeletionCheck => {
   const { name } = ref;
   const workingTree = Object.hasOwn(trees.working, name)
     ? trees.working[name]
