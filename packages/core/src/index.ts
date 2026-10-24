@@ -107,7 +107,7 @@ export {
   DeleteLocal,
   type DeleteLocalError,
   type DeletionCheckResult,
-  type SkillDeletionCheck,
+  type PrimitiveDeletionCheck,
 } from "./harness/delete-local";
 export {
   DiscardChange,

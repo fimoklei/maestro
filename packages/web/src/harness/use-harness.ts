@@ -2,16 +2,17 @@
 // that reaches the remote and replaces it.
 
 import type {
+  HarnessChange,
   HarnessPrimitiveType,
   HarnessState,
   ImportCheck,
   ImportMode,
   ImportPromptCheck,
   ImportPromptSuccess,
+  PrimitiveDeletionCheck,
   PrimitiveRef,
   ReleasePlan,
   SemverStep,
-  SkillDeletionCheck,
 } from "@maestro/core";
 import type { PromptDraft } from "@maestro/core/prompt-file";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -140,6 +141,13 @@ const PRIMITIVE_TYPES = Object.keys({
   prompt: null,
 } satisfies Record<HarnessPrimitiveType, null>);
 const MOVEMENT_KINDS = ["added", "changed", "removed", "renamed"] as const;
+// The release list groups rows by change, so a row without one is never shown.
+const CHANGES = Object.keys({
+  addition: null,
+  edit: null,
+  deletion: null,
+  rename: null,
+} satisfies Record<HarnessChange, null>);
 const PROBLEMS = [
   "missing-manifest",
   "invalid-frontmatter",
@@ -169,7 +177,11 @@ const isArrayOf = (
 const isMovement = (entry: Record<string, unknown>): boolean =>
   isOneOf(entry.type, PRIMITIVE_TYPES) &&
   isOneOf(entry.kind, MOVEMENT_KINDS) &&
+  isOneOf(entry.change, CHANGES) &&
   typeof entry.name === "string" &&
+  (entry.kind === "renamed"
+    ? typeof entry.previousName === "string"
+    : entry.previousName === undefined) &&
   isNullableString(entry.author);
 
 const isFinding = (entry: Record<string, unknown>): boolean =>
@@ -256,7 +268,7 @@ type PromoteOutcome = { branch: string; pullRequestUrl: string };
 
 // A type and a name travel, never a path; the row's new stage is read from
 // git (#577).
-export function usePromoteSkill() {
+export function usePromotePrimitive() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: PrimitiveRef) =>
@@ -318,7 +330,7 @@ export function useDeletionCheck() {
     queryKey: DELETION_CHECK_KEY,
     queryFn: () =>
       requestJson<
-        Record<HarnessPrimitiveType, Record<string, SkillDeletionCheck>>
+        Record<HarnessPrimitiveType, Record<string, PrimitiveDeletionCheck>>
       >("/api/harness/primitive/delete/check"),
     staleTime: 0,
     gcTime: 0,
@@ -326,12 +338,12 @@ export function useDeletionCheck() {
 }
 
 // The folder's facts where it is in the clone; null where nothing is to delete.
-export const folderInClone = (check: SkillDeletionCheck | undefined) =>
+export const folderInClone = (check: PrimitiveDeletionCheck | undefined) =>
   check?.inClone === true ? check : null;
 
 // Nothing here reaches a remote (#798). The tree is the folder the dialog's
 // check read; the server refuses a folder that changed since.
-export function useDeleteLocalSkill() {
+export function useDeleteLocalPrimitive() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: PrimitiveRef & { seenWorkingTree: string }) =>
@@ -347,7 +359,7 @@ export function useDeleteLocalSkill() {
 
 // The tree is the default-branch copy the dialog named; the server refuses one
 // that moved since (#1375).
-export function useDiscardSkillChange() {
+export function useDiscardChange() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: PrimitiveRef & { seenRemoteTree: string }) =>
@@ -363,7 +375,7 @@ export function useDiscardSkillChange() {
 
 // `hasRequest` never leaves the browser; it only picks the notice's sentence
 // (#915).
-export function useRestoreSkill() {
+export function useRestorePrimitive() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (

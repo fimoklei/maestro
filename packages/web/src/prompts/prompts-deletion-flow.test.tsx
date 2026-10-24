@@ -2,8 +2,8 @@ import type {
   HarnessPrimitiveType,
   HarnessState,
   InventoryPrimitive,
+  PrimitiveDeletionCheck,
   PrimitiveRef,
-  SkillDeletionCheck,
 } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -68,7 +68,10 @@ const IN_CLONE = {
       localOnly: false,
     },
   },
-} satisfies Record<HarnessPrimitiveType, Record<string, SkillDeletionCheck>>;
+} satisfies Record<
+  HarnessPrimitiveType,
+  Record<string, PrimitiveDeletionCheck>
+>;
 
 type Answer = { body: unknown; status?: number; heldUntil?: Promise<void> };
 

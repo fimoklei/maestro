@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
+import { harnessDisk } from "./harness-disk.fake";
 import { HarnessFetchGate } from "./harness-fetch-gate";
 import { InMemoryHarnessGit, skillRef } from "./harness-git.fake";
 import type {
@@ -68,9 +69,11 @@ function buildPromote(
     onEdit?: (number: number, title: string) => void;
     createOutcome?: ReviewWriteOutcome;
     fetchGate?: HarnessFetchGate;
+    disk?: Parameters<typeof harnessDisk>[0];
   },
 ) {
   return new Promote({
+    fs: harnessDisk(overrides?.disk),
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     locks: new InFlightLocks(),
@@ -344,6 +347,21 @@ describe("Promote", () => {
       ok: false,
       error: "skill-missing",
     });
+  });
+
+  // Real git hashes the link itself and would push it to the proposal branch.
+  it("refuses a prompt file that is a link, pushing nothing", async () => {
+    const git = newSkillWorld();
+    git.workingPrompts = { "pr-review": "Review" };
+
+    await expect(
+      buildPromote(git, {
+        disk: {
+          links: { "/harness/.maestro/prompts/pr-review.md": "/elsewhere.md" },
+        },
+      }).execute({ type: "prompt", name: "pr-review" }),
+    ).resolves.toEqual({ ok: false, error: "destination-unsafe" });
+    expect(git.pushed).toEqual([]);
   });
 
   it.each([

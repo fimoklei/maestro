@@ -389,6 +389,7 @@ export function composeUseCases(ports: UseCasePorts) {
     promote: droppingOutdated(
       new Promote({
         resolveRoot: harnessRoot,
+        fs,
         git: harnessGit,
         fetchGate: harnessFetchGate,
         locks: harnessPromoteLocks,

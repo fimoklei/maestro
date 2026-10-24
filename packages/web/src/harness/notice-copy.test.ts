@@ -117,6 +117,7 @@ const SURFACES: Surface[] = [
       "invalid-skill": true,
       "no-answer": true,
       "skill-missing": true,
+      "destination-unsafe": true,
       "push-elsewhere": true,
       "source-changed": true,
       "concurrent-change": true,
@@ -167,6 +168,7 @@ const SURFACES: Surface[] = [
       "no-answer": true,
       "confirmation-stale": true,
       "destination-unsafe": true,
+      "destination-unreadable": true,
       "delete-failed": true,
       "delete-in-progress": true,
     }),
@@ -257,6 +259,7 @@ const SURFACES: Surface[] = [
       "nothing-to-discard": true,
       "confirmation-stale": true,
       "destination-unsafe": true,
+      "destination-unreadable": true,
       "discard-in-progress": true,
       "discard-failed": true,
     }),
@@ -643,15 +646,82 @@ describe("a prompt's notices", () => {
     );
   });
 
-  it("states a prompt file that resolves outside the Harness", () => {
+  it("states a prompt file that is a link", () => {
     expect(
       readNotice(restoreNotice(refusal("destination-unsafe"), "prompt")),
     ).toMatchObject({
-      label: "File outside the Harness",
+      label: "Link in the Harness",
       message:
         "Nothing was restored. Replace the link with a real file, then select Restore prompt again.",
       detail:
-        "The prompt file resolves outside the Harness .maestro/prompts folder.",
+        "The prompt file or the Harness .maestro/prompts folder is a link.",
+    });
+  });
+
+  it.each([
+    [
+      "prompt",
+      "Nothing was pushed. Replace the link with a real file, then select Propose change again.",
+      "The prompt file or the Harness .maestro/prompts folder is a link.",
+    ],
+    [
+      "skill",
+      "Nothing was pushed. Replace the link with a real folder, then select Propose change again.",
+      "The skill folder or the Harness .apm/skills folder is a link.",
+    ],
+  ] as const)(
+    "states a %s that is a link, pushing nothing",
+    (type, message, detail) => {
+      expect(
+        readNotice(promoteNotice(refusal("destination-unsafe"), type)),
+      ).toMatchObject({ label: "Link in the Harness", message, detail });
+    },
+  );
+
+  it("states a skill folder that is a link, discarding nothing", () => {
+    expect(
+      readNotice(
+        discardNotice(refusal("destination-unsafe"), {
+          type: "skill",
+          name: "tdd",
+        }),
+      ),
+    ).toMatchObject({
+      label: "Link in the Harness",
+      detail: "The skill folder or the Harness .apm/skills folder is a link.",
+    });
+  });
+
+  it("states a skills folder that cannot be read, deleting nothing", () => {
+    expect(
+      readNotice(
+        localDeletionNotice(refusal("destination-unreadable"), {
+          type: "skill",
+          name: "tdd",
+          screen: "harness",
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Skills folder not read",
+      message:
+        "Nothing was deleted. Make the Harness .apm/skills folder readable, then select Delete skill again.",
+    });
+  });
+
+  it("states a prompts folder that cannot be read, discarding nothing", () => {
+    expect(
+      readNotice(
+        discardNotice(refusal("destination-unreadable"), {
+          type: "prompt",
+          name: "pr-review",
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Prompts folder not read",
+      message:
+        "Nothing was discarded. Make the Harness .maestro/prompts folder readable, then select Discard change again.",
     });
   });
 

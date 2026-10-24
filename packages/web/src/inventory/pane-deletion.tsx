@@ -6,7 +6,7 @@ import {
   type LocalDeletionContext,
   localDeletionNotice,
 } from "../harness/local-deletion-copy";
-import { useDeleteLocalSkill } from "../harness/use-harness";
+import { useDeleteLocalPrimitive } from "../harness/use-harness";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 
 /** Step 1 of a deletion started on an Inventory view, with its own write (#1385). */
@@ -22,7 +22,7 @@ export function PaneDeletion({
   onDeleted: () => void;
 }) {
   // Its own write, so a refusal names this screen's controls.
-  const write = useWriteAction(useDeleteLocalSkill(), {
+  const write = useWriteAction(useDeleteLocalPrimitive(), {
     report: useScreenReport(),
     action: "delete",
     show: "row",
@@ -31,7 +31,7 @@ export function PaneDeletion({
     failure: (error) =>
       localDeletionNotice(error, {
         type: target.type,
-        name: target.skill,
+        name: target.name,
         screen,
       }),
   });

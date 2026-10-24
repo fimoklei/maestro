@@ -166,6 +166,7 @@ describe("prompt files on disk", { timeout: 30_000 }, () => {
     });
 
     expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "destination-unsafe" });
     expect((await lstat(join(root, FILE))).isSymbolicLink()).toBe(true);
     expect(await readFile(outside, "utf8")).toBe("not the Harness\n");
   });
@@ -179,8 +180,42 @@ describe("prompt files on disk", { timeout: 30_000 }, () => {
     });
 
     expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "destination-unsafe" });
     expect((await lstat(join(root, FILE))).isSymbolicLink()).toBe(true);
     expect(await readFile(outside, "utf8")).toBe("not the Harness\n");
+  });
+
+  it("restores nothing over a prompt file that links out of the Harness", async () => {
+    const app = makeApp();
+    const outside = await linkOut();
+
+    const response = await post(app, "restore", { seenHeadCommit: localHead });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "destination-unsafe" });
+    expect((await lstat(join(root, FILE))).isSymbolicLink()).toBe(true);
+    expect(await readFile(outside, "utf8")).toBe("not the Harness\n");
+  });
+
+  it("proposes nothing for a prompt file that links out of the Harness", async () => {
+    const app = makeApp();
+    await linkOut();
+
+    const response = await app.request("/api/harness/promote", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "prompt", name: "pr-review" }),
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "destination-unsafe" });
+    const { stdout } = await git(
+      root,
+      "ls-remote",
+      "origin",
+      "refs/heads/maestro/*",
+    );
+    expect(stdout).toBe("");
   });
 
   it("refuses to restore into a prompts folder that links out of the Harness", async () => {

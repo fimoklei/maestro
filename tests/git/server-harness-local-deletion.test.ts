@@ -1,7 +1,7 @@
 // The check the Delete skill dialog reads, then the deletion it confirms (#1380).
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { NodeFileSystem, type SkillDeletionCheck } from "@maestro/core";
+import { NodeFileSystem, type PrimitiveDeletionCheck } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   type HarnessStagesApp,
@@ -14,7 +14,7 @@ describe("Delete skill over HTTP", { timeout: 40_000 }, () => {
 
   const check = async (
     app: HarnessStagesApp,
-  ): Promise<Record<string, SkillDeletionCheck>> => {
+  ): Promise<Record<string, PrimitiveDeletionCheck>> => {
     const response = await app.request("/api/harness/primitive/delete/check");
     expect(response.status).toBe(200);
     return ((await response.json()) as { skill: never }).skill;

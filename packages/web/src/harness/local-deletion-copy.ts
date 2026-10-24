@@ -6,7 +6,12 @@ import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { named, phrase } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
-import { harnessHeadings, invalidNameHeading } from "./notice-copy";
+import {
+  harnessHeadings,
+  invalidNameHeading,
+  linkInHarness,
+  typeFolderNotRead,
+} from "./notice-copy";
 
 /** Delete skill and Delete prompt open from the Harness view and from their Inventory views. */
 export type LocalDeletionContext = {
@@ -51,12 +56,14 @@ const localDeletionHeadings = ({
       message: `Nothing was deleted. Select ${CLOSE}, then select ${w.deleteLabel} again.`,
       detail: "Git could not read your clone.",
     },
-    "destination-unsafe": {
-      level: "error",
-      label: `${w.Holder} outside the Harness`,
-      message: `Nothing was deleted. Replace the link with a real ${w.holder}, then select ${w.deleteLabel} again.`,
-      detail: `The ${w.noun} ${w.holder} resolves outside the Harness ${w.home}.`,
-    },
+    "destination-unsafe": linkInHarness(
+      w,
+      `Nothing was deleted. Replace the link with a real ${w.holder}, then select ${w.deleteLabel} again.`,
+    ),
+    "destination-unreadable": typeFolderNotRead(
+      w,
+      `Nothing was deleted. Make the Harness ${w.home} readable, then select ${w.deleteLabel} again.`,
+    ),
     "delete-failed": {
       level: "error",
       label: `${w.Noun} not deleted`,

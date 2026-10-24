@@ -13,6 +13,12 @@ Where to look first. Layer rules and package shape: `.claude/rules/architecture.
   that differ by primitive type in `harness-primitive-git.ts`, and what differs
   by type (path, branch, listing) in `harness-primitive.ts`. `gh`:
   `gh-cli-adapter.ts` beside it.
+- **Harness disk and release**: where a primitive sits on disk, and the link
+  refusal, in `packages/core/src/harness/harness-primitive-dir.ts`
+  (`inspectPrimitiveEntry`); the diff from the latest release in
+  `release-delta.ts`; the released skills and prompts Inventory lists in
+  `packages/core/src/inventory/released-primitives.ts`. The Prompts screen:
+  `packages/web/src/prompts/`.
 - **Drift / Behind**: read in `packages/core/src/drift/` (from `apm outdated`);
   served by `/api/drift` in `deploy-routes.ts`, not a `drift-routes.ts`. The
   target's reading lives in `packages/web/src/deploy-state/target-status.ts`.

@@ -1,7 +1,12 @@
 import { join } from "node:path";
 import { isWithinRoot } from "../filesystem/path-containment";
 import type { FileSystemPort } from "../registry/file-system";
-import { type HarnessPrimitiveType, primitiveDir } from "./harness-primitive";
+import {
+  type HarnessPrimitiveType,
+  type PrimitiveRef,
+  primitiveDir,
+  primitiveEntry,
+} from "./harness-primitive";
 
 export type ResolvedPrimitiveDir =
   | { ok: true; dir: string }
@@ -9,7 +14,7 @@ export type ResolvedPrimitiveDir =
 
 // The type's folder, resolved inside the Harness root. Never creates the
 // folder: a caller that writes into it uses `ensureHarnessPrimitiveDir`.
-export async function resolveHarnessPrimitiveDir(
+async function resolveHarnessPrimitiveDir(
   fs: Pick<FileSystemPort, "realpath">,
   root: string,
   type: HarnessPrimitiveType,
@@ -25,6 +30,37 @@ export async function resolveHarnessPrimitiveDir(
   return isWithinRoot(dir, realRoot)
     ? { ok: true, dir }
     : { ok: false, reason: "outside-root" };
+}
+
+export type PrimitiveEntryFs = Pick<
+  FileSystemPort,
+  "realpath" | "exists" | "isFileEntry" | "isDirectoryEntry"
+>;
+
+export type PrimitiveEntry =
+  | { kind: "plain" | "absent"; dir: string; path: string }
+  | { kind: "unsafe" }
+  | { kind: "unreadable" };
+
+/** Where a primitive sits on disk; any link, even one inside its folder, is unsafe. */
+export async function inspectPrimitiveEntry(
+  fs: PrimitiveEntryFs,
+  root: string,
+  ref: PrimitiveRef,
+): Promise<PrimitiveEntry> {
+  const resolved = await resolveHarnessPrimitiveDir(fs, root, ref.type);
+  if (!resolved.ok) {
+    return { kind: resolved.reason === "unreadable" ? "unreadable" : "unsafe" };
+  }
+  const { dir } = resolved;
+  const path = join(dir, primitiveEntry(ref));
+  if (!(await fs.exists(path))) {
+    return { kind: "absent", dir, path };
+  }
+  // Neither a folder nor a file without following it: a link.
+  const plain =
+    (await fs.isDirectoryEntry(path)) || (await fs.isFileEntry(path));
+  return plain ? { kind: "plain", dir, path } : { kind: "unsafe" };
 }
 
 // The type's folder, created when missing. Each part of its path that exists

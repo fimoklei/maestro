@@ -1,18 +1,18 @@
 // Removes a primitive's folder or file from the Working Harness's disk: no commit or push
 // (#798). A skill on the default branch goes the same way; Propose change then
 // carries the deletion to the Curator (#1370).
-import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
-import { isWithinRoot } from "../filesystem/path-containment";
 import type { FileSystemPort } from "../registry/file-system";
 import {
   type HarnessPrimitiveType,
   type PrimitiveRef,
-  primitiveEntry,
   primitivePath,
 } from "./harness-primitive";
-import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
+import {
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
+} from "./harness-primitive-dir";
 import type { HarnessGitPort, HarnessHashes } from "./read-harness-state";
 
 export type DeleteLocalError =
@@ -22,8 +22,9 @@ export type DeleteLocalError =
   | "no-answer"
   // The folder no longer holds the tree the confirmation was given against.
   | "confirmation-stale"
-  // Outside this Harness's skills folder: removing it would delete something else.
+  // A link, or outside the type's folder: removing it would delete something else.
   | "destination-unsafe"
+  | "destination-unreadable"
   | "delete-failed"
   | "delete-in-progress";
 
@@ -34,11 +35,11 @@ export type DeleteLocalResult =
 // Per type, then per name.
 type DeletionChecks = Record<
   HarnessPrimitiveType,
-  Record<string, SkillDeletionCheck>
+  Record<string, PrimitiveDeletionCheck>
 >;
 
 // A folder outside the clone has nothing to delete, so it carries no facts.
-export type SkillDeletionCheck =
+export type PrimitiveDeletionCheck =
   | { inClone: false }
   | {
       inClone: true;
@@ -58,7 +59,7 @@ export type DeletionCheckResult =
 export class DeleteLocal {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<FileSystemPort, "realpath" | "remove">;
+    fs: PrimitiveEntryFs & Pick<FileSystemPort, "remove">;
     git: Pick<HarnessGitPort, "readMovementTrees">;
     locks: InFlightLocks;
   };
@@ -115,6 +116,11 @@ export class DeleteLocal {
     ref: PrimitiveRef,
     seenWorkingTree: string,
   ): Promise<DeleteLocalResult> {
+    // Before the listing: real git lists no link, which would read as already gone.
+    const entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
+    if (entry.kind === "unsafe") {
+      return { ok: false, error: "destination-unsafe" };
+    }
     // Re-read at the press, never taken from the row.
     const trees = await this.deps.git.readMovementTrees(root).catch(() => null);
     if (trees === null) {
@@ -127,47 +133,26 @@ export class DeleteLocal {
     if (check.workingTree !== seenWorkingTree) {
       return { ok: false, error: "confirmation-stale" };
     }
-
-    const folder = await this.resolveTarget(root, ref);
-    if (folder === null) {
-      return { ok: false, error: "destination-unsafe" };
+    if (entry.kind === "unreadable") {
+      return { ok: false, error: "destination-unreadable" };
     }
+    if (entry.kind === "absent") {
+      return { ok: false, error: "already-gone" };
+    }
+
     try {
-      await this.deps.fs.remove(folder);
+      await this.deps.fs.remove(entry.path);
     } catch {
       return { ok: false, error: "delete-failed" };
     }
     return { ok: true, name: ref.name };
-  }
-
-  // A symlinked folder or file resolves to its target and fails the containment test.
-  private async resolveTarget(
-    root: string,
-    ref: PrimitiveRef,
-  ): Promise<string | null> {
-    const resolved = await resolveHarnessPrimitiveDir(
-      this.deps.fs,
-      root,
-      ref.type,
-    );
-    if (!resolved.ok) {
-      return null;
-    }
-    try {
-      const target = await this.deps.fs.realpath(
-        join(resolved.dir, primitiveEntry(ref)),
-      );
-      return isWithinRoot(target, resolved.dir) ? target : null;
-    } catch {
-      return null;
-    }
   }
 }
 
 const checkPrimitive = (
   trees: HarnessHashes,
   ref: PrimitiveRef,
-): SkillDeletionCheck => {
+): PrimitiveDeletionCheck => {
   const { name } = ref;
   const workingTree = Object.hasOwn(trees.working, name)
     ? trees.working[name]

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { DiscardChange } from "./discard-change";
+import { harnessDisk } from "./harness-disk.fake";
 import { InMemoryHarnessGit, skillRef, treeHash } from "./harness-git.fake";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
 import type { WorktreeAmbiguity } from "./read-harness-state";
@@ -47,7 +48,7 @@ function build(overrides?: {
   // The default branch's skills; null is a listing nobody could read.
   atRemote?: Record<string, string> | null;
   write?: "missing" | "failed";
-  realpath?: (path: string) => Promise<string>;
+  disk?: Parameters<typeof harnessDisk>[0];
   failMoveInto?: string;
   locks?: InFlightLocks;
 }) {
@@ -79,7 +80,7 @@ function build(overrides?: {
       overrides && "stages" in overrides
         ? (overrides.stages ?? null)
         : stagesWith([row()]),
-    fs: { realpath: overrides?.realpath ?? (async (path) => path) },
+    fs: harnessDisk(overrides?.disk ?? { entries: [`${SKILLS}/tdd`] }),
     copyFs: {
       createStagingDir: async () => STAGING,
       movePath: async (from, to) => {
@@ -249,11 +250,44 @@ describe("DiscardChange", () => {
 
   it("refuses a skill folder that is a link", async () => {
     const { discard, moved } = build({
-      realpath: async (path) =>
-        path === `${SKILLS}/tdd` ? "/elsewhere/tdd" : path,
+      disk: { links: { [`${SKILLS}/tdd`]: "/elsewhere/tdd" } },
     });
 
     await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
+      ok: false,
+      error: "destination-unsafe",
+    });
+    expect(moved).toEqual([]);
+  });
+
+  it("refuses a skill whose skills folder cannot be read", async () => {
+    const { discard, moved } = build({
+      disk: { entries: [`${SKILLS}/tdd`], unreadable: [SKILLS] },
+    });
+
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
+      ok: false,
+      error: "destination-unreadable",
+    });
+    expect(moved).toEqual([]);
+  });
+
+  // Real git lists no link as a prompt, so its row reads as a deletion.
+  it("refuses a linked prompt the listing reads as deleted", async () => {
+    const prompt = { type: "prompt", name: "pr-review" } as const;
+    const file = "/harness/.maestro/prompts/pr-review.md";
+    const { discard, moved } = build({
+      stages: stagesWith([
+        row({
+          ...prompt,
+          path: ".maestro/prompts/pr-review.md",
+          change: "deletion",
+        }),
+      ]),
+      disk: { links: { [file]: "/elsewhere/pr-review.md" } },
+    });
+
+    await expect(discard.execute(prompt, SEEN)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });

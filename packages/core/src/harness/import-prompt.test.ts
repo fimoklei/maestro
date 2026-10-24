@@ -22,6 +22,8 @@ function build(overrides?: {
     fs: {
       realpath: (path) => fs.realpath(path),
       exists: (path) => fs.exists(path),
+      isFileEntry: (path) => fs.isFileEntry(path),
+      isDirectoryEntry: (path) => fs.isDirectoryEntry(path),
       // Like `mkdir -p`: an existing folder, or a link to one, stays as it is.
       ensureDir: async (path) => {
         const known = await fs.realpath(path).then(
@@ -200,6 +202,23 @@ describe("ImportPrompt.execute", () => {
     });
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBeNull();
     expect(await fs.readFile("/elsewhere/prompts/review-pr.md")).toBeNull();
+  });
+
+  it("refuses a taken name whose prompt file is a link", async () => {
+    const { importPrompt, fs } = build({
+      seed: {
+        directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
+        files: { [`${PROMPTS}/other.md`]: "other" },
+        fileSymlinks: { [`${PROMPTS}/review-pr.md`]: `${PROMPTS}/other.md` },
+      },
+    });
+
+    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+      ok: false,
+      error: "destination-unsafe",
+    });
+    expect(await fs.isFileEntry(`${PROMPTS}/review-pr.md`)).toBe(false);
+    expect(await fs.readFile(`${PROMPTS}/other.md`)).toBe("other");
   });
 
   it("creates no prompts folder behind a .maestro link that leaves the Harness", async () => {

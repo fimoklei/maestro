@@ -1,11 +1,10 @@
 // Writes one prompt file into the Working Harness: no branch, commit or push.
-import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { FileSystemPort } from "../registry/file-system";
-import { primitiveEntry } from "./harness-primitive";
 import {
   ensureHarnessPrimitiveDir,
-  resolveHarnessPrimitiveDir,
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
 } from "./harness-primitive-dir";
 import type { ImportMode } from "./import-mode";
 import {
@@ -19,7 +18,7 @@ import {
 export type ImportPromptError =
   | "not-configured"
   | PromptFieldProblem
-  // The prompts folder resolves outside the Harness.
+  // The prompts folder resolves outside the Harness, or the file is a link.
   | "destination-unsafe"
   | "destination-unreadable"
   | "import-in-progress"
@@ -46,7 +45,7 @@ export type ImportPromptCheckResult =
 export class ImportPrompt {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<FileSystemPort, "realpath" | "exists" | "ensureDir" | "writeFile">;
+    fs: PrimitiveEntryFs & Pick<FileSystemPort, "ensureDir" | "writeFile">;
     locks: InFlightLocks;
   };
 
@@ -64,16 +63,11 @@ export class ImportPrompt {
       return { ok: true, check: { mode: "add", nameBlocker } };
     }
     // A missing or unsafe folder holds no prompt; the import states why.
-    const resolved = await resolveHarnessPrimitiveDir(
-      this.deps.fs,
-      root,
-      "prompt",
-    );
-    const taken =
-      resolved.ok &&
-      (await this.deps.fs.exists(
-        join(resolved.dir, primitiveEntry({ type: "prompt", name })),
-      ));
+    const entry = await inspectPrimitiveEntry(this.deps.fs, root, {
+      type: "prompt",
+      name,
+    });
+    const taken = entry.kind === "plain" || entry.kind === "unsafe";
     return {
       ok: true,
       check: { mode: taken ? "update" : "add", nameBlocker: null },
@@ -113,14 +107,23 @@ export class ImportPrompt {
             : "destination-unreadable",
       };
     }
-    const path = join(resolved.dir, primitiveEntry({ type: "prompt", name }));
-    const mode: ImportMode = (await this.deps.fs.exists(path))
-      ? "update"
-      : "add";
+    const entry = await inspectPrimitiveEntry(this.deps.fs, root, {
+      type: "prompt",
+      name,
+    });
+    if (entry.kind === "unsafe" || entry.kind === "unreadable") {
+      return {
+        ok: false,
+        error:
+          entry.kind === "unsafe"
+            ? "destination-unsafe"
+            : "destination-unreadable",
+      };
+    }
+    const mode: ImportMode = entry.kind === "plain" ? "update" : "add";
     try {
-      // Atomic: a symlinked file is replaced, never written through.
       await this.deps.fs.writeFile(
-        path,
+        entry.path,
         writePromptFile({ description, text }),
       );
     } catch {

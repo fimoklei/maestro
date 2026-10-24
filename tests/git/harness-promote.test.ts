@@ -9,6 +9,7 @@ import {
   type HarnessFreshness,
   HarnessGitAdapter,
   InFlightLocks,
+  NodeFileSystem,
   Promote,
   ReleasedContentReader,
 } from "@maestro/core";
@@ -42,6 +43,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
   const promoter = () =>
     new Promote({
       resolveRoot: async () => root,
+      fs: new NodeFileSystem(),
       git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),
       fetchGate: new HarnessFetchGate({
         git: new HarnessGitAdapter({ released: new ReleasedContentReader() }),

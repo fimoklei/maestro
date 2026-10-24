@@ -94,9 +94,9 @@ const importPromptHeadings = (
   },
   "destination-unsafe": {
     level: "error",
-    label: "Prompts folder outside the Harness",
-    message: `${IMPORTED_NOTHING} Replace the link with a real folder, then select ${confirm} again.`,
-    detail: "The .maestro/prompts folder resolves outside the Harness clone.",
+    label: "Link in the Harness",
+    message: `${IMPORTED_NOTHING} Replace the link with a real file or folder, then select ${confirm} again.`,
+    detail: "The .maestro/prompts folder or the prompt file is a link.",
   },
   "destination-unreadable": {
     level: "error",

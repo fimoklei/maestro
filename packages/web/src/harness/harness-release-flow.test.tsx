@@ -695,7 +695,7 @@ describe("Harness release", () => {
     );
   });
 
-  // Three shapes the dialog would crash on or render blank. Each must read as
+  // Shapes the dialog would crash on or render blank. Each must read as
   // "no recomputed plan" and send the author back for a fresh one (#521).
   it.each([
     ["a missing version map", { versions: undefined }],
@@ -703,6 +703,28 @@ describe("Harness release", () => {
     [
       "a movement with no type",
       { delta: [{ kind: "added", name: "research", author: null }] },
+    ],
+    [
+      "a movement with no change",
+      {
+        delta: [
+          { type: "skill", kind: "added", name: "research", author: null },
+        ],
+      },
+    ],
+    [
+      "a rename with no previous name",
+      {
+        delta: [
+          {
+            type: "skill",
+            kind: "renamed",
+            change: "rename",
+            name: "research",
+            author: null,
+          },
+        ],
+      },
     ],
     ["a step the dialog has no version for", { proposedStep: "sideways" }],
   ])("plans again rather than paint %s", async (_name, broken) => {

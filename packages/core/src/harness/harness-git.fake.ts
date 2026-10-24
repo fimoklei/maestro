@@ -7,7 +7,9 @@ import {
   type HarnessObject,
   type HarnessPrimitiveType,
   type PrimitiveRef,
+  parsePrimitiveListing,
   parseProposalBranch,
+  primitiveEntry,
   primitiveKey,
   proposalBranchLeaf,
 } from "./harness-primitive";
@@ -51,7 +53,7 @@ export const skillRef = (name: string): PrimitiveRef => ({
 });
 
 // The blob hash git would give this text; never a tree hash of the same text.
-const blobHash = (text: string): string =>
+export const blobHash = (text: string): string =>
   createHash("sha1").update(`blob\0${text}`).digest("hex");
 
 const treesOf = (skills: Skills): HarnessSkillTree[] =>
@@ -113,6 +115,8 @@ export class InMemoryHarnessGit implements HarnessGitPort {
   head: string | null = null;
   working: Skills = {};
   workingPrompts: Prompts = {};
+  // Prompt names whose working file is a symlink.
+  readonly workingPromptLinks = new Set<string>();
   // Refs (commit ids, "HEAD", "working") whose skills cannot be listed.
   readonly unreadable = new Set<string>();
   cloneSync: CloneSync = "current";
@@ -195,12 +199,28 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     }
   }
 
+  // Through the real listing parser, so a link drops out as it does in git.
+  private listedWorkingPrompts(): Prompts {
+    const listing = Object.entries(this.workingPrompts)
+      .map(([name, text]) => {
+        const mode = this.workingPromptLinks.has(name) ? "120000" : "100644";
+        return `${mode} blob ${blobHash(text)}\t${primitiveEntry({ type: "prompt", name })}\0`;
+      })
+      .join("");
+    const listed = new Set(
+      (parsePrimitiveListing("prompt", listing) ?? []).map(({ name }) => name),
+    );
+    return Object.fromEntries(
+      Object.entries(this.workingPrompts).filter(([name]) => listed.has(name)),
+    );
+  }
+
   private contentAt(ref: string): Content | null {
     if (this.unreadable.has(ref)) {
       return null;
     }
     if (ref === "working") {
-      return { skills: this.working, prompts: this.workingPrompts };
+      return { skills: this.working, prompts: this.listedWorkingPrompts() };
     }
     const id = this.resolve(ref);
     return id === null || this.unreadable.has(id)

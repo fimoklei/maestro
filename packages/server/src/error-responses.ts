@@ -220,6 +220,7 @@ export const promoteErrorResponses: ErrorTable<PromoteError> = {
   "invalid-skill": { status: 400 },
   "no-answer": { status: 409 },
   "skill-missing": { status: 422 },
+  "destination-unsafe": { status: 409 },
   "push-elsewhere": { status: 422 },
   "source-changed": { status: 409 },
   "concurrent-change": { status: 409 },
@@ -268,6 +269,7 @@ export const localDeletionErrorResponses: ErrorTable<DeleteLocalError> = {
   "no-answer": { status: 409 },
   "confirmation-stale": { status: 409 },
   "destination-unsafe": { status: 409 },
+  "destination-unreadable": { status: 409 },
   "delete-failed": { status: 500 },
   "delete-in-progress": { status: 409 },
 };
@@ -304,6 +306,7 @@ export const discardErrorResponses: ErrorTable<DiscardChangeError> = {
   "nothing-to-discard": { status: 409 },
   "confirmation-stale": { status: 409 },
   "destination-unsafe": { status: 409 },
+  "destination-unreadable": { status: 409 },
   "discard-in-progress": { status: 409 },
   "discard-failed": { status: 500 },
 };

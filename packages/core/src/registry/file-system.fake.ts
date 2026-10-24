@@ -5,6 +5,8 @@ type FakeSeed = {
   // differing value a symlink.
   directories?: Record<string, string>;
   files?: Record<string, string>;
+  // Link path → the file it points at.
+  fileSymlinks?: Record<string, string>;
   listings?: Record<string, string[]>;
   // Reject when listed.
   unreadable?: string[];
@@ -14,38 +16,51 @@ type FakeSeed = {
   // Absent to exists(), yet taken for an exclusive create.
   racedIntoExistence?: string[];
   unwritable?: string[];
+  // Reject a remove when listed.
+  unremovable?: string[];
 };
 
 export class InMemoryFileSystem implements FileSystemPort {
   private readonly directories: Map<string, string>;
   private readonly files: Map<string, string>;
+  private readonly fileSymlinks: Map<string, string>;
   private readonly listings: Map<string, string[]>;
   private readonly unreadable: Set<string>;
   private readonly racedAwayAsDirectory: Set<string>;
   private readonly danglingSymlinks: Set<string>;
   private readonly racedIntoExistence: Set<string>;
   private readonly unwritable: Set<string>;
+  private readonly unremovable: Set<string>;
   // A write counter stands in for the modification time.
   private readonly writes = new Map<string, number>();
 
   constructor(seed: FakeSeed = {}) {
     this.directories = new Map(Object.entries(seed.directories ?? {}));
     this.files = new Map(Object.entries(seed.files ?? {}));
+    this.fileSymlinks = new Map(Object.entries(seed.fileSymlinks ?? {}));
     this.listings = new Map(Object.entries(seed.listings ?? {}));
     this.unreadable = new Set(seed.unreadable ?? []);
     this.racedAwayAsDirectory = new Set(seed.racedAwayAsDirectory ?? []);
     this.danglingSymlinks = new Set(seed.danglingSymlinks ?? []);
     this.racedIntoExistence = new Set(seed.racedIntoExistence ?? []);
     this.unwritable = new Set(seed.unwritable ?? []);
+    this.unremovable = new Set(seed.unremovable ?? []);
   }
 
   async realpath(path: string): Promise<string> {
+    if (this.unreadable.has(path)) {
+      throw new Error(`EACCES: permission denied, realpath '${path}'`);
+    }
     const dir = this.directories.get(path);
     if (dir !== undefined) {
       return dir;
     }
     if (this.files.has(path)) {
       return path;
+    }
+    const target = this.fileSymlinks.get(path);
+    if (target !== undefined && this.files.has(target)) {
+      return target;
     }
     throw new Error(`ENOENT: no such file or directory, realpath '${path}'`);
   }
@@ -65,8 +80,14 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.isKnownDirectory(path);
   }
 
+  // Like lstat: a link counts, whatever it points at.
   async exists(path: string): Promise<boolean> {
-    return this.isKnownDirectory(path) || this.files.has(path);
+    return (
+      this.directories.has(path) ||
+      this.files.has(path) ||
+      this.fileSymlinks.has(path) ||
+      this.danglingSymlinks.has(path)
+    );
   }
 
   async isFileEntry(path: string): Promise<boolean> {
@@ -128,7 +149,11 @@ export class InMemoryFileSystem implements FileSystemPort {
   }
 
   async remove(path: string): Promise<void> {
+    if (this.unremovable.has(path)) {
+      throw new Error(`EACCES: permission denied, rm '${path}'`);
+    }
     this.files.delete(path);
+    this.fileSymlinks.delete(path);
     this.directories.delete(path);
     for (const known of [...this.files.keys(), ...this.directories.keys()]) {
       if (known.startsWith(`${path}/`)) {

@@ -45,7 +45,7 @@ Three inputs arrived from tickets that closed before this one:
 ## Decision
 
 **The harness is one repo in two states. Maestro writes in the working state;
-consumers deploy only from the released state.**
+consumers deploy or copy only from the released state.**
 
 1. **Working harness** — the repo as it stands right now, uncommitted edits
    included. Maestro writes here, and only here. It carries no quality promise.

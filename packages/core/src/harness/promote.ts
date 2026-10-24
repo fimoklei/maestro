@@ -10,6 +10,10 @@ import {
   proposalBranch,
   proposalCompareUrl,
 } from "./harness-primitive";
+import {
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
+} from "./harness-primitive-dir";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { isConcurrentlyChanged } from "./harness-stages";
 import {
@@ -25,6 +29,8 @@ export type PromoteError =
   | "invalid-skill"
   | "no-answer"
   | "skill-missing"
+  // A link, or a type folder outside the Harness: pushing it would publish something else.
+  | "destination-unsafe"
   | "push-elsewhere"
   | "source-changed"
   // Recomputed after a fresh fetch, never from what the cockpit showed (#579).
@@ -51,6 +57,7 @@ type Checked =
 export class Promote {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
+    fs: PrimitiveEntryFs;
     git: HarnessGitPort;
     fetchGate: Pick<HarnessFetchGate, "fetchFresh" | "invalidate">;
     locks: InFlightLocks;
@@ -79,6 +86,10 @@ export class Promote {
     root: string,
     ref: PrimitiveRef,
   ): Promise<PromoteResult> {
+    const entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
+    if (entry.kind === "unsafe") {
+      return { ok: false, error: "destination-unsafe" };
+    }
     const outcome = await this.deps.fetchGate.fetchFresh(root);
     if (outcome !== "fetched") {
       return { ok: false, error: "no-answer" };

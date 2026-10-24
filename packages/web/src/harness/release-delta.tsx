@@ -3,6 +3,7 @@ import { TYPE_WORD } from "../inventory/type-filter";
 import { GroupedList } from "../ui/grouped-list";
 import { SubListHeading } from "../ui/sub-list-heading";
 import { CHANGE_WORD } from "./change-words";
+import { STAGE_NAMES } from "./stage-copy";
 
 // The dialog's group order.
 const GROUPS: readonly HarnessChange[] = [
@@ -34,7 +35,7 @@ export function ReleaseDelta({ movements }: { movements: PendingMovement[] }) {
   return (
     <section className="flex flex-col gap-inline">
       <SubListHeading
-        label="Pending release"
+        label={STAGE_NAMES["pending-release"]}
         count={movements.length}
         headingRef={null}
       />

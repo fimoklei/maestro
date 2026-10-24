@@ -270,7 +270,7 @@ export function PromptsView({
               // Keyed by prompt: a refusal from the previous prompt can never
               // carry over to the next one.
               key={row.name}
-              target={{ type: "prompt", skill: row.name, ...deletion }}
+              target={{ type: "prompt", name: row.name, ...deletion }}
               screen="prompts"
               onClose={() => setDeletion(null)}
               onDeleted={() => onDeleted(row.name)}

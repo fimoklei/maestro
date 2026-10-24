@@ -4,9 +4,11 @@ import { dirname, join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
-import type { FileSystemPort } from "../registry/file-system";
 import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
-import { resolveHarnessPrimitiveDir } from "./harness-primitive-dir";
+import {
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
+} from "./harness-primitive-dir";
 import type { HarnessStages } from "./harness-stages";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
@@ -20,6 +22,7 @@ export type DiscardChangeError =
   // The default branch no longer holds the tree the confirmation named.
   | "confirmation-stale"
   | "destination-unsafe"
+  | "destination-unreadable"
   | "discard-in-progress"
   | "discard-failed";
 
@@ -33,7 +36,7 @@ export class DiscardChange {
     // The stages the rows were read from: whether a change is proposed takes
     // the review read as well as the refs.
     readStages: () => Promise<HarnessStages | null>;
-    fs: Pick<FileSystemPort, "realpath">;
+    fs: PrimitiveEntryFs;
     copyFs: Pick<
       CopyTreeFsPort,
       "createStagingDir" | "movePath" | "removePath"
@@ -80,6 +83,12 @@ export class DiscardChange {
       return { ok: false, error: ambiguity };
     }
 
+    // Before the rows: real git lists no link, which would read as a deletion.
+    const entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
+    if (entry.kind === "unsafe") {
+      return { ok: false, error: "destination-unsafe" };
+    }
+
     // Re-read at the press, never taken from the row.
     const stages = await this.deps.readStages();
     if (stages === null || stages.proposal.outcome !== "read") {
@@ -114,11 +123,14 @@ export class DiscardChange {
       return { ok: false, error: "confirmation-stale" };
     }
 
-    const target = await this.resolveTarget(root, ref);
-    if (target === null) {
-      return { ok: false, error: "destination-unsafe" };
+    if (entry.kind === "unreadable") {
+      return { ok: false, error: "destination-unreadable" };
     }
-    return await this.swap(root, ref, commit, target);
+    // Off the disk when the rows were read: a deletion, which stays.
+    if (entry.kind === "absent") {
+      return { ok: false, error: "nothing-to-discard" };
+    }
+    return await this.swap(root, ref, commit, entry.path);
   }
 
   // Both moves are renames within the type's folder, so the primitive is never
@@ -161,27 +173,6 @@ export class DiscardChange {
       return { ok: false, error: "discard-failed" };
     } finally {
       await this.deps.copyFs.removePath(staging).catch(() => {});
-    }
-  }
-
-  // A link resolves elsewhere: replacing it would touch another tree.
-  private async resolveTarget(
-    root: string,
-    ref: PrimitiveRef,
-  ): Promise<string | null> {
-    const resolved = await resolveHarnessPrimitiveDir(
-      this.deps.fs,
-      root,
-      ref.type,
-    );
-    if (!resolved.ok) {
-      return null;
-    }
-    const target = join(resolved.dir, primitiveEntry(ref));
-    try {
-      return (await this.deps.fs.realpath(target)) === target ? target : null;
-    } catch {
-      return null;
     }
   }
 }

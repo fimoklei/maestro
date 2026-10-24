@@ -1,6 +1,6 @@
 // The remote is a bare repo on disk, so the whole suite is offline.
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -194,6 +194,22 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
       ok: false,
       error: "not-deleted",
     });
+
+    await expect(
+      git(remote, "rev-parse", "--verify", "refs/heads/maestro/tdd"),
+    ).rejects.toThrow();
+  });
+
+  // Real git lists no link, so the folder reads as deleted; a link that
+  // points nowhere must still count as something on disk.
+  it("refuses a skill whose folder became a dangling link", async () => {
+    const seen = await seenTree("tdd");
+    await deleteOnDisk("tdd");
+    await symlink(join(base, "nowhere"), join(root, ".apm", "skills", "tdd"));
+
+    await expect(
+      deleter().execute({ type: "skill", name: "tdd" }, seen),
+    ).resolves.toEqual({ ok: false, error: "source-changed" });
 
     await expect(
       git(remote, "rev-parse", "--verify", "refs/heads/maestro/tdd"),
