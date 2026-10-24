@@ -62,6 +62,8 @@ export const Grouped: Story = {
     groups: {
       key: (row: Row) => (row.release === "v1.4.0" ? "Latest" : "Older"),
       order: ["Latest", "Older"],
+      collapsed: new Set(),
+      onToggle: () => {},
     },
   },
 };

@@ -12,7 +12,7 @@ import { type Band, BandRow } from "./band";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { rereadLabel } from "./control-labels";
-import { DataTable, type DataTableProps } from "./data-table";
+import { DataTable, type DataTableProps, type RowGroups } from "./data-table";
 import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
 import type { CauseText } from "./gated-button";
@@ -43,7 +43,7 @@ type TableScreenBase<T extends RowData> = {
   rows: T[];
   columns: DataTableProps<T>["columns"];
   rowId: (row: T) => string;
-  groups?: DataTableProps<T>["groups"];
+  groups?: RowGroups<T>;
   /** Band 2's facts and Read, which narrow with the band. */
   band?: Band;
   /** The screen's own re-read is running: Re-read spins. */
@@ -267,7 +267,12 @@ export function TableScreen<T extends RowData>({
                     groups={
                       shownGroups === undefined
                         ? undefined
-                        : { ...shownGroups, lineId }
+                        : {
+                            ...shownGroups,
+                            lineId,
+                            collapsed: state.collapsed,
+                            onToggle: state.toggleGroup,
+                          }
                     }
                     columnVisibility={
                       view === undefined

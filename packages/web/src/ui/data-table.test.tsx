@@ -1,5 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fakeTimeouts, hoverOpen, measureAs, passTime } from "../test-utils";
@@ -39,6 +40,38 @@ function renderTable(
       />
       <button type="button">After</button>
     </>,
+  );
+}
+
+const unfolded = { collapsed: new Set<string>(), onToggle: () => {} };
+
+// The fold state lives with the caller; this host keeps it as a screen does.
+function FoldingFruitTable() {
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  return (
+    <DataTable
+      label="Fruit table"
+      columns={columns}
+      data={fruits}
+      getRowId={(fruit) => fruit.name}
+      selection={{
+        label: "Pick",
+        rowLabel: (fruit) => `Pick ${fruit.name}`,
+        selected: new Set(),
+        onToggle: () => {},
+      }}
+      groups={{
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green"],
+        collapsed,
+        onToggle: (key) =>
+          setCollapsed((current) =>
+            current.has(key)
+              ? new Set([...current].filter((each) => each !== key))
+              : new Set([...current, key]),
+          ),
+      }}
+    />
   );
 }
 
@@ -334,6 +367,7 @@ describe("DataTable", () => {
   it("puts rows under a header per group, naming the group and its count", () => {
     renderTable({
       groups: {
+        ...unfolded,
         key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
         order: ["Red", "Green"],
       },
@@ -352,6 +386,7 @@ describe("DataTable", () => {
   it("draws a group that holds no rows as its message, with no count", () => {
     renderTable({
       groups: {
+        ...unfolded,
         key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
         order: ["Red", "Green", "Blue", "Yellow"],
         message: (key) => (key === "Blue" ? "No blue fruit yet." : null),
@@ -370,6 +405,7 @@ describe("DataTable", () => {
     renderTable({
       data: [],
       groups: {
+        ...unfolded,
         key: (fruit) => fruit.colour,
         order: ["Blue"],
         message: () => "No blue fruit yet.",
@@ -380,12 +416,7 @@ describe("DataTable", () => {
   });
 
   it("collapses a group from its header, and the cursor skips its rows", async () => {
-    renderTable({
-      groups: {
-        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
-        order: ["Red", "Green"],
-      },
-    });
+    render(<FoldingFruitTable />);
     const collapse = screen.getByRole("button", { name: "Collapse Red" });
     expect(collapse).toHaveAttribute("aria-expanded", "true");
 
@@ -408,6 +439,7 @@ describe("DataTable", () => {
   it("puts a group's meta on its header", () => {
     renderTable({
       groups: {
+        ...unfolded,
         key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
         order: ["Red", "Green"],
         meta: (key) => (key === "Red" ? "Ripe" : null),
@@ -422,6 +454,7 @@ describe("DataTable", () => {
   it("moves the active row across a group header without stopping on it", async () => {
     renderTable({
       groups: {
+        ...unfolded,
         key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
         order: ["Red", "Green"],
       },
@@ -643,6 +676,7 @@ describe("DataTable column priority", () => {
   it("spans a full-width row over the shown columns only", () => {
     renderPlants({
       groups: {
+        ...unfolded,
         key: () => "Ferns",
         order: ["Ferns", "Mosses"],
         message: (key) => (key === "Mosses" ? "No mosses." : null),

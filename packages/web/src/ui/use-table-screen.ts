@@ -20,6 +20,9 @@ export type TableScreenState = {
   /** The row to select and focus once shown, after an add on a screen without a pane; null once done. */
   addedId: string | null;
   markAdded: (id: string | null) => void;
+  /** The groups the reader folded, by group key. */
+  collapsed: ReadonlySet<string>;
+  toggleGroup: (key: string) => void;
   reading: boolean;
   settled: boolean;
   skeleton: boolean;
@@ -50,6 +53,13 @@ export function useTableScreen({
 }): TableScreenState {
   const [openId, setOpenId] = useState(openOnArrival);
   const [addedId, setAddedId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const toggleGroup = (key: string) =>
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
   const rereadRef = useRef<HTMLButtonElement>(null);
   const reread = () => {
     status.press();
@@ -69,6 +79,8 @@ export function useTableScreen({
     open: setOpenId,
     addedId,
     markAdded: setAddedId,
+    collapsed,
+    toggleGroup,
     reading,
     settled,
     skeleton: status.skeleton,

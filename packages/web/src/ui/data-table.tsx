@@ -91,7 +91,8 @@ interface DataTableSelection<T> {
   onSetSelected?: (rows: T[], select: boolean) => void;
 }
 
-interface DataTableGroups<T> {
+/** How a screen groups its rows. */
+export interface RowGroups<T> {
   /** The group a row belongs to; also its header's words. */
   key: (row: T) => string;
   /** Groups in this order first; any other follows as it first appears. */
@@ -102,6 +103,12 @@ interface DataTableGroups<T> {
   message?: (key: string) => ReactNode | null;
   /** That line's id, for a blocked control that points at it. */
   lineId?: (key: string) => string;
+}
+
+interface DataTableGroups<T> extends RowGroups<T> {
+  /** The groups drawn folded: their header and count, none of their rows. */
+  collapsed: ReadonlySet<string>;
+  onToggle: (key: string) => void;
 }
 
 export interface DataTableProps<T extends RowData> {
@@ -182,13 +189,6 @@ export function DataTable<T extends RowData>({
       ? undefined
       : `calc(var(--spacing) * ${width})`;
   const sortedRows = table.getRowModel().rows;
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const toggleGroup = (key: string) =>
-    setCollapsed((current) => {
-      const next = new Set(current);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
   // Grouping reorders the sorted rows; the cursor walks this flat order.
   const blocks =
     groups === undefined
@@ -206,7 +206,7 @@ export function DataTable<T extends RowData>({
             (row) => groups.key(row.original) === key,
           );
           // A folded group keeps its count; the cursor walks none of its rows.
-          return { key, all, rows: collapsed.has(key) ? [] : all };
+          return { key, all, rows: groups.collapsed.has(key) ? [] : all };
         });
   const rows =
     blocks === undefined ? sortedRows : blocks.flatMap((b) => b.rows);
@@ -639,9 +639,9 @@ export function DataTable<T extends RowData>({
                       collapsed={
                         block.all.length === 0
                           ? undefined
-                          : collapsed.has(block.key)
+                          : groups?.collapsed.has(block.key)
                       }
-                      onToggle={() => toggleGroup(block.key)}
+                      onToggle={() => groups?.onToggle(block.key)}
                     />
                     {block.all.length === 0 ? (
                       <tr className="h-row border-divider border-b">

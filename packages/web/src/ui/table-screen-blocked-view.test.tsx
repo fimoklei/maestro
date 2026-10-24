@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { expectVisibleCause } from "../test-utils";
 import type { Band } from "./band";
-import { createDataTableColumns, type DataTableProps } from "./data-table";
+import { createDataTableColumns, type RowGroups } from "./data-table";
 import { TableScreen } from "./table-screen";
 import { useTableScreen } from "./use-table-screen";
 import { useViewOptions } from "./use-view-options";
@@ -29,7 +29,7 @@ const band = (outcome: "fetched" | null): Band => ({
   countsBelowRem: 0,
 });
 
-const PLACES: NonNullable<DataTableProps<Plant>["groups"]> = {
+const PLACES: RowGroups<Plant> = {
   key: (row) => row.place,
   order: ["Beds", "Pots"],
   message: (key) =>
@@ -46,7 +46,7 @@ function EmptyGarden({
   settled?: boolean;
   failed?: boolean;
   reading?: boolean;
-  groups?: DataTableProps<Plant>["groups"];
+  groups?: RowGroups<Plant>;
 }) {
   const state = useTableScreen({
     name: "Garden",

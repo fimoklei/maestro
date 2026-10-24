@@ -577,6 +577,33 @@ describe("TableScreen", () => {
     });
   });
 
+  describe("groups", () => {
+    const byColour = {
+      key: (row: Fruit) => row.colour,
+      order: ["red", "green"],
+    };
+
+    it("holds which groups are collapsed, as the reader folds them", async () => {
+      let state: TableScreenState | undefined;
+      render(
+        <FruitScreen groups={byColour} onState={(each) => (state = each)} />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Collapse red" }),
+      );
+
+      expect(screen.queryByText("apple")).not.toBeInTheDocument();
+      expect(state?.collapsed.has("red")).toBe(true);
+      expect(state?.collapsed.has("green")).toBe(false);
+
+      await userEvent.click(screen.getByRole("button", { name: "Expand red" }));
+
+      expect(screen.getByText("apple")).toBeInTheDocument();
+      expect(state?.collapsed.has("red")).toBe(false);
+    });
+  });
+
   describe("detail pane", () => {
     const pane = (name: string) =>
       screen.queryByRole("complementary", { name: `${name} detail` });
@@ -919,6 +946,22 @@ describe("TableScreen view options", () => {
       "Shrub 1",
       "boxShrub",
     ]);
+  });
+
+  it("keeps a collapsed group collapsed while a filter leaves no row", async () => {
+    render(<PlantScreen />);
+    await choose(/^Display/, "menuitemradio", "Kind");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Collapse Tree" }),
+    );
+
+    await choose(/^Filter/, "menuitemradio", "Shrubs");
+    await choose(/^Filter/, "menuitemcheckbox", "Healthy");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear filters" }),
+    );
+
+    expect(lines()).toEqual(["Tree 2", "Shrub 1", "boxShrub"]);
   });
 
   it("switches a column off and on from Display", async () => {
