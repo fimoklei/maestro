@@ -14,8 +14,8 @@ import {
   renderWithQuery,
   sentence,
 } from "../test-utils";
-import { ToastHost } from "../ui/toast";
 import { RemoveSkillFlow } from "./remove-skill-flow";
+import { ScreenHost } from "./remove-skill-row-test-helpers";
 
 // The flow as its callers mount it, with only `fetch` stubbed. Claims a row
 // already makes through its menu live in remove-skill-row*.test.tsx.
@@ -105,7 +105,7 @@ function renderFlow({
   const onCancel = vi.fn();
   const onRemoved = vi.fn();
   const { unmount } = renderWithQuery(
-    <>
+    <ScreenHost>
       <RemoveSkillFlow
         skillName="tdd"
         version={version}
@@ -113,8 +113,7 @@ function renderFlow({
         onCancel={onCancel}
         onRemoved={onRemoved}
       />
-      <ToastHost />
-    </>,
+    </ScreenHost>,
   );
   const removeCalls = () =>
     fetchMock.mock.calls.filter(([path]) => path === "/api/deploy/remove");

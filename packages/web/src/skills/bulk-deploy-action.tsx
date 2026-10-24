@@ -24,7 +24,7 @@ import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
-import { useScreenReport, useWriteAction } from "../ui/use-write-action";
+import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
 import { bulkDeploySkillGroups } from "./bulk-deploy-skill-groups";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
@@ -88,21 +88,22 @@ export function BulkDeployRun({
   // The skill a refused row asked Update target to add (#955). Set, the Update
   // dialog takes this one's place: the Report described a target it may move.
   const [updateFor, setUpdateFor] = useState<string | null>(null);
+  // The Attention rows Deploy again has since deployed: they read as Deployed.
+  const [redeployed, setRedeployed] = useState<SkillRelease[]>([]);
   const update = useUpdateTarget();
-  const report = useScreenReport();
+  const screen = useScreenWrites();
   // The Report states the run, its request failure included.
   const bulkWrite = useWriteAction(bulk, {
-    report,
+    screen,
     action: "deploy",
-    show: "row",
-    name: () => null,
+    subject: () => null,
     failure: () => null,
   });
+  // The Report states the reinstall: its row moves to Deployed.
   const forceWrite = useWriteAction(forceDeploy, {
-    report,
+    screen,
     action: "deploy",
-    show: "row",
-    name: (_data, { name }) => name,
+    subject: () => null,
     failure: (error) => ({ ...deployNotice(error), level: "error" as const }),
   });
 
@@ -165,6 +166,7 @@ export function BulkDeployRun({
   const onDeploy = () => {
     if (chosenRun === null || preview === null) return;
     bulk.reset();
+    setRedeployed([]);
     setPlan(preview);
     if (preview.toDeploy.length > 0) {
       bulkWrite.run({ names: preview.toDeploy, target: chosenRun.target });
@@ -184,6 +186,7 @@ export function BulkDeployRun({
             failed: [],
           },
           skippedClean: plan.skippedClean,
+          redeployed,
           targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
         });
@@ -224,6 +227,7 @@ export function BulkDeployRun({
       skills={bulkDeploySkillGroups(stagedNames, preview)}
       onSelect={(value) => {
         bulk.reset();
+        setRedeployed([]);
         setPlan(null);
         setChosen(value);
       }}
@@ -259,12 +263,21 @@ export function BulkDeployRun({
                 view,
                 force: {
                   run: (name, confirmedCopyReceipt) =>
-                    forceWrite.run({
-                      type: "skill",
-                      name,
-                      target: chosenRun.target,
-                      confirmedCopyReceipt,
-                    }),
+                    forceWrite.run(
+                      {
+                        type: "skill",
+                        name,
+                        target: chosenRun.target,
+                        confirmedCopyReceipt,
+                      },
+                      {
+                        onSuccess: ({ deployed }) =>
+                          setRedeployed((rows) => [
+                            ...rows,
+                            { name: deployed.name, version: deployed.version },
+                          ]),
+                      },
+                    ),
                   running: forceDeploy.isPending
                     ? forceDeploy.variables.name
                     : null,
@@ -280,6 +293,9 @@ export function BulkDeployRun({
   );
 }
 
+/** A skill at the release a run deployed. */
+type SkillRelease = { name: string; version: string };
+
 type BulkReportCounts = {
   deployed: number;
   skipped: number;
@@ -293,7 +309,7 @@ type BulkDeployReportView =
       tone: "ran";
       targetLabel: string;
       // Every success, at the release the target already follows (#956).
-      deployed: { name: string; version: string }[];
+      deployed: SkillRelease[];
       skipped: string[];
       attention: BulkDeployReport["attention"];
       failed: BulkDeployReport["failed"];
@@ -319,11 +335,13 @@ function bulkDeploySummary(input: {
 function bulkDeployReportView(input: {
   report: BulkDeployReport;
   skippedClean: string[];
+  // Attention rows a later Deploy again succeeded on.
+  redeployed: SkillRelease[];
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
 }): BulkDeployReportView {
-  const { report, skippedClean, targetLabel } = input;
+  const { report, skippedClean, redeployed, targetLabel } = input;
 
   if (input.requestFailed) {
     // Never the error's own text: the bulk route answers 200 with a report, so a
@@ -342,17 +360,22 @@ function bulkDeployReportView(input: {
     0,
   );
 
+  const attention = report.attention.filter(
+    (row) => !redeployed.some((done) => done.name === row.name),
+  );
+  const deployed = [...report.deployed, ...redeployed];
+
   return {
     tone: "ran",
     targetLabel,
-    deployed: report.deployed,
+    deployed,
     skipped: skippedClean,
-    attention: report.attention,
+    attention,
     failed: report.failed,
     counts: {
-      deployed: report.deployed.length,
+      deployed: deployed.length,
       skipped: skippedClean.length,
-      attention: report.attention.length,
+      attention: attention.length,
       failed: failedCount,
     },
   };

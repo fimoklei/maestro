@@ -165,7 +165,7 @@ describe("Harness import prompt flow", () => {
   ])("opens the Import menu with %s on its first item", async (_, key) => {
     stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const trigger = await screen.findByRole("button", { name: "Import" });
     expect(trigger).toHaveAttribute("aria-haspopup", "menu");
@@ -185,7 +185,7 @@ describe("Harness import prompt flow", () => {
   it("opens Import a skill from the menu", async () => {
     stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     await user.click(await screen.findByRole("button", { name: "Import" }));
     await user.click(
@@ -200,7 +200,7 @@ describe("Harness import prompt flow", () => {
   it("imports pasted text, moving its description out of the text", async () => {
     const { imports } = stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     const text = field(dialog, "Prompt text");
@@ -254,7 +254,7 @@ describe("Harness import prompt flow", () => {
   it("shows field errors only after an empty submit, and clears each once valid", async () => {
     const { calls } = stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     const name = field(dialog, "Name");
@@ -291,7 +291,7 @@ describe("Harness import prompt flow", () => {
   it("refuses a text over 100 KB without a request", async () => {
     const { calls } = stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     await user.type(field(dialog, "Name"), "review-pr");
@@ -319,7 +319,7 @@ describe("Harness import prompt flow", () => {
       importBody: { error: "import-in-progress" },
     });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     await user.type(field(dialog, "Name"), "review-pr");
@@ -335,7 +335,7 @@ describe("Harness import prompt flow", () => {
   it("closes on Cancel without a write", async () => {
     const { calls } = stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     await user.type(field(dialog, "Prompt text"), "Go.");
@@ -348,7 +348,7 @@ describe("Harness import prompt flow", () => {
   it("switches to update mode when the name left is taken", async () => {
     const { checks, imports } = stubPromptServer({ taken: ["review-pr"] });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     const name = field(dialog, "Name");
@@ -418,7 +418,7 @@ describe("Harness import prompt flow", () => {
       },
     });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     await user.type(field(dialog, "Name"), "review-pr");
@@ -443,7 +443,7 @@ describe("Harness import prompt flow", () => {
   it("returns to Import a prompt when a taken name changes to a free one", async () => {
     stubPromptServer({ taken: ["review-pr"] });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     const name = field(dialog, "Name");
@@ -467,7 +467,7 @@ describe("Harness import prompt flow", () => {
   it("shows no field error when an invalid name is left", async () => {
     stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     const name = field(dialog, "Name");
@@ -483,7 +483,7 @@ describe("Harness import prompt flow", () => {
   it("fills the fields from a chosen file, then checks the suggested name", async () => {
     const { checks } = stubPromptServer({ taken: ["review-pr"] });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     const sources = within(dialog).getByRole("group", {
@@ -530,7 +530,7 @@ describe("Harness import prompt flow", () => {
   it("refuses a file that is not UTF-8 without a request", async () => {
     const { calls } = stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     await chooseFile(
@@ -559,7 +559,7 @@ describe("Harness import prompt flow", () => {
   it("imports pasted CRLF text with LF line endings", async () => {
     const { imports } = stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     await user.click(field(dialog, "Prompt text"));
@@ -585,7 +585,7 @@ describe("Harness import prompt flow", () => {
   it("imports a chosen file's CRLF text as the file holds it", async () => {
     const { imports } = stubPromptServer({});
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     await chooseFile(
@@ -617,7 +617,7 @@ describe("Harness import prompt flow", () => {
   it("names Update prompt in the over-100 KB notice in update mode", async () => {
     stubPromptServer({ taken: ["review-pr"] });
     const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const dialog = await openImportPrompt(user);
     await user.type(field(dialog, "Name"), "review-pr");

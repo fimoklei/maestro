@@ -1,17 +1,23 @@
 import { useMutation } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it } from "vitest";
 import { renderWithQuery, sentence } from "../test-utils";
+import { doneSentence } from "./busy-copy";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
 import { TableScreen } from "./table-screen";
 import { ToastHost } from "./toast";
-import { useTableScreen } from "./use-table-screen";
-import { useScreenReport, useWriteAction } from "./use-write-action";
+import { type ReadFailure, useTableScreen } from "./use-table-screen";
+import {
+  type Subject,
+  useScreenWrites,
+  useWriteAction,
+  type WriteResult,
+} from "./use-write-action";
 
 type Fruit = { name: string };
 
@@ -36,13 +42,11 @@ function deferred() {
 
 function Orchard({
   answer,
-  show,
-  said,
+  subject,
 }: {
   answer: Promise<void>;
-  show: "toast" | "row";
-  /** False: the dialog's own outcome states the result. */
-  said: boolean;
+  /** Null: the dialog's own outcome states the result. */
+  subject: Subject | null;
 }) {
   const [rows, setRows] = useState<Fruit[]>([{ name: "pear" }]);
   const [planting, setPlanting] = useState(false);
@@ -51,6 +55,7 @@ function Orchard({
     reading: false,
     settled: true,
     failure: null,
+    readFailed: false,
     onReread: () => {},
     openOnArrival: null,
   });
@@ -75,8 +80,7 @@ function Orchard({
         {planting ? (
           <PlantDialog
             answer={answer}
-            show={show}
-            said={said}
+            subject={subject}
             onClose={() => setPlanting(false)}
             onPlanted={(name) => {
               setRows((current) => [...current, { name }]);
@@ -93,23 +97,20 @@ function Orchard({
 
 function PlantDialog({
   answer,
-  show,
-  said,
+  subject,
   onClose,
   onPlanted,
 }: {
   answer: Promise<void>;
-  show: "toast" | "row";
-  said: boolean;
+  subject: Subject | null;
   onClose: () => void;
   onPlanted: (name: string) => void;
 }) {
   const plant = useMutation({ mutationFn: (_name: string) => answer });
   const write = useWriteAction(plant, {
-    report: useScreenReport(),
+    screen: useScreenWrites(),
     action: "deploy",
-    show,
-    name: (_data, name) => (said ? name : null),
+    subject: () => subject,
     failure: () => NOT_PLANTED,
   });
   return (
@@ -142,12 +143,10 @@ const region = () =>
     .find((each) => each.classList.contains("sr-only"));
 const dialog = () => screen.getByRole("dialog", { name: "Plant fruit" });
 
-async function startPlanting(
-  answer: Promise<void>,
-  show: "toast" | "row",
-  said = true,
-) {
-  renderWithQuery(<Orchard answer={answer} show={show} said={said} />);
+const PLUM: Subject = { name: "plum", row: "plum" };
+
+async function startPlanting(answer: Promise<void>, subject: Subject | null) {
+  renderWithQuery(<Orchard answer={answer} subject={subject} />);
   await userEvent.click(screen.getByRole("button", { name: "Plant fruit" }));
   await userEvent.click(
     within(dialog()).getByRole("button", { name: "Plant fruit" }),
@@ -160,7 +159,7 @@ afterEach(() => toast.dismiss());
 describe("a write on a table screen", () => {
   it("spins the pressed control, says its busy label and blocks closing while it runs", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "row");
+    await startPlanting(answer.promise, PLUM);
 
     expect(
       within(dialog()).getByRole("button", { name: "Deploying…" }),
@@ -175,7 +174,7 @@ describe("a write on a table screen", () => {
 
   it("closes a dialog that adds a row, selects the row and says the done sentence once", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "row");
+    await startPlanting(answer.promise, PLUM);
 
     answer.resolve();
 
@@ -189,7 +188,7 @@ describe("a write on a table screen", () => {
 
   it("says a success the reader may miss in a toast, the region silent", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "toast");
+    await startPlanting(answer.promise, { name: "plum", row: null });
 
     answer.resolve();
 
@@ -201,7 +200,7 @@ describe("a write on a table screen", () => {
 
   it("stays silent where the dialog's own outcome states the result", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "toast", false);
+    await startPlanting(answer.promise, null);
 
     answer.resolve();
 
@@ -211,7 +210,7 @@ describe("a write on a table screen", () => {
 
   it("keeps a failed dialog open with its notice, Close to leave, announced only by the notice", async () => {
     const answer = deferred();
-    await startPlanting(answer.promise, "row");
+    await startPlanting(answer.promise, PLUM);
 
     answer.reject();
 
@@ -222,5 +221,374 @@ describe("a write on a table screen", () => {
       within(dialog()).getByText("Close", { selector: "button" }),
     ).not.toBeDisabled();
     expect(region()).toBeEmptyDOMElement();
+  });
+});
+
+type Tree = { name: string; grove: string };
+
+const TREE_COLUMNS = createDataTableColumns<Tree>((helper) => [
+  helper.accessor("name", { header: "Name" }),
+]);
+
+const BY_GROVE = {
+  key: (row: Tree) => row.grove,
+  order: ["north", "south"],
+};
+
+const TREES: Tree[] = [
+  { name: "oak", grove: "north" },
+  { name: "elm", grove: "south" },
+];
+
+const GROVE_NOT_READ = {
+  level: "error",
+  label: "Grove not read",
+  message: "Select Re-read Grove to read the grove again.",
+} as const;
+
+// A write that lands at once, then a read the test lands by hand: `after`
+// holds the rows it brings, or "failed" for a read that failed.
+function Grove({
+  read,
+  after,
+  subject,
+  second = null,
+  older = null,
+  hidden = () => false,
+}: {
+  read: Promise<void>;
+  after: Tree[] | "failed";
+  subject: Subject | null;
+  /** A second write, pressed as Prune again. */
+  second?: Subject | null;
+  /** A failure from an earlier read of another kind, still shown. */
+  older?: ReadFailure | null;
+  hidden?: (row: Tree) => boolean;
+}) {
+  const [rows, setRows] = useState(TREES);
+  const [reading, setReading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const state = useTableScreen({
+    name: "Grove",
+    reading,
+    settled: !failed,
+    failure: failed ? GROVE_NOT_READ : older,
+    readFailed: failed,
+    onReread: () => {},
+    openOnArrival: null,
+  });
+  const reread = async () => {
+    setReading(true);
+    await read;
+    if (after === "failed") setFailed(true);
+    else setRows(after);
+    setReading(false);
+  };
+  return (
+    <>
+      <TableScreen
+        state={state}
+        action={
+          <>
+            <Prune subject={subject} onWritten={reread} />
+            {second === null ? null : (
+              <Prune label="Prune again" subject={second} onWritten={reread} />
+            )}
+          </>
+        }
+        rereading={reading}
+        firstReadRows={2}
+        rows={rows}
+        columns={TREE_COLUMNS}
+        rowId={(row) => row.name}
+        groups={BY_GROVE}
+        shown={(row) => !hidden(row)}
+        pane={(row, frame) => (
+          <DetailPane
+            title={row.name}
+            activeKey={row.name}
+            {...frame}
+            subList={<Prune subject={subject} onWritten={reread} />}
+          />
+        )}
+      />
+      <ToastHost />
+    </>
+  );
+}
+
+function Prune({
+  label = "Prune",
+  subject,
+  onWritten,
+}: {
+  label?: string;
+  subject: Subject | null;
+  onWritten: () => void;
+}) {
+  const prune = useMutation({
+    mutationFn: async (_tree: string) => {},
+    onSuccess: onWritten,
+  });
+  const write = useWriteAction(prune, {
+    screen: useScreenWrites(),
+    action: "remove",
+    subject: () => subject,
+    failure: () => null,
+  });
+  return (
+    <button type="button" onClick={() => write.run("oak")}>
+      {label}
+    </button>
+  );
+}
+
+async function prune(
+  props: Omit<Parameters<typeof Grove>[0], "read">,
+  before?: () => Promise<void>,
+) {
+  const read = deferred();
+  renderWithQuery(<Grove read={read.promise} {...props} />);
+  await before?.();
+  await userEvent.click(screen.getByRole("button", { name: "Prune" }));
+  return read;
+}
+
+const OAK: Subject = { name: "oak", row: "oak" };
+
+describe("a write's result, once the read after it lands", () => {
+  it("says the done sentence in the region while its row is in view, no toast", async () => {
+    const read = await prune({ after: TREES, subject: OAK });
+    expect(region()).toHaveTextContent("Removing…");
+
+    read.resolve();
+
+    await waitFor(() => expect(region()).toHaveTextContent("Removed oak."));
+    expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
+  });
+
+  it("says it in a toast when a Filter hides the row after the read, the region empty", async () => {
+    const read = await prune({
+      after: [{ name: "oak", grove: "west" }, TREES[1] as Tree],
+      hidden: (row) => row.grove === "west",
+      subject: OAK,
+    });
+    expect(screen.queryByText(sentence("Removed oak."))).toBeNull();
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed oak.")),
+    ).toBeInTheDocument();
+    expect(region()).toBeEmptyDOMElement();
+  });
+
+  it("says it in a toast when the row's group is collapsed", async () => {
+    const read = await prune({ after: TREES, subject: OAK }, () =>
+      userEvent.click(screen.getByRole("button", { name: "Collapse north" })),
+    );
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed oak.")),
+    ).toBeInTheDocument();
+    expect(region()).toBeEmptyDOMElement();
+  });
+
+  it("says it in the region when the row's pane is open, though its group is collapsed", async () => {
+    const read = deferred();
+    renderWithQuery(<Grove read={read.promise} after={TREES} subject={OAK} />);
+    await userEvent.click(screen.getByText("oak"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Collapse north" }),
+    );
+    await userEvent.click(
+      within(
+        screen.getByRole("complementary", { name: "oak detail" }),
+      ).getByRole("button", { name: "Prune" }),
+    );
+
+    read.resolve();
+
+    await waitFor(() => expect(region()).toHaveTextContent("Removed oak."));
+    expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
+  });
+
+  it("says it in a toast when the row left after the read", async () => {
+    const read = await prune({ after: [TREES[1] as Tree], subject: OAK });
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed oak.")),
+    ).toBeInTheDocument();
+    expect(region()).toBeEmptyDOMElement();
+  });
+
+  it("says it in a toast when the write touches no row", async () => {
+    const read = await prune({
+      after: TREES,
+      subject: { name: "oak", row: null },
+    });
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed oak.")),
+    ).toBeInTheDocument();
+    expect(region()).toBeEmptyDOMElement();
+  });
+
+  it("counts several items in the toast", async () => {
+    const read = await prune({
+      after: [],
+      subject: { name: { count: 3, one: "tree", many: "trees" }, row: null },
+    });
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed 3 trees.")),
+    ).toBeInTheDocument();
+  });
+
+  it("says each of two writes landing before the read once", async () => {
+    const read = await prune({
+      after: TREES,
+      subject: OAK,
+      second: { name: "elm", row: null },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Prune again" }));
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed elm.")),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(region()).toHaveTextContent("Removed oak."));
+    expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
+    expect(screen.getAllByText(sentence("Removed elm."))).toHaveLength(1);
+  });
+
+  it("judges by the read after the write, not an older failure still shown", async () => {
+    const read = await prune({
+      after: TREES,
+      subject: OAK,
+      older: { ...GROVE_NOT_READ, label: "Remote not read" },
+    });
+
+    read.resolve();
+
+    await waitFor(() => expect(region()).toHaveTextContent("Removed oak."));
+    expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
+  });
+
+  it("counts one item in the singular", async () => {
+    const read = await prune({
+      after: [],
+      subject: { name: { count: 1, one: "tree", many: "trees" }, row: null },
+    });
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed 1 tree.")),
+    ).toBeInTheDocument();
+  });
+
+  it("says it in a toast when the touched item left its row, though the row stays in view", async () => {
+    const read = await prune({
+      after: TREES,
+      subject: { name: "oak", leftItsRow: true },
+    });
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed oak.")),
+    ).toBeInTheDocument();
+    expect(region()).toBeEmptyDOMElement();
+  });
+
+  it("says it in a toast beside the failed-read notice when the read after it fails", async () => {
+    const read = await prune({ after: "failed", subject: OAK });
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed oak.")),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Grove not read")).toBeInTheDocument();
+    expect(region()).not.toHaveTextContent("Removed oak.");
+  });
+});
+
+// A screen another screen's write ended on: it holds the result it was handed
+// through its first read, with the touched row opened on arrival.
+function Landing({
+  read,
+  handed,
+}: {
+  read: Promise<void>;
+  handed: WriteResult & { row: string | null };
+}) {
+  const [rows, setRows] = useState<Tree[]>([]);
+  const [reading, setReading] = useState(true);
+  const state = useTableScreen({
+    name: "Grove",
+    reading,
+    settled: !reading,
+    failure: null,
+    readFailed: false,
+    onReread: () => {},
+    openOnArrival: handed.row,
+  });
+  const { settle } = state;
+  useEffect(() => {
+    settle(handed);
+    void read.then(() => {
+      setRows(TREES);
+      setReading(false);
+    });
+  }, [settle, handed, read]);
+  return (
+    <>
+      <TableScreen
+        state={state}
+        action={null}
+        rereading={reading}
+        firstReadRows={2}
+        rows={rows}
+        columns={TREE_COLUMNS}
+        rowId={(row) => row.name}
+        groups={BY_GROVE}
+        pane={(row, frame) => (
+          <DetailPane title={row.name} activeKey={row.name} {...frame} />
+        )}
+      />
+      <ToastHost />
+    </>
+  );
+}
+
+describe("a write's result handed to the screen it ends on", () => {
+  it("says it in the region once the first read opens its row", async () => {
+    const read = deferred();
+    renderWithQuery(
+      <Landing
+        read={read.promise}
+        handed={{ sentence: doneSentence("remove", "oak"), row: "oak" }}
+      />,
+    );
+    expect(region()).not.toHaveTextContent("Removed oak.");
+
+    read.resolve();
+
+    await waitFor(() => expect(region()).toHaveTextContent("Removed oak."));
+    expect(
+      screen.getByRole("complementary", { name: "oak detail" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
   });
 });

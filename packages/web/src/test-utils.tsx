@@ -9,7 +9,7 @@ import * as controlLabels from "./ui/control-labels";
 import { CANCEL, CLOSE } from "./ui/dialog-copy";
 import type { NoticeCopy } from "./ui/notice";
 import { type Copy, plainText } from "./ui/phrase";
-import { ScreenReportContext } from "./ui/use-write-action";
+import { ScreenWritesContext } from "./ui/use-write-action";
 
 /** The key the theme choice persists under; index.html reads the same one. */
 export const INTERFACE_THEME_STORAGE_KEY = "maestro.interface-theme";
@@ -29,9 +29,9 @@ export function renderWithQuery(ui: ReactNode) {
   const rendered = render(ui, {
     wrapper: ({ children }) => (
       <QueryClientProvider client={queryClient}>
-        <ScreenReportContext.Provider value={ignoreReport}>
+        <ScreenWritesContext.Provider value={ignoreWrites}>
           {children}
-        </ScreenReportContext.Provider>
+        </ScreenWritesContext.Provider>
       </QueryClientProvider>
     ),
   });
@@ -39,7 +39,7 @@ export function renderWithQuery(ui: ReactNode) {
   return { ...rendered, queryClient };
 }
 
-const ignoreReport = () => {};
+const ignoreWrites = { report: () => {}, settle: () => {} };
 
 /** Puts setTimeout on a clock `passTime` moves at once; real time moves it too. */
 export function fakeTimeouts() {

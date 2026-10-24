@@ -2,7 +2,7 @@ import type { RowData } from "@tanstack/react-table";
 import { ListFilter, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { type BandCount, countOf, type StatusChip } from "./band-summary";
-import type { DataTableProps } from "./data-table";
+import type { RowGroups } from "./data-table";
 import { NOT_READ_YET } from "./freshness";
 import { Icon } from "./icon";
 import type { OptionMenuProps } from "./option-menu";
@@ -17,7 +17,7 @@ import {
 } from "./view-options-copy";
 
 type Option = { value: string; label: string };
-type Groups<T extends RowData> = NonNullable<DataTableProps<T>["groups"]>;
+type Groups<T extends RowData> = RowGroups<T>;
 
 export interface ViewOptionsConfig<T extends RowData> {
   /** The one-of filter: Target on Deploy-state. "All" is added; null where no such filter exists. */

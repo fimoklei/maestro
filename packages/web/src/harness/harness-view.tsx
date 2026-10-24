@@ -33,7 +33,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
-import { useWriteAction } from "../ui/use-write-action";
+import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
@@ -80,9 +80,12 @@ const COUNTS_BELOW_REM = 20;
 
 export function HarnessView({
   openPrimitive,
+  written,
 }: {
   /** A primitive another screen sent here, opened in the stage it names. */
   openPrimitive: OpenPrimitive | null;
+  /** A write another screen ended here; said once the read under way lands. */
+  written: WriteResult | null;
 }) {
   const harness = useHarness();
   const state = harness.data;
@@ -95,6 +98,8 @@ export function HarnessView({
     reading: reading || (state === undefined && !harness.isError),
     settled: state !== undefined,
     failure: harnessStateNotice(harness.error) ?? refreshNotice(refresh.error),
+    // A write is followed by the Harness read, never by a fetch from GitHub.
+    readFailed: harness.isError,
     onReread: fetchRemote,
     openOnArrival:
       openPrimitive === null
@@ -105,7 +110,10 @@ export function HarnessView({
           }),
   });
   const reread = table.reread;
-  const { open } = table;
+  const { open, settle } = table;
+  useEffect(() => {
+    if (written !== null) settle(written);
+  }, [written, settle]);
 
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
@@ -113,10 +121,10 @@ export function HarnessView({
   const publish = usePublishRelease();
   // An Inventory left unread is the outcome notice above the table instead.
   const publishWrite = useWriteAction(publish, {
-    report: table.report,
+    screen: table,
     action: "publish",
-    show: "toast",
-    name: (published) => (published.inventoryRefreshed ? published.tag : null),
+    subject: (published) =>
+      published.inventoryRefreshed ? { name: published.tag, row: null } : null,
     failure: publishReleaseNotice,
   });
   const rereadInventory = useRereadInventory();
@@ -144,20 +152,9 @@ export function HarnessView({
     );
   };
 
-  // The import's done sentence already says what moved. It lands before the
-  // import's own re-read paints, so that read reports no move (#1160).
-  const importSaid = useRef(false);
-  const importFlow = useImportFlow(table.report, ({ name }) => {
-    // An import writes the working tree, so its row is Pending proposal's —
-    // even where the skill also holds a later one (#865).
-    open(rowId({ stage: "pending-proposal", type: "skill", name }));
-    importSaid.current = true;
-  });
-  const promptImportFlow = useImportPromptFlow(table.report, ({ name }) => {
-    open(rowId({ stage: "pending-proposal", type: "prompt", name }));
-    importSaid.current = true;
-  });
-  const presses = useHarnessPresses(state, table.report);
+  const importFlow = useImportFlow(table, open);
+  const promptImportFlow = useImportPromptFlow(table, open);
+  const presses = useHarnessPresses(state, table);
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -277,8 +274,9 @@ export function HarnessView({
   const byTitle = (key: string): StageSection | undefined =>
     sections.find((section) => section.title === key);
 
-  // A press moves a row between stages and the table repaints under the
+  // A read moves rows between stages and the table repaints under the
   // keyboard, so the move is reported; the first read is not a move (#868).
+  // A press's own done sentence outranks it.
   const counts =
     state === undefined
       ? null
@@ -290,11 +288,9 @@ export function HarnessView({
   const heardCounts = useRef<string | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: fires on each landed read
   useEffect(() => {
-    const said = importSaid.current;
-    importSaid.current = false;
     if (counts === null || state === undefined) return;
     if (
-      !said &&
+      !table.settling &&
       heardCounts.current !== null &&
       heardCounts.current !== counts
     ) {

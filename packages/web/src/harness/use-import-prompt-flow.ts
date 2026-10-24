@@ -6,7 +6,8 @@ import {
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
-import { useWriteAction } from "../ui/use-write-action";
+import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
+import { proposalRow } from "./harness-route";
 import {
   importPromptNotice,
   isFieldError,
@@ -18,6 +19,9 @@ import {
   type PromptSource,
 } from "./import-prompt-copy";
 import { useImportPrompt, useImportPromptCheck } from "./use-harness";
+
+const importedRow = ({ name }: ImportPromptSuccess) =>
+  proposalRow({ type: "prompt", name });
 
 const EMPTY: PromptDraft = { name: "", description: "", text: "" };
 
@@ -51,9 +55,9 @@ export type ImportPromptFlow = ReturnType<typeof useImportPromptFlow>;
 
 // Import prompt's UI-state: the three fields, and whether a submit has judged them.
 export function useImportPromptFlow(
-  /** Into the Harness screen's status region. */
-  report: (write: string) => void,
-  onImported: (outcome: ImportPromptSuccess) => void,
+  screen: ScreenWrites,
+  /** Opens the imported row's pane. */
+  onImported: (row: string) => void,
 ) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PromptDraft>(EMPTY);
@@ -72,10 +76,9 @@ export function useImportPromptFlow(
   const { confirm } = PROMPT_IMPORT_MODES[mode];
   const importPrompt = useImportPrompt();
   const write = useWriteAction(importPrompt, {
-    report,
+    screen,
     action: "import",
-    show: "row",
-    name: (outcome) => outcome.name,
+    subject: (outcome) => ({ name: outcome.name, row: importedRow(outcome) }),
     failure: (error) => importPromptNotice(error, confirm),
   });
 
@@ -163,7 +166,7 @@ export function useImportPromptFlow(
       write.run(draft, {
         onSuccess: (outcome) => {
           close();
-          onImported(outcome);
+          onImported(importedRow(outcome));
         },
       });
     },

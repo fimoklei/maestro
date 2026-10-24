@@ -114,8 +114,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           screen="harness"
           write={props.deleteLocal}
           onClose={props.onLocalDeletionClose}
-          // The row changes in place; nothing more to show.
-          onDeleted={props.onLocalDeletionClose}
         />
       ) : null}
       {deletionRow !== null && mode !== null ? (
@@ -233,13 +231,11 @@ export function LocalDeletionDialog({
   screen,
   write,
   onClose,
-  onDeleted,
 }: {
   target: LocalDeletionTarget;
   screen: LocalDeletionContext["screen"];
   write: Presses["deleteLocalWrite"];
   onClose: () => void;
-  onDeleted: () => void;
 }) {
   const check = useDeletionCheck();
   const harness = useHarness();
@@ -278,7 +274,10 @@ export function LocalDeletionDialog({
         write.run(
           { type, name, seenWorkingTree },
           {
-            onSuccess: onDeleted,
+            // On Harness the row changes in place. Elsewhere the hand-over
+            // leaves the screen; closing first would show its pane again
+            // before Harness paints.
+            onSuccess: screen === "harness" ? onClose : undefined,
             onError: (error) => {
               if (
                 error instanceof HttpError &&

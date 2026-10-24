@@ -112,6 +112,10 @@ const PLAIN: Record<string, Record<string, string>> = {
   "ui/table-screen.tsx": {
     "`${state.name} table`": "accessible name",
   },
+  "ui/use-write-action.ts": {
+    "`${name.count} ${name.count === 1 ? name.one : name.many}`":
+      "a count and its noun, no name",
+  },
 };
 
 // The same rule for a version, tag, branch, path, ref, hash or command. The

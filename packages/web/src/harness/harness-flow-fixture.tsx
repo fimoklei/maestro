@@ -284,7 +284,7 @@ export function renderHarness() {
   // — the open-time refresh must still be one request.
   return renderWithQuery(
     <StrictMode>
-      <HarnessView openPrimitive={null} />
+      <HarnessView openPrimitive={null} written={null} />
       <ToastHost />
     </StrictMode>,
   );

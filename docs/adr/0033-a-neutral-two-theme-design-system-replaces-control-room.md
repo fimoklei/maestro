@@ -10,6 +10,7 @@
 - **Stands:** ADR-0004 (Tailwind v4 `@theme`, shadcn/ui owned in the repo),
   ADR-0025 (copy), ADR-0032 (the folder chooser).
 - **Amended:** 2026-10-12 ([#1475](https://github.com/fimoklei/maestro/issues/1475)) — the screen this record calls Inventory is now **Skills**, the first Inventory view, at `/inventory/skills`. **Inventory** names the whole collection and its sidebar heading. The 18-row check runs on Skills.
+- **Amended:** 2026-10-24 ([#1611](https://github.com/fimoklei/maestro/issues/1611)) — a write whose Report stays in its dialog shows no toast, Deploy included; point 13's "replaces the `success` notice after Deploy" no longer holds.
 
 ## Context
 

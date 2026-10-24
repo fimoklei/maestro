@@ -109,6 +109,7 @@ export function DeployStateView() {
       repoDeploy.some((query) => query.isFetching),
     settled: isRead,
     failure: notRead.length > 0 ? deployStateNotRead(notRead) : null,
+    readFailed: notRead.length > 0,
     // Invalidated, not refetched by hand: that also drops drift's 5-minute
     // cache, so a pressed re-read is really fresh.
     onReread: () => {
@@ -144,10 +145,14 @@ export function DeployStateView() {
 
   const pendingOf = (target: DeployTarget) =>
     targets.find((row) => sameTarget(target, row.wire));
-  const retry = useRetryOperation(screen.report, (target) => {
+  const retry = useRetryOperation(screen, (target) => {
     const row = pendingOf(target);
     if (row?.pending === undefined) return null;
-    return { operation: row.pending, name: row.updateName };
+    return {
+      operation: row.pending,
+      subject:
+        row.updateName === null ? null : { name: row.updateName, row: row.id },
+    };
   });
 
   const targets: TargetRow[] = [

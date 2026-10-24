@@ -106,23 +106,21 @@ describe("Harness promotion", () => {
     );
   });
 
-  // A press moves a row between stages and the table repaints under the
-  // keyboard, so the move is reported; opening the view is not a move (#868).
-  it("reports the stage move through the screen's status region", async () => {
+  it("keeps the press's done sentence in the status region when the stage counts change", async () => {
     stubHarnessServer({
       read: { body: ON_DISK, afterPromote: REVIEWED },
       promote: { body: PUSHED },
     });
     renderHarness();
     await stageRows("Pending proposal");
-    expect(harnessRegion()).not.toHaveTextContent(/has \d changes?/);
 
     await promoteRow("lint-rules");
 
+    await waitFor(async () =>
+      expect(await stageRows("Pending review")).toHaveLength(1),
+    );
     await waitFor(() =>
-      expect(harnessRegion()).toHaveTextContent(
-        "Pending proposal has 1 change. Pending review has 1 change. Pending release has no changes. Read 4 min ago.",
-      ),
+      expect(harnessRegion()).toHaveTextContent(/^Proposed lint-rules\.$/),
     );
   });
 
@@ -280,7 +278,9 @@ describe("Harness promotion", () => {
       ],
     });
     stubHarnessServer({ read: { body: OPEN_REQUEST } });
-    const first = renderWithQuery(<HarnessView openPrimitive={null} />);
+    const first = renderWithQuery(
+      <HarnessView openPrimitive={null} written={null} />,
+    );
     const before = await openRowMenu("lint-rules", "Pending review");
     expect(
       within(before).getByRole("menuitem", { name: /view pull request/i }),
@@ -290,7 +290,7 @@ describe("Harness promotion", () => {
     );
 
     first.unmount();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const after = await openRowMenu("lint-rules", "Pending review");
     expect(

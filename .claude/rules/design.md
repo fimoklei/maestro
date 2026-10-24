@@ -124,10 +124,18 @@ Pick the form from this table. Add no other form, and no banner.
 | Information | `Notice` at `info` | In the region it describes |
 | Status of data | Badge in the row, mark in the pane | The row |
 | Busy | Spinner | The pressed button, the row's ⋮ icon, or the re-read control |
-| Success the reader can see | The row's new status, or the new row after an add | The row |
-| Success the reader may miss | Toast, success only, 5 s, paused on hover and focus | Bottom right |
+| Success in view: the row changed in place and shown, or its detail pane open | The row's new status, or the new row after an add, plus the done sentence in the status region | The row |
+| Success not in view: the row, or an item under it, left; a Filter or a collapsed group hides it, or the result is on the clipboard or GitHub | Toast with the done sentence, success only, no action | The screen the write ends on |
 | Confirmation | Dialog, 480px | Top-aligned at 96px |
 | Outcome of a run in a dialog | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
+
+- Announce a write's success through the shared write action; never call the
+  toast directly.
+- Pick a write's success form by first match: the dialog keeps its Report →
+  the Report alone; the result stays in view → the row; else → a toast.
+  In view means shown on the open screen without scrolling or changing screen.
+- Name several items in a done sentence by count, never by name. Never pair a
+  toast with a row change.
 
 - Show a field error on submit and clear it once the field is valid. Check a
   field that names a folder right after the pick.

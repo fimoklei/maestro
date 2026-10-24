@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { type HarnessArrival, proposalRow } from "../harness/harness-route";
 import { toggleStaged } from "../inventory/bulk-selection";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
@@ -13,8 +14,10 @@ import {
   useLocalEditsCheck,
 } from "./use-import-local-edits";
 
+const skillRef = (name: string) => ({ type: "skill" as const, name });
+
 // Every skill landed: the Harness screen, where Propose change lives, takes
-// over. One skill opens its row; several show in place, named by a toast.
+// over. One skill opens its row; several show in place.
 export function ImportLocalEditsAction({
   targetName,
   target,
@@ -30,16 +33,34 @@ export function ImportLocalEditsAction({
   const navigate = useNavigate();
   const check = useLocalEditsCheck(target);
   const run = useImportLocalEdits();
-  // A refusal shows in the dialog's outcome, one skill on the Harness screen
-  // in its open row; only several are named by a toast.
+  // A refusal shows in the dialog's outcome; a landing is said on the Harness
+  // screen, one skill there with its row open.
   const importWrite = useWriteAction(run, {
     report: useScreenReport(),
     action: "import",
-    show: "toast",
-    name: ({ outcomes: landed }) =>
-      landed.some((row) => row.refusal !== null) || landed.length < 2
-        ? null
-        : `${landed.length} skills`,
+    subject: ({ outcomes: landed }) => {
+      if (landed.some((row) => row.refusal !== null)) return null;
+      const [one] = landed;
+      return landed.length === 1 && one !== undefined
+        ? { name: one.name, row: proposalRow(skillRef(one.name)) }
+        : {
+            name: { count: landed.length, one: "skill", many: "skills" },
+            row: null,
+          };
+    },
+    handOver: (written, { outcomes: landed }) => {
+      const [one] = landed;
+      onClose();
+      navigate("/harness", {
+        state: {
+          openPrimitive:
+            landed.length === 1 && one !== undefined
+              ? skillRef(one.name)
+              : undefined,
+          written,
+        } satisfies HarnessArrival,
+      });
+    },
     failure: localEditsImportNotice,
   });
   // The reader's toggles: an eligible skill starts checked, one that undoes
@@ -74,28 +95,13 @@ export function ImportLocalEditsAction({
       }
       onCancel={onClose}
       onConfirm={() =>
-        importWrite.run(
-          {
-            target,
-            names: [...checked],
-            undo: picked
-              .filter((skill) => skill.undoesNewerSince !== undefined)
-              .map((skill) => skill.name),
-          },
-          {
-            onSuccess: ({ outcomes: landed }) => {
-              if (landed.some((row) => row.refusal !== null)) return;
-              const names = landed.map((row) => row.name);
-              onClose();
-              navigate("/harness", {
-                state:
-                  names.length === 1
-                    ? { openPrimitive: { type: "skill", name: names[0] } }
-                    : null,
-              });
-            },
-          },
-        )
+        importWrite.run({
+          target,
+          names: [...checked],
+          undo: picked
+            .filter((skill) => skill.undoesNewerSince !== undefined)
+            .map((skill) => skill.name),
+        })
       }
     />
   );

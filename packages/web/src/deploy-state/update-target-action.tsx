@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { HttpError } from "../api/http";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
-import { useScreenReport, useWriteAction } from "../ui/use-write-action";
+import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { updateNotice, updatePreviewNotice } from "./notice-copy";
 import { updateOutcomeRows } from "./update-outcome-report";
 import { UpdateTargetDialog } from "./update-target-dialog";
@@ -36,22 +36,21 @@ export function UpdateTargetAction({
     add,
   );
   const preview = preflight.data?.preview ?? null;
-  const report = useScreenReport();
+  const screen = useScreenWrites();
   // Both writes name nothing: the dialog's Report states the outcome, failed
   // or not.
-  const retry = useRetryOperation(report, () =>
+  const retry = useRetryOperation(screen, () =>
     preview === null
       ? null
       : {
           operation: { kind: "update", release: preview.chosenRelease },
-          name: null,
+          subject: null,
         },
   );
   const updateWrite = useWriteAction(update, {
-    report,
+    screen,
     action: "update",
-    show: "row",
-    name: () => null,
+    subject: () => null,
     failure: (error) =>
       updateOutcomeRows(error) === null
         ? updateNotice(error, updateLabel)

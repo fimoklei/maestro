@@ -7,13 +7,17 @@ import {
   invalidateTarget,
   sameTarget,
 } from "../inventory/use-deploy-skill";
-import { useWriteAction } from "../ui/use-write-action";
+import {
+  type ScreenWrites,
+  type Subject,
+  useWriteAction,
+} from "../ui/use-write-action";
 import { type DeployStateNotice, retryNotice } from "./notice-copy";
 
-/** What a retry re-runs, and the name its done sentence states, if any. */
+/** What a retry re-runs, and what it touched; null where a Report states the outcome. */
 export type Retried = {
   operation: Pick<PendingOperation, "kind" | "release">;
-  name: string | null;
+  subject: Subject | null;
 };
 
 type RetryVariables = Retried & { target: DeployTarget };
@@ -29,7 +33,7 @@ export type RetryOperation = {
 };
 
 export function useRetryOperation(
-  report: (write: string) => void,
+  screen: ScreenWrites,
   /** Null where the target holds no unfinished operation: nothing runs. */
   retried: (target: DeployTarget) => Retried | null,
 ): RetryOperation {
@@ -45,10 +49,9 @@ export function useRetryOperation(
       invalidateTarget(queryClient, target),
   });
   const write = useWriteAction(mutation, {
-    report,
+    screen,
     action: ({ operation }) => operation.kind,
-    show: "row",
-    name: (_data, { name }) => name,
+    subject: (_data, { subject }) => subject,
     failure: (error) =>
       mutation.variables
         ? retryNotice(error, mutation.variables.operation)

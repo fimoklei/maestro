@@ -1,12 +1,12 @@
 import type { HarnessState } from "@maestro/core";
-import { waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { sentence } from "../test-utils";
 import {
   harnessRegion,
   installHarnessHooks,
   ON_DISK,
-  promoteRow,
   RELEASED,
   renderHarness,
   row,
@@ -150,36 +150,32 @@ describe("Harness stage headers", () => {
   });
 });
 
-// A press moves a row between stages; the move is announced in counts, never
+// A read moves rows between stages; the move is announced in counts, never
 // statuses: the row itself states why it is where it is (#868).
 describe("Harness move announcement", () => {
-  const PUSHED = {
-    branch: "maestro/lint-rules",
-    pullRequestUrl:
-      "https://github.com/fimoklei/agent-harness/compare/main...maestro/lint-rules?expand=1",
-  };
-
-  const announceAfterPromote = async (after: HarnessState) => {
+  const announceAfterReread = async (after: HarnessState) => {
+    const before = withStages(ON_DISK, {
+      proposal: [
+        row("pending-proposal", "lint-rules", "not-yet-proposed"),
+        row("pending-proposal", "code-review", "not-yet-proposed"),
+        row("pending-proposal", "tdd", "not-yet-proposed"),
+      ],
+    });
     stubHarnessServer({
-      read: {
-        body: withStages(ON_DISK, {
-          proposal: [
-            row("pending-proposal", "lint-rules", "not-yet-proposed"),
-            row("pending-proposal", "code-review", "not-yet-proposed"),
-            row("pending-proposal", "tdd", "not-yet-proposed"),
-          ],
-        }),
-        afterPromote: after,
-      },
-      promote: { body: PUSHED },
+      read: { body: before },
+      refresh: { body: before, retry: { body: after } },
     });
     renderHarness();
-    await stageRows("Pending proposal");
-    await promoteRow("lint-rules");
+    await waitFor(async () =>
+      expect(await stageRows("Pending proposal")).toHaveLength(3),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Re-read Harness" }),
+    );
   };
 
   it("counts more than one change in the plural, and never counts an unread stage as empty", async () => {
-    await announceAfterPromote({
+    await announceAfterReread({
       ...ON_DISK,
       stages: {
         proposal: {
@@ -203,7 +199,7 @@ describe("Harness move announcement", () => {
   });
 
   it("says plainly when no read has ever succeeded", async () => {
-    await announceAfterPromote({
+    await announceAfterReread({
       ...withStages(ON_DISK, {
         proposal: [row("pending-proposal", "tdd", "not-yet-proposed")],
         review: [row("pending-review", "lint-rules", "pull-request-missing")],

@@ -53,6 +53,7 @@ import { TableScreen } from "../ui/table-screen";
 import { useNow } from "../ui/use-now";
 import { type ReadFailure, useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions } from "../ui/use-view-options";
+import type { WriteResult } from "../ui/use-write-action";
 import { BulkDeployAction } from "./bulk-deploy-action";
 import { bulkRemoveTargets } from "./bulk-remove-targets";
 import { SkillDetailPane } from "./skill-detail-pane";
@@ -157,13 +158,14 @@ export function SkillsView({
   /** Gates Delete skill on each row. */
   clone: CloneReading;
   /** Step 1 of a deletion landed; the next step is on the Harness view. */
-  onDeleted: (skill: string) => void;
+  onDeleted: (skill: string, written: WriteResult) => void;
 }) {
   const screen = useTableScreen({
     name: "Skills",
     reading,
     settled: primitives !== undefined,
     failure,
+    readFailed: failure !== null,
     onReread,
     openOnArrival: null,
   });
@@ -421,7 +423,7 @@ export function SkillsView({
                   setDialog(null);
                   requestAnimationFrame(() => listHeading.current?.focus());
                 }}
-                onDeleted={() => onDeleted(row.name)}
+                onDeleted={(written) => onDeleted(row.name, written)}
               />
             )}
           </>

@@ -4,6 +4,8 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -12,7 +14,7 @@ import { bandSummary } from "./band-summary";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { rereadLabel } from "./control-labels";
-import { DataTable, type DataTableProps } from "./data-table";
+import { DataTable, type DataTableProps, type RowGroups } from "./data-table";
 import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
 import { Icon } from "./icon";
@@ -24,7 +26,7 @@ import { ScreenFocusContext } from "./screen-focus";
 import { StatusRegion } from "./status-region";
 import type { TableScreenState } from "./use-table-screen";
 import type { ViewOptions } from "./use-view-options";
-import { ScreenReportContext } from "./use-write-action";
+import { ScreenWritesContext } from "./use-write-action";
 import { CLEAR_FILTERS } from "./view-options-copy";
 
 /** What a screen's pane spreads onto its `DetailPane`. */
@@ -42,7 +44,7 @@ type TableScreenBase<T extends RowData> = {
   rows: T[];
   columns: DataTableProps<T>["columns"];
   rowId: (row: T) => string;
-  groups?: DataTableProps<T>["groups"];
+  groups?: RowGroups<T>;
   /** Band 2's facts and Read, which narrow with the band. */
   band?: Band;
   /** The screen's own re-read is running: Re-read spins. */
@@ -118,6 +120,24 @@ export function TableScreen<T extends RowData>({
       : (rows.find((row) => rowId(row) === openId) ?? null);
   const openIndex = openId === null ? -1 : order.indexOf(openId);
   const shownGroups = view === undefined ? groups : view.groups;
+  // In view: its pane is open, or a Filter shows it and its group is open.
+  // A layout effect, so it is current before the screen's settling effect.
+  const inView = (id: string) =>
+    (openRow !== null && openId === id) ||
+    visible.some(
+      (row) =>
+        rowId(row) === id &&
+        !(
+          shownGroups !== undefined && state.collapsed.has(shownGroups.key(row))
+        ),
+    );
+  useLayoutEffect(() => {
+    state.inView.current = inView;
+  });
+  const writes = useMemo(
+    () => ({ report: state.report, settle: state.settle }),
+    [state.report, state.settle],
+  );
   // An unread group says so in its own line, so it is never drawn as empty.
   const speaking =
     shownGroups?.order?.filter(
@@ -198,7 +218,7 @@ export function TableScreen<T extends RowData>({
   }, [shownIds, showTable]);
 
   return (
-    <ScreenReportContext.Provider value={state.report}>
+    <ScreenWritesContext.Provider value={writes}>
       <ScreenFocusContext.Provider value={refocus}>
         <Panel
           title={state.name}
@@ -262,7 +282,15 @@ export function TableScreen<T extends RowData>({
                     getRowId={rowId}
                     loading={state.skeleton}
                     skeletonRows={Math.min(rows.length || firstReadRows, 30)}
-                    groups={shownGroups}
+                    groups={
+                      shownGroups === undefined
+                        ? undefined
+                        : {
+                            ...shownGroups,
+                            collapsed: state.collapsed,
+                            onToggle: state.toggleGroup,
+                          }
+                    }
                     columnVisibility={
                       view === undefined
                         ? undefined
@@ -311,6 +339,6 @@ export function TableScreen<T extends RowData>({
           {children}
         </Panel>
       </ScreenFocusContext.Provider>
-    </ScreenReportContext.Provider>
+    </ScreenWritesContext.Provider>
   );
 }

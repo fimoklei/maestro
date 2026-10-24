@@ -25,7 +25,7 @@ import { named, phrase } from "../ui/phrase";
 import { TableScreen } from "../ui/table-screen";
 import { type ReadFailure, useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions } from "../ui/use-view-options";
-import { useWriteAction } from "../ui/use-write-action";
+import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { PromptDetailPane } from "./prompt-detail-pane";
 import {
   COUNTS_BELOW_REM,
@@ -88,13 +88,14 @@ export function PromptsView({
   /** Gates Delete prompt on each row. */
   clone: CloneReading;
   /** Step 1 of a deletion landed; the next step is on the Harness view. */
-  onDeleted: (prompt: string) => void;
+  onDeleted: (prompt: string, written: WriteResult) => void;
 }) {
   const screen = useTableScreen({
     name: PROMPTS_FACT,
     reading,
     settled: prompts !== undefined,
     failure,
+    readFailed: failure !== null,
     onReread,
     openOnArrival: null,
   });
@@ -114,10 +115,13 @@ export function PromptsView({
       navigator.clipboard.writeText(prompt.text),
   });
   const copyWrite = useWriteAction(copying, {
-    report: screen.report,
+    screen,
     action: "copy",
-    show: "toast",
-    name: (_done, prompt) => phrase`${named(prompt.name)}`,
+    // The copy lands on the clipboard, not in a row.
+    subject: (_done, prompt) => ({
+      name: phrase`${named(prompt.name)}`,
+      row: null,
+    }),
     // The refusal is the pane's notice.
     failure: () => null,
   });
@@ -273,7 +277,7 @@ export function PromptsView({
               target={{ type: "prompt", name: row.name, ...deletion }}
               screen="prompts"
               onClose={() => setDeletion(null)}
-              onDeleted={() => onDeleted(row.name)}
+              onDeleted={(written) => onDeleted(row.name, written)}
             />
           )}
         </>
