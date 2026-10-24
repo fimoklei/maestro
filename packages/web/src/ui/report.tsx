@@ -31,8 +31,6 @@ export type ReportRowAction = {
   onClick: () => void;
   /** `busy`: this action runs; `locked`: another one does. */
   status?: "busy" | "locked";
-  /** The button's id, so a dialog's ✕ can point to its busy label. */
-  id?: string;
 };
 
 export type ReportGroup = {
@@ -151,7 +149,6 @@ export function Report({
                     variant="quiet"
                     size="sm"
                     className="shrink-0"
-                    id={row.action.id}
                     busy={row.action.status === "busy"}
                     aria-disabled={row.action.status !== undefined || undefined}
                     onClick={

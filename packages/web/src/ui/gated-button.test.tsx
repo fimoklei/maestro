@@ -4,27 +4,29 @@ import { describe, expect, it, vi } from "vitest";
 import { GatedButton } from "./gated-button";
 
 describe("GatedButton", () => {
-  it("keeps its label as its name and is described by the visible cause", async () => {
+  it("keeps its label as its name and states its cause in its tooltip alone", async () => {
     const onClick = vi.fn();
     render(
-      <>
-        <p id="cause">Status out of date</p>
-        <GatedButton
-          label="Create a release"
-          unavailable={{ describedBy: "cause" }}
-          onClick={onClick}
-        />
-      </>,
+      <GatedButton
+        label="Create a release"
+        unavailable="Status out of date"
+        onClick={onClick}
+      />,
     );
 
     const button = screen.getByRole("button", { name: "Create a release" });
     expect(button).toHaveAccessibleDescription("Status out of date");
+    expect(screen.queryByText("Status out of date")).toBeNull();
     expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).not.toBeDisabled();
+
     await userEvent.tab();
     expect(button).toHaveFocus();
-    // Focus opens the tooltip, which must not take over the description.
+    const tooltip = await screen.findByRole("tooltip", { hidden: true });
+    expect(tooltip).toHaveTextContent("Status out of date");
+    // The open tooltip must not say the cause a second time.
     expect(button).toHaveAccessibleDescription("Status out of date");
+
     await userEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
   });

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, vi } from "vitest";
-import { expectVisibleCause } from "../test-utils";
+import { expectTooltipCause } from "../test-utils";
 import { ImportLocalEditsDialog } from "./import-local-edits-dialog";
 
 describe("ImportLocalEditsDialog", () => {
@@ -25,7 +25,7 @@ describe("ImportLocalEditsDialog", () => {
       />,
     );
 
-    expectVisibleCause(
+    expectTooltipCause(
       screen.getAllByRole("button", { name: "Close" })[0] as HTMLElement,
       "Importing…",
     );

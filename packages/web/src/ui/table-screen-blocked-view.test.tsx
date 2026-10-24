@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { expectVisibleCause } from "../test-utils";
+import { expectTooltipCause } from "../test-utils";
 import type { Band } from "./band";
 import { createDataTableColumns, type RowGroups } from "./data-table";
 import { TableScreen } from "./table-screen";
@@ -29,11 +29,14 @@ const band = (outcome: "fetched" | null): Band => ({
   countsBelowRem: 0,
 });
 
+const placeLine = (key: string) =>
+  key === "Beds" ? "No beds are dug yet." : "No pots are bought yet.";
+
 const PLACES: RowGroups<Plant> = {
   key: (row) => row.place,
   order: ["Beds", "Pots"],
-  message: (key) =>
-    key === "Beds" ? "No beds are dug yet." : "No pots are bought yet.",
+  message: placeLine,
+  messageText: placeLine,
 };
 
 // A garden whose read left no plant: Filter and Display have nothing to work on.
@@ -93,29 +96,29 @@ const menus = () =>
   ["Filter", "Display"].map((name) => screen.getByRole("button", { name }));
 
 describe("TableScreen Filter and Display on a screen with no rows", () => {
-  it("point to the failed-read notice when the read failed", () => {
+  it("give the failed-read notice's heading when the read failed", () => {
     render(<EmptyGarden settled={false} failed />);
 
-    for (const menu of menus()) expectVisibleCause(menu, /Garden not read/);
+    for (const menu of menus()) expectTooltipCause(menu, /Garden not read/);
   });
 
-  it("point to the summary's Not read yet before a read answers", () => {
+  it("give the summary's Not read yet before a read answers", () => {
     render(<EmptyGarden settled={false} />);
 
-    for (const menu of menus()) expectVisibleCause(menu, "Not read yet");
+    for (const menu of menus()) expectTooltipCause(menu, "Not read yet");
   });
 
-  it("point to the empty state's heading once a read answered with no rows", () => {
+  it("give the empty state's heading once a read answered with no rows", () => {
     render(<EmptyGarden />);
 
-    for (const menu of menus()) expectVisibleCause(menu, "No plants yet");
+    for (const menu of menus()) expectTooltipCause(menu, "No plants yet");
   });
 
-  it("point to every group line drawn in place of the empty state", () => {
+  it("give the first group line drawn in place of the empty state", () => {
     render(<EmptyGarden groups={PLACES} />);
 
     for (const menu of menus()) {
-      expectVisibleCause(menu, "No beds are dug yet. No pots are bought yet.");
+      expectTooltipCause(menu, "No beds are dug yet.");
     }
   });
 

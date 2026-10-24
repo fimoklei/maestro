@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { describe, expect, it } from "vitest";
 import { useInventory } from "../inventory/use-inventory";
-import { renderWithQuery, sentence } from "../test-utils";
+import { expectTooltipCause, renderWithQuery, sentence } from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import {
   installHarnessHooks,
@@ -79,13 +79,13 @@ describe("Harness release", () => {
     const release = await screen.findByRole("button", {
       name: "Create a release",
     });
-    expect(release).toHaveAccessibleDescription("Offline");
+    expectTooltipCause(release, "Offline");
     expect(release).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(release);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("blocks Create a release on Pending release 0, pointing at that count", async () => {
+  it("blocks Create a release on Pending release 0, saying nothing is to release", async () => {
     stubHarnessServer({
       read: {
         body: withStages(FETCHED, {
@@ -98,9 +98,7 @@ describe("Harness release", () => {
     const release = await screen.findByRole("button", {
       name: "Create a release",
     });
-    await waitFor(() =>
-      expect(release).toHaveAccessibleDescription("Pending release 0"),
-    );
+    await waitFor(() => expectTooltipCause(release, "Nothing to release"));
     expect(release).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Pending review 1")).toBeInTheDocument();
     await userEvent.click(release);
@@ -114,9 +112,7 @@ describe("Harness release", () => {
     const release = await screen.findByRole("button", {
       name: "Create a release",
     });
-    await waitFor(() =>
-      expect(release).toHaveAccessibleDescription("All released"),
-    );
+    await waitFor(() => expectTooltipCause(release, "All released"));
     expect(release).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByText(/Pending release 0/)).toBeNull();
   });

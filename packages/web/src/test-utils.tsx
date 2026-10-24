@@ -113,42 +113,22 @@ export function readNotice<T extends NoticeCopy & { items?: readonly Copy[] }>(
   };
 }
 
-const hides = (element: Element) =>
-  element.hasAttribute("hidden") ||
-  element.getAttribute("aria-hidden") === "true" ||
-  element.classList.contains("sr-only");
-
 /**
- * Fails unless a blocked control is described by text on the screen that reads
- * `cause`: every element its `aria-describedby` names exists, is not hidden
- * (`hidden`, `aria-hidden` or `sr-only`, on it or an ancestor) and has text.
+ * Fails unless a blocked control states `cause` in its tooltip alone: its
+ * `aria-description` reads `cause`, and it points at no text on the page.
  */
-export function expectVisibleCause(
+export function expectTooltipCause(
   control: HTMLElement,
   cause: string | RegExp,
 ): void {
   if (control.getAttribute("aria-disabled") !== "true") {
     throw new Error("The control is not blocked: no aria-disabled.");
   }
-  const ids = (control.getAttribute("aria-describedby") ?? "")
-    .split(/\s+/)
-    .filter((id) => id !== "");
-  if (ids.length === 0) {
-    throw new Error("The control has no aria-describedby.");
+  if (control.hasAttribute("aria-describedby")) {
+    throw new Error("The cause is drawn on the page: aria-describedby.");
   }
-  for (const id of ids) {
-    const target = control.ownerDocument.getElementById(id);
-    if (target === null) {
-      throw new Error(`The description points to a missing element: #${id}.`);
-    }
-    for (let at: Element | null = target; at !== null; at = at.parentElement) {
-      if (hides(at)) {
-        throw new Error(`The description points to hidden text: #${id}.`);
-      }
-    }
-    if ((target.textContent ?? "").trim() === "") {
-      throw new Error(`The description points to empty text: #${id}.`);
-    }
+  if (!control.hasAttribute("aria-description")) {
+    throw new Error("The control has no cause: no aria-description.");
   }
   expect(control).toHaveAccessibleDescription(cause);
 }

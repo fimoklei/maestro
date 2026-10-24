@@ -9,7 +9,6 @@ describe("EmptyState", () => {
     render(
       <EmptyState
         headingLevel={2}
-        headingId={null}
         title="No repositories yet"
         description="Repositories appear here."
       />,
@@ -26,7 +25,6 @@ describe("EmptyState", () => {
     render(
       <EmptyState
         headingLevel={2}
-        headingId={null}
         title="No repositories yet"
         description="Repositories appear here."
         action={<Button onClick={onClick}>Register repository</Button>}
@@ -44,7 +42,6 @@ describe("EmptyState", () => {
     const { container } = render(
       <EmptyState
         headingLevel={2}
-        headingId={null}
         title="No repositories yet"
         description="Repositories appear here."
         icon={<svg data-testid="icon" />}

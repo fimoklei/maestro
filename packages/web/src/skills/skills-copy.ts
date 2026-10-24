@@ -151,3 +151,4 @@ export const removeFromToolsLabel = (tools: readonly string[]): string =>
   `Remove from ${toolNameList(tools)}`;
 export const removeFromAllLabel = (count: number): string =>
   `Remove from all ${count} targets`;
+export const NO_TARGET_REMOVABLE = "No target can be removed.";

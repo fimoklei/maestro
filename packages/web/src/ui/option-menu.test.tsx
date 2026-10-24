@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { expectVisibleCause } from "../test-utils";
+import { expectTooltipCause } from "../test-utils";
 import { OptionMenu, type OptionMenuProps } from "./option-menu";
 
 const sections = (
@@ -105,19 +105,16 @@ describe("OptionMenu", () => {
 
   it("stays focusable, states why and opens nothing while unavailable", async () => {
     render(
-      <>
-        <OptionMenu
-          label="Filter"
-          icon={<svg aria-hidden="true" />}
-          sections={sections()}
-          unavailable={{ describedBy: "empty" }}
-        />
-        <h2 id="empty">No skills yet</h2>
-      </>,
+      <OptionMenu
+        label="Filter"
+        icon={<svg aria-hidden="true" />}
+        sections={sections()}
+        unavailable="No skills yet"
+      />,
     );
 
     const trigger = screen.getByRole("button", { name: "Filter" });
-    expectVisibleCause(trigger, "No skills yet");
+    expectTooltipCause(trigger, "No skills yet");
 
     await userEvent.click(trigger);
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();

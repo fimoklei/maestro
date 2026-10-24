@@ -42,3 +42,5 @@ Confirmed patterns. Apply as rules. Newest on top.
 ## Tentative
 
 Single observations. Consider but do not auto-apply. Promote to Active on reconfirmation.
+
+- **2026-10-24 · tooling/pnpm-exec-biome-writes-nothing** — `pnpm exec biome format --write` and `biome check --write` printed `Lint: No issues found` and left files unformatted, while `pnpm lint` kept failing on format; the shell hook rewrites the call. → Run `./node_modules/.bin/biome format --write <paths>`.

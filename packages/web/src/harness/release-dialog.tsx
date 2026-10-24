@@ -1,5 +1,5 @@
 import type { ReleasePlan, SemverStep } from "@maestro/core";
-import { useId, useState } from "react";
+import { useState } from "react";
 import {
   DEFAULT_BRANCH_FACT,
   NOT_RELEASED_YET,
@@ -21,6 +21,7 @@ import {
   rootSkillFileNotice,
   skillChecksNotice,
 } from "./dialog-copy";
+import { NOTHING_TO_RELEASE } from "./notice-copy";
 import { ReleaseDelta } from "./release-delta";
 
 // Loading and error travel with the plan so the modal stays mounted: a focus
@@ -64,9 +65,6 @@ export function ReleaseDialog({
         ].join("@")
       : null;
   const [shownPlanId, setShownPlanId] = useState(planId);
-  // A blocked Publish release keeps its label and points at the text that says why.
-  const loadingId = useId();
-  const blockedId = useId();
   // The origin's last path segment; the card names the whole origin.
   const repoName = origin.slice(origin.lastIndexOf("/") + 1);
   if (planId !== shownPlanId) {
@@ -87,12 +85,14 @@ export function ReleaseDialog({
         tone: "danger",
         unavailable:
           load.kind === "loading"
-            ? { describedBy: loadingId }
+            ? loadingText("release plan")
             : load.kind === "error"
-              ? { failure: true }
-              : load.plan.blocked !== null
-                ? { describedBy: blockedId }
-                : null,
+              ? load.notice.label
+              : load.plan.blocked === "empty-delta"
+                ? NOTHING_TO_RELEASE
+                : load.plan.blocked === "root-skill-file"
+                  ? rootSkillFileNotice(load.plan.defaultBranch).label
+                  : null,
         onRun: () =>
           load.kind === "ready" &&
           onPublish(chosenStep ?? load.plan.proposedStep, load.plan),
@@ -111,11 +111,10 @@ export function ReleaseDialog({
       onClose={onClose}
     >
       {load.kind === "loading" ? (
-        <StatusLine id={loadingId}>{loadingText("release plan")}</StatusLine>
+        <StatusLine>{loadingText("release plan")}</StatusLine>
       ) : load.kind === "ready" ? (
         <PlanBody
           origin={origin}
-          blockedId={blockedId}
           plan={load.plan}
           step={chosenStep ?? load.plan.proposedStep}
           onStepChange={setChosenStep}
@@ -129,13 +128,11 @@ export function ReleaseDialog({
 // semver.
 function PlanBody({
   origin,
-  blockedId,
   plan,
   step,
   onStepChange,
 }: {
   origin: string;
-  blockedId: string;
   plan: ReleasePlan;
   step: SemverStep;
   onStepChange: (step: SemverStep) => void;
@@ -183,10 +180,7 @@ function PlanBody({
         )}
       </Card>
       {empty ? (
-        <p
-          id={plan.blocked === "empty-delta" ? blockedId : undefined}
-          className="m-0 text-gray-11"
-        >
+        <p className="m-0 text-gray-11">
           No changes yet. Changes merged after the last release appear here.
         </p>
       ) : (
@@ -195,7 +189,6 @@ function PlanBody({
       {plan.blocked === "root-skill-file" ? (
         <Notice
           trigger="load"
-          id={blockedId}
           notice={rootSkillFileNotice(plan.defaultBranch)}
         />
       ) : null}

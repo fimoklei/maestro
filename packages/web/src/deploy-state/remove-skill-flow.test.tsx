@@ -9,7 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  expectVisibleCause,
+  expectTooltipCause,
   jsonResponse,
   renderWithQuery,
   sentence,
@@ -555,7 +555,7 @@ describe("RemoveSkillFlow", () => {
       );
 
       await waitFor(() =>
-        expectVisibleCause(
+        expectTooltipCause(
           // The header ✕ comes first; the leave control is the last Close.
           screen.getAllByRole("button", { name: "Close" })[0] as HTMLElement,
           "Removing…",
@@ -702,7 +702,7 @@ describe("RemoveSkillFlow", () => {
       const { removeCalls } = renderFlow({ preflight: never });
 
       const confirm = screen.getByRole("button", { name: "Remove skill" });
-      expectVisibleCause(confirm, "Checking for local edits…");
+      expectTooltipCause(confirm, "Checking for local edits…");
       await userEvent.click(confirm);
       expect(removeCalls()).toEqual([]);
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();

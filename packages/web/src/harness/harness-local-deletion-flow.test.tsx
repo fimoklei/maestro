@@ -2,7 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { expectVisibleCause, sentence } from "../test-utils";
+import { expectTooltipCause, sentence } from "../test-utils";
 import {
   installHarnessHooks,
   ON_DISK,
@@ -191,7 +191,7 @@ describe("Harness local deletion", () => {
     renderHarness();
     const dialog = await openLocalDeletion();
 
-    expectVisibleCause(
+    expectTooltipCause(
       confirmButton(dialog),
       "Checking for uncommitted changes…",
     );
@@ -222,7 +222,7 @@ describe("Harness local deletion", () => {
     expect(
       within(dialog).getByText("Git could not read your clone."),
     ).toBeInTheDocument();
-    expectVisibleCause(confirmButton(dialog), /^Clone not read/);
+    expectTooltipCause(confirmButton(dialog), /^Clone not read/);
     await userEvent.click(confirmButton(dialog));
     expect(localDeletions).toEqual([]);
   });
@@ -239,7 +239,7 @@ describe("Harness local deletion", () => {
     const dialog = await openLocalDeletion();
 
     await waitFor(() =>
-      expectVisibleCause(confirmButton(dialog), /^Folder already deleted/),
+      expectTooltipCause(confirmButton(dialog), /^Folder already deleted/),
     );
     await userEvent.click(confirmButton(dialog));
     expect(localDeletions).toEqual([]);

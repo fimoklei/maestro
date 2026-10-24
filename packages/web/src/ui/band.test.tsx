@@ -64,24 +64,10 @@ describe("BandRow", () => {
     expect(screen.queryByText(/Local edits/)).toBeNull();
   });
 
-  it("shows a gate count at 0 under its id, for a blocked control to point at", () => {
-    render(
-      <BandRow
-        band={band(READ, [
-          BEHIND,
-          { ...LOCAL_EDITS, gate: { id: "local-edits-count" } },
-        ])}
-      >
-        <button type="button" aria-describedby="local-edits-count">
-          Import local edits
-        </button>
-      </BandRow>,
-    );
+  it("shows a gate count at 0", () => {
+    renderBand(band(READ, [BEHIND, { ...LOCAL_EDITS, gate: true }]));
 
     shown("Behind 4", "Local edits 0");
-    expect(
-      screen.getByRole("button", { name: "Import local edits" }),
-    ).toHaveAccessibleDescription("Local edits 0");
   });
 
   it("reads the attention counts alone", () => {

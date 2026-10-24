@@ -121,7 +121,6 @@ Pick the form from this table. Add no other form, and no banner.
 | Screen-wide failure | `Notice` | Top of the panel content |
 | Field hint | One sentence in slate 11 `meta` | Between the label and the field |
 | Field error | One `✕` line in red 11. A refusal with a heading and a cause is a `Notice` in the same slot | Under the field |
-| Cause of a blocked dialog action, not stated elsewhere | One sentence in slate 11 `meta`, drawn by `Dialog` while the action is blocked | The footer, beside the action |
 | Information | `Notice` at `info` | In the region it describes |
 | Status of data | Badge in the row, mark in the pane | The row |
 | Busy | Spinner | The pressed button, the row's ⋮ icon, or the re-read control |
@@ -196,9 +195,10 @@ Pick the form from this table. Add no other form, and no banner.
 - Open a menu button with Enter, Space or Down Arrow, landing on the first
   item.
 - Keep an unavailable control focusable with `aria-disabled`. A button keeps
-  its plain label and points with `aria-describedby` to visible text that
-  states why (`GatedButton`); a tooltip may repeat that text, never replace
-  it. A menu item carries its plain label and no reason. A ⋮ or ⋯ menu keeps
+  its plain label; its tooltip states why on hover and focus, and is its
+  description (`GatedButton`, `IconButton`). Draw no cause beside it. Accept
+  that a touch screen shows no tooltip. A menu item carries its plain label
+  and no reason. A ⋮ or ⋯ menu keeps
   only an item another write or an unsettled read locks; it omits the rest.
 - Make every pointer target at least 24×24px. Hold every screen at 200% zoom
   and a narrow width.

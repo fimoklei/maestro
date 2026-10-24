@@ -21,10 +21,7 @@ export function Tooltip({
     <TooltipPrimitive.Provider delayDuration={400} skipDelayDuration={150}>
       <TooltipPrimitive.Root>
         <TooltipPrimitive.Trigger asChild>
-          {/* A label-only tooltip repeats the name; Radix would describe with it. */}
-          <TriggerTarget
-            omitDescription={detail === undefined ? contentId : null}
-          >
+          <TriggerTarget contentId={contentId} detail={detail}>
             {children}
           </TriggerTarget>
         </TooltipPrimitive.Trigger>
@@ -33,10 +30,8 @@ export function Tooltip({
             id={contentId}
             sideOffset={6}
             // aria-hidden: the trigger already carries these words as its
-            // accessible name, and Radix would announce them a second time.
-            // Radix makes aria-label the description, so the reason alone.
+            // name and description.
             aria-hidden="true"
-            aria-label={detail}
             // Escape dismisses the tooltip alone, not the panel around it.
             onEscapeKeyDown={(event) => event.stopPropagation()}
             className="z-50 max-w-80 wrap-anywhere rounded-control border border-gray-7 bg-gray-2 px-inline py-tight text-gray-12 text-meta shadow-float"
@@ -52,16 +47,26 @@ export function Tooltip({
   );
 }
 
-// Radix joins the content id onto any aria-describedby the child carries, so
-// it is taken out here, after the join.
+// Radix joins the content id onto any aria-describedby the child carries, and
+// only while open; the detail describes the trigger while closed too.
 function TriggerTarget({
-  omitDescription,
+  contentId,
+  detail,
   "aria-describedby": describedBy,
   ...rest
-}: ComponentProps<typeof Slot> & { omitDescription: string | null }) {
+}: ComponentProps<typeof Slot> & {
+  contentId: string;
+  detail: string | undefined;
+}) {
   const ids = describedBy
     ?.split(/\s+/)
-    .filter((id) => id !== "" && id !== omitDescription)
+    .filter((id) => id !== "" && id !== contentId)
     .join(" ");
-  return <Slot {...rest} aria-describedby={ids === "" ? undefined : ids} />;
+  return (
+    <Slot
+      {...rest}
+      aria-describedby={ids === "" ? undefined : ids}
+      aria-description={detail}
+    />
+  );
 }

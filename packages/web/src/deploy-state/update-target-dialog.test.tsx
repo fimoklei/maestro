@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { expectVisibleCause, sentence } from "../test-utils";
+import { expectTooltipCause, sentence } from "../test-utils";
 import { UpdateTargetDialog } from "./update-target-dialog";
 
 const row = (name: string) => ({
@@ -216,7 +216,7 @@ describe("UpdateTargetDialog", () => {
     });
 
     const held = () => screen.getByRole("button", { name: "Update target" });
-    expectVisibleCause(held(), "To update this target, check every box above.");
+    expectTooltipCause(held(), "To update this target, check every box above.");
     await user.click(held());
     expect(onConfirm).not.toHaveBeenCalled();
     await user.click(
@@ -350,7 +350,7 @@ describe("UpdateTargetDialog", () => {
       />,
     );
 
-    expectVisibleCause(
+    expectTooltipCause(
       screen.getByRole("button", { name: "Update target" }),
       /^No GitHub origin/,
     );
@@ -449,7 +449,7 @@ describe("UpdateTargetDialog outcome", () => {
       isRunning: true,
     });
 
-    expectVisibleCause(
+    expectTooltipCause(
       // The header ✕ comes first; the leave control is the last Close.
       screen.getAllByRole("button", { name: "Close" })[0] as HTMLElement,
       "Updating…",

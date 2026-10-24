@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   chooseDeployTarget,
-  expectVisibleCause,
+  expectTooltipCause,
   jsonResponse,
   renderWithQuery,
 } from "../test-utils";
@@ -446,7 +446,7 @@ describe("BulkDeployAction", () => {
     expect(deployCalls).toHaveBeenCalledTimes(1);
     await userEvent.keyboard("{Escape}");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Close" }),
       "Deploying…",
     );
@@ -472,7 +472,7 @@ describe("BulkDeployAction", () => {
 
     const dialog = await openDialog();
 
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Deploy skill" }),
       "Loading targets…",
     );
@@ -510,7 +510,7 @@ describe("BulkDeployAction", () => {
 
     const dialog = await openDialog();
     await chooseDeployTarget(dialog, /repo$/);
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Deploy skill" }),
       "Loading targets…",
     );
@@ -1029,7 +1029,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
     stubTools([]);
     const dialog = await openOne([]);
 
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Deploy skill" }),
       "Choose a target.",
     );
@@ -1069,7 +1069,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
     await queryClient.invalidateQueries();
 
     await waitFor(() =>
-      expectVisibleCause(
+      expectTooltipCause(
         within(dialog).getByRole("button", { name: "Deploy skill" }),
         "Install Claude Code or Codex to deploy skills globally.",
       ),
@@ -1247,7 +1247,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
     const deployButton = within(dialog).getByRole("button", {
       name: "Deploy skill",
     });
-    expectVisibleCause(deployButton, "Choose a target.");
+    expectTooltipCause(deployButton, "Choose a target.");
 
     await userEvent.click(deployButton);
 
@@ -1275,7 +1275,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
     expect(
       within(dialog).getByRole("combobox", { name: "Target" }),
     ).toHaveTextContent("Choose a target");
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Deploy skill" }),
       "Choose a target.",
     );
@@ -1288,7 +1288,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
     stubWorld();
     const dialog = await open(twoRepos, ["tdd", "review"]);
 
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Deploy skills" }),
       "Choose a target.",
     );
@@ -1376,7 +1376,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
 
     await chooseDeployTarget(dialog, /projects\/alpha$/);
 
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Deploy skill" }),
       "Loading targets…",
     );
@@ -1436,7 +1436,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
     expect(
       within(dialog).queryByRole("group", { name: /^Already up to date/ }),
     ).not.toBeInTheDocument();
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Deploy skill" }),
       "Loading targets…",
     );
@@ -1448,7 +1448,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
 
     await chooseDeployTarget(dialog, /^Global/);
 
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Deploy skill" }),
       "Loading targets…",
     );

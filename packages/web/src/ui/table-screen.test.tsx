@@ -524,6 +524,7 @@ describe("TableScreen", () => {
             key: (row) => row.colour,
             order: ["red"],
             message: () => "Red fruit was not read.",
+            messageText: () => "Red fruit was not read.",
           }}
         />,
       );

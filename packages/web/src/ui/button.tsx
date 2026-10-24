@@ -35,19 +35,22 @@ export function Spinner() {
   );
 }
 
-// enabled: keeps a disabled button inert. `success` shares the primary
+// enabled: and not-aria-disabled: keep a disabled or blocked button inert on
+// hover; a blocked primary lost its label to it (#1644). `success` shares the primary
 // treatment: a green fill would be a second coloured mark.
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "text-gray-1 bg-gray-12 border-gray-12 enabled:hover:bg-gray-11 enabled:hover:border-gray-11",
+    "text-gray-1 bg-gray-12 border-gray-12 enabled:not-aria-disabled:hover:bg-gray-11 enabled:not-aria-disabled:hover:border-gray-11",
   success:
-    "text-gray-1 bg-gray-12 border-gray-12 enabled:hover:bg-gray-11 enabled:hover:border-gray-11",
+    "text-gray-1 bg-gray-12 border-gray-12 enabled:not-aria-disabled:hover:bg-gray-11 enabled:not-aria-disabled:hover:border-gray-11",
   ghost:
-    "text-gray-11 bg-transparent border-transparent enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
-  quiet: "text-gray-12 bg-transparent border-edge enabled:hover:bg-gray-3",
+    "text-gray-11 bg-transparent border-transparent enabled:not-aria-disabled:hover:bg-gray-3 enabled:not-aria-disabled:hover:text-gray-12",
+  quiet:
+    "text-gray-12 bg-transparent border-edge enabled:not-aria-disabled:hover:bg-gray-3",
   dashed:
-    "text-gray-11 bg-transparent border-dashed border-edge enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
-  danger: "text-red-11 bg-transparent border-red-7 enabled:hover:bg-red-3",
+    "text-gray-11 bg-transparent border-dashed border-edge enabled:not-aria-disabled:hover:bg-gray-3 enabled:not-aria-disabled:hover:text-gray-12",
+  danger:
+    "text-red-11 bg-transparent border-red-7 enabled:not-aria-disabled:hover:bg-red-3",
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {

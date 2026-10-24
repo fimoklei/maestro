@@ -5,7 +5,7 @@ import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { CANCEL, CLOSE } from "./dialog-copy";
-import { type CauseText, GatedButton } from "./gated-button";
+import { GatedButton } from "./gated-button";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 import { Notice, type NoticeContent } from "./notice";
@@ -23,27 +23,21 @@ const WIDTH = {
   640: "max-w-[640px]",
 } as const;
 
-/** A sentence the dialog shows beside its blocked action, stating why. */
-type CauseLine = { line: string };
-
 type DialogAction = {
   label: string;
   /** Picks the busy label from `busy-copy`. */
   verb: ActionKey;
   /** `danger` is a destructive dialog: danger button, focus opens on Cancel. */
   tone: "primary" | "danger";
-  /**
-   * Why it cannot run yet: the text that says it, the dialog's own failure
-   * notice, or a new line it shows; `null` when it can.
-   */
-  unavailable: CauseText | { failure: true } | CauseLine | null;
+  /** The sentence its tooltip gives for why it cannot run yet; `null` when it can. */
+  unavailable: string | null;
   onRun: () => void;
 };
 
 /**
  * The phase and the footer action together. A write runs from the footer
  * action, or, with no footer action, from a control in the body whose busy
- * label ✕ points to while it runs.
+ * label the ✕ gives as its cause while it runs.
  */
 export type DialogRun =
   | { phase: "idle" | "running" | "outcome"; action: DialogAction }
@@ -52,7 +46,7 @@ export type DialogRun =
       /** No footer action, as once an outcome is shown. */
       action: null;
     }
-  | { phase: "running-in-body"; action: null; busyLabel: CauseText };
+  | { phase: "running-in-body"; action: null; busyLabel: string };
 
 /** Builds a dialog's run from where its write starts, whether it runs, and whether an outcome shows. */
 export function dialogRun({
@@ -60,8 +54,8 @@ export function dialogRun({
   running,
   outcome,
 }: {
-  /** The footer action; a body control, by its busy label's id; or none, when nothing can run. */
-  source: DialogAction | { bodyBusyId: string } | null;
+  /** The footer action; a body control, by its busy label; or none, when nothing can run. */
+  source: DialogAction | { bodyBusyLabel: string } | null;
   running: boolean;
   outcome: boolean;
 }): DialogRun {
@@ -73,7 +67,7 @@ export function dialogRun({
     return {
       phase: "running-in-body",
       action: null,
-      busyLabel: { describedBy: source.bodyBusyId },
+      busyLabel: source.bodyBusyLabel,
     };
   }
   return { phase: settled, action: null };
@@ -117,8 +111,6 @@ export function Dialog({
       ? "primary"
       : "quiet";
   const failureId = useId();
-  const lineId = useId();
-  const busyId = useId();
   const bodyless = children === null;
 
   // Below a long body a new failure would sit out of view; focus stays put.
@@ -215,8 +207,8 @@ export function Dialog({
               unavailable={
                 run.phase === "running-in-body"
                   ? run.busyLabel
-                  : running
-                    ? { describedBy: busyId }
+                  : run.phase === "running"
+                    ? ACTIONS[run.action.verb].busy
                     : undefined
               }
               onClick={onClose}
@@ -268,9 +260,6 @@ export function Dialog({
                   action={action}
                   variant={variant}
                   running={running}
-                  failureId={failureId}
-                  lineId={lineId}
-                  busyId={busyId}
                 />
               )}
             </div>
@@ -286,22 +275,15 @@ function ActionButton({
   action,
   variant,
   running,
-  failureId,
-  lineId,
-  busyId,
 }: {
   action: DialogAction;
   variant: "primary" | "danger" | "quiet";
   running: boolean;
-  failureId: string;
-  lineId: string;
-  busyId: string;
 }) {
-  // The ✕ is described by the busy label while the action runs.
   if (running) {
     return (
       <Button type="submit" variant={variant} busy>
-        <span id={busyId}>{ACTIONS[action.verb].busy}</span>
+        {ACTIONS[action.verb].busy}
       </Button>
     );
   }
@@ -312,33 +294,12 @@ function ActionButton({
       </Button>
     );
   }
-  const { unavailable } = action;
-  if ("line" in unavailable) {
-    return (
-      <div className="flex min-w-0 items-center gap-inline">
-        <p
-          id={lineId}
-          className="m-0 min-w-0 text-right font-ui text-gray-11 text-meta"
-        >
-          {unavailable.line}
-        </p>
-        <GatedButton
-          type="submit"
-          variant={variant}
-          label={action.label}
-          unavailable={{ describedBy: lineId }}
-        />
-      </div>
-    );
-  }
   return (
     <GatedButton
       type="submit"
       variant={variant}
       label={action.label}
-      unavailable={
-        "failure" in unavailable ? { describedBy: failureId } : unavailable
-      }
+      unavailable={action.unavailable}
     />
   );
 }

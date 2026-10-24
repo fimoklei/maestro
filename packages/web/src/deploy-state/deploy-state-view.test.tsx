@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  expectVisibleCause,
+  expectTooltipCause,
   fakeTimeouts,
   hoverOpen,
   htmlElement,
@@ -622,7 +622,7 @@ describe("Deploy-state — failed reads", () => {
     ).toBeInTheDocument();
   });
 
-  it("points Filter and Display to the Global and Repositories lines when there are no targets", async () => {
+  it("gives Filter and Display the first group line when there are no targets", async () => {
     stubServer(() => ({
       global: {
         tools: [],
@@ -639,20 +639,20 @@ describe("Deploy-state — failed reads", () => {
 
     await screen.findByText(/install claude code or codex/i);
     for (const name of ["Filter", "Display"]) {
-      expectVisibleCause(
+      expectTooltipCause(
         screen.getByRole("button", { name }),
-        /^Install Claude Code or Codex to deploy skills globally\..*No repositories yet\./,
+        "Install Claude Code or Codex to deploy skills globally.",
       );
     }
   });
 
-  it("points Filter and Display to the empty state on a cold start", async () => {
+  it("gives Filter and Display the empty state's heading on a cold start", async () => {
     stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
     renderDeployState();
 
     await screen.findByRole("heading", { level: 2, name: "No targets yet" });
     for (const name of ["Filter", "Display"]) {
-      expectVisibleCause(
+      expectTooltipCause(
         screen.getByRole("button", { name }),
         "No targets yet",
       );

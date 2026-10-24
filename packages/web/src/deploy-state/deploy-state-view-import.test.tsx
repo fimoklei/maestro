@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  expectVisibleCause,
+  expectTooltipCause,
   htmlElement,
   jsonResponse,
   sentence,
@@ -83,7 +83,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
 
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Import skills" }),
       "Checking for local edits…",
     );
@@ -115,7 +115,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     await userEvent.click(
       within(group).getByRole("checkbox", { name: "code-review" }),
     );
-    expectVisibleCause(
+    expectTooltipCause(
       within(dialog).getByRole("button", { name: "Import skills" }),
       "Check at least one skill.",
     );
@@ -315,7 +315,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
 
-    expectVisibleCause(
+    expectTooltipCause(
       await within(dialog).findByRole("button", { name: "Import skills" }),
       "You cannot import any of these skills.",
     );

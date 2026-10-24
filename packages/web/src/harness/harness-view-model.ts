@@ -5,9 +5,12 @@ import type {
   HarnessState,
 } from "@maestro/core";
 import { NOT_RELEASED_YET } from "../ui/band-copy";
-import { freshnessLine } from "../ui/freshness";
+import type { BandCount } from "../ui/band-summary";
+import { freshnessLine, OFFLINE, READ_FAILED } from "../ui/freshness";
+import type { NoticeContent } from "../ui/notice";
 import { type Copy, machine, phrase } from "../ui/phrase";
-import { defaultBranchCopy, STAGE_NAMES } from "./stage-copy";
+import { NOTHING_TO_RELEASE } from "./notice-copy";
+import { ALL_RELEASED, defaultBranchCopy, STAGE_NAMES } from "./stage-copy";
 
 // The stage header's meta slot carries at most one reading, never two (#838),
 // and never a routine read age: null where a successful read has nothing to name (#1218).
@@ -123,3 +126,31 @@ export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
 // publish a delta that has already moved (#519).
 export const releaseEnabled = (freshness: HarnessFreshness): boolean =>
   freshness.outcome !== "offline" && freshness.outcome !== "fetch-failed";
+
+/**
+ * Why Create a release cannot open the plan, in the band's own words or the
+ * stale status notice's heading; null when it can.
+ */
+export const releaseCause = ({
+  freshness,
+  staleNotice,
+  nothingToRelease,
+  counts,
+}: {
+  freshness: HarnessFreshness;
+  /** The stale status notice, when the screen shows it. */
+  staleNotice: NoticeContent | null;
+  nothingToRelease: boolean;
+  counts: readonly BandCount[];
+}): string | null => {
+  if (!releaseEnabled(freshness)) {
+    return (
+      staleNotice?.label ??
+      (freshness.outcome === "offline" ? OFFLINE : READ_FAILED)
+    );
+  }
+  if (!nothingToRelease) return null;
+  return counts.every((count) => count.count === 0)
+    ? ALL_RELEASED
+    : NOTHING_TO_RELEASE;
+};
