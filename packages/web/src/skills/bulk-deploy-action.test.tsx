@@ -7,6 +7,8 @@ import {
   jsonResponse,
   renderWithQuery,
 } from "../test-utils";
+import { ToastHost } from "../ui/toast";
+import { ScreenReportContext } from "../ui/use-write-action";
 import { BulkDeployAction } from "./bulk-deploy-action";
 
 afterEach(() => {
@@ -284,6 +286,60 @@ describe("BulkDeployAction", () => {
     });
   });
 
+  it("reads a reinstalled row as deployed in the Report, with no toast and no done sentence beside it", async () => {
+    stubReads({
+      target: { kind: "global" },
+      deployed: [{ name: "tdd", version: "v1.0.0" }],
+      attention: [
+        {
+          name: "review",
+          error: "deployed-diverged-from-lock",
+          forceable: true,
+          copyReceipt: "b".repeat(64),
+        },
+      ],
+      failed: [],
+    });
+    const region: string[] = [];
+    renderWithQuery(
+      <ScreenReportContext.Provider value={(write) => region.push(write)}>
+        <BulkDeployAction
+          stagedNames={["tdd", "review"]}
+          repos={[]}
+          registryReady
+          onSelectionSpent={() => {}}
+        />
+        <ToastHost />
+      </ScreenReportContext.Provider>,
+    );
+
+    const dialog = await deploy();
+    await userEvent.click(
+      await within(dialog).findByRole("button", {
+        name: "Deploy review again",
+      }),
+    );
+
+    const deployed = await within(dialog).findByRole("region", {
+      name: "Deployed 2",
+    });
+    expect(within(deployed).getByText("review")).toBeVisible();
+    expect(
+      within(dialog).queryByRole("region", { name: /^Attention/ }),
+    ).toBeNull();
+    expect(
+      within(dialog).queryByRole("button", { name: "Deploy review again" }),
+    ).toBeNull();
+    expect(
+      within(dialog).getByRole("heading", {
+        name: "Deployed 2 of 2 skills to Global",
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(screen.queryByText(/Deployed review/)).toBeNull();
+    expect(region.at(-1)).toBe("");
+  });
+
   it("states a refused reinstall in the dialog, from the deploy notice table", async () => {
     stubReads({
       target: { kind: "global" },
@@ -326,6 +382,12 @@ describe("BulkDeployAction", () => {
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
       "Target busy",
     );
+    expect(
+      within(dialog).getByRole("region", { name: /^Attention/ }),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole("button", { name: "Deploy review again" }),
+    ).not.toHaveAttribute("aria-disabled");
   });
 
   it("holds Deploy again busy, every other one locked and the dialog open while it runs", async () => {
@@ -388,10 +450,11 @@ describe("BulkDeployAction", () => {
     );
 
     answer?.();
-    await vi.waitFor(() =>
-      expect(again).toHaveAccessibleName("Deploy review again"),
-    );
-    expect(again).not.toHaveAttribute("aria-disabled");
+    // The deployed row leaves Attention; the lock lifts from the rest.
+    await vi.waitFor(() => expect(again).not.toBeInTheDocument());
+    expect(
+      within(dialog).getByRole("button", { name: "Deploy tdd again" }),
+    ).not.toHaveAttribute("aria-disabled");
   });
 
   it("names why it cannot deploy while the registry has not answered", async () => {

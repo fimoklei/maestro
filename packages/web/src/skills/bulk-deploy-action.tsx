@@ -89,6 +89,10 @@ export function BulkDeployRun({
   // The skill a refused row asked Update target to add (#955). Set, the Update
   // dialog takes this one's place: the Report described a target it may move.
   const [updateFor, setUpdateFor] = useState<string | null>(null);
+  // The Attention rows Deploy again has since deployed: they read as Deployed.
+  const [redeployed, setRedeployed] = useState<
+    { name: string; version: string }[]
+  >([]);
   const update = useUpdateTarget();
   const report = useScreenReport();
   // The Report states the run, its request failure included.
@@ -99,11 +103,12 @@ export function BulkDeployRun({
     name: () => null,
     failure: () => null,
   });
+  // The Report states the reinstall: its row moves to Deployed.
   const forceWrite = useWriteAction(forceDeploy, {
     report,
     action: "deploy",
     show: "row",
-    name: (_data, { name }) => name,
+    name: () => null,
     failure: (error) => ({ ...deployNotice(error), level: "error" as const }),
   });
 
@@ -166,6 +171,7 @@ export function BulkDeployRun({
   const onDeploy = () => {
     if (chosenRun === null || preview === null) return;
     bulk.reset();
+    setRedeployed([]);
     setPlan(preview);
     if (preview.toDeploy.length > 0) {
       bulkWrite.run({ names: preview.toDeploy, target: chosenRun.target });
@@ -185,6 +191,7 @@ export function BulkDeployRun({
             failed: [],
           },
           skippedClean: plan.skippedClean,
+          redeployed,
           targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
         });
@@ -225,6 +232,7 @@ export function BulkDeployRun({
       skills={bulkDeploySkillGroups(stagedNames, preview)}
       onSelect={(value) => {
         bulk.reset();
+        setRedeployed([]);
         setPlan(null);
         setChosen(value);
       }}
@@ -260,12 +268,21 @@ export function BulkDeployRun({
                 view,
                 force: {
                   run: (name, confirmedCopyReceipt) =>
-                    forceWrite.run({
-                      type: "skill",
-                      name,
-                      target: chosenRun.target,
-                      confirmedCopyReceipt,
-                    }),
+                    forceWrite.run(
+                      {
+                        type: "skill",
+                        name,
+                        target: chosenRun.target,
+                        confirmedCopyReceipt,
+                      },
+                      {
+                        onSuccess: ({ deployed }) =>
+                          setRedeployed((rows) => [
+                            ...rows,
+                            { name: deployed.name, version: deployed.version },
+                          ]),
+                      },
+                    ),
                   running: forceDeploy.isPending
                     ? forceDeploy.variables.name
                     : null,
@@ -322,11 +339,13 @@ function bulkDeploySummary(input: {
 function bulkDeployReportView(input: {
   report: BulkDeployReport;
   skippedClean: string[];
+  // Attention rows a later Deploy again succeeded on.
+  redeployed: { name: string; version: string }[];
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
 }): BulkDeployReportView {
-  const { report, skippedClean, targetLabel } = input;
+  const { report, skippedClean, redeployed, targetLabel } = input;
 
   if (input.requestFailed) {
     // Never the error's own text: the bulk route answers 200 with a report, so a
@@ -345,17 +364,22 @@ function bulkDeployReportView(input: {
     0,
   );
 
+  const attention = report.attention.filter(
+    (row) => !redeployed.some((done) => done.name === row.name),
+  );
+  const deployed = [...report.deployed, ...redeployed];
+
   return {
     tone: "ran",
     targetLabel,
-    deployed: report.deployed,
+    deployed,
     skipped: skippedClean,
-    attention: report.attention,
+    attention,
     failed: report.failed,
     counts: {
-      deployed: report.deployed.length,
+      deployed: deployed.length,
       skipped: skippedClean.length,
-      attention: report.attention.length,
+      attention: attention.length,
       failed: failedCount,
     },
   };
