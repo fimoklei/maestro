@@ -429,6 +429,28 @@ describe("Pending review membership", () => {
     ]);
   });
 
+  it("lets a request closed after older merges set proposal closed alone", () => {
+    const review = reviewOf([
+      request({ number: 1, state: "merged" }),
+      request({ number: 16, state: "merged" }),
+      request({ number: 22, state: "closed" }),
+    ]);
+    const row = oneRow(stages({ trees: pushed, review }).review);
+    expect(row.status).toBe("proposal-closed");
+    expect(row.requests.map((each) => each.number)).toEqual([22]);
+  });
+
+  it("lets a request merged after a closed one set proposal merged alone", () => {
+    const review = reviewOf([
+      request({ number: 10, state: "merged" }),
+      request({ number: 20, state: "closed" }),
+      request({ number: 30, state: "merged" }),
+    ]);
+    const row = oneRow(stages({ trees: pushed, review }).review);
+    expect(row.status).toBe("proposal-merged");
+    expect(row.requests.map((each) => each.number)).toEqual([30]);
+  });
+
   it("drops the row once the merge reaches the default branch", () => {
     const merged: HarnessSkillTrees = {
       remote: { tdd: "pushed" },
@@ -1045,17 +1067,19 @@ describe("Another contributor's open proposal", () => {
     expect(oneRow(read.proposal).waitingOn).toBeNull();
   });
 
-  it("marks each linked request another contributor opened", () => {
-    const closed = reviewOf([
-      request({ state: "closed", author: "teammate" }),
-      request({ number: 40, state: "closed", author: "fimoklei" }),
-    ]);
-    const links = oneRow(stages({ trees, review: closed }).review).requests;
-    expect(links.map((link) => [link.number, link.byOther])).toEqual([
-      [45, true],
-      [40, false],
-    ]);
-  });
+  it.each([
+    ["teammate", true],
+    ["fimoklei", false],
+  ])(
+    "marks a linked request %s opened as by another: %s",
+    (author, byOther) => {
+      const closed = reviewOf([request({ state: "closed", author })]);
+      const links = oneRow(stages({ trees, review: closed }).review).requests;
+      expect(links.map((link) => [link.number, link.byOther])).toEqual([
+        [45, byOther],
+      ]);
+    },
+  );
 
   it("marks no link another contributor's while the sign-in is unknown", () => {
     const viewer: ViewerRead = { outcome: "unavailable" };
