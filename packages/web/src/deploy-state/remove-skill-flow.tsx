@@ -164,8 +164,7 @@ export function RemoveSkillFlow({
               ? target
               : { kind: "repo", name: target.name },
       }),
-      // The skill is no table row, and it leaves the open pane's list.
-      row: null,
+      leftItsRow: true,
     }),
     // `news` states it: a retry clears the mutation's error mid-attempt.
     failure: () => null,

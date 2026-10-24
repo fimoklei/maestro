@@ -103,7 +103,10 @@ export function useTableScreen({
     setPending([]);
     const shown = pending.filter(
       (result) =>
-        !readFailed && result.row !== null && inView.current(result.row),
+        !readFailed &&
+        "row" in result &&
+        result.row !== null &&
+        inView.current(result.row),
     );
     status.report(shown.map((result) => plainText(result.sentence)).join(" "));
     for (const result of pending) {

@@ -126,7 +126,7 @@ Pick the form from this table. Add no other form, and no banner.
 | Status of data | Badge in the row, mark in the pane | The row |
 | Busy | Spinner | The pressed button, the row's ⋮ icon, or the re-read control |
 | Success in view: the row changed in place and shown, or its detail pane open | The row's new status, or the new row after an add, plus the done sentence in the status region | The row |
-| Success not in view: the row left, a Filter or a collapsed group hides it, or the result is on the clipboard or GitHub | Toast with the done sentence, success only, no action | The screen the write ends on |
+| Success not in view: the row, or an item under it, left; a Filter or a collapsed group hides it, or the result is on the clipboard or GitHub | Toast with the done sentence, success only, no action | The screen the write ends on |
 | Confirmation | Dialog, 480px | Top-aligned at 96px |
 | Outcome of a run in a dialog | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
 

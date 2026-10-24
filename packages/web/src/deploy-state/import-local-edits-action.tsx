@@ -43,7 +43,10 @@ export function ImportLocalEditsAction({
       const [one] = landed;
       return landed.length === 1 && one !== undefined
         ? { name: one.name, row: proposalRow(skillRef(one.name)) }
-        : { name: { count: landed.length, things: "skills" }, row: null };
+        : {
+            name: { count: landed.length, one: "skill", many: "skills" },
+            row: null,
+          };
     },
     handOver: (written, { outcomes: landed }) => {
       const [one] = landed;

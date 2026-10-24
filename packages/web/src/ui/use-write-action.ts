@@ -6,16 +6,21 @@ import type { Copy, Phrase } from "./phrase";
 
 type Report = (write: string) => void;
 
-/** What a write touched: the done sentence's name or count, and its row. */
-export type Subject = {
-  /** A count names several items, as `{n} {things}`; `things` is plural. */
-  name: Copy | { count: number; things: string };
+/** Several items, counted: `{n} {one}` for one item, `{n} {many}` for none or several. */
+type Count = { count: number; one: string; many: string };
+
+/** Where a write's result shows. */
+type Touched =
   /** The table row the write touches, by row id; null where it touches none. */
-  row: string | null;
-};
+  | { row: string | null }
+  /** An item that left the row it stood under, as a skill removed from a target: no row shows it. */
+  | { leftItsRow: true };
+
+/** What a write touched: the done sentence's name or count, and where it shows. */
+export type Subject = { name: Copy | Count } & Touched;
 
 /** A landed write the table screen holds until the read after it lands. */
-export type WriteResult = { sentence: Phrase; row: string | null };
+export type WriteResult = { sentence: Phrase } & Touched;
 
 /** What a write hands its table screen. */
 export type ScreenWrites = {
@@ -52,21 +57,40 @@ export type WriteAction<TData, TVariables, TFailure = NoticeContent> = {
   ) => void;
 };
 
-type Feedback<TData, TVariables> =
+type Delivery<TData> =
   | {
       /** The table screen's writes: `state`, or `useScreenWrites()`. */
       screen: ScreenWrites;
-      /** What the write touched; null where the dialog keeps its Report. */
-      subject: (data: TData, variables: TVariables) => Subject | null;
     }
   | {
       /** The region of the screen the write starts on: `useScreenReport()`. */
       report: Report;
-      /** What the write touched, by the row ids of the screen it ends on; null where the dialog keeps its Report. */
-      subject: (data: TData, variables: TVariables) => Subject | null;
       /** Takes the result to the screen the write ends on, whose table screen settles it. */
       handOver: (result: WriteResult, data: TData) => void;
     };
+
+type Feedback<TData, TVariables> = Delivery<TData> & {
+  /** What the write touched, by the row ids of the screen it ends on; null where the dialog keeps its Report. */
+  subject: (data: TData, variables: TVariables) => Subject | null;
+};
+
+// Where a write's busy label goes, and where its landed result goes.
+function delivered<TData>(delivery: Delivery<TData>): {
+  report: Report;
+  deliver: (result: WriteResult, data: TData) => void;
+} {
+  if ("screen" in delivery) {
+    return { report: delivery.screen.report, deliver: delivery.screen.settle };
+  }
+  const { report, handOver } = delivery;
+  return {
+    report,
+    deliver: (result, data) => {
+      report("");
+      handOver(result, data);
+    },
+  };
+}
 
 // A write's feedback: its busy label in the screen's region at once. A
 // subject goes to the table screen, which picks region or toast once the read
@@ -80,24 +104,18 @@ export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
     failure: (error: unknown) => TFailure | null;
   },
 ): WriteAction<TData, TVariables, TFailure> {
-  const report = "screen" in options ? options.screen.report : options.report;
+  const { report, deliver } = delivered(options);
   const landed = (key: ActionKey, data: TData, variables: TVariables) => {
     const subject = options.subject(data, variables);
-    const result =
-      subject === null
-        ? null
-        : {
-            sentence: doneSentence(key, subjectName(subject)),
-            row: subject.row,
-          };
-    if ("screen" in options && result !== null) {
-      options.screen.settle(result);
+    if (subject === null) {
+      report("");
       return;
     }
-    report("");
-    if ("handOver" in options && result !== null) {
-      options.handOver(result, data);
-    }
+    const { name, ...touched } = subject;
+    deliver(
+      { sentence: doneSentence(key, subjectName(name)), ...touched },
+      data,
+    );
   };
   return {
     phase: mutation.isPending ? "running" : "idle",
@@ -120,8 +138,7 @@ export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
   };
 }
 
-function subjectName({ name }: Subject): Copy {
-  return typeof name === "object" && "count" in name
-    ? `${name.count} ${name.things}`
-    : name;
+function subjectName(name: Copy | Count): Copy {
+  if (typeof name === "string" || "parts" in name) return name;
+  return `${name.count} ${name.count === 1 ? name.one : name.many}`;
 }

@@ -443,7 +443,7 @@ describe("a write's result, once the read after it lands", () => {
   it("counts several items in the toast", async () => {
     const read = await prune({
       after: [],
-      subject: { name: { count: 3, things: "trees" }, row: null },
+      subject: { name: { count: 3, one: "tree", many: "trees" }, row: null },
     });
 
     read.resolve();
@@ -484,6 +484,33 @@ describe("a write's result, once the read after it lands", () => {
     expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
   });
 
+  it("counts one item in the singular", async () => {
+    const read = await prune({
+      after: [],
+      subject: { name: { count: 1, one: "tree", many: "trees" }, row: null },
+    });
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed 1 tree.")),
+    ).toBeInTheDocument();
+  });
+
+  it("says it in a toast when the touched item left its row, though the row stays in view", async () => {
+    const read = await prune({
+      after: TREES,
+      subject: { name: "oak", leftItsRow: true },
+    });
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed oak.")),
+    ).toBeInTheDocument();
+    expect(region()).toBeEmptyDOMElement();
+  });
+
   it("says it in a toast beside the failed-read notice when the read after it fails", async () => {
     const read = await prune({ after: "failed", subject: OAK });
 
@@ -504,7 +531,7 @@ function Landing({
   handed,
 }: {
   read: Promise<void>;
-  handed: WriteResult;
+  handed: WriteResult & { row: string | null };
 }) {
   const [rows, setRows] = useState<Tree[]>([]);
   const [reading, setReading] = useState(true);
