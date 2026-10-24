@@ -165,6 +165,7 @@ export function SkillsView({
     reading,
     settled: primitives !== undefined,
     failure,
+    readFailed: failure !== null,
     onReread,
     openOnArrival: null,
   });

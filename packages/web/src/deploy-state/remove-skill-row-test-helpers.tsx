@@ -20,6 +20,7 @@ export function ScreenHost({ children }: { children: ReactNode }) {
     reading: false,
     settled: true,
     failure: null,
+    readFailed: false,
     onReread: () => {},
     openOnArrival: null,
   });

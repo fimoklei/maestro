@@ -109,6 +109,7 @@ export function DeployStateView() {
       repoDeploy.some((query) => query.isFetching),
     settled: isRead,
     failure: notRead.length > 0 ? deployStateNotRead(notRead) : null,
+    readFailed: notRead.length > 0,
     // Invalidated, not refetched by hand: that also drops drift's 5-minute
     // cache, so a pressed re-read is really fresh.
     onReread: () => {

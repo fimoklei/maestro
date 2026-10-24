@@ -56,6 +56,7 @@ export function RepositoriesView() {
       registry.isFetching || deployStates.some((read) => read.isFetching),
     settled: registry.isSuccess,
     failure: registry.isError ? REPOS_NOT_READ : null,
+    readFailed: registry.isError,
     onReread: () => {
       queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
       for (const path of paths)

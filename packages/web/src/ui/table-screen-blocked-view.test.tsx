@@ -59,6 +59,7 @@ function EmptyGarden({
           message: "Select Re-read Garden to read the garden again.",
         }
       : null,
+    readFailed: failed,
     onReread: () => {},
     openOnArrival: null,
   });

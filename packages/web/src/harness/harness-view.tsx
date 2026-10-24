@@ -104,6 +104,8 @@ export function HarnessView({
     reading: reading || (state === undefined && !harness.isError),
     settled: state !== undefined,
     failure: harnessStateNotice(harness.error) ?? refreshNotice(refresh.error),
+    // A write is followed by the Harness read, never by a fetch from GitHub.
+    readFailed: harness.isError,
     onReread: fetchRemote,
     openOnArrival:
       openPrimitive === null

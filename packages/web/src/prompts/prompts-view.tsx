@@ -95,6 +95,7 @@ export function PromptsView({
     reading,
     settled: prompts !== undefined,
     failure,
+    readFailed: failure !== null,
     onReread,
     openOnArrival: null,
   });

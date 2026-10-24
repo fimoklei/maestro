@@ -11,7 +11,7 @@ import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
 import { TableScreen } from "./table-screen";
 import { ToastHost } from "./toast";
-import { useTableScreen } from "./use-table-screen";
+import { type ReadFailure, useTableScreen } from "./use-table-screen";
 import {
   type Subject,
   useScreenWrites,
@@ -55,6 +55,7 @@ function Orchard({
     reading: false,
     settled: true,
     failure: null,
+    readFailed: false,
     onReread: () => {},
     openOnArrival: null,
   });
@@ -251,11 +252,17 @@ function Grove({
   read,
   after,
   subject,
+  second = null,
+  older = null,
   hidden = () => false,
 }: {
   read: Promise<void>;
   after: Tree[] | "failed";
   subject: Subject | null;
+  /** A second write, pressed as Prune again. */
+  second?: Subject | null;
+  /** A failure from an earlier read of another kind, still shown. */
+  older?: ReadFailure | null;
   hidden?: (row: Tree) => boolean;
 }) {
   const [rows, setRows] = useState(TREES);
@@ -265,7 +272,8 @@ function Grove({
     name: "Grove",
     reading,
     settled: !failed,
-    failure: failed ? GROVE_NOT_READ : null,
+    failure: failed ? GROVE_NOT_READ : older,
+    readFailed: failed,
     onReread: () => {},
     openOnArrival: null,
   });
@@ -280,7 +288,14 @@ function Grove({
     <>
       <TableScreen
         state={state}
-        action={<Prune subject={subject} onWritten={reread} />}
+        action={
+          <>
+            <Prune subject={subject} onWritten={reread} />
+            {second === null ? null : (
+              <Prune label="Prune again" subject={second} onWritten={reread} />
+            )}
+          </>
+        }
         rereading={reading}
         firstReadRows={2}
         rows={rows}
@@ -303,9 +318,11 @@ function Grove({
 }
 
 function Prune({
+  label = "Prune",
   subject,
   onWritten,
 }: {
+  label?: string;
   subject: Subject | null;
   onWritten: () => void;
 }) {
@@ -321,7 +338,7 @@ function Prune({
   });
   return (
     <button type="button" onClick={() => write.run("oak")}>
-      Prune
+      {label}
     </button>
   );
 }
@@ -436,6 +453,37 @@ describe("a write's result, once the read after it lands", () => {
     ).toBeInTheDocument();
   });
 
+  it("says each of two writes landing before the read once", async () => {
+    const read = await prune({
+      after: TREES,
+      subject: OAK,
+      second: { name: "elm", row: null },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Prune again" }));
+
+    read.resolve();
+
+    expect(
+      await screen.findByText(sentence("Removed elm.")),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(region()).toHaveTextContent("Removed oak."));
+    expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
+    expect(screen.getAllByText(sentence("Removed elm."))).toHaveLength(1);
+  });
+
+  it("judges by the read after the write, not an older failure still shown", async () => {
+    const read = await prune({
+      after: TREES,
+      subject: OAK,
+      older: { ...GROVE_NOT_READ, label: "Remote not read" },
+    });
+
+    read.resolve();
+
+    await waitFor(() => expect(region()).toHaveTextContent("Removed oak."));
+    expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
+  });
+
   it("says it in a toast beside the failed-read notice when the read after it fails", async () => {
     const read = await prune({ after: "failed", subject: OAK });
 
@@ -465,6 +513,7 @@ function Landing({
     reading,
     settled: !reading,
     failure: null,
+    readFailed: false,
     onReread: () => {},
     openOnArrival: handed.row,
   });

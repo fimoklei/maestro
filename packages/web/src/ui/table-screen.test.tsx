@@ -74,6 +74,7 @@ function FruitScreen({
     reading,
     settled,
     failure: failed ? NOT_READ : null,
+    readFailed: failed,
     onReread,
     openOnArrival,
   });
@@ -803,6 +804,7 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
     reading: false,
     settled: true,
     failure: null,
+    readFailed: false,
     onReread: () => {},
     openOnArrival: withPane ? "box" : null,
   });

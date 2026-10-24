@@ -45,6 +45,7 @@ function Screen({
             "Select Re-read Repositories to read the registered repositories again.",
         }
       : null,
+    readFailed: failed,
     onReread: () => {},
     openOnArrival: null,
   });
