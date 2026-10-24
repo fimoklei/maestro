@@ -16,8 +16,6 @@ const FRESHNESS: HarnessFreshness = {
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
 
-const READ_MAX_AGE_MS = 30_000;
-
 // A gate a Drift or Harness read shares with the release.
 const readGate = (git: InMemoryHarnessGit) =>
   new HarnessFetchGate({
@@ -400,7 +398,7 @@ describe("PublishRelease", () => {
   it("fetches before publishing even right after a read reused within its window", async () => {
     const git = releasable();
     const gate = readGate(git);
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
 
     await buildPublish(git, { fetchGate: gate }).execute(CONFIRMED);
 
@@ -410,10 +408,10 @@ describe("PublishRelease", () => {
   it("makes the next read fetch after a release, even within its window", async () => {
     const git = releasable();
     const gate = readGate(git);
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
     await buildPublish(git, { fetchGate: gate }).execute(CONFIRMED);
 
-    await gate.fetch("/harness", READ_MAX_AGE_MS);
+    await gate.fetchRecent("/harness");
 
     expect(git.fetches).toBe(3);
   });

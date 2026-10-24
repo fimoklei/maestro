@@ -108,8 +108,6 @@ export type UseCasePorts = {
 
 export type UseCases = ReturnType<typeof composeUseCases>;
 
-// How old a Harness fetch a Drift or Harness read may reuse.
-const HARNESS_READ_MAX_AGE_MS = 30_000;
 // How old an `apm outdated` answer for one Target a Drift read may reuse.
 const OUTDATED_MAX_AGE_MS = 30_000;
 // How old a review read the Harness read may reuse.
@@ -214,8 +212,6 @@ export function composeUseCases(ports: UseCasePorts) {
     freshness: harnessFreshness,
     now: () => new Date(),
   });
-  const fetchHarnessForRead = (root: string) =>
-    harnessFetchGate.fetch(root, HARNESS_READ_MAX_AGE_MS);
   // Every review write goes through `writes`, so a Proposal action shows at once.
   const reviewGate = new ReviewReadGate({
     review: ports.gh,
@@ -226,7 +222,7 @@ export function composeUseCases(ports: UseCasePorts) {
   const syncHarness = async () => {
     const root = await harnessRoot();
     if (root !== undefined) {
-      await harnessFetchGate.fetch(root, 0).catch(() => {});
+      await harnessFetchGate.fetchFresh(root).catch(() => {});
     }
   };
   // Shared by both ways a movement reaches review: two of them for the same
@@ -247,7 +243,7 @@ export function composeUseCases(ports: UseCasePorts) {
       readSkillTreesAtTag: (root, tag) =>
         harnessGit.readSkillTreesAtTag(root, tag),
     },
-    fetchHarness: fetchHarnessForRead,
+    fetchHarness: (root) => harnessFetchGate.fetchRecent(root),
   });
   // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a
   // deploy racing a remove would corrupt it.
@@ -308,7 +304,8 @@ export function composeUseCases(ports: UseCasePorts) {
     resolveRoot: harnessRoot,
     git: harnessGit,
     freshness: harnessFreshness,
-    fetchHarness: fetchHarnessForRead,
+    // Opening the Harness screen and Re-read Harness always fetch (#1630).
+    fetchHarness: (root) => harnessFetchGate.fetchFresh(root),
     review: reviewGate.reads(REVIEW_READ_MAX_AGE_MS),
   });
   const scaffoldOffers = new ScaffoldOffers();

@@ -23,6 +23,7 @@ starting it.
 - Changing what `packages/web` renders → `design.md`
 - Driving `apm` or parsing its lockfile/output → `apm-driver.md`
 - Driving `gh` or parsing its output → `gh-driver.md`
+- Driving `git`, or building a git test remote → `git-driver.md`
 - Writing a script in `scripts/` → `scripts.md`
 
 **Reviewing a diff:** review against every rule file whose `paths:` matches a

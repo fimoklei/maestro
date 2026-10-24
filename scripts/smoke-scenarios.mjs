@@ -351,7 +351,9 @@ export function scenarioMismatch(scenario, repoPath, observed) {
 function stageRow(stage, skill) {
   if (stage.outcome !== "read")
     return { missing: `a stage read as "${stage.outcome}"` };
-  const row = stage.rows.find((candidate) => candidate.skill === skill);
+  const row = stage.rows.find(
+    (candidate) => candidate.type === "skill" && candidate.name === skill,
+  );
   return row ?? { missing: "none" };
 }
 

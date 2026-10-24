@@ -40,7 +40,7 @@ export class PublishRelease {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
-    fetchGate: Pick<HarnessFetchGate, "fetch" | "invalidate">;
+    fetchGate: Pick<HarnessFetchGate, "fetchFresh" | "invalidate">;
     // Takes the locked root, never a re-resolved one (#521).
     replan: (root: string) => Promise<ReleasePlanResult>;
     locks: InFlightLocks;
@@ -69,7 +69,7 @@ export class PublishRelease {
     root: string,
     confirmation: ReleaseConfirmation,
   ): Promise<PublishReleaseResult> {
-    const outcome = await this.deps.fetchGate.fetch(root, 0);
+    const outcome = await this.deps.fetchGate.fetchFresh(root);
 
     const facts = await this.deps.git.readFacts(root);
     const origin =
@@ -152,6 +152,6 @@ export class PublishRelease {
   }
 
   private async madeCurrent(root: string): Promise<boolean> {
-    return (await this.deps.fetchGate.fetch(root, 0)) === "fetched";
+    return (await this.deps.fetchGate.fetchFresh(root)) === "fetched";
   }
 }
