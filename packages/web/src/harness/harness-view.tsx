@@ -4,14 +4,7 @@ import type {
   SemverStep,
 } from "@maestro/core";
 import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
-import {
-  type RefObject,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { ActionsMenu } from "../ui/actions-menu";
 import { BandAction } from "../ui/band-action";
@@ -47,6 +40,7 @@ import { HarnessDialogs } from "./harness-dialogs";
 import type { OpenPrimitive } from "./harness-route";
 import {
   harnessAnnouncement,
+  releaseCause,
   releaseEnabled,
   type StageSection,
   stageSections,
@@ -113,11 +107,6 @@ export function HarnessView({
   const reread = table.reread;
   const { open } = table;
 
-  // What a blocked Create a release points at: the notice, else band 2's
-  // reading, or its Pending release count.
-  const noticeId = useId();
-  const readingId = useId();
-  const releaseCountId = useId();
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
@@ -277,7 +266,6 @@ export function HarnessView({
         ? section.read.rows.map(() => section.stage)
         : [],
     ),
-    releaseCountId,
   );
   // The stages read the same release diff as the plan, so a confirmed 0 here
   // is an empty dialog there.
@@ -339,26 +327,15 @@ export function HarnessView({
             <GatedButton
               variant="primary"
               label={CREATE_RELEASE}
-              unavailable={
-                !releaseEnabled(state.freshness)
-                  ? {
-                      describedBy:
-                        harnessStateNotice(harness.error) === null &&
-                        staleStatusNotice(state.freshness, reread) !== null
-                          ? noticeId
-                          : readingId,
-                    }
-                  : nothingToRelease
-                    ? {
-                        // Every count at 0 reads All released instead.
-                        describedBy: bandCounts.every(
-                          (count) => count.count === 0,
-                        )
-                          ? readingId
-                          : releaseCountId,
-                      }
-                    : null
-              }
+              unavailable={releaseCause({
+                freshness: state.freshness,
+                staleNotice:
+                  harnessStateNotice(harness.error) === null
+                    ? staleStatusNotice(state.freshness, reread)
+                    : null,
+                nothingToRelease,
+                counts: bandCounts,
+              })}
               onClick={() => setPlanOpen(true)}
             />
           </>
@@ -405,7 +382,6 @@ export function HarnessView({
         },
         labelsBelowRem: LABELS_BELOW_REM,
         countsBelowRem: COUNTS_BELOW_REM,
-        wordId: readingId,
       }}
       rereading={refresh.isPending}
       firstReadRows={8}
@@ -417,6 +393,15 @@ export function HarnessView({
         order: sections.map((section) => section.title),
         meta: (key) => groupMeta(byTitle(key)),
         message: (key) => groupMessage(byTitle(key), reread),
+        messageText: (key) => {
+          const notice = groupNotice(byTitle(key), reread);
+          return notice === null
+            ? null
+            : [notice.message, notice.detail ?? ""]
+                .map(plainText)
+                .join(" ")
+                .trim();
+        },
       }}
       empty={{
         icon: <Icon of={FolderGit2} />,
@@ -449,7 +434,6 @@ export function HarnessView({
           restored={presses.restore.data}
           dismissRestored={presses.restore.reset}
           rereadRef={table.rereadRef}
-          noticeId={noticeId}
         />
       }
     >
@@ -497,13 +481,13 @@ function groupMeta(section: StageSection | undefined) {
 }
 
 // Unknown is never drawn as empty (#848, #866).
-function groupMessage(section: StageSection | undefined, reread: () => void) {
+function groupNotice(section: StageSection | undefined, reread: () => void) {
   if (section === undefined || section.read.outcome === "read") return null;
-  const notice = stageReadNotice(
-    section.read,
-    plainText(section.meta ?? ""),
-    reread,
-  );
+  return stageReadNotice(section.read, plainText(section.meta ?? ""), reread);
+}
+
+function groupMessage(section: StageSection | undefined, reread: () => void) {
+  const notice = groupNotice(section, reread);
   return notice === null ? null : (
     <>
       <span className="font-medium text-gray-12">
@@ -533,7 +517,6 @@ function Notices({
   restored,
   dismissRestored,
   rereadRef,
-  noticeId,
 }: {
   state: ReturnType<typeof useHarness>["data"];
   readError: unknown;
@@ -548,7 +531,6 @@ function Notices({
     | undefined;
   dismissRestored: () => void;
   rereadRef: RefObject<HTMLButtonElement | null>;
-  noticeId: string;
 }) {
   // One notice, the one that blocks most; the next shows once it clears.
   // A full success is a toast, so only a partial one reaches the band.
@@ -604,10 +586,9 @@ function Notices({
   return (
     <div className={shown === undefined ? "flex flex-col" : "p-panel"}>
       {clear === undefined ? (
-        <Notice id={noticeId} trigger="load" notice={shown?.notice ?? null} />
+        <Notice trigger="load" notice={shown?.notice ?? null} />
       ) : (
         <Notice
-          id={noticeId}
           trigger="user-action"
           notice={shown?.notice ?? null}
           onDismiss={dismiss}

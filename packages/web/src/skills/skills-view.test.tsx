@@ -11,7 +11,7 @@ import { driftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
 import {
   chooseDeployTarget,
-  expectVisibleCause,
+  expectTooltipCause,
   hoverOpen,
   htmlElement,
   jsonResponse,
@@ -476,15 +476,15 @@ describe("SkillsView — band 2", () => {
     renderView({ primitives: undefined });
 
     for (const name of ["Filter", "Display"]) {
-      expectVisibleCause(screen.getByRole("button", { name }), "Not read yet");
+      expectTooltipCause(screen.getByRole("button", { name }), "Not read yet");
     }
   });
 
-  it("points Filter and Display to the empty state when there are no skills", () => {
+  it("gives Filter and Display the empty state's heading when there are no skills", () => {
     renderView({ primitives: [] });
 
     for (const name of ["Filter", "Display"]) {
-      expectVisibleCause(
+      expectTooltipCause(
         screen.getByRole("button", { name }),
         "No released skills yet",
       );

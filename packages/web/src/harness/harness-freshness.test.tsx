@@ -2,7 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { htmlElement } from "../test-utils";
+import { expectTooltipCause, htmlElement } from "../test-utils";
 import {
   harnessGrid,
   installHarnessHooks,
@@ -195,12 +195,7 @@ describe("Harness freshness and failed reads", () => {
     const release = await screen.findByRole("button", {
       name: "Create a release",
     });
-    expect(release).toHaveAccessibleDescription(
-      expect.stringMatching(
-        /^Status out of date.*GitHub gave no answer, so these rows are from the last read\./,
-      ),
-    );
-    expect(release).toHaveAttribute("aria-disabled", "true");
+    expectTooltipCause(release, "Status out of date");
     expect(release).not.toBeDisabled();
     await userEvent.click(
       screen.getByRole("button", {

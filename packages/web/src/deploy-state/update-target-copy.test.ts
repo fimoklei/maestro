@@ -7,7 +7,7 @@ import {
   releaseMoveLine,
 } from "./update-target-copy";
 
-describe("the Update target cause line", () => {
+describe("the Update target cause", () => {
   it("keeps the approved sentence for a missing consent", () => {
     expect(CHECK_EVERY_BOX).toBe(
       "To update this target, check every box above.",

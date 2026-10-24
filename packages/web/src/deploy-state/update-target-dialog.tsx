@@ -5,6 +5,7 @@ import type {
   UpdateSkillRow,
 } from "@maestro/core";
 import { type ReactNode, useId, useState } from "react";
+import { ACTIONS } from "../ui/busy-copy";
 import { cn } from "../ui/cn";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
@@ -201,7 +202,6 @@ export function UpdateTargetDialog({
   const [consented, setConsented] = useState<readonly string[]>([]);
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
-  const retryId = `${dialogId}-retry`;
 
   const heading = updateDialogTitle(targetName);
   const report =
@@ -244,15 +244,15 @@ export function UpdateTargetDialog({
           label: RETRY_UPDATE,
           onClick: onRetry,
           busy: isRunning ? "update" : undefined,
-          id: retryId,
         },
       }
     : error && { ...error, level: "error" };
+  // The caller states why in `error`; without it the action still stays blocked.
   const unavailable = blocked
-    ? { failure: true as const }
+    ? (failure?.label ?? "")
     : consentComplete
       ? null
-      : { line: CHECK_EVERY_BOX };
+      : CHECK_EVERY_BOX;
   const run = dialogRun({
     source:
       report === null && (preview !== null || blocked)
@@ -264,7 +264,7 @@ export function UpdateTargetDialog({
             onRun: onConfirm,
           }
         : // Without the footer action, only Retry update can run.
-          { bodyBusyId: retryId },
+          { bodyBusyLabel: ACTIONS.update.busy },
     running: isRunning,
     outcome: report !== null,
   });

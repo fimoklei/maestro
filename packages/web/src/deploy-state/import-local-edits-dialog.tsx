@@ -1,5 +1,5 @@
 import type { LocalEditsSkill } from "@maestro/core";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { copiesDiffer, localEditsRefusal } from "../harness/notice-copy";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
@@ -83,7 +83,6 @@ export function ImportLocalEditsDialog({
   // hide its busy label.
   const offered =
     isRunning || (outcomes === null && !empty && failure === null);
-  const checkingId = useId();
   const run = dialogRun({
     source: offered
       ? {
@@ -91,11 +90,11 @@ export function ImportLocalEditsDialog({
           verb: "import",
           tone: "primary",
           unavailable: checking
-            ? { describedBy: checkingId }
+            ? CHECKING_LOCAL_EDITS
             : eligible.length === 0 && flagged.length === 0
-              ? { line: NO_SKILL_QUALIFIES }
+              ? NO_SKILL_QUALIFIES
               : count === 0
-                ? { line: NOTHING_CHECKED }
+                ? NOTHING_CHECKED
                 : null,
           onRun: onConfirm,
         }
@@ -153,14 +152,13 @@ export function ImportLocalEditsDialog({
         />
       ) : skills === null ? (
         failure === null ? (
-          <StatusLine id={checkingId}>{CHECKING_LOCAL_EDITS}</StatusLine>
+          <StatusLine>{CHECKING_LOCAL_EDITS}</StatusLine>
         ) : null
       ) : empty ? (
         <EmptyState
           title={NO_LOCAL_EDITS}
           description={noLocalEditsLine(targetName)}
           headingLevel={3}
-          headingId={null}
         />
       ) : (
         <GroupedList

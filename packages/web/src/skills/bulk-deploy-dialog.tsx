@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { ACTIONS } from "../ui/busy-copy";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
@@ -37,8 +38,8 @@ export function BulkDeployDialog({
   /** The staged skills, grouped by what the deploy will do with them. */
   skills: readonly GroupedListGroup[];
   onSelect: (value: string) => void;
-  /** The line the dialog shows while no deploy can run; `null` when it can. */
-  unavailable: { line: string } | null;
+  /** The sentence that says why no deploy can run; `null` when it can. */
+  unavailable: string | null;
   /** A target was picked, so a click outside must not drop the choice. */
   fieldsChanged: boolean;
   busy: boolean;
@@ -46,9 +47,9 @@ export function BulkDeployDialog({
   failure: NoticeContent | null;
   /**
    * The run's result. Once set, the dialog only reads and closes, or runs a
-   * row's Deploy again, whose busy button carries `runningId`.
+   * row's Deploy again.
    */
-  report: { heading: string; groups: ReportGroup[]; runningId: string } | null;
+  report: { heading: string; groups: ReportGroup[] } | null;
   /** A reinstall from the Report that was refused: it changed nothing. */
   reportFailure: NoticeContent | null;
   onDeploy: () => void;
@@ -65,7 +66,7 @@ export function BulkDeployDialog({
             unavailable,
             onRun: onDeploy,
           }
-        : { bodyBusyId: report.runningId },
+        : { bodyBusyLabel: ACTIONS.deploy.busy },
     running: busy,
     outcome: report !== null,
   });

@@ -219,6 +219,19 @@ export function DeployStateView() {
     [],
   );
 
+  const groupLines = (key: string) =>
+    isColdStart && rows.length === 0
+      ? null
+      : emptyGroupLines(key, {
+          filtered: view.filterCount > 0,
+          global: globalDeploy.isSuccess
+            ? {
+                tools: globalDeploy.data.tools.length,
+                skipped: globalDeploy.data.skipped,
+              }
+            : null,
+          repositories: registry.isSuccess ? repoPaths.length : null,
+        });
   const view: ViewOptions<TargetTableRow> = useViewOptions(rows, {
     kind: {
       label: TARGET_LABEL,
@@ -237,21 +250,11 @@ export function DeployStateView() {
           // An empty group says what fills it; a failed read is the notice's,
           // a filtered-out group is No filter match's, and a cold start with no
           // target at all is the empty state's.
-          message: (key: string) =>
-            isColdStart && rows.length === 0
-              ? null
-              : blockLines(
-                  emptyGroupLines(key, {
-                    filtered: view.filterCount > 0,
-                    global: globalDeploy.isSuccess
-                      ? {
-                          tools: globalDeploy.data.tools.length,
-                          skipped: globalDeploy.data.skipped,
-                        }
-                      : null,
-                    repositories: registry.isSuccess ? repoPaths.length : null,
-                  }),
-                ),
+          message: (key: string) => blockLines(groupLines(key)),
+          messageText: (key: string) => {
+            const first = groupLines(key)?.[0];
+            return first === undefined ? null : plainText(first);
+          },
         },
       },
     ],

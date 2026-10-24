@@ -8,7 +8,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { expectVisibleCause } from "../test-utils";
+import { expectTooltipCause } from "../test-utils";
 import { Dialog, type DialogProps, type DialogRun } from "./dialog";
 
 type DialogAction = NonNullable<DialogProps["action"]>;
@@ -243,7 +243,7 @@ describe("Dialog", () => {
     it("keeps the ✕ named Close and describes it by the busy label", () => {
       renderDialog({ phase: "running" });
 
-      expectVisibleCause(
+      expectTooltipCause(
         screen.getByRole("button", { name: "Close" }),
         "Restoring…",
       );
@@ -253,18 +253,18 @@ describe("Dialog", () => {
       const onClose = vi.fn();
       renderDialog({
         phase: "running-in-body",
-        busyLabel: { describedBy: "retry" },
+        busyLabel: "Updating…",
         action: null,
         onClose,
         children: (
-          <button type="button" id="retry" aria-busy="true">
+          <button type="button" aria-busy="true">
             Updating…
           </button>
         ),
       });
 
       const x = screen.getByRole("button", { name: "Close" });
-      expectVisibleCause(x, "Updating…");
+      expectTooltipCause(x, "Updating…");
       await userEvent.click(x);
       await userEvent.keyboard("{Escape}");
       await clickOutside();
@@ -422,45 +422,29 @@ describe("Dialog", () => {
   });
 
   describe("an action that cannot run yet", () => {
-    it("stays focusable, keeps its label and is described by visible text in the body", async () => {
+    it("stays focusable, keeps its label and states its cause in its tooltip, drawing no line", async () => {
       const onRun = vi.fn();
       renderDialog({
-        action: action({ unavailable: { describedBy: "loading" }, onRun }),
-        children: <p id="loading">Loading the restore plan…</p>,
+        action: action({
+          unavailable: "Connect a Harness to restore skills.",
+          onRun,
+        }),
       });
 
       const confirm = screen.getByRole("button", { name: "Restore skill" });
-      expectVisibleCause(confirm, "Loading the restore plan…");
+      expectTooltipCause(confirm, "Connect a Harness to restore skills.");
+      expect(
+        screen.queryByText("Connect a Harness to restore skills."),
+      ).toBeNull();
       expect(confirm).not.toBeDisabled();
       await userEvent.click(confirm);
 
       expect(onRun).not.toHaveBeenCalled();
     });
 
-    it("shows a new line beside it and is described by that line", async () => {
-      const onRun = vi.fn();
-      renderDialog({
-        action: action({
-          unavailable: { line: "Connect a Harness to restore skills." },
-          onRun,
-        }),
-      });
-
-      const confirm = screen.getByRole("button", { name: "Restore skill" });
-      expect(
-        screen.getByText("Connect a Harness to restore skills."),
-      ).toBeVisible();
-      expectVisibleCause(confirm, "Connect a Harness to restore skills.");
-      await userEvent.click(confirm);
-
-      expect(onRun).not.toHaveBeenCalled();
-    });
-
-    it("drops the line once the action can run", () => {
+    it("drops the cause once the action can run", () => {
       const { rerender } = renderDialog({
-        action: action({
-          unavailable: { line: "Connect a Harness to restore skills." },
-        }),
+        action: action({ unavailable: "Connect a Harness to restore skills." }),
       });
 
       rerender(
@@ -482,32 +466,15 @@ describe("Dialog", () => {
       expect(
         screen.queryByText("Connect a Harness to restore skills."),
       ).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Restore skill" }),
-      ).not.toHaveAttribute("aria-describedby");
-    });
-
-    it("can be described by the dialog's failure notice", () => {
-      renderDialog({
-        action: action({ unavailable: { failure: true } }),
-        failure: {
-          level: "error",
-          label: "Restore plan not loaded",
-          message: "Close this dialog, then open it again.",
-        },
-      });
-
-      expect(
-        screen.getByRole("button", { name: "Restore skill" }),
-      ).toHaveAccessibleDescription(
-        expect.stringContaining("Restore plan not loaded"),
-      );
+      const confirm = screen.getByRole("button", { name: "Restore skill" });
+      expect(confirm).not.toHaveAttribute("aria-description");
+      expect(confirm).not.toHaveAttribute("aria-disabled");
     });
 
     it("is not run by Enter in a field", async () => {
       const onRun = vi.fn();
       renderDialog({
-        action: action({ unavailable: { line: "Choose a folder." }, onRun }),
+        action: action({ unavailable: "Choose a folder.", onRun }),
         children: <input aria-label="Folder path" />,
       });
 

@@ -1,5 +1,6 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { useId } from "react";
+import { ACTIONS } from "../ui/busy-copy";
 import { REMOVE_SKILL } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
@@ -91,7 +92,6 @@ export function RemoveSkillDialog({
   // does not reliably.
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
-  const restatedConfirmId = `${dialogId}-restated-confirm`;
   // No ledger after a refusal, or after a failure: the report, if any, replaces it.
   const ledgered = !refused && error === null;
   const rows = ledgered
@@ -140,7 +140,6 @@ export function RemoveSkillDialog({
                 label: REMOVE_SKILL,
                 onClick: onConfirm,
                 busy: isRemoving ? "remove" : undefined,
-                id: restatedConfirmId,
               },
             }}
           />
@@ -151,17 +150,15 @@ export function RemoveSkillDialog({
   const run = dialogRun({
     source:
       restated !== null
-        ? { bodyBusyId: restatedConfirmId }
+        ? { bodyBusyLabel: ACTIONS.remove.busy }
         : refused && !isRemoving
           ? null
           : {
               label: REMOVE_SKILL,
               verb: "remove",
               tone: "danger",
-              // A line of its own: the rows name no cost while the check runs.
-              unavailable: awaitingCheck
-                ? { line: CHECKING_LOCAL_EDITS }
-                : null,
+              // The rows name no cost while the check runs.
+              unavailable: awaitingCheck ? CHECKING_LOCAL_EDITS : null,
               onRun: onConfirm,
             },
     running: isRemoving,

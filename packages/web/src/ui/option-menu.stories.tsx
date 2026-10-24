@@ -42,13 +42,7 @@ export const Default: Story = {};
 // A set filter is never invisible: the count sits on the control.
 export const WithActiveFilters: Story = { args: { count: 1 } };
 
-// Keeps its plain label; the empty state beside it says why.
+// Keeps its plain label; its tooltip says why.
 export const Unavailable: Story = {
-  args: { unavailable: { describedBy: "option-menu-empty" } },
-  render: (args) => (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <OptionMenu {...args} />
-      <span id="option-menu-empty">No skills yet</span>
-    </div>
-  ),
+  args: { unavailable: "No skills yet" },
 };

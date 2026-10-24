@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import {
-  expectVisibleCause,
+  expectTooltipCause,
   htmlElement,
   jsonResponse,
   renderWithQuery,
@@ -364,7 +364,7 @@ describe("BulkRemoveRun", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await openIt();
 
-    expectVisibleCause(
+    expectTooltipCause(
       screen.getByRole("button", { name: "Remove from 1 target" }),
       "Checking 1 target — 0 answered",
     );
@@ -704,7 +704,7 @@ describe("BulkRemoveRun — while the checks run", () => {
     const confirm = screen.getByRole("button", {
       name: "Remove from 3 targets",
     });
-    expectVisibleCause(confirm, "Checking 3 targets — 1 answered");
+    expectTooltipCause(confirm, "Checking 3 targets — 1 answered");
     await userEvent.click(confirm);
     expect(calls.filter((call) => call.url.endsWith("/remove/bulk"))).toEqual(
       [],
@@ -856,9 +856,9 @@ describe("BulkRemoveRun — once the checks answer", () => {
     renderAction([LEGACY]);
     await openDialog();
 
-    expectVisibleCause(
+    expectTooltipCause(
       await screen.findByRole("button", { name: "Remove from 0 targets" }),
-      "✕ Cannot be removed · 1",
+      "No target can be removed.",
     );
   });
 

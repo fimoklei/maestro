@@ -91,18 +91,22 @@ interface DataTableSelection<T> {
   onSetSelected?: (rows: T[], select: boolean) => void;
 }
 
-interface DataTableGroups<T> {
+type DataTableGroups<T> = {
   /** The group a row belongs to; also its header's words. */
   key: (row: T) => string;
   /** Groups in this order first; any other follows as it first appears. */
   order?: readonly string[];
   /** Words on the right of a group's header, e.g. what its rows wait for. */
   meta?: (key: string) => ReactNode;
-  /** One line in place of rows for an empty `order` group; none: not drawn. */
-  message?: (key: string) => ReactNode | null;
-  /** That line's id, for a blocked control that points at it. */
-  lineId?: (key: string) => string;
-}
+} & (
+  | { message?: never; messageText?: never }
+  | {
+      /** One line in place of rows for an empty `order` group; none: not drawn. */
+      message: (key: string) => ReactNode | null;
+      /** That line in plain words, for a blocked control's tooltip. */
+      messageText: (key: string) => string | null;
+    }
+);
 
 export interface DataTableProps<T extends RowData> {
   /** The grid's accessible name, e.g. "Skills table". */
@@ -646,7 +650,6 @@ export function DataTable<T extends RowData>({
                     {block.all.length === 0 ? (
                       <tr className="h-row border-divider border-b">
                         <GridCell
-                          id={groups?.lineId?.(block.key)}
                           colSpan={spanCount}
                           className="px-inline py-tight text-gray-11"
                         >

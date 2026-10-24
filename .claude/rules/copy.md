@@ -107,11 +107,11 @@ Status chip: the word disagrees with what happened (#889)
   Weak           Pull request missing   (shown after the pull request was merged)
   Outcome-first  Proposal merged
 
-Cause line: a shipped sentence already says it (#1593)
+Tooltip cause: a shipped sentence already says it (#1593)
   Weak           Maestro detected no tool for Global on this machine.
   Outcome-first  Install Claude Code or Codex to deploy skills globally.
 
-Cause line: words beyond the cause (#1593)
+Tooltip cause: words beyond the cause (#1593)
   Weak           Choose a target to deploy to.
   Outcome-first  Choose a target.
 ```
@@ -125,11 +125,11 @@ Cause line: words beyond the cause (#1593)
 | Hover card | The status reason in one sentence, then the read age | `2 of 5 deployed skills changed in v1.4.0.` |
 | Status chip | Two to four words, no verb, from `GLOSSARY.md` | `Not yet proposed` |
 | Control label | Verb plus object, from `GLOSSARY.md`; a reach beyond the row in words | `Propose change`, `Remove from all 3 targets` |
-| Blocked control | A button keeps its plain label and points with `aria-describedby` to visible text that states the cause. A menu item keeps its plain label and no cause | `Create a release`, described by `Status out of date` |
+| Blocked control | A button keeps its plain label; its tooltip states the cause on hover and focus. A menu item keeps its plain label and no cause | `Create a release`, tooltip `Status out of date` |
 | Group header meta | The fact, no routine read age | `Compared with main` |
 | Empty state | `No {things} yet`, then one sentence saying what appears here | `No changes yet` |
 | Busy label | `{Verb}ing…`, the verb of the control's own label, no object | `Deploying…` |
-| Cause line | A blocked control's visible cause, beside it: the shortest true statement or command | `Choose a target.` |
+| Tooltip cause | A blocked button's cause, in its tooltip and as its description: the shortest true statement or command. Reuse the words the screen already shows, such as a notice's heading | `Choose a target.` |
 | Status announcement | Start: the busy label. End: `{Done word} {name}.` A failure is the notice, a toast replaces the end | `Deployed tdd.` |
 | Loading text | `Loading the {screen name}…` — heard, not seen; visible only inside a dialog | `Loading the Skills…` |
 | Dialog | Title and confirm button share a verb. A dialog that acts on a subject the reader already chose titles `{Verb} {name}`, or `{Verb} {object} for {name}` where the verb carries its own object. A dialog that asks the reader to choose the subject titles `{Verb} a {thing}`. Confirm button `{Verb} {thing}`. The body states what changes, then what stays | `Delete {skill}` / `Delete skill`; `Withdraw proposal for {skill}` / `Withdraw proposal`; `Update a skill` / `Update skill`; `Your targets keep the skill until you update them.` |

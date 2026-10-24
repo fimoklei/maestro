@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  expectVisibleCause,
+  expectTooltipCause,
   hoverOpen,
   jsonResponse,
   renderWithQuery,
@@ -156,26 +156,26 @@ describe("PromptsPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("points Filter and Display to the empty state when there are no prompts", async () => {
+  it("gives Filter and Display the empty state's heading when there are no prompts", async () => {
     stubApi([TDD]);
     renderPanel();
 
     await screen.findByRole("heading", { name: "No released prompts yet" });
     for (const name of ["Filter", "Display"]) {
-      expectVisibleCause(
+      expectTooltipCause(
         screen.getByRole("button", { name }),
         "No released prompts yet",
       );
     }
   });
 
-  it("points Filter and Display to the failed-read notice when the read failed", async () => {
+  it("gives Filter and Display the failed-read notice's heading when the read failed", async () => {
     stubApi([], ["/api/inventory"]);
     renderPanel();
 
     await screen.findByText("Read failed");
     for (const name of ["Filter", "Display"]) {
-      expectVisibleCause(screen.getByRole("button", { name }), /not read/);
+      expectTooltipCause(screen.getByRole("button", { name }), /not read/);
     }
   });
 });
