@@ -70,7 +70,7 @@ describe("Harness discard", () => {
     expect(discards).toEqual([]);
   });
 
-  it("sends the tree the row was read against, and the row leaves Pending proposal", async () => {
+  it("sends the tree the row was read against, and the row leaves Pending proposal with a toast", async () => {
     const discards: Record<string, unknown>[] = [];
     const promotions: Record<string, unknown>[] = [];
     stubHarnessServer({
@@ -101,11 +101,10 @@ describe("Harness discard", () => {
         screen.queryByRole("dialog", { name: /discard change/i }),
       ).toBeNull(),
     );
-    await waitFor(() =>
-      expect(harnessRegion()).toHaveTextContent(
-        "Pending proposal has no changes.",
-      ),
-    );
+    expect(
+      await screen.findByText(sentence("Discarded change to code-review.")),
+    ).toBeInTheDocument();
+    expect(harnessRegion()).toBeEmptyDOMElement();
     expect(screen.queryByText("code-review")).toBeNull();
   });
 

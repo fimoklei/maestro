@@ -19,6 +19,8 @@ export type TableScreenState = {
   report: (write: string) => void;
   /** Holds a landed write until the read after it lands, then says it by the row: in view → the region, else a toast. */
   settle: (result: WriteResult) => void;
+  /** A landed write waits for its read; the screen's own announcements hold back until it is said. */
+  settling: boolean;
   /** Whether a row id is in view now; `TableScreen` keeps it current. */
   inView: RefObject<(row: string) => boolean>;
   /** The row whose detail pane is open. */
@@ -99,6 +101,7 @@ export function useTableScreen({
     rereadRef,
     report: status.report,
     settle: setPending,
+    settling: pending !== null,
     inView,
     openId,
     open: setOpenId,

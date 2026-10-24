@@ -1,7 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useWriteAction } from "../ui/use-write-action";
+import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { FOLDER_MISSING } from "./dialog-copy";
+import { rowId } from "./harness-columns";
 import { isImportable } from "./import-view-model";
 import { importNotice } from "./notice-copy";
 import {
@@ -11,13 +12,18 @@ import {
   useImportSkill,
 } from "./use-harness";
 
+// An import writes the working tree, so its row is Pending proposal's — even
+// where the skill also holds a later one (#865).
+const importedRow = ({ name }: ImportOutcome) =>
+  rowId({ stage: "pending-proposal", type: "skill", name });
+
 // Import skill's UI-state: the folder, the name, and the check both are sent
 // to. Every refusal comes from the server's check, so nothing here decides
 // one (#576).
 export function useImportFlow(
-  /** Into the Harness screen's status region. */
-  report: (write: string) => void,
-  onImported: (outcome: ImportOutcome) => void,
+  screen: ScreenWrites,
+  /** Opens the imported row's pane. */
+  onImported: (row: string) => void,
 ) {
   const [open, setOpen] = useState(false);
   // What the Folder path field holds, and the folder last sent to the check.
@@ -32,10 +38,9 @@ export function useImportFlow(
   const check = useImportCheck(source, editedName);
   const importSkill = useImportSkill();
   const importWrite = useWriteAction(importSkill, {
-    report,
+    screen,
     action: "import",
-    show: "row",
-    name: (outcome) => outcome.name,
+    subject: (outcome) => ({ name: outcome.name, row: importedRow(outcome) }),
     failure: importNotice,
   });
   // An update's name is the recorded skill's own: provenance decides it, so a
@@ -106,7 +111,7 @@ export function useImportFlow(
         {
           onSuccess: (outcome) => {
             close();
-            onImported(outcome);
+            onImported(importedRow(outcome));
           },
         },
       );
