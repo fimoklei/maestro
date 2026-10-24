@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
+import type { HarnessArrival } from "../harness/harness-route";
 import { harnessHeadings } from "../harness/notice-copy";
 import { useDeletionCheck, useHarness } from "../harness/use-harness";
 import { cloneReading } from "../inventory/clone-reading";
@@ -49,9 +50,12 @@ export function PromptsPanel() {
       onOpenHarness={() => navigate("/harness")}
       clone={cloneReading(harness, check, "prompt")}
       // The work lands on the Harness view, as Delete skill's does (#1385).
-      onDeleted={(name) =>
+      onDeleted={(name, written) =>
         navigate("/harness", {
-          state: { openPrimitive: { type: "prompt", name } },
+          state: {
+            openPrimitive: { type: "prompt", name },
+            written,
+          } satisfies HarnessArrival,
         })
       }
     />

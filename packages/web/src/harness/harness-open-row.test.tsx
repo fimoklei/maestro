@@ -37,6 +37,7 @@ describe("the row the Harness screen is sent to open", () => {
           name: "pr-check",
           stage: "pending-release",
         }}
+        written={null}
       />,
     );
 

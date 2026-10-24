@@ -156,7 +156,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     ]);
   });
 
-  it("opens no skill and confirms several landed skills in a toast", async () => {
+  it("opens no skill when several landed", async () => {
     stubImport(["code-review", "tdd"], landed);
     renderDeployState();
 
@@ -168,7 +168,6 @@ describe("Deploy-state — Import local edits on a repository", () => {
     expect(
       await screen.findByText("harness view with no skill open"),
     ).toBeInTheDocument();
-    expect(await screen.findByText("Imported 2 skills.")).toBeInTheDocument();
   });
 
   it("locks every close route while the import runs", async () => {
@@ -398,6 +397,8 @@ describe("Deploy-state — Import local edits on a repository", () => {
     expect(
       within(dialog).queryByRole("button", { name: /^Import/ }),
     ).toBeNull();
+    expect(screen.queryByText(sentence("Imported code-review."))).toBeNull();
+    expect(screen.queryByText(/^Harness view/i)).toBeNull();
   });
 
   it("states an unanswered run as possibly landed", async () => {

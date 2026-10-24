@@ -2,6 +2,7 @@ import { useIsFetching } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import { DEPLOY_STATE_KEY } from "../deploy-state/use-deploy-state";
+import type { HarnessArrival } from "../harness/harness-route";
 import { harnessHeadings } from "../harness/notice-copy";
 import { useDeletionCheck, useHarness } from "../harness/use-harness";
 import { cloneReading } from "../inventory/clone-reading";
@@ -80,9 +81,12 @@ export function SkillsPanel() {
       clone={cloneReading(harness, check, "skill")}
       // The work lands on the Harness view, as Import local edits does
       // (#1385).
-      onDeleted={(name) =>
+      onDeleted={(name, written) =>
         navigate("/harness", {
-          state: { openPrimitive: { type: "skill", name } },
+          state: {
+            openPrimitive: { type: "skill", name },
+            written,
+          } satisfies HarnessArrival,
         })
       }
     />

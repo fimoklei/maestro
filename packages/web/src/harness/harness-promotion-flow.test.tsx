@@ -280,7 +280,9 @@ describe("Harness promotion", () => {
       ],
     });
     stubHarnessServer({ read: { body: OPEN_REQUEST } });
-    const first = renderWithQuery(<HarnessView openPrimitive={null} />);
+    const first = renderWithQuery(
+      <HarnessView openPrimitive={null} written={null} />,
+    );
     const before = await openRowMenu("lint-rules", "Pending review");
     expect(
       within(before).getByRole("menuitem", { name: /view pull request/i }),
@@ -290,7 +292,7 @@ describe("Harness promotion", () => {
     );
 
     first.unmount();
-    renderWithQuery(<HarnessView openPrimitive={null} />);
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     const after = await openRowMenu("lint-rules", "Pending review");
     expect(

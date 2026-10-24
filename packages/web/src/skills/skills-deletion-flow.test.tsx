@@ -1,10 +1,15 @@
-import type { HarnessState, PrimitiveRef } from "@maestro/core";
+import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RELEASED, row, withStages } from "../harness/harness-flow-fixture";
-import { HarnessView } from "../harness/harness-view";
+import {
+  harnessRegion,
+  RELEASED,
+  row,
+  withStages,
+} from "../harness/harness-flow-fixture";
+import { HarnessScreen } from "../harness/harness-screen";
 import {
   jsonResponse,
   openFootMenu,
@@ -81,13 +86,6 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
   return deletions;
 }
 
-function HarnessScreen() {
-  const state = useLocation().state as {
-    openPrimitive?: PrimitiveRef;
-  } | null;
-  return <HarnessView openPrimitive={state?.openPrimitive ?? null} />;
-}
-
 function renderSkills() {
   renderWithQuery(
     <MemoryRouter initialEntries={["/inventory"]}>
@@ -128,7 +126,7 @@ describe("Skills — Delete skill", () => {
     );
   });
 
-  it("opens the Harness view with the Deleted row once step 1 lands", async () => {
+  it("opens the Harness view with the Deleted row once step 1 lands, and says it there", async () => {
     const deletions = stubServer({});
     renderSkills();
     const menu = await openRowMenu();
@@ -161,6 +159,9 @@ describe("Skills — Delete skill", () => {
     });
     expect(within(pane).getByText("Deleted")).toBeInTheDocument();
     expect(within(pane).getByText("Not yet proposed")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(harnessRegion()).toHaveTextContent("Deleted tdd."),
+    );
     expect(deletions).toEqual([
       { type: "skill", name: "tdd", seenWorkingTree: "tree-1" },
     ]);

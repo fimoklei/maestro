@@ -5,6 +5,7 @@ import { PaneDeletion } from "../inventory/pane-deletion";
 import type { SkillDeployment } from "../inventory/skill-deployments";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { UPDATE_TARGET } from "../ui/control-labels";
+import type { WriteResult } from "../ui/use-write-action";
 import { BulkDeployRun } from "./bulk-deploy-action";
 import { BulkRemoveRun } from "./bulk-remove-skill-action";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
@@ -37,7 +38,7 @@ export function SkillPaneDialog({
   /** A proven removal took this target's row away. */
   onRemoved: () => void;
   /** Step 1 removed the folder; the Harness view shows the next step. */
-  onDeleted: () => void;
+  onDeleted: (written: WriteResult) => void;
 }) {
   switch (dialog.kind) {
     case "delete":

@@ -40,7 +40,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
-import { useWriteAction } from "../ui/use-write-action";
+import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
@@ -86,9 +86,12 @@ const COUNTS_BELOW_REM = 20;
 
 export function HarnessView({
   openPrimitive,
+  written,
 }: {
   /** A primitive another screen sent here, opened in the stage it names. */
   openPrimitive: OpenPrimitive | null;
+  /** A write another screen ended here; said once the read under way lands. */
+  written: WriteResult | null;
 }) {
   const harness = useHarness();
   const state = harness.data;
@@ -111,7 +114,10 @@ export function HarnessView({
           }),
   });
   const reread = table.reread;
-  const { open } = table;
+  const { open, settle } = table;
+  useEffect(() => {
+    if (written !== null) settle(written);
+  }, [written, settle]);
 
   // What a blocked Create a release points at: the notice, else band 2's
   // reading, or its Pending release count.

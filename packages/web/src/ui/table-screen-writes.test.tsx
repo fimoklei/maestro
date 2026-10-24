@@ -1,10 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it } from "vitest";
 import { renderWithQuery, sentence } from "../test-utils";
+import { doneSentence } from "./busy-copy";
 import { createDataTableColumns } from "./data-table";
 import { DetailPane } from "./detail-pane";
 import { Dialog } from "./dialog";
@@ -16,6 +17,7 @@ import {
   useScreenReport,
   useScreenWrites,
   useWriteAction,
+  type WriteResult,
 } from "./use-write-action";
 
 type Fruit = { name: string };
@@ -453,5 +455,73 @@ describe("a write's result, once the read after it lands", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Grove not read")).toBeInTheDocument();
     expect(region()).not.toHaveTextContent("Removed oak.");
+  });
+});
+
+// A screen another screen's write ended on: it holds the result it was handed
+// through its first read, with the touched row opened on arrival.
+function Landing({
+  read,
+  handed,
+}: {
+  read: Promise<void>;
+  handed: WriteResult;
+}) {
+  const [rows, setRows] = useState<Tree[]>([]);
+  const [reading, setReading] = useState(true);
+  const state = useTableScreen({
+    name: "Grove",
+    reading,
+    settled: !reading,
+    failure: null,
+    onReread: () => {},
+    openOnArrival: handed.row,
+  });
+  const { settle } = state;
+  useEffect(() => {
+    settle(handed);
+    void read.then(() => {
+      setRows(TREES);
+      setReading(false);
+    });
+  }, [settle, handed, read]);
+  return (
+    <>
+      <TableScreen
+        state={state}
+        action={null}
+        rereading={reading}
+        firstReadRows={2}
+        rows={rows}
+        columns={TREE_COLUMNS}
+        rowId={(row) => row.name}
+        groups={BY_GROVE}
+        pane={(row, frame) => (
+          <DetailPane title={row.name} activeKey={row.name} {...frame} />
+        )}
+      />
+      <ToastHost />
+    </>
+  );
+}
+
+describe("a write's result handed to the screen it ends on", () => {
+  it("says it in the region once the first read opens its row", async () => {
+    const read = deferred();
+    renderWithQuery(
+      <Landing
+        read={read.promise}
+        handed={{ sentence: doneSentence("remove", "oak"), row: "oak" }}
+      />,
+    );
+    expect(region()).not.toHaveTextContent("Removed oak.");
+
+    read.resolve();
+
+    await waitFor(() => expect(region()).toHaveTextContent("Removed oak."));
+    expect(
+      screen.getByRole("complementary", { name: "oak detail" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(sentence("Removed oak."))).toHaveLength(1);
   });
 });

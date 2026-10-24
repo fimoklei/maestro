@@ -3,14 +3,13 @@ import type {
   HarnessState,
   InventoryPrimitive,
   PrimitiveDeletionCheck,
-  PrimitiveRef,
 } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RELEASED, row, withStages } from "../harness/harness-flow-fixture";
-import { HarnessView } from "../harness/harness-view";
+import { HarnessScreen } from "../harness/harness-screen";
 import {
   jsonResponse,
   openFootMenu,
@@ -108,13 +107,6 @@ function stubServer(options: { harness?: Answer; check?: Answer }) {
     }),
   );
   return deletions;
-}
-
-function HarnessScreen() {
-  const state = useLocation().state as {
-    openPrimitive?: PrimitiveRef;
-  } | null;
-  return <HarnessView openPrimitive={state?.openPrimitive ?? null} />;
 }
 
 function renderPrompts() {

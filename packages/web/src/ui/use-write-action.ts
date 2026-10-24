@@ -61,6 +61,14 @@ type Feedback<TData, TVariables> =
       subject: (data: TData, variables: TVariables) => Subject | null;
     }
   | {
+      /** The region of the screen the write starts on: `useScreenReport()`. */
+      report: Report;
+      /** What the write touched, by the row ids of the screen it ends on; null where the dialog keeps its Report. */
+      subject: (data: TData, variables: TVariables) => Subject | null;
+      /** Takes the result to the screen the write ends on, whose table screen settles it. */
+      handOver: (result: WriteResult, data: TData) => void;
+    }
+  | {
       /** The table screen's region: `state.report`, or `useScreenReport()`. */
       report: Report;
       show: "toast" | "row";
@@ -70,8 +78,8 @@ type Feedback<TData, TVariables> =
 
 // A write's feedback: its busy label in the screen's region at once. A
 // subject goes to the table screen, which picks region or toast once the read
-// after the write lands; a hand-picked `show` picks at once. A failure is its
-// notice alone.
+// after the write lands, or is handed over to the screen the write ends on; a
+// hand-picked `show` picks at once. A failure is its notice alone.
 export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
   mutation: UseMutationResult<TData, unknown, TVariables>,
   options: Feedback<TData, TVariables> & {
@@ -82,14 +90,22 @@ export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
 ): WriteAction<TData, TVariables, TFailure> {
   const report = "screen" in options ? options.screen.report : options.report;
   const landed = (key: ActionKey, data: TData, variables: TVariables) => {
-    if ("screen" in options) {
+    if ("subject" in options) {
       const subject = options.subject(data, variables);
-      if (subject === null) report("");
-      else {
-        options.screen.settle({
-          sentence: doneSentence(key, subjectName(subject)),
-          row: subject.row,
-        });
+      const result =
+        subject === null
+          ? null
+          : {
+              sentence: doneSentence(key, subjectName(subject)),
+              row: subject.row,
+            };
+      if ("screen" in options && result !== null) {
+        options.screen.settle(result);
+        return;
+      }
+      report("");
+      if ("handOver" in options && result !== null) {
+        options.handOver(result, data);
       }
       return;
     }
