@@ -45,11 +45,12 @@ describe("parseScenarioArg", () => {
 
   it("expands all to every scenario", () => {
     expect(parseScenarioArg(["--scenario", "all"])).toEqual(SCENARIO_NAMES);
-    expect(SCENARIO_NAMES).toHaveLength(13);
+    expect(SCENARIO_NAMES).toHaveLength(14);
     expect(SCENARIO_NAMES).toEqual(
       expect.arrayContaining([
         "harness-outcomes",
         "import-edits",
+        "deploy-again",
         "unreadable",
         "global-leftover",
         "harness-offline",
