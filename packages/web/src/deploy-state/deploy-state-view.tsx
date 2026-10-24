@@ -144,10 +144,14 @@ export function DeployStateView() {
 
   const pendingOf = (target: DeployTarget) =>
     targets.find((row) => sameTarget(target, row.wire));
-  const retry = useRetryOperation(screen.report, (target) => {
+  const retry = useRetryOperation(screen, (target) => {
     const row = pendingOf(target);
     if (row?.pending === undefined) return null;
-    return { operation: row.pending, name: row.updateName };
+    return {
+      operation: row.pending,
+      subject:
+        row.updateName === null ? null : { name: row.updateName, row: row.id },
+    };
   });
 
   const targets: TargetRow[] = [

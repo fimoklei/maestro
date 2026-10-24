@@ -2,18 +2,41 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 import { ACTIONS, type ActionKey, doneSentence } from "./busy-copy";
 import type { NoticeContent } from "./notice";
-import { type Copy, plainText } from "./phrase";
+import { type Copy, type Phrase, plainText } from "./phrase";
 import { showSuccess } from "./toast";
 
 type Report = (write: string) => void;
 
-/** The table screen's `report`, for a write mounted inside the screen. */
-export const ScreenReportContext = createContext<Report | null>(null);
+/** What a write touched: the done sentence's name or count, and its row. */
+export type Subject = {
+  /** A count names several items, as `{n} {things}`; `things` is plural. */
+  name: Copy | { count: number; things: string };
+  /** The table row the write touches, by row id; null where it touches none. */
+  row: string | null;
+};
+
+/** A landed write the table screen holds until the read after it lands. */
+export type WriteResult = { sentence: Phrase; row: string | null };
+
+/** What a write hands its table screen. */
+export type ScreenWrites = {
+  /** Into the one status region: a busy label, a done sentence, or "" for silence. */
+  report: Report;
+  /** Holds a landed write; the screen picks region or toast once its read lands. */
+  settle: (result: WriteResult) => void;
+};
+
+/** The table screen's writes, for a write mounted inside the screen. */
+export const ScreenWritesContext = createContext<ScreenWrites | null>(null);
+
+export function useScreenWrites(): ScreenWrites {
+  const writes = useContext(ScreenWritesContext);
+  if (writes === null) throw new Error("A write needs its table screen.");
+  return writes;
+}
 
 export function useScreenReport(): Report {
-  const report = useContext(ScreenReportContext);
-  if (report === null) throw new Error("A write needs its table screen.");
-  return report;
+  return useScreenWrites().report;
 }
 
 export type WriteAction<TData, TVariables, TFailure = NoticeContent> = {
@@ -30,42 +53,63 @@ export type WriteAction<TData, TVariables, TFailure = NoticeContent> = {
   ) => void;
 };
 
-// A write's feedback: its busy label in the screen's region at once, then the
-// done sentence in the region (`row`, the reader sees the row change) or in a
-// toast (`toast`, the reader may miss it). A failure is its notice alone.
+type Feedback<TData, TVariables> =
+  | {
+      /** The table screen's writes: `state`, or `useScreenWrites()`. */
+      screen: ScreenWrites;
+      /** What the write touched; null where the dialog keeps its Report. */
+      subject: (data: TData, variables: TVariables) => Subject | null;
+    }
+  | {
+      /** The table screen's region: `state.report`, or `useScreenReport()`. */
+      report: Report;
+      show: "toast" | "row";
+      /** What the done sentence names; null where a Report, a notice or the next screen states the outcome. */
+      name: (data: TData, variables: TVariables) => Copy | null;
+    };
+
+// A write's feedback: its busy label in the screen's region at once. A
+// subject goes to the table screen, which picks region or toast once the read
+// after the write lands; a hand-picked `show` picks at once. A failure is its
+// notice alone.
 export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
   mutation: UseMutationResult<TData, unknown, TVariables>,
-  {
-    report,
-    action,
-    show,
-    name,
-    failure,
-  }: {
-    /** The table screen's region: `state.report`, or `useScreenReport()`. */
-    report: Report;
+  options: Feedback<TData, TVariables> & {
     /** Picks the busy label and done word from `busy-copy`. */
     action: ActionKey | ((variables: TVariables) => ActionKey);
-    show: "toast" | "row";
-    /** What the done sentence names; null where a Report, a notice or the next screen states the outcome. */
-    name: (data: TData, variables: TVariables) => Copy | null;
     failure: (error: unknown) => TFailure | null;
   },
 ): WriteAction<TData, TVariables, TFailure> {
+  const report = "screen" in options ? options.screen.report : options.report;
+  const landed = (key: ActionKey, data: TData, variables: TVariables) => {
+    if ("screen" in options) {
+      const subject = options.subject(data, variables);
+      if (subject === null) report("");
+      else {
+        options.screen.settle({
+          sentence: doneSentence(key, subjectName(subject)),
+          row: subject.row,
+        });
+      }
+      return;
+    }
+    const named = options.name(data, variables);
+    if (named === null || options.show === "toast") report("");
+    else report(plainText(doneSentence(key, named)));
+    if (named !== null && options.show === "toast") {
+      showSuccess(doneSentence(key, named));
+    }
+  };
   return {
     phase: mutation.isPending ? "running" : "idle",
-    failure: mutation.isError ? failure(mutation.error) : null,
+    failure: mutation.isError ? options.failure(mutation.error) : null,
     run(variables, then) {
+      const { action } = options;
       const key = typeof action === "function" ? action(variables) : action;
       report(ACTIONS[key].busy);
       mutation.mutate(variables, {
         onSuccess: (data) => {
-          const named = name(data, variables);
-          if (named === null || show === "toast") report("");
-          else report(plainText(doneSentence(key, named)));
-          if (named !== null && show === "toast") {
-            showSuccess(doneSentence(key, named));
-          }
+          landed(key, data, variables);
           then?.onSuccess?.(data, variables);
         },
         onError: (error) => {
@@ -75,4 +119,10 @@ export function useWriteAction<TData, TVariables, TFailure = NoticeContent>(
       });
     },
   };
+}
+
+function subjectName({ name }: Subject): Copy {
+  return typeof name === "object" && "count" in name
+    ? `${name.count} ${name.things}`
+    : name;
 }

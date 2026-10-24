@@ -1,7 +1,10 @@
-import { type RefObject, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { rereadLabel } from "./control-labels";
 import type { NoticeContent } from "./notice";
+import { plainText } from "./phrase";
 import { useScreenStatus } from "./screen-status";
+import { showSuccess } from "./toast";
+import type { WriteResult } from "./use-write-action";
 
 /** A failed read's words; the table screen adds `Re-read {screen name}`. */
 export type ReadFailure = Omit<NoticeContent, "action">;
@@ -14,6 +17,10 @@ export type TableScreenState = {
   rereadRef: RefObject<HTMLButtonElement | null>;
   /** Into the one status region: a busy label, a done sentence, or "" for silence. */
   report: (write: string) => void;
+  /** Holds a landed write until the read after it lands, then says it by the row: in view → the region, else a toast. */
+  settle: (result: WriteResult) => void;
+  /** Whether a row id is in view now; `TableScreen` keeps it current. */
+  inView: RefObject<(row: string) => boolean>;
   /** The row whose detail pane is open. */
   openId: string | null;
   open: (id: string | null) => void;
@@ -60,6 +67,8 @@ export function useTableScreen({
       if (!next.delete(key)) next.add(key);
       return next;
     });
+  const [pending, setPending] = useState<WriteResult | null>(null);
+  const inView = useRef<(row: string) => boolean>(() => false);
   const rereadRef = useRef<HTMLButtonElement>(null);
   const reread = () => {
     status.press();
@@ -70,11 +79,27 @@ export function useTableScreen({
       ? null
       : { ...failure, action: { label: rereadLabel(name), onClick: reread } };
   const status = useScreenStatus({ name, reading, notice, busy: null });
+  // After the status region's own effect, so a read's announcement landing in
+  // the same commit does not drop the done sentence.
+  const failed = failure !== null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: status.report is a state setter
+  useEffect(() => {
+    if (pending === null || reading || status.skeleton) return;
+    setPending(null);
+    if (!failed && pending.row !== null && inView.current(pending.row)) {
+      status.report(plainText(pending.sentence));
+      return;
+    }
+    status.report("");
+    showSuccess(pending.sentence);
+  }, [pending, reading, status.skeleton, failed]);
   return {
     name,
     reread,
     rereadRef,
     report: status.report,
+    settle: setPending,
+    inView,
     openId,
     open: setOpenId,
     addedId,

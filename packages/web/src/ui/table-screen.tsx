@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -25,7 +26,7 @@ import { ScreenFocusContext } from "./screen-focus";
 import { StatusRegion } from "./status-region";
 import type { TableScreenState } from "./use-table-screen";
 import type { ViewOptions } from "./use-view-options";
-import { ScreenReportContext } from "./use-write-action";
+import { ScreenWritesContext } from "./use-write-action";
 import { CLEAR_FILTERS } from "./view-options-copy";
 
 /** What a screen's pane spreads onto its `DetailPane`. */
@@ -119,6 +120,20 @@ export function TableScreen<T extends RowData>({
       : (rows.find((row) => rowId(row) === openId) ?? null);
   const openIndex = openId === null ? -1 : order.indexOf(openId);
   const shownGroups = view === undefined ? groups : view.groups;
+  // In view: its pane is open, or a Filter shows it and its group is open.
+  state.inView.current = (id) =>
+    (openRow !== null && openId === id) ||
+    visible.some(
+      (row) =>
+        rowId(row) === id &&
+        !(
+          shownGroups !== undefined && state.collapsed.has(shownGroups.key(row))
+        ),
+    );
+  const writes = useMemo(
+    () => ({ report: state.report, settle: state.settle }),
+    [state.report, state.settle],
+  );
   // An unread group says so in its own line, so it is never drawn as empty.
   const speaking =
     shownGroups?.order?.filter(
@@ -198,7 +213,7 @@ export function TableScreen<T extends RowData>({
   }, [shownIds, showTable]);
 
   return (
-    <ScreenReportContext.Provider value={state.report}>
+    <ScreenWritesContext.Provider value={writes}>
       <ScreenFocusContext.Provider value={refocus}>
         <Panel
           title={state.name}
@@ -326,6 +341,6 @@ export function TableScreen<T extends RowData>({
           {children}
         </Panel>
       </ScreenFocusContext.Provider>
-    </ScreenReportContext.Provider>
+    </ScreenWritesContext.Provider>
   );
 }

@@ -8,7 +8,7 @@ import {
   renderWithQuery,
 } from "../test-utils";
 import { ToastHost } from "../ui/toast";
-import { ScreenReportContext } from "../ui/use-write-action";
+import { ScreenWritesContext } from "../ui/use-write-action";
 import { BulkDeployAction } from "./bulk-deploy-action";
 
 afterEach(() => {
@@ -302,7 +302,9 @@ describe("BulkDeployAction", () => {
     });
     const region: string[] = [];
     renderWithQuery(
-      <ScreenReportContext.Provider value={(write) => region.push(write)}>
+      <ScreenWritesContext.Provider
+        value={{ report: (write) => region.push(write), settle: () => {} }}
+      >
         <BulkDeployAction
           stagedNames={["tdd", "review"]}
           repos={[]}
@@ -310,7 +312,7 @@ describe("BulkDeployAction", () => {
           onSelectionSpent={() => {}}
         />
         <ToastHost />
-      </ScreenReportContext.Provider>,
+      </ScreenWritesContext.Provider>,
     );
 
     const dialog = await deploy();

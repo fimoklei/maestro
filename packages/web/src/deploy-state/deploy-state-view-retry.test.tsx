@@ -8,11 +8,13 @@ import {
   renderDeployState,
   stubServer,
 } from "./deploy-state-test-helpers";
+import { clearToasts } from "./remove-skill-row-test-helpers";
 
 // A failed retry of an unfinished operation, on Deploy-state (#1363).
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  clearToasts();
 });
 
 const REPO = "/Users/me/project";
@@ -49,12 +51,12 @@ function stubRetries(
     other: (url, init) => {
       if (url !== "/api/deploy/retry") throw new Error(`unexpected ${url}`);
       sent.push(JSON.parse(String(init?.body)));
-      const response = answers[sent.length - 1]?.();
-      if (response === undefined) throw new Error("no answer left");
-      if (response instanceof Response && response.status === 200) {
-        pending = false;
-      }
-      return response;
+      const answer = answers[sent.length - 1];
+      if (answer === undefined) throw new Error("no answer left");
+      return Promise.resolve(answer()).then((response) => {
+        if (response.status === 200) pending = false;
+        return response;
+      });
     },
   }));
   return sent;
@@ -110,6 +112,56 @@ describe("Deploy-state — a successful retry", () => {
     await waitFor(() =>
       expect(announced()).toHaveTextContent(`Removed ${LABEL}.`),
     );
+  });
+
+  // From the row's menu, the pane closed while the retry runs.
+  async function retryUpdateFromMenu(filter: string | null) {
+    let land = () => {};
+    const held = new Promise<void>((resolve) => {
+      land = resolve;
+    });
+    stubRetries("update", [() => held.then(completed)]);
+    renderDeployState();
+    await findRow(LABEL);
+    if (filter !== null) {
+      await userEvent.click(screen.getByRole("button", { name: /^Filter/ }));
+      await userEvent.click(
+        await screen.findByRole("menuitemcheckbox", { name: filter }),
+      );
+      await userEvent.keyboard("{Escape}");
+    }
+    await userEvent.click(
+      within(await findRow(LABEL)).getByRole("button", {
+        name: `Actions for ${LABEL}`,
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Retry update" }),
+    );
+    await userEvent.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("complementary", { name: `${LABEL} detail` }),
+    ).toBeNull();
+    land();
+  }
+
+  it("says a retried update in a toast once a Filter hides its row", async () => {
+    await retryUpdateFromMenu("Update incomplete");
+
+    expect(
+      await screen.findByText(sentence(`Updated ${LABEL}.`)),
+    ).toBeInTheDocument();
+    expect(announced()).not.toHaveTextContent(`Updated ${LABEL}.`);
+  });
+
+  it("says a retried update in the region beside its row, no toast", async () => {
+    await retryUpdateFromMenu(null);
+
+    await waitFor(() =>
+      expect(announced()).toHaveTextContent(`Updated ${LABEL}.`),
+    );
+    expect(await findRow(LABEL)).toBeInTheDocument();
+    expect(screen.getAllByText(sentence(`Updated ${LABEL}.`))).toHaveLength(1);
   });
 });
 
