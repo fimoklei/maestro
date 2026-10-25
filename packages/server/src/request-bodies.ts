@@ -27,6 +27,12 @@ export const importBodySchema = z.object({
 });
 
 // The edge applies the prompt field rules; core applies them again.
+const fieldsHold = (fields: {
+  name: string;
+  description: string;
+  text: string;
+}) => promptFieldProblems(fields).length === 0;
+
 // A body without `frontmatter` carries none, so a block with only the
 // description is written.
 export const importPromptBodySchema = z
@@ -36,9 +42,21 @@ export const importPromptBodySchema = z
     description: z.string(),
     text: z.string(),
   })
-  .refine((draft) => promptFieldProblems(draft).length === 0);
+  .refine(fieldsHold);
 
 export const promptCheckBodySchema = z.object({ name: z.string() });
+
+export const promptReadBodySchema = z.object({ name: z.string() });
+
+// `read` is the prompt the dialog was filled with, as the read route gave it.
+export const promptEditBodySchema = z
+  .object({
+    name: z.string(),
+    description: z.string(),
+    text: z.string(),
+    read: z.object({ description: z.string(), text: z.string() }),
+  })
+  .refine(fieldsHold);
 
 // Global carries no path, so no untrusted path crosses the boundary on it.
 const targetSchema = z.discriminatedUnion("kind", [
@@ -276,6 +294,17 @@ export const PROMPT_CHECK_BODY: RequestShape = {
   message:
     "Nothing was checked. Reload the page, then check the prompt name again.",
   detail: "The request carries a name: { name: string }.",
+};
+
+export const PROMPT_READ_BODY: RequestShape = {
+  message: "Nothing was read. Reload the page, then edit the prompt again.",
+  detail: "The request carries a name: { name: string }.",
+};
+
+export const PROMPT_EDIT_BODY: RequestShape = {
+  message: "Nothing was edited. Reload the page, then edit the prompt again.",
+  detail:
+    "The request carries a name, a description, a text and the prompt as read: { name: string, description: string, text: string, read: { description: string, text: string } }.",
 };
 
 export const TARGET_BODY: RequestShape = {

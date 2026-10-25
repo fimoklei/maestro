@@ -442,6 +442,33 @@ describe("Harness import prompt flow", () => {
     ).toBeInTheDocument();
   });
 
+  it("leaves nothing selected and states no error when Update prompt restores the default-branch text", async () => {
+    const { imports } = stubPromptServer({
+      taken: ["review-pr"],
+      importBody: { mode: "update", name: "review-pr" },
+      imported: HARNESS,
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.tab();
+    await screen.findByRole("dialog", { name: "Update a prompt" });
+    await user.type(field(dialog, "Description"), "Review");
+    await user.type(field(dialog, "Prompt text"), "Go.");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Update prompt" }),
+    );
+
+    await waitFor(() => expect(imports).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(harnessRegion()).not.toHaveTextContent(/not|failed/i);
+  });
+
   it("returns to Import a prompt when a taken name changes to a free one", async () => {
     stubPromptServer({ taken: ["review-pr"] });
     const user = userEvent.setup();

@@ -8,7 +8,7 @@ import { WARNING_GLYPH } from "../ui/status-family";
 import { reading } from "../ui/status-reading";
 import { NAME_NOT_VALID, NAME_RULE } from "./prompts-copy";
 
-export type RowAction = "copy" | "delete";
+export type RowAction = "copy" | "edit" | "delete";
 
 /** One Prompts row: the released prompt, its ⋮ items and the read age its hover card ends with. */
 export type PromptRow = InventoryPrompt & {

@@ -11,11 +11,12 @@ import type {
   ImportPromptSuccess,
   PrimitiveDeletionCheck,
   PrimitiveRef,
+  PromptEdit,
   ReleaseBlock,
   ReleasePlan,
   SemverStep,
 } from "@maestro/core";
-import type { PromptDraft } from "@maestro/core/prompt-file";
+import type { PromptDraft, PromptFile } from "@maestro/core/prompt-file";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, requestJson } from "../api/http";
 import {
@@ -268,6 +269,34 @@ export function useImportPrompt() {
         body: JSON.stringify(request),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+  });
+}
+
+// A read on a press, not a screen's server-state: it fills the edit dialog
+// once and is never shown as it ages.
+export function useReadPrompt() {
+  return useMutation({
+    mutationFn: (name: string) =>
+      requestJson<PromptFile>("/api/harness/prompt/read", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+  });
+}
+
+// Invalidated rather than written, like Import prompt: the read places the row.
+export function useEditPrompt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: PromptEdit) =>
+      requestJson<{ name: string }>("/api/harness/prompt/edit", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: DELETION_CHECK_KEY });
+      return queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
   });
 }
 

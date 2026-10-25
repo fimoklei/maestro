@@ -149,10 +149,13 @@ export {
 } from "./harness/import-local-edits";
 export type { ImportMode } from "./harness/import-mode";
 export {
+  type EditPromptError,
   ImportPrompt,
   type ImportPromptCheck,
   type ImportPromptError,
   type ImportPromptSuccess,
+  type PromptEdit,
+  type ReadPromptError,
 } from "./harness/import-prompt";
 export {
   type ImportCheck,

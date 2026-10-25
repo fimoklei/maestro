@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { EDIT_PROMPT } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import {
   CHOOSE_FILE_HINT,
+  editPromptTitle,
   importPromptNotice,
   longTextNotice,
   NOT_TEXT_FILE_NOTICE,
+  NOTHING_CHANGED,
   PROMPT_FIELD_ERRORS,
   PROMPT_FIELD_HINTS,
   PROMPT_SOURCE_LABEL,
@@ -121,4 +124,62 @@ describe("Import prompt copy", () => {
       message,
     });
   });
+});
+
+describe("Edit prompt copy", () => {
+  it("titles the dialog by the prompt and states why its button is blocked", () => {
+    expect(EDIT_PROMPT).toBe("Edit prompt");
+    expect(editPromptTitle("pr-review")).toBe("Edit pr-review");
+    expect(NOTHING_CHANGED).toBe("Change the description or text.");
+  });
+
+  it("refuses a text over 100 KB naming Edit prompt", () => {
+    expect(longTextNotice("Edit prompt")).toEqual({
+      level: "error",
+      label: "Prompt over 100 KB",
+      message: "Shorten the text to 100 KB or less. Then select Edit prompt.",
+    });
+  });
+
+  it.each([
+    [
+      "not-configured",
+      "No Harness connected",
+      "Select Change Harness location in Settings, then select Edit prompt again.",
+    ],
+    [
+      "destination-unsafe",
+      "Link in the Harness",
+      "Nothing was edited. Replace the link with a real file or folder, then select Edit prompt again.",
+    ],
+    [
+      "destination-unreadable",
+      "Prompts folder not read",
+      "Nothing was edited. Make the Harness clone readable, then select Edit prompt again.",
+    ],
+    [
+      "import-in-progress",
+      "Harness busy",
+      "Wait for that change to finish, then select Edit prompt again.",
+    ],
+    [
+      "write-failed",
+      "Prompt not edited",
+      "The Harness is as it was. Make the prompts folder writable, then select Edit prompt again.",
+    ],
+    [
+      "unknown",
+      "Prompt not edited",
+      "The Maestro server did not answer, and nothing reached the Harness. Select Edit prompt again.",
+    ],
+  ])(
+    "states %s in the Import prompt words, for an edit",
+    (code, label, message) => {
+      expect(importPromptNotice(refusal(code), "Edit prompt")).toMatchObject({
+        level: "error",
+        label,
+        message,
+      });
+    },
+  );
 });

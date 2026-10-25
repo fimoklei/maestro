@@ -225,8 +225,11 @@ const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
   />
 );
 
+// The import mode: the edit mode carries no source tabs.
 const importPromptDialog = (
-  props: Partial<ComponentProps<typeof ImportPromptDialog>>,
+  props: Partial<
+    Extract<ComponentProps<typeof ImportPromptDialog>, { source: unknown }>
+  >,
 ) => (
   <ImportPromptDialog
     draft={{ name: "", frontmatter: "", description: "", text: "" }}

@@ -24,6 +24,7 @@ function build(overrides?: {
       exists: (path) => fs.exists(path),
       isFileEntry: (path) => fs.isFileEntry(path),
       isDirectoryEntry: (path) => fs.isDirectoryEntry(path),
+      readFile: (path) => fs.readFile(path),
       // Like `mkdir -p`: an existing folder, or a link to one, stays as it is.
       ensureDir: async (path) => {
         const known = await fs.realpath(path).then(
@@ -369,5 +370,153 @@ describe("ImportPrompt.check", () => {
       ok: false,
       error: "not-configured",
     });
+  });
+});
+
+const IN_HARNESS = (raw: string) => ({
+  directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
+  files: { [`${PROMPTS}/review-pr.md`]: raw },
+});
+
+describe("ImportPrompt.read", () => {
+  it("returns the working file's description and prompt text, placeholders kept", async () => {
+    const { importPrompt } = build({
+      seed: IN_HARNESS(
+        "---\ndescription: Review a pull request\nargument-hint: '[pr]'\n---\nReview [PR LINK] for $ARGUMENTS.\nStart at $1.\n",
+      ),
+    });
+
+    await expect(importPrompt.read("review-pr")).resolves.toEqual({
+      ok: true,
+      prompt: {
+        description: "Review a pull request",
+        text: "Review [PR LINK] for $ARGUMENTS.\nStart at $1.\n",
+      },
+    });
+  });
+
+  it.each([
+    ["no front matter", "Review $ARGUMENTS.\n"],
+    ["an unclosed block", "---\ndescription: Review\nReview $ARGUMENTS.\n"],
+    [
+      "a closed block that does not parse",
+      "---\ndescription: [unclosed\n---\nReview $ARGUMENTS.\n",
+    ],
+    ["a closed block that is a list", "---\n- review\n---\nReview it.\n"],
+  ])(
+    "reads a file with %s as an empty description and the whole file",
+    async (_, raw) => {
+      const { importPrompt } = build({ seed: IN_HARNESS(raw) });
+
+      await expect(importPrompt.read("review-pr")).resolves.toEqual({
+        ok: true,
+        prompt: { description: "", text: raw },
+      });
+    },
+  );
+
+  it("reads a folded description as one line", async () => {
+    const { importPrompt } = build({
+      seed: IN_HARNESS(
+        "---\ndescription: >\n  Review the pull request\n  in plain words\n---\nReview it.\n",
+      ),
+    });
+
+    await expect(importPrompt.read("review-pr")).resolves.toMatchObject({
+      prompt: { description: "Review the pull request in plain words" },
+    });
+  });
+});
+
+describe("ImportPrompt.edit", () => {
+  const RAW =
+    "---\ndescription: Review a pull request\n---\nReview $ARGUMENTS.\n";
+  const READ = {
+    description: "Review a pull request",
+    text: "Review $ARGUMENTS.\n",
+  };
+
+  it("writes the new description and prompt text, which read back equal", async () => {
+    const { importPrompt } = build({ seed: IN_HARNESS(RAW) });
+    const edited = {
+      description: "Review a pull request in full",
+      text: "Review [PR LINK].\nList the risks of $1.\n",
+    };
+
+    await expect(
+      importPrompt.edit({ name: "review-pr", ...edited, read: READ }),
+    ).resolves.toEqual({ ok: true, name: "review-pr" });
+    await expect(importPrompt.read("review-pr")).resolves.toEqual({
+      ok: true,
+      prompt: edited,
+    });
+  });
+
+  it("keeps the other front matter keys, their order and comments", async () => {
+    const { importPrompt, fs } = build({
+      seed: IN_HARNESS(
+        "---\nmodel: haiku\n# Shown in the menu.\ndescription: Old words\nargument-hint: '[pr]'\n---\nOld text.\n",
+      ),
+    });
+
+    await importPrompt.edit({
+      name: "review-pr",
+      description: "Review a pull request",
+      text: "Review $1.\n",
+      read: { description: "Old words", text: "Old text.\n" },
+    });
+
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
+      "---\nmodel: haiku\n# Shown in the menu.\ndescription: Review a pull request\nargument-hint: '[pr]'\n---\nReview $1.\n",
+    );
+  });
+
+  it("writes a CRLF file back with LF line endings", async () => {
+    const { importPrompt, fs } = build({
+      seed: IN_HARNESS(
+        "---\r\ndescription: Old words\r\nargument-hint: '[pr]'\r\n---\r\nOld text.\r\n",
+      ),
+    });
+
+    await importPrompt.edit({
+      name: "review-pr",
+      description: "Old words",
+      text: "New text.\n",
+      read: { description: "Old words", text: "Old text.\r\n" },
+    });
+
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
+      "---\ndescription: Old words\nargument-hint: '[pr]'\n---\nNew text.\n",
+    );
+  });
+
+  it("gives a file without readable front matter a block holding only the description", async () => {
+    const raw = "---\ndescription: [unclosed\n---\nOld text.\n";
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(raw) });
+
+    await importPrompt.edit({
+      name: "review-pr",
+      description: "Review a pull request",
+      text: "Review $1.\n",
+      read: { description: "", text: raw },
+    });
+
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
+      "---\ndescription: Review a pull request\n---\nReview $1.\n",
+    );
+  });
+
+  it("judges the fields again and writes nothing when one breaks a rule", async () => {
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(RAW) });
+
+    await expect(
+      importPrompt.edit({
+        name: "review-pr",
+        description: "Review\nmodel: opus",
+        text: "Review $ARGUMENTS.\n",
+        read: READ,
+      }),
+    ).resolves.toEqual({ ok: false, error: "multiline-description" });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(RAW);
   });
 });

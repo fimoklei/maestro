@@ -8,6 +8,7 @@ import { inventoryNotRead } from "../inventory/inventory-copy";
 import { useInventoryOf } from "../inventory/use-inventory";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { queryReading } from "../ui/freshness";
+import type { WriteResult } from "../ui/use-write-action";
 import { PromptsView } from "./prompts-view";
 
 // Container: wires the Inventory and Harness reads to the presentational view.
@@ -22,6 +23,15 @@ export function PromptsPanel() {
   // previous rows.
   const disconnected =
     inventory.error instanceof HttpError && inventory.error.status === 409;
+  // A write to the clone lands on the Harness view, as Delete skill's does
+  // (#1385); no row there leaves nothing selected.
+  const landOnHarness = (name: string, written: WriteResult) =>
+    navigate("/harness", {
+      state: {
+        openPrimitive: { type: "prompt", name },
+        written,
+      } satisfies HarnessArrival,
+    });
 
   return (
     <PromptsView
@@ -50,14 +60,8 @@ export function PromptsPanel() {
       onOpenHarness={() => navigate("/harness")}
       clone={cloneReading(harness, check, "prompt")}
       // The work lands on the Harness view, as Delete skill's does (#1385).
-      onDeleted={(name, written) =>
-        navigate("/harness", {
-          state: {
-            openPrimitive: { type: "prompt", name },
-            written,
-          } satisfies HarnessArrival,
-        })
-      }
+      onDeleted={landOnHarness}
+      onEdited={landOnHarness}
     />
   );
 }

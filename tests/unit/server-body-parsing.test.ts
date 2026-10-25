@@ -48,6 +48,17 @@ describe("POST body parsing", () => {
     detail: "The request carries a name: { name: string }.",
   };
 
+  const PROMPT_READ_SHAPE = {
+    message: "Nothing was read. Reload the page, then edit the prompt again.",
+    detail: "The request carries a name: { name: string }.",
+  };
+
+  const PROMPT_EDIT_SHAPE = {
+    message: "Nothing was edited. Reload the page, then edit the prompt again.",
+    detail:
+      "The request carries a name, a description, a text and the prompt as read: { name: string, description: string, text: string, read: { description: string, text: string } }.",
+  };
+
   const routes = [
     { path: "/api/inventory/connect", shape: PATH_SHAPE },
     { path: "/api/folder-chooser", shape: PATH_SHAPE },
@@ -60,6 +71,8 @@ describe("POST body parsing", () => {
     { path: "/api/harness/proposal/withdraw", shape: WITHDRAW_SHAPE },
     { path: "/api/harness/prompt/import", shape: PROMPT_SHAPE },
     { path: "/api/harness/prompt/check", shape: PROMPT_CHECK_SHAPE },
+    { path: "/api/harness/prompt/read", shape: PROMPT_READ_SHAPE },
+    { path: "/api/harness/prompt/edit", shape: PROMPT_EDIT_SHAPE },
   ];
 
   const makeApp = () => inMemoryApp();
@@ -156,6 +169,31 @@ describe("POST body parsing", () => {
     expect(await res.json()).toEqual({
       error: "invalid-body",
       ...PROMPT_SHAPE,
+    });
+  });
+
+  it.each([
+    ["an uppercase name", { name: "Review-PR" }],
+    ["a description holding a line break", { description: "a\n---" }],
+    ["an empty text", { text: "" }],
+  ])("refuses %s on the prompt edit at the edge", async (_, change) => {
+    const res = await makeApp().request(
+      "/api/harness/prompt/edit",
+      post(
+        JSON.stringify({
+          name: "review-pr",
+          description: "Review a pull request.",
+          text: "Review $ARGUMENTS.",
+          read: { description: "Old", text: "Old." },
+          ...change,
+        }),
+      ),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "invalid-body",
+      ...PROMPT_EDIT_SHAPE,
     });
   });
 

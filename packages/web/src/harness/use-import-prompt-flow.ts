@@ -2,6 +2,7 @@ import type { ImportMode, ImportPromptSuccess } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
+  type PromptFieldProblem,
   promptFieldProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
@@ -42,7 +43,19 @@ const PROBLEM_FIELD: Record<
   "empty-text": "text",
 };
 
-type PromptFieldErrors = Partial<Record<keyof PromptDraft, string>>;
+export type PromptFieldErrors = Partial<Record<keyof PromptDraft, string>>;
+
+/** Each field's first broken rule, as its error line states it. */
+export function promptFieldErrors(
+  problems: readonly PromptFieldProblem[],
+): PromptFieldErrors {
+  const errors: PromptFieldErrors = {};
+  for (const problem of problems) {
+    if (!isFieldError(problem)) continue;
+    errors[PROBLEM_FIELD[problem]] ??= PROMPT_FIELD_ERRORS[problem];
+  }
+  return errors;
+}
 
 /** The file last chosen, as the Choose file tab shows it. */
 export type ChosenFile = { name: string; bytes: number; isText: boolean };
@@ -88,13 +101,7 @@ export function useImportPromptFlow(
   });
 
   const problems = promptFieldProblems(draft);
-  const fieldErrors: PromptFieldErrors = {};
-  if (submitted) {
-    for (const problem of problems) {
-      if (!isFieldError(problem)) continue;
-      fieldErrors[PROBLEM_FIELD[problem]] ??= PROMPT_FIELD_ERRORS[problem];
-    }
-  }
+  const fieldErrors = submitted ? promptFieldErrors(problems) : {};
   const tooLong = submitted && problems.includes("long-text");
   const failure: NoticeContent | null = tooLong
     ? longTextNotice(confirm)

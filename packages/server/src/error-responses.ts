@@ -4,6 +4,7 @@ import type {
   DeleteLocalError,
   DeploySkillError,
   DiscardChangeError,
+  EditPromptError,
   HarnessStateError,
   ImportPromptError,
   ImportSkillError,
@@ -12,6 +13,7 @@ import type {
   PromoteError,
   ProposalActionError,
   PublishReleaseError,
+  ReadPromptError,
   ReleasePlanError,
   RemoveDeployedSkillError,
   RemovePreflightError,
@@ -380,6 +382,27 @@ export const isImportPromptRefusal = (
   code: ImportPromptError,
 ): code is ImportPromptRefusal =>
   Object.hasOwn(importPromptErrorResponses, code);
+
+export const readPromptErrorResponses: ErrorTable<ReadPromptError> = {
+  "not-configured": importPromptErrorResponses["not-configured"],
+  "invalid-name": { status: 400 },
+  "prompt-missing": { status: 404 },
+  "destination-unsafe": importPromptErrorResponses["destination-unsafe"],
+  "destination-unreadable":
+    importPromptErrorResponses["destination-unreadable"],
+};
+
+// As on the import, a broken field never gets here.
+type EditPromptRefusal = Exclude<EditPromptError, PromptFieldProblem>;
+
+export const editPromptErrorResponses: ErrorTable<EditPromptRefusal> = {
+  ...importPromptErrorResponses,
+  "prompt-missing": readPromptErrorResponses["prompt-missing"],
+};
+
+export const isEditPromptRefusal = (
+  code: EditPromptError,
+): code is EditPromptRefusal => Object.hasOwn(editPromptErrorResponses, code);
 
 // A per-skill refusal is data in a 200; only a refused run is a status.
 export const importLocalEditsErrorResponses: ErrorTable<LocalEditsError> = {

@@ -5,6 +5,7 @@ import type { ActionKey } from "../ui/busy-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
 import {
   CHOOSE_ANOTHER_FILE,
+  EDIT_PROMPT,
   IMPORT_PROMPT,
   UPDATE_PROMPT,
 } from "../ui/control-labels";
@@ -66,10 +67,23 @@ export const isFieldError = (code: unknown): code is FieldError =>
 
 type NoticeCode = Exclude<ImportPromptError, FieldError>;
 
-const IMPORTED_NOTHING = "Nothing was imported.";
+/** The dialog's submit control: Update prompt once the name is taken, Edit prompt on a chosen prompt. */
+export type PromptConfirm =
+  | typeof IMPORT_PROMPT
+  | typeof UPDATE_PROMPT
+  | typeof EDIT_PROMPT;
 
-/** The dialog's submit control: Update prompt once the name is taken. */
-export type PromptConfirm = typeof IMPORT_PROMPT | typeof UPDATE_PROMPT;
+// An edit states its refusals in the import's words, with its own verb.
+const outcomeWords = (confirm: PromptConfirm) =>
+  confirm === EDIT_PROMPT
+    ? { nothing: "Nothing was edited.", heading: "Prompt not edited" }
+    : { nothing: "Nothing was imported.", heading: "Prompt not imported" };
+
+/** The edit dialog's title, on the prompt the reader chose. */
+export const editPromptTitle = (prompt: string) => `Edit ${prompt}`;
+
+/** Why Edit prompt is blocked while both fields hold what was read. */
+export const NOTHING_CHANGED = "Change the description or text.";
 
 /** The dialog's title, submit label and busy verb, by whether the name is taken. */
 export const PROMPT_IMPORT_MODES = {
@@ -82,39 +96,42 @@ export const PROMPT_IMPORT_MODES = {
 
 const importPromptHeadings = (
   confirm: PromptConfirm,
-): NoticeTable<NoticeCode> => ({
-  "not-configured": {
-    ...harnessHeadings["not-configured"],
-    message: `${CHANGE_LOCATION_STEP}, then select ${confirm} again.`,
-  },
-  "long-text": {
-    level: "error",
-    label: "Prompt over 100 KB",
-    message: `Shorten the text to 100 KB or less. Then select ${confirm}.`,
-  },
-  "destination-unsafe": {
-    level: "error",
-    label: "Link in the Harness",
-    message: `${IMPORTED_NOTHING} Replace the link with a real file or folder, then select ${confirm} again.`,
-    detail: "The .maestro/prompts folder or the prompt file is a link.",
-  },
-  "destination-unreadable": {
-    level: "error",
-    label: "Prompts folder not read",
-    message: `${IMPORTED_NOTHING} Make the Harness clone readable, then select ${confirm} again.`,
-  },
-  "import-in-progress": {
-    level: "error",
-    label: HARNESS_BUSY,
-    message: `Wait for that change to finish, then select ${confirm} again.`,
-    detail: "Maestro changes one Harness at a time.",
-  },
-  "write-failed": {
-    level: "error",
-    label: "Prompt not imported",
-    message: `The Harness is as it was. Make the prompts folder writable, then select ${confirm} again.`,
-  },
-});
+): NoticeTable<NoticeCode> => {
+  const { nothing, heading } = outcomeWords(confirm);
+  return {
+    "not-configured": {
+      ...harnessHeadings["not-configured"],
+      message: `${CHANGE_LOCATION_STEP}, then select ${confirm} again.`,
+    },
+    "long-text": {
+      level: "error",
+      label: "Prompt over 100 KB",
+      message: `Shorten the text to 100 KB or less. Then select ${confirm}.`,
+    },
+    "destination-unsafe": {
+      level: "error",
+      label: "Link in the Harness",
+      message: `${nothing} Replace the link with a real file or folder, then select ${confirm} again.`,
+      detail: "The .maestro/prompts folder or the prompt file is a link.",
+    },
+    "destination-unreadable": {
+      level: "error",
+      label: "Prompts folder not read",
+      message: `${nothing} Make the Harness clone readable, then select ${confirm} again.`,
+    },
+    "import-in-progress": {
+      level: "error",
+      label: HARNESS_BUSY,
+      message: `Wait for that change to finish, then select ${confirm} again.`,
+      detail: "Maestro changes one Harness at a time.",
+    },
+    "write-failed": {
+      level: "error",
+      label: heading,
+      message: `The Harness is as it was. Make the prompts folder writable, then select ${confirm} again.`,
+    },
+  };
+};
 
 /** The text over 100 KB, refused before any request. */
 export const longTextNotice = (confirm: PromptConfirm): NoticeContent =>
@@ -135,6 +152,6 @@ export const importPromptNotice = (
   confirm: PromptConfirm,
 ): NoticeContent | null =>
   noticeFromTable(importPromptHeadings(confirm), error, {
-    label: "Prompt not imported",
+    label: outcomeWords(confirm).heading,
     message: `The Maestro server did not answer, and nothing reached the Harness. Select ${confirm} again.`,
   });
