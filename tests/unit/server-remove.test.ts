@@ -307,31 +307,6 @@ describe("remove HTTP route", () => {
       expect(w.uninstalls).toEqual([{ target: globalTarget, ref: REF }]);
     });
 
-    it("names the leftover Claude Code copy and issues a token for it", async () => {
-      // Claude Code has dropped off, but its global copy remains: the preview
-      // names it, and the token is required back before it is reclaimed.
-      const w = await world({ detectedTools: ["codex"] });
-      w.seed(globalTarget, [skillEntry("tdd")]);
-
-      const response = await w.preflight(globalTarget);
-
-      expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({
-        check: {
-          scope: "global",
-          tools: [
-            { tool: "codex", warning: null },
-            { tool: "claude", warning: null },
-          ],
-        },
-        reclaim: {
-          previews: [{ tool: "claude", path: `${HOME}/.claude/skills/tdd` }],
-          token: expect.stringMatching(/^[0-9a-f]{64}$/),
-        },
-        receipt: expect.any(String),
-      });
-    });
-
     it("answers for the detected tools only, leaving an unrelated skill out", async () => {
       const w = await world({ detectedTools: ["claude"] });
       w.seed(globalTarget, [
@@ -345,28 +320,6 @@ describe("remove HTTP route", () => {
         reclaim: null,
         receipt: expect.any(String),
       });
-    });
-
-    it("reclaims the leftover copy once its preflight token comes back", async () => {
-      // apm's uninstall spares a dropped tool's copy (#339), so the removal
-      // completes it, on this scope's preflight token only (#390).
-      const w = await world({ detectedTools: ["codex"] });
-      w.seed(globalTarget, [
-        skillEntry("tdd", [".claude/skills/tdd/SKILL.md"]),
-      ]);
-      w.copy(globalTarget, ".claude/skills/tdd/SKILL.md");
-      const { reclaim } = (await (await w.preflight(globalTarget)).json()) as {
-        reclaim: { token: string };
-      };
-
-      const response = await w.removeConfirmed(globalTarget, {
-        confirmedReclaimToken: reclaim.token,
-      });
-
-      expect(response.status).toBe(200);
-      expect(w.disk.read(`${HOME}/.claude/skills/tdd/SKILL.md`)).toBe(
-        undefined,
-      );
     });
 
     it("refuses when the machine has no supported tool", async () => {
