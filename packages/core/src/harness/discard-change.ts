@@ -4,13 +4,14 @@ import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import type { PrimitiveRef } from "./harness-primitive";
-import {
-  inspectPrimitiveEntry,
-  type PrimitiveEntryFs,
-} from "./harness-primitive-dir";
+import { inspectPrimitiveEntry } from "./harness-primitive-dir";
 import type { HarnessStages } from "./harness-stages";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
-import { replaceFromCommit } from "./replace-from-commit";
+import {
+  type ReplaceDeps,
+  type ReplaceOutcome,
+  replaceFromCommit,
+} from "./replace-from-commit";
 
 export type DiscardChangeError =
   | "not-configured"
@@ -30,13 +31,22 @@ export type DiscardChangeResult =
   | { ok: true; name: string }
   | { ok: false; error: DiscardChangeError };
 
+const DISCARD_ERROR: Record<
+  Exclude<ReplaceOutcome, "replaced">,
+  DiscardChangeError
+> = {
+  "destination-unsafe": "destination-unsafe",
+  "destination-unreadable": "destination-unreadable",
+  failed: "discard-failed",
+};
+
 export class DiscardChange {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     // The stages the rows were read from: whether a change is proposed takes
     // the review read as well as the refs.
     readStages: () => Promise<HarnessStages | null>;
-    fs: PrimitiveEntryFs;
+    fs: ReplaceDeps["fs"];
     copyFs: Pick<
       CopyTreeFsPort,
       "createStagingDir" | "movePath" | "removePath"
@@ -132,13 +142,12 @@ export class DiscardChange {
     }
     const replaced = await replaceFromCommit(this.deps, {
       root,
-      ref,
       commit,
-      entry,
-      held: true,
+      atCommit,
+      refs: [ref],
     });
-    return replaced
+    return replaced === "replaced"
       ? { ok: true, name: ref.name }
-      : { ok: false, error: "discard-failed" };
+      : { ok: false, error: DISCARD_ERROR[replaced] };
   }
 }
