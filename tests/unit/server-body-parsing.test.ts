@@ -39,7 +39,7 @@ describe("POST body parsing", () => {
     message:
       "Nothing was imported. Reload the page, then import the prompt again.",
     detail:
-      "The request carries a name, a description and a text: { name: string, description: string, text: string }.",
+      "The request carries a name, front matter, a description and a text: { name: string, frontmatter: string, description: string, text: string }.",
   };
 
   const PROMPT_CHECK_SHAPE = {
