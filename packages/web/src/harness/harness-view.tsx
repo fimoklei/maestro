@@ -158,6 +158,7 @@ export function HarnessView({
   const presses = useHarnessPresses(state, table);
   // The edited row's pane opens here; a row the edit removed leaves none.
   const editFlow = useEditPromptFlow({
+    screen: "harness",
     report: table.report,
     onEdited: (name, written) => {
       table.settle(written);
@@ -166,7 +167,8 @@ export function HarnessView({
   });
   const handlers: RowActionHandlers = {
     ...presses.handlers,
-    edit: (row) => editFlow.start(row.name),
+    // Only a row on disk offers Edit prompt, so its read finds the file.
+    edit: (row) => editFlow.start(row.name, () => {}),
   };
 
   // A refused press is stated in its row's pane, which opens to show it; a
