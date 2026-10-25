@@ -28,6 +28,13 @@ describe("POST body parsing", () => {
       'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
   };
 
+  const WITHDRAW_SHAPE = {
+    message:
+      "Nothing was withdrawn. Reload the page, then withdraw the proposal again.",
+    detail:
+      'The request carries a type, a name and a pull-request number or null: { type: "skill" | "prompt", name: string, number: number | null }.',
+  };
+
   const PROMPT_SHAPE = {
     message:
       "Nothing was imported. Reload the page, then import the prompt again.",
@@ -50,7 +57,7 @@ describe("POST body parsing", () => {
     { path: "/api/deploy/remove/preflight", shape: TARGET_SHAPE },
     { path: "/api/deploy/bulk", shape: BULK_SHAPE },
     { path: "/api/harness/proposal/reopen", shape: PROPOSAL_SHAPE },
-    { path: "/api/harness/proposal/withdraw", shape: PROPOSAL_SHAPE },
+    { path: "/api/harness/proposal/withdraw", shape: WITHDRAW_SHAPE },
     { path: "/api/harness/prompt/import", shape: PROMPT_SHAPE },
     { path: "/api/harness/prompt/check", shape: PROMPT_CHECK_SHAPE },
   ];
@@ -114,6 +121,16 @@ describe("POST body parsing", () => {
       }
     });
   }
+
+  // A branch with no open request is withdrawn without a number (#1639).
+  it("passes a withdrawal with a null number through to the use case", async () => {
+    const res = await makeApp().request(
+      "/api/harness/proposal/withdraw",
+      post(JSON.stringify({ type: "skill", name: "tdd", number: null })),
+    );
+
+    expect(await res.json()).not.toMatchObject({ error: "invalid-body" });
+  });
 
   // The edge applies the prompt field rules core applies again.
   it.each([

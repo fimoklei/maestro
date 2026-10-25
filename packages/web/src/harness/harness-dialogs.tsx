@@ -53,7 +53,11 @@ export type LocalDeletionTarget = PrimitiveRef & {
   localOnly: boolean;
 };
 
-export type WithdrawTarget = PrimitiveRef & { branch: string; number: number };
+// A null number withdraws a branch with no open request (#1639).
+export type WithdrawTarget = PrimitiveRef & {
+  branch: string;
+  number: number | null;
+};
 
 type Presses = ReturnType<typeof useHarnessPresses>;
 

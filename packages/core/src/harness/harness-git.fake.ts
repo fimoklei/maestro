@@ -16,6 +16,7 @@ import {
 } from "./harness-primitive";
 import type { ProposalKind } from "./proposal-request";
 import type {
+  BranchAuthorship,
   CloneSync,
   HarnessFacts,
   HarnessFetchOutcome,
@@ -148,6 +149,8 @@ export class InMemoryHarnessGit implements HarnessGitPort {
   // Per branch name, as `promote`: the files only the working tree holds;
   // null is no answer.
   unproposed: Record<string, string[] | null> = {};
+  // Per branch name, as `promote`; absent is the author's own.
+  authorship: Record<string, BranchAuthorship> = {};
 
   // Every write that leaves this machine or touches the author's files.
   readonly published: { name: string; commit: string; branch: string }[] = [];
@@ -414,7 +417,11 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       const content = commit === null ? null : this.contentAt(commit);
       const hash =
         content === null ? undefined : hashesOf(content, type)[ref.name];
-      refs[ref.name] = { tree: hash ?? null, commit };
+      refs[ref.name] = {
+        tree: hash ?? null,
+        commit,
+        authorship: this.authorshipOf(leaf),
+      };
     }
     return refs;
   }
@@ -634,6 +641,19 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return Object.hasOwn(this.unproposed, leaf)
       ? (this.unproposed[leaf] ?? null)
       : [];
+  }
+
+  private authorshipOf(leaf: string): BranchAuthorship {
+    return this.authorship[leaf] ?? "own";
+  }
+
+  async readAuthoredHere(
+    root: string,
+    ref: PrimitiveRef,
+    _base: string,
+  ): Promise<BranchAuthorship> {
+    this.at(root);
+    return this.authorshipOf(proposalBranchLeaf(ref));
   }
 
   async readPushesWhereItFetched(root: string): Promise<boolean> {

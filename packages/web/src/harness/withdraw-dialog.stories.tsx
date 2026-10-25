@@ -46,6 +46,12 @@ export const Prompt: Story = {
   },
 };
 
+// Proposal closed or Pull request missing: nothing to close, only the branch
+// goes (#1639).
+export const NoOpenPullRequest: Story = {
+  args: { number: null },
+};
+
 export const Withdrawing: Story = {
   args: { withdrawing: true },
 };

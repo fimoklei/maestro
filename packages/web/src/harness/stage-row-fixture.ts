@@ -29,6 +29,7 @@ export const stageRow = (
   remoteTree: null,
   restorable: false,
   onDisk: false,
+  ownsBranch: true,
   previousName: null,
   ...over,
 });

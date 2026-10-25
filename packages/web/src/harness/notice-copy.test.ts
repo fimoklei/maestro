@@ -254,6 +254,7 @@ const SURFACES: Surface[] = [
         name: "tdd",
         branch: "maestro/tdd",
         defaultBranch: "main",
+        number: 45,
       }),
     codes<WithdrawError>({
       "not-configured": true,
@@ -279,6 +280,9 @@ const SURFACES: Surface[] = [
       "replace-failed": true,
       "close-failed": true,
       "branch-delete-failed": true,
+      "branch-by-other": true,
+      "commit-email-missing": true,
+      "branch-authors-unknown": true,
     }),
   ),
   ...byType(
@@ -769,5 +773,55 @@ describe("a prompt's notices", () => {
       message:
         "The prompt file is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
     });
+  });
+});
+
+describe("withdrawal notices without an open pull request (#1639)", () => {
+  const notice = (error: string) =>
+    readNotice(
+      withdrawNotice(refusal(error), {
+        type: "skill",
+        name: "tdd",
+        branch: "maestro/tdd",
+        defaultBranch: "main",
+        number: null,
+      }),
+    );
+
+  it("names the commits of another author", () => {
+    expect(notice("branch-by-other")).toMatchObject({
+      label: "Another contributor's commits",
+      message:
+        "Only their author can withdraw the proposal. Select Re-read Harness to read GitHub again.",
+      detail: "A commit on the proposal branch has another author email.",
+    });
+  });
+
+  it("asks for a git email where the clone has none", () => {
+    const read = notice("commit-email-missing");
+    expect(read).toMatchObject({
+      label: "Git email not set",
+      message:
+        "Set user.email in your clone, then select Withdraw proposal again.",
+    });
+    expect(read?.detail).toBeUndefined();
+  });
+
+  it("sends the reader to a re-read where the authors could not be read", () => {
+    expect(notice("branch-authors-unknown")).toMatchObject({
+      label: "Branch authors not checked",
+      message: "Select Re-read Harness, then select Withdraw proposal again.",
+      detail:
+        "Maestro could not compare the proposal branch's commit authors with user.email.",
+    });
+  });
+
+  it("names no pull request where a step failed", () => {
+    expect(notice("replace-failed")?.detail).toBe(
+      "The proposal branch remains unchanged.",
+    );
+    expect(notice("branch-delete-failed")?.detail).toBe(
+      "Your skill folder matches its copy on main.",
+    );
   });
 });

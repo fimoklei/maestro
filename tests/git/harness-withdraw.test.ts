@@ -78,6 +78,67 @@ describe("withdrawing through the git adapter", { timeout: 40_000 }, () => {
     });
   });
 
+  describe("who authored the proposal branch", () => {
+    const base = async () =>
+      (
+        await git(stages.root, "rev-parse", "refs/remotes/origin/HEAD")
+      ).stdout.trim();
+
+    it("reads a branch this clone pushed as authored here", async () => {
+      await writeSkill("tdd", "proposed");
+      await promote(makeApp(), "tdd");
+
+      expect(
+        await adapter().readAuthoredHere(stages.root, tdd, await base()),
+      ).toBe("own");
+    });
+
+    it("reads a branch under another author email as not authored here", async () => {
+      await writeSkill("tdd", "proposed");
+      await promote(makeApp(), "tdd");
+      await git(stages.root, "config", "user.email", "Teammate@Example.com");
+
+      expect(
+        await adapter().readAuthoredHere(stages.root, tdd, await base()),
+      ).toBe("others");
+    });
+
+    it("matches the author email whatever its case", async () => {
+      await writeSkill("tdd", "proposed");
+      await promote(makeApp(), "tdd");
+      await git(stages.root, "config", "user.email", "TEST@example.com");
+
+      expect(
+        await adapter().readAuthoredHere(stages.root, tdd, await base()),
+      ).toBe("own");
+    });
+
+    it("gives no answer without a fetched proposal branch", async () => {
+      expect(
+        await adapter().readAuthoredHere(stages.root, tdd, await base()),
+      ).toBe("unknown");
+    });
+
+    it("names a clone with no author email set", async () => {
+      await writeSkill("tdd", "proposed");
+      await promote(makeApp(), "tdd");
+      await git(stages.root, "config", "user.email", "");
+
+      expect(
+        await adapter().readAuthoredHere(stages.root, tdd, await base()),
+      ).toBe("no-email");
+    });
+
+    it("carries the answer on the proposal ref the stages read", async () => {
+      await writeSkill("tdd", "proposed");
+      await promote(makeApp(), "tdd");
+      await git(stages.root, "config", "user.email", "teammate@example.com");
+
+      const trees = await adapter().readMovementTrees(stages.root);
+      expect(trees?.skill.promote.tdd?.authorship).toBe("others");
+    });
+  });
+
   describe("deleting the proposal branch", () => {
     it("deletes the branch on the remote and its fetched copy", async () => {
       await writeSkill("tdd", "proposed");
@@ -94,6 +155,48 @@ describe("withdrawing through the git adapter", { timeout: 40_000 }, () => {
       );
       expect(remote.stdout).toBe("");
       expect(local.stdout).toBe("");
+    });
+
+    // The authorship check reads the fetched copy; a push that landed since
+    // must survive the deletion (#1639).
+    it("keeps a branch that moved on GitHub since the last fetch", async () => {
+      await writeSkill("tdd", "proposed");
+      await promote(makeApp(), "tdd");
+      const tracking = "refs/remotes/origin/maestro/tdd";
+      const checked = (
+        await git(stages.root, "rev-parse", tracking)
+      ).stdout.trim();
+      const tree = (
+        await git(stages.root, "rev-parse", `${checked}^{tree}`)
+      ).stdout.trim();
+      const theirs = (
+        await git(
+          stages.root,
+          "commit-tree",
+          tree,
+          "-p",
+          checked,
+          "-m",
+          "theirs",
+        )
+      ).stdout.trim();
+      await git(
+        stages.root,
+        "push",
+        "origin",
+        `${theirs}:refs/heads/maestro/tdd`,
+      );
+      await git(stages.root, "update-ref", tracking, checked);
+
+      expect(await adapter().deleteProposalBranch(stages.root, tdd)).toBe(
+        "failed",
+      );
+      const remote = await git(
+        stages.remote,
+        "rev-parse",
+        "refs/heads/maestro/tdd",
+      );
+      expect(remote.stdout.trim()).toBe(theirs);
     });
 
     it("counts a branch already gone as deleted", async () => {

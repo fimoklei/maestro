@@ -38,11 +38,14 @@ import {
 } from "./harness-primitive-git";
 import {
   deleteProposalBranch,
+  readBranchAuthorship,
+  readCommitEmail,
   readUnproposedFiles,
 } from "./proposal-branch-git";
 import { type ProposalKind, proposalTitle } from "./proposal-request";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
+  BranchAuthorship,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
@@ -286,6 +289,19 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return await readUnproposedFiles(root, ref);
   }
 
+  async readAuthoredHere(
+    root: string,
+    ref: PrimitiveRef,
+    base: string,
+  ): Promise<BranchAuthorship> {
+    return await readBranchAuthorship(
+      root,
+      ref,
+      base,
+      await readCommitEmail(root),
+    );
+  }
+
   async readPushesWhereItFetched(root: string): Promise<boolean> {
     return await this.pushLandsWhereItFetched(root);
   }
@@ -471,7 +487,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     if (remote === null || local === null || working === null) {
       return null;
     }
-    const promote = await readProposalRefs(root);
+    const promote = await readProposalRefs(root, REMOTE_HEAD);
     const hashesOf = (objects: HarnessObject[], type: HarnessPrimitiveType) =>
       Object.fromEntries(
         objects

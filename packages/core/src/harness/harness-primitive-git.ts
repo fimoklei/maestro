@@ -21,6 +21,7 @@ import {
   primitiveObject,
   primitivePath,
 } from "./harness-primitive";
+import { readBranchAuthorship, readCommitEmail } from "./proposal-branch-git";
 import type { HarnessPromoteRef } from "./read-harness-state";
 
 const run = promisify(execFile);
@@ -274,6 +275,7 @@ const emptyByType = <T>(): Record<HarnessPrimitiveType, Record<string, T>> => ({
 // a branch proposing to delete it. A branch of no known family is skipped.
 export async function readProposalRefs(
   root: string,
+  base: string,
 ): Promise<Record<HarnessPrimitiveType, Record<string, HarnessPromoteRef>>> {
   const refs = emptyByType<HarnessPromoteRef>();
   const listing = await runGitText(root, [
@@ -284,6 +286,7 @@ export async function readProposalRefs(
   if (listing === null) {
     return refs;
   }
+  const email = await readCommitEmail(root);
   await Promise.all(
     listing.split("\n").map(async (line) => {
       const [leaf = "", commit = ""] = line.split("\t");
@@ -294,6 +297,7 @@ export async function readProposalRefs(
       refs[ref.type][ref.name] = {
         tree: await readPrimitiveHash(root, `${PROPOSAL_REFS}/${leaf}`, ref),
         commit: commit || null,
+        authorship: await readBranchAuthorship(root, ref, base, email),
       };
     }),
   );

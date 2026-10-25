@@ -358,9 +358,14 @@ describe("Harness row menu", () => {
       expect(menu.labels).toEqual(["View pull request"]);
     });
 
-    it("offers no Reopen proposal on their closed request, but Propose change stays", async () => {
+    // Their branch is not the author's to delete (#1639).
+    it("offers no Reopen or Withdraw proposal on their closed request, but Propose change stays", async () => {
       const menu = await menuOf([
-        stageRow("pending-review", "proposal-closed", { requests: [theirs] }),
+        // Core owns no branch whose newest request is theirs.
+        stageRow("pending-review", "proposal-closed", {
+          requests: [theirs],
+          ownsBranch: false,
+        }),
       ]);
 
       expect(menu.labels).toEqual(["View pull request", "Propose change"]);
@@ -381,12 +386,36 @@ describe("Harness row menu", () => {
     },
   );
 
-  it("offers Create pull request alone where no request exists", async () => {
+  it("offers Create pull request and Withdraw proposal where no request exists", async () => {
     const menu = await menuOf([
       stageRow("pending-review", "pull-request-missing", { requests: [] }),
     ]);
 
-    expect(menu.labels).toEqual(["Create pull request"]);
+    expect(menu.labels).toEqual(["Create pull request", "Withdraw proposal"]);
+  });
+
+  // The branch name is shared; a teammate's commit on it is not the author's
+  // to delete (#1639).
+  it.each(["pull-request-missing", "proposal-closed"] as StageStatus[])(
+    "offers no Withdraw proposal on a branch the author does not own (%s)",
+    async (status) => {
+      const menu = await menuOf([
+        stageRow("pending-review", status, { ownsBranch: false }),
+      ]);
+
+      expect(menu.labels).not.toContain("Withdraw proposal");
+    },
+  );
+
+  it("offers Withdraw proposal last on the author's closed proposal", async () => {
+    const menu = await menuOf([stageRow("pending-review", "proposal-closed")]);
+
+    expect(menu.labels).toEqual([
+      "View pull request",
+      "Reopen proposal",
+      "Propose change",
+      "Withdraw proposal",
+    ]);
   });
 
   // A merged request leaves the branch behind it. Where that branch already
@@ -411,6 +440,7 @@ describe("Harness row menu", () => {
       expect(menu.labels).toEqual([
         "View pull request",
         "Reopen proposal",
+        "Withdraw proposal",
         "Restore skill",
       ]);
     });
@@ -425,7 +455,7 @@ describe("Harness row menu", () => {
         }),
       ]);
 
-      expect(menu.labels).toEqual(["View pull request"]);
+      expect(menu.labels).toEqual(["View pull request", "Withdraw proposal"]);
     });
   });
 
@@ -442,6 +472,7 @@ describe("Harness row menu", () => {
       "Reopen proposal #41",
       "Reopen proposal #44",
       "Propose change",
+      "Withdraw proposal",
     ]);
   });
 

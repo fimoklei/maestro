@@ -139,6 +139,12 @@ export const proposalBodySchema = z.object({
   number: z.number().int().positive(),
 });
 
+// Null withdraws a branch with no open request (#1639).
+export const withdrawBodySchema = z.object({
+  ...primitiveRefShape,
+  number: z.number().int().positive().nullable(),
+});
+
 // The hash is compared against a freshly fetched remote, never used as the
 // thing to remove (#580).
 export const deletionBodySchema = z.object({
@@ -190,6 +196,13 @@ export const PROPOSAL_BODY: RequestShape = {
     "Maestro could not change the pull request. Reload the page, then try again.",
   detail:
     'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
+};
+
+export const WITHDRAW_BODY: RequestShape = {
+  message:
+    "Nothing was withdrawn. Reload the page, then withdraw the proposal again.",
+  detail:
+    'The request carries a type, a name and a pull-request number or null: { type: "skill" | "prompt", name: string, number: number | null }.',
 };
 
 export const WITHDRAW_CHECK_BODY: RequestShape = {

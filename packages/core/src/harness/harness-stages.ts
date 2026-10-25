@@ -128,6 +128,10 @@ export type HarnessStageRow = {
   // The skill's folder is in the working tree, so Delete skill has something
   // to remove. False where the refs could not be read.
   onDisk: boolean;
+  // The branch is the author's to withdraw with no open request: every commit
+  // on it is theirs, and so is its newest ended request (#1639). False where
+  // unread, and outside Pending review.
+  ownsBranch: boolean;
   previousName: string | null;
 };
 
@@ -275,6 +279,7 @@ const blankRow = (
   remoteTree: null,
   restorable: false,
   onDisk: false,
+  ownsBranch: false,
   previousName: null,
 });
 
@@ -436,7 +441,9 @@ const ENDED_STATUS = {
 } as const satisfies Record<EndedRequest["state"], ReviewStatus>;
 
 // The highest number is the newest request, whatever it ended as.
-const newestEnded = (matching: ReviewRequest[]): EndedRequest | undefined =>
+export const newestEnded = (
+  matching: ReviewRequest[],
+): EndedRequest | undefined =>
   matching
     .filter((request): request is EndedRequest => request.state !== "open")
     .reduce<EndedRequest | undefined>(
@@ -471,6 +478,7 @@ const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
     const local = {
       restorable: isRestorable(trees, ref),
       onDisk: isOnDisk(trees, ref),
+      ownsBranch: typed.promote[ref.name]?.authorship === "own",
     };
     if (open.length > 1) {
       rows.push({
@@ -507,6 +515,7 @@ const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
       rows.push({
         ...blankRow("pending-review", ref, ENDED_STATUS[ended.state], change),
         ...local,
+        ownsBranch: local.ownsBranch && !isOthers(ended, input.viewer),
         requests: [link(ended)],
       });
       continue;

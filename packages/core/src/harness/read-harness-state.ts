@@ -88,9 +88,14 @@ export type HarnessFacts = {
 
 // A null tree proposes deleting the skill; a null commit is an unreadable ref,
 // never an absent branch.
+/** Whether every commit a proposal branch adds carries this clone's author email. */
+export type BranchAuthorship = "own" | "others" | "no-email" | "unknown";
+
 export type HarnessPromoteRef = {
   tree: string | null;
   commit: string | null;
+  // Judged over origin/HEAD.
+  authorship: BranchAuthorship;
 };
 
 // Hash per primitive name, for one type; in `promote` the name is the one its
@@ -176,6 +181,11 @@ export interface HarnessGitPort {
   ): Promise<string[] | null>;
   // False where a push to origin would land somewhere else than the fetch.
   readPushesWhereItFetched(root: string): Promise<boolean>;
+  readAuthoredHere(
+    root: string,
+    ref: PrimitiveRef,
+    base: string,
+  ): Promise<BranchAuthorship>;
   // Never `--force`. A branch already gone counts as deleted.
   deleteProposalBranch(
     root: string,

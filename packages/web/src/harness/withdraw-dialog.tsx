@@ -21,8 +21,8 @@ export type UnproposedCheck =
   | { kind: "read"; files: readonly string[] }
   | { kind: "failed" };
 
-// The confirmation a withdrawal takes before the clone, the pull request and
-// the branch change (#1638). Presentational — the host owns the reads and the
+// The confirmation a withdrawal takes before the clone, the pull request, if
+// one is open, and the branch change (#1638). Presentational — the host owns the reads and the
 // mutation.
 export function WithdrawDialog({
   type,
@@ -39,7 +39,8 @@ export function WithdrawDialog({
   type: HarnessPrimitiveType;
   name: string;
   branch: string;
-  number: number;
+  // Null where no request is open: there is nothing to close.
+  number: number | null;
   // Null where the read could not name it.
   defaultBranch: string | null;
   unproposed: UnproposedCheck;
@@ -69,7 +70,11 @@ export function WithdrawDialog({
     >
       <p className="m-0">
         <PhraseText
-          copy={withdrawBody(type, defaultBranchCopy(defaultBranch))}
+          copy={withdrawBody(
+            type,
+            defaultBranchCopy(defaultBranch),
+            number !== null,
+          )}
         />
       </p>
       <Card padded>
@@ -81,7 +86,9 @@ export function WithdrawDialog({
             machine={false}
           />
           <Fact label="Branch" value={branch} wrap />
-          <Fact label="Pull request" value={`#${number}`} wrap />
+          {number === null ? null : (
+            <Fact label="Pull request" value={`#${number}`} wrap />
+          )}
         </dl>
       </Card>
       {unproposed.kind === "checking" ? (

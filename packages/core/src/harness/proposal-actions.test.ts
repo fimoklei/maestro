@@ -526,6 +526,131 @@ describe("ProposalActions · withdraw", () => {
   });
 });
 
+describe("ProposalActions · withdraw without an open request", () => {
+  it("replaces the folder and deletes the branch of a closed proposal, closing nothing", async () => {
+    const { actions, calls, git, moved } = build({
+      review: readOf([request({ state: "closed" })]),
+    });
+
+    expect(await actions.withdraw(skillRef("tdd"), null)).toEqual({
+      ok: true,
+    });
+    expect(moved).toEqual([
+      [`${SKILLS}/tdd`, `${STAGING}/discarded`],
+      [`${STAGING}/tdd`, `${SKILLS}/tdd`],
+    ]);
+    expect(calls.closed).toEqual([]);
+    expect(git.deletedBranches).toEqual(["maestro/tdd"]);
+  });
+
+  it("withdraws a branch no pull request was ever opened over", async () => {
+    const { actions, calls, git } = build({ review: readOf([]) });
+
+    expect(await actions.withdraw(skillRef("tdd"), null)).toEqual({
+      ok: true,
+    });
+    expect(calls.closed).toEqual([]);
+    expect(git.deletedBranches).toEqual(["maestro/tdd"]);
+  });
+
+  it("touches nothing when a request was opened since the read", async () => {
+    const { actions, calls, git, moved } = build({
+      review: readOf([request()]),
+    });
+
+    expect(await actions.withdraw(skillRef("tdd"), null)).toEqual({
+      ok: false,
+      error: "request-exists",
+    });
+    expect(moved).toEqual([]);
+    expect(calls.closed).toEqual([]);
+    expect(git.deletedBranches).toEqual([]);
+  });
+
+  it("refuses when the newest closed request is another contributor's", async () => {
+    const { actions, git, moved } = build({
+      review: readOf([
+        request({ number: 40, state: "closed" }),
+        request({ number: 45, state: "closed", author: "teammate" }),
+      ]),
+    });
+
+    expect(await actions.withdraw(skillRef("tdd"), null)).toEqual({
+      ok: false,
+      error: "proposed-by-other",
+    });
+    expect(moved).toEqual([]);
+    expect(git.deletedBranches).toEqual([]);
+  });
+
+  it("refuses a branch that holds another contributor's commit", async () => {
+    const { actions, git, moved } = build({
+      review: readOf([]),
+      world: (git) => {
+        git.authorship = { tdd: "others" };
+      },
+    });
+
+    expect(await actions.withdraw(skillRef("tdd"), null)).toEqual({
+      ok: false,
+      error: "branch-by-other",
+    });
+    expect(moved).toEqual([]);
+    expect(git.deletedBranches).toEqual([]);
+  });
+
+  it("refuses a closed proposal whose branch moved on under another author", async () => {
+    const { actions, git } = build({
+      review: readOf([request({ state: "closed" })]),
+      world: (git) => {
+        git.authorship = { tdd: "others" };
+      },
+    });
+
+    expect(await actions.withdraw(skillRef("tdd"), null)).toEqual({
+      ok: false,
+      error: "branch-by-other",
+    });
+    expect(git.deletedBranches).toEqual([]);
+  });
+
+  it.each([
+    ["no-email", "commit-email-missing"],
+    ["unknown", "branch-authors-unknown"],
+  ] as const)(
+    "touches nothing when the branch's authors read %s",
+    async (authorship, error) => {
+      const { actions, git, moved } = build({
+        review: readOf([]),
+        world: (git) => {
+          git.authorship = { tdd: authorship };
+        },
+      });
+
+      expect(await actions.withdraw(skillRef("tdd"), null)).toEqual({
+        ok: false,
+        error,
+      });
+      expect(moved).toEqual([]);
+      expect(git.deletedBranches).toEqual([]);
+    },
+  );
+
+  it("withdraws when the newest closed request is the author's own", async () => {
+    const { actions, git } = build({
+      review: readOf([
+        request({ number: 45, state: "closed" }),
+        request({ number: 40, state: "closed", author: "teammate" }),
+      ]),
+    });
+
+    expect(await actions.withdraw(skillRef("tdd"), null)).toEqual({
+      ok: true,
+    });
+    expect(git.deletedBranches).toEqual(["maestro/tdd"]);
+  });
+});
+
 describe("ProposalActions · another contributor's proposal", () => {
   const theirs = request({ author: "teammate" });
 
