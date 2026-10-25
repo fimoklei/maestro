@@ -221,7 +221,8 @@ export function useHarnessPresses(
   const movedTo =
     movedSkill === null ? null : pressedRow("pending-review", movedSkill);
 
-  const handlers: RowActionHandlers = {
+  // Edit prompt opens a dialog flow the view holds.
+  const handlers: Omit<RowActionHandlers, "edit"> = {
     promote: (row) => {
       setPromotedFrom(row.stage);
       if (row.change === "deletion") {
