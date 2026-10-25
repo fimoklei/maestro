@@ -1,7 +1,12 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { request, rowsOf, useHarnessStages } from "../helpers/harness-stages";
+import {
+  git,
+  request,
+  rowsOf,
+  useHarnessStages,
+} from "../helpers/harness-stages";
 
 describe("harness stages over HTTP", { timeout: 40_000 }, () => {
   const stages = useHarnessStages();
@@ -121,11 +126,15 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       expect(stages.review.reopened).toEqual([]);
     });
 
-    it("withdraws the open proposal, keeping the branch and the local files", async () => {
+    const skillFile = (name: string) =>
+      join(stages.root, ".apm", "skills", name, "SKILL.md");
+    const remoteBranches = async () =>
+      (await git(stages.remote, "branch", "--list", "maestro/*")).stdout;
+
+    it("withdraws a changed skill: the request closes, the branch goes, the folder equals main", async () => {
       const app = makeApp();
       await writeSkill("tdd", "edited on disk");
       await promote(app, "tdd");
-      const prepared = await branchTree("tdd");
       answer([request()]);
 
       const response = await proposalAction(app, "withdraw", {
@@ -135,13 +144,77 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
       expect(response.status).toBe(200);
       expect(stages.review.closed).toEqual([45]);
-      expect(await branchTree("tdd")).toBe(prepared);
+      expect(await remoteBranches()).toBe("");
+      expect(await readFile(skillFile("tdd"), "utf8")).toContain(
+        "as published",
+      );
+      answer([request({ state: "closed" })]);
+      const state = await refresh(app);
+      expect(rowsOf(state.stages.proposal)).toEqual([]);
+      expect(rowsOf(state.stages.review)).toEqual([]);
+    });
+
+    it("withdraws an added skill: its folder leaves the Working Harness", async () => {
+      const app = makeApp();
+      await writeSkill("lint", "new skill");
+      await promote(app, "lint");
+      answer([request({ headBranch: "maestro/lint" })]);
+
+      const response = await proposalAction(app, "withdraw", {
+        name: "lint",
+        number: 45,
+      });
+
+      expect(response.status).toBe(200);
+      expect(await remoteBranches()).toBe("");
       await expect(
-        readFile(
-          join(stages.root, ".apm", "skills", "tdd", "SKILL.md"),
-          "utf8",
-        ),
-      ).resolves.toContain("edited on disk");
+        access(join(stages.root, ".apm", "skills", "lint")),
+      ).rejects.toThrow();
+    });
+
+    it("withdraws a deletion: the skill comes back from main", async () => {
+      const app = makeApp();
+      await rm(join(stages.root, ".apm", "skills", "tdd"), { recursive: true });
+      const seenRemoteTree = (
+        await git(stages.root, "rev-parse", "origin/HEAD:.apm/skills/tdd")
+      ).stdout.trim();
+      const pushed = await app.request("/api/harness/promote/deletion", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "skill", name: "tdd", seenRemoteTree }),
+      });
+      expect(pushed.status).toBe(200);
+      answer([request()]);
+
+      const response = await proposalAction(app, "withdraw", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(response.status).toBe(200);
+      expect(await remoteBranches()).toBe("");
+      expect(await readFile(skillFile("tdd"), "utf8")).toContain(
+        "as published",
+      );
+    });
+
+    it("names the files a withdrawal would lose before the press", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      await writeSkill("tdd", "a further edit");
+
+      const response = await app.request(
+        "/api/harness/proposal/withdraw/check",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ type: "skill", name: "tdd" }),
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ files: ["SKILL.md"] });
     });
 
     it("makes a teammate wait on another contributor's open proposal, on screen and at the server", async () => {

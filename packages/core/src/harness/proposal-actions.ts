@@ -1,10 +1,17 @@
-// The three GitHub-only proposal mutations, each rechecked against a fresh read.
+// The three proposal mutations, each rechecked against a fresh read.
+import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
+import type { FileSystemPort } from "../registry/file-system";
 import {
   type HarnessObject,
   type PrimitiveRef,
   proposalBranch,
 } from "./harness-primitive";
+import {
+  ensureHarnessPrimitiveDir,
+  inspectPrimitiveEntry,
+  type PrimitiveEntryFs,
+} from "./harness-primitive-dir";
 import {
   type HarnessReviewPort,
   isOthers,
@@ -20,7 +27,8 @@ import {
   readOriginFacts,
   requestProposal,
 } from "./proposal-request";
-import type { HarnessGitPort } from "./read-harness-state";
+import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
+import { type ReplaceDeps, replaceFromCommit } from "./replace-from-commit";
 
 export type ProposalActionError =
   | "not-configured"
@@ -36,6 +44,24 @@ export type ProposalActionError =
   | "request-exists"
   | "proposed-by-other"
   | "action-failed";
+
+export type WithdrawError =
+  | ProposalActionError
+  | WorktreeAmbiguity
+  | "push-elsewhere"
+  | "destination-unsafe"
+  | "destination-unreadable"
+  | "withdraw-in-progress"
+  // A withdrawal stops at the step that failed; the earlier steps stay done.
+  | "replace-failed"
+  | "close-failed"
+  | "branch-delete-failed";
+
+export type WithdrawResult = { ok: true } | { ok: false; error: WithdrawError };
+
+export type UnproposedFilesResult =
+  | { ok: true; files: string[] }
+  | { ok: false; error: "invalid-skill" | "not-configured" | "no-answer" };
 
 export type ProposalActionResult =
   | { ok: true }
@@ -59,8 +85,21 @@ type CheckedFacts = Ready | { ok: false; error: ProposalActionError };
 export class ProposalActions {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    git: Pick<HarnessGitPort, "readFacts" | "readPrimitives">;
+    git: Pick<
+      HarnessGitPort,
+      | "readFacts"
+      | "readPrimitives"
+      | "readWorktreeAmbiguity"
+      | "writePrimitiveInto"
+      | "deleteProposalBranch"
+      | "readUnproposedFiles"
+      | "readPushesWhereItFetched"
+    >;
     review: HarnessReviewPort;
+    fs: PrimitiveEntryFs & Pick<FileSystemPort, "ensureDir">;
+    copyFs: ReplaceDeps["copyFs"];
+    // Shared with every write to the Working Harness.
+    locks: InFlightLocks;
   };
 
   constructor(deps: ProposalActions["deps"]) {
@@ -145,12 +184,44 @@ export class ProposalActions {
     );
   }
 
-  // Leaves the remote branch and the author's files as they are.
-  async withdraw(
+  // Gives the proposal up: the Working Harness takes the default branch's copy,
+  // then the request closes, then the branch goes. Closing first keeps GitHub
+  // from closing the request itself when the branch disappears.
+  async withdraw(ref: PrimitiveRef, number: number): Promise<WithdrawResult> {
+    if (!isValidSkillSlug(ref.name)) {
+      return { ok: false, error: "invalid-skill" };
+    }
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    const run = await this.deps.locks.run(root, () =>
+      this.withdrawAt(root, ref, number),
+    );
+    return run.ok ? run.value : { ok: false, error: "withdraw-in-progress" };
+  }
+
+  // What a withdrawal would lose, for its confirmation.
+  async unproposedFiles(ref: PrimitiveRef): Promise<UnproposedFilesResult> {
+    if (!isValidSkillSlug(ref.name)) {
+      return { ok: false, error: "invalid-skill" };
+    }
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    const files = await this.deps.git.readUnproposedFiles(root, ref);
+    return files === null
+      ? { ok: false, error: "no-answer" }
+      : { ok: true, files };
+  }
+
+  private async withdrawAt(
+    root: string,
     ref: PrimitiveRef,
     number: number,
-  ): Promise<ProposalActionResult> {
-    const checked = await this.checkedFacts(ref);
+  ): Promise<WithdrawResult> {
+    const checked = await this.factsAt(root, ref);
     if (!checked.ok) {
       return checked;
     }
@@ -163,9 +234,72 @@ export class ProposalActions {
     if (checked.waiting !== null) {
       return { ok: false, error: "proposed-by-other" };
     }
-    return settle(
-      await this.deps.review.closeRequest(checked.target.origin, number),
+    const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
+    if (ambiguity !== null) {
+      return { ok: false, error: ambiguity };
+    }
+    // Checked before the clone changes: the branch deletion comes last.
+    if (!(await this.deps.git.readPushesWhereItFetched(root))) {
+      return { ok: false, error: "push-elsewhere" };
+    }
+    const atHead =
+      checked.head === null
+        ? null
+        : await this.deps.git.readPrimitives(root, checked.head);
+    if (checked.head === null || atHead === null) {
+      return { ok: false, error: "no-answer" };
+    }
+    const held = atHead.some(
+      (object) => object.type === ref.type && object.name === ref.name,
     );
+    let entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
+    // A deleted last item takes its type folder with it; bringing it back
+    // needs the folder again.
+    if (entry.kind === "unreadable" && held) {
+      const made = await ensureHarnessPrimitiveDir(
+        this.deps.fs,
+        root,
+        ref.type,
+      );
+      if (!made.ok) {
+        return {
+          ok: false,
+          error:
+            made.reason === "outside-root"
+              ? "destination-unsafe"
+              : "destination-unreadable",
+        };
+      }
+      entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
+    }
+    if (entry.kind === "unsafe") {
+      return { ok: false, error: "destination-unsafe" };
+    }
+    if (entry.kind === "unreadable") {
+      return { ok: false, error: "destination-unreadable" };
+    }
+
+    const replaced = await replaceFromCommit(this.deps, {
+      root,
+      ref,
+      commit: checked.head,
+      entry,
+      held,
+    });
+    if (!replaced) {
+      return { ok: false, error: "replace-failed" };
+    }
+    const closed = await this.deps.review.closeRequest(
+      checked.target.origin,
+      number,
+    );
+    if (!closed.ok) {
+      return { ok: false, error: "close-failed" };
+    }
+    const deleted = await this.deps.git.deleteProposalBranch(root, ref);
+    return deleted === "deleted"
+      ? { ok: true }
+      : { ok: false, error: "branch-delete-failed" };
   }
 
   private async checkedFacts(ref: PrimitiveRef): Promise<CheckedFacts> {
@@ -176,6 +310,13 @@ export class ProposalActions {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
+    return await this.factsAt(root, ref);
+  }
+
+  private async factsAt(
+    root: string,
+    ref: PrimitiveRef,
+  ): Promise<CheckedFacts> {
     const facts = await readOriginFacts(this.deps.git, root);
     if (!facts.ok) {
       return facts;

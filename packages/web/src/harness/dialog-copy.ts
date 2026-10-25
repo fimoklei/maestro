@@ -3,7 +3,11 @@ import type {
   ManifestAdvisory,
   StructuralProblem,
 } from "@maestro/core";
-import { CREATE_RELEASE, rereadLabel } from "../ui/control-labels";
+import {
+  CREATE_RELEASE,
+  rereadLabel,
+  WITHDRAW_PROPOSAL,
+} from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type Copy, machine, type Phrase, phrase } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
@@ -56,13 +60,54 @@ export const restoreBody = (type: HarnessPrimitiveType): Phrase =>
   phrase`${ITEM_WORDS[type].restoreLabel} brings back the ${ITEM_WORDS[type].holder} from your last local commit. Later changes do not come back.`;
 
 // An item no target holds has no deployed copies to mention.
-export const discardBody = (
+const replacesInClone = (
   type: HarnessPrimitiveType,
   branch: ReturnType<typeof defaultBranchCopy>,
 ): Phrase => {
   const w = ITEM_WORDS[type];
-  const replaces = phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy on ${branch}. You cannot recover your changes.`;
-  return w.deploys
-    ? phrase`${replaces} Deployed copies remain unchanged.`
-    : replaces;
+  return phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy on ${branch}. You cannot recover your changes.`;
+};
+
+const withDeployedCopies = (type: HarnessPrimitiveType, body: Phrase) =>
+  ITEM_WORDS[type].deploys
+    ? phrase`${body} Deployed copies remain unchanged.`
+    : body;
+
+export const discardBody = (
+  type: HarnessPrimitiveType,
+  branch: ReturnType<typeof defaultBranchCopy>,
+): Phrase => withDeployedCopies(type, replacesInClone(type, branch));
+
+// In the order the withdrawal runs: the clone, then the request, then the branch.
+export const withdrawBody = (
+  type: HarnessPrimitiveType,
+  branch: ReturnType<typeof defaultBranchCopy>,
+): Phrase =>
+  withDeployedCopies(
+    type,
+    phrase`${replacesInClone(type, branch)} It closes the pull request and deletes the proposal branch.`,
+  );
+
+export const WITHDRAW_CHECKING = "Checking for changes not yet proposed…";
+
+const KEEP_OUTSIDE_CLONE = "To keep them, copy them outside your clone first.";
+
+/** The files a withdrawal would lose; null where none would be. */
+export const unproposedNotice = (
+  files: readonly string[],
+): NoticeContent | null =>
+  files.length === 0
+    ? null
+    : {
+        level: "warning",
+        label: "Changes not yet proposed",
+        message: `${WITHDRAW_PROPOSAL} discards the changes in these files. ${KEEP_OUTSIDE_CLONE}`,
+        items: files.map((file) => phrase`${machine(file)}`),
+      };
+
+export const UNPROPOSED_UNKNOWN_NOTICE: NoticeContent = {
+  level: "warning",
+  label: "Changes not checked",
+  message: `${WITHDRAW_PROPOSAL} discards any change you made after proposing. ${KEEP_OUTSIDE_CLONE}`,
+  detail: "Maestro could not compare your clone with the proposal branch.",
 };

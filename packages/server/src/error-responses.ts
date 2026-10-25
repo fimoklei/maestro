@@ -21,6 +21,7 @@ import type {
   ScaffoldHarnessError,
   UpdatePreviewError,
   UpdateRunError,
+  WithdrawError,
 } from "@maestro/core";
 import type { PromptFieldProblem } from "@maestro/core/prompt-file";
 
@@ -30,7 +31,10 @@ type ErrorStatus = 400 | 403 | 404 | 409 | 422 | 500 | 502 | 503 | 504;
 const TIMED_OUT = { status: 504 } as const;
 
 // A status only: every sentence lives in its feature copy module in `packages/web`.
-type ErrorTable<TCode extends string> = Record<TCode, { status: ErrorStatus }>;
+export type ErrorTable<TCode extends string> = Record<
+  TCode,
+  { status: ErrorStatus }
+>;
 
 export const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "unsupported-primitive-type": { status: 422 },
@@ -242,6 +246,22 @@ export const proposalErrorResponses: ErrorTable<ProposalActionError> = {
   "request-exists": { status: 409 },
   "proposed-by-other": { status: 409 },
   "action-failed": { status: 502 },
+};
+
+export const withdrawErrorResponses: ErrorTable<WithdrawError> = {
+  ...proposalErrorResponses,
+  "sparse-checkout": { status: 409 },
+  "merge-in-progress": { status: 409 },
+  "rebase-in-progress": { status: 409 },
+  "unresolved-conflicts": { status: 409 },
+  unreadable: { status: 409 },
+  "destination-unsafe": { status: 409 },
+  "destination-unreadable": { status: 409 },
+  "push-elsewhere": promoteErrorResponses["push-elsewhere"],
+  "withdraw-in-progress": { status: 409 },
+  "replace-failed": { status: 500 },
+  "close-failed": { status: 502 },
+  "branch-delete-failed": { status: 502 },
 };
 
 export const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {

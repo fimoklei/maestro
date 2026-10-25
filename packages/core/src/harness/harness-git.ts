@@ -36,6 +36,10 @@ import {
   readStagedDifference,
   writePrimitiveInto,
 } from "./harness-primitive-git";
+import {
+  deleteProposalBranch,
+  readUnproposedFiles,
+} from "./proposal-branch-git";
 import { type ProposalKind, proposalTitle } from "./proposal-request";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
@@ -273,6 +277,27 @@ export class HarnessGitAdapter implements HarnessGitPort {
     } finally {
       await rm(indexDir, { recursive: true, force: true });
     }
+  }
+
+  async readUnproposedFiles(
+    root: string,
+    ref: PrimitiveRef,
+  ): Promise<string[] | null> {
+    return await readUnproposedFiles(root, ref);
+  }
+
+  async readPushesWhereItFetched(root: string): Promise<boolean> {
+    return await this.pushLandsWhereItFetched(root);
+  }
+
+  async deleteProposalBranch(
+    root: string,
+    ref: PrimitiveRef,
+  ): Promise<"deleted" | "failed"> {
+    if (!(await this.pushLandsWhereItFetched(root))) {
+      return "failed";
+    }
+    return await deleteProposalBranch(root, ref);
   }
 
   // Fixed order, so a tree that is several at once always refuses under the

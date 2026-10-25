@@ -192,6 +192,13 @@ export const PROPOSAL_BODY: RequestShape = {
     'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
 };
 
+export const WITHDRAW_CHECK_BODY: RequestShape = {
+  message:
+    "Nothing was withdrawn. Reload the page, then withdraw the proposal again.",
+  detail:
+    'The request carries a type and a name: { type: "skill" | "prompt", name: string }.',
+};
+
 export const DELETION_BODY: RequestShape = {
   message:
     "Nothing was proposed. Reload the page, then propose the deletion again.",

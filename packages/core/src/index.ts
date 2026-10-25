@@ -173,6 +173,7 @@ export {
   type ProposalActionError,
   type ProposalActionResult,
   ProposalActions,
+  type WithdrawError,
 } from "./harness/proposal-actions";
 export type { SemverStep } from "./harness/propose-release-version";
 export {

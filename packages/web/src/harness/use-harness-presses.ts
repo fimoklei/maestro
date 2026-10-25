@@ -40,6 +40,7 @@ import {
   useProposalAction,
   useRestorePrimitive,
 } from "./use-harness";
+import { withdrawNotice } from "./withdraw-notice-copy";
 
 // The row a press lands on, named by the request it sent.
 const pressedRow = (stage: HarnessStage, { type, name }: PrimitiveRef) =>
@@ -142,16 +143,25 @@ export function useHarnessPresses(
   const [discarding, setDiscarding] = useState<DiscardTarget | null>(null);
 
   const proposalAction = useProposalAction();
+  const [withdrawing, setWithdrawing] = useState<WithdrawTarget | null>(null);
   const proposalWrite = useWriteAction(proposalAction, {
     screen,
     action: ({ action }) => action,
-    // Each leaves the branch as it is, so the row stays in Pending review.
+    // Create and reopen keep the row in Pending review. A withdrawn item
+    // leaves every stage, so the screen states it in a toast.
     subject: landsIn("pending-review"),
-    failure: proposalNotice,
+    failure: (error) =>
+      proposalAction.variables?.action === "withdraw" && withdrawing !== null
+        ? withdrawNotice(error, {
+            type: withdrawing.type,
+            name: withdrawing.name,
+            branch: withdrawing.branch,
+            defaultBranch: state?.defaultBranch ?? null,
+          })
+        : proposalNotice(error),
   });
   const proposalSkill = proposalAction.variables ?? null;
   const proposalFailure = proposalWrite.failure;
-  const [withdrawing, setWithdrawing] = useState<WithdrawTarget | null>(null);
 
   // One refusal at a time, stated on the row the press was made from. A
   // withdrawal's refusal belongs to its dialog, where the confirmation still

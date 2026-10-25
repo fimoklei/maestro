@@ -168,6 +168,19 @@ export interface HarnessGitPort {
     commit: string,
     into: string,
   ): Promise<"written" | "missing" | "failed">;
+  // The primitive's files in the working tree that its pushed proposal branch
+  // lacks or holds differently, relative to the primitive; null is no answer.
+  readUnproposedFiles(
+    root: string,
+    ref: PrimitiveRef,
+  ): Promise<string[] | null>;
+  // False where a push to origin would land somewhere else than the fetch.
+  readPushesWhereItFetched(root: string): Promise<boolean>;
+  // Never `--force`. A branch already gone counts as deleted.
+  deleteProposalBranch(
+    root: string,
+    ref: PrimitiveRef,
+  ): Promise<"deleted" | "failed">;
 }
 
 // Keyed by root, so a second harness never inherits the first one's age (#516).

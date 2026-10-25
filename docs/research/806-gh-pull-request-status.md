@@ -382,7 +382,7 @@ controlled process outcomes in the tests.
 | Write | Command | What the help states |
 |---|---|---|
 | Open | `gh pr create --repo O/R --head <branch> --base <base> --title T --body B` | *"Upon success, the URL of the created pull request will be printed."* `--head` is what makes gh *"explicitly skip any forking or pushing behavior"*, and `--title`/`--body` are what skip the prompt. |
-| Withdraw | `gh pr close <number> --repo O/R` | Closes it. `--delete-branch` is opt-in, so omitting it leaves the branch — which is what withdrawal must do. |
+| Withdraw | `gh pr close <number> --repo O/R` | Closes it. `--delete-branch` is opt-in; Maestro omits it and deletes the branch through git (#1638). |
 | Reopen | `gh pr reopen <number> --repo O/R` | Reopens it. A merged request cannot be reopened, so Maestro refuses one before the call rather than reading gh's prose. |
 | Retitle | `gh pr edit <number> --repo O/R --title T` | Added #1383 from `gh pr edit --help` (gh 2.101.0). *"Without a body flag the pull request keeps the body it already has."* |
 

@@ -11,6 +11,7 @@ import {
   parseProposalBranch,
   primitiveEntry,
   primitiveKey,
+  proposalBranch,
   proposalBranchLeaf,
 } from "./harness-primitive";
 import type { ProposalKind } from "./proposal-request";
@@ -142,6 +143,11 @@ export class InMemoryHarnessGit implements HarnessGitPort {
   publishOutcome: PublishTagOutcome | null = null;
   pushOutcome: SkillPushOutcome | null = null;
   writeOutcome: "missing" | "failed" | null = null;
+  deleteOutcome: "deleted" | "failed" = "deleted";
+  pushesWhereItFetched = true;
+  // Per branch name, as `promote`: the files only the working tree holds;
+  // null is no answer.
+  unproposed: Record<string, string[] | null> = {};
 
   // Every write that leaves this machine or touches the author's files.
   readonly published: { name: string; commit: string; branch: string }[] = [];
@@ -157,6 +163,8 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     commit: string;
     into: string;
   }[] = [];
+  // Proposal branch names deleted on the remote.
+  readonly deletedBranches: string[] = [];
   readonly caughtUp: string[] = [];
   readonly treeReads: string[] = [];
   movementReads = 0;
@@ -602,5 +610,34 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     }
     this.written.push({ type: ref.type, name: ref.name, commit, into });
     return "written";
+  }
+
+  async deleteProposalBranch(
+    root: string,
+    ref: PrimitiveRef,
+  ): Promise<"deleted" | "failed"> {
+    this.at(root);
+    if (this.deleteOutcome === "failed") {
+      return "failed";
+    }
+    delete this.promote[proposalBranchLeaf(ref)];
+    this.deletedBranches.push(proposalBranch(ref));
+    return "deleted";
+  }
+
+  async readUnproposedFiles(
+    root: string,
+    ref: PrimitiveRef,
+  ): Promise<string[] | null> {
+    this.at(root);
+    const leaf = proposalBranchLeaf(ref);
+    return Object.hasOwn(this.unproposed, leaf)
+      ? (this.unproposed[leaf] ?? null)
+      : [];
+  }
+
+  async readPushesWhereItFetched(root: string): Promise<boolean> {
+    this.at(root);
+    return this.pushesWhereItFetched;
   }
 }

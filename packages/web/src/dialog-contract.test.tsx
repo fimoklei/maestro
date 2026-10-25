@@ -25,7 +25,10 @@ import {
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
-import { WithdrawDialog } from "./harness/withdraw-dialog";
+import {
+  type UnproposedCheck,
+  WithdrawDialog,
+} from "./harness/withdraw-dialog";
 import { RegisterRepositoryDialog } from "./registry/register-repository-dialog";
 import {
   renderRepositories,
@@ -137,6 +140,24 @@ const releaseDialog = (
     onPublish={vi.fn()}
     publishing={running}
     publishError={null}
+  />
+);
+
+const withdrawDialog = (
+  unproposed: UnproposedCheck,
+  over: { running?: boolean; onClose?: () => void } = {},
+) => (
+  <WithdrawDialog
+    type="skill"
+    name="research"
+    branch="maestro/research"
+    number={45}
+    defaultBranch="main"
+    unproposed={unproposed}
+    onClose={over.onClose ?? vi.fn()}
+    onConfirm={vi.fn()}
+    withdrawing={over.running ?? false}
+    withdrawError={null}
   />
 );
 
@@ -490,22 +511,26 @@ const ON_DIALOG: Row[] = [
   {
     file: "harness/withdraw-dialog.tsx",
     heading: "Withdraw proposal for research",
-    render: ({ running, onClose }) => (
-      <WithdrawDialog
-        skill="research"
-        branch="maestro/research"
-        number={45}
-        onClose={onClose}
-        onConfirm={vi.fn()}
-        withdrawing={running}
-        withdrawError={null}
-      />
-    ),
+    render: ({ running, onClose }) =>
+      withdrawDialog({ kind: "read", files: [] }, { running, onClose }),
     changed: null,
     emptyForm: null,
-    loading: null,
+    loading: {
+      line: "Checking for changes not yet proposed…",
+      render: () => withdrawDialog({ kind: "checking" }),
+    },
+    // A failed check warns; the withdrawal stays possible.
     loadFailed: null,
-    notices: [],
+    notices: [
+      {
+        label: "Changes not yet proposed",
+        render: () => withdrawDialog({ kind: "read", files: ["SKILL.md"] }),
+      },
+      {
+        label: "Changes not checked",
+        render: () => withdrawDialog({ kind: "failed" }),
+      },
+    ],
   },
   {
     file: "deploy-state/update-target-dialog.tsx",

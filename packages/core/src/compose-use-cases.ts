@@ -433,10 +433,14 @@ export function composeUseCases(ports: UseCasePorts) {
       git: harnessGit,
       locks: harnessPromoteLocks,
     }),
+    // A withdrawal rewrites the working tree, so it takes the promotion's lock.
     proposals: new ProposalActions({
       resolveRoot: harnessRoot,
       git: harnessGit,
       review: reviewGate.writes,
+      fs,
+      copyFs: copyTreeFs,
+      locks: harnessPromoteLocks,
     }),
     connect,
     scaffold: new ScaffoldHarness({

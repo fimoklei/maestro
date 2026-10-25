@@ -1,23 +1,48 @@
+import type { HarnessPrimitiveType } from "@maestro/core";
 import { Card } from "../ui/card";
+import { WITHDRAW_PROPOSAL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
-import type { NoticeContent } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
+import { PhraseText } from "../ui/phrase-text";
+import { StatusLine } from "../ui/status-line";
+import {
+  UNPROPOSED_UNKNOWN_NOTICE,
+  unproposedNotice,
+  WITHDRAW_CHECKING,
+  withdrawBody,
+} from "./dialog-copy";
+import { ITEM_WORDS } from "./item-words";
+import { defaultBranchCopy } from "./stage-copy";
 
-// The confirmation a withdrawal takes before the pull request is closed:
-// consequences first, then exactly which request (#809, approved wording).
-// Presentational — the host owns the mutation and what the row said.
+/** The files only the clone holds, as the confirmation's own read found them. */
+export type UnproposedCheck =
+  | { kind: "checking" }
+  | { kind: "read"; files: readonly string[] }
+  | { kind: "failed" };
+
+// The confirmation a withdrawal takes before the clone, the pull request and
+// the branch change (#1638). Presentational — the host owns the reads and the
+// mutation.
 export function WithdrawDialog({
-  skill,
+  type,
+  name,
   branch,
   number,
+  defaultBranch,
+  unproposed,
   onClose,
   onConfirm,
   withdrawing,
   withdrawError,
 }: {
-  skill: string;
+  type: HarnessPrimitiveType;
+  name: string;
   branch: string;
   number: number;
+  // Null where the read could not name it.
+  defaultBranch: string | null;
+  unproposed: UnproposedCheck;
   onClose: () => void;
   onConfirm: () => void;
   withdrawing: boolean;
@@ -25,15 +50,15 @@ export function WithdrawDialog({
 }) {
   return (
     <Dialog
-      title={`Withdraw proposal for ${skill}`}
+      title={`${WITHDRAW_PROPOSAL} for ${name}`}
       version={null}
       width={480}
       phase={withdrawing ? "running" : "idle"}
       action={{
-        label: "Withdraw proposal",
+        label: WITHDRAW_PROPOSAL,
         verb: "withdraw",
         tone: "danger",
-        unavailable: null,
+        unavailable: unproposed.kind === "checking" ? WITHDRAW_CHECKING : null,
         onRun: onConfirm,
       }}
       failure={withdrawError}
@@ -43,16 +68,35 @@ export function WithdrawDialog({
       onClose={onClose}
     >
       <p className="m-0">
-        This closes the pull request. Your local files and proposal branch
-        remain unchanged.
+        <PhraseText
+          copy={withdrawBody(type, defaultBranchCopy(defaultBranch))}
+        />
       </p>
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact label="Skill" value={skill} wrap machine={false} />
+          <Fact
+            label={ITEM_WORDS[type].Noun}
+            value={name}
+            wrap
+            machine={false}
+          />
           <Fact label="Branch" value={branch} wrap />
           <Fact label="Pull request" value={`#${number}`} wrap />
         </dl>
       </Card>
+      {unproposed.kind === "checking" ? (
+        <StatusLine>{WITHDRAW_CHECKING}</StatusLine>
+      ) : null}
+      <Notice
+        trigger="load"
+        notice={
+          unproposed.kind === "read"
+            ? unproposedNotice(unproposed.files)
+            : unproposed.kind === "failed"
+              ? UNPROPOSED_UNKNOWN_NOTICE
+              : null
+        }
+      />
     </Dialog>
   );
 }

@@ -307,9 +307,25 @@ export function useProposalAction() {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    onSuccess: () => {
+    // A withdrawal that stops part-way has already changed the clone.
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
     },
+  });
+}
+
+// The files a withdrawal would lose, read when its confirmation opens.
+export function useWithdrawCheck(ref: PrimitiveRef) {
+  return useQuery({
+    queryKey: ["harness", "withdraw-check", ref.type, ref.name] as const,
+    queryFn: () =>
+      requestJson<{ files: string[] }>("/api/harness/proposal/withdraw/check", {
+        method: "POST",
+        body: JSON.stringify(ref),
+      }),
+    // The disk is the author's to change while the dialog is open.
+    staleTime: 0,
+    gcTime: 0,
   });
 }
 

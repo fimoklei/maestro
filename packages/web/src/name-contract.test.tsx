@@ -80,7 +80,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Restore ${name}`": "dialog title",
   },
   "harness/withdraw-dialog.tsx": {
-    "`Withdraw proposal for ${skill}`": "dialog title",
+    "`${WITHDRAW_PROPOSAL} for ${name}`": "dialog title",
   },
   "skills/bulk-deploy-action.tsx": {
     '`Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`':

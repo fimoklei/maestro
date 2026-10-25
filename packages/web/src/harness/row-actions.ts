@@ -8,6 +8,7 @@ import {
   DISCARD_CHANGE,
   PROPOSE_CHANGE,
   RESTORE_LABEL,
+  WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
 
@@ -211,7 +212,7 @@ function stageItems(
         : [
             ...links,
             {
-              label: "Withdraw proposal",
+              label: WITHDRAW_PROPOSAL,
               disabled: !enabled,
               danger: true,
               onSelect: () => handlers.withdraw(row, sole.number),

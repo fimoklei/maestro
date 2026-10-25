@@ -5,9 +5,12 @@ const meta = {
   title: "Harness/WithdrawDialog",
   component: WithdrawDialog,
   args: {
-    skill: "code-review",
+    type: "skill",
+    name: "code-review",
     branch: "maestro/code-review",
     number: 45,
+    defaultBranch: "main",
+    unproposed: { kind: "read", files: [] },
     onClose: () => {},
     onConfirm: () => {},
     withdrawing: false,
@@ -20,6 +23,28 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Ready: Story = {};
+
+export const Checking: Story = {
+  args: { unproposed: { kind: "checking" } },
+};
+
+export const UnproposedChanges: Story = {
+  args: {
+    unproposed: { kind: "read", files: ["SKILL.md", "references/notes.md"] },
+  },
+};
+
+export const CheckFailed: Story = {
+  args: { unproposed: { kind: "failed" } },
+};
+
+export const Prompt: Story = {
+  args: {
+    type: "prompt",
+    name: "pr-review",
+    branch: "maestro/prompt.pr-review",
+  },
+};
 
 export const Withdrawing: Story = {
   args: { withdrawing: true },
