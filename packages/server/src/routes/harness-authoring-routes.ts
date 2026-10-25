@@ -1,14 +1,11 @@
-import type {
-  ImportPromptSuccess,
-  PrimitiveRef,
-  ProposalActionResult,
-} from "@maestro/core";
+import type { ImportPromptSuccess, PrimitiveRef } from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
 import {
   deletionErrorResponses,
   discardErrorResponses,
+  type ErrorTable,
   importErrorResponses,
   importPromptErrorResponses,
   isImportPromptRefusal,
@@ -17,6 +14,7 @@ import {
   proposalErrorResponses,
   restoreErrorResponses,
   scaffoldErrorResponses,
+  withdrawErrorResponses,
 } from "../error-responses";
 import {
   connectBodySchema,
@@ -41,6 +39,7 @@ import {
   proposalBodySchema,
   RESTORE_BODY,
   restoreBodySchema,
+  WITHDRAW_CHECK_BODY,
 } from "../request-bodies";
 
 type Deps = Pick<
@@ -164,9 +163,13 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   });
 
   // Each rechecks identity and the request against a fresh read.
-  const proposalResponse = (c: Context, result: ProposalActionResult) => {
+  const proposalResponse = <E extends string>(
+    c: Context,
+    result: { ok: true } | { ok: false; error: E },
+    table: ErrorTable<E>,
+  ) => {
     if (!result.ok) {
-      const { status } = proposalErrorResponses[result.error];
+      const { status } = table[result.error];
       return c.json({ error: result.error }, status);
     }
     return c.json({ ok: true });
@@ -177,7 +180,11 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
-    return proposalResponse(c, await deps.proposals.create(refOf(body.data)));
+    return proposalResponse(
+      c,
+      await deps.proposals.create(refOf(body.data)),
+      proposalErrorResponses,
+    );
   });
 
   app.post("/api/harness/proposal/reopen", async (c) => {
@@ -188,6 +195,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return proposalResponse(
       c,
       await deps.proposals.reopen(refOf(body.data), body.data.number),
+      proposalErrorResponses,
     );
   });
 
@@ -199,7 +207,22 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return proposalResponse(
       c,
       await deps.proposals.withdraw(refOf(body.data), body.data.number),
+      withdrawErrorResponses,
     );
+  });
+
+  // Read for the withdrawal's confirmation; it writes nothing.
+  app.post("/api/harness/proposal/withdraw/check", async (c) => {
+    const body = await parseBody(c, promoteBodySchema, WITHDRAW_CHECK_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.proposals.unproposedFiles(refOf(body.data));
+    if (!result.ok) {
+      const { status } = proposalErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ files: result.files });
   });
 
   // A refusal is data here, not a failure; only an unconnected harness is a status.

@@ -11,6 +11,7 @@ import type {
   PublishReleaseError,
   ReleasePlanError,
   RestoreError,
+  WithdrawError,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
@@ -36,6 +37,7 @@ import {
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
+import { withdrawNotice } from "./withdraw-notice-copy";
 
 // Contract tests: the words live once, in the copy module and the flow test
 // that renders them. These prove the rules every row keeps.
@@ -242,6 +244,41 @@ const SURFACES: Surface[] = [
       unreadable: true,
       "restore-in-progress": true,
       "restore-failed": true,
+    }),
+  ),
+  ...byType(
+    "withdrawNotice",
+    (error, type) =>
+      withdrawNotice(error, {
+        type,
+        name: "tdd",
+        branch: "maestro/tdd",
+        defaultBranch: "main",
+      }),
+    codes<WithdrawError>({
+      "not-configured": true,
+      "no-usable-origin": true,
+      "invalid-skill": true,
+      "no-answer": true,
+      "review-unavailable": true,
+      "review-unknown": true,
+      "request-gone": true,
+      "extra-requests": true,
+      "request-exists": true,
+      "proposed-by-other": true,
+      "action-failed": true,
+      "push-elsewhere": true,
+      "sparse-checkout": true,
+      "merge-in-progress": true,
+      "rebase-in-progress": true,
+      "unresolved-conflicts": true,
+      unreadable: true,
+      "destination-unsafe": true,
+      "destination-unreadable": true,
+      "withdraw-in-progress": true,
+      "replace-failed": true,
+      "close-failed": true,
+      "branch-delete-failed": true,
     }),
   ),
   ...byType(

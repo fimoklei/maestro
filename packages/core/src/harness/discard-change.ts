@@ -1,16 +1,16 @@
 // Puts a Not yet proposed primitive back to its default-branch copy: no
 // commit, fetch or push (#1375).
-import { dirname, join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
-import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
+import type { PrimitiveRef } from "./harness-primitive";
 import {
   inspectPrimitiveEntry,
   type PrimitiveEntryFs,
 } from "./harness-primitive-dir";
 import type { HarnessStages } from "./harness-stages";
 import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
+import { replaceFromCommit } from "./replace-from-commit";
 
 export type DiscardChangeError =
   | "not-configured"
@@ -130,49 +130,15 @@ export class DiscardChange {
     if (entry.kind === "absent") {
       return { ok: false, error: "nothing-to-discard" };
     }
-    return await this.swap(root, ref, commit, entry.path);
-  }
-
-  // Both moves are renames within the type's folder, so the primitive is never
-  // half-written, and a failed second move puts the edited one back.
-  private async swap(
-    root: string,
-    ref: PrimitiveRef,
-    commit: string,
-    target: string,
-  ): Promise<DiscardChangeResult> {
-    let staging: string;
-    try {
-      staging = await this.deps.copyFs.createStagingDir(dirname(target));
-    } catch {
-      return { ok: false, error: "discard-failed" };
-    }
-    const discarded = join(staging, "discarded");
-    try {
-      const written = await this.deps.git.writePrimitiveInto(
-        root,
-        ref,
-        commit,
-        staging,
-      );
-      if (written !== "written") {
-        return { ok: false, error: "discard-failed" };
-      }
-      await this.deps.copyFs.movePath(target, discarded);
-      try {
-        await this.deps.copyFs.movePath(
-          join(staging, primitiveEntry(ref)),
-          target,
-        );
-      } catch {
-        await this.deps.copyFs.movePath(discarded, target);
-        return { ok: false, error: "discard-failed" };
-      }
-      return { ok: true, name: ref.name };
-    } catch {
-      return { ok: false, error: "discard-failed" };
-    } finally {
-      await this.deps.copyFs.removePath(staging).catch(() => {});
-    }
+    const replaced = await replaceFromCommit(this.deps, {
+      root,
+      ref,
+      commit,
+      entry,
+      held: true,
+    });
+    return replaced
+      ? { ok: true, name: ref.name }
+      : { ok: false, error: "discard-failed" };
   }
 }

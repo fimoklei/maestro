@@ -1,0 +1,92 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { gitOptions, NO_HOOKS } from "../git/non-interactive";
+import { runGit } from "../git/run-git-text";
+import {
+  PROPOSAL_REFS,
+  type PrimitiveRef,
+  primitiveEntry,
+  primitivePath,
+  proposalBranch,
+  proposalBranchLeaf,
+} from "./harness-primitive";
+
+const run = promisify(execFile);
+
+// Untrimmed, so a name that starts or ends in a space survives.
+async function listPaths(root: string, args: string[]): Promise<string[]> {
+  const { stdout } = await run("git", ["-C", root, ...args], gitOptions());
+  return stdout.split("\0").filter((path) => path !== "");
+}
+
+export async function readUnproposedFiles(
+  root: string,
+  ref: PrimitiveRef,
+): Promise<string[] | null> {
+  const branchRef = `${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`;
+  const tip = await runGit(root, [
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${branchRef}^{commit}`,
+  ]);
+  if (!tip.ok) {
+    return null;
+  }
+  const path = primitivePath(ref);
+  const spec = `:(literal)${path}`;
+  try {
+    const differing = await listPaths(root, [
+      "diff",
+      "-z",
+      "--name-only",
+      "--no-renames",
+      // A file only the branch holds is not lost work.
+      "--diff-filter=AMT",
+      tip.stdout,
+      "--",
+      spec,
+    ]);
+    const untracked = await listPaths(root, [
+      "ls-files",
+      "-z",
+      "--others",
+      "--exclude-standard",
+      "--",
+      spec,
+    ]);
+    const relative = (file: string) =>
+      file === path ? primitiveEntry(ref) : file.slice(path.length + 1);
+    return [...new Set([...differing, ...untracked])].map(relative).sort();
+  } catch {
+    return null;
+  }
+}
+
+// Never `--force`. The remote is asked after a failure: a branch already gone
+// is the outcome the caller wants.
+export async function deleteProposalBranch(
+  root: string,
+  ref: PrimitiveRef,
+): Promise<"deleted" | "failed"> {
+  const branch = `refs/heads/${proposalBranch(ref)}`;
+  try {
+    await run(
+      "git",
+      ["-C", root, ...NO_HOOKS, "push", "origin", "--delete", branch],
+      gitOptions(),
+    );
+  } catch {
+    const listed = await runGit(root, ["ls-remote", "origin", branch]);
+    if (!listed.ok || listed.stdout !== "") {
+      return "failed";
+    }
+  }
+  // The fetched copy would keep the row on screen until the next fetch.
+  await runGit(root, [
+    "update-ref",
+    "-d",
+    `${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
+  ]);
+  return "deleted";
+}

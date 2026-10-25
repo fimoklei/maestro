@@ -6,9 +6,12 @@ describe("WithdrawDialog", () => {
   it("sets the skill name in the UI font, not mono", () => {
     render(
       <WithdrawDialog
-        skill="research"
+        type="skill"
+        name="research"
         branch="maestro/research"
         number={45}
+        defaultBranch="main"
+        unproposed={{ kind: "read", files: [] }}
         onClose={vi.fn()}
         onConfirm={vi.fn()}
         withdrawing={false}

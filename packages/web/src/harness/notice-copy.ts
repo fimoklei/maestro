@@ -207,7 +207,9 @@ const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
 // Deliberately its own table, not a re-export: a code can refuse two surfaces
 // with different words. Where the label holds for both, the row is shared and
 // only the way through is rewritten.
-const deletionHeadings = (w: ItemWords): NoticeTable<PromoteDeletionError> => {
+export const deletionHeadings = (
+  w: ItemWords,
+): NoticeTable<PromoteDeletionError> => {
   const promote = promoteHeadings(w);
   const DELETE = w.deleteLabel;
   return {
@@ -463,9 +465,11 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
 
 // Each refusal leaves the pull request and the clone as they were, so every
 // sentence ends on another press of the same control.
-const proposalHeadings: NoticeTable<ProposalActionError> = {
+export const proposalHeadingsFor = (
+  w: ItemWords,
+): NoticeTable<ProposalActionError> => ({
   ...harnessHeadings,
-  "invalid-skill": invalidNameHeading(ITEM_WORDS.skill),
+  "invalid-skill": invalidNameHeading(w),
   "no-answer": {
     level: "error",
     label: "GitHub did not respond",
@@ -489,25 +493,25 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
     level: "error",
     label: "Pull request moved on",
     message: `Select ${rereadLabel("Harness")} to read what GitHub holds now.`,
-    detail: "This pull request is no longer the one open over this skill.",
+    detail: `This pull request is no longer the one open over this ${w.noun}.`,
   },
   "extra-requests": {
     level: "error",
     label: "Multiple pull requests",
     message: `Select a View pull request link to close the extras, then select ${rereadLabel("Harness")}.`,
-    detail: "More than one open pull request matches this skill's branch.",
+    detail: `More than one open pull request matches this ${w.noun}'s branch.`,
   },
   "proposed-by-other": {
     level: "error",
     label: "Another contributor's pull request",
     message: `Only its author can change it. Select ${rereadLabel("Harness")} to read GitHub again.`,
-    detail: oneContributor(ITEM_WORDS.skill),
+    detail: oneContributor(w),
   },
   "request-exists": {
     level: "error",
     label: "Pull request already open",
     message: `Select ${rereadLabel("Harness")} to read the open pull request.`,
-    detail: "GitHub already holds an open request over this skill's branch.",
+    detail: `GitHub already holds an open request over this ${w.noun}'s branch.`,
   },
   "action-failed": {
     level: "error",
@@ -515,7 +519,9 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
     message: "Open the pull request on GitHub and make the change there.",
     detail: "GitHub refused the change Maestro asked for.",
   },
-};
+});
+
+const proposalHeadings = proposalHeadingsFor(ITEM_WORDS.skill);
 
 // Covers the import mutation and the check that runs before it: both blocker
 // unions are subsets of this one, so a picked folder and a refused copy name

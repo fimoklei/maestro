@@ -30,7 +30,7 @@ import {
 import type { useHarnessPresses } from "./use-harness-presses";
 import type { useImportFlow } from "./use-import-flow";
 import type { ImportPromptFlow } from "./use-import-prompt-flow";
-import { WithdrawDialog } from "./withdraw-dialog";
+import { WithdrawDialogHost } from "./withdraw-dialog-host";
 
 // Frozen when the press was made: a later read moves the rows underneath, it
 // never moves this (#915).
@@ -188,25 +188,11 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
         />
       ) : null}
       {props.withdrawing !== null ? (
-        <WithdrawDialog
-          skill={props.withdrawing.name}
-          branch={props.withdrawing.branch}
-          number={props.withdrawing.number}
+        <WithdrawDialogHost
+          target={props.withdrawing}
+          defaultBranch={props.defaultBranch}
+          write={props.proposalAction}
           onClose={props.onWithdrawClose}
-          onConfirm={() =>
-            props.withdrawing !== null &&
-            props.proposalAction.run(
-              {
-                action: "withdraw",
-                type: props.withdrawing.type,
-                name: props.withdrawing.name,
-                number: props.withdrawing.number,
-              },
-              { onSuccess: props.onWithdrawClose },
-            )
-          }
-          withdrawing={props.proposalAction.phase === "running"}
-          withdrawError={props.proposalAction.failure}
         />
       ) : null}
       {props.planOpen ? (

@@ -232,7 +232,7 @@ export class GhCliAdapter implements HarnessReviewPort {
     ]);
   }
 
-  // No `--delete-branch`: withdrawal leaves the proposal branch as it is (#827).
+  // No `--delete-branch`: a withdrawal deletes the branch through git (#1638).
   async closeRequest(
     origin: GitOrigin,
     number: number,

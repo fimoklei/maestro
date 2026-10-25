@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { describe, expect, it } from "vitest";
@@ -141,8 +141,11 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
 
       expect(response.status).toBe(200);
       expect(stages.review.closed).toEqual([45]);
-      // Withdrawing closes the request, never the author's work.
-      expect(await branchTree("tdd")).toBeTruthy();
+      // Withdrawing gives the deletion up: the branch goes, the skill returns (#1638).
+      await expect(branchTree("tdd")).rejects.toThrow();
+      await expect(
+        access(join(stages.root, ".apm", "skills", "tdd", "SKILL.md")),
+      ).resolves.toBeUndefined();
     });
 
     it("blocks a deletion where two requests match the branch", async () => {
