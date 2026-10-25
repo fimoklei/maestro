@@ -453,52 +453,23 @@ describe("DeploySkill", () => {
     ]);
   });
 
-  it("removes the untargeted tool's copy when that tool owns its directory", async () => {
-    // Only Claude Code reads the Claude skills folder, so its absence proves that
-    // copy dead (#136).
-    const { deps, cleaned, deployed } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["codex"] },
-    });
-    const result = await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: globalTarget,
-    });
+  it.each([[["codex"]], [["claude"]], [["claude", "codex"]]] as const)(
+    "cleans no tool's copy when %j is detected",
+    async (detected) => {
+      const { deps, cleaned, deployed } = buildDeps({
+        toolPresence: { detectGlobalTools: async () => [...detected] },
+      });
+      const result = await new DeploySkill(deps).execute({
+        type: "skill",
+        name: "tdd",
+        target: globalTarget,
+      });
 
-    expect(result.ok).toBe(true);
-    expect(deployed).toHaveLength(1);
-    expect(cleaned).toEqual([
-      { target: globalTarget, name: "tdd", tools: ["claude"] },
-    ]);
-  });
-
-  it("keeps the untargeted tool's copy when other tools read its directory", async () => {
-    // Cursor, Copilot, Gemini and others read .agents/skills/ too, so Maestro cannot
-    // prove it dead (#202).
-    const { deps, cleaned, deployed } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["claude"] },
-    });
-    const result = await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: globalTarget,
-    });
-
-    expect(result.ok).toBe(true);
-    expect(deployed).toHaveLength(1);
-    expect(cleaned).toEqual([]);
-  });
-
-  it("cleans nothing when the global deploy targets every tool", async () => {
-    const { deps, cleaned } = buildDeps();
-    await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: globalTarget,
-    });
-
-    expect(cleaned).toEqual([]);
-  });
+      expect(result.ok).toBe(true);
+      expect(deployed).toHaveLength(1);
+      expect(cleaned).toEqual([]);
+    },
+  );
 
   it("never cleans on a repo deploy", async () => {
     // A repo's targets are its own apm.yml, so this machine's detection says
@@ -1494,6 +1465,7 @@ describe("DeploySkill.executeBatch", () => {
       error: "deployed-diverged-from-lock",
       forceable: true,
       copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
+      blockingCopies: [{ name: "review", verdict: "local-edits" }],
     });
     expect(report.failed).toEqual([]);
     expect(deployed.map((call) => call.skills)).toEqual([["tdd"]]);
@@ -1611,6 +1583,86 @@ describe("DeploySkill.executeBatch", () => {
       ["review", "deployed-diverged-from-lock"],
     ]);
     expect(deployed).toEqual([]);
+  });
+
+  it("names the deployed copy that holds a row, so its force names whose edits it replaces", async () => {
+    const { deps, world } = buildDeps({
+      inventory: skills("tdd", "docs"),
+      deployedContent: editedCopies({ docs: "diverged" }),
+    });
+    world.seed({ release: "v0.5.1", skills: ["docs"] });
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(report.attention).toEqual([
+      expect.objectContaining({
+        name: "tdd",
+        blockingCopies: [{ name: "docs", verdict: "local-edits" }],
+      }),
+    ]);
+  });
+
+  it("names a row's own edited copy beside the deployed copies that hold it", async () => {
+    const { deps, world } = buildDeps({
+      inventory: skills("tdd", "review", "docs"),
+      deployedContent: editedCopies({
+        tdd: "diverged",
+        review: "unverifiable",
+        docs: "diverged",
+      }),
+    });
+    world.seed({ release: "v0.5.1", skills: ["review", "docs"] });
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(report.attention).toEqual([
+      expect.objectContaining({
+        name: "tdd",
+        blockingCopies: [
+          { name: "review", verdict: "unverified" },
+          { name: "docs", verdict: "local-edits" },
+          { name: "tdd", verdict: "local-edits" },
+        ],
+      }),
+    ]);
+  });
+
+  it("names no copy apm itself left unverifiable among a row's holders", async () => {
+    const { deps, world } = buildDeps({
+      inventory: skills("tdd", "docs"),
+      deployedContent: editedCopies({ tdd: "unverifiable", docs: "diverged" }),
+      recordedPackage: {
+        read: async ({ name }) =>
+          name === "tdd"
+            ? {
+                kind: "recorded" as const,
+                reading: {
+                  kind: "unsupported" as const,
+                  packageType: "hybrid",
+                },
+              }
+            : { kind: "unverified" as const },
+      },
+    });
+    world.seed({ release: "v0.5.1", skills: ["docs"] });
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(report.attention).toEqual([
+      expect.objectContaining({
+        name: "tdd",
+        blockingCopies: [{ name: "docs", verdict: "local-edits" }],
+      }),
+    ]);
   });
 
   it("installs nothing while a staged name's deployed copy holds edits", async () => {

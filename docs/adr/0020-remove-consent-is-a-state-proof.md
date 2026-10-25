@@ -47,7 +47,8 @@ consumption.**
 kept apart by a `kind` in the signed payload so neither can pass as the other:
 
 - **The reclaim token** binds target, skill name, and the sorted set of leftover
-  paths a global removal would delete (#390).
+  paths a global removal would delete (#390). Since ADR-0011's #1557 amendment
+  that set is always empty, so no token is minted.
 - **The removal receipt** binds target, skill name, and the canonical cost the
   check found — every warning, across the detected tools *and* the reclaimable
   ones, since `runCheck` prices both (#458).

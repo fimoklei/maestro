@@ -1,4 +1,5 @@
 import type {
+  BulkDeployReport,
   DeploySkillError,
   PendingOperation,
   RemoveDeployedSkillError,
@@ -14,6 +15,7 @@ import { plainText } from "../ui/phrase";
 import { localEditsCheckNotice } from "./import-local-edits-copy";
 import {
   type DeployStateNotice,
+  deployAttentionNotice,
   deployNotice,
   deployNoticeFor,
   removeNotice,
@@ -256,6 +258,92 @@ describe("a bulk run's deploy notice", () => {
         deployNotice(refusal(code)),
       );
     }
+  });
+});
+
+describe("a bulk run's row held by other skills' copies", () => {
+  type Holder = { name: string; verdict: "local-edits" | "unverified" };
+  const edited = (name: string): Holder => ({ name, verdict: "local-edits" });
+  const unverified = (name: string): Holder => ({
+    name,
+    verdict: "unverified",
+  });
+  const held = (
+    blockingCopies: Holder[],
+    error: DeploySkillError = "deployed-diverged-from-lock",
+  ) => {
+    const row = {
+      name: "commit-message",
+      error,
+      forceable: true,
+      copyReceipt: "c".repeat(64),
+      blockingCopies,
+    } satisfies BulkDeployReport["attention"][number];
+    const notice = deployAttentionNotice(row);
+    return {
+      label: notice.label,
+      message: plainText(notice.message),
+      detail:
+        notice.detail === undefined ? undefined : plainText(notice.detail),
+    };
+  };
+
+  it("names one skill whose local edits Deploy again replaces", () => {
+    expect(held([edited("code-review")])).toEqual({
+      label: "Local changes in deployed files",
+      message:
+        "code-review has local edits. Select Deploy commit-message again to replace its edits with the latest release.",
+      detail: "The edits never went through the Harness.",
+    });
+  });
+
+  it("names every edited skill, the row's own among them", () => {
+    expect(
+      held([
+        edited("code-review"),
+        edited("a-skill-with-a-long-descriptive-name"),
+        edited("commit-message"),
+      ]).message,
+    ).toBe(
+      "code-review, a-skill-with-a-long-descriptive-name and commit-message have local edits. Select Deploy commit-message again to replace their edits with the latest release.",
+    );
+  });
+
+  it("names an unverified skill as unverified, not as edited", () => {
+    expect(held([unverified("code-review")], "deployed-unverifiable")).toEqual({
+      label: "Local edits unverifiable",
+      message:
+        "code-review is unverified. Select Deploy commit-message again to replace its copy with the latest release.",
+      detail:
+        "This copy predates content tracking, so any change in it is invisible.",
+    });
+    expect(
+      held(
+        [unverified("code-review"), unverified("docs")],
+        "deployed-unverifiable",
+      ),
+    ).toEqual({
+      label: "Local edits unverifiable",
+      message:
+        "code-review and docs are unverified. Select Deploy commit-message again to replace their copies with the latest release.",
+      detail:
+        "These copies predate content tracking, so any change in them is invisible.",
+    });
+  });
+
+  it("names edited and unverified skills apart when both hold the row", () => {
+    expect(held([edited("code-review"), unverified("docs")]).message).toBe(
+      "code-review has local edits. docs is unverified. Select Deploy commit-message again to replace their copies with the latest release.",
+    );
+  });
+
+  it("reads as a single deploy's notice when only the row's own copy holds it", () => {
+    expect(held([edited("commit-message")])).toEqual({
+      label: "Local changes in deployed files",
+      message:
+        "Deploy this skill again to replace the local edits with the latest release.",
+      detail: "The edits never went through the Harness.",
+    });
   });
 });
 

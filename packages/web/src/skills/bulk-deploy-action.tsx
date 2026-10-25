@@ -2,7 +2,11 @@ import type { BulkDeployReport } from "@maestro/core";
 import { useState } from "react";
 import { NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
 import type { DeployStateRead } from "../deploy-state/deployed-view";
-import { deployNotice, deployNoticeFor } from "../deploy-state/notice-copy";
+import {
+  deployAttentionNotice,
+  deployNotice,
+  deployNoticeFor,
+} from "../deploy-state/notice-copy";
 import { toolNameList } from "../deploy-state/tool-presentation";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useDeployState } from "../deploy-state/use-deploy-state";
@@ -22,7 +26,7 @@ import type { RegisteredRepo } from "../registry/use-registry";
 import { repoTargetName } from "../shell/target-name";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
-import { UPDATE_TARGET } from "../ui/control-labels";
+import { deployAgainLabel, UPDATE_TARGET } from "../ui/control-labels";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
@@ -394,14 +398,14 @@ function deployAgain(
   force: Force,
 ): ReportRowAction {
   const onClick = () => force.run(name, copyReceipt);
-  if (force.running === null) return { label: `Deploy ${name} again`, onClick };
+  if (force.running === null) return { label: deployAgainLabel(name), onClick };
   return force.running === name
     ? {
         label: ACTIONS.deploy.busy,
         onClick,
         status: "busy",
       }
-    : { label: `Deploy ${name} again`, onClick, status: "locked" };
+    : { label: deployAgainLabel(name), onClick, status: "locked" };
 }
 
 /** The run folded into the Report's groups. Empty groups are not drawn. */
@@ -427,7 +431,7 @@ function bulkDeployReportGroups(input: {
       label: "Attention",
       rows: view.attention.map((row) => ({
         name: row.name,
-        notice: deployNoticeFor(row.error, undefined),
+        notice: deployAttentionNotice(row),
         action: row.forceable
           ? deployAgain(row.name, row.copyReceipt, force)
           : onUpdate && row.error === "not-at-target-release"
