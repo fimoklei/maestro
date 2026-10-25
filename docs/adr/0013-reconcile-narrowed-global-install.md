@@ -42,16 +42,11 @@ obsolete copy with a direct, subtree-scoped filesystem removal — never
   retained hashes never count as this deploy's drift. Absent `tools` (the
   repo path — the only caller that leaves it undefined) still scans every
   tool, unchanged.
-- **Cleanup.** After a *successful* global install (the driver verifies
-  apm's positive `Installed N APM dependenc` marker; a failed install never
-  triggers removal), `DeployedCleanupAdapter.removeSkillTargets` removes
-  exactly `<HOME>/<prefix>/skills/<name>` for each untargeted tool
-  (`DEPLOY_TOOLS` minus detected). `force: true` makes an already-gone copy
-  a no-op, so the machine reconciles idempotently on every global deploy.
-  **Narrowed by ADR-0011's #202 amendment:** only untargeted tools that own
-  their skills directory outright qualify, so in practice this is the
-  `.claude` copy on a machine without Claude Code. `.agents/skills/` has
-  other readers and is never removed.
+- **Cleanup.** After a *successful* global install,
+  `DeployedCleanupAdapter.removeSkillTargets` removes exactly
+  `<HOME>/<prefix>/skills/<name>` for each untargeted tool that owns its skills
+  directory outright. Since ADR-0011's #1557 amendment no supported tool does,
+  so it deletes nothing today.
 - **Best-effort.** The install already succeeded, so a cleanup error does
   not invert the result to `deploy-failed` — it leaves the pre-existing dead
   tree (no regression), which the next deploy retries.

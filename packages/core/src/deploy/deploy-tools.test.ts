@@ -85,35 +85,24 @@ describe("apmTargetFlagForTools", () => {
   });
 });
 
-// An undetected tool proves its own copy unread, never a directory it shares (#202).
 describe("reclaimableUntargetedTools", () => {
-  it("returns an undetected tool whose skills directory only it reads", () => {
-    expect(reclaimableUntargetedTools(["codex"])).toEqual(["claude"]);
-  });
-
-  it("omits an undetected tool that shares its skills directory", () => {
-    // Other apm targets deploy under .agents too, so an absent Codex proves nothing.
-    expect(reclaimableUntargetedTools(["claude"])).toEqual([]);
-  });
-
-  it("is empty when every supported tool is detected", () => {
-    expect(reclaimableUntargetedTools(["claude", "codex"])).toEqual([]);
-  });
-
-  it("reclaims only the exclusive directory when no tool is detected", () => {
-    expect(reclaimableUntargetedTools([])).toEqual(["claude"]);
-  });
+  it.each([[[]], [["codex"]], [["claude"]], [["claude", "codex"]]] as const)(
+    "reclaims nothing when %j is detected",
+    (detected) => {
+      expect(reclaimableUntargetedTools(detected)).toEqual([]);
+    },
+  );
 });
 
 describe("skills directory exclusivity", () => {
-  it("marks .claude as exclusive and .agents as shared", () => {
+  it("marks .claude and .agents as shared", () => {
     expect(
       DEPLOY_TOOLS.map((tool) => [
         tool.skillsDirPrefix,
         tool.skillsDirIsExclusive,
       ]),
     ).toEqual([
-      [".claude", true],
+      [".claude", false],
       [".agents", false],
     ]);
   });

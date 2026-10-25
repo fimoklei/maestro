@@ -19,7 +19,8 @@ export const DEPLOY_TOOLS: readonly DeployTool[] = [
     apmTarget: "claude",
     skillsDirPrefix: ".claude",
     globalPresenceMarker: ".claude.json",
-    skillsDirIsExclusive: true,
+    // Cursor, OpenCode and Devin Desktop read the Claude skills folder too (#1557).
+    skillsDirIsExclusive: false,
   },
   {
     apmTarget: "codex",

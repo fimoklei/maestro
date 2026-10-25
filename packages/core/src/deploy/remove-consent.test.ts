@@ -6,122 +6,33 @@ import type { RemoveCheck } from "./remove-deployed-skill";
 const GLOBAL: DeployTarget = { kind: "global" };
 const REPO: DeployTarget = { kind: "repo", repoPath: "/repo" };
 
-function issuer(treeRoot: (target: DeployTarget) => string = () => "/home") {
-  return new RemoveConsentIssuer({ treeRoot });
+function issuer() {
+  return new RemoveConsentIssuer({ treeRoot: () => "/home" });
 }
 
 describe("RemoveConsentIssuer.offer", () => {
-  it("names the leftover tool and the absolute path a removal would delete", () => {
-    const offer = issuer().offer({
-      target: GLOBAL,
-      name: "tdd",
-      detected: ["codex"],
-    });
-
-    expect(offer?.previews).toEqual([
-      { tool: "claude", path: "/home/.claude/skills/tdd" },
-    ]);
-    expect(offer?.token).toEqual(expect.any(String));
-  });
-
-  it("offers nothing when every exclusive tool is still detected", () => {
-    expect(
-      issuer().offer({
-        target: GLOBAL,
-        name: "tdd",
-        detected: ["claude", "codex"],
-      }),
-    ).toBeNull();
-  });
-
-  it("offers nothing on the per-repo path, whose targets are the repo's own", () => {
-    expect(
-      issuer().offer({ target: REPO, name: "tdd", detected: undefined }),
-    ).toBeNull();
-  });
-
-  it("keeps a skills directory several tools read, even when its tool is gone", () => {
-    // Other apm targets deploy under .agents too, so an absent Codex proves nothing (#202).
-    expect(
-      issuer().offer({ target: GLOBAL, name: "tdd", detected: ["claude"] }),
-    ).toBeNull();
-  });
-
-  it("drops a leftover it cannot build a path for, rather than guessing one", () => {
-    const offer = issuer(() => {
-      throw new Error("HOME unreadable");
-    }).offer({ target: GLOBAL, name: "tdd", detected: ["codex"] });
-
-    expect(offer).toBeNull();
-  });
+  it.each([
+    [GLOBAL, []],
+    [GLOBAL, ["codex"]],
+    [GLOBAL, ["claude"]],
+    [GLOBAL, ["claude", "codex"]],
+    [REPO, undefined],
+  ] as const)(
+    "offers no reclaim on %j with %j detected",
+    (target, detected) => {
+      expect(issuer().offer({ target, name: "tdd", detected })).toBeNull();
+    },
+  );
 });
 
-// A client-supplied path list would authorize a reclaim a caller merely guessed.
 describe("RemoveConsentIssuer.grants", () => {
-  const scope = {
-    target: GLOBAL,
-    name: "tdd",
-    detected: ["codex"] as const,
-  };
+  it("grants nothing for a token a caller merely guessed", () => {
+    const scope = { target: GLOBAL, name: "tdd", detected: ["codex"] as const };
 
-  it("grants exactly the paths it named, so the deletion cannot exceed them", () => {
-    const consent = issuer();
-    const offer = consent.offer(scope);
-
-    // The caller deletes this set, never one it derives again and that could drift.
-    expect(consent.grants(scope, offer?.token)).toEqual(offer?.previews);
-  });
-
-  it("refuses a request that carries no token at all", () => {
-    expect(issuer().grants(scope, undefined)).toBeNull();
-  });
-
-  it("refuses a token a caller merely guessed", () => {
     expect(issuer().grants(scope, "a".repeat(64))).toBeNull();
   });
-
-  it("refuses a token that is not even token-shaped", () => {
-    expect(issuer().grants(scope, "not-hex")).toBeNull();
-  });
-
-  it("refuses a token-shaped prefix of the token it issued", () => {
-    // Must refuse on length, never on the bytes the two share.
-    const consent = issuer();
-    const offer = consent.offer(scope);
-
-    expect(consent.grants(scope, offer?.token.slice(0, 8) ?? "")).toBeNull();
-  });
-
-  it("refuses a token issued for a different machine state", () => {
-    const consent = issuer();
-    const offer = consent.offer({ ...scope, detected: ["claude"] });
-
-    expect(consent.grants(scope, offer?.token)).toBeNull();
-  });
-
-  it("refuses a token issued for a different skill", () => {
-    const consent = issuer();
-    const offer = consent.offer({ ...scope, name: "jobs" });
-
-    expect(consent.grants(scope, offer?.token)).toBeNull();
-  });
-
-  it("refuses a token issued by another instance", () => {
-    const offer = issuer().offer(scope);
-
-    expect(issuer().grants(scope, offer?.token)).toBeNull();
-  });
-
-  it("refuses any token when there is nothing left to reclaim", () => {
-    const consent = issuer();
-    const wideScope = { ...scope, detected: ["claude", "codex"] as const };
-
-    expect(consent.grants(wideScope, "a".repeat(64))).toBeNull();
-  });
 });
 
-// Receipt and reclaim token share one secret but authorize different
-// destruction, so they are never interchangeable (#458).
 describe("RemoveConsentIssuer receipts", () => {
   const scope = { target: GLOBAL, name: "tdd" };
 
@@ -216,21 +127,5 @@ describe("RemoveConsentIssuer receipts", () => {
     expect(issuer().accepts(scope, CLEAN, issuer().receipt(scope, CLEAN))).toBe(
       false,
     );
-  });
-
-  it("never accepts a reclaim token in place of a receipt", () => {
-    const consent = issuer();
-    const offer = consent.offer({ ...scope, detected: ["codex"] });
-
-    expect(consent.accepts(scope, CLEAN, offer?.token)).toBe(false);
-  });
-
-  it("never accepts a receipt in place of a reclaim token", () => {
-    const consent = issuer();
-    const reclaimScope = { ...scope, detected: ["codex"] as const };
-
-    expect(
-      consent.grants(reclaimScope, consent.receipt(scope, CLEAN)),
-    ).toBeNull();
   });
 });

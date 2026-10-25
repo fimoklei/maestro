@@ -125,6 +125,18 @@ another tool installed the same skill from the same tag, the bytes match and the
 gate passes; and apm 0.25.0's `deployments:` block, which could name every target
 claiming a path but is unmeasured, so driving it is barred until spiked.
 
+## Amendment (2026-10-25, issue #1557) — no tool owns its skills directory
+
+The #202 amendment named Claude Code's skills directory exclusive. It is not:
+Cursor, OpenCode and Devin Desktop read it as a compatibility folder. Read from
+the code, not reproduced: on a machine with Codex and Cursor but no Claude Code,
+a global deploy deleted skills Cursor reads, hand-made ones included.
+
+Amended: no supported tool owns its skills directory, so no deploy or remove
+reclaims an untargeted tool's copy. **Accepted cost:** a stale `.claude` copy
+now survives beside the new `.agents` copy, and a tool reading both may see two
+versions of one skill.
+
 ## Rejected alternatives
 
 - **Model A — one deploy unit mirrored to both tools.** Simpler, matches apm's

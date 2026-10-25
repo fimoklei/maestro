@@ -453,52 +453,23 @@ describe("DeploySkill", () => {
     ]);
   });
 
-  it("removes the untargeted tool's copy when that tool owns its directory", async () => {
-    // Only Claude Code reads the Claude skills folder, so its absence proves that
-    // copy dead (#136).
-    const { deps, cleaned, deployed } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["codex"] },
-    });
-    const result = await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: globalTarget,
-    });
+  it.each([[["codex"]], [["claude"]], [["claude", "codex"]]] as const)(
+    "cleans no tool's copy when %j is detected",
+    async (detected) => {
+      const { deps, cleaned, deployed } = buildDeps({
+        toolPresence: { detectGlobalTools: async () => [...detected] },
+      });
+      const result = await new DeploySkill(deps).execute({
+        type: "skill",
+        name: "tdd",
+        target: globalTarget,
+      });
 
-    expect(result.ok).toBe(true);
-    expect(deployed).toHaveLength(1);
-    expect(cleaned).toEqual([
-      { target: globalTarget, name: "tdd", tools: ["claude"] },
-    ]);
-  });
-
-  it("keeps the untargeted tool's copy when other tools read its directory", async () => {
-    // Cursor, Copilot, Gemini and others read .agents/skills/ too, so Maestro cannot
-    // prove it dead (#202).
-    const { deps, cleaned, deployed } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["claude"] },
-    });
-    const result = await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: globalTarget,
-    });
-
-    expect(result.ok).toBe(true);
-    expect(deployed).toHaveLength(1);
-    expect(cleaned).toEqual([]);
-  });
-
-  it("cleans nothing when the global deploy targets every tool", async () => {
-    const { deps, cleaned } = buildDeps();
-    await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: globalTarget,
-    });
-
-    expect(cleaned).toEqual([]);
-  });
+      expect(result.ok).toBe(true);
+      expect(deployed).toHaveLength(1);
+      expect(cleaned).toEqual([]);
+    },
+  );
 
   it("never cleans on a repo deploy", async () => {
     // A repo's targets are its own apm.yml, so this machine's detection says

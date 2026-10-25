@@ -287,8 +287,9 @@ deployments:                    # one row per deployed file per deploy root
   `~/.openclaw/skills`, `hermes` → `~/.hermes/skills`, and `opencode` (a
   `user_primitive_overrides` entry) → `~/.config/opencode/skills`. The six
   that remain — `copilot`, `cursor`, `gemini`, `codex`, `windsurf`,
-  `agent-skills` — keep the asymmetry ADR-0011's #202 amendment encodes:
-  reconciliation may reclaim `.claude`, never `.agents`.
+  `agent-skills` — still read `.agents`, so reconciliation never reclaims it.
+  Since ADR-0011's #1557 amendment it never reclaims `.claude` either:
+  Cursor, OpenCode and Devin Desktop read that folder too.
 - **`claude` honours `CLAUDE_CONFIG_DIR` at user scope (source,
   `for_scope`).** With it set, `-g` deploys under that directory instead of
   `~/.claude` and records the path home-relative (or absolute, outside
@@ -693,9 +694,9 @@ global deploys from a neutral cwd.
   fires on the install's own active targets or on a row for a known target
   the manifest does not declare — never on `-t`. Because the first install
   persists `targets:` and a narrower `-t` does not rewrite it, the declared
-  universe stays wide. Maestro's reconciliation is ADR-0013, and since #202
-  it reclaims only a single-reader directory: the `.agents` ghost files
-  above are left on disk deliberately.
+  universe stays wide. Maestro's reconciliation is ADR-0013, and since #1557
+  it reclaims nothing: the `.agents` and `.claude` ghost files are left on
+  disk deliberately.
 - **The 2026-07-17 mass-deletion cannot recur on 0.29.0.** A bare `apm
   uninstall -g` — the command that wiped 19 pre-existing skill dirs from a
   real `~/.claude/skills/` while the global lockfile read `dependencies:
