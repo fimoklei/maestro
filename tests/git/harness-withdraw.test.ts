@@ -157,6 +157,48 @@ describe("withdrawing through the git adapter", { timeout: 40_000 }, () => {
       expect(local.stdout).toBe("");
     });
 
+    // The authorship check reads the fetched copy; a push that landed since
+    // must survive the deletion (#1639).
+    it("keeps a branch that moved on GitHub since the last fetch", async () => {
+      await writeSkill("tdd", "proposed");
+      await promote(makeApp(), "tdd");
+      const tracking = "refs/remotes/origin/maestro/tdd";
+      const checked = (
+        await git(stages.root, "rev-parse", tracking)
+      ).stdout.trim();
+      const tree = (
+        await git(stages.root, "rev-parse", `${checked}^{tree}`)
+      ).stdout.trim();
+      const theirs = (
+        await git(
+          stages.root,
+          "commit-tree",
+          tree,
+          "-p",
+          checked,
+          "-m",
+          "theirs",
+        )
+      ).stdout.trim();
+      await git(
+        stages.root,
+        "push",
+        "origin",
+        `${theirs}:refs/heads/maestro/tdd`,
+      );
+      await git(stages.root, "update-ref", tracking, checked);
+
+      expect(await adapter().deleteProposalBranch(stages.root, tdd)).toBe(
+        "failed",
+      );
+      const remote = await git(
+        stages.remote,
+        "rev-parse",
+        "refs/heads/maestro/tdd",
+      );
+      expect(remote.stdout.trim()).toBe(theirs);
+    });
+
     it("counts a branch already gone as deleted", async () => {
       expect(await adapter().deleteProposalBranch(stages.root, tdd)).toBe(
         "deleted",
