@@ -59,6 +59,8 @@ export function rowItems(
   row: HarnessStageRow,
   handlers: RowActionHandlers,
   enabled: boolean,
+  // Edit prompt writes the clone alone, so the remote's silence never closes it.
+  editEnabled: boolean,
   // Its own gate: `enabled` closes on the remote's silence, and recovery from
   // the clone's own commit must stay open exactly then (#915).
   restore: RestoreGate,
@@ -74,7 +76,7 @@ export function rowItems(
       ? [
           {
             label: EDIT_PROMPT,
-            disabled: !enabled,
+            disabled: !editEnabled,
             onSelect: () => handlers.edit(row),
           },
         ]

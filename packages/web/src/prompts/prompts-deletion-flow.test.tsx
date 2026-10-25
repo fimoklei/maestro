@@ -175,8 +175,7 @@ describe("Prompts — Delete prompt", () => {
     await userEvent.keyboard("{Escape}");
 
     const menu = await openRowMenu("PR_Review");
-    // Edit prompt stays, blocked (#1676).
-    expect(menuLabels(menu)).toEqual(["Copy prompt", "Edit prompt"]);
+    expect(menuLabels(menu)).toEqual(["Copy prompt"]);
     expect(menu.queryByRole("separator")).toBeNull();
   });
 

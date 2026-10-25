@@ -40,6 +40,7 @@ import {
 } from "./prompts-band";
 import {
   DISPLAY_OPTIONS,
+  type PromptItem,
   type PromptRow,
   promptsColumns,
   type RowAction,
@@ -160,19 +161,17 @@ export function PromptsView({
         });
   const copy = (prompt: InventoryPrompt) =>
     copyWrite.run(prompt, { onError: () => screen.open(prompt.name) });
-  // Columns built once: rebuilt cells would drop the focus ⋮ gets back.
-  const act = (prompt: InventoryPrompt, action: RowAction) => {
-    if (action === "copy") {
-      copy(prompt);
-      return;
-    }
-    if (action === "edit") {
-      edit(prompt.name);
-      return;
-    }
-    screen.open(prompt.name);
-    setDeletion(deletionOf(clone, prompt.name));
+  const run: Record<RowAction, (prompt: InventoryPrompt) => void> = {
+    copy,
+    edit: (prompt) => edit(prompt.name),
+    delete: (prompt) => {
+      screen.open(prompt.name);
+      setDeletion(deletionOf(clone, prompt.name));
+    },
   };
+  // Columns built once: rebuilt cells would drop the focus ⋮ gets back.
+  const act = (prompt: InventoryPrompt, action: RowAction) =>
+    run[action](prompt);
   const actRef = useRef(act);
   actRef.current = act;
 
@@ -180,24 +179,22 @@ export function PromptsView({
   // A hover card dates the reading it states.
   const readAge = useFreshnessLine(freshness);
   const all = prompts ?? [];
-  const rows: PromptRow[] = all.map((prompt) => ({
-    ...prompt,
-    actions: [
-      { action: "copy", label: COPY_PROMPT },
-      // Blocked, not omitted (#1640): the pane's name warning or Pending
-      // release fact says what comes first.
-      {
-        action: "edit",
-        label: EDIT_PROMPT,
-        disabled: !prompt.nameValid || leavesDefaultBranch(prompt),
-      },
-      // Every write refuses a bad name: the pane's warning says to rename it.
-      ...(prompt.nameValid
-        ? deleteItem(clone, prompt.name, DELETE_PROMPT)
-        : []),
-    ],
-    readAge,
-  }));
+  const rows: PromptRow[] = all.map((prompt) => {
+    // The pane's name warning or Pending release fact says what comes first.
+    const editable = prompt.nameValid && !leavesDefaultBranch(prompt);
+    const copyItem: PromptItem = { action: "copy", label: COPY_PROMPT };
+    const editItem: PromptItem = { action: "edit", label: EDIT_PROMPT };
+    // Every write refuses a bad name: the pane's warning says to rename it.
+    const deleteItems: PromptItem[] = prompt.nameValid
+      ? deleteItem(clone, prompt.name, DELETE_PROMPT)
+      : [];
+    return {
+      ...prompt,
+      menu: [copyItem, ...(editable ? [editItem] : []), ...deleteItems],
+      foot: [copyItem, { ...editItem, disabled: !editable }, ...deleteItems],
+      readAge,
+    };
+  });
 
   const view = useViewOptions(rows, {
     kind: {
@@ -301,13 +298,9 @@ export function PromptsView({
               copyRefused={copyRefusedFor === row.name}
               readRefusal={readNotice(row.name)}
               onCopy={() => copy(row)}
-              footItems={row.actions.map(({ action, ...item }) => ({
+              footItems={row.foot.map(({ action, ...item }) => ({
                 ...item,
-                onSelect: () => {
-                  if (action === "copy") copy(row);
-                  else if (action === "edit") edit(row.name);
-                  else setDeletion(deletionOf(clone, row.name));
-                },
+                onSelect: () => run[action](row),
               }))}
               {...frame}
               // A dialog the row's ⋮ opened holds focus itself.

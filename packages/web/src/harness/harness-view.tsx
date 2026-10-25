@@ -45,6 +45,7 @@ import {
   type StageSection,
   stageSections,
 } from "./harness-view-model";
+import { harnessPromptReadNotice } from "./import-prompt-copy";
 import {
   harnessStateNotice,
   publishReleaseNotice,
@@ -167,9 +168,16 @@ export function HarnessView({
   });
   const handlers: RowActionHandlers = {
     ...presses.handlers,
-    // Only a row on disk offers Edit prompt, so its read finds the file.
-    edit: (row) => editFlow.start(row.name, () => {}),
+    // A read that finds nothing opens no dialog; the row's pane says why.
+    edit: (row) => editFlow.start(row.name, () => open(rowId(row))),
   };
+  const readRefusal = editFlow.readRefusal;
+  const readNotice = (row: HarnessTableRow) =>
+    readRefusal === null ||
+    row.type !== "prompt" ||
+    readRefusal.name !== row.name
+      ? null
+      : harnessPromptReadNotice(readRefusal.error);
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -235,6 +243,12 @@ export function HarnessView({
     !harness.isFetching &&
     presses.deleteLocal.isPending === false &&
     presses.discard.isPending === false;
+  // No other Harness write runs: each takes the lock an edit needs.
+  const writesIdle =
+    localSettled &&
+    presses.promote.isPending === false &&
+    presses.proposalAction.isPending === false &&
+    presses.restore.isPending === false;
   const sections = state === undefined ? [] : stageSections(state);
   const rows: HarnessTableRow[] =
     state === undefined
@@ -257,6 +271,7 @@ export function HarnessView({
                       localSettled &&
                       presses.promote.isPending === false &&
                       presses.proposalAction.isPending === false,
+                    writesIdle,
                     // Recovery reads the clone alone, so the remote's silence
                     // never closes it (#915).
                     {
@@ -428,7 +443,7 @@ export function HarnessView({
         <StageDetailPane
           row={row}
           context={context}
-          failure={failure?.id === row.id ? failure.notice : null}
+          failure={failure?.id === row.id ? failure.notice : readNotice(row)}
           {...frame}
         />
       )}

@@ -416,23 +416,38 @@ describe("Prompts — Edit prompt refusals", () => {
         },
       },
     ],
-  ] as const)("blocks Edit prompt for %s", async (_, over) => {
-    const prompt = { ...PR_REVIEW, ...over };
-    const { reads } = stubServer({ prompts: [prompt] });
-    renderPrompts();
-    await userEvent.click(
-      await screen.findByRole("button", {
-        name: `Actions for ${prompt.name}`,
-      }),
-    );
-    const item = within(await screen.findByRole("menu")).getByRole("menuitem", {
-      name: "Edit prompt",
-    });
+  ] as const)(
+    "omits Edit prompt from the menu and blocks it in the pane for %s",
+    async (_, over) => {
+      const prompt = { ...PR_REVIEW, ...over };
+      const { reads } = stubServer({ prompts: [prompt] });
+      renderPrompts();
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: `Actions for ${prompt.name}`,
+        }),
+      );
+      const menu = within(await screen.findByRole("menu"));
+      expect(
+        menu.getByRole("menuitem", { name: "Copy prompt" }),
+      ).toBeInTheDocument();
+      expect(menu.queryByRole("menuitem", { name: "Edit prompt" })).toBeNull();
+      await userEvent.keyboard("{Escape}");
 
-    expect(item).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(item);
-    expect(reads).toEqual([]);
-  });
+      await userEvent.click(
+        await screen.findByText(prompt.name, { selector: "td *" }),
+      );
+      const pane = within(
+        await screen.findByRole("complementary", {
+          name: `${prompt.name} detail`,
+        }),
+      );
+      const button = pane.getByRole("button", { name: "Edit prompt" });
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      await userEvent.click(button);
+      expect(reads).toEqual([]);
+    },
+  );
 
   it.each([
     [

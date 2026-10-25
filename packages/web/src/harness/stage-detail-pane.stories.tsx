@@ -112,6 +112,7 @@ const withMenu = (row: ReturnType<typeof stageRow>) =>
         edit: noop,
       },
       true,
+      true,
       { enabled: true, commit: "local-head" },
       null,
     ),

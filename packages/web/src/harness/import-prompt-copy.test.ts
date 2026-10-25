@@ -7,6 +7,7 @@ import {
   CHOOSE_FILE_HINT,
   editPromptNotice,
   editPromptTitle,
+  harnessPromptReadNotice,
   importPromptNotice,
   longTextNotice,
   NOT_TEXT_FILE_NOTICE,
@@ -238,6 +239,15 @@ describe("Edit prompt refusal copy", () => {
         screen: "harness",
       }),
     ).toEqual(importPromptNotice(refusal("write-failed"), "Edit prompt"));
+  });
+
+  it("states a read on the Harness screen that found no file", () => {
+    expect(harnessPromptReadNotice(refusal("prompt-missing"))).toEqual({
+      level: "error",
+      label: "Prompt not in your clone",
+      message:
+        "Nothing was edited. Select Re-read Harness, then select Restore prompt.",
+    });
   });
 
   it.each([

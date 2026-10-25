@@ -198,6 +198,18 @@ export const editPromptNotice = (
   return importPromptNotice(error, EDIT_PROMPT);
 };
 
+/** A read on the Harness screen that opened no dialog. */
+export const harnessPromptReadNotice = (
+  error: unknown,
+): NoticeContent | null =>
+  refusedWith(error, "prompt-missing")
+    ? {
+        level: "error",
+        label: NOT_IN_CLONE,
+        message: `${outcomeWords(EDIT_PROMPT).nothing} ${RESTORE_STEP.harness}`,
+      }
+    : importPromptNotice(error, EDIT_PROMPT);
+
 /** A read on the Prompts screen that opened no dialog. */
 export const promptReadNotice = (
   error: unknown,

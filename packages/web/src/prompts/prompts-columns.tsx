@@ -10,15 +10,19 @@ import { NAME_NOT_VALID, NAME_RULE } from "./prompts-copy";
 
 export type RowAction = "copy" | "edit" | "delete";
 
-/** One Prompts row: the released prompt, its ⋮ items and the read age its hover card ends with. */
+export type PromptItem = {
+  action: RowAction;
+  label: string;
+  danger?: boolean;
+  disabled?: boolean;
+};
+
+/** One Prompts row: the released prompt, its ⋮ and pane foot items and the read age its hover card ends with. */
 export type PromptRow = InventoryPrompt & {
-  /** The ⋮ menu's items, in order; the pane's foot holds the same ones. */
-  actions: {
-    action: RowAction;
-    label: string;
-    danger?: boolean;
-    disabled?: boolean;
-  }[];
+  /** The ⋮ menu's items, in order. */
+  menu: PromptItem[];
+  /** The pane foot's items, in ⋮ order; it blocks an item the menu omits. */
+  foot: PromptItem[];
   readAge: string | null;
 };
 
@@ -64,7 +68,7 @@ export const promptsColumns = ({
       cell: ({ row }) => (
         <RowMenu
           label={rowActionsLabel(row.original.name)}
-          items={row.original.actions.map(({ action, ...item }) => ({
+          items={row.original.menu.map(({ action, ...item }) => ({
             ...item,
             movesFocus: false,
             onSelect: () => onAction(row.original, action),

@@ -3,7 +3,7 @@ import type { PromptFile } from "@maestro/core/prompt-file";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
 import {
   harnessRegion,
   openRowMenu,
@@ -45,14 +45,21 @@ const STAGE_TITLE = {
   "pending-release": "Pending release",
 } as const;
 
-function stubServer(before: HarnessState, after: HarnessState = before) {
+function stubServer(
+  before: HarnessState,
+  after: HarnessState = before,
+  /** The read's refusal code, with its HTTP status. */
+  readRefusal?: [string, number],
+) {
   const edits: unknown[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === "/api/harness/prompt/read") {
-        return jsonResponse(WORKING);
+        return readRefusal === undefined
+          ? jsonResponse(WORKING)
+          : jsonResponse({ error: readRefusal[0] }, readRefusal[1]);
       }
       if (url === "/api/harness/prompt/edit") {
         edits.push(JSON.parse(String(init?.body)));
@@ -299,4 +306,75 @@ describe("Harness — Edit prompt", () => {
       within(pane).getByRole("button", { name: "Update proposal" }),
     ).toBeInTheDocument();
   });
+
+  it("states a read that finds no file in the row's pane and opens no dialog", async () => {
+    const proposal = withStages(FETCHED, {
+      proposal: [prompt("pending-proposal", "not-yet-proposed")],
+    });
+    stubServer(proposal, proposal, ["prompt-missing", 404]);
+    await render();
+    const menu = await openRowMenu("pr-review", "Pending proposal", "prompt");
+
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: "Edit prompt" }),
+    );
+
+    const pane = within(
+      await screen.findByRole("complementary", { name: "pr-review detail" }),
+    );
+    expect(
+      await pane.findByText("Prompt not in your clone"),
+    ).toBeInTheDocument();
+    expect(
+      pane.getByText(
+        sentence(
+          "Nothing was edited. Select Re-read Harness, then select Restore prompt.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("states another refused read in the Import prompt words", async () => {
+    const proposal = withStages(FETCHED, {
+      proposal: [prompt("pending-proposal", "not-yet-proposed")],
+    });
+    stubServer(proposal, proposal, ["import-in-progress", 409]);
+    await render();
+    const pane = within(await openPane());
+
+    await userEvent.click(pane.getByRole("button", { name: "Edit prompt" }));
+
+    expect(await pane.findByText("Harness busy")).toBeInTheDocument();
+    expect(
+      pane.getByText(
+        sentence(
+          "Wait for that change to finish, then select Edit prompt again.",
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it.each(["offline", "fetch-failed"] as const)(
+    "keeps Edit prompt open while the remote read is %s, as the edit writes only the clone",
+    async (outcome) => {
+      const unreached = withStages(
+        {
+          ...FETCHED,
+          freshness: { outcome, lastFetchedAt: null },
+        },
+        { proposal: [prompt("pending-proposal", "not-yet-proposed")] },
+      );
+      stubServer(unreached);
+      await render();
+      const menu = await openRowMenu("pr-review", "Pending proposal", "prompt");
+
+      const item = within(menu).getByRole("menuitem", { name: "Edit prompt" });
+      expect(item).not.toHaveAttribute("aria-disabled", "true");
+      await userEvent.click(item);
+      expect(
+        await screen.findByRole("dialog", { name: "Edit pr-review" }),
+      ).toBeInTheDocument();
+    },
+  );
 });
