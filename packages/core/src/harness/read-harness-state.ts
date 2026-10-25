@@ -9,6 +9,7 @@ import type {
 import { primitiveKey } from "./harness-primitive";
 import type { HarnessReviewPort, ViewerRead } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
+import { type LatestRelease, readLatestRelease } from "./latest-release";
 import type { ProposalKind } from "./proposal-request";
 import {
   proposeReleaseVersion,
@@ -20,7 +21,6 @@ import {
   readReleaseDelta,
 } from "./release-delta";
 import { type ReleaseBlock, readReleaseReadiness } from "./release-readiness";
-import { highestReleaseTag } from "./release-tag";
 import type { HarnessSkillTree } from "./released-content";
 import {
   type StructuralFinding,
@@ -297,11 +297,16 @@ export class ReadHarnessState {
   // A refused publication recomputes here against the root it already holds,
   // never a harness connected while its push was in flight (#521).
   async planReleaseAt(root: string): Promise<ReleasePlanResult> {
-    const freshness = await this.deps.freshness.read(root);
+    const { facts, latest } = await readLatestRelease(
+      this.deps.git,
+      this.deps.freshness,
+      root,
+    );
     const ready = await readReleaseReadiness(
       this.deps.git,
       root,
-      freshness.lastFetchedAt !== null,
+      facts,
+      latest,
     );
     if (!ready.ok) {
       return ready;
@@ -355,22 +360,22 @@ export class ReadHarnessState {
   }
 
   private async stateFor(root: string): Promise<HarnessStateResult> {
-    const facts = await this.deps.git.readFacts(root);
-    const freshness = await this.deps.freshness.read(root);
+    const { facts, freshness, latest } = await readLatestRelease(
+      this.deps.git,
+      this.deps.freshness,
+      root,
+    );
     const origin =
       facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
     if (origin === null) {
       return { ok: false, error: "no-usable-origin" };
     }
 
-    // Before a successful fetch the tag list says nothing, never "no release exists".
-    const confirmed = freshness.lastFetchedAt !== null;
-    const tags = confirmed ? facts.tags : null;
-    const released = tags === null ? null : highestReleaseTag(tags);
+    const released = latest.known ? latest.tag : null;
     const head = facts.defaultBranchCommit;
     // A delta nobody could compute is null, never empty.
     const delta: ReleaseDelta | null =
-      tags !== null && head !== null
+      latest.known && head !== null
         ? await readReleaseDelta(this.deps.git, root, released, head)
         : null;
     const movements = delta?.movements ?? null;
@@ -392,8 +397,8 @@ export class ReadHarnessState {
         releasedVersion: released?.name ?? null,
         defaultBranch: facts.defaultBranch,
         releaseState:
-          tags !== null && movements !== null && trees !== null
-            ? releaseState(released, head, movements)
+          movements !== null && trees !== null
+            ? releaseState(latest, head, movements)
             : "unknown",
         freshness,
         cloneSync: await this.deps.git.readCloneSync(root),
@@ -433,14 +438,14 @@ export class ReadHarnessState {
 
 // Must match the Pending release stage, so the summary never claims work the stage does not list (#845).
 const releaseState = (
-  released: HarnessTag | null,
+  latest: LatestRelease,
   defaultBranchCommit: string | null,
   movements: PendingMovement[],
 ): HarnessReleaseState => {
-  if (defaultBranchCommit === null) {
+  if (!latest.known || defaultBranchCommit === null) {
     return "unknown";
   }
-  if (released === null) {
+  if (latest.tag === null) {
     return "never-released";
   }
   return movements.length === 0 ? "released" : "pending-release";
