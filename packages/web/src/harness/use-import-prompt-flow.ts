@@ -2,8 +2,7 @@ import type { ImportMode, ImportPromptSuccess } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
-  type PromptFieldProblem,
-  promptFieldProblems,
+  promptDraftProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
@@ -11,14 +10,13 @@ import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { proposalRow } from "./harness-route";
 import {
   importPromptNotice,
-  isFieldError,
   longTextNotice,
   NOT_TEXT_FILE_NOTICE,
-  PROMPT_FIELD_ERRORS,
   PROMPT_IMPORT_MODES,
   PROMPT_TAKEN_NOTICE,
   type PromptSource,
 } from "./import-prompt-copy";
+import { promptFieldErrors } from "./prompt-field-errors";
 import { useImportPrompt, useImportPromptCheck } from "./use-harness";
 
 const importedRow = ({ name }: ImportPromptSuccess) =>
@@ -30,32 +28,6 @@ const EMPTY: PromptDraft = {
   description: "",
   text: "",
 };
-
-const PROBLEM_FIELD: Record<
-  keyof typeof PROMPT_FIELD_ERRORS,
-  keyof PromptDraft
-> = {
-  "empty-name": "name",
-  "invalid-name": "name",
-  "empty-description": "description",
-  "multiline-description": "description",
-  "long-description": "description",
-  "empty-text": "text",
-};
-
-export type PromptFieldErrors = Partial<Record<keyof PromptDraft, string>>;
-
-/** Each field's first broken rule, as its error line states it. */
-export function promptFieldErrors(
-  problems: readonly PromptFieldProblem[],
-): PromptFieldErrors {
-  const errors: PromptFieldErrors = {};
-  for (const problem of problems) {
-    if (!isFieldError(problem)) continue;
-    errors[PROBLEM_FIELD[problem]] ??= PROMPT_FIELD_ERRORS[problem];
-  }
-  return errors;
-}
 
 /** The file last chosen, as the Choose file tab shows it. */
 export type ChosenFile = { name: string; bytes: number; isText: boolean };
@@ -100,7 +72,7 @@ export function useImportPromptFlow(
     failure: (error) => importPromptNotice(error, confirm),
   });
 
-  const problems = promptFieldProblems(draft);
+  const problems = promptDraftProblems(draft);
   const fieldErrors = submitted ? promptFieldErrors(problems) : {};
   const tooLong = submitted && problems.includes("long-text");
   const failure: NoticeContent | null = tooLong
@@ -117,9 +89,14 @@ export function useImportPromptFlow(
     importPrompt.reset();
   };
 
+  // A pasted front matter block lives only as long as the text it came with.
   const edit = (change: Partial<PromptDraft>) => {
     importPrompt.reset();
-    setDraft((current) => ({ ...current, ...change }));
+    setDraft((current) => ({
+      ...current,
+      ...change,
+      ...(change.text === "" ? { frontmatter: "" } : {}),
+    }));
   };
 
   return {
@@ -155,15 +132,25 @@ export function useImportPromptFlow(
     // Left with an invalid name, the check states no error: submit does.
     checkName: () => setCheckedName(draft.name === "" ? null : draft.name),
     // A pasted front matter block leaves the text and travels with the
-    // draft, its description in the field; text without one pastes as it is. False leaves the paste alone.
-    // A taken-over paste is saved with LF, as the browser saves its own.
+    // draft, its description in the field; text without one pastes as it is,
+    // and over the whole text drops the block it replaces. False leaves the
+    // paste alone. A taken-over paste is saved with LF, as the browser saves
+    // its own.
     paste: (field: PasteTarget, pasted: string): boolean => {
       const next =
         field.value.slice(0, field.selectionStart) +
         pasted.replace(/\r\n?/g, "\n") +
         field.value.slice(field.selectionEnd);
       const drafted = draftPrompt(next, null);
-      if (drafted.text === next) return false;
+      if (drafted.text === next) {
+        if (
+          field.selectionStart === 0 &&
+          field.selectionEnd === field.value.length
+        ) {
+          edit({ frontmatter: "" });
+        }
+        return false;
+      }
       edit({
         frontmatter: drafted.frontmatter,
         text: drafted.text,

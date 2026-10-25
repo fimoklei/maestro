@@ -198,6 +198,54 @@ describe("Harness import prompt flow", () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    [
+      "a paste over the whole text",
+      async (user: ReturnType<typeof userEvent.setup>, text: HTMLElement) => {
+        await user.click(text);
+        await user.keyboard("{Control>}a{/Control}");
+        await user.paste("Read the diff.");
+      },
+    ],
+    [
+      "clearing the text, then typing",
+      async (user: ReturnType<typeof userEvent.setup>, text: HTMLElement) => {
+        await user.clear(text);
+        await user.type(text, "Read the diff.");
+      },
+    ],
+  ])(
+    "drops the pasted front matter after %s without one",
+    async (_, replace) => {
+      const { imports } = stubPromptServer({});
+      const user = userEvent.setup();
+      renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+      const dialog = await openImportPrompt(user);
+      const text = field(dialog, "Prompt text");
+      await user.click(text);
+      await user.paste(PASTED);
+      await replace(user, text);
+      expect(text).toHaveValue("Read the diff.");
+
+      await user.type(field(dialog, "Name"), "review-pr");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Import prompt" }),
+      );
+
+      await waitFor(() =>
+        expect(imports).toEqual([
+          {
+            name: "review-pr",
+            frontmatter: "",
+            description: "Review the open pull request",
+            text: "Read the diff.",
+          },
+        ]),
+      );
+    },
+  );
+
   it("imports pasted text, moving its description out of the text", async () => {
     const { imports } = stubPromptServer({});
     const user = userEvent.setup();
@@ -311,6 +359,27 @@ describe("Harness import prompt flow", () => {
       within(dialog).getByText(
         "Shorten the text to 100 KB or less. Then select Import prompt.",
       ),
+    ).toBeInTheDocument();
+    expect(calls.filter((call) => call.includes("/prompt/import"))).toEqual([]);
+  });
+
+  it("refuses a pasted front matter and text past 100 KB together without a request", async () => {
+    const { calls } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.click(field(dialog, "Prompt text"));
+    await user.paste(
+      `---\ndescription: Review\nnotes: ${"n".repeat(60_000)}\n---\n${"t".repeat(60_000)}`,
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    );
+
+    expect(
+      await within(dialog).findByText("Prompt over 100 KB"),
     ).toBeInTheDocument();
     expect(calls.filter((call) => call.includes("/prompt/import"))).toEqual([]);
   });

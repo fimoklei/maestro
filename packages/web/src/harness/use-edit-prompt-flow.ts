@@ -13,14 +13,16 @@ import {
   longTextNotice,
   NOTHING_CHANGED,
 } from "./import-prompt-copy";
+import { promptFieldErrors } from "./prompt-field-errors";
 import { useEditPrompt, useReadPrompt } from "./use-harness";
-import { promptFieldErrors } from "./use-import-prompt-flow";
 
 // A browser text field holds LF only, so the read is compared as it shows.
 const lf = (text: string) => text.replace(/\r\n?/g, "\n");
 
 /** The prompt the dialog edits, as the Working Harness gave it. */
 type Opened = { name: string; read: PromptFile };
+
+export type EditPromptFlow = ReturnType<typeof useEditPromptFlow>;
 
 // Edit prompt's UI-state: the read that opened it, the two fields, and
 // whether a submit has judged them.

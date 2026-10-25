@@ -22,10 +22,8 @@ import {
   PROMPT_SOURCES,
   type PromptSource,
 } from "./import-prompt-copy";
-import type {
-  ImportPromptFlow,
-  PromptFieldErrors,
-} from "./use-import-prompt-flow";
+import type { PromptFieldErrors } from "./prompt-field-errors";
+import type { ImportPromptFlow } from "./use-import-prompt-flow";
 
 // What both modes read: the two fields every prompt has, and the run.
 type PromptDialogBase = {
