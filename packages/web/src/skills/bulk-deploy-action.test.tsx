@@ -1,3 +1,4 @@
+import type { BulkDeployReport } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -241,6 +242,41 @@ describe("BulkDeployAction", () => {
       "Linked skill folder" +
         "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again." +
         "This removes the link only. The folder it points at remains on disk.",
+    );
+  });
+
+  it("names in a held row the skill whose copy its Deploy again replaces", async () => {
+    const held = (name: string, holder: string) => ({
+      name,
+      error: "deployed-diverged-from-lock" as const,
+      forceable: true,
+      copyReceipt: "c".repeat(64),
+      blockingCopies: [{ name: holder, verdict: "local-edits" as const }],
+    });
+    stubReads({
+      target: { kind: "global" },
+      deployed: [],
+      attention: [held("tdd", "docs"), held("review", "review")],
+      failed: [],
+    } satisfies BulkDeployReport);
+    renderWithQuery(
+      <BulkDeployAction
+        stagedNames={["tdd", "review"]}
+        repos={[]}
+        registryReady
+        onSelectionSpent={() => {}}
+      />,
+    );
+
+    const dialog = await deploy();
+    await within(dialog).findByRole("heading", { level: 3 });
+    const [tdd, review] = within(dialog).getAllByRole("listitem");
+
+    expect(tdd).toHaveTextContent(
+      "docs has local edits. Select Deploy tdd again to replace its edits with the latest release.",
+    );
+    expect(review).toHaveTextContent(
+      "Deploy this skill again to replace the local edits with the latest release.",
     );
   });
 

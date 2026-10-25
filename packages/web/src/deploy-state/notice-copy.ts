@@ -1,4 +1,5 @@
 import type {
+  BulkDeployReport,
   DeploySkillError,
   PendingOperation,
   RemoveDeployedSkillError,
@@ -13,13 +14,14 @@ import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import {
   CREATE_RELEASE,
   DEPLOY_SKILL,
+  deployAgainLabel,
   REMOVE_SKILL,
   rereadLabel,
   UPDATE_TARGET,
 } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
-import { machine, phrase } from "../ui/phrase";
+import { machine, namedList, phrase } from "../ui/phrase";
 import { REGISTER_STEP } from "./deploy-state-copy";
 import { REASON, type ReasonCode, TARGET_BUSY } from "./reason-copy";
 import {
@@ -55,6 +57,9 @@ const removeLink = (path: string, again: string) =>
 const DELETE_LINKED_FOLDER = deleteLinkedFolder(DEPLOY_AGAIN);
 
 const EDITS_OUTSIDE_HARNESS = "The edits never went through the Harness.";
+
+const COPY_PREDATES_TRACKING =
+  "This copy predates content tracking, so any change in it is invisible.";
 
 const COPIES_PREDATE_TRACKING =
   "These copies predate content tracking, so any change in them is invisible.";
@@ -120,8 +125,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "deployed-unverifiable": {
     message:
       "Deploy this skill again to replace this copy with the latest release.",
-    detail:
-      "This copy predates content tracking, so any change in it is invisible.",
+    detail: COPY_PREDATES_TRACKING,
   },
   "deployed-unreadable": {
     message:
@@ -430,6 +434,43 @@ export function deployNoticeFor(
   return code === "destination-symlinked" && linkedPath !== undefined
     ? withRm(notice, linkedPath, DEPLOY_AGAIN)
     : notice;
+}
+
+/** A held bulk deploy row, naming each skill whose copy its Deploy again replaces. */
+export function deployAttentionNotice(
+  row: BulkDeployReport["attention"][number],
+): DeployStateNotice {
+  const notice = deployNoticeFor(row.error, undefined);
+  const copies = row.blockingCopies ?? [];
+  if (copies.every((copy) => copy.name === row.name)) {
+    return notice;
+  }
+  const edited = copies
+    .filter((copy) => copy.verdict === "local-edits")
+    .map((copy) => copy.name);
+  const unverified = copies
+    .filter((copy) => copy.verdict === "unverified")
+    .map((copy) => copy.name);
+  const select = `Select ${deployAgainLabel(row.name)}`;
+  if (unverified.length === 0) {
+    const one = edited.length === 1;
+    return {
+      ...notice,
+      message: phrase`${namedList(edited)} ${one ? "has" : "have"} local edits. ${select} to replace ${one ? "its" : "their"} edits with the latest release.`,
+    };
+  }
+  if (edited.length === 0) {
+    const one = unverified.length === 1;
+    return {
+      ...notice,
+      message: phrase`${namedList(unverified)} ${one ? "is" : "are"} unverified. ${select} to replace ${one ? "its copy" : "their copies"} with the latest release.`,
+      detail: one ? COPY_PREDATES_TRACKING : COPIES_PREDATE_TRACKING,
+    };
+  }
+  return {
+    ...notice,
+    message: phrase`${namedList(edited)} ${edited.length === 1 ? "has" : "have"} local edits. ${namedList(unverified)} ${unverified.length === 1 ? "is" : "are"} unverified. ${select} to replace their copies with the latest release.`,
+  };
 }
 
 /** The whole notice for a refused or failed deploy. */

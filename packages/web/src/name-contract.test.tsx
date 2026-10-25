@@ -22,6 +22,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`${name} still incomplete`": "notice heading",
     "`${name} outcome unknown`": "notice heading",
     "`${name} timed out`": "notice heading",
+    "`Select ${deployAgainLabel(row.name)}`": "button label",
   },
   "deploy-state/remove-ledger-rows.ts": {
     "`target:${name}`": "key",
@@ -85,6 +86,8 @@ const PLAIN: Record<string, Record<string, string>> = {
   "skills/bulk-deploy-action.tsx": {
     '`Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`':
       "report heading",
+  },
+  "ui/control-labels.ts": {
     "`Deploy ${name} again`": "button label",
   },
   "connect-gate/connect-gate-copy.ts": {
