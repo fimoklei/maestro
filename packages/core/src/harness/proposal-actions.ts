@@ -1,17 +1,11 @@
 // The three proposal mutations, each rechecked against a fresh read.
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
-import type { FileSystemPort } from "../registry/file-system";
 import {
   type HarnessObject,
   type PrimitiveRef,
   proposalBranch,
 } from "./harness-primitive";
-import {
-  ensureHarnessPrimitiveDir,
-  inspectPrimitiveEntry,
-  type PrimitiveEntryFs,
-} from "./harness-primitive-dir";
 import {
   type HarnessReviewPort,
   isOthers,
@@ -107,7 +101,7 @@ export class ProposalActions {
       | "readAuthoredHere"
     >;
     review: HarnessReviewPort;
-    fs: PrimitiveEntryFs & Pick<FileSystemPort, "ensureDir">;
+    fs: ReplaceDeps["fs"];
     copyFs: ReplaceDeps["copyFs"];
     // Shared with every write to the Working Harness.
     locks: InFlightLocks;
@@ -270,44 +264,19 @@ export class ProposalActions {
         return { ok: false, error: AUTHORSHIP_ERROR[authorship] };
       }
     }
-    const held = atHead.some(
-      (object) => object.type === ref.type && object.name === ref.name,
-    );
-    let entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
-    // A deleted last item takes its type folder with it; bringing it back
-    // needs the folder again.
-    if (entry.kind === "unreadable" && held) {
-      const made = await ensureHarnessPrimitiveDir(
-        this.deps.fs,
-        root,
-        ref.type,
-      );
-      if (!made.ok) {
-        return {
-          ok: false,
-          error:
-            made.reason === "outside-root"
-              ? "destination-unsafe"
-              : "destination-unreadable",
-        };
-      }
-      entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
-    }
-    if (entry.kind === "unsafe") {
-      return { ok: false, error: "destination-unsafe" };
-    }
-    if (entry.kind === "unreadable") {
-      return { ok: false, error: "destination-unreadable" };
-    }
-
     const replaced = await replaceFromCommit(this.deps, {
       root,
-      ref,
       commit: checked.head,
-      entry,
-      held,
+      atCommit: atHead,
+      refs: [ref],
     });
-    if (!replaced) {
+    if (
+      replaced === "destination-unsafe" ||
+      replaced === "destination-unreadable"
+    ) {
+      return { ok: false, error: replaced };
+    }
+    if (replaced === "failed") {
       return { ok: false, error: "replace-failed" };
     }
     if (number !== null) {

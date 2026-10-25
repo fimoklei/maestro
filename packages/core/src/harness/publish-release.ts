@@ -1,5 +1,6 @@
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
+import { latestReleaseOf } from "./latest-release";
 import {
   proposeReleaseVersion,
   type SemverStep,
@@ -69,10 +70,13 @@ export class PublishRelease {
   ): Promise<PublishReleaseResult> {
     const outcome = await this.deps.fetchGate.fetchFresh(root);
 
+    const facts = await this.deps.git.readFacts(root);
+    // Only this fetch confirms the tags: an older one may predate a teammate's release.
     const read = await readReleaseReadiness(
       this.deps.git,
       root,
-      outcome === "fetched",
+      facts,
+      latestReleaseOf(facts.tags, outcome === "fetched"),
     );
     if (!read.ok) {
       return read;
