@@ -1,3 +1,4 @@
+import type { HarnessState } from "@maestro/core";
 import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import type { HarnessArrival } from "../harness/harness-route";
@@ -10,6 +11,17 @@ import { useRereadInventory } from "../shell/use-reread-inventory";
 import { queryReading } from "../ui/freshness";
 import type { WriteResult } from "../ui/use-write-action";
 import { PromptsView } from "./prompts-view";
+
+// The prompts whose deletion in the clone Restore prompt can undo.
+const restorablePrompts = (
+  state: HarnessState | undefined,
+): ReadonlySet<string> =>
+  new Set(
+    Object.values(state?.stages ?? {})
+      .flatMap((stage) => (stage.outcome === "read" ? stage.rows : []))
+      .filter((row) => row.type === "prompt" && row.restorable)
+      .map((row) => row.name),
+  );
 
 // Container: wires the Inventory and Harness reads to the presentational view.
 export function PromptsPanel() {
@@ -59,6 +71,7 @@ export function PromptsPanel() {
       onReread={invalidate}
       onOpenHarness={() => navigate("/harness")}
       clone={cloneReading(harness, check, "prompt")}
+      localDeletions={restorablePrompts(harness.data)}
       // The work lands on the Harness view, as Delete skill's does (#1385).
       onDeleted={landOnHarness}
       onEdited={landOnHarness}

@@ -377,6 +377,12 @@ const IN_HARNESS = (raw: string) => ({
   directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
   files: { [`${PROMPTS}/review-pr.md`]: raw },
 });
+const IN_FOLDER = { directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS } };
+const LINKED = (raw: string) => ({
+  directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
+  files: { [`${PROMPTS}/other.md`]: raw },
+  fileSymlinks: { [`${PROMPTS}/review-pr.md`]: `${PROMPTS}/other.md` },
+});
 
 describe("ImportPrompt.read", () => {
   it("returns the working file's description and prompt text, placeholders kept", async () => {
@@ -414,6 +420,33 @@ describe("ImportPrompt.read", () => {
       });
     },
   );
+
+  it("refuses a prompt whose file is gone", async () => {
+    const { importPrompt } = build({ seed: IN_FOLDER });
+
+    await expect(importPrompt.read("review-pr")).resolves.toEqual({
+      ok: false,
+      error: "prompt-missing",
+    });
+  });
+
+  it("refuses a name that is not valid", async () => {
+    const { importPrompt } = build({ seed: IN_HARNESS("Review it.\n") });
+
+    await expect(importPrompt.read("Review PR")).resolves.toEqual({
+      ok: false,
+      error: "invalid-name",
+    });
+  });
+
+  it("refuses a prompt file that is a link without reading through it", async () => {
+    const { importPrompt } = build({ seed: LINKED("Review it.\n") });
+
+    await expect(importPrompt.read("review-pr")).resolves.toEqual({
+      ok: false,
+      error: "destination-unsafe",
+    });
+  });
 
   it("reads a folded description as one line", async () => {
     const { importPrompt } = build({
@@ -506,17 +539,80 @@ describe("ImportPrompt.edit", () => {
     );
   });
 
-  it("judges the fields again and writes nothing when one breaks a rule", async () => {
-    const { importPrompt, fs } = build({ seed: IN_HARNESS(RAW) });
+  const EDIT = {
+    name: "review-pr",
+    description: "Review a pull request in full",
+    text: "Review $ARGUMENTS.\n",
+    read: READ,
+  };
 
-    await expect(
-      importPrompt.edit({
-        name: "review-pr",
-        description: "Review\nmodel: opus",
-        text: "Review $ARGUMENTS.\n",
-        read: READ,
-      }),
-    ).resolves.toEqual({ ok: false, error: "multiline-description" });
+  it.each([
+    ["empty-description", { description: "  " }],
+    ["multiline-description", { description: "Review\nmodel: opus" }],
+    ["long-description", { description: "a".repeat(1025) }],
+    ["empty-text", { text: "\n" }],
+    ["long-text", { text: "a".repeat(102_401) }],
+    ["invalid-name", { name: "Review PR" }],
+  ])(
+    "judges the fields again: refuses %s and writes nothing",
+    async (error, change) => {
+      const { importPrompt, fs } = build({ seed: IN_HARNESS(RAW) });
+
+      await expect(importPrompt.edit({ ...EDIT, ...change })).resolves.toEqual({
+        ok: false,
+        error,
+      });
+      expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(RAW);
+    },
+  );
+
+  it("refuses a prompt whose file is gone, and creates none", async () => {
+    const { importPrompt, fs } = build({ seed: IN_FOLDER });
+
+    await expect(importPrompt.edit(EDIT)).resolves.toEqual({
+      ok: false,
+      error: "prompt-missing",
+    });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBeNull();
+  });
+
+  it("refuses a prompt file that is a link, writing nothing", async () => {
+    const { importPrompt, fs } = build({ seed: LINKED(RAW) });
+
+    await expect(importPrompt.edit(EDIT)).resolves.toEqual({
+      ok: false,
+      error: "destination-unsafe",
+    });
+    expect(await fs.isFileEntry(`${PROMPTS}/review-pr.md`)).toBe(false);
+    expect(await fs.readFile(`${PROMPTS}/other.md`)).toBe(RAW);
+  });
+
+  it.each([
+    ["description", { ...READ, description: "Review a PR" }],
+    ["prompt text", { ...READ, text: "Review $1.\n" }],
+    ["line endings", { ...READ, text: "Review $ARGUMENTS.\r\n" }],
+  ])(
+    "refuses a file whose %s changed since the read, writing nothing",
+    async (_, read) => {
+      const { importPrompt, fs } = build({ seed: IN_HARNESS(RAW) });
+
+      await expect(importPrompt.edit({ ...EDIT, read })).resolves.toEqual({
+        ok: false,
+        error: "prompt-changed",
+      });
+      expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(RAW);
+    },
+  );
+
+  it("refuses while another Harness change holds the lock", async () => {
+    const locks = new InFlightLocks();
+    locks.run(ROOT, () => new Promise<void>(() => {}));
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(RAW), locks });
+
+    await expect(importPrompt.edit(EDIT)).resolves.toEqual({
+      ok: false,
+      error: "import-in-progress",
+    });
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(RAW);
   });
 });

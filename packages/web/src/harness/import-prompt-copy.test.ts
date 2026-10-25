@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { readNotice } from "../test-utils";
 import { EDIT_PROMPT } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import {
   CHOOSE_FILE_HINT,
+  editPromptNotice,
   editPromptTitle,
   importPromptNotice,
   longTextNotice,
@@ -14,6 +16,7 @@ import {
   PROMPT_SOURCE_LABEL,
   PROMPT_SOURCES,
   PROMPT_TAKEN_NOTICE,
+  promptReadNotice,
 } from "./import-prompt-copy";
 
 const refusal = (code: string) => new HttpError(409, "refused", code);
@@ -182,4 +185,95 @@ describe("Edit prompt copy", () => {
       });
     },
   );
+});
+
+describe("Edit prompt refusal copy", () => {
+  const missing = new HttpError(404, "refused", "prompt-missing");
+
+  it.each([
+    [
+      "harness",
+      "Nothing was edited. Select Re-read Harness, then select Restore prompt.",
+    ],
+    [
+      "prompts",
+      "Nothing was edited. Select Harness, then select Restore prompt.",
+    ],
+  ] as const)(
+    "states a file gone on submit from the %s screen",
+    (screen, message) => {
+      expect(
+        readNotice(editPromptNotice(missing, { name: "pr-review", screen })),
+      ).toEqual({
+        level: "error",
+        label: "Prompt not in your clone",
+        message,
+        detail:
+          "Something removed the pr-review file from your clone after this dialog opened.",
+      });
+    },
+  );
+
+  it("states a file changed since the dialog opened", () => {
+    expect(
+      readNotice(
+        editPromptNotice(refusal("prompt-changed"), {
+          name: "pr-review",
+          screen: "prompts",
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Prompt out of date",
+      message:
+        "Nothing was edited. Copy your text, select Close, then select Edit prompt again.",
+      detail: "The pr-review file changed after this dialog opened.",
+    });
+  });
+
+  it("states any other refusal in the Import prompt words", () => {
+    expect(
+      editPromptNotice(refusal("write-failed"), {
+        name: "pr-review",
+        screen: "harness",
+      }),
+    ).toEqual(importPromptNotice(refusal("write-failed"), "Edit prompt"));
+  });
+
+  it.each([
+    [true, "Select Harness, then select Restore prompt."],
+    [
+      false,
+      "Pull the latest changes in your Git tool, then select Edit prompt again.",
+    ],
+  ])(
+    "states a read that found no file, local deletion %s",
+    (localDeletion, message) => {
+      expect(
+        readNotice(
+          promptReadNotice(missing, {
+            name: "pr-review",
+            origin: "github.com/fimoklei/agent-harness",
+            localDeletion,
+          }),
+        ),
+      ).toEqual({
+        level: "error",
+        label: "Prompt not in your clone",
+        message,
+        detail:
+          "pr-review is on github.com/fimoklei/agent-harness but not in your clone.",
+      });
+    },
+  );
+
+  it("leaves out the origin it could not read", () => {
+    expect(
+      promptReadNotice(missing, {
+        name: "pr-review",
+        origin: null,
+        localDeletion: false,
+      }),
+    ).not.toHaveProperty("detail");
+  });
 });

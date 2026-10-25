@@ -2,6 +2,7 @@ import type { InventoryPrompt } from "@maestro/core";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { promptReadNotice } from "../harness/import-prompt-copy";
 import { ImportPromptDialog } from "../harness/import-prompt-dialog";
 import { useEditPromptFlow } from "../harness/use-edit-prompt-flow";
 import {
@@ -54,6 +55,10 @@ import {
   SEARCH_LABEL,
 } from "./prompts-copy";
 
+// The default branch no longer holds the file under this name.
+const leavesDefaultBranch = ({ pendingRelease }: InventoryPrompt) =>
+  pendingRelease?.change === "deletion" || pendingRelease?.change === "rename";
+
 // Step 1 of Delete prompt, offered only once the clone's read holds the file.
 type Deletion = { path: string; localOnly: boolean };
 
@@ -72,6 +77,7 @@ export function PromptsView({
   onReread,
   onOpenHarness,
   clone,
+  localDeletions,
   onDeleted,
   onEdited,
 }: {
@@ -90,6 +96,8 @@ export function PromptsView({
   onOpenHarness?: () => void;
   /** Gates Delete prompt on each row. */
   clone: CloneReading;
+  /** Prompts the Harness holds a deletion of, which Restore prompt undoes. */
+  localDeletions: ReadonlySet<string>;
   /** Step 1 of a deletion landed; the next step is on the Harness view. */
   onDeleted: (prompt: string, written: WriteResult) => void;
   /** An edit landed in the Working Harness; its row is on the Harness view. */
@@ -131,8 +139,25 @@ export function PromptsView({
     failure: () => null,
   });
   // The prompt whose last copy the browser refused; its pane says so.
-  const refused = copying.isError ? (copying.variables?.name ?? null) : null;
-  const editFlow = useEditPromptFlow({ report: screen.report, onEdited });
+  const copyRefusedFor = copying.isError
+    ? (copying.variables?.name ?? null)
+    : null;
+  const editFlow = useEditPromptFlow({
+    screen: "prompts",
+    report: screen.report,
+    onEdited,
+  });
+  // A read that found nothing opens no dialog; the row's pane says why.
+  const edit = (name: string) => editFlow.start(name, () => state.open(name));
+  const readRefusal = editFlow.readRefusal;
+  const readNotice = (name: string) =>
+    readRefusal === null || readRefusal.name !== name
+      ? null
+      : promptReadNotice(readRefusal.error, {
+          name,
+          origin: harness?.origin ?? null,
+          localDeletion: localDeletions.has(name),
+        });
   const copy = (prompt: InventoryPrompt) =>
     copyWrite.run(prompt, { onError: () => screen.open(prompt.name) });
   // Columns built once: rebuilt cells would drop the focus ⋮ gets back.
@@ -142,7 +167,7 @@ export function PromptsView({
       return;
     }
     if (action === "edit") {
-      editFlow.start(prompt.name);
+      edit(prompt.name);
       return;
     }
     screen.open(prompt.name);
@@ -159,13 +184,16 @@ export function PromptsView({
     ...prompt,
     actions: [
       { action: "copy", label: COPY_PROMPT },
-      // Every write refuses a bad name, and a menu omits what only a rename
-      // unlocks: the pane's Prompt name not valid warning says to rename it.
+      // Blocked, not omitted (#1640): the pane's name warning or Pending
+      // release fact says what comes first.
+      {
+        action: "edit",
+        label: EDIT_PROMPT,
+        disabled: !prompt.nameValid || leavesDefaultBranch(prompt),
+      },
+      // Every write refuses a bad name: the pane's warning says to rename it.
       ...(prompt.nameValid
-        ? [
-            { action: "edit" as const, label: EDIT_PROMPT },
-            ...deleteItem(clone, prompt.name, DELETE_PROMPT),
-          ]
+        ? deleteItem(clone, prompt.name, DELETE_PROMPT)
         : []),
     ],
     readAge,
@@ -270,13 +298,14 @@ export function PromptsView({
             <PromptDetailPane
               prompt={row}
               latestRelease={harness?.latestRelease}
-              copyRefused={refused === row.name}
+              copyRefused={copyRefusedFor === row.name}
+              readRefusal={readNotice(row.name)}
               onCopy={() => copy(row)}
               footItems={row.actions.map(({ action, ...item }) => ({
                 ...item,
                 onSelect: () => {
                   if (action === "copy") copy(row);
-                  else if (action === "edit") editFlow.start(row.name);
+                  else if (action === "edit") edit(row.name);
                   else setDeletion(deletionOf(clone, row.name));
                 },
               }))}

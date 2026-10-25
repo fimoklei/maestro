@@ -1,5 +1,6 @@
 import type { ImportMode, ImportPromptError } from "@maestro/core";
 import type { PromptFieldProblem } from "@maestro/core/prompt-file";
+import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { ActionKey } from "../ui/busy-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
@@ -7,11 +8,14 @@ import {
   CHOOSE_ANOTHER_FILE,
   EDIT_PROMPT,
   IMPORT_PROMPT,
+  RESTORE_LABEL,
+  rereadLabel,
   UPDATE_PROMPT,
 } from "../ui/control-labels";
+import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
-import { machine, phrase, plainText } from "../ui/phrase";
+import { machine, named, phrase, plainText } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
 import { harnessHeadings, invalidNameHeading } from "./notice-copy";
 
@@ -155,3 +159,71 @@ export const importPromptNotice = (
     label: outcomeWords(confirm).heading,
     message: `The Maestro server did not answer, and nothing reached the Harness. Select ${confirm} again.`,
   });
+
+/** The screen Edit prompt opened on, which names the way to Restore prompt. */
+export type EditScreen = "harness" | "prompts";
+
+const RESTORE_STEP: Record<EditScreen, string> = {
+  harness: `Select ${rereadLabel("Harness")}, then select ${RESTORE_LABEL.prompt}.`,
+  prompts: `Select Harness, then select ${RESTORE_LABEL.prompt}.`,
+};
+
+const NOT_IN_CLONE = "Prompt not in your clone";
+
+const refusedWith = (error: unknown, code: string) =>
+  error instanceof HttpError && error.code === code;
+
+/** A refused edit, the dialog still open with the typed text. */
+export const editPromptNotice = (
+  error: unknown,
+  { name, screen }: { name: string; screen: EditScreen },
+): NoticeContent | null => {
+  const { nothing } = outcomeWords(EDIT_PROMPT);
+  if (refusedWith(error, "prompt-missing")) {
+    return {
+      level: "error",
+      label: NOT_IN_CLONE,
+      message: `${nothing} ${RESTORE_STEP[screen]}`,
+      detail: phrase`Something removed the ${named(name)} file from your clone after this dialog opened.`,
+    };
+  }
+  if (refusedWith(error, "prompt-changed")) {
+    return {
+      level: "error",
+      label: "Prompt out of date",
+      message: `${nothing} Copy your text, select ${CLOSE}, then select ${EDIT_PROMPT} again.`,
+      detail: phrase`The ${named(name)} file changed after this dialog opened.`,
+    };
+  }
+  return importPromptNotice(error, EDIT_PROMPT);
+};
+
+/** A read on the Prompts screen that opened no dialog. */
+export const promptReadNotice = (
+  error: unknown,
+  {
+    name,
+    origin,
+    localDeletion,
+  }: {
+    name: string;
+    /** The Harness origin, or null where its read has not answered. */
+    origin: string | null;
+    /** The Harness holds a deletion of the prompt that Restore prompt undoes. */
+    localDeletion: boolean;
+  },
+): NoticeContent | null =>
+  refusedWith(error, "prompt-missing")
+    ? {
+        level: "error",
+        label: NOT_IN_CLONE,
+        message: localDeletion
+          ? RESTORE_STEP.prompts
+          : `Pull the latest changes in your Git tool, then select ${EDIT_PROMPT} again.`,
+        ...(origin === null
+          ? {}
+          : {
+              detail: phrase`${named(name)} is on ${machine(origin)} but not in your clone.`,
+            }),
+      }
+    : importPromptNotice(error, EDIT_PROMPT);

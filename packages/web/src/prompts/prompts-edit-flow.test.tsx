@@ -10,7 +10,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RELEASED, row, withStages } from "../harness/harness-flow-fixture";
 import { HarnessScreen } from "../harness/harness-screen";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
 import { PromptsPanel } from "./prompts-panel";
 
 // Edit prompt starts on Prompts and lands on the Harness view (#1675).
@@ -60,6 +60,12 @@ function stubServer(options: {
   read?: PromptFile;
   /** The Harness read once the edit landed. */
   edited?: HarnessState;
+  /** The Harness read before any edit. */
+  harness?: HarnessState;
+  prompts?: InventoryPrimitive[];
+  /** The read's refusal code, with its HTTP status. */
+  readRefusal?: [string, number];
+  editRefusal?: [string, number];
 }) {
   const reads: unknown[] = [];
   const edits: unknown[] = [];
@@ -68,22 +74,37 @@ function stubServer(options: {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/inventory/primitives")) {
-        return jsonResponse({ primitives: [PR_REVIEW], unreadTypes: [] });
+        return jsonResponse({
+          primitives: options.prompts ?? [PR_REVIEW],
+          unreadTypes: [],
+        });
       }
       if (url === "/api/harness/primitive/delete/check") {
         return jsonResponse(IN_CLONE);
       }
       if (url === "/api/harness/prompt/read") {
         reads.push(JSON.parse(String(init?.body)));
-        return jsonResponse(options.read ?? WORKING);
+        return options.readRefusal === undefined
+          ? jsonResponse(options.read ?? WORKING)
+          : jsonResponse(
+              { error: options.readRefusal[0] },
+              options.readRefusal[1],
+            );
       }
       if (url === "/api/harness/prompt/edit") {
         edits.push(JSON.parse(String(init?.body)));
-        return jsonResponse({ name: "pr-review" });
+        return options.editRefusal === undefined
+          ? jsonResponse({ name: "pr-review" })
+          : jsonResponse(
+              { error: options.editRefusal[0] },
+              options.editRefusal[1],
+            );
       }
       if (url.startsWith("/api/harness")) {
         return jsonResponse(
-          edits.length === 0 ? RELEASED : (options.edited ?? editedRow("edit")),
+          edits.length === 0
+            ? (options.harness ?? RELEASED)
+            : (options.edited ?? editedRow("edit")),
         );
       }
       return jsonResponse({}, 404);
@@ -300,4 +321,168 @@ describe("Prompts — Edit prompt", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(edits).toEqual([]);
   });
+});
+
+const notInClone = (message: string) => ({
+  label: "Prompt not in your clone",
+  message,
+  detail:
+    "pr-review is on github.com/fimoklei/agent-harness but not in your clone.",
+});
+
+// The Harness holds a deletion of the prompt that Restore prompt undoes.
+const DELETED_HERE = withStages(RELEASED, {
+  proposal: [
+    row("pending-proposal", "pr-review", "not-yet-proposed", {
+      type: "prompt",
+      path: PR_REVIEW.path,
+      branch: "maestro/prompt.pr-review",
+      change: "deletion",
+      restorable: true,
+    }),
+  ],
+});
+
+async function expectPaneNotice(notice: ReturnType<typeof notInClone>) {
+  const pane = within(
+    await screen.findByRole("complementary", { name: "pr-review detail" }),
+  );
+  expect(await pane.findByText(notice.label)).toBeInTheDocument();
+  expect(pane.getByText(sentence(notice.message))).toBeInTheDocument();
+  expect(pane.getByText(sentence(notice.detail))).toBeInTheDocument();
+}
+
+async function submitChangedText(dialog: HTMLElement, typed: string) {
+  const text = within(dialog).getByRole("textbox", { name: /^Prompt text/ });
+  await userEvent.clear(text);
+  await userEvent.type(text, typed);
+  await userEvent.click(confirmOf(dialog));
+}
+
+describe("Prompts — Edit prompt refusals", () => {
+  it("states a local deletion instead of opening the dialog", async () => {
+    stubServer({
+      harness: DELETED_HERE,
+      readRefusal: ["prompt-missing", 404],
+    });
+    renderPrompts();
+    await screen.findByText("github.com/fimoklei/agent-harness");
+    const menu = await openRowMenu();
+    await userEvent.click(
+      await menu.findByRole("menuitem", { name: "Edit prompt" }),
+    );
+
+    await expectPaneNotice(
+      notInClone("Select Harness, then select Restore prompt."),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("states a clone that is behind instead of opening the dialog", async () => {
+    stubServer({ readRefusal: ["prompt-missing", 404] });
+    renderPrompts();
+    await screen.findByText("github.com/fimoklei/agent-harness");
+    const pane = await openPane();
+
+    await userEvent.click(pane.getByRole("button", { name: "Edit prompt" }));
+
+    await expectPaneNotice(
+      notInClone(
+        "Pull the latest changes in your Git tool, then select Edit prompt again.",
+      ),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it.each([
+    ["a name that is not valid", { name: "Fix Tests", nameValid: false }],
+    [
+      "a pending deletion",
+      {
+        pendingRelease: {
+          change: "deletion",
+          renamedTo: null,
+          defaultBranch: "main",
+        },
+      },
+    ],
+    [
+      "a pending rename",
+      {
+        pendingRelease: {
+          change: "rename",
+          renamedTo: "review-pr",
+          defaultBranch: "main",
+        },
+      },
+    ],
+  ] as const)("blocks Edit prompt for %s", async (_, over) => {
+    const prompt = { ...PR_REVIEW, ...over };
+    const { reads } = stubServer({ prompts: [prompt] });
+    renderPrompts();
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: `Actions for ${prompt.name}`,
+      }),
+    );
+    const item = within(await screen.findByRole("menu")).getByRole("menuitem", {
+      name: "Edit prompt",
+    });
+
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(item);
+    expect(reads).toEqual([]);
+  });
+
+  it.each([
+    [
+      "the file changed",
+      ["prompt-changed", 409],
+      {
+        label: "Prompt out of date",
+        message:
+          "Nothing was edited. Copy your text, select Close, then select Edit prompt again.",
+        detail: "The pr-review file changed after this dialog opened.",
+      },
+    ],
+    [
+      "the file is gone",
+      ["prompt-missing", 404],
+      {
+        label: "Prompt not in your clone",
+        message:
+          "Nothing was edited. Select Harness, then select Restore prompt.",
+        detail:
+          "Something removed the pr-review file from your clone after this dialog opened.",
+      },
+    ],
+    [
+      "another Harness write runs",
+      ["import-in-progress", 409],
+      {
+        label: "Harness busy",
+        message:
+          "Wait for that change to finish, then select Edit prompt again.",
+        detail: "Maestro changes one Harness at a time.",
+      },
+    ],
+  ] as const)(
+    "keeps the typed text and states it when %s",
+    async (_, refusal, notice) => {
+      stubServer({ editRefusal: [...refusal] });
+      renderPrompts();
+      const dialog = await editFromMenu();
+
+      await submitChangedText(dialog, "Review it again.");
+
+      const shown = within(dialog);
+      expect(await shown.findByText(notice.label)).toBeInTheDocument();
+      expect(shown.getByText(sentence(notice.message))).toBeInTheDocument();
+      expect(shown.getByText(sentence(notice.detail))).toBeInTheDocument();
+      expect(shown.getByRole("textbox", { name: /^Prompt text/ })).toHaveValue(
+        "Review it again.",
+      );
+      expect(confirmOf(dialog)).not.toHaveAttribute("aria-disabled");
+    },
+  );
 });

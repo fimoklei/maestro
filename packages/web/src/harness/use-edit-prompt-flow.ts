@@ -8,7 +8,8 @@ import type { NoticeContent } from "../ui/notice";
 import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { proposalRow } from "./harness-route";
 import {
-  importPromptNotice,
+  type EditScreen,
+  editPromptNotice,
   longTextNotice,
   NOTHING_CHANGED,
 } from "./import-prompt-copy";
@@ -24,10 +25,13 @@ type Opened = { name: string; read: PromptFile };
 // Edit prompt's UI-state: the read that opened it, the two fields, and
 // whether a submit has judged them.
 export function useEditPromptFlow({
+  screen,
   report,
   onEdited,
 }: {
-  /** The status region of the screen the edit starts on. */
+  /** The screen the edit starts on. */
+  screen: EditScreen;
+  /** Its status region. */
   report: (write: string) => void;
   /** Takes the result to the Harness view, where the edited row is. */
   onEdited: (name: string, written: WriteResult) => void;
@@ -49,7 +53,8 @@ export function useEditPromptFlow({
       row: proposalRow({ type: "prompt", name }),
     }),
     handOver: (written, { name }) => onEdited(name, written),
-    failure: (error) => importPromptNotice(error, EDIT_PROMPT),
+    failure: (error) =>
+      editPromptNotice(error, { name: opened?.name ?? "", screen }),
   });
 
   const name = opened?.name ?? "";
@@ -79,9 +84,15 @@ export function useEditPromptFlow({
     phase: write.phase,
     changed,
     unavailable: changed ? null : NOTHING_CHANGED,
+    /** The prompt a refused read was for, and why; the screen states it. */
+    readRefusal:
+      reading.isError && reading.variables !== undefined
+        ? { name: reading.variables, error: reading.error }
+        : null,
     // The dialog opens only once the Working Harness answered.
-    start: (prompt: string) =>
+    start: (prompt: string, onRefused: () => void) =>
       reading.mutate(prompt, {
+        onError: onRefused,
         onSuccess: (read) => {
           setOpened({ name: prompt, read });
           setFields({ description: read.description, text: lf(read.text) });

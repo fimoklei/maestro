@@ -61,6 +61,8 @@ export type PromptEdit = PromptFile & { name: string; read: PromptFile };
 export type EditPromptError =
   | ReadPromptError
   | PromptFieldProblem
+  // The file no longer reads as the `read` the dialog was filled with.
+  | "prompt-changed"
   | "import-in-progress"
   | "write-failed";
 
@@ -137,11 +139,17 @@ export class ImportPrompt {
   // The other front matter keys come from the file as it reads under the lock.
   private async rewrite(
     root: string,
-    { name, description, text }: PromptEdit,
+    { name, description, text, read }: PromptEdit,
   ): Promise<EditPromptResult> {
     const found = await this.load(root, name);
     if (!found.ok) {
       return found;
+    }
+    if (
+      found.draft.description !== read.description ||
+      found.draft.text !== read.text
+    ) {
+      return { ok: false, error: "prompt-changed" };
     }
     try {
       await this.deps.fs.writeFile(

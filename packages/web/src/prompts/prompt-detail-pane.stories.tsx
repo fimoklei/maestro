@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router";
+import { HttpError } from "../api/http";
+import { promptReadNotice } from "../harness/import-prompt-copy";
 import { COPY_PROMPT, DELETE_PROMPT } from "../ui/control-labels";
 import { PromptDetailPane } from "./prompt-detail-pane";
 
@@ -19,6 +21,7 @@ const meta = {
     },
     latestRelease: "v1.4.0",
     copyRefused: false,
+    readRefusal: null,
     onCopy: () => {},
     footItems: [
       { label: COPY_PROMPT, onSelect: () => {} },
@@ -57,6 +60,19 @@ export const NameNotValid: Story = {
 };
 
 export const CopyRefused: Story = { args: { copyRefused: true } };
+
+export const NotInClone: Story = {
+  args: {
+    readRefusal: promptReadNotice(
+      new HttpError(404, "refused", "prompt-missing"),
+      {
+        name: "pr-review",
+        origin: "github.com/fimoklei/agent-harness",
+        localDeletion: true,
+      },
+    ),
+  },
+};
 
 // The next-step sentence links the Harness screen, so it needs a router.
 export const PendingRename: Story = {

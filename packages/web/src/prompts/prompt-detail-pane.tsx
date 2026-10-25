@@ -7,6 +7,7 @@ import { TYPE_WORD } from "../inventory/type-filter";
 import { LATEST_RELEASE_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
 import { DetailPane, type PaneNotice } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
+import type { NoticeContent } from "../ui/notice";
 import { PromptText } from "./prompt-text";
 import { NOT_COPIED, nameNotValidNotice, PATH_FACT } from "./prompts-copy";
 
@@ -16,6 +17,7 @@ export function PromptDetailPane({
   prompt,
   latestRelease,
   copyRefused,
+  readRefusal,
   onCopy,
   footItems,
   position,
@@ -29,6 +31,8 @@ export function PromptDetailPane({
   latestRelease: string | null | undefined;
   /** The last Copy prompt of this prompt was refused by the browser. */
   copyRefused: boolean;
+  /** Why the last Edit prompt of this prompt opened no dialog. */
+  readRefusal: NoticeContent | null;
   onCopy: () => void;
   /** The row's ⋮ items, Copy prompt first. */
   footItems: readonly FootItem[];
@@ -55,6 +59,11 @@ export function PromptDetailPane({
           } satisfies PaneNotice,
         ]
       : []),
+    ...(readRefusal === null
+      ? []
+      : [
+          { content: readRefusal, trigger: "user-action" } satisfies PaneNotice,
+        ]),
   ];
   const pending = prompt.pendingRelease;
   return (

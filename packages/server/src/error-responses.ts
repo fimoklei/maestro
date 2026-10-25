@@ -398,6 +398,7 @@ type EditPromptRefusal = Exclude<EditPromptError, PromptFieldProblem>;
 export const editPromptErrorResponses: ErrorTable<EditPromptRefusal> = {
   ...importPromptErrorResponses,
   "prompt-missing": readPromptErrorResponses["prompt-missing"],
+  "prompt-changed": { status: 409 },
 };
 
 export const isEditPromptRefusal = (
