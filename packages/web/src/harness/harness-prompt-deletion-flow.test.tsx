@@ -74,9 +74,18 @@ describe("a prompt row on the Harness screen", () => {
 
     const menu = await openRowMenu("pr-review", "Pending release", "prompt");
 
-    expect(labels(menu)).toEqual(["View pull request", "Delete prompt"]);
+    expect(labels(menu)).toEqual([
+      "View pull request",
+      "Edit prompt",
+      "Delete prompt",
+    ]);
     expect(danger(menu)).toEqual(["Delete prompt"]);
-    expect(within(menu).getAllByRole("separator")).toHaveLength(1);
+    // One after the link, one before the danger item.
+    expect(within(menu).getAllByRole("separator")).toHaveLength(2);
+    expect(
+      within(menu).getByRole("menuitem", { name: "Delete prompt" })
+        .previousElementSibling,
+    ).toHaveAttribute("role", "separator");
   });
 
   it("puts Delete prompt behind ⋯ at the pane foot", async () => {

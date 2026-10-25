@@ -37,7 +37,7 @@ import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
-import type { OpenPrimitive } from "./harness-route";
+import { type OpenPrimitive, proposalRow } from "./harness-route";
 import {
   harnessAnnouncement,
   releaseCause,
@@ -54,7 +54,7 @@ import {
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
-import { rowItems } from "./row-actions";
+import { type RowActionHandlers, rowItems } from "./row-actions";
 import {
   ALL_RELEASED,
   harnessCounts,
@@ -62,6 +62,7 @@ import {
   statusReading,
 } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
+import { useEditPromptFlow } from "./use-edit-prompt-flow";
 import {
   useDiscardReleasePlan,
   useHarness,
@@ -155,6 +156,18 @@ export function HarnessView({
   const importFlow = useImportFlow(table, open);
   const promptImportFlow = useImportPromptFlow(table, open);
   const presses = useHarnessPresses(state, table);
+  // The edited row's pane opens here; a row the edit removed leaves none.
+  const editFlow = useEditPromptFlow({
+    report: table.report,
+    onEdited: (name, written) => {
+      table.settle(written);
+      open(proposalRow({ type: "prompt", name }));
+    },
+  });
+  const handlers: RowActionHandlers = {
+    ...presses.handlers,
+    edit: (row) => editFlow.start(row.name),
+  };
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -235,7 +248,7 @@ export function HarnessView({
                   reading: statusReading(row),
                   items: rowItems(
                     row,
-                    presses.handlers,
+                    handlers,
                     // Closed with no answer from the remote: there is no tip
                     // to build on.
                     releaseEnabled(state.freshness) &&
@@ -438,6 +451,7 @@ export function HarnessView({
           origin={state.origin}
           importFlow={importFlow}
           promptImportFlow={promptImportFlow}
+          editPromptFlow={editFlow}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletionWrite}
           onDeletionClose={presses.closeConfirmation}
