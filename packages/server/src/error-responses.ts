@@ -4,6 +4,7 @@ import type {
   DeleteLocalError,
   DeploySkillError,
   DiscardChangeError,
+  EditPromptError,
   HarnessStateError,
   ImportPromptError,
   ImportSkillError,
@@ -12,6 +13,7 @@ import type {
   PromoteError,
   ProposalActionError,
   PublishReleaseError,
+  ReadPromptError,
   ReleasePlanError,
   RemoveDeployedSkillError,
   RemovePreflightError,
@@ -365,10 +367,15 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
 };
 
 // Never a filesystem message, and never the path it wrote.
-// A broken field never gets here: the request schema refuses it first.
-type ImportPromptRefusal = Exclude<ImportPromptError, PromptFieldProblem>;
+// A broken field never gets here: the request schema refuses it first. Only
+// core sees the front matter the file keeps, so it refuses that file's size.
+type ImportPromptRefusal = Exclude<
+  ImportPromptError,
+  Exclude<PromptFieldProblem, "long-text">
+>;
 
 export const importPromptErrorResponses: ErrorTable<ImportPromptRefusal> = {
+  "long-text": { status: 422 },
   "not-configured": { status: 409 },
   "destination-unsafe": { status: 409 },
   "destination-unreadable": { status: 409 },
@@ -380,6 +387,31 @@ export const isImportPromptRefusal = (
   code: ImportPromptError,
 ): code is ImportPromptRefusal =>
   Object.hasOwn(importPromptErrorResponses, code);
+
+export const readPromptErrorResponses: ErrorTable<ReadPromptError> = {
+  "not-configured": importPromptErrorResponses["not-configured"],
+  "invalid-name": { status: 400 },
+  "prompt-missing": { status: 404 },
+  "destination-unsafe": importPromptErrorResponses["destination-unsafe"],
+  "destination-unreadable":
+    importPromptErrorResponses["destination-unreadable"],
+};
+
+// As on the import, a broken field never gets here.
+type EditPromptRefusal = Exclude<
+  EditPromptError,
+  Exclude<PromptFieldProblem, "long-text">
+>;
+
+export const editPromptErrorResponses: ErrorTable<EditPromptRefusal> = {
+  ...importPromptErrorResponses,
+  "prompt-missing": readPromptErrorResponses["prompt-missing"],
+  "prompt-changed": { status: 409 },
+};
+
+export const isEditPromptRefusal = (
+  code: EditPromptError,
+): code is EditPromptRefusal => Object.hasOwn(editPromptErrorResponses, code);
 
 // A per-skill refusal is data in a 200; only a refused run is a status.
 export const importLocalEditsErrorResponses: ErrorTable<LocalEditsError> = {

@@ -1,7 +1,11 @@
 // Every POST body the server accepts, and the request-shape refusals for a wrong one.
 
 import { HARNESS_PRIMITIVE_TYPES } from "@maestro/core";
-import { promptFieldProblems } from "@maestro/core/prompt-file";
+import {
+  type PromptFields,
+  promptFieldProblems,
+  withinPromptLimit,
+} from "@maestro/core/prompt-file";
 import type { Context } from "hono";
 import { z } from "zod";
 import { refusalCodes } from "./error-responses";
@@ -27,11 +31,35 @@ export const importBodySchema = z.object({
 });
 
 // The edge applies the prompt field rules; core applies them again.
+const fieldsHold = (fields: PromptFields) =>
+  promptFieldProblems(fields).length === 0;
+
+// "" carries no front matter, so a block with only the description is written.
 export const importPromptBodySchema = z
-  .object({ name: z.string(), description: z.string(), text: z.string() })
-  .refine((draft) => promptFieldProblems(draft).length === 0);
+  .object({
+    name: z.string(),
+    frontmatter: z.string(),
+    description: z.string(),
+    text: z.string(),
+  })
+  .refine(fieldsHold);
 
 export const promptCheckBodySchema = z.object({ name: z.string() });
+
+export const promptReadBodySchema = z.object({ name: z.string() });
+
+// `read` is the prompt the dialog was filled with, as the read route gave it.
+export const promptEditBodySchema = z
+  .object({
+    name: z.string(),
+    description: z.string(),
+    text: z.string(),
+    read: z.object({
+      description: z.string().refine(withinPromptLimit),
+      text: z.string().refine(withinPromptLimit),
+    }),
+  })
+  .refine(fieldsHold);
 
 // Global carries no path, so no untrusted path crosses the boundary on it.
 const targetSchema = z.discriminatedUnion("kind", [
@@ -262,13 +290,25 @@ export const IMPORT_PROMPT_BODY: RequestShape = {
   message:
     "Nothing was imported. Reload the page, then import the prompt again.",
   detail:
-    "The request carries a name, a description and a text: { name: string, description: string, text: string }.",
+    "The request carries a name, front matter, a description and a text: { name: string, frontmatter: string, description: string, text: string }.",
 };
 
 export const PROMPT_CHECK_BODY: RequestShape = {
   message:
     "Nothing was checked. Reload the page, then check the prompt name again.",
   detail: "The request carries a name: { name: string }.",
+};
+
+export const PROMPT_READ_BODY: RequestShape = {
+  message: "Nothing was read. Reload the page, then select Edit prompt again.",
+  detail: "The request carries a name: { name: string }.",
+};
+
+export const PROMPT_EDIT_BODY: RequestShape = {
+  message:
+    "Nothing was edited. Reload the page, then select Edit prompt again.",
+  detail:
+    "The request carries a name, a description, a text and the prompt as read: { name: string, description: string, text: string, read: { description: string, text: string } }.",
 };
 
 export const TARGET_BODY: RequestShape = {

@@ -16,6 +16,7 @@ export type ActionKey =
   | "create"
   | "publish"
   | "import"
+  | "edit"
   | "register"
   | "unregister"
   | "scaffold"
@@ -37,6 +38,7 @@ export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
   create: { busy: "Creating…", done: "Created" },
   publish: { busy: "Publishing…", done: "Published" },
   import: { busy: "Importing…", done: "Imported" },
+  edit: { busy: "Editing…", done: "Edited" },
   register: { busy: "Registering…", done: "Registered" },
   unregister: { busy: "Unregistering…", done: "Unregistered" },
   scaffold: { busy: "Scaffolding…", done: "Scaffolded" },

@@ -20,6 +20,7 @@ import {
 import { importNotice, releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { RestoreDialog } from "./restore-dialog";
+import type { EditPromptFlow } from "./use-edit-prompt-flow";
 import {
   folderInClone,
   useDeletionCheck,
@@ -65,6 +66,7 @@ export type HarnessDialogsProps = {
   origin: string;
   importFlow: ReturnType<typeof useImportFlow>;
   promptImportFlow: ImportPromptFlow;
+  editPromptFlow: EditPromptFlow;
   deletionRow: HarnessStageRow | null;
   deletion: Presses["deletionWrite"];
   onDeletionClose: () => void;
@@ -111,6 +113,9 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
       {props.promptImportFlow.open ? (
         <ImportPromptDialog {...props.promptImportFlow} />
+      ) : null}
+      {props.editPromptFlow.open ? (
+        <ImportPromptDialog mode="edit" {...props.editPromptFlow} />
       ) : null}
       {props.localDeletion !== null ? (
         <LocalDeletionDialog
