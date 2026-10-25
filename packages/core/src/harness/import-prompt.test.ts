@@ -47,6 +47,7 @@ function build(overrides?: {
 }
 
 const VALID = {
+  frontmatter: "",
   name: "review-pr",
   description: "Review a pull request.",
   text: "Review $ARGUMENTS.\n",
@@ -100,6 +101,47 @@ describe("ImportPrompt.execute", () => {
 
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
       "---\ndescription: Review a pull request.\n---\nReview $ARGUMENTS.\n",
+    );
+  });
+
+  it("keeps the pasted front matter keys, order and comments, with the dialog's description", async () => {
+    const { importPrompt, fs } = build();
+    const draft = draftPrompt(
+      "---\nmodel: haiku\ndescription: Old words\n# Shown in the menu.\nargument-hint: '[scope]'\n---\nCommit $1.\n",
+      null,
+    );
+
+    await importPrompt.execute({
+      ...draft,
+      name: "commit",
+      description: "Write a commit message",
+    });
+
+    expect(await fs.readFile(`${PROMPTS}/commit.md`)).toBe(
+      "---\nmodel: haiku\ndescription: Write a commit message\n# Shown in the menu.\nargument-hint: '[scope]'\n---\nCommit $1.\n",
+    );
+  });
+
+  it("replaces the whole file on an update, dropping keys the paste lacks", async () => {
+    const { importPrompt, fs } = build({
+      seed: {
+        directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
+        files: {
+          [`${PROMPTS}/review-pr.md`]:
+            "---\ndescription: Old\nargument-hint: '[pr]'\nmodel: opus\n---\nOld text.\n",
+        },
+      },
+    });
+    const draft = draftPrompt(
+      "---\ndescription: Review a pull request.\nmodel: haiku\n---\nReview $ARGUMENTS.\n",
+      null,
+    );
+
+    await expect(
+      importPrompt.execute({ ...draft, name: "review-pr" }),
+    ).resolves.toMatchObject({ ok: true, mode: "update" });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
+      "---\ndescription: Review a pull request.\nmodel: haiku\n---\nReview $ARGUMENTS.\n",
     );
   });
 

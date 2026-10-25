@@ -27,8 +27,15 @@ export const importBodySchema = z.object({
 });
 
 // The edge applies the prompt field rules; core applies them again.
+// A body without `frontmatter` carries none, so a block with only the
+// description is written.
 export const importPromptBodySchema = z
-  .object({ name: z.string(), description: z.string(), text: z.string() })
+  .object({
+    name: z.string(),
+    frontmatter: z.string().default(""),
+    description: z.string(),
+    text: z.string(),
+  })
   .refine((draft) => promptFieldProblems(draft).length === 0);
 
 export const promptCheckBodySchema = z.object({ name: z.string() });

@@ -1,13 +1,19 @@
 // The one owner of the prompt file format: read, write and the field rules.
 // Web imports it at runtime (`@maestro/core/prompt-file`), so no `node:` module.
-import { stringify } from "yaml";
+import { isMap, parseDocument, stringify } from "yaml";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { proposeSkillSlug } from "./skill-slug";
 import { readFrontmatter, splitFrontmatter } from "./validate-skill-structure";
 
-export type PromptDraft = { name: string; description: string; text: string };
-
 export type PromptFile = { description: string; text: string };
+
+/** `frontmatter` is the YAML between the delimiters; "" when there is none. */
+export type PromptFileWrite = PromptFile & { frontmatter: string };
+
+export type PromptDraft = PromptFileWrite & { name: string };
+
+/** The fields the operator types; the front matter is not one. */
+type PromptFields = Omit<PromptDraft, "frontmatter">;
 
 /** Missing or broken front matter reads as an empty description. */
 export const readPromptFile = (raw: string): PromptFile => {
@@ -18,10 +24,35 @@ export const readPromptFile = (raw: string): PromptFile => {
   };
 };
 
+const descriptionOnly = (description: string): string =>
+  `---\n${stringify({ description }, { lineWidth: 0 })}---\n`;
+
+// A document start, end or directive line would end the block for another
+// reader.
+const documentMarker = /^(?:---|\.\.\.|%)/m;
+
 // The serializer, never string joins, so a description cannot add a key or
-// end the block. `lineWidth: 0` keeps it on one line.
-export const writePromptFile = ({ description, text }: PromptFile): string =>
-  `---\n${stringify({ description }, { lineWidth: 0 })}---\n${text}`;
+// end the block. `lineWidth: 0` keeps it on one line. Front matter that is
+// not a YAML map, or that would not read back as this file, gives way to a
+// block holding only the description.
+export const writePromptFile = ({
+  frontmatter,
+  description,
+  text,
+}: PromptFileWrite): string => {
+  const document = parseDocument(frontmatter);
+  if (document.errors.length > 0 || !isMap(document.contents)) {
+    return `${descriptionOnly(description)}${text}`;
+  }
+  document.set("description", description);
+  const yaml = document.toString({ lineWidth: 0 });
+  const written = `---\n${yaml}---\n${text}`;
+  const readsBack =
+    !documentMarker.test(yaml) &&
+    readFrontmatter(written)?.data.description === description &&
+    splitFrontmatter(written)?.body === text;
+  return readsBack ? written : `${descriptionOnly(description)}${text}`;
+};
 
 const fileSuffix = /(?:\.prompt)?\.(?:md|txt)$/i;
 
@@ -38,11 +69,12 @@ export const draftPrompt = (
   const frontmatter = readFrontmatter(raw);
   const body = splitFrontmatter(raw)?.body;
   if (frontmatter === null || body === undefined) {
-    return { name, description: "", text: raw };
+    return { name, frontmatter: "", description: "", text: raw };
   }
   const { description } = frontmatter.data;
   return {
     name,
+    frontmatter: frontmatter.block,
     description: typeof description === "string" ? oneLine(description) : "",
     text: body,
   };
@@ -73,7 +105,7 @@ export const promptFieldProblems = ({
   name,
   description,
   text,
-}: PromptDraft): PromptFieldProblem[] => {
+}: PromptFields): PromptFieldProblem[] => {
   const problems: PromptFieldProblem[] = [];
   const nameProblem = promptNameProblem(name);
   if (nameProblem !== null) {

@@ -23,7 +23,12 @@ import { useImportPrompt, useImportPromptCheck } from "./use-harness";
 const importedRow = ({ name }: ImportPromptSuccess) =>
   proposalRow({ type: "prompt", name });
 
-const EMPTY: PromptDraft = { name: "", description: "", text: "" };
+const EMPTY: PromptDraft = {
+  name: "",
+  frontmatter: "",
+  description: "",
+  text: "",
+};
 
 const PROBLEM_FIELD: Record<
   keyof typeof PROMPT_FIELD_ERRORS,
@@ -142,8 +147,8 @@ export function useImportPromptFlow(
     },
     // Left with an invalid name, the check states no error: submit does.
     checkName: () => setCheckedName(draft.name === "" ? null : draft.name),
-    // A pasted front matter block gives up its description and leaves the
-    // text; text without one pastes as it is. False leaves the paste alone.
+    // A pasted front matter block leaves the text and travels with the
+    // draft, its description in the field; text without one pastes as it is. False leaves the paste alone.
     // A taken-over paste is saved with LF, as the browser saves its own.
     paste: (field: PasteTarget, pasted: string): boolean => {
       const next =
@@ -153,6 +158,7 @@ export function useImportPromptFlow(
       const drafted = draftPrompt(next, null);
       if (drafted.text === next) return false;
       edit({
+        frontmatter: drafted.frontmatter,
         text: drafted.text,
         ...(drafted.description === ""
           ? {}

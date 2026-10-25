@@ -91,7 +91,7 @@ export class ImportPrompt {
 
   private async write(
     root: string,
-    { name, description, text }: PromptDraft,
+    { name, frontmatter, description, text }: PromptDraft,
   ): Promise<ImportPromptResult> {
     const resolved = await ensureHarnessPrimitiveDir(
       this.deps.fs,
@@ -124,7 +124,7 @@ export class ImportPrompt {
     try {
       await this.deps.fs.writeFile(
         entry.path,
-        writePromptFile({ description, text }),
+        writePromptFile({ frontmatter, description, text }),
       );
     } catch {
       return { ok: false, error: "write-failed" };
