@@ -628,6 +628,42 @@ describe("Harness home base", () => {
     expect(within(prompt).getByText("Prompt")).toBeVisible();
   });
 
+  // #1685: a merged change that is only wrong is corrected, not withdrawn.
+  it("says how to correct a Pending release change, in each type's words", async () => {
+    const PROMPT_LINE = "To correct this change, select Edit prompt.";
+    const SKILL_LINE =
+      "To correct this change, edit the deployed copy. Then select Import local edits on Deploy-state.";
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [row("pending-proposal", "code-review", "new-local-work")],
+          release: [
+            row("pending-release", "tdd", "not-yet-released"),
+            row("pending-release", "pr-review", "not-yet-released", {
+              type: "prompt",
+              path: ".maestro/prompts/pr-review.md",
+              branch: "maestro/prompt.pr-review",
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    const prompt = await openPane("pr-review", "Pending release");
+    expect(within(prompt).getByText(sentence(PROMPT_LINE))).toBeVisible();
+    expect(within(prompt).queryAllByText(sentence(SKILL_LINE))).toHaveLength(0);
+
+    const skill = await openPane("tdd", "Pending release");
+    expect(within(skill).getByText(sentence(SKILL_LINE))).toBeVisible();
+    expect(within(skill).queryAllByText(sentence(PROMPT_LINE))).toHaveLength(0);
+
+    const proposal = await openPane("code-review");
+    expect(
+      within(proposal).queryAllByText(sentence(/^To correct this change/)),
+    ).toHaveLength(0);
+  });
+
   // #1045: the next step is one press away, from the row and from its pane.
   it("puts Propose change first in the row menu and at the foot of the pane", async () => {
     stubHarnessServer({

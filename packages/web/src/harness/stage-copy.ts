@@ -9,6 +9,8 @@ import { type BandCount, countOf } from "../ui/band-summary";
 import {
   CREATE_RELEASE,
   DISCARD_CHANGE,
+  EDIT_PROMPT,
+  IMPORT_LOCAL_EDITS,
   PROPOSE_CHANGE,
   rereadLabel,
   UPDATE_TARGET,
@@ -309,6 +311,15 @@ export const deployedCopiesLine = (row: HarnessStageRow): string | null =>
   row.change === "edit"
     ? `Deployed copies change only after a release and ${UPDATE_TARGET}.`
     : null;
+
+// A merged change that is only wrong is corrected, not withdrawn (#1685).
+const CORRECTION: Record<HarnessStageRow["type"], string> = {
+  prompt: `To correct this change, select ${EDIT_PROMPT}.`,
+  skill: `To correct this change, edit the deployed copy. Then select ${IMPORT_LOCAL_EDITS} on Deploy-state.`,
+};
+
+export const correctionLine = (row: HarnessStageRow): string | null =>
+  row.stage === "pending-release" ? CORRECTION[row.type] : null;
 
 // Suppressed where any membership is unknown: "only here" is a claim, and an
 // unread stage cannot back it.
