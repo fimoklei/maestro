@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { HARNESS_PRIMITIVE_TYPES, primitiveDir } from "./harness-primitive";
 
-export const HARNESS_ROOT = "/harness";
+const HARNESS_ROOT = "/harness";
 
 /** A Harness clone's disk: its root and type folders, plus the entries named. */
 export const harnessDisk = (
