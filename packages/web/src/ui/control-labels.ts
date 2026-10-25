@@ -26,6 +26,9 @@ export const UPDATE_TARGETS = "Update targets";
 export const VIEW_DEPLOY_STATE = "View Deploy-state";
 export const WITHDRAW_PROPOSAL = "Withdraw proposal";
 
+/** A held bulk deploy row's own control: it overwrites the copies that held it. */
+export const deployAgainLabel = (name: string) => `Deploy ${name} again`;
+
 /** A screen's own Re-read control, named by the screen. */
 export const rereadLabel = (screen: string) => `Re-read ${screen}`;
 

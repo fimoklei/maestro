@@ -187,7 +187,11 @@ export type DeploySkillResult =
       error: DeploySkillError;
       linkedPath?: string;
       copyReceipt?: string;
+      blockingCopies?: BlockingCopy[];
     };
+
+// A skill whose copy the receipt covers: its force replaces every one.
+type BlockingCopy = { name: string; verdict: "local-edits" | "unverified" };
 
 type BatchDeployResult = { name: string; result: DeploySkillResult };
 
@@ -197,6 +201,7 @@ type BulkAttentionRow = {
   forceable: boolean;
   // Minted by this row's own refusal; grants only what that refusal read (#952).
   copyReceipt?: string;
+  blockingCopies?: BlockingCopy[];
 };
 type BulkFailure = {
   error: DeploySkillError;
@@ -310,6 +315,9 @@ export class DeploySkill {
           name,
           error: result.error,
           ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+          ...(result.blockingCopies
+            ? { blockingCopies: result.blockingCopies }
+            : {}),
           forceable: offer.forceable,
         });
         continue;
@@ -536,9 +544,16 @@ export class DeploySkill {
         check = await checkOver(candidates);
       }
       const admitted = this.copyGuard.admits(scope, check, receipt);
-      const held = admitted.ok
-        ? []
-        : await this.heldByCopies(target, candidates, deployed, check.findings);
+      let isBlocking: (finding: CopyFinding) => boolean = () => false;
+      let held: string[] = [];
+      if (!admitted.ok) {
+        isBlocking = await this.blockingFilter(target, candidates);
+        held = heldByCopies(
+          candidates,
+          deployed,
+          check.findings.filter(isBlocking),
+        );
+      }
       const go = candidates.filter((name) => !held.includes(name));
 
       let landed = deployed;
@@ -612,15 +627,19 @@ export class DeploySkill {
                   release: tag,
                 }),
               );
-        const blocked = decision.ok
-          ? worstVerdict(check.findings.filter((f) => f.name === name))
-          : decision.blocked;
+        const findings = decision.ok
+          ? check.findings.filter((f) => f.name === name)
+          : decision.check.findings;
+        const blocked = decision.ok ? worstVerdict(findings) : decision.blocked;
         results.set(name, {
           ok: false,
           error: COPY_ERRORS[blocked ?? "unreadable"],
           ...(decision.ok || decision.receipt === null
             ? {}
-            : { copyReceipt: decision.receipt }),
+            : {
+                copyReceipt: decision.receipt,
+                blockingCopies: blockingCopies(findings.filter(isBlocking)),
+              }),
         });
       }
       return results;
@@ -659,14 +678,10 @@ export class DeploySkill {
     return null;
   }
 
-  // A blocked deployed copy holds every name, since the one install rewrites
-  // it; only a copy the Selection does not hold yet can be left out.
-  private async heldByCopies(
+  private async blockingFilter(
     target: DeployTarget,
     candidates: readonly string[],
-    deployed: readonly string[],
-    findings: readonly CopyFinding[],
-  ): Promise<string[]> {
+  ): Promise<(finding: CopyFinding) => boolean> {
     // Files apm placed under a package type it could not manage are apm's own,
     // not local work; refusing over them would strand the target (#358).
     const lockfile = await this.deps.deployedContent.readLockfile(target);
@@ -684,15 +699,9 @@ export class DeploySkill {
         )
         .map(({ name }) => name),
     );
-    const blocking = findings.filter(
-      (f) =>
-        f.verdict !== "clean" &&
-        !(f.verdict === "unverified" && apmOwns.has(f.name)),
-    );
-    if (blocking.some((f) => deployed.includes(f.name))) {
-      return [...candidates];
-    }
-    return candidates.filter((name) => blocking.some((f) => f.name === name));
+    return (f) =>
+      f.verdict !== "clean" &&
+      !(f.verdict === "unverified" && apmOwns.has(f.name));
   }
 
   private async installRefusal(
@@ -731,4 +740,27 @@ export class DeploySkill {
 
 function union(left: readonly string[], right: readonly string[]): string[] {
   return [...new Set([...left, ...right])];
+}
+
+// A blocked deployed copy holds every name, since the one install rewrites it;
+// only a copy the Selection does not hold yet can be left out.
+function heldByCopies(
+  candidates: readonly string[],
+  deployed: readonly string[],
+  blocking: readonly CopyFinding[],
+): string[] {
+  if (blocking.some((f) => deployed.includes(f.name))) {
+    return [...candidates];
+  }
+  return candidates.filter((name) => blocking.some((f) => f.name === name));
+}
+
+// One per skill, at its worst tool's verdict.
+function blockingCopies(blocking: readonly CopyFinding[]): BlockingCopy[] {
+  return [...new Set(blocking.map((f) => f.name))].flatMap((name) => {
+    const verdict = worstVerdict(blocking.filter((f) => f.name === name));
+    return verdict === "local-edits" || verdict === "unverified"
+      ? [{ name, verdict }]
+      : [];
+  });
 }
