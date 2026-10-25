@@ -20,6 +20,7 @@ import {
   type ViewerRead,
   waitingOn,
 } from "./harness-review-port";
+import { newestEnded } from "./harness-stages";
 import {
   openProposals,
   type ProposalKind,
@@ -27,7 +28,11 @@ import {
   readOriginFacts,
   requestProposal,
 } from "./proposal-request";
-import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
+import type {
+  BranchAuthorship,
+  HarnessGitPort,
+  WorktreeAmbiguity,
+} from "./read-harness-state";
 import { type ReplaceDeps, replaceFromCommit } from "./replace-from-commit";
 
 export type ProposalActionError =
@@ -52,6 +57,11 @@ export type WithdrawError =
   | "destination-unsafe"
   | "destination-unreadable"
   | "withdraw-in-progress"
+  // A commit on a branch no open request names has another author, or its
+  // authors could not be read (#1639).
+  | "branch-by-other"
+  | "commit-email-missing"
+  | "branch-authors-unknown"
   // A withdrawal stops at the step that failed; the earlier steps stay done.
   | "replace-failed"
   | "close-failed"
@@ -94,6 +104,7 @@ export class ProposalActions {
       | "deleteProposalBranch"
       | "readUnproposedFiles"
       | "readPushesWhereItFetched"
+      | "readAuthoredHere"
     >;
     review: HarnessReviewPort;
     fs: PrimitiveEntryFs & Pick<FileSystemPort, "ensureDir">;
@@ -186,8 +197,12 @@ export class ProposalActions {
 
   // Gives the proposal up: the Working Harness takes the default branch's copy,
   // then the request closes, then the branch goes. Closing first keeps GitHub
-  // from closing the request itself when the branch disappears.
-  async withdraw(ref: PrimitiveRef, number: number): Promise<WithdrawResult> {
+  // from closing the request itself when the branch disappears. A null number
+  // withdraws a branch with no open request, so nothing closes (#1639).
+  async withdraw(
+    ref: PrimitiveRef,
+    number: number | null,
+  ): Promise<WithdrawResult> {
     if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
     }
@@ -219,20 +234,15 @@ export class ProposalActions {
   private async withdrawAt(
     root: string,
     ref: PrimitiveRef,
-    number: number,
+    number: number | null,
   ): Promise<WithdrawResult> {
     const checked = await this.factsAt(root, ref);
     if (!checked.ok) {
       return checked;
     }
-    if (checked.open.length > 1) {
-      return { ok: false, error: "extra-requests" };
-    }
-    if (checked.open[0]?.number !== number) {
-      return { ok: false, error: "request-gone" };
-    }
-    if (checked.waiting !== null) {
-      return { ok: false, error: "proposed-by-other" };
+    const refused = refusesWithdrawal(checked, number);
+    if (refused !== null) {
+      return { ok: false, error: refused };
     }
     const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
     if (ambiguity !== null) {
@@ -248,6 +258,17 @@ export class ProposalActions {
         : await this.deps.git.readPrimitives(root, checked.head);
     if (checked.head === null || atHead === null) {
       return { ok: false, error: "no-answer" };
+    }
+    // With no open request naming its author, the commits do (#1639).
+    if (number === null) {
+      const authorship = await this.deps.git.readAuthoredHere(
+        root,
+        ref,
+        checked.head,
+      );
+      if (authorship !== "own") {
+        return { ok: false, error: AUTHORSHIP_ERROR[authorship] };
+      }
     }
     const held = atHead.some(
       (object) => object.type === ref.type && object.name === ref.name,
@@ -289,12 +310,14 @@ export class ProposalActions {
     if (!replaced) {
       return { ok: false, error: "replace-failed" };
     }
-    const closed = await this.deps.review.closeRequest(
-      checked.target.origin,
-      number,
-    );
-    if (!closed.ok) {
-      return { ok: false, error: "close-failed" };
+    if (number !== null) {
+      const closed = await this.deps.review.closeRequest(
+        checked.target.origin,
+        number,
+      );
+      if (!closed.ok) {
+        return { ok: false, error: "close-failed" };
+      }
     }
     const deleted = await this.deps.git.deleteProposalBranch(root, ref);
     return deleted === "deleted"
@@ -347,6 +370,36 @@ export class ProposalActions {
     };
   }
 }
+
+const AUTHORSHIP_ERROR = {
+  others: "branch-by-other",
+  "no-email": "commit-email-missing",
+  unknown: "branch-authors-unknown",
+} as const satisfies Record<Exclude<BranchAuthorship, "own">, WithdrawError>;
+
+// A number names the open request to close; null expects none open, and the
+// branch belongs to whoever opened its newest ended request.
+const refusesWithdrawal = (
+  checked: Ready,
+  number: number | null,
+): ProposalActionError | null => {
+  if (checked.open.length > 1) {
+    return "extra-requests";
+  }
+  if (number === null) {
+    if (checked.open.length > 0) {
+      return "request-exists";
+    }
+    const ended = newestEnded(checked.matching);
+    return ended !== undefined && isOthers(ended, checked.viewer)
+      ? "proposed-by-other"
+      : null;
+  }
+  if (checked.open[0]?.number !== number) {
+    return "request-gone";
+  }
+  return checked.waiting === null ? null : "proposed-by-other";
+};
 
 const settle = (outcome: {
   ok: boolean;

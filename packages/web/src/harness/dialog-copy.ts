@@ -79,13 +79,17 @@ export const discardBody = (
 ): Phrase => withDeployedCopies(type, replacesInClone(type, branch));
 
 // In the order the withdrawal runs: the clone, then the request, then the branch.
+// With no open request there is nothing to close (#1639).
 export const withdrawBody = (
   type: HarnessPrimitiveType,
   branch: ReturnType<typeof defaultBranchCopy>,
+  closesRequest: boolean,
 ): Phrase =>
   withDeployedCopies(
     type,
-    phrase`${replacesInClone(type, branch)} It closes the pull request and deletes the proposal branch.`,
+    closesRequest
+      ? phrase`${replacesInClone(type, branch)} It closes the pull request and deletes the proposal branch.`
+      : phrase`${replacesInClone(type, branch)} It deletes the proposal branch.`,
   );
 
 export const WITHDRAW_CHECKING = "Checking for changes not yet proposed…";

@@ -10,6 +10,7 @@ import {
   proposalBranch,
   proposalBranchLeaf,
 } from "./harness-primitive";
+import type { BranchAuthorship } from "./read-harness-state";
 
 const run = promisify(execFile);
 
@@ -61,6 +62,41 @@ export async function readUnproposedFiles(
   } catch {
     return null;
   }
+}
+
+/** The author email this clone commits under; null where none is set. */
+export async function readCommitEmail(root: string): Promise<string | null> {
+  const email = await runGit(root, ["config", "--get", "user.email"]);
+  return email.ok && email.stdout !== "" ? email.stdout.toLowerCase() : null;
+}
+
+// Whether every commit the fetched branch adds over `base` carries `email`.
+// The branch name is shared, so a teammate can push to it without a pull
+// request (#1639).
+export async function readBranchAuthorship(
+  root: string,
+  ref: PrimitiveRef,
+  base: string,
+  email: string | null,
+): Promise<BranchAuthorship> {
+  if (email === null) {
+    return "no-email";
+  }
+  const authors = await runGit(root, [
+    "log",
+    "--format=%ae",
+    `${base}..${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
+    "--",
+  ]);
+  if (!authors.ok) {
+    return "unknown";
+  }
+  return authors.stdout
+    .split("\n")
+    .filter((author) => author !== "")
+    .every((author) => author.toLowerCase() === email)
+    ? "own"
+    : "others";
 }
 
 // Never `--force`. The remote is asked after a failure: a branch already gone

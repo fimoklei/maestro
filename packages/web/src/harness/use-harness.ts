@@ -301,7 +301,7 @@ export function useProposalAction() {
       ...body
     }: {
       action: ProposalAction;
-      number?: number;
+      number?: number | null;
     } & PrimitiveRef) =>
       requestJson<{ ok: true }>(`/api/harness/proposal/${action}`, {
         method: "POST",

@@ -6,9 +6,22 @@ import {
   FOLDER_MISSING,
   rootSkillFileNotice,
   skillChecksNotice,
+  withdrawBody,
 } from "./dialog-copy";
+import { defaultBranchCopy } from "./stage-copy";
 
 describe("Harness dialog copy", () => {
+  it("names the pull request in a withdrawal only where one is open (#1639)", () => {
+    const main = defaultBranchCopy("main");
+
+    expect(plainText(withdrawBody("skill", main, true))).toBe(
+      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
+    );
+    expect(plainText(withdrawBody("skill", main, false))).toBe(
+      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
+    );
+  });
+
   it("warns about skill checks in one wording, naming the step still open", () => {
     expect(
       skillChecksNotice("import", ["SKILL.md is over 500 lines."]),

@@ -12,7 +12,7 @@ import {
   type HarnessStageRow,
   type StageInput,
 } from "./harness-stages";
-import type { HarnessHashes } from "./read-harness-state";
+import type { BranchAuthorship, HarnessHashes } from "./read-harness-state";
 
 type HarnessSkillTrees = HarnessHashes;
 
@@ -35,7 +35,14 @@ const ORIGIN: GitOrigin = {
 };
 
 // A null tree is a branch proposing to delete its skill.
-const onBranch = (tree: string | null) => ({ tree, commit: "branch-tip" });
+const onBranch = (
+  tree: string | null,
+  authorship: BranchAuthorship = "own",
+) => ({
+  tree,
+  commit: "branch-tip",
+  authorship,
+});
 
 const SETTLED: HarnessSkillTrees = {
   remote: { tdd: "same" },
@@ -342,6 +349,31 @@ describe("Pending review membership", () => {
     working: { tdd: "pushed" },
   };
 
+  // The branch name is shared: without a request naming its author, the
+  // commits decide whose it is, and an unread author is nobody's (#1639).
+  it.each([
+    ["own", true],
+    ["others", false],
+    ["no-email", false],
+    ["unknown", false],
+  ] as const)(
+    "reads a branch whose authorship is %s as owned: %s",
+    (authorship, owned) => {
+      const trees = {
+        ...pushed,
+        promote: { tdd: onBranch("pushed", authorship) },
+      };
+      expect(oneRow(stages({ trees }).review).ownsBranch).toBe(owned);
+    },
+  );
+
+  it("owns no branch whose newest ended request is another contributor's", () => {
+    const review = reviewOf([request({ state: "closed", author: "teammate" })]);
+    const row = oneRow(stages({ trees: pushed, review }).review);
+    expect(row.status).toBe("proposal-closed");
+    expect(row.ownsBranch).toBe(false);
+  });
+
   it("reads a pushed branch with no matching request as pull request missing", () => {
     expect(statuses(stages({ trees: pushed }).review)).toEqual([
       "tdd:pull-request-missing",
@@ -610,7 +642,9 @@ describe("A spent proposal branch", () => {
   // Content still differs from origin/HEAD: only a merged request ends it.
   const ahead: HarnessSkillTrees = {
     remote: { tdd: "same" },
-    promote: { tdd: { tree: "pushed", commit: TIP } },
+    promote: {
+      tdd: { tree: "pushed", commit: TIP, authorship: "own" as const },
+    },
     local: { tdd: "same" },
     working: { tdd: "same" },
   };
@@ -683,7 +717,9 @@ describe("A spent proposal branch", () => {
   it("never reads a ref it could not read as spent", () => {
     const trees = {
       ...ahead,
-      promote: { tdd: { tree: "pushed", commit: null } },
+      promote: {
+        tdd: { tree: "pushed", commit: null, authorship: "own" as const },
+      },
     };
     expect(statuses(stages({ trees, review: mergedAtTip }).review)).toEqual([
       "tdd:proposal-merged",
@@ -793,7 +829,9 @@ describe("Local restoration eligibility", () => {
   it("marks the same skill's review row restorable too", () => {
     const deleting: HarnessSkillTrees = {
       ...DELETED,
-      promote: { tdd: { tree: null, commit: null } },
+      promote: {
+        tdd: { tree: null, commit: null, authorship: "own" as const },
+      },
     };
     const built = stages({ trees: deleting, review: reviewOf([request()]) });
     expect(oneRow(built.review).restorable).toBe(true);
@@ -818,7 +856,9 @@ describe("Local restoration eligibility", () => {
   it("never reads a branch's proposed deletion as a folder to restore", () => {
     const restored: HarnessSkillTrees = {
       remote: { tdd: "same" },
-      promote: { tdd: { tree: null, commit: null } },
+      promote: {
+        tdd: { tree: null, commit: null, authorship: "own" as const },
+      },
       local: { tdd: "same" },
       working: { tdd: "same" },
     };

@@ -25,6 +25,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   remoteTree: null,
   restorable: false,
   onDisk: false,
+  ownsBranch: false,
   previousName: null,
   ...over,
 });

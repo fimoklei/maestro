@@ -20,10 +20,12 @@ const withdrawHeadings = ({
   type,
   branch,
   defaultBranch,
+  number,
 }: WithdrawContext): NoticeTable<WithdrawError> => {
   const w = ITEM_WORDS[type];
   const deletion = deletionHeadings(w);
   const matches = phrase`Your ${w.noun} ${w.holder} now matches its copy on ${defaultBranchCopy(defaultBranch)}.`;
+  const replaced = phrase`Your ${w.noun} ${w.holder} matches its copy on ${defaultBranchCopy(defaultBranch)}.`;
   return {
     ...proposalHeadingsFor(w),
     "invalid-skill": invalidNameHeading(w),
@@ -71,11 +73,31 @@ const withdrawHeadings = ({
       message: `Wait for that change to finish, then select ${WITHDRAW_PROPOSAL} again.`,
       detail: "Maestro changes one Harness at a time.",
     },
+    "branch-by-other": {
+      level: "error",
+      label: "Another contributor's commits",
+      message: `Only their author can withdraw the proposal. Select ${rereadLabel("Harness")} to read GitHub again.`,
+      detail: "A commit on the proposal branch has another author email.",
+    },
+    "commit-email-missing": {
+      level: "error",
+      label: "Git email not set",
+      message: phrase`Set ${machine("user.email")} in your clone, then select ${WITHDRAW_PROPOSAL} again.`,
+    },
+    "branch-authors-unknown": {
+      level: "error",
+      label: "Branch authors not checked",
+      message: `Select ${rereadLabel("Harness")}, then select ${WITHDRAW_PROPOSAL} again.`,
+      detail: phrase`Maestro could not compare the proposal branch's commit authors with ${machine("user.email")}.`,
+    },
     "replace-failed": {
       level: "error",
       label: "Proposal not withdrawn",
       message: `Make the Harness ${w.home} writable, then select ${WITHDRAW_PROPOSAL} again.`,
-      detail: "The pull request and the proposal branch remain unchanged.",
+      detail:
+        number === null
+          ? "The proposal branch remains unchanged."
+          : "The pull request and the proposal branch remain unchanged.",
     },
     "close-failed": {
       level: "error",
@@ -87,15 +109,20 @@ const withdrawHeadings = ({
       level: "error",
       label: "Proposal branch not deleted",
       message: phrase`Delete ${machine(branch)} on GitHub.`,
-      detail: phrase`The pull request is closed. Your ${w.noun} ${w.holder} matches its copy on ${defaultBranchCopy(defaultBranch)}.`,
+      detail:
+        number === null
+          ? replaced
+          : phrase`The pull request is closed. ${replaced}`,
     },
   };
 };
 
-/** What a withdrawal's notice names: the item, its branch and the default branch. */
+/** What a withdrawal's notice names: the item, its branch, its request and the default branch. */
 export type WithdrawContext = PrimitiveRef & {
   branch: string;
   defaultBranch: string | null;
+  // Null where no request was open to close.
+  number: number | null;
 };
 
 export const withdrawNotice = (

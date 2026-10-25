@@ -18,7 +18,8 @@ export type RowActionHandlers = {
   promote: (row: HarnessStageRow) => void;
   create: (row: HarnessStageRow) => void;
   reopen: (row: HarnessStageRow, number: number) => void;
-  withdraw: (row: HarnessStageRow, number: number) => void;
+  // Null where no request is open: the branch alone is withdrawn (#1639).
+  withdraw: (row: HarnessStageRow, number: number | null) => void;
   // Takes the row: whether the skill is local-only picks the dialog's copy.
   deleteLocal: (row: HarnessStageRow) => void;
   // Takes the row: its default-branch tree is what the author confirms.
@@ -98,6 +99,21 @@ function deleteItem(
     : [];
 }
 
+// Last of the stage's items, and red: it replaces the Working Harness copy.
+function withdrawItem(
+  row: HarnessStageRow,
+  handlers: RowActionHandlers,
+  enabled: boolean,
+  number: number | null,
+): FootItem {
+  return {
+    label: WITHDRAW_PROPOSAL,
+    disabled: !enabled,
+    danger: true,
+    onSelect: () => handlers.withdraw(row, number),
+  };
+}
+
 function stageItems(
   row: HarnessStageRow,
   handlers: RowActionHandlers,
@@ -164,7 +180,8 @@ function stageItems(
 
   switch (row.status) {
     // Both leave the branch on GitHub with no open request over it, so both
-    // offer the one press that opens one. Withdrawal has nothing to close.
+    // offer the one press that opens one. A merge is the normal end of a
+    // review: only a missing request can be withdrawn.
     case "proposal-merged":
     case "pull-request-missing":
       return [
@@ -175,6 +192,9 @@ function stageItems(
           busy: busy("create", null),
           onSelect: () => handlers.create(row),
         },
+        ...(row.status === "pull-request-missing" && row.ownsBranch
+          ? [withdrawItem(row, handlers, enabled, null)]
+          : []),
       ];
     case "proposal-closed": {
       const reopens = row.requests
@@ -185,10 +205,13 @@ function stageItems(
           busy: busy("reopen", request.number),
           onSelect: () => handlers.reopen(row, request.number),
         }));
+      const withdraws = row.ownsBranch
+        ? [withdrawItem(row, handlers, enabled, null)]
+        : [];
       // A deletion opens no proposal dialog, and reopening it once the folder
       // is restored would propose deleting a skill the author kept (#1384).
       if (row.change === "deletion") {
-        return [...links, ...(row.onDisk ? [] : reopens)];
+        return [...links, ...(row.onDisk ? [] : reopens), ...withdraws];
       }
       return [
         ...links,
@@ -201,6 +224,7 @@ function stageItems(
           busy: busy("propose", null),
           onSelect: () => handlers.promote(row),
         },
+        ...withdraws,
       ];
     }
     case "multiple-pull-requests":
@@ -209,14 +233,6 @@ function stageItems(
     default:
       return sole === undefined
         ? links
-        : [
-            ...links,
-            {
-              label: WITHDRAW_PROPOSAL,
-              disabled: !enabled,
-              danger: true,
-              onSelect: () => handlers.withdraw(row, sole.number),
-            },
-          ];
+        : [...links, withdrawItem(row, handlers, enabled, sole.number)];
   }
 }

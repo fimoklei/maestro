@@ -157,6 +157,7 @@ export function useHarnessPresses(
             name: withdrawing.name,
             branch: withdrawing.branch,
             defaultBranch: state?.defaultBranch ?? null,
+            number: withdrawing.number,
           })
         : proposalNotice(error),
   });

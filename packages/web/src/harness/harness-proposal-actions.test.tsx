@@ -181,7 +181,7 @@ describe("proposal actions", () => {
     expect(proposals).toEqual([]);
   });
 
-  it("creates the missing request, and offers no withdrawal without one", async () => {
+  it("creates the missing request", async () => {
     const proposals: { action: string; body: Record<string, unknown> }[] = [];
     stubHarnessServer({
       read: {
@@ -194,10 +194,6 @@ describe("proposal actions", () => {
     renderHarness();
 
     const menu = await openRowMenu("tdd");
-    expect(
-      within(menu).queryByRole("menuitem", { name: /^Withdraw proposal/ }),
-    ).toBeNull();
-
     await userEvent.click(
       within(menu).getByRole("menuitem", { name: "Create pull request" }),
     );
@@ -259,7 +255,12 @@ describe("proposal actions", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["View pull request", "Reopen proposal", "Propose change"]);
+    ).toEqual([
+      "View pull request",
+      "Reopen proposal",
+      "Propose change",
+      "Withdraw proposal",
+    ]);
 
     await userEvent.click(
       within(menu).getByRole("menuitem", { name: "Reopen proposal" }),

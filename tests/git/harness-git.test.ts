@@ -301,7 +301,11 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
       const trees = await movementTrees(root);
 
-      expect(trees.skill.promote.tdd).toEqual({ tree, commit: tip });
+      expect(trees.skill.promote.tdd).toEqual({
+        tree,
+        commit: tip,
+        authorship: "own",
+      });
       expect(trees.skill.promote.unproposed?.tree ?? null).toBeNull();
       expect(trees.skill.promote.unproposed?.commit ?? null).toBeNull();
     });
@@ -324,6 +328,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
         commit: (
           await git(root, "rev-parse", "refs/remotes/origin/maestro/tdd")
         ).stdout.trim(),
+        authorship: "own",
       });
     });
 

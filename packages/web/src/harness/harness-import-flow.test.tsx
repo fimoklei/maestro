@@ -40,6 +40,7 @@ const IMPORTED_ROW: HarnessStageRow = {
   remoteTree: null,
   restorable: false,
   onDisk: false,
+  ownsBranch: false,
   previousName: null,
 };
 

@@ -39,7 +39,9 @@ import {
   proposalBodySchema,
   RESTORE_BODY,
   restoreBodySchema,
+  WITHDRAW_BODY,
   WITHDRAW_CHECK_BODY,
+  withdrawBodySchema,
 } from "../request-bodies";
 
 type Deps = Pick<
@@ -200,7 +202,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   });
 
   app.post("/api/harness/proposal/withdraw", async (c) => {
-    const body = await parseBody(c, proposalBodySchema, PROPOSAL_BODY);
+    const body = await parseBody(c, withdrawBodySchema, WITHDRAW_BODY);
     if (!body.ok) {
       return body.response;
     }
