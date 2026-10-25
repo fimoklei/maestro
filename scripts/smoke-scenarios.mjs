@@ -80,6 +80,19 @@ const SCENARIOS = [
     },
   },
   {
+    name: "deploy-again",
+    // A deploy that adds commit-message meets the edited code-review copy, so
+    // the bulk deploy Report offers Deploy commit-message again.
+    atV2: async (s, repo) => {
+      await s.deploy(repo, ["code-review"]);
+      editByHand(repo, "code-review");
+    },
+    expect: {
+      status: "Local edits",
+      skills: { "code-review": "Local edits" },
+    },
+  },
+  {
     name: "unverified",
     atV2: async (s, repo) => {
       await s.deploy(repo, AT_V2);
