@@ -367,10 +367,15 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
 };
 
 // Never a filesystem message, and never the path it wrote.
-// A broken field never gets here: the request schema refuses it first.
-type ImportPromptRefusal = Exclude<ImportPromptError, PromptFieldProblem>;
+// A broken field never gets here: the request schema refuses it first. Only
+// core sees the front matter the file keeps, so it refuses that file's size.
+type ImportPromptRefusal = Exclude<
+  ImportPromptError,
+  Exclude<PromptFieldProblem, "long-text">
+>;
 
 export const importPromptErrorResponses: ErrorTable<ImportPromptRefusal> = {
+  "long-text": { status: 422 },
   "not-configured": { status: 409 },
   "destination-unsafe": { status: 409 },
   "destination-unreadable": { status: 409 },
@@ -393,7 +398,10 @@ export const readPromptErrorResponses: ErrorTable<ReadPromptError> = {
 };
 
 // As on the import, a broken field never gets here.
-type EditPromptRefusal = Exclude<EditPromptError, PromptFieldProblem>;
+type EditPromptRefusal = Exclude<
+  EditPromptError,
+  Exclude<PromptFieldProblem, "long-text">
+>;
 
 export const editPromptErrorResponses: ErrorTable<EditPromptRefusal> = {
   ...importPromptErrorResponses,

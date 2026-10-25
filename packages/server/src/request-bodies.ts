@@ -1,7 +1,11 @@
 // Every POST body the server accepts, and the request-shape refusals for a wrong one.
 
 import { HARNESS_PRIMITIVE_TYPES } from "@maestro/core";
-import { promptFieldProblems } from "@maestro/core/prompt-file";
+import {
+  type PromptFields,
+  promptFieldProblems,
+  withinPromptLimit,
+} from "@maestro/core/prompt-file";
 import type { Context } from "hono";
 import { z } from "zod";
 import { refusalCodes } from "./error-responses";
@@ -27,18 +31,14 @@ export const importBodySchema = z.object({
 });
 
 // The edge applies the prompt field rules; core applies them again.
-const fieldsHold = (fields: {
-  name: string;
-  description: string;
-  text: string;
-}) => promptFieldProblems(fields).length === 0;
+const fieldsHold = (fields: PromptFields) =>
+  promptFieldProblems(fields).length === 0;
 
-// A body without `frontmatter` carries none, so a block with only the
-// description is written.
+// "" carries no front matter, so a block with only the description is written.
 export const importPromptBodySchema = z
   .object({
     name: z.string(),
-    frontmatter: z.string().default(""),
+    frontmatter: z.string(),
     description: z.string(),
     text: z.string(),
   })
@@ -54,7 +54,10 @@ export const promptEditBodySchema = z
     name: z.string(),
     description: z.string(),
     text: z.string(),
-    read: z.object({ description: z.string(), text: z.string() }),
+    read: z.object({
+      description: z.string().refine(withinPromptLimit),
+      text: z.string().refine(withinPromptLimit),
+    }),
   })
   .refine(fieldsHold);
 
@@ -297,12 +300,13 @@ export const PROMPT_CHECK_BODY: RequestShape = {
 };
 
 export const PROMPT_READ_BODY: RequestShape = {
-  message: "Nothing was read. Reload the page, then edit the prompt again.",
+  message: "Nothing was read. Reload the page, then select Edit prompt again.",
   detail: "The request carries a name: { name: string }.",
 };
 
 export const PROMPT_EDIT_BODY: RequestShape = {
-  message: "Nothing was edited. Reload the page, then edit the prompt again.",
+  message:
+    "Nothing was edited. Reload the page, then select Edit prompt again.",
   detail:
     "The request carries a name, a description, a text and the prompt as read: { name: string, description: string, text: string, read: { description: string, text: string } }.",
 };

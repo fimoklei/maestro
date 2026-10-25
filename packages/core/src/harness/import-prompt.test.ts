@@ -219,6 +219,19 @@ describe("ImportPrompt.execute", () => {
     expect(await fs.exists(PROMPTS)).toBe(false);
   });
 
+  it("refuses a pasted front matter and text that together pass 100 KB, and writes nothing", async () => {
+    const { importPrompt, fs } = build();
+
+    await expect(
+      importPrompt.execute({
+        ...VALID,
+        frontmatter: `description: Review\nnotes: ${"n".repeat(60_000)}`,
+        text: "t".repeat(60_000),
+      }),
+    ).resolves.toEqual({ ok: false, error: "long-text" });
+    expect(await fs.exists(PROMPTS)).toBe(false);
+  });
+
   it("refuses without a connected Harness", async () => {
     const { importPrompt } = build({ root: undefined });
 
@@ -565,6 +578,16 @@ describe("ImportPrompt.edit", () => {
       expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(RAW);
     },
   );
+
+  it("refuses a text that passes 100 KB with the file's front matter, writing nothing", async () => {
+    const raw = `---\ndescription: Review a pull request\nnotes: ${"n".repeat(60_000)}\n---\nReview $ARGUMENTS.\n`;
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(raw) });
+
+    await expect(
+      importPrompt.edit({ ...EDIT, text: "t".repeat(60_000) }),
+    ).resolves.toEqual({ ok: false, error: "long-text" });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(raw);
+  });
 
   it("refuses a prompt whose file is gone, and creates none", async () => {
     const { importPrompt, fs } = build({ seed: IN_FOLDER });

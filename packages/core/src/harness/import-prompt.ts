@@ -12,10 +12,18 @@ import {
   type PromptDraft,
   type PromptFieldProblem,
   type PromptFile,
+  promptDraftProblems,
   promptFieldProblems,
+  promptFileTooLong,
   promptNameProblem,
   writePromptFile,
 } from "./prompt-file";
+
+// The refusal for a prompt file that is a link, or that cannot be read.
+const entryRefusal = (
+  kind: "unsafe" | "unreadable",
+): "destination-unsafe" | "destination-unreadable" =>
+  kind === "unsafe" ? "destination-unsafe" : "destination-unreadable";
 
 export type ImportPromptError =
   | "not-configured"
@@ -151,14 +159,14 @@ export class ImportPrompt {
     ) {
       return { ok: false, error: "prompt-changed" };
     }
+    const frontmatter = found.draft.frontmatter;
+    if (promptFileTooLong({ frontmatter, text })) {
+      return { ok: false, error: "long-text" };
+    }
     try {
       await this.deps.fs.writeFile(
         found.path,
-        writePromptFile({
-          frontmatter: found.draft.frontmatter,
-          description,
-          text,
-        }),
+        writePromptFile({ frontmatter, description, text }),
       );
     } catch {
       return { ok: false, error: "write-failed" };
@@ -169,7 +177,7 @@ export class ImportPrompt {
   // A taken name is no blocker: the write replaces that prompt.
   async execute(input: PromptDraft): Promise<ImportPromptResult> {
     // Judged again: never trust the fields the browser checked.
-    const [problem] = promptFieldProblems(input);
+    const [problem] = promptDraftProblems(input);
     if (problem !== undefined) {
       return { ok: false, error: problem };
     }
@@ -204,13 +212,7 @@ export class ImportPrompt {
       name,
     });
     if (entry.kind === "unsafe" || entry.kind === "unreadable") {
-      return {
-        ok: false,
-        error:
-          entry.kind === "unsafe"
-            ? "destination-unsafe"
-            : "destination-unreadable",
-      };
+      return { ok: false, error: entryRefusal(entry.kind) };
     }
     const mode: ImportMode = entry.kind === "plain" ? "update" : "add";
     try {
@@ -243,13 +245,7 @@ export class ImportPrompt {
       name,
     });
     if (entry.kind === "unsafe" || entry.kind === "unreadable") {
-      return {
-        ok: false,
-        error:
-          entry.kind === "unsafe"
-            ? "destination-unsafe"
-            : "destination-unreadable",
-      };
+      return { ok: false, error: entryRefusal(entry.kind) };
     }
     let raw: string | null = null;
     if (entry.kind === "plain") {

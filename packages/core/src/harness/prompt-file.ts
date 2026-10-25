@@ -13,7 +13,7 @@ export type PromptFileWrite = PromptFile & { frontmatter: string };
 export type PromptDraft = PromptFileWrite & { name: string };
 
 /** The fields the operator types; the front matter is not one. */
-type PromptFields = Omit<PromptDraft, "frontmatter">;
+export type PromptFields = Omit<PromptDraft, "frontmatter">;
 
 /** Missing or broken front matter reads as an empty description. */
 export const readPromptFile = (raw: string): PromptFile => {
@@ -100,6 +100,17 @@ export const promptNameProblem = (
 const MAX_DESCRIPTION_LENGTH = 1024;
 const MAX_TEXT_BYTES = 102_400;
 
+/** Holds at most the 100 KB a prompt's text may hold. */
+export const withinPromptLimit = (value: string): boolean =>
+  new TextEncoder().encode(value).byteLength <= MAX_TEXT_BYTES;
+
+/** The front matter a write keeps and the text, past 100 KB together. */
+export const promptFileTooLong = ({
+  frontmatter,
+  text,
+}: Pick<PromptFileWrite, "frontmatter" | "text">): boolean =>
+  !withinPromptLimit(`${frontmatter}${text}`);
+
 /** Every rule the fields break, in field order; empty when all hold. */
 export const promptFieldProblems = ({
   name,
@@ -120,8 +131,18 @@ export const promptFieldProblems = ({
   }
   if (text.trim() === "") {
     problems.push("empty-text");
-  } else if (new TextEncoder().encode(text).byteLength > MAX_TEXT_BYTES) {
+  } else if (!withinPromptLimit(text)) {
     problems.push("long-text");
   }
   return problems;
+};
+
+/** The field rules, and the 100 KB the pasted front matter and the text share. */
+export const promptDraftProblems = (
+  draft: PromptDraft,
+): PromptFieldProblem[] => {
+  const problems = promptFieldProblems(draft);
+  return promptFileTooLong(draft) && !problems.includes("long-text")
+    ? [...problems, "long-text"]
+    : problems;
 };
