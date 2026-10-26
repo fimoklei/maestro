@@ -24,6 +24,10 @@ import {
 } from "./harness/import-prompt-copy";
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
+import {
+  type ReleaseWithdrawalCheck,
+  ReleaseWithdrawalDialog,
+} from "./harness/release-withdrawal-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
 import {
   type UnproposedCheck,
@@ -141,6 +145,23 @@ const releaseDialog = (
     onPublish={vi.fn()}
     publishing={running}
     publishError={null}
+  />
+);
+
+const releaseWithdrawalDialog = (
+  check: ReleaseWithdrawalCheck,
+  over: { running?: boolean; onClose?: () => void } = {},
+) => (
+  <ReleaseWithdrawalDialog
+    type="skill"
+    name="research"
+    change="edit"
+    previousName={null}
+    check={check}
+    onClose={over.onClose ?? vi.fn()}
+    onConfirm={vi.fn()}
+    withdrawing={over.running ?? false}
+    withdrawError={null}
   />
 );
 
@@ -533,6 +554,33 @@ const ON_DIALOG: Row[] = [
       {
         label: "Changes not checked",
         render: () => withdrawDialog({ kind: "failed" }),
+      },
+    ],
+  },
+  {
+    file: "harness/release-withdrawal-dialog.tsx",
+    heading: "Withdraw research from release",
+    render: ({ running, onClose }) =>
+      releaseWithdrawalDialog(
+        { kind: "read", files: [] },
+        { running, onClose },
+      ),
+    changed: null,
+    emptyForm: null,
+    loading: {
+      line: "Checking for changes not yet proposed…",
+      render: () => releaseWithdrawalDialog({ kind: "checking" }),
+    },
+    loadFailed: () =>
+      releaseWithdrawalDialog({ kind: "refused", notice: FAILED }),
+    notices: [
+      {
+        label: "Changes not yet proposed",
+        render: () =>
+          releaseWithdrawalDialog({
+            kind: "read",
+            files: [".apm/skills/research/SKILL.md"],
+          }),
       },
     ],
   },

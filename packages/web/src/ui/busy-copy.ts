@@ -12,6 +12,7 @@ export type ActionKey =
   | "discard"
   | "propose"
   | "withdraw"
+  | "withdrawFromRelease"
   | "reopen"
   | "create"
   | "publish"
@@ -23,7 +24,11 @@ export type ActionKey =
   | "connect"
   | "setLocation";
 
-export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
+export const ACTIONS: Record<
+  ActionKey,
+  // `after` follows the name where the done word alone would mislead.
+  { busy: string; done: string; after?: string }
+> = {
   copy: { busy: "Copying…", done: "Copied" },
   deploy: { busy: "Deploying…", done: "Deployed" },
   update: { busy: "Updating…", done: "Updated" },
@@ -34,6 +39,12 @@ export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
   discard: { busy: "Discarding…", done: "Discarded change to" },
   propose: { busy: "Proposing…", done: "Proposed" },
   withdraw: { busy: "Withdrawing…", done: "Withdrew" },
+  // "Withdrew tdd." would read as Withdraw proposal.
+  withdrawFromRelease: {
+    busy: "Withdrawing…",
+    done: "Withdrew",
+    after: "from release",
+  },
   reopen: { busy: "Reopening…", done: "Reopened" },
   create: { busy: "Creating…", done: "Created" },
   publish: { busy: "Publishing…", done: "Published" },
@@ -51,7 +62,10 @@ export const HARNESS_BUSY = "Harness busy";
 
 /** What the screen's status region says once a write lands. */
 export function doneSentence(action: ActionKey, name: Copy): Phrase {
-  return phrase`${ACTIONS[action].done} ${name}.`;
+  const { done, after } = ACTIONS[action];
+  return after === undefined
+    ? phrase`${done} ${name}.`
+    : phrase`${done} ${name} ${after}.`;
 }
 
 /** Heard while the skeleton is up, never seen outside a dialog. */

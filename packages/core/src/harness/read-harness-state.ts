@@ -179,6 +179,14 @@ export interface HarnessGitPort {
     root: string,
     ref: PrimitiveRef,
   ): Promise<string[] | null>;
+  // The named primitives' files, untracked included, that the working tree
+  // adds or holds differently from `commit`, relative to the Harness root;
+  // null is no answer.
+  readWorkingDifferences(
+    root: string,
+    refs: readonly PrimitiveRef[],
+    commit: string,
+  ): Promise<string[] | null>;
   // False where a push to origin would land somewhere else than the fetch.
   readPushesWhereItFetched(root: string): Promise<boolean>;
   readAuthoredHere(

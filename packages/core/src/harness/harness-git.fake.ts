@@ -11,6 +11,7 @@ import {
   parseProposalBranch,
   primitiveEntry,
   primitiveKey,
+  primitivePath,
   proposalBranch,
   proposalBranchLeaf,
 } from "./harness-primitive";
@@ -641,6 +642,31 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return Object.hasOwn(this.unproposed, leaf)
       ? (this.unproposed[leaf] ?? null)
       : [];
+  }
+
+  // A skill's SKILL.md stands for its folder, as in the content model.
+  async readWorkingDifferences(
+    root: string,
+    refs: readonly PrimitiveRef[],
+    commit: string,
+  ): Promise<string[] | null> {
+    this.at(root);
+    const at = this.contentAt(commit);
+    const working = this.contentAt("working");
+    if (at === null || working === null) {
+      return null;
+    }
+    return refs
+      .filter((ref) => {
+        const text = textOf(working, ref);
+        return text !== undefined && text !== textOf(at, ref);
+      })
+      .map((ref) =>
+        ref.type === "skill"
+          ? `${primitivePath(ref)}/SKILL.md`
+          : primitivePath(ref),
+      )
+      .sort();
   }
 
   private authorshipOf(leaf: string): BranchAuthorship {

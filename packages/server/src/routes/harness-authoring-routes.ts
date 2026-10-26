@@ -16,6 +16,7 @@ import {
   promoteErrorResponses,
   proposalErrorResponses,
   readPromptErrorResponses,
+  releaseWithdrawalErrorResponses,
   restoreErrorResponses,
   scaffoldErrorResponses,
   withdrawErrorResponses,
@@ -45,7 +46,10 @@ import {
   promptEditBodySchema,
   promptReadBodySchema,
   proposalBodySchema,
+  RELEASE_WITHDRAWAL_BODY,
+  RELEASE_WITHDRAWAL_CHECK_BODY,
   RESTORE_BODY,
+  releaseWithdrawalBodySchema,
   restoreBodySchema,
   WITHDRAW_BODY,
   WITHDRAW_CHECK_BODY,
@@ -60,6 +64,7 @@ type Deps = Pick<
   | "deleteLocal"
   | "restore"
   | "discard"
+  | "withdrawFromRelease"
   | "proposals"
   | "importSkill"
   | "importPrompt"
@@ -167,6 +172,45 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     );
     if (!result.ok) {
       const { status } = discardErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ name: result.name });
+  });
+
+  // Read for the confirmation; it writes nothing. POST, so the origin guard
+  // covers a read that returns a token.
+  app.post("/api/harness/release/withdraw/check", async (c) => {
+    const body = await parseBody(
+      c,
+      promoteBodySchema,
+      RELEASE_WITHDRAWAL_CHECK_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.withdrawFromRelease.inspect(refOf(body.data));
+    if (!result.ok) {
+      const { status } = releaseWithdrawalErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ files: result.files, confirmation: result.confirmation });
+  });
+
+  app.post("/api/harness/release/withdraw", async (c) => {
+    const body = await parseBody(
+      c,
+      releaseWithdrawalBodySchema,
+      RELEASE_WITHDRAWAL_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.withdrawFromRelease.execute(
+      refOf(body.data),
+      body.data.confirmation,
+    );
+    if (!result.ok) {
+      const { status } = releaseWithdrawalErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
     return c.json({ name: result.name });

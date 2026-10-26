@@ -66,7 +66,8 @@ describe("a prompt row on the Harness screen", () => {
     onDisk: true,
   });
 
-  it("puts Delete prompt behind a divider in the Pending release menu", async () => {
+  // Withdraw from release takes Delete prompt's place there (#1642).
+  it("puts Withdraw from release behind a divider in the Pending release menu", async () => {
     stubHarnessServer({
       read: { body: withStages(ON_DISK, { release: [RELEASE_ROW] }) },
     });
@@ -77,18 +78,18 @@ describe("a prompt row on the Harness screen", () => {
     expect(labels(menu)).toEqual([
       "View pull request",
       "Edit prompt",
-      "Delete prompt",
+      "Withdraw from release",
     ]);
-    expect(danger(menu)).toEqual(["Delete prompt"]);
+    expect(danger(menu)).toEqual(["Withdraw from release"]);
     // One after the link, one before the danger item.
     expect(within(menu).getAllByRole("separator")).toHaveLength(2);
     expect(
-      within(menu).getByRole("menuitem", { name: "Delete prompt" })
+      within(menu).getByRole("menuitem", { name: "Withdraw from release" })
         .previousElementSibling,
     ).toHaveAttribute("role", "separator");
   });
 
-  it("puts Delete prompt behind ⋯ at the pane foot", async () => {
+  it("puts Withdraw from release behind ⋯ at the pane foot", async () => {
     stubHarnessServer({
       read: { body: withStages(ON_DISK, { release: [RELEASE_ROW] }) },
     });
@@ -99,7 +100,7 @@ describe("a prompt row on the Harness screen", () => {
 
     expect(
       foot.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Delete prompt"]);
+    ).toEqual(["Withdraw from release"]);
   });
 
   it("opens the Delete prompt dialog in the prompt's words", async () => {

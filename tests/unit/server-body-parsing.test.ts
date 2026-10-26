@@ -28,6 +28,13 @@ describe("POST body parsing", () => {
       'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
   };
 
+  const RELEASE_WITHDRAWAL_SHAPE = {
+    message:
+      "Nothing was withdrawn. Reload the page, then withdraw it from release again.",
+    detail:
+      'The request carries a type, a name and the confirmation it was given: { type: "skill" | "prompt", name: string, confirmation: string }.',
+  };
+
   const WITHDRAW_SHAPE = {
     message:
       "Nothing was withdrawn. Reload the page, then withdraw the proposal again.",
@@ -71,6 +78,7 @@ describe("POST body parsing", () => {
     { path: "/api/deploy/bulk", shape: BULK_SHAPE },
     { path: "/api/harness/proposal/reopen", shape: PROPOSAL_SHAPE },
     { path: "/api/harness/proposal/withdraw", shape: WITHDRAW_SHAPE },
+    { path: "/api/harness/release/withdraw", shape: RELEASE_WITHDRAWAL_SHAPE },
     { path: "/api/harness/prompt/import", shape: PROMPT_SHAPE },
     { path: "/api/harness/prompt/check", shape: PROMPT_CHECK_SHAPE },
     { path: "/api/harness/prompt/read", shape: PROMPT_READ_SHAPE },
@@ -121,6 +129,8 @@ describe("POST body parsing", () => {
     { path: "/api/harness/proposal/create", body: {} },
     { path: "/api/harness/proposal/reopen", body: { number: 7 } },
     { path: "/api/harness/proposal/withdraw", body: { number: 7 } },
+    { path: "/api/harness/release/withdraw/check", body: {} },
+    { path: "/api/harness/release/withdraw", body: { confirmation: "c" } },
   ];
 
   for (const route of perItemRoutes) {

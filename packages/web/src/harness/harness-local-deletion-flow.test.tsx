@@ -317,8 +317,8 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
     },
   ];
 
-  const openStepOne = async (stage?: string) => {
-    const menu = await openRowMenu("jobs", stage);
+  const openStepOne = async () => {
+    const menu = await openRowMenu("jobs");
     await userEvent.click(
       within(menu).getByRole("menuitem", { name: /^delete skill$/i }),
     );
@@ -402,32 +402,6 @@ describe("Harness step 1 of deleting a skill on the default branch", () => {
     const menu = await openRowMenu("jobs");
     expect(
       within(menu).getByRole("menuitem", { name: /^restore skill$/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("opens step 1 from a Pending release row with no proposal row", async () => {
-    stubHarnessServer({
-      read: {
-        body: withStages(ON_DISK, {
-          release: [
-            row("pending-release", "jobs", "not-yet-released", {
-              onDisk: true,
-            }),
-          ],
-        }),
-      },
-      deletionChecks: checked(false),
-    });
-    renderHarness();
-
-    const dialog = await openStepOne("Pending release");
-
-    expect(
-      within(dialog).getByText(
-        sentence(
-          "To also delete it from fimoklei/agent-harness, select Propose change.",
-        ),
-      ),
     ).toBeInTheDocument();
   });
 });

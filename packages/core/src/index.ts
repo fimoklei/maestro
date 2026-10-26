@@ -206,6 +206,10 @@ export {
 } from "./harness/restore";
 export type { ManifestAdvisory } from "./harness/skill-manifest";
 export type { StructuralProblem } from "./harness/validate-skill-structure";
+export type {
+  WithdrawFromReleaseCheck,
+  WithdrawFromReleaseError,
+} from "./harness/withdraw-from-release";
 export {
   resolveApmGlobalRoot,
   resolveApmScratchCwd,

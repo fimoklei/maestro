@@ -139,9 +139,9 @@ Pick the form from this table. Add no other form, and no banner.
 
 - Show a field error on submit and clear it once the field is valid. Check a
   field that names a folder right after the pick.
-- Confirm only Remove, Delete, Unregister, Withdraw proposal, Publish release,
-  Restore and Discard change; confirm each with a danger button. Propose
-  change, Deploy and Update run without one. A dialog that collects input is a
+- Confirm only Remove, Delete, Unregister, Withdraw proposal, Withdraw from
+  release, Publish release, Restore and Discard change; confirm each with a
+  danger button. Propose change, Deploy and Update run without one. A dialog that collects input is a
   form.
 - Build every dialog on `Dialog`. Use two dialog widths, 480 and 640,
   top-aligned at 96px. Give it a 48px header with the title and a close

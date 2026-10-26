@@ -34,6 +34,7 @@ import {
   readPrimitiveHash,
   readProposalRefs,
   readStagedDifference,
+  readWorkingDifferences,
   writePrimitiveInto,
 } from "./harness-primitive-git";
 import {
@@ -287,6 +288,14 @@ export class HarnessGitAdapter implements HarnessGitPort {
     ref: PrimitiveRef,
   ): Promise<string[] | null> {
     return await readUnproposedFiles(root, ref);
+  }
+
+  async readWorkingDifferences(
+    root: string,
+    refs: readonly PrimitiveRef[],
+    commit: string,
+  ): Promise<string[] | null> {
+    return await readWorkingDifferences(root, refs, commit);
   }
 
   async readAuthoredHere(
