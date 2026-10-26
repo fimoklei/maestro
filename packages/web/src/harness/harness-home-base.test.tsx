@@ -664,6 +664,36 @@ describe("Harness home base", () => {
     ).toHaveLength(0);
   });
 
+  // #1685: a deleted prompt offers no Edit prompt, and an added skill has no
+  // deployed copy, so neither pane names a way that is not there.
+  it("names no correction where its control or copy is missing", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          release: [
+            row("pending-release", "tdd", "not-yet-released", {
+              change: "addition",
+            }),
+            row("pending-release", "pr-review", "not-yet-released", {
+              type: "prompt",
+              change: "deletion",
+              path: ".maestro/prompts/pr-review.md",
+              branch: "maestro/prompt.pr-review",
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    for (const name of ["pr-review", "tdd"]) {
+      const pane = await openPane(name, "Pending release");
+      expect(
+        within(pane).queryAllByText(sentence(/^To correct this change/)),
+      ).toHaveLength(0);
+    }
+  });
+
   // #1045: the next step is one press away, from the row and from its pane.
   it("puts Propose change first in the row menu and at the foot of the pane", async () => {
     stubHarnessServer({

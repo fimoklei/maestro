@@ -727,6 +727,25 @@ describe("correction line", () => {
     );
   });
 
+  it("says nothing on a deleted prompt, which offers no Edit prompt", () => {
+    expect(
+      correctionLine(
+        row("pending-release", "not-yet-released", {
+          type: "prompt",
+          change: "deletion",
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("says nothing on an added skill, which has no deployed copy", () => {
+    expect(
+      correctionLine(
+        row("pending-release", "not-yet-released", { change: "addition" }),
+      ),
+    ).toBeNull();
+  });
+
   it("says nothing outside Pending release", () => {
     for (const [stage, status] of [
       ["pending-proposal", "not-yet-proposed"],

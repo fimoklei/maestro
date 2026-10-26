@@ -1,5 +1,6 @@
 // One row per status, so a new status fails typecheck until it has copy.
 import type {
+  HarnessChange,
   HarnessStage,
   HarnessStageRow,
   RequestedReviewer,
@@ -318,8 +319,16 @@ const CORRECTION: Record<HarnessStageRow["type"], string> = {
   skill: `To correct this change, edit the deployed copy. Then select ${IMPORT_LOCAL_EDITS} on Deploy-state.`,
 };
 
+// A deleted prompt offers no Edit prompt; an added skill has no deployed copy.
+const NO_CORRECTION: Record<HarnessStageRow["type"], HarnessChange> = {
+  prompt: "deletion",
+  skill: "addition",
+};
+
 export const correctionLine = (row: HarnessStageRow): string | null =>
-  row.stage === "pending-release" ? CORRECTION[row.type] : null;
+  row.stage === "pending-release" && row.change !== NO_CORRECTION[row.type]
+    ? CORRECTION[row.type]
+    : null;
 
 // Suppressed where any membership is unknown: "only here" is a claim, and an
 // unread stage cannot back it.
