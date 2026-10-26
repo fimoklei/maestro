@@ -323,6 +323,26 @@ describe("WithdrawFromRelease", () => {
       });
     });
 
+    it("lists the unproposed files of both names of a rename", async () => {
+      const { withdrawal } = build({
+        release: { skills: { tdd: "released tdd" } },
+        merged: { skills: { testing: "released tdd" } },
+        working: {
+          skills: { testing: "edited, never proposed", tdd: "recreated" },
+        },
+        rows: [
+          { ...releaseRow(skillRef("testing"), "rename"), previousName: "tdd" },
+        ],
+      });
+
+      await expect(
+        withdrawal.inspect(skillRef("testing")),
+      ).resolves.toMatchObject({
+        ok: true,
+        files: [".apm/skills/tdd/SKILL.md", ".apm/skills/testing/SKILL.md"],
+      });
+    });
+
     it("refuses an item that is not under Pending release", async () => {
       const { withdrawal } = build({
         release: { skills: { tdd: "released tdd" } },
@@ -387,6 +407,33 @@ describe("WithdrawFromRelease", () => {
       );
       expect(await skillText("tdd")).toBe("edited since");
     });
+
+    it.each([
+      ["new", { testing: "edited since" }],
+      ["old", { testing: "released tdd", tdd: "recreated since" }],
+    ] as const)(
+      "refuses when the %s name of a rename changed after the confirmation",
+      async (_, since) => {
+        const { withdrawal, setWorking, disk } = build({
+          release: { skills: { tdd: "released tdd" } },
+          merged: { skills: { testing: "released tdd" } },
+          working: { skills: { testing: "released tdd" } },
+          rows: [
+            {
+              ...releaseRow(skillRef("testing"), "rename"),
+              previousName: "tdd",
+            },
+          ],
+        });
+        const token = await confirmed(withdrawal, skillRef("testing"));
+        setWorking({ skills: since });
+
+        await expect(
+          withdrawal.execute(skillRef("testing"), token),
+        ).resolves.toEqual({ ok: false, error: "confirmation-stale" });
+        expect((await disk()).skills).toEqual(Object.keys(since).sort());
+      },
+    );
 
     it("refuses when the latest release moved after the confirmation", async () => {
       const { withdrawal, git, skillText } = changed();
