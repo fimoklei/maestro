@@ -4,6 +4,7 @@ import {
   ADVISORY_TEXT,
   FINDING_TEXT,
   FOLDER_MISSING,
+  inFlightNotice,
   releaseWithdrawalBody,
   releaseWithdrawalFilesNotice,
   rootSkillFileNotice,
@@ -83,6 +84,21 @@ describe("Harness dialog copy", () => {
     );
     expect(skillChecksNotice("publish", []).message).toBe(
       "You can still publish the release.",
+    );
+  });
+
+  it("warns about in-flight items by name, and says nothing without them", () => {
+    expect(inFlightNotice([])).toBeNull();
+    const one = inFlightNotice(["research"]);
+    expect(one?.level).toBe("warning");
+    expect(one?.label).toBe("Release uses older versions");
+    expect(plainText(one?.message ?? "")).toBe(
+      "These skills and prompts have newer changes that are not merged: research.",
+    );
+    expect(
+      plainText(inFlightNotice(["research", "standup", "tdd"])?.message ?? ""),
+    ).toBe(
+      "These skills and prompts have newer changes that are not merged: research, standup and tdd.",
     );
   });
 

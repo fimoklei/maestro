@@ -11,7 +11,14 @@ import {
   WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
-import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
+import {
+  type Copy,
+  machine,
+  named,
+  namedList,
+  type Phrase,
+  phrase,
+} from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
 import type { defaultBranchCopy } from "./stage-copy";
 
@@ -28,6 +35,18 @@ export const skillChecksNotice = (
       : `You can still ${step} the skill.`,
   items,
 });
+
+// Reported, never blocking: the release ships what is merged.
+export const inFlightNotice = (
+  names: readonly string[],
+): NoticeContent | null =>
+  names.length === 0
+    ? null
+    : {
+        level: "warning",
+        label: "Release uses older versions",
+        message: phrase`These skills and prompts have newer changes that are not merged: ${namedList(names)}.`,
+      };
 
 export const ROOT_SKILL_FILE = "SKILL.md at the Harness root";
 const ROOT_SKILL_FILE_CAUSE =

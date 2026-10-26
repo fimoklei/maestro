@@ -55,6 +55,7 @@ const meta = {
     publishing: false,
     publishError: null,
     load: { kind: "ready", plan: PLAN },
+    inFlight: [],
   },
 } satisfies Meta<typeof ReleaseDialog>;
 
@@ -63,6 +64,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const MajorProposed: Story = {};
+
+// Two items with a newer change still in review or proposal: warned, not blocked.
+export const ChangesInFlight: Story = {
+  args: { inFlight: ["research", "standup"] },
+};
 
 // The first release: no previous tag, proposed at v0.1.0, everything added.
 export const FirstRelease: Story = {
