@@ -1,8 +1,8 @@
 import { useLocation, useNavigate } from "react-router";
 import { cn } from "../ui/cn";
-import { Logo } from "../ui/logo";
 import { NavItem } from "../ui/nav-item";
 import { HarnessButton } from "./harness-button";
+import { LogoLink } from "./logo-link";
 import { SCREEN_GROUPS } from "./screens";
 import { useSidebarCounters } from "./use-sidebar-counters";
 
@@ -24,7 +24,7 @@ export function Sidebar({ className }: { className?: string }) {
       {/* Level with the panel's two 48px bands, below its 1px border. */}
       <div className="flex flex-col pt-px">
         <div className="flex h-12 items-center">
-          <Logo className="px-inline" />
+          <LogoLink className="px-inline" />
         </div>
         <div className="flex h-12 items-center">
           <HarnessButton />

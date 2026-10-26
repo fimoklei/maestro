@@ -89,6 +89,21 @@ describe("cockpit navigation", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("returns to Deploy-state from the logo in the sidebar and the narrow bar", async () => {
+    stubEmptyServer();
+    renderApp("/harness");
+
+    const [sidebarLogo, narrowLogo] = await screen.findAllByRole("link", {
+      name: "Maestro, Deploy-state",
+    });
+    expect(narrowLogo).toHaveAttribute("href", "/");
+    await userEvent.click(sidebarLogo as HTMLElement);
+
+    expect(
+      await screen.findByRole("heading", { name: /deploy-state/i }),
+    ).toBeInTheDocument();
+  });
+
   it("opens the Harness home base from the Author group", async () => {
     stubEmptyServer();
     renderApp();
