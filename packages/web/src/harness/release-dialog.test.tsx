@@ -60,6 +60,7 @@ const renderReady = (
   render(
     <ReleaseDialog
       origin="github.com/fimoklei/agent-harness"
+      inFlight={[]}
       load={{ kind: "ready", plan: { ...PLAN, ...plan } }}
       onClose={overrides.onClose ?? vi.fn()}
       onPublish={overrides.onPublish ?? vi.fn()}
@@ -423,6 +424,7 @@ describe("ReleaseDialog", () => {
     rerender(
       <ReleaseDialog
         origin="github.com/fimoklei/agent-harness"
+        inFlight={[]}
         load={{ kind: "ready", plan: recomputed }}
         onClose={vi.fn()}
         onPublish={onPublish}
@@ -523,6 +525,7 @@ describe("ReleaseDialog", () => {
     render(
       <ReleaseDialog
         origin="github.com/fimoklei/agent-harness"
+        inFlight={[]}
         load={{ kind: "loading" }}
         onClose={vi.fn()}
         onPublish={vi.fn()}
@@ -540,6 +543,7 @@ describe("ReleaseDialog", () => {
     render(
       <ReleaseDialog
         origin="github.com/fimoklei/agent-harness"
+        inFlight={[]}
         load={{
           kind: "error",
           notice: {

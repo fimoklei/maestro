@@ -498,6 +498,7 @@ const SURFACES: {
     render: () => (
       <ReleaseDialog
         origin="github.com/fimoklei/agent-harness"
+        inFlight={[]}
         load={{
           kind: "ready",
           plan: {
