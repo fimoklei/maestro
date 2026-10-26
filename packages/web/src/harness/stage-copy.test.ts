@@ -11,6 +11,7 @@ import { CHANGE_WORD } from "./change-words";
 import {
   alsoInWords,
   changeSentence,
+  correctionLine,
   crossStageLine,
   deployedCopiesLine,
   detailSentence,
@@ -706,6 +707,54 @@ describe("deployed copies line", () => {
         row("pending-release", "not-yet-released", { remoteTree: "abc" }),
       ),
     ).toBeNull();
+  });
+});
+
+// A merged change waiting for release is corrected, not withdrawn, when only
+// its content is wrong (#1685).
+describe("correction line", () => {
+  it("names Edit prompt on a Pending release prompt row", () => {
+    expect(
+      correctionLine(
+        row("pending-release", "not-yet-released", { type: "prompt" }),
+      ),
+    ).toBe("To correct this change, select Edit prompt.");
+  });
+
+  it("names the deployed copy and Import local edits on a Pending release skill row", () => {
+    expect(correctionLine(row("pending-release", "not-yet-released"))).toBe(
+      "To correct this change, edit the deployed copy. Then select Import local edits on Deploy-state.",
+    );
+  });
+
+  it("says nothing on a deleted prompt, which offers no Edit prompt", () => {
+    expect(
+      correctionLine(
+        row("pending-release", "not-yet-released", {
+          type: "prompt",
+          change: "deletion",
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("says nothing on an added skill, which has no deployed copy", () => {
+    expect(
+      correctionLine(
+        row("pending-release", "not-yet-released", { change: "addition" }),
+      ),
+    ).toBeNull();
+  });
+
+  it("says nothing outside Pending release", () => {
+    for (const [stage, status] of [
+      ["pending-proposal", "not-yet-proposed"],
+      ["pending-review", "waiting-for-review"],
+    ] as const) {
+      for (const type of ["skill", "prompt"] as const) {
+        expect(correctionLine(row(stage, status, { type }))).toBeNull();
+      }
+    }
   });
 });
 

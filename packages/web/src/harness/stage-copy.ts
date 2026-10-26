@@ -1,5 +1,6 @@
 // One row per status, so a new status fails typecheck until it has copy.
 import type {
+  HarnessChange,
   HarnessStage,
   HarnessStageRow,
   RequestedReviewer,
@@ -9,6 +10,8 @@ import { type BandCount, countOf } from "../ui/band-summary";
 import {
   CREATE_RELEASE,
   DISCARD_CHANGE,
+  EDIT_PROMPT,
+  IMPORT_LOCAL_EDITS,
   PROPOSE_CHANGE,
   rereadLabel,
   UPDATE_TARGET,
@@ -308,6 +311,23 @@ export const deployedCopiesLine = (row: HarnessStageRow): string | null =>
   row.stage === "pending-proposal" &&
   row.change === "edit"
     ? `Deployed copies change only after a release and ${UPDATE_TARGET}.`
+    : null;
+
+// A merged change that is only wrong is corrected, not withdrawn (#1685).
+const CORRECTION: Record<HarnessStageRow["type"], string> = {
+  prompt: `To correct this change, select ${EDIT_PROMPT}.`,
+  skill: `To correct this change, edit the deployed copy. Then select ${IMPORT_LOCAL_EDITS} on Deploy-state.`,
+};
+
+// A deleted prompt offers no Edit prompt; an added skill has no deployed copy.
+const NO_CORRECTION: Record<HarnessStageRow["type"], HarnessChange> = {
+  prompt: "deletion",
+  skill: "addition",
+};
+
+export const correctionLine = (row: HarnessStageRow): string | null =>
+  row.stage === "pending-release" && row.change !== NO_CORRECTION[row.type]
+    ? CORRECTION[row.type]
     : null;
 
 // Suppressed where any membership is unknown: "only here" is a claim, and an
