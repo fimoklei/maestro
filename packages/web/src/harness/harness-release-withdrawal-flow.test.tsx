@@ -141,6 +141,72 @@ describe("Harness withdraw from release", () => {
     );
   });
 
+  it("selects the old name's row under Pending proposal after withdrawing a rename", async () => {
+    // tdd was renamed to testing and merged; the withdrawal brings tdd back
+    // and leaves two proposals: testing removed, tdd added.
+    const RENAMED: HarnessState = withStages(ON_DISK, {
+      release: [
+        row("pending-release", "testing", "not-yet-released", {
+          onDisk: true,
+          change: "rename",
+          previousName: "tdd",
+        }),
+      ],
+    });
+    const RENAME_WITHDRAWN: HarnessState = withStages(ON_DISK, {
+      proposal: [
+        row("pending-proposal", "testing", "not-yet-proposed", {
+          change: "deletion",
+          alsoIn: ["pending-release"],
+        }),
+        row("pending-proposal", "tdd", "not-yet-proposed", {
+          onDisk: true,
+          change: "addition",
+          remoteTree: "remote-tdd",
+        }),
+      ],
+      release: [
+        row("pending-release", "testing", "not-yet-released", {
+          change: "rename",
+          previousName: "tdd",
+          alsoIn: ["pending-proposal"],
+        }),
+      ],
+    });
+    const withdrawals: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: RENAMED, afterPromote: RENAME_WITHDRAWN },
+      releaseWithdrawal: { body: { name: "tdd" } },
+      releaseWithdrawals: withdrawals,
+    });
+    renderHarness();
+    const menu = await openRowMenu("testing", "Pending release");
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: "Withdraw from release" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Withdraw testing from release",
+    });
+    await waitFor(() =>
+      expect(confirmButton(dialog)).not.toHaveAttribute("aria-disabled"),
+    );
+
+    await userEvent.click(confirmButton(dialog));
+
+    await waitFor(() =>
+      expect(withdrawals).toEqual([
+        { type: "skill", name: "testing", confirmation: "token-1" },
+      ]),
+    );
+    const pane = await screen.findByRole("complementary", {
+      name: "tdd detail",
+    });
+    expect(within(pane).getByText("Pending proposal")).toBeInTheDocument();
+    const current = document.querySelectorAll('tr[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("tdd");
+  });
+
   it("states a refusal in the dialog and keeps the confirmation standing", async () => {
     stubHarnessServer({
       read: { body: MERGED },
