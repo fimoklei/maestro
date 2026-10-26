@@ -17,6 +17,7 @@ import { SegmentedControl } from "../ui/segmented-control";
 import { StatusLine } from "../ui/status-line";
 import {
   FINDING_TEXT,
+  inFlightNotice,
   ROOT_SKILL_FILE,
   rootSkillFileNotice,
   skillChecksNotice,
@@ -40,6 +41,7 @@ const STEP_SEGMENTS: readonly { value: SemverStep; label: string }[] = [
 export function ReleaseDialog({
   origin,
   load,
+  inFlight,
   onClose,
   onPublish,
   publishing,
@@ -47,6 +49,8 @@ export function ReleaseDialog({
 }: {
   origin: string;
   load: ReleasePlanLoad;
+  /** Pending release items with a newer change still in review or proposal. */
+  inFlight: readonly string[];
   onClose: () => void;
   onPublish: (step: SemverStep, plan: ReleasePlan) => void;
   publishing: boolean;
@@ -116,6 +120,7 @@ export function ReleaseDialog({
         <PlanBody
           origin={origin}
           plan={load.plan}
+          inFlight={inFlight}
           step={chosenStep ?? load.plan.proposedStep}
           onStepChange={setChosenStep}
         />
@@ -129,11 +134,13 @@ export function ReleaseDialog({
 function PlanBody({
   origin,
   plan,
+  inFlight,
   step,
   onStepChange,
 }: {
   origin: string;
   plan: ReleasePlan;
+  inFlight: readonly string[];
   step: SemverStep;
   onStepChange: (step: SemverStep) => void;
 }) {
@@ -192,6 +199,7 @@ function PlanBody({
           notice={rootSkillFileNotice(plan.defaultBranch)}
         />
       ) : null}
+      <Notice trigger="load" notice={inFlightNotice(inFlight)} />
       <Notice
         trigger="load"
         notice={

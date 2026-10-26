@@ -154,3 +154,19 @@ export const releaseCause = ({
     ? ALL_RELEASED
     : NOTHING_TO_RELEASE;
 };
+
+/**
+ * The Pending release items a newer change is still in review or proposal for.
+ * An item whose Also in is unknown is left out.
+ */
+export const inFlightNames = (read: HarnessStageRead | undefined): string[] =>
+  read?.outcome === "read"
+    ? read.rows
+        .filter((row) =>
+          (row.alsoIn ?? []).some(
+            (stage) =>
+              stage === "pending-review" || stage === "pending-proposal",
+          ),
+        )
+        .map((row) => row.name)
+    : [];
