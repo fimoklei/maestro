@@ -12,6 +12,7 @@ import type {
   ReleasePlanError,
   RestoreError,
   WithdrawError,
+  WithdrawFromReleaseError,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
@@ -32,6 +33,7 @@ import {
   refreshNotice,
   releasePlanNotice,
   releasePublishedNotice,
+  releaseWithdrawalNotice,
   restoredNotice,
   restoreNotice,
   stageReadNotice,
@@ -306,6 +308,26 @@ const SURFACES: Surface[] = [
       "discard-failed": true,
     }),
   ),
+  ...byType(
+    "releaseWithdrawalNotice",
+    (error, type) => releaseWithdrawalNotice(error, { type, name: "tdd" }),
+    codes<WithdrawFromReleaseError>({
+      "not-configured": true,
+      "invalid-skill": true,
+      "sparse-checkout": true,
+      "merge-in-progress": true,
+      "rebase-in-progress": true,
+      "unresolved-conflicts": true,
+      unreadable: true,
+      "no-answer": true,
+      "not-pending-release": true,
+      "confirmation-stale": true,
+      "destination-unsafe": true,
+      "destination-unreadable": true,
+      "withdraw-in-progress": true,
+      "withdraw-failed": true,
+    }),
+  ),
 ];
 
 const surface = (name: string) => {
@@ -375,6 +397,7 @@ describe("a refusal that left the working tree as it was", () => {
     TYPES.flatMap((type) => [
       [`restoreNotice for ${type}`, "Nothing was restored."],
       [`discardNotice for ${type}`, "Nothing was discarded."],
+      [`releaseWithdrawalNotice for ${type}`, "Nothing was withdrawn."],
     ]),
   )("%s opens every sentence with %j", (name, opening) => {
     for (const [code, notice] of noticesOf(surface(name))) {
@@ -387,6 +410,7 @@ describe("the refused skill", () => {
   it.each(
     TYPES.flatMap((type) => [
       [`discardNotice for ${type}`, ["already-proposed", "nothing-to-discard"]],
+      [`releaseWithdrawalNotice for ${type}`, ["not-pending-release"]],
       [
         `localDeletionNotice on harness for ${type}`,
         ["already-gone", "confirmation-stale"],

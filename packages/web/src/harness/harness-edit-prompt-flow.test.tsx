@@ -169,7 +169,7 @@ describe("Harness — Edit prompt", () => {
     expect(await menuLabels("pending-release")).toEqual([
       "View pull request",
       "Edit prompt",
-      "Delete prompt",
+      "Withdraw from release",
     ]);
   });
 

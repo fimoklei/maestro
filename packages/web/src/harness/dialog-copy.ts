@@ -1,4 +1,5 @@
 import type {
+  HarnessChange,
   HarnessPrimitiveType,
   ManifestAdvisory,
   StructuralProblem,
@@ -6,10 +7,11 @@ import type {
 import {
   CREATE_RELEASE,
   rereadLabel,
+  WITHDRAW_FROM_RELEASE,
   WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
-import { type Copy, machine, type Phrase, phrase } from "../ui/phrase";
+import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
 import type { defaultBranchCopy } from "./stage-copy";
 
@@ -106,6 +108,39 @@ export const unproposedNotice = (
         level: "warning",
         label: "Changes not yet proposed",
         message: `${WITHDRAW_PROPOSAL} discards the changes in these files. ${KEEP_OUTSIDE_CLONE}`,
+        items: files.map((file) => phrase`${machine(file)}`),
+      };
+
+// The Change decides what the clone gets back: the latest release's copy
+// under every name the change touched.
+export const releaseWithdrawalBody = (
+  type: HarnessPrimitiveType,
+  change: HarnessChange,
+  previousName: string | null,
+): Phrase => {
+  const w = ITEM_WORDS[type];
+  const changed: Record<HarnessChange, Phrase> = {
+    addition: phrase`This removes the ${w.noun} ${w.holder} from your clone.`,
+    edit: phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy in the latest release.`,
+    deletion: phrase`This brings back the ${w.noun} ${w.holder} from the latest release.`,
+    rename: phrase`This brings back ${named(previousName ?? "")} from the latest release and removes the new name.`,
+  };
+  return withDeployedCopies(
+    type,
+    phrase`${changed[change]} The ${w.noun} then waits under Pending proposal.`,
+  );
+};
+
+/** The files a withdrawal from release would replace; null where none would be. */
+export const releaseWithdrawalFilesNotice = (
+  files: readonly string[],
+): NoticeContent | null =>
+  files.length === 0
+    ? null
+    : {
+        level: "warning",
+        label: "Changes not yet proposed",
+        message: `${WITHDRAW_FROM_RELEASE} discards the changes in these files. ${KEEP_OUTSIDE_CLONE}`,
         items: files.map((file) => phrase`${machine(file)}`),
       };
 

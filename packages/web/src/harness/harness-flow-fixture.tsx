@@ -127,6 +127,10 @@ export function stubHarnessServer(options: {
   // Withdraw proposal's file check; no files by default.
   withdrawCheck?: { body: unknown; status?: number; heldUntil?: Promise<void> };
   confirmations?: Record<string, unknown>[];
+  // Withdraw from release's check; no files and one token by default.
+  releaseWithdrawalCheck?: { body: unknown; status?: number };
+  releaseWithdrawal?: { body: unknown; status?: number };
+  releaseWithdrawals?: Record<string, unknown>[];
   inventory?: {
     body?: unknown;
     status?: number;
@@ -164,6 +168,20 @@ export function stubHarnessServer(options: {
         await ("holds" in plan ? plan.holds?.[planCalls] : undefined);
         planCalls += 1;
         return jsonResponse(plan.body, plan.status);
+      }
+      if (url === "/api/harness/release/withdraw/check") {
+        const check = options.releaseWithdrawalCheck ?? {
+          body: { files: [], confirmation: "token-1" },
+        };
+        return jsonResponse(check.body, check.status);
+      }
+      if (url === "/api/harness/release/withdraw") {
+        options.releaseWithdrawals?.push(JSON.parse(String(init?.body)));
+        const back = options.releaseWithdrawal ?? { body: {}, status: 500 };
+        if ((back.status ?? 200) < 400) {
+          promoted = true;
+        }
+        return jsonResponse(back.body, back.status);
       }
       if (url === "/api/harness/proposal/withdraw/check") {
         const check = options.withdrawCheck ?? { body: { files: [] } };

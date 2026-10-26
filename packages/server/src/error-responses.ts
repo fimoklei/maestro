@@ -24,6 +24,7 @@ import type {
   UpdatePreviewError,
   UpdateRunError,
   WithdrawError,
+  WithdrawFromReleaseError,
 } from "@maestro/core";
 import type { PromptFieldProblem } from "@maestro/core/prompt-file";
 
@@ -336,6 +337,24 @@ export const discardErrorResponses: ErrorTable<DiscardChangeError> = {
   "discard-in-progress": { status: 409 },
   "discard-failed": { status: 500 },
 };
+
+export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseError> =
+  {
+    "not-configured": { status: 409 },
+    "invalid-skill": { status: 400 },
+    "sparse-checkout": deletionErrorResponses["sparse-checkout"],
+    "merge-in-progress": deletionErrorResponses["merge-in-progress"],
+    "rebase-in-progress": deletionErrorResponses["rebase-in-progress"],
+    "unresolved-conflicts": deletionErrorResponses["unresolved-conflicts"],
+    unreadable: deletionErrorResponses.unreadable,
+    "no-answer": { status: 409 },
+    "not-pending-release": { status: 409 },
+    "confirmation-stale": { status: 409 },
+    "destination-unsafe": { status: 409 },
+    "destination-unreadable": { status: 409 },
+    "withdraw-in-progress": { status: 409 },
+    "withdraw-failed": { status: 500 },
+  };
 
 // Never a filesystem message, and never the path it read (#576).
 export const importErrorResponses: ErrorTable<ImportSkillError> = {

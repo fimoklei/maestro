@@ -159,6 +159,76 @@ export async function listWorkingPrimitives(
   }
 }
 
+// The same throwaway-index snapshot as `listWorkingPrimitives`, for the named
+// paths only, compared with `commit`. A file only the commit holds is not
+// lost work, so it is left out.
+export async function readWorkingDifferences(
+  root: string,
+  refs: readonly PrimitiveRef[],
+  commit: string,
+): Promise<string[] | null> {
+  const paths = refs.map(primitivePath);
+  const onDisk = await Promise.all(
+    refs.map((ref) => primitiveOnDisk(root, ref)),
+  );
+  const literal = (path: string) => `:(literal)${path}`;
+  const present = paths.filter((_, at) => onDisk[at]).map(literal);
+  const absent = paths.filter((_, at) => !onDisk[at]).map(literal);
+
+  const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
+  const options = indexOptions(join(indexDir, "index"));
+  try {
+    await run("git", ["-C", root, "read-tree", "HEAD"], options).catch(
+      () => {},
+    );
+    if (absent.length > 0) {
+      await run(
+        "git",
+        [
+          "-C",
+          root,
+          "rm",
+          "-r",
+          "-q",
+          "--cached",
+          "--ignore-unmatch",
+          "--",
+          ...absent,
+        ],
+        options,
+      );
+    }
+    if (present.length > 0) {
+      await run("git", ["-C", root, "add", "-A", "--", ...present], options);
+    }
+    const { stdout } = await run(
+      "git",
+      [
+        "-C",
+        root,
+        "diff",
+        "--cached",
+        "-z",
+        "--name-only",
+        "--no-renames",
+        "--diff-filter=AMT",
+        `${commit}^{commit}`,
+        "--",
+        ...paths.map(literal),
+      ],
+      options,
+    );
+    return stdout
+      .split("\0")
+      .filter((path) => path !== "")
+      .sort();
+  } catch {
+    return null;
+  } finally {
+    await rm(indexDir, { recursive: true, force: true });
+  }
+}
+
 // Throws where the primitive is not on disk.
 export async function hashWorkingPrimitive(
   root: string,

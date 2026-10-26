@@ -16,6 +16,7 @@ import type {
   PublishReleaseError,
   ReleasePlanError,
   RestoreError,
+  WithdrawFromReleaseError,
 } from "@maestro/core";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
@@ -28,6 +29,7 @@ import {
   PUBLISH_RELEASE,
   rereadLabel,
   UPDATE_SKILL,
+  WITHDRAW_FROM_RELEASE,
 } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
@@ -462,6 +464,88 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
     },
   });
 };
+
+// Takes the item: a refusal names the one that left Pending release.
+const releaseWithdrawalHeadings = ({ type, name }: PrimitiveRef) => {
+  const w = ITEM_WORDS[type];
+  const deletion = deletionHeadings(w);
+  const again = `select ${WITHDRAW_FROM_RELEASE} again.`;
+  return leftAsItWas<WithdrawFromReleaseError>("Nothing was withdrawn.", {
+    "not-configured": harnessHeadings["not-configured"],
+    "invalid-skill": invalidNameHeading(w),
+    "no-answer": {
+      level: "error",
+      label: "Harness not read",
+      message: `Select ${rereadLabel("Harness")}, then ${again}`,
+      detail: "Maestro could not read your clone or the latest release.",
+    },
+    "not-pending-release": {
+      level: "error",
+      label: "Not under Pending release",
+      message: `Select ${rereadLabel("Harness")} to see the ${w.noun} as it is now.`,
+      detail: phrase`${named(name)} is no longer under Pending release.`,
+    },
+    "confirmation-stale": {
+      level: "error",
+      label: "Confirmation out of date",
+      message: `Select ${rereadLabel("Harness")}, then ${again}`,
+      detail:
+        "Your clone or the latest release changed after this confirmation.",
+    },
+    "destination-unsafe": linkInHarness(
+      w,
+      `Replace the link with a real ${w.holder}, then ${again}`,
+    ),
+    "destination-unreadable": typeFolderNotRead(
+      w,
+      `Make the Harness ${w.home} readable, then ${again}`,
+    ),
+    "withdraw-in-progress": {
+      level: "error",
+      label: HARNESS_BUSY,
+      message: `Wait for that change to finish, then ${again}`,
+      detail: "Maestro changes one Harness at a time.",
+    },
+    "withdraw-failed": {
+      level: "error",
+      label: `${w.Noun} not withdrawn`,
+      message: `Make the Harness ${w.home} writable, then ${again}`,
+    },
+    "sparse-checkout": {
+      ...deletion["sparse-checkout"],
+      message: "Connect a complete clone to withdraw changes from release.",
+      detail: "A partial clone does not hold every file of the Harness.",
+    },
+    "merge-in-progress": {
+      ...deletion["merge-in-progress"],
+      message: `Finish or abort the merge, then ${again}`,
+      detail: "A half-merged working tree does not state what changed.",
+    },
+    "rebase-in-progress": {
+      ...deletion["rebase-in-progress"],
+      message: `Finish or abort the rebase, then ${again}`,
+      detail: "A half-rebased working tree does not state what changed.",
+    },
+    "unresolved-conflicts": {
+      ...deletion["unresolved-conflicts"],
+      message: `Resolve the conflicts, then ${again}`,
+      detail: "A conflicted working tree does not state what changed.",
+    },
+    unreadable: {
+      ...deletion.unreadable,
+      message: `Make the Harness folder readable, then ${again}`,
+    },
+  });
+};
+
+export const releaseWithdrawalNotice = (
+  error: unknown,
+  item: PrimitiveRef,
+): NoticeContent | null =>
+  noticeFromTable(releaseWithdrawalHeadings(item), error, {
+    label: `${ITEM_WORDS[item.type].Noun} not withdrawn`,
+    message: `Nothing was withdrawn. The Maestro server did not answer. Select ${WITHDRAW_FROM_RELEASE} again.`,
+  });
 
 // Each refusal leaves the pull request and the clone as they were, so every
 // sentence ends on another press of the same control.

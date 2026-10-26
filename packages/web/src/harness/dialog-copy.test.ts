@@ -4,6 +4,8 @@ import {
   ADVISORY_TEXT,
   FINDING_TEXT,
   FOLDER_MISSING,
+  releaseWithdrawalBody,
+  releaseWithdrawalFilesNotice,
   rootSkillFileNotice,
   skillChecksNotice,
   withdrawBody,
@@ -20,6 +22,51 @@ describe("Harness dialog copy", () => {
     expect(plainText(withdrawBody("skill", main, false))).toBe(
       "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
     );
+  });
+
+  it.each([
+    [
+      "skill",
+      "edit",
+      "This replaces the skill folder in your clone with its copy in the latest release. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+    ],
+    [
+      "skill",
+      "addition",
+      "This removes the skill folder from your clone. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+    ],
+    [
+      "skill",
+      "deletion",
+      "This brings back the skill folder from the latest release. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+    ],
+    [
+      "skill",
+      "rename",
+      "This brings back tdd from the latest release and removes the new name. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+    ],
+    [
+      "prompt",
+      "edit",
+      "This replaces the prompt file in your clone with its copy in the latest release. The prompt then waits under Pending proposal.",
+    ],
+  ] as const)(
+    "states what a withdrawal from release of a %s %s changes, then what stays",
+    (type, change, body) => {
+      expect(plainText(releaseWithdrawalBody(type, change, "tdd"))).toBe(body);
+    },
+  );
+
+  it("names the files a withdrawal from release replaces, and none where it replaces none", () => {
+    expect(releaseWithdrawalFilesNotice([])).toBeNull();
+    const notice = releaseWithdrawalFilesNotice([".apm/skills/tdd/SKILL.md"]);
+    expect(notice?.label).toBe("Changes not yet proposed");
+    expect(plainText(notice?.message ?? "")).toBe(
+      "Withdraw from release discards the changes in these files. To keep them, copy them outside your clone first.",
+    );
+    expect(notice?.items?.map((item) => plainText(item))).toEqual([
+      ".apm/skills/tdd/SKILL.md",
+    ]);
   });
 
   it("warns about skill checks in one wording, naming the step still open", () => {

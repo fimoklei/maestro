@@ -110,6 +110,7 @@ const withMenu = (row: ReturnType<typeof stageRow>) =>
         discard: noop,
         restore: noop,
         edit: noop,
+        withdrawFromRelease: noop,
       },
       true,
       true,

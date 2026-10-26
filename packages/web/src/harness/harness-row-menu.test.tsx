@@ -92,7 +92,9 @@ const menuOf = async (
   await settled();
   const [first] = rows;
   if (first === undefined) throw new Error("no row");
-  return menuItems(await openRowMenu(first.name, STAGE_TITLE[first.stage]));
+  return menuItems(
+    await openRowMenu(first.name, STAGE_TITLE[first.stage], first.type),
+  );
 };
 
 describe("Harness row menu", () => {
@@ -165,54 +167,32 @@ describe("Harness row menu", () => {
       expect(menu.labels).not.toContain("Delete skill");
     });
 
-    it("offers it on Pending release after the links when the folder is on disk", async () => {
+    // Withdraw from release takes its place there (#1642).
+    it("offers Withdraw from release in its place on Pending release, after the links", async () => {
       const menu = await menuOf([
         stageRow("pending-release", "not-yet-released", { onDisk: true }),
       ]);
 
-      expect(menu.labels).toEqual(["View pull request", "Delete skill"]);
-      expect(menu.danger).toEqual(["Delete skill"]);
-    });
-
-    it("never offers it on a Pending release row that reads Deleted", async () => {
-      const menu = await menuOf([
-        stageRow("pending-release", "not-yet-released", {
-          change: "deletion",
-          onDisk: false,
-        }),
+      expect(menu.labels).toEqual([
+        "View pull request",
+        "Withdraw from release",
       ]);
-
-      expect(menu.labels).not.toContain("Delete skill");
+      expect(menu.danger).toEqual(["Withdraw from release"]);
     });
 
-    // No pull request and no file: the menu would open empty (#1590).
     it.each(["skill", "prompt"] as const)(
-      "leaves no ⋮ on a Deleted %s in Pending release with no pull request",
+      "offers only Withdraw from release on a Deleted %s in Pending release with no pull request",
       async (type) => {
-        stubHarnessServer({
-          read: {
-            body: withStages(
-              { ...RELEASED, freshness: FETCHED },
-              {
-                release: [
-                  row("pending-release", "tdd", "not-yet-released", {
-                    type,
-                    change: "deletion",
-                    onDisk: false,
-                  }),
-                ],
-              },
-            ),
-          },
-        });
-        renderHarness();
-        await settled();
-
-        expect(
-          screen.queryByRole("button", {
-            name: `Actions for tdd ${type} in Pending release`,
+        const menu = await menuOf([
+          stageRow("pending-release", "not-yet-released", {
+            type,
+            change: "deletion",
+            onDisk: false,
+            requests: [],
           }),
-        ).toBeNull();
+        ]);
+
+        expect(menu.labels).toEqual(["Withdraw from release"]);
       },
     );
 
@@ -476,12 +456,13 @@ describe("Harness row menu", () => {
     ]);
   });
 
-  it("offers only the link on merged work, which has no undo here", async () => {
+  // Merged work is undone by Withdraw from release (#1642).
+  it("offers the link and Withdraw from release on merged work", async () => {
     const menu = await menuOf([
       stageRow("pending-release", "not-yet-released"),
     ]);
 
-    expect(menu.labels).toEqual(["View pull request"]);
+    expect(menu.labels).toEqual(["View pull request", "Withdraw from release"]);
   });
 
   // #1125: a menu lists only what the row's state calls for; the Status hover
