@@ -1,7 +1,8 @@
 import type { GitHubPage } from "@maestro/core";
 import { useQueryClient } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
 import { useHarness } from "../harness/use-harness";
-import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
+import { inventoryNotRead } from "../inventory/inventory-copy";
 import { refreshInventoryReads } from "../inventory/use-connect-inventory";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { harnessName } from "../shell/target-name";
@@ -10,6 +11,8 @@ import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { rereadLabel } from "../ui/control-labels";
 import { NOT_READ_YET } from "../ui/freshness";
+import { Icon } from "../ui/icon";
+import { IconButton } from "../ui/icon-button";
 import { Notice } from "../ui/notice";
 import { plainText } from "../ui/phrase";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
@@ -32,6 +35,8 @@ import { SettingsSection } from "./settings-section";
 import { useSetLocationDialog } from "./use-set-location-dialog";
 
 const SCREEN = HARNESS_LOCATION_PAGE.label;
+// Re-reads every Inventory view and the Harness, so named for the Inventory.
+const INVENTORY = "Inventory";
 
 export function HarnessLocationPage() {
   const queryClient = useQueryClient();
@@ -58,7 +63,7 @@ export function HarnessLocationPage() {
   // Only the Inventory read is stated as a failure: a failed Harness read
   // leaves the release off the Latest release line. The notice names Re-read
   // Inventory rather than carrying it, as the control sits beside the facts.
-  const readNotice = inventory.isError ? INVENTORY_NOT_READ : null;
+  const readNotice = inventory.isError ? inventoryNotRead(INVENTORY) : null;
   // A write's done sentence, until the next read.
   const status = useScreenStatus({
     name: SCREEN,
@@ -101,9 +106,13 @@ export function HarnessLocationPage() {
         title={CONNECTED_HARNESS}
         busy={reading}
         action={
-          <Button variant="quiet" onClick={reread}>
-            {rereadLabel("Skills")}
-          </Button>
+          <IconButton
+            label={rereadLabel(INVENTORY)}
+            busy={reading}
+            onClick={reread}
+          >
+            <Icon of={RefreshCw} />
+          </IconButton>
         }
       >
         {fact(LOCAL_CLONE, path ?? NOT_READ_YET, path !== null)}

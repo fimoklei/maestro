@@ -4,8 +4,8 @@ import { ActionsMenu } from "../ui/actions-menu";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Icon } from "../ui/icon";
-import { Logo } from "../ui/logo";
 import { PhraseText } from "../ui/phrase-text";
+import { LogoLink } from "./logo-link";
 import { SCREENS, SETTINGS } from "./screens";
 import { useHarnessSummary } from "./use-harness-summary";
 
@@ -23,7 +23,7 @@ export function NarrowBar({ className }: { className?: string }) {
         className,
       )}
     >
-      <Logo />
+      <LogoLink />
       {path === null ? null : (
         <span className="flex min-w-0 flex-col">
           <span
