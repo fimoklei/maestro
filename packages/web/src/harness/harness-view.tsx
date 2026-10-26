@@ -37,7 +37,7 @@ import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
-import type { OpenPrimitive } from "./harness-route";
+import { type OpenPrimitive, proposalRow } from "./harness-route";
 import {
   harnessAnnouncement,
   releaseCause,
@@ -45,6 +45,7 @@ import {
   type StageSection,
   stageSections,
 } from "./harness-view-model";
+import { harnessPromptReadNotice } from "./import-prompt-copy";
 import {
   harnessStateNotice,
   publishReleaseNotice,
@@ -54,7 +55,7 @@ import {
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
-import { rowItems } from "./row-actions";
+import { type RowActionHandlers, rowItems } from "./row-actions";
 import {
   ALL_RELEASED,
   harnessCounts,
@@ -62,6 +63,7 @@ import {
   statusReading,
 } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
+import { useEditPromptFlow } from "./use-edit-prompt-flow";
 import {
   useDiscardReleasePlan,
   useHarness,
@@ -155,6 +157,27 @@ export function HarnessView({
   const importFlow = useImportFlow(table, open);
   const promptImportFlow = useImportPromptFlow(table, open);
   const presses = useHarnessPresses(state, table);
+  // The edited row's pane opens here; a row the edit removed leaves none.
+  const editFlow = useEditPromptFlow({
+    screen: "harness",
+    report: table.report,
+    onEdited: (name, written) => {
+      table.settle(written);
+      open(proposalRow({ type: "prompt", name }));
+    },
+  });
+  const handlers: RowActionHandlers = {
+    ...presses.handlers,
+    // A read that finds nothing opens no dialog; the row's pane says why.
+    edit: (row) => editFlow.start(row.name, () => open(rowId(row))),
+  };
+  const readRefusal = editFlow.readRefusal;
+  const readNotice = (row: HarnessTableRow) =>
+    readRefusal === null ||
+    row.type !== "prompt" ||
+    readRefusal.name !== row.name
+      ? null
+      : harnessPromptReadNotice(readRefusal.error);
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -220,6 +243,12 @@ export function HarnessView({
     !harness.isFetching &&
     presses.deleteLocal.isPending === false &&
     presses.discard.isPending === false;
+  // No other Harness write runs: each takes the lock an edit needs.
+  const writesIdle =
+    localSettled &&
+    presses.promote.isPending === false &&
+    presses.proposalAction.isPending === false &&
+    presses.restore.isPending === false;
   const sections = state === undefined ? [] : stageSections(state);
   const rows: HarnessTableRow[] =
     state === undefined
@@ -235,13 +264,14 @@ export function HarnessView({
                   reading: statusReading(row),
                   items: rowItems(
                     row,
-                    presses.handlers,
+                    handlers,
                     // Closed with no answer from the remote: there is no tip
                     // to build on.
                     releaseEnabled(state.freshness) &&
                       localSettled &&
                       presses.promote.isPending === false &&
                       presses.proposalAction.isPending === false,
+                    writesIdle,
                     // Recovery reads the clone alone, so the remote's silence
                     // never closes it (#915).
                     {
@@ -413,7 +443,7 @@ export function HarnessView({
         <StageDetailPane
           row={row}
           context={context}
-          failure={failure?.id === row.id ? failure.notice : null}
+          failure={failure?.id === row.id ? failure.notice : readNotice(row)}
           {...frame}
         />
       )}
@@ -438,6 +468,7 @@ export function HarnessView({
           origin={state.origin}
           importFlow={importFlow}
           promptImportFlow={promptImportFlow}
+          editPromptFlow={editFlow}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletionWrite}
           onDeletionClose={presses.closeConfirmation}

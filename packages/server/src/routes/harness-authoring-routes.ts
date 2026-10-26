@@ -1,4 +1,5 @@
 import type { ImportPromptSuccess, PrimitiveRef } from "@maestro/core";
+import type { PromptFile } from "@maestro/core/prompt-file";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
@@ -6,12 +7,15 @@ import {
   deletionErrorResponses,
   discardErrorResponses,
   type ErrorTable,
+  editPromptErrorResponses,
   importErrorResponses,
   importPromptErrorResponses,
+  isEditPromptRefusal,
   isImportPromptRefusal,
   localDeletionErrorResponses,
   promoteErrorResponses,
   proposalErrorResponses,
+  readPromptErrorResponses,
   restoreErrorResponses,
   scaffoldErrorResponses,
   withdrawErrorResponses,
@@ -31,11 +35,15 @@ import {
   PATH_BODY,
   PROMOTE_BODY,
   PROMPT_CHECK_BODY,
+  PROMPT_EDIT_BODY,
+  PROMPT_READ_BODY,
   PROPOSAL_BODY,
   PROPOSAL_CREATE_BODY,
   parseBody,
   promoteBodySchema,
   promptCheckBodySchema,
+  promptEditBodySchema,
+  promptReadBodySchema,
   proposalBodySchema,
   RESTORE_BODY,
   restoreBodySchema,
@@ -294,6 +302,38 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       mode: result.mode,
       name: result.name,
     } satisfies ImportPromptSuccess);
+  });
+
+  // Reads the Working Harness the server resolves, never the Released harness.
+  app.post("/api/harness/prompt/read", async (c) => {
+    const body = await parseBody(c, promptReadBodySchema, PROMPT_READ_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importPrompt.read(body.data.name);
+    if (!result.ok) {
+      const { status } = readPromptErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json(result.prompt satisfies PromptFile);
+  });
+
+  // Rewrites the file the read gave; core refuses any it would create.
+  app.post("/api/harness/prompt/edit", async (c) => {
+    const body = await parseBody(c, promptEditBodySchema, PROMPT_EDIT_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importPrompt.edit(body.data);
+    if (!result.ok) {
+      // Core judges the fields again; the schema owns their HTTP refusal.
+      if (!isEditPromptRefusal(result.error)) {
+        return c.json({ error: "invalid-body", ...PROMPT_EDIT_BODY }, 400);
+      }
+      const { status } = editPromptErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ name: result.name });
   });
 
   // The path is re-checked from scratch: the offer that carried it is not evidence (#556).

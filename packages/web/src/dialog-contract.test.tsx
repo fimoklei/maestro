@@ -225,11 +225,14 @@ const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
   />
 );
 
+// The import mode: the edit mode carries no source tabs.
 const importPromptDialog = (
-  props: Partial<ComponentProps<typeof ImportPromptDialog>>,
+  props: Partial<
+    Extract<ComponentProps<typeof ImportPromptDialog>, { source: unknown }>
+  >,
 ) => (
   <ImportPromptDialog
-    draft={{ name: "", description: "", text: "" }}
+    draft={{ name: "", frontmatter: "", description: "", text: "" }}
     fieldErrors={{}}
     changed={false}
     phase="idle"
@@ -654,6 +657,7 @@ const ON_DIALOG: Row[] = [
       importPromptDialog({
         draft: {
           name: "review-pr",
+          frontmatter: "",
           description: "Review a pull request.",
           text: "Review $ARGUMENTS.",
         },
@@ -665,7 +669,12 @@ const ON_DIALOG: Row[] = [
     changed: async (onClose) => {
       render(
         importPromptDialog({
-          draft: { name: "", description: "", text: "Review." },
+          draft: {
+            name: "",
+            frontmatter: "",
+            description: "",
+            text: "Review.",
+          },
           changed: true,
           close: onClose,
         }),

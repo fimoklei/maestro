@@ -39,13 +39,26 @@ describe("POST body parsing", () => {
     message:
       "Nothing was imported. Reload the page, then import the prompt again.",
     detail:
-      "The request carries a name, a description and a text: { name: string, description: string, text: string }.",
+      "The request carries a name, front matter, a description and a text: { name: string, frontmatter: string, description: string, text: string }.",
   };
 
   const PROMPT_CHECK_SHAPE = {
     message:
       "Nothing was checked. Reload the page, then check the prompt name again.",
     detail: "The request carries a name: { name: string }.",
+  };
+
+  const PROMPT_READ_SHAPE = {
+    message:
+      "Nothing was read. Reload the page, then select Edit prompt again.",
+    detail: "The request carries a name: { name: string }.",
+  };
+
+  const PROMPT_EDIT_SHAPE = {
+    message:
+      "Nothing was edited. Reload the page, then select Edit prompt again.",
+    detail:
+      "The request carries a name, a description, a text and the prompt as read: { name: string, description: string, text: string, read: { description: string, text: string } }.",
   };
 
   const routes = [
@@ -60,6 +73,8 @@ describe("POST body parsing", () => {
     { path: "/api/harness/proposal/withdraw", shape: WITHDRAW_SHAPE },
     { path: "/api/harness/prompt/import", shape: PROMPT_SHAPE },
     { path: "/api/harness/prompt/check", shape: PROMPT_CHECK_SHAPE },
+    { path: "/api/harness/prompt/read", shape: PROMPT_READ_SHAPE },
+    { path: "/api/harness/prompt/edit", shape: PROMPT_EDIT_SHAPE },
   ];
 
   const makeApp = () => inMemoryApp();
@@ -139,12 +154,14 @@ describe("POST body parsing", () => {
     ["a description holding a line break", { description: "a\n---" }],
     ["an empty text", { text: "" }],
     ["a text over 100 KB", { text: "é".repeat(60_000) }],
+    ["a body without front matter", { frontmatter: undefined }],
   ])("refuses %s on the prompt import at the edge", async (_, change) => {
     const res = await makeApp().request(
       "/api/harness/prompt/import",
       post(
         JSON.stringify({
           name: "review-pr",
+          frontmatter: "",
           description: "Review a pull request.",
           text: "Review $ARGUMENTS.",
           ...change,
@@ -157,6 +174,56 @@ describe("POST body parsing", () => {
       error: "invalid-body",
       ...PROMPT_SHAPE,
     });
+  });
+
+  it.each([
+    ["an uppercase name", { name: "Review-PR" }],
+    ["a description holding a line break", { description: "a\n---" }],
+    ["an empty text", { text: "" }],
+    [
+      "a read text over 100 KB",
+      { read: { description: "Old", text: "é".repeat(60_000) } },
+    ],
+    [
+      "a read description over 100 KB",
+      { read: { description: "é".repeat(60_000), text: "Old." } },
+    ],
+  ])("refuses %s on the prompt edit at the edge", async (_, change) => {
+    const res = await makeApp().request(
+      "/api/harness/prompt/edit",
+      post(
+        JSON.stringify({
+          name: "review-pr",
+          description: "Review a pull request.",
+          text: "Review $ARGUMENTS.",
+          read: { description: "Old", text: "Old." },
+          ...change,
+        }),
+      ),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "invalid-body",
+      ...PROMPT_EDIT_SHAPE,
+    });
+  });
+
+  it("refuses a front matter and text past 100 KB together as the text over 100 KB", async () => {
+    const res = await makeApp().request(
+      "/api/harness/prompt/import",
+      post(
+        JSON.stringify({
+          name: "review-pr",
+          frontmatter: `description: Review\nnotes: ${"n".repeat(60_000)}`,
+          description: "Review a pull request.",
+          text: "t".repeat(60_000),
+        }),
+      ),
+    );
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: "long-text" });
   });
 
   // The expected shape rides in `detail` (#681).

@@ -8,12 +8,22 @@ import {
 } from "./harness-primitive-dir";
 import type { ImportMode } from "./import-mode";
 import {
+  draftPrompt,
   type PromptDraft,
   type PromptFieldProblem,
+  type PromptFile,
+  promptDraftProblems,
   promptFieldProblems,
+  promptFileTooLong,
   promptNameProblem,
   writePromptFile,
 } from "./prompt-file";
+
+// The refusal for a prompt file that is a link, or that cannot be read.
+const entryRefusal = (
+  kind: "unsafe" | "unreadable",
+): "destination-unsafe" | "destination-unreadable" =>
+  kind === "unsafe" ? "destination-unsafe" : "destination-unreadable";
 
 export type ImportPromptError =
   | "not-configured"
@@ -42,10 +52,37 @@ export type ImportPromptCheckResult =
   | { ok: true; check: ImportPromptCheck }
   | { ok: false; error: "not-configured" };
 
+export type ReadPromptError =
+  | "not-configured"
+  | "invalid-name"
+  | "prompt-missing"
+  | "destination-unsafe"
+  | "destination-unreadable";
+
+export type ReadPromptResult =
+  | { ok: true; prompt: PromptFile }
+  | { ok: false; error: ReadPromptError };
+
+/** The edited fields, and the prompt as `read` gave it when the dialog opened. */
+export type PromptEdit = PromptFile & { name: string; read: PromptFile };
+
+export type EditPromptError =
+  | ReadPromptError
+  | PromptFieldProblem
+  // The file no longer reads as the `read` the dialog was filled with.
+  | "prompt-changed"
+  | "import-in-progress"
+  | "write-failed";
+
+export type EditPromptResult =
+  | { ok: true; name: string }
+  | { ok: false; error: EditPromptError };
+
 export class ImportPrompt {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: PrimitiveEntryFs & Pick<FileSystemPort, "ensureDir" | "writeFile">;
+    fs: PrimitiveEntryFs &
+      Pick<FileSystemPort, "ensureDir" | "readFile" | "writeFile">;
     locks: InFlightLocks;
   };
 
@@ -74,10 +111,73 @@ export class ImportPrompt {
     };
   }
 
+  /** The prompt as the Working Harness holds it, never the Released harness. */
+  async read(name: string): Promise<ReadPromptResult> {
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    if (promptNameProblem(name) !== null) {
+      return { ok: false, error: "invalid-name" };
+    }
+    const found = await this.load(root, name);
+    if (!found.ok) {
+      return found;
+    }
+    const { description, text } = found.draft;
+    return { ok: true, prompt: { description, text } };
+  }
+
+  // Rewrites only a file that is there: an edit never creates a prompt.
+  async edit(input: PromptEdit): Promise<EditPromptResult> {
+    const [problem] = promptFieldProblems(input);
+    if (problem !== undefined) {
+      return { ok: false, error: problem };
+    }
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    const run = await this.deps.locks.run(root, () =>
+      this.rewrite(root, input),
+    );
+    return run.ok ? run.value : { ok: false, error: "import-in-progress" };
+  }
+
+  // The other front matter keys come from the file as it reads under the lock.
+  private async rewrite(
+    root: string,
+    { name, description, text, read }: PromptEdit,
+  ): Promise<EditPromptResult> {
+    const found = await this.load(root, name);
+    if (!found.ok) {
+      return found;
+    }
+    if (
+      found.draft.description !== read.description ||
+      found.draft.text !== read.text
+    ) {
+      return { ok: false, error: "prompt-changed" };
+    }
+    const frontmatter = found.draft.frontmatter;
+    if (promptFileTooLong({ frontmatter, text })) {
+      return { ok: false, error: "long-text" };
+    }
+    try {
+      await this.deps.fs.writeFile(
+        found.path,
+        writePromptFile({ frontmatter, description, text }),
+      );
+    } catch {
+      return { ok: false, error: "write-failed" };
+    }
+    return { ok: true, name };
+  }
+
   // A taken name is no blocker: the write replaces that prompt.
   async execute(input: PromptDraft): Promise<ImportPromptResult> {
     // Judged again: never trust the fields the browser checked.
-    const [problem] = promptFieldProblems(input);
+    const [problem] = promptDraftProblems(input);
     if (problem !== undefined) {
       return { ok: false, error: problem };
     }
@@ -91,7 +191,7 @@ export class ImportPrompt {
 
   private async write(
     root: string,
-    { name, description, text }: PromptDraft,
+    { name, frontmatter, description, text }: PromptDraft,
   ): Promise<ImportPromptResult> {
     const resolved = await ensureHarnessPrimitiveDir(
       this.deps.fs,
@@ -112,23 +212,52 @@ export class ImportPrompt {
       name,
     });
     if (entry.kind === "unsafe" || entry.kind === "unreadable") {
-      return {
-        ok: false,
-        error:
-          entry.kind === "unsafe"
-            ? "destination-unsafe"
-            : "destination-unreadable",
-      };
+      return { ok: false, error: entryRefusal(entry.kind) };
     }
     const mode: ImportMode = entry.kind === "plain" ? "update" : "add";
     try {
       await this.deps.fs.writeFile(
         entry.path,
-        writePromptFile({ description, text }),
+        writePromptFile({ frontmatter, description, text }),
       );
     } catch {
       return { ok: false, error: "write-failed" };
     }
     return { ok: true, mode, name };
+  }
+
+  // A link is refused before it is read: the read never follows it.
+  private async load(
+    root: string,
+    name: string,
+  ): Promise<
+    | { ok: true; path: string; draft: PromptDraft }
+    | {
+        ok: false;
+        error:
+          | "prompt-missing"
+          | "destination-unsafe"
+          | "destination-unreadable";
+      }
+  > {
+    const entry = await inspectPrimitiveEntry(this.deps.fs, root, {
+      type: "prompt",
+      name,
+    });
+    if (entry.kind === "unsafe" || entry.kind === "unreadable") {
+      return { ok: false, error: entryRefusal(entry.kind) };
+    }
+    let raw: string | null = null;
+    if (entry.kind === "plain") {
+      try {
+        raw = await this.deps.fs.readFile(entry.path);
+      } catch {
+        return { ok: false, error: "destination-unreadable" };
+      }
+    }
+    if (raw === null) {
+      return { ok: false, error: "prompt-missing" };
+    }
+    return { ok: true, path: entry.path, draft: draftPrompt(raw, null) };
   }
 }

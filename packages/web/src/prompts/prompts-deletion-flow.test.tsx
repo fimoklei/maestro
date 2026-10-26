@@ -149,7 +149,7 @@ describe("Prompts — Delete prompt", () => {
     await waitFor(() =>
       expect(
         menu.getAllByRole("menuitem").map((item) => item.textContent),
-      ).toEqual(["Copy prompt", "Delete prompt"]),
+      ).toEqual(["Copy prompt", "Edit prompt", "Delete prompt"]),
     );
     expect(menu.getAllByRole("separator")).toHaveLength(1);
   });
@@ -285,7 +285,7 @@ describe("Prompts — Delete prompt", () => {
       await waitFor(() =>
         expect(
           menu.getAllByRole("menuitem").map((item) => item.textContent),
-        ).toEqual(["Copy prompt"]),
+        ).toEqual(["Copy prompt", "Edit prompt"]),
       );
       await userEvent.keyboard("{Escape}");
 

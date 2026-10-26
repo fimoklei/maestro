@@ -6,6 +6,7 @@ import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
 import {
   DELETE_LABEL,
   DISCARD_CHANGE,
+  EDIT_PROMPT,
   PROPOSE_CHANGE,
   RESTORE_LABEL,
   WITHDRAW_PROPOSAL,
@@ -27,6 +28,7 @@ export type RowActionHandlers = {
   // Takes the commit the menu was painted at: that is the source the author
   // confirms, and a later read must not rewrite it (#915).
   restore: (row: HarnessStageRow, commit: string) => void;
+  edit: (row: HarnessStageRow) => void;
 };
 
 // Only over a default-branch copy of an edit: on a skill nothing else holds,
@@ -57,14 +59,29 @@ export function rowItems(
   row: HarnessStageRow,
   handlers: RowActionHandlers,
   enabled: boolean,
+  // Edit prompt writes the clone alone, so the remote's silence never closes it.
+  editEnabled: boolean,
   // Its own gate: `enabled` closes on the remote's silence, and recovery from
   // the clone's own commit must stay open exactly then (#915).
   restore: RestoreGate,
   running: RunningPress | null,
 ): FootItem[] {
   const commit = restore.commit;
+  const stage = stageItems(row, handlers, enabled, running);
   return [
-    ...stageItems(row, handlers, enabled, running),
+    ...stage.filter((item) => !item.danger),
+    // In every stage, after the stage's own steps: an edit under an open
+    // request lands in Pending proposal, where Update proposal sends it on.
+    ...(row.type === "prompt" && row.onDisk
+      ? [
+          {
+            label: EDIT_PROMPT,
+            disabled: !editEnabled,
+            onSelect: () => handlers.edit(row),
+          },
+        ]
+      : []),
+    ...stage.filter((item) => item.danger),
     // Last of every menu that carries it. A row that cannot come back shows no
     // item at all, not a disabled one: there is nothing for the author to fix.
     ...(row.restorable && commit !== null

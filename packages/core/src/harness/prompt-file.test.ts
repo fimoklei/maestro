@@ -17,12 +17,14 @@ describe("draftPrompt", () => {
     expect(draftPrompt("# Review PR\n\nReview the PR.", null).name).toBe("");
   });
 
-  it("moves the front matter description out of the text", () => {
+  it("moves the front matter out of the text and keeps it whole", () => {
     const raw =
-      "---\ndescription: Review a pull request\nallowed-tools: Bash\n---\nReview $ARGUMENTS.\n";
+      "---\ndescription: Review a pull request\nallowed-tools: Bash # read only\n---\nReview $ARGUMENTS.\n";
 
     expect(draftPrompt(raw, "review-pr.md")).toEqual({
       name: "review-pr",
+      frontmatter:
+        "description: Review a pull request\nallowed-tools: Bash # read only",
       description: "Review a pull request",
       text: "Review $ARGUMENTS.\n",
     });
@@ -34,6 +36,8 @@ describe("draftPrompt", () => {
 
     expect(draftPrompt(raw, null)).toEqual({
       name: "",
+      frontmatter:
+        "description: |\n  Review a pull request\n  and list the risks",
       description: "Review a pull request and list the risks",
       text: "Review it.",
     });
@@ -44,6 +48,7 @@ describe("draftPrompt", () => {
 
     expect(draftPrompt(raw, null)).toEqual({
       name: "",
+      frontmatter: "",
       description: "",
       text: raw,
     });
@@ -85,17 +90,64 @@ describe("writePromptFile", () => {
   ])("reads back the description %j unchanged", (description) => {
     const text = "Review $ARGUMENTS.\r\n";
 
-    expect(readPromptFile(writePromptFile({ description, text }))).toEqual({
+    expect(
+      readPromptFile(writePromptFile({ frontmatter: "", description, text })),
+    ).toEqual({
       description,
       text,
     });
   });
 
-  it("writes only a description key above the text", () => {
+  it("writes only a description key above the text without front matter", () => {
     expect(
-      writePromptFile({ description: "Review a PR", text: "Review it." }),
+      writePromptFile({
+        frontmatter: "",
+        description: "Review a PR",
+        text: "Review it.",
+      }),
     ).toBe("---\ndescription: Review a PR\n---\nReview it.");
   });
+
+  it("sets the description inside the front matter, keeping keys, order and comments", () => {
+    expect(
+      writePromptFile({
+        frontmatter:
+          "argument-hint: '[scope]' # shown in the menu\ndescription: Old\nmodel: haiku",
+        description: "Write a commit message",
+        text: "Write it.",
+      }),
+    ).toBe(
+      "---\nargument-hint: '[scope]' # shown in the menu\ndescription: Write a commit message\nmodel: haiku\n---\nWrite it.",
+    );
+  });
+
+  it("adds the description to front matter that lacks one", () => {
+    expect(
+      writePromptFile({
+        frontmatter: "model: haiku",
+        description: "Review",
+        text: "Review it.",
+      }),
+    ).toBe("---\nmodel: haiku\ndescription: Review\n---\nReview it.");
+  });
+
+  it.each([
+    ["a document start", "--- \nmodel: haiku"],
+    ["a directive", "%YAML 1.2\n---\nmodel: haiku"],
+    ["a list", "- model"],
+    ["broken YAML", "model: [unclosed"],
+  ])(
+    "writes only the description over front matter holding %s",
+    (_, frontmatter) => {
+      expect(
+        writePromptFile({
+          frontmatter,
+          description: "Review",
+          text: "Review it.",
+        }),
+      ).toBe("---\ndescription: Review\n---\nReview it.");
+    },
+  );
 });
 
 describe("promptFieldProblems", () => {

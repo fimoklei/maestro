@@ -198,6 +198,54 @@ describe("Harness import prompt flow", () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    [
+      "a paste over the whole text",
+      async (user: ReturnType<typeof userEvent.setup>, text: HTMLElement) => {
+        await user.click(text);
+        await user.keyboard("{Control>}a{/Control}");
+        await user.paste("Read the diff.");
+      },
+    ],
+    [
+      "clearing the text, then typing",
+      async (user: ReturnType<typeof userEvent.setup>, text: HTMLElement) => {
+        await user.clear(text);
+        await user.type(text, "Read the diff.");
+      },
+    ],
+  ])(
+    "drops the pasted front matter after %s without one",
+    async (_, replace) => {
+      const { imports } = stubPromptServer({});
+      const user = userEvent.setup();
+      renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+      const dialog = await openImportPrompt(user);
+      const text = field(dialog, "Prompt text");
+      await user.click(text);
+      await user.paste(PASTED);
+      await replace(user, text);
+      expect(text).toHaveValue("Read the diff.");
+
+      await user.type(field(dialog, "Name"), "review-pr");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Import prompt" }),
+      );
+
+      await waitFor(() =>
+        expect(imports).toEqual([
+          {
+            name: "review-pr",
+            frontmatter: "",
+            description: "Review the open pull request",
+            text: "Read the diff.",
+          },
+        ]),
+      );
+    },
+  );
+
   it("imports pasted text, moving its description out of the text", async () => {
     const { imports } = stubPromptServer({});
     const user = userEvent.setup();
@@ -236,6 +284,7 @@ describe("Harness import prompt flow", () => {
       expect(imports).toEqual([
         {
           name: "review-pr",
+          frontmatter: "description: Review the open pull request\nmodel: opus",
           description: "Review the open pull request",
           text: "Review $ARGUMENTS.\nUse $1 as the focus.\nBe brief.",
         },
@@ -310,6 +359,27 @@ describe("Harness import prompt flow", () => {
       within(dialog).getByText(
         "Shorten the text to 100 KB or less. Then select Import prompt.",
       ),
+    ).toBeInTheDocument();
+    expect(calls.filter((call) => call.includes("/prompt/import"))).toEqual([]);
+  });
+
+  it("refuses a pasted front matter and text past 100 KB together without a request", async () => {
+    const { calls } = stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.click(field(dialog, "Prompt text"));
+    await user.paste(
+      `---\ndescription: Review\nnotes: ${"n".repeat(60_000)}\n---\n${"t".repeat(60_000)}`,
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import prompt" }),
+    );
+
+    expect(
+      await within(dialog).findByText("Prompt over 100 KB"),
     ).toBeInTheDocument();
     expect(calls.filter((call) => call.includes("/prompt/import"))).toEqual([]);
   });
@@ -439,6 +509,33 @@ describe("Harness import prompt flow", () => {
     expect(
       within(pane).getByRole("button", { name: "Update proposal" }),
     ).toBeInTheDocument();
+  });
+
+  it("leaves nothing selected and states no error when Update prompt restores the default-branch text", async () => {
+    const { imports } = stubPromptServer({
+      taken: ["review-pr"],
+      importBody: { mode: "update", name: "review-pr" },
+      imported: HARNESS,
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.tab();
+    await screen.findByRole("dialog", { name: "Update a prompt" });
+    await user.type(field(dialog, "Description"), "Review");
+    await user.type(field(dialog, "Prompt text"), "Go.");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Update prompt" }),
+    );
+
+    await waitFor(() => expect(imports).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(harnessRegion()).not.toHaveTextContent(/not|failed/i);
   });
 
   it("returns to Import a prompt when a taken name changes to a free one", async () => {
@@ -576,6 +673,7 @@ describe("Harness import prompt flow", () => {
       expect(imports).toEqual([
         {
           name: "review-pr",
+          frontmatter: "description: Review",
           description: "Review",
           text: "Read the diff.\nBe brief.\n",
         },
@@ -608,6 +706,7 @@ describe("Harness import prompt flow", () => {
       expect(imports).toEqual([
         {
           name: "review-pr",
+          frontmatter: "description: Review",
           description: "Review",
           text: "Read the diff.\r\nBe brief.\r\n",
         },

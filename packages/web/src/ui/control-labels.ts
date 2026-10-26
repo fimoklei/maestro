@@ -9,6 +9,7 @@ export const DELETE_PROMPT = "Delete prompt";
 export const DELETE_SKILL = "Delete skill";
 export const DEPLOY_SKILL = "Deploy skill";
 export const DISCARD_CHANGE = "Discard change";
+export const EDIT_PROMPT = "Edit prompt";
 export const IMPORT = "Import";
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 export const IMPORT_PROMPT = "Import prompt";
