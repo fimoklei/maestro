@@ -135,6 +135,7 @@ const releaseDialog = (
 ) => (
   <ReleaseDialog
     origin="github.com/fimoklei/agent-harness"
+    inFlight={[]}
     load={load}
     onClose={onClose}
     onPublish={vi.fn()}

@@ -85,6 +85,7 @@ export type HarnessDialogsProps = {
   onWithdrawClose: () => void;
   planOpen: boolean;
   plan: ReturnType<typeof useReleasePlan>;
+  inFlight: readonly string[];
   publish: Pick<WriteAction<unknown, unknown>, "phase" | "failure">;
   onPlanClose: () => void;
   onPublish: (step: SemverStep, plan: ReleasePlan) => void;
@@ -208,6 +209,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
         <ReleaseDialog
           origin={props.origin}
           load={planLoad(props.plan)}
+          inFlight={props.inFlight}
           onClose={props.onPlanClose}
           onPublish={props.onPublish}
           publishing={props.publish.phase === "running"}

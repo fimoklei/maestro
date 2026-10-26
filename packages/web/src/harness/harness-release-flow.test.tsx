@@ -138,6 +138,71 @@ describe("Harness release", () => {
     expect(within(dialog).getByText(/broken/)).toBeInTheDocument();
   });
 
+  const IN_FLIGHT_NOTICE = sentence(
+    /^These skills and prompts have newer changes that are not merged: /,
+  );
+  const openReleaseDialog = async (state: HarnessState) => {
+    stubHarnessServer({ read: { body: state }, plan: { body: PLAN } });
+    renderHarness();
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("Releasing as");
+    return dialog;
+  };
+
+  it("names every Pending release item still in flight, and leaves Publish release enabled", async () => {
+    const dialog = await openReleaseDialog(
+      withStages(FETCHED, {
+        release: [
+          row("pending-release", "research", "not-yet-released", {
+            change: "addition",
+            alsoIn: ["pending-review"],
+          }),
+          row("pending-release", "standup", "not-yet-released", {
+            type: "prompt",
+            path: ".apm/prompts/standup.prompt.md",
+            alsoIn: ["pending-proposal"],
+          }),
+          row("pending-release", "tdd", "not-yet-released"),
+        ],
+      }),
+    );
+
+    expect(
+      within(dialog).getByText(
+        sentence(
+          "These skills and prompts have newer changes that are not merged: research and standup.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish release" }),
+    ).toBeEnabled();
+  });
+
+  it("shows no in-flight notice when no item is in flight, or only items whose Also in is unknown", async () => {
+    const dialog = await openReleaseDialog(
+      withStages(FETCHED, {
+        release: [
+          row("pending-release", "research", "not-yet-released", {
+            change: "addition",
+            alsoIn: null,
+          }),
+          row("pending-release", "tdd", "not-yet-released"),
+        ],
+      }),
+    );
+
+    expect(within(dialog).queryByText(IN_FLIGHT_NOTICE)).toBeNull();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish release" }),
+    ).toBeEnabled();
+  });
+
   it("states a plan GitHub gave no answer for in the dialog", async () => {
     stubHarnessServer({
       read: { body: FETCHED },
