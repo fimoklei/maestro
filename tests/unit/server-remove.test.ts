@@ -147,7 +147,7 @@ describe("remove HTTP route", () => {
     expect(w.uninstalls).toEqual([]);
   });
 
-  it("restates the cost, its receipt and the reclaim when nothing confirmed it", async () => {
+  it("restates the cost and its receipt when nothing confirmed it", async () => {
     // No recorded baseline: the copy's edits cannot be ruled out.
     const w = await world();
     w.seed(repoTarget, [skillEntry("tdd")]);
@@ -160,7 +160,6 @@ describe("remove HTTP route", () => {
       error: "cost-not-acknowledged",
       check: { scope: "repo", warning: "cannot-verify-local-edits" },
       receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
-      reclaim: null,
     });
     expect(w.uninstalls).toEqual([]);
   });
@@ -317,7 +316,6 @@ describe("remove HTTP route", () => {
 
       expect(await (await w.preflight(globalTarget)).json()).toEqual({
         check: { scope: "global", tools: [{ tool: "claude", warning: null }] },
-        reclaim: null,
         receipt: expect.any(String),
       });
     });
@@ -345,7 +343,6 @@ describe("remove HTTP route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         check: { scope: "repo", warning: "cannot-verify-local-edits" },
-        reclaim: null,
         receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
       });
       expect(w.uninstalls).toEqual([]);

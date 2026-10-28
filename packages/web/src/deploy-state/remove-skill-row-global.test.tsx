@@ -85,9 +85,8 @@ describe("removing a deployed skill from a row", () => {
       });
     });
 
-    it("confirms a restated cost with the leftovers that came with it", async () => {
+    it("confirms a restated cost with the receipt that came with it", async () => {
       const RESTATED = "c".repeat(64);
-      const RESTATED_TOKEN = "d".repeat(64);
       let attempts = 0;
       const fetchMock = stubFetch(null, () => {
         attempts += 1;
@@ -103,12 +102,6 @@ describe("removing a deployed skill from a row", () => {
                   ],
                 },
                 receipt: RESTATED,
-                reclaim: {
-                  previews: [
-                    { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
-                  ],
-                  token: RESTATED_TOKEN,
-                },
               },
               409,
             )
@@ -116,7 +109,7 @@ describe("removing a deployed skill from a row", () => {
               { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
               200,
             );
-      }, [{ tool: "claude", path: "/Users/me/.claude/skills/tdd" }]);
+      });
       renderGlobalRow();
 
       await openRemoveDialog();
@@ -134,19 +127,14 @@ describe("removing a deployed skill from a row", () => {
       const [, init] = removeCalls(fetchMock)[1] as [string, RequestInit];
       expect(JSON.parse(String(init.body))).toMatchObject({
         confirmedRemovalReceipt: RESTATED,
-        confirmedReclaimToken: RESTATED_TOKEN,
       });
     });
 
-    it("names the leftover copy and confirms with preflight's own token", async () => {
-      const fetchMock = stubFetch(null, undefined, [
-        { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
-      ]);
+    it("confirms with preflight's own receipt", async () => {
+      const fetchMock = stubFetch(null);
       renderGlobalRow();
 
-      const dialog = await openRemoveDialog();
-      expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
-
+      await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       await waitFor(() => {
@@ -157,7 +145,6 @@ describe("removing a deployed skill from a row", () => {
         type: "skill",
         name: "tdd",
         target: { kind: "global" },
-        confirmedReclaimToken: "a".repeat(64),
         confirmedRemovalReceipt: RECEIPT,
       });
     });

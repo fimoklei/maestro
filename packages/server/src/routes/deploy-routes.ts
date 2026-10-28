@@ -153,11 +153,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           error: result.error,
           ...(result.outcome ? { outcome: result.outcome } : {}),
           ...(result.check && result.receipt
-            ? {
-                check: result.check,
-                receipt: result.receipt,
-                reclaim: result.reclaim ?? null,
-              }
+            ? { check: result.check, receipt: result.receipt }
             : {}),
         },
         status,
@@ -178,11 +174,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       const { status } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    return c.json({
-      check: result.check,
-      reclaim: result.reclaim,
-      receipt: result.receipt,
-    });
+    return c.json({ check: result.check, receipt: result.receipt });
   });
 
   // Read-only despite the POST: the target's path travels in the body.

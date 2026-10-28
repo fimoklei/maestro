@@ -343,7 +343,6 @@ const ON_DIALOG: Row[] = [
         preflight={{
           kind: "offered",
           check: { kind: "repo", warning: "none" },
-          reclaim: [],
         }}
         error={null}
         restated={null}
@@ -372,7 +371,6 @@ const ON_DIALOG: Row[] = [
             preflight={{
               kind: "offered",
               check: { kind: "repo", warning: "none" },
-              reclaim: [],
             }}
             error={null}
             restated={{ label: "Removal costs more", message: "Read again." }}

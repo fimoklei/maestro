@@ -1,4 +1,3 @@
-import type { ReclaimPreview } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { HttpError } from "../api/http";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
@@ -8,31 +7,16 @@ import { RemoveSkillDialog } from "./remove-skill-dialog";
 const noticeFor = (code: string): DeployStateNotice =>
   removeNotice(new HttpError(500, "unused", code));
 
-const repoCheck = (
-  warning: RemoveRowWarning,
-  reclaim: readonly ReclaimPreview[] = [],
-) => ({ kind: "offered", check: { kind: "repo", warning }, reclaim }) as const;
+const repoCheck = (warning: RemoveRowWarning) =>
+  ({ kind: "offered", check: { kind: "repo", warning } }) as const;
 
-const toolChecks = (
-  warnings: Record<string, RemoveRowWarning>,
-  reclaim: readonly ReclaimPreview[] = [],
-) =>
-  ({
-    kind: "offered",
-    check: { kind: "per-tool", warnings },
-    reclaim,
-  }) as const;
+const toolChecks = (warnings: Record<string, RemoveRowWarning>) =>
+  ({ kind: "offered", check: { kind: "per-tool", warnings } }) as const;
 
 const CHECKING = {
   kind: "offered",
   check: { kind: "unanswered", warning: "checking" },
-  reclaim: [],
 } as const;
-
-// A tool this machine no longer detects; a global removal force-deletes its copy.
-const LEFTOVER: readonly ReclaimPreview[] = [
-  { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
-];
 
 const meta = {
   title: "DeployState/RemoveSkillDialog",
@@ -135,7 +119,7 @@ export const RemovalRefused: Story = {
 export const FailedWithWarnings: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },
-    preflight: toolChecks({ codex: "cannot-verify" }, LEFTOVER),
+    preflight: toolChecks({ codex: "cannot-verify" }),
     error: noticeFor("remove-failed"),
   },
 };
@@ -178,19 +162,5 @@ export const GlobalScope: Story = {
   args: {
     target: { kind: "global", tools: ["claude", "codex"] },
     preflight: toolChecks({ claude: "none", codex: "none" }),
-  },
-};
-
-export const GlobalScopeWithReclaim: Story = {
-  args: {
-    target: { kind: "global", tools: ["codex"] },
-    preflight: toolChecks({ codex: "none" }, LEFTOVER),
-  },
-};
-
-export const GlobalScopeWithReclaimAndUnverifiableCopy: Story = {
-  args: {
-    target: { kind: "global", tools: ["codex"] },
-    preflight: toolChecks({ codex: "cannot-verify" }, LEFTOVER),
   },
 };

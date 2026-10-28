@@ -1,7 +1,6 @@
 // A check that could not run is never reported as nothing-to-lose. A refusal
 // (removal cannot happen) and a failure (cost unknown) mean opposites (#385).
 import type {
-  ReclaimPreview,
   RemoveCheck,
   RemovePreflightError,
   RemoveWarning,
@@ -26,13 +25,7 @@ export type RemoveCheckState =
   | { kind: "per-tool"; warnings: Readonly<Record<string, RemoveRowWarning>> };
 
 export type RemovePreflightView =
-  // Reclaim rides along rather than a second query read, which could name
-  // paths under a message saying the check can't run.
-  | {
-      kind: "offered";
-      check: RemoveCheckState;
-      reclaim: readonly ReclaimPreview[];
-    }
+  | { kind: "offered"; check: RemoveCheckState }
   // The code rides along so a bulk run can name which refusal took the target out (#423).
   | { kind: "refused"; code: RefusalCode; notice: DeployStateNotice };
 
@@ -79,7 +72,6 @@ const unanswered = (
 ): RemovePreflightView => ({
   kind: "offered",
   check: { kind: "unanswered", warning },
-  reclaim: [],
 });
 
 export function removePreflightView(query: {
@@ -108,7 +100,6 @@ export function removePreflightView(query: {
   return {
     kind: "offered",
     check: checkState(query.data.check),
-    reclaim: query.data.reclaim?.previews ?? [],
   };
 }
 

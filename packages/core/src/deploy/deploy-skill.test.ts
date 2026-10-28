@@ -61,11 +61,6 @@ const buildDeps = (
     name: string;
     tools?: readonly SupportedTool[];
   }> = [];
-  const cleaned: Array<{
-    target: DeployTarget;
-    name: string;
-    tools: readonly SupportedTool[];
-  }> = [];
   const noCopies = deployedCopies([]).content;
   const base = {
     inventory: {
@@ -120,15 +115,6 @@ const buildDeps = (
       }) => noCopies.contentDigest(input),
       linkedSkillPath: async () => null,
     },
-    deployedCleanup: {
-      removeSkillTargets: async (input: {
-        target: DeployTarget;
-        name: string;
-        tools: readonly SupportedTool[];
-      }) => {
-        cleaned.push(input);
-      },
-    },
     toolPresence: {
       detectGlobalTools: async (): Promise<SupportedTool[]> => [
         "claude",
@@ -149,13 +135,13 @@ const buildDeps = (
   };
   const copyGuard = new LocalCopyGuard({ content: base.deployedContent });
   const deps = { ...base, copyGuard };
-  return { deps, deployed, classified, cleaned, copyGuard, world };
+  return { deps, deployed, classified, copyGuard, world };
 };
 
 describe("DeploySkill", () => {
   it("refuses to call an install that placed nothing a clean deploy", async () => {
     // apm prints its success marker whatever landed (#358, #951).
-    const { deps, cleaned, world } = buildDeps();
+    const { deps, world } = buildDeps();
     world.landsOnly([]);
 
     const result = await new DeploySkill(deps).execute({
@@ -165,7 +151,6 @@ describe("DeploySkill", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "deploy-incomplete" });
-    expect(cleaned).toEqual([]);
   });
 
   it("refuses a global install that landed only part of the selection", async () => {
@@ -451,77 +436,6 @@ describe("DeploySkill", () => {
         release: "v0.5.1",
       },
     ]);
-  });
-
-  it.each([[["codex"]], [["claude"]], [["claude", "codex"]]] as const)(
-    "cleans no tool's copy when %j is detected",
-    async (detected) => {
-      const { deps, cleaned, deployed } = buildDeps({
-        toolPresence: { detectGlobalTools: async () => [...detected] },
-      });
-      const result = await new DeploySkill(deps).execute({
-        type: "skill",
-        name: "tdd",
-        target: globalTarget,
-      });
-
-      expect(result.ok).toBe(true);
-      expect(deployed).toHaveLength(1);
-      expect(cleaned).toEqual([]);
-    },
-  );
-
-  it("never cleans on a repo deploy", async () => {
-    // A repo's targets are its own apm.yml, so this machine's detection says
-    // nothing about what its tree should hold.
-    const { deps, cleaned } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["codex"] },
-    });
-    await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: repo("/registered/repo"),
-    });
-
-    expect(cleaned).toEqual([]);
-  });
-
-  it("does not clean when the global install fails", async () => {
-    // Codex-only, so a successful install here would have cleaned the Claude copy.
-    const { deps, cleaned, world } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["codex"] },
-    });
-    world.refuseWith({ ok: false, reason: "failed" });
-    const result = await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: globalTarget,
-    });
-
-    expect(result).toEqual({ ok: false, error: "deploy-failed" });
-    expect(cleaned).toEqual([]);
-  });
-
-  it("still reports success when the obsolete-copy cleanup fails", async () => {
-    const { deps, deployed } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["codex"] },
-      deployedCleanup: {
-        removeSkillTargets: async () => {
-          throw new Error("fs error removing the obsolete copy");
-        },
-      },
-    });
-    const result = await new DeploySkill(deps).execute({
-      type: "skill",
-      name: "tdd",
-      target: globalTarget,
-    });
-
-    expect(result).toEqual({
-      ok: true,
-      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
-    });
-    expect(deployed).toHaveLength(1);
   });
 
   it("refuses a global deploy when no supported tool is detected, before apm", async () => {
@@ -1686,7 +1600,7 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("fails every name on one line when the one install fails", async () => {
-    const { deps, cleaned, world } = buildDeps({
+    const { deps, world } = buildDeps({
       inventory: skills("tdd", "review"),
     });
     world.refuseWith("throw");
@@ -1699,7 +1613,6 @@ describe("DeploySkill.executeBatch", () => {
     expect(report.failed).toEqual([
       { error: "deploy-failed", names: ["tdd", "review"] },
     ]);
-    expect(cleaned).toEqual([]);
   });
 
   it("fails every name when a read throws, leaking nothing it said", async () => {

@@ -10,7 +10,6 @@ import { Report } from "../ui/report";
 import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
-  OTHER_COPIES,
   REMOVAL_TARGETS,
   REMOVE_KEEPS,
   type RemoveDialogTarget,
@@ -36,7 +35,6 @@ const ledgerGroup = (
       name: row.name,
       // Named as the table names it; the full path on hover.
       ...(target.kind === "repo" ? { title: target.repoPath } : {}),
-      value: row.path ?? undefined,
       sentence: row.status ?? undefined,
       tone: row.drift ? "attention" : undefined,
       id: row.id,
@@ -98,12 +96,11 @@ export function RemoveSkillDialog({
   // No ledger after a refusal, or after a failure: the report, if any, replaces it.
   const ledgered = !refused && error === null;
   const rows = ledgered
-    ? removeLedgerRows(target, preflight.reclaim, preflight.check).map(
-        (row, index) => ({ ...row, id: `${dialogId}-target-${index}` }),
-      )
+    ? removeLedgerRows(target, preflight.check).map((row, index) => ({
+        ...row,
+        id: `${dialogId}-target-${index}`,
+      }))
     : [];
-  const detectedRows = rows.filter((row) => !row.leftover);
-  const leftoverRows = rows.filter((row) => row.leftover);
 
   const body =
     report !== null ? (
@@ -116,19 +113,10 @@ export function RemoveSkillDialog({
             {removeLedgerLeadIn("skill")}
           </span>
           <GroupedList
-            groups={ledgerGroup(detectedRows, target)}
+            groups={ledgerGroup(rows, target)}
             checklist={null}
             live={REMOVAL_TARGETS}
           />
-          {/* Mounted empty from first render: a live region created with its first
-              message announces unreliably. */}
-          {target.kind === "global" ? (
-            <GroupedList
-              groups={ledgerGroup(leftoverRows, target)}
-              checklist={null}
-              live={OTHER_COPIES}
-            />
-          ) : null}
           <p className="m-0 font-ui text-gray-11 text-meta">{REMOVE_KEEPS}</p>
         </div>
         {/* Amber: nothing failed or was deleted, the price went up. It carries
@@ -175,11 +163,8 @@ export function RemoveSkillDialog({
       width={640}
       {...run}
       failure={failure}
-      // Leftover rows arrive after open, so only their own region announces them.
       describedBy={
-        ledgered
-          ? [leadInId, ...detectedRows.map((row) => row.id)].join(" ")
-          : null
+        ledgered ? [leadInId, ...rows.map((row) => row.id)].join(" ") : null
       }
       fieldsChanged={false}
       onClose={onCancel}

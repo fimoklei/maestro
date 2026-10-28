@@ -7,31 +7,8 @@ const GLOBAL: DeployTarget = { kind: "global" };
 const REPO: DeployTarget = { kind: "repo", repoPath: "/repo" };
 
 function issuer() {
-  return new RemoveConsentIssuer({ treeRoot: () => "/home" });
+  return new RemoveConsentIssuer();
 }
-
-describe("RemoveConsentIssuer.offer", () => {
-  it.each([
-    [GLOBAL, []],
-    [GLOBAL, ["codex"]],
-    [GLOBAL, ["claude"]],
-    [GLOBAL, ["claude", "codex"]],
-    [REPO, undefined],
-  ] as const)(
-    "offers no reclaim on %j with %j detected",
-    (target, detected) => {
-      expect(issuer().offer({ target, name: "tdd", detected })).toBeNull();
-    },
-  );
-});
-
-describe("RemoveConsentIssuer.grants", () => {
-  it("grants nothing for a token a caller merely guessed", () => {
-    const scope = { target: GLOBAL, name: "tdd", detected: ["codex"] as const };
-
-    expect(issuer().grants(scope, "a".repeat(64))).toBeNull();
-  });
-});
 
 describe("RemoveConsentIssuer receipts", () => {
   const scope = { target: GLOBAL, name: "tdd" };

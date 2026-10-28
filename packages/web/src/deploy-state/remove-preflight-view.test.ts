@@ -15,24 +15,18 @@ const answered = {
 const failedView = (error: unknown) =>
   removePreflightView({ ...answered, error, isError: true });
 
-const RECLAIMED = {
-  previews: [{ tool: "claude" as const, path: "/Users/me/.claude/skills/tdd" }],
-  token: "a".repeat(64),
-};
-
 describe("removePreflightView", () => {
   describe("when the repo scope answered", () => {
     const repoAnswer = (warning: RemoveWarning | null) =>
       removePreflightView({
         ...answered,
-        data: { check: { scope: "repo", warning }, reclaim: null },
+        data: { check: { scope: "repo", warning } },
       });
 
     it("says the copy cannot be verified when it has no baseline", () => {
       expect(repoAnswer("cannot-verify-local-edits")).toEqual({
         kind: "offered",
         check: { kind: "repo", warning: "cannot-verify" },
-        reclaim: [],
       });
     });
 
@@ -40,7 +34,6 @@ describe("removePreflightView", () => {
       expect(repoAnswer("cannot-verify-local-edits")).toEqual({
         kind: "offered",
         check: { kind: "repo", warning: "cannot-verify" },
-        reclaim: [],
       });
     });
 
@@ -48,7 +41,6 @@ describe("removePreflightView", () => {
       expect(repoAnswer(null)).toEqual({
         kind: "offered",
         check: { kind: "repo", warning: "none" },
-        reclaim: [],
       });
     });
 
@@ -56,19 +48,15 @@ describe("removePreflightView", () => {
       expect(repoAnswer("check-did-not-run")).toEqual({
         kind: "offered",
         check: { kind: "repo", warning: "check-failed" },
-        reclaim: [],
       });
     });
   });
 
   describe("when the global scope answered", () => {
-    const globalAnswer = (
-      tools: RemoveToolCheck[],
-      reclaim: RemovePreflight["reclaim"] = null,
-    ) =>
+    const globalAnswer = (tools: RemoveToolCheck[]) =>
       removePreflightView({
         ...answered,
-        data: { check: { scope: "global", tools }, reclaim },
+        data: { check: { scope: "global", tools } },
       });
 
     it("keeps each tool's answer against that tool's own name", () => {
@@ -83,7 +71,6 @@ describe("removePreflightView", () => {
           kind: "per-tool",
           warnings: { claude: "none", codex: "cannot-verify" },
         },
-        reclaim: [],
       });
     });
 
@@ -99,17 +86,6 @@ describe("removePreflightView", () => {
           kind: "per-tool",
           warnings: { claude: "check-failed", codex: "cannot-verify" },
         },
-        reclaim: [],
-      });
-    });
-
-    it("carries the leftover copies that answer names", () => {
-      expect(
-        globalAnswer([{ tool: "codex", warning: null }], RECLAIMED),
-      ).toEqual({
-        kind: "offered",
-        check: { kind: "per-tool", warnings: { codex: "none" } },
-        reclaim: RECLAIMED.previews,
       });
     });
   });
@@ -118,12 +94,8 @@ describe("removePreflightView", () => {
     const checking = {
       kind: "offered",
       check: { kind: "unanswered", warning: "checking" },
-      reclaim: [],
     };
-    const cached = {
-      check: { scope: "repo", warning: null },
-      reclaim: RECLAIMED,
-    } as const;
+    const cached = { check: { scope: "repo", warning: null } } as const;
 
     it("reports nothing yet known as checking, never as clean", () => {
       expect(
@@ -165,10 +137,7 @@ describe("removePreflightView", () => {
   });
 
   describe("when an earlier answer is still in hand", () => {
-    const stale: RemovePreflight = {
-      check: { scope: "repo", warning: null },
-      reclaim: RECLAIMED,
-    };
+    const stale: RemovePreflight = { check: { scope: "repo", warning: null } };
 
     it("drops it when the next check was refused", () => {
       expect(
@@ -202,7 +171,6 @@ describe("removePreflightView", () => {
       ).toEqual({
         kind: "offered",
         check: { kind: "unanswered", warning: "check-failed" },
-        reclaim: [],
       });
     });
   });
@@ -211,7 +179,6 @@ describe("removePreflightView", () => {
     const failedCheck = {
       kind: "offered",
       check: { kind: "unanswered", warning: "check-failed" },
-      reclaim: [],
     };
 
     it("says it did not run, never that it found nothing", () => {

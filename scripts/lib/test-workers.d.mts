@@ -1,4 +1,4 @@
-export const readPmset: () => string;
+export const currentMaxWorkers: () => number | undefined;
 
 export function testMaxWorkers(options: {
   env: Record<string, string | undefined>;
