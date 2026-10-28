@@ -1,10 +1,6 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
-import { Card } from "../ui/card";
 import { RESTORE_LABEL } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
-import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
-import { PhraseText } from "../ui/phrase-text";
 import {
   RESTORE_KEEPS_PROPOSAL,
   RESTORED_FROM_FACT,
@@ -12,6 +8,7 @@ import {
   restoreBody,
   restoreTitle,
 } from "./dialog-copy";
+import { HarnessConfirmation } from "./harness-confirmation";
 import { ITEM_WORDS } from "./item-words";
 
 export function RestoreDialog({
@@ -38,50 +35,29 @@ export function RestoreDialog({
   restoreError: NoticeContent | null;
 }) {
   return (
-    <Dialog
+    <HarnessConfirmation
+      type={type}
+      name={name}
       title={restoreTitle(name)}
-      version={null}
-      width={480}
-      phase={restoring ? "running" : "idle"}
-      // Uncommitted work is thrown away: confirmed like a deletion.
       action={{
         label: RESTORE_LABEL[type],
         verb: "restore",
-        tone: "danger",
         unavailable: null,
-        onRun: onConfirm,
+        run: onConfirm,
       }}
+      running={restoring}
       failure={restoreError}
-      // The consequences sit in the body, read in the order they are written.
-      describedBy={null}
-      fieldsChanged={false}
+      changes={restoreBody(type)}
+      stays={hasRequest ? RESTORE_KEEPS_PROPOSAL : null}
+      facts={[
+        { label: ITEM_WORDS[type].Holder, value: path },
+        // The whole hash: the one commit the confirmation is given against,
+        // re-read at the press.
+        { label: RESTORED_FROM_FACT, value: commit, hint: RESTORED_FROM_HINT },
+      ]}
+      checking={null}
+      loadNotice={null}
       onClose={onClose}
-    >
-      <p className="m-0">
-        <PhraseText copy={restoreBody(type)} />
-      </p>
-      {hasRequest ? (
-        <p className="m-0 text-gray-11">{RESTORE_KEEPS_PROPOSAL}</p>
-      ) : null}
-      <Card padded>
-        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact
-            label={ITEM_WORDS[type].Noun}
-            value={name}
-            wrap
-            machine={false}
-          />
-          <Fact label={ITEM_WORDS[type].Holder} value={path} wrap />
-          {/* The whole hash: the one commit the confirmation is given
-              against, re-read at the press. */}
-          <Fact
-            label={RESTORED_FROM_FACT}
-            value={commit}
-            wrap
-            hint={RESTORED_FROM_HINT}
-          />
-        </dl>
-      </Card>
-    </Dialog>
+    />
   );
 }

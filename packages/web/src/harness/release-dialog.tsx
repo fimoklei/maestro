@@ -1,5 +1,5 @@
 import type { ReleasePlan, SemverStep } from "@maestro/core";
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   DEFAULT_BRANCH_FACT,
   NOT_RELEASED_YET,
@@ -69,6 +69,7 @@ export function ReleaseDialog({
         ].join("@")
       : null;
   const [shownPlanId, setShownPlanId] = useState(planId);
+  const leadId = useId();
   // The origin's last path segment; the card names the whole origin.
   const repoName = origin.slice(origin.lastIndexOf("/") + 1);
   if (planId !== shownPlanId) {
@@ -109,8 +110,17 @@ export function ReleaseDialog({
           ? null
           : (publishError ?? (load.kind === "error" ? load.notice : null))
       }
-      // The plan is the body, and it arrives after the panel is announced.
-      describedBy={null}
+      // A plan blocked with changes has no version; the notice that states
+      // its block describes it.
+      describedBy={
+        load.kind !== "ready"
+          ? null
+          : load.plan.delta.length === 0
+            ? leadId
+            : load.plan.blocked === null
+              ? `${leadId}-label ${leadId}-version`
+              : `${leadId}-block`
+      }
       fieldsChanged={chosenStep !== null}
       onClose={onClose}
     >
@@ -123,6 +133,7 @@ export function ReleaseDialog({
           inFlight={inFlight}
           step={chosenStep ?? load.plan.proposedStep}
           onStepChange={setChosenStep}
+          leadId={leadId}
         />
       ) : null}
     </Dialog>
@@ -137,12 +148,14 @@ function PlanBody({
   inFlight,
   step,
   onStepChange,
+  leadId,
 }: {
   origin: string;
   plan: ReleasePlan;
   inFlight: readonly string[];
   step: SemverStep;
   onStepChange: (step: SemverStep) => void;
+  leadId: string;
 }) {
   const empty = plan.delta.length === 0;
   return (
@@ -163,10 +176,16 @@ function PlanBody({
         {plan.blocked !== null ? null : (
           <div className="mt-panel flex flex-wrap items-end justify-between gap-x-panel gap-y-cell">
             <div className="flex flex-col gap-tight">
-              <span className="font-ui text-gray-11 text-meta">
+              <span
+                id={`${leadId}-label`}
+                className="font-ui text-gray-11 text-meta"
+              >
                 Releasing as
               </span>
-              <span className="font-mono text-gray-12 text-title">
+              <span
+                id={`${leadId}-version`}
+                className="font-mono text-gray-12 text-title"
+              >
                 {plan.versions[step]}
               </span>
               {/* Maestro's proposal is a fact about the delta, so it stands
@@ -187,7 +206,7 @@ function PlanBody({
         )}
       </Card>
       {empty ? (
-        <p className="m-0 text-gray-11">
+        <p id={leadId} className="m-0 text-gray-11">
           No changes yet. Changes merged after the last release appear here.
         </p>
       ) : (
@@ -195,6 +214,7 @@ function PlanBody({
       )}
       {plan.blocked === "root-skill-file" ? (
         <Notice
+          id={`${leadId}-block`}
           trigger="load"
           notice={rootSkillFileNotice(plan.defaultBranch)}
         />

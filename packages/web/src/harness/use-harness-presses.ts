@@ -326,6 +326,7 @@ export function useHarnessPresses(
       setReleaseWithdrawing({
         type: row.type,
         name: row.name,
+        path: row.path,
         change: row.change,
         previousName: row.previousName,
       });

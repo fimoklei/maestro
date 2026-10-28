@@ -2,7 +2,7 @@ import type { ReleasePlan } from "@maestro/core";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { expectTooltipCause, sentence } from "../test-utils";
+import { expectDescription, expectTooltipCause, sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { ReleaseDialog } from "./release-dialog";
 
@@ -519,6 +519,54 @@ describe("ReleaseDialog", () => {
       alert.compareDocumentPosition(leave as HTMLElement) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("describes itself by the version it would release", () => {
+    renderReady();
+
+    expectDescription(screen.getByRole("dialog"), "Releasing as v1.3.0");
+  });
+
+  it("describes itself by the version of the step the author chose", async () => {
+    renderReady();
+
+    await userEvent.click(screen.getByRole("button", { name: "Major" }));
+
+    expectDescription(screen.getByRole("dialog"), "Releasing as v2.0.0");
+  });
+
+  it("describes an empty plan by its lead sentence", () => {
+    renderReady({ delta: [], blocked: "empty-delta" });
+
+    expectDescription(
+      screen.getByRole("dialog"),
+      "No changes yet. Changes merged after the last release appear here.",
+    );
+  });
+
+  it("describes a plan blocked by a root SKILL.md by the notice that states the block", () => {
+    renderReady({ blocked: "root-skill-file", defaultBranch: "trunk" });
+
+    expectDescription(
+      screen.getByRole("dialog"),
+      "SKILL.md at the Harness root Remove SKILL.md from the root of trunk on GitHub. Select Re-read Harness, then select Create a release again. Every target would get the whole Harness as one skill.",
+    );
+  });
+
+  it("has no description while the plan loads", () => {
+    render(
+      <ReleaseDialog
+        origin="github.com/fimoklei/agent-harness"
+        inFlight={[]}
+        load={{ kind: "loading" }}
+        onClose={vi.fn()}
+        onPublish={vi.fn()}
+        publishing={false}
+        publishError={null}
+      />,
+    );
+
+    expect(screen.getByRole("dialog")).not.toHaveAttribute("aria-describedby");
   });
 
   it("says it is working while the plan is still loading", () => {

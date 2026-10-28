@@ -32,7 +32,7 @@ describe("Harness dialog copy", () => {
 
   it("states the hints under the facts a confirmation is given against", () => {
     expect(DEFAULT_BRANCH_COMMIT_HINT).toBe(
-      "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
+      "If the default branch moves before you confirm, nothing is pushed.",
     );
     expect(plainText(discardHint(defaultBranchCopy("main")))).toBe(
       "If main moves before you confirm, nothing is discarded.",
@@ -41,7 +41,7 @@ describe("Harness dialog copy", () => {
       "If the default branch moves before you confirm, nothing is discarded.",
     );
     expect(RESTORED_FROM_HINT).toBe(
-      "Your last local commit. If it moves before you confirm, nothing is restored.",
+      "If your clone's last commit moves before you confirm, nothing is restored.",
     );
     expect(RESTORE_KEEPS_PROPOSAL).toBe("Your proposal remains unchanged.");
   });
@@ -57,36 +57,45 @@ describe("Harness dialog copy", () => {
     );
   });
 
+  const SKILL_STAYS =
+    "The skill then waits under Pending proposal. Deployed copies remain unchanged.";
   it.each([
     [
       "skill",
       "edit",
-      "This replaces the skill folder in your clone with its copy in the latest release. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+      "This replaces the skill folder in your clone with its copy in the latest release.",
+      SKILL_STAYS,
     ],
     [
       "skill",
       "addition",
-      "This removes the skill folder from your clone. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+      "This removes the skill folder from your clone.",
+      SKILL_STAYS,
     ],
     [
       "skill",
       "deletion",
-      "This brings back the skill folder from the latest release. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+      "This brings back the skill folder from the latest release.",
+      SKILL_STAYS,
     ],
     [
       "skill",
       "rename",
-      "This brings back tdd from the latest release and removes the new name. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+      "This brings back tdd from the latest release and removes the new name.",
+      SKILL_STAYS,
     ],
     [
       "prompt",
       "edit",
-      "This replaces the prompt file in your clone with its copy in the latest release. The prompt then waits under Pending proposal.",
+      "This replaces the prompt file in your clone with its copy in the latest release.",
+      "The prompt then waits under Pending proposal.",
     ],
   ] as const)(
     "states what a withdrawal from release of a %s %s changes, then what stays",
-    (type, change, body) => {
-      expect(plainText(releaseWithdrawalBody(type, change, "tdd"))).toBe(body);
+    (type, change, changes, stays) => {
+      const body = releaseWithdrawalBody(type, change, "tdd");
+      expect(plainText(body.changes)).toBe(changes);
+      expect(plainText(body.stays)).toBe(stays);
     },
   );
 

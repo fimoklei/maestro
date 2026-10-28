@@ -156,6 +156,7 @@ const releaseWithdrawalDialog = (
     target={{
       type: "skill",
       name: "research",
+      path: ".apm/skills/research",
       change: "edit",
       previousName: null,
     }}
@@ -862,8 +863,18 @@ const sources = readdirSync(SRC, { recursive: true, encoding: "utf8" })
   .sort()
   .map((file) => ({ file, text: readFileSync(join(SRC, file), "utf8") }));
 
-const sourceOf = (file: string) =>
+// Builds Harness confirmations on `Dialog`; each caller is the dialog, and its
+// source includes this module's.
+const CONFIRMATION = "harness/harness-confirmation.tsx";
+const USES_CONFIRMATION = /from "\.\/harness-confirmation"/;
+
+const textOf = (file: string) =>
   sources.find((source) => source.file === file)?.text ?? "";
+
+const sourceOf = (file: string) => {
+  const text = textOf(file);
+  return USES_CONFIRMATION.test(text) ? text + textOf(CONFIRMATION) : text;
+};
 
 // Only `Dialog` opens a modal layer.
 const OPENS_A_DIALOG =
@@ -922,7 +933,10 @@ describe("every dialog", () => {
     const dialogs = sources
       .filter(
         ({ file, text }) =>
-          !file.startsWith("ui/") && /from "(\.\.\/)+ui\/dialog"/.test(text),
+          (!file.startsWith("ui/") &&
+            file !== CONFIRMATION &&
+            /from "(\.\.\/)+ui\/dialog"/.test(text)) ||
+          USES_CONFIRMATION.test(text),
       )
       .map(({ file }) => file);
 
@@ -958,9 +972,14 @@ describe("every dialog", () => {
   });
 
   it("declares the notices of each dialog whose body shows one", () => {
-    const withNotice = ON_DIALOG.filter((row) =>
-      /<Notice\b/.test(sourceOf(row.file)),
-    ).map((row) => row.file);
+    // A confirmation caller shows the module's notice unless it passes none.
+    const showsNotice = (file: string) =>
+      USES_CONFIRMATION.test(textOf(file))
+        ? !/loadNotice=\{null\}/.test(textOf(file))
+        : /<Notice\b/.test(textOf(file));
+    const withNotice = ON_DIALOG.filter((row) => showsNotice(row.file)).map(
+      (row) => row.file,
+    );
 
     expect(
       ON_DIALOG.filter((row) => row.notices.length > 0).map((row) => row.file),

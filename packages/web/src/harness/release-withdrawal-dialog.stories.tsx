@@ -4,6 +4,7 @@ import { ReleaseWithdrawalDialog } from "./release-withdrawal-dialog";
 const CODE_REVIEW = {
   type: "skill",
   name: "code-review",
+  path: ".apm/skills/code-review",
   change: "edit",
   previousName: null,
 } as const;
@@ -52,6 +53,7 @@ export const DeletedPrompt: Story = {
     target: {
       type: "prompt",
       name: "pr-review",
+      path: ".maestro/prompts/pr-review.md",
       change: "deletion",
       previousName: null,
     },

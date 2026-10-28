@@ -1,12 +1,7 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { BRANCH_FACT } from "../ui/band-copy";
-import { Card } from "../ui/card";
 import { WITHDRAW_PROPOSAL } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
-import { Fact } from "../ui/fact";
-import { Notice, type NoticeContent } from "../ui/notice";
-import { PhraseText } from "../ui/phrase-text";
-import { StatusLine } from "../ui/status-line";
+import type { NoticeContent } from "../ui/notice";
 import {
   PULL_REQUEST_FACT,
   UNPROPOSED_UNKNOWN_NOTICE,
@@ -15,7 +10,7 @@ import {
   withdrawBody,
   withdrawTitle,
 } from "./dialog-copy";
-import { ITEM_WORDS } from "./item-words";
+import { HarnessConfirmation } from "./harness-confirmation";
 import { defaultBranchCopy } from "./stage-copy";
 
 /** The files only the clone holds, as the confirmation's own read found them. */
@@ -53,60 +48,40 @@ export function WithdrawDialog({
   withdrawError: NoticeContent | null;
 }) {
   return (
-    <Dialog
+    <HarnessConfirmation
+      type={type}
+      name={name}
       title={withdrawTitle(name)}
-      version={null}
-      width={480}
-      phase={withdrawing ? "running" : "idle"}
       action={{
         label: WITHDRAW_PROPOSAL,
         verb: "withdraw",
-        tone: "danger",
-        unavailable: unproposed.kind === "checking" ? WITHDRAW_CHECKING : null,
-        onRun: onConfirm,
+        unavailable: null,
+        run: onConfirm,
       }}
+      running={withdrawing}
       failure={withdrawError}
-      // The consequences sit in the body, read in the order they are written.
-      describedBy={null}
-      fieldsChanged={false}
+      changes={withdrawBody(
+        type,
+        defaultBranchCopy(defaultBranch),
+        number !== null,
+      )}
+      stays={null}
+      facts={[
+        { label: BRANCH_FACT, value: branch },
+        ...(number === null
+          ? []
+          : [{ label: PULL_REQUEST_FACT, value: `#${number}` }]),
+      ]}
+      checking={unproposed.kind === "checking" ? WITHDRAW_CHECKING : null}
+      // The check is advisory: a failed read warns and leaves the action on.
+      loadNotice={
+        unproposed.kind === "read"
+          ? unproposedNotice(unproposed.files)
+          : unproposed.kind === "failed"
+            ? UNPROPOSED_UNKNOWN_NOTICE
+            : null
+      }
       onClose={onClose}
-    >
-      <p className="m-0">
-        <PhraseText
-          copy={withdrawBody(
-            type,
-            defaultBranchCopy(defaultBranch),
-            number !== null,
-          )}
-        />
-      </p>
-      <Card padded>
-        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact
-            label={ITEM_WORDS[type].Noun}
-            value={name}
-            wrap
-            machine={false}
-          />
-          <Fact label={BRANCH_FACT} value={branch} wrap />
-          {number === null ? null : (
-            <Fact label={PULL_REQUEST_FACT} value={`#${number}`} wrap />
-          )}
-        </dl>
-      </Card>
-      {unproposed.kind === "checking" ? (
-        <StatusLine>{WITHDRAW_CHECKING}</StatusLine>
-      ) : null}
-      <Notice
-        trigger="load"
-        notice={
-          unproposed.kind === "read"
-            ? unproposedNotice(unproposed.files)
-            : unproposed.kind === "failed"
-              ? UNPROPOSED_UNKNOWN_NOTICE
-              : null
-        }
-      />
-    </Dialog>
+    />
   );
 }

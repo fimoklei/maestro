@@ -1,7 +1,7 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { expectTooltipCause, sentence } from "../test-utils";
+import { expectDescription, expectTooltipCause, sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { deletionCheckNotice } from "./local-deletion-copy";
@@ -82,7 +82,7 @@ describe("DeletionDialog", () => {
     expect(screen.getByText("Default branch commit")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
+        "If the default branch moves before you confirm, nothing is pushed.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Confirmed against")).not.toBeInTheDocument();
@@ -91,8 +91,9 @@ describe("DeletionDialog", () => {
   it("carries the hint in the value's accessible description", () => {
     renderDialog();
 
-    expect(screen.getByText(TREE)).toHaveAccessibleDescription(
-      "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
+    expectDescription(
+      screen.getByText(TREE),
+      "If the default branch moves before you confirm, nothing is pushed.",
     );
   });
 
