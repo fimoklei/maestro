@@ -75,7 +75,7 @@ describe("RestoreDialog", () => {
     renderDialog();
 
     expect(screen.getByText(COMMIT)).toHaveAccessibleDescription(
-      "Your last local commit. If it moves before you confirm, nothing is restored.",
+      "If your clone's last commit moves before you confirm, nothing is restored.",
     );
   });
 

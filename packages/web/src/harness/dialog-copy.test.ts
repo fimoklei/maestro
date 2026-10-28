@@ -32,7 +32,7 @@ describe("Harness dialog copy", () => {
 
   it("states the hints under the facts a confirmation is given against", () => {
     expect(DEFAULT_BRANCH_COMMIT_HINT).toBe(
-      "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
+      "If the default branch moves before you confirm, nothing is pushed.",
     );
     expect(plainText(discardHint(defaultBranchCopy("main")))).toBe(
       "If main moves before you confirm, nothing is discarded.",
@@ -41,7 +41,7 @@ describe("Harness dialog copy", () => {
       "If the default branch moves before you confirm, nothing is discarded.",
     );
     expect(RESTORED_FROM_HINT).toBe(
-      "Your last local commit. If it moves before you confirm, nothing is restored.",
+      "If your clone's last commit moves before you confirm, nothing is restored.",
     );
     expect(RESTORE_KEEPS_PROPOSAL).toBe("Your proposal remains unchanged.");
   });

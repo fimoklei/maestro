@@ -55,7 +55,7 @@ export const DEFAULT_BRANCH_COMMIT_FACT = "Default branch commit";
 
 // Says what the confirmation-stale notice does (#885).
 export const DEFAULT_BRANCH_COMMIT_HINT =
-  "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.";
+  "If the default branch moves before you confirm, nothing is pushed.";
 
 // Where the dialog opened: only the Harness screen has Propose change.
 export const deleteFromOrigin = (
