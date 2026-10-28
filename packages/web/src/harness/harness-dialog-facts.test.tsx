@@ -2,7 +2,7 @@ import type { HarnessStageRow } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { sentence } from "../test-utils";
+import { expectDescription, sentence } from "../test-utils";
 import {
   installHarnessHooks,
   ON_DISK,
@@ -15,14 +15,6 @@ import {
 import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
-
-// The text the dialog's description points at. happy-dom's computed
-// description pads an inline machine value with spaces; a browser does not.
-const description = (dialog: HTMLElement) =>
-  (dialog.getAttribute("aria-describedby") ?? "")
-    .split(" ")
-    .map((id) => document.getElementById(id)?.textContent ?? "")
-    .join(" ");
 
 // #1597: a confirmation names the path and branch the server sent with the
 // row, never ones the cockpit spells from the name.
@@ -85,7 +77,8 @@ describe("Harness confirmation facts", () => {
     const dialog = await press(/^withdraw proposal$/i, "Pending review");
 
     expect(within(dialog).getByText(BRANCH)).toBeVisible();
-    expect(description(dialog)).toBe(
+    expectDescription(
+      dialog,
       "This replaces the prompt file in your clone with its copy on main. You cannot recover your changes. It closes the pull request and deletes the proposal branch.",
     );
   });
@@ -125,7 +118,8 @@ describe("Harness confirmation facts", () => {
         ),
       ),
     ).toBeVisible();
-    expect(description(dialog)).toBe(
+    expectDescription(
+      dialog,
       "Restore prompt brings back the file from your last local commit. Later changes do not come back.",
     );
   });
@@ -148,7 +142,8 @@ describe("Harness confirmation facts", () => {
         sentence("If main moves before you confirm, nothing is discarded."),
       ),
     ).toBeVisible();
-    expect(description(dialog)).toBe(
+    expectDescription(
+      dialog,
       "This replaces the prompt file in your clone with its copy on main. You cannot recover your changes.",
     );
   });
@@ -166,7 +161,8 @@ describe("Harness confirmation facts", () => {
 
       const dialog = await press(/^propose change$/i);
 
-      expect(dialog).toHaveAccessibleDescription(
+      expectDescription(
+        dialog,
         "Delete prompt proposes this deletion to github.com/fimoklei/agent-harness for review.",
       );
     });
@@ -189,8 +185,9 @@ describe("Harness confirmation facts", () => {
 
       const dialog = await press(/^propose change$/i);
 
-      expect(dialog).toHaveAccessibleDescription(
-        "Pull request #45 will delete notes instead fimoklei opened it to propose changes to notes . Delete prompt replaces those changes with the deletion.",
+      expectDescription(
+        dialog,
+        "Pull request #45 will delete notes instead fimoklei opened it to propose changes to notes. Delete prompt replaces those changes with the deletion.",
       );
     });
 
@@ -206,8 +203,9 @@ describe("Harness confirmation facts", () => {
 
       const dialog = await press(/^delete prompt$/i);
 
-      expect(dialog).toHaveAccessibleDescription(
-        "Delete prompt removes the notes file from your clone of fimoklei/agent-harness . The prompt stays in fimoklei/agent-harness .",
+      expectDescription(
+        dialog,
+        "Delete prompt removes the notes file from your clone of fimoklei/agent-harness. The prompt stays in fimoklei/agent-harness.",
       );
     });
 
@@ -223,7 +221,8 @@ describe("Harness confirmation facts", () => {
 
       const dialog = await press(/^delete prompt$/i);
 
-      expect(dialog).toHaveAccessibleDescription(
+      expectDescription(
+        dialog,
         "Delete prompt removes the file from disk. No other copy of notes exists.",
       );
     });
@@ -261,7 +260,8 @@ describe("Harness confirmation facts", () => {
     it("describes itself by what the withdrawal changes", async () => {
       const dialog = await openWithdrawal();
 
-      expect(dialog).toHaveAccessibleDescription(
+      expectDescription(
+        dialog,
         "This replaces the prompt file in your clone with its copy in the latest release. The prompt then waits under Pending proposal.",
       );
     });

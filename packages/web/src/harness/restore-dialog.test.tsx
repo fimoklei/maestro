@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { expectDescription } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { RestoreDialog } from "./restore-dialog";
 
@@ -74,7 +75,8 @@ describe("RestoreDialog", () => {
   it("says what the commit is and what happens if it moves", () => {
     renderDialog();
 
-    expect(screen.getByText(COMMIT)).toHaveAccessibleDescription(
+    expectDescription(
+      screen.getByText(COMMIT),
       "If your clone's last commit moves before you confirm, nothing is restored.",
     );
   });

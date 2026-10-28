@@ -133,6 +133,20 @@ export function expectTooltipCause(
   expect(control).toHaveAccessibleDescription(cause);
 }
 
+/**
+ * Fails unless `element`'s computed accessible description reads `text` as a
+ * browser reads it. happy-dom pads a name set apart before its punctuation.
+ */
+export function expectDescription(element: HTMLElement, text: string): void {
+  const asRead = (description: string) =>
+    description.replace(/\s+(?=[.,;:!?])/g, "");
+  expect(element).toHaveAccessibleDescription({
+    $$typeof: Symbol.for("jest.asymmetricMatcher"),
+    asymmetricMatch: (description: string) => asRead(description) === text,
+    toAsymmetricMatcher: () => JSON.stringify(text),
+  });
+}
+
 /** Matches the element whose whole text reads `text`, names set apart or not. */
 export const sentence = (text: string | RegExp) => {
   const reads = (element: Element) =>
