@@ -26,9 +26,7 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "deploy-state/remove-ledger-rows.ts": {
     "`target:${name}`": "key",
-  },
-  "deploy-state/remove-skill-dialog.tsx": {
-    "`Remove ${skillName}`": "dialog title",
+    "`Remove ${name}`": "dialog title",
   },
   "deploy-state/selected-skills.tsx": {
     "`Actions for ${primitive.name}`": "menu label",
@@ -58,12 +56,13 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Uncommitted changes in ${name}`": "notice heading",
     "`Pull request #${request.number} will delete ${name} instead`":
       "notice heading",
-  },
-  "harness/deletion-dialog.tsx": {
     "`Delete ${name}`": "dialog title",
   },
-  "harness/discard-dialog.tsx": {
+  "harness/dialog-copy.ts": {
+    "`Restore ${name}`": "dialog title",
     "`${DISCARD_CHANGE} for ${name}`": "dialog title",
+    "`${WITHDRAW_PROPOSAL} for ${name}`": "dialog title",
+    "`Withdraw ${name} from release`": "dialog title",
   },
   "harness/harness-columns.tsx": {
     "`${row.stage}:${row.type}:${row.name}`": "key",
@@ -76,15 +75,6 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "harness/release-dialog.tsx": {
     "`${PUBLISH_RELEASE} for ${repoName}`": "dialog title",
-  },
-  "harness/release-withdrawal-dialog.tsx": {
-    "`Withdraw ${name} from release`": "dialog title",
-  },
-  "harness/restore-dialog.tsx": {
-    "`Restore ${name}`": "dialog title",
-  },
-  "harness/withdraw-dialog.tsx": {
-    "`${WITHDRAW_PROPOSAL} for ${name}`": "dialog title",
   },
   "skills/bulk-deploy-action.tsx": {
     '`Deployed ${deployed + skipped} of ${total} ${total === 1 ? "skill" : "skills"} to ${input.targetLabel}`':

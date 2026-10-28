@@ -1,13 +1,12 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
-import { DEFAULT_BRANCH_FACT } from "../ui/band-copy";
+import { DEFAULT_BRANCH_FACT, UNKNOWN_FACT_VALUE } from "../ui/band-copy";
 import { Card } from "../ui/card";
 import { DISCARD_CHANGE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
-import { phrase } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
-import { discardBody } from "./dialog-copy";
+import { discardBody, discardHint, discardTitle } from "./dialog-copy";
 import { ITEM_WORDS } from "./item-words";
 import { defaultBranchCopy } from "./stage-copy";
 
@@ -36,7 +35,7 @@ export function DiscardDialog({
   const branch = defaultBranchCopy(defaultBranch);
   return (
     <Dialog
-      title={`${DISCARD_CHANGE} for ${name}`}
+      title={discardTitle(name)}
       version={null}
       width={480}
       phase={discarding ? "running" : "idle"}
@@ -68,10 +67,10 @@ export function DiscardDialog({
           <Fact label={ITEM_WORDS[type].Holder} value={path} wrap />
           <Fact
             label={DEFAULT_BRANCH_FACT}
-            value={defaultBranch ?? "Unknown"}
+            value={defaultBranch ?? UNKNOWN_FACT_VALUE}
             wrap
             machine={defaultBranch !== null}
-            hint={phrase`If ${branch} moves before you confirm, nothing is discarded.`}
+            hint={discardHint(branch)}
           />
         </dl>
       </Card>

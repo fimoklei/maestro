@@ -6,6 +6,7 @@ import type {
   RequestedReviewer,
   StageStatus,
 } from "@maestro/core";
+import { BRANCH_FACT } from "../ui/band-copy";
 import { type BandCount, countOf } from "../ui/band-summary";
 import {
   CREATE_RELEASE,
@@ -268,7 +269,7 @@ export const pullRequestLinkName = (number: number): string =>
 export const PULL_REQUEST_CARD = {
   review: "Review",
   requested: "Requested",
-  branch: "Branch",
+  branch: BRANCH_FACT,
   into: "into",
 } as const;
 

@@ -56,6 +56,10 @@ const REMOVED_THING: Record<DeployableType, string> = {
   bundle: "bundle",
 };
 
+export const removeTitle = (name: string) => `Remove ${name}`;
+
+export const REMOVAL_TARGETS = "Removal targets";
+
 export function removeLedgerLeadIn(type: DeployableType): string {
   return `Removes the ${REMOVED_THING[type]} from:`;
 }

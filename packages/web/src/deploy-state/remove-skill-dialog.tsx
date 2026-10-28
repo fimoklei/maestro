@@ -10,12 +10,14 @@ import { Report } from "../ui/report";
 import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
+  REMOVAL_TARGETS,
   REMOVE_KEEPS,
   type RemoveDialogTarget,
   type RemoveLedgerRow,
   removeLedgerLeadIn,
   removeLedgerRows,
   removeOutcomeReport,
+  removeTitle,
 } from "./remove-ledger-rows";
 import type { RemovePreflightView } from "./remove-preflight-view";
 
@@ -113,7 +115,7 @@ export function RemoveSkillDialog({
           <GroupedList
             groups={ledgerGroup(rows, target)}
             checklist={null}
-            live="Removal targets"
+            live={REMOVAL_TARGETS}
           />
           <p className="m-0 font-ui text-gray-11 text-meta">{REMOVE_KEEPS}</p>
         </div>
@@ -156,7 +158,7 @@ export function RemoveSkillDialog({
 
   return (
     <Dialog
-      title={`Remove ${skillName}`}
+      title={removeTitle(skillName)}
       version={version}
       width={640}
       {...run}

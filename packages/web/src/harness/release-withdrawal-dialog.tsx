@@ -6,6 +6,7 @@ import { StatusLine } from "../ui/status-line";
 import {
   releaseWithdrawalBody,
   releaseWithdrawalFilesNotice,
+  releaseWithdrawalTitle,
   WITHDRAW_CHECKING,
 } from "./dialog-copy";
 import type { ReleaseWithdrawalTarget } from "./harness-dialogs";
@@ -35,7 +36,7 @@ export function ReleaseWithdrawalDialog({
 }) {
   return (
     <Dialog
-      title={`Withdraw ${name} from release`}
+      title={releaseWithdrawalTitle(name)}
       version={null}
       width={480}
       phase={withdrawing ? "running" : "idle"}

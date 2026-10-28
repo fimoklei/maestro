@@ -1,19 +1,51 @@
 import { describe, expect, it } from "vitest";
 import { plainText } from "../ui/phrase";
+import { DEFAULT_BRANCH_COMMIT_HINT, deletionTitle } from "./deletion-copy";
 import {
   ADVISORY_TEXT,
+  discardHint,
+  discardTitle,
   FINDING_TEXT,
   FOLDER_MISSING,
   inFlightNotice,
+  RESTORE_KEEPS_PROPOSAL,
+  RESTORED_FROM_HINT,
   releaseWithdrawalBody,
   releaseWithdrawalFilesNotice,
+  releaseWithdrawalTitle,
+  restoreTitle,
   rootSkillFileNotice,
   skillChecksNotice,
   withdrawBody,
+  withdrawTitle,
 } from "./dialog-copy";
 import { defaultBranchCopy } from "./stage-copy";
 
 describe("Harness dialog copy", () => {
+  it("titles each confirmation with its act and the item's name", () => {
+    expect(deletionTitle("tdd")).toBe("Delete tdd");
+    expect(discardTitle("tdd")).toBe("Discard change for tdd");
+    expect(restoreTitle("tdd")).toBe("Restore tdd");
+    expect(withdrawTitle("tdd")).toBe("Withdraw proposal for tdd");
+    expect(releaseWithdrawalTitle("tdd")).toBe("Withdraw tdd from release");
+  });
+
+  it("states the hints under the facts a confirmation is given against", () => {
+    expect(DEFAULT_BRANCH_COMMIT_HINT).toBe(
+      "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
+    );
+    expect(plainText(discardHint(defaultBranchCopy("main")))).toBe(
+      "If main moves before you confirm, nothing is discarded.",
+    );
+    expect(plainText(discardHint(defaultBranchCopy(null)))).toBe(
+      "If the default branch moves before you confirm, nothing is discarded.",
+    );
+    expect(RESTORED_FROM_HINT).toBe(
+      "Your last local commit. If it moves before you confirm, nothing is restored.",
+    );
+    expect(RESTORE_KEEPS_PROPOSAL).toBe("Your proposal remains unchanged.");
+  });
+
   it("names the pull request in a withdrawal only where one is open (#1639)", () => {
     const main = defaultBranchCopy("main");
 
