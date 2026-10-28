@@ -135,4 +135,42 @@ describe("Harness confirmation facts", () => {
       ),
     ).toBeVisible();
   });
+
+  describe("withdraw from release", () => {
+    const openWithdrawal = async () => {
+      stubHarnessServer({
+        read: {
+          body: withStages(ON_DISK, {
+            release: [
+              row("pending-release", "notes", "not-yet-released", {
+                type: "prompt",
+                path: PATH,
+                branch: BRANCH,
+                onDisk: true,
+              }),
+            ],
+          }),
+        },
+      });
+      renderHarness();
+      return press(/^withdraw from release$/i, "Pending release");
+    };
+
+    it("states the item and the path it replaces, under its siblings' labels", async () => {
+      const dialog = await openWithdrawal();
+
+      const fact = (label: string) =>
+        within(dialog).getByText(label, { selector: "dt" }).nextElementSibling;
+      expect(fact("Prompt")).toHaveTextContent(/^notes$/);
+      expect(fact("File")).toHaveTextContent(PATH);
+    });
+
+    it("describes itself by what the withdrawal changes", async () => {
+      const dialog = await openWithdrawal();
+
+      expect(dialog).toHaveAccessibleDescription(
+        "This replaces the prompt file in your clone with its copy in the latest release. The prompt then waits under Pending proposal.",
+      );
+    });
+  });
 });
