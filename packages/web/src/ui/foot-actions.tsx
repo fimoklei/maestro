@@ -3,6 +3,7 @@ import { ActionsMenu, type ActionsMenuItem } from "./actions-menu";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
 import { cn } from "./cn";
+import { GatedButton } from "./gated-button";
 import { Icon } from "./icon";
 import { rowActionsLabel } from "./row-menu-copy";
 
@@ -15,6 +16,11 @@ export type FootItem = ActionsMenuItem & {
   step?: "update" | "import";
   /** Its write is running: picks the busy label from `busy-copy`. */
   busy?: ActionKey;
+  /**
+   * Why a blocked item cannot run. The foot shows it as a button, danger or
+   * not, whose tooltip states it; the ⋮ menu shows no cause.
+   */
+  cause?: string;
 };
 
 // The primary where the ⋮ order already leads with the next step (#1065).
@@ -34,12 +40,21 @@ export function FootActions({
   /** The label of the one primary item, or null for none. */
   primary: string | null;
 }) {
-  const buttons = items.filter((item) => !item.danger);
-  const danger = items.filter((item) => item.danger);
+  const hasCause = (item: FootItem) => item.cause !== undefined;
+  const buttons = items.filter((item) => !item.danger || hasCause(item));
+  const danger = items.filter((item) => item.danger && !hasCause(item));
   return (
     <>
       {buttons.map((item) =>
-        item.href === undefined ? (
+        item.cause !== undefined ? (
+          <GatedButton
+            key={item.label}
+            size="md"
+            variant="quiet"
+            label={item.label}
+            unavailable={item.cause}
+          />
+        ) : item.href === undefined ? (
           <Button
             key={item.label}
             size="md"

@@ -30,6 +30,7 @@ import {
   rereadLabel,
   UPDATE_SKILL,
   WITHDRAW_FROM_RELEASE,
+  WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
@@ -485,6 +486,12 @@ const releaseWithdrawalHeadings = ({ type, name }: PrimitiveRef) => {
       message: `Select ${rereadLabel("Harness")} to see the ${w.noun} as it is now.`,
       detail: phrase`${named(name)} is no longer under Pending release.`,
     },
+    "proposal-open": {
+      level: "error",
+      label: "Withdrawal blocked",
+      message: `Select ${rereadLabel("Harness")} to read GitHub again.`,
+      detail: `A pull request for this ${w.noun} is open, or GitHub could not be read.`,
+    },
     "confirmation-stale": {
       level: "error",
       label: "Confirmation out of date",
@@ -536,6 +543,26 @@ const releaseWithdrawalHeadings = ({ type, name }: PrimitiveRef) => {
       message: `Make the Harness folder readable, then ${again}`,
     },
   });
+};
+
+const listOf = (parts: readonly string[]): string =>
+  parts.length < 2
+    ? (parts[0] ?? "")
+    : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+
+/** Why Withdraw from release is blocked, as a tooltip cause; null when nothing blocks it. */
+export const openProposalCause = (
+  openRequests: readonly number[] | null,
+): string | null => {
+  if (openRequests === null) {
+    return `Select ${rereadLabel("Harness")} to read GitHub again.`;
+  }
+  if (openRequests.length === 0) {
+    return null;
+  }
+  const requests = openRequests.length === 1 ? "pull request" : "pull requests";
+  const numbers = listOf(openRequests.map((number) => `#${number}`));
+  return `Merge ${requests} ${numbers} on GitHub, or select ${WITHDRAW_PROPOSAL}.`;
 };
 
 export const releaseWithdrawalNotice = (

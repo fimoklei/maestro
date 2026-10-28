@@ -13,6 +13,7 @@ import {
   WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
+import { openProposalCause } from "./notice-copy";
 
 export type RowActionHandlers = {
   // Takes the row, not the name: two stages carry the press, and a refusal
@@ -196,12 +197,16 @@ function stageItems(
   // In place of Delete skill or Delete prompt, and red: it replaces or removes
   // the Working Harness copy (#1642).
   if (row.stage === "pending-release") {
+    // Two changes to one item never cross: an open proposal, or an unknown
+    // read of one, blocks it (#1689).
+    const cause = openProposalCause(row.openRequests);
     return [
       ...links,
       {
         label: WITHDRAW_FROM_RELEASE,
-        disabled: !enabled,
+        disabled: !enabled || cause !== null,
         danger: true,
+        ...(cause === null ? {} : { cause }),
         onSelect: () => handlers.withdrawFromRelease(row),
       },
     ];

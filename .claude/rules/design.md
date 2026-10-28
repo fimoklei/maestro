@@ -81,7 +81,8 @@ the new pattern to this section before building it.
 - Fix the pane's foot and scroll only its content. The foot holds the row's ⋮
   items that the pane does not place beside their fact or in a notice, as 32px
   buttons in ⋮ order. Its danger items sit behind one 32px ⋯ at the foot's
-  right end, named `Actions for {name}`; a foot without one has no ⋯.
+  right end, named `Actions for {name}`; a foot without one has no ⋯. A
+  blocked danger item with a cause sits in the foot as a `GatedButton`.
 - Give a fact at most one action button beside its value, and only for an
   action that changes that fact.
 - Choose the pane's one primary by state, not position: an unfinished

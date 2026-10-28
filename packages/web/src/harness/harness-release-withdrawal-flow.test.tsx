@@ -2,11 +2,12 @@ import type { HarnessState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { sentence } from "../test-utils";
+import { expectTooltipCause, sentence } from "../test-utils";
 import {
   harnessRegion,
   installHarnessHooks,
   ON_DISK,
+  openPane,
   openRowMenu,
   renderHarness,
   row,
@@ -281,5 +282,73 @@ describe("Harness withdraw from release", () => {
     await userEvent.keyboard("{Enter}");
 
     await waitFor(() => expect(withdrawals).toHaveLength(1));
+  });
+
+  describe("while the item has an open proposal", () => {
+    const blockedBy = (openRequests: number[] | null): HarnessState =>
+      withStages(ON_DISK, {
+        release: [
+          row("pending-release", "code-review", "not-yet-released", {
+            onDisk: true,
+            openRequests,
+          }),
+        ],
+      });
+
+    const paneButton = async () =>
+      within(await openPane("code-review", "Pending release")).getByRole(
+        "button",
+        { name: "Withdraw from release" },
+      );
+
+    it("blocks the menu item without a cause", async () => {
+      stubHarnessServer({ read: { body: blockedBy([52]) } });
+      renderHarness();
+
+      const menu = await openRowMenu("code-review", "Pending release");
+      const item = within(menu).getByRole("menuitem", {
+        name: "Withdraw from release",
+      });
+
+      expect(item).toHaveAttribute("aria-disabled", "true");
+      expect(item).not.toHaveAccessibleDescription();
+    });
+
+    it("blocks the pane-foot button and names the pull request to merge", async () => {
+      stubHarnessServer({ read: { body: blockedBy([52]) } });
+      renderHarness();
+
+      expectTooltipCause(
+        await paneButton(),
+        "Merge pull request #52 on GitHub, or select Withdraw proposal.",
+      );
+    });
+
+    it("blocks while the pull request read is unknown", async () => {
+      stubHarnessServer({ read: { body: blockedBy(null) } });
+      renderHarness();
+
+      expectTooltipCause(
+        await paneButton(),
+        "Select Re-read Harness to read GitHub again.",
+      );
+    });
+
+    it("opens no dialog from the blocked button", async () => {
+      const withdrawals: Record<string, unknown>[] = [];
+      stubHarnessServer({
+        read: { body: blockedBy([52]) },
+        releaseWithdrawals: withdrawals,
+      });
+      renderHarness();
+
+      await userEvent.click(await paneButton());
+
+      expect(
+        screen.queryByRole("dialog", {
+          name: "Withdraw code-review from release",
+        }),
+      ).toBeNull();
+    });
   });
 });

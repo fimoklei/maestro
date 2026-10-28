@@ -52,6 +52,7 @@ const row = (
   onDisk: false,
   ownsBranch: false,
   previousName: null,
+  openRequests: [],
   ...over,
 });
 

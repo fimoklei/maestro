@@ -49,3 +49,18 @@ export const Busy: Story = {
     primary: null,
   },
 };
+
+// A blocked danger item with a cause leaves the ⋯: its tooltip states why.
+export const BlockedWithCause: Story = {
+  args: {
+    items: [
+      {
+        label: "Withdraw from release",
+        danger: true,
+        disabled: true,
+        cause: "Merge pull request #52 on GitHub, or select Withdraw proposal.",
+      },
+    ],
+    primary: null,
+  },
+};

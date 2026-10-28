@@ -753,6 +753,62 @@ describe("Pending release membership", () => {
   });
 });
 
+describe("Open proposals on a Pending release row", () => {
+  const openRequestsOf = (over: Partial<SkillStageInput>) =>
+    oneRow(
+      stages({ release: [{ kind: "changed", name: "tdd" }], ...over }).release,
+    ).openRequests;
+
+  it("lists the open pull requests for the item's name", () => {
+    const review = reviewOf([
+      request({ number: 51 }),
+      request({ number: 45 }),
+      request({ number: 40, state: "merged" }),
+      request({ number: 60, headBranch: "maestro/other" }),
+    ]);
+    expect(openRequestsOf({ review })).toEqual([45, 51]);
+  });
+
+  it("lists the open pull request for a rename's previous name", () => {
+    const review = reviewOf([
+      request({ number: 52, headBranch: "maestro/testing" }),
+    ]);
+    const built = stages({
+      release: [{ kind: "renamed", name: "tdd", previousName: "testing" }],
+      review,
+    });
+    expect(oneRow(built.release).openRequests).toEqual([52]);
+  });
+
+  it("reads no open pull request as none", () => {
+    expect(openRequestsOf({ review: EMPTY_READ })).toEqual([]);
+  });
+
+  it("reads none when no review read is possible, as without gh", () => {
+    expect(openRequestsOf({ review: { outcome: "unavailable" } })).toEqual([]);
+  });
+
+  it("reads a failed review read as unknown, never as none", () => {
+    expect(openRequestsOf({ review: { outcome: "failed" } })).toBeNull();
+  });
+
+  it("reads a bounded read with no match as unknown", () => {
+    expect(openRequestsOf({ review: reviewOf([], false) })).toBeNull();
+  });
+
+  it("keeps a match a bounded read found", () => {
+    expect(openRequestsOf({ review: reviewOf([request()], false) })).toEqual([
+      45,
+    ]);
+  });
+
+  it("reads unknown without a default branch to match against", () => {
+    expect(
+      openRequestsOf({ review: reviewOf([request()]), defaultBranch: null }),
+    ).toBeNull();
+  });
+});
+
 describe("stage memberships are independent", () => {
   const busy = () =>
     stages({
