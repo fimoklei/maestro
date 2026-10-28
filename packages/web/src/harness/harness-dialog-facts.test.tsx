@@ -16,6 +16,14 @@ import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
 
+// The text the dialog's description points at. happy-dom's computed
+// description pads an inline machine value with spaces; a browser does not.
+const description = (dialog: HTMLElement) =>
+  (dialog.getAttribute("aria-describedby") ?? "")
+    .split(" ")
+    .map((id) => document.getElementById(id)?.textContent ?? "")
+    .join(" ");
+
 // #1597: a confirmation names the path and branch the server sent with the
 // row, never ones the cockpit spells from the name.
 describe("Harness confirmation facts", () => {
@@ -77,6 +85,9 @@ describe("Harness confirmation facts", () => {
     const dialog = await press(/^withdraw proposal$/i, "Pending review");
 
     expect(within(dialog).getByText(BRANCH)).toBeVisible();
+    expect(description(dialog)).toBe(
+      "This replaces the prompt file in your clone with its copy on main. You cannot recover your changes. It closes the pull request and deletes the proposal branch.",
+    );
   });
 
   it("states the path a local deletion removes", async () => {
@@ -114,6 +125,9 @@ describe("Harness confirmation facts", () => {
         ),
       ),
     ).toBeVisible();
+    expect(description(dialog)).toBe(
+      "Restore prompt brings back the file from your last local commit. Later changes do not come back.",
+    );
   });
 
   it("states the path a discard puts back, and its guarantee", async () => {
@@ -134,6 +148,9 @@ describe("Harness confirmation facts", () => {
         sentence("If main moves before you confirm, nothing is discarded."),
       ),
     ).toBeVisible();
+    expect(description(dialog)).toBe(
+      "This replaces the prompt file in your clone with its copy on main. You cannot recover your changes.",
+    );
   });
 
   describe("withdraw from release", () => {

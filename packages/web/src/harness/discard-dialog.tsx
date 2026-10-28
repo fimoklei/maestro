@@ -1,12 +1,9 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { DEFAULT_BRANCH_FACT, UNKNOWN_FACT_VALUE } from "../ui/band-copy";
-import { Card } from "../ui/card";
 import { DISCARD_CHANGE } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
-import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
-import { PhraseText } from "../ui/phrase-text";
 import { discardBody, discardHint, discardTitle } from "./dialog-copy";
+import { HarnessConfirmation } from "./harness-confirmation";
 import { ITEM_WORDS } from "./item-words";
 import { defaultBranchCopy } from "./stage-copy";
 
@@ -34,46 +31,32 @@ export function DiscardDialog({
 }) {
   const branch = defaultBranchCopy(defaultBranch);
   return (
-    <Dialog
+    <HarnessConfirmation
+      type={type}
+      name={name}
       title={discardTitle(name)}
-      version={null}
-      width={480}
-      phase={discarding ? "running" : "idle"}
-      // The edit cannot be recovered: confirmed like a deletion.
       action={{
         label: DISCARD_CHANGE,
         verb: "discard",
-        tone: "danger",
         unavailable: null,
-        onRun: onConfirm,
+        run: onConfirm,
       }}
+      running={discarding}
       failure={discardError}
-      // The consequences sit in the body, read in the order they are written.
-      describedBy={null}
-      fieldsChanged={false}
+      changes={discardBody(type, branch)}
+      stays={null}
+      facts={[
+        { label: ITEM_WORDS[type].Holder, value: path },
+        {
+          label: DEFAULT_BRANCH_FACT,
+          value: defaultBranch ?? UNKNOWN_FACT_VALUE,
+          machine: defaultBranch !== null,
+          hint: discardHint(branch),
+        },
+      ]}
+      checking={null}
+      loadNotice={null}
       onClose={onClose}
-    >
-      <p className="m-0">
-        <PhraseText copy={discardBody(type, branch)} />
-      </p>
-      <Card padded>
-        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact
-            label={ITEM_WORDS[type].Noun}
-            value={name}
-            wrap
-            machine={false}
-          />
-          <Fact label={ITEM_WORDS[type].Holder} value={path} wrap />
-          <Fact
-            label={DEFAULT_BRANCH_FACT}
-            value={defaultBranch ?? UNKNOWN_FACT_VALUE}
-            wrap
-            machine={defaultBranch !== null}
-            hint={discardHint(branch)}
-          />
-        </dl>
-      </Card>
-    </Dialog>
+    />
   );
 }
