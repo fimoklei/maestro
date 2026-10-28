@@ -62,9 +62,10 @@ export type WithdrawTarget = PrimitiveRef & {
   number: number | null;
 };
 
-// The row's Change and previous name, frozen at the press: they pick the
-// dialog's copy. The server reads both again; neither is sent.
+// The row's path, Change and previous name, frozen at the press: they pick
+// the dialog's facts and copy. The server reads them again; none is sent.
 export type ReleaseWithdrawalTarget = PrimitiveRef & {
+  path: string;
   change: HarnessChange;
   previousName: string | null;
 };

@@ -1,15 +1,14 @@
 import { WITHDRAW_FROM_RELEASE } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
-import { Notice, type NoticeContent } from "../ui/notice";
-import { PhraseText } from "../ui/phrase-text";
-import { StatusLine } from "../ui/status-line";
+import type { NoticeContent } from "../ui/notice";
 import {
   releaseWithdrawalBody,
   releaseWithdrawalFilesNotice,
   releaseWithdrawalTitle,
   WITHDRAW_CHECKING,
 } from "./dialog-copy";
+import { HarnessConfirmation } from "./harness-confirmation";
 import type { ReleaseWithdrawalTarget } from "./harness-dialogs";
+import { ITEM_WORDS } from "./item-words";
 
 /** The confirmation's own read: the files it replaces, or why it refused. */
 export type ReleaseWithdrawalCheck =
@@ -20,7 +19,7 @@ export type ReleaseWithdrawalCheck =
 // The confirmation a withdrawal from release takes before the Working Harness
 // changes (#1642). Presentational — the host owns the read and the mutation.
 export function ReleaseWithdrawalDialog({
-  target: { type, name, change, previousName },
+  target: { type, name, path, change, previousName },
   check,
   onClose,
   onConfirm,
@@ -35,46 +34,34 @@ export function ReleaseWithdrawalDialog({
   withdrawError: NoticeContent | null;
 }) {
   return (
-    <Dialog
+    <HarnessConfirmation
+      type={type}
+      name={name}
       title={releaseWithdrawalTitle(name)}
-      version={null}
-      width={480}
-      phase={withdrawing ? "running" : "idle"}
       action={{
         label: WITHDRAW_FROM_RELEASE,
         verb: "withdrawFromRelease",
-        tone: "danger",
         unavailable:
           check.kind === "checking"
             ? WITHDRAW_CHECKING
             : check.kind === "refused"
               ? check.notice.label
               : null,
-        onRun: onConfirm,
+        run: onConfirm,
       }}
+      running={withdrawing}
       // A refused read is a failure like a refused write: Close, not Cancel.
       failure={
         withdrawError ?? (check.kind === "refused" ? check.notice : null)
       }
-      // The consequences sit in the body, read in the order they are written.
-      describedBy={null}
-      fieldsChanged={false}
+      changes={releaseWithdrawalBody(type, change, previousName)}
+      stays={null}
+      facts={[{ label: ITEM_WORDS[type].Holder, value: path }]}
+      checking={check.kind === "checking" ? WITHDRAW_CHECKING : null}
+      loadNotice={
+        check.kind === "read" ? releaseWithdrawalFilesNotice(check.files) : null
+      }
       onClose={onClose}
-    >
-      <p className="m-0">
-        <PhraseText copy={releaseWithdrawalBody(type, change, previousName)} />
-      </p>
-      {check.kind === "checking" ? (
-        <StatusLine>{WITHDRAW_CHECKING}</StatusLine>
-      ) : null}
-      <Notice
-        trigger="load"
-        notice={
-          check.kind === "read"
-            ? releaseWithdrawalFilesNotice(check.files)
-            : null
-        }
-      />
-    </Dialog>
+    />
   );
 }
