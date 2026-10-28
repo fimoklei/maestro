@@ -1,0 +1,34 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": ["tests/integration/impeccable-guard.test.ts"],
+        "createdAt": "2026-10-28T21:00:46.185Z",
+        "reason": "Claude: deliberate fixture that tests the impeccable guard"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-10-28T21:01:34.831Z",
+        "reason": "design.json sets Geist as the design-system font"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist mono",
+        "createdAt": "2026-10-28T21:01:34.851Z",
+        "reason": "design.json sets Geist Mono as the design-system mono font"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": ["packages/web/src/styles/style-rules.test.ts"],
+        "createdAt": "2026-10-28T21:01:34.868Z",
+        "reason": "class string is test data for the alias rule, not rendered UI"
+      }
+    ]
+  }
+}
