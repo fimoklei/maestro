@@ -27,6 +27,8 @@ Create a GitHub issue.
 
 Create the issue with `--label spec`, alongside `ready-for-agent`. A spec for a new capability is a **sub-issue** of its job (label `job`, see the Legend in `docs/jobs.md`); attach it with the recipe below, the job as parent. A spec that improves something already built opens its body with the line `Small work: improves <what>, no job.`
 
+A decision about an existing spec (a grill answer, a design pass) goes into its body with `gh issue edit <spec> --body-file <path>`, never into a comment.
+
 ## When a skill breaks a spec into tickets
 
 Every ticket lands as a **sub-issue** of the spec it implements, and each blocking edge as a native **blocked-by** link. Both endpoints take the issue's database `id`, never its number, and need `-F` so the id is sent as an integer; `-f` sends a string, which the API refuses with `is not of type integer`.
