@@ -136,6 +136,82 @@ describe("Harness confirmation facts", () => {
     ).toBeVisible();
   });
 
+  describe("delete", () => {
+    it("describes a proposed deletion by what it pushes", async () => {
+      stubHarnessServer({
+        read: {
+          body: withStages(ON_DISK, {
+            proposal: [served({ change: "deletion", remoteTree: "abc123" })],
+          }),
+        },
+      });
+      renderHarness();
+
+      const dialog = await press(/^propose change$/i);
+
+      expect(dialog).toHaveAccessibleDescription(
+        "Delete prompt proposes this deletion to github.com/fimoklei/agent-harness for review.",
+      );
+    });
+
+    it("describes a proposed deletion over an open pull request by what the press does instead", async () => {
+      stubHarnessServer({
+        read: {
+          body: withStages(ON_DISK, {
+            proposal: [
+              served({
+                change: "deletion",
+                remoteTree: "abc123",
+                requests: [pullRequest(45, "prompt.notes")],
+              }),
+            ],
+          }),
+        },
+      });
+      renderHarness();
+
+      const dialog = await press(/^propose change$/i);
+
+      expect(dialog).toHaveAccessibleDescription(
+        "Pull request #45 will delete notes instead fimoklei opened it to propose changes to notes . Delete prompt replaces those changes with the deletion.",
+      );
+    });
+
+    it("describes a deletion in the clone by what it removes", async () => {
+      stubHarnessServer({
+        read: {
+          body: withStages(ON_DISK, {
+            proposal: [served({ remoteTree: "remote-notes", onDisk: true })],
+          }),
+        },
+      });
+      renderHarness();
+
+      const dialog = await press(/^delete prompt$/i);
+
+      expect(dialog).toHaveAccessibleDescription(
+        "Delete prompt removes the notes file from your clone of fimoklei/agent-harness . The prompt stays in fimoklei/agent-harness .",
+      );
+    });
+
+    it("describes a local-only deletion by what it removes", async () => {
+      stubHarnessServer({
+        read: {
+          body: withStages(ON_DISK, {
+            proposal: [served({ localOnly: true, onDisk: true })],
+          }),
+        },
+      });
+      renderHarness();
+
+      const dialog = await press(/^delete prompt$/i);
+
+      expect(dialog).toHaveAccessibleDescription(
+        "Delete prompt removes the file from disk. No other copy of notes exists.",
+      );
+    });
+  });
+
   describe("withdraw from release", () => {
     const openWithdrawal = async () => {
       stubHarnessServer({

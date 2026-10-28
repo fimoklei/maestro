@@ -1,11 +1,6 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { BRANCH_FACT } from "../ui/band-copy";
-import { Card } from "../ui/card";
-import { Dialog } from "../ui/dialog";
-import { Fact } from "../ui/fact";
-import { Notice, type NoticeContent } from "../ui/notice";
-import { PhraseText } from "../ui/phrase-text";
-import { StatusLine } from "../ui/status-line";
+import type { NoticeContent } from "../ui/notice";
 import {
   DEFAULT_BRANCH_COMMIT_FACT,
   DEFAULT_BRANCH_COMMIT_HINT,
@@ -16,6 +11,7 @@ import {
   uncommittedNotice,
 } from "./deletion-copy";
 import { DELETION_CHECKING } from "./dialog-copy";
+import { HarnessConfirmation } from "./harness-confirmation";
 import { ITEM_WORDS } from "./item-words";
 import type { LocalDeletionContext } from "./local-deletion-copy";
 
@@ -61,16 +57,29 @@ export function DeletionDialog({
   deleteError: NoticeContent | null;
 }) {
   const copy = DELETION_COPY[type];
+  const [changes, stays] =
+    mode.kind === "propose"
+      ? // The open request's warning says what this press does instead.
+        [
+          mode.openRequest === null ? copy.proposes(mode.origin) : null,
+          copy.keeps(name),
+        ]
+      : mode.localOnly
+        ? // No second sentence: the other modes name what keeps the item,
+          // and here nothing does.
+          [copy.localOnly(name), null]
+        : [
+            copy.inClone(name, mode.origin),
+            deleteFromOrigin(mode.origin, mode.screen),
+          ];
   return (
-    <Dialog
+    <HarnessConfirmation
+      type={type}
+      name={name}
       title={deletionTitle(name)}
-      version={null}
-      width={480}
-      phase={deleting ? "running" : "idle"}
       action={{
         label: copy.label,
         verb: "delete",
-        tone: "danger",
         unavailable:
           mode.kind !== "local" || mode.check === "ready"
             ? null
@@ -79,82 +88,39 @@ export function DeletionDialog({
               : // The caller states a failed or empty check in `deleteError`;
                 // without it the action still stays blocked.
                 (deleteError?.label ?? ""),
-        onRun: onConfirm,
+        run: onConfirm,
       }}
+      running={deleting}
       failure={deleteError}
-      // The consequences sit in the body, read in the order they are written.
-      describedBy={null}
-      fieldsChanged={false}
+      changes={changes}
+      stays={stays}
+      facts={
+        mode.kind === "propose"
+          ? [
+              { label: BRANCH_FACT, value: mode.branch },
+              // The whole hash: the exact origin/HEAD copy the confirmation
+              // is given against (#580).
+              {
+                label: DEFAULT_BRANCH_COMMIT_FACT,
+                value: mode.seenRemoteTree,
+                hint: DEFAULT_BRANCH_COMMIT_HINT,
+              },
+            ]
+          : [{ label: ITEM_WORDS[type].Holder, value: mode.path }]
+      }
+      checking={
+        mode.kind === "local" && mode.check === "checking"
+          ? DELETION_CHECKING
+          : null
+      }
+      loadNotice={
+        mode.kind === "propose"
+          ? openRequestNotice(type, name, mode.openRequest)
+          : mode.uncommitted && !mode.localOnly
+            ? uncommittedNotice(type, name, mode.origin)
+            : null
+      }
       onClose={onClose}
-    >
-      {mode.kind === "propose" ? (
-        <>
-          {/* The warning says what this press does instead. */}
-          {mode.openRequest === null ? (
-            <p className="m-0">
-              <PhraseText copy={copy.proposes(mode.origin)} />
-            </p>
-          ) : null}
-          <p className="m-0 text-gray-11">
-            <PhraseText copy={copy.keeps(name)} />
-          </p>
-        </>
-      ) : mode.localOnly ? (
-        // No second sentence: the other modes name what keeps the item,
-        // and here nothing does.
-        <p className="m-0">
-          <PhraseText copy={copy.localOnly(name)} />
-        </p>
-      ) : (
-        <>
-          <p className="m-0">
-            <PhraseText copy={copy.inClone(name, mode.origin)} />
-          </p>
-          <p className="m-0 text-gray-11">
-            <PhraseText copy={deleteFromOrigin(mode.origin, mode.screen)} />
-          </p>
-        </>
-      )}
-      <Card padded>
-        <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          {/* A name has no break in it, and the branch carries the same name
-              again. */}
-          <Fact
-            label={ITEM_WORDS[type].Noun}
-            value={name}
-            wrap
-            machine={false}
-          />
-          {mode.kind === "propose" ? (
-            <>
-              <Fact label={BRANCH_FACT} value={mode.branch} wrap />
-              {/* The whole hash: the exact origin/HEAD copy the confirmation
-                  is given against (#580). */}
-              <Fact
-                label={DEFAULT_BRANCH_COMMIT_FACT}
-                value={mode.seenRemoteTree}
-                wrap
-                hint={DEFAULT_BRANCH_COMMIT_HINT}
-              />
-            </>
-          ) : (
-            <Fact label={ITEM_WORDS[type].Holder} value={mode.path} wrap />
-          )}
-        </dl>
-      </Card>
-      {mode.kind === "local" && mode.check === "checking" ? (
-        <StatusLine>{DELETION_CHECKING}</StatusLine>
-      ) : null}
-      <Notice
-        trigger="load"
-        notice={
-          mode.kind === "propose"
-            ? openRequestNotice(type, name, mode.openRequest)
-            : mode.uncommitted && !mode.localOnly
-              ? uncommittedNotice(type, name, mode.origin)
-              : null
-        }
-      />
-    </Dialog>
+    />
   );
 }
