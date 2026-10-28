@@ -9,9 +9,11 @@ import {
   EDIT_PROMPT,
   PROPOSE_CHANGE,
   RESTORE_LABEL,
+  WITHDRAW_FROM_RELEASE,
   WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
+import { openProposalCause } from "./notice-copy";
 
 export type RowActionHandlers = {
   // Takes the row, not the name: two stages carry the press, and a refusal
@@ -29,6 +31,8 @@ export type RowActionHandlers = {
   // confirms, and a later read must not rewrite it (#915).
   restore: (row: HarnessStageRow, commit: string) => void;
   edit: (row: HarnessStageRow) => void;
+  // Takes the row: its Change picks the dialog's copy.
+  withdrawFromRelease: (row: HarnessStageRow) => void;
 };
 
 // Only over a default-branch copy of an edit: on a skill nothing else holds,
@@ -190,9 +194,23 @@ function stageItems(
     ];
   }
 
-  // The only way to delete a merged skill that was never released.
+  // In place of Delete skill or Delete prompt, and red: it replaces or removes
+  // the Working Harness copy (#1642).
   if (row.stage === "pending-release") {
-    return [...links, ...deleteItem(row, handlers, enabled, true)];
+    // Two changes to one item never cross: an open proposal, or an unknown
+    // read of one, blocks it (#1689).
+    const cause = openProposalCause(row.openRequests);
+    return [
+      ...links,
+      {
+        label: WITHDRAW_FROM_RELEASE,
+        danger: true,
+        ...(cause === null
+          ? { disabled: !enabled }
+          : { disabled: true as const, cause }),
+        onSelect: () => handlers.withdrawFromRelease(row),
+      },
+    ];
   }
 
   switch (row.status) {

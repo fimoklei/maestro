@@ -192,6 +192,7 @@ export {
   ReadHarnessState,
   type ReleasePlan,
   type ReleasePlanError,
+  type WorktreeAmbiguity,
 } from "./harness/read-harness-state";
 export type { PendingMovement } from "./harness/release-delta";
 export type { ReleaseBlock } from "./harness/release-readiness";
@@ -206,6 +207,10 @@ export {
 } from "./harness/restore";
 export type { ManifestAdvisory } from "./harness/skill-manifest";
 export type { StructuralProblem } from "./harness/validate-skill-structure";
+export type {
+  WithdrawFromReleaseCheck,
+  WithdrawFromReleaseError,
+} from "./harness/withdraw-from-release";
 export {
   resolveApmGlobalRoot,
   resolveApmScratchCwd,

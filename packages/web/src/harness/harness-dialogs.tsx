@@ -1,4 +1,5 @@
 import type {
+  HarnessChange,
   HarnessStageRow,
   PrimitiveRef,
   ReleasePlan,
@@ -19,6 +20,7 @@ import {
 } from "./local-deletion-copy";
 import { importNotice, releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
+import { ReleaseWithdrawalDialogHost } from "./release-withdrawal-dialog-host";
 import { RestoreDialog } from "./restore-dialog";
 import type { EditPromptFlow } from "./use-edit-prompt-flow";
 import {
@@ -60,6 +62,18 @@ export type WithdrawTarget = PrimitiveRef & {
   number: number | null;
 };
 
+// The row's Change and previous name, frozen at the press: they pick the
+// dialog's copy. The server reads both again; neither is sent.
+export type ReleaseWithdrawalTarget = PrimitiveRef & {
+  change: HarnessChange;
+  previousName: string | null;
+};
+
+// The frozen target plus the open pull requests the latest read found.
+export type ReleaseWithdrawalItem = ReleaseWithdrawalTarget & {
+  openRequests: readonly number[] | null;
+};
+
 type Presses = ReturnType<typeof useHarnessPresses>;
 
 export type HarnessDialogsProps = {
@@ -83,8 +97,12 @@ export type HarnessDialogsProps = {
   withdrawing: WithdrawTarget | null;
   proposalAction: Presses["proposalWrite"];
   onWithdrawClose: () => void;
+  releaseWithdrawing: ReleaseWithdrawalItem | null;
+  releaseWithdrawal: Presses["releaseWithdrawalWrite"];
+  onReleaseWithdrawalClose: () => void;
   planOpen: boolean;
   plan: ReturnType<typeof useReleasePlan>;
+  inFlight: readonly string[];
   publish: Pick<WriteAction<unknown, unknown>, "phase" | "failure">;
   onPlanClose: () => void;
   onPublish: (step: SemverStep, plan: ReleasePlan) => void;
@@ -204,10 +222,18 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           onClose={props.onWithdrawClose}
         />
       ) : null}
+      {props.releaseWithdrawing !== null ? (
+        <ReleaseWithdrawalDialogHost
+          target={props.releaseWithdrawing}
+          write={props.releaseWithdrawal}
+          onClose={props.onReleaseWithdrawalClose}
+        />
+      ) : null}
       {props.planOpen ? (
         <ReleaseDialog
           origin={props.origin}
           load={planLoad(props.plan)}
+          inFlight={props.inFlight}
           onClose={props.onPlanClose}
           onPublish={props.onPublish}
           publishing={props.publish.phase === "running"}

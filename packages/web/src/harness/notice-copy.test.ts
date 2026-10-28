@@ -12,6 +12,7 @@ import type {
   ReleasePlanError,
   RestoreError,
   WithdrawError,
+  WithdrawFromReleaseError,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
@@ -26,12 +27,14 @@ import {
   harnessStateNotice,
   importNotice,
   localEditsRefusal,
+  openProposalCause,
   promoteNotice,
   proposalNotice,
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
   releasePublishedNotice,
+  releaseWithdrawalNotice,
   restoredNotice,
   restoreNotice,
   stageReadNotice,
@@ -306,6 +309,28 @@ const SURFACES: Surface[] = [
       "discard-failed": true,
     }),
   ),
+  ...byType(
+    "releaseWithdrawalNotice",
+    (error, type) =>
+      releaseWithdrawalNotice(error, { type, name: "tdd", openRequests: null }),
+    codes<WithdrawFromReleaseError>({
+      "not-configured": true,
+      "invalid-skill": true,
+      "sparse-checkout": true,
+      "merge-in-progress": true,
+      "rebase-in-progress": true,
+      "unresolved-conflicts": true,
+      unreadable: true,
+      "no-answer": true,
+      "not-pending-release": true,
+      "proposal-open": true,
+      "confirmation-stale": true,
+      "destination-unsafe": true,
+      "destination-unreadable": true,
+      "withdraw-in-progress": true,
+      "withdraw-failed": true,
+    }),
+  ),
 ];
 
 const surface = (name: string) => {
@@ -375,6 +400,7 @@ describe("a refusal that left the working tree as it was", () => {
     TYPES.flatMap((type) => [
       [`restoreNotice for ${type}`, "Nothing was restored."],
       [`discardNotice for ${type}`, "Nothing was discarded."],
+      [`releaseWithdrawalNotice for ${type}`, "Nothing was withdrawn."],
     ]),
   )("%s opens every sentence with %j", (name, opening) => {
     for (const [code, notice] of noticesOf(surface(name))) {
@@ -387,6 +413,7 @@ describe("the refused skill", () => {
   it.each(
     TYPES.flatMap((type) => [
       [`discardNotice for ${type}`, ["already-proposed", "nothing-to-discard"]],
+      [`releaseWithdrawalNotice for ${type}`, ["not-pending-release"]],
       [
         `localDeletionNotice on harness for ${type}`,
         ["already-gone", "confirmation-stale"],
@@ -823,5 +850,65 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
     expect(notice("branch-delete-failed")?.detail).toBe(
       "Your skill folder matches its copy on main.",
     );
+  });
+});
+
+describe("Withdraw from release while a proposal is open", () => {
+  it("names the one pull request to merge", () => {
+    expect(openProposalCause([52])).toBe(
+      "Merge pull request #52 on GitHub, or select Withdraw proposal.",
+    );
+  });
+
+  it("names every pull request to merge", () => {
+    expect(openProposalCause([45, 51, 52])).toBe(
+      "Merge pull requests #45, #51 and #52 on GitHub, or select Withdraw proposal.",
+    );
+  });
+
+  it("sends an unknown read to Re-read Harness", () => {
+    expect(openProposalCause(null)).toBe(
+      "Select Re-read Harness to read GitHub again.",
+    );
+  });
+
+  it("states no cause while no pull request is open", () => {
+    expect(openProposalCause([])).toBeNull();
+  });
+
+  it("refuses a withdrawal while the pull request read is unknown", () => {
+    expect(
+      readNotice(
+        releaseWithdrawalNotice(refusal("proposal-open"), {
+          type: "skill",
+          name: "tdd",
+          openRequests: null,
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Withdrawal blocked",
+      message:
+        "Nothing was withdrawn. Select Re-read Harness to read GitHub again.",
+      detail:
+        "A pull request for this skill is open, or GitHub could not be read.",
+    });
+  });
+
+  it("refuses a withdrawal by naming the open pull requests to merge", () => {
+    expect(
+      readNotice(
+        releaseWithdrawalNotice(refusal("proposal-open"), {
+          type: "skill",
+          name: "tdd",
+          openRequests: [45, 52],
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Withdrawal blocked",
+      message:
+        "Nothing was withdrawn. Merge pull requests #45 and #52 on GitHub, or select Withdraw proposal.",
+    });
   });
 });

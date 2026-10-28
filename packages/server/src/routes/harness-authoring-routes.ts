@@ -16,6 +16,7 @@ import {
   promoteErrorResponses,
   proposalErrorResponses,
   readPromptErrorResponses,
+  releaseWithdrawalErrorResponses,
   restoreErrorResponses,
   scaffoldErrorResponses,
   withdrawErrorResponses,
@@ -40,12 +41,15 @@ import {
   PROPOSAL_BODY,
   PROPOSAL_CREATE_BODY,
   parseBody,
-  promoteBodySchema,
+  primitiveRefBodySchema,
   promptCheckBodySchema,
   promptEditBodySchema,
   promptReadBodySchema,
   proposalBodySchema,
+  RELEASE_WITHDRAWAL_BODY,
+  RELEASE_WITHDRAWAL_CHECK_BODY,
   RESTORE_BODY,
+  releaseWithdrawalBodySchema,
   restoreBodySchema,
   WITHDRAW_BODY,
   WITHDRAW_CHECK_BODY,
@@ -60,6 +64,7 @@ type Deps = Pick<
   | "deleteLocal"
   | "restore"
   | "discard"
+  | "withdrawFromRelease"
   | "proposals"
   | "importSkill"
   | "importPrompt"
@@ -72,7 +77,7 @@ const refOf = ({ type, name }: PrimitiveRef): PrimitiveRef => ({ type, name });
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   // Takes the primitive's type and name only; the harness is resolved server-side (#577).
   app.post("/api/harness/promote", async (c) => {
-    const body = await parseBody(c, promoteBodySchema, PROMOTE_BODY);
+    const body = await parseBody(c, primitiveRefBodySchema, PROMOTE_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -172,6 +177,45 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ name: result.name });
   });
 
+  // Read for the confirmation; it writes nothing. POST, so the origin guard
+  // covers a read that returns a token.
+  app.post("/api/harness/release/withdraw/check", async (c) => {
+    const body = await parseBody(
+      c,
+      primitiveRefBodySchema,
+      RELEASE_WITHDRAWAL_CHECK_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.withdrawFromRelease.inspect(refOf(body.data));
+    if (!result.ok) {
+      const { status } = releaseWithdrawalErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ files: result.files, confirmation: result.confirmation });
+  });
+
+  app.post("/api/harness/release/withdraw", async (c) => {
+    const body = await parseBody(
+      c,
+      releaseWithdrawalBodySchema,
+      RELEASE_WITHDRAWAL_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.withdrawFromRelease.execute(
+      refOf(body.data),
+      body.data.confirmation,
+    );
+    if (!result.ok) {
+      const { status } = releaseWithdrawalErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ name: result.name });
+  });
+
   // Each rechecks identity and the request against a fresh read.
   const proposalResponse = <E extends string>(
     c: Context,
@@ -186,7 +230,11 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   };
 
   app.post("/api/harness/proposal/create", async (c) => {
-    const body = await parseBody(c, promoteBodySchema, PROPOSAL_CREATE_BODY);
+    const body = await parseBody(
+      c,
+      primitiveRefBodySchema,
+      PROPOSAL_CREATE_BODY,
+    );
     if (!body.ok) {
       return body.response;
     }
@@ -223,7 +271,11 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
 
   // Read for the withdrawal's confirmation; it writes nothing.
   app.post("/api/harness/proposal/withdraw/check", async (c) => {
-    const body = await parseBody(c, promoteBodySchema, WITHDRAW_CHECK_BODY);
+    const body = await parseBody(
+      c,
+      primitiveRefBodySchema,
+      WITHDRAW_CHECK_BODY,
+    );
     if (!body.ok) {
       return body.response;
     }

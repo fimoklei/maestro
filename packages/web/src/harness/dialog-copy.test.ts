@@ -4,6 +4,9 @@ import {
   ADVISORY_TEXT,
   FINDING_TEXT,
   FOLDER_MISSING,
+  inFlightNotice,
+  releaseWithdrawalBody,
+  releaseWithdrawalFilesNotice,
   rootSkillFileNotice,
   skillChecksNotice,
   withdrawBody,
@@ -22,6 +25,51 @@ describe("Harness dialog copy", () => {
     );
   });
 
+  it.each([
+    [
+      "skill",
+      "edit",
+      "This replaces the skill folder in your clone with its copy in the latest release. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+    ],
+    [
+      "skill",
+      "addition",
+      "This removes the skill folder from your clone. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+    ],
+    [
+      "skill",
+      "deletion",
+      "This brings back the skill folder from the latest release. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+    ],
+    [
+      "skill",
+      "rename",
+      "This brings back tdd from the latest release and removes the new name. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+    ],
+    [
+      "prompt",
+      "edit",
+      "This replaces the prompt file in your clone with its copy in the latest release. The prompt then waits under Pending proposal.",
+    ],
+  ] as const)(
+    "states what a withdrawal from release of a %s %s changes, then what stays",
+    (type, change, body) => {
+      expect(plainText(releaseWithdrawalBody(type, change, "tdd"))).toBe(body);
+    },
+  );
+
+  it("names the files a withdrawal from release replaces, and none where it replaces none", () => {
+    expect(releaseWithdrawalFilesNotice([])).toBeNull();
+    const notice = releaseWithdrawalFilesNotice([".apm/skills/tdd/SKILL.md"]);
+    expect(notice?.label).toBe("Changes not yet proposed");
+    expect(plainText(notice?.message ?? "")).toBe(
+      "Withdraw from release discards the changes in these files. To keep them, copy them outside your clone first.",
+    );
+    expect(notice?.items?.map((item) => plainText(item))).toEqual([
+      ".apm/skills/tdd/SKILL.md",
+    ]);
+  });
+
   it("warns about skill checks in one wording, naming the step still open", () => {
     expect(
       skillChecksNotice("import", ["SKILL.md is over 500 lines."]),
@@ -36,6 +84,21 @@ describe("Harness dialog copy", () => {
     );
     expect(skillChecksNotice("publish", []).message).toBe(
       "You can still publish the release.",
+    );
+  });
+
+  it("warns about in-flight items by name, and says nothing without them", () => {
+    expect(inFlightNotice([])).toBeNull();
+    const one = inFlightNotice(["research"]);
+    expect(one?.level).toBe("warning");
+    expect(one?.label).toBe("Release uses older versions");
+    expect(plainText(one?.message ?? "")).toBe(
+      "These skills and prompts have newer changes that are not merged: research.",
+    );
+    expect(
+      plainText(inFlightNotice(["research", "standup", "tdd"])?.message ?? ""),
+    ).toBe(
+      "These skills and prompts have newer changes that are not merged: research, standup and tdd.",
     );
   });
 

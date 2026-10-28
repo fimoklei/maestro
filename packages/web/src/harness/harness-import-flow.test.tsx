@@ -42,6 +42,7 @@ const IMPORTED_ROW: HarnessStageRow = {
   onDisk: false,
   ownsBranch: false,
   previousName: null,
+  openRequests: [],
 };
 
 const IMPORTED_HARNESS: HarnessState = {

@@ -2,9 +2,13 @@
 // release plan and the publication both read it, so they never disagree on
 // whether a release can be published.
 import { parseGitOrigin } from "../deploy/git-origin";
-import type { HarnessGitPort, HarnessTag } from "./read-harness-state";
+import type { LatestRelease } from "./latest-release";
+import type {
+  HarnessFacts,
+  HarnessGitPort,
+  HarnessTag,
+} from "./read-harness-state";
 import { type ReleaseDelta, readReleaseDelta } from "./release-delta";
-import { highestReleaseTag } from "./release-tag";
 
 // `root-skill-file`: a SKILL.md at the root makes apm deliver the whole
 // Harness as one skill, which no target can then manage (#1587).
@@ -24,17 +28,13 @@ type ReleaseReadinessResult =
   | { ok: true; readiness: ReleaseReadiness }
   | { ok: false; error: "no-usable-origin" | "no-answer" };
 
-// `refsConfirmed`: the refs come from a fetch that reached the remote. A
-// failed tag read is not a first release (#519).
+// A release nobody can know is not a first release (#519).
 export const readReleaseReadiness = async (
-  git: Pick<
-    HarnessGitPort,
-    "readFacts" | "readPrimitives" | "readAuthors" | "readRootFiles"
-  >,
+  git: Pick<HarnessGitPort, "readPrimitives" | "readAuthors" | "readRootFiles">,
   root: string,
-  refsConfirmed: boolean,
+  facts: HarnessFacts,
+  latest: LatestRelease,
 ): Promise<ReleaseReadinessResult> => {
-  const facts = await git.readFacts(root);
   const origin =
     facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
   if (origin === null) {
@@ -43,17 +43,11 @@ export const readReleaseReadiness = async (
 
   const head = facts.defaultBranchCommit;
   const defaultBranch = facts.defaultBranch;
-  const tags = facts.tags;
-  if (
-    !refsConfirmed ||
-    head === null ||
-    defaultBranch === null ||
-    tags === null
-  ) {
+  if (!latest.known || head === null || defaultBranch === null) {
     return { ok: false, error: "no-answer" };
   }
 
-  const released = highestReleaseTag(tags);
+  const { tags, tag: released } = latest;
   const delta = await readReleaseDelta(git, root, released, head);
   const rootFiles = await git.readRootFiles(root, head);
   return {

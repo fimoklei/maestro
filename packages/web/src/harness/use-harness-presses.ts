@@ -16,6 +16,8 @@ import { rowId } from "./harness-columns";
 import type {
   DiscardTarget,
   LocalDeletionTarget,
+  ReleaseWithdrawalItem,
+  ReleaseWithdrawalTarget,
   RestoreTarget,
   WithdrawTarget,
 } from "./harness-dialogs";
@@ -25,6 +27,7 @@ import {
   discardNotice,
   promoteNotice,
   proposalNotice,
+  releaseWithdrawalNotice,
   restoreNotice,
 } from "./notice-copy";
 import {
@@ -39,6 +42,7 @@ import {
   usePromotePrimitive,
   useProposalAction,
   useRestorePrimitive,
+  useWithdrawFromRelease,
 } from "./use-harness";
 import { withdrawNotice } from "./withdraw-notice-copy";
 
@@ -142,6 +146,43 @@ export function useHarnessPresses(
   // the author confirms.
   const [discarding, setDiscarding] = useState<DiscardTarget | null>(null);
 
+  // Frozen at the press: the dialog's copy follows the row it was opened from.
+  const [releaseWithdrawalTarget, setReleaseWithdrawing] =
+    useState<ReleaseWithdrawalTarget | null>(null);
+  // Its open pull requests come from the latest read: a refusal re-reads
+  // GitHub, and the notice names what it found.
+  const releaseWithdrawing: ReleaseWithdrawalItem | null =
+    releaseWithdrawalTarget === null
+      ? null
+      : {
+          ...releaseWithdrawalTarget,
+          openRequests:
+            releaseRows(state).find(
+              (row) =>
+                row.type === releaseWithdrawalTarget.type &&
+                row.name === releaseWithdrawalTarget.name,
+            )?.openRequests ?? null,
+        };
+  const releaseWithdrawal = useWithdrawFromRelease();
+  const releaseWithdrawalWrite = useWriteAction(releaseWithdrawal, {
+    screen,
+    action: "withdrawFromRelease",
+    // The row the withdrawal leaves under Pending proposal, which the server
+    // names: for a rename, the old name's.
+    subject: (withdrawn, pressed) => ({
+      name: withdrawn.name,
+      row: pressedRow("pending-proposal", {
+        type: pressed.type,
+        name: withdrawn.name,
+      }),
+    }),
+    // A failure shows only in the dialog, so its item stands.
+    failure: (error) =>
+      releaseWithdrawing === null
+        ? null
+        : releaseWithdrawalNotice(error, releaseWithdrawing),
+  });
+
   const proposalAction = useProposalAction();
   const [withdrawing, setWithdrawing] = useState<WithdrawTarget | null>(null);
   const proposalWrite = useWriteAction(proposalAction, {
@@ -218,8 +259,17 @@ export function useHarnessPresses(
     : deletion.isSuccess
       ? (deletion.variables ?? null)
       : null;
+  const withdrawnFromRelease =
+    releaseWithdrawal.isSuccess && releaseWithdrawal.variables !== undefined
+      ? pressedRow("pending-proposal", {
+          type: releaseWithdrawal.variables.type,
+          name: releaseWithdrawal.data.name,
+        })
+      : null;
   const movedTo =
-    movedSkill === null ? null : pressedRow("pending-review", movedSkill);
+    movedSkill === null
+      ? withdrawnFromRelease
+      : pressedRow("pending-review", movedSkill);
 
   // Edit prompt opens a dialog flow the view holds.
   const handlers: Omit<RowActionHandlers, "edit"> = {
@@ -271,6 +321,15 @@ export function useHarnessPresses(
         seenRemoteTree: row.remoteTree,
       });
     },
+    withdrawFromRelease: (row) => {
+      releaseWithdrawal.reset();
+      setReleaseWithdrawing({
+        type: row.type,
+        name: row.name,
+        change: row.change,
+        previousName: row.previousName,
+      });
+    },
     restore: (row, commit) => {
       restore.reset();
       setRestoring({
@@ -294,6 +353,7 @@ export function useHarnessPresses(
     deleteLocalWrite,
     restoreWrite,
     discardWrite,
+    releaseWithdrawalWrite,
     proposalWrite,
     handlers,
     running,
@@ -311,7 +371,14 @@ export function useHarnessPresses(
     closeDiscard: () => setDiscarding(null),
     withdrawing,
     closeWithdrawal: () => setWithdrawing(null),
+    releaseWithdrawing,
+    closeReleaseWithdrawal: () => setReleaseWithdrawing(null),
   };
+}
+
+function releaseRows(state: HarnessState | undefined): HarnessStageRow[] {
+  const stage = state?.stages.release;
+  return stage?.outcome === "read" ? stage.rows : [];
 }
 
 // Pending proposal's rows, or none where the stage could not be read: a press

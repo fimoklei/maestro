@@ -425,6 +425,43 @@ export function useDiscardChange() {
   });
 }
 
+// The files a withdrawal from release replaces, and the token the server
+// rebuilds at the press, read when its confirmation opens.
+export function useReleaseWithdrawalCheck(ref: PrimitiveRef) {
+  return useQuery({
+    queryKey: [
+      "harness",
+      "release-withdrawal-check",
+      ref.type,
+      ref.name,
+    ] as const,
+    queryFn: () =>
+      requestJson<{ files: string[]; confirmation: string }>(
+        "/api/harness/release/withdraw/check",
+        { method: "POST", body: JSON.stringify(ref) },
+      ),
+    // The disk is the author's to change while the dialog is open.
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+// `name` in the answer is the Pending proposal row the withdrawal leaves.
+export function useWithdrawFromRelease() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: PrimitiveRef & { confirmation: string }) =>
+      requestJson<{ name: string }>("/api/harness/release/withdraw", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    // A refusal re-reads too, so the dialog can name an open pull request.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
 // `hasRequest` never leaves the browser; it only picks the notice's sentence
 // (#915).
 export function useRestorePrimitive() {

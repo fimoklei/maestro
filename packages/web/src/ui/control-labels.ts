@@ -25,6 +25,7 @@ export const UPDATE_SKILL = "Update skill";
 export const UPDATE_TARGET = "Update target";
 export const UPDATE_TARGETS = "Update targets";
 export const VIEW_DEPLOY_STATE = "View Deploy-state";
+export const WITHDRAW_FROM_RELEASE = "Withdraw from release";
 export const WITHDRAW_PROPOSAL = "Withdraw proposal";
 
 /** A held bulk deploy row's own control: it overwrites the copies that held it. */

@@ -77,6 +77,9 @@ const PLAIN: Record<string, Record<string, string>> = {
   "harness/release-dialog.tsx": {
     "`${PUBLISH_RELEASE} for ${repoName}`": "dialog title",
   },
+  "harness/release-withdrawal-dialog.tsx": {
+    "`Withdraw ${name} from release`": "dialog title",
+  },
   "harness/restore-dialog.tsx": {
     "`Restore ${name}`": "dialog title",
   },
@@ -498,6 +501,7 @@ const SURFACES: {
     render: () => (
       <ReleaseDialog
         origin="github.com/fimoklei/agent-harness"
+        inFlight={[]}
         load={{
           kind: "ready",
           plan: {

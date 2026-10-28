@@ -127,6 +127,11 @@ export function stubHarnessServer(options: {
   // Withdraw proposal's file check; no files by default.
   withdrawCheck?: { body: unknown; status?: number; heldUntil?: Promise<void> };
   confirmations?: Record<string, unknown>[];
+  // Withdraw from release's check; no files and one token by default.
+  releaseWithdrawalCheck?: { body: unknown; status?: number };
+  // `thenRead` answers every Harness read after this answer, refusal or not.
+  releaseWithdrawal?: { body: unknown; status?: number; thenRead?: unknown };
+  releaseWithdrawals?: Record<string, unknown>[];
   inventory?: {
     body?: unknown;
     status?: number;
@@ -142,6 +147,7 @@ export function stubHarnessServer(options: {
   let refreshCalls = 0;
   let published = false;
   let promoted = false;
+  let thenRead: { body: unknown } | null = null;
   const answer = (route: {
     body: unknown;
     afterPublish?: unknown;
@@ -164,6 +170,23 @@ export function stubHarnessServer(options: {
         await ("holds" in plan ? plan.holds?.[planCalls] : undefined);
         planCalls += 1;
         return jsonResponse(plan.body, plan.status);
+      }
+      if (url === "/api/harness/release/withdraw/check") {
+        const check = options.releaseWithdrawalCheck ?? {
+          body: { files: [], confirmation: "token-1" },
+        };
+        return jsonResponse(check.body, check.status);
+      }
+      if (url === "/api/harness/release/withdraw") {
+        options.releaseWithdrawals?.push(JSON.parse(String(init?.body)));
+        const back = options.releaseWithdrawal ?? { body: {}, status: 500 };
+        if ((back.status ?? 200) < 400) {
+          promoted = true;
+        }
+        if (back.thenRead !== undefined) {
+          thenRead = { body: back.thenRead };
+        }
+        return jsonResponse(back.body, back.status);
       }
       if (url === "/api/harness/proposal/withdraw/check") {
         const check = options.withdrawCheck ?? { body: { files: [] } };
@@ -276,7 +299,7 @@ export function stubHarnessServer(options: {
       // hand and not by the clock.
       await options.read.heldUntil;
       return jsonResponse(
-        answer(options.read),
+        thenRead?.body ?? answer(options.read),
         promoted && options.read.afterWriteStatus !== undefined
           ? options.read.afterWriteStatus
           : options.read.status,

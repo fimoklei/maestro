@@ -40,6 +40,7 @@ import { HarnessDialogs } from "./harness-dialogs";
 import { type OpenPrimitive, proposalRow } from "./harness-route";
 import {
   harnessAnnouncement,
+  inFlightNames,
   releaseCause,
   releaseEnabled,
   type StageSection,
@@ -485,8 +486,12 @@ export function HarnessView({
           withdrawing={presses.withdrawing}
           proposalAction={presses.proposalWrite}
           onWithdrawClose={presses.closeWithdrawal}
+          releaseWithdrawing={presses.releaseWithdrawing}
+          releaseWithdrawal={presses.releaseWithdrawalWrite}
+          onReleaseWithdrawalClose={presses.closeReleaseWithdrawal}
           planOpen={planOpen}
           plan={plan}
+          inFlight={inFlightNames(releaseRead)}
           publish={publishWrite}
           onPlanClose={closePlan}
           onPublish={handlePublish}

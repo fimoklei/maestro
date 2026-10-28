@@ -32,6 +32,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   onDisk: true,
   ownsBranch: false,
   previousName: null,
+  openRequests: [],
   ...over,
 });
 

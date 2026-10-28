@@ -8,6 +8,7 @@ import { CONCURRENT_CHANGE_NOTICE } from "./notice-copy";
 import { PullRequestLinks } from "./pull-request-links";
 import {
   alsoInWords,
+  correctionLine,
   crossStageLine,
   deployedCopiesLine,
   detailSentence,
@@ -59,6 +60,7 @@ export function StageDetailPane({
           reviewerLine(row),
           crossStageLine(row),
           deployedCopiesLine(row),
+          correctionLine(row),
         ].filter((line) => line !== null),
       ]}
       notices={[

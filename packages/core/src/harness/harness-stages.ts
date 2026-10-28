@@ -133,6 +133,10 @@ export type HarnessStageRow = {
   // unread, and outside Pending review.
   ownsBranch: boolean;
   previousName: string | null;
+  // Pending release only, empty elsewhere: the open pull requests for the
+  // name and a rename's previous name. Null where the review read cannot
+  // prove there are none.
+  openRequests: number[] | null;
 };
 
 // `bound` is the limit a read filled; null when the answer was complete.
@@ -167,7 +171,7 @@ export type StageInput = {
 };
 
 export const buildStages = (input: StageInput): HarnessStages => {
-  const release = releaseStage(input.release, input.trees);
+  const release = releaseStage(input);
   const matches = matchRequests(input);
   const review = reviewStage(input, matches);
   const proposal = proposalStage(input, matches);
@@ -281,6 +285,7 @@ const blankRow = (
   onDisk: false,
   ownsBranch: false,
   previousName: null,
+  openRequests: [],
 });
 
 // Local places only, so every stage gives the same answer.
@@ -298,10 +303,36 @@ const isOnDisk = (
   { type, name }: PrimitiveRef,
 ): boolean => trees !== null && Object.hasOwn(trees[type].working, name);
 
-const releaseStage = (
-  release: ReleaseMovement[] | null,
-  trees: HarnessMovementTrees | null,
-): HarnessStageRead => {
+// Without gh no proposal can be open; any other unread answer is unknown.
+const openRequestsFor = (
+  { origin, defaultBranch, review }: StageInput,
+  refs: PrimitiveRef[],
+): number[] | null => {
+  if (review.outcome === "unavailable") {
+    return review.reason === "no-gh" ? [] : null;
+  }
+  if (review.outcome === "failed" || defaultBranch === null) {
+    return null;
+  }
+  const open = review.requests
+    .filter(
+      (request) =>
+        request.state === "open" &&
+        refs.some((ref) =>
+          matchesProposal(request, {
+            ownerRepo: origin.ownerRepo,
+            branch: proposalBranch(ref),
+            base: defaultBranch,
+          }),
+        ),
+    )
+    .map((request) => request.number)
+    .sort((a, b) => a - b);
+  return open.length === 0 && !review.complete ? null : open;
+};
+
+const releaseStage = (input: StageInput): HarnessStageRead => {
+  const { release, trees } = input;
   if (release === null) {
     return { outcome: "unknown" };
   }
@@ -317,6 +348,12 @@ const releaseStage = (
       ),
       onDisk: isOnDisk(trees, movement),
       previousName: movement.previousName ?? null,
+      openRequests: openRequestsFor(input, [
+        movement,
+        ...(movement.previousName === undefined
+          ? []
+          : [{ type: movement.type, name: movement.previousName }]),
+      ]),
     })),
   };
 };

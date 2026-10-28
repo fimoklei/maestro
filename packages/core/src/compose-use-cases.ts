@@ -48,6 +48,7 @@ import {
 import { rememberOrigin } from "./harness/remembered-origin";
 import { Restore } from "./harness/restore";
 import { ReviewReadGate } from "./harness/review-read-gate";
+import { WithdrawFromRelease } from "./harness/withdraw-from-release";
 import {
   resolveApmGlobalRoot,
   resolveMaestroConfigPath,
@@ -428,6 +429,19 @@ export function composeUseCases(ports: UseCasePorts) {
         const read = await harness.execute();
         return read.ok ? read.state.stages : null;
       },
+      fs,
+      copyFs: copyTreeFs,
+      git: harnessGit,
+      locks: harnessPromoteLocks,
+    }),
+    // Rechecks the release row and the latest release, behind the same lock.
+    withdrawFromRelease: new WithdrawFromRelease({
+      resolveRoot: harnessRoot,
+      readStages: async () => {
+        const read = await harness.execute();
+        return read.ok ? read.state.stages : null;
+      },
+      freshness: harnessFreshness,
       fs,
       copyFs: copyTreeFs,
       git: harnessGit,
