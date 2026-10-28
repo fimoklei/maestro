@@ -31,6 +31,7 @@ export const stageRow = (
   onDisk: false,
   ownsBranch: true,
   previousName: null,
+  openRequests: [],
   ...over,
 });
 

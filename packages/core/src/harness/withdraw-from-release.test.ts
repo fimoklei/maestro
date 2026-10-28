@@ -49,6 +49,7 @@ const releaseRow = (
   onDisk: true,
   ownsBranch: false,
   previousName: null,
+  openRequests: [],
 });
 
 const stagesWith = (rows: HarnessStageRow[]): HarnessStages => ({
@@ -410,6 +411,36 @@ describe("WithdrawFromRelease", () => {
 
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: false, error: "not-pending-release" },
+      );
+      expect(await skillText("tdd")).toBe("merged tdd");
+    });
+
+    it("refuses while the item has an open proposal", async () => {
+      const { withdrawal, setStages, skillText } = changed();
+      const token = await confirmed(withdrawal, skillRef("tdd"));
+      setStages(
+        stagesWith([
+          { ...releaseRow(skillRef("tdd"), "edit"), openRequests: [52] },
+        ]),
+      );
+
+      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
+        { ok: false, error: "proposal-open" },
+      );
+      expect(await skillText("tdd")).toBe("merged tdd");
+    });
+
+    it("refuses while the pull request read is unknown", async () => {
+      const { withdrawal, setStages, skillText } = changed();
+      const token = await confirmed(withdrawal, skillRef("tdd"));
+      setStages(
+        stagesWith([
+          { ...releaseRow(skillRef("tdd"), "edit"), openRequests: null },
+        ]),
+      );
+
+      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
+        { ok: false, error: "proposal-open" },
       );
       expect(await skillText("tdd")).toBe("merged tdd");
     });

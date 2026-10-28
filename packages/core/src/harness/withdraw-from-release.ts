@@ -24,6 +24,8 @@ export type WithdrawFromReleaseError =
   | WorktreeAmbiguity
   | "no-answer"
   | "not-pending-release"
+  // An open pull request for one of the item's names, or an unknown read.
+  | "proposal-open"
   // The Working Harness, the default branch or the latest release no longer
   // holds what the confirmation was built from.
   | "confirmation-stale"
@@ -182,6 +184,9 @@ export class WithdrawFromRelease {
     const row = stages.release.rows.find(sameRef(ref));
     if (row === undefined) {
       return { error: "not-pending-release" };
+    }
+    if (row.openRequests === null || row.openRequests.length > 0) {
+      return { error: "proposal-open" };
     }
     const names = namesOf(row);
 

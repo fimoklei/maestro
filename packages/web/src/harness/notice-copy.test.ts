@@ -27,6 +27,7 @@ import {
   harnessStateNotice,
   importNotice,
   localEditsRefusal,
+  openProposalCause,
   promoteNotice,
   proposalNotice,
   publishReleaseNotice,
@@ -321,6 +322,7 @@ const SURFACES: Surface[] = [
       unreadable: true,
       "no-answer": true,
       "not-pending-release": true,
+      "proposal-open": true,
       "confirmation-stale": true,
       "destination-unsafe": true,
       "destination-unreadable": true,
@@ -847,5 +849,47 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
     expect(notice("branch-delete-failed")?.detail).toBe(
       "Your skill folder matches its copy on main.",
     );
+  });
+});
+
+describe("Withdraw from release while a proposal is open", () => {
+  it("names the one pull request to merge", () => {
+    expect(openProposalCause([52])).toBe(
+      "Merge pull request #52 on GitHub, or select Withdraw proposal.",
+    );
+  });
+
+  it("names every pull request to merge", () => {
+    expect(openProposalCause([45, 51, 52])).toBe(
+      "Merge pull requests #45, #51 and #52 on GitHub, or select Withdraw proposal.",
+    );
+  });
+
+  it("sends an unknown read to Re-read Harness", () => {
+    expect(openProposalCause(null)).toBe(
+      "Select Re-read Harness to read GitHub again.",
+    );
+  });
+
+  it("states no cause while no pull request is open", () => {
+    expect(openProposalCause([])).toBeNull();
+  });
+
+  it("refuses a withdrawal that a pull request may block", () => {
+    expect(
+      readNotice(
+        releaseWithdrawalNotice(refusal("proposal-open"), {
+          type: "skill",
+          name: "tdd",
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Withdrawal blocked",
+      message:
+        "Nothing was withdrawn. Select Re-read Harness to read GitHub again.",
+      detail:
+        "A pull request for this skill is open, or GitHub could not be read.",
+    });
   });
 });

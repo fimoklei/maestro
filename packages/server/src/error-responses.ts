@@ -349,6 +349,7 @@ export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseErro
     unreadable: deletionErrorResponses.unreadable,
     "no-answer": { status: 409 },
     "not-pending-release": { status: 409 },
+    "proposal-open": { status: 409 },
     "confirmation-stale": { status: 409 },
     "destination-unsafe": { status: 409 },
     "destination-unreadable": { status: 409 },
