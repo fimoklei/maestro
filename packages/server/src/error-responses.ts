@@ -25,6 +25,7 @@ import type {
   UpdateRunError,
   WithdrawError,
   WithdrawFromReleaseError,
+  WorktreeAmbiguity,
 } from "@maestro/core";
 import type { PromptFieldProblem } from "@maestro/core/prompt-file";
 
@@ -251,13 +252,18 @@ export const proposalErrorResponses: ErrorTable<ProposalActionError> = {
   "action-failed": { status: 502 },
 };
 
-export const withdrawErrorResponses: ErrorTable<WithdrawError> = {
-  ...proposalErrorResponses,
+// Every Harness write that reads the working tree refuses these alike.
+const worktreeAmbiguityResponses: ErrorTable<WorktreeAmbiguity> = {
   "sparse-checkout": { status: 409 },
   "merge-in-progress": { status: 409 },
   "rebase-in-progress": { status: 409 },
   "unresolved-conflicts": { status: 409 },
   unreadable: { status: 409 },
+};
+
+export const withdrawErrorResponses: ErrorTable<WithdrawError> = {
+  ...proposalErrorResponses,
+  ...worktreeAmbiguityResponses,
   "destination-unsafe": { status: 409 },
   "destination-unreadable": { status: 409 },
   "push-elsewhere": promoteErrorResponses["push-elsewhere"],
@@ -276,11 +282,7 @@ export const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
   "no-answer": { status: 409 },
   "confirmation-stale": { status: 409 },
   "not-deleted": { status: 422 },
-  "sparse-checkout": { status: 409 },
-  "merge-in-progress": { status: 409 },
-  "rebase-in-progress": { status: 409 },
-  "unresolved-conflicts": { status: 409 },
-  unreadable: { status: 409 },
+  ...worktreeAmbiguityResponses,
   "push-elsewhere": promoteErrorResponses["push-elsewhere"],
   "source-changed": { status: 409 },
   "extra-requests": promoteErrorResponses["extra-requests"],
@@ -311,11 +313,7 @@ export const restoreErrorResponses: ErrorTable<RestoreError> = {
   "destination-unsafe": { status: 409 },
   "destination-unreadable": { status: 409 },
   "source-unreadable": { status: 409 },
-  "sparse-checkout": deletionErrorResponses["sparse-checkout"],
-  "merge-in-progress": deletionErrorResponses["merge-in-progress"],
-  "rebase-in-progress": deletionErrorResponses["rebase-in-progress"],
-  "unresolved-conflicts": deletionErrorResponses["unresolved-conflicts"],
-  unreadable: deletionErrorResponses.unreadable,
+  ...worktreeAmbiguityResponses,
   "restore-in-progress": { status: 409 },
   "restore-failed": { status: 500 },
 };
@@ -323,11 +321,7 @@ export const restoreErrorResponses: ErrorTable<RestoreError> = {
 export const discardErrorResponses: ErrorTable<DiscardChangeError> = {
   "not-configured": { status: 409 },
   "invalid-skill": { status: 400 },
-  "sparse-checkout": deletionErrorResponses["sparse-checkout"],
-  "merge-in-progress": deletionErrorResponses["merge-in-progress"],
-  "rebase-in-progress": deletionErrorResponses["rebase-in-progress"],
-  "unresolved-conflicts": deletionErrorResponses["unresolved-conflicts"],
-  unreadable: deletionErrorResponses.unreadable,
+  ...worktreeAmbiguityResponses,
   "no-answer": { status: 409 },
   "already-proposed": { status: 409 },
   "nothing-to-discard": { status: 409 },
@@ -342,11 +336,7 @@ export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseErro
   {
     "not-configured": { status: 409 },
     "invalid-skill": { status: 400 },
-    "sparse-checkout": deletionErrorResponses["sparse-checkout"],
-    "merge-in-progress": deletionErrorResponses["merge-in-progress"],
-    "rebase-in-progress": deletionErrorResponses["rebase-in-progress"],
-    "unresolved-conflicts": deletionErrorResponses["unresolved-conflicts"],
-    unreadable: deletionErrorResponses.unreadable,
+    ...worktreeAmbiguityResponses,
     "no-answer": { status: 409 },
     "not-pending-release": { status: 409 },
     "proposal-open": { status: 409 },
