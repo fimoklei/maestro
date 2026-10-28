@@ -120,7 +120,7 @@ describe("withdrawing a proposal", () => {
     );
   });
 
-  it("warns, and still withdraws, when the files could not be compared", async () => {
+  it("warns, keeps the action enabled and still withdraws, when the files could not be compared", async () => {
     const proposals: { action: string; body: Record<string, unknown> }[] = [];
     stubHarnessServer({
       read: { body: IN_REVIEW },
@@ -137,6 +137,9 @@ describe("withdrawing a proposal", () => {
     expect(dialog).toHaveTextContent(
       "Withdraw proposal discards any change you made after proposing. To keep them, copy them outside your clone first.",
     );
+    expect(
+      within(dialog).getByRole("button", { name: "Withdraw proposal" }),
+    ).not.toHaveAttribute("aria-disabled");
     await confirm(dialog);
     await waitFor(() =>
       expect(proposals).toEqual([
