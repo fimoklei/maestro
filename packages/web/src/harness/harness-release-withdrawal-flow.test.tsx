@@ -262,7 +262,7 @@ describe("Harness withdraw from release", () => {
     ).toBeVisible();
   });
 
-  it("states a refused check in the dialog and offers no confirmation", async () => {
+  it("blocks the action on a refused check, states it as the failure and offers Close", async () => {
     stubHarnessServer({
       read: { body: MERGED },
       releaseWithdrawalCheck: {
@@ -278,6 +278,10 @@ describe("Harness withdraw from release", () => {
       await within(dialog).findByText("Not under Pending release"),
     ).toBeVisible();
     expect(confirmButton(dialog)).toHaveAttribute("aria-disabled", "true");
+    const footer = within(dialog)
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(footer.slice(-2)).toEqual(["Close", "Withdraw from release"]);
   });
 
   it("works by keyboard alone", async () => {

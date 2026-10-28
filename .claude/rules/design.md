@@ -149,6 +149,10 @@ Pick the form from this table. Add no other form, and no banner.
   control, and a footer with the leave control leading and the action
   trailing. Label the leave control `Cancel` before the action runs and
   `Close` once an outcome or failure shows; a lone `Close` is primary.
+- Describe a confirmation by its "what changes" sentence.
+- Block the action when a check before the press fails and the write needs
+  its result; state the failure as the dialog's failure. When the check is
+  advisory, warn in the body and let the action run.
 - Open focus on Cancel in a destructive dialog, on the first field in a form,
   else on the panel. Return focus to the control that opened it; after an
   add, to the new row.
