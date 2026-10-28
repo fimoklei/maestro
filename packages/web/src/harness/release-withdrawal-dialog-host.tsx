@@ -1,4 +1,4 @@
-import type { ReleaseWithdrawalTarget } from "./harness-dialogs";
+import type { ReleaseWithdrawalItem } from "./harness-dialogs";
 import { releaseWithdrawalNotice } from "./notice-copy";
 import { ReleaseWithdrawalDialog } from "./release-withdrawal-dialog";
 import { useReleaseWithdrawalCheck } from "./use-harness";
@@ -11,14 +11,14 @@ export function ReleaseWithdrawalDialogHost({
   write,
   onClose,
 }: {
-  target: ReleaseWithdrawalTarget;
+  target: ReleaseWithdrawalItem;
   write: ReturnType<typeof useHarnessPresses>["releaseWithdrawalWrite"];
   onClose: () => void;
 }) {
   const ref = { type: target.type, name: target.name };
   const check = useReleaseWithdrawalCheck(ref);
   const refused = check.isError
-    ? releaseWithdrawalNotice(check.error, ref)
+    ? releaseWithdrawalNotice(check.error, target)
     : null;
   return (
     <ReleaseWithdrawalDialog

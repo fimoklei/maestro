@@ -69,6 +69,11 @@ export type ReleaseWithdrawalTarget = PrimitiveRef & {
   previousName: string | null;
 };
 
+// The frozen target plus the open pull requests the latest read found.
+export type ReleaseWithdrawalItem = ReleaseWithdrawalTarget & {
+  openRequests: readonly number[] | null;
+};
+
 type Presses = ReturnType<typeof useHarnessPresses>;
 
 export type HarnessDialogsProps = {
@@ -92,7 +97,7 @@ export type HarnessDialogsProps = {
   withdrawing: WithdrawTarget | null;
   proposalAction: Presses["proposalWrite"];
   onWithdrawClose: () => void;
-  releaseWithdrawing: ReleaseWithdrawalTarget | null;
+  releaseWithdrawing: ReleaseWithdrawalItem | null;
   releaseWithdrawal: Presses["releaseWithdrawalWrite"];
   onReleaseWithdrawalClose: () => void;
   planOpen: boolean;

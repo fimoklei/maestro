@@ -455,7 +455,8 @@ export function useWithdrawFromRelease() {
         method: "POST",
         body: JSON.stringify(request),
       }),
-    onSuccess: () => {
+    // A refusal re-reads too, so the dialog can name an open pull request.
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
     },
   });
