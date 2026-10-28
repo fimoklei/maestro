@@ -195,7 +195,7 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
   });
 
   it("restores while GitHub is unreachable", async () => {
-    const review = stubReview({ outcome: "unavailable" });
+    const review = stubReview({ outcome: "unavailable", reason: "no-gh" });
     const app = makeApp(review);
     await deleteFolder();
 

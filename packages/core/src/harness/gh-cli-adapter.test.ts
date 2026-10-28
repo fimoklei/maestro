@@ -179,7 +179,7 @@ describe("GhCliAdapter", () => {
       ownerRepo: "acme/harness",
     });
 
-    expect(result).toEqual({ outcome: "unavailable" });
+    expect(result).toEqual({ outcome: "unavailable", reason: "no-gh" });
     expect(calls).toHaveLength(0);
   });
 
@@ -428,7 +428,7 @@ describe("GhCliAdapter", () => {
 
     const result = await new GhCliAdapter({ run }).readReviews(origin);
 
-    expect(result).toEqual({ outcome: "unavailable" });
+    expect(result).toEqual({ outcome: "unavailable", reason: "no-gh" });
   });
 
   it("reports an unauthenticated gh as an unavailable capability", async () => {
@@ -441,7 +441,7 @@ describe("GhCliAdapter", () => {
 
     const result = await new GhCliAdapter({ run }).readReviews(origin);
 
-    expect(result).toEqual({ outcome: "unavailable" });
+    expect(result).toEqual({ outcome: "unavailable", reason: "no-answer" });
   });
 
   it("reports an unreachable host as an unavailable capability", async () => {
@@ -454,7 +454,7 @@ describe("GhCliAdapter", () => {
 
     const result = await new GhCliAdapter({ run }).readReviews(origin);
 
-    expect(result).toEqual({ outcome: "unavailable" });
+    expect(result).toEqual({ outcome: "unavailable", reason: "no-answer" });
   });
 
   it("reports a run cut off by the timeout as an unavailable capability", async () => {
@@ -464,7 +464,7 @@ describe("GhCliAdapter", () => {
 
     const result = await new GhCliAdapter({ run }).readReviews(origin);
 
-    expect(result).toEqual({ outcome: "unavailable" });
+    expect(result).toEqual({ outcome: "unavailable", reason: "no-answer" });
   });
 
   it("reports a rejected credential as a failed read", async () => {

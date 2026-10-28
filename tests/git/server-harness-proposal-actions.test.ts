@@ -319,7 +319,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     it("refuses every mutation while GitHub cannot be asked", async () => {
       const app = makeApp();
       await writeSkill("tdd", "edited on disk");
-      stages.review.answer({ outcome: "unavailable" });
+      stages.review.answer({ outcome: "unavailable", reason: "no-gh" });
 
       const created = await proposalAction(app, "create", { name: "tdd" });
       const closed = await proposalAction(app, "withdraw", {

@@ -80,7 +80,7 @@ export const stubReview = (initial: HarnessReviewRead = EMPTY): StubReview => {
 
 // No gh capability at all, so a stage degrades instead of failing a read.
 export const unavailableHarnessReview = (): HarnessReviewPort => ({
-  readReviews: async () => ({ outcome: "unavailable" }),
+  readReviews: async () => ({ outcome: "unavailable", reason: "no-gh" }),
   readViewer: async () => ({ outcome: "unavailable" }),
   createRequest: async () => ({ ok: false, error: "unavailable" }),
   reopenRequest: async () => ({ ok: false, error: "unavailable" }),

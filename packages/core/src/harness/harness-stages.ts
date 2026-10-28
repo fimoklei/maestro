@@ -309,7 +309,7 @@ const openRequestsFor = (
   refs: PrimitiveRef[],
 ): number[] | null => {
   if (review.outcome === "unavailable") {
-    return [];
+    return review.reason === "no-gh" ? [] : null;
   }
   if (review.outcome === "failed" || defaultBranch === null) {
     return null;
