@@ -1,14 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ReleaseWithdrawalDialog } from "./release-withdrawal-dialog";
 
+const CODE_REVIEW = {
+  type: "skill",
+  name: "code-review",
+  change: "edit",
+  previousName: null,
+} as const;
+
 const meta = {
   title: "Harness/ReleaseWithdrawalDialog",
   component: ReleaseWithdrawalDialog,
   args: {
-    type: "skill",
-    name: "code-review",
-    change: "edit",
-    previousName: null,
+    target: CODE_REVIEW,
     check: { kind: "read", files: [] },
     onClose: () => {},
     onConfirm: () => {},
@@ -40,11 +44,18 @@ export const UnproposedChanges: Story = {
 };
 
 export const Added: Story = {
-  args: { change: "addition" },
+  args: { target: { ...CODE_REVIEW, change: "addition" } },
 };
 
 export const DeletedPrompt: Story = {
-  args: { type: "prompt", name: "pr-review", change: "deletion" },
+  args: {
+    target: {
+      type: "prompt",
+      name: "pr-review",
+      change: "deletion",
+      previousName: null,
+    },
+  },
 };
 
 export const Withdrawing: Story = {

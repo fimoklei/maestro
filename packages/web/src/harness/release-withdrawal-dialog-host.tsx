@@ -22,10 +22,7 @@ export function ReleaseWithdrawalDialogHost({
     : null;
   return (
     <ReleaseWithdrawalDialog
-      type={target.type}
-      name={target.name}
-      change={target.change}
-      previousName={target.previousName}
+      target={target}
       check={
         refused !== null
           ? { kind: "refused", notice: refused }

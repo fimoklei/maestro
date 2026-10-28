@@ -1,4 +1,3 @@
-import type { HarnessChange, HarnessPrimitiveType } from "@maestro/core";
 import { WITHDRAW_FROM_RELEASE } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
 import { Notice, type NoticeContent } from "../ui/notice";
@@ -9,6 +8,7 @@ import {
   releaseWithdrawalFilesNotice,
   WITHDRAW_CHECKING,
 } from "./dialog-copy";
+import type { ReleaseWithdrawalTarget } from "./harness-dialogs";
 
 /** The confirmation's own read: the files it replaces, or why it refused. */
 export type ReleaseWithdrawalCheck =
@@ -19,20 +19,14 @@ export type ReleaseWithdrawalCheck =
 // The confirmation a withdrawal from release takes before the Working Harness
 // changes (#1642). Presentational — the host owns the read and the mutation.
 export function ReleaseWithdrawalDialog({
-  type,
-  name,
-  change,
-  previousName,
+  target: { type, name, change, previousName },
   check,
   onClose,
   onConfirm,
   withdrawing,
   withdrawError,
 }: {
-  type: HarnessPrimitiveType;
-  name: string;
-  change: HarnessChange;
-  previousName: string | null;
+  target: ReleaseWithdrawalTarget;
   check: ReleaseWithdrawalCheck;
   onClose: () => void;
   onConfirm: () => void;

@@ -16,12 +16,17 @@ export type FootItem = ActionsMenuItem & {
   step?: "update" | "import";
   /** Its write is running: picks the busy label from `busy-copy`. */
   busy?: ActionKey;
-  /**
-   * Why a blocked item cannot run. The foot shows it as a button, danger or
-   * not, whose tooltip states it; the ⋮ menu shows no cause.
-   */
-  cause?: string;
-};
+} & (
+    | { cause?: undefined }
+    | {
+        disabled: true;
+        /**
+         * Why the blocked item cannot run. The foot shows it as a button,
+         * danger or not, whose tooltip states it; the ⋮ menu shows no cause.
+         */
+        cause: string;
+      }
+  );
 
 // The primary where the ⋮ order already leads with the next step (#1065).
 export const firstEnabled = (items: readonly FootItem[]): string | null =>
