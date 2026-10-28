@@ -110,8 +110,8 @@ export function ReleaseDialog({
           ? null
           : (publishError ?? (load.kind === "error" ? load.notice : null))
       }
-      // A plan blocked with changes states its block in a notice, never a
-      // lead sentence.
+      // A plan blocked with changes has no version; the notice that states
+      // its block describes it.
       describedBy={
         load.kind !== "ready"
           ? null
@@ -119,7 +119,7 @@ export function ReleaseDialog({
             ? leadId
             : load.plan.blocked === null
               ? `${leadId}-label ${leadId}-version`
-              : null
+              : `${leadId}-block`
       }
       fieldsChanged={chosenStep !== null}
       onClose={onClose}
@@ -214,6 +214,7 @@ function PlanBody({
       )}
       {plan.blocked === "root-skill-file" ? (
         <Notice
+          id={`${leadId}-block`}
           trigger="load"
           notice={rootSkillFileNotice(plan.defaultBranch)}
         />

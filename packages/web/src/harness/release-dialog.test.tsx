@@ -547,6 +547,14 @@ describe("ReleaseDialog", () => {
     );
   });
 
+  it("describes a plan blocked by a root SKILL.md by the notice that states the block", () => {
+    renderReady({ blocked: "root-skill-file", defaultBranch: "trunk" });
+
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
+      "SKILL.md at the Harness root Remove SKILL.md from the root of trunk on GitHub. Select Re-read Harness, then select Create a release again. Every target would get the whole Harness as one skill.",
+    );
+  });
+
   it("has no description while the plan loads", () => {
     render(
       <ReleaseDialog
