@@ -82,7 +82,7 @@ describe("DeletionDialog", () => {
     expect(screen.getByText("Default branch commit")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
+        "If the default branch moves before you confirm, nothing is pushed.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Confirmed against")).not.toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("DeletionDialog", () => {
     renderDialog();
 
     expect(screen.getByText(TREE)).toHaveAccessibleDescription(
-      "If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing.",
+      "If the default branch moves before you confirm, nothing is pushed.",
     );
   });
 

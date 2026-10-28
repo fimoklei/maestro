@@ -88,7 +88,7 @@ export const RESTORE_KEEPS_PROPOSAL = "Your proposal remains unchanged.";
 export const RESTORED_FROM_FACT = "Restored from";
 
 export const RESTORED_FROM_HINT =
-  "Your last local commit. If it moves before you confirm, nothing is restored.";
+  "If your clone's last commit moves before you confirm, nothing is restored.";
 
 // An item no target holds has no deployed copies to mention.
 const replacesInClone = (

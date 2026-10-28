@@ -2,6 +2,7 @@ import type { HarnessStageRow } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { sentence } from "../test-utils";
 import {
   installHarnessHooks,
   ON_DISK,
@@ -34,7 +35,7 @@ describe("Harness confirmation facts", () => {
     return screen.findByRole("dialog");
   };
 
-  it("states the branch a proposed deletion pushes to", async () => {
+  it("states the branch a proposed deletion pushes to, and its guarantee", async () => {
     stubHarnessServer({
       read: {
         body: withStages(ON_DISK, {
@@ -47,6 +48,13 @@ describe("Harness confirmation facts", () => {
     const dialog = await press(/^propose change$/i);
 
     expect(within(dialog).getByText(BRANCH)).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        sentence(
+          "If the default branch moves before you confirm, nothing is pushed.",
+        ),
+      ),
+    ).toBeVisible();
   });
 
   it("states the branch a withdrawal leaves in place", async () => {
@@ -86,7 +94,7 @@ describe("Harness confirmation facts", () => {
     expect(within(dialog).getByText(PATH)).toBeVisible();
   });
 
-  it("states the path a restore brings back", async () => {
+  it("states the path a restore brings back, and its guarantee", async () => {
     stubHarnessServer({
       read: {
         body: withStages(ON_DISK, {
@@ -99,9 +107,16 @@ describe("Harness confirmation facts", () => {
     const dialog = await press(/^restore prompt$/i);
 
     expect(within(dialog).getByText(PATH)).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        sentence(
+          "If your clone's last commit moves before you confirm, nothing is restored.",
+        ),
+      ),
+    ).toBeVisible();
   });
 
-  it("states the path a discard puts back", async () => {
+  it("states the path a discard puts back, and its guarantee", async () => {
     stubHarnessServer({
       read: {
         body: withStages(ON_DISK, {
@@ -114,5 +129,10 @@ describe("Harness confirmation facts", () => {
     const dialog = await press(/^discard change$/i);
 
     expect(within(dialog).getByText(PATH)).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        sentence("If main moves before you confirm, nothing is discarded."),
+      ),
+    ).toBeVisible();
   });
 });
