@@ -556,7 +556,8 @@ const releaseWithdrawalHeadings = ({
   });
 };
 
-const listOf = (parts: readonly string[]): string =>
+/** Joins parts as running text: "a", "a and b", "a, b and c". */
+export const listOf = (parts: readonly string[]): string =>
   parts.length < 2
     ? (parts[0] ?? "")
     : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;

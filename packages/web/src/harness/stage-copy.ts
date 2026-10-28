@@ -20,6 +20,7 @@ import { type Copy, machine, named, phrase } from "../ui/phrase";
 import { type StatusFamily, WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { ITEM_WORDS } from "./item-words";
+import { listOf } from "./notice-copy";
 import { offersDiscard } from "./row-actions";
 
 export const STAGE_NAMES: Record<HarnessStage, string> = {
@@ -133,13 +134,6 @@ export function changeSentence(
 
 const requestNumbers = (row: HarnessStageRow): string[] =>
   row.requests.map((request) => `#${request.number}`);
-
-const listOf = (parts: string[]): string => {
-  if (parts.length < 2) {
-    return parts[0] ?? "";
-  }
-  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-};
 
 const first = (row: HarnessStageRow): string => requestNumbers(row)[0] ?? "";
 
