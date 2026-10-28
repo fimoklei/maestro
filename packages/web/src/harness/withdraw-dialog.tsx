@@ -55,7 +55,7 @@ export function WithdrawDialog({
       action={{
         label: WITHDRAW_PROPOSAL,
         verb: "withdraw",
-        unavailable: unproposed.kind === "checking" ? WITHDRAW_CHECKING : null,
+        unavailable: null,
         run: onConfirm,
       }}
       running={withdrawing}

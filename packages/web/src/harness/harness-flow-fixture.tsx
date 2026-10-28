@@ -128,7 +128,11 @@ export function stubHarnessServer(options: {
   withdrawCheck?: { body: unknown; status?: number; heldUntil?: Promise<void> };
   confirmations?: Record<string, unknown>[];
   // Withdraw from release's check; no files and one token by default.
-  releaseWithdrawalCheck?: { body: unknown; status?: number };
+  releaseWithdrawalCheck?: {
+    body: unknown;
+    status?: number;
+    heldUntil?: Promise<void>;
+  };
   // `thenRead` answers every Harness read after this answer, refusal or not.
   releaseWithdrawal?: { body: unknown; status?: number; thenRead?: unknown };
   releaseWithdrawals?: Record<string, unknown>[];
@@ -175,6 +179,7 @@ export function stubHarnessServer(options: {
         const check = options.releaseWithdrawalCheck ?? {
           body: { files: [], confirmation: "token-1" },
         };
+        await check.heldUntil;
         return jsonResponse(check.body, check.status);
       }
       if (url === "/api/harness/release/withdraw") {

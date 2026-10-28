@@ -18,17 +18,12 @@ type ConfirmationAction = {
   label: string;
   /** Picks the busy label from `busy-copy`. */
   verb: ActionKey;
-  /** Why it cannot run yet; `null` when it can. */
+  /** Why it cannot run, beyond a check under way; `null` when it can. */
   unavailable: string | null;
   run: () => void;
 };
 
-/**
- * The one layout every Harness confirmation shares: what changes, what stays,
- * the facts card led by the item's name, the checking line and the load
- * notice. The dialog describes itself by what changes, or by the load notice
- * where nothing else says what the press does.
- */
+/** The one layout every Harness confirmation shares. */
 export function HarnessConfirmation({
   type,
   name,
@@ -68,10 +63,11 @@ export function HarnessConfirmation({
         label: action.label,
         verb: action.verb,
         tone: "danger",
-        unavailable: action.unavailable,
+        unavailable: checking ?? action.unavailable,
         onRun: action.run,
       }}
       failure={failure}
+      // The load notice says what the press does where no sentence does.
       describedBy={
         changes !== null ? changesId : loadNotice !== null ? noticeId : null
       }

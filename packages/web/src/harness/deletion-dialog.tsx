@@ -57,21 +57,41 @@ export function DeletionDialog({
   deleteError: NoticeContent | null;
 }) {
   const copy = DELETION_COPY[type];
-  const [changes, stays] =
+  const byMode =
     mode.kind === "propose"
-      ? // The open request's warning says what this press does instead.
-        [
-          mode.openRequest === null ? copy.proposes(mode.origin) : null,
-          copy.keeps(name),
-        ]
-      : mode.localOnly
-        ? // No second sentence: the other modes name what keeps the item,
-          // and here nothing does.
-          [copy.localOnly(name), null]
-        : [
-            copy.inClone(name, mode.origin),
-            deleteFromOrigin(mode.origin, mode.screen),
-          ];
+      ? {
+          // The open request's warning says what this press does instead.
+          changes:
+            mode.openRequest === null ? copy.proposes(mode.origin) : null,
+          stays: copy.keeps(name),
+          facts: [
+            { label: BRANCH_FACT, value: mode.branch },
+            // The whole hash: the exact origin/HEAD copy the confirmation is
+            // given against (#580).
+            {
+              label: DEFAULT_BRANCH_COMMIT_FACT,
+              value: mode.seenRemoteTree,
+              hint: DEFAULT_BRANCH_COMMIT_HINT,
+            },
+          ],
+          checking: null,
+          loadNotice: openRequestNotice(type, name, mode.openRequest),
+        }
+      : {
+          ...(mode.localOnly
+            ? // No second sentence: the other modes name what keeps the
+              // item, and here nothing does.
+              { changes: copy.localOnly(name), stays: null, loadNotice: null }
+            : {
+                changes: copy.inClone(name, mode.origin),
+                stays: deleteFromOrigin(mode.origin, mode.screen),
+                loadNotice: mode.uncommitted
+                  ? uncommittedNotice(type, name, mode.origin)
+                  : null,
+              }),
+          facts: [{ label: ITEM_WORDS[type].Holder, value: mode.path }],
+          checking: mode.check === "checking" ? DELETION_CHECKING : null,
+        };
   return (
     <HarnessConfirmation
       type={type}
@@ -81,45 +101,17 @@ export function DeletionDialog({
         label: copy.label,
         verb: "delete",
         unavailable:
-          mode.kind !== "local" || mode.check === "ready"
-            ? null
-            : mode.check === "checking"
-              ? DELETION_CHECKING
-              : // The caller states a failed or empty check in `deleteError`;
-                // without it the action still stays blocked.
-                (deleteError?.label ?? ""),
+          mode.kind === "local" &&
+          (mode.check === "failed" || mode.check === "not-in-clone")
+            ? // The caller states a failed or empty check in `deleteError`;
+              // without it the action still stays blocked.
+              (deleteError?.label ?? "")
+            : null,
         run: onConfirm,
       }}
       running={deleting}
       failure={deleteError}
-      changes={changes}
-      stays={stays}
-      facts={
-        mode.kind === "propose"
-          ? [
-              { label: BRANCH_FACT, value: mode.branch },
-              // The whole hash: the exact origin/HEAD copy the confirmation
-              // is given against (#580).
-              {
-                label: DEFAULT_BRANCH_COMMIT_FACT,
-                value: mode.seenRemoteTree,
-                hint: DEFAULT_BRANCH_COMMIT_HINT,
-              },
-            ]
-          : [{ label: ITEM_WORDS[type].Holder, value: mode.path }]
-      }
-      checking={
-        mode.kind === "local" && mode.check === "checking"
-          ? DELETION_CHECKING
-          : null
-      }
-      loadNotice={
-        mode.kind === "propose"
-          ? openRequestNotice(type, name, mode.openRequest)
-          : mode.uncommitted && !mode.localOnly
-            ? uncommittedNotice(type, name, mode.origin)
-            : null
-      }
+      {...byMode}
       onClose={onClose}
     />
   );

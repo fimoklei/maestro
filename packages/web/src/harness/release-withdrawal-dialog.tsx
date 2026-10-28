@@ -33,6 +33,7 @@ export function ReleaseWithdrawalDialog({
   withdrawing: boolean;
   withdrawError: NoticeContent | null;
 }) {
+  const body = releaseWithdrawalBody(type, change, previousName);
   return (
     <HarnessConfirmation
       type={type}
@@ -41,12 +42,7 @@ export function ReleaseWithdrawalDialog({
       action={{
         label: WITHDRAW_FROM_RELEASE,
         verb: "withdrawFromRelease",
-        unavailable:
-          check.kind === "checking"
-            ? WITHDRAW_CHECKING
-            : check.kind === "refused"
-              ? check.notice.label
-              : null,
+        unavailable: check.kind === "refused" ? check.notice.label : null,
         run: onConfirm,
       }}
       running={withdrawing}
@@ -54,8 +50,8 @@ export function ReleaseWithdrawalDialog({
       failure={
         withdrawError ?? (check.kind === "refused" ? check.notice : null)
       }
-      changes={releaseWithdrawalBody(type, change, previousName)}
-      stays={null}
+      changes={body.changes}
+      stays={body.stays}
       facts={[{ label: ITEM_WORDS[type].Holder, value: path }]}
       checking={check.kind === "checking" ? WITHDRAW_CHECKING : null}
       loadNotice={

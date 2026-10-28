@@ -161,7 +161,7 @@ export const releaseWithdrawalBody = (
   type: HarnessPrimitiveType,
   change: HarnessChange,
   previousName: string | null,
-): Phrase => {
+): { changes: Phrase; stays: Phrase } => {
   const w = ITEM_WORDS[type];
   const changed: Record<HarnessChange, Phrase> = {
     addition: phrase`This removes the ${w.noun} ${w.holder} from your clone.`,
@@ -169,10 +169,13 @@ export const releaseWithdrawalBody = (
     deletion: phrase`This brings back the ${w.noun} ${w.holder} from the latest release.`,
     rename: phrase`This brings back ${named(previousName ?? "")} from the latest release and removes the new name.`,
   };
-  return withDeployedCopies(
-    type,
-    phrase`${changed[change]} The ${w.noun} then waits under Pending proposal.`,
-  );
+  return {
+    changes: changed[change],
+    stays: withDeployedCopies(
+      type,
+      phrase`The ${w.noun} then waits under Pending proposal.`,
+    ),
+  };
 };
 
 /** The files a withdrawal from release would replace; null where none would be. */

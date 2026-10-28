@@ -262,7 +262,7 @@ describe("Harness confirmation facts", () => {
 
       expectDescription(
         dialog,
-        "This replaces the prompt file in your clone with its copy in the latest release. The prompt then waits under Pending proposal.",
+        "This replaces the prompt file in your clone with its copy in the latest release.",
       );
     });
   });

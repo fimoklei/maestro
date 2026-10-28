@@ -71,7 +71,14 @@ describe("Harness withdraw from release", () => {
     expect(
       within(dialog).getByText(
         sentence(
-          "This replaces the skill folder in your clone with its copy in the latest release. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+          "This replaces the skill folder in your clone with its copy in the latest release.",
+        ),
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        sentence(
+          "The skill then waits under Pending proposal. Deployed copies remain unchanged.",
         ),
       ),
     ).toBeVisible();
@@ -260,6 +267,29 @@ describe("Harness withdraw from release", () => {
         ),
       ),
     ).toBeVisible();
+  });
+
+  it("blocks the action while its check runs", async () => {
+    let answer = () => {};
+    stubHarnessServer({
+      read: { body: MERGED },
+      releaseWithdrawalCheck: {
+        body: { files: [], confirmation: "token-1" },
+        heldUntil: new Promise<void>((resolve) => (answer = resolve)),
+      },
+    });
+    renderHarness();
+
+    const dialog = await openWithdrawal();
+
+    expectTooltipCause(
+      confirmButton(dialog),
+      "Checking for changes not yet proposed…",
+    );
+    answer();
+    await waitFor(() =>
+      expect(confirmButton(dialog)).not.toHaveAttribute("aria-disabled"),
+    );
   });
 
   it("blocks the action on a refused check, states it as the failure and offers Close", async () => {
