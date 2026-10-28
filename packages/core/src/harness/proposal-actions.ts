@@ -27,7 +27,11 @@ import type {
   HarnessGitPort,
   WorktreeAmbiguity,
 } from "./read-harness-state";
-import { type ReplaceDeps, replaceFromCommit } from "./replace-from-commit";
+import {
+  type ReplaceDeps,
+  type ReplaceOutcome,
+  replaceFromCommit,
+} from "./replace-from-commit";
 
 export type ProposalActionError =
   | "not-configured"
@@ -270,14 +274,8 @@ export class ProposalActions {
       atCommit: atHead,
       refs: [ref],
     });
-    if (
-      replaced === "destination-unsafe" ||
-      replaced === "destination-unreadable"
-    ) {
-      return { ok: false, error: replaced };
-    }
-    if (replaced === "failed") {
-      return { ok: false, error: "replace-failed" };
+    if (replaced !== "replaced") {
+      return { ok: false, error: REPLACE_ERROR[replaced] };
     }
     if (number !== null) {
       const closed = await this.deps.review.closeRequest(
@@ -345,6 +343,12 @@ const AUTHORSHIP_ERROR = {
   "no-email": "commit-email-missing",
   unknown: "branch-authors-unknown",
 } as const satisfies Record<Exclude<BranchAuthorship, "own">, WithdrawError>;
+
+const REPLACE_ERROR = {
+  "destination-unsafe": "destination-unsafe",
+  "destination-unreadable": "destination-unreadable",
+  failed: "replace-failed",
+} as const satisfies Record<Exclude<ReplaceOutcome, "replaced">, WithdrawError>;
 
 // A number names the open request to close; null expects none open, and the
 // branch belongs to whoever opened its newest ended request.
