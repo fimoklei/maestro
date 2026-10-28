@@ -9,25 +9,21 @@ type DeployTool = {
   skillsDirPrefix: string;
   // The tool's own config, never a skills directory a deploy creates.
   globalPresenceMarker: string;
-  // Whether this tool is the only reader of skillsDirPrefix. Never default it
-  // to true (#202).
-  skillsDirIsExclusive: boolean;
 };
+
+// No tool is the only reader of its skills folder, so Maestro never deletes a
+// copy for a tool it did not detect (#202, #1557).
 
 export const DEPLOY_TOOLS: readonly DeployTool[] = [
   {
     apmTarget: "claude",
     skillsDirPrefix: ".claude",
     globalPresenceMarker: ".claude.json",
-    // Cursor, OpenCode and Devin Desktop read the Claude skills folder too (#1557).
-    skillsDirIsExclusive: false,
   },
   {
     apmTarget: "codex",
     skillsDirPrefix: ".agents",
     globalPresenceMarker: ".codex/config.toml",
-    // Ten apm targets read the shared agents skills folder.
-    skillsDirIsExclusive: false,
   },
 ];
 
@@ -55,14 +51,4 @@ export function deployTargetSubtrees(
   return DEPLOY_TOOLS.filter(
     (tool) => tools === undefined || tools.includes(tool.apmTarget),
   ).map((tool) => `${tool.skillsDirPrefix}/skills/${name}`);
-}
-
-// Exclusive directories only: removing a shared one costs another tool its
-// skills (#202).
-export function reclaimableUntargetedTools(
-  detected: readonly SupportedTool[],
-): SupportedTool[] {
-  return DEPLOY_TOOLS.filter(
-    (tool) => tool.skillsDirIsExclusive && !detected.includes(tool.apmTarget),
-  ).map((tool) => tool.apmTarget);
 }

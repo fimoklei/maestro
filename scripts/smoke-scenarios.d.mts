@@ -78,14 +78,6 @@ export interface HarnessRead {
 
 export function harnessMismatch(read: HarnessRead): string | null;
 
-export function globalLeftoverMismatch(input: {
-  preflight: {
-    check: { scope: string; tools: { tool: string }[] };
-    reclaim: { previews: { tool: string; path: string }[] } | null;
-  };
-  onDisk: (path: string) => boolean;
-}): string | null;
-
 export function harnessOfflineMismatch(read: {
   freshness?: { outcome: string | null };
 }): string | null;

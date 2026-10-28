@@ -37,7 +37,6 @@ const receiptFor = (target: DeployTarget) =>
 
 const answerFor = (target: DeployTarget) => ({
   check: { scope: "repo", warning: null },
-  reclaim: null,
   receipt: receiptFor(target),
 });
 
@@ -60,7 +59,6 @@ const LEGACY: BulkRemoveCandidate = {
 // A copy with nothing recorded to check it against.
 const costly = {
   check: { scope: "repo", warning: "cannot-verify-local-edits" },
-  reclaim: null,
 };
 
 const never = () => new Promise<Response>(() => {});
@@ -261,7 +259,6 @@ describe("BulkRemoveRun", () => {
         (body as { target: { kind: string } }).target.kind === "repo"
           ? jsonResponse({
               check: { scope: "repo", warning: "cannot-verify-local-edits" },
-              reclaim: null,
             })
           : jsonResponse(preflightAnswer),
     });
@@ -884,8 +881,7 @@ describe("BulkRemoveRun — once the checks answer", () => {
     ];
     for (const [tools, cost] of cases) {
       stubServer({
-        preflight: () =>
-          jsonResponse({ check: { scope: "global", tools }, reclaim: null }),
+        preflight: () => jsonResponse({ check: { scope: "global", tools } }),
       });
       const { unmount } = renderWithQuery(<Opener targets={[GLOBAL]} />);
       await openDialog();

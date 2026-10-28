@@ -358,6 +358,14 @@ describe("a code deploy and removal share", () => {
   });
 });
 
+describe("a removal refused over local edits", () => {
+  it("names only the way back the dialog can offer", () => {
+    expect(removeNotice(refusal("deployed-diverged-from-lock")).detail).toBe(
+      "Select Deploy skill to restore the released files. Then remove the skill.",
+    );
+  });
+});
+
 describe("an update that moves more than its row", () => {
   // The tables name Update target; a wider row names its own label instead.
   it.each([

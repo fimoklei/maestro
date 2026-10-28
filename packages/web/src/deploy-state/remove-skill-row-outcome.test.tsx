@@ -81,10 +81,7 @@ describe("removing a deployed skill from a row", () => {
       const jobs = { type: "skill" as const, name: "jobs", version: "v1.2.0" };
       vi.stubGlobal("fetch", async (path: string, init: RequestInit) => {
         if (path === "/api/deploy/remove/preflight") {
-          return jsonResponse(
-            { check: { scope: "repo", warning: null }, reclaim: null },
-            200,
-          );
+          return jsonResponse({ check: { scope: "repo", warning: null } }, 200);
         }
         const { name } = JSON.parse(String(init.body));
         const version = name === "tdd" ? "v0.5.0" : "v1.2.0";

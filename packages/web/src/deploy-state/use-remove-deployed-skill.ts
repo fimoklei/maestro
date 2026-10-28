@@ -10,8 +10,6 @@ type RemoveRequest = {
   type: "skill";
   name: string;
   target: DeployTarget;
-  // Proves the confirmation came from a real preflight, not a guessed path.
-  confirmedReclaimToken?: string;
   // Without it the server refuses to delete a copy carrying local edits (#458).
   confirmedRemovalReceipt?: string;
 };

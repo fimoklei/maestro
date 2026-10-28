@@ -235,10 +235,9 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
     message:
       "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
   },
-  // Global copies under Other copies have no control that restores them, hence the detail.
   "deployed-diverged-from-lock": {
     message: "The skill was not removed. Its files changed after deployment.",
-    detail: `${LOCAL_CHANGES_NEXT_STEP} Reset any copy under Other copies manually.`,
+    detail: LOCAL_CHANGES_NEXT_STEP,
   },
   "deployed-diverged-pinned-per-skill": {
     message: "The skill was not removed. Its files changed after deployment.",
