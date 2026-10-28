@@ -16,9 +16,9 @@ describe("readRemovePreflight", () => {
             { tool: "codex", warning: "cannot-verify-local-edits" },
           ],
         },
-        reclaim: null,
+        receipt: "r1",
       }),
-    ).toEqual({
+    ).toStrictEqual({
       check: {
         scope: "global",
         tools: [
@@ -26,24 +26,7 @@ describe("readRemovePreflight", () => {
           { tool: "codex", warning: "cannot-verify-local-edits" },
         ],
       },
-      reclaim: null,
-    });
-  });
-
-  it("reads the leftover copies named beside the cost", () => {
-    expect(
-      readRemovePreflight({
-        check: { scope: "global", tools: [{ tool: "codex", warning: null }] },
-        reclaim: {
-          previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
-          token: "b".repeat(64),
-        },
-      }),
-    ).toMatchObject({
-      reclaim: {
-        previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
-        token: "b".repeat(64),
-      },
+      receipt: "r1",
     });
   });
 
@@ -51,7 +34,7 @@ describe("readRemovePreflight", () => {
     it.each([
       [
         "a warning it does not know",
-        { check: { scope: "repo", warning: "copy-on-fire" }, reclaim: null },
+        { check: { scope: "repo", warning: "copy-on-fire" } },
       ],
       [
         "a per-tool row with a warning it does not know",
@@ -83,18 +66,11 @@ describe("readRemovePreflight", () => {
           },
         },
       ],
-      ["an answer with no check in it", { reclaim: null }],
+      ["an answer with no check in it", { receipt: "r1" }],
       ["a scope it has never heard of", { check: { scope: "per-machine" } }],
       [
         "a global answer carrying no tool list",
         { check: { scope: "global", tools: null } },
-      ],
-      [
-        "leftovers it cannot read",
-        {
-          check: { scope: "repo", warning: null },
-          reclaim: { previews: [{ tool: "claude" }], token: "b".repeat(64) },
-        },
       ],
       [
         "a receipt that is not a string",
@@ -128,7 +104,6 @@ describe("the remove preflight query", () => {
     await expect(
       fetchPreflight({
         check: { scope: "repo", warning: "copy-on-fire" },
-        reclaim: null,
       }),
     ).rejects.toThrow();
   });
@@ -137,12 +112,10 @@ describe("the remove preflight query", () => {
     await expect(
       fetchPreflight({
         check: { scope: "repo", warning: "cannot-verify-local-edits" },
-        reclaim: null,
         receipt: "r1",
       }),
     ).resolves.toEqual({
       check: { scope: "repo", warning: "cannot-verify-local-edits" },
-      reclaim: null,
       receipt: "r1",
     });
   });

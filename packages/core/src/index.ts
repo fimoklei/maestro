@@ -26,10 +26,6 @@ export { InventoryGitAdapter } from "./deploy/inventory-git";
 export { LocalCopyGuard } from "./deploy/local-copy-guard";
 export { isValidSkillSlug } from "./deploy/package-ref";
 export { RecordedPackageAdapter } from "./deploy/recorded-package";
-export type {
-  ReclaimConsent,
-  ReclaimPreview,
-} from "./deploy/remove-consent";
 export {
   type BulkRemoveReport,
   type BulkRemoveTarget,

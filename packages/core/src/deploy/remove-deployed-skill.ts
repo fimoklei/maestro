@@ -3,13 +3,11 @@ import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionWriter } from "./apply-selection";
 import type {
   ApmDriverPort,
-  DeployedCleanupPort,
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
-import type { DeployedLocation } from "./deployed-location";
 import type { DeployedRefLookup } from "./deployed-ref";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
@@ -20,8 +18,7 @@ import {
   LocalCopyGuard,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
-import { reclaimTools } from "./reclaim-tools";
-import { type ReclaimConsent, RemoveConsentIssuer } from "./remove-consent";
+import { RemoveConsentIssuer } from "./remove-consent";
 
 // Reads the ref from the target's own lockfile, never from the caller.
 export type DeployedRefPort = {
@@ -36,10 +33,8 @@ type RemoveDeployedSkillInput = {
   type: string;
   name: string;
   target: DeployTarget;
-  // From this request's own `preflight`; missing, stale or guessed reclaims
-  // nothing (#390).
-  confirmedReclaimToken?: string;
-  // Licenses deleting a copy with local edits; not the reclaim token (#458).
+  // From this request's own `preflight`; licenses deleting a copy with local
+  // edits (#458).
   confirmedRemovalReceipt?: string;
 };
 
@@ -149,7 +144,6 @@ type Priced =
       ok: true;
       copies: LocalCopyCheck;
       check: RemoveCheck;
-      reclaim: ReclaimConsent | null;
     }
   | { ok: false; error: LocalEditsRefusal };
 
@@ -157,8 +151,6 @@ type LocalEditsRefusal =
   | "deployed-diverged-from-lock"
   | "deployed-diverged-pinned-per-skill";
 
-// `detected` is required on the global arm so the reclaim cannot be skipped by
-// omitting a property (#339).
 type ResolvedScope =
   | { ok: true; scope: "repo" }
   | { ok: true; scope: "global"; detected: readonly SupportedTool[] }
@@ -180,7 +172,7 @@ type RemoveDeployedSkillResult =
         scope: RemovedScope;
       };
     }
-  // `outcome` only where apm ran; the other three only on a cost nobody agreed
+  // `outcome` only where apm ran; the other two only on a cost nobody agreed
   // to, so no attempt mixes a fresh cost with a stale consent (#364).
   | {
       ok: false;
@@ -188,23 +180,20 @@ type RemoveDeployedSkillResult =
       outcome?: RemoveOutcome;
       check?: RemoveCheck;
       receipt?: string;
-      reclaim?: ReclaimConsent | null;
     };
 
 type RemovePreflightResult =
   | {
       ok: true;
       check: RemoveCheck;
-      reclaim: ReclaimConsent | null;
       receipt: string;
     }
   | { ok: false; error: RemovePreflightError };
 
-// Each token and receipt belongs to this target's own preflight: one target's
-// confirmation never licenses another's removal (#390, #458).
+// Each receipt belongs to this target's own preflight: one target's
+// confirmation never licenses another's removal (#458).
 export type BulkRemoveTarget = {
   target: DeployTarget;
-  confirmedReclaimToken?: string;
   confirmedRemovalReceipt?: string;
   refused?: RemovePreflightError;
 };
@@ -241,30 +230,23 @@ export class RemoveDeployedSkill {
       "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
     >;
     apm: Pick<ApmDriverPort, "removeSkill">;
-    // The only way to clear a copy apm left behind: a bare `apm uninstall -g`
-    // deletes beyond its own lockfile (#339).
-    deployedCleanup: DeployedCleanupPort;
     toolPresence: ToolPresencePort;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with the deploy use-case: both rewrite the same apm.lock.yaml.
     locks: InFlightLocks;
-    location: Pick<DeployedLocation, "treeRoot">;
     // Absent: the per-skill uninstall path (#933, #951).
     selection?: SelectionWriter;
     harnessOrigin?: () => Promise<GitOrigin | null>;
   };
 
-  private readonly consent: RemoveConsentIssuer;
+  private readonly consent = new RemoveConsentIssuer();
   private readonly copyGuard: Pick<LocalCopyGuard, "check">;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
     this.deps = deps;
     this.copyGuard =
       deps.copyGuard ?? new LocalCopyGuard({ content: deps.deployedContent });
-    this.consent = new RemoveConsentIssuer({
-      treeRoot: (target) => deps.location.treeRoot(target),
-    });
   }
 
   // A read: never takes the apm write lock, so it cannot block a deploy.
@@ -294,7 +276,6 @@ export class RemoveDeployedSkill {
         input,
         scope,
         lookup?.ok === true ? lookup.version : undefined,
-        false,
       );
       if (!priced.ok) {
         return priced;
@@ -302,7 +283,6 @@ export class RemoveDeployedSkill {
       return {
         ok: true,
         check: priced.check,
-        reclaim: priced.reclaim,
         receipt: this.consent.receipt(input, priced.check),
       };
     } catch {
@@ -310,26 +290,14 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // Shared by both halves, so the removal proves the request agreed to the
-  // cost it finds (#364). Reclaim first, because the check follows it.
+  // Shared by both halves, so the check names the copies the removal guards
+  // and the removal proves the request agreed to the cost it finds (#364, #1680).
   private async price(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
     release: string | undefined,
-    wholeCopy: boolean,
   ): Promise<Priced> {
-    const reclaim = this.consent.offer({
-      target: input.target,
-      name: input.name,
-      detected: scope.scope === "global" ? scope.detected : undefined,
-    });
-    const copies = await this.runCheck(
-      input,
-      scope,
-      reclaim,
-      release,
-      wholeCopy,
-    );
+    const copies = await this.runCheck(input, scope, release);
     // One diverged copy refuses the whole set: apm's uninstall has no -t, so it
     // would abort on that copy after deleting the others (#775).
     if (copies.findings.some((finding) => finding.verdict === "local-edits")) {
@@ -339,7 +307,7 @@ export class RemoveDeployedSkill {
       scope.scope === "repo"
         ? repoCheck(soleVerdict(copies))
         : { scope: "global", tools: toolChecks(copies.findings) };
-    return { ok: true, copies, check, reclaim };
+    return { ok: true, copies, check };
   }
 
   // A target pinned per skill refuses every deploy, so Deploy again cannot
@@ -360,9 +328,7 @@ export class RemoveDeployedSkill {
   private async runCheck(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
-    reclaim: ReclaimConsent | null,
     release: string | undefined,
-    wholeCopy: boolean,
   ): Promise<LocalCopyCheck> {
     const ask = (tools?: readonly SupportedTool[]) =>
       this.copyGuard.check({
@@ -376,15 +342,9 @@ export class RemoveDeployedSkill {
     if (scope.scope === "repo") {
       return await ask();
     }
-    // The write asks for the whole copy: apm uninstalls by its own recorded
-    // targets, so a tool that has since dropped out is still at risk.
-    const parts = [
-      ...(wholeCopy ? [await ask()] : []),
-      await ask([
-        ...scope.detected,
-        ...(reclaim?.previews ?? []).map((preview) => preview.tool),
-      ]),
-    ];
+    // The whole copy too: apm uninstalls by its own recorded targets, so a
+    // tool that has since dropped out is still at risk.
+    const parts = [await ask(), await ask(scope.detected)];
     const findings: CopyFinding[] = parts.flatMap((part) => [...part.findings]);
     const digests = parts
       .map((part) => part.digest)
@@ -447,7 +407,6 @@ export class RemoveDeployedSkill {
         type: "skill",
         name: input.name,
         target: entry.target,
-        confirmedReclaimToken: entry.confirmedReclaimToken,
         confirmedRemovalReceipt: entry.confirmedRemovalReceipt,
       }).catch(
         (): RemoveDeployedSkillResult => ({
@@ -562,7 +521,7 @@ export class RemoveDeployedSkill {
 
       // Priced again under the lock, so a baseline lost since the check stops
       // the removal (#364, #952).
-      const priced = await this.price(input, scope, version, true);
+      const priced = await this.price(input, scope, version);
       if (!priced.ok) {
         return priced;
       }
@@ -587,7 +546,6 @@ export class RemoveDeployedSkill {
           error: "cost-not-acknowledged",
           check: priced.check,
           receipt: this.consent.receipt(consentScope, priced.check),
-          reclaim: priced.reclaim,
         };
       }
 
@@ -605,14 +563,6 @@ export class RemoveDeployedSkill {
         };
       }
 
-      // Only after apm's positive marker: a removal that never happened leaves
-      // a copy nothing replaced.
-      await this.reclaimConfirmed(
-        input.target,
-        input.name,
-        detected,
-        input.confirmedReclaimToken,
-      );
       return {
         ok: true,
         removed: {
@@ -713,28 +663,5 @@ export class RemoveDeployedSkill {
     } catch {
       return "unknown";
     }
-  }
-
-  // Deletes the granted set itself, never a re-derived one: the removal must
-  // not exceed what the confirmation named (#390).
-  private async reclaimConfirmed(
-    target: DeployTarget,
-    name: string,
-    detected: readonly SupportedTool[] | undefined,
-    confirmedToken: string | undefined,
-  ): Promise<void> {
-    const granted = this.consent.grants(
-      { target, name, detected },
-      confirmedToken,
-    );
-    if (granted === null) {
-      return;
-    }
-    await reclaimTools({
-      cleanup: this.deps.deployedCleanup,
-      target,
-      name,
-      tools: granted.map((entry) => entry.tool),
-    });
   }
 }

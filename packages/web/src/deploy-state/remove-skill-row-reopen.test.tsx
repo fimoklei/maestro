@@ -43,7 +43,6 @@ describe("removing a deployed skill from a row", () => {
               checks === 1 ? null : "cannot-verify-local-edits",
               init,
             ),
-            reclaim: null,
             receipt: RECEIPT,
           },
           200,

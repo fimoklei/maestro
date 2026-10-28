@@ -1,5 +1,4 @@
 import type {
-  ReclaimPreview,
   RemoveCheck,
   RemoveToolCheck,
   RemoveWarning,
@@ -36,9 +35,6 @@ const REPO_TARGET: Target = {
 const GLOBAL_TARGET: Target = { kind: "global", tools: ["claude", "codex"] };
 const ONE_TOOL: Target = { kind: "global", tools: ["claude"] };
 const RECEIPT = "b".repeat(64);
-const LEFTOVER: ReclaimPreview[] = [
-  { tool: "codex", path: "/Users/me/.agents/skills/tdd" },
-];
 
 const never: Answer = () => new Promise<Response>(() => {});
 const removed =
@@ -49,33 +45,24 @@ const removed =
     });
 
 const answer =
-  (check: RemoveCheck, previews: ReclaimPreview[] = []): Answer =>
+  (check: RemoveCheck): Answer =>
   () =>
-    jsonResponse({
-      check,
-      reclaim:
-        previews.length === 0 ? null : { previews, token: "a".repeat(64) },
-      receipt: RECEIPT,
-    });
+    jsonResponse({ check, receipt: RECEIPT });
 const repoCheck = (warning: RemoveWarning | null = null) =>
   answer({ scope: "repo", warning });
 const toolChecks = (
   warnings: Partial<Record<RemoveToolCheck["tool"], RemoveWarning | null>>,
-  previews: ReclaimPreview[] = [],
 ) =>
-  answer(
-    {
-      scope: "global",
-      // Object.entries widens the keys to string; they came in as tools.
-      tools: (
-        Object.entries(warnings) as [
-          RemoveToolCheck["tool"],
-          RemoveWarning | null,
-        ][]
-      ).map(([tool, warning]) => ({ tool, warning })),
-    },
-    previews,
-  );
+  answer({
+    scope: "global",
+    // Object.entries widens the keys to string; they came in as tools.
+    tools: (
+      Object.entries(warnings) as [
+        RemoveToolCheck["tool"],
+        RemoveWarning | null,
+      ][]
+    ).map(([tool, warning]) => ({ tool, warning })),
+  });
 const cleanTools = (...tools: RemoveToolCheck["tool"][]) =>
   toolChecks(Object.fromEntries(tools.map((tool) => [tool, null])));
 const failedWith =
@@ -432,19 +419,6 @@ describe("RemoveSkillFlow", () => {
       expect(groupOf("…/me/project")).toBe("⚠Outcome unknown1");
     });
 
-    it("drops a leftover copy the report could not answer for", async () => {
-      renderPartialFailure(
-        toolChecks({ claude: null, codex: null }, [
-          { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
-        ]),
-      );
-      await fail();
-
-      expect(screen.getByRole("dialog")).not.toHaveTextContent(
-        "/Users/me/.claude/skills/tdd",
-      );
-    });
-
     it("drops the cost it named before the attempt", async () => {
       renderPartialFailure(toolChecks({ claude: null, codex: MAY_LOSE }));
       await fail();
@@ -711,18 +685,15 @@ describe("RemoveSkillFlow", () => {
 
   describe("its voice", () => {
     it("addresses nobody as 'you' or 'we', in any state", async () => {
-      const leftover: ReclaimPreview[] = [
-        { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
-      ];
       const states: [Answer, () => Promise<unknown>][] = [
         [never, async () => undefined],
         [CHECK_FAILED, answered],
         ...([null, MAY_LOSE, "check-did-not-run"] as const).map(
           (warning) =>
-            [
-              toolChecks({ claude: warning, codex: warning }, leftover),
-              answered,
-            ] as [Answer, () => Promise<unknown>],
+            [toolChecks({ claude: warning, codex: warning }), answered] as [
+              Answer,
+              () => Promise<unknown>,
+            ],
         ),
         [REFUSED, () => screen.findByRole("alert")],
       ];
@@ -907,100 +878,30 @@ describe("RemoveSkillFlow", () => {
       expect(dialog).not.toHaveTextContent("Codex");
     });
 
-    describe("naming what an untargeted tool's copy reclaim would also delete", () => {
-      const withLeftover = (
-        warnings: Parameters<typeof toolChecks>[0] = {
-          claude: null,
-          codex: null,
-        },
-      ) =>
-        renderFlow({
-          target: ONE_TOOL,
-          preflight: toolChecks(warnings, LEFTOVER),
-        });
-
-      it("puts the leftover copy on its own static row, after the detected tools", async () => {
-        withLeftover();
-        await answered();
-
-        const rows = screen.getAllByRole("listitem");
-        expect(rows).toHaveLength(2);
-        expect(rows[0]).toHaveTextContent("Claude Code");
-        const row = rows[1] as HTMLElement;
-        expect(row).toHaveTextContent("Codex");
-        expect(row).toHaveTextContent("/Users/me/.agents/skills/tdd");
-        expect(row).toHaveTextContent("Not installed — copy deleted in full");
-        expect(row).toHaveTextContent("⚠");
-        expect(within(row).queryByRole("button")).toBeNull();
-        expect(row.querySelector("[tabindex]")).toBeNull();
-        expect(screen.getByRole("dialog")).not.toHaveTextContent(
-          /this also deletes/i,
-        );
+    it("says nothing extra, in the neutral outline, when every copy is clean", async () => {
+      renderFlow({
+        target: GLOBAL_TARGET,
+        preflight: cleanTools("claude", "codex"),
       });
+      await answered();
 
-      it("names each leftover tool when there is more than one", async () => {
-        renderFlow({
-          target: ONE_TOOL,
-          preflight: toolChecks({ claude: null, codex: null }, [
-            ...LEFTOVER,
-            { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
-          ]),
-        });
-        await answered();
+      expect(screen.getAllByRole("listitem")).toHaveLength(2);
+      expect(screen.getByRole("dialog").className).not.toContain("drift");
+    });
 
-        const dialog = screen.getByRole("dialog");
-        expect(dialog).toHaveTextContent("/Users/me/.agents/skills/tdd");
-        expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
+    it("describes the dialog with every target row", async () => {
+      renderFlow({
+        target: GLOBAL_TARGET,
+        preflight: cleanTools("claude", "codex"),
       });
+      await answered();
 
-      it("says nothing extra, in the neutral outline, when nothing is left over", async () => {
-        renderFlow({
-          target: GLOBAL_TARGET,
-          preflight: cleanTools("claude", "codex"),
-        });
-        await answered();
-
-        expect(screen.queryByText(/copy deleted in full/i)).toBeNull();
-        expect(screen.getAllByRole("listitem")).toHaveLength(2);
-        expect(screen.getByRole("dialog").className).not.toContain("drift");
-      });
-
-      // A live region created with its first message announces unreliably, so the
-      // region must exist, empty, from the first render.
-      it("keeps the region mounted while the check is still running", () => {
-        renderFlow({ target: ONE_TOOL, preflight: never });
-
-        expect(
-          screen.getByRole("status", { name: /other copies/i }),
-        ).toBeEmptyDOMElement();
-      });
-
-      it("announces the leftover and targeted rows as regions of their own", async () => {
-        withLeftover({ claude: MAY_LOSE, codex: null });
-        await answered();
-
-        const other = screen.getByRole("status", { name: /other copies/i });
-        expect(other).toHaveTextContent("/Users/me/.agents/skills/tdd");
-        expect(other).not.toHaveTextContent("Claude Code");
-        expect(other).not.toHaveTextContent(/may lose work/i);
-        const targeted = screen.getByRole("status", {
-          name: /removal targets/i,
-        });
-        expect(targeted).toHaveTextContent("Nothing recorded — may lose work");
-        expect(targeted).not.toHaveTextContent(/deleted in full/i);
-      });
-
-      it("leaves the announced rows out of the dialog's description", async () => {
-        withLeftover();
-        await answered();
-
-        const describedBy = screen
-          .getByRole("dialog")
-          .getAttribute("aria-describedby");
-        const [detected, leftover] = screen.getAllByRole("listitem");
-        expect(describedBy?.split(" ")).toContain(detected?.id);
-        expect(describedBy?.split(" ")).not.toContain(leftover?.id);
-      });
+      const describedBy = screen
+        .getByRole("dialog")
+        .getAttribute("aria-describedby");
+      for (const row of screen.getAllByRole("listitem")) {
+        expect(describedBy?.split(" ")).toContain(row.id);
+      }
     });
   });
 

@@ -1,8 +1,6 @@
 // Read-only despite the POST: the path goes in the body. Kept out of the
 // mutation so the answer is on screen before the user commits (#337).
 import type {
-  ReclaimConsent,
-  ReclaimPreview,
   RemoveCheck,
   RemoveToolCheck,
   RemoveWarning,
@@ -16,8 +14,6 @@ import {
 
 export type RemovePreflight = {
   check: RemoveCheck;
-  // One field, not two, so the screen can never show a path it has no token for.
-  reclaim: ReclaimConsent | null;
   // Optional: an older server sends none, and the removal then refuses (#458).
   receipt?: string;
 };
@@ -26,45 +22,19 @@ export type RemovePreflight = {
 // build cannot read makes the whole answer unreadable, never clean (#793).
 export function readRemovePreflight(body: unknown): RemovePreflight | null {
   const value = body as
-    | { check?: unknown; receipt?: unknown; reclaim?: unknown }
+    | { check?: unknown; receipt?: unknown }
     | null
     | undefined;
   const check = readCheck(value?.check);
-  const reclaim = readReclaim(value?.reclaim);
-  if (check === null || reclaim === undefined) {
+  if (check === null) {
     return null;
   }
   if (value?.receipt === undefined) {
-    return { check, reclaim };
+    return { check };
   }
   return typeof value.receipt === "string"
-    ? { check, reclaim, receipt: value.receipt }
+    ? { check, receipt: value.receipt }
     : null;
-}
-
-// `undefined` means unreadable; `null` means the removal leaves no copy behind.
-function readReclaim(value: unknown): ReclaimConsent | null | undefined {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  const reclaim = value as { previews?: unknown; token?: unknown };
-  if (typeof reclaim.token !== "string" || !Array.isArray(reclaim.previews)) {
-    return undefined;
-  }
-  const previews: ReclaimPreview[] = [];
-  for (const entry of reclaim.previews as {
-    tool?: unknown;
-    path?: unknown;
-  }[]) {
-    if (typeof entry?.tool !== "string" || typeof entry?.path !== "string") {
-      return undefined;
-    }
-    previews.push({
-      tool: entry.tool as ReclaimPreview["tool"],
-      path: entry.path,
-    });
-  }
-  return { previews, token: reclaim.token };
 }
 
 function readCheck(value: unknown): RemoveCheck | null {

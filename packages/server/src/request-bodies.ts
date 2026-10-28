@@ -110,7 +110,6 @@ export const removeBodySchema = z.object({
   type: z.string(),
   name: z.string(),
   target: targetSchema,
-  confirmedReclaimToken: consentTokenSchema,
   confirmedRemovalReceipt: consentTokenSchema,
 });
 
@@ -120,7 +119,6 @@ export const bulkRemoveBodySchema = z.object({
     .array(
       z.object({
         target: targetSchema,
-        confirmedReclaimToken: consentTokenSchema,
         confirmedRemovalReceipt: consentTokenSchema,
         refused: z.enum(refusalCodes).optional(),
       }),

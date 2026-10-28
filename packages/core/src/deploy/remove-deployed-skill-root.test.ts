@@ -23,11 +23,9 @@ function buildUseCase(copy: "clean" | "diverged" = "clean") {
       ...copiesIn(copy).content,
     },
     apm: { removeSkill: async () => ({ ok: true as const }) },
-    deployedCleanup: { removeSkillTargets: async () => {} },
     toolPresence: { detectGlobalTools: async () => ["claude" as const] },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
-    location: { treeRoot: () => "/repo" },
     selection: world.writer,
     harnessOrigin: async () => ({ host: "github.com", ownerRepo: HARNESS }),
   };
