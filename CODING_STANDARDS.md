@@ -28,8 +28,8 @@ starting it.
 
 **Reviewing a diff:** review against every rule file whose `paths:` matches a
 changed file, and every rule file without `paths:`. Cite the file and the rule.
-A commit that changes what `packages/web` renders and names no screenshot path
-in its body is a finding (`design.md` → Verify).
+A commit that changes what `packages/web` renders and lists no browser check in
+its body is a finding (`design.md` → Verify).
 
 ## Adding a rule
 

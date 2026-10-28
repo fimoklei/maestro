@@ -43,6 +43,10 @@ Confirmed patterns. Apply as rules. Newest on top.
 
 Single observations. Consider but do not auto-apply. Promote to Active on reconfirmation.
 
+- **2026-10-26 · tooling/orca-workspace-has-no-mcp-json** — `.mcp.json` is gitignored and lives only in `~/Projects/maestro`, so a session in an Orca workspace had no agentation tools while the toolbar's server ran on `:4747`. → Link it in: `ln -sfn "$(dirname "$(git rev-parse --git-common-dir)")/.mcp.json" .mcp.json`, then restart the session; meanwhile `curl -s localhost:4747/pending` lists the open annotations.
+
+- **2026-10-26 · tooling/zsh-does-not-split-a-command-variable** — `AB="agent-browser --session x"; $AB open …` failed `command not found` on every call: zsh does not word-split an unquoted variable. → Wrap a repeated command with flags in a function: `ab(){ agent-browser --session x "$@"; }`.
+
 - **2026-10-24 · tooling/commit-gate-blocks-the-whole-call** — The commit gate denies the whole Bash call, so a `git add … && git commit` that fails the gate never stages; the retry then failed `Exiting because of an unresolved conflict` while concluding a merge (#1663). → Stage in its own Bash call, then run `git commit` alone.
 
 - **2026-10-24 · tooling/pnpm-exec-biome-writes-nothing** — `pnpm exec biome format --write` and `biome check --write` printed `Lint: No issues found` and left files unformatted, while `pnpm lint` kept failing on format; the shell hook rewrites the call. → Run `./node_modules/.bin/biome format --write <paths>`.
