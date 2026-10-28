@@ -28,6 +28,16 @@ describe("Withdraw from release over HTTP", { timeout: 40_000 }, () => {
     await git(stages.root, "push", "origin", "HEAD:main");
   };
 
+  // The assertion checks the shape, so the cast after it states what it proved.
+  const confirmationOf = async (check: Response) => {
+    const body: unknown = await check.json();
+    expect(body).toEqual({
+      files: expect.any(Array),
+      confirmation: expect.any(String),
+    });
+    return body as { files: string[]; confirmation: string };
+  };
+
   const skillText = () =>
     readFile(join(stages.root, ".apm", "skills", "tdd", "SKILL.md"), "utf8");
 
@@ -43,10 +53,7 @@ describe("Withdraw from release over HTTP", { timeout: 40_000 }, () => {
       name: "tdd",
     });
     expect(check.status).toBe(200);
-    const read = (await check.json()) as {
-      files: string[];
-      confirmation: string;
-    };
+    const read = await confirmationOf(check);
     expect(read.files).toEqual([]);
 
     const response = await post(app, "/api/harness/release/withdraw", {
@@ -75,10 +82,7 @@ describe("Withdraw from release over HTTP", { timeout: 40_000 }, () => {
     const check = await post(app, "/api/harness/release/withdraw/check", {
       name: "tdd",
     });
-    const read = (await check.json()) as {
-      files: string[];
-      confirmation: string;
-    };
+    const read = await confirmationOf(check);
     expect(read.files).toEqual([".apm/skills/tdd/SKILL.md"]);
     await writeSkill("tdd", "edited again");
 
