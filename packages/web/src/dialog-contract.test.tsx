@@ -972,9 +972,14 @@ describe("every dialog", () => {
   });
 
   it("declares the notices of each dialog whose body shows one", () => {
-    const withNotice = ON_DIALOG.filter((row) =>
-      /<Notice\b/.test(sourceOf(row.file)),
-    ).map((row) => row.file);
+    // A confirmation caller shows the module's notice unless it passes none.
+    const showsNotice = (file: string) =>
+      USES_CONFIRMATION.test(textOf(file))
+        ? !/loadNotice=\{null\}/.test(textOf(file))
+        : /<Notice\b/.test(textOf(file));
+    const withNotice = ON_DIALOG.filter((row) => showsNotice(row.file)).map(
+      (row) => row.file,
+    );
 
     expect(
       ON_DIALOG.filter((row) => row.notices.length > 0).map((row) => row.file),
