@@ -10,12 +10,15 @@ import { Report } from "../ui/report";
 import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
+  OTHER_COPIES,
+  REMOVAL_TARGETS,
   REMOVE_KEEPS,
   type RemoveDialogTarget,
   type RemoveLedgerRow,
   removeLedgerLeadIn,
   removeLedgerRows,
   removeOutcomeReport,
+  removeTitle,
 } from "./remove-ledger-rows";
 import type { RemovePreflightView } from "./remove-preflight-view";
 
@@ -115,7 +118,7 @@ export function RemoveSkillDialog({
           <GroupedList
             groups={ledgerGroup(detectedRows, target)}
             checklist={null}
-            live="Removal targets"
+            live={REMOVAL_TARGETS}
           />
           {/* Mounted empty from first render: a live region created with its first
               message announces unreliably. */}
@@ -123,7 +126,7 @@ export function RemoveSkillDialog({
             <GroupedList
               groups={ledgerGroup(leftoverRows, target)}
               checklist={null}
-              live="Other copies"
+              live={OTHER_COPIES}
             />
           ) : null}
           <p className="m-0 font-ui text-gray-11 text-meta">{REMOVE_KEEPS}</p>
@@ -167,7 +170,7 @@ export function RemoveSkillDialog({
 
   return (
     <Dialog
-      title={`Remove ${skillName}`}
+      title={removeTitle(skillName)}
       version={version}
       width={640}
       {...run}

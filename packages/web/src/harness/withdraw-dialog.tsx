@@ -1,4 +1,5 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
+import { BRANCH_FACT } from "../ui/band-copy";
 import { Card } from "../ui/card";
 import { WITHDRAW_PROPOSAL } from "../ui/control-labels";
 import { Dialog } from "../ui/dialog";
@@ -7,10 +8,12 @@ import { Notice, type NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
 import { StatusLine } from "../ui/status-line";
 import {
+  PULL_REQUEST_FACT,
   UNPROPOSED_UNKNOWN_NOTICE,
   unproposedNotice,
   WITHDRAW_CHECKING,
   withdrawBody,
+  withdrawTitle,
 } from "./dialog-copy";
 import { ITEM_WORDS } from "./item-words";
 import { defaultBranchCopy } from "./stage-copy";
@@ -51,7 +54,7 @@ export function WithdrawDialog({
 }) {
   return (
     <Dialog
-      title={`${WITHDRAW_PROPOSAL} for ${name}`}
+      title={withdrawTitle(name)}
       version={null}
       width={480}
       phase={withdrawing ? "running" : "idle"}
@@ -85,9 +88,9 @@ export function WithdrawDialog({
             wrap
             machine={false}
           />
-          <Fact label="Branch" value={branch} wrap />
+          <Fact label={BRANCH_FACT} value={branch} wrap />
           {number === null ? null : (
-            <Fact label="Pull request" value={`#${number}`} wrap />
+            <Fact label={PULL_REQUEST_FACT} value={`#${number}`} wrap />
           )}
         </dl>
       </Card>

@@ -4,6 +4,7 @@ import {
   removeLedgerLeadIn,
   removeLedgerRows,
   removeOutcomeReport,
+  removeTitle,
 } from "./remove-ledger-rows";
 import type {
   RemoveCheckState,
@@ -319,5 +320,11 @@ describe("removeLedgerRows", () => {
 
     expect(repo?.status).toBe("Nothing recorded — may lose work");
     expect(repo?.drift).toBe(true);
+  });
+});
+
+describe("removeTitle", () => {
+  it("titles the Remove skill dialog with its verb and the skill's name", () => {
+    expect(removeTitle("tdd")).toBe("Remove tdd");
   });
 });

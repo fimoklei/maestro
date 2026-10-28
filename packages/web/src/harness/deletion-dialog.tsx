@@ -1,4 +1,5 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
+import { BRANCH_FACT } from "../ui/band-copy";
 import { Card } from "../ui/card";
 import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
@@ -6,8 +7,11 @@ import { Notice, type NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
 import { StatusLine } from "../ui/status-line";
 import {
+  DEFAULT_BRANCH_COMMIT_FACT,
+  DEFAULT_BRANCH_COMMIT_HINT,
   DELETION_COPY,
   deleteFromOrigin,
+  deletionTitle,
   openRequestNotice,
   uncommittedNotice,
 } from "./deletion-copy";
@@ -59,7 +63,7 @@ export function DeletionDialog({
   const copy = DELETION_COPY[type];
   return (
     <Dialog
-      title={`Delete ${name}`}
+      title={deletionTitle(name)}
       version={null}
       width={480}
       phase={deleting ? "running" : "idle"}
@@ -123,15 +127,14 @@ export function DeletionDialog({
           />
           {mode.kind === "propose" ? (
             <>
-              <Fact label="Branch" value={mode.branch} wrap />
+              <Fact label={BRANCH_FACT} value={mode.branch} wrap />
               {/* The whole hash: the exact origin/HEAD copy the confirmation
-                  is given against (#580). The hint says the same thing the
-                  confirmation-stale notice does (#885). */}
+                  is given against (#580). */}
               <Fact
-                label="Default branch commit"
+                label={DEFAULT_BRANCH_COMMIT_FACT}
                 value={mode.seenRemoteTree}
                 wrap
-                hint="If someone pushes a commit to the default branch before you confirm, Maestro pushes nothing."
+                hint={DEFAULT_BRANCH_COMMIT_HINT}
               />
             </>
           ) : (

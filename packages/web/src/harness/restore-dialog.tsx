@@ -5,7 +5,13 @@ import { Dialog } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
-import { restoreBody } from "./dialog-copy";
+import {
+  RESTORE_KEEPS_PROPOSAL,
+  RESTORED_FROM_FACT,
+  RESTORED_FROM_HINT,
+  restoreBody,
+  restoreTitle,
+} from "./dialog-copy";
 import { ITEM_WORDS } from "./item-words";
 
 export function RestoreDialog({
@@ -33,7 +39,7 @@ export function RestoreDialog({
 }) {
   return (
     <Dialog
-      title={`Restore ${name}`}
+      title={restoreTitle(name)}
       version={null}
       width={480}
       phase={restoring ? "running" : "idle"}
@@ -55,7 +61,7 @@ export function RestoreDialog({
         <PhraseText copy={restoreBody(type)} />
       </p>
       {hasRequest ? (
-        <p className="m-0 text-gray-11">Your proposal remains unchanged.</p>
+        <p className="m-0 text-gray-11">{RESTORE_KEEPS_PROPOSAL}</p>
       ) : null}
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
@@ -69,10 +75,10 @@ export function RestoreDialog({
           {/* The whole hash: the one commit the confirmation is given
               against, re-read at the press. */}
           <Fact
-            label="Restored from"
+            label={RESTORED_FROM_FACT}
             value={commit}
             wrap
-            hint="Your last local commit. If it moves before you confirm, nothing is restored."
+            hint={RESTORED_FROM_HINT}
           />
         </dl>
       </Card>

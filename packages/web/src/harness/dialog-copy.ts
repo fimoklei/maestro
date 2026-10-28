@@ -6,6 +6,7 @@ import type {
 } from "@maestro/core";
 import {
   CREATE_RELEASE,
+  DISCARD_CHANGE,
   rereadLabel,
   WITHDRAW_FROM_RELEASE,
   WITHDRAW_PROPOSAL,
@@ -77,8 +78,17 @@ export const FOLDER_MISSING = "Enter the skill folder's absolute path.";
 
 export const DELETION_CHECKING = "Checking for uncommitted changes…";
 
+export const restoreTitle = (name: string) => `Restore ${name}`;
+
 export const restoreBody = (type: HarnessPrimitiveType): Phrase =>
   phrase`${ITEM_WORDS[type].restoreLabel} brings back the ${ITEM_WORDS[type].holder} from your last local commit. Later changes do not come back.`;
+
+export const RESTORE_KEEPS_PROPOSAL = "Your proposal remains unchanged.";
+
+export const RESTORED_FROM_FACT = "Restored from";
+
+export const RESTORED_FROM_HINT =
+  "Your last local commit. If it moves before you confirm, nothing is restored.";
 
 // An item no target holds has no deployed copies to mention.
 const replacesInClone = (
@@ -98,6 +108,18 @@ export const discardBody = (
   type: HarnessPrimitiveType,
   branch: ReturnType<typeof defaultBranchCopy>,
 ): Phrase => withDeployedCopies(type, replacesInClone(type, branch));
+
+export const discardTitle = (name: string) => `${DISCARD_CHANGE} for ${name}`;
+
+export const discardHint = (
+  branch: ReturnType<typeof defaultBranchCopy>,
+): Phrase =>
+  phrase`If ${branch} moves before you confirm, nothing is discarded.`;
+
+export const withdrawTitle = (name: string) =>
+  `${WITHDRAW_PROPOSAL} for ${name}`;
+
+export const PULL_REQUEST_FACT = "Pull request";
 
 // In the order the withdrawal runs: the clone, then the request, then the branch.
 // With no open request there is nothing to close (#1639).
@@ -129,6 +151,9 @@ export const unproposedNotice = (
         message: `${WITHDRAW_PROPOSAL} discards the changes in these files. ${KEEP_OUTSIDE_CLONE}`,
         items: files.map((file) => phrase`${machine(file)}`),
       };
+
+export const releaseWithdrawalTitle = (name: string) =>
+  `Withdraw ${name} from release`;
 
 // The Change decides what the clone gets back: the latest release's copy
 // under every name the change touched.
