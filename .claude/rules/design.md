@@ -271,8 +271,8 @@ Mandatory for any change that alters what `packages/web` renders:
 3. Read changed copy at a narrow width and at 200% zoom, in one theme.
 4. Compare against the design source; on mismatch, fix before claiming done.
 5. Run the `verify-in-smoke` checks before treating the screenshot as proof.
-6. Record the evidence in the commit body: every absolute screenshot path and the
-   cockpit URL from `pnpm cockpit:url`.
+6. Save each screenshot under `~/Pictures/maestro/<branch>/`. In the commit body,
+   list what the check covered: each screen, theme, width and zoom.
 7. Stop the run with `pnpm smoke:stop`.
 
 Only a screenshot proves visual fidelity — the vitest/happy-dom suite renders without CSS.
