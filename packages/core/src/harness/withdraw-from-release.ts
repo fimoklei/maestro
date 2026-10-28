@@ -53,8 +53,10 @@ const WITHDRAW_ERROR: Record<
 };
 
 // Everything the confirmation is built from, read in one pass.
-type Facts = {
+type WithdrawalPlan = {
   names: PrimitiveRef[];
+  // The Pending proposal row the withdrawal leaves: a rename's old name.
+  selected: string;
   confirmation: string;
   defaultBranchCommit: string;
   // The latest release's commit and its primitives; null where none exists.
@@ -105,18 +107,18 @@ export class WithdrawFromRelease {
     if (typeof root !== "string") {
       return root;
     }
-    const facts = await this.readFacts(root, ref);
-    if ("error" in facts) {
-      return { ok: false, error: facts.error };
+    const plan = await this.readPlan(root, ref);
+    if ("error" in plan) {
+      return { ok: false, error: plan.error };
     }
     const files = await this.deps.git.readWorkingDifferences(
       root,
-      facts.names,
-      facts.defaultBranchCommit,
+      plan.names,
+      plan.defaultBranchCommit,
     );
     return files === null
       ? { ok: false, error: "no-answer" }
-      : { ok: true, files, confirmation: facts.confirmation };
+      : { ok: true, files, confirmation: plan.confirmation };
   }
 
   // Shares the harness-root lock with every other Harness write.
@@ -149,34 +151,35 @@ export class WithdrawFromRelease {
     ref: PrimitiveRef,
     confirmation: string,
   ): Promise<WithdrawFromReleaseResult> {
-    const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
-    if (ambiguity !== null) {
-      return { ok: false, error: ambiguity };
-    }
     // Re-read at the press, never taken from the request.
-    const facts = await this.readFacts(root, ref);
-    if ("error" in facts) {
-      return { ok: false, error: facts.error };
+    const plan = await this.readPlan(root, ref);
+    if ("error" in plan) {
+      return { ok: false, error: plan.error };
     }
-    if (facts.confirmation !== confirmation) {
+    if (plan.confirmation !== confirmation) {
       return { ok: false, error: "confirmation-stale" };
     }
     const replaced = await replaceFromCommit(this.deps, {
       root,
       // Never written without a release: it holds none of the names.
-      commit: facts.release?.commit ?? facts.defaultBranchCommit,
-      atCommit: facts.release?.held ?? [],
-      refs: facts.names,
+      commit: plan.release?.commit ?? plan.defaultBranchCommit,
+      atCommit: plan.release?.held ?? [],
+      refs: plan.names,
     });
     return replaced === "replaced"
-      ? { ok: true, name: (facts.names.at(-1) ?? ref).name }
+      ? { ok: true, name: plan.selected }
       : { ok: false, error: WITHDRAW_ERROR[replaced] };
   }
 
-  private async readFacts(
+  // The worktree check runs first, for the confirmation and the write alike.
+  private async readPlan(
     root: string,
     ref: PrimitiveRef,
-  ): Promise<Facts | { error: WithdrawFromReleaseError }> {
+  ): Promise<WithdrawalPlan | { error: WithdrawFromReleaseError }> {
+    const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
+    if (ambiguity !== null) {
+      return { error: ambiguity };
+    }
     const stages = await this.deps.readStages();
     if (stages === null || stages.release.outcome !== "read") {
       return { error: "no-answer" };
@@ -220,6 +223,8 @@ export class WithdrawFromRelease {
     ]);
     return {
       names,
+      selected:
+        row.change === "rename" ? (row.previousName ?? row.name) : row.name,
       confirmation: createHash("sha256")
         .update(JSON.stringify(seen))
         .digest("hex"),

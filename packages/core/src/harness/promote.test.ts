@@ -237,7 +237,9 @@ describe("Promote", () => {
   it("still pushes when GitHub cannot be asked, leaving the request missing", async () => {
     // A gh failure degrades the review capability alone; the branch still lands.
     const git = newSkillWorld();
-    const promote = buildPromote(git, { review: { outcome: "unavailable" } });
+    const promote = buildPromote(git, {
+      review: { outcome: "unavailable", reason: "no-gh" },
+    });
 
     await expect(promote.execute(skillRef("tdd"))).resolves.toMatchObject({
       ok: true,

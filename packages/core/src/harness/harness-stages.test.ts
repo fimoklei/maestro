@@ -623,9 +623,10 @@ describe("Pending review membership", () => {
   });
 
   it("reads an unavailable review capability as its own outcome", () => {
-    expect(stages({ review: { outcome: "unavailable" } }).review.outcome).toBe(
-      "unavailable",
-    );
+    expect(
+      stages({ review: { outcome: "unavailable", reason: "no-gh" } }).review
+        .outcome,
+    ).toBe("unavailable");
   });
 
   it("leaves the local stages readable when the review check fails", () => {
@@ -688,7 +689,10 @@ describe("A spent proposal branch", () => {
 
   it("keeps the branch a proposal when review reads are unavailable", () => {
     const trees = { ...ahead, working: { tdd: "edited" } };
-    const built = stages({ trees, review: { outcome: "unavailable" } });
+    const built = stages({
+      trees,
+      review: { outcome: "unavailable", reason: "no-gh" },
+    });
     expect(statuses(built.proposal)).toEqual(["tdd:new-local-work"]);
   });
 
@@ -784,8 +788,18 @@ describe("Open proposals on a Pending release row", () => {
     expect(openRequestsOf({ review: EMPTY_READ })).toEqual([]);
   });
 
-  it("reads none when no review read is possible, as without gh", () => {
-    expect(openRequestsOf({ review: { outcome: "unavailable" } })).toEqual([]);
+  it("reads none without gh", () => {
+    expect(
+      openRequestsOf({ review: { outcome: "unavailable", reason: "no-gh" } }),
+    ).toEqual([]);
+  });
+
+  it("reads an unanswered review read, such as offline, as unknown", () => {
+    expect(
+      openRequestsOf({
+        review: { outcome: "unavailable", reason: "no-answer" },
+      }),
+    ).toBeNull();
   });
 
   it("reads a failed review read as unknown, never as none", () => {
@@ -843,7 +857,10 @@ describe("stage memberships are independent", () => {
 
   it("suppresses the cross-stage line when a stage could not be read", () => {
     const trees = { ...SETTLED, working: { tdd: "edited" } };
-    const built = stages({ trees, review: { outcome: "unavailable" } });
+    const built = stages({
+      trees,
+      review: { outcome: "unavailable", reason: "no-gh" },
+    });
     expect(oneRow(built.proposal).alsoIn).toBeNull();
   });
 

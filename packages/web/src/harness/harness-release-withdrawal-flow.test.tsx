@@ -229,6 +229,39 @@ describe("Harness withdraw from release", () => {
     ).toBeInTheDocument();
   });
 
+  it("names the pull request to merge once a refusal reads it open", async () => {
+    stubHarnessServer({
+      read: { body: MERGED },
+      releaseWithdrawal: {
+        body: { error: "proposal-open" },
+        status: 409,
+        thenRead: withStages(ON_DISK, {
+          release: [
+            row("pending-release", "code-review", "not-yet-released", {
+              onDisk: true,
+              openRequests: [52],
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+    const dialog = await openWithdrawal();
+    await waitFor(() =>
+      expect(confirmButton(dialog)).not.toHaveAttribute("aria-disabled"),
+    );
+
+    await userEvent.click(confirmButton(dialog));
+
+    expect(
+      await within(dialog).findByText(
+        sentence(
+          "Nothing was withdrawn. Merge pull request #52 on GitHub, or select Withdraw proposal.",
+        ),
+      ),
+    ).toBeVisible();
+  });
+
   it("states a refused check in the dialog and offers no confirmation", async () => {
     stubHarnessServer({
       read: { body: MERGED },

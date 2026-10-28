@@ -135,7 +135,7 @@ describe("beforeProposalPush", () => {
 
   it.each<[string, HarnessReviewRead]>([
     ["failed", { outcome: "failed" }],
-    ["unavailable", { outcome: "unavailable" }],
+    ["unavailable", { outcome: "unavailable", reason: "no-gh" }],
     ["bounded", { outcome: "read", requests: [], complete: false, limit: 100 }],
   ])("opens none after a %s read: unknown is never none", async (_, read) => {
     const { review, created } = reviewWith(read);

@@ -153,10 +153,12 @@ const releaseWithdrawalDialog = (
   over: { running?: boolean; onClose?: () => void } = {},
 ) => (
   <ReleaseWithdrawalDialog
-    type="skill"
-    name="research"
-    change="edit"
-    previousName={null}
+    target={{
+      type: "skill",
+      name: "research",
+      change: "edit",
+      previousName: null,
+    }}
     check={check}
     onClose={over.onClose ?? vi.fn()}
     onConfirm={vi.fn()}

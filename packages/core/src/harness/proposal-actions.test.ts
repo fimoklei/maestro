@@ -771,7 +771,9 @@ describe("ProposalActions · what authorizes an action", () => {
   });
 
   it("refuses when GitHub cannot be asked at all", async () => {
-    const { actions, calls } = build({ review: { outcome: "unavailable" } });
+    const { actions, calls } = build({
+      review: { outcome: "unavailable", reason: "no-gh" },
+    });
 
     expect(await actions.create(skillRef("tdd"))).toEqual({
       ok: false,

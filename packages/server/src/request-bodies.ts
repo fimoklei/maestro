@@ -159,7 +159,7 @@ const primitiveRefShape = {
   name: z.string(),
 };
 
-export const promoteBodySchema = z.object(primitiveRefShape);
+export const primitiveRefBodySchema = z.object(primitiveRefShape);
 
 // The number is a claim, never an authorisation: it is rechecked against a fresh read (#827).
 export const proposalBodySchema = z.object({

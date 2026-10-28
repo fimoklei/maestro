@@ -41,7 +41,7 @@ import {
   PROPOSAL_BODY,
   PROPOSAL_CREATE_BODY,
   parseBody,
-  promoteBodySchema,
+  primitiveRefBodySchema,
   promptCheckBodySchema,
   promptEditBodySchema,
   promptReadBodySchema,
@@ -77,7 +77,7 @@ const refOf = ({ type, name }: PrimitiveRef): PrimitiveRef => ({ type, name });
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   // Takes the primitive's type and name only; the harness is resolved server-side (#577).
   app.post("/api/harness/promote", async (c) => {
-    const body = await parseBody(c, promoteBodySchema, PROMOTE_BODY);
+    const body = await parseBody(c, primitiveRefBodySchema, PROMOTE_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -182,7 +182,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   app.post("/api/harness/release/withdraw/check", async (c) => {
     const body = await parseBody(
       c,
-      promoteBodySchema,
+      primitiveRefBodySchema,
       RELEASE_WITHDRAWAL_CHECK_BODY,
     );
     if (!body.ok) {
@@ -230,7 +230,11 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   };
 
   app.post("/api/harness/proposal/create", async (c) => {
-    const body = await parseBody(c, promoteBodySchema, PROPOSAL_CREATE_BODY);
+    const body = await parseBody(
+      c,
+      primitiveRefBodySchema,
+      PROPOSAL_CREATE_BODY,
+    );
     if (!body.ok) {
       return body.response;
     }
@@ -267,7 +271,11 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
 
   // Read for the withdrawal's confirmation; it writes nothing.
   app.post("/api/harness/proposal/withdraw/check", async (c) => {
-    const body = await parseBody(c, promoteBodySchema, WITHDRAW_CHECK_BODY);
+    const body = await parseBody(
+      c,
+      primitiveRefBodySchema,
+      WITHDRAW_CHECK_BODY,
+    );
     if (!body.ok) {
       return body.response;
     }

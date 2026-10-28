@@ -603,7 +603,7 @@ describe("ReadHarnessState stages", () => {
   it("asks nobody who is signed in when no review read came back", async () => {
     let asked = false;
     const read = buildRead(releasedWorld(), {
-      review: { outcome: "unavailable" },
+      review: { outcome: "unavailable", reason: "no-gh" },
       readViewer: async () => {
         asked = true;
         return { outcome: "unavailable" };
@@ -618,7 +618,9 @@ describe("ReadHarnessState stages", () => {
   it("leaves the local stages readable when the review check is unavailable", async () => {
     const git = releasedWorld();
     git.working = { tdd: "edited" };
-    const read = buildRead(git, { review: { outcome: "unavailable" } });
+    const read = buildRead(git, {
+      review: { outcome: "unavailable", reason: "no-gh" },
+    });
 
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,

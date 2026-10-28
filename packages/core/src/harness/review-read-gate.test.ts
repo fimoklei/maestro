@@ -138,18 +138,18 @@ describe("ReviewReadGate", () => {
     expect(asked.viewer).toBe(1);
   });
 
-  it.each([{ outcome: "unavailable" }, { outcome: "failed" }] as const)(
-    "never reuses an $outcome review read",
-    async (unread) => {
-      const { asked, reads, answer } = build();
-      answer(unread);
-      await reads.readReviews(ORIGIN);
+  it.each([
+    { outcome: "unavailable", reason: "no-gh" },
+    { outcome: "failed" },
+  ] as const)("never reuses an $outcome review read", async (unread) => {
+    const { asked, reads, answer } = build();
+    answer(unread);
+    await reads.readReviews(ORIGIN);
 
-      await reads.readReviews(ORIGIN);
+    await reads.readReviews(ORIGIN);
 
-      expect(asked.reviews).toBe(2);
-    },
-  );
+    expect(asked.reviews).toBe(2);
+  });
 
   it.each([
     {

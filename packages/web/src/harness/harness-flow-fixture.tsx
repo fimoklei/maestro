@@ -129,7 +129,8 @@ export function stubHarnessServer(options: {
   confirmations?: Record<string, unknown>[];
   // Withdraw from release's check; no files and one token by default.
   releaseWithdrawalCheck?: { body: unknown; status?: number };
-  releaseWithdrawal?: { body: unknown; status?: number };
+  // `thenRead` answers every Harness read after this answer, refusal or not.
+  releaseWithdrawal?: { body: unknown; status?: number; thenRead?: unknown };
   releaseWithdrawals?: Record<string, unknown>[];
   inventory?: {
     body?: unknown;
@@ -146,6 +147,7 @@ export function stubHarnessServer(options: {
   let refreshCalls = 0;
   let published = false;
   let promoted = false;
+  let thenRead: { body: unknown } | null = null;
   const answer = (route: {
     body: unknown;
     afterPublish?: unknown;
@@ -180,6 +182,9 @@ export function stubHarnessServer(options: {
         const back = options.releaseWithdrawal ?? { body: {}, status: 500 };
         if ((back.status ?? 200) < 400) {
           promoted = true;
+        }
+        if (back.thenRead !== undefined) {
+          thenRead = { body: back.thenRead };
         }
         return jsonResponse(back.body, back.status);
       }
@@ -294,7 +299,7 @@ export function stubHarnessServer(options: {
       // hand and not by the clock.
       await options.read.heldUntil;
       return jsonResponse(
-        answer(options.read),
+        thenRead?.body ?? answer(options.read),
         promoted && options.read.afterWriteStatus !== undefined
           ? options.read.afterWriteStatus
           : options.read.status,

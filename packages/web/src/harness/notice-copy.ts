@@ -466,8 +466,16 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
   });
 };
 
-// Takes the item: a refusal names the one that left Pending release.
-const releaseWithdrawalHeadings = ({ type, name }: PrimitiveRef) => {
+type WithdrawalItem = PrimitiveRef & { openRequests: readonly number[] | null };
+
+// Takes the item: a refusal names the one that left Pending release, and the
+// pull requests a read found open.
+const releaseWithdrawalHeadings = ({
+  type,
+  name,
+  openRequests,
+}: WithdrawalItem) => {
+  const known = openRequests === null ? null : openProposalCause(openRequests);
   const w = ITEM_WORDS[type];
   const deletion = deletionHeadings(w);
   const again = `select ${WITHDRAW_FROM_RELEASE} again.`;
@@ -486,12 +494,15 @@ const releaseWithdrawalHeadings = ({ type, name }: PrimitiveRef) => {
       message: `Select ${rereadLabel("Harness")} to see the ${w.noun} as it is now.`,
       detail: phrase`${named(name)} is no longer under Pending release.`,
     },
-    "proposal-open": {
-      level: "error",
-      label: "Withdrawal blocked",
-      message: `Select ${rereadLabel("Harness")} to read GitHub again.`,
-      detail: `A pull request for this ${w.noun} is open, or GitHub could not be read.`,
-    },
+    "proposal-open":
+      known === null
+        ? {
+            level: "error",
+            label: "Withdrawal blocked",
+            message: `Select ${rereadLabel("Harness")} to read GitHub again.`,
+            detail: `A pull request for this ${w.noun} is open, or GitHub could not be read.`,
+          }
+        : { level: "error", label: "Withdrawal blocked", message: known },
     "confirmation-stale": {
       level: "error",
       label: "Confirmation out of date",
@@ -545,7 +556,8 @@ const releaseWithdrawalHeadings = ({ type, name }: PrimitiveRef) => {
   });
 };
 
-const listOf = (parts: readonly string[]): string =>
+/** Joins parts as running text: "a", "a and b", "a, b and c". */
+export const listOf = (parts: readonly string[]): string =>
   parts.length < 2
     ? (parts[0] ?? "")
     : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
@@ -567,7 +579,7 @@ export const openProposalCause = (
 
 export const releaseWithdrawalNotice = (
   error: unknown,
-  item: PrimitiveRef,
+  item: WithdrawalItem,
 ): NoticeContent | null =>
   noticeFromTable(releaseWithdrawalHeadings(item), error, {
     label: `${ITEM_WORDS[item.type].Noun} not withdrawn`,

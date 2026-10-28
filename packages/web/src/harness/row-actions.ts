@@ -204,9 +204,10 @@ function stageItems(
       ...links,
       {
         label: WITHDRAW_FROM_RELEASE,
-        disabled: !enabled || cause !== null,
         danger: true,
-        ...(cause === null ? {} : { cause }),
+        ...(cause === null
+          ? { disabled: !enabled }
+          : { disabled: true as const, cause }),
         onSelect: () => handlers.withdrawFromRelease(row),
       },
     ];

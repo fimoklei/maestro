@@ -33,7 +33,8 @@ export type ReviewRequest = {
 };
 
 // Three outcomes that must never collapse. `complete: false` filled its bound
-// and so proves nothing absent.
+// and so proves nothing absent. `no-gh`: no request can exist to read;
+// `no-answer` (signed out, offline, timed out): requests may exist unseen.
 export type HarnessReviewRead =
   | {
       outcome: "read";
@@ -42,7 +43,7 @@ export type HarnessReviewRead =
       limit: number;
     }
   | { outcome: "failed" }
-  | { outcome: "unavailable" };
+  | { outcome: "unavailable"; reason: "no-gh" | "no-answer" };
 
 // Who `gh` is signed in as, with the same three outcomes as a review read.
 export type ViewerRead =

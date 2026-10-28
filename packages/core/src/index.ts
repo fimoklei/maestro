@@ -192,6 +192,7 @@ export {
   ReadHarnessState,
   type ReleasePlan,
   type ReleasePlanError,
+  type WorktreeAmbiguity,
 } from "./harness/read-harness-state";
 export type { PendingMovement } from "./harness/release-delta";
 export type { ReleaseBlock } from "./harness/release-readiness";

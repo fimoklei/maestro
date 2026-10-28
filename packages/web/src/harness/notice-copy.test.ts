@@ -311,7 +311,8 @@ const SURFACES: Surface[] = [
   ),
   ...byType(
     "releaseWithdrawalNotice",
-    (error, type) => releaseWithdrawalNotice(error, { type, name: "tdd" }),
+    (error, type) =>
+      releaseWithdrawalNotice(error, { type, name: "tdd", openRequests: null }),
     codes<WithdrawFromReleaseError>({
       "not-configured": true,
       "invalid-skill": true,
@@ -875,12 +876,13 @@ describe("Withdraw from release while a proposal is open", () => {
     expect(openProposalCause([])).toBeNull();
   });
 
-  it("refuses a withdrawal that a pull request may block", () => {
+  it("refuses a withdrawal while the pull request read is unknown", () => {
     expect(
       readNotice(
         releaseWithdrawalNotice(refusal("proposal-open"), {
           type: "skill",
           name: "tdd",
+          openRequests: null,
         }),
       ),
     ).toEqual({
@@ -890,6 +892,23 @@ describe("Withdraw from release while a proposal is open", () => {
         "Nothing was withdrawn. Select Re-read Harness to read GitHub again.",
       detail:
         "A pull request for this skill is open, or GitHub could not be read.",
+    });
+  });
+
+  it("refuses a withdrawal by naming the open pull requests to merge", () => {
+    expect(
+      readNotice(
+        releaseWithdrawalNotice(refusal("proposal-open"), {
+          type: "skill",
+          name: "tdd",
+          openRequests: [45, 52],
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Withdrawal blocked",
+      message:
+        "Nothing was withdrawn. Merge pull requests #45 and #52 on GitHub, or select Withdraw proposal.",
     });
   });
 });

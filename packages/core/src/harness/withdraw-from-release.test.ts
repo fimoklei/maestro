@@ -451,6 +451,18 @@ describe("WithdrawFromRelease", () => {
       expect(await skillText("tdd")).toBe("merged tdd");
     });
 
+    it("refuses when only the default branch moved after the confirmation", async () => {
+      const { withdrawal, git, skillText } = changed();
+      const token = await confirmed(withdrawal, skillRef("tdd"));
+      git.commit("commit-later", { tdd: "merged again" });
+      git.tip = "commit-later";
+
+      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
+        { ok: false, error: "confirmation-stale" },
+      );
+      expect(await skillText("tdd")).toBe("merged tdd");
+    });
+
     it("refuses an item that left Pending release after the confirmation", async () => {
       const { withdrawal, setStages, skillText } = changed();
       const token = await confirmed(withdrawal, skillRef("tdd"));
@@ -490,6 +502,16 @@ describe("WithdrawFromRelease", () => {
         { ok: false, error: "proposal-open" },
       );
       expect(await skillText("tdd")).toBe("merged tdd");
+    });
+
+    it("refuses to build a confirmation over an ambiguous working tree", async () => {
+      const { withdrawal, git } = changed();
+      git.ambiguity = "merge-in-progress";
+
+      await expect(withdrawal.inspect(skillRef("tdd"))).resolves.toEqual({
+        ok: false,
+        error: "merge-in-progress",
+      });
     });
 
     it("refuses an ambiguous working tree", async () => {

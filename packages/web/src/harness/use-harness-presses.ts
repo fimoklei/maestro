@@ -16,6 +16,7 @@ import { rowId } from "./harness-columns";
 import type {
   DiscardTarget,
   LocalDeletionTarget,
+  ReleaseWithdrawalItem,
   ReleaseWithdrawalTarget,
   RestoreTarget,
   WithdrawTarget,
@@ -145,6 +146,23 @@ export function useHarnessPresses(
   // the author confirms.
   const [discarding, setDiscarding] = useState<DiscardTarget | null>(null);
 
+  // Frozen at the press: the dialog's copy follows the row it was opened from.
+  const [releaseWithdrawalTarget, setReleaseWithdrawing] =
+    useState<ReleaseWithdrawalTarget | null>(null);
+  // Its open pull requests come from the latest read: a refusal re-reads
+  // GitHub, and the notice names what it found.
+  const releaseWithdrawing: ReleaseWithdrawalItem | null =
+    releaseWithdrawalTarget === null
+      ? null
+      : {
+          ...releaseWithdrawalTarget,
+          openRequests:
+            releaseRows(state).find(
+              (row) =>
+                row.type === releaseWithdrawalTarget.type &&
+                row.name === releaseWithdrawalTarget.name,
+            )?.openRequests ?? null,
+        };
   const releaseWithdrawal = useWithdrawFromRelease();
   const releaseWithdrawalWrite = useWriteAction(releaseWithdrawal, {
     screen,
@@ -158,15 +176,12 @@ export function useHarnessPresses(
         name: withdrawn.name,
       }),
     }),
+    // A failure shows only in the dialog, so its item stands.
     failure: (error) =>
-      releaseWithdrawalNotice(error, {
-        type: releaseWithdrawal.variables?.type ?? "skill",
-        name: releaseWithdrawal.variables?.name ?? "",
-      }),
+      releaseWithdrawing === null
+        ? null
+        : releaseWithdrawalNotice(error, releaseWithdrawing),
   });
-  // Frozen at the press: the dialog's copy follows the row it was opened from.
-  const [releaseWithdrawing, setReleaseWithdrawing] =
-    useState<ReleaseWithdrawalTarget | null>(null);
 
   const proposalAction = useProposalAction();
   const [withdrawing, setWithdrawing] = useState<WithdrawTarget | null>(null);
@@ -359,6 +374,11 @@ export function useHarnessPresses(
     releaseWithdrawing,
     closeReleaseWithdrawal: () => setReleaseWithdrawing(null),
   };
+}
+
+function releaseRows(state: HarnessState | undefined): HarnessStageRow[] {
+  const stage = state?.stages.release;
+  return stage?.outcome === "read" ? stage.rows : [];
 }
 
 // Pending proposal's rows, or none where the stage could not be read: a press

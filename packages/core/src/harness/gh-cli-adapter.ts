@@ -135,7 +135,7 @@ export class GhCliAdapter implements HarnessReviewPort {
   async readReviews(origin: GitOrigin): Promise<HarnessReviewRead> {
     // gh sends any other host's query onward as GitHub Enterprise: gate before the call.
     if (origin.host !== "github.com") {
-      return { outcome: "unavailable" };
+      return { outcome: "unavailable", reason: "no-gh" };
     }
 
     let stdout: string;
@@ -160,7 +160,13 @@ export class GhCliAdapter implements HarnessReviewPort {
         },
       ));
     } catch (error) {
-      return { outcome: noAnswerPossible(error) ? "unavailable" : "failed" };
+      if (!noAnswerPossible(error)) {
+        return { outcome: "failed" };
+      }
+      return {
+        outcome: "unavailable",
+        reason: isMissing(error) ? "no-gh" : "no-answer",
+      };
     }
 
     const rows = documentSchema.safeParse(parseJson(stdout));
@@ -320,6 +326,10 @@ function parseJson(stdout: string): unknown {
   }
 }
 
+function isMissing(error: unknown): boolean {
+  return (error as { code?: unknown }).code === "ENOENT";
+}
+
 // Only the class crosses; the failure text is thrown away.
 function noAnswerPossible(error: unknown): boolean {
   const { code, killed, stderr } = error as {
@@ -327,7 +337,7 @@ function noAnswerPossible(error: unknown): boolean {
     killed?: unknown;
     stderr?: unknown;
   };
-  if (code === "ENOENT" || killed === true) {
+  if (isMissing(error) || killed === true) {
     return true;
   }
   if (code === NOT_SIGNED_IN) {

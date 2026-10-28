@@ -228,7 +228,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
   it("leaves the git stages readable when GitHub cannot be asked", async () => {
     const app = makeApp();
     await writeSkill("tdd", "edited on disk");
-    stages.review.answer({ outcome: "unavailable" });
+    stages.review.answer({ outcome: "unavailable", reason: "no-gh" });
 
     const state = await refresh(app);
 
