@@ -521,6 +521,48 @@ describe("ReleaseDialog", () => {
     ).toBeTruthy();
   });
 
+  it("describes itself by the version it would release", () => {
+    renderReady();
+
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
+      "Releasing as v1.3.0",
+    );
+  });
+
+  it("describes itself by the version of the step the author chose", async () => {
+    renderReady();
+
+    await userEvent.click(screen.getByRole("button", { name: "Major" }));
+
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
+      "Releasing as v2.0.0",
+    );
+  });
+
+  it("describes an empty plan by its lead sentence", () => {
+    renderReady({ delta: [], blocked: "empty-delta" });
+
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
+      "No changes yet. Changes merged after the last release appear here.",
+    );
+  });
+
+  it("has no description while the plan loads", () => {
+    render(
+      <ReleaseDialog
+        origin="github.com/fimoklei/agent-harness"
+        inFlight={[]}
+        load={{ kind: "loading" }}
+        onClose={vi.fn()}
+        onPublish={vi.fn()}
+        publishing={false}
+        publishError={null}
+      />,
+    );
+
+    expect(screen.getByRole("dialog")).not.toHaveAttribute("aria-describedby");
+  });
+
   it("says it is working while the plan is still loading", () => {
     render(
       <ReleaseDialog
