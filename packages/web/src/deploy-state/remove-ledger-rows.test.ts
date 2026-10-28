@@ -10,10 +10,6 @@ import type {
   RemoveRowWarning,
 } from "./remove-preflight-view";
 
-const leftoverCodex = [
-  { tool: "codex" as const, path: "/Users/me/.agents/skills/tdd" },
-];
-
 const RUNNING: RemoveCheckState = { kind: "unanswered", warning: "checking" };
 
 const perTool = (
@@ -25,17 +21,14 @@ describe("removeLedgerRows", () => {
     expect(
       removeLedgerRows(
         { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
-        [],
         RUNNING,
       ),
     ).toEqual([
       {
         key: "target:…/me/project",
         name: "…/me/project",
-        path: null,
         status: null,
         drift: false,
-        leftover: false,
       },
     ]);
   });
@@ -44,46 +37,14 @@ describe("removeLedgerRows", () => {
     expect(
       removeLedgerRows(
         { kind: "global", tools: ["codex", "claude"] },
-        [],
         RUNNING,
       ).map((row) => row.name),
     ).toEqual(["Codex", "Claude Code"]);
   });
 
-  it("puts a leftover copy after every detected tool", () => {
-    const rows = removeLedgerRows(
-      { kind: "global", tools: ["claude"] },
-      leftoverCodex,
-      RUNNING,
-    );
-
-    expect(rows.map((row) => row.name)).toEqual(["Claude Code", "Codex"]);
-  });
-
-  it("carries the leftover's path and status on its own row", () => {
-    const [leftover] = removeLedgerRows(
-      { kind: "global", tools: [] },
-      leftoverCodex,
-      RUNNING,
-    );
-
-    expect(leftover).toEqual({
-      key: "leftover:codex",
-      name: "Codex",
-      path: "/Users/me/.agents/skills/tdd",
-      status: "Not installed — copy deleted in full",
-      drift: true,
-      leftover: true,
-    });
-  });
-
   describe("what the check says about a detected tool", () => {
     const rowsFor = (check: RemoveCheckState) =>
-      removeLedgerRows(
-        { kind: "global", tools: ["claude", "codex"] },
-        [],
-        check,
-      );
+      removeLedgerRows({ kind: "global", tools: ["claude", "codex"] }, check);
 
     it("says nothing on a row while the check is still running", () => {
       for (const row of rowsFor(RUNNING)) {
@@ -134,51 +95,6 @@ describe("removeLedgerRows", () => {
       })) {
         expect(row.status).toBe("Check did not run — may lose work");
         expect(row.drift).toBe(true);
-      }
-    });
-  });
-
-  describe("what the check says about a leftover copy", () => {
-    const leftoverRow = (check: RemoveCheckState) =>
-      removeLedgerRows(
-        { kind: "global", tools: ["claude"] },
-        [{ tool: "codex" as const, path: "/Users/me/.agents/skills/tdd" }],
-        check,
-      )[1];
-
-    it("names the cost it would delete with the copy", () => {
-      expect(
-        leftoverRow(perTool({ claude: "none", codex: "cannot-verify" }))
-          ?.status,
-      ).toBe("Not installed — nothing recorded to check");
-    });
-
-    it("keeps a copy with no baseline apart from a checked one", () => {
-      expect(
-        leftoverRow(perTool({ claude: "none", codex: "cannot-verify" }))
-          ?.status,
-      ).toBe("Not installed — nothing recorded to check");
-    });
-
-    it("never reads a leftover the answer left out as a checked copy", () => {
-      expect(leftoverRow(perTool({ claude: "none" }))?.status).toBe(
-        "Not installed — check did not run",
-      );
-    });
-
-    it("states the plain reclaim when the copy came back clean", () => {
-      expect(
-        leftoverRow(perTool({ claude: "none", codex: "none" }))?.status,
-      ).toBe("Not installed — copy deleted in full");
-    });
-
-    it("stays a cost whatever the check found", () => {
-      for (const warning of [
-        "none",
-        "cannot-verify",
-        "check-failed",
-      ] as const) {
-        expect(leftoverRow(perTool({ codex: warning }))?.drift).toBe(true);
       }
     });
   });
@@ -313,7 +229,6 @@ describe("removeLedgerRows", () => {
   it("puts the repo scope's aggregate answer on its single row", () => {
     const [repo] = removeLedgerRows(
       { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
-      [],
       { kind: "repo", warning: "cannot-verify" },
     );
 

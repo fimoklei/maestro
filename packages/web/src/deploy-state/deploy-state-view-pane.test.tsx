@@ -608,7 +608,6 @@ describe("Deploy-state pane — Deployed skills", () => {
       other: () =>
         jsonResponse({
           check: { scope: "repo", warning: null },
-          reclaim: null,
           receipt: "b".repeat(64),
         }),
     }));
@@ -643,7 +642,6 @@ describe("Deploy-state pane — Deployed skills", () => {
       other: () =>
         jsonResponse({
           check: { scope: "repo", warning: null },
-          reclaim: null,
           receipt: "b".repeat(64),
         }),
     }));
@@ -678,7 +676,6 @@ describe("Deploy-state pane — Deployed skills", () => {
         if (url === "/api/deploy/remove/preflight") {
           return jsonResponse({
             check: { scope: "repo", warning: null },
-            reclaim: null,
             receipt: "b".repeat(64),
           });
         }

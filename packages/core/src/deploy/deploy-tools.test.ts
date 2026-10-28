@@ -4,7 +4,6 @@ import {
   apmTargetFlagForTools,
   DEPLOY_TOOLS,
   deployTargetSubtrees,
-  reclaimableUntargetedTools,
 } from "./deploy-tools";
 
 // The apm `-t` flag and the guard's scanned subtrees both derive from
@@ -82,28 +81,5 @@ describe("apmTargetFlagForTools", () => {
 
   it("is empty when no supported tool is detected", () => {
     expect(apmTargetFlagForTools([])).toBe("");
-  });
-});
-
-describe("reclaimableUntargetedTools", () => {
-  it.each([[[]], [["codex"]], [["claude"]], [["claude", "codex"]]] as const)(
-    "reclaims nothing when %j is detected",
-    (detected) => {
-      expect(reclaimableUntargetedTools(detected)).toEqual([]);
-    },
-  );
-});
-
-describe("skills directory exclusivity", () => {
-  it("marks .claude and .agents as shared", () => {
-    expect(
-      DEPLOY_TOOLS.map((tool) => [
-        tool.skillsDirPrefix,
-        tool.skillsDirIsExclusive,
-      ]),
-    ).toEqual([
-      [".claude", false],
-      [".agents", false],
-    ]);
   });
 });

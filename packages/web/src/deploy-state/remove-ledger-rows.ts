@@ -1,8 +1,4 @@
-import type {
-  ReclaimPreview,
-  RemoveOutcome,
-  RemoveTargetState,
-} from "@maestro/core";
+import type { RemoveOutcome, RemoveTargetState } from "@maestro/core";
 import type { DeployableType } from "../inventory/type-filter";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import type { ReportGroup } from "../ui/report";
@@ -20,19 +16,8 @@ export type RemoveDialogTarget =
 export type RemoveLedgerRow = {
   key: string;
   name: string;
-  // Directory deleted in full; null where the removal only scopes itself.
-  path: string | null;
   status: string | null;
   drift: boolean;
-  // A copy nobody targeted, which the reclaim deletes whole.
-  leftover: boolean;
-};
-
-// apm's own uninstall can't reach an undetected tool's leftover copy (#339).
-const LEFTOVER_STATUS: Record<RemoveRowWarning, string> = {
-  none: "Not installed — copy deleted in full",
-  "cannot-verify": "Not installed — nothing recorded to check",
-  "check-failed": "Not installed — check did not run",
 };
 
 const WARNING_STATUS: Record<Exclude<RemoveRowWarning, "none">, string> = {
@@ -138,24 +123,11 @@ const targetsOf = (target: RemoveDialogTarget) =>
 
 export function removeLedgerRows(
   target: RemoveDialogTarget,
-  reclaim: readonly ReclaimPreview[],
   check: RemoveCheckState,
 ): RemoveLedgerRow[] {
-  return [
-    ...targetsOf(target).map(({ tool, name }) => ({
-      key: `target:${name}`,
-      name,
-      path: null,
-      leftover: false,
-      ...statusFor(warningForTool(check, tool)),
-    })),
-    ...reclaim.map((entry) => ({
-      key: `leftover:${entry.tool}`,
-      name: toolDisplayName(entry.tool),
-      path: entry.path,
-      status: LEFTOVER_STATUS[warningForTool(check, entry.tool) ?? "none"],
-      drift: true,
-      leftover: true,
-    })),
-  ];
+  return targetsOf(target).map(({ tool, name }) => ({
+    key: `target:${name}`,
+    name,
+    ...statusFor(warningForTool(check, tool)),
+  }));
 }

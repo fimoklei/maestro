@@ -144,11 +144,6 @@ const SCENARIOS = [
   },
 ];
 
-// Seeds the global target: deployed while both tools were installed, then
-// Claude Code's marker goes, so its copy is left behind and a global Remove
-// shows an Other copies row.
-const GLOBAL_SCENARIO = "global-leftover";
-const LEFTOVER_SKILL = "code-review";
 // Seed the Harness itself, not a consuming repository: one restorable Deletion
 // in Pending proposal and one unreleased Edit to release. No import scenario
 // edits DELETED_LOCALLY, whose copies would read as another Harness's, and
@@ -163,7 +158,6 @@ const UNREACHABLE_ORIGIN = "http://127.0.0.1:1/";
 
 export const SCENARIO_NAMES = [
   ...SCENARIOS.map((scenario) => scenario.name),
-  GLOBAL_SCENARIO,
   HARNESS_SCENARIO,
   OFFLINE_SCENARIO,
 ];
@@ -392,20 +386,6 @@ export function harnessMismatch({ releaseState, stages }) {
     : `scenario "${HARNESS_SCENARIO}": ${problems.join("; ")}`;
 }
 
-/** Null when the global Remove offers Claude Code's leftover copy, and it is on disk. */
-export function globalLeftoverMismatch({ preflight, onDisk }) {
-  const row = preflight.reclaim?.previews.find(
-    (preview) => preview.tool === "claude",
-  );
-  const problem =
-    row === undefined
-      ? `the global Remove of ${LEFTOVER_SKILL} expected an Other copies row for Claude Code, got none`
-      : onDisk(row.path)
-        ? null
-        : `the Other copies row names ${row.path}, which holds no copy`;
-  return problem === null ? null : `scenario "${GLOBAL_SCENARIO}": ${problem}`;
-}
-
 /** Null when the Harness read found its remote unreachable. */
 export function harnessOfflineMismatch({ freshness }) {
   return freshness?.outcome === "offline"
@@ -517,7 +497,7 @@ async function wipe(api, paths) {
   }
   makeWritable(paths.repos);
   rmSync(paths.repos, { recursive: true, force: true });
-  // The sandbox's global target, and the Claude Code marker global-leftover drops.
+  // The sandbox's global target.
   for (const path of [
     ".apm/apm.yml",
     ".apm/apm.lock.yaml",
@@ -703,20 +683,6 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
     if (mismatch !== null) problems.push(mismatch);
   }
   const seeded = scenarios.map(repoOf);
-  if (names.includes(GLOBAL_SCENARIO)) {
-    seeded.push(paths.home);
-    await steps.deploy(null, AT_V2);
-    rmSync(join(paths.home, ".claude.json"));
-    const mismatch = globalLeftoverMismatch({
-      preflight: await api.post("/api/deploy/remove/preflight", {
-        type: "skill",
-        name: LEFTOVER_SKILL,
-        target: { kind: "global" },
-      }),
-      onDisk: existsSync,
-    });
-    if (mismatch !== null) problems.push(mismatch);
-  }
   if (names.some((name) => [HARNESS_SCENARIO, OFFLINE_SCENARIO].includes(name)))
     seeded.push(paths.clone);
   // Last, so no deploy reading is taken against the changed Harness.

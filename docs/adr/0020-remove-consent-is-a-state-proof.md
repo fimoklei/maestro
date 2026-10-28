@@ -137,3 +137,14 @@ Three residual gaps follow, all accepted:
   nobody was shown.
 - **Trusting the client to have shown the dialog.** The state before #458, and
   the reason it was opened.
+
+## Amendment (2026-10-28, issue #1680) — one proof: the receipt
+
+The reclaim token is gone. Since ADR-0011's #1557 amendment it could never be
+minted, so its code, its request field and the dialog's Other copies list were
+deleted. The removal receipt is the only remove consent left; the "two proofs"
+and "one combined proof" passages above describe the history.
+
+`preflight` now prices the same copies `execute` does: the detected tools and
+the whole recorded copy, which still reaches a tool that has since dropped out.
+An edited copy there is refused in the dialog, not first at the click.

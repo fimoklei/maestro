@@ -77,17 +77,12 @@ export function stubFetch(
       { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
       200,
     ),
-  reclaim: { tool: string; path: string }[] = [],
 ) {
   const fetchMock = vi.fn(async (path: string, init: RequestInit) =>
     path === "/api/deploy/remove/preflight"
       ? jsonResponse(
           {
             check: checkFor(warning, init),
-            reclaim:
-              reclaim.length > 0
-                ? { previews: reclaim, token: "a".repeat(64) }
-                : null,
             receipt: RECEIPT,
           },
           200,

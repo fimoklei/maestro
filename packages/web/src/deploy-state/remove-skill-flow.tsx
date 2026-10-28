@@ -187,7 +187,6 @@ export function RemoveSkillFlow({
             type: "skill",
             name: skillName,
             target: wireTarget,
-            confirmedReclaimToken: preflight.data?.reclaim?.token,
             confirmedRemovalReceipt: preflight.data?.receipt,
           },
           {
@@ -205,7 +204,6 @@ export function RemoveSkillFlow({
                   (): RemovePreflight => ({
                     check: cost.check,
                     receipt: cost.receipt,
-                    reclaim: cost.reclaim,
                   }),
                 );
                 setNews({ kind: "restated", notice: removeNotice(error) });

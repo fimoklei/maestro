@@ -41,14 +41,12 @@ const removeTddGlobally = {
 const preflightOk = (warning: RemoveWarning | null) => ({
   ok: true,
   check: { scope: "repo", warning },
-  reclaim: null,
   receipt: expect.any(String),
 });
 
 const globalPreflightOk = (tools: RemoveToolCheck[]) => ({
   ok: true,
   check: { scope: "global", tools },
-  reclaim: null,
   receipt: expect.any(String),
 });
 
@@ -69,7 +67,6 @@ type Overrides = {
   ) => DeployedContentState;
   detectedTools?: SupportedTool[];
   detectTools?: () => Promise<SupportedTool[]>;
-  treeRoot?: (target: DeployTarget) => string;
 };
 
 function buildUseCase(overrides: Overrides = {}) {
@@ -77,12 +74,7 @@ function buildUseCase(overrides: Overrides = {}) {
     lookups: string[];
     removes: { target: DeployTarget; ref: string }[];
     classifies: { target: DeployTarget; tools?: readonly SupportedTool[] }[];
-    cleanups: {
-      target: DeployTarget;
-      name: string;
-      tools: readonly SupportedTool[];
-    }[];
-  } = { lookups: [], removes: [], classifies: [], cleanups: [] };
+  } = { lookups: [], removes: [], classifies: [] };
   // Real copies on an in-memory tree, placed in the state the test asks for
   // on first read; a test edits or drops a record to move it.
   const copies = inMemoryDeployedContent();
@@ -139,11 +131,6 @@ function buildUseCase(overrides: Overrides = {}) {
         return (overrides.removed ?? true) ? { ok: true } : { ok: false };
       },
     },
-    deployedCleanup: {
-      removeSkillTargets: async (input) => {
-        calls.cleanups.push(input);
-      },
-    },
     toolPresence: {
       detectGlobalTools:
         overrides.detectTools ??
@@ -151,7 +138,6 @@ function buildUseCase(overrides: Overrides = {}) {
     },
     canonicalPath: overrides.canonicalPath ?? (async (path) => path),
     locks: overrides.locks ?? new InFlightLocks(),
-    location: { treeRoot: overrides.treeRoot ?? (() => "/home") },
   });
   return { useCase, calls, copies };
 }
@@ -350,7 +336,6 @@ describe("RemoveDeployedSkill", () => {
       error: "cost-not-acknowledged",
       check: { scope: "repo", warning: "cannot-verify-local-edits" },
       receipt: expect.any(String),
-      reclaim: null,
     });
     expect(calls.removes).toEqual([]);
   });
@@ -469,11 +454,9 @@ describe("RemoveDeployedSkill", () => {
           throw new Error("apm exploded");
         },
       },
-      deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
       locks: new InFlightLocks(),
-      location: { treeRoot: () => "/home" },
     });
 
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
@@ -542,7 +525,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
       error: "cost-not-acknowledged",
       check: { scope: "repo", warning: "cannot-verify-local-edits" },
       receipt: expect.any(String),
-      reclaim: null,
     });
     expect(calls.removes).toEqual([]);
   });
@@ -616,7 +598,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
         ],
       },
       receipt: expect.any(String),
-      reclaim: null,
     });
     expect(calls.removes).toEqual([]);
   });
@@ -629,7 +610,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
       error: "cost-not-acknowledged",
       check: { scope: "repo", warning: null },
       receipt: expect.any(String),
-      reclaim: null,
     });
     expect(calls.removes).toEqual([]);
   });
@@ -755,24 +735,28 @@ describe("RemoveDeployedSkill on the global target", () => {
     });
   });
 
-  it("asks the check once per detected tool, scoped to that tool's copy", async () => {
+  it("asks the check about each detected tool, scoped to that tool's copy", async () => {
     const { useCase, calls } = buildUseCase({
       detectedTools: ["claude", "codex"],
     });
 
     await useCase.preflight(removeTddGlobally);
 
-    expect(calls.classifies).toEqual([
-      { target: { kind: "global" }, tools: ["claude"] },
-      { target: { kind: "global" }, tools: ["codex"] },
-    ]);
+    expect(calls.classifies).toEqual(
+      expect.arrayContaining([
+        { target: { kind: "global" }, tools: ["claude"] },
+        { target: { kind: "global" }, tools: ["codex"] },
+      ]),
+    );
   });
 
   it("names the cost against the tool whose copy carries it, and no other", async () => {
     const { useCase } = buildUseCase({
       detectedTools: ["claude", "codex"],
+      // Not deployed: beside a recorded claude copy, the whole-copy check would
+      // read the unrecorded codex files as added and refuse (#1680).
       deployedStateForScope: (tools) =>
-        tools?.[0] === "codex" ? "unverifiable" : "clean",
+        tools?.[0] === "codex" ? "unverifiable" : "not-deployed",
     });
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
@@ -824,19 +808,26 @@ describe("RemoveDeployedSkill on the global target", () => {
 });
 
 describe("RemoveDeployedSkill on a machine without Claude Code", () => {
-  it("offers no reclaim and asks the guard about the detected tool only", async () => {
-    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+  // apm's uninstall still reaches the dropped tool's copy, so the check names
+  // what the removal will refuse (#1680).
+  it("refuses the check over local edits in an undetected tool's copy", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["codex"],
+      deployedStateForScope: (tools) =>
+        tools?.[0] === "claude" ? "diverged" : "clean",
+    });
 
-    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
-      globalPreflightOk([{ tool: "codex", warning: null }]),
-    );
-    expect(calls.classifies).toEqual([
-      { target: { kind: "global" }, tools: ["codex"] },
-    ]);
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
   });
 
-  it("removes the skill and reclaims nothing", async () => {
-    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+  it("removes the skill on the receipt its own check minted", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["codex"],
+      deployedState: "unverifiable",
+    });
 
     await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
       {
@@ -849,7 +840,6 @@ describe("RemoveDeployedSkill on a machine without Claude Code", () => {
         },
       },
     );
-    expect(calls.cleanups).toEqual([]);
   });
 });
 
@@ -929,11 +919,9 @@ describe("RemoveDeployedSkill.preflight", () => {
       copyGuard: new LocalCopyGuard({ content: watched }),
       deployedContent: watched,
       apm: { removeSkill: async () => ({ ok: true }) },
-      deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
       locks: new InFlightLocks(),
-      location: { treeRoot: () => "/home" },
     });
 
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({
@@ -984,11 +972,9 @@ describe("RemoveDeployedSkill.preflight", () => {
         linkedSkillPath: async () => null,
       },
       apm: { removeSkill: async () => ({ ok: true }) },
-      deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
       locks: new InFlightLocks(),
-      location: { treeRoot: () => "/home" },
     });
 
     await expect(useCase.preflight(removeTdd)).resolves.toMatchObject({

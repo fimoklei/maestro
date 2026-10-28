@@ -1,7 +1,6 @@
 import type { HarnessChange } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
-  globalLeftoverMismatch,
   type HarnessRead,
   type HarnessReadRow,
   harnessMismatch,
@@ -45,14 +44,13 @@ describe("parseScenarioArg", () => {
 
   it("expands all to every scenario", () => {
     expect(parseScenarioArg(["--scenario", "all"])).toEqual(SCENARIO_NAMES);
-    expect(SCENARIO_NAMES).toHaveLength(14);
+    expect(SCENARIO_NAMES).toHaveLength(13);
     expect(SCENARIO_NAMES).toEqual(
       expect.arrayContaining([
         "harness-outcomes",
         "import-edits",
         "deploy-again",
         "unreadable",
-        "global-leftover",
         "harness-offline",
       ]),
     );
@@ -299,50 +297,6 @@ describe("harnessMismatch", () => {
 
     expect(harnessMismatch(state)).toMatch(
       /test-plan expected a restorable "deletion" row in the proposal stage, got a stage read as "unknown"/,
-    );
-  });
-});
-
-describe("globalLeftoverMismatch", () => {
-  const LEFTOVER = "/sandbox/home/.claude/skills/code-review";
-
-  it("passes when the global Remove offers the leftover copy that is on disk", () => {
-    expect(
-      globalLeftoverMismatch({
-        preflight: {
-          check: { scope: "global", tools: [{ tool: "codex" }] },
-          reclaim: { previews: [{ tool: "claude", path: LEFTOVER }] },
-        },
-        onDisk: (path) => path === LEFTOVER,
-      }),
-    ).toBeNull();
-  });
-
-  it("names a global Remove with no Other copies row", () => {
-    expect(
-      globalLeftoverMismatch({
-        preflight: {
-          check: { scope: "global", tools: [{ tool: "codex" }] },
-          reclaim: null,
-        },
-        onDisk: () => true,
-      }),
-    ).toBe(
-      'scenario "global-leftover": the global Remove of code-review expected an Other copies row for Claude Code, got none',
-    );
-  });
-
-  it("names an Other copies row whose copy is not on disk", () => {
-    expect(
-      globalLeftoverMismatch({
-        preflight: {
-          check: { scope: "global", tools: [{ tool: "codex" }] },
-          reclaim: { previews: [{ tool: "claude", path: LEFTOVER }] },
-        },
-        onDisk: () => false,
-      }),
-    ).toBe(
-      `scenario "global-leftover": the Other copies row names ${LEFTOVER}, which holds no copy`,
     );
   });
 });
