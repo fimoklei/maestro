@@ -111,7 +111,8 @@ const push = async (
     return "pushed";
   } catch (error) {
     const failure = classifyGitError(error, classifyPushFailure);
-    if (failure === "stale-tip") {
+    // A worded refusal: the remote did not move the branch.
+    if (failure === "stale-tip" || failure === "refused") {
       return failure;
     }
     return await settle(

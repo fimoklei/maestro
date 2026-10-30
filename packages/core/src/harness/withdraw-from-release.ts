@@ -27,6 +27,8 @@ export type WithdrawFromReleaseError =
   | "confirmation-stale"
   // The clone's HEAD is not the default branch's tip.
   | "clone-not-current"
+  // The remote declined a direct push; no pull request is opened instead.
+  | "push-refused"
   | "offline"
   | "push-elsewhere"
   | "withdraw-in-progress"
@@ -46,6 +48,7 @@ const PUSH_ERROR: Record<
   WithdrawFromReleaseError
 > = {
   "stale-tip": "confirmation-stale",
+  refused: "push-refused",
   offline: "offline",
   "push-elsewhere": "push-elsewhere",
   "clone-not-current": "clone-not-current",

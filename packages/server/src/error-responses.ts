@@ -343,6 +343,8 @@ export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseErro
     "proposal-open": { status: 409 },
     "confirmation-stale": { status: 409 },
     "clone-not-current": { status: 409 },
+    // GitHub declined the push: retrying will not help.
+    "push-refused": { status: 403 },
     offline: { status: 502 },
     "push-elsewhere": promoteErrorResponses["push-elsewhere"],
     "withdraw-in-progress": { status: 409 },

@@ -408,6 +408,7 @@ describe("WithdrawFromRelease", () => {
       ["offline", "offline"],
       ["push-elsewhere", "push-elsewhere"],
       ["clone-not-current", "clone-not-current"],
+      ["refused", "push-refused"],
       ["push-failed", "withdraw-failed"],
     ] as const satisfies readonly (readonly [WithdrawalPushOutcome, string])[])(
       "reads a push answered %s as %s",

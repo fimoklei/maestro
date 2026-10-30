@@ -66,6 +66,18 @@ export const CloneNotUpToDate: Story = {
   },
 };
 
+export const DirectPushRefused: Story = {
+  args: {
+    withdrawError: {
+      level: "error",
+      label: "Direct push refused",
+      message:
+        "Nothing was withdrawn. Allow direct pushes to the default branch on GitHub, then select Withdraw from release again.",
+      detail: "A rule on GitHub blocked the push.",
+    },
+  },
+};
+
 export const Withdrawing: Story = {
   args: { withdrawing: true },
 };

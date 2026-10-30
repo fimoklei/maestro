@@ -136,7 +136,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
       );
     } catch (error) {
       const failure = classifyGitError(error, classifyPushFailure);
-      const settled = await this.settlePush(root, name, commit, failure);
+      const settled = await this.settlePush(
+        root,
+        name,
+        commit,
+        failure === "refused" ? "push-failed" : failure,
+      );
       if (settled !== "pushed") {
         return settled;
       }

@@ -1,6 +1,6 @@
 // Withdraw from release pushes one commit to the default branch and follows
 // it locally without touching the working tree (#1729).
-import { readFile, rm } from "node:fs/promises";
+import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
 import { describe, expect, it } from "vitest";
@@ -125,6 +125,22 @@ describe("withdrawing on the default branch", { timeout: 40_000 }, () => {
     expect(await withdraw([tdd], { tip })).toBe("clone-not-current");
     expect(await remoteTip()).toBe(tip);
     expect(await out(stages.root, "rev-parse", "HEAD")).toBe(head);
+  });
+
+  it("reads a push the remote declines as refused, and writes nothing", async () => {
+    await writeSkill("tdd", "merged after the release");
+    await merge("edit tdd");
+    await writeSkill("tdd", "edited, never proposed");
+    const tip = await remoteTip();
+    // Stands in for a protected branch: git prints the same `[remote rejected]`.
+    const hook = join(stages.remote, "hooks", "pre-receive");
+    await writeFile(hook, "#!/bin/sh\nexit 1\n");
+    await chmod(hook, 0o755);
+
+    expect(await withdraw([tdd], { tip })).toBe("refused");
+    expect(await remoteTip()).toBe(tip);
+    expect(await out(stages.root, "rev-parse", "HEAD")).toBe(tip);
+    expect(await skillText("tdd")).toContain("edited, never proposed");
   });
 
   it("removes an item from a Harness never released", async () => {
