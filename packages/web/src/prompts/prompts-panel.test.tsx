@@ -230,6 +230,7 @@ describe("PromptsPanel — Copy prompt", () => {
       ["Type", "Prompt"],
       ["Latest release", "v1.4.0"],
       ["Path", ".maestro/prompts/pr-review.md"],
+      ["Category", "No category"],
     ]);
     const text = pane.getByRole("region", { name: "Prompt" });
     expect(

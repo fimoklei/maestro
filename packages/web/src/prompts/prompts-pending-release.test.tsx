@@ -103,6 +103,7 @@ describe("a prompt whose merged change waits for a release", () => {
         ["Change", "Changed"],
         ["Latest release", "v1.4.0"],
         ["Path", ".maestro/prompts/pr-review.md"],
+        ["Category", "No category"],
       ]),
     );
     expect(

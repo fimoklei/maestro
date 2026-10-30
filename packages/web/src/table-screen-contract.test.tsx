@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { CategoryList } from "@maestro/core";
 import type { QueryClient } from "@tanstack/react-query";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -156,14 +157,18 @@ const skillsLeaves = (): RowLeaves => {
   };
 };
 
-// The Inventory read answers these prompts; every other read never answers.
+// The Inventory read answers these prompts and the categories read an empty
+// list, so the selection column shows; every other read never answers.
 const renderPrompts = (names: () => readonly string[]) => {
   vi.stubGlobal(
     "fetch",
-    vi.fn(
-      async (input: RequestInfo | URL) =>
-        noCategories(input) ??
-        (String(input) === "/api/inventory/primitives"
+    vi.fn(async (input: RequestInfo | URL) =>
+      String(input) === "/api/categories"
+        ? jsonResponse({
+            categories: [],
+            assignments: [],
+          } satisfies CategoryList)
+        : String(input) === "/api/inventory/primitives"
           ? jsonResponse({
               primitives: names().map((name) => ({
                 type: "prompt",
@@ -176,7 +181,7 @@ const renderPrompts = (names: () => readonly string[]) => {
               })),
               unreadTypes: [],
             })
-          : new Promise<Response>(() => {})),
+          : new Promise<Response>(() => {}),
     ),
   );
   return renderWithQuery(
@@ -672,7 +677,7 @@ const ON_TABLE_SCREEN: Row[] = [
     // prompts-panel.test.tsx covers that card.
     card: null,
     reading: null,
-    columns: ["Name", "Description", "Category", "Actions"],
+    columns: ["Select prompts", "Name", "Description", "Category", "Actions"],
     off: ["Category"],
     // Copy prompt writes the clipboard, never the server, so no write is held.
     actions: {

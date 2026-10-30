@@ -17,6 +17,8 @@ const SRC = join(import.meta.dirname);
 const PLAIN: Record<string, Record<string, string>> = {
   "categories/categories-copy.ts": {
     "`${countWords(count, type)} in ${categoryName}`": "link label",
+    "`Rename ${name}`": "dialog title",
+    "`Delete ${name}`": "dialog title",
   },
   "categories/category-count-links.tsx": {
     "`?${new URLSearchParams({ category: name })}`": "link URL",
@@ -100,6 +102,9 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Select ${name} for bulk deploy`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",
     '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",
+  },
+  "prompts/prompts-copy.ts": {
+    "`Select ${name}`": "checkbox label",
   },
   "registry/repositories-copy.ts": {
     "`${UNREGISTER} ${name}`": "dialog title",

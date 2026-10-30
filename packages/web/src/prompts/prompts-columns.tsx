@@ -12,7 +12,7 @@ import { WARNING_GLYPH } from "../ui/status-family";
 import { reading } from "../ui/status-reading";
 import { NAME_NOT_VALID, NAME_RULE } from "./prompts-copy";
 
-export type RowAction = "copy" | "edit" | "delete";
+export type RowAction = "copy" | "edit" | "category" | "delete";
 
 export type PromptItem = {
   action: RowAction;
@@ -81,7 +81,8 @@ export const promptsColumns = ({
           label={rowActionsLabel(row.original.name)}
           items={row.original.menu.map(({ action, ...item }) => ({
             ...item,
-            movesFocus: false,
+            // Set category's menu takes focus in the pane it opens.
+            movesFocus: action === "category",
             onSelect: () => onAction(row.original, action),
           }))}
           tabStop={false}

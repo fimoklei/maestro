@@ -54,6 +54,11 @@ export function PromptsPanel() {
   return (
     <PromptsView
       prompts={disconnected ? undefined : inventory.data}
+      assignments={
+        categories.isSuccess ? categories.data.assignments : undefined
+      }
+      categoryNames={categories.data?.categories.map((each) => each.name)}
+      initialCategory={initialCategory}
       harness={
         harness.isSuccess
           ? {
@@ -81,11 +86,6 @@ export function PromptsPanel() {
       // The work lands on the Harness view, as Delete skill's does (#1385).
       onDeleted={landOnHarness}
       onEdited={landOnHarness}
-      assignments={
-        categories.isSuccess ? categories.data.assignments : undefined
-      }
-      categoryNames={categories.data?.categories.map((each) => each.name)}
-      initialCategory={initialCategory}
     />
   );
 }

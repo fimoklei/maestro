@@ -5,9 +5,15 @@ import { requestJson } from "../api/http";
 const CATEGORIES_KEY = ["categories"] as const;
 
 export function useCategories() {
+  return useCategoriesWhile(true);
+}
+
+/** The categories query, read only while `enabled`, as while a dialog is open. */
+export function useCategoriesWhile(enabled: boolean) {
   return useQuery({
     queryKey: CATEGORIES_KEY,
     queryFn: () => requestJson<CategoryList>("/api/categories"),
+    enabled,
   });
 }
 
@@ -23,6 +29,40 @@ export function useAddCategory() {
         body: JSON.stringify({ name }),
       }),
     onSuccess: ({ added: _added, ...list }) => {
+      queryClient.setQueryData(CATEGORIES_KEY, list);
+    },
+  });
+}
+
+export function useRenameCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rename: { from: string; to: string }) =>
+      requestJson<CategoryList>("/api/categories/rename", {
+        method: "POST",
+        body: JSON.stringify(rename),
+      }),
+    onSuccess: (list) => {
+      queryClient.setQueryData(CATEGORIES_KEY, list);
+    },
+  });
+}
+
+export type CategoryDeletion = {
+  name: string;
+  /** Where its items go; null takes them out of every category. */
+  moveTo: string | null;
+};
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deletion: CategoryDeletion) =>
+      requestJson<CategoryList>("/api/categories/delete", {
+        method: "POST",
+        body: JSON.stringify(deletion),
+      }),
+    onSuccess: (list) => {
       queryClient.setQueryData(CATEGORIES_KEY, list);
     },
   });

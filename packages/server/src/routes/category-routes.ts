@@ -7,7 +7,11 @@ import {
   ASSIGN_CATEGORY_BODY,
   addCategoryBodySchema,
   assignCategoryBodySchema,
+  DELETE_CATEGORY_BODY,
+  deleteCategoryBodySchema,
   parseBody,
+  RENAME_CATEGORY_BODY,
+  renameCategoryBodySchema,
 } from "../request-bodies";
 
 type Deps = Pick<AppDeps, "categories">;
@@ -33,6 +37,32 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
     return respond(
       c,
       await deps.categories.change({ kind: "add", name: body.data.name }),
+    );
+  });
+
+  app.post("/api/categories/rename", async (c) => {
+    const body = await parseBody(
+      c,
+      renameCategoryBodySchema,
+      RENAME_CATEGORY_BODY,
+    );
+    if (!body.ok) return body.response;
+    return respond(
+      c,
+      await deps.categories.change({ kind: "rename", ...body.data }),
+    );
+  });
+
+  app.post("/api/categories/delete", async (c) => {
+    const body = await parseBody(
+      c,
+      deleteCategoryBodySchema,
+      DELETE_CATEGORY_BODY,
+    );
+    if (!body.ok) return body.response;
+    return respond(
+      c,
+      await deps.categories.change({ kind: "delete", ...body.data }),
     );
   });
 

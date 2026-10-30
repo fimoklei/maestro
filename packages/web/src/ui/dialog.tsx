@@ -179,6 +179,17 @@ export function Dialog({
               screenFocus?.();
             }
           }}
+          onEscapeKeyDown={(event) => {
+            // An open menu in the body, such as the category menu, takes
+            // Escape for itself; the dialog stays.
+            const target = event.target;
+            if (
+              target instanceof Element &&
+              target.closest('[role="combobox"][aria-expanded="true"]')
+            ) {
+              event.preventDefault();
+            }
+          }}
           onInteractOutside={(event) => {
             // A click outside must not discard typed work.
             if (running || fieldsChanged) event.preventDefault();

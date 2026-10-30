@@ -87,7 +87,7 @@ const outcomeWords = (confirm: PromptConfirm) =>
 export const editPromptTitle = (prompt: string) => `Edit ${prompt}`;
 
 /** Why Edit prompt is blocked while both fields hold what was read. */
-export const NOTHING_CHANGED = "Change the description or text.";
+export const NOTHING_CHANGED = "Change the description, text or category.";
 
 /** The dialog's title, submit label and busy verb, by whether the name is taken. */
 export const PROMPT_IMPORT_MODES = {

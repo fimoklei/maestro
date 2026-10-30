@@ -2,12 +2,21 @@ import type { CategoryList } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  expectTooltipCause,
+  jsonResponse,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
+import { ToastHost } from "../ui/toast";
 import { CategoriesPage } from "./categories-page";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // Sonner keeps toasts in a module-global store.
+  toast.dismiss();
 });
 
 type Category = CategoryList["categories"][number];
@@ -23,20 +32,62 @@ const list = (categories: Category[]) =>
 
 type Answer = Response | Promise<Response>;
 
-// The server keeps the list; an add answers the list as core sorts it.
+const sorted = (categories: Category[]) =>
+  [...categories].sort((a, b) =>
+    a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
+  );
+
+// The server keeps the list; each write answers the list as core sorts it.
 function stubServer({
   categories = [],
   read,
   add,
+  rename,
+  remove,
 }: {
   categories?: Category[];
   read?: () => Answer;
   add?: (name: string) => Answer;
+  rename?: () => Answer;
+  remove?: () => Answer;
 } = {}) {
   let saved = categories;
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      if (url === "/api/categories/rename") {
+        if (rename) return rename();
+        const { from, to } = JSON.parse(String(init?.body)) as {
+          from: string;
+          to: string;
+        };
+        saved = sorted(
+          saved.map((each) =>
+            each.name === from ? { ...each, name: to.trim() } : each,
+          ),
+        );
+        return jsonResponse(list(saved));
+      }
+      if (url === "/api/categories/delete") {
+        if (remove) return remove();
+        const { name, moveTo } = JSON.parse(String(init?.body)) as {
+          name: string;
+          moveTo: string | null;
+        };
+        const gone = saved.find((each) => each.name === name);
+        saved = saved
+          .filter((each) => each.name !== name)
+          .map((each) =>
+            each.name === moveTo && gone !== undefined
+              ? {
+                  ...each,
+                  skills: each.skills + gone.skills,
+                  prompts: each.prompts + gone.prompts,
+                }
+              : each,
+          );
+        return jsonResponse(list(saved));
+      }
       if (url === "/api/categories" && init?.method === "POST") {
         const { name } = JSON.parse(String(init.body)) as { name: string };
         if (add) return add(name);
@@ -351,5 +402,344 @@ describe("Settings › Categories", () => {
 
     expect(await screen.findByText("Planning")).toBeInTheDocument();
     expect(screen.queryByText(/^Categories not read/)).not.toBeInTheDocument();
+  });
+});
+
+const renderWithToasts = () =>
+  renderWithQuery(
+    <MemoryRouter initialEntries={["/settings/categories"]}>
+      <CategoriesPage />
+      <ToastHost />
+    </MemoryRouter>,
+  );
+
+const rowMenu = async (name: string) => {
+  await userEvent.click(
+    await screen.findByRole("button", { name: `Actions for ${name}` }),
+  );
+  return screen.getByRole("menu");
+};
+
+const openRename = async (name: string) => {
+  const menu = await rowMenu(name);
+  await userEvent.click(
+    within(menu).getByRole("menuitem", { name: "Rename category" }),
+  );
+  return screen.findByRole("dialog", { name: `Rename ${name}` });
+};
+
+const openDelete = async (name: string) => {
+  const menu = await rowMenu(name);
+  await userEvent.click(
+    within(menu).getByRole("menuitem", { name: "Delete category" }),
+  );
+  return screen.findByRole("dialog", { name: `Delete ${name}` });
+};
+
+describe("Settings › Categories, rename and delete", () => {
+  it("offers Rename category and Delete category in each row's ⋮", async () => {
+    stubServer({ categories: [category("Planning", 3, 2)] });
+    renderPage();
+
+    const menu = await rowMenu("Planning");
+
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Rename category", "Delete category"]);
+  });
+
+  describe("Rename category", () => {
+    it("opens on the name with what follows it, and asks for a change first", async () => {
+      const { posts } = stubServer({
+        categories: [category("Planning", 3, 2)],
+      });
+      renderPage();
+
+      const dialog = await openRename("Planning");
+      const field = within(dialog).getByRole("textbox", { name: "Name" });
+
+      expect(field).toHaveValue("Planning");
+      await waitFor(() => expect(field).toHaveFocus());
+      expect(field).toHaveAccessibleDescription(
+        "Its 3 skills and 2 prompts show the new name.",
+      );
+      const rename = within(dialog).getByRole("button", {
+        name: "Rename category",
+      });
+      expect(rename).toHaveAttribute("aria-disabled", "true");
+      expectTooltipCause(rename, "Change the name.");
+      await userEvent.click(rename);
+      expect(posts()).toEqual([]);
+    });
+
+    it("renames: the dialog closes, the row sits selected under its new name, and the rename is announced", async () => {
+      const { posts } = stubServer({
+        categories: [category("Code review"), category("Planning", 3, 2)],
+      });
+      renderPage();
+
+      const dialog = await openRename("Planning");
+      const field = within(dialog).getByRole("textbox", { name: "Name" });
+      await userEvent.clear(field);
+      await userEvent.type(field, "Assets{Enter}");
+
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(posts()).toEqual([{ from: "Planning", to: "Assets" }]);
+      const renamed = rows()[0];
+      expect(renamed).toHaveTextContent("Assets3 skills · 2 prompts");
+      expect(renamed).toHaveAttribute("aria-current", "true");
+      await waitFor(() => expect(rows()[0]).toHaveFocus());
+      expect(screen.getByRole("status")).toHaveTextContent("Renamed Assets.");
+    });
+
+    it("allows a change of case only", async () => {
+      const { posts } = stubServer({ categories: [category("release notes")] });
+      renderPage();
+
+      const dialog = await openRename("release notes");
+      const field = within(dialog).getByRole("textbox", { name: "Name" });
+      expect(field).not.toHaveAttribute("aria-describedby");
+      await userEvent.clear(field);
+      await userEvent.type(field, "Release notes{Enter}");
+
+      await waitFor(() =>
+        expect(posts()).toEqual([
+          { from: "release notes", to: "Release notes" },
+        ]),
+      );
+    });
+
+    it("refuses another category's name ignoring case, naming it, without asking the server", async () => {
+      const { posts } = stubServer({
+        categories: [category("Planning", 3, 2), category("Writing", 1)],
+      });
+      renderPage();
+
+      const dialog = await openRename("Planning");
+      const field = within(dialog).getByRole("textbox", { name: "Name" });
+      await userEvent.clear(field);
+      await userEvent.type(field, "writing{Enter}");
+
+      expect(
+        within(dialog).getByText("Writing already exists."),
+      ).toBeInTheDocument();
+      expect(posts()).toEqual([]);
+    });
+
+    it("states the server's refusal of an existing name by the name it holds", async () => {
+      stubServer({
+        categories: [category("Planning")],
+        rename: () =>
+          jsonResponse({ error: "name-exists", existing: "Docs" }, 409),
+      });
+      renderPage();
+
+      const dialog = await openRename("Planning");
+      const field = within(dialog).getByRole("textbox", { name: "Name" });
+      await userEvent.clear(field);
+      await userEvent.type(field, "docs{Enter}");
+
+      expect(
+        await within(dialog).findByText("Docs already exists."),
+      ).toBeInTheDocument();
+    });
+
+    it("states a failed rename in the dialog", async () => {
+      stubServer({
+        categories: [category("Planning")],
+        rename: () => Promise.reject(new TypeError("offline")),
+      });
+      renderPage();
+
+      const dialog = await openRename("Planning");
+      const field = within(dialog).getByRole("textbox", { name: "Name" });
+      await userEvent.type(field, "s{Enter}");
+
+      expect(
+        await within(dialog).findByText("Category not renamed"),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          sentence("Select Rename category to try again."),
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("Delete category", () => {
+    it("moves the items to the chosen category, then deletes it and says so in a toast", async () => {
+      const { posts } = stubServer({
+        categories: [
+          category("Code review", 2, 1),
+          category("Planning", 3, 2),
+          category("Writing", 1),
+        ],
+      });
+      renderWithToasts();
+
+      const dialog = await openDelete("Planning");
+      expect(
+        within(dialog).getByText(
+          "Its 3 skills and 2 prompts move to the category you choose. They stay in the Harness.",
+        ),
+      ).toBeInTheDocument();
+      const moveTo = within(dialog).getByRole("button", { name: /^Move to/ });
+      expect(moveTo).toHaveTextContent("No category");
+      await userEvent.click(moveTo);
+      const menu = within(dialog).getByRole("listbox", { name: "Move to" });
+      expect(
+        within(menu)
+          .getAllByRole("option")
+          .map((option) => option.textContent),
+      ).toEqual(["✓No category", "Code review", "Writing"]);
+      await userEvent.click(
+        within(menu).getByRole("option", { name: "Writing" }),
+      );
+      expect(moveTo).toHaveTextContent("Writing");
+      expect(moveTo).toHaveFocus();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Delete category" }),
+      );
+
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(posts()).toEqual([{ name: "Planning", moveTo: "Writing" }]);
+      expect(rows().map((row) => row.textContent)).toEqual([
+        "Code review2 skills · 1 prompt",
+        "Writing4 skills · 2 prompts",
+      ]);
+      expect(
+        await screen.findByText(sentence("Deleted Planning.")),
+      ).toBeInTheDocument();
+      // Focus goes to the row now where the deleted one stood.
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Actions for Writing" }),
+        ).toHaveFocus(),
+      );
+    });
+
+    it("moves the items to No category unless another is chosen", async () => {
+      const { posts } = stubServer({ categories: [category("Planning", 1)] });
+      renderPage();
+
+      const dialog = await openDelete("Planning");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Delete category" }),
+      );
+
+      await waitFor(() =>
+        expect(posts()).toEqual([{ name: "Planning", moveTo: null }]),
+      );
+    });
+
+    it("adds a new category typed in Move to, then moves the items into it", async () => {
+      const { posts } = stubServer({
+        categories: [category("Planning", 0, 2)],
+      });
+      renderPage();
+
+      const dialog = await openDelete("Planning");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: /^Move to/ }),
+      );
+      await userEvent.type(
+        within(dialog).getByRole("combobox", { name: "Search categories" }),
+        "Notes{Enter}",
+      );
+      const moveTo = await within(dialog).findByRole("button", {
+        name: /^Move to/,
+      });
+      await waitFor(() => expect(moveTo).toHaveTextContent("Notes"));
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Delete category" }),
+      );
+
+      await waitFor(() =>
+        expect(posts()).toEqual([
+          { name: "Notes" },
+          { name: "Planning", moveTo: "Notes" },
+        ]),
+      );
+    });
+
+    it("closes Move to on Escape and keeps the dialog open", async () => {
+      stubServer({
+        categories: [category("Planning", 1), category("Writing")],
+      });
+      renderPage();
+
+      const dialog = await openDelete("Planning");
+      const moveTo = within(dialog).getByRole("button", { name: /^Move to/ });
+      await userEvent.click(moveTo);
+      await userEvent.keyboard("{Escape}");
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument();
+      expect(moveTo).toHaveFocus();
+    });
+
+    it("asks nothing about moving for an empty category, and opens on Cancel", async () => {
+      const { posts } = stubServer({
+        categories: [category("Planning", 1), category("Release notes")],
+      });
+      renderPage();
+
+      const dialog = await openDelete("Release notes");
+
+      expect(
+        within(dialog).getByText(
+          sentence("No skills or prompts are in Release notes."),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole("button", { name: /^Move to/ }),
+      ).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          within(dialog).getByRole("button", { name: "Cancel" }),
+        ).toHaveFocus(),
+      );
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Delete category" }),
+      );
+      await waitFor(() =>
+        expect(posts()).toEqual([{ name: "Release notes", moveTo: null }]),
+      );
+    });
+
+    it("states a failed delete in the dialog and keeps the row", async () => {
+      stubServer({
+        categories: [category("Planning", 1)],
+        remove: () => jsonResponse({ error: "category-not-found" }, 404),
+      });
+      renderPage();
+
+      const dialog = await openDelete("Planning");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Delete category" }),
+      );
+
+      expect(
+        await within(dialog).findByText("Category not deleted"),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          sentence(
+            "The category no longer exists. Select Re-read Categories to update the list.",
+          ),
+        ),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        within(dialog).getAllByRole("button", { name: "Close" }).at(-1) ??
+          dialog,
+      );
+      expect(rows()).toHaveLength(1);
+    });
   });
 });
