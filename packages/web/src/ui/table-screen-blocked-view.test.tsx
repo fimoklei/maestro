@@ -67,11 +67,11 @@ function EmptyGarden({
     openOnArrival: null,
   });
   const view = useViewOptions<Plant>([], {
-    kind: null,
+    oneOf: [],
     status: null,
     groupings:
       groups === undefined ? [] : [{ value: "place", label: "Place", groups }],
-    initialGrouping: groups === undefined ? "none" : "place",
+    defaultGrouping: groups === undefined ? "none" : "place",
     columns: [{ value: "place", label: "Place" }],
   });
   return (
