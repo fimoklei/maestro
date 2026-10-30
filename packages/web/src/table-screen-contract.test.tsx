@@ -283,6 +283,7 @@ const renderSkillsRow = () => {
   );
   renderWithQuery(
     <SkillsView
+      assignments={undefined}
       primitives={[TDD]}
       repos={[]}
       registryReady
@@ -593,6 +594,7 @@ const ON_TABLE_SCREEN: Row[] = [
         );
         renderWithQuery(
           <SkillsView
+            assignments={undefined}
             primitives={[TDD]}
             repos={[]}
             registryReady

@@ -113,6 +113,7 @@ function stubPendingFetch() {
 type Props = ComponentProps<typeof SkillsView>;
 
 const baseProps: Props = {
+  assignments: undefined,
   primitives,
   repos: [],
   registryReady: true,

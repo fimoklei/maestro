@@ -46,6 +46,8 @@ const meta = {
     },
     rollup: rollup({ targetCount: 3, behindCount: 1 }),
     latestRelease: "v1.4.0",
+    category: "Planning",
+    footMenu: null,
     selectionActive: false,
     listHeadingRef: null,
     targetItems: (deployment) => [
