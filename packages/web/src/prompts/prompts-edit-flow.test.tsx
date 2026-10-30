@@ -205,7 +205,12 @@ describe("Prompts — Edit prompt", () => {
     await waitFor(() =>
       expect(
         menu.getAllByRole("menuitem").map((item) => item.textContent),
-      ).toEqual(["Copy prompt", "Edit prompt", "Delete prompt"]),
+      ).toEqual([
+        "Copy prompt",
+        "Edit prompt",
+        "Set category",
+        "Delete prompt",
+      ]),
     );
     expect(menu.getAllByRole("separator")).toHaveLength(1);
   });
