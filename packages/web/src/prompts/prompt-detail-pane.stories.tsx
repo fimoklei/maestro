@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router";
 import { HttpError } from "../api/http";
 import { promptReadNotice } from "../harness/import-prompt-copy";
-import { COPY_PROMPT, DELETE_PROMPT } from "../ui/control-labels";
+import { COPY_PROMPT, DELETE_PROMPT, SET_CATEGORY } from "../ui/control-labels";
 import { PromptDetailPane } from "./prompt-detail-pane";
 
 const meta = {
@@ -20,11 +20,14 @@ const meta = {
       nameValid: true,
     },
     latestRelease: "v1.4.0",
+    category: "Planning",
+    footMenu: null,
     copyRefused: false,
     readRefusal: null,
     onCopy: () => {},
     footItems: [
       { label: COPY_PROMPT, onSelect: () => {} },
+      { label: SET_CATEGORY, onSelect: () => {} },
       { label: DELETE_PROMPT, danger: true, onSelect: () => {} },
     ],
     onClose: () => {},
