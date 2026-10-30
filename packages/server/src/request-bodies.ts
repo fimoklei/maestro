@@ -64,6 +64,16 @@ export const promptEditBodySchema = z
 // Trimmed and checked in core, which owns the name rules.
 export const addCategoryBodySchema = z.object({ name: z.string() });
 
+export const renameCategoryBodySchema = z.object({
+  from: z.string(),
+  to: z.string(),
+});
+
+export const deleteCategoryBodySchema = z.object({
+  name: z.string(),
+  moveTo: z.string().nullable(),
+});
+
 // Names only: core checks each item against what the Harness holds.
 export const assignCategoryBodySchema = z.object({
   items: z
@@ -308,6 +318,20 @@ export const RELEASE_BODY: RequestShape = {
 export const ADD_CATEGORY_BODY: RequestShape = {
   message: "Nothing was added. Reload the page, then add the category again.",
   detail: "The request carries a name: { name: string }.",
+};
+
+export const RENAME_CATEGORY_BODY: RequestShape = {
+  message:
+    "Nothing was renamed. Reload the page, then rename the category again.",
+  detail:
+    "The request carries the current and the new name: { from: string, to: string }.",
+};
+
+export const DELETE_CATEGORY_BODY: RequestShape = {
+  message:
+    "Nothing was deleted. Reload the page, then delete the category again.",
+  detail:
+    "The request carries a name and the category its items move to, or null: { name: string, moveTo: string | null }.",
 };
 
 export const ASSIGN_CATEGORY_BODY: RequestShape = {

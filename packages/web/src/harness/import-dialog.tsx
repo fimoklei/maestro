@@ -124,7 +124,7 @@ export function ImportDialog({
         <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
       </div>
 
-      <CategoryField field={category} disabled={importing} />
+      <CategoryField {...category} disabled={importing} />
 
       <Notice
         trigger="load"

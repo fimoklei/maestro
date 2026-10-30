@@ -21,7 +21,11 @@ import {
 
 type Refusal = { error?: unknown; configPath?: unknown };
 
-function failureOf(error: unknown, reread: string): NoticeContent | null {
+/** Why an assign did not land; `reread` is the screen's own Re-read control. */
+export function assignFailure(
+  error: unknown,
+  reread: string,
+): NoticeContent | null {
   if (!error) return null;
   const shape = requestShapeNotice(error);
   if (shape !== null) return shape;
@@ -77,7 +81,7 @@ export function SetCategoryMenu({
       const words = ITEM_WORDS[only?.type ?? "skill"];
       return { name: { count: set.length, ...words }, row: null };
     },
-    failure: (error) => failureOf(error, reread),
+    failure: (error) => assignFailure(error, reread),
   });
   const [only] = items;
   const words = ITEM_WORDS[only?.type ?? "skill"];

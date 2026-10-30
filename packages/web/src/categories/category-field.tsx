@@ -6,38 +6,46 @@ import { FieldFrame } from "../ui/field-frame";
 import { FOCUS_RING } from "../ui/focus-ring";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { Icon } from "../ui/icon";
-import { CATEGORY_FACT } from "./categories-copy";
+import { CATEGORY_FIELD } from "./categories-copy";
 import { CategoryPicker } from "./category-picker";
 
-/** What a dialog's Category field shows and reports; `useCategoryChoice` builds it. */
+/** What an import dialog's Category field shows; `useCategoryChoice` builds it. */
 export type CategoryFieldState = {
   /** Null for No category. */
   value: string | null;
   hint: string;
   /** A name the imported file gave that matches no category: the menu opens on Add. */
   suggested: string | null;
-  onPick: (category: string | null) => void;
+  onChange: (category: string | null) => void;
 };
 
 /**
  * A dialog's Category field: a button holding the category, which opens the
- * category menu under it. Adding a category there adds it at once.
+ * category menu under it. Adding a category there adds it at once. The menu
+ * takes Escape for itself; `Dialog` leaves it an open combobox's Escape.
  */
 export function CategoryField({
-  field,
+  value,
+  onChange,
   disabled,
+  hint = CATEGORY_FIELD.hint,
+  suggested = null,
 }: {
-  field: CategoryFieldState;
+  value: string | null;
+  onChange: (category: string | null) => void;
   /** Locked while the dialog's action runs. */
   disabled: boolean;
+  /** Only Import says more: where a category the file named came from. */
+  hint?: string;
+  suggested?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const valueId = useId();
   return (
     <FieldFrame
-      label={CATEGORY_FACT}
-      hint={field.hint}
+      label={CATEGORY_FIELD.label}
+      hint={hint}
       error={undefined}
       describedBy={undefined}
       invalid={false}
@@ -61,17 +69,19 @@ export function CategoryField({
             )}
           >
             <span id={valueId} className="truncate">
-              {field.value ?? NO_CATEGORY}
+              {value ?? NO_CATEGORY}
             </span>
             <Icon of={ChevronDown} className="shrink-0 text-gray-11" />
           </button>
+          {/* In the flow, not floating: the dialog body scrolls, and a menu
+              over it would be cut off at 200% zoom. */}
           {open ? (
             <CategoryPicker
-              label={CATEGORY_FACT}
-              current={field.value}
-              initialQuery={field.suggested ?? undefined}
+              label={CATEGORY_FIELD.label}
+              current={value}
+              initialQuery={suggested ?? undefined}
               onPick={(category) => {
-                field.onPick(category);
+                onChange(category);
                 setOpen(false);
                 button.current?.focus();
               }}

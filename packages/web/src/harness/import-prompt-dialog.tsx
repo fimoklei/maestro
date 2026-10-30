@@ -8,7 +8,7 @@ import {
 } from "../categories/category-field";
 import { Button } from "../ui/button";
 import { CHOOSE_ANOTHER_FILE, EDIT_PROMPT } from "../ui/control-labels";
-import { Dialog } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import { Field } from "../ui/field";
 import { Icon } from "../ui/icon";
@@ -61,6 +61,11 @@ type EditProps = PromptDialogBase & {
   mode: "edit";
   /** Why Edit prompt is blocked; null once a field changed. */
   unavailable: string | null;
+  /** Undefined until the categories are read; null for No category. */
+  category: string | null | undefined;
+  pickCategory: (name: string | null) => void;
+  /** The edit landed and its category did not: only Close is left. */
+  outcome: boolean;
 };
 
 type ImportPromptDialogProps = ImportProps | EditProps;
@@ -82,6 +87,9 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         }
       : { ...PROMPT_IMPORT_MODES[props.mode], unavailable: null };
   const importOnly = props.mode === "edit" ? null : props;
+  const editOnly = props.mode === "edit" ? props : null;
+  // Once the edit landed, only Close is left.
+  const locked = importing || editOnly?.outcome === true;
   // Choose file opens the browser's file chooser at once, again on each press.
   const pickSource = (next: PromptSource) => {
     importOnly?.setSource(next);
@@ -103,14 +111,20 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
       title={title}
       version={null}
       width={480}
-      phase={importing ? "running" : "idle"}
-      action={{
-        label: confirm,
-        verb,
-        tone: "primary",
-        unavailable,
-        onRun: submit,
-      }}
+      {...dialogRun({
+        source:
+          editOnly?.outcome === true
+            ? null
+            : {
+                label: confirm,
+                verb,
+                tone: "primary",
+                unavailable,
+                onRun: submit,
+              },
+        running: importing,
+        outcome: editOnly?.outcome === true,
+      })}
       failure={failure}
       // Every field states its own hint and its own refusal beside it.
       describedBy={null}
@@ -118,9 +132,18 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
       onClose={close}
     >
       {importOnly === null ? (
-        <dl className="m-0">
-          <Fact label="Name" value={draft.name} wrap machine={false} />
-        </dl>
+        <>
+          <dl className="m-0">
+            <Fact label="Name" value={draft.name} wrap machine={false} />
+          </dl>
+          {editOnly === null || editOnly.category === undefined ? null : (
+            <CategoryField
+              value={editOnly.category}
+              onChange={editOnly.pickCategory}
+              disabled={locked}
+            />
+          )}
+        </>
       ) : (
         <>
           <SegmentedControl
@@ -200,7 +223,7 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         error={fieldErrors.description}
         value={draft.description}
         onChange={(description) => edit({ description })}
-        disabled={importing}
+        disabled={locked}
       />
       <TextAreaField
         label="Prompt text"
@@ -209,10 +232,10 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         value={draft.text}
         onChange={(text) => edit({ text })}
         onPaste={importOnly === null ? undefined : pasteText}
-        disabled={importing}
+        disabled={locked}
       />
       {importOnly === null ? null : (
-        <CategoryField field={importOnly.category.field} disabled={importing} />
+        <CategoryField {...importOnly.category.field} disabled={importing} />
       )}
     </Dialog>
   );

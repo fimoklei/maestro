@@ -180,11 +180,12 @@ export function Dialog({
             }
           }}
           onEscapeKeyDown={(event) => {
-            // An open menu in the body, such as the category menu, closes
-            // on Escape itself and leaves the dialog open.
+            // An open menu in the body, such as the category menu, takes
+            // Escape for itself; the dialog stays.
+            const target = event.target;
             if (
-              event.target instanceof Element &&
-              event.target.closest('[role="combobox"][aria-expanded="true"]')
+              target instanceof Element &&
+              target.closest('[role="combobox"][aria-expanded="true"]')
             ) {
               event.preventDefault();
             }

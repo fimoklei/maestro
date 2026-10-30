@@ -44,3 +44,8 @@ export const NOT_COPIED = {
   message:
     "The browser blocked the clipboard. Highlight the text in the Prompt box. Then copy it yourself.",
 };
+
+// The selection column, which Set category's selection bar acts on.
+export const SELECT_PROMPTS = "Select prompts";
+export const SELECT_ALL_PROMPTS = "Select all prompts";
+export const selectPromptLabel = (name: string) => `Select ${name}`;

@@ -37,7 +37,7 @@ const meta = {
       value: "Code review",
       hint: "Taken from SKILL.md.",
       suggested: null,
-      onPick: () => {},
+      onChange: () => {},
     },
   },
 } satisfies Meta<typeof ImportDialog>;

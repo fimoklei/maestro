@@ -1,10 +1,17 @@
-import type { InventoryPrompt } from "@maestro/core";
+import type { CategoryList, InventoryPrompt } from "@maestro/core";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { SetCategoryBarAction } from "../categories/set-category-bar-action";
+import { SetCategoryMenu } from "../categories/set-category-menu";
 import { promptReadNotice } from "../harness/import-prompt-copy";
 import { ImportPromptDialog } from "../harness/import-prompt-dialog";
 import { useEditPromptFlow } from "../harness/use-edit-prompt-flow";
+import {
+  hiddenStagedCount,
+  setStagedMany,
+  toggleStaged,
+} from "../inventory/bulk-selection";
 import {
   type CloneReading,
   deleteItem,
@@ -20,11 +27,19 @@ import {
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
-import { COPY_PROMPT, DELETE_PROMPT, EDIT_PROMPT } from "../ui/control-labels";
+import type { MenuClosedBy } from "../ui/category-menu";
+import {
+  COPY_PROMPT,
+  DELETE_PROMPT,
+  EDIT_PROMPT,
+  rereadLabel,
+  SET_CATEGORY,
+} from "../ui/control-labels";
 import { type Reading, readFreshness, useFreshnessLine } from "../ui/freshness";
 import { GitHubMark } from "../ui/github-mark-link";
 import { Icon } from "../ui/icon";
 import { named, phrase } from "../ui/phrase";
+import { SelectionBar } from "../ui/selection-bar";
 import { TableScreen } from "../ui/table-screen";
 import { type ReadFailure, useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions } from "../ui/use-view-options";
@@ -54,6 +69,9 @@ import {
   PROMPTS_FACT,
   promptsFactValue,
   SEARCH_LABEL,
+  SELECT_ALL_PROMPTS,
+  SELECT_PROMPTS,
+  selectPromptLabel,
 } from "./prompts-copy";
 
 // The default branch no longer holds the file under this name.
@@ -81,9 +99,12 @@ export function PromptsView({
   localDeletions,
   onDeleted,
   onEdited,
+  assignments,
 }: {
   /** Undefined until the Inventory has been read once. */
   prompts: InventoryPrompt[] | undefined;
+  /** Each item's category; undefined while unread, which leaves Set category and the selection out. */
+  assignments: CategoryList["assignments"] | undefined;
   /** The connected Harness: undefined until read, null where its read failed. */
   harness: HarnessFacts | null | undefined;
   /** Every reading the prompts rest on. */
@@ -115,11 +136,21 @@ export function PromptsView({
   });
   const [query, setQuery] = useState("");
   const [deletion, setDeletion] = useState<Deletion | null>(null);
+  // Set category's menu opens above the pane's foot, not as a dialog.
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const categoryButton = useRef<HTMLButtonElement>(null);
+  const closeCategory = (via: MenuClosedBy) => {
+    setCategoryOpen(false);
+    if (via !== "press") categoryButton.current?.focus();
+  };
+  // Apart from the open row, so inspecting and selecting never toggle each other.
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   // Opening a row any other way drops a menu item's dialog.
   const state = {
     ...screen,
     open: (name: string | null) => {
       setDeletion(null);
+      setCategoryOpen(false);
       screen.open(name);
     },
   };
@@ -145,7 +176,7 @@ export function PromptsView({
     : null;
   const editFlow = useEditPromptFlow({
     screen: "prompts",
-    report: screen.report,
+    writes: screen,
     onEdited,
   });
   // A read that found nothing opens no dialog; the row's pane says why.
@@ -164,8 +195,14 @@ export function PromptsView({
   const run: Record<RowAction, (prompt: InventoryPrompt) => void> = {
     copy,
     edit: (prompt) => edit(prompt.name),
+    category: (prompt) => {
+      screen.open(prompt.name);
+      setDeletion(null);
+      setCategoryOpen(true);
+    },
     delete: (prompt) => {
       screen.open(prompt.name);
+      setCategoryOpen(false);
       setDeletion(deletionOf(clone, prompt.name));
     },
   };
@@ -184,14 +221,34 @@ export function PromptsView({
     const editable = prompt.nameValid && !leavesDefaultBranch(prompt);
     const copyItem: PromptItem = { action: "copy", label: COPY_PROMPT };
     const editItem: PromptItem = { action: "edit", label: EDIT_PROMPT };
+    const categoryItems: PromptItem[] =
+      assignments === undefined
+        ? []
+        : [{ action: "category", label: SET_CATEGORY }];
     // Every write refuses a bad name: the pane's warning says to rename it.
     const deleteItems: PromptItem[] = prompt.nameValid
       ? deleteItem(clone, prompt.name, DELETE_PROMPT)
       : [];
     return {
       ...prompt,
-      menu: [copyItem, ...(editable ? [editItem] : []), ...deleteItems],
-      foot: [copyItem, { ...editItem, disabled: !editable }, ...deleteItems],
+      category:
+        assignments === undefined
+          ? undefined
+          : (assignments.find(
+              (each) => each.type === "prompt" && each.name === prompt.name,
+            )?.category ?? null),
+      menu: [
+        copyItem,
+        ...(editable ? [editItem] : []),
+        ...categoryItems,
+        ...deleteItems,
+      ],
+      foot: [
+        copyItem,
+        { ...editItem, disabled: !editable },
+        ...categoryItems,
+        ...deleteItems,
+      ],
       readAge,
     };
   });
@@ -221,9 +278,11 @@ export function PromptsView({
 
   const matched = new Set(filterByName(rows, query).map((row) => row.name));
   const searched = (row: PromptRow) => matched.has(row.name);
-  const shownCount = rows.filter(
-    (row) => searched(row) && view.shown(row),
-  ).length;
+  const shownNames = rows
+    .filter((row) => searched(row) && view.shown(row))
+    .map((row) => row.name);
+  const shownCount = shownNames.length;
+  const reread = rereadLabel(screen.name);
 
   return (
     <>
@@ -293,6 +352,43 @@ export function PromptsView({
               </Button>
             ),
         }}
+        selection={
+          assignments === undefined
+            ? undefined
+            : {
+                label: SELECT_PROMPTS,
+                allLabel: SELECT_ALL_PROMPTS,
+                rowLabel: (row) => selectPromptLabel(row.name),
+                selected,
+                onToggle: (row) =>
+                  setSelected((current) => toggleStaged(current, row.name)),
+                onSetSelected: (many, select) =>
+                  setSelected((current) =>
+                    setStagedMany(
+                      current,
+                      many.map((row) => row.name),
+                      select,
+                    ),
+                  ),
+              }
+        }
+        // Rises with the first choice and leaves with the last.
+        selectionBar={
+          assignments !== undefined && selected.size > 0 ? (
+            <SelectionBar
+              count={selected.size}
+              hiddenCount={hiddenStagedCount(selected, shownNames)}
+              onClear={() => setSelected(new Set())}
+            >
+              <SetCategoryBarAction
+                type="prompt"
+                names={[...selected]}
+                reread={reread}
+                onSelectionSpent={() => setSelected(new Set())}
+              />
+            </SelectionBar>
+          ) : null
+        }
         pane={(row, frame) => (
           <>
             <PromptDetailPane
@@ -301,13 +397,33 @@ export function PromptsView({
               copyRefused={copyRefusedFor === row.name}
               readRefusal={readNotice(row.name)}
               onCopy={() => copy(row)}
-              footItems={row.foot.map(({ action, ...item }) => ({
-                ...item,
-                onSelect: () => run[action](row),
-              }))}
+              category={row.category}
+              footItems={row.foot.map(({ action, ...item }) =>
+                action === "category"
+                  ? {
+                      ...item,
+                      expanded: categoryOpen,
+                      buttonRef: categoryButton,
+                      onSelect: () => setCategoryOpen(!categoryOpen),
+                    }
+                  : { ...item, onSelect: () => run[action](row) },
+              )}
+              footMenu={
+                categoryOpen ? (
+                  <SetCategoryMenu
+                    // Keyed by prompt: paging to the next row starts afresh.
+                    key={row.name}
+                    items={[{ type: "prompt", name: row.name }]}
+                    reread={reread}
+                    onClose={closeCategory}
+                  />
+                ) : null
+              }
               {...frame}
-              // A dialog the row's ⋮ opened holds focus itself.
-              initialFocus={deletion === null ? undefined : null}
+              // A dialog or menu the row's ⋮ opened holds focus itself.
+              initialFocus={
+                deletion === null && !categoryOpen ? undefined : null
+              }
             />
             {deletion === null ? null : (
               <PaneDeletion

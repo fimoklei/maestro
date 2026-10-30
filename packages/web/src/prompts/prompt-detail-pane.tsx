@@ -1,10 +1,13 @@
 import type { InventoryPrompt } from "@maestro/core";
+import type { ReactNode } from "react";
+import { CATEGORY_FACT } from "../categories/categories-copy";
 import {
   pendingReleaseFacts,
   pendingReleaseLine,
 } from "../inventory/pending-release-copy";
 import { TYPE_WORD } from "../inventory/type-filter";
 import { LATEST_RELEASE_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
+import { NO_CATEGORY } from "../ui/category-menu-copy";
 import { DetailPane, type PaneNotice } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
 import type { NoticeContent } from "../ui/notice";
@@ -20,6 +23,8 @@ export function PromptDetailPane({
   readRefusal,
   onCopy,
   footItems,
+  footMenu,
+  category,
   position,
   onPage,
   initialFocus,
@@ -36,6 +41,10 @@ export function PromptDetailPane({
   onCopy: () => void;
   /** The row's ⋮ items, Copy prompt first. */
   footItems: readonly FootItem[];
+  /** A menu a foot item opened, such as Set category's. */
+  footMenu: ReactNode;
+  /** The prompt's category, null for none; undefined while the categories are unread. */
+  category: string | null | undefined;
   position?: { index: number; count: number } | null;
   onPage?: (step: -1 | 1) => void;
   initialFocus?: string | null;
@@ -91,6 +100,9 @@ export function PromptDetailPane({
           machine: true,
           fullValue: prompt.path,
         },
+        category === undefined
+          ? null
+          : { label: CATEGORY_FACT, value: category ?? NO_CATEGORY },
       ]}
       paragraph={[
         ...(pending === null ? [] : [pendingReleaseLine(prompt, pending)]),
@@ -100,6 +112,7 @@ export function PromptDetailPane({
       notices={notices}
       subList={<PromptText text={prompt.text} onCopy={onCopy} />}
       foot={footItems}
+      footMenu={footMenu}
       leadsWithNextStep
     />
   );

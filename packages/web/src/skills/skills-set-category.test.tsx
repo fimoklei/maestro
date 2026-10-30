@@ -1,8 +1,14 @@
-import type { CategoryList } from "@maestro/core";
+import type { InventoryPrimitive } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  categoryFact,
+  categoryMenu,
+  statusRegion,
+  stubCategoryServer,
+} from "../categories/category-server-test-helpers";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import { SkillsPanel } from "./skills-panel";
@@ -14,83 +20,20 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-type Assignment = CategoryList["assignments"][number];
-
-const skill = (name: string) => ({
-  type: "skill",
-  name,
-  description: `${name} description`,
-  pendingRelease: null,
-});
-
-const listOf = (names: string[], assignments: Assignment[]): CategoryList => ({
-  categories: names.map((name) => ({
+const skill = (name: string) =>
+  ({
+    type: "skill",
     name,
-    skills: assignments.filter((each) => each.category === name).length,
-    prompts: 0,
-  })),
-  assignments,
-});
+    description: `${name} description`,
+    path: `.apm/skills/${name}`,
+    pendingRelease: null,
+  }) satisfies InventoryPrimitive;
 
-// The server's list, which every write answers in whole.
-function stubServer({
-  names = ["Planning", "Writing"],
-  assignments = [],
-  assign,
-}: {
-  names?: string[];
-  assignments?: Assignment[];
-  assign?: () => Response;
-} = {}) {
-  const state = { names: [...names], assignments: [...assignments] };
-  const posts: { url: string; body: unknown }[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      if (init?.method === "POST") {
-        const body = JSON.parse(String(init.body));
-        posts.push({ url, body });
-        if (url === "/api/categories/assign") {
-          if (assign) return assign();
-          const keys = new Set(body.items.map((item: Assignment) => item.name));
-          state.assignments = [
-            ...state.assignments.filter((each) => !keys.has(each.name)),
-            ...(body.category === null
-              ? []
-              : body.items.map((item: Assignment) => ({
-                  ...item,
-                  category: body.category,
-                }))),
-          ];
-          return jsonResponse(listOf(state.names, state.assignments));
-        }
-        if (url === "/api/categories") {
-          state.names = [...state.names, body.name].sort();
-          return jsonResponse({
-            ...listOf(state.names, state.assignments),
-            added: body.name,
-          });
-        }
-      }
-      if (url === "/api/categories") {
-        return jsonResponse(listOf(state.names, state.assignments));
-      }
-      if (url.startsWith("/api/registry")) return jsonResponse({ repos: [] });
-      if (url.startsWith("/api/deploy-state")) {
-        return jsonResponse({ primitives: [], skipped: [] });
-      }
-      if (url.startsWith("/api/harness")) {
-        return jsonResponse({ error: "not-configured" }, 409);
-      }
-      return jsonResponse({
-        primitives: [skill("tdd"), skill("grill"), skill("research")],
-        unreadTypes: [],
-      });
-    }),
-  );
-  return posts;
-}
+const SKILLS = [skill("tdd"), skill("grill"), skill("research")];
+
+const stubServer = (
+  options: Omit<Parameters<typeof stubCategoryServer>[0], "primitives"> = {},
+) => stubCategoryServer({ primitives: SKILLS, ...options });
 
 function renderPanel() {
   return renderWithQuery(
@@ -105,20 +48,6 @@ async function openPane(name: string) {
   await userEvent.click(await screen.findByRole("gridcell", { name }));
   return within(await screen.findByRole("complementary"));
 }
-
-const categoryFact = (pane: ReturnType<typeof within>) =>
-  pane.getByText("Category", { selector: "dt" }).nextElementSibling;
-
-// The screen's own region; a notice carries a role of its own.
-const region = () => {
-  const found = screen
-    .getAllByRole("status")
-    .find((each) => each.classList.contains("sr-only"));
-  if (found === undefined) throw new Error("no status region");
-  return found;
-};
-
-const menu = (name: string) => within(screen.getByRole("group", { name }));
 
 describe("Set category on Skills", () => {
   it("shows each skill's category in the pane, or No category", async () => {
@@ -161,7 +90,7 @@ describe("Set category on Skills", () => {
     await userEvent.click(
       await pane.findByRole("button", { name: "Set category" }),
     );
-    const picker = menu("Set category for tdd");
+    const picker = categoryMenu("Set category for tdd");
     expect(
       picker.getByRole("option", { name: "Writing", selected: true }),
     ).toBeInTheDocument();
@@ -177,7 +106,7 @@ describe("Set category on Skills", () => {
       expect(categoryFact(pane)).toHaveTextContent("Planning"),
     );
     await waitFor(() =>
-      expect(region()).toHaveTextContent("Set category for tdd."),
+      expect(statusRegion()).toHaveTextContent("Set category for tdd."),
     );
     expect(
       screen.queryByRole("group", { name: "Set category for tdd" }),
@@ -268,7 +197,7 @@ describe("Set category on Skills", () => {
     );
     await userEvent.click(screen.getByRole("option", { name: "Planning" }));
 
-    const picker = menu("Set category for tdd");
+    const picker = categoryMenu("Set category for tdd");
     expect(await picker.findByText("Category not set")).toBeInTheDocument();
     expect(categoryFact(pane)).toHaveTextContent("No category");
   });
@@ -293,7 +222,7 @@ describe("Set category on Skills", () => {
         screen.getByRole("button", { name: "Set category" }),
       );
       await userEvent.click(
-        menu("Set category for 2 skills").getByRole("option", {
+        categoryMenu("Set category for 2 skills").getByRole("option", {
           name: "Writing",
         }),
       );
@@ -308,6 +237,27 @@ describe("Set category on Skills", () => {
       expect(
         await screen.findByText("Set category for 2 skills."),
       ).toBeInTheDocument();
+    });
+
+    it("clears the selection once the category is set, as Deploy does", async () => {
+      stubServer();
+      renderPanel();
+      await select("tdd", "grill");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Set category" }),
+      );
+      await userEvent.click(
+        categoryMenu("Set category for 2 skills").getByRole("option", {
+          name: "Writing",
+        }),
+      );
+
+      await waitFor(() => expect(screen.queryByText("2 selected")).toBeNull());
+      expect(
+        screen.getByRole("checkbox", { name: "Select tdd for bulk deploy" }),
+      ).not.toBeChecked();
+      expect(screen.getByRole("grid")).toHaveFocus();
     });
 
     it("marks the shared category, and nothing where the selected skills differ", async () => {
@@ -325,7 +275,7 @@ describe("Set category on Skills", () => {
         screen.getByRole("button", { name: "Set category" }),
       );
       expect(
-        menu("Set category for 2 skills").getByRole("option", {
+        categoryMenu("Set category for 2 skills").getByRole("option", {
           name: "Writing",
           selected: true,
         }),
@@ -337,7 +287,7 @@ describe("Set category on Skills", () => {
         screen.getByRole("button", { name: "Set category" }),
       );
       expect(
-        menu("Set category for 3 skills").queryAllByRole("option", {
+        categoryMenu("Set category for 3 skills").queryAllByRole("option", {
           selected: true,
         }),
       ).toEqual([]);

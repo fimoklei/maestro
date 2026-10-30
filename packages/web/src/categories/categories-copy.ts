@@ -76,7 +76,20 @@ export const ITEM_WORDS: Record<
   prompt: { one: "prompt", many: "prompts" },
 };
 
+/** The Category field of Import skill, Import prompt and Edit prompt. */
+export const CATEGORY_FIELD = {
+  label: "Category",
+  hint: "Only you see this category.",
+} as const;
+
 const CATEGORY_NOT_SET = "Category not set";
+
+/** The edit landed in the Harness; the category after it did not. */
+export const CATEGORY_NOT_SET_AFTER_EDIT: NoticeContent = {
+  level: "error",
+  label: CATEGORY_NOT_SET,
+  message: `The prompt was edited. Select Close, then select ${SET_CATEGORY} on Prompts.`,
+};
 
 /** Why Set category did not land, stated in the menu; `reread` is the screen's control. */
 export const categoryNotSet = (
@@ -92,9 +105,6 @@ export const categoryNotSet = (
         ? `The Harness no longer holds it. Select ${reread} to update the list.`
         : "Choose the category again.",
 });
-
-/** The Category field's hint in Import skill and Import prompt. */
-export const CATEGORY_FIELD_HINT = "Only you see this category.";
 
 /** The hint once the field holds the category the imported file names. */
 export const TAKEN_FROM_FILE: Record<HarnessPrimitiveType, string> = {
@@ -116,4 +126,73 @@ export const categoryNotSetAfterImport = (
   level: "error",
   label: CATEGORY_NOT_SET,
   message: phrase`${named(name)} was ${mode === "update" ? "updated" : "imported"}. Select ${SET_CATEGORY} on ${SCREEN_OF[type]} to set its category.`,
+});
+
+export const RENAME_CATEGORY = "Rename category";
+export const DELETE_CATEGORY = "Delete category";
+export const renameCategoryTitle = (name: string) => `Rename ${name}`;
+export const deleteCategoryTitle = (name: string) => `Delete ${name}`;
+/** Why Rename category waits: the name is as it was. */
+export const CHANGE_THE_NAME = "Change the name.";
+export const MOVE_TO = "Move to";
+
+const counted = (count: number, one: string, many: string) =>
+  `${count} ${count === 1 ? one : many}`;
+
+// `3 skills and 2 prompts`, `1 skill`: what a category carries, at least one.
+function carried(skills: number, prompts: number): string {
+  const parts = [
+    skills > 0 ? counted(skills, "skill", "skills") : null,
+    prompts > 0 ? counted(prompts, "prompt", "prompts") : null,
+  ].filter((part) => part !== null);
+  return parts.join(" and ");
+}
+
+const one = (skills: number, prompts: number) => skills + prompts === 1;
+
+/** Rename category's field hint; an empty category has none. */
+export function renameHint(
+  skills: number,
+  prompts: number,
+): string | undefined {
+  if (skills + prompts === 0) return undefined;
+  const verb = one(skills, prompts) ? "shows" : "show";
+  return `Its ${carried(skills, prompts)} ${verb} the new name.`;
+}
+
+/** Delete category's body for a category that carries items. */
+export function deleteMoves(skills: number, prompts: number): string {
+  return one(skills, prompts)
+    ? `Its ${carried(skills, prompts)} moves to the category you choose. It stays in the Harness.`
+    : `Its ${carried(skills, prompts)} move to the category you choose. They stay in the Harness.`;
+}
+
+/** Delete category's body for an empty category. */
+export const emptyCategoryDeleted = (name: string): Phrase =>
+  phrase`No skills or prompts are in ${named(name)}.`;
+
+const GONE = `The category no longer exists. Select ${REREAD_CATEGORIES} to update the list.`;
+
+/** Why Rename category did not land, stated in its dialog. */
+export const notRenamed = (
+  code: "category-not-found" | "other",
+): NoticeContent => ({
+  level: "error",
+  label: "Category not renamed",
+  message:
+    code === "category-not-found"
+      ? GONE
+      : `Select ${RENAME_CATEGORY} to try again.`,
+});
+
+/** Why Delete category did not land, stated in its dialog. */
+export const notDeleted = (
+  code: "category-not-found" | "other",
+): NoticeContent => ({
+  level: "error",
+  label: "Category not deleted",
+  message:
+    code === "category-not-found"
+      ? GONE
+      : `Select ${DELETE_CATEGORY} to try again.`,
 });

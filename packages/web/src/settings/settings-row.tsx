@@ -41,7 +41,8 @@ export function SettingsRow({
   rowRef,
 }: SettingsRowProps) {
   const className = cn(
-    "flex flex-wrap items-center gap-x-panel gap-y-inline border-edge border-b px-panel py-cell last:border-b-0",
+    // group/row: a row ⋮ shows on hover and focus.
+    "group/row flex flex-wrap items-center gap-x-panel gap-y-inline border-edge border-b px-panel py-cell last:border-b-0",
     selected && CURRENT_ROW,
   );
   const content = (

@@ -1,9 +1,10 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useContext, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import type { MenuClosedBy } from "../ui/category-menu";
 import { cn } from "../ui/cn";
 import { SET_CATEGORY } from "../ui/control-labels";
+import { ScreenFocusContext } from "../ui/screen-focus";
 import { SetCategoryMenu } from "./set-category-menu";
 
 // The box that would cut the menu off: its nearest scrolling ancestor.
@@ -21,21 +22,29 @@ export function SetCategoryBarAction({
   type,
   names,
   reread,
+  onSelectionSpent,
 }: {
   type: HarnessPrimitiveType;
   names: readonly string[];
   /** The screen's own Re-read control. */
   reread: string;
+  /** The category is set, so the selection has done its job. */
+  onSelectionSpent: () => void;
 }) {
   const [open, setOpen] = useState(false);
   // Opens above the bar; below it where the rows above leave too little room.
   const [below, setBelow] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  const screenFocus = useContext(ScreenFocusContext);
   const close = (via: MenuClosedBy) => {
     setOpen(false);
     setBelow(false);
-    if (via !== "press") button.current?.focus();
+    if (via === "picked") {
+      // The bar leaves with the selection, so focus goes back to the screen.
+      screenFocus?.();
+      onSelectionSpent();
+    } else if (via !== "press") button.current?.focus();
   };
   useLayoutEffect(() => {
     const element = menu.current;
@@ -45,7 +54,8 @@ export function SetCategoryBarAction({
     }
   }, [open]);
   return (
-    <div className="relative">
+    // Not positioned: the menu centres on the bar, so a narrow panel holds it.
+    <div>
       <Button
         ref={button}
         size="md"
@@ -59,7 +69,7 @@ export function SetCategoryBarAction({
         <div
           ref={menu}
           className={cn(
-            "absolute left-0 z-30 w-65",
+            "absolute left-1/2 z-30 w-65 -translate-x-1/2",
             below ? "top-full mt-cell" : "bottom-full mb-cell",
           )}
         >

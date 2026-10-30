@@ -86,7 +86,7 @@ function SourceHost({
         value: null,
         hint: "Only you see this category.",
         suggested: null,
-        onPick: vi.fn(),
+        onChange: vi.fn(),
       }}
     />
   );

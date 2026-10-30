@@ -3,12 +3,12 @@ import { sameCategoryName } from "@maestro/core/category-name";
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
 import {
-  CATEGORY_FIELD_HINT,
+  CATEGORY_FIELD,
   categoryNotSetAfterImport,
   TAKEN_FROM_FILE,
 } from "./categories-copy";
 import type { CategoryFieldState } from "./category-field";
-import { useAssignCategory, useCategories } from "./use-categories";
+import { useAssignCategory, useCategoriesWhile } from "./use-categories";
 
 type Landed = { name: string; mode: ImportMode };
 
@@ -33,7 +33,7 @@ export function useCategoryChoice({
   /** The dialog is open: only then are the categories read. */
   open: boolean;
 }) {
-  const categories = useCategories({ enabled: open });
+  const categories = useCategoriesWhile(open);
   const assign = useAssignCategory();
   // Null until the reader picks; a pick outlasts a new check.
   const [picked, setPicked] = useState<{ category: string | null } | null>(
@@ -58,9 +58,9 @@ export function useCategoryChoice({
 
   const field: CategoryFieldState = {
     value,
-    hint: taken ? TAKEN_FROM_FILE[type] : CATEGORY_FIELD_HINT,
+    hint: taken ? TAKEN_FROM_FILE[type] : CATEGORY_FIELD.hint,
     suggested: picked === null && matched === null ? named : null,
-    onPick: (category) => setPicked({ category }),
+    onChange: (category) => setPicked({ category }),
   };
 
   return {
