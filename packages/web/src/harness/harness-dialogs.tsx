@@ -12,13 +12,14 @@ import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { DiscardDialog } from "./discard-dialog";
 import { ImportDialog } from "./import-dialog";
+import { importNotice } from "./import-notice-copy";
 import { ImportPromptDialog } from "./import-prompt-dialog";
 import type { ImportCheckLoad } from "./import-view-model";
 import {
   deletionCheckNotice,
   type LocalDeletionContext,
 } from "./local-deletion-copy";
-import { importNotice, releasePlanNotice } from "./notice-copy";
+import { releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { ReleaseWithdrawalDialogHost } from "./release-withdrawal-dialog-host";
 import { RestoreDialog } from "./restore-dialog";
