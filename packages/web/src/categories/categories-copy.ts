@@ -1,7 +1,7 @@
 import type { HarnessPrimitiveType, ImportMode } from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
-import { ADD_CATEGORY } from "../ui/category-menu-copy";
+import { ADD_CATEGORY, NO_CATEGORY } from "../ui/category-menu-copy";
 import { rereadLabel, SET_CATEGORY } from "../ui/control-labels";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { machine, named, type Phrase, phrase } from "../ui/phrase";
@@ -36,6 +36,7 @@ export const CATEGORY_NAME_ERRORS: Record<CategoryNameProblem, string> = {
   empty: "Enter a name.",
   "too-long": "Enter at most 64 characters.",
   "control-character": "Enter the name on one line.",
+  reserved: `Enter a name other than ${NO_CATEGORY}.`,
 };
 
 export const nameExistsError = (existing: string): string =>

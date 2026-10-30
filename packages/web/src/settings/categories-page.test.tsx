@@ -266,6 +266,20 @@ describe("Settings › Categories", () => {
     expect(posts()).toEqual([]);
   });
 
+  it("refuses No category in any case, the name of the group without one", async () => {
+    const { posts } = stubServer();
+    renderPage();
+
+    const dialog = await openAdd();
+    await userEvent.type(within(dialog).getByRole("textbox"), "no Category");
+    await submit(dialog);
+
+    expect(
+      within(dialog).getByText("Enter a name other than No category."),
+    ).toBeInTheDocument();
+    expect(posts()).toEqual([]);
+  });
+
   it("refuses a name that exists ignoring case, naming the existing category", async () => {
     const { posts } = stubServer({ categories: [category("Code review")] });
     renderPage();

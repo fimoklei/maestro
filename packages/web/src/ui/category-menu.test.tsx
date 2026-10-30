@@ -70,6 +70,14 @@ describe("CategoryMenu", () => {
     expect(optionNames()).toEqual(["No category", "Add category Docs"]);
   });
 
+  it("offers no Add for a name no category may take", async () => {
+    renderMenu({});
+
+    await userEvent.type(search(), "no CATEGORY");
+
+    expect(optionNames()).toEqual(["No category"]);
+  });
+
   it("leaves out the excluded category", () => {
     renderMenu({ exclude: "Planning" });
 

@@ -59,6 +59,7 @@ describe("Categories copy", () => {
       empty: "Enter a name.",
       "too-long": "Enter at most 64 characters.",
       "control-character": "Enter the name on one line.",
+      reserved: "Enter a name other than No category.",
     });
     expect(nameExistsError("Code review")).toBe("Code review already exists.");
   });

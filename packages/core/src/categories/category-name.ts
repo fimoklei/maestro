@@ -3,7 +3,14 @@
 
 export const CATEGORY_NAME_MAX_LENGTH = 64;
 
-export type CategoryNameProblem = "empty" | "too-long" | "control-character";
+export type CategoryNameProblem =
+  | "empty"
+  | "too-long"
+  | "control-character"
+  | "reserved";
+
+/** The name the screens give items without a category; no category may take it. */
+const UNCATEGORISED = "No category";
 
 // A line or paragraph separator breaks a line as a control character does.
 const CONTROL_CHARACTER = /[\p{Cc}\u2028\u2029]/u;
@@ -17,6 +24,7 @@ export const categoryNameProblem = (
   if (name.length === 0) return "empty";
   if ([...name].length > CATEGORY_NAME_MAX_LENGTH) return "too-long";
   if (CONTROL_CHARACTER.test(name)) return "control-character";
+  if (sameCategoryName(name, UNCATEGORISED)) return "reserved";
   return null;
 };
 
