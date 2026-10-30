@@ -1,18 +1,10 @@
 import type { PrimitiveRef } from "@maestro/core";
-import { HttpError } from "../api/http";
 import type { MenuClosedBy } from "../ui/category-menu";
 import type { NoticeContent } from "../ui/notice";
-import { requestShapeNotice } from "../ui/notice-table";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
-import {
-  CATEGORY_NOT_CONFIGURED,
-  categoriesUnreadable,
-  categoryNotSet,
-  ITEM_WORDS,
-  type SetCategoryItems,
-  setCategoryFor,
-} from "./categories-copy";
+import { ITEM_WORDS, setCategoryFor } from "./categories-copy";
 import { CategoryPicker } from "./category-picker";
+import { assignFailure } from "./category-refusals";
 import {
   type CategoryAssignment,
   sharedCategory,
@@ -20,35 +12,6 @@ import {
   useCategories,
 } from "./use-categories";
 import { useHeldCategoryAdd } from "./use-held-category-add";
-
-type Refusal = { error?: unknown; configPath?: unknown };
-
-/** Why an assign did not land, for the items it was for. */
-export function assignFailure(
-  error: unknown,
-  items: SetCategoryItems,
-): NoticeContent | null {
-  if (!error) return null;
-  const shape = requestShapeNotice(error);
-  if (shape !== null) return shape;
-  const refusal: Refusal =
-    error instanceof HttpError && typeof error.body === "object"
-      ? ((error.body as Refusal | null) ?? {})
-      : {};
-  switch (refusal.error) {
-    case "category-not-found":
-    case "item-not-found":
-      return categoryNotSet(refusal.error, items);
-    case "not-configured":
-      return CATEGORY_NOT_CONFIGURED;
-    case "categories-unreadable":
-      return typeof refusal.configPath === "string"
-        ? categoriesUnreadable(refusal.configPath)
-        : categoryNotSet("other", items);
-    default:
-      return categoryNotSet("other", items);
-  }
-}
 
 /**
  * Set category for items of one type, inside a table screen: one item's row

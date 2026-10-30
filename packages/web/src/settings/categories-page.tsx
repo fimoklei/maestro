@@ -10,6 +10,11 @@ import {
   REREAD_CATEGORIES,
 } from "../categories/categories-copy";
 import { CategoryCountLinks } from "../categories/category-count-links";
+import {
+  categoryNameError,
+  categoryNotice,
+  refusedForName,
+} from "../categories/category-refusals";
 import { useAddCategory, useCategories } from "../categories/use-categories";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { EmptyState } from "../ui/empty-state";
@@ -23,11 +28,6 @@ import { rowActionsLabel } from "../ui/row-menu-copy";
 import { ScreenFocusContext } from "../ui/screen-focus";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
 import { AddCategoryDialog } from "./add-category-dialog";
-import {
-  categoryNameError,
-  noticeFor,
-  refusedForName,
-} from "./category-refusals";
 import { CATEGORIES_PAGE } from "./settings-pages";
 import { SettingsPanel } from "./settings-panel";
 import { SettingsRow } from "./settings-row";
@@ -51,10 +51,10 @@ export function CategoriesPage() {
 
   // The notice names Re-read Categories rather than carrying it, as the
   // control sits beside Add category.
-  const readNotice = noticeFor(categories.error, {
+  const readNotice = categoryNotice(categories.error, () => ({
     level: "error",
     ...CATEGORIES_READ_FAILED,
-  });
+  }));
   const status = useScreenStatus({
     name: SCREEN,
     reading: categories.isFetching,
@@ -93,7 +93,10 @@ export function CategoriesPage() {
     : undefined;
   const dialogFailure =
     add.isError && !refusedForName(add.error)
-      ? noticeFor(add.error, { level: "error", ...CATEGORY_NOT_ADDED })
+      ? categoryNotice(add.error, () => ({
+          level: "error",
+          ...CATEGORY_NOT_ADDED,
+        }))
       : null;
 
   const runAdd = () => {

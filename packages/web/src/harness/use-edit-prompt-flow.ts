@@ -4,7 +4,7 @@ import {
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
 import { CATEGORY_NOT_SET_AFTER_EDIT } from "../categories/categories-copy";
-import { assignFailure } from "../categories/set-category-menu";
+import { assignFailure } from "../categories/category-refusals";
 import {
   type CategoryAssignment,
   sharedCategory,
