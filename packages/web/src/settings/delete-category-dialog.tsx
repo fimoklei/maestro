@@ -5,6 +5,7 @@ import {
   deleteMoves,
   emptyCategoryDeleted,
 } from "../categories/categories-copy";
+import type { HeldCategoryAdd } from "../categories/use-held-category-add";
 import { Dialog } from "../ui/dialog";
 import type { NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
@@ -18,6 +19,7 @@ export function DeleteCategoryDialog({
   category,
   moveTo,
   onMoveToChange,
+  moveToAdd,
   failure,
   busy,
   onDelete,
@@ -27,6 +29,7 @@ export function DeleteCategoryDialog({
   /** Null for No category. */
   moveTo: string | null;
   onMoveToChange: (moveTo: string | null) => void;
+  moveToAdd: HeldCategoryAdd;
   failure: NoticeContent | null;
   busy: boolean;
   onDelete: () => void;
@@ -65,6 +68,7 @@ export function DeleteCategoryDialog({
           value={moveTo}
           onChange={onMoveToChange}
           locked={busy}
+          add={moveToAdd}
         />
       )}
     </Dialog>

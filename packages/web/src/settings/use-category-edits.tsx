@@ -11,6 +11,10 @@ import {
   useDeleteCategory,
   useRenameCategory,
 } from "../categories/use-categories";
+import {
+  useHeldCategoryAdd,
+  useSubmitAfterAdd,
+} from "../categories/use-held-category-add";
 import type { NoticeContent } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
 import { named, phrase } from "../ui/phrase";
@@ -112,13 +116,14 @@ export function useCategoryEdits({
     );
   };
 
-  const runDelete = () => {
+  const moveToAdd = useHeldCategoryAdd(setMoveTo);
+  const runDelete = useSubmitAfterAdd(moveToAdd, () => {
     if (deleting === null) return;
     remove.run(
       { name: deleting.name, moveTo },
       { onSuccess: () => setDeleting(null) },
     );
-  };
+  });
 
   const items = (category: Category): RowMenuItem[] => [
     {
@@ -137,6 +142,7 @@ export function useCategoryEdits({
       movesFocus: true,
       onSelect: () => {
         setMoveTo(null);
+        moveToAdd.reset();
         deleteMutation.reset();
         setDeleting(category);
       },
@@ -169,11 +175,14 @@ export function useCategoryEdits({
         category={deleting}
         moveTo={moveTo}
         onMoveToChange={setMoveTo}
+        moveToAdd={moveToAdd}
         failure={remove.failure}
-        busy={remove.phase === "running"}
-        onDelete={runDelete}
+        busy={remove.phase === "running" || runDelete.waiting}
+        onDelete={runDelete.submit}
         onClose={() => {
-          if (remove.phase !== "running") setDeleting(null);
+          if (remove.phase !== "running" && !runDelete.waiting) {
+            setDeleting(null);
+          }
         }}
       />
     ) : null;

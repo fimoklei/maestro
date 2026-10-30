@@ -65,7 +65,10 @@ function stubServer({
   check = checkOf({}),
   promptMode = "add",
   assign,
+  added,
 }: {
+  /** Holds the add's answer back until it settles. */
+  added?: Promise<"ok" | "refused">;
   names?: string[];
   assignments?: Assignment[];
   check?: ImportCheck;
@@ -120,6 +123,9 @@ function stubServer({
         case "/api/categories":
           if (body === undefined) {
             return jsonResponse(listOf(state.names, state.assignments));
+          }
+          if ((await added) === "refused") {
+            return jsonResponse({ error: "categories-unreadable" }, 500);
           }
           state.names = [...state.names, body.name].sort();
           return jsonResponse({
@@ -184,6 +190,22 @@ async function openImportPrompt(pasted: string) {
 const categoryButton = (dialog: ReturnType<typeof within>, value: string) =>
   dialog.findByRole("button", { name: `Category ${value}` });
 
+// Opens the field's menu and presses Add for a typed name.
+async function addWhileOpen(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: ReturnType<typeof within>,
+  name: string,
+) {
+  await user.click(await categoryButton(dialog, "No category"));
+  await user.type(
+    dialog.getByRole("combobox", { name: "Search categories" }),
+    name,
+  );
+  await user.click(
+    dialog.getByRole("option", { name: `Add category ${name}` }),
+  );
+}
+
 const importSkill = (dialog: ReturnType<typeof within>) =>
   dialog.getByRole("button", { name: /^(Import|Update) skill$/ });
 
@@ -243,6 +265,51 @@ describe("Import skill's Category field", () => {
         },
       }),
     );
+  });
+
+  it("waits for an add still running when Import is pressed, then assigns the added category", async () => {
+    let settle: (outcome: "ok") => void = () => {};
+    const { posts } = stubServer({
+      added: new Promise((resolve) => {
+        settle = resolve;
+      }),
+    });
+    const { user, dialog } = await openImportSkill();
+
+    await addWhileOpen(user, dialog, "Planning");
+    // The press closes the menu while the add is still on its way.
+    await user.click(importSkill(dialog));
+    expect(posts.map(({ url }) => url)).not.toContain("/api/harness/import");
+    settle("ok");
+
+    await dialogClosed();
+    await waitFor(() =>
+      expect(posts.at(-1)).toEqual({
+        url: "/api/categories/assign",
+        body: {
+          items: [{ type: "skill", name: "code-review" }],
+          category: "Planning",
+        },
+      }),
+    );
+  });
+
+  it("imports nothing when an add still running at Import is refused, and says so under the field", async () => {
+    let settle: (outcome: "refused") => void = () => {};
+    const { posts } = stubServer({
+      added: new Promise((resolve) => {
+        settle = resolve;
+      }),
+    });
+    const { user, dialog } = await openImportSkill();
+
+    await addWhileOpen(user, dialog, "Planning");
+    await user.click(importSkill(dialog));
+    settle("refused");
+
+    expect(await dialog.findByText("Category not added")).toBeVisible();
+    await categoryButton(dialog, "No category");
+    expect(posts.map(({ url }) => url)).not.toContain("/api/harness/import");
   });
 
   it("preselects the category SKILL.md names, ignoring case, and says where it came from", async () => {
@@ -379,6 +446,31 @@ describe("Import prompt's Category field", () => {
       expect(writes().at(-1)?.body).toEqual({
         items: [{ type: "prompt", name: "review-pr" }],
         category: "Docs",
+      }),
+    );
+  });
+
+  it("waits for an add still running when Import prompt is pressed, then assigns the added category", async () => {
+    let settle: (outcome: "ok") => void = () => {};
+    const { writes } = stubServer({
+      added: new Promise((resolve) => {
+        settle = resolve;
+      }),
+    });
+    const { user, dialog } = await openImportPrompt("Review $ARGUMENTS.");
+    await user.type(
+      dialog.getByRole("textbox", { name: "Description" }),
+      "Review it",
+    );
+
+    await addWhileOpen(user, dialog, "Planning");
+    await user.click(dialog.getByRole("button", { name: "Import prompt" }));
+    settle("ok");
+
+    await waitFor(() =>
+      expect(writes().at(-1)?.body).toEqual({
+        items: [{ type: "prompt", name: "review-pr" }],
+        category: "Planning",
       }),
     );
   });

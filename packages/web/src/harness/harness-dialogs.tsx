@@ -126,7 +126,7 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           onNameChange={props.importFlow.setEditedName}
           onClose={props.importFlow.close}
           onImport={props.importFlow.submit}
-          importing={props.importFlow.importWrite.phase === "running"}
+          importing={props.importFlow.importing}
           importError={props.importFlow.importWrite.failure}
           category={props.importFlow.category.field}
         />

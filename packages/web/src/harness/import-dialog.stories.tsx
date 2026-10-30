@@ -38,6 +38,12 @@ const meta = {
       hint: "Taken from SKILL.md.",
       suggested: null,
       onChange: () => {},
+      add: {
+        run: async () => null,
+        pending: false,
+        failed: false,
+        reset: () => {},
+      },
     },
   },
 } satisfies Meta<typeof ImportDialog>;

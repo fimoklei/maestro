@@ -7,6 +7,7 @@ import {
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
 import { useCategoryChoice } from "../categories/use-category-choice";
+import { useSubmitAfterAdd } from "../categories/use-held-category-add";
 import type { NoticeContent } from "../ui/notice";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { proposalRow } from "./harness-route";
@@ -88,6 +89,16 @@ export function useImportPromptFlow(
     ? longTextNotice(confirm)
     : write.failure;
 
+  const afterAdd = useSubmitAfterAdd(category.field.add, () => {
+    write.run(draft, {
+      onSuccess: (outcome) => {
+        close();
+        category.save(outcome);
+        onImported(importedRow(outcome));
+      },
+    });
+  });
+
   const close = () => {
     setOpen(false);
     setDraft(EMPTY);
@@ -117,7 +128,8 @@ export function useImportPromptFlow(
     mode,
     category,
     takenNotice: mode === "update" ? PROMPT_TAKEN_NOTICE : null,
-    phase: write.phase,
+    // Waiting for a category add shows as the import running.
+    phase: afterAdd.waiting ? ("running" as const) : write.phase,
     changed: draft.name !== "" || draft.description !== "" || draft.text !== "",
     start: () => setOpen(true),
     edit,
@@ -174,13 +186,7 @@ export function useImportPromptFlow(
     submit: () => {
       setSubmitted(true);
       if (problems.length > 0) return;
-      write.run(draft, {
-        onSuccess: (outcome) => {
-          close();
-          category.save(outcome);
-          onImported(importedRow(outcome));
-        },
-      });
+      afterAdd.submit();
     },
     close,
   };

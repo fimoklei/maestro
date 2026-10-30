@@ -9,6 +9,7 @@ import {
 } from "./categories-copy";
 import type { CategoryFieldState } from "./category-field";
 import { useAssignCategory, useCategoriesWhile } from "./use-categories";
+import { useHeldCategoryAdd } from "./use-held-category-add";
 
 type Landed = { name: string; mode: ImportMode };
 
@@ -39,6 +40,7 @@ export function useCategoryChoice({
   const [picked, setPicked] = useState<{ category: string | null } | null>(
     null,
   );
+  const add = useHeldCategoryAdd((category) => setPicked({ category }));
   const [failure, setFailure] = useState<NoticeContent | null>(null);
   const list = categories.data;
   const replacing = mode === "update";
@@ -61,6 +63,7 @@ export function useCategoryChoice({
     hint: taken ? TAKEN_FROM_FILE[type] : CATEGORY_FIELD.hint,
     suggested: picked === null && matched === null ? named : null,
     onChange: (category) => setPicked({ category }),
+    add,
   };
 
   return {
@@ -69,7 +72,10 @@ export function useCategoryChoice({
     failure,
     dismissFailure: () => setFailure(null),
     /** Forgets the pick, as the dialog closes. */
-    reset: () => setPicked(null),
+    reset: () => {
+      setPicked(null);
+      add.reset();
+    },
     /** After the import landed: saves the category the field holds, if it changed. */
     save: (landed: Landed) => {
       if (value === own) return;

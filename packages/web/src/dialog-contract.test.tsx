@@ -46,7 +46,7 @@ import { RenameCategoryDialog } from "./settings/rename-category-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
-import { expectTooltipCause, htmlElement } from "./test-utils";
+import { expectTooltipCause, htmlElement, idleCategoryAdd } from "./test-utils";
 import { UPDATE_PROMPT } from "./ui/control-labels";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
@@ -137,6 +137,7 @@ const NO_CATEGORY_FIELD: CategoryFieldState = {
   hint: "Only you see this category.",
   suggested: null,
   onChange: vi.fn(),
+  add: idleCategoryAdd,
 };
 
 type Options = {
@@ -380,6 +381,7 @@ const deleteCategoryDialog = ({
     category={{ name: "Planning", skills: 3, prompts: 2 }}
     moveTo={null}
     onMoveToChange={vi.fn()}
+    moveToAdd={idleCategoryAdd}
     failure={null}
     busy={running}
     onDelete={vi.fn()}

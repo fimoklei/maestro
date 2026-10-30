@@ -18,6 +18,7 @@ import {
   useAssignCategory,
   useCategories,
 } from "./use-categories";
+import { useHeldCategoryAdd } from "./use-held-category-add";
 
 type Refusal = { error?: unknown; configPath?: unknown };
 
@@ -83,6 +84,13 @@ export function SetCategoryMenu({
     },
     failure: (error) => assignFailure(error, reread),
   });
+  const pick = (category: string | null) =>
+    write.run(
+      { items: [...items], category },
+      { onSuccess: () => onClose("picked") },
+    );
+  // Picked from the menu only: a press outside it cancels the assign.
+  const add = useHeldCategoryAdd(() => {});
   const [only] = items;
   const words = ITEM_WORDS[only?.type ?? "skill"];
   const subject =
@@ -94,12 +102,8 @@ export function SetCategoryMenu({
       label={setCategoryFor(subject)}
       current={sharedCategory(categories.data?.assignments ?? [], items)}
       failure={write.failure}
-      onPick={(category) =>
-        write.run(
-          { items: [...items], category },
-          { onSuccess: () => onClose("picked") },
-        )
-      }
+      add={add}
+      onPick={pick}
       onClose={onClose}
     />
   );

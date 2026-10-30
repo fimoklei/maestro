@@ -2,10 +2,12 @@ import type { ImportMode } from "@maestro/core";
 import type { PromptFile } from "@maestro/core/prompt-file";
 import { FileText } from "lucide-react";
 import { type ClipboardEvent, useId, useRef } from "react";
+import { CATEGORY_FIELD } from "../categories/categories-copy";
 import {
   CategoryField,
   type CategoryFieldState,
 } from "../categories/category-field";
+import type { HeldCategoryAdd } from "../categories/use-held-category-add";
 import { Button } from "../ui/button";
 import { CHOOSE_ANOTHER_FILE, EDIT_PROMPT } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
@@ -64,6 +66,7 @@ type EditProps = PromptDialogBase & {
   /** Undefined until the categories are read; null for No category. */
   category: string | null | undefined;
   pickCategory: (name: string | null) => void;
+  categoryAdd: HeldCategoryAdd;
   /** The edit landed and its category did not: only Close is left. */
   outcome: boolean;
 };
@@ -140,6 +143,9 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
             <CategoryField
               value={editOnly.category}
               onChange={editOnly.pickCategory}
+              hint={CATEGORY_FIELD.hint}
+              suggested={null}
+              add={editOnly.categoryAdd}
               disabled={locked}
             />
           )}

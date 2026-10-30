@@ -682,6 +682,46 @@ describe("Settings › Categories, rename and delete", () => {
       );
     });
 
+    it("waits for an add still running in Move to when Delete category is pressed, then moves the items into it", async () => {
+      let release: () => void = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const { posts } = stubServer({
+        categories: [category("Planning", 0, 2)],
+        add: async (name) => {
+          await held;
+          return jsonResponse({
+            ...list([category(name), category("Planning", 0, 2)]),
+            added: name,
+          });
+        },
+      });
+      renderPage();
+
+      const dialog = await openDelete("Planning");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: /^Move to/ }),
+      );
+      await userEvent.type(
+        within(dialog).getByRole("combobox", { name: "Search categories" }),
+        "Notes{Enter}",
+      );
+      // The press closes the menu while the add is still on its way.
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Delete category" }),
+      );
+      expect(posts()).toEqual([{ name: "Notes" }]);
+      release();
+
+      await waitFor(() =>
+        expect(posts()).toEqual([
+          { name: "Notes" },
+          { name: "Planning", moveTo: "Notes" },
+        ]),
+      );
+    });
+
     it("closes Move to on Escape and keeps the dialog open", async () => {
       stubServer({
         categories: [category("Planning", 1), category("Writing")],

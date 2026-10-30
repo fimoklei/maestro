@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { expect, vi } from "vitest";
 import { createQueryClient } from "./api/query-client";
+import type { HeldCategoryAdd } from "./categories/use-held-category-add";
 import type { DeployedView } from "./deploy-state/deployed-view";
 import * as controlLabels from "./ui/control-labels";
 import { CANCEL, CLOSE } from "./ui/dialog-copy";
@@ -30,6 +31,14 @@ export const noCategories = (input: RequestInfo | URL): Response | null =>
 // A fresh client per render with the cockpit's own read rules (#1037).
 // Passed as `wrapper` so the provider survives `rerender`. A dialog rendered
 // without its table screen reports into nothing; a screen brings its region.
+/** A category add that has not run: a dialog rendered alone holds one. */
+export const idleCategoryAdd: HeldCategoryAdd = {
+  run: async () => null,
+  pending: false,
+  failed: false,
+  reset: () => {},
+};
+
 export function renderWithQuery(ui: ReactNode) {
   const queryClient = createQueryClient();
   const rendered = render(ui, {

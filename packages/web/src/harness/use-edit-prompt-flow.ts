@@ -11,6 +11,10 @@ import {
   useAssignCategory,
   useCategoriesWhile,
 } from "../categories/use-categories";
+import {
+  useHeldCategoryAdd,
+  useSubmitAfterAdd,
+} from "../categories/use-held-category-add";
 import { EDIT_PROMPT, rereadLabel } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import {
@@ -75,6 +79,11 @@ export function useEditPromptFlow({
   const categories = useCategoriesWhile(opened !== null);
   const assigning = useAssignCategory();
   const reread = rereadLabel(SCREEN_NAME[screen]);
+  const pickCategory = (next: string | null) => {
+    assigning.reset();
+    setChosen(next);
+  };
+  const categoryAdd = useHeldCategoryAdd(pickCategory);
 
   const name = opened?.name ?? "";
   const saved =
@@ -97,6 +106,7 @@ export function useEditPromptFlow({
     setLanded(null);
     editing.reset();
     assigning.reset();
+    categoryAdd.reset();
   };
 
   const assignTo = (prompt: string): CategoryAssignment => ({
@@ -149,6 +159,14 @@ export function useEditPromptFlow({
         ? longTextNotice(EDIT_PROMPT)
         : (write.failure ?? categoryWrite.failure);
   const changed = fieldsChanged || categoryChanged;
+  const afterAdd = useSubmitAfterAdd(categoryAdd, () => {
+    if (opened === null) return;
+    if (!fieldsChanged) {
+      categoryWrite.run(assignTo(name), { onSuccess: () => close() });
+      return;
+    }
+    write.run({ ...draft, read: opened.read });
+  });
 
   return {
     open: opened !== null,
@@ -159,7 +177,7 @@ export function useEditPromptFlow({
     fieldErrors: submitted ? promptFieldErrors(problems) : {},
     failure,
     phase:
-      write.phase === "running" || assigning.isPending
+      write.phase === "running" || assigning.isPending || afterAdd.waiting
         ? ("running" as const)
         : ("idle" as const),
     /** The edit landed and its category did not: only Close is left. */
@@ -189,19 +207,13 @@ export function useEditPromptFlow({
       editing.reset();
       setFields((current) => ({ ...current, ...change }));
     },
-    pickCategory: (next: string | null) => {
-      assigning.reset();
-      setChosen(next);
-    },
+    pickCategory,
+    categoryAdd,
     submit: () => {
       if (opened === null) return;
       setSubmitted(true);
       if (problems.length > 0) return;
-      if (!fieldsChanged) {
-        categoryWrite.run(assignTo(name), { onSuccess: () => close() });
-        return;
-      }
-      write.run({ ...draft, read: opened.read });
+      afterAdd.submit();
     },
     close: () => {
       if (landed !== null) onEdited(landed.name, landed.written);

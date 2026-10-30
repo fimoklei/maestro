@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { MOVE_TO } from "../categories/categories-copy";
 import { CategoryPicker } from "../categories/category-picker";
+import type { HeldCategoryAdd } from "../categories/use-held-category-add";
 import { NO_CATEGORY } from "../ui/category-menu-copy";
 import { cn } from "../ui/cn";
 import { FOCUS_RING } from "../ui/focus-ring";
@@ -15,6 +16,7 @@ export function MoveToField({
   value,
   onChange,
   locked,
+  add,
 }: {
   /** The category being deleted. */
   exclude: string;
@@ -23,6 +25,8 @@ export function MoveToField({
   onChange: (value: string | null) => void;
   /** The delete runs. */
   locked: boolean;
+  /** Held by the dialog's host, so an add outlives the menu. */
+  add: HeldCategoryAdd;
 }) {
   const [open, setOpen] = useState(false);
   const labelId = useId();
@@ -58,6 +62,8 @@ export function MoveToField({
           label={MOVE_TO}
           current={value}
           exclude={exclude}
+          failure={null}
+          add={add}
           onPick={(picked) => {
             onChange(picked);
             setOpen(false);
