@@ -1,8 +1,11 @@
 // The operator's own category list for the connected Harness: every rule lives
-// here, and every change runs one path: read, validate, apply, write.
-import type { HarnessPrimitiveType } from "../harness/harness-primitive";
+// here, and every change runs one path: read, validate, drop stale, apply, write.
+import type {
+  HarnessPrimitiveType,
+  PrimitiveRef,
+} from "../harness/harness-primitive";
 import type { ConfigStore } from "../registry/config-store";
-import { applyChange, type CategoryChange } from "./apply-change";
+import { applyChange, type CategoryChange, withoutStale } from "./apply-change";
 import { compareCategoryNames } from "./category-name";
 import {
   type CategoryRecord,
@@ -11,6 +14,7 @@ import {
   recordOf,
   withRecord,
 } from "./category-section";
+import type { ReadHeldItems } from "./held-items";
 
 export type { CategoryChange } from "./apply-change";
 
@@ -23,14 +27,23 @@ export type CategoryError =
   | "not-configured"
   | "categories-unreadable"
   | "name-invalid"
-  | "name-exists";
+  | "name-exists"
+  | "category-not-found"
+  | "item-not-found";
 
 export type CategoryResult =
   | { ok: true; list: CategoryList; added?: string }
   | { ok: false; error: "name-exists"; existing: string }
   // `configPath`: the file the operator repairs by hand.
   | { ok: false; error: "categories-unreadable"; configPath: string }
-  | { ok: false; error: "not-configured" | "name-invalid" };
+  | {
+      ok: false;
+      error:
+        | "not-configured"
+        | "name-invalid"
+        | "category-not-found"
+        | "item-not-found";
+    };
 
 const listOf = (record: CategoryRecord): CategoryList => ({
   categories: [...record.names].sort(compareCategoryNames).map((name) => {
@@ -48,15 +61,18 @@ export class Categories {
   private readonly store: ConfigStore;
   private readonly harness: () => Promise<HarnessKey | null>;
   private readonly configPath: () => string;
+  private readonly held: ReadHeldItems;
 
   constructor(deps: {
     store: ConfigStore;
     harness: () => Promise<HarnessKey | null>;
     configPath: () => string;
+    held: ReadHeldItems;
   }) {
     this.store = deps.store;
     this.harness = deps.harness;
     this.configPath = deps.configPath;
+    this.held = deps.held;
   }
 
   async read(): Promise<CategoryResult> {
@@ -64,17 +80,30 @@ export class Categories {
     if (harness === null) return { ok: false, error: "not-configured" };
     const section = readCategorySection((await this.store.read()).categories);
     if (section === null) return this.unreadable();
-    return { ok: true, list: listOf(recordOf(section, harness)) };
+    const record = recordOf(section, harness);
+    const held = await this.held(harness.root, record.assignments);
+    return { ok: true, list: listOf(withoutStale(record, held)) };
   }
 
   async change(change: CategoryChange): Promise<CategoryResult> {
     const harness = await this.harness();
     if (harness === null) return { ok: false, error: "not-configured" };
+    // Read before the update, so no other config write waits on git.
+    const before = readCategorySection((await this.store.read()).categories);
+    const asked: PrimitiveRef[] = [
+      ...(before === null ? [] : recordOf(before, harness).assignments),
+      ...(change.kind === "assign" ? change.items : []),
+    ];
+    const held = await this.held(harness.root, asked);
     return this.store.update<CategoryResult>((config) => {
       const section = readCategorySection(config.categories);
       // Never written over: the operator repairs a broken section by hand.
       if (section === null) return { result: this.unreadable() };
-      const applied = applyChange(recordOf(section, harness), change);
+      const applied = applyChange(
+        withoutStale(recordOf(section, harness), held),
+        change,
+        held,
+      );
       if (!applied.ok) return { result: applied };
       return {
         config: {

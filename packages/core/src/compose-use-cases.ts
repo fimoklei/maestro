@@ -2,6 +2,7 @@
 // (`nodeUseCasePorts`); a test passes in-memory ones.
 
 import { Categories } from "./categories/categories";
+import { heldItemsFrom } from "./categories/held-items";
 import { SelectionWriter } from "./deploy/apply-selection";
 import type {
   ApmDriverPort,
@@ -354,6 +355,7 @@ export function composeUseCases(ports: UseCasePorts) {
           : { root, origin: await readHarnessOrigin(root) };
       },
       configPath: () => resolveMaestroConfigPath(env),
+      held: heldItemsFrom({ git: harnessGit, fs }),
     }),
     harness,
     importSkill,

@@ -4,7 +4,9 @@ import type { AppDeps } from "../app-deps";
 import { categoryErrorResponses } from "../error-responses";
 import {
   ADD_CATEGORY_BODY,
+  ASSIGN_CATEGORY_BODY,
   addCategoryBodySchema,
+  assignCategoryBodySchema,
   parseBody,
 } from "../request-bodies";
 
@@ -31,6 +33,19 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
     return respond(
       c,
       await deps.categories.change({ kind: "add", name: body.data.name }),
+    );
+  });
+
+  app.post("/api/categories/assign", async (c) => {
+    const body = await parseBody(
+      c,
+      assignCategoryBodySchema,
+      ASSIGN_CATEGORY_BODY,
+    );
+    if (!body.ok) return body.response;
+    return respond(
+      c,
+      await deps.categories.change({ kind: "assign", ...body.data }),
     );
   });
 }

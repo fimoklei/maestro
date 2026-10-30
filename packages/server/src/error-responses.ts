@@ -443,6 +443,8 @@ export const chooseFolderErrorResponses: ErrorTable<ChooseFolderError> = {
 export const categoryErrorResponses: ErrorTable<CategoryError> = {
   "name-invalid": { status: 400 },
   "name-exists": { status: 409 },
+  "category-not-found": { status: 404 },
+  "item-not-found": { status: 404 },
   "not-configured": { status: 409 },
   "categories-unreadable": { status: 500 },
 };
