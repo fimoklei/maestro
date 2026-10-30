@@ -225,13 +225,13 @@ export function SkillsView({
   });
 
   const view = useViewOptions(rows, {
-    kind: null,
+    oneOf: [],
     status: {
       words: STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
     },
     groupings: [],
-    initialGrouping: "none",
+    defaultGrouping: "none",
     columns: DISPLAY_OPTIONS,
   });
 

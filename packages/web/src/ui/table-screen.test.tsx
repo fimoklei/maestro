@@ -810,14 +810,17 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
     openOnArrival: withPane ? "box" : null,
   });
   const view = useViewOptions(PLANTS, {
-    kind: {
-      label: "Kind",
-      options: [
-        { value: "Tree", label: "Trees" },
-        { value: "Shrub", label: "Shrubs" },
-      ],
-      of: (row) => row.kind,
-    },
+    oneOf: [
+      {
+        label: "Kind",
+        options: [
+          { value: "Tree", label: "Trees" },
+          { value: "Shrub", label: "Shrubs" },
+        ],
+        of: (row) => row.kind,
+        initial: "all",
+      },
+    ],
     status: {
       words: ["Wilting", "Healthy"],
       of: (row) => row.status,
@@ -825,7 +828,7 @@ function PlantScreen({ withPane = false }: { withPane?: boolean }) {
     groupings: [
       { value: "kind", label: "Kind", groups: { key: (row) => row.kind } },
     ],
-    initialGrouping: "none",
+    defaultGrouping: "none",
     columns: [{ value: "kind", label: "Kind" }],
   });
   return (

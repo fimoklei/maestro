@@ -50,13 +50,13 @@ function Screen({
     openOnArrival: null,
   });
   const view = useViewOptions(rows, {
-    kind: { label: "Kind", options: [], of: () => "" },
+    oneOf: [{ label: "Kind", options: [], of: () => "", initial: "all" }],
     status: {
       words: ["Folder missing", "Ready"],
       of: (row) => row.status.word,
     },
     groupings: [],
-    initialGrouping: "none",
+    defaultGrouping: "none",
     columns: [{ value: "status", label: "Status" }],
   });
   return (
