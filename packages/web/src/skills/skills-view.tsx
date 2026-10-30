@@ -3,7 +3,7 @@ import { Puzzle, Table2, Tag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { categoryView } from "../categories/category-view";
 import { SetCategoryBarAction } from "../categories/set-category-bar-action";
-import { SetCategoryMenu } from "../categories/set-category-menu";
+import { usePaneCategory } from "../categories/use-pane-category";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import {
   hiddenStagedCount,
@@ -42,7 +42,6 @@ import {
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
-import type { MenuClosedBy } from "../ui/category-menu";
 import {
   DELETE_SKILL,
   DEPLOY_SKILL,
@@ -96,20 +95,18 @@ import {
 
 // Presentational; the container supplies the reads (#992, #1040).
 
-// Set category's menu opens above the pane's foot, not as a dialog.
-type Opened = PaneDialog | { kind: "category" };
-
 // The row's ⋮ and the pane's foot open the same dialog per action (#1065).
 const rowDialog = (
   action: RowAction,
   name: string,
   clone: CloneReading,
-): Opened | null => {
+): PaneDialog | null => {
   switch (action) {
     case "deploy":
       return { kind: "deploy" };
+    // Set category opens its menu above the pane's foot, not a dialog.
     case "category":
-      return { kind: "category" };
+      return null;
     case "remove":
       return { kind: "remove-all" };
     case "delete": {
@@ -190,12 +187,13 @@ export function SkillsView({
     openOnArrival: null,
   });
   const [query, setQuery] = useState("");
-  const [dialog, setDialog] = useState<Opened | null>(null);
-  const categoryButton = useRef<HTMLButtonElement>(null);
-  const closeCategory = (via: MenuClosedBy) => {
-    setDialog(null);
-    if (via !== "press") categoryButton.current?.focus();
-  };
+  const [dialog, setDialog] = useState<PaneDialog | null>(null);
+  const category = usePaneCategory({
+    type: "skill",
+    assignments,
+    reread: rereadLabel(screen.name),
+  });
+  const { setOpen: setCategoryOpen } = category;
   // Apart from the open row, so inspecting and staging never toggle each other.
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
 
@@ -204,15 +202,17 @@ export function SkillsView({
     ...screen,
     open: (name: string | null) => {
       setDialog(null);
+      setCategoryOpen(false);
       screen.open(name);
     },
   };
   const openFromMenu = useCallback(
     (name: string, action: RowAction) => {
       screen.open(name);
+      setCategoryOpen(action === "category");
       setDialog(rowDialog(action, name, clone));
     },
-    [screen.open, clone],
+    [screen.open, clone, setCategoryOpen],
   );
   const listHeading = useRef<HTMLHeadingElement>(null);
 
@@ -230,20 +230,15 @@ export function SkillsView({
       deployments,
       unreadable: Boolean(rollup.unreadable),
       readAge: skillReadAge(primitive.name, targets, now),
-      category:
-        assignments === undefined
-          ? undefined
-          : (assignments.find(
-              (each) => each.type === "skill" && each.name === primitive.name,
-            )?.category ?? null),
+      category: category.categoryOf(primitive.name),
       // The pane's foot holds these same items (#1065). The removal is offered only
       // from two targets, or it would repeat a target row's own (#422). It counts
       // what the removal covers: global is one target, whatever its tools (#1436).
       actions: [
         { action: "deploy", label: DEPLOY_SKILL },
-        ...(assignments === undefined
-          ? []
-          : [{ action: "category" as const, label: SET_CATEGORY }]),
+        ...(category.offered
+          ? [{ action: "category" as const, label: SET_CATEGORY }]
+          : []),
         ...(removable >= 2
           ? [
               {
@@ -441,44 +436,28 @@ export function SkillsView({
               listHeadingRef={listHeading}
               {...frame}
               // A dialog the row's ⋮ opened holds focus itself.
-              initialFocus={dialog === null ? undefined : null}
+              initialFocus={
+                dialog === null && !category.open ? undefined : null
+              }
               targetItems={targetItems}
               selectionActive={staged.size > 0}
               category={row.category}
               footItems={row.actions.map((item) =>
                 item.action === "category"
-                  ? {
-                      label: item.label,
-                      expanded: dialog?.kind === "category",
-                      buttonRef: categoryButton,
-                      onSelect: () =>
-                        setDialog(
-                          dialog?.kind === "category"
-                            ? null
-                            : { kind: "category" },
-                        ),
-                    }
+                  ? category.footItem(item.label)
                   : {
                       label: item.label,
                       danger: item.danger,
                       disabled: item.disabled,
-                      onSelect: () =>
-                        setDialog(rowDialog(item.action, row.name, clone)),
+                      onSelect: () => {
+                        setCategoryOpen(false);
+                        setDialog(rowDialog(item.action, row.name, clone));
+                      },
                     },
               )}
-              footMenu={
-                dialog?.kind === "category" ? (
-                  <SetCategoryMenu
-                    // Keyed by skill: paging to the next row starts afresh.
-                    key={row.name}
-                    items={[{ type: "skill", name: row.name }]}
-                    reread={rereadLabel(screen.name)}
-                    onClose={closeCategory}
-                  />
-                ) : null
-              }
+              footMenu={category.footMenu(row.name)}
             />
-            {dialog === null || dialog.kind === "category" ? null : (
+            {dialog === null ? null : (
               <SkillPaneDialog
                 // Keyed by skill: a refusal from the previous skill can never
                 // carry over and overwrite the next one (#66).

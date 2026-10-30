@@ -31,6 +31,11 @@ export function SetCategoryMenu({
 }) {
   const categories = useCategories();
   const assign = useAssignCategory();
+  // One item is named, several counted: in the menu's name and the done sentence.
+  const [first] = items;
+  const type = first?.type ?? "skill";
+  const words = ITEM_WORDS[type];
+  const only = items.length === 1 && first !== undefined ? first.name : null;
   const write = useWriteAction<
     unknown,
     CategoryAssignment,
@@ -38,20 +43,12 @@ export function SetCategoryMenu({
   >(assign, {
     screen: useScreenWrites(),
     action: "setCategory",
-    subject: (_data, { items: set }) => {
-      const [only] = set;
-      if (set.length === 1 && only !== undefined) {
-        return { name: only.name, row: only.name };
-      }
-      const words = ITEM_WORDS[only?.type ?? "skill"];
-      return { name: { count: set.length, ...words }, row: null };
-    },
+    subject: () =>
+      only === null
+        ? { name: { count: items.length, ...words }, row: null }
+        : { name: only, row: only },
     failure: (error) =>
-      assignFailure(error, {
-        type: items[0]?.type ?? "skill",
-        count: items.length,
-        reread,
-      }),
+      assignFailure(error, { type, count: items.length, reread }),
   });
   const pick = (category: string | null) =>
     write.run(
@@ -60,15 +57,9 @@ export function SetCategoryMenu({
     );
   // Picked from the menu only: a press outside it cancels the assign.
   const add = useHeldCategoryAdd(() => {});
-  const [only] = items;
-  const words = ITEM_WORDS[only?.type ?? "skill"];
-  const subject =
-    items.length === 1 && only !== undefined
-      ? only.name
-      : `${items.length} ${words.many}`;
   return (
     <CategoryPicker
-      label={setCategoryFor(subject)}
+      label={setCategoryFor(only ?? `${items.length} ${words.many}`)}
       current={sharedCategory(categories.data?.assignments ?? [], items)}
       failure={write.failure}
       add={add}

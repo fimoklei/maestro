@@ -4,7 +4,7 @@ import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { categoryView } from "../categories/category-view";
 import { SetCategoryBarAction } from "../categories/set-category-bar-action";
-import { SetCategoryMenu } from "../categories/set-category-menu";
+import { usePaneCategory } from "../categories/use-pane-category";
 import { promptReadNotice } from "../harness/import-prompt-copy";
 import { ImportPromptDialog } from "../harness/import-prompt-dialog";
 import { useEditPromptFlow } from "../harness/use-edit-prompt-flow";
@@ -28,7 +28,6 @@ import {
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
-import type { MenuClosedBy } from "../ui/category-menu";
 import {
   COPY_PROMPT,
   DELETE_PROMPT,
@@ -143,13 +142,11 @@ export function PromptsView({
   });
   const [query, setQuery] = useState("");
   const [deletion, setDeletion] = useState<Deletion | null>(null);
-  // Set category's menu opens above the pane's foot, not as a dialog.
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const categoryButton = useRef<HTMLButtonElement>(null);
-  const closeCategory = (via: MenuClosedBy) => {
-    setCategoryOpen(false);
-    if (via !== "press") categoryButton.current?.focus();
-  };
+  const category = usePaneCategory({
+    type: "prompt",
+    assignments,
+    reread: rereadLabel(screen.name),
+  });
   // Apart from the open row, so inspecting and selecting never toggle each other.
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   // Opening a row any other way drops a menu item's dialog.
@@ -157,7 +154,7 @@ export function PromptsView({
     ...screen,
     open: (name: string | null) => {
       setDeletion(null);
-      setCategoryOpen(false);
+      category.setOpen(false);
       screen.open(name);
     },
   };
@@ -205,11 +202,11 @@ export function PromptsView({
     category: (prompt) => {
       screen.open(prompt.name);
       setDeletion(null);
-      setCategoryOpen(true);
+      category.setOpen(true);
     },
     delete: (prompt) => {
       screen.open(prompt.name);
-      setCategoryOpen(false);
+      category.setOpen(false);
       setDeletion(deletionOf(clone, prompt.name));
     },
   };
@@ -228,22 +225,16 @@ export function PromptsView({
     const editable = prompt.nameValid && !leavesDefaultBranch(prompt);
     const copyItem: PromptItem = { action: "copy", label: COPY_PROMPT };
     const editItem: PromptItem = { action: "edit", label: EDIT_PROMPT };
-    const categoryItems: PromptItem[] =
-      assignments === undefined
-        ? []
-        : [{ action: "category", label: SET_CATEGORY }];
+    const categoryItems: PromptItem[] = category.offered
+      ? [{ action: "category", label: SET_CATEGORY }]
+      : [];
     // Every write refuses a bad name: the pane's warning says to rename it.
     const deleteItems: PromptItem[] = prompt.nameValid
       ? deleteItem(clone, prompt.name, DELETE_PROMPT)
       : [];
     return {
       ...prompt,
-      category:
-        assignments === undefined
-          ? undefined
-          : (assignments.find(
-              (each) => each.type === "prompt" && each.name === prompt.name,
-            )?.category ?? null),
+      category: category.categoryOf(prompt.name),
       menu: [
         copyItem,
         ...(editable ? [editItem] : []),
@@ -413,29 +404,14 @@ export function PromptsView({
               category={row.category}
               footItems={row.foot.map(({ action, ...item }) =>
                 action === "category"
-                  ? {
-                      ...item,
-                      expanded: categoryOpen,
-                      buttonRef: categoryButton,
-                      onSelect: () => setCategoryOpen(!categoryOpen),
-                    }
+                  ? category.footItem(item.label)
                   : { ...item, onSelect: () => run[action](row) },
               )}
-              footMenu={
-                categoryOpen ? (
-                  <SetCategoryMenu
-                    // Keyed by prompt: paging to the next row starts afresh.
-                    key={row.name}
-                    items={[{ type: "prompt", name: row.name }]}
-                    reread={reread}
-                    onClose={closeCategory}
-                  />
-                ) : null
-              }
+              footMenu={category.footMenu(row.name)}
               {...frame}
               // A dialog or menu the row's ⋮ opened holds focus itself.
               initialFocus={
-                deletion === null && !categoryOpen ? undefined : null
+                deletion === null && !category.open ? undefined : null
               }
             />
             {deletion === null ? null : (
