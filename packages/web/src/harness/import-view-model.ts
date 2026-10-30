@@ -8,7 +8,7 @@ import type { ActionKey } from "../ui/busy-copy";
 import { IMPORT_SKILL, UPDATE_SKILL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { ADVISORY_TEXT, skillChecksNotice } from "./dialog-copy";
-import { importBlockerNotice } from "./notice-copy";
+import { importBlockerNotice } from "./import-notice-copy";
 
 // The check travels with its loading and error states so the modal stays
 // mounted across them — a focus trap that unmounts loses the author's place.

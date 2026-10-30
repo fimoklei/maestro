@@ -104,8 +104,7 @@
         "**/*.mjs",
         "**/*.cjs",
         "!**/*.test.*",
-        "!**/*.stories.*",
-        "!packages/web/src/harness/notice-copy.ts"
+        "!**/*.stories.*"
       ],
       "linter": {
         "rules": {

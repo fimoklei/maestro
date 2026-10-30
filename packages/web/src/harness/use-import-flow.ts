@@ -5,8 +5,8 @@ import { useSubmitAfterAdd } from "../categories/use-held-category-add";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { FOLDER_MISSING } from "./dialog-copy";
 import { proposalRow } from "./harness-route";
+import { importNotice } from "./import-notice-copy";
 import { isImportable } from "./import-view-model";
-import { importNotice } from "./notice-copy";
 import {
   type ImportOutcome,
   importCheckQuery,

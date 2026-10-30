@@ -27,9 +27,9 @@ import {
   discardNotice,
   promoteNotice,
   proposalNotice,
-  releaseWithdrawalNotice,
   restoreNotice,
 } from "./notice-copy";
+import { releaseWithdrawalNotice } from "./release-withdrawal-notice-copy";
 import {
   offersDiscard,
   type RowActionHandlers,
