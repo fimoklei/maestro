@@ -40,6 +40,8 @@ import {
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { AddCategoryDialog } from "./settings/add-category-dialog";
+import { DeleteCategoryDialog } from "./settings/delete-category-dialog";
+import { RenameCategoryDialog } from "./settings/rename-category-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
@@ -339,6 +341,37 @@ const addCategoryDialog = (
     failure={null}
     busy={running}
     onAdd={onRun}
+    onClose={onClose}
+  />
+);
+
+const renameCategoryDialog = (
+  name: string,
+  { running = false, onClose = vi.fn(), onRun = vi.fn() }: Options = {},
+) => (
+  <RenameCategoryDialog
+    category={{ name: "Planning", skills: 3, prompts: 2 }}
+    name={name}
+    onNameChange={vi.fn()}
+    error={undefined}
+    failure={null}
+    busy={running}
+    onRename={onRun}
+    onClose={onClose}
+  />
+);
+
+const deleteCategoryDialog = ({
+  running = false,
+  onClose = vi.fn(),
+}: Options = {}) => (
+  <DeleteCategoryDialog
+    category={{ name: "Planning", skills: 3, prompts: 2 }}
+    moveTo={null}
+    onMoveToChange={vi.fn()}
+    failure={null}
+    busy={running}
+    onDelete={vi.fn()}
     onClose={onClose}
   />
 );
@@ -667,6 +700,33 @@ const ON_DIALOG: Row[] = [
       submit: "Add category",
       render: (onRun) => addCategoryDialog("", { onRun }),
     },
+    loading: null,
+    loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "settings/rename-category-dialog.tsx",
+    heading: "Rename Planning",
+    render: ({ running, onClose }) =>
+      renameCategoryDialog("Design", { running, onClose }),
+    changed: async (onClose) => {
+      render(renameCategoryDialog("Design", { onClose }));
+    },
+    emptyForm: {
+      submit: "Rename category",
+      render: (onRun) => renameCategoryDialog("", { onRun }),
+    },
+    loading: null,
+    loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "settings/delete-category-dialog.tsx",
+    heading: "Delete Planning",
+    render: ({ running, onClose }) =>
+      deleteCategoryDialog({ running, onClose }),
+    changed: null,
+    emptyForm: null,
     loading: null,
     loadFailed: null,
     notices: [],

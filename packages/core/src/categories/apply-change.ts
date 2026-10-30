@@ -10,6 +10,8 @@ import type { HeldItems } from "./held-items";
 
 export type CategoryChange =
   | { kind: "add"; name: string }
+  | { kind: "rename"; from: string; to: string }
+  | { kind: "delete"; name: string; moveTo: string | null }
   | { kind: "assign"; items: PrimitiveRef[]; category: string | null };
 
 export type AppliedChange =
@@ -32,17 +34,74 @@ export const withoutStale = (
         assignments: record.assignments.filter((each) => held.holds(each)),
       };
 
+/** The stored name the given name matches, ignoring case and outer spaces. */
+const storedName = (record: CategoryRecord, name: string): string | undefined =>
+  record.names.find((each) => sameCategoryName(each, trimCategoryName(name)));
+
+// A case-only rename keeps its slot; only another category's name is taken.
+const rename = (
+  record: CategoryRecord,
+  change: Extract<CategoryChange, { kind: "rename" }>,
+): AppliedChange => {
+  const from = storedName(record, change.from);
+  if (from === undefined) return { ok: false, error: "category-not-found" };
+  const to = trimCategoryName(change.to);
+  if (categoryNameProblem(to) !== null) {
+    return { ok: false, error: "name-invalid" };
+  }
+  const existing = record.names.find(
+    (each) => each !== from && sameCategoryName(each, to),
+  );
+  if (existing !== undefined) {
+    return { ok: false, error: "name-exists", existing };
+  }
+  return {
+    ok: true,
+    record: {
+      ...record,
+      names: record.names.map((each) => (each === from ? to : each)),
+      assignments: record.assignments.map((each) =>
+        each.category === from ? { ...each, category: to } : each,
+      ),
+    },
+  };
+};
+
+// The destination must outlive the delete, so the category itself is none.
+const remove = (
+  record: CategoryRecord,
+  change: Extract<CategoryChange, { kind: "delete" }>,
+): AppliedChange => {
+  const name = storedName(record, change.name);
+  if (name === undefined) return { ok: false, error: "category-not-found" };
+  const moveTo =
+    change.moveTo === null ? null : storedName(record, change.moveTo);
+  if (moveTo === undefined || moveTo === name) {
+    return { ok: false, error: "category-not-found" };
+  }
+  return {
+    ok: true,
+    record: {
+      ...record,
+      names: record.names.filter((each) => each !== name),
+      assignments: record.assignments.flatMap((each) =>
+        each.category !== name
+          ? [each]
+          : moveTo === null
+            ? []
+            : [{ ...each, category: moveTo }],
+      ),
+    },
+  };
+};
+
 const assign = (
   record: CategoryRecord,
   change: Extract<CategoryChange, { kind: "assign" }>,
   held: HeldItems | null,
 ): AppliedChange => {
   const category =
-    change.category === null
-      ? null
-      : record.names.find((name) =>
-          sameCategoryName(name, trimCategoryName(change.category ?? "")),
-        );
+    change.category === null ? null : storedName(record, change.category);
   if (category === undefined) return { ok: false, error: "category-not-found" };
   if (held !== null && !change.items.every((item) => held.holds(item))) {
     return { ok: false, error: "item-not-found" };
@@ -92,6 +151,10 @@ export const applyChange = (
         added: name,
       };
     }
+    case "rename":
+      return rename(record, change);
+    case "delete":
+      return remove(record, change);
     case "assign":
       return assign(record, change, held);
   }

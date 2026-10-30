@@ -4,7 +4,7 @@ import { harnessHeadings } from "../harness/notice-copy";
 import { ADD_CATEGORY } from "../ui/category-menu-copy";
 import { rereadLabel, SET_CATEGORY } from "../ui/control-labels";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
-import { machine, type Phrase, phrase } from "../ui/phrase";
+import { machine, named, type Phrase, phrase } from "../ui/phrase";
 
 const CATEGORIES = "Categories";
 export const CATEGORIES_SENTENCE =
@@ -104,4 +104,73 @@ export const categoryNotSet = (
       : code === "item-not-found"
         ? `The Harness no longer holds it. Select ${reread} to update the list.`
         : "Choose the category again.",
+});
+
+export const RENAME_CATEGORY = "Rename category";
+export const DELETE_CATEGORY = "Delete category";
+export const renameCategoryTitle = (name: string) => `Rename ${name}`;
+export const deleteCategoryTitle = (name: string) => `Delete ${name}`;
+/** Why Rename category waits: the name is as it was. */
+export const CHANGE_THE_NAME = "Change the name.";
+export const MOVE_TO = "Move to";
+
+const counted = (count: number, one: string, many: string) =>
+  `${count} ${count === 1 ? one : many}`;
+
+// `3 skills and 2 prompts`, `1 skill`: what a category carries, at least one.
+function carried(skills: number, prompts: number): string {
+  const parts = [
+    skills > 0 ? counted(skills, "skill", "skills") : null,
+    prompts > 0 ? counted(prompts, "prompt", "prompts") : null,
+  ].filter((part) => part !== null);
+  return parts.join(" and ");
+}
+
+const one = (skills: number, prompts: number) => skills + prompts === 1;
+
+/** Rename category's field hint; an empty category has none. */
+export function renameHint(
+  skills: number,
+  prompts: number,
+): string | undefined {
+  if (skills + prompts === 0) return undefined;
+  const verb = one(skills, prompts) ? "shows" : "show";
+  return `Its ${carried(skills, prompts)} ${verb} the new name.`;
+}
+
+/** Delete category's body for a category that carries items. */
+export function deleteMoves(skills: number, prompts: number): string {
+  return one(skills, prompts)
+    ? `Its ${carried(skills, prompts)} moves to the category you choose. It stays in the Harness.`
+    : `Its ${carried(skills, prompts)} move to the category you choose. They stay in the Harness.`;
+}
+
+/** Delete category's body for an empty category. */
+export const emptyCategoryDeleted = (name: string): Phrase =>
+  phrase`No skills or prompts are in ${named(name)}.`;
+
+const GONE = `The category no longer exists. Select ${REREAD_CATEGORIES} to update the list.`;
+
+/** Why Rename category did not land, stated in its dialog. */
+export const notRenamed = (
+  code: "category-not-found" | "other",
+): NoticeContent => ({
+  level: "error",
+  label: "Category not renamed",
+  message:
+    code === "category-not-found"
+      ? GONE
+      : `Select ${RENAME_CATEGORY} to try again.`,
+});
+
+/** Why Delete category did not land, stated in its dialog. */
+export const notDeleted = (
+  code: "category-not-found" | "other",
+): NoticeContent => ({
+  level: "error",
+  label: "Category not deleted",
+  message:
+    code === "category-not-found"
+      ? GONE
+      : `Select ${DELETE_CATEGORY} to try again.`,
 });

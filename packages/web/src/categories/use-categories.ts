@@ -34,6 +34,40 @@ export function useAddCategory() {
   });
 }
 
+export function useRenameCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rename: { from: string; to: string }) =>
+      requestJson<CategoryList>("/api/categories/rename", {
+        method: "POST",
+        body: JSON.stringify(rename),
+      }),
+    onSuccess: (list) => {
+      queryClient.setQueryData(CATEGORIES_KEY, list);
+    },
+  });
+}
+
+export type CategoryDeletion = {
+  name: string;
+  /** Where its items go; null takes them out of every category. */
+  moveTo: string | null;
+};
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deletion: CategoryDeletion) =>
+      requestJson<CategoryList>("/api/categories/delete", {
+        method: "POST",
+        body: JSON.stringify(deletion),
+      }),
+    onSuccess: (list) => {
+      queryClient.setQueryData(CATEGORIES_KEY, list);
+    },
+  });
+}
+
 export type CategoryAssignment = {
   items: PrimitiveRef[];
   /** Null takes the items out of every category. */

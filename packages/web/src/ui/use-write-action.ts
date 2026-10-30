@@ -2,7 +2,8 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 import { ACTIONS, type ActionKey, doneSentence } from "./busy-copy";
 import type { NoticeContent } from "./notice";
-import type { Copy, Phrase } from "./phrase";
+import { type Copy, type Phrase, plainText } from "./phrase";
+import { showSuccess } from "./toast";
 
 type Report = (write: string) => void;
 
@@ -67,6 +68,12 @@ type Delivery<TData> =
       report: Report;
       /** Takes the result to the screen the write ends on, whose table screen settles it. */
       handOver: (result: WriteResult, data: TData) => void;
+    }
+  | {
+      /** The region of a screen without a table, such as Settings. */
+      report: Report;
+      /** Where the screen says the result: its row is in view, or it left. */
+      show: "region" | "toast";
     };
 
 type Feedback<TData, TVariables> = Delivery<TData> & {
@@ -81,6 +88,20 @@ function delivered<TData>(delivery: Delivery<TData>): {
 } {
   if ("screen" in delivery) {
     return { report: delivery.screen.report, deliver: delivery.screen.settle };
+  }
+  if ("show" in delivery) {
+    const { report, show } = delivery;
+    return {
+      report,
+      deliver: ({ sentence }) => {
+        if (show === "region") {
+          report(plainText(sentence));
+          return;
+        }
+        report("");
+        showSuccess(sentence);
+      },
+    };
   }
   const { report, handOver } = delivery;
   return {

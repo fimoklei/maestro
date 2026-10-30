@@ -76,6 +76,20 @@ const assign = (app: App, items: Ref[], category: string | null) =>
     body: JSON.stringify({ items, category }),
   });
 
+const rename = (app: App, from: unknown, to: unknown) =>
+  app.request("/api/categories/rename", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to }),
+  });
+
+const remove = (app: App, name: unknown, moveTo: unknown) =>
+  app.request("/api/categories/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, moveTo }),
+  });
+
 const skill = (name: string): Ref => ({ type: "skill", name });
 const prompt = (name: string): Ref => ({ type: "prompt", name });
 
@@ -306,6 +320,168 @@ describe("categories over HTTP", () => {
         }),
       ).toBe(before);
     });
+  });
+
+  describe("rename", () => {
+    it("renames a category, and every assigned skill and prompt follows", async () => {
+      const { app, release } = world();
+      release(["tdd"], ["pr-review"]);
+      await add(app, "Planning");
+      await assign(app, [skill("tdd"), prompt("pr-review")], "Planning");
+
+      const res = await rename(app, "Planning", "  Design ");
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        categories: [{ name: "Design", skills: 1, prompts: 1 }],
+        assignments: [
+          { type: "skill", name: "tdd", category: "Design" },
+          { type: "prompt", name: "pr-review", category: "Design" },
+        ],
+      } satisfies CategoryList);
+    });
+
+    it("refuses a category that does not exist", async () => {
+      const { app } = world();
+      await add(app, "Planning");
+
+      const res = await rename(app, "Writing", "Docs");
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: "category-not-found" });
+      await expect(namesOf(app)).resolves.toEqual(["Planning"]);
+    });
+
+    it.each([
+      ["an empty name", " "],
+      ["a name over 64 characters", "x".repeat(65)],
+      ["a name with a line break", "Plan\nning"],
+    ])("refuses %s", async (_, to) => {
+      const { app } = world();
+      await add(app, "Planning");
+
+      const res = await rename(app, "Planning", to);
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "name-invalid" });
+      await expect(namesOf(app)).resolves.toEqual(["Planning"]);
+    });
+
+    it("refuses a request of the wrong shape", async () => {
+      const { app } = world();
+
+      const res = await rename(app, "Planning", null);
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: "invalid-body" });
+    });
+  });
+
+  describe("delete", () => {
+    it("refuses a category that does not exist", async () => {
+      const { app } = world();
+      await add(app, "Planning");
+
+      const res = await remove(app, "Writing", null);
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: "category-not-found" });
+    });
+
+    it("refuses a destination that does not exist, or is the category itself", async () => {
+      const { app, release } = world();
+      release(["tdd"]);
+      await add(app, "Planning");
+      await assign(app, [skill("tdd")], "Planning");
+
+      const unknown = await remove(app, "Planning", "Writing");
+      const itself = await remove(app, "Planning", "planning");
+
+      expect(unknown.status).toBe(404);
+      expect(await unknown.json()).toEqual({ error: "category-not-found" });
+      expect(itself.status).toBe(404);
+      expect(await itself.json()).toEqual({ error: "category-not-found" });
+      expect((await listOf(app)).categories).toEqual([
+        { name: "Planning", skills: 1, prompts: 0 },
+      ]);
+    });
+
+    it("refuses a request of the wrong shape", async () => {
+      const { app } = world();
+
+      const res = await app.request("/api/categories/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Planning" }),
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: "invalid-body" });
+    });
+  });
+
+  it("carries a list through add, rename, assign and delete, with the counts after each step", async () => {
+    const { app, release } = world();
+    release(["tdd", "grill", "research"], ["pr-review"]);
+    const counts = async () => (await listOf(app)).categories;
+
+    await add(app, "code review");
+    await add(app, "Planning");
+    await add(app, "Writing");
+    expect(await counts()).toEqual([
+      { name: "code review", skills: 0, prompts: 0 },
+      { name: "Planning", skills: 0, prompts: 0 },
+      { name: "Writing", skills: 0, prompts: 0 },
+    ]);
+
+    const duplicate = await add(app, "PLANNING");
+    expect(duplicate.status).toBe(409);
+    expect(await duplicate.json()).toEqual({
+      error: "name-exists",
+      existing: "Planning",
+    });
+
+    const caseOnly = await rename(app, "code review", "Code review");
+    expect(caseOnly.status).toBe(200);
+    expect((await counts()).map(({ name }) => name)).toEqual([
+      "Code review",
+      "Planning",
+      "Writing",
+    ]);
+
+    const onto = await rename(app, "Code review", " writing ");
+    expect(onto.status).toBe(409);
+    expect(await onto.json()).toEqual({
+      error: "name-exists",
+      existing: "Writing",
+    });
+
+    await assign(app, [skill("tdd"), skill("grill")], "Planning");
+    await assign(app, [skill("research"), prompt("pr-review")], "Code review");
+    expect(await counts()).toEqual([
+      { name: "Code review", skills: 1, prompts: 1 },
+      { name: "Planning", skills: 2, prompts: 0 },
+      { name: "Writing", skills: 0, prompts: 0 },
+    ]);
+
+    const merged = await remove(app, "Planning", "code REVIEW");
+    expect(merged.status).toBe(200);
+    expect(await counts()).toEqual([
+      { name: "Code review", skills: 3, prompts: 1 },
+      { name: "Writing", skills: 0, prompts: 0 },
+    ]);
+    expect((await listOf(app)).assignments).toContainEqual({
+      type: "skill",
+      name: "tdd",
+      category: "Code review",
+    });
+
+    const toNone = await remove(app, "Code review", null);
+    expect(toNone.status).toBe(200);
+    expect(await listOf(app)).toEqual({
+      categories: [{ name: "Writing", skills: 0, prompts: 0 }],
+      assignments: [],
+    } satisfies CategoryList);
   });
 
   describe("an item the Harness no longer holds", () => {

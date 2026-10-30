@@ -10,9 +10,14 @@ import {
   categoriesUnreadable,
   categoryCounts,
   categoryNotSet,
+  deleteMoves,
+  emptyCategoryDeleted,
   NO_CATEGORIES,
   NO_CATEGORIES_SENTENCE,
   nameExistsError,
+  notDeleted,
+  notRenamed,
+  renameHint,
   setCategoryFor,
 } from "./categories-copy";
 
@@ -104,4 +109,90 @@ describe("Categories copy", () => {
         "The prompt was edited. Select Close, then select Set category on Prompts.",
     });
   });
+
+  it.each([
+    [3, 2, "Its 3 skills and 2 prompts show the new name."],
+    [1, 1, "Its 1 skill and 1 prompt show the new name."],
+    [2, 0, "Its 2 skills show the new name."],
+    [1, 0, "Its 1 skill shows the new name."],
+    [0, 3, "Its 3 prompts show the new name."],
+    [0, 1, "Its 1 prompt shows the new name."],
+  ])(
+    "tells Rename category that %i skills and %i prompts follow",
+    (skills, prompts, hint) => {
+      expect(renameHint(skills, prompts)).toBe(hint);
+    },
+  );
+
+  it("gives an empty category no rename hint", () => {
+    expect(renameHint(0, 0)).toBeUndefined();
+  });
+
+  it.each([
+    [
+      3,
+      2,
+      "Its 3 skills and 2 prompts move to the category you choose. They stay in the Harness.",
+    ],
+    [
+      1,
+      0,
+      "Its 1 skill moves to the category you choose. It stays in the Harness.",
+    ],
+    [
+      0,
+      1,
+      "Its 1 prompt moves to the category you choose. It stays in the Harness.",
+    ],
+    [
+      0,
+      4,
+      "Its 4 prompts move to the category you choose. They stay in the Harness.",
+    ],
+  ])(
+    "tells Delete category where %i skills and %i prompts go",
+    (skills, prompts, body) => {
+      expect(deleteMoves(skills, prompts)).toBe(body);
+    },
+  );
+
+  it("says an empty category holds nothing", () => {
+    expect(plainText(emptyCategoryDeleted("Release notes"))).toBe(
+      "No skills or prompts are in Release notes.",
+    );
+  });
+
+  it.each([
+    [
+      "category-not-found",
+      "The category no longer exists. Select Re-read Categories to update the list.",
+    ],
+    ["other", "Select Rename category to try again."],
+  ] as const)(
+    "states why Rename category did not land: %s",
+    (code, message) => {
+      expect(notRenamed(code)).toEqual({
+        level: "error",
+        label: "Category not renamed",
+        message,
+      });
+    },
+  );
+
+  it.each([
+    [
+      "category-not-found",
+      "The category no longer exists. Select Re-read Categories to update the list.",
+    ],
+    ["other", "Select Delete category to try again."],
+  ] as const)(
+    "states why Delete category did not land: %s",
+    (code, message) => {
+      expect(notDeleted(code)).toEqual({
+        level: "error",
+        label: "Category not deleted",
+        message,
+      });
+    },
+  );
 });
