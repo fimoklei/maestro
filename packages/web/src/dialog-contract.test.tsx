@@ -39,6 +39,7 @@ import {
   stubRegistry,
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
+import { AddCategoryDialog } from "./settings/add-category-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
@@ -323,6 +324,21 @@ const setLocationDialog = (
     notice={null}
     busy={running}
     onSet={onRun}
+    onClose={onClose}
+  />
+);
+
+const addCategoryDialog = (
+  name: string,
+  { running = false, onClose = vi.fn(), onRun = vi.fn() }: Options = {},
+) => (
+  <AddCategoryDialog
+    name={name}
+    onNameChange={vi.fn()}
+    error={undefined}
+    failure={null}
+    busy={running}
+    onAdd={onRun}
     onClose={onClose}
   />
 );
@@ -634,6 +650,23 @@ const ON_DIALOG: Row[] = [
     ),
     changed: null,
     emptyForm: null,
+    loading: null,
+    loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "settings/add-category-dialog.tsx",
+    heading: "Add a category",
+    render: ({ running, onClose }) =>
+      addCategoryDialog("Docs", { running, onClose }),
+    changed: async (onClose) => {
+      const { rerender } = render(addCategoryDialog("", { onClose }));
+      rerender(addCategoryDialog("Docs", { onClose }));
+    },
+    emptyForm: {
+      submit: "Add category",
+      render: (onRun) => addCategoryDialog("", { onRun }),
+    },
     loading: null,
     loadFailed: null,
     notices: [],

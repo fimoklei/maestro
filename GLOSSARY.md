@@ -28,6 +28,10 @@ _Avoid_: prompt (a different primitive), rule, instruction.
 A reusable text you copy from Prompts and paste into an AI coding assistant. The Harness keeps each prompt as one `<name>.md` file in `.maestro/prompts/`. APM never delivers it, so a prompt has no targets (ADR-0019 §8).
 _Avoid_: snippet, template, command, prompt in APM's sense (a `.prompt.md` file APM delivers to every prompt-capable tool of a target).
 
+**Category**:
+A named label in the operator's own list for one Harness that sorts skills and prompts. A skill or prompt has one category or none. A category exists until it is deleted, even when nothing carries it. Teammates do not see it (ADR-0034).
+_Avoid_: tag, folder, group (that is how Display shows a category).
+
 **Hook**:
 A primitive that runs a script at a defined point in the assistant's lifecycle (e.g. a code-quality check). Packaged with its config and scripts.
 _Avoid_: trigger, plugin (a hook is one packaged thing, not the whole plugin concept).
@@ -78,7 +82,7 @@ _Avoid_: author (the Harness screen's role label, not a person), consumer (that 
 
 **Bundle**:
 A named set of primitives composed from the central inventory for scoped deployment (e.g. `frontend`, `engineering-stack`). The convenient unit to deploy together.
-_Avoid_: skill group, category, tag, profile, bundle in APM's sense (there it names the whole selectable package a target depends on — that is the **Harness**, ADR-0031).
+_Avoid_: skill group, category (that is the label that sorts skills and prompts), tag, profile, bundle in APM's sense (there it names the whole selectable package a target depends on — that is the **Harness**, ADR-0031).
 
 **Deploy**:
 The act of adding a primitive to a target's **Selection** so APM reproduces it from the central inventory at the **Target release** (ADR-0031). A deployed copy is also where an improvement may start: an edited copy of a skill this Harness deployed travels back through **Import skill** → **Update skill**, or from its target on **Deploy-state** through **Import local edits**, then **Pending proposal** → **Propose change** → **Release** (ADR-0026).

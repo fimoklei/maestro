@@ -1,5 +1,11 @@
 // Only what crosses the package boundary; keep core-internal exports off it.
 
+export type {
+  CategoryChange,
+  CategoryError,
+  CategoryList,
+  CategoryResult,
+} from "./categories/categories";
 export {
   composeUseCases,
   type UseCasePorts,

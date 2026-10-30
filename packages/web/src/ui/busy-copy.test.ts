@@ -30,6 +30,7 @@ describe("busy labels", () => {
     ["scaffold", "Scaffolding…"],
     ["connect", "Connecting…"],
     ["setLocation", "Setting…"],
+    ["add", "Adding…"],
   ] as const)("reads %s as %s", (action, label) => {
     expect(ACTIONS[action].busy).toBe(label);
   });
@@ -62,6 +63,7 @@ describe("done sentences", () => {
     ["scaffold", "Scaffolded tdd."],
     ["connect", "Connected tdd."],
     ["setLocation", "Set tdd."],
+    ["add", "Added tdd."],
   ] as const)("ends %s as %s", (action, sentence) => {
     expect(plainText(doneSentence(action, "tdd"))).toBe(sentence);
   });

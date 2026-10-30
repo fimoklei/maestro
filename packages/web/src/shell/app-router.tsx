@@ -12,6 +12,7 @@ import {
 import { PromptsPanel } from "../prompts/prompts-panel";
 import { RepositoriesView } from "../registry/repositories-view";
 import { AppearancePage } from "../settings/appearance-page";
+import { CategoriesPage } from "../settings/categories-page";
 import { HarnessLocationPage } from "../settings/harness-location-page";
 import { HARNESS_LOCATION_PAGE } from "../settings/settings-pages";
 import { SettingsShell } from "../settings/settings-shell";
@@ -36,6 +37,7 @@ export function AppRoutes() {
           element={<Navigate to={HARNESS_LOCATION_PAGE.to} replace />}
         />
         <Route path="harness-location" element={<HarnessLocationPage />} />
+        <Route path="categories" element={<CategoriesPage />} />
         <Route path="appearance" element={<AppearancePage />} />
       </Route>
       <Route element={<AppShell />}>

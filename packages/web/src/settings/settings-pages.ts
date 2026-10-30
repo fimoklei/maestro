@@ -17,7 +17,13 @@ export const APPEARANCE_PAGE: SettingsPage = {
   label: "Appearance",
 };
 
+export const CATEGORIES_PAGE: SettingsPage = {
+  to: "/settings/categories",
+  label: "Categories",
+};
+
 export const SETTINGS_PAGES: readonly SettingsPage[] = [
   HARNESS_LOCATION_PAGE,
+  CATEGORIES_PAGE,
   APPEARANCE_PAGE,
 ];

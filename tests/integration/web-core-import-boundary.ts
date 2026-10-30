@@ -1,6 +1,6 @@
 // Finds runtime edges to `@maestro/core` in one web source file: only a
 // statement-level `import type` or `export type ... from` is allowed, plus the
-// prompt-file subpath.
+// runtime subpaths.
 import { dirname, resolve } from "node:path";
 import ts from "typescript-6";
 
@@ -9,14 +9,17 @@ const CORE_SPECIFIER = /^@maestro\/core(\/.*)?$/;
 
 const CORE_PACKAGE_PATH = /[\\/]packages[\\/]core([\\/]|$)/;
 
-// The one runtime import from core; it pulls in no `node:` module.
-const RUNTIME_CORE_SUBPATH = "@maestro/core/prompt-file";
+// The runtime imports from core; they pull in no `node:` module.
+const RUNTIME_CORE_SUBPATHS = new Set([
+  "@maestro/core/prompt-file",
+  "@maestro/core/category-name",
+]);
 
 const reachesCore = (
   specifier: string,
   filePath: string | undefined,
 ): boolean =>
-  (CORE_SPECIFIER.test(specifier) && specifier !== RUNTIME_CORE_SUBPATH) ||
+  (CORE_SPECIFIER.test(specifier) && !RUNTIME_CORE_SUBPATHS.has(specifier)) ||
   (filePath !== undefined &&
     specifier.startsWith(".") &&
     CORE_PACKAGE_PATH.test(resolve(dirname(filePath), specifier)));

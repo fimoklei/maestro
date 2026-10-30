@@ -28,7 +28,7 @@ describe("SettingsSidebar", () => {
       within(nav)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Harness location", "Appearance"]);
+    ).toEqual(["Harness location", "Categories", "Appearance"]);
   });
 
   it("marks the open page, and only that one, as the current page", () => {
