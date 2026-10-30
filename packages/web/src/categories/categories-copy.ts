@@ -1,4 +1,4 @@
-import type { HarnessPrimitiveType } from "@maestro/core";
+import type { HarnessPrimitiveType, ImportMode } from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
 import { ADD_CATEGORY } from "../ui/category-menu-copy";
@@ -108,6 +108,28 @@ export const categoryNotSet = (
       : code === "item-not-found"
         ? `The Harness no longer holds it. Select ${reread} to update the list.`
         : "Choose the category again.",
+});
+
+/** The hint once the field holds the category the imported file names. */
+export const TAKEN_FROM_FILE: Record<HarnessPrimitiveType, string> = {
+  skill: "Taken from SKILL.md.",
+  prompt: "Taken from the front matter.",
+};
+
+const SCREEN_OF: Record<HarnessPrimitiveType, string> = {
+  skill: "Skills",
+  prompt: "Prompts",
+};
+
+/** The import landed; the category chosen for it did not. */
+export const categoryNotSetAfterImport = (
+  type: HarnessPrimitiveType,
+  name: string,
+  mode: ImportMode,
+): NoticeContent => ({
+  level: "error",
+  label: CATEGORY_NOT_SET,
+  message: phrase`${named(name)} was ${mode === "update" ? "updated" : "imported"}. Select ${SET_CATEGORY} on ${SCREEN_OF[type]} to set its category.`,
 });
 
 export const RENAME_CATEGORY = "Rename category";

@@ -9,6 +9,7 @@ import {
   CATEGORY_NOT_SET_AFTER_EDIT,
   categoriesUnreadable,
   categoryNotSet,
+  categoryNotSetAfterImport,
   countInCategory,
   countWords,
   deleteMoves,
@@ -21,6 +22,7 @@ import {
   notRenamed,
   renameHint,
   setCategoryFor,
+  TAKEN_FROM_FILE,
 } from "./categories-copy";
 
 // Approved sentences, as exact strings.
@@ -119,6 +121,13 @@ describe("Categories copy", () => {
     });
   });
 
+  it("says where a category the imported file named came from", () => {
+    expect(TAKEN_FROM_FILE).toEqual({
+      skill: "Taken from SKILL.md.",
+      prompt: "Taken from the front matter.",
+    });
+  });
+
   it.each([
     [3, 2, "Its 3 skills and 2 prompts show the new name."],
     [1, 1, "Its 1 skill and 1 prompt show the new name."],
@@ -202,6 +211,27 @@ describe("Categories copy", () => {
         label: "Category not deleted",
         message,
       });
+    },
+  );
+
+  it.each([
+    [
+      "skill",
+      "add",
+      "code-review was imported. Select Set category on Skills to set its category.",
+    ],
+    [
+      "prompt",
+      "update",
+      "review-pr was updated. Select Set category on Prompts to set its category.",
+    ],
+  ] as const)(
+    "states that a %s's %s landed without its category",
+    (type, mode, message) => {
+      const name = type === "skill" ? "code-review" : "review-pr";
+      const notice = categoryNotSetAfterImport(type, name, mode);
+      expect(notice.label).toBe("Category not set");
+      expect(plainText(notice.message)).toBe(message);
     },
   );
 });

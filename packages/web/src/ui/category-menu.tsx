@@ -89,6 +89,7 @@ export function CategoryMenu({
   names,
   current,
   exclude,
+  initialQuery = "",
   failure = null,
   onPick,
   onAdd,
@@ -101,6 +102,8 @@ export function CategoryMenu({
   current: string | null | undefined;
   /** A category the reader may not pick, such as the one being deleted. */
   exclude?: string;
+  /** What the search box opens holding, such as a name the imported file gave. */
+  initialQuery?: string;
   /** Why the last pick or add did not land. */
   failure?: NoticeContent | null;
   onPick: (name: string | null) => void;
@@ -111,7 +114,7 @@ export function CategoryMenu({
 }) {
   const listId = useId();
   const optionId = useId();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const options = optionsFor(names, exclude, query);
   const [active, setActive] = useState(() =>
     firstActive(options, current, query),

@@ -184,6 +184,7 @@ describe("ImportSkill.check", () => {
         sourceBlocker: null,
         nameBlocker: null,
         advisories: [],
+        category: null,
       },
     });
   });
@@ -760,6 +761,45 @@ describe("ImportSkill.check", () => {
         nameBlocker: null,
         advisories: ["long-manifest", "long-description"],
       },
+    });
+  });
+
+  it("returns the category SKILL.md names under metadata, trimmed", async () => {
+    const { importSkill } = harness({
+      files: {
+        [`${SOURCE}/SKILL.md`]:
+          "---\ndescription: Reviews code.\nmetadata:\n  category: '  code review '\n---\n",
+      },
+    });
+
+    await expect(importSkill.check({ source: SOURCE })).resolves.toMatchObject({
+      check: { category: "code review" },
+    });
+  });
+
+  it.each([
+    ["no metadata", "description: Reviews code.\n"],
+    ["a number", "description: Reviews code.\nmetadata:\n  category: 3\n"],
+    ["a list", "description: Reviews code.\nmetadata:\n  category: [a, b]\n"],
+    [
+      "metadata that is a string",
+      "description: Reviews code.\nmetadata: docs\n",
+    ],
+    [
+      "a blank name",
+      "description: Reviews code.\nmetadata:\n  category: ' '\n",
+    ],
+    [
+      "a name past 64 characters",
+      `description: Reviews code.\nmetadata:\n  category: ${"a".repeat(65)}\n`,
+    ],
+  ])("reads %s as no category", async (_case, frontmatter) => {
+    const { importSkill } = harness({
+      files: { [`${SOURCE}/SKILL.md`]: `---\n${frontmatter}---\n` },
+    });
+
+    await expect(importSkill.check({ source: SOURCE })).resolves.toMatchObject({
+      check: { category: null },
     });
   });
 

@@ -9,6 +9,7 @@ export function CategoryPicker({
   label,
   current,
   exclude,
+  initialQuery,
   failure = null,
   onPick,
   onClose,
@@ -18,6 +19,8 @@ export function CategoryPicker({
   current: string | null | undefined;
   /** A category the reader may not pick, such as the one being deleted. */
   exclude?: string;
+  /** What the search box opens holding. */
+  initialQuery?: string;
   /** Why the caller's last pick did not land. */
   failure?: NoticeContent | null;
   onPick: (name: string | null) => void;
@@ -32,6 +35,7 @@ export function CategoryPicker({
       names={names}
       current={current}
       exclude={exclude}
+      initialQuery={initialQuery}
       failure={
         add.isError ? { level: "error", ...CATEGORY_NOT_ADDED } : failure
       }

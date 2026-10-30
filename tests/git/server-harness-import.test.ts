@@ -115,6 +115,7 @@ describe("harness import HTTP route", () => {
       sourceBlocker: null,
       nameBlocker: null,
       advisories: ["long-manifest", "long-description"],
+      category: null,
     });
   });
 

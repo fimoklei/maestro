@@ -12,6 +12,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps, ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CategoryFieldState } from "./categories/category-field";
 import { ImportLocalEditsDialog } from "./deploy-state/import-local-edits-dialog";
 import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
@@ -128,6 +129,14 @@ const CHECK = {
   sourceBlocker: null,
   nameBlocker: null,
   advisories: [],
+  category: null,
+};
+
+const NO_CATEGORY_FIELD: CategoryFieldState = {
+  value: null,
+  hint: "Only you see this category.",
+  suggested: null,
+  onChange: vi.fn(),
 };
 
 type Options = {
@@ -249,6 +258,7 @@ const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
     onImport={vi.fn()}
     importing={false}
     importError={null}
+    category={NO_CATEGORY_FIELD}
     {...props}
   />
 );
@@ -267,6 +277,7 @@ const importPromptDialog = (
     failure={null}
     mode="add"
     takenNotice={null}
+    category={{ field: NO_CATEGORY_FIELD }}
     source="paste"
     chosenFile={null}
     fileNotice={null}

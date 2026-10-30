@@ -15,6 +15,7 @@ const CHECK = {
   sourceBlocker: null,
   nameBlocker: null,
   advisories: [],
+  category: null,
 };
 
 // A chooser that answers every Browse with PICKED, as the server's would.
@@ -81,6 +82,12 @@ function SourceHost({
       onImport={onImport}
       importing={false}
       importError={importError}
+      category={{
+        value: null,
+        hint: "Only you see this category.",
+        suggested: null,
+        onChange: vi.fn(),
+      }}
     />
   );
 }

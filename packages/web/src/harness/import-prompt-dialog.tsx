@@ -2,7 +2,10 @@ import type { ImportMode } from "@maestro/core";
 import type { PromptFile } from "@maestro/core/prompt-file";
 import { FileText } from "lucide-react";
 import { type ClipboardEvent, useId, useRef } from "react";
-import { CategoryField } from "../categories/category-field";
+import {
+  CategoryField,
+  type CategoryFieldState,
+} from "../categories/category-field";
 import { Button } from "../ui/button";
 import { CHOOSE_ANOTHER_FILE, EDIT_PROMPT } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
@@ -51,7 +54,7 @@ type ImportProps = PromptDialogBase & { mode: ImportMode } & Pick<
     | "chooseFile"
     | "checkName"
     | "paste"
-  >;
+  > & { category: { field: CategoryFieldState } };
 
 // A prompt the reader chose: its name is a fact, its fields come filled.
 type EditProps = PromptDialogBase & {
@@ -231,6 +234,9 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         onPaste={importOnly === null ? undefined : pasteText}
         disabled={locked}
       />
+      {importOnly === null ? null : (
+        <CategoryField {...importOnly.category.field} disabled={importing} />
+      )}
     </Dialog>
   );
 }

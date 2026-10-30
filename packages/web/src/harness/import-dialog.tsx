@@ -1,4 +1,8 @@
 import { useState } from "react";
+import {
+  CategoryField,
+  type CategoryFieldState,
+} from "../categories/category-field";
 import { Dialog } from "../ui/dialog";
 import { Field } from "../ui/field";
 import { Notice, type NoticeContent } from "../ui/notice";
@@ -26,6 +30,7 @@ export function ImportDialog({
   onImport,
   importing,
   importError,
+  category,
 }: {
   /** The folder the check was asked about; null until one is chosen. */
   source: string | null;
@@ -43,6 +48,7 @@ export function ImportDialog({
   onImport: () => void;
   importing: boolean;
   importError: NoticeContent | null;
+  category: CategoryFieldState;
 }) {
   const check = load.kind === "ready" ? load.check : undefined;
   const labels = importLabels(check);
@@ -117,6 +123,8 @@ export function ImportDialog({
         />
         <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
       </div>
+
+      <CategoryField {...category} disabled={importing} />
 
       <Notice
         trigger="load"
