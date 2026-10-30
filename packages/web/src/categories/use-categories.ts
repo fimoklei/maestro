@@ -2,7 +2,7 @@ import type { CategoryList } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-export const CATEGORIES_KEY = ["categories"] as const;
+const CATEGORIES_KEY = ["categories"] as const;
 
 export function useCategories() {
   return useQuery({

@@ -25,6 +25,7 @@ import {
 } from "react";
 import { Checkbox } from "./checkbox";
 import { cn } from "./cn";
+import { CURRENT_ROW } from "./current-row";
 import { DataTableCard, type DataTableCardColumn } from "./data-table-card";
 import { keyHint } from "./data-table-copy";
 import { DataTableName } from "./data-table-name";
@@ -402,7 +403,7 @@ export function DataTable<T extends RowData>({
           className={cn(
             "group/row h-row border-divider border-b",
             onRowOpen && "cursor-pointer",
-            isOpen ? "bg-gray-5" : "hover:bg-gray-3",
+            isOpen ? CURRENT_ROW : "hover:bg-gray-3",
             gridFocused &&
               index === active &&
               "outline-2 outline-blue-9 -outline-offset-2 outline",

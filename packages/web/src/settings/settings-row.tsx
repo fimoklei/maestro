@@ -1,6 +1,7 @@
 import type { GitHubPage } from "@maestro/core";
 import type { ReactNode, Ref } from "react";
 import { cn } from "../ui/cn";
+import { CURRENT_ROW } from "../ui/current-row";
 import { GitHubFactLink } from "../ui/github-fact-link";
 
 // One row of a Settings section (#995): the name and at most one sentence
@@ -41,7 +42,7 @@ export function SettingsRow({
 }: SettingsRowProps) {
   const className = cn(
     "flex flex-wrap items-center gap-x-panel gap-y-inline border-edge border-b px-panel py-cell last:border-b-0",
-    selected && "bg-blue-5",
+    selected && CURRENT_ROW,
   );
   const content = (
     <>
