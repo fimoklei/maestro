@@ -27,6 +27,23 @@ describe("classifyPushFailure", () => {
     ).toBe("offline");
   });
 
+  // Captured from GitHub (#1728); `remote:` lines padded as GitHub sends them.
+  it("reads a classic branch protection refusal as refused", () => {
+    expect(
+      classifyPushFailure(
+        "remote: error: GH006: Protected branch update failed for refs/heads/main.        \nremote:        \nremote: - Changes must be made through a pull request.        \nTo https://github.com/fimoklei/maestro-push-refusal-probe.git\n ! [remote rejected] HEAD -> main (protected branch hook declined)\nerror: failed to push some refs to 'https://github.com/fimoklei/maestro-push-refusal-probe.git'\n",
+      ),
+    ).toBe("refused");
+  });
+
+  it("reads a ruleset refusal as refused", () => {
+    expect(
+      classifyPushFailure(
+        "remote: error: GH013: Repository rule violations found for refs/heads/main.        \nremote: Review all repository rules at https://github.com/fimoklei/maestro-push-refusal-probe/rules?ref=refs%2Fheads%2Fmain        \nremote:        \nremote: - Changes must be made through a pull request.        \nremote:        \nTo https://github.com/fimoklei/maestro-push-refusal-probe.git\n ! [remote rejected] HEAD -> main (push declined due to repository rule violations)\nerror: failed to push some refs to 'https://github.com/fimoklei/maestro-push-refusal-probe.git'\n",
+      ),
+    ).toBe("refused");
+  });
+
   it("reads a failure it does not recognise as a failed push", () => {
     expect(classifyPushFailure("fatal: something new in git 3.0\n")).toBe(
       "push-failed",

@@ -326,6 +326,7 @@ const SURFACES: Surface[] = [
       "proposal-open": true,
       "confirmation-stale": true,
       "clone-not-current": true,
+      "push-refused": true,
       offline: true,
       "push-elsewhere": true,
       "withdraw-in-progress": true,
@@ -925,6 +926,16 @@ describe("Withdraw from release refused on GitHub (#1729)", () => {
     );
 
   it.each([
+    [
+      "push-refused",
+      {
+        level: "error",
+        label: "Direct push refused",
+        message:
+          "Nothing was withdrawn. Allow direct pushes to the default branch on GitHub, then select Withdraw from release again.",
+        detail: "A rule on GitHub blocked the push.",
+      },
+    ],
     [
       "clone-not-current",
       {

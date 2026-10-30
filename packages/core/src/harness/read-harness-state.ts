@@ -61,11 +61,12 @@ export type DefaultBranchWithdrawal = {
   message: string;
 };
 
-// `clone-not-current`: the local HEAD is not the tip. Any other refusal is
-// `push-failed`.
+// `clone-not-current`: the local HEAD is not the tip. `refused`: the remote
+// declined the push (a protected branch). Any other failure is `push-failed`.
 export type WithdrawalPushOutcome =
   | "pushed"
   | "stale-tip"
+  | "refused"
   | "offline"
   | "push-elsewhere"
   | "clone-not-current"

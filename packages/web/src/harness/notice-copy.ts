@@ -516,6 +516,12 @@ const releaseWithdrawalHeadings = ({
       message: `Sync your clone with GitHub, then ${again}`,
       detail: "Your clone's last commit is not the one on GitHub.",
     },
+    "push-refused": {
+      level: "error",
+      label: "Direct push refused",
+      message: `Allow direct pushes to the default branch on GitHub, then ${again}`,
+      detail: "A rule on GitHub blocked the push.",
+    },
     offline: {
       level: "error",
       label: "GitHub did not respond",
