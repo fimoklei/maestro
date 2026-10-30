@@ -112,7 +112,6 @@ the new pattern to this section before building it.
   such notice's ✕, else to the screen's `Re-read {screen name}` control.
 - Keep the previous rows on screen after a failed read. Recover with the
   screen's `Re-read {screen name}` control, never a page reload.
-- Never override the query client's `retry: false`.
 
 **Feedback and dialogs.**
 
@@ -132,8 +131,6 @@ Pick the form from this table. Add no other form, and no banner.
 | Confirmation | Dialog, 480px | Top-aligned at 96px |
 | Outcome of a run in a dialog | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
 
-- Announce a write's success through the shared write action; never call the
-  toast directly.
 - Pick a write's success form by first match: the dialog keeps its Report →
   the Report alone; the result stays in view → the row; else → a toast.
   In view means shown on the open screen without scrolling or changing screen.
@@ -179,8 +176,6 @@ Pick the form from this table. Add no other form, and no banner.
 - Open no dialog, alert or toast on load.
 
 **Waiting and freshness.**
-- Show no status before the server confirms it. Lock only what the server
-  locks.
 - Show nothing under 1 s. Show the spinner in the pressed control at once for a
   write. Show skeleton rows in the table's shape after 1.3 s for at least
   0.5 s; at once for a pressed re-read.
@@ -191,7 +186,6 @@ Pick the form from this table. Add no other form, and no banner.
 - Give every table screen one icon-only `Re-read {screen name}` control.
 - Show a freshness line only beside data that ages. Date the oldest reading
   and keep it ticking.
-- Re-read unasked only on open, plus Deploy-state's rows on tab return.
 - Animate only what floats, by opacity alone. Under reduced motion keep only
   the spinner moving.
 

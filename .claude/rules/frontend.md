@@ -12,6 +12,12 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer bo
 - **Server-state** (inventory, deploy-state, registry) is owned by **TanStack Query**, never `useState`. After any mutation, invalidate the affected query — that is how panels update without a manual reload.
 - **UI-state** (field text, selection, panel open) is plain `useState`. Never in a query, never pushed to the server.
 - Never fetch server-state with `fetch` inside `useEffect`.
+- Never override the query client's `retry: false`.
+- Re-read unasked only on open, plus Deploy-state's rows on tab return.
+- Show no status before the server confirms it. Lock only what the server
+  locks.
+- Announce a write's success through the shared write action
+  (`ui/use-write-action.ts`); never call the toast directly.
 
 ## Data-fetching
 
