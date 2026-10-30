@@ -16,9 +16,13 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer bo
 ## Data-fetching
 
 - One thin HTTP module wraps `fetch`, returns typed data, throws on non-2xx.
-- One custom hook per server resource: `useInventory()`, `useDeployState(repo)`, `useRegistry()`. Components call the hook, not `fetch`.
-- Mutations invalidate the queries they affect.
-- Query keys are explicit arrays (`["deploy-state", repoPath]`), never concatenated strings.
+- Define each server resource once with `queryOptions` in a per-feature
+  factory: key and `queryFn` together. Pass that object to `useQuery`,
+  `prefetchQuery` and `invalidateQueries`. Components never call `fetch`.
+- Write a custom hook only when it adds logic beyond the options.
+- Build query keys as arrays in a hierarchy from the factory
+  (`["deploy-state", repoPath]`), never concatenated strings. Mutations
+  invalidate the queries they affect, a group by its broader key.
 
 ## Components & hooks
 
@@ -27,6 +31,12 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer bo
 - A shape a second feature needs moves to `ui/` with its story, before the
   second feature uses it.
 - Custom hooks hold data and logic; components stay mostly presentational.
+- Before writing a `useEffect`, rule out: deriving the value during render,
+  resetting state with a `key`, doing the work in the event handler, and
+  `useSyncExternalStore` for a subscription. An Effect only syncs with a
+  system outside React.
+- Add `useMemo`, `useCallback` or `memo` only for a measured cost, or for a
+  reference that a dependency array or a memoized child needs.
 - Co-locate a component's pure helpers and its sibling unit test.
 
 ## Styling & components (ADR-0004)

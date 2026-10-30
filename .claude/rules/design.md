@@ -1,6 +1,8 @@
 ---
 paths:
-  - "packages/web/**"
+  - "packages/web/src/**/*.tsx"
+  - "packages/web/src/**/*.css"
+  - "packages/web/index.html"
   - ".impeccable/**"
   - "DESIGN.md"
 ---
@@ -110,7 +112,7 @@ the new pattern to this section before building it.
   such notice's ✕, else to the screen's `Re-read {screen name}` control.
 - Keep the previous rows on screen after a failed read. Recover with the
   screen's `Re-read {screen name}` control, never a page reload.
-- Set `retry: false` on every query.
+- Never override the query client's `retry: false`.
 
 **Feedback and dialogs.**
 
@@ -254,14 +256,7 @@ Pick the form from this table. Add no other form, and no banner.
 **Tokens.**
 - Use only the documented colour pairs. A new pairing enters `design.json` and
   the contrast test first.
-- Check every changed screen in both themes once Light is reachable.
-
-**Rebuild (ADR-0033).**
-- Never remove a function in a rebuild job. Keep an old dialog reachable from
-  the new frame until its own job.
-- Land a shared component in the first job that needs it. Retire it in the job
-  that rebuilds its last user, after its behavioural claims moved to the
-  successor's test.
+- Check every changed screen in both themes.
 
 ## Verify before "done"
 
