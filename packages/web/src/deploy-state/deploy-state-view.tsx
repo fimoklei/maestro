@@ -238,11 +238,14 @@ export function DeployStateView() {
           repositories: registry.isSuccess ? repoPaths.length : null,
         });
   const view: ViewOptions<TargetTableRow> = useViewOptions(rows, {
-    kind: {
-      label: TARGET_LABEL,
-      options: KIND_OPTIONS,
-      of: (row) => row.group,
-    },
+    oneOf: [
+      {
+        label: TARGET_LABEL,
+        options: KIND_OPTIONS,
+        of: (row) => row.group,
+        initial: "all",
+      },
+    ],
     status: {
       words: TARGET_STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
@@ -263,7 +266,7 @@ export function DeployStateView() {
         },
       },
     ],
-    initialGrouping: BY_TARGET.value,
+    defaultGrouping: BY_TARGET.value,
     columns: COLUMN_OPTIONS,
   });
 

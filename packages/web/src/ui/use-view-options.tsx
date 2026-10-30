@@ -19,13 +19,19 @@ import {
 type Option = { value: string; label: string };
 type Groups<T extends RowData> = RowGroups<T>;
 
+type OneOfFilter<T extends RowData> = {
+  label: string;
+  options: readonly Option[];
+  of: (row: T) => string;
+  /** The value it starts at; one that matches no option reads as All. */
+  initial: string;
+};
+
+const ALL_VALUE = "all";
+
 export interface ViewOptionsConfig<T extends RowData> {
-  /** The one-of filter: Target on Deploy-state. "All" is added; null where no such filter exists. */
-  kind: {
-    label: string;
-    options: readonly Option[];
-    of: (row: T) => string;
-  } | null;
+  /** The one-of filters, such as Target on Deploy-state. "All" is added to each. */
+  oneOf: readonly OneOfFilter<T>[];
   /** Status words worst first, as Filter lists them and Status groups them; null on a table with no Status column. */
   status: {
     words: readonly string[];
@@ -33,7 +39,8 @@ export interface ViewOptionsConfig<T extends RowData> {
   } | null;
   /** The screen's own groupings; None and Status are added. */
   groupings: readonly (Option & { groups: Groups<T> })[];
-  initialGrouping: string;
+  /** The grouping until the operator picks one; it may change between renders. */
+  defaultGrouping: string;
   /** The columns Display can switch off, by column id. */
   columns: readonly Option[];
 }
@@ -64,10 +71,12 @@ export function useViewOptions<T extends RowData>(
   rows: readonly T[],
   config: ViewOptionsConfig<T>,
 ): ViewOptions<T> {
-  const { kind, status } = config;
-  const [kindValue, setKind] = useState("all");
+  const { oneOf, status } = config;
+  // Keyed by filter label; a filter without a pick stands at its initial value.
+  const [picks, setPicks] = useState<ReadonlyMap<string, string>>(new Map());
   const [statuses, setStatuses] = useState<ReadonlySet<string>>(new Set());
-  const [grouping, setGrouping] = useState(config.initialGrouping);
+  const [pickedGrouping, setGrouping] = useState<string | null>(null);
+  const grouping = pickedGrouping ?? config.defaultGrouping;
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
 
   const groupings = [
@@ -86,13 +95,25 @@ export function useViewOptions<T extends RowData>(
           },
         ]),
   ];
-  const filterCount = (kindValue === "all" ? 0 : 1) + statuses.size;
+  // The value checked against the options on every render, so a value that
+  // matches none, now or after the options change, reads as All.
+  const filters = oneOf.map((filter) => {
+    const value = picks.get(filter.label) ?? filter.initial;
+    return {
+      ...filter,
+      value: filter.options.some((option) => option.value === value)
+        ? value
+        : ALL_VALUE,
+    };
+  });
+  const active = filters.filter((filter) => filter.value !== ALL_VALUE);
+  const filterCount = active.length + statuses.size;
 
   return {
     shown: (row) => {
       const word = status === null ? null : status.of(row);
       return (
-        (kind === null || kindValue === "all" || kind.of(row) === kindValue) &&
+        active.every((filter) => filter.of(row) === filter.value) &&
         (statuses.size === 0 || (word !== null && statuses.has(word)))
       );
     },
@@ -101,7 +122,7 @@ export function useViewOptions<T extends RowData>(
     filterCount,
     blocked: rows.length === 0,
     clearFilters: () => {
-      setKind("all");
+      setPicks(new Map(oneOf.map((filter) => [filter.label, ALL_VALUE])));
       setStatuses(new Set());
     },
     statusCounts: (chips) => {
@@ -133,17 +154,14 @@ export function useViewOptions<T extends RowData>(
         icon: <Icon of={ListFilter} />,
         count: filterCount,
         sections: [
-          ...(kind === null
-            ? []
-            : [
-                {
-                  kind: "radio" as const,
-                  label: kind.label,
-                  options: [{ value: "all", label: ALL }, ...kind.options],
-                  value: kindValue,
-                  onChange: setKind,
-                },
-              ]),
+          ...filters.map((filter) => ({
+            kind: "radio" as const,
+            label: filter.label,
+            options: [{ value: ALL_VALUE, label: ALL }, ...filter.options],
+            value: filter.value,
+            onChange: (value: string) =>
+              setPicks((current) => new Map(current).set(filter.label, value)),
+          })),
           ...(status === null
             ? []
             : [

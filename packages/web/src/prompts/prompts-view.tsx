@@ -197,14 +197,17 @@ export function PromptsView({
   });
 
   const view = useViewOptions(rows, {
-    kind: {
-      label: FINDING_LABEL,
-      options: [{ value: NAME_NOT_VALID, label: NAME_NOT_VALID }],
-      of: (row) => (row.nameValid ? "" : NAME_NOT_VALID),
-    },
+    oneOf: [
+      {
+        label: FINDING_LABEL,
+        options: [{ value: NAME_NOT_VALID, label: NAME_NOT_VALID }],
+        of: (row) => (row.nameValid ? "" : NAME_NOT_VALID),
+        initial: "all",
+      },
+    ],
     status: null,
     groupings: [],
-    initialGrouping: "none",
+    defaultGrouping: "none",
     columns: DISPLAY_OPTIONS,
   });
 
