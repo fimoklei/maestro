@@ -1,5 +1,5 @@
 import type { GitHubPage } from "@maestro/core";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { cn } from "../ui/cn";
 import { GitHubFactLink } from "../ui/github-fact-link";
 
@@ -20,6 +20,11 @@ export interface SettingsRowProps {
   control?: ReactNode;
   /** An id for the name, so the control can take it as its label. */
   nameId?: string;
+  /** One item of a section's list. */
+  listItem?: boolean;
+  /** The row a write just added: marked, and focusable so focus can land on it. */
+  selected?: boolean;
+  rowRef?: Ref<HTMLLIElement>;
 }
 
 export function SettingsRow({
@@ -30,9 +35,16 @@ export function SettingsRow({
   github,
   machine = true,
   control,
+  listItem = false,
+  selected = false,
+  rowRef,
 }: SettingsRowProps) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-panel gap-y-inline border-edge border-b px-panel py-cell last:border-b-0">
+  const className = cn(
+    "flex flex-wrap items-center gap-x-panel gap-y-inline border-edge border-b px-panel py-cell last:border-b-0",
+    selected && "bg-blue-5",
+  );
+  const content = (
+    <>
       <div className="flex min-w-0 grow basis-[220px] flex-col">
         <span id={nameId} className="font-medium font-ui text-gray-12 text-row">
           {name}
@@ -53,6 +65,18 @@ export function SettingsRow({
         </span>
       )}
       {control}
-    </div>
+    </>
+  );
+  return listItem ? (
+    <li
+      ref={rowRef}
+      aria-current={selected || undefined}
+      tabIndex={selected ? -1 : undefined}
+      className={className}
+    >
+      {content}
+    </li>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }

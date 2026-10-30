@@ -3,6 +3,7 @@
 import { type Copy, type Phrase, phrase } from "./phrase";
 
 export type ActionKey =
+  | "add"
   | "copy"
   | "deploy"
   | "update"
@@ -29,6 +30,7 @@ export const ACTIONS: Record<
   // `after` follows the name where the done word alone would mislead.
   { busy: string; done: string; after?: string }
 > = {
+  add: { busy: "Adding…", done: "Added" },
   copy: { busy: "Copying…", done: "Copied" },
   deploy: { busy: "Deploying…", done: "Deployed" },
   update: { busy: "Updating…", done: "Updated" },

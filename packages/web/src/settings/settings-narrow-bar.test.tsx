@@ -32,7 +32,7 @@ describe("SettingsNarrowBar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Menu" }));
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Harness location", "Appearance"]);
+    ).toEqual(["Harness location", "Categories", "Appearance"]);
     await userEvent.click(screen.getByRole("menuitem", { name: "Appearance" }));
 
     expect(onNavigate).toHaveBeenCalledWith("/settings/appearance");
