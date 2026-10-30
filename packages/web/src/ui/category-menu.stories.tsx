@@ -53,7 +53,7 @@ export const Failed: Story = {
     failure: {
       level: "error",
       label: "Category not set",
-      message: "The category no longer exists. Choose another category.",
+      message: "The category was deleted. Choose another category.",
     },
   },
 };

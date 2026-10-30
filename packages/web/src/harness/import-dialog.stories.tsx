@@ -33,6 +33,7 @@ const meta = {
     onImport: () => {},
     importing: false,
     importError: null,
+    outcome: false,
     category: {
       value: "Code review",
       hint: "Taken from SKILL.md.",

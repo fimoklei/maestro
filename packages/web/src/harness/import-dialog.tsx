@@ -3,7 +3,7 @@ import {
   CategoryField,
   type CategoryFieldState,
 } from "../categories/category-field";
-import { Dialog } from "../ui/dialog";
+import { Dialog, dialogRun } from "../ui/dialog";
 import { Field } from "../ui/field";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
@@ -30,6 +30,7 @@ export function ImportDialog({
   onImport,
   importing,
   importError,
+  outcome,
   category,
 }: {
   /** The folder the check was asked about; null until one is chosen. */
@@ -48,6 +49,8 @@ export function ImportDialog({
   onImport: () => void;
   importing: boolean;
   importError: NoticeContent | null;
+  /** The import landed and its category did not: only Close is left. */
+  outcome: boolean;
   category: CategoryFieldState;
 }) {
   const check = load.kind === "ready" ? load.check : undefined;
@@ -55,6 +58,8 @@ export function ImportDialog({
   // Provenance decides the name of an update, so the field states it rather
   // than taking one.
   const locked = check?.mode === "update";
+  // Once the import landed without its category, only Close is left.
+  const settled = importing || outcome;
   const sourceProblem =
     load.kind === "error"
       ? load.notice
@@ -70,14 +75,19 @@ export function ImportDialog({
       title={labels.title}
       version={null}
       width={480}
-      phase={importing ? "running" : "idle"}
-      action={{
-        label: labels.confirm,
-        verb: labels.verb,
-        tone: "primary",
-        unavailable: null,
-        onRun: onImport,
-      }}
+      {...dialogRun({
+        source: outcome
+          ? null
+          : {
+              label: labels.confirm,
+              verb: labels.verb,
+              tone: "primary",
+              unavailable: null,
+              onRun: onImport,
+            },
+        running: importing,
+        outcome,
+      })}
       failure={importError}
       // Every field states its own hint and its own refusal beside it.
       describedBy={null}
@@ -101,7 +111,7 @@ export function ImportDialog({
           }}
           chooser={chooser}
           error={sourceError}
-          disabled={importing}
+          disabled={settled}
         />
         <Notice trigger="user-action" notice={sourceProblem} />
       </div>
@@ -117,14 +127,14 @@ export function ImportDialog({
             setNameTouched(true);
             onNameChange(next);
           }}
-          disabled={source === null || locked}
+          disabled={source === null || locked || settled}
           describedBy={nameProblem === null ? undefined : nameErrorId}
           className="font-mono"
         />
         <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
       </div>
 
-      <CategoryField {...category} disabled={importing} />
+      <CategoryField {...category} disabled={settled} />
 
       <Notice
         trigger="load"

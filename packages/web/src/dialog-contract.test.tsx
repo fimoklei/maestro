@@ -259,6 +259,7 @@ const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
     onImport={vi.fn()}
     importing={false}
     importError={null}
+    outcome={false}
     category={NO_CATEGORY_FIELD}
     {...props}
   />
@@ -275,6 +276,7 @@ const importPromptDialog = (
     fieldErrors={{}}
     changed={false}
     phase="idle"
+    outcome={false}
     failure={null}
     mode="add"
     takenNotice={null}

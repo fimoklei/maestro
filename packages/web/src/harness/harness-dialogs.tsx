@@ -127,7 +127,8 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           onClose={props.importFlow.close}
           onImport={props.importFlow.submit}
           importing={props.importFlow.importing}
-          importError={props.importFlow.importWrite.failure}
+          importError={props.importFlow.importError}
+          outcome={props.importFlow.outcome}
           category={props.importFlow.category.field}
         />
       ) : null}

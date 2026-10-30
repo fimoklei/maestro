@@ -37,6 +37,8 @@ type PromptDialogBase = {
   fieldErrors: PromptFieldErrors;
   changed: boolean;
   phase: "idle" | "running";
+  /** The write landed and its category did not: only Close is left. */
+  outcome: boolean;
   failure: NoticeContent | null;
   edit: (change: Partial<PromptFile>) => void;
   submit: () => void;
@@ -67,8 +69,6 @@ type EditProps = PromptDialogBase & {
   category: string | null | undefined;
   pickCategory: (name: string | null) => void;
   categoryAdd: HeldCategoryAdd;
-  /** The edit landed and its category did not: only Close is left. */
-  outcome: boolean;
 };
 
 type ImportPromptDialogProps = ImportProps | EditProps;
@@ -91,8 +91,8 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
       : { ...PROMPT_IMPORT_MODES[props.mode], unavailable: null };
   const importOnly = props.mode === "edit" ? null : props;
   const editOnly = props.mode === "edit" ? props : null;
-  // Once the edit landed, only Close is left.
-  const locked = importing || editOnly?.outcome === true;
+  // Once the write landed without its category, only Close is left.
+  const locked = importing || props.outcome;
   // Choose file opens the browser's file chooser at once, again on each press.
   const pickSource = (next: PromptSource) => {
     importOnly?.setSource(next);
@@ -115,18 +115,17 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
       version={null}
       width={480}
       {...dialogRun({
-        source:
-          editOnly?.outcome === true
-            ? null
-            : {
-                label: confirm,
-                verb,
-                tone: "primary",
-                unavailable,
-                onRun: submit,
-              },
+        source: props.outcome
+          ? null
+          : {
+              label: confirm,
+              verb,
+              tone: "primary",
+              unavailable,
+              onRun: submit,
+            },
         running: importing,
-        outcome: editOnly?.outcome === true,
+        outcome: props.outcome,
       })}
       failure={failure}
       // Every field states its own hint and its own refusal beside it.
@@ -191,7 +190,7 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
                     type="button"
                     variant="quiet"
                     aria-describedby={hintId}
-                    disabled={importing}
+                    disabled={locked}
                     onClick={() => fileInput.current?.click()}
                   >
                     {CHOOSE_ANOTHER_FILE}
@@ -212,7 +211,7 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
               describedBy={
                 importOnly.takenNotice === null ? undefined : takenNoticeId
               }
-              disabled={importing}
+              disabled={locked}
               mono
             />
             <Notice
@@ -241,7 +240,7 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         disabled={locked}
       />
       {importOnly === null ? null : (
-        <CategoryField {...importOnly.category.field} disabled={importing} />
+        <CategoryField {...importOnly.category.field} disabled={locked} />
       )}
     </Dialog>
   );

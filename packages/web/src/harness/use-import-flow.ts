@@ -86,11 +86,11 @@ export function useImportFlow(
             : (editedName ?? checked.name),
       },
       {
-        onSuccess: (outcome) => {
-          close();
-          category.save(outcome);
-          onImported(importedRow(outcome));
-        },
+        onSuccess: (outcome) =>
+          category.save(outcome, () => {
+            close();
+            onImported(importedRow(outcome));
+          }),
       },
     );
   };
@@ -131,8 +131,13 @@ export function useImportFlow(
     commitSource,
     setEditedName,
     /** The import runs, or waits for a category add to land first. */
-    importing: importWrite.phase === "running" || afterAdd.waiting,
+    importing:
+      importWrite.phase === "running" || afterAdd.waiting || category.saving,
+    /** Why the import landed without its category; only Close is left. */
+    importError: category.failure ?? importWrite.failure,
+    outcome: category.failure !== null,
     submit: afterAdd.submit,
-    close,
+    /** After a failure, Close hands the import over as a clean one would. */
+    close: () => (category.failure === null ? close() : category.leave()),
   };
 }

@@ -9,6 +9,7 @@ import {
   categoriesUnreadable,
   categoryNotSet,
   ITEM_WORDS,
+  type SetCategoryItems,
   setCategoryFor,
 } from "./categories-copy";
 import { CategoryPicker } from "./category-picker";
@@ -22,10 +23,10 @@ import { useHeldCategoryAdd } from "./use-held-category-add";
 
 type Refusal = { error?: unknown; configPath?: unknown };
 
-/** Why an assign did not land; `reread` is the screen's own Re-read control. */
+/** Why an assign did not land, for the items it was for. */
 export function assignFailure(
   error: unknown,
-  reread: string,
+  items: SetCategoryItems,
 ): NoticeContent | null {
   if (!error) return null;
   const shape = requestShapeNotice(error);
@@ -37,15 +38,15 @@ export function assignFailure(
   switch (refusal.error) {
     case "category-not-found":
     case "item-not-found":
-      return categoryNotSet(refusal.error, reread);
+      return categoryNotSet(refusal.error, items);
     case "not-configured":
       return CATEGORY_NOT_CONFIGURED;
     case "categories-unreadable":
       return typeof refusal.configPath === "string"
         ? categoriesUnreadable(refusal.configPath)
-        : categoryNotSet("other", reread);
+        : categoryNotSet("other", items);
     default:
-      return categoryNotSet("other", reread);
+      return categoryNotSet("other", items);
   }
 }
 
@@ -82,7 +83,12 @@ export function SetCategoryMenu({
       const words = ITEM_WORDS[only?.type ?? "skill"];
       return { name: { count: set.length, ...words }, row: null };
     },
-    failure: (error) => assignFailure(error, reread),
+    failure: (error) =>
+      assignFailure(error, {
+        type: items[0]?.type ?? "skill",
+        count: items.length,
+        reread,
+      }),
   });
   const pick = (category: string | null) =>
     write.run(

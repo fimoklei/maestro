@@ -41,7 +41,11 @@ export function useCategoryChoice({
     null,
   );
   const add = useHeldCategoryAdd((category) => setPicked({ category }));
-  const [failure, setFailure] = useState<NoticeContent | null>(null);
+  // An import that landed while its category did not: Close hands it over.
+  const [stranded, setStranded] = useState<{
+    failure: NoticeContent;
+    handOver: () => void;
+  } | null>(null);
   const list = categories.data;
   const replacing = mode === "update";
   const own = replacing
@@ -68,25 +72,40 @@ export function useCategoryChoice({
 
   return {
     field,
-    /** Why the last import landed without its category; null once dismissed. */
-    failure,
-    dismissFailure: () => setFailure(null),
-    /** Forgets the pick, as the dialog closes. */
+    /** Why the import landed without its category; the dialog keeps only Close. */
+    failure: stranded?.failure ?? null,
+    saving: assign.isPending,
+    /** Forgets the pick and any failure, as the dialog closes. */
     reset: () => {
       setPicked(null);
+      setStranded(null);
       add.reset();
+      assign.reset();
     },
-    /** After the import landed: saves the category the field holds, if it changed. */
-    save: (landed: Landed) => {
-      if (value === own) return;
-      setFailure(null);
+    /** Close after a failure: the import goes on as if its category had landed. */
+    leave: () => stranded?.handOver(),
+    /**
+     * After the import landed: saves the category the field holds, if it
+     * changed, then hands over. A refusal keeps the dialog open on it.
+     */
+    save: (landed: Landed, handOver: () => void) => {
+      if (value === own) {
+        handOver();
+        return;
+      }
       assign.mutate(
         { items: [{ type, name: landed.name }], category: value },
         {
+          onSuccess: handOver,
           onError: () =>
-            setFailure(
-              categoryNotSetAfterImport(type, landed.name, landed.mode),
-            ),
+            setStranded({
+              failure: categoryNotSetAfterImport(
+                type,
+                landed.name,
+                landed.mode,
+              ),
+              handOver,
+            }),
         },
       );
     },

@@ -785,7 +785,7 @@ describe("Settings › Categories, rename and delete", () => {
       expect(
         within(dialog).getByText(
           sentence(
-            "The category no longer exists. Select Re-read Categories to update the list.",
+            "The category was deleted. Select Re-read Categories to update the list.",
           ),
         ),
       ).toBeInTheDocument();

@@ -82,6 +82,7 @@ function SourceHost({
       onClose={onClose}
       onImport={onImport}
       importing={false}
+      outcome={false}
       importError={importError}
       category={{
         value: null,

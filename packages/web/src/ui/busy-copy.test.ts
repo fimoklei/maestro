@@ -66,7 +66,7 @@ describe("done sentences", () => {
     ["connect", "Connected tdd."],
     ["setLocation", "Set tdd."],
     ["add", "Added tdd."],
-    ["setCategory", "Set category for tdd."],
+    ["setCategory", "Category set for tdd."],
     ["rename", "Renamed tdd."],
   ] as const)("ends %s as %s", (action, sentence) => {
     expect(plainText(doneSentence(action, "tdd"))).toBe(sentence);

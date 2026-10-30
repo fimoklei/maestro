@@ -460,7 +460,6 @@ export function HarnessView({
           rereadInventory={rereadInventory}
           restored={presses.restore.data}
           dismissRestored={presses.restore.reset}
-          categoryFailures={[importFlow.category, promptImportFlow.category]}
           rereadRef={table.rereadRef}
         />
       }
@@ -549,7 +548,6 @@ function Notices({
   rereadInventory,
   restored,
   dismissRestored,
-  categoryFailures,
   rereadRef,
 }: {
   state: ReturnType<typeof useHarness>["data"];
@@ -564,11 +562,6 @@ function Notices({
     | { type: HarnessPrimitiveType; hasRequest: boolean; statusRead: boolean }
     | undefined;
   dismissRestored: () => void;
-  /** An import that landed without the category chosen for it. */
-  categoryFailures: readonly {
-    failure: NoticeContent | null;
-    dismissFailure: () => void;
-  }[];
   rereadRef: RefObject<HTMLButtonElement | null>;
 }) {
   // One notice, the one that blocks most; the next shows once it clears.
@@ -602,10 +595,6 @@ function Notices({
           : restoredNotice(restored.type, restored.hasRequest, reread),
       clear: dismissRestored,
     },
-    ...categoryFailures.map(({ failure, dismissFailure }) => ({
-      notice: failure,
-      clear: dismissFailure,
-    })),
     {
       notice:
         state === undefined || !checkedOnce
@@ -624,38 +613,10 @@ function Notices({
     if (next?.clear === undefined) rereadRef.current?.focus();
     clear?.();
   };
-  // An import that landed without its category is the reader's own outcome,
-  // so it shows under a notice that ranks above it rather than waiting.
-  const outranked = categoryFailures.flatMap(
-    ({ failure, dismissFailure }, flow) =>
-      failure === null || failure === shown?.notice
-        ? []
-        : [{ flow, failure, dismissFailure }],
-  );
-  const region = useRef<HTMLDivElement>(null);
-  // Focus moves to the next ✕ that stays, else to Re-read.
-  const dismissOutranked = (dismissFailure: () => void) => {
-    const pressed = document.activeElement;
-    const next = [
-      ...(region.current?.querySelectorAll<HTMLElement>(
-        "[data-notice-close]",
-      ) ?? []),
-    ].find((button) => button !== pressed);
-    if (next === undefined) rereadRef.current?.focus();
-    else next.focus();
-    dismissFailure();
-  };
   // The region outlives its content, so a read that failed on open is
   // announced (#465).
   return (
-    <div
-      ref={region}
-      className={
-        shown === undefined
-          ? "flex flex-col"
-          : "flex flex-col gap-inline p-panel"
-      }
-    >
+    <div className={shown === undefined ? "flex flex-col" : "p-panel"}>
       {clear === undefined ? (
         <Notice trigger="load" notice={shown?.notice ?? null} />
       ) : (
@@ -665,14 +626,6 @@ function Notices({
           onDismiss={dismiss}
         />
       )}
-      {outranked.map(({ flow, failure, dismissFailure }) => (
-        <Notice
-          key={flow}
-          trigger="user-action"
-          notice={failure}
-          onDismiss={() => dismissOutranked(dismissFailure)}
-        />
-      ))}
     </div>
   );
 }

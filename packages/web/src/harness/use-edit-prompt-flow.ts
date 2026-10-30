@@ -146,7 +146,8 @@ export function useEditPromptFlow({
     screen: writes,
     action: "setCategory",
     subject: () => ({ name, row: screen === "prompts" ? name : null }),
-    failure: (error) => assignFailure(error, reread),
+    failure: (error) =>
+      assignFailure(error, { type: "prompt", count: 1, reread }),
   });
 
   const draft = { name, ...fields };

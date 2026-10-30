@@ -85,17 +85,16 @@ export function useImportPromptFlow(
   const problems = promptDraftProblems(draft);
   const fieldErrors = submitted ? promptFieldErrors(problems) : {};
   const tooLong = submitted && problems.includes("long-text");
-  const failure: NoticeContent | null = tooLong
-    ? longTextNotice(confirm)
-    : write.failure;
+  const failure: NoticeContent | null =
+    category.failure ?? (tooLong ? longTextNotice(confirm) : write.failure);
 
   const afterAdd = useSubmitAfterAdd(category.field.add, () => {
     write.run(draft, {
-      onSuccess: (outcome) => {
-        close();
-        category.save(outcome);
-        onImported(importedRow(outcome));
-      },
+      onSuccess: (outcome) =>
+        category.save(outcome, () => {
+          close();
+          onImported(importedRow(outcome));
+        }),
     });
   });
 
@@ -129,7 +128,10 @@ export function useImportPromptFlow(
     category,
     takenNotice: mode === "update" ? PROMPT_TAKEN_NOTICE : null,
     // Waiting for a category add shows as the import running.
-    phase: afterAdd.waiting ? ("running" as const) : write.phase,
+    phase:
+      afterAdd.waiting || category.saving ? ("running" as const) : write.phase,
+    /** The import landed and its category did not: only Close is left. */
+    outcome: category.failure !== null,
     changed: draft.name !== "" || draft.description !== "" || draft.text !== "",
     start: () => setOpen(true),
     edit,
@@ -188,6 +190,7 @@ export function useImportPromptFlow(
       if (problems.length > 0) return;
       afterAdd.submit();
     },
-    close,
+    /** After a failure, Close hands the import over as a clean one would. */
+    close: () => (category.failure === null ? close() : category.leave()),
   };
 }

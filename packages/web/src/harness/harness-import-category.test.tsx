@@ -376,7 +376,7 @@ describe("Import skill's Category field", () => {
     expect(writes()).toEqual([]);
   });
 
-  it("keeps the import when the category is not set, and says so above the table", async () => {
+  it("keeps the import when the category is not set, and says so in the dialog with a lone Close", async () => {
     const { posts } = stubServer({
       assign: () => jsonResponse({ error: "categories-unreadable" }, 500),
     });
@@ -386,15 +386,18 @@ describe("Import skill's Category field", () => {
     await user.click(await dialog.findByRole("option", { name: "Docs" }));
     await user.click(importSkill(dialog));
 
-    await dialogClosed();
-    expect(await screen.findByText("Category not set")).toBeVisible();
+    expect(await dialog.findByText("Category not set")).toBeVisible();
     expect(
-      screen.getByText(
+      dialog.getByText(
         sentence(
-          "code-review was imported. Select Set category on Skills to set its category.",
+          "code-review was imported. Select Close, then select Set category on Skills.",
         ),
       ),
     ).toBeVisible();
+    // The leave control reads Close, and no action is left beside it.
+    expect(dialog.getByText("Close", { selector: "button" })).toBeVisible();
+    expect(dialog.queryByRole("button", { name: "Cancel" })).toBeNull();
+    expect(dialog.queryByRole("button", { name: /skill$/ })).toBeNull();
     // The import stood: nothing undoes it after the assign failed.
     expect(posts.map(({ url }) => url)).toEqual([
       "/api/folder-chooser",
@@ -403,13 +406,12 @@ describe("Import skill's Category field", () => {
       "/api/categories/assign",
     ]);
 
-    await user.click(
-      screen.getByRole("button", { name: "Close Category not set" }),
-    );
+    await user.click(dialog.getByText("Close", { selector: "button" }));
+    await dialogClosed();
     expect(screen.queryByText("Category not set")).not.toBeInTheDocument();
   });
 
-  it("states the category not set beside a notice that ranks above it", async () => {
+  it("states the category not set while a notice above the table stands", async () => {
     stubServer({
       harness: {
         ...HARNESS,
@@ -423,9 +425,8 @@ describe("Import skill's Category field", () => {
     await user.click(await dialog.findByRole("option", { name: "Docs" }));
     await user.click(importSkill(dialog));
 
-    await dialogClosed();
-    expect(await screen.findByText("Category not set")).toBeVisible();
-    expect(screen.getByText("Status out of date")).toBeVisible();
+    expect(await dialog.findByText("Category not set")).toBeVisible();
+    expect(screen.getByText("Status out of date")).toBeInTheDocument();
   });
 });
 
@@ -522,11 +523,10 @@ describe("Import prompt's Category field", () => {
     await categoryButton(dialog, "Docs");
     await user.click(dialog.getByRole("button", { name: "Import prompt" }));
 
-    await dialogClosed();
     expect(
-      await screen.findByText(
+      await dialog.findByText(
         sentence(
-          "review-pr was imported. Select Set category on Prompts to set its category.",
+          "review-pr was imported. Select Close, then select Set category on Prompts.",
         ),
       ),
     ).toBeVisible();
