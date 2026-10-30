@@ -1,5 +1,6 @@
 import type { InventorySkill } from "@maestro/core";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
+import { CATEGORY_FACT } from "../categories/categories-copy";
 import type { DeployedRollup } from "../inventory/deployed-rollup";
 import {
   pendingReleaseFacts,
@@ -11,6 +12,7 @@ import { TYPE_WORD } from "../inventory/type-filter";
 import { wholeTargetName } from "../shell/target-name";
 import type { ActionsMenuItem } from "../ui/actions-menu";
 import { LATEST_RELEASE_FACT, NOT_RELEASED_YET } from "../ui/band-copy";
+import { NO_CATEGORY } from "../ui/category-menu-copy";
 import { cn } from "../ui/cn";
 import { DetailPane } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
@@ -36,6 +38,8 @@ export function SkillDetailPane({
   deployments,
   targetItems,
   footItems,
+  footMenu,
+  category,
   selectionActive,
   listHeadingRef,
   position,
@@ -54,6 +58,10 @@ export function SkillDetailPane({
   targetItems: (deployment: SkillDeployment) => readonly ActionsMenuItem[];
   /** The row's ⋮ items, as the foot's buttons. */
   footItems: readonly FootItem[];
+  /** A menu a foot item opened, such as Set category's. */
+  footMenu: ReactNode;
+  /** The skill's category, null for none; undefined while the categories are unread. */
+  category: string | null | undefined;
   /** A bulk selection is active: its bar holds the screen's one primary. */
   selectionActive: boolean;
   /** Where the owner sends focus once a removed target row is gone. */
@@ -103,6 +111,9 @@ export function SkillDetailPane({
               label: BEHIND_FACT,
               value: ofTotal(rollup.behindCount, rollup.targetCount),
             },
+        category === undefined
+          ? null
+          : { label: CATEGORY_FACT, value: category ?? NO_CATEGORY },
       ]}
       // The next steps come first, the release before the deploy: trigger-phrase
       // descriptions run for paragraphs, and three lines show before the rest
@@ -114,6 +125,7 @@ export function SkillDetailPane({
       ]}
       clampParagraph
       foot={footItems}
+      footMenu={footMenu}
       leadsWithNextStep={!selectionActive}
       subList={
         <section>

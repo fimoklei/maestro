@@ -1,4 +1,5 @@
 import type {
+  CategoryError,
   ChooseFolderError,
   ConnectInventoryError,
   DeleteLocalError,
@@ -436,4 +437,14 @@ export const chooseFolderErrorResponses: ErrorTable<ChooseFolderError> = {
   "chooser-unavailable": { status: 409 },
   "chooser-busy": { status: 409 },
   "chooser-failed": { status: 502 },
+};
+
+// `name-exists` carries the existing category's name beside its code.
+export const categoryErrorResponses: ErrorTable<CategoryError> = {
+  "name-invalid": { status: 400 },
+  "name-exists": { status: 409 },
+  "category-not-found": { status: 404 },
+  "item-not-found": { status: 404 },
+  "not-configured": { status: 409 },
+  "categories-unreadable": { status: 500 },
 };

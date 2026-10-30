@@ -15,6 +15,17 @@ import { ReleaseDialog } from "./harness/release-dialog";
 const SRC = join(import.meta.dirname);
 
 const PLAIN: Record<string, Record<string, string>> = {
+  "categories/categories-copy.ts": {
+    "`${countWords(count, type)} in ${categoryName}`": "link label",
+    "`Rename ${name}`": "dialog title",
+    "`Delete ${name}`": "dialog title",
+  },
+  "categories/category-count-links.tsx": {
+    "`?${new URLSearchParams({ category: name })}`": "link URL",
+  },
+  "categories/category-view.ts": {
+    "`category:${name}`": "key",
+  },
   "deploy-state/import-local-edits-copy.ts": {
     "`${IMPORT_LOCAL_EDITS} from ${target}`": "dialog title",
   },
@@ -88,9 +99,12 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "skills/skills-copy.ts": {
     "`Remove ${skillName} from ${targetCount(count)}`": "dialog title",
-    "`Select ${name} for bulk deploy`": "checkbox label",
+    "`Select ${name}`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",
     '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",
+  },
+  "prompts/prompts-copy.ts": {
+    "`Select ${name}`": "checkbox label",
   },
   "registry/repositories-copy.ts": {
     "`${UNREGISTER} ${name}`": "dialog title",

@@ -38,6 +38,9 @@ const configSchema = z.object({
     )
     .optional()
     .catch(undefined),
+  // Passed through unparsed: the category module validates it on its own, so
+  // a broken section is reported and kept, never dropped on the next write.
+  categories: z.unknown().optional(),
 });
 
 export type MaestroConfig = z.infer<typeof configSchema>;

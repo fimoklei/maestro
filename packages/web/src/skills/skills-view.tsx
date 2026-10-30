@@ -1,6 +1,9 @@
-import type { InventorySkill } from "@maestro/core";
+import type { CategoryList, InventorySkill } from "@maestro/core";
 import { Puzzle, Table2, Tag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { categoryView } from "../categories/category-view";
+import { SetCategoryBarAction } from "../categories/set-category-bar-action";
+import { usePaneCategory } from "../categories/use-pane-category";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import {
   hiddenStagedCount,
@@ -42,6 +45,8 @@ import { Button } from "../ui/button";
 import {
   DELETE_SKILL,
   DEPLOY_SKILL,
+  rereadLabel,
+  SET_CATEGORY,
   UPDATE_TARGET,
   VIEW_DEPLOY_STATE,
 } from "../ui/control-labels";
@@ -81,11 +86,11 @@ import {
   removeFromAllLabel,
   removeFromToolsLabel,
   SEARCH_LABEL,
-  SELECT_ALL_LABEL,
+  SELECT_ALL_SKILLS,
+  SELECT_SKILLS,
   SKILLS_FACT,
-  STAGE_COLUMN_LABEL,
+  selectSkillLabel,
   skillsFactValue,
-  stageRowLabel,
 } from "./skills-copy";
 
 // Presentational; the container supplies the reads (#992, #1040).
@@ -99,6 +104,9 @@ const rowDialog = (
   switch (action) {
     case "deploy":
       return { kind: "deploy" };
+    // Set category opens its menu above the pane's foot, not a dialog.
+    case "category":
+      return null;
     case "remove":
       return { kind: "remove-all" };
     case "delete": {
@@ -134,9 +142,18 @@ export function SkillsView({
   onShowTarget,
   clone,
   onDeleted,
+  assignments,
+  categoryNames,
+  initialCategory,
 }: {
   /** Undefined until the Inventory has been read once. */
   primitives: InventorySkill[] | undefined;
+  /** Each item's category; undefined while unread, which leaves Set category out. */
+  assignments: CategoryList["assignments"] | undefined;
+  /** The category list's names in order; undefined while unread. */
+  categoryNames: readonly string[] | undefined;
+  /** The category Filter starts at, from the URL; null for All. */
+  initialCategory: string | null;
   repos: RegisteredRepo[];
   registryReady: boolean;
   // Every deploy target, for the per-row status and reach (#272). Empty until
@@ -171,6 +188,12 @@ export function SkillsView({
   });
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<PaneDialog | null>(null);
+  const category = usePaneCategory({
+    type: "skill",
+    assignments,
+    reread: rereadLabel(screen.name),
+  });
+  const { setOpen: setCategoryOpen } = category;
   // Apart from the open row, so inspecting and staging never toggle each other.
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
 
@@ -179,15 +202,17 @@ export function SkillsView({
     ...screen,
     open: (name: string | null) => {
       setDialog(null);
+      setCategoryOpen(false);
       screen.open(name);
     },
   };
   const openFromMenu = useCallback(
     (name: string, action: RowAction) => {
       screen.open(name);
+      setCategoryOpen(action === "category");
       setDialog(rowDialog(action, name, clone));
     },
-    [screen.open, clone],
+    [screen.open, clone, setCategoryOpen],
   );
   const listHeading = useRef<HTMLHeadingElement>(null);
 
@@ -205,11 +230,15 @@ export function SkillsView({
       deployments,
       unreadable: Boolean(rollup.unreadable),
       readAge: skillReadAge(primitive.name, targets, now),
+      category: category.categoryOf(primitive.name),
       // The pane's foot holds these same items (#1065). The removal is offered only
       // from two targets, or it would repeat a target row's own (#422). It counts
       // what the removal covers: global is one target, whatever its tools (#1436).
       actions: [
         { action: "deploy", label: DEPLOY_SKILL },
+        ...(category.offered
+          ? [{ action: "category" as const, label: SET_CATEGORY }]
+          : []),
         ...(removable >= 2
           ? [
               {
@@ -225,13 +254,16 @@ export function SkillsView({
   });
 
   const view = useViewOptions(rows, {
-    kind: null,
+    ...categoryView({
+      names: categoryNames,
+      of: (row) => row.category,
+      rows,
+      initial: initialCategory,
+    }),
     status: {
       words: STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
     },
-    groupings: [],
-    initialGrouping: "none",
     columns: DISPLAY_OPTIONS,
   });
 
@@ -352,9 +384,9 @@ export function SkillsView({
           ),
       }}
       selection={{
-        label: STAGE_COLUMN_LABEL,
-        allLabel: SELECT_ALL_LABEL,
-        rowLabel: (row) => stageRowLabel(row.name),
+        label: SELECT_SKILLS,
+        allLabel: SELECT_ALL_SKILLS,
+        rowLabel: (row) => selectSkillLabel(row.name),
         selected: staged,
         onToggle: (row) =>
           setStaged((current) => toggleStaged(current, row.name)),
@@ -381,6 +413,14 @@ export function SkillsView({
               registryReady={registryReady}
               onSelectionSpent={() => setStaged(new Set())}
             />
+            {assignments === undefined ? null : (
+              <SetCategoryBarAction
+                type="skill"
+                names={[...staged]}
+                reread={rereadLabel(screen.name)}
+                onSelectionSpent={() => setStaged(new Set())}
+              />
+            )}
           </SelectionBar>
         ) : null
       }
@@ -396,16 +436,26 @@ export function SkillsView({
               listHeadingRef={listHeading}
               {...frame}
               // A dialog the row's ⋮ opened holds focus itself.
-              initialFocus={dialog === null ? undefined : null}
+              initialFocus={
+                dialog === null && !category.open ? undefined : null
+              }
               targetItems={targetItems}
               selectionActive={staged.size > 0}
-              footItems={row.actions.map((item) => ({
-                label: item.label,
-                danger: item.danger,
-                disabled: item.disabled,
-                onSelect: () =>
-                  setDialog(rowDialog(item.action, row.name, clone)),
-              }))}
+              category={row.category}
+              footItems={row.actions.map((item) =>
+                item.action === "category"
+                  ? category.footItem(item.label)
+                  : {
+                      label: item.label,
+                      danger: item.danger,
+                      disabled: item.disabled,
+                      onSelect: () => {
+                        setCategoryOpen(false);
+                        setDialog(rowDialog(item.action, row.name, clone));
+                      },
+                    },
+              )}
+              footMenu={category.footMenu(row.name)}
             />
             {dialog === null ? null : (
               <SkillPaneDialog

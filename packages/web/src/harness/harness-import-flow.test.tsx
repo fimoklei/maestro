@@ -1,4 +1,8 @@
-import type { HarnessStageRow, HarnessState } from "@maestro/core";
+import type {
+  CategoryList,
+  HarnessStageRow,
+  HarnessState,
+} from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -118,6 +122,13 @@ function stubImportServer(options: {
         return jsonResponse(
           init?.method === "POST" ? { path: SOURCE } : { available: true },
         );
+      }
+      // Import reads the categories for its Category field.
+      if (url === "/api/categories") {
+        return jsonResponse({
+          categories: [],
+          assignments: [],
+        } satisfies CategoryList);
       }
       if (url === "/api/harness/import/check") {
         const next = options.checkAnswers?.shift();

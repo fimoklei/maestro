@@ -14,6 +14,7 @@ const clean: ImportCheck = {
   sourceBlocker: null,
   nameBlocker: null,
   advisories: [],
+  category: null,
 };
 
 describe("import refusal text", () => {

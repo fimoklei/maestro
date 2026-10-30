@@ -2,9 +2,12 @@ import type { ImportMode, ImportPromptSuccess } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
+  promptCategory,
   promptDraftProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
+import { useCategoryChoice } from "../categories/use-category-choice";
+import { useSubmitAfterAdd } from "../categories/use-held-category-add";
 import type { NoticeContent } from "../ui/notice";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { proposalRow } from "./harness-route";
@@ -64,6 +67,13 @@ export function useImportPromptFlow(
       ? "update"
       : "add";
   const { confirm } = PROMPT_IMPORT_MODES[mode];
+  const category = useCategoryChoice({
+    type: "prompt",
+    name: draft.name,
+    mode,
+    fromFile: promptCategory(draft.frontmatter),
+    open,
+  });
   const importPrompt = useImportPrompt();
   const write = useWriteAction(importPrompt, {
     screen,
@@ -75,9 +85,18 @@ export function useImportPromptFlow(
   const problems = promptDraftProblems(draft);
   const fieldErrors = submitted ? promptFieldErrors(problems) : {};
   const tooLong = submitted && problems.includes("long-text");
-  const failure: NoticeContent | null = tooLong
-    ? longTextNotice(confirm)
-    : write.failure;
+  const failure: NoticeContent | null =
+    category.failure ?? (tooLong ? longTextNotice(confirm) : write.failure);
+
+  const afterAdd = useSubmitAfterAdd(category.field.add, () => {
+    write.run(draft, {
+      onSuccess: (outcome) =>
+        category.save(outcome, () => {
+          close();
+          onImported(importedRow(outcome));
+        }),
+    });
+  });
 
   const close = () => {
     setOpen(false);
@@ -87,6 +106,7 @@ export function useImportPromptFlow(
     setSubmitted(false);
     setCheckedName(null);
     importPrompt.reset();
+    category.reset();
   };
 
   // A pasted front matter block lives only as long as the text it came with.
@@ -105,8 +125,13 @@ export function useImportPromptFlow(
     fieldErrors,
     failure,
     mode,
+    category,
     takenNotice: mode === "update" ? PROMPT_TAKEN_NOTICE : null,
-    phase: write.phase,
+    // Waiting for a category add shows as the import running.
+    phase:
+      afterAdd.waiting || category.saving ? ("running" as const) : write.phase,
+    /** The import landed and its category did not: only Close is left. */
+    outcome: category.failure !== null,
     changed: draft.name !== "" || draft.description !== "" || draft.text !== "",
     start: () => setOpen(true),
     edit,
@@ -163,13 +188,9 @@ export function useImportPromptFlow(
     submit: () => {
       setSubmitted(true);
       if (problems.length > 0) return;
-      write.run(draft, {
-        onSuccess: (outcome) => {
-          close();
-          onImported(importedRow(outcome));
-        },
-      });
+      afterAdd.submit();
     },
-    close,
+    /** After a failure, Close hands the import over as a clean one would. */
+    close: () => (category.failure === null ? close() : category.leave()),
   };
 }

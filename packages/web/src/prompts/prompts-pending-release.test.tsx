@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OpenPrimitive } from "../harness/harness-route";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  jsonResponse,
+  noCategories,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import { PromptsPanel } from "./prompts-panel";
 
 const prompt = (
@@ -48,6 +53,8 @@ function renderPanel(primitives: readonly InventoryPrimitive[]) {
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      const none = noCategories(input);
+      if (none) return none;
       if (url === "/api/harness") return jsonResponse(HARNESS);
       if (url === "/api/harness/primitive/delete/check")
         return jsonResponse({ skill: {}, prompt: {} });
@@ -96,6 +103,7 @@ describe("a prompt whose merged change waits for a release", () => {
         ["Change", "Changed"],
         ["Latest release", "v1.4.0"],
         ["Path", ".maestro/prompts/pr-review.md"],
+        ["Category", "No category"],
       ]),
     );
     expect(

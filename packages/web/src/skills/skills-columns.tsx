@@ -1,4 +1,8 @@
 import type { InventorySkill } from "@maestro/core";
+import {
+  CATEGORY_COLUMN,
+  CATEGORY_COLUMN_META,
+} from "../categories/category-view";
 import type { SkillDeployment } from "../inventory/skill-deployments";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
@@ -11,7 +15,7 @@ import { readingRank, type StatusReading } from "../ui/status-reading";
 import { StatusSkeleton } from "../ui/status-skeleton";
 import { ReachCard } from "./reach-card";
 
-export type RowAction = "deploy" | "remove" | "delete";
+export type RowAction = "deploy" | "category" | "remove" | "delete";
 
 // The Skills table's columns, and the columns Display can switch off.
 export type SkillRow = InventorySkill & {
@@ -21,6 +25,8 @@ export type SkillRow = InventorySkill & {
   /** What the hover card expands the Status and Targets cells into. */
   deployments: SkillDeployment[];
   unreadable: boolean;
+  /** Null for none; undefined while the categories are unread. */
+  category: string | null | undefined;
   /** The hover card's footer; null where no target was compared. */
   readAge: string | null;
   /** The ⋮ menu's items, in order. */
@@ -90,6 +96,11 @@ export const skillsColumns = ({
       // Drops out first on a narrow window (#992).
       meta: { className: "text-gray-11", width: 128, priority: 1 },
     }),
+    helper.accessor((row) => row.category ?? "", {
+      id: CATEGORY_COLUMN.value,
+      header: CATEGORY_COLUMN.label,
+      meta: CATEGORY_COLUMN_META,
+    }),
     {
       ...helper.accessor("targets", {
         header: "Targets",
@@ -135,5 +146,6 @@ export const skillsColumns = ({
 export const DISPLAY_OPTIONS = [
   { value: "status", label: "Status" },
   { value: "description", label: "Description" },
+  CATEGORY_COLUMN,
   { value: "targets", label: "Targets" },
 ];

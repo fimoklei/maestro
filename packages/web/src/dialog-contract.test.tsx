@@ -12,6 +12,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps, ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CategoryFieldState } from "./categories/category-field";
 import { ImportLocalEditsDialog } from "./deploy-state/import-local-edits-dialog";
 import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
@@ -39,10 +40,13 @@ import {
   stubRegistry,
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
+import { AddCategoryDialog } from "./settings/add-category-dialog";
+import { DeleteCategoryDialog } from "./settings/delete-category-dialog";
+import { RenameCategoryDialog } from "./settings/rename-category-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
-import { expectTooltipCause, htmlElement } from "./test-utils";
+import { expectTooltipCause, htmlElement, idleCategoryAdd } from "./test-utils";
 import { UPDATE_PROMPT } from "./ui/control-labels";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
@@ -125,6 +129,15 @@ const CHECK = {
   sourceBlocker: null,
   nameBlocker: null,
   advisories: [],
+  category: null,
+};
+
+const NO_CATEGORY_FIELD: CategoryFieldState = {
+  value: null,
+  hint: "Only you see this category.",
+  suggested: null,
+  onChange: vi.fn(),
+  add: idleCategoryAdd,
 };
 
 type Options = {
@@ -246,6 +259,8 @@ const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
     onImport={vi.fn()}
     importing={false}
     importError={null}
+    outcome={false}
+    category={NO_CATEGORY_FIELD}
     {...props}
   />
 );
@@ -261,9 +276,11 @@ const importPromptDialog = (
     fieldErrors={{}}
     changed={false}
     phase="idle"
+    outcome={false}
     failure={null}
     mode="add"
     takenNotice={null}
+    category={{ field: NO_CATEGORY_FIELD }}
     source="paste"
     chosenFile={null}
     fileNotice={null}
@@ -323,6 +340,53 @@ const setLocationDialog = (
     notice={null}
     busy={running}
     onSet={onRun}
+    onClose={onClose}
+  />
+);
+
+const addCategoryDialog = (
+  name: string,
+  { running = false, onClose = vi.fn(), onRun = vi.fn() }: Options = {},
+) => (
+  <AddCategoryDialog
+    name={name}
+    onNameChange={vi.fn()}
+    error={undefined}
+    failure={null}
+    busy={running}
+    onAdd={onRun}
+    onClose={onClose}
+  />
+);
+
+const renameCategoryDialog = (
+  name: string,
+  { running = false, onClose = vi.fn(), onRun = vi.fn() }: Options = {},
+) => (
+  <RenameCategoryDialog
+    category={{ name: "Planning", skills: 3, prompts: 2 }}
+    name={name}
+    onNameChange={vi.fn()}
+    error={undefined}
+    failure={null}
+    busy={running}
+    onRename={onRun}
+    onClose={onClose}
+  />
+);
+
+const deleteCategoryDialog = ({
+  running = false,
+  onClose = vi.fn(),
+}: Options = {}) => (
+  <DeleteCategoryDialog
+    category={{ name: "Planning", skills: 3, prompts: 2 }}
+    moveTo={null}
+    onMoveToChange={vi.fn()}
+    moveToAdd={idleCategoryAdd}
+    failure={null}
+    busy={running}
+    onDelete={vi.fn()}
     onClose={onClose}
   />
 );
@@ -632,6 +696,50 @@ const ON_DIALOG: Row[] = [
         onClose={onClose}
       />
     ),
+    changed: null,
+    emptyForm: null,
+    loading: null,
+    loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "settings/add-category-dialog.tsx",
+    heading: "Add a category",
+    render: ({ running, onClose }) =>
+      addCategoryDialog("Docs", { running, onClose }),
+    changed: async (onClose) => {
+      const { rerender } = render(addCategoryDialog("", { onClose }));
+      rerender(addCategoryDialog("Docs", { onClose }));
+    },
+    emptyForm: {
+      submit: "Add category",
+      render: (onRun) => addCategoryDialog("", { onRun }),
+    },
+    loading: null,
+    loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "settings/rename-category-dialog.tsx",
+    heading: "Rename Planning",
+    render: ({ running, onClose }) =>
+      renameCategoryDialog("Design", { running, onClose }),
+    changed: async (onClose) => {
+      render(renameCategoryDialog("Design", { onClose }));
+    },
+    emptyForm: {
+      submit: "Rename category",
+      render: (onRun) => renameCategoryDialog("", { onRun }),
+    },
+    loading: null,
+    loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "settings/delete-category-dialog.tsx",
+    heading: "Delete Planning",
+    render: ({ running, onClose }) =>
+      deleteCategoryDialog({ running, onClose }),
     changed: null,
     emptyForm: null,
     loading: null,

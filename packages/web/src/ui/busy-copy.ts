@@ -3,6 +3,7 @@
 import { type Copy, type Phrase, phrase } from "./phrase";
 
 export type ActionKey =
+  | "add"
   | "copy"
   | "deploy"
   | "update"
@@ -22,13 +23,16 @@ export type ActionKey =
   | "unregister"
   | "scaffold"
   | "connect"
-  | "setLocation";
+  | "setLocation"
+  | "setCategory"
+  | "rename";
 
 export const ACTIONS: Record<
   ActionKey,
   // `after` follows the name where the done word alone would mislead.
   { busy: string; done: string; after?: string }
 > = {
+  add: { busy: "Adding…", done: "Added" },
   copy: { busy: "Copying…", done: "Copied" },
   deploy: { busy: "Deploying…", done: "Deployed" },
   update: { busy: "Updating…", done: "Updated" },
@@ -55,6 +59,8 @@ export const ACTIONS: Record<
   scaffold: { busy: "Scaffolding…", done: "Scaffolded" },
   connect: { busy: "Connecting…", done: "Connected" },
   setLocation: { busy: "Setting…", done: "Set" },
+  setCategory: { busy: "Setting…", done: "Category set for" },
+  rename: { busy: "Renaming…", done: "Renamed" },
 };
 
 /** Every refusal of a Harness write while another one runs, on any screen. */

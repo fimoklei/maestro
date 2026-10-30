@@ -1,0 +1,296 @@
+import type { InventoryPrimitive } from "@maestro/core";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  categoryFact,
+  categoryMenu,
+  statusRegion,
+  stubCategoryServer,
+} from "../categories/category-server-test-helpers";
+import { jsonResponse, renderWithQuery } from "../test-utils";
+import { ToastHost } from "../ui/toast";
+import { SkillsPanel } from "./skills-panel";
+
+// Set category on Skills: the pane's Category fact, the row's ⋮, the pane's
+// foot and the selection bar, over a stubbed server that keeps its own list.
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+const skill = (name: string) =>
+  ({
+    type: "skill",
+    name,
+    description: `${name} description`,
+    path: `.apm/skills/${name}`,
+    pendingRelease: null,
+  }) satisfies InventoryPrimitive;
+
+const SKILLS = [skill("tdd"), skill("grill"), skill("research")];
+
+const stubServer = (
+  options: Omit<Parameters<typeof stubCategoryServer>[0], "primitives"> = {},
+) => stubCategoryServer({ primitives: SKILLS, ...options });
+
+function renderPanel() {
+  return renderWithQuery(
+    <MemoryRouter initialEntries={["/inventory/skills"]}>
+      <SkillsPanel />
+      <ToastHost />
+    </MemoryRouter>,
+  );
+}
+
+async function openPane(name: string) {
+  await userEvent.click(await screen.findByRole("gridcell", { name }));
+  return within(await screen.findByRole("complementary"));
+}
+
+describe("Set category on Skills", () => {
+  it("shows each skill's category in the pane, or No category", async () => {
+    stubServer({
+      assignments: [{ type: "skill", name: "tdd", category: "Planning" }],
+    });
+    renderPanel();
+
+    const tdd = await openPane("tdd");
+    await waitFor(() =>
+      expect(categoryFact(tdd)).toHaveTextContent("Planning"),
+    );
+    const grill = await openPane("grill");
+    expect(categoryFact(grill)).toHaveTextContent("No category");
+  });
+
+  it("puts Set category in the pane's foot after Deploy skill, never behind ⋯", async () => {
+    stubServer();
+    renderPanel();
+
+    const pane = await openPane("tdd");
+    const foot = await pane.findByRole("button", { name: "Set category" });
+
+    const buttons = pane
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(buttons.indexOf("Set category")).toBe(
+      buttons.indexOf("Deploy skill") + 1,
+    );
+    expect(foot).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("sets a category from the pane's foot and says so in the status region", async () => {
+    const posts = stubServer({
+      assignments: [{ type: "skill", name: "tdd", category: "Writing" }],
+    });
+    renderPanel();
+    const pane = await openPane("tdd");
+
+    await userEvent.click(
+      await pane.findByRole("button", { name: "Set category" }),
+    );
+    const picker = categoryMenu("Set category for tdd");
+    expect(
+      picker.getByRole("option", { name: "Writing", selected: true }),
+    ).toBeInTheDocument();
+    await userEvent.click(picker.getByRole("option", { name: "Planning" }));
+
+    expect(posts).toEqual([
+      {
+        url: "/api/categories/assign",
+        body: { items: [{ type: "skill", name: "tdd" }], category: "Planning" },
+      },
+    ]);
+    await waitFor(() =>
+      expect(categoryFact(pane)).toHaveTextContent("Planning"),
+    );
+    await waitFor(() =>
+      expect(statusRegion()).toHaveTextContent("Category set for tdd."),
+    );
+    expect(
+      screen.queryByRole("group", { name: "Set category for tdd" }),
+    ).toBeNull();
+    expect(pane.getByRole("button", { name: "Set category" })).toHaveFocus();
+  });
+
+  it("reaches Set category from the row's ⋮ by keyboard", async () => {
+    stubServer();
+    renderPanel();
+    const row = (await screen.findByRole("gridcell", { name: "tdd" })).closest(
+      "tr",
+    );
+
+    await userEvent.click(
+      within(row as HTMLElement).getByRole("button", {
+        name: "Actions for tdd",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Set category" }),
+    );
+
+    const search = await screen.findByRole("combobox", {
+      name: "Search categories",
+    });
+    await waitFor(() => expect(search).toHaveFocus());
+    await userEvent.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("group", { name: "Set category for tdd" }),
+    ).toBeNull();
+    expect(screen.getByRole("complementary")).toBeInTheDocument();
+  });
+
+  it("adds a typed category at once and gives it to the skill", async () => {
+    const posts = stubServer();
+    renderPanel();
+    const pane = await openPane("tdd");
+
+    await userEvent.click(
+      await pane.findByRole("button", { name: "Set category" }),
+    );
+    await userEvent.type(
+      screen.getByRole("combobox", { name: "Search categories" }),
+      "Docs",
+    );
+    await userEvent.click(
+      screen.getByRole("option", { name: "Add category Docs" }),
+    );
+
+    await waitFor(() => expect(categoryFact(pane)).toHaveTextContent("Docs"));
+    expect(posts.map((post) => post.body)).toEqual([
+      { name: "Docs" },
+      { items: [{ type: "skill", name: "tdd" }], category: "Docs" },
+    ]);
+  });
+
+  it("removes a category with No category", async () => {
+    const posts = stubServer({
+      assignments: [{ type: "skill", name: "tdd", category: "Writing" }],
+    });
+    renderPanel();
+    const pane = await openPane("tdd");
+
+    await userEvent.click(
+      await pane.findByRole("button", { name: "Set category" }),
+    );
+    await userEvent.click(screen.getByRole("option", { name: "No category" }));
+
+    await waitFor(() =>
+      expect(categoryFact(pane)).toHaveTextContent("No category"),
+    );
+    expect(posts.at(-1)?.body).toEqual({
+      items: [{ type: "skill", name: "tdd" }],
+      category: null,
+    });
+  });
+
+  it("keeps the menu open with the refusal when the Harness no longer holds the skill", async () => {
+    stubServer({
+      assign: () => jsonResponse({ error: "item-not-found" }, 404),
+    });
+    renderPanel();
+    const pane = await openPane("tdd");
+
+    await userEvent.click(
+      await pane.findByRole("button", { name: "Set category" }),
+    );
+    await userEvent.click(screen.getByRole("option", { name: "Planning" }));
+
+    const picker = categoryMenu("Set category for tdd");
+    expect(await picker.findByText("Category not set")).toBeInTheDocument();
+    expect(categoryFact(pane)).toHaveTextContent("No category");
+  });
+
+  describe("the selection bar", () => {
+    async function select(...names: string[]) {
+      for (const name of names) {
+        await userEvent.click(
+          await screen.findByRole("checkbox", {
+            name: `Select ${name}`,
+          }),
+        );
+      }
+    }
+
+    it("sets one category on every selected skill and says so in a toast", async () => {
+      const posts = stubServer();
+      renderPanel();
+      await select("tdd", "grill");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Set category" }),
+      );
+      await userEvent.click(
+        categoryMenu("Set category for 2 skills").getByRole("option", {
+          name: "Writing",
+        }),
+      );
+
+      expect(posts.at(-1)?.body).toEqual({
+        items: [
+          { type: "skill", name: "tdd" },
+          { type: "skill", name: "grill" },
+        ],
+        category: "Writing",
+      });
+      expect(
+        await screen.findByText("Category set for 2 skills."),
+      ).toBeInTheDocument();
+    });
+
+    it("clears the selection once the category is set, as Deploy does", async () => {
+      stubServer();
+      renderPanel();
+      await select("tdd", "grill");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Set category" }),
+      );
+      await userEvent.click(
+        categoryMenu("Set category for 2 skills").getByRole("option", {
+          name: "Writing",
+        }),
+      );
+
+      await waitFor(() => expect(screen.queryByText("2 selected")).toBeNull());
+      expect(
+        screen.getByRole("checkbox", { name: "Select tdd" }),
+      ).not.toBeChecked();
+      expect(screen.getByRole("grid")).toHaveFocus();
+    });
+
+    it("marks the shared category, and nothing where the selected skills differ", async () => {
+      stubServer({
+        assignments: [
+          { type: "skill", name: "tdd", category: "Writing" },
+          { type: "skill", name: "grill", category: "Writing" },
+          { type: "skill", name: "research", category: "Planning" },
+        ],
+      });
+      renderPanel();
+      await select("tdd", "grill");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Set category" }),
+      );
+      expect(
+        categoryMenu("Set category for 2 skills").getByRole("option", {
+          name: "Writing",
+          selected: true,
+        }),
+      ).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+
+      await select("research");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Set category" }),
+      );
+      expect(
+        categoryMenu("Set category for 3 skills").queryAllByRole("option", {
+          selected: true,
+        }),
+      ).toEqual([]);
+    });
+  });
+});

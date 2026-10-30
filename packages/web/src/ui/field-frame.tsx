@@ -5,6 +5,8 @@ import { PhraseText } from "./phrase-text";
 /** What the frame hands its control: the id its label names, and its wiring. */
 export type FieldControl = {
   id: string;
+  /** The label's own id, for a control its content names further. */
+  labelId: string;
   describedBy: string | undefined;
   refused: boolean;
 };
@@ -33,6 +35,7 @@ export function FieldFrame({
   children: (control: FieldControl) => ReactNode;
 }) {
   const id = useId();
+  const labelId = `${id}-label`;
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
   const describedBy =
@@ -46,7 +49,11 @@ export function FieldFrame({
 
   return (
     <div className="flex flex-col gap-tight">
-      <label htmlFor={id} className="font-medium font-ui text-gray-12 text-row">
+      <label
+        id={labelId}
+        htmlFor={id}
+        className="font-medium font-ui text-gray-12 text-row"
+      >
         {label}
       </label>
       {hint === undefined ? null : (
@@ -54,7 +61,12 @@ export function FieldFrame({
           <PhraseText copy={hint} />
         </span>
       )}
-      {children({ id, describedBy, refused: invalid || error !== undefined })}
+      {children({
+        id,
+        labelId,
+        describedBy,
+        refused: invalid || error !== undefined,
+      })}
       {error === undefined ? null : (
         // One line, glyph and sentence together: the mark carries the severity
         // without colour (WCAG 1.4.1) and is hidden from a reader who hears it.

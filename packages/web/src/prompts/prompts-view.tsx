@@ -1,10 +1,18 @@
-import type { InventoryPrompt } from "@maestro/core";
+import type { CategoryList, InventoryPrompt } from "@maestro/core";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { categoryView } from "../categories/category-view";
+import { SetCategoryBarAction } from "../categories/set-category-bar-action";
+import { usePaneCategory } from "../categories/use-pane-category";
 import { promptReadNotice } from "../harness/import-prompt-copy";
 import { ImportPromptDialog } from "../harness/import-prompt-dialog";
 import { useEditPromptFlow } from "../harness/use-edit-prompt-flow";
+import {
+  hiddenStagedCount,
+  setStagedMany,
+  toggleStaged,
+} from "../inventory/bulk-selection";
 import {
   type CloneReading,
   deleteItem,
@@ -20,11 +28,18 @@ import {
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
-import { COPY_PROMPT, DELETE_PROMPT, EDIT_PROMPT } from "../ui/control-labels";
+import {
+  COPY_PROMPT,
+  DELETE_PROMPT,
+  EDIT_PROMPT,
+  rereadLabel,
+  SET_CATEGORY,
+} from "../ui/control-labels";
 import { type Reading, readFreshness, useFreshnessLine } from "../ui/freshness";
 import { GitHubMark } from "../ui/github-mark-link";
 import { Icon } from "../ui/icon";
 import { named, phrase } from "../ui/phrase";
+import { SelectionBar } from "../ui/selection-bar";
 import { TableScreen } from "../ui/table-screen";
 import { type ReadFailure, useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions } from "../ui/use-view-options";
@@ -54,6 +69,9 @@ import {
   PROMPTS_FACT,
   promptsFactValue,
   SEARCH_LABEL,
+  SELECT_ALL_PROMPTS,
+  SELECT_PROMPTS,
+  selectPromptLabel,
 } from "./prompts-copy";
 
 // The default branch no longer holds the file under this name.
@@ -81,9 +99,18 @@ export function PromptsView({
   localDeletions,
   onDeleted,
   onEdited,
+  assignments,
+  categoryNames,
+  initialCategory,
 }: {
   /** Undefined until the Inventory has been read once. */
   prompts: InventoryPrompt[] | undefined;
+  /** Each item's category; undefined while unread, which leaves Set category and the selection out. */
+  assignments: CategoryList["assignments"] | undefined;
+  /** The category list's names in order; undefined while unread. */
+  categoryNames: readonly string[] | undefined;
+  /** The category Filter starts at, from the URL; null for All. */
+  initialCategory: string | null;
   /** The connected Harness: undefined until read, null where its read failed. */
   harness: HarnessFacts | null | undefined;
   /** Every reading the prompts rest on. */
@@ -115,11 +142,19 @@ export function PromptsView({
   });
   const [query, setQuery] = useState("");
   const [deletion, setDeletion] = useState<Deletion | null>(null);
+  const category = usePaneCategory({
+    type: "prompt",
+    assignments,
+    reread: rereadLabel(screen.name),
+  });
+  // Apart from the open row, so inspecting and selecting never toggle each other.
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   // Opening a row any other way drops a menu item's dialog.
   const state = {
     ...screen,
     open: (name: string | null) => {
       setDeletion(null);
+      category.setOpen(false);
       screen.open(name);
     },
   };
@@ -145,7 +180,7 @@ export function PromptsView({
     : null;
   const editFlow = useEditPromptFlow({
     screen: "prompts",
-    report: screen.report,
+    writes: screen,
     onEdited,
   });
   // A read that found nothing opens no dialog; the row's pane says why.
@@ -164,8 +199,14 @@ export function PromptsView({
   const run: Record<RowAction, (prompt: InventoryPrompt) => void> = {
     copy,
     edit: (prompt) => edit(prompt.name),
+    category: (prompt) => {
+      screen.open(prompt.name);
+      setDeletion(null);
+      category.setOpen(true);
+    },
     delete: (prompt) => {
       screen.open(prompt.name);
+      category.setOpen(false);
       setDeletion(deletionOf(clone, prompt.name));
     },
   };
@@ -184,27 +225,50 @@ export function PromptsView({
     const editable = prompt.nameValid && !leavesDefaultBranch(prompt);
     const copyItem: PromptItem = { action: "copy", label: COPY_PROMPT };
     const editItem: PromptItem = { action: "edit", label: EDIT_PROMPT };
+    const categoryItems: PromptItem[] = category.offered
+      ? [{ action: "category", label: SET_CATEGORY }]
+      : [];
     // Every write refuses a bad name: the pane's warning says to rename it.
     const deleteItems: PromptItem[] = prompt.nameValid
       ? deleteItem(clone, prompt.name, DELETE_PROMPT)
       : [];
     return {
       ...prompt,
-      menu: [copyItem, ...(editable ? [editItem] : []), ...deleteItems],
-      foot: [copyItem, { ...editItem, disabled: !editable }, ...deleteItems],
+      category: category.categoryOf(prompt.name),
+      menu: [
+        copyItem,
+        ...(editable ? [editItem] : []),
+        ...categoryItems,
+        ...deleteItems,
+      ],
+      foot: [
+        copyItem,
+        { ...editItem, disabled: !editable },
+        ...categoryItems,
+        ...deleteItems,
+      ],
       readAge,
     };
   });
 
+  const byCategory = categoryView({
+    names: categoryNames,
+    of: (row: PromptRow) => row.category,
+    rows,
+    initial: initialCategory,
+  });
   const view = useViewOptions(rows, {
-    kind: {
-      label: FINDING_LABEL,
-      options: [{ value: NAME_NOT_VALID, label: NAME_NOT_VALID }],
-      of: (row) => (row.nameValid ? "" : NAME_NOT_VALID),
-    },
+    ...byCategory,
+    oneOf: [
+      ...byCategory.oneOf,
+      {
+        label: FINDING_LABEL,
+        options: [{ value: NAME_NOT_VALID, label: NAME_NOT_VALID }],
+        of: (row) => (row.nameValid ? "" : NAME_NOT_VALID),
+        initial: "all",
+      },
+    ],
     status: null,
-    groupings: [],
-    initialGrouping: "none",
     columns: DISPLAY_OPTIONS,
   });
 
@@ -218,9 +282,11 @@ export function PromptsView({
 
   const matched = new Set(filterByName(rows, query).map((row) => row.name));
   const searched = (row: PromptRow) => matched.has(row.name);
-  const shownCount = rows.filter(
-    (row) => searched(row) && view.shown(row),
-  ).length;
+  const shownNames = rows
+    .filter((row) => searched(row) && view.shown(row))
+    .map((row) => row.name);
+  const shownCount = shownNames.length;
+  const reread = rereadLabel(screen.name);
 
   return (
     <>
@@ -290,6 +356,43 @@ export function PromptsView({
               </Button>
             ),
         }}
+        selection={
+          assignments === undefined
+            ? undefined
+            : {
+                label: SELECT_PROMPTS,
+                allLabel: SELECT_ALL_PROMPTS,
+                rowLabel: (row) => selectPromptLabel(row.name),
+                selected,
+                onToggle: (row) =>
+                  setSelected((current) => toggleStaged(current, row.name)),
+                onSetSelected: (many, select) =>
+                  setSelected((current) =>
+                    setStagedMany(
+                      current,
+                      many.map((row) => row.name),
+                      select,
+                    ),
+                  ),
+              }
+        }
+        // Rises with the first choice and leaves with the last.
+        selectionBar={
+          assignments !== undefined && selected.size > 0 ? (
+            <SelectionBar
+              count={selected.size}
+              hiddenCount={hiddenStagedCount(selected, shownNames)}
+              onClear={() => setSelected(new Set())}
+            >
+              <SetCategoryBarAction
+                type="prompt"
+                names={[...selected]}
+                reread={reread}
+                onSelectionSpent={() => setSelected(new Set())}
+              />
+            </SelectionBar>
+          ) : null
+        }
         pane={(row, frame) => (
           <>
             <PromptDetailPane
@@ -298,13 +401,18 @@ export function PromptsView({
               copyRefused={copyRefusedFor === row.name}
               readRefusal={readNotice(row.name)}
               onCopy={() => copy(row)}
-              footItems={row.foot.map(({ action, ...item }) => ({
-                ...item,
-                onSelect: () => run[action](row),
-              }))}
+              category={row.category}
+              footItems={row.foot.map(({ action, ...item }) =>
+                action === "category"
+                  ? category.footItem(item.label)
+                  : { ...item, onSelect: () => run[action](row) },
+              )}
+              footMenu={category.footMenu(row.name)}
               {...frame}
-              // A dialog the row's ⋮ opened holds focus itself.
-              initialFocus={deletion === null ? undefined : null}
+              // A dialog or menu the row's ⋮ opened holds focus itself.
+              initialFocus={
+                deletion === null && !category.open ? undefined : null
+              }
             />
             {deletion === null ? null : (
               <PaneDeletion

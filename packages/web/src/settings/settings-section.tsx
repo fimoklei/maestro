@@ -5,17 +5,25 @@ import { type ReactNode, useId } from "react";
 
 export interface SettingsSectionProps {
   title: string;
-  /** One control beside the heading, acting on the rows below it. */
+  /** The controls beside the heading, acting on the rows below it. */
   action?: ReactNode;
+  /** One sentence under the heading. */
+  description?: string;
+  /** The rows are a list, named by the heading. */
+  list?: boolean;
   /** The rows are being read again. */
   busy?: boolean;
   /** `SettingsRow`s. */
   children: ReactNode;
 }
 
+const ROWS = "flex flex-col overflow-hidden rounded-control border border-edge";
+
 export function SettingsSection({
   title,
   action,
+  description,
+  list = false,
   busy = false,
   children,
 }: SettingsSectionProps) {
@@ -26,18 +34,27 @@ export function SettingsSection({
       aria-busy={busy || undefined}
       className="flex flex-col gap-inline"
     >
-      <div className="flex min-h-control items-center gap-inline">
-        <h2
-          id={headingId}
-          className="m-0 grow font-semibold font-ui text-gray-12 text-heading tracking-heading"
-        >
-          {title}
-        </h2>
+      <div className="flex min-h-control items-start gap-inline">
+        <div className="flex min-h-control grow flex-col justify-center gap-tight">
+          <h2
+            id={headingId}
+            className="m-0 font-semibold font-ui text-gray-12 text-heading tracking-heading"
+          >
+            {title}
+          </h2>
+          {description === undefined ? null : (
+            <p className="m-0 font-ui text-gray-11 text-meta">{description}</p>
+          )}
+        </div>
         {action}
       </div>
-      <div className="flex flex-col overflow-hidden rounded-control border border-edge">
-        {children}
-      </div>
+      {list ? (
+        <ul aria-labelledby={headingId} className={`m-0 list-none p-0 ${ROWS}`}>
+          {children}
+        </ul>
+      ) : (
+        <div className={ROWS}>{children}</div>
+      )}
     </section>
   );
 }

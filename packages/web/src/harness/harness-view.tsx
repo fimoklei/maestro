@@ -161,7 +161,7 @@ export function HarnessView({
   // The edited row's pane opens here; a row the edit removed leaves none.
   const editFlow = useEditPromptFlow({
     screen: "harness",
-    report: table.report,
+    writes: table,
     onEdited: (name, written) => {
       table.settle(written);
       open(proposalRow({ type: "prompt", name }));

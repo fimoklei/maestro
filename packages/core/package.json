@@ -6,7 +6,8 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./prompt-file": "./src/harness/prompt-file.ts"
+    "./prompt-file": "./src/harness/prompt-file.ts",
+    "./category-name": "./src/categories/category-name.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

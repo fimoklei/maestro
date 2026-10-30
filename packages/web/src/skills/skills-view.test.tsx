@@ -113,6 +113,9 @@ function stubPendingFetch() {
 type Props = ComponentProps<typeof SkillsView>;
 
 const baseProps: Props = {
+  assignments: undefined,
+  categoryNames: undefined,
+  initialCategory: null,
   primitives,
   repos: [],
   registryReady: true,
@@ -965,7 +968,7 @@ describe("SkillsView — detail pane", () => {
 
 describe("SkillsView — bulk staging", () => {
   const checkbox = (name: string) =>
-    screen.getByRole("checkbox", { name: `Select ${name} for bulk deploy` });
+    screen.getByRole("checkbox", { name: `Select ${name}` });
 
   it("gives each row a checkbox that stages the skill for bulk", async () => {
     stubPendingFetch();
@@ -1135,7 +1138,7 @@ describe("SkillsView — bulk staging", () => {
     renderView();
 
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Select all for bulk deploy" }),
+      screen.getByRole("checkbox", { name: "Select all skills" }),
     );
 
     expect(checkbox("tdd")).toBeChecked();

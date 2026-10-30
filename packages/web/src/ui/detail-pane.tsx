@@ -83,6 +83,7 @@ export function DetailPane({
   notices = [],
   subList,
   foot = [],
+  footMenu = null,
   leadsWithNextStep = false,
 }: {
   /** The subject's name; the pane's heading and landmark name. */
@@ -108,6 +109,8 @@ export function DetailPane({
   subList?: ReactNode;
   /** The row's ⋮ items the pane places nowhere else, in ⋮ order. */
   foot?: readonly FootItem[];
+  /** A menu a foot item opened, shown above the foot at the pane's width. */
+  footMenu?: ReactNode;
   /** The ⋮ order already leads with the next step, so its first item is primary. */
   leadsWithNextStep?: boolean;
 }) {
@@ -177,108 +180,116 @@ export function DetailPane({
           <Icon of={X} />
         </IconButton>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-panel">
-        {shown.length > 0 ? (
-          <FactList size="row">
-            {shown.map((fact) => (
-              <FactRow
-                key={fact.label}
-                label={fact.label}
-                machine={fact.machine}
-                fullValue={fact.fullValue}
-                action={
-                  fact.action ? (
-                    <Button
-                      variant={fact.action === primary ? "primary" : "quiet"}
-                      aria-label={fact.action.name}
-                      onClick={fact.action.onSelect}
-                    >
-                      {fact.action.label}
-                    </Button>
-                  ) : (
-                    fact.link
-                  )
-                }
-              >
-                {fact.value}
-              </FactRow>
-            ))}
-          </FactList>
-        ) : null}
-        {whole.length === 0 ? null : (
-          <p className="m-0 mt-section flex flex-col gap-tight text-gray-12 text-prose">
-            {whole.map((line, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: two lines may read alike
-              <span key={`${index}:${plainText(line)}`}>
-                <PhraseText copy={line} />
-              </span>
-            ))}
-          </p>
-        )}
-        {clamped === null ? null : (
-          <div
-            className={cn(
-              "text-gray-12 text-prose",
-              whole.length > 0 ? "mt-tight" : "mt-section",
-            )}
-          >
-            <span
-              id={clampedId}
-              // Measured while clamped only: open, the line always fits.
-              ref={(element) => {
-                if (element === null || expanded) return;
-                const measure = () =>
-                  setOverflows(element.scrollHeight > element.clientHeight);
-                measure();
-                if (typeof ResizeObserver === "undefined") return;
-                const observer = new ResizeObserver(measure);
-                observer.observe(element);
-                return () => observer.disconnect();
-              }}
-              // Not `block` while clamped: it would undo the clamp's display.
-              className={expanded ? "block" : "line-clamp-3"}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto p-panel">
+          {shown.length > 0 ? (
+            <FactList size="row">
+              {shown.map((fact) => (
+                <FactRow
+                  key={fact.label}
+                  label={fact.label}
+                  machine={fact.machine}
+                  fullValue={fact.fullValue}
+                  action={
+                    fact.action ? (
+                      <Button
+                        variant={fact.action === primary ? "primary" : "quiet"}
+                        aria-label={fact.action.name}
+                        onClick={fact.action.onSelect}
+                      >
+                        {fact.action.label}
+                      </Button>
+                    ) : (
+                      fact.link
+                    )
+                  }
+                >
+                  {fact.value}
+                </FactRow>
+              ))}
+            </FactList>
+          ) : null}
+          {whole.length === 0 ? null : (
+            <p className="m-0 mt-section flex flex-col gap-tight text-gray-12 text-prose">
+              {whole.map((line, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: two lines may read alike
+                <span key={`${index}:${plainText(line)}`}>
+                  <PhraseText copy={line} />
+                </span>
+              ))}
+            </p>
+          )}
+          {clamped === null ? null : (
+            <div
+              className={cn(
+                "text-gray-12 text-prose",
+                whole.length > 0 ? "mt-tight" : "mt-section",
+              )}
             >
-              <PhraseText copy={clamped} />
-            </span>
-            {expanded || overflows ? (
-              <button
-                type="button"
-                aria-expanded={expanded}
-                aria-controls={clampedId}
-                onClick={() => setExpandedKey(expanded ? null : activeKey)}
-                className={cn(
-                  "mt-tight inline-block cursor-pointer rounded-control text-gray-11 text-meta hover:text-gray-12",
-                  FOCUS_RING,
-                )}
+              <span
+                id={clampedId}
+                // Measured while clamped only: open, the line always fits.
+                ref={(element) => {
+                  if (element === null || expanded) return;
+                  const measure = () =>
+                    setOverflows(element.scrollHeight > element.clientHeight);
+                  measure();
+                  if (typeof ResizeObserver === "undefined") return;
+                  const observer = new ResizeObserver(measure);
+                  observer.observe(element);
+                  return () => observer.disconnect();
+                }}
+                // Not `block` while clamped: it would undo the clamp's display.
+                className={expanded ? "block" : "line-clamp-3"}
               >
-                {expanded ? "Less" : "More"}
-                <span aria-hidden="true">{expanded ? " ‹" : " ›"}</span>
-              </button>
-            ) : null}
+                <PhraseText copy={clamped} />
+              </span>
+              {expanded || overflows ? (
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-controls={clampedId}
+                  onClick={() => setExpandedKey(expanded ? null : activeKey)}
+                  className={cn(
+                    "mt-tight inline-block cursor-pointer rounded-control text-gray-11 text-meta hover:text-gray-12",
+                    FOCUS_RING,
+                  )}
+                >
+                  {expanded ? "Less" : "More"}
+                  <span aria-hidden="true">{expanded ? " ‹" : " ›"}</span>
+                </button>
+              ) : null}
+            </div>
+          )}
+          {notices.length > 0 ? (
+            <div className="mt-cell flex flex-col gap-cell">
+              {notices.map((notice) => (
+                <Notice
+                  key={notice.content.label}
+                  trigger={notice.trigger}
+                  notice={
+                    notice.content.action
+                      ? {
+                          ...notice.content,
+                          action: {
+                            ...notice.content.action,
+                            primary: notice === primary,
+                          },
+                        }
+                      : notice.content
+                  }
+                />
+              ))}
+            </div>
+          ) : null}
+          {subList ? <div className="mt-section">{subList}</div> : null}
+        </div>
+        {footMenu === null ? null : (
+          // Over the content, never past it: a short pane scrolls the menu's list.
+          <div className="pointer-events-none absolute inset-x-panel inset-y-tight z-30 flex flex-col justify-end *:pointer-events-auto">
+            {footMenu}
           </div>
         )}
-        {notices.length > 0 ? (
-          <div className="mt-cell flex flex-col gap-cell">
-            {notices.map((notice) => (
-              <Notice
-                key={notice.content.label}
-                trigger={notice.trigger}
-                notice={
-                  notice.content.action
-                    ? {
-                        ...notice.content,
-                        action: {
-                          ...notice.content.action,
-                          primary: notice === primary,
-                        },
-                      }
-                    : notice.content
-                }
-              />
-            ))}
-          </div>
-        ) : null}
-        {subList ? <div className="mt-section">{subList}</div> : null}
       </div>
       {foot.length > 0 ? (
         <div className="flex flex-none flex-wrap items-start gap-inline border-edge border-t p-panel">

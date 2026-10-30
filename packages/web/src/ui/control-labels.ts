@@ -18,6 +18,7 @@ export const PROPOSE_CHANGE = "Propose change";
 export const PUBLISH_RELEASE = "Publish release";
 export const REGISTER_REPOSITORY = "Register repository";
 export const REMOVE_SKILL = "Remove skill";
+export const SET_CATEGORY = "Set category";
 const RESTORE_PROMPT = "Restore prompt";
 const RESTORE_SKILL = "Restore skill";
 export const UPDATE_PROMPT = "Update prompt";

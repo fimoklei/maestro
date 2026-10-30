@@ -43,6 +43,9 @@ describe("Skills band 2 at a narrow window", () => {
     const ran = driftViewModel({ data: { behind: [] }, isError: false });
     renderWithQuery(
       <SkillsView
+        assignments={undefined}
+        categoryNames={undefined}
+        initialCategory={null}
         primitives={["tdd", "caveman", "brain"].map((name) => ({
           type: "skill",
           name,

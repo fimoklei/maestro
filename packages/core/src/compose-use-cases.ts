@@ -1,6 +1,8 @@
 // The one place every use case is wired. Production passes the Node adapters
 // (`nodeUseCasePorts`); a test passes in-memory ones.
 
+import { Categories } from "./categories/categories";
+import { heldItemsFrom } from "./categories/held-items";
 import { SelectionWriter } from "./deploy/apply-selection";
 import type {
   ApmDriverPort,
@@ -344,6 +346,17 @@ export function composeUseCases(ports: UseCasePorts) {
   return {
     registry,
     inventory,
+    categories: new Categories({
+      store,
+      harness: async () => {
+        const root = await harnessRoot();
+        return root === undefined
+          ? null
+          : { root, origin: await readHarnessOrigin(root) };
+      },
+      configPath: () => resolveMaestroConfigPath(env),
+      held: heldItemsFrom({ git: harnessGit, fs }),
+    }),
     harness,
     importSkill,
     // Shares the lock Delete takes: an import never writes while another Harness change runs.

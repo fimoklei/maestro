@@ -2,6 +2,7 @@ import { composeUseCases, nodeUseCasePorts } from "@maestro/core";
 import { Hono } from "hono";
 import type { AppDeps } from "./app-deps";
 import { originHostGuard } from "./origin-host-guard";
+import { registerCategoryRoutes } from "./routes/category-routes";
 import { registerDeployRoutes } from "./routes/deploy-routes";
 import { registerFolderRoutes } from "./routes/folder-routes";
 import { registerHarnessAuthoringRoutes } from "./routes/harness-authoring-routes";
@@ -29,6 +30,7 @@ export function createApp(deps: AppDeps) {
   registerHarnessAuthoringRoutes(app, deps);
   registerFolderRoutes(app, deps);
   registerDeployRoutes(app, deps);
+  registerCategoryRoutes(app, deps);
 
   return app;
 }
