@@ -1,8 +1,8 @@
 import type { HarnessState } from "@maestro/core";
-import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import { useCategories } from "../categories/use-categories";
+import { useCategoryParam } from "../categories/use-category-param";
 import type { HarnessArrival } from "../harness/harness-route";
 import { harnessHeadings } from "../harness/notice-copy";
 import { useDeletionCheck, useHarness } from "../harness/use-harness";
@@ -33,9 +33,7 @@ export function PromptsPanel() {
   const navigate = useNavigate();
   const check = useDeletionCheck();
   const categories = useCategories();
-  // A Settings count link names the category; Filter reads it once.
-  const [searchParams] = useSearchParams();
-  const [initialCategory] = useState(() => searchParams.get("category"));
+  const initialCategory = useCategoryParam();
   // A disconnected Harness is a different list, so no old row stays and the
   // screen states it as the Harness screen does; any other failure keeps the
   // previous rows.

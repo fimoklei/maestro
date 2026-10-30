@@ -2,7 +2,7 @@ import type { CategoryList, InventoryPrimitive } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation, useNavigationType } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PromptsPanel } from "../prompts/prompts-panel";
 import { SkillsPanel } from "../skills/skills-panel";
@@ -153,6 +153,16 @@ const renderAt = (entry: string, panel: ReactNode) =>
     <MemoryRouter initialEntries={[entry]}>{panel}</MemoryRouter>,
   );
 
+// The path with its query, and how the router got there.
+function LocationProbe() {
+  const { pathname, search } = useLocation();
+  return (
+    <output data-testid="location">
+      {`${pathname}${search} ${useNavigationType()}`}
+    </output>
+  );
+}
+
 // The table's lines in order: a group header as its words and count, a row
 // as its name.
 function lines(names: readonly string[]): string[] {
@@ -266,6 +276,29 @@ describe.each(SCREENS)("Category on $name", (each) => {
     expect(
       within(menu).getByRole("menuitemradio", { name: "Planning" }),
     ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("takes the category out of the URL once read, in place, and keeps the filter", async () => {
+    stubServer();
+    renderAt(
+      `${each.path}?category=Planning`,
+      <>
+        {each.panel}
+        <LocationProbe />
+      </>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        `${each.path} REPLACE`,
+      ),
+    );
+    await waitFor(() =>
+      expect(lines(each.rows)).toEqual([
+        `Planning ${each.planning.length}`,
+        ...each.planning,
+      ]),
+    );
   });
 
   it("reads a URL category that matches no category as All", async () => {

@@ -1,8 +1,8 @@
 import { useIsFetching } from "@tanstack/react-query";
-import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import { useCategories } from "../categories/use-categories";
+import { useCategoryParam } from "../categories/use-category-param";
 import { DEPLOY_STATE_KEY } from "../deploy-state/use-deploy-state";
 import type { HarnessArrival } from "../harness/harness-route";
 import { harnessHeadings } from "../harness/notice-copy";
@@ -38,9 +38,7 @@ export function SkillsPanel() {
   const harness = useHarness();
   const categories = useCategories();
   const check = useDeletionCheck();
-  // A Settings count link names the category; Filter reads it once.
-  const [searchParams] = useSearchParams();
-  const [initialCategory] = useState(() => searchParams.get("category"));
+  const initialCategory = useCategoryParam();
   // Drift is left out, as on Deploy-state: its apm run is slow, so the rows
   // never wait for it; the Status cell shows its own skeleton meanwhile. The
   // deletion check is left out too: Delete skill states its own wait.
