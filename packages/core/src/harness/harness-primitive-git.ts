@@ -280,47 +280,55 @@ export const readPrimitiveHash = (
 ): Promise<string | null> =>
   runGitText(root, ["rev-parse", `${treeish}:${primitivePath(ref)}`]);
 
-// The base's copy is dropped first: `read-tree --prefix` refuses a path the
-// index already holds. `object: null` stops there (a removal). `parent` is the
-// proposal branch's tip when one exists, so the push fast-forwards (#578).
-export async function commitPrimitiveOnto(
+/** One primitive's content in a new commit; `object: null` removes it. */
+export type PrimitiveChange = {
+  ref: PrimitiveRef;
+  object: PrimitiveObject | null;
+};
+
+// Each base copy is dropped first: `read-tree --prefix` refuses a path the
+// index already holds. `parent` is the proposal branch's tip when one exists,
+// so the push fast-forwards (#578).
+export async function commitPrimitivesOnto(
   root: string,
-  change: { ref: PrimitiveRef; object: PrimitiveObject | null },
+  changes: readonly PrimitiveChange[],
   treeBase: string,
   parent: string,
   indexDir: string,
   subject: string,
 ): Promise<string> {
-  const path = primitivePath(change.ref);
   const options = indexOptions(join(indexDir, "promote"));
   await run("git", ["-C", root, "read-tree", treeBase], options);
-  await run(
-    "git",
-    [
-      "-C",
-      root,
-      "rm",
-      "-r",
-      "-f",
-      "-q",
-      "--cached",
-      "--ignore-unmatch",
-      "--",
-      path,
-    ],
-    options,
-  );
-  if (change.object !== null) {
-    const add =
-      primitiveObject(change.ref.type) === "tree"
-        ? ["read-tree", `--prefix=${path}/`, change.object.hash]
-        : [
-            "update-index",
-            "--add",
-            "--cacheinfo",
-            `${change.object.mode},${change.object.hash},${path}`,
-          ];
-    await run("git", ["-C", root, ...add], options);
+  for (const change of changes) {
+    const path = primitivePath(change.ref);
+    await run(
+      "git",
+      [
+        "-C",
+        root,
+        "rm",
+        "-r",
+        "-f",
+        "-q",
+        "--cached",
+        "--ignore-unmatch",
+        "--",
+        path,
+      ],
+      options,
+    );
+    if (change.object !== null) {
+      const add =
+        primitiveObject(change.ref.type) === "tree"
+          ? ["read-tree", `--prefix=${path}/`, change.object.hash]
+          : [
+              "update-index",
+              "--add",
+              "--cacheinfo",
+              `${change.object.mode},${change.object.hash},${path}`,
+            ];
+      await run("git", ["-C", root, ...add], options);
+    }
   }
   const { stdout: tree } = await run(
     "git",

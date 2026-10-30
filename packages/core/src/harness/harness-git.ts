@@ -25,7 +25,7 @@ import {
   proposalBranchLeaf,
 } from "./harness-primitive";
 import {
-  commitPrimitiveOnto,
+  commitPrimitivesOnto,
   hashWorkingPrimitive,
   listPrimitivesAt,
   listWorkingPrimitives,
@@ -214,9 +214,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitiveOnto(
+      const commit = await commitPrimitivesOnto(
         root,
-        { ref, object },
+        [{ ref, object }],
         base,
         existingTip ?? base,
         indexDir,
@@ -263,9 +263,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitiveOnto(
+      const commit = await commitPrimitivesOnto(
         root,
-        { ref, object: null },
+        [{ ref, object: null }],
         base,
         existingTip ?? base,
         indexDir,
