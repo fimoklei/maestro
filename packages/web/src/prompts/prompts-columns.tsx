@@ -8,7 +8,7 @@ import { WARNING_GLYPH } from "../ui/status-family";
 import { reading } from "../ui/status-reading";
 import { NAME_NOT_VALID, NAME_RULE } from "./prompts-copy";
 
-export type RowAction = "copy" | "edit" | "delete";
+export type RowAction = "copy" | "edit" | "category" | "delete";
 
 export type PromptItem = {
   action: RowAction;
@@ -19,6 +19,8 @@ export type PromptItem = {
 
 /** One Prompts row: the released prompt, its ⋮ and pane foot items and the read age its hover card ends with. */
 export type PromptRow = InventoryPrompt & {
+  /** Null for none; undefined while the categories are unread. */
+  category: string | null | undefined;
   /** The ⋮ menu's items, in order. */
   menu: PromptItem[];
   /** The pane foot's items, in ⋮ order; it blocks an item the menu omits. */
@@ -70,7 +72,8 @@ export const promptsColumns = ({
           label={rowActionsLabel(row.original.name)}
           items={row.original.menu.map(({ action, ...item }) => ({
             ...item,
-            movesFocus: false,
+            // Set category's menu takes focus in the pane it opens.
+            movesFocus: action === "category",
             onSelect: () => onAction(row.original, action),
           }))}
           tabStop={false}

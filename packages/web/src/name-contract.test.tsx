@@ -96,6 +96,9 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Deploy to ${target} did not run`": "notice heading",
     '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",
   },
+  "prompts/prompts-copy.ts": {
+    "`Select ${name}`": "checkbox label",
+  },
   "registry/repositories-copy.ts": {
     "`${UNREGISTER} ${name}`": "dialog title",
   },
