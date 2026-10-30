@@ -71,7 +71,8 @@ Run from the repo root.
 
 ## File size
 
-- No line limit on a test file: the 800-line ceiling lives in the operator's global `code-standards.md`, which exempts test files, so the rule here is grouping, not counting. Nothing enforces it mechanically — Biome has no `max-lines`.
+- No line limit on a test file; the operator's global `code-standards.md`
+  exempts test files. Split by grouping, not by count.
 - Split when the tests fall into groups that do not share setup: one file per group, named for the group (`harness-import-flow.test.tsx`), never one file per `describe`.
 - Repeated setup is the signal, not length. Before a third test builds the same fixture inline, extract one shared helper.
 

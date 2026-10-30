@@ -28,7 +28,7 @@ ADR-0014; the field carve-out is ADR-0018.
   current repository, `open` only, and 30.
 - Always pass `--json` with the exact fields you consume.
 - Disable prompts (`GH_PROMPT_DISABLED`) and bound execution time, as
-  `HarnessGitAdapter` does.
+  `GhCliAdapter` does.
 - Pass ambient env only. Never inject `GH_TOKEN`, `GITHUB_TOKEN` or any other
   credential.
 

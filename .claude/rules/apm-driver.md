@@ -120,8 +120,7 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 
 - Success = the `Uninstall complete: Removed \d+ package(s) from apm.yml`
   marker, never the exit code. Absent marker = failure, fail-closed. Keep
-  the not-found signals beside it: they cost nothing and close 0.26.0's
-  partial-success shape.
+  the not-found signals beside it; they catch a partial success.
 - Never parse the `Cleaned \d+ stale files` count — it counts what that run
   deleted.
 - Name the package with the same tag-pinned ref the install used; a bare
