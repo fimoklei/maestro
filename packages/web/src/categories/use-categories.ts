@@ -5,9 +5,15 @@ import { requestJson } from "../api/http";
 const CATEGORIES_KEY = ["categories"] as const;
 
 export function useCategories() {
+  return useCategoriesWhile(true);
+}
+
+/** The categories query, read only while `enabled`, as while a dialog is open. */
+export function useCategoriesWhile(enabled: boolean) {
   return useQuery({
     queryKey: CATEGORIES_KEY,
     queryFn: () => requestJson<CategoryList>("/api/categories"),
+    enabled,
   });
 }
 

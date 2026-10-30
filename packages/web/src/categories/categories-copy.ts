@@ -2,7 +2,7 @@ import type { HarnessPrimitiveType } from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
 import { ADD_CATEGORY } from "../ui/category-menu-copy";
-import { rereadLabel } from "../ui/control-labels";
+import { rereadLabel, SET_CATEGORY } from "../ui/control-labels";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { machine, type Phrase, phrase } from "../ui/phrase";
 
@@ -76,7 +76,20 @@ export const ITEM_WORDS: Record<
   prompt: { one: "prompt", many: "prompts" },
 };
 
+/** The Category field of Import skill, Import prompt and Edit prompt. */
+export const CATEGORY_FIELD = {
+  label: "Category",
+  hint: "Only you see this category.",
+} as const;
+
 const CATEGORY_NOT_SET = "Category not set";
+
+/** The edit landed in the Harness; the category after it did not. */
+export const CATEGORY_NOT_SET_AFTER_EDIT: NoticeContent = {
+  level: "error",
+  label: CATEGORY_NOT_SET,
+  message: `The prompt was edited. Select Close, then select ${SET_CATEGORY} on Prompts.`,
+};
 
 /** Why Set category did not land, stated in the menu; `reread` is the screen's control. */
 export const categoryNotSet = (

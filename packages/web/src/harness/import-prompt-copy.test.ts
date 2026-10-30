@@ -134,7 +134,7 @@ describe("Edit prompt copy", () => {
   it("titles the dialog by the prompt and states why its button is blocked", () => {
     expect(EDIT_PROMPT).toBe("Edit prompt");
     expect(editPromptTitle("pr-review")).toBe("Edit pr-review");
-    expect(NOTHING_CHANGED).toBe("Change the description or text.");
+    expect(NOTHING_CHANGED).toBe("Change the description, text or category.");
   });
 
   it("refuses a text over 100 KB naming Edit prompt", () => {
