@@ -7,6 +7,7 @@ import {
   expectTooltipCause,
   hoverOpen,
   jsonResponse,
+  noCategories,
   renderWithQuery,
   sentence,
 } from "../test-utils";
@@ -72,6 +73,8 @@ function stubApi(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      const none = noCategories(input);
+      if (none) return none;
       if (failing.some((path) => url.startsWith(path)))
         return jsonResponse({ error: "unreadable" }, 503);
       if (url === "/api/harness") return jsonResponse(HARNESS);

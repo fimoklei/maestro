@@ -1,7 +1,8 @@
-import type { InventoryPrompt } from "@maestro/core";
+import type { CategoryList, InventoryPrompt } from "@maestro/core";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { categoryView } from "../categories/category-view";
 import { promptReadNotice } from "../harness/import-prompt-copy";
 import { ImportPromptDialog } from "../harness/import-prompt-dialog";
 import { useEditPromptFlow } from "../harness/use-edit-prompt-flow";
@@ -81,6 +82,9 @@ export function PromptsView({
   localDeletions,
   onDeleted,
   onEdited,
+  assignments,
+  categoryNames,
+  initialCategory,
 }: {
   /** Undefined until the Inventory has been read once. */
   prompts: InventoryPrompt[] | undefined;
@@ -103,6 +107,12 @@ export function PromptsView({
   onDeleted: (prompt: string, written: WriteResult) => void;
   /** An edit landed in the Working Harness; its row is on the Harness view. */
   onEdited: (prompt: string, written: WriteResult) => void;
+  /** Each item's category; undefined while unread. */
+  assignments: CategoryList["assignments"] | undefined;
+  /** The category list's names in order; undefined while unread. */
+  categoryNames: readonly string[] | undefined;
+  /** The category Filter starts at, from the URL; null for All. */
+  initialCategory: string | null;
 }) {
   const screen = useTableScreen({
     name: PROMPTS_FACT,
@@ -193,11 +203,25 @@ export function PromptsView({
       menu: [copyItem, ...(editable ? [editItem] : []), ...deleteItems],
       foot: [copyItem, { ...editItem, disabled: !editable }, ...deleteItems],
       readAge,
+      category:
+        assignments === undefined
+          ? undefined
+          : (assignments.find(
+              (each) => each.type === "prompt" && each.name === prompt.name,
+            )?.category ?? null),
     };
   });
 
+  const byCategory = categoryView({
+    names: categoryNames,
+    of: (row: PromptRow) => row.category,
+    rows,
+    initial: initialCategory,
+  });
   const view = useViewOptions(rows, {
+    ...byCategory,
     oneOf: [
+      ...byCategory.oneOf,
       {
         label: FINDING_LABEL,
         options: [{ value: NAME_NOT_VALID, label: NAME_NOT_VALID }],
@@ -206,8 +230,6 @@ export function PromptsView({
       },
     ],
     status: null,
-    groupings: [],
-    defaultGrouping: "none",
     columns: DISPLAY_OPTIONS,
   });
 

@@ -15,12 +15,12 @@ import {
   CATEGORY_NOT_ADDED,
   CATEGORY_NOT_CONFIGURED,
   categoriesUnreadable,
-  categoryCounts,
   NO_CATEGORIES,
   NO_CATEGORIES_SENTENCE,
   nameExistsError,
   REREAD_CATEGORIES,
 } from "../categories/categories-copy";
+import { CategoryCountLinks } from "../categories/category-count-links";
 import { useAddCategory, useCategories } from "../categories/use-categories";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { EmptyState } from "../ui/empty-state";
@@ -188,8 +188,13 @@ export function CategoriesPage() {
             <SettingsRow
               key={category.name}
               name={category.name}
-              value={categoryCounts(category.skills, category.prompts)}
-              machine={false}
+              control={
+                <CategoryCountLinks
+                  name={category.name}
+                  skills={category.skills}
+                  prompts={category.prompts}
+                />
+              }
               listItem
               selected={category.name === selected}
               rowRef={category.name === selected ? selectedRef : undefined}

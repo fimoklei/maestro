@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../shell/app-router";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, noCategories, renderWithQuery } from "../test-utils";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -44,6 +44,8 @@ function stubServer() {
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      const none = noCategories(input);
+      if (none) return none;
       if (url.startsWith("/api/inventory/config")) {
         return jsonResponse({ inventoryPath }, 200);
       }
@@ -122,6 +124,8 @@ describe("connect gate", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
+        const none = noCategories(input);
+        if (none) return none;
         if (url.startsWith("/api/inventory/config")) {
           return jsonResponse({ inventoryPath }, 200);
         }
@@ -174,6 +178,8 @@ describe("connect gate", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
+        const none = noCategories(input);
+        if (none) return none;
         if (url.startsWith("/api/inventory/config")) {
           return jsonResponse({ inventoryPath }, 200);
         }
@@ -263,6 +269,8 @@ describe("connect gate", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
+        const none = noCategories(input);
+        if (none) return none;
         if (url.startsWith("/api/inventory/config")) {
           return jsonResponse({ inventoryPath: null }, 200);
         }
@@ -344,6 +352,8 @@ describe("connect gate", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
+        const none = noCategories(input);
+        if (none) return none;
         if (url.startsWith("/api/inventory/config")) {
           return jsonResponse({ inventoryPath: null }, 200);
         }
@@ -429,6 +439,8 @@ describe("connect gate", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
+        const none = noCategories(input);
+        if (none) return none;
         if (url.startsWith("/api/inventory/config")) {
           configRequests += 1;
           if (configRequests > 1) {

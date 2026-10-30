@@ -114,6 +114,8 @@ type Props = ComponentProps<typeof SkillsView>;
 
 const baseProps: Props = {
   assignments: undefined,
+  categoryNames: undefined,
+  initialCategory: null,
   primitives,
   repos: [],
   registryReady: true,

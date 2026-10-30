@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { findRow, stubServer } from "../deploy-state/deploy-state-test-helpers";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, noCategories, renderWithQuery } from "../test-utils";
 import { AppRoutes } from "./app-router";
 
 afterEach(() => {
@@ -31,13 +31,15 @@ const HARNESS_STATE = {
 function stubEmptyServer() {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) =>
-      String(input).startsWith("/api/harness")
-        ? jsonResponse(HARNESS_STATE, 200)
-        : jsonResponse(
-            { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-            200,
-          ),
+    vi.fn(
+      async (input: RequestInfo | URL) =>
+        noCategories(input) ??
+        (String(input).startsWith("/api/harness")
+          ? jsonResponse(HARNESS_STATE, 200)
+          : jsonResponse(
+              { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+              200,
+            )),
     ),
   );
 }
@@ -48,6 +50,8 @@ function stubConfiguredServer() {
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      const none = noCategories(input);
+      if (none) return none;
       if (url.startsWith("/api/inventory/config")) {
         return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
       }
@@ -234,9 +238,10 @@ describe("cockpit navigation", () => {
         skipped: [],
       },
       other: (url) =>
-        url.startsWith("/api/harness")
+        noCategories(url) ??
+        (url.startsWith("/api/harness")
           ? jsonResponse(HARNESS_STATE, 200)
-          : jsonResponse({ primitives: [], skipped: [], behind: [] }, 200),
+          : jsonResponse({ primitives: [], skipped: [], behind: [] }, 200)),
     }));
     renderApp();
 

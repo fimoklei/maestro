@@ -21,6 +21,12 @@ export function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+/** The category read of a Harness with none, for a stub that answers every other read. */
+export const noCategories = (input: RequestInfo | URL): Response | null =>
+  String(input) === "/api/categories"
+    ? jsonResponse({ categories: [], assignments: [] })
+    : null;
+
 // A fresh client per render with the cockpit's own read rules (#1037).
 // Passed as `wrapper` so the provider survives `rerender`. A dialog rendered
 // without its table screen reports into nothing; a screen brings its region.
