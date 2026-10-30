@@ -19,6 +19,7 @@ import type {
   DefaultBranchWithdrawal,
   WithdrawalPushOutcome,
 } from "./read-harness-state";
+import { remoteBranchHolds } from "./remote-branch-holds";
 
 const run = promisify(execFile);
 
@@ -64,14 +65,12 @@ export async function withdrawOnDefaultBranch(
     if (changes === null) {
       return "push-failed";
     }
-    commit = await commitPrimitivesOnto(
-      root,
-      changes,
-      withdrawal.tip,
-      withdrawal.tip,
+    commit = await commitPrimitivesOnto(root, changes, {
+      treeBase: withdrawal.tip,
+      parent: withdrawal.tip,
       indexDir,
-      withdrawal.message,
-    );
+      message: withdrawal.message,
+    });
   } catch {
     return "push-failed";
   } finally {
@@ -113,51 +112,12 @@ const push = async (
     if (failure === "stale-tip" || failure === "refused") {
       return failure;
     }
-    return await settle(
-      root,
-      branchRef,
-      commit,
-      failure === "offline" ? "offline" : "push-failed",
-    );
+    return (await remoteBranchHolds(root, branchRef, commit, branchRef))
+      ? "pushed"
+      : failure === "offline"
+        ? "offline"
+        : "push-failed";
   }
-};
-
-// A push can fail after the remote already moved the branch, so the remote is
-// asked (#577). The commit, or a descendant of it, at the tip counts as pushed.
-const settle = async (
-  root: string,
-  branchRef: string,
-  commit: string,
-  failure: "offline" | "push-failed",
-): Promise<WithdrawalPushOutcome> => {
-  const listing = await runGitText(root, ["ls-remote", "origin", branchRef]);
-  const [remoteTip] = (listing ?? "").split("\t");
-  if (remoteTip === undefined || remoteTip === "") {
-    return failure;
-  }
-  if (remoteTip === commit) {
-    return "pushed";
-  }
-  // `merge-base` needs the tip's object locally.
-  const fetched = await run(
-    "git",
-    ["-C", root, "fetch", "origin", remoteTip],
-    gitOptions(),
-  ).then(
-    () => true,
-    () => false,
-  );
-  const descends =
-    fetched &&
-    (await run(
-      "git",
-      ["-C", root, "merge-base", "--is-ancestor", commit, remoteTip],
-      gitOptions(),
-    ).then(
-      () => true,
-      () => false,
-    ));
-  return descends ? "pushed" : failure;
 };
 
 // The push is the commit point: a failed step here is reconciled by the next

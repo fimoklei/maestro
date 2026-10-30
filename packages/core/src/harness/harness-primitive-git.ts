@@ -299,10 +299,12 @@ export type PrimitiveChange = {
 export async function commitPrimitivesOnto(
   root: string,
   changes: readonly PrimitiveChange[],
-  treeBase: string,
-  parent: string,
-  indexDir: string,
-  subject: string,
+  {
+    treeBase,
+    parent,
+    indexDir,
+    message,
+  }: { treeBase: string; parent: string; indexDir: string; message: string },
 ): Promise<string> {
   const options = indexOptions(join(indexDir, "promote"));
   await run("git", ["-C", root, "read-tree", treeBase], options);
@@ -345,7 +347,7 @@ export async function commitPrimitivesOnto(
   // No author, no signing flag: the author's own git config applies (#574).
   const { stdout: commit } = await run(
     "git",
-    ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", subject],
+    ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", message],
     options,
   );
   return commit.trim();

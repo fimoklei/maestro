@@ -47,6 +47,15 @@ const OWN_PREFIXES = [
   "Promote skill:",
 ];
 
+// The subject of the commit that takes a primitive out of the next release.
+const WITHDRAW_PREFIX: Record<HarnessPrimitiveType, string> = {
+  skill: "Withdraw skill:",
+  prompt: "Withdraw prompt:",
+};
+
+export const withdrawalTitle = (ref: PrimitiveRef): string =>
+  `${WITHDRAW_PREFIX[ref.type]} ${ref.name}`;
+
 // Also the subject of the commit a push lands: GitHub's compare page titles a
 // one-commit request by it, where no request is opened for the author.
 export const proposalTitle = (ref: PrimitiveRef, kind: ProposalKind): string =>

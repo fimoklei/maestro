@@ -7,6 +7,7 @@ import { isValidSkillSlug } from "../deploy/package-ref";
 import type { HarnessObject, PrimitiveRef } from "./harness-primitive";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
 import { readLatestRelease } from "./latest-release";
+import { withdrawalTitle } from "./proposal-request";
 import type {
   HarnessFreshnessPort,
   HarnessGitPort,
@@ -80,13 +81,8 @@ const namesOf = (row: HarnessStageRow): PrimitiveRef[] =>
       ]
     : [{ type: row.type, name: row.name }];
 
-const TITLE: Record<PrimitiveRef["type"], string> = {
-  skill: "Withdraw skill:",
-  prompt: "Withdraw prompt:",
-};
-
 const messageOf = (row: HarnessStageRow): string => {
-  const subject = `${TITLE[row.type]} ${row.name}`;
+  const subject = withdrawalTitle(row);
   return row.mergedRequest === null
     ? subject
     : `${subject}\n\nTakes pull request #${row.mergedRequest} out of the next release.`;

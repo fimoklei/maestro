@@ -66,6 +66,7 @@ import {
   parseSkillTreeListing,
   type ReleasedContentReader,
 } from "./released-content";
+import { remoteBranchHolds } from "./remote-branch-holds";
 
 const run = promisify(execFile);
 
@@ -223,14 +224,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitivesOnto(
-        root,
-        [{ ref, object }],
-        base,
-        existingTip ?? base,
+      const commit = await commitPrimitivesOnto(root, [{ ref, object }], {
+        treeBase: base,
+        parent: existingTip ?? base,
         indexDir,
-        proposalTitle(ref, kind),
-      );
+        message: proposalTitle(ref, kind),
+      });
       // A save halfway through `git add` mixes two revisions: refuse content
       // that moved, since a pushed branch cannot be taken back.
       if (
@@ -272,14 +271,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitivesOnto(
-        root,
-        [{ ref, object: null }],
-        base,
-        existingTip ?? base,
+      const commit = await commitPrimitivesOnto(root, [{ ref, object: null }], {
+        treeBase: base,
+        parent: existingTip ?? base,
         indexDir,
-        proposalTitle(ref, "deletion"),
-      );
+        message: proposalTitle(ref, "deletion"),
+      });
       // Reappeared since the guard: refuse, a pushed branch cannot be taken back.
       if (await primitiveOnDisk(root, ref)) {
         return "source-changed";
@@ -443,9 +440,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  // A push can fail after the remote already moved the branch, so the remote is
-  // asked (#577). A teammate may have fast-forwarded past this commit since, so
-  // being an ancestor of the tip also counts as pushed.
+  // A teammate may have fast-forwarded past this commit since, so being an
+  // ancestor of the tip also counts as pushed.
   private async settlePromotion(
     root: string,
     ref: PrimitiveRef,
@@ -453,48 +449,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
     failure: SkillPushOutcome,
   ): Promise<SkillPushOutcome> {
     const branchRef = `refs/heads/${proposalBranch(ref)}`;
-    const listing = await run(
-      "git",
-      ["-C", root, "ls-remote", "origin", branchRef],
-      gitOptions(),
-    ).then(
-      ({ stdout }) => stdout.trim(),
-      () => "",
+    const holds = await remoteBranchHolds(
+      root,
+      branchRef,
+      commit,
+      `+${branchRef}:${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
     );
-    const [pushed] = listing.split("\t");
-    if (pushed === undefined || pushed === "") {
-      return failure;
-    }
-    if (pushed === commit) {
-      return "pushed";
-    }
-    // `merge-base` needs the tip's object locally.
-    const fetched = await run(
-      "git",
-      [
-        "-C",
-        root,
-        "fetch",
-        "origin",
-        `+${branchRef}:${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
-      ],
-      gitOptions(),
-    ).then(
-      () => true,
-      () => false,
-    );
-    if (!fetched) {
-      return failure;
-    }
-    const isAncestor = await run(
-      "git",
-      ["-C", root, "merge-base", "--is-ancestor", commit, pushed],
-      gitOptions(),
-    ).then(
-      () => true,
-      () => false,
-    );
-    return isAncestor ? "pushed" : failure;
+    return holds ? "pushed" : failure;
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {
