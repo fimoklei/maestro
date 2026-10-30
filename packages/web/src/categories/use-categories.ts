@@ -4,10 +4,14 @@ import { requestJson } from "../api/http";
 
 const CATEGORIES_KEY = ["categories"] as const;
 
-export function useCategories() {
+/** `enabled: false` holds the read, as for a dialog that is not open. */
+export function useCategories(
+  { enabled }: { enabled: boolean } = { enabled: true },
+) {
   return useQuery({
     queryKey: CATEGORIES_KEY,
     queryFn: () => requestJson<CategoryList>("/api/categories"),
+    enabled,
   });
 }
 

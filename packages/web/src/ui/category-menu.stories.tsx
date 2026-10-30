@@ -38,6 +38,11 @@ export const RowsDiffer: Story = {
 
 export const EmptyHarness: Story = { args: { names: [], current: null } };
 
+/** A dialog's Category field, opened on a name the imported file gave. */
+export const NameFromFile: Story = {
+  args: { label: "Category", current: null, initialQuery: "Docs" },
+};
+
 /** Delete category's Move to leaves out the category being deleted. */
 export const Excluding: Story = {
   args: { label: "Move to", exclude: "Planning", current: undefined },

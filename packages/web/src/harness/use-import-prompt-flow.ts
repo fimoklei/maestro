@@ -2,9 +2,11 @@ import type { ImportMode, ImportPromptSuccess } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
+  promptCategory,
   promptDraftProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
+import { useCategoryChoice } from "../categories/use-category-choice";
 import type { NoticeContent } from "../ui/notice";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { proposalRow } from "./harness-route";
@@ -64,6 +66,13 @@ export function useImportPromptFlow(
       ? "update"
       : "add";
   const { confirm } = PROMPT_IMPORT_MODES[mode];
+  const category = useCategoryChoice({
+    type: "prompt",
+    name: draft.name,
+    mode,
+    fromFile: promptCategory(draft.frontmatter),
+    open,
+  });
   const importPrompt = useImportPrompt();
   const write = useWriteAction(importPrompt, {
     screen,
@@ -87,6 +96,7 @@ export function useImportPromptFlow(
     setSubmitted(false);
     setCheckedName(null);
     importPrompt.reset();
+    category.reset();
   };
 
   // A pasted front matter block lives only as long as the text it came with.
@@ -105,6 +115,7 @@ export function useImportPromptFlow(
     fieldErrors,
     failure,
     mode,
+    category,
     takenNotice: mode === "update" ? PROMPT_TAKEN_NOTICE : null,
     phase: write.phase,
     changed: draft.name !== "" || draft.description !== "" || draft.text !== "",
@@ -166,6 +177,7 @@ export function useImportPromptFlow(
       write.run(draft, {
         onSuccess: (outcome) => {
           close();
+          category.save(outcome);
           onImported(importedRow(outcome));
         },
       });

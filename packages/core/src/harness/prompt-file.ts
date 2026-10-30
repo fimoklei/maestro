@@ -1,7 +1,8 @@
 // The one owner of the prompt file format: read, write and the field rules.
 // Web imports it at runtime (`@maestro/core/prompt-file`), so no `node:` module.
-import { isMap, parseDocument, stringify } from "yaml";
+import { isMap, parse, parseDocument, stringify } from "yaml";
 import { isValidSkillSlug } from "../deploy/package-ref";
+import { metadataCategory } from "./metadata-category";
 import { proposeSkillSlug } from "./skill-slug";
 import { readFrontmatter, splitFrontmatter } from "./validate-skill-structure";
 
@@ -78,6 +79,15 @@ export const draftPrompt = (
     description: typeof description === "string" ? oneLine(description) : "",
     text: body,
   };
+};
+
+/** `metadata.category` in a drafted front matter block; null where it names none. */
+export const promptCategory = (frontmatter: string): string | null => {
+  try {
+    return metadataCategory(parse(frontmatter));
+  } catch {
+    return null;
+  }
 };
 
 export type PromptFieldProblem =

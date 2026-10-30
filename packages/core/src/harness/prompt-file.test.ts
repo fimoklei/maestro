@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   draftPrompt,
+  promptCategory,
   promptFieldProblems,
   readPromptFile,
   writePromptFile,
@@ -52,6 +53,25 @@ describe("draftPrompt", () => {
       description: "",
       text: raw,
     });
+  });
+});
+
+describe("promptCategory", () => {
+  it("reads metadata.category from a drafted front matter block", () => {
+    const { frontmatter } = draftPrompt(
+      "---\ndescription: Reviews.\nmetadata:\n  category: Code review\n---\nReview.",
+      null,
+    );
+
+    expect(promptCategory(frontmatter)).toBe("Code review");
+  });
+
+  it.each([
+    ["no front matter", ""],
+    ["a category that is not text", "metadata:\n  category: 3\n"],
+    ["front matter that does not parse", "metadata: [\n"],
+  ])("reads %s as no category", (_case, frontmatter) => {
+    expect(promptCategory(frontmatter)).toBeNull();
   });
 });
 

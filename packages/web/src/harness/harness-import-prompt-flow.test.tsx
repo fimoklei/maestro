@@ -1,4 +1,5 @@
 import type {
+  CategoryList,
   HarnessStageRow,
   HarnessState,
   ImportPromptCheck,
@@ -77,6 +78,13 @@ function stubPromptServer(options: {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       calls.push(`${init?.method ?? "GET"} ${url}`);
+      // Import reads the categories for its Category field.
+      if (url === "/api/categories") {
+        return jsonResponse({
+          categories: [],
+          assignments: [],
+        } satisfies CategoryList);
+      }
       if (url === "/api/harness/prompt/check") {
         const { name } = JSON.parse(String(init?.body)) as { name: string };
         checks.push({ name });

@@ -460,6 +460,7 @@ export function HarnessView({
           rereadInventory={rereadInventory}
           restored={presses.restore.data}
           dismissRestored={presses.restore.reset}
+          categoryFailures={[importFlow.category, promptImportFlow.category]}
           rereadRef={table.rereadRef}
         />
       }
@@ -548,6 +549,7 @@ function Notices({
   rereadInventory,
   restored,
   dismissRestored,
+  categoryFailures,
   rereadRef,
 }: {
   state: ReturnType<typeof useHarness>["data"];
@@ -562,6 +564,11 @@ function Notices({
     | { type: HarnessPrimitiveType; hasRequest: boolean; statusRead: boolean }
     | undefined;
   dismissRestored: () => void;
+  /** An import that landed without the category chosen for it. */
+  categoryFailures: readonly {
+    failure: NoticeContent | null;
+    dismissFailure: () => void;
+  }[];
   rereadRef: RefObject<HTMLButtonElement | null>;
 }) {
   // One notice, the one that blocks most; the next shows once it clears.
@@ -595,6 +602,10 @@ function Notices({
           : restoredNotice(restored.type, restored.hasRequest, reread),
       clear: dismissRestored,
     },
+    ...categoryFailures.map(({ failure, dismissFailure }) => ({
+      notice: failure,
+      clear: dismissFailure,
+    })),
     {
       notice:
         state === undefined || !checkedOnce

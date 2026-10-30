@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useCategoryChoice } from "../categories/use-category-choice";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { FOLDER_MISSING } from "./dialog-copy";
 import { proposalRow } from "./harness-route";
@@ -47,6 +48,13 @@ export function useImportFlow(
     check.data?.mode === "update"
       ? check.data.name
       : (editedName ?? check.data?.name ?? "");
+  const category = useCategoryChoice({
+    type: "skill",
+    name,
+    mode: check.data?.mode ?? "add",
+    fromFile: check.data?.category ?? null,
+    open,
+  });
 
   const close = () => {
     setOpen(false);
@@ -55,6 +63,7 @@ export function useImportFlow(
     setFolderMissing(false);
     setEditedName(null);
     importSkill.reset();
+    category.reset();
   };
 
   const commitSource = (path: string) => {
@@ -71,6 +80,7 @@ export function useImportFlow(
     name,
     check,
     importWrite,
+    category,
     start: () => setOpen(true),
     setSourceText: (text: string) => {
       setFolderMissing(false);
@@ -109,6 +119,7 @@ export function useImportFlow(
         {
           onSuccess: (outcome) => {
             close();
+            category.save(outcome);
             onImported(importedRow(outcome));
           },
         },
