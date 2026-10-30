@@ -1,6 +1,8 @@
 ---
 paths:
-  - "packages/web/**"
+  - "packages/web/src/**/*.tsx"
+  - "packages/web/src/**/*.css"
+  - "packages/web/index.html"
   - ".impeccable/**"
   - "DESIGN.md"
 ---
@@ -9,12 +11,12 @@ paths:
 
 ## Sources
 
-- **Design system** — `.impeccable/design.json` (ADR-0033), managed via `/impeccable`. Chain: `design.json` → `packages/web/src/styles/tokens.css` (ships) → `DESIGN.md` (regenerated, never hand-edited). On token conflict, `design.json` wins.
+- **Design system** — `.impeccable/design.json`, managed via `/impeccable`. Chain: `design.json` → `packages/web/src/styles/tokens.css` (ships) → `DESIGN.md` (regenerated, never hand-edited). On token conflict, `design.json` wins.
 - **Flow screens** — Claude Design, via `DesignSync` (`list_projects`, `get_file`), read live by default.
 
 Never take design values (colour, size, spacing) from a flow screen; build from the tokens.
 
-- **Copy** — `.claude/rules/copy.md` (ADR-0025). Every user-facing word the cockpit shows is written and reviewed against it.
+- **Copy** — `.claude/rules/copy.md`. Every user-facing word the cockpit shows is written and reviewed against it.
 
 ## Accessible labels
 
@@ -110,7 +112,6 @@ the new pattern to this section before building it.
   such notice's ✕, else to the screen's `Re-read {screen name}` control.
 - Keep the previous rows on screen after a failed read. Recover with the
   screen's `Re-read {screen name}` control, never a page reload.
-- Set `retry: false` on every query.
 
 **Feedback and dialogs.**
 
@@ -130,8 +131,6 @@ Pick the form from this table. Add no other form, and no banner.
 | Confirmation | Dialog, 480px | Top-aligned at 96px |
 | Outcome of a run in a dialog | Report in the dialog that ran the action, 640px, worst group first | The dialog stays open |
 
-- Announce a write's success through the shared write action; never call the
-  toast directly.
 - Pick a write's success form by first match: the dialog keeps its Report →
   the Report alone; the result stays in view → the row; else → a toast.
   In view means shown on the open screen without scrolling or changing screen.
@@ -177,8 +176,6 @@ Pick the form from this table. Add no other form, and no banner.
 - Open no dialog, alert or toast on load.
 
 **Waiting and freshness.**
-- Show no status before the server confirms it. Lock only what the server
-  locks.
 - Show nothing under 1 s. Show the spinner in the pressed control at once for a
   write. Show skeleton rows in the table's shape after 1.3 s for at least
   0.5 s; at once for a pressed re-read.
@@ -189,7 +186,6 @@ Pick the form from this table. Add no other form, and no banner.
 - Give every table screen one icon-only `Re-read {screen name}` control.
 - Show a freshness line only beside data that ages. Date the oldest reading
   and keep it ticking.
-- Re-read unasked only on open, plus Deploy-state's rows on tab return.
 - Animate only what floats, by opacity alone. Under reduced motion keep only
   the spinner moving.
 
@@ -254,21 +250,14 @@ Pick the form from this table. Add no other form, and no banner.
 **Tokens.**
 - Use only the documented colour pairs. A new pairing enters `design.json` and
   the contrast test first.
-- Check every changed screen in both themes once Light is reachable.
-
-**Rebuild (ADR-0033).**
-- Never remove a function in a rebuild job. Keep an old dialog reachable from
-  the new frame until its own job.
-- Land a shared component in the first job that needs it. Retire it in the job
-  that rebuilds its last user, after its behavioural claims moved to the
-  successor's test.
+- Check every changed screen in both themes.
 
 ## Verify before "done"
 
 Mandatory for any change that alters what `packages/web` renders:
 
 1. Start `pnpm smoke` in the background: this worktree's own ports, sandbox
-   config, connect gate (ADR-0010).
+   config, connect gate.
    - A first-run screen → stop here.
    - A connected screen → `pnpm smoke:ready`; a deploy or Harness state →
      `--scenario <name>[,<name>]` (each scenario and what it seeds:

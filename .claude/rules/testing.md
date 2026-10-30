@@ -8,7 +8,7 @@ paths:
 
 # Testing principles (project-specific for Maestro)
 
-Runner: **Vitest**, all lanes (ADR-0002).
+Runner: **Vitest**, all lanes.
 
 ## Hard rules
 
@@ -23,7 +23,7 @@ Runner: **Vitest**, all lanes (ADR-0002).
   production code.
 - **Layout is proven in a browser, not happy-dom.** happy-dom measures nothing — verify a CSS/layout change with an `agent-browser` measurement.
 - Repeat the mutation audit only after a bug reaches `main` that the suite should have caught; `docs/research/739-mutation-audit.md` records how to run it.
-- A composition root (`main.tsx`, `server.ts`) is covered as far as it is reachable without a subprocess; the remainder is deliberately uncovered and `pnpm smoke` is its proof (ADR-0010), so `packages/server`'s function coverage is a decision, not an oversight.
+- A composition root (`main.tsx`, `server.ts`) is covered as far as it is reachable without a subprocess; the remainder is deliberately uncovered and `pnpm smoke` is its proof, so `packages/server`'s function coverage is a decision, not an oversight.
 
 ## The four lanes
 
@@ -71,7 +71,8 @@ Run from the repo root.
 
 ## File size
 
-- No line limit on a test file: the 800-line ceiling lives in the operator's global `code-standards.md`, which exempts test files, so the rule here is grouping, not counting. Nothing enforces it mechanically — Biome has no `max-lines`.
+- No line limit on a test file; the operator's global `code-standards.md`
+  exempts test files. Split by grouping, not by count.
 - Split when the tests fall into groups that do not share setup: one file per group, named for the group (`harness-import-flow.test.tsx`), never one file per `describe`.
 - Repeated setup is the signal, not length. Before a third test builds the same fixture inline, extract one shared helper.
 

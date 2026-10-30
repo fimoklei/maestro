@@ -1,6 +1,6 @@
 # Architecture boundaries (project-specific for Maestro)
 
-Where each kind of code lives. Package shape fixed by ADR-0002.
+Where each kind of code lives.
 
 ## The three layers
 
@@ -16,7 +16,7 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 
 - Outside-world access (filesystem, `apm` CLI, git) sits behind a **port** (an interface) in `core`.
 - Pure logic depends on the port, not the concrete adapter.
-- Adapters live in `core`, not `server` (ADR-0002).
+- Adapters live in `core`, not `server`.
 - Test split (`testing.md`): pure logic → sibling unit tests; adapters → `tests/integration/`.
 
 ## Validation
@@ -24,6 +24,9 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 - Validate where data crosses a trust boundary: HTTP requests in `server`, and any parse of external data (lockfiles, `apm.yml`, `apm` output).
 - Order: normalize → validate with Zod → pass typed data inward.
 - Inside `core`, data is trusted; the boundary already checked it.
+- Derive a validated shape's type from its schema (`z.infer`; `z.input` or
+  `z.output` when a transform changes the shape). Never keep a hand-written
+  twin type.
 - Untrusted-input specifics → `security.md`.
 - Give every `as` cast a reason a reviewer can check. A cast on a copy table or
   a notice needs a test that renders its result.

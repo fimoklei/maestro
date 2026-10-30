@@ -8,8 +8,7 @@ paths:
 
 Imperatives for reading and writing GitHub through the `gh` CLI — rules only.
 The observed behavior behind them is in `docs/research/806-gh-pull-request-status.md`
-(measured against `gh` 2.86.0). The decision is ADR-0029; the host gate is
-ADR-0014; the field carve-out is ADR-0018.
+(measured against `gh` 2.86.0).
 
 ## Grounding
 
@@ -28,7 +27,7 @@ ADR-0014; the field carve-out is ADR-0018.
   current repository, `open` only, and 30.
 - Always pass `--json` with the exact fields you consume.
 - Disable prompts (`GH_PROMPT_DISABLED`) and bound execution time, as
-  `HarnessGitAdapter` does.
+  `GhCliAdapter` does.
 - Pass ambient env only. Never inject `GH_TOKEN`, `GITHUB_TOKEN` or any other
   credential.
 

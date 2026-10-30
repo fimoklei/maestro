@@ -14,10 +14,7 @@ paths:
 
 Imperatives for driving `apm` or parsing its lockfile/output — rules only.
 The observed behavior behind every rule lives in `docs/apm-behavior.md`
-(describes one apm version; check its header). The decisions live in ADRs:
-0001 (never reimplement apm), 0003 (tag-pinned git refs), 0011 (global
-targets = detected tools), 0013 (narrowed-install reconciliation), 0014
-(GitHub-only origins), 0019 (departures from APM's model).
+(describes one apm version; check its header).
 
 ## Grounding
 
@@ -37,13 +34,11 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 - Always pass `-t` on install and update, as one comma list of tools.
   `uninstall` has no `-t` — see Remove.
 - Deploy refs are tag-pinned
-  `github.com/<owner>/<repo>/.apm/skills/<name>#vX.Y.Z` only (ADR-0021 §4,
-  ADR-0014).
+  `github.com/<owner>/<repo>/.apm/skills/<name>#vX.Y.Z` only.
 - Run global (`-g`) installs from a neutral cwd — apm edits the cwd's
   `.gitignore`.
 - Hand every `-g` command a `realpath`ed `HOME`; a symlink component makes
-  the install deploy nothing while reporting success (`LEARNINGS.md` ·
-  symlinked-home-deploys-nothing).
+  the install deploy nothing while reporting success.
 - Keep real apm out of the fast test loop (`testing.md`); network + auth
   belong to the canary/integration lanes.
 
@@ -93,7 +88,7 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   `install` output when the anonymous probe was throttled and no token is
   set; never classify them there.
 - Whitespace-normalize and lowercase before matching any apm phrase — Rich
-  wraps mid-sentence (`LEARNINGS.md` · rich-wraps-phrases-mid-sentence).
+  wraps mid-sentence.
 - `apm outdated` / `apm view` have no `--json`: parse behind the driver
   port, capture with `COLUMNS=200`, keep empty table cells intact, and
   integration-test against fixtures.
@@ -120,8 +115,7 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 
 - Success = the `Uninstall complete: Removed \d+ package(s) from apm.yml`
   marker, never the exit code. Absent marker = failure, fail-closed. Keep
-  the not-found signals beside it: they cost nothing and close 0.26.0's
-  partial-success shape.
+  the not-found signals beside it; they catch a partial success.
 - Never parse the `Cleaned \d+ stale files` count — it counts what that run
   deleted.
 - Name the package with the same tag-pinned ref the install used; a bare
@@ -135,16 +129,14 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   unverifiable copy (no recorded hashes) still warns and goes on consent.
 - Never narrow `targets:` in `apm.yml` to scope a removal — it scopes
   nothing: the cleanup deletes every tracked file whatever `targets:` says.
-  Per-tool cleanup is the scoped `rm` behind `DeployedCleanupPort`
-  (ADR-0013).
+  Per-tool cleanup is the scoped `rm` behind `DeployedCleanupPort`.
 - Expect the lockfile to be deleted, not emptied, when the last dependency
   goes; an absent lockfile means nothing deployed, never an error.
 
 ## Danger
 
-- Never run a bare `apm uninstall -g`; always name the package (ADR-0013).
-- Never point a spike `-g` command at the real home; sandbox `HOME` always
-  (`LEARNINGS.md` · spike-isolation).
+- Never run a bare `apm uninstall -g`; always name the package.
+- Never point a spike `-g` command at the real home; sandbox `HOME` always.
 
 ## Unobserved
 

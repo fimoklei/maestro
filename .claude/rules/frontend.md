@@ -5,20 +5,30 @@ paths:
 
 # Frontend conventions (project-specific for Maestro)
 
-React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer boundary lives in `architecture.md`.
+React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui**. The layer boundary lives in `architecture.md`.
 
 ## Server-state vs UI-state — the core split
 
 - **Server-state** (inventory, deploy-state, registry) is owned by **TanStack Query**, never `useState`. After any mutation, invalidate the affected query — that is how panels update without a manual reload.
 - **UI-state** (field text, selection, panel open) is plain `useState`. Never in a query, never pushed to the server.
 - Never fetch server-state with `fetch` inside `useEffect`.
+- Never override the query client's `retry: false`.
+- Re-read unasked only on open, plus Deploy-state's rows on tab return.
+- Show no status before the server confirms it. Lock only what the server
+  locks.
+- Announce a write's success through the shared write action
+  (`ui/use-write-action.ts`); never call the toast directly.
 
 ## Data-fetching
 
 - One thin HTTP module wraps `fetch`, returns typed data, throws on non-2xx.
-- One custom hook per server resource: `useInventory()`, `useDeployState(repo)`, `useRegistry()`. Components call the hook, not `fetch`.
-- Mutations invalidate the queries they affect.
-- Query keys are explicit arrays (`["deploy-state", repoPath]`), never concatenated strings.
+- Define each server resource once with `queryOptions` in a per-feature
+  factory: key and `queryFn` together. Pass that object to `useQuery`,
+  `prefetchQuery` and `invalidateQueries`. Components never call `fetch`.
+- Write a custom hook only when it adds logic beyond the options.
+- Build query keys as arrays in a hierarchy from the factory
+  (`["deploy-state", repoPath]`), never concatenated strings. Mutations
+  invalidate the queries they affect, a group by its broader key.
 
 ## Components & hooks
 
@@ -27,14 +37,20 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer bo
 - A shape a second feature needs moves to `ui/` with its story, before the
   second feature uses it.
 - Custom hooks hold data and logic; components stay mostly presentational.
+- Before writing a `useEffect`, rule out: deriving the value during render,
+  resetting state with a `key`, doing the work in the event handler, and
+  `useSyncExternalStore` for a subscription. An Effect only syncs with a
+  system outside React.
+- Add `useMemo`, `useCallback` or `memo` only for a measured cost, or for a
+  reference that a dependency array or a memoized child needs.
 - Co-locate a component's pure helpers and its sibling unit test.
 
-## Styling & components (ADR-0004)
+## Styling & components
 
 - **Tokens are the source of truth** (CSS variables via Tailwind v4 `@theme`). Never hard-coded values.
 - **shadcn/ui components are owned:** copied into the repo and restyled to our tokens. No externally-themed component library (MUI/Mantine).
-- New components land with a Storybook story (ADR-0004, ADR-0033).
-- Styled UI lands in one pass *after* working behaviour (ADR-0004) — do not style ahead.
+- New components land with a Storybook story.
+- Styled UI lands in one pass *after* working behaviour — do not style ahead.
 
 ## Stories (Storybook)
 
@@ -47,7 +63,7 @@ A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md
 - CSF3 (`satisfies Meta<typeof X>`, `StoryObj`); no legacy `storiesOf`.
 - Title is `Group/Component`; reuse existing groups.
 
-## Copy implementation (ADR-0025)
+## Copy implementation
 
 - Keep user-facing text in `packages/web`, centralised per feature. Author a
   notice's heading, sentence, `detail` and action label together, keyed by error
