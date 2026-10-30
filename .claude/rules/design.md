@@ -237,6 +237,9 @@ Pick the form from this table. Add no other form, and no banner.
   word and a dot in its family; otherwise band 2 starts with the facts.
   Never drop the summary dot where a summary shows, or the read age.
 - Put no button in a table row. A link to an external page may sit in one.
+- Let a count in a Settings list row link to the screen it counts, filtered
+  to that row. Name the link `{count} {things} in {row}`, like
+  `3 skills in Planning`.
 - Link a row's own GitHub page from a `GitHub` column: GitHub's mark in slate
   11, named `View {name} on GitHub`, mouse only; the same destination is a ⋮
   item for the keyboard. No GitHub page: empty cell. In a fact, link the value.
