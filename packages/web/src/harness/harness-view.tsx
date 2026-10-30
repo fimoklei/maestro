@@ -624,10 +624,38 @@ function Notices({
     if (next?.clear === undefined) rereadRef.current?.focus();
     clear?.();
   };
+  // An import that landed without its category is the reader's own outcome,
+  // so it shows under a notice that ranks above it rather than waiting.
+  const outranked = categoryFailures.flatMap(
+    ({ failure, dismissFailure }, flow) =>
+      failure === null || failure === shown?.notice
+        ? []
+        : [{ flow, failure, dismissFailure }],
+  );
+  const region = useRef<HTMLDivElement>(null);
+  // Focus moves to the next ✕ that stays, else to Re-read.
+  const dismissOutranked = (dismissFailure: () => void) => {
+    const pressed = document.activeElement;
+    const next = [
+      ...(region.current?.querySelectorAll<HTMLElement>(
+        "[data-notice-close]",
+      ) ?? []),
+    ].find((button) => button !== pressed);
+    if (next === undefined) rereadRef.current?.focus();
+    else next.focus();
+    dismissFailure();
+  };
   // The region outlives its content, so a read that failed on open is
   // announced (#465).
   return (
-    <div className={shown === undefined ? "flex flex-col" : "p-panel"}>
+    <div
+      ref={region}
+      className={
+        shown === undefined
+          ? "flex flex-col"
+          : "flex flex-col gap-inline p-panel"
+      }
+    >
       {clear === undefined ? (
         <Notice trigger="load" notice={shown?.notice ?? null} />
       ) : (
@@ -637,6 +665,14 @@ function Notices({
           onDismiss={dismiss}
         />
       )}
+      {outranked.map(({ flow, failure, dismissFailure }) => (
+        <Notice
+          key={flow}
+          trigger="user-action"
+          notice={failure}
+          onDismiss={() => dismissOutranked(dismissFailure)}
+        />
+      ))}
     </div>
   );
 }

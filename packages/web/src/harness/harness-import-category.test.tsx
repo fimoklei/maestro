@@ -66,7 +66,9 @@ function stubServer({
   promptMode = "add",
   assign,
   added,
+  harness = HARNESS,
 }: {
+  harness?: HarnessState;
   /** Holds the add's answer back until it settles. */
   added?: Promise<"ok" | "refused">;
   names?: string[];
@@ -133,7 +135,7 @@ function stubServer({
             added: body.name,
           });
         default:
-          return jsonResponse(HARNESS);
+          return jsonResponse(harness);
       }
     }),
   );
@@ -405,6 +407,25 @@ describe("Import skill's Category field", () => {
       screen.getByRole("button", { name: "Close Category not set" }),
     );
     expect(screen.queryByText("Category not set")).not.toBeInTheDocument();
+  });
+
+  it("states the category not set beside a notice that ranks above it", async () => {
+    stubServer({
+      harness: {
+        ...HARNESS,
+        freshness: { ...HARNESS.freshness, outcome: "offline" },
+      },
+      assign: () => jsonResponse({ error: "categories-unreadable" }, 500),
+    });
+    const { user, dialog } = await openImportSkill();
+
+    await user.click(await categoryButton(dialog, "No category"));
+    await user.click(await dialog.findByRole("option", { name: "Docs" }));
+    await user.click(importSkill(dialog));
+
+    await dialogClosed();
+    expect(await screen.findByText("Category not set")).toBeVisible();
+    expect(screen.getByText("Status out of date")).toBeVisible();
   });
 });
 
