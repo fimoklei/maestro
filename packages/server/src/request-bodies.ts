@@ -61,6 +61,9 @@ export const promptEditBodySchema = z
   })
   .refine(fieldsHold);
 
+// Trimmed and checked in core, which owns the name rules.
+export const addCategoryBodySchema = z.object({ name: z.string() });
+
 // Global carries no path, so no untrusted path crosses the boundary on it.
 const targetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("repo"), repoPath: z.string() }),
@@ -290,6 +293,11 @@ export const RELEASE_BODY: RequestShape = {
     "Nothing was released. Reload the page, then publish the release again.",
   detail:
     'The request carries a version step and the plan\'s previous tag, that tag\'s commit and its revision: { step: "major" | "minor" | "patch", previousTag, previousTagCommit, revision }.',
+};
+
+export const ADD_CATEGORY_BODY: RequestShape = {
+  message: "Nothing was added. Reload the page, then add the category again.",
+  detail: "The request carries a name: { name: string }.",
 };
 
 export const PATH_BODY: RequestShape = {

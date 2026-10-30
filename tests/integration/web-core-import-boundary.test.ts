@@ -36,6 +36,11 @@ describe("valueImportsFromCore", () => {
     expect(valueImportsFromCore(src)).toEqual([]);
   });
 
+  it("allows a value import from the category-name subpath", () => {
+    const src = `import { sameCategoryName } from "@maestro/core/category-name";`;
+    expect(valueImportsFromCore(src)).toEqual([]);
+  });
+
   it("allows a multi-line type-only import from core", () => {
     const src = [
       "import type {",
