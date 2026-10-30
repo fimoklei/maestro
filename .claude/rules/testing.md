@@ -8,7 +8,7 @@ paths:
 
 # Testing principles (project-specific for Maestro)
 
-Runner: **Vitest**, all lanes (ADR-0002).
+Runner: **Vitest**, all lanes.
 
 ## Hard rules
 
@@ -23,7 +23,7 @@ Runner: **Vitest**, all lanes (ADR-0002).
   production code.
 - **Layout is proven in a browser, not happy-dom.** happy-dom measures nothing — verify a CSS/layout change with an `agent-browser` measurement.
 - Repeat the mutation audit only after a bug reaches `main` that the suite should have caught; `docs/research/739-mutation-audit.md` records how to run it.
-- A composition root (`main.tsx`, `server.ts`) is covered as far as it is reachable without a subprocess; the remainder is deliberately uncovered and `pnpm smoke` is its proof (ADR-0010), so `packages/server`'s function coverage is a decision, not an oversight.
+- A composition root (`main.tsx`, `server.ts`) is covered as far as it is reachable without a subprocess; the remainder is deliberately uncovered and `pnpm smoke` is its proof, so `packages/server`'s function coverage is a decision, not an oversight.
 
 ## The four lanes
 

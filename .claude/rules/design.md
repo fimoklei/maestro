@@ -11,12 +11,12 @@ paths:
 
 ## Sources
 
-- **Design system** — `.impeccable/design.json` (ADR-0033), managed via `/impeccable`. Chain: `design.json` → `packages/web/src/styles/tokens.css` (ships) → `DESIGN.md` (regenerated, never hand-edited). On token conflict, `design.json` wins.
+- **Design system** — `.impeccable/design.json`, managed via `/impeccable`. Chain: `design.json` → `packages/web/src/styles/tokens.css` (ships) → `DESIGN.md` (regenerated, never hand-edited). On token conflict, `design.json` wins.
 - **Flow screens** — Claude Design, via `DesignSync` (`list_projects`, `get_file`), read live by default.
 
 Never take design values (colour, size, spacing) from a flow screen; build from the tokens.
 
-- **Copy** — `.claude/rules/copy.md` (ADR-0025). Every user-facing word the cockpit shows is written and reviewed against it.
+- **Copy** — `.claude/rules/copy.md`. Every user-facing word the cockpit shows is written and reviewed against it.
 
 ## Accessible labels
 
@@ -257,7 +257,7 @@ Pick the form from this table. Add no other form, and no banner.
 Mandatory for any change that alters what `packages/web` renders:
 
 1. Start `pnpm smoke` in the background: this worktree's own ports, sandbox
-   config, connect gate (ADR-0010).
+   config, connect gate.
    - A first-run screen → stop here.
    - A connected screen → `pnpm smoke:ready`; a deploy or Harness state →
      `--scenario <name>[,<name>]` (each scenario and what it seeds:
