@@ -4,6 +4,7 @@ import {
   sameCategoryName,
   trimCategoryName,
 } from "@maestro/core/category-name";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { HttpError } from "../api/http";
 import {
@@ -24,6 +25,8 @@ import { useAddCategory, useCategories } from "../categories/use-categories";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { EmptyState } from "../ui/empty-state";
 import { GatedButton } from "../ui/gated-button";
+import { Icon } from "../ui/icon";
+import { IconButton } from "../ui/icon-button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { plainText } from "../ui/phrase";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
@@ -92,13 +95,11 @@ export function CategoriesPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const selectedRef = useRef<HTMLLIElement>(null);
 
+  // The notice names Re-read Categories rather than carrying it, as the
+  // control sits beside Add category.
   const readNotice = noticeFor(categories.error, {
     level: "error",
     ...CATEGORIES_READ_FAILED,
-    action: {
-      label: REREAD_CATEGORIES,
-      onClick: () => void categories.refetch(),
-    },
   });
   const status = useScreenStatus({
     name: SCREEN,
@@ -150,18 +151,30 @@ export function CategoriesPage() {
         list={list.length > 0}
         busy={categories.isFetching}
         action={
-          <GatedButton
-            label={ADD_CATEGORY}
-            unavailable={
-              categories.isSuccess ? null : (readNotice?.label ?? null)
-            }
-            onClick={() => {
-              setName("");
-              setSubmitted(false);
-              add.reset();
-              setOpen(true);
-            }}
-          />
+          <>
+            <IconButton
+              label={REREAD_CATEGORIES}
+              busy={categories.isFetching}
+              onClick={() => {
+                status.press();
+                void categories.refetch();
+              }}
+            >
+              <Icon of={RefreshCw} />
+            </IconButton>
+            <GatedButton
+              label={ADD_CATEGORY}
+              unavailable={
+                categories.isSuccess ? null : (readNotice?.label ?? null)
+              }
+              onClick={() => {
+                setName("");
+                setSubmitted(false);
+                add.reset();
+                setOpen(true);
+              }}
+            />
+          </>
         }
       >
         {categories.isSuccess && list.length === 0 ? (
