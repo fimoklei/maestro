@@ -413,6 +413,7 @@ export function SkillsView({
                 type="skill"
                 names={[...staged]}
                 reread={rereadLabel(screen.name)}
+                onSelectionSpent={() => setStaged(new Set())}
               />
             )}
           </SelectionBar>
