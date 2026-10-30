@@ -53,6 +53,7 @@ const row = (
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  mergedRequest: null,
   ...over,
 });
 

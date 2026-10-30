@@ -823,6 +823,28 @@ describe("Open proposals on a Pending release row", () => {
   });
 });
 
+describe("The merged pull request on a Pending release row", () => {
+  const mergedOf = (over: Partial<SkillStageInput>) =>
+    oneRow(
+      stages({ release: [{ kind: "changed", name: "tdd" }], ...over }).release,
+    ).mergedRequest;
+
+  it("names the newest merged pull request for the item's name", () => {
+    const review = reviewOf([
+      request({ number: 40, state: "merged" }),
+      request({ number: 47, state: "merged" }),
+      request({ number: 51 }),
+      request({ number: 60, state: "merged", headBranch: "maestro/other" }),
+    ]);
+    expect(mergedOf({ review })).toBe(47);
+  });
+
+  it("names none where no merged pull request was read", () => {
+    expect(mergedOf({ review: { outcome: "failed" } })).toBeNull();
+    expect(mergedOf({ review: reviewOf([request()]) })).toBeNull();
+  });
+});
+
 describe("stage memberships are independent", () => {
   const busy = () =>
     stages({

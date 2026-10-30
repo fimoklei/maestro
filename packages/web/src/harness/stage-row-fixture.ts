@@ -32,6 +32,7 @@ export const stageRow = (
   ownsBranch: true,
   previousName: null,
   openRequests: [],
+  mergedRequest: null,
   ...over,
 });
 

@@ -272,6 +272,14 @@ const readObjectAt = async (
   return { object: mode && hash ? { hash, mode } : null };
 };
 
+/** The primitive's object on a commit; `object: null` where it lacks it, null on a failed read. */
+export const readPrimitiveObject = (
+  root: string,
+  commit: string,
+  ref: PrimitiveRef,
+): Promise<{ object: PrimitiveObject | null } | null> =>
+  readObjectAt(root, commit, primitivePath(ref));
+
 /** The primitive's hash on a ref, or null where the ref lacks it. */
 export const readPrimitiveHash = (
   root: string,

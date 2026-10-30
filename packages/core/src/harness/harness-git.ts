@@ -15,7 +15,9 @@ import {
   harnessSkillSubpath,
 } from "../inventory/harness-layout";
 import { classifyFetchFailure } from "./classify-fetch-failure";
+import { classifyGitError } from "./classify-git-error";
 import { classifyPushFailure } from "./classify-push-failure";
+import { withdrawOnDefaultBranch } from "./default-branch-withdrawal-git";
 import {
   type HarnessObject,
   type HarnessPrimitiveType,
@@ -47,6 +49,7 @@ import { type ProposalKind, proposalTitle } from "./proposal-request";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
   BranchAuthorship,
+  DefaultBranchWithdrawal,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
@@ -55,6 +58,7 @@ import type {
   PromoteSkillOutcome,
   PublishTagOutcome,
   SkillPushOutcome,
+  WithdrawalPushOutcome,
   WorktreeAmbiguity,
 } from "./read-harness-state";
 import {
@@ -281,6 +285,15 @@ export class HarnessGitAdapter implements HarnessGitPort {
     } finally {
       await rm(indexDir, { recursive: true, force: true });
     }
+  }
+
+  async withdrawOnDefaultBranch(
+    root: string,
+    withdrawal: DefaultBranchWithdrawal,
+  ): Promise<WithdrawalPushOutcome> {
+    return await withdrawOnDefaultBranch(root, withdrawal, {
+      pushLandsWhereItFetched: () => this.pushLandsWhereItFetched(root),
+    });
   }
 
   async readUnproposedFiles(
@@ -662,17 +675,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
       });
   }
 }
-
-// A run we cut off got no answer, so it is offline, never a reply.
-const classifyGitError = <T>(
-  error: unknown,
-  classify: (stderr: string) => T,
-): "offline" | T => {
-  const killed = (error as { killed?: boolean }).killed === true;
-  return killed
-    ? "offline"
-    : classify(String((error as { stderr?: string }).stderr));
-};
 
 const pathExists = (path: string): Promise<boolean> =>
   access(path).then(

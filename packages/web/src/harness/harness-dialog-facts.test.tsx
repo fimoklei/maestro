@@ -262,7 +262,7 @@ describe("Harness confirmation facts", () => {
 
       expectDescription(
         dialog,
-        "This replaces the prompt file in your clone with its copy in the latest release.",
+        "This takes notes out of the next release on GitHub.",
       );
     });
   });

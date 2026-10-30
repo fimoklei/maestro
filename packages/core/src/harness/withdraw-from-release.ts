@@ -1,22 +1,18 @@
-// Makes a Pending release primitive in the Working Harness equal to the latest
-// release: no commit, fetch, branch or push (#1642).
+// Takes a Pending release primitive out of the next release: one commit on the
+// default branch makes it equal to the latest release (#1729). The Working
+// Harness is never written, so the author's copy waits under Pending proposal.
 import { createHash } from "node:crypto";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
-import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import type { HarnessObject, PrimitiveRef } from "./harness-primitive";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
 import { readLatestRelease } from "./latest-release";
 import type {
   HarnessFreshnessPort,
   HarnessGitPort,
+  WithdrawalPushOutcome,
   WorktreeAmbiguity,
 } from "./read-harness-state";
-import {
-  type ReplaceDeps,
-  type ReplaceOutcome,
-  replaceFromCommit,
-} from "./replace-from-commit";
 
 export type WithdrawFromReleaseError =
   | "not-configured"
@@ -26,16 +22,18 @@ export type WithdrawFromReleaseError =
   | "not-pending-release"
   // An open pull request for one of the item's names, or an unknown read.
   | "proposal-open"
-  // The Working Harness, the default branch or the latest release no longer
-  // holds what the confirmation was built from.
+  // The default branch or the latest release no longer holds what the
+  // confirmation was built from.
   | "confirmation-stale"
-  | "destination-unsafe"
-  | "destination-unreadable"
+  // The clone's HEAD is not the default branch's tip.
+  | "clone-not-current"
+  | "offline"
+  | "push-elsewhere"
   | "withdraw-in-progress"
   | "withdraw-failed";
 
 export type WithdrawFromReleaseCheck =
-  | { ok: true; files: string[]; confirmation: string }
+  | { ok: true; confirmation: string }
   | { ok: false; error: WithdrawFromReleaseError };
 
 // `name` is the Pending proposal row the withdrawal leaves behind.
@@ -43,13 +41,15 @@ export type WithdrawFromReleaseResult =
   | { ok: true; name: string }
   | { ok: false; error: WithdrawFromReleaseError };
 
-const WITHDRAW_ERROR: Record<
-  Exclude<ReplaceOutcome, "replaced">,
+const PUSH_ERROR: Record<
+  Exclude<WithdrawalPushOutcome, "pushed">,
   WithdrawFromReleaseError
 > = {
-  "destination-unsafe": "destination-unsafe",
-  "destination-unreadable": "destination-unreadable",
-  failed: "withdraw-failed",
+  "stale-tip": "confirmation-stale",
+  offline: "offline",
+  "push-elsewhere": "push-elsewhere",
+  "clone-not-current": "clone-not-current",
+  "push-failed": "withdraw-failed",
 };
 
 // Everything the confirmation is built from, read in one pass.
@@ -58,9 +58,11 @@ type WithdrawalPlan = {
   // The Pending proposal row the withdrawal leaves: a rename's old name.
   selected: string;
   confirmation: string;
-  defaultBranchCommit: string;
-  // The latest release's commit and its primitives; null where none exists.
-  release: { commit: string; held: HarnessObject[] } | null;
+  defaultBranch: string;
+  tip: string;
+  // The latest release's commit; null where none exists.
+  release: string | null;
+  message: string;
 };
 
 const sameRef = (a: PrimitiveRef) => (b: PrimitiveRef) =>
@@ -75,24 +77,29 @@ const namesOf = (row: HarnessStageRow): PrimitiveRef[] =>
       ]
     : [{ type: row.type, name: row.name }];
 
+const TITLE: Record<PrimitiveRef["type"], string> = {
+  skill: "Withdraw skill:",
+  prompt: "Withdraw prompt:",
+};
+
+const messageOf = (row: HarnessStageRow): string => {
+  const subject = `${TITLE[row.type]} ${row.name}`;
+  return row.mergedRequest === null
+    ? subject
+    : `${subject}\n\nTakes pull request #${row.mergedRequest} out of the next release.`;
+};
+
 export class WithdrawFromRelease {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     readStages: () => Promise<HarnessStages | null>;
     freshness: Pick<HarnessFreshnessPort, "read">;
-    fs: ReplaceDeps["fs"];
-    copyFs: Pick<
-      CopyTreeFsPort,
-      "createStagingDir" | "movePath" | "removePath"
-    >;
     git: Pick<
       HarnessGitPort,
       | "readWorktreeAmbiguity"
       | "readFacts"
       | "readPrimitives"
-      | "readMovementTrees"
-      | "readWorkingDifferences"
-      | "writePrimitiveInto"
+      | "withdrawOnDefaultBranch"
     >;
     locks: InFlightLocks;
   };
@@ -101,24 +108,16 @@ export class WithdrawFromRelease {
     this.deps = deps;
   }
 
-  /** The files of unproposed work the withdrawal replaces, and its token. */
+  /** The token the press must carry back. */
   async inspect(ref: PrimitiveRef): Promise<WithdrawFromReleaseCheck> {
     const root = await this.rootFor(ref);
     if (typeof root !== "string") {
       return root;
     }
     const plan = await this.readPlan(root, ref);
-    if ("error" in plan) {
-      return { ok: false, error: plan.error };
-    }
-    const files = await this.deps.git.readWorkingDifferences(
-      root,
-      plan.names,
-      plan.defaultBranchCommit,
-    );
-    return files === null
-      ? { ok: false, error: "no-answer" }
-      : { ok: true, files, confirmation: plan.confirmation };
+    return "error" in plan
+      ? { ok: false, error: plan.error }
+      : { ok: true, confirmation: plan.confirmation };
   }
 
   // Shares the harness-root lock with every other Harness write.
@@ -159,19 +158,19 @@ export class WithdrawFromRelease {
     if (plan.confirmation !== confirmation) {
       return { ok: false, error: "confirmation-stale" };
     }
-    const replaced = await replaceFromCommit(this.deps, {
-      root,
-      // Never written without a release: it holds none of the names.
-      commit: plan.release?.commit ?? plan.defaultBranchCommit,
-      atCommit: plan.release?.held ?? [],
+    const pushed = await this.deps.git.withdrawOnDefaultBranch(root, {
+      defaultBranch: plan.defaultBranch,
+      tip: plan.tip,
+      source: plan.release,
       refs: plan.names,
+      message: plan.message,
     });
-    return replaced === "replaced"
+    return pushed === "pushed"
       ? { ok: true, name: plan.selected }
-      : { ok: false, error: WITHDRAW_ERROR[replaced] };
+      : { ok: false, error: PUSH_ERROR[pushed] };
   }
 
-  // The worktree check runs first, for the confirmation and the write alike.
+  // The worktree check runs first, for the confirmation and the push alike.
   private async readPlan(
     root: string,
     ref: PrimitiveRef,
@@ -198,29 +197,30 @@ export class WithdrawFromRelease {
       this.deps.freshness,
       root,
     );
-    const commit = facts.defaultBranchCommit;
-    if (!latest.known || commit === null) {
+    const tip = facts.defaultBranchCommit;
+    if (!latest.known || tip === null || facts.defaultBranch === null) {
       return { error: "no-answer" };
     }
     const held =
       latest.tag === null
         ? []
         : await this.deps.git.readPrimitives(root, latest.tag.commit);
-    const atDefault = await this.deps.git.readPrimitives(root, commit);
-    const trees = await this.deps.git.readMovementTrees(root);
-    if (held === null || atDefault === null || trees === null) {
+    const atDefault = await this.deps.git.readPrimitives(root, tip);
+    if (held === null || atDefault === null) {
       return { error: "no-answer" };
     }
 
     const hashIn = (objects: HarnessObject[], name: PrimitiveRef) =>
       objects.find(sameRef(name))?.hash ?? null;
-    const seen = names.map((name) => [
-      name.type,
-      name.name,
-      hashIn(held, name),
-      hashIn(atDefault, name),
-      trees[name.type].working[name.name] ?? null,
-    ]);
+    const seen = [
+      tip,
+      ...names.map((name) => [
+        name.type,
+        name.name,
+        hashIn(held, name),
+        hashIn(atDefault, name),
+      ]),
+    ];
     return {
       names,
       selected:
@@ -228,8 +228,10 @@ export class WithdrawFromRelease {
       confirmation: createHash("sha256")
         .update(JSON.stringify(seen))
         .digest("hex"),
-      defaultBranchCommit: commit,
-      release: latest.tag === null ? null : { commit: latest.tag.commit, held },
+      defaultBranch: facts.defaultBranch,
+      tip,
+      release: latest.tag === null ? null : latest.tag.commit,
+      message: messageOf(row),
     };
   }
 }

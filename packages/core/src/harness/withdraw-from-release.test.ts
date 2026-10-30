@@ -1,23 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
-import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import {
   InMemoryHarnessGit,
   type Prompts,
   type Skills,
   skillRef,
 } from "./harness-git.fake";
-import { type PrimitiveRef, primitiveEntry } from "./harness-primitive";
+import type { PrimitiveRef } from "./harness-primitive";
 import type {
   HarnessChange,
   HarnessStageRow,
   HarnessStages,
 } from "./harness-stages";
+import type { WithdrawalPushOutcome } from "./read-harness-state";
 import { WithdrawFromRelease } from "./withdraw-from-release";
 
 const ROOT = "/harness";
-const SKILLS = "/harness/.apm/skills";
-const PROMPTS = "/harness/.maestro/prompts";
 const RELEASE = "commit-release";
 const MERGED = "commit-merged";
 const FETCHED = { outcome: "fetched" as const, lastFetchedAt: "2026-10-25" };
@@ -29,6 +27,7 @@ type Content = { skills?: Skills; prompts?: Prompts };
 const releaseRow = (
   ref: PrimitiveRef,
   change: HarnessChange,
+  over: Partial<HarnessStageRow> = {},
 ): HarnessStageRow => ({
   stage: "pending-release",
   type: ref.type,
@@ -50,6 +49,12 @@ const releaseRow = (
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  mergedRequest: null,
+  ...over,
+});
+
+const renameRow = releaseRow(skillRef("testing"), "rename", {
+  previousName: "tdd",
 });
 
 const stagesWith = (rows: HarnessStageRow[]): HarnessStages => ({
@@ -58,22 +63,20 @@ const stagesWith = (rows: HarnessStageRow[]): HarnessStages => ({
   release: { outcome: "read", rows, bound: null },
 });
 
-// A Harness whose latest release, default branch and disk each hold the
-// content named; the disk is both the fake's working tree and real moves.
+// A Harness whose latest release, default branch and Working Harness each
+// hold the content named.
 function build(seed: {
   release: Content | null;
   merged: Content;
-  working: Content;
+  working?: Content;
   rows: HarnessStageRow[];
   stages?: HarnessStages | null;
-  failMoveInto?: string;
   locks?: InFlightLocks;
 }) {
   const git = new InMemoryHarnessGit();
-  const releaseContent = seed.release ?? {};
   if (seed.release !== null) {
-    git.commit(RELEASE, releaseContent.skills ?? {}, {
-      prompts: releaseContent.prompts ?? {},
+    git.commit(RELEASE, seed.release.skills ?? {}, {
+      prompts: seed.release.prompts ?? {},
     });
     git.tags = [{ name: "v0.1.0", commit: RELEASE }];
   }
@@ -82,86 +85,46 @@ function build(seed: {
   });
   git.tip = MERGED;
   git.head = MERGED;
+  const working = seed.working ?? seed.merged;
+  git.working = { ...(working.skills ?? {}) };
+  git.workingPrompts = { ...(working.prompts ?? {}) };
 
-  const tree = new InMemoryCopyTree();
-  tree.makeDir(SKILLS);
-  tree.makeDir(PROMPTS);
-  const setWorking = (content: Content) => {
-    git.working = { ...(content.skills ?? {}) };
-    git.workingPrompts = { ...(content.prompts ?? {}) };
-    for (const [name, text] of Object.entries(content.skills ?? {})) {
-      tree.write(`${SKILLS}/${name}/SKILL.md`, text ?? "");
-    }
-    for (const [name, text] of Object.entries(content.prompts ?? {})) {
-      tree.write(`${PROMPTS}/${name}.md`, text);
-    }
-  };
-  setWorking(seed.working);
-
-  let failsLeft = seed.failMoveInto === undefined ? 0 : 1;
-  const locks = seed.locks ?? new InFlightLocks();
   let stages = seed.stages === undefined ? stagesWith(seed.rows) : seed.stages;
-  const setStages = (next: HarnessStages | null) => {
-    stages = next;
-  };
   const withdrawal = new WithdrawFromRelease({
     resolveRoot: async () => ROOT,
     readStages: async () => stages,
     freshness: { read: async () => FETCHED },
-    fs: tree.fileSystem(),
-    copyFs: {
-      createStagingDir: (parent) => tree.createStagingDir(parent),
-      removePath: (path) => tree.removePath(path),
-      movePath: async (from, to) => {
-        if (to === seed.failMoveInto && failsLeft-- > 0) {
-          throw new Error("EACCES");
-        }
-        await tree.movePath(from, to);
-      },
-    },
-    git: {
-      readWorktreeAmbiguity: (root) => git.readWorktreeAmbiguity(root),
-      readFacts: (root) => git.readFacts(root),
-      readPrimitives: (root, ref) => git.readPrimitives(root, ref),
-      readMovementTrees: (root) => git.readMovementTrees(root),
-      readWorkingDifferences: (root, refs, commit) =>
-        git.readWorkingDifferences(root, refs, commit),
-      writePrimitiveInto: async (root, ref, commit, into) => {
-        const written = await git.writePrimitiveInto(root, ref, commit, into);
-        if (written === "written") {
-          const text =
-            ref.type === "skill"
-              ? releaseContent.skills?.[ref.name]
-              : releaseContent.prompts?.[ref.name];
-          tree.write(
-            ref.type === "skill"
-              ? `${into}/${primitiveEntry(ref)}/SKILL.md`
-              : `${into}/${primitiveEntry(ref)}`,
-            text ?? "",
-          );
-        }
-        return written;
-      },
-    },
-    locks,
+    git,
+    locks: seed.locks ?? new InFlightLocks(),
   });
 
-  const fs = tree.fileSystem();
-  const disk = async () => ({
-    skills: (await tree.listNames(SKILLS))?.sort() ?? null,
-    prompts: (await tree.listNames(PROMPTS))?.sort() ?? null,
+  // What the default branch holds now, against content stated by hand.
+  let expected = 0;
+  const defaultBranchHolds = async (content: Content) => {
+    expected += 1;
+    const id = git.commit(`expected-${expected}`, content.skills ?? {}, {
+      prompts: content.prompts ?? {},
+    });
+    const at = async (ref: string | null) =>
+      ref === null
+        ? null
+        : (await git.readPrimitives(ROOT, ref))?.sort((a, b) =>
+            `${a.type}/${a.name}`.localeCompare(`${b.type}/${b.name}`),
+          );
+    expect(await at(git.tip)).toEqual(await at(id));
+  };
+  const workingHarness = () => ({
+    skills: { ...git.working },
+    prompts: { ...git.workingPrompts },
   });
-  const skillText = (name: string) => fs.readFile(`${SKILLS}/${name}/SKILL.md`);
-  const promptText = (name: string) => fs.readFile(`${PROMPTS}/${name}.md`);
   return {
     withdrawal,
     git,
-    tree,
-    disk,
-    skillText,
-    promptText,
-    setWorking,
-    setStages,
+    defaultBranchHolds,
+    workingHarness,
+    setStages: (next: HarnessStages | null) => {
+      stages = next;
+    },
   };
 }
 
@@ -177,12 +140,11 @@ async function confirmed(
 }
 
 describe("WithdrawFromRelease", () => {
-  describe("makes the Working Harness equal to the latest release", () => {
-    it("puts the released copy back over a changed skill", async () => {
-      const { withdrawal, skillText } = build({
-        release: { skills: { tdd: "released tdd" } },
-        merged: { skills: { tdd: "merged tdd" } },
-        working: { skills: { tdd: "merged tdd" } },
+  describe("makes the default branch equal to the latest release for the item", () => {
+    it("puts the released copy of a changed skill back, and nothing else moves", async () => {
+      const { withdrawal, defaultBranchHolds } = build({
+        release: { skills: { tdd: "released tdd", grill: "released grill" } },
+        merged: { skills: { tdd: "merged tdd", grill: "teammate's grill" } },
         rows: [releaseRow(skillRef("tdd"), "edit")],
       });
       const token = await confirmed(withdrawal, skillRef("tdd"));
@@ -190,14 +152,15 @@ describe("WithdrawFromRelease", () => {
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: true, name: "tdd" },
       );
-      expect(await skillText("tdd")).toBe("released tdd");
+      await defaultBranchHolds({
+        skills: { tdd: "released tdd", grill: "teammate's grill" },
+      });
     });
 
     it("removes an added skill", async () => {
-      const { withdrawal, disk } = build({
+      const { withdrawal, defaultBranchHolds } = build({
         release: { skills: { tdd: "released tdd" } },
         merged: { skills: { tdd: "released tdd", review: "new review" } },
-        working: { skills: { tdd: "released tdd", review: "new review" } },
         rows: [releaseRow(skillRef("review"), "addition")],
       });
       const token = await confirmed(withdrawal, skillRef("review"));
@@ -205,29 +168,25 @@ describe("WithdrawFromRelease", () => {
       await expect(
         withdrawal.execute(skillRef("review"), token),
       ).resolves.toEqual({ ok: true, name: "review" });
-      expect((await disk()).skills).toEqual(["tdd"]);
+      await defaultBranchHolds({ skills: { tdd: "released tdd" } });
     });
 
     it("brings a deleted skill back", async () => {
-      const { withdrawal, skillText } = build({
+      const { withdrawal, defaultBranchHolds } = build({
         release: { skills: { tdd: "released tdd" } },
         merged: {},
-        working: {},
         rows: [releaseRow(skillRef("tdd"), "deletion")],
       });
       const token = await confirmed(withdrawal, skillRef("tdd"));
 
-      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
-        { ok: true, name: "tdd" },
-      );
-      expect(await skillText("tdd")).toBe("released tdd");
+      await withdrawal.execute(skillRef("tdd"), token);
+      await defaultBranchHolds({ skills: { tdd: "released tdd" } });
     });
 
     it("removes an added skill from a Harness never released", async () => {
-      const { withdrawal, disk } = build({
+      const { withdrawal, defaultBranchHolds } = build({
         release: null,
         merged: { skills: { tdd: "first tdd" } },
-        working: { skills: { tdd: "first tdd" } },
         rows: [releaseRow(skillRef("tdd"), "addition")],
       });
       const token = await confirmed(withdrawal, skillRef("tdd"));
@@ -235,120 +194,112 @@ describe("WithdrawFromRelease", () => {
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: true, name: "tdd" },
       );
-      expect((await disk()).skills).toEqual([]);
+      await defaultBranchHolds({});
     });
 
     it.each([
-      ["changed", "edit", { prompts: { greet: "merged" } }],
-      ["deleted", "deletion", {}],
+      ["changed", "edit", { prompts: { greet: "merged", other: "kept" } }],
+      ["deleted", "deletion", { prompts: { other: "kept" } }],
     ] as const)(
-      "puts the released copy of a %s prompt in place",
+      "puts the released copy of a %s prompt back",
       async (_, change, merged) => {
-        const { withdrawal, promptText } = build({
-          release: { prompts: { greet: "released" } },
+        const { withdrawal, defaultBranchHolds } = build({
+          release: { prompts: { greet: "released", other: "kept" } },
           merged,
-          working: merged,
           rows: [releaseRow(greet, change)],
         });
         const token = await confirmed(withdrawal, greet);
 
-        await expect(withdrawal.execute(greet, token)).resolves.toEqual({
-          ok: true,
-          name: "greet",
+        await withdrawal.execute(greet, token);
+        await defaultBranchHolds({
+          prompts: { greet: "released", other: "kept" },
         });
-        expect(await promptText("greet")).toBe("released");
       },
     );
 
     it("removes an added prompt", async () => {
-      const { withdrawal, disk } = build({
+      const { withdrawal, defaultBranchHolds } = build({
         release: { prompts: { other: "kept" } },
         merged: { prompts: { other: "kept", greet: "new" } },
-        working: { prompts: { other: "kept", greet: "new" } },
         rows: [releaseRow(greet, "addition")],
       });
       const token = await confirmed(withdrawal, greet);
 
-      await expect(withdrawal.execute(greet, token)).resolves.toEqual({
-        ok: true,
-        name: "greet",
-      });
-      expect((await disk()).prompts).toEqual(["other.md"]);
+      await withdrawal.execute(greet, token);
+      await defaultBranchHolds({ prompts: { other: "kept" } });
     });
 
-    it("removes the new name of a rename and brings the old one back", async () => {
-      const { withdrawal, disk, skillText } = build({
+    it("removes the new name of a rename, brings the old one back, and selects it", async () => {
+      const { withdrawal, defaultBranchHolds } = build({
         release: { skills: { tdd: "released tdd" } },
         merged: { skills: { testing: "released tdd" } },
-        working: { skills: { testing: "released tdd" } },
-        rows: [
-          { ...releaseRow(skillRef("testing"), "rename"), previousName: "tdd" },
-        ],
+        rows: [renameRow],
       });
       const token = await confirmed(withdrawal, skillRef("testing"));
 
       await expect(
         withdrawal.execute(skillRef("testing"), token),
       ).resolves.toEqual({ ok: true, name: "tdd" });
-      expect((await disk()).skills).toEqual(["tdd"]);
-      expect(await skillText("tdd")).toBe("released tdd");
+      await defaultBranchHolds({ skills: { tdd: "released tdd" } });
+    });
+  });
+
+  describe("the Working Harness", () => {
+    it("stays as it was, unproposed edits included", async () => {
+      const { withdrawal, workingHarness } = build({
+        release: { skills: { tdd: "released tdd" } },
+        merged: { skills: { tdd: "merged tdd", review: "new review" } },
+        working: {
+          skills: { tdd: "edited, never proposed", review: "new review" },
+        },
+        rows: [releaseRow(skillRef("tdd"), "edit")],
+      });
+      const before = workingHarness();
+      const token = await confirmed(withdrawal, skillRef("tdd"));
+
+      await withdrawal.execute(skillRef("tdd"), token);
+      expect(workingHarness()).toEqual(before);
+    });
+  });
+
+  describe("the commit message", () => {
+    it.each([
+      [skillRef("tdd"), "Withdraw skill: tdd"],
+      [greet, "Withdraw prompt: greet"],
+    ] as const)("names the %o", async (ref, subject) => {
+      const { withdrawal, git } = build({
+        release: null,
+        merged: ref.type === "skill" ? { skills: { tdd: "x" } } : {},
+        rows: [releaseRow(ref, "addition")],
+      });
+      const token = await confirmed(withdrawal, ref);
+
+      await withdrawal.execute(ref, token);
+      expect(git.withdrawals.map((pushed) => pushed.message)).toEqual([
+        subject,
+      ]);
+    });
+
+    it("names the merged pull request when one is known", async () => {
+      const { withdrawal, git } = build({
+        release: { skills: { tdd: "released tdd" } },
+        merged: { skills: { tdd: "merged tdd" } },
+        rows: [releaseRow(skillRef("tdd"), "edit", { mergedRequest: 47 })],
+      });
+      const token = await confirmed(withdrawal, skillRef("tdd"));
+
+      await withdrawal.execute(skillRef("tdd"), token);
+      expect(git.withdrawals[0]?.message).toBe(
+        "Withdraw skill: tdd\n\nTakes pull request #47 out of the next release.",
+      );
     });
   });
 
   describe("the confirmation read", () => {
-    it("lists no files when the Working Harness equals the default branch", async () => {
-      const { withdrawal } = build({
-        release: { skills: { tdd: "released tdd" } },
-        merged: { skills: { tdd: "merged tdd" } },
-        working: { skills: { tdd: "merged tdd" } },
-        rows: [releaseRow(skillRef("tdd"), "edit")],
-      });
-
-      await expect(withdrawal.inspect(skillRef("tdd"))).resolves.toMatchObject({
-        ok: true,
-        files: [],
-      });
-    });
-
-    it("lists the files of unproposed work the withdrawal replaces", async () => {
-      const { withdrawal } = build({
-        release: { skills: { tdd: "released tdd" } },
-        merged: { skills: { tdd: "merged tdd" } },
-        working: { skills: { tdd: "edited, never proposed" } },
-        rows: [releaseRow(skillRef("tdd"), "edit")],
-      });
-
-      await expect(withdrawal.inspect(skillRef("tdd"))).resolves.toMatchObject({
-        ok: true,
-        files: [".apm/skills/tdd/SKILL.md"],
-      });
-    });
-
-    it("lists the unproposed files of both names of a rename", async () => {
-      const { withdrawal } = build({
-        release: { skills: { tdd: "released tdd" } },
-        merged: { skills: { testing: "released tdd" } },
-        working: {
-          skills: { testing: "edited, never proposed", tdd: "recreated" },
-        },
-        rows: [
-          { ...releaseRow(skillRef("testing"), "rename"), previousName: "tdd" },
-        ],
-      });
-
-      await expect(
-        withdrawal.inspect(skillRef("testing")),
-      ).resolves.toMatchObject({
-        ok: true,
-        files: [".apm/skills/tdd/SKILL.md", ".apm/skills/testing/SKILL.md"],
-      });
-    });
-
     it("refuses an item that is not under Pending release", async () => {
       const { withdrawal } = build({
         release: { skills: { tdd: "released tdd" } },
         merged: { skills: { tdd: "released tdd" } },
-        working: { skills: { tdd: "released tdd" } },
         rows: [],
       });
 
@@ -362,7 +313,6 @@ describe("WithdrawFromRelease", () => {
       const { withdrawal } = build({
         release: { skills: { tdd: "released tdd" } },
         merged: { skills: { tdd: "merged tdd" } },
-        working: { skills: { tdd: "merged tdd" } },
         rows: [],
         stages: { ...stagesWith([]), release: { outcome: "unknown" } },
       });
@@ -374,70 +324,73 @@ describe("WithdrawFromRelease", () => {
     });
 
     it("rejects a name that is not a skill slug", async () => {
-      const { withdrawal } = build({
-        release: null,
-        merged: {},
-        working: {},
-        rows: [],
-      });
+      const { withdrawal } = build({ release: null, merged: {}, rows: [] });
 
       await expect(withdrawal.inspect(skillRef("../x"))).resolves.toEqual({
         ok: false,
         error: "invalid-skill",
       });
     });
-  });
 
-  describe("a refusal writes nothing", () => {
-    const changed = (over: { locks?: InFlightLocks } = {}) =>
-      build({
+    it("refuses to build a confirmation over an ambiguous working tree", async () => {
+      const { withdrawal, git } = build({
         release: { skills: { tdd: "released tdd" } },
         merged: { skills: { tdd: "merged tdd" } },
-        working: { skills: { tdd: "merged tdd" } },
+        rows: [releaseRow(skillRef("tdd"), "edit")],
+      });
+      git.ambiguity = "merge-in-progress";
+
+      await expect(withdrawal.inspect(skillRef("tdd"))).resolves.toEqual({
+        ok: false,
+        error: "merge-in-progress",
+      });
+    });
+  });
+
+  describe("a refusal changes nothing", () => {
+    const changed = (over: { locks?: InFlightLocks } = {}) => {
+      const built = build({
+        release: { skills: { tdd: "released tdd" } },
+        merged: { skills: { tdd: "merged tdd" } },
+        working: { skills: { tdd: "edited, never proposed" } },
         rows: [releaseRow(skillRef("tdd"), "edit")],
         ...over,
       });
+      const unchanged = async () => {
+        expect(built.git.withdrawals).toEqual([]);
+        expect(built.workingHarness()).toEqual({
+          skills: { tdd: "edited, never proposed" },
+          prompts: {},
+        });
+      };
+      return { ...built, unchanged };
+    };
 
-    it("refuses when the Working Harness changed after the confirmation", async () => {
-      const { withdrawal, setWorking, skillText } = changed();
+    it("refuses as stale when the default branch moved after the confirmation", async () => {
+      const { withdrawal, git, unchanged } = changed();
       const token = await confirmed(withdrawal, skillRef("tdd"));
-      setWorking({ skills: { tdd: "edited since" } });
+      git.commit("commit-later", { tdd: "merged again" }, { parent: MERGED });
+      git.tip = "commit-later";
 
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: false, error: "confirmation-stale" },
       );
-      expect(await skillText("tdd")).toBe("edited since");
+      await unchanged();
     });
 
-    it.each([
-      ["new", { testing: "edited since" }],
-      ["old", { testing: "released tdd", tdd: "recreated since" }],
-    ] as const)(
-      "refuses when the %s name of a rename changed after the confirmation",
-      async (_, since) => {
-        const { withdrawal, setWorking, disk } = build({
-          release: { skills: { tdd: "released tdd" } },
-          merged: { skills: { testing: "released tdd" } },
-          working: { skills: { testing: "released tdd" } },
-          rows: [
-            {
-              ...releaseRow(skillRef("testing"), "rename"),
-              previousName: "tdd",
-            },
-          ],
-        });
-        const token = await confirmed(withdrawal, skillRef("testing"));
-        setWorking({ skills: since });
+    it("refuses as stale when the remote's lease refuses the push", async () => {
+      const { withdrawal, git, unchanged } = changed();
+      const token = await confirmed(withdrawal, skillRef("tdd"));
+      git.withdrawOutcome = "stale-tip";
 
-        await expect(
-          withdrawal.execute(skillRef("testing"), token),
-        ).resolves.toEqual({ ok: false, error: "confirmation-stale" });
-        expect((await disk()).skills).toEqual(Object.keys(since).sort());
-      },
-    );
+      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
+        { ok: false, error: "confirmation-stale" },
+      );
+      await unchanged();
+    });
 
-    it("refuses when the latest release moved after the confirmation", async () => {
-      const { withdrawal, git, skillText } = changed();
+    it("refuses as stale when the latest release moved after the confirmation", async () => {
+      const { withdrawal, git, unchanged } = changed();
       const token = await confirmed(withdrawal, skillRef("tdd"));
       git.commit("commit-newer", { tdd: "newer release" });
       git.tags = [
@@ -448,94 +401,91 @@ describe("WithdrawFromRelease", () => {
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: false, error: "confirmation-stale" },
       );
-      expect(await skillText("tdd")).toBe("merged tdd");
+      await unchanged();
     });
 
-    it("refuses when only the default branch moved after the confirmation", async () => {
-      const { withdrawal, git, skillText } = changed();
+    it.each([
+      ["offline", "offline"],
+      ["push-elsewhere", "push-elsewhere"],
+      ["clone-not-current", "clone-not-current"],
+      ["push-failed", "withdraw-failed"],
+    ] as const satisfies readonly (readonly [WithdrawalPushOutcome, string])[])(
+      "reads a push answered %s as %s",
+      async (outcome, error) => {
+        const { withdrawal, git, unchanged } = changed();
+        const token = await confirmed(withdrawal, skillRef("tdd"));
+        git.withdrawOutcome = outcome;
+
+        await expect(
+          withdrawal.execute(skillRef("tdd"), token),
+        ).resolves.toEqual({ ok: false, error });
+        await unchanged();
+      },
+    );
+
+    it("refuses a clone whose HEAD is not the default-branch tip", async () => {
+      const { withdrawal, git, unchanged } = changed();
+      git.commit("commit-local", { tdd: "local commit" }, { parent: MERGED });
+      git.head = "commit-local";
       const token = await confirmed(withdrawal, skillRef("tdd"));
-      git.commit("commit-later", { tdd: "merged again" });
-      git.tip = "commit-later";
 
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
-        { ok: false, error: "confirmation-stale" },
+        { ok: false, error: "clone-not-current" },
       );
-      expect(await skillText("tdd")).toBe("merged tdd");
+      await unchanged();
+    });
+
+    it("refuses a push that would land elsewhere than the fetch", async () => {
+      const { withdrawal, git, unchanged } = changed();
+      const token = await confirmed(withdrawal, skillRef("tdd"));
+      git.pushesWhereItFetched = false;
+
+      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
+        { ok: false, error: "push-elsewhere" },
+      );
+      await unchanged();
     });
 
     it("refuses an item that left Pending release after the confirmation", async () => {
-      const { withdrawal, setStages, skillText } = changed();
+      const { withdrawal, setStages, unchanged } = changed();
       const token = await confirmed(withdrawal, skillRef("tdd"));
       setStages(stagesWith([]));
 
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: false, error: "not-pending-release" },
       );
-      expect(await skillText("tdd")).toBe("merged tdd");
+      await unchanged();
     });
 
-    it("refuses while the item has an open proposal", async () => {
-      const { withdrawal, setStages, skillText } = changed();
+    it.each([
+      ["has an open proposal", [52]],
+      ["has an unknown pull request read", null],
+    ] as const)("refuses while the item %s", async (_, openRequests) => {
+      const { withdrawal, setStages, unchanged } = changed();
       const token = await confirmed(withdrawal, skillRef("tdd"));
       setStages(
         stagesWith([
-          { ...releaseRow(skillRef("tdd"), "edit"), openRequests: [52] },
+          releaseRow(skillRef("tdd"), "edit", {
+            openRequests: openRequests === null ? null : [...openRequests],
+          }),
         ]),
       );
 
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: false, error: "proposal-open" },
       );
-      expect(await skillText("tdd")).toBe("merged tdd");
-    });
-
-    it("refuses while the pull request read is unknown", async () => {
-      const { withdrawal, setStages, skillText } = changed();
-      const token = await confirmed(withdrawal, skillRef("tdd"));
-      setStages(
-        stagesWith([
-          { ...releaseRow(skillRef("tdd"), "edit"), openRequests: null },
-        ]),
-      );
-
-      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
-        { ok: false, error: "proposal-open" },
-      );
-      expect(await skillText("tdd")).toBe("merged tdd");
-    });
-
-    it("refuses to build a confirmation over an ambiguous working tree", async () => {
-      const { withdrawal, git } = changed();
-      git.ambiguity = "merge-in-progress";
-
-      await expect(withdrawal.inspect(skillRef("tdd"))).resolves.toEqual({
-        ok: false,
-        error: "merge-in-progress",
-      });
+      await unchanged();
     });
 
     it("refuses an ambiguous working tree", async () => {
-      const { withdrawal, git, skillText } = changed();
+      const { withdrawal, git, unchanged } = changed();
       const token = await confirmed(withdrawal, skillRef("tdd"));
       git.ambiguity = "merge-in-progress";
 
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: false, error: "merge-in-progress" },
       );
-      expect(await skillText("tdd")).toBe("merged tdd");
-    });
-
-    it("refuses a skill folder that is a link", async () => {
-      const { withdrawal, tree } = changed();
-      const token = await confirmed(withdrawal, skillRef("tdd"));
-      tree.remove(`${SKILLS}/tdd`);
-      tree.write("/elsewhere/tdd/SKILL.md", "outside");
-      tree.symlink(`${SKILLS}/tdd`, "/elsewhere/tdd");
-
-      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
-        { ok: false, error: "destination-unsafe" },
-      );
-      expect(tree.read("/elsewhere/tdd/SKILL.md")?.toString()).toBe("outside");
+      await unchanged();
     });
 
     it("refuses while another Harness write holds the lock", async () => {
@@ -548,52 +498,15 @@ describe("WithdrawFromRelease", () => {
             release = resolve;
           }),
       );
-      const { withdrawal, skillText } = changed({ locks });
+      const { withdrawal, unchanged } = changed({ locks });
       const token = await confirmed(withdrawal, skillRef("tdd"));
 
       await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
         { ok: false, error: "withdraw-in-progress" },
       );
-      expect(await skillText("tdd")).toBe("merged tdd");
+      await unchanged();
       release();
       await holding;
-    });
-  });
-
-  describe("a failed write", () => {
-    it("leaves a changed skill as it was", async () => {
-      const { withdrawal, skillText } = build({
-        release: { skills: { tdd: "released tdd" } },
-        merged: { skills: { tdd: "merged tdd" } },
-        working: { skills: { tdd: "merged tdd" } },
-        rows: [releaseRow(skillRef("tdd"), "edit")],
-        failMoveInto: `${SKILLS}/tdd`,
-      });
-      const token = await confirmed(withdrawal, skillRef("tdd"));
-
-      await expect(withdrawal.execute(skillRef("tdd"), token)).resolves.toEqual(
-        { ok: false, error: "withdraw-failed" },
-      );
-      expect(await skillText("tdd")).toBe("merged tdd");
-    });
-
-    it("leaves both names of a rename as they were", async () => {
-      const { withdrawal, disk, skillText } = build({
-        release: { skills: { tdd: "released tdd" } },
-        merged: { skills: { testing: "released tdd" } },
-        working: { skills: { testing: "released tdd" } },
-        rows: [
-          { ...releaseRow(skillRef("testing"), "rename"), previousName: "tdd" },
-        ],
-        failMoveInto: `${SKILLS}/tdd`,
-      });
-      const token = await confirmed(withdrawal, skillRef("testing"));
-
-      await expect(
-        withdrawal.execute(skillRef("testing"), token),
-      ).resolves.toEqual({ ok: false, error: "withdraw-failed" });
-      expect((await disk()).skills).toEqual(["testing"]);
-      expect(await skillText("testing")).toBe("released tdd");
     });
   });
 });

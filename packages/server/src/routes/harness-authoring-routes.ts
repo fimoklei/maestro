@@ -193,7 +193,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       const { status } = releaseWithdrawalErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    return c.json({ files: result.files, confirmation: result.confirmation });
+    return c.json({ confirmation: result.confirmation });
   });
 
   app.post("/api/harness/release/withdraw", async (c) => {

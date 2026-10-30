@@ -8,10 +8,10 @@ import {
   FINDING_TEXT,
   FOLDER_MISSING,
   inFlightNotice,
+  RELEASE_WITHDRAWAL_CHECKING,
   RESTORE_KEEPS_PROPOSAL,
   RESTORED_FROM_HINT,
   releaseWithdrawalBody,
-  releaseWithdrawalFilesNotice,
   releaseWithdrawalTitle,
   restoreTitle,
   rootSkillFileNotice,
@@ -57,58 +57,31 @@ describe("Harness dialog copy", () => {
     );
   });
 
+  const OUT = "This takes testing out of the next release on GitHub.";
   const SKILL_STAYS =
-    "The skill then waits under Pending proposal. Deployed copies remain unchanged.";
+    "Your copy in the clone stays as it is. The skill then waits under Pending proposal. Deployed copies remain unchanged.";
   it.each([
-    [
-      "skill",
-      "edit",
-      "This replaces the skill folder in your clone with its copy in the latest release.",
-      SKILL_STAYS,
-    ],
-    [
-      "skill",
-      "addition",
-      "This removes the skill folder from your clone.",
-      SKILL_STAYS,
-    ],
-    [
-      "skill",
-      "deletion",
-      "This brings back the skill folder from the latest release.",
-      SKILL_STAYS,
-    ],
-    [
-      "skill",
-      "rename",
-      "This brings back tdd from the latest release and removes the new name.",
-      SKILL_STAYS,
-    ],
+    ["skill", "edit", OUT, SKILL_STAYS],
+    ["skill", "addition", OUT, SKILL_STAYS],
+    ["skill", "deletion", OUT, SKILL_STAYS],
+    ["skill", "rename", `${OUT} tdd returns to the next release.`, SKILL_STAYS],
     [
       "prompt",
       "edit",
-      "This replaces the prompt file in your clone with its copy in the latest release.",
-      "The prompt then waits under Pending proposal.",
+      OUT,
+      "Your copy in the clone stays as it is. The prompt then waits under Pending proposal.",
     ],
   ] as const)(
-    "states what a withdrawal from release of a %s %s changes, then what stays",
+    "states what a withdrawal from release of a %s %s changes on GitHub, then what stays",
     (type, change, changes, stays) => {
-      const body = releaseWithdrawalBody(type, change, "tdd");
+      const body = releaseWithdrawalBody(type, "testing", change, "tdd");
       expect(plainText(body.changes)).toBe(changes);
       expect(plainText(body.stays)).toBe(stays);
     },
   );
 
-  it("names the files a withdrawal from release replaces, and none where it replaces none", () => {
-    expect(releaseWithdrawalFilesNotice([])).toBeNull();
-    const notice = releaseWithdrawalFilesNotice([".apm/skills/tdd/SKILL.md"]);
-    expect(notice?.label).toBe("Changes not yet proposed");
-    expect(plainText(notice?.message ?? "")).toBe(
-      "Withdraw from release discards the changes in these files. To keep them, copy them outside your clone first.",
-    );
-    expect(notice?.items?.map((item) => plainText(item))).toEqual([
-      ".apm/skills/tdd/SKILL.md",
-    ]);
+  it("states the withdrawal check while it reads GitHub", () => {
+    expect(RELEASE_WITHDRAWAL_CHECKING).toBe("Checking what GitHub holds…");
   });
 
   it("warns about skill checks in one wording, naming the step still open", () => {

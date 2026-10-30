@@ -8,7 +8,6 @@ import {
   CREATE_RELEASE,
   DISCARD_CHANGE,
   rereadLabel,
-  WITHDRAW_FROM_RELEASE,
   WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
@@ -155,41 +154,28 @@ export const unproposedNotice = (
 export const releaseWithdrawalTitle = (name: string) =>
   `Withdraw ${name} from release`;
 
-// The Change decides what the clone gets back: the latest release's copy
-// under every name the change touched.
+// The commit on GitHub changes; the author's copy in the clone does not.
 export const releaseWithdrawalBody = (
   type: HarnessPrimitiveType,
+  name: string,
   change: HarnessChange,
   previousName: string | null,
 ): { changes: Phrase; stays: Phrase } => {
   const w = ITEM_WORDS[type];
-  const changed: Record<HarnessChange, Phrase> = {
-    addition: phrase`This removes the ${w.noun} ${w.holder} from your clone.`,
-    edit: phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy in the latest release.`,
-    deletion: phrase`This brings back the ${w.noun} ${w.holder} from the latest release.`,
-    rename: phrase`This brings back ${named(previousName ?? "")} from the latest release and removes the new name.`,
-  };
+  const out = phrase`This takes ${named(name)} out of the next release on GitHub.`;
   return {
-    changes: changed[change],
+    changes:
+      change === "rename" && previousName !== null
+        ? phrase`${out} ${named(previousName)} returns to the next release.`
+        : out,
     stays: withDeployedCopies(
       type,
-      phrase`The ${w.noun} then waits under Pending proposal.`,
+      phrase`Your copy in the clone stays as it is. The ${w.noun} then waits under Pending proposal.`,
     ),
   };
 };
 
-/** The files a withdrawal from release would replace; null where none would be. */
-export const releaseWithdrawalFilesNotice = (
-  files: readonly string[],
-): NoticeContent | null =>
-  files.length === 0
-    ? null
-    : {
-        level: "warning",
-        label: "Changes not yet proposed",
-        message: `${WITHDRAW_FROM_RELEASE} discards the changes in these files. ${KEEP_OUTSIDE_CLONE}`,
-        items: files.map((file) => phrase`${machine(file)}`),
-      };
+export const RELEASE_WITHDRAWAL_CHECKING = "Checking what GitHub holds…";
 
 export const UNPROPOSED_UNKNOWN_NOTICE: NoticeContent = {
   level: "warning",
