@@ -11,7 +11,6 @@ import {
   withdrawTitle,
 } from "./dialog-copy";
 import { HarnessConfirmation } from "./harness-confirmation";
-import { defaultBranchCopy } from "./stage-copy";
 
 /** The files only the clone holds, as the confirmation's own read found them. */
 export type UnproposedCheck =
@@ -27,7 +26,6 @@ export function WithdrawDialog({
   name,
   branch,
   number,
-  defaultBranch,
   unproposed,
   onClose,
   onConfirm,
@@ -39,8 +37,6 @@ export function WithdrawDialog({
   branch: string;
   // Null where no request is open: there is nothing to close.
   number: number | null;
-  // Null where the read could not name it.
-  defaultBranch: string | null;
   unproposed: UnproposedCheck;
   onClose: () => void;
   onConfirm: () => void;
@@ -60,11 +56,7 @@ export function WithdrawDialog({
       }}
       running={withdrawing}
       failure={withdrawError}
-      changes={withdrawBody(
-        type,
-        defaultBranchCopy(defaultBranch),
-        number !== null,
-      )}
+      changes={withdrawBody(type, number !== null)}
       stays={null}
       facts={[
         { label: BRANCH_FACT, value: branch },

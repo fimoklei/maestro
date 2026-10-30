@@ -2,11 +2,11 @@ import type { HarnessPrimitiveType } from "@maestro/core";
 import { BRANCH_FACT } from "../ui/band-copy";
 import type { NoticeContent } from "../ui/notice";
 import {
-  DEFAULT_BRANCH_COMMIT_FACT,
-  DEFAULT_BRANCH_COMMIT_HINT,
   DELETION_COPY,
   deleteFromOrigin,
   deletionTitle,
+  NEXT_RELEASE_COMMIT_FACT,
+  NEXT_RELEASE_COMMIT_HINT,
   openRequestNotice,
   uncommittedNotice,
 } from "./deletion-copy";
@@ -69,9 +69,9 @@ export function DeletionDialog({
             // The whole hash: the exact origin/HEAD copy the confirmation is
             // given against (#580).
             {
-              label: DEFAULT_BRANCH_COMMIT_FACT,
+              label: NEXT_RELEASE_COMMIT_FACT,
               value: mode.seenRemoteTree,
-              hint: DEFAULT_BRANCH_COMMIT_HINT,
+              hint: NEXT_RELEASE_COMMIT_HINT,
             },
           ],
           checking: null,

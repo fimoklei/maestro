@@ -34,7 +34,6 @@ const meta = {
       ],
     ),
     context: {
-      defaultBranch: "main",
       releasedVersion: "v1.4.0",
       origin: "github.com/fimoklei/agent-harness",
     },

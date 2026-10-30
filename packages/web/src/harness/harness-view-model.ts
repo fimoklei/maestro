@@ -4,13 +4,13 @@ import type {
   HarnessStageRead,
   HarnessState,
 } from "@maestro/core";
-import { NOT_RELEASED_YET } from "../ui/band-copy";
+import { NEXT_RELEASE, NOT_RELEASED_YET } from "../ui/band-copy";
 import type { BandCount } from "../ui/band-summary";
 import { freshnessLine, OFFLINE, READ_FAILED } from "../ui/freshness";
 import type { NoticeContent } from "../ui/notice";
 import { type Copy, machine, phrase } from "../ui/phrase";
 import { NOTHING_TO_RELEASE } from "./notice-copy";
-import { ALL_RELEASED, defaultBranchCopy, STAGE_NAMES } from "./stage-copy";
+import { ALL_RELEASED, STAGE_NAMES } from "./stage-copy";
 
 // The stage header's meta slot carries at most one reading, never two (#838),
 // and never a routine read age: null where a successful read has nothing to name (#1218).
@@ -24,17 +24,13 @@ export type StageSection = {
 // Which ref each row was compared against. More than one distinct answer, or a
 // prepared proposal nobody opened a request for, and the slot names both
 // possibilities instead of asserting a comparison that did not happen (#838).
-const proposalMeta = (
-  read: HarnessStageRead,
-  state: HarnessState,
-): Copy | null => {
+const proposalMeta = (read: HarnessStageRead): string | null => {
   if (read.outcome !== "read") {
     return "Status unknown";
   }
   if (read.rows.length === 0) {
     return null;
   }
-  const branch = state.defaultBranch ?? "the default branch";
   // Null for a prepared proposal with no request to name: it has no reading of
   // its own, so it falls to the mixed one below rather than inventing a ref.
   const refs = new Set(
@@ -43,17 +39,14 @@ const proposalMeta = (
         ? row.comparison.number === null
           ? null
           : `pull request #${row.comparison.number}`
-        : branch,
+        : NEXT_RELEASE,
     ),
   );
   const [only] = [...refs];
-  const branchValue = defaultBranchCopy(state.defaultBranch);
   if (refs.size === 1 && typeof only === "string") {
-    return only === branch
-      ? phrase`Compared with ${branchValue}`
-      : `Compared with ${only}`;
+    return `Compared with ${only}`;
   }
-  return phrase`Compared with each change's proposal or ${branchValue}`;
+  return `Compared with each change's proposal or ${NEXT_RELEASE}`;
 };
 
 const reviewMeta = (read: HarnessStageRead): string | null => {
@@ -85,7 +78,7 @@ export const stageSections = (state: HarnessState): StageSection[] =>
     {
       stage: "pending-proposal" as const,
       read: state.stages.proposal,
-      meta: proposalMeta(state.stages.proposal, state),
+      meta: proposalMeta(state.stages.proposal),
     },
     {
       stage: "pending-review" as const,

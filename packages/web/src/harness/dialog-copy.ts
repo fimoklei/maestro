@@ -4,6 +4,7 @@ import type {
   ManifestAdvisory,
   StructuralProblem,
 } from "@maestro/core";
+import { NEXT_RELEASE } from "../ui/band-copy";
 import {
   CREATE_RELEASE,
   DISCARD_CHANGE,
@@ -20,7 +21,6 @@ import {
   phrase,
 } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
-import type { defaultBranchCopy } from "./stage-copy";
 
 // Reported, never blocking: the skill still ships or imports (#519).
 export const skillChecksNotice = (
@@ -90,12 +90,9 @@ export const RESTORED_FROM_HINT =
   "If your clone's last commit moves before you confirm, nothing is restored.";
 
 // An item no target holds has no deployed copies to mention.
-const replacesInClone = (
-  type: HarnessPrimitiveType,
-  branch: ReturnType<typeof defaultBranchCopy>,
-): Phrase => {
+const replacesInClone = (type: HarnessPrimitiveType): Phrase => {
   const w = ITEM_WORDS[type];
-  return phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy on ${branch}. You cannot recover your changes.`;
+  return phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy in ${NEXT_RELEASE}. You cannot recover your changes.`;
 };
 
 const withDeployedCopies = (type: HarnessPrimitiveType, body: Phrase) =>
@@ -103,17 +100,12 @@ const withDeployedCopies = (type: HarnessPrimitiveType, body: Phrase) =>
     ? phrase`${body} Deployed copies remain unchanged.`
     : body;
 
-export const discardBody = (
-  type: HarnessPrimitiveType,
-  branch: ReturnType<typeof defaultBranchCopy>,
-): Phrase => withDeployedCopies(type, replacesInClone(type, branch));
+export const discardBody = (type: HarnessPrimitiveType): Phrase =>
+  withDeployedCopies(type, replacesInClone(type));
 
 export const discardTitle = (name: string) => `${DISCARD_CHANGE} for ${name}`;
 
-export const discardHint = (
-  branch: ReturnType<typeof defaultBranchCopy>,
-): Phrase =>
-  phrase`If ${branch} moves before you confirm, nothing is discarded.`;
+export const DISCARD_HINT = `If ${NEXT_RELEASE} changes before you confirm, nothing is discarded.`;
 
 export const withdrawTitle = (name: string) =>
   `${WITHDRAW_PROPOSAL} for ${name}`;
@@ -124,14 +116,13 @@ export const PULL_REQUEST_FACT = "Pull request";
 // With no open request there is nothing to close (#1639).
 export const withdrawBody = (
   type: HarnessPrimitiveType,
-  branch: ReturnType<typeof defaultBranchCopy>,
   closesRequest: boolean,
 ): Phrase =>
   withDeployedCopies(
     type,
     closesRequest
-      ? phrase`${replacesInClone(type, branch)} It closes the pull request and deletes the proposal branch.`
-      : phrase`${replacesInClone(type, branch)} It deletes the proposal branch.`,
+      ? phrase`${replacesInClone(type)} It closes the pull request and deletes the proposal branch.`
+      : phrase`${replacesInClone(type)} It deletes the proposal branch.`,
   );
 
 export const WITHDRAW_CHECKING = "Checking for changes not yet proposed…";

@@ -6,7 +6,7 @@ import type {
   RequestedReviewer,
   StageStatus,
 } from "@maestro/core";
-import { BRANCH_FACT } from "../ui/band-copy";
+import { BRANCH_FACT, NEXT_RELEASE } from "../ui/band-copy";
 import { type BandCount, countOf } from "../ui/band-summary";
 import {
   CREATE_RELEASE,
@@ -99,14 +99,9 @@ export const statusReading = (row: HarnessStageRow): StatusReading => {
   );
 };
 
-/** The default branch as a sentence names it: its name set apart, else words. */
-export const defaultBranchCopy = (defaultBranch: string | null) =>
-  defaultBranch === null ? "the default branch" : machine(defaultBranch);
-
 // The facts a sentence substitutes into: both come from the same read the rows
-// did, so a Detail never names a branch or release the rows were not read from.
+// did, so a Detail never names a release the rows were not read from.
 export type StageContext = {
-  defaultBranch: string | null;
   releasedVersion: string | null;
   // The Harness as the Origin fact names it.
   origin: string;
@@ -145,15 +140,14 @@ const waitSentence = (row: HarnessStageRow, login: string): Copy =>
 // (#838). A status with no cockpit control names the place instead.
 export function detailSentence(
   row: HarnessStageRow,
-  { defaultBranch, releasedVersion }: StageContext,
+  { releasedVersion }: StageContext,
 ): Copy {
-  const branch = defaultBranchCopy(defaultBranch);
   const release = releasedVersion === null ? null : machine(releasedVersion);
   const publish = `Select ${CREATE_RELEASE} to publish it.`;
   const deletion = row.change === "deletion";
   const noun = ITEM_WORDS[row.type].noun;
   // One next action; Restore stays in the row menu (#1396).
-  const deleteLocally = phrase`This ${noun} is deleted in your clone but still on ${branch}. Select ${PROPOSE_CHANGE} to propose the deletion.`;
+  const deleteLocally = phrase`This ${noun} is deleted in your clone but still in ${NEXT_RELEASE}. Select ${PROPOSE_CHANGE} to propose the deletion.`;
   // Local work behind another contributor's request offers no Propose change.
   if (row.waitingOn !== null) {
     return waitSentence(row, row.waitingOn);
@@ -164,11 +158,11 @@ export function detailSentence(
         return deleteLocally;
       }
       if (row.change === "addition") {
-        return phrase`This ${noun} is not on ${branch} yet. Select ${PROPOSE_CHANGE} to send it for review.`;
+        return phrase`This ${noun} is not in ${NEXT_RELEASE} yet. Select ${PROPOSE_CHANGE} to send it for review.`;
       }
       return offersDiscard(row)
-        ? phrase`Your local copy differs from ${branch}. Select ${PROPOSE_CHANGE} to send it for review, or select ${DISCARD_CHANGE} to match ${branch} again.`
-        : phrase`Your local copy differs from ${branch}. Select ${PROPOSE_CHANGE} to send it for review.`;
+        ? `Your local copy differs from ${NEXT_RELEASE}. Select ${PROPOSE_CHANGE} to send it for review. Or select ${DISCARD_CHANGE} to match ${NEXT_RELEASE}.`
+        : `Your local copy differs from ${NEXT_RELEASE}. Select ${PROPOSE_CHANGE} to send it for review.`;
     case "new-local-work":
       return first(row) === ""
         ? `You edited this ${noun} after preparing its proposal. Select Update proposal to send the edits.`
@@ -216,34 +210,35 @@ export function detailSentence(
     case "proposed-by-other":
       return `Another contributor has pull request ${first(row)} open for this ${noun}. Wait until it is merged or closed.`;
     case "not-yet-released":
-      return releaseSentence(row, branch, release, publish);
+      return releaseSentence(row, release, publish);
   }
 }
 
+// The stage header already places the row in the next release (#1731).
 function releaseSentence(
   row: HarnessStageRow,
-  branch: ReturnType<typeof defaultBranchCopy>,
   release: ReturnType<typeof machine> | null,
   publish: string,
 ): Copy {
   const noun = ITEM_WORDS[row.type].noun;
+  const deletion = `Select ${CREATE_RELEASE} to publish the deletion.`;
   switch (row.change) {
     case "addition":
       return release === null
-        ? phrase`This ${noun} is on ${branch} and in no release yet. ${publish}`
-        : phrase`This ${noun} was added to ${branch} after release ${release}. ${publish}`;
+        ? `This ${noun} is in no release yet. ${publish}`
+        : phrase`This ${noun} was added after release ${release}. ${publish}`;
     case "edit":
       return release === null
-        ? phrase`This ${noun} is on ${branch} and in no release yet. ${publish}`
-        : phrase`This ${noun} changed on ${branch} after release ${release}. ${publish}`;
+        ? `This ${noun} is in no release yet. ${publish}`
+        : phrase`This ${noun} changed after release ${release}. ${publish}`;
     case "rename":
       return row.previousName === null
-        ? phrase`This ${noun} was renamed on ${branch}. ${publish}`
-        : phrase`This ${noun} was renamed from ${named(row.previousName)} on ${branch}. ${publish}`;
+        ? `This ${noun} was renamed. ${publish}`
+        : phrase`This ${noun} was renamed from ${named(row.previousName)}. ${publish}`;
     case "deletion":
       return release === null
-        ? phrase`This ${noun} is no longer on ${branch}. Select ${CREATE_RELEASE} to publish the deletion.`
-        : phrase`This ${noun} was deleted from ${branch} after release ${release}. Select ${CREATE_RELEASE} to publish the deletion.`;
+        ? `This ${noun} was deleted. ${deletion}`
+        : phrase`This ${noun} was deleted after release ${release}. ${deletion}`;
   }
 }
 

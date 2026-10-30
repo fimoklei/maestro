@@ -3,18 +3,12 @@ import type {
   ReleasePlan,
   SemverStep,
 } from "@maestro/core";
-import { FolderGit2, FolderInput, GitBranch, Tag } from "lucide-react";
+import { FolderGit2, FolderInput, Tag } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { ActionsMenu } from "../ui/actions-menu";
 import { BandAction } from "../ui/band-action";
-import {
-  BRANCH_FACT,
-  NOT_RELEASED_YET,
-  ORIGIN_FACT,
-  RELEASE_FACT,
-  UNKNOWN_FACT_VALUE,
-} from "../ui/band-copy";
+import { NOT_RELEASED_YET, ORIGIN_FACT, RELEASE_FACT } from "../ui/band-copy";
 import { Button } from "../ui/button";
 import {
   CREATE_RELEASE,
@@ -220,7 +214,6 @@ export function HarnessView({
         },
   );
   const context = {
-    defaultBranch: state?.defaultBranch ?? null,
     releasedVersion: state?.releasedVersion ?? null,
     origin: state?.origin ?? "",
   };
@@ -228,13 +221,12 @@ export function HarnessView({
     () =>
       harnessColumns({
         context: {
-          defaultBranch: context.defaultBranch,
           releasedVersion: context.releasedVersion,
           origin: context.origin,
         },
         freshness,
       }),
-    [context.defaultBranch, context.releasedVersion, context.origin, freshness],
+    [context.releasedVersion, context.origin, freshness],
   );
 
   // What every row press shares: a read in flight is moving the rows a press
@@ -388,13 +380,6 @@ export function HarnessView({
                   machine: state.releasedVersion !== null,
                   drop: { rank: 3, belowRem: 24 },
                 },
-                {
-                  label: BRANCH_FACT,
-                  icon: <Icon of={GitBranch} />,
-                  value: state.defaultBranch ?? UNKNOWN_FACT_VALUE,
-                  machine: state.defaultBranch !== null,
-                  drop: { rank: 1, belowRem: 54 },
-                },
               ],
         summary: {
           freshness:
@@ -482,7 +467,6 @@ export function HarnessView({
           discarding={presses.discarding}
           discard={presses.discardWrite}
           onDiscardClose={presses.closeDiscard}
-          defaultBranch={state.defaultBranch}
           withdrawing={presses.withdrawing}
           proposalAction={presses.proposalWrite}
           onWithdrawClose={presses.closeWithdrawal}

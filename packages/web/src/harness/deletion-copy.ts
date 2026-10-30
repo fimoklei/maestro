@@ -1,4 +1,5 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
+import { NEXT_RELEASE } from "../ui/band-copy";
 import {
   DELETE_LABEL,
   PROPOSE_CHANGE,
@@ -51,11 +52,10 @@ export const DELETION_COPY: Record<HarnessPrimitiveType, DeletionWording> = {
 
 export const deletionTitle = (name: string) => `Delete ${name}`;
 
-export const DEFAULT_BRANCH_COMMIT_FACT = "Default branch commit";
+export const NEXT_RELEASE_COMMIT_FACT = "Next release commit";
 
 // Says what the confirmation-stale notice does (#885).
-export const DEFAULT_BRANCH_COMMIT_HINT =
-  "If the default branch moves before you confirm, nothing is pushed.";
+export const NEXT_RELEASE_COMMIT_HINT = `If ${NEXT_RELEASE} changes before you confirm, nothing is pushed.`;
 
 // Where the dialog opened: only the Harness screen has Propose change.
 export const deleteFromOrigin = (

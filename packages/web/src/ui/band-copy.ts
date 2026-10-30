@@ -3,8 +3,10 @@ export const ORIGIN_FACT = "Origin";
 export const RELEASE_FACT = "Release";
 export const LATEST_RELEASE_FACT = "Latest release";
 export const BRANCH_FACT = "Branch";
-export const DEFAULT_BRANCH_FACT = "Default branch";
 export const UNKNOWN_FACT_VALUE = "Unknown";
 export const NOT_RELEASED_YET = "Not released yet";
+// What Create a release would publish now: the author's word for the default
+// branch, which only repair notices name (#1731).
+export const NEXT_RELEASE = "the next release";
 // The read age's clock, named for assistive technology: "Read 4 min ago".
 export const READ_AGE_NAME = "Read";

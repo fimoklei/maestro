@@ -25,7 +25,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Band 2: Origin, Release and Branch, then the freshness line (#994).
+// Band 2: Origin and Release, then the freshness line (#994, #1731).
 const findBand2 = async () =>
   (await screen.findByRole("button", { name: "Re-read Harness" })).closest(
     '[data-band="2"]',
@@ -162,12 +162,12 @@ describe("Harness home base", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the released version and the branch a release would tag", async () => {
+  // The branch a release would tag left band 2 with #1731.
+  it("shows the released version", async () => {
     stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 
     expect(await screen.findByText("v0.5.0")).toBeInTheDocument();
-    expect(await screen.findByText("main")).toBeInTheDocument();
   });
 
   // Band 2's own facts. A stage meta slot dates the same read in the same
@@ -787,7 +787,7 @@ describe("Harness home base", () => {
     );
   });
 
-  it("states Origin, Release and Branch in band 2, beside the freshness line and Re-read Harness", async () => {
+  it("states Origin and Release in band 2, beside the freshness line and Re-read Harness", async () => {
     stubHarnessServer({
       read: {
         body: {
@@ -805,11 +805,13 @@ describe("Harness home base", () => {
     for (const [label, value] of [
       ["Origin", "github.com/fimoklei/agent-harness"],
       ["Release", "v0.5.0"],
-      ["Branch", "main"],
     ]) {
       expect(within(band).getByText(label as string)).toBeInTheDocument();
       expect(within(band).getByText(value as string)).toBeInTheDocument();
     }
+    // The author acts on the next release, never on a git branch (#1731).
+    expect(within(band).queryByText("Branch")).toBeNull();
+    expect(within(band).queryByText("main")).toBeNull();
     expect(within(band).getByText("4 min ago")).toBeInTheDocument();
     expect(
       within(band).getByRole("button", { name: "Re-read Harness" }),
@@ -1056,7 +1058,7 @@ describe("Harness home base", () => {
       expect(
         Array.from(card.querySelectorAll("p"), (line) => line.textContent),
       ).toEqual([
-        "This skill is not on main yet. Select Propose change to send it for review.",
+        "This skill is not in the next release yet. Select Propose change to send it for review.",
         "This change adds tdd to github.com/fimoklei/agent-harness.",
         "Not read yet",
       ]);

@@ -132,7 +132,7 @@ describe("proposal actions", () => {
     await press("tdd", /^withdraw proposal$/i);
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent(
-      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
+      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
     );
     // Retracting is not the publishing action, so it takes no amber fill (#876).
     expect(

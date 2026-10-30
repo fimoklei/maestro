@@ -256,7 +256,6 @@ const SURFACES: Surface[] = [
         type,
         name: "tdd",
         branch: "maestro/tdd",
-        defaultBranch: "main",
         number: 45,
       }),
     codes<WithdrawError>({
@@ -811,7 +810,6 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
         type: "skill",
         name: "tdd",
         branch: "maestro/tdd",
-        defaultBranch: "main",
         number: null,
       }),
     );
@@ -849,7 +847,7 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
       "The proposal branch remains unchanged.",
     );
     expect(notice("branch-delete-failed")?.detail).toBe(
-      "Your skill folder matches its copy on main.",
+      "Your skill folder matches its copy in the next release.",
     );
   });
 });
@@ -975,5 +973,23 @@ describe("Withdraw from release refused on GitHub (#1729)", () => {
     ],
   ])("states %s", (code, expected) => {
     expect(notice(code)).toEqual(expected);
+  });
+});
+
+// The author confirms against the next release, never a branch (#1731).
+describe("a confirmation the next release outran", () => {
+  it.each([
+    ["Delete skill", deletionNotice(refusal("confirmation-stale"), "skill")],
+    [
+      "Discard change",
+      discardNotice(refusal("confirmation-stale"), {
+        type: "skill",
+        name: "tdd",
+      }),
+    ],
+  ])("says the next release changed after %s", (_control, notice) => {
+    expect(readNotice(notice)?.detail).toBe(
+      "The next release changed after this confirmation.",
+    );
   });
 });

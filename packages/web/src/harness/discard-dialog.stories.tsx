@@ -8,7 +8,6 @@ const meta = {
     type: "skill",
     name: "code-review",
     path: ".apm/skills/code-review",
-    defaultBranch: "main",
     onClose: () => {},
     onConfirm: () => {},
     discarding: false,

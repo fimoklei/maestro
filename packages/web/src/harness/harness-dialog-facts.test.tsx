@@ -51,7 +51,7 @@ describe("Harness confirmation facts", () => {
     expect(
       within(dialog).getByText(
         sentence(
-          "If the default branch moves before you confirm, nothing is pushed.",
+          "If the next release changes before you confirm, nothing is pushed.",
         ),
       ),
     ).toBeVisible();
@@ -79,7 +79,7 @@ describe("Harness confirmation facts", () => {
     expect(within(dialog).getByText(BRANCH)).toBeVisible();
     expectDescription(
       dialog,
-      "This replaces the prompt file in your clone with its copy on main. You cannot recover your changes. It closes the pull request and deletes the proposal branch.",
+      "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes. It closes the pull request and deletes the proposal branch.",
     );
   });
 
@@ -139,12 +139,14 @@ describe("Harness confirmation facts", () => {
     expect(within(dialog).getByText(PATH)).toBeVisible();
     expect(
       within(dialog).getByText(
-        sentence("If main moves before you confirm, nothing is discarded."),
+        sentence(
+          "If the next release changes before you confirm, nothing is discarded.",
+        ),
       ),
     ).toBeVisible();
     expectDescription(
       dialog,
-      "This replaces the prompt file in your clone with its copy on main. You cannot recover your changes.",
+      "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes.",
     );
   });
 

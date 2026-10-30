@@ -1,26 +1,17 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { sentence } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { DiscardDialog } from "./discard-dialog";
 
 const renderDialog = (
-  overrides: {
-    defaultBranch?: string | null;
-    discarding?: boolean;
-    discardError?: NoticeContent | null;
-  } = {},
+  overrides: { discarding?: boolean; discardError?: NoticeContent | null } = {},
 ) =>
   render(
     <DiscardDialog
       type="skill"
       name="research"
       path=".apm/skills/research"
-      defaultBranch={
-        "defaultBranch" in overrides
-          ? (overrides.defaultBranch ?? null)
-          : "main"
-      }
       onClose={vi.fn()}
       onConfirm={vi.fn()}
       discarding={overrides.discarding ?? false}
@@ -62,48 +53,23 @@ describe("DiscardDialog", () => {
     expect(
       screen.getByText(
         sentence(
-          "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. Deployed copies remain unchanged.",
+          "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. Deployed copies remain unchanged.",
         ),
       ),
     ).toBeInTheDocument();
   });
 
-  it("shows the skill, the folder and the default branch it takes the copy from", () => {
+  // The guarantee sits under the folder: the dialog names no branch (#1731).
+  it("shows the folder it replaces, and its guarantee", () => {
     renderDialog();
 
-    expect(screen.getByText(".apm/skills/research")).toBeInTheDocument();
     expect(
-      screen.getByText("main", { selector: "dd" }),
+      screen.getByText(".apm/skills/research", { selector: "dd" }),
     ).toHaveAccessibleDescription(
-      "If main moves before you confirm, nothing is discarded.",
+      "If the next release changes before you confirm, nothing is discarded.",
     );
-  });
-
-  it("sets the branch in its sentences apart", () => {
-    renderDialog();
-
-    for (const text of [
-      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. Deployed copies remain unchanged.",
-      "If main moves before you confirm, nothing is discarded.",
-    ]) {
-      const line = screen.getByText(sentence(text));
-      expect(
-        within(line).getByText("main", { selector: ".font-mono" }),
-      ).toBeInTheDocument();
-    }
-  });
-
-  it("names the default branch generically where it could not be read", () => {
-    renderDialog({ defaultBranch: null });
-
-    expect(
-      screen.getByText(
-        "This replaces the skill folder in your clone with its copy on the default branch. You cannot recover your changes. Deployed copies remain unchanged.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Unknown")).toHaveAccessibleDescription(
-      "If the default branch moves before you confirm, nothing is discarded.",
-    );
+    expect(screen.queryByText("Default branch")).toBeNull();
+    expect(screen.queryByText("main")).toBeNull();
   });
 
   it("reads as pending while the discard runs", () => {
@@ -136,7 +102,6 @@ describe("DiscardDialog", () => {
           type="prompt"
           name="pr-review"
           path=".maestro/prompts/pr-review.md"
-          defaultBranch="main"
           onClose={vi.fn()}
           onConfirm={vi.fn()}
           discarding={false}
@@ -150,7 +115,7 @@ describe("DiscardDialog", () => {
       expect(
         screen.getByText(
           sentence(
-            "This replaces the prompt file in your clone with its copy on main. You cannot recover your changes.",
+            "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes.",
           ),
         ),
       ).toBeInTheDocument();

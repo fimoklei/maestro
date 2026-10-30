@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { plainText } from "../ui/phrase";
-import { DEFAULT_BRANCH_COMMIT_HINT, deletionTitle } from "./deletion-copy";
+import {
+  deletionTitle,
+  NEXT_RELEASE_COMMIT_FACT,
+  NEXT_RELEASE_COMMIT_HINT,
+} from "./deletion-copy";
 import {
   ADVISORY_TEXT,
-  discardHint,
+  DISCARD_HINT,
+  discardBody,
   discardTitle,
   FINDING_TEXT,
   FOLDER_MISSING,
@@ -19,7 +24,6 @@ import {
   withdrawBody,
   withdrawTitle,
 } from "./dialog-copy";
-import { defaultBranchCopy } from "./stage-copy";
 
 describe("Harness dialog copy", () => {
   it("titles each confirmation with its act and the item's name", () => {
@@ -31,14 +35,13 @@ describe("Harness dialog copy", () => {
   });
 
   it("states the hints under the facts a confirmation is given against", () => {
-    expect(DEFAULT_BRANCH_COMMIT_HINT).toBe(
-      "If the default branch moves before you confirm, nothing is pushed.",
+    // The author confirms against the next release, never a branch (#1731).
+    expect(NEXT_RELEASE_COMMIT_FACT).toBe("Next release commit");
+    expect(NEXT_RELEASE_COMMIT_HINT).toBe(
+      "If the next release changes before you confirm, nothing is pushed.",
     );
-    expect(plainText(discardHint(defaultBranchCopy("main")))).toBe(
-      "If main moves before you confirm, nothing is discarded.",
-    );
-    expect(plainText(discardHint(defaultBranchCopy(null)))).toBe(
-      "If the default branch moves before you confirm, nothing is discarded.",
+    expect(DISCARD_HINT).toBe(
+      "If the next release changes before you confirm, nothing is discarded.",
     );
     expect(RESTORED_FROM_HINT).toBe(
       "If your clone's last commit moves before you confirm, nothing is restored.",
@@ -47,13 +50,17 @@ describe("Harness dialog copy", () => {
   });
 
   it("names the pull request in a withdrawal only where one is open (#1639)", () => {
-    const main = defaultBranchCopy("main");
-
-    expect(plainText(withdrawBody("skill", main, true))).toBe(
-      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
+    expect(plainText(withdrawBody("skill", true))).toBe(
+      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
     );
-    expect(plainText(withdrawBody("skill", main, false))).toBe(
-      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
+    expect(plainText(withdrawBody("skill", false))).toBe(
+      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
+    );
+  });
+
+  it("replaces a discarded change with its copy in the next release", () => {
+    expect(plainText(discardBody("prompt"))).toBe(
+      "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes.",
     );
   });
 
