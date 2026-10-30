@@ -11,7 +11,7 @@ import { readingRank, type StatusReading } from "../ui/status-reading";
 import { StatusSkeleton } from "../ui/status-skeleton";
 import { ReachCard } from "./reach-card";
 
-export type RowAction = "deploy" | "remove" | "delete";
+export type RowAction = "deploy" | "category" | "remove" | "delete";
 
 // The Skills table's columns, and the columns Display can switch off.
 export type SkillRow = InventorySkill & {
@@ -21,6 +21,8 @@ export type SkillRow = InventorySkill & {
   /** What the hover card expands the Status and Targets cells into. */
   deployments: SkillDeployment[];
   unreadable: boolean;
+  /** Null for none; undefined while the categories are unread. */
+  category: string | null | undefined;
   /** The hover card's footer; null where no target was compared. */
   readAge: string | null;
   /** The ⋮ menu's items, in order. */

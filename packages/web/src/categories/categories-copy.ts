@@ -1,7 +1,9 @@
+import type { HarnessPrimitiveType } from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
+import { ADD_CATEGORY } from "../ui/category-menu-copy";
 import { rereadLabel } from "../ui/control-labels";
-import type { NoticeCopy } from "../ui/notice";
+import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { machine, type Phrase, phrase } from "../ui/phrase";
 
 const CATEGORIES = "Categories";
@@ -10,7 +12,7 @@ export const CATEGORIES_SENTENCE =
 export const NO_CATEGORIES = "No categories yet";
 export const NO_CATEGORIES_SENTENCE = "Categories appear here.";
 
-export const ADD_CATEGORY = "Add category";
+export { ADD_CATEGORY };
 export const ADD_A_CATEGORY = "Add a category";
 export const CATEGORY_NAME_LABEL = "Name";
 
@@ -57,3 +59,36 @@ export const CATEGORY_NOT_ADDED: NoticeCopy = {
 
 /** The refusals a notice states; a name refusal is the field's own line. */
 export const CATEGORY_NOT_CONFIGURED = harnessHeadings["not-configured"];
+
+/** The detail pane's fact. */
+export const CATEGORY_FACT = "Category";
+
+/** The category menu's name: what it sets the category of. */
+export const setCategoryFor = (subject: string) =>
+  `Set category for ${subject}`;
+
+/** Items of one type, counted. */
+export const ITEM_WORDS: Record<
+  HarnessPrimitiveType,
+  { one: string; many: string }
+> = {
+  skill: { one: "skill", many: "skills" },
+  prompt: { one: "prompt", many: "prompts" },
+};
+
+const CATEGORY_NOT_SET = "Category not set";
+
+/** Why Set category did not land, stated in the menu; `reread` is the screen's control. */
+export const categoryNotSet = (
+  code: "category-not-found" | "item-not-found" | "other",
+  reread: string,
+): NoticeContent => ({
+  level: "error",
+  label: CATEGORY_NOT_SET,
+  message:
+    code === "category-not-found"
+      ? "The category no longer exists. Choose another category."
+      : code === "item-not-found"
+        ? `The Harness no longer holds it. Select ${reread} to update the list.`
+        : "Choose the category again.",
+});

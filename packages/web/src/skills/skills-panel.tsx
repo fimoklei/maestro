@@ -1,6 +1,7 @@
 import { useIsFetching } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
+import { useCategories } from "../categories/use-categories";
 import { DEPLOY_STATE_KEY } from "../deploy-state/use-deploy-state";
 import type { HarnessArrival } from "../harness/harness-route";
 import { harnessHeadings } from "../harness/notice-copy";
@@ -34,6 +35,7 @@ export function SkillsPanel() {
   const invalidate = useRereadInventory();
   const navigate = useNavigate();
   const harness = useHarness();
+  const categories = useCategories();
   const check = useDeletionCheck();
   // Drift is left out, as on Deploy-state: its apm run is slow, so the rows
   // never wait for it; the Status cell shows its own skeleton meanwhile. The
@@ -54,6 +56,9 @@ export function SkillsPanel() {
   return (
     <SkillsView
       primitives={disconnected ? undefined : inventory.data}
+      assignments={
+        categories.isSuccess ? categories.data.assignments : undefined
+      }
       repos={repos}
       registryReady={registry.isSuccess}
       targets={targets}

@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import type { Ref } from "react";
 import { ActionsMenu, type ActionsMenuItem } from "./actions-menu";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
@@ -16,6 +17,10 @@ export type FootItem = ActionsMenuItem & {
   step?: "update" | "import";
   /** Its write is running: picks the busy label from `busy-copy`. */
   busy?: ActionKey;
+  /** It opens a menu above the foot: whether that menu is open. */
+  expanded?: boolean;
+  /** Where focus returns once the menu it opened closes. */
+  buttonRef?: Ref<HTMLButtonElement>;
 } & (
     | { cause?: undefined }
     | {
@@ -62,9 +67,11 @@ export function FootActions({
         ) : item.href === undefined ? (
           <Button
             key={item.label}
+            ref={item.buttonRef}
             size="md"
             variant={item.label === primary ? "primary" : "quiet"}
             aria-label={item.name}
+            aria-expanded={item.expanded}
             busy={item.busy !== undefined}
             blocked={item.disabled}
             onClick={item.onSelect}

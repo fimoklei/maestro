@@ -1,6 +1,8 @@
-import type { InventorySkill } from "@maestro/core";
+import type { CategoryList, InventorySkill } from "@maestro/core";
 import { Puzzle, Table2, Tag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { SetCategoryBarAction } from "../categories/set-category-bar-action";
+import { SetCategoryMenu } from "../categories/set-category-menu";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import {
   hiddenStagedCount,
@@ -39,9 +41,12 @@ import {
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
 import { Button } from "../ui/button";
+import type { MenuClosedBy } from "../ui/category-menu";
 import {
   DELETE_SKILL,
   DEPLOY_SKILL,
+  rereadLabel,
+  SET_CATEGORY,
   UPDATE_TARGET,
   VIEW_DEPLOY_STATE,
 } from "../ui/control-labels";
@@ -90,15 +95,20 @@ import {
 
 // Presentational; the container supplies the reads (#992, #1040).
 
+// Set category's menu opens above the pane's foot, not as a dialog.
+type Opened = PaneDialog | { kind: "category" };
+
 // The row's ⋮ and the pane's foot open the same dialog per action (#1065).
 const rowDialog = (
   action: RowAction,
   name: string,
   clone: CloneReading,
-): PaneDialog | null => {
+): Opened | null => {
   switch (action) {
     case "deploy":
       return { kind: "deploy" };
+    case "category":
+      return { kind: "category" };
     case "remove":
       return { kind: "remove-all" };
     case "delete": {
@@ -134,9 +144,12 @@ export function SkillsView({
   onShowTarget,
   clone,
   onDeleted,
+  assignments,
 }: {
   /** Undefined until the Inventory has been read once. */
   primitives: InventorySkill[] | undefined;
+  /** Each item's category; undefined while unread, which leaves Set category out. */
+  assignments: CategoryList["assignments"] | undefined;
   repos: RegisteredRepo[];
   registryReady: boolean;
   // Every deploy target, for the per-row status and reach (#272). Empty until
@@ -170,7 +183,12 @@ export function SkillsView({
     openOnArrival: null,
   });
   const [query, setQuery] = useState("");
-  const [dialog, setDialog] = useState<PaneDialog | null>(null);
+  const [dialog, setDialog] = useState<Opened | null>(null);
+  const categoryButton = useRef<HTMLButtonElement>(null);
+  const closeCategory = (via: MenuClosedBy) => {
+    setDialog(null);
+    if (via !== "press") categoryButton.current?.focus();
+  };
   // Apart from the open row, so inspecting and staging never toggle each other.
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
 
@@ -205,11 +223,20 @@ export function SkillsView({
       deployments,
       unreadable: Boolean(rollup.unreadable),
       readAge: skillReadAge(primitive.name, targets, now),
+      category:
+        assignments === undefined
+          ? undefined
+          : (assignments.find(
+              (each) => each.type === "skill" && each.name === primitive.name,
+            )?.category ?? null),
       // The pane's foot holds these same items (#1065). The removal is offered only
       // from two targets, or it would repeat a target row's own (#422). It counts
       // what the removal covers: global is one target, whatever its tools (#1436).
       actions: [
         { action: "deploy", label: DEPLOY_SKILL },
+        ...(assignments === undefined
+          ? []
+          : [{ action: "category" as const, label: SET_CATEGORY }]),
         ...(removable >= 2
           ? [
               {
@@ -381,6 +408,13 @@ export function SkillsView({
               registryReady={registryReady}
               onSelectionSpent={() => setStaged(new Set())}
             />
+            {assignments === undefined ? null : (
+              <SetCategoryBarAction
+                type="skill"
+                names={[...staged]}
+                reread={rereadLabel(screen.name)}
+              />
+            )}
           </SelectionBar>
         ) : null
       }
@@ -399,15 +433,41 @@ export function SkillsView({
               initialFocus={dialog === null ? undefined : null}
               targetItems={targetItems}
               selectionActive={staged.size > 0}
-              footItems={row.actions.map((item) => ({
-                label: item.label,
-                danger: item.danger,
-                disabled: item.disabled,
-                onSelect: () =>
-                  setDialog(rowDialog(item.action, row.name, clone)),
-              }))}
+              category={row.category}
+              footItems={row.actions.map((item) =>
+                item.action === "category"
+                  ? {
+                      label: item.label,
+                      expanded: dialog?.kind === "category",
+                      buttonRef: categoryButton,
+                      onSelect: () =>
+                        setDialog(
+                          dialog?.kind === "category"
+                            ? null
+                            : { kind: "category" },
+                        ),
+                    }
+                  : {
+                      label: item.label,
+                      danger: item.danger,
+                      disabled: item.disabled,
+                      onSelect: () =>
+                        setDialog(rowDialog(item.action, row.name, clone)),
+                    },
+              )}
+              footMenu={
+                dialog?.kind === "category" ? (
+                  <SetCategoryMenu
+                    // Keyed by skill: paging to the next row starts afresh.
+                    key={row.name}
+                    items={[{ type: "skill", name: row.name }]}
+                    reread={rereadLabel(screen.name)}
+                    onClose={closeCategory}
+                  />
+                ) : null
+              }
             />
-            {dialog === null ? null : (
+            {dialog === null || dialog.kind === "category" ? null : (
               <SkillPaneDialog
                 // Keyed by skill: a refusal from the previous skill can never
                 // carry over and overwrite the next one (#66).

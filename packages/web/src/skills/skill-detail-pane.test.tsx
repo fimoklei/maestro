@@ -78,6 +78,8 @@ function renderPane(overrides: {
       onClose={overrides.onClose ?? (() => {})}
       getTriggerElement={overrides.getTriggerElement ?? (() => null)}
       listHeadingRef={null}
+      category={undefined}
+      footMenu={null}
     />,
     // The pending release sentence links the Harness screen.
     { wrapper: MemoryRouter },

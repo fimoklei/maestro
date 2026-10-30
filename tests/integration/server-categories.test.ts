@@ -21,7 +21,8 @@ describe("categories on a real filesystem", () => {
   // A fresh composition each call, as a restart builds one.
   const startMaestro = async () => {
     const harness = join(dir, "harness");
-    await mkdir(harness, { recursive: true });
+    // Not released yet: `tdd` sits in the Working harness only.
+    await mkdir(join(harness, ".apm", "skills", "tdd"), { recursive: true });
     return nodeApp(
       {
         HOME: dir,
@@ -35,6 +36,7 @@ describe("categories on a real filesystem", () => {
               host: "github.com",
               ownerRepo: "fimoklei/agent-harness",
             }),
+            readTags: async () => [],
           }),
         },
       },
@@ -61,6 +63,41 @@ describe("categories on a real filesystem", () => {
         { name: "Writing", skills: 0, prompts: 0 },
       ],
       assignments: [],
+    } satisfies CategoryList);
+  });
+
+  it("keeps a skill's category after a restart", async () => {
+    const before = await startMaestro();
+    await before.request("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Planning" }),
+    });
+    const assigned = await before.request("/api/categories/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ type: "skill", name: "tdd" }],
+        category: "Planning",
+      }),
+    });
+    expect(assigned.status).toBe(200);
+    const unheld = await before.request("/api/categories/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ type: "skill", name: "gone" }],
+        category: "Planning",
+      }),
+    });
+    expect(unheld.status).toBe(404);
+
+    const after = await startMaestro();
+    const res = await after.request("/api/categories");
+
+    expect(await res.json()).toEqual({
+      categories: [{ name: "Planning", skills: 1, prompts: 0 }],
+      assignments: [{ type: "skill", name: "tdd", category: "Planning" }],
     } satisfies CategoryList);
   });
 });

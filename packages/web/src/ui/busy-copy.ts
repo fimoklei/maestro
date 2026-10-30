@@ -23,7 +23,8 @@ export type ActionKey =
   | "unregister"
   | "scaffold"
   | "connect"
-  | "setLocation";
+  | "setLocation"
+  | "setCategory";
 
 export const ACTIONS: Record<
   ActionKey,
@@ -57,6 +58,7 @@ export const ACTIONS: Record<
   scaffold: { busy: "Scaffolding…", done: "Scaffolded" },
   connect: { busy: "Connecting…", done: "Connected" },
   setLocation: { busy: "Setting…", done: "Set" },
+  setCategory: { busy: "Setting…", done: "Set category for" },
 };
 
 /** Every refusal of a Harness write while another one runs, on any screen. */

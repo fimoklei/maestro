@@ -10,6 +10,8 @@ const HARNESS = "/harness";
 const CONFIG = "/maestro-home/config.json";
 const ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 
+type Ref = { type: "skill" | "prompt"; name: string };
+
 const world = ({ connected = true }: { connected?: boolean } = {}) => {
   const env: NodeJS.ProcessEnv = {
     HOME: "/home",
@@ -33,7 +35,27 @@ const world = ({ connected = true }: { connected?: boolean } = {}) => {
     harness.root = root;
     harness.originUrl = originUrl;
   };
-  return { app, fs, harness, pointAt };
+  // The latest release holds these; the Working harness holds nothing yet.
+  const release = (skills: string[], prompts: string[] = []) => {
+    harness.commit(
+      "released",
+      Object.fromEntries(skills.map((name) => [name, `# ${name}\n`])),
+      {
+        prompts: Object.fromEntries(
+          prompts.map((name) => [name, `# ${name}\n`]),
+        ),
+      },
+    );
+    harness.tags = [{ name: "v1.0.0", commit: "released" }];
+  };
+  // Imported into the Working harness on disk, not released yet.
+  const draft = async ({ type, name }: Ref) => {
+    const dir = `${HARNESS}/${type === "skill" ? ".apm/skills" : ".maestro/prompts"}`;
+    await fs.ensureDir(dir);
+    if (type === "skill") await fs.ensureDir(`${dir}/${name}`);
+    else await fs.writeFile(`${dir}/${name}.md`, `# ${name}\n`);
+  };
+  return { app, fs, harness, pointAt, release, draft };
 };
 
 type App = ReturnType<typeof world>["app"];
@@ -46,6 +68,21 @@ const add = (app: App, name: unknown) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
+
+const assign = (app: App, items: Ref[], category: string | null) =>
+  app.request("/api/categories/assign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items, category }),
+  });
+
+const skill = (name: string): Ref => ({ type: "skill", name });
+const prompt = (name: string): Ref => ({ type: "prompt", name });
+
+const readConfig = (fs: InMemoryFileSystem) => fs.readFile(CONFIG);
+
+const listOf = async (app: App) =>
+  (await (await read(app)).json()) as CategoryList;
 
 const namesOf = async (app: App) => {
   const res = await read(app);
@@ -149,33 +186,190 @@ describe("categories over HTTP", () => {
     expect(await adding.json()).toEqual({ error: "not-configured" });
   });
 
-  it("counts the skills and prompts each saved category carries", async () => {
-    const { app, fs } = world();
-    await fs.writeFile(
-      CONFIG,
-      JSON.stringify({
-        repos: [],
+  describe("assign", () => {
+    it("gives several items one category, counts them, and removes the category with none", async () => {
+      const { app, release } = world();
+      release(["tdd", "grill", "research"], ["pr-review"]);
+      await add(app, "Planning");
+      await add(app, "Writing");
+
+      const assigned = await assign(
+        app,
+        [skill("tdd"), skill("grill"), prompt("pr-review")],
+        "Planning",
+      );
+      await assign(app, [skill("research")], "Writing");
+      const removed = await assign(app, [skill("research")], null);
+
+      const afterAssign = await assigned.json();
+      expect(assigned.status).toBe(200);
+      expect(afterAssign).toEqual({
         categories: [
-          {
-            origin: "github.com/fimoklei/agent-harness",
-            root: HARNESS,
-            names: ["Planning", "Writing"],
-            assignments: [
-              { type: "skill", name: "tdd", category: "Planning" },
-              { type: "skill", name: "grill", category: "Planning" },
-              { type: "prompt", name: "pr-review", category: "Planning" },
-            ],
-          },
+          { name: "Planning", skills: 2, prompts: 1 },
+          { name: "Writing", skills: 0, prompts: 0 },
         ],
-      }),
-    );
+        assignments: [
+          { type: "skill", name: "tdd", category: "Planning" },
+          { type: "skill", name: "grill", category: "Planning" },
+          { type: "prompt", name: "pr-review", category: "Planning" },
+        ],
+      } satisfies CategoryList);
+      expect(removed.status).toBe(200);
+      await expect(listOf(app)).resolves.toEqual(afterAssign);
+    });
 
-    const list = (await (await read(app)).json()) as CategoryList;
+    it("moves an item that has a category to the new one", async () => {
+      const { app, release } = world();
+      release(["tdd"]);
+      await add(app, "Planning");
+      await add(app, "Writing");
+      await assign(app, [skill("tdd")], "Planning");
 
-    expect(list.categories).toEqual([
-      { name: "Planning", skills: 2, prompts: 1 },
-      { name: "Writing", skills: 0, prompts: 0 },
-    ]);
+      await assign(app, [skill("tdd")], "Writing");
+
+      expect((await listOf(app)).assignments).toEqual([
+        { type: "skill", name: "tdd", category: "Writing" },
+      ]);
+    });
+
+    it("stores the category's own name when the request differs in case", async () => {
+      const { app, release } = world();
+      release(["tdd"]);
+      await add(app, "Code review");
+
+      await assign(app, [skill("tdd")], "code REVIEW");
+
+      expect((await listOf(app)).assignments).toEqual([
+        { type: "skill", name: "tdd", category: "Code review" },
+      ]);
+    });
+
+    it("refuses an unknown category and changes nothing", async () => {
+      const { app, release } = world();
+      release(["tdd"]);
+      await add(app, "Planning");
+
+      const res = await assign(app, [skill("tdd")], "Writing");
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: "category-not-found" });
+      expect((await listOf(app)).assignments).toEqual([]);
+    });
+
+    it("refuses an item neither the latest release nor the Working harness holds", async () => {
+      const { app, release } = world();
+      release(["tdd"]);
+      await add(app, "Planning");
+
+      const res = await assign(app, [skill("tdd"), skill("gone")], "Planning");
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: "item-not-found" });
+      expect((await listOf(app)).assignments).toEqual([]);
+    });
+
+    it("refuses a request of the wrong shape", async () => {
+      const { app } = world();
+
+      const noItems = await assign(app, [], null);
+      const badType = await app.request("/api/categories/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ type: "hook", name: "x" }],
+          category: null,
+        }),
+      });
+
+      expect(noItems.status).toBe(400);
+      expect(await noItems.json()).toMatchObject({ error: "invalid-body" });
+      expect(badType.status).toBe(400);
+    });
+
+    it("writes nothing to the Harness", async () => {
+      const { app, harness, release } = world();
+      release(["tdd"]);
+      const before = JSON.stringify({
+        tags: harness.tags,
+        working: harness.working,
+        published: harness.published,
+      });
+      await add(app, "Planning");
+
+      await assign(app, [skill("tdd")], "Planning");
+
+      expect(
+        JSON.stringify({
+          tags: harness.tags,
+          working: harness.working,
+          published: harness.published,
+        }),
+      ).toBe(before);
+    });
+  });
+
+  describe("an item the Harness no longer holds", () => {
+    it("keeps the category of an item only in the Working harness", async () => {
+      const { app, release, draft } = world();
+      release(["tdd"]);
+      await draft(skill("drafted"));
+      await draft(prompt("draft-prompt"));
+      await add(app, "Planning");
+
+      const res = await assign(
+        app,
+        [skill("drafted"), prompt("draft-prompt")],
+        "Planning",
+      );
+
+      expect(res.status).toBe(200);
+      expect((await listOf(app)).categories).toEqual([
+        { name: "Planning", skills: 1, prompts: 1 },
+      ]);
+    });
+
+    it("skips an entry for an item in neither on read, and drops it on the next save", async () => {
+      const { app, fs, harness, release } = world();
+      release(["tdd", "renamed-away"]);
+      await add(app, "Planning");
+      await assign(app, [skill("tdd"), skill("renamed-away")], "Planning");
+      // The skill is renamed outside Maestro and released under its new name.
+      harness.commit("renamed", { tdd: "# tdd\n", "new-name": "# new\n" });
+      harness.tags = [{ name: "v1.1.0", commit: "renamed" }];
+
+      const reading = await listOf(app);
+      const saved = async () => JSON.parse(String(await readConfig(fs)));
+      const beforeSave = await saved();
+      await add(app, "Writing");
+
+      expect(reading).toEqual({
+        categories: [{ name: "Planning", skills: 1, prompts: 0 }],
+        assignments: [{ type: "skill", name: "tdd", category: "Planning" }],
+      } satisfies CategoryList);
+      expect(beforeSave.categories[0].assignments).toHaveLength(2);
+      expect((await saved()).categories[0].assignments).toEqual([
+        { type: "skill", name: "tdd", category: "Planning" },
+      ]);
+    });
+
+    it("drops nothing and refuses no item while the Harness cannot be read", async () => {
+      const { app, fs, harness, release } = world();
+      release(["tdd"]);
+      await add(app, "Planning");
+      await assign(app, [skill("tdd")], "Planning");
+      harness.tags = null;
+
+      const assigned = await assign(app, [skill("unseen")], "Planning");
+      const reading = await listOf(app);
+      await add(app, "Writing");
+
+      expect(assigned.status).toBe(200);
+      expect(reading.categories).toEqual([
+        { name: "Planning", skills: 2, prompts: 0 },
+      ]);
+      const saved = JSON.parse(String(await readConfig(fs)));
+      expect(saved.categories[0].assignments).toHaveLength(2);
+    });
   });
 
   describe("a malformed categories section", () => {

@@ -126,6 +126,7 @@ const meta = {
       ),
     },
     onDeleted: () => {},
+    assignments: undefined,
   },
   decorators: [
     (Story) => (

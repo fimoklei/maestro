@@ -64,6 +64,16 @@ export const promptEditBodySchema = z
 // Trimmed and checked in core, which owns the name rules.
 export const addCategoryBodySchema = z.object({ name: z.string() });
 
+// Names only: core checks each item against what the Harness holds.
+export const assignCategoryBodySchema = z.object({
+  items: z
+    .array(
+      z.object({ type: z.enum(HARNESS_PRIMITIVE_TYPES), name: z.string() }),
+    )
+    .min(1),
+  category: z.string().nullable(),
+});
+
 // Global carries no path, so no untrusted path crosses the boundary on it.
 const targetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("repo"), repoPath: z.string() }),
@@ -298,6 +308,12 @@ export const RELEASE_BODY: RequestShape = {
 export const ADD_CATEGORY_BODY: RequestShape = {
   message: "Nothing was added. Reload the page, then add the category again.",
   detail: "The request carries a name: { name: string }.",
+};
+
+export const ASSIGN_CATEGORY_BODY: RequestShape = {
+  message: "Nothing was changed. Reload the page, then set the category again.",
+  detail:
+    'The request carries the items and a category or null: { items: { type: "skill" | "prompt", name: string }[], category: string | null }.',
 };
 
 export const PATH_BODY: RequestShape = {

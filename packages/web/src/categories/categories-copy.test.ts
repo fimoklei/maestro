@@ -7,9 +7,11 @@ import {
   CATEGORY_NOT_ADDED,
   categoriesUnreadable,
   categoryCounts,
+  categoryNotSet,
   NO_CATEGORIES,
   NO_CATEGORIES_SENTENCE,
   nameExistsError,
+  setCategoryFor,
 } from "./categories-copy";
 
 // Approved sentences, as exact strings.
@@ -59,6 +61,29 @@ describe("Categories copy", () => {
     expect(CATEGORY_NOT_ADDED).toEqual({
       label: "Category not added",
       message: "Select Add category to try again.",
+    });
+  });
+
+  it("names the category menu by what it sets", () => {
+    expect(setCategoryFor("tdd")).toBe("Set category for tdd");
+    expect(setCategoryFor("3 skills")).toBe("Set category for 3 skills");
+  });
+
+  it.each([
+    [
+      "category-not-found",
+      "The category no longer exists. Choose another category.",
+    ],
+    [
+      "item-not-found",
+      "The Harness no longer holds it. Select Re-read Skills to update the list.",
+    ],
+    ["other", "Choose the category again."],
+  ] as const)("states why Set category did not land: %s", (code, message) => {
+    expect(categoryNotSet(code, "Re-read Skills")).toEqual({
+      level: "error",
+      label: "Category not set",
+      message,
     });
   });
 });
