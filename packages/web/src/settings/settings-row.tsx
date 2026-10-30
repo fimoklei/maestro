@@ -2,6 +2,7 @@ import type { GitHubPage } from "@maestro/core";
 import type { ReactNode, Ref } from "react";
 import { cn } from "../ui/cn";
 import { CURRENT_ROW } from "../ui/current-row";
+import { FOCUS_RING_INSET } from "../ui/focus-ring";
 import { GitHubFactLink } from "../ui/github-fact-link";
 
 // One row of a Settings section (#995): the name and at most one sentence
@@ -44,6 +45,7 @@ export function SettingsRow({
     // group/row: a row ⋮ shows on hover and focus.
     "group/row flex flex-wrap items-center gap-x-panel gap-y-inline border-edge border-b px-panel py-cell last:border-b-0",
     selected && CURRENT_ROW,
+    listItem && FOCUS_RING_INSET,
   );
   const content = (
     <>
