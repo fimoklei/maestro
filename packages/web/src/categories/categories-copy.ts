@@ -18,15 +18,19 @@ export const CATEGORY_NAME_LABEL = "Name";
 
 export const REREAD_CATEGORIES = rereadLabel(CATEGORIES);
 
-/** A row's counts, written whole for each case. */
-export function categoryCounts(skills: number, prompts: number): string {
-  const skillWords = `${skills} ${skills === 1 ? "skill" : "skills"}`;
-  const promptWords = `${prompts} ${prompts === 1 ? "prompt" : "prompts"}`;
-  if (skills === 0 && prompts === 0) return "No skills or prompts";
-  if (prompts === 0) return skillWords;
-  if (skills === 0) return promptWords;
-  return `${skillWords} · ${promptWords}`;
-}
+/** A row with nothing in its category. */
+export const NO_ITEMS = "No skills or prompts";
+
+/** A count of one type, as a row's link shows it. */
+export const countWords = (count: number, type: HarnessPrimitiveType) =>
+  `${count} ${count === 1 ? ITEM_WORDS[type].one : ITEM_WORDS[type].many}`;
+
+/** A count link's accessible name: where it leads. */
+export const countInCategory = (
+  count: number,
+  type: HarnessPrimitiveType,
+  categoryName: string,
+) => `${countWords(count, type)} in ${categoryName}`;
 
 export const CATEGORY_NAME_ERRORS: Record<CategoryNameProblem, string> = {
   empty: "Enter a name.",

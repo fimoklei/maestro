@@ -1,4 +1,8 @@
 import type { InventoryPrompt } from "@maestro/core";
+import {
+  CATEGORY_COLUMN,
+  CATEGORY_COLUMN_META,
+} from "../categories/category-view";
 import { createDataTableColumns } from "../ui/data-table";
 import { MachineValue } from "../ui/machine-value";
 import { RowMenu } from "../ui/row-menu";
@@ -19,13 +23,13 @@ export type PromptItem = {
 
 /** One Prompts row: the released prompt, its ⋮ and pane foot items and the read age its hover card ends with. */
 export type PromptRow = InventoryPrompt & {
-  /** Null for none; undefined while the categories are unread. */
-  category: string | null | undefined;
   /** The ⋮ menu's items, in order. */
   menu: PromptItem[];
   /** The pane foot's items, in ⋮ order; it blocks an item the menu omits. */
   foot: PromptItem[];
   readAge: string | null;
+  /** Null for none; undefined while the categories are unread. */
+  category: string | null | undefined;
 };
 
 const NAME_NOT_VALID_READING = reading(
@@ -64,6 +68,11 @@ export const promptsColumns = ({
       header: "Description",
       meta: { className: "text-gray-11", width: 128, priority: 1 },
     }),
+    helper.accessor((row) => row.category ?? "", {
+      id: CATEGORY_COLUMN.value,
+      header: CATEGORY_COLUMN.label,
+      meta: CATEGORY_COLUMN_META,
+    }),
     helper.display({
       id: ACTIONS_COLUMN_ID,
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
@@ -84,4 +93,7 @@ export const promptsColumns = ({
     }),
   ]);
 
-export const DISPLAY_OPTIONS = [{ value: "description", label: "Description" }];
+export const DISPLAY_OPTIONS = [
+  { value: "description", label: "Description" },
+  CATEGORY_COLUMN,
+];

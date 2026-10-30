@@ -1,6 +1,7 @@
 import type { CategoryList, InventorySkill } from "@maestro/core";
 import { Puzzle, Table2, Tag } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { categoryView } from "../categories/category-view";
 import { SetCategoryBarAction } from "../categories/set-category-bar-action";
 import { SetCategoryMenu } from "../categories/set-category-menu";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
@@ -145,11 +146,17 @@ export function SkillsView({
   clone,
   onDeleted,
   assignments,
+  categoryNames,
+  initialCategory,
 }: {
   /** Undefined until the Inventory has been read once. */
   primitives: InventorySkill[] | undefined;
   /** Each item's category; undefined while unread, which leaves Set category out. */
   assignments: CategoryList["assignments"] | undefined;
+  /** The category list's names in order; undefined while unread. */
+  categoryNames: readonly string[] | undefined;
+  /** The category Filter starts at, from the URL; null for All. */
+  initialCategory: string | null;
   repos: RegisteredRepo[];
   registryReady: boolean;
   // Every deploy target, for the per-row status and reach (#272). Empty until
@@ -252,13 +259,16 @@ export function SkillsView({
   });
 
   const view = useViewOptions(rows, {
-    oneOf: [],
+    ...categoryView({
+      names: categoryNames,
+      of: (row) => row.category,
+      rows,
+      initial: initialCategory,
+    }),
     status: {
       words: STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
     },
-    groupings: [],
-    defaultGrouping: "none",
     columns: DISPLAY_OPTIONS,
   });
 

@@ -16,8 +16,15 @@ const SRC = join(import.meta.dirname);
 
 const PLAIN: Record<string, Record<string, string>> = {
   "categories/categories-copy.ts": {
+    "`${countWords(count, type)} in ${categoryName}`": "link label",
     "`Rename ${name}`": "dialog title",
     "`Delete ${name}`": "dialog title",
+  },
+  "categories/category-count-links.tsx": {
+    "`?${new URLSearchParams({ category: name })}`": "link URL",
+  },
+  "categories/category-view.ts": {
+    "`category:${name}`": "key",
   },
   "deploy-state/import-local-edits-copy.ts": {
     "`${IMPORT_LOCAL_EDITS} from ${target}`": "dialog title",

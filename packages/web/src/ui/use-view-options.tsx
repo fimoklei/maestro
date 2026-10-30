@@ -41,8 +41,8 @@ export interface ViewOptionsConfig<T extends RowData> {
   groupings: readonly (Option & { groups: Groups<T> })[];
   /** The grouping until the operator picks one; it may change between renders. */
   defaultGrouping: string;
-  /** The columns Display can switch off, by column id. */
-  columns: readonly Option[];
+  /** The columns Display can switch off, by column id; `off` starts one hidden. */
+  columns: readonly (Option & { off?: boolean })[];
 }
 
 export type ViewOptions<T extends RowData> = {
@@ -77,7 +77,14 @@ export function useViewOptions<T extends RowData>(
   const [statuses, setStatuses] = useState<ReadonlySet<string>>(new Set());
   const [pickedGrouping, setGrouping] = useState<string | null>(null);
   const grouping = pickedGrouping ?? config.defaultGrouping;
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(
+    () =>
+      new Set(
+        config.columns
+          .filter((column) => column.off)
+          .map((column) => column.value),
+      ),
+  );
 
   const groupings = [
     { value: "none", label: NONE, groups: undefined },
@@ -198,7 +205,10 @@ export function useViewOptions<T extends RowData>(
           {
             kind: "check",
             label: COLUMNS_LABEL,
-            options: config.columns,
+            options: config.columns.map(({ value, label }) => ({
+              value,
+              label,
+            })),
             values: new Set(
               config.columns
                 .map((column) => column.value)

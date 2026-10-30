@@ -180,6 +180,44 @@ describe("Settings › Categories", () => {
     ]);
   });
 
+  it("links each count to Skills or Prompts filtered to its category", async () => {
+    stubServer({
+      categories: [
+        category("Code review", 2, 1),
+        category("Release notes"),
+        category("Writing", 1, 0),
+        category("Q&A", 0, 1),
+      ],
+    });
+    renderPage();
+
+    await screen.findByText("Code review");
+    const links = screen.getAllByRole("link");
+    expect(
+      links.map((link) => [
+        link.textContent,
+        link.getAttribute("aria-label"),
+        link.getAttribute("href"),
+      ]),
+    ).toEqual([
+      [
+        "2 skills",
+        "2 skills in Code review",
+        "/inventory/skills?category=Code+review",
+      ],
+      [
+        "1 prompt",
+        "1 prompt in Code review",
+        "/inventory/prompts?category=Code+review",
+      ],
+      ["1 skill", "1 skill in Writing", "/inventory/skills?category=Writing"],
+      ["1 prompt", "1 prompt in Q&A", "/inventory/prompts?category=Q%26A"],
+    ]);
+    expect(
+      within(rows()[1] as HTMLElement).queryByRole("link"),
+    ).not.toBeInTheDocument();
+  });
+
   it("adds a category: the dialog closes, the new row sits selected in its place, and the add is announced", async () => {
     stubServer({ categories: [category("Code review"), category("Planning")] });
     renderPage();

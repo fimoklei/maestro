@@ -2,6 +2,7 @@ import type { CategoryList, InventoryPrompt } from "@maestro/core";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { categoryView } from "../categories/category-view";
 import { SetCategoryBarAction } from "../categories/set-category-bar-action";
 import { SetCategoryMenu } from "../categories/set-category-menu";
 import { promptReadNotice } from "../harness/import-prompt-copy";
@@ -100,11 +101,17 @@ export function PromptsView({
   onDeleted,
   onEdited,
   assignments,
+  categoryNames,
+  initialCategory,
 }: {
   /** Undefined until the Inventory has been read once. */
   prompts: InventoryPrompt[] | undefined;
   /** Each item's category; undefined while unread, which leaves Set category and the selection out. */
   assignments: CategoryList["assignments"] | undefined;
+  /** The category list's names in order; undefined while unread. */
+  categoryNames: readonly string[] | undefined;
+  /** The category Filter starts at, from the URL; null for All. */
+  initialCategory: string | null;
   /** The connected Harness: undefined until read, null where its read failed. */
   harness: HarnessFacts | null | undefined;
   /** Every reading the prompts rest on. */
@@ -253,8 +260,16 @@ export function PromptsView({
     };
   });
 
+  const byCategory = categoryView({
+    names: categoryNames,
+    of: (row: PromptRow) => row.category,
+    rows,
+    initial: initialCategory,
+  });
   const view = useViewOptions(rows, {
+    ...byCategory,
     oneOf: [
+      ...byCategory.oneOf,
       {
         label: FINDING_LABEL,
         options: [{ value: NAME_NOT_VALID, label: NAME_NOT_VALID }],
@@ -263,8 +278,6 @@ export function PromptsView({
       },
     ],
     status: null,
-    groupings: [],
-    defaultGrouping: "none",
     columns: DISPLAY_OPTIONS,
   });
 

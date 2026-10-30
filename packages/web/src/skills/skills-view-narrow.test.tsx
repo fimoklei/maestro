@@ -44,6 +44,8 @@ describe("Skills band 2 at a narrow window", () => {
     renderWithQuery(
       <SkillsView
         assignments={undefined}
+        categoryNames={undefined}
+        initialCategory={null}
         primitives={["tdd", "caveman", "brain"].map((name) => ({
           type: "skill",
           name,

@@ -1,4 +1,8 @@
 import type { InventorySkill } from "@maestro/core";
+import {
+  CATEGORY_COLUMN,
+  CATEGORY_COLUMN_META,
+} from "../categories/category-view";
 import type { SkillDeployment } from "../inventory/skill-deployments";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
@@ -92,6 +96,11 @@ export const skillsColumns = ({
       // Drops out first on a narrow window (#992).
       meta: { className: "text-gray-11", width: 128, priority: 1 },
     }),
+    helper.accessor((row) => row.category ?? "", {
+      id: CATEGORY_COLUMN.value,
+      header: CATEGORY_COLUMN.label,
+      meta: CATEGORY_COLUMN_META,
+    }),
     {
       ...helper.accessor("targets", {
         header: "Targets",
@@ -137,5 +146,6 @@ export const skillsColumns = ({
 export const DISPLAY_OPTIONS = [
   { value: "status", label: "Status" },
   { value: "description", label: "Description" },
+  CATEGORY_COLUMN,
   { value: "targets", label: "Targets" },
 ];

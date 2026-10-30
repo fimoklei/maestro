@@ -33,6 +33,7 @@ import {
   htmlElement,
   jsonResponse,
   measureAs,
+  noCategories,
   passTime,
   readyView,
   renderWithQuery,
@@ -67,6 +68,8 @@ type Row = {
   reading: StatusStillReading | null;
   /** Header names in order: checkbox, name, Status, secondary, GitHub, ⋮. */
   columns: string[];
+  /** The columns off until Display switches them on. */
+  off: string[];
   actions: RowActions;
   leaves: RowLeaves;
 };
@@ -123,19 +126,21 @@ const skillsLeaves = (): RowLeaves => {
     render: () => {
       vi.stubGlobal(
         "fetch",
-        vi.fn(async (input: RequestInfo | URL) =>
-          String(input).startsWith("/api/registry")
-            ? jsonResponse({ repos: [] })
-            : String(input) === "/api/inventory/primitives"
-              ? jsonResponse({
-                  primitives: names.map((name) => ({
-                    type: "skill",
-                    name,
-                    description: "A skill.",
-                  })),
-                  unreadTypes: [],
-                })
-              : new Promise<Response>(() => {}),
+        vi.fn(
+          async (input: RequestInfo | URL) =>
+            noCategories(input) ??
+            (String(input).startsWith("/api/registry")
+              ? jsonResponse({ repos: [] })
+              : String(input) === "/api/inventory/primitives"
+                ? jsonResponse({
+                    primitives: names.map((name) => ({
+                      type: "skill",
+                      name,
+                      description: "A skill.",
+                    })),
+                    unreadTypes: [],
+                  })
+                : new Promise<Response>(() => {})),
         ),
       );
       return renderWithQuery(
@@ -291,6 +296,8 @@ const renderSkillsRow = () => {
   renderWithQuery(
     <SkillsView
       assignments={undefined}
+      categoryNames={undefined}
+      initialCategory={null}
       primitives={[TDD]}
       repos={[]}
       registryReady
@@ -424,6 +431,7 @@ const ON_TABLE_SCREEN: Row[] = [
       name: "Claude Code",
     },
     columns: ["Target", "Status", "Release", "Skills", "GitHub", "Actions"],
+    off: [],
     // A target row removes nothing; its skills' removal sits in the pane's
     // sub-list. Every item that stays on the screen opens the pane.
     actions: {
@@ -500,6 +508,7 @@ const ON_TABLE_SCREEN: Row[] = [
       "Also in",
       "Actions",
     ],
+    off: [],
     // A proposed deletion in review: withdrawn or undone in the clone.
     actions: {
       render: () => {
@@ -556,10 +565,12 @@ const ON_TABLE_SCREEN: Row[] = [
     render: () => {
       vi.stubGlobal(
         "fetch",
-        vi.fn(async (input: RequestInfo | URL) =>
-          String(input).startsWith("/api/registry")
-            ? jsonResponse({ repos: [] })
-            : jsonResponse({ primitives: [], unreadTypes: [] }),
+        vi.fn(
+          async (input: RequestInfo | URL) =>
+            noCategories(input) ??
+            (String(input).startsWith("/api/registry")
+              ? jsonResponse({ repos: [] })
+              : jsonResponse({ primitives: [], unreadTypes: [] })),
         ),
       );
       renderWithQuery(
@@ -572,10 +583,12 @@ const ON_TABLE_SCREEN: Row[] = [
       render: () => {
         vi.stubGlobal(
           "fetch",
-          vi.fn(async (input: RequestInfo | URL) =>
-            String(input).startsWith("/api/registry")
-              ? jsonResponse({ repos: [] })
-              : jsonResponse({ primitives: [], unreadTypes: [] }),
+          vi.fn(
+            async (input: RequestInfo | URL) =>
+              noCategories(input) ??
+              (String(input).startsWith("/api/registry")
+                ? jsonResponse({ repos: [] })
+                : jsonResponse({ primitives: [], unreadTypes: [] })),
           ),
         );
         renderWithQuery(
@@ -602,6 +615,8 @@ const ON_TABLE_SCREEN: Row[] = [
         renderWithQuery(
           <SkillsView
             assignments={undefined}
+            categoryNames={undefined}
+            initialCategory={null}
             primitives={[TDD]}
             repos={[]}
             registryReady
@@ -635,9 +650,11 @@ const ON_TABLE_SCREEN: Row[] = [
       "Name",
       "Status",
       "Description",
+      "Category",
       "Targets",
       "Actions",
     ],
+    off: ["Category"],
     actions: {
       render: renderSkillsRow,
       name: "tdd",
@@ -660,7 +677,8 @@ const ON_TABLE_SCREEN: Row[] = [
     // prompts-panel.test.tsx covers that card.
     card: null,
     reading: null,
-    columns: ["Select prompts", "Name", "Description", "Actions"],
+    columns: ["Select prompts", "Name", "Description", "Category", "Actions"],
+    off: ["Category"],
     // Copy prompt writes the clipboard, never the server, so no write is held.
     actions: {
       render: () => renderPrompts(() => ["pr-review"]),
@@ -689,6 +707,7 @@ const ON_TABLE_SCREEN: Row[] = [
     card: null,
     reading: null,
     columns: ["Repository", "Status", "Folder path", "GitHub", "Actions"],
+    off: [],
     actions: {
       render: () => {
         stubRegistry({
@@ -839,13 +858,14 @@ describe("every table screen", () => {
 
     it("orders its columns checkbox, name, Status, secondary, GitHub, ⋮", async () => {
       (row.card?.render ?? row.render)();
+      const shown = row.columns.filter((column) => !row.off.includes(column));
 
       const grid = await screen.findByRole("grid");
       const headers = within(grid).getAllByRole("columnheader");
       expect(
         headers.map((header) => header.textContent?.replace(/[↑↓]/g, "")),
-      ).toEqual(row.columns);
-      const name = row.columns.find((column) => !column.startsWith("Select"));
+      ).toEqual(shown);
+      const name = shown.find((column) => !column.startsWith("Select"));
       expect(
         headers
           .filter((header) => header.style.width === "")
@@ -853,6 +873,30 @@ describe("every table screen", () => {
           .filter((column) => !column?.startsWith("Select")),
       ).toEqual([name]);
     });
+
+    it.runIf(row.off.length > 0)(
+      "shows a column that starts off in its place once Display switches it on",
+      async () => {
+        (row.card?.render ?? row.render)();
+        const grid = await screen.findByRole("grid");
+
+        for (const column of row.off) {
+          await userEvent.click(
+            screen.getByRole("button", { name: /^Display/ }),
+          );
+          await userEvent.click(
+            await screen.findByRole("menuitemcheckbox", { name: column }),
+          );
+          await userEvent.keyboard("{Escape}");
+        }
+
+        expect(
+          within(grid)
+            .getAllByRole("columnheader")
+            .map((header) => header.textContent?.replace(/[↑↓]/g, "")),
+        ).toEqual(row.columns);
+      },
+    );
 
     it("spins Re-read while a pressed re-read runs", async () => {
       row.render();

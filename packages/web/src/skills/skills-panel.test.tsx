@@ -7,6 +7,7 @@ import { useRereadInventory } from "../shell/use-reread-inventory";
 import {
   expectTooltipCause,
   jsonResponse,
+  noCategories,
   renderWithQuery,
 } from "../test-utils";
 import { SkillsPanel } from "./skills-panel";
@@ -67,6 +68,8 @@ function stubApi(primitives: unknown[], repos: unknown[]) {
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      const none = noCategories(input);
+      if (none) return none;
       if (url.startsWith("/api/registry")) {
         return jsonResponse({ repos }, 200);
       }
@@ -74,6 +77,7 @@ function stubApi(primitives: unknown[], repos: unknown[]) {
         return jsonResponse({ primitives: [], skipped: [] }, 200);
       }
       return (
+        noCategories(input) ??
         withoutHarness(input) ??
         jsonResponse({ primitives, unreadTypes: [] }, 200)
       );
@@ -191,6 +195,7 @@ describe("SkillsPanel", () => {
       "fetch",
       vi.fn(
         async (input: RequestInfo | URL) =>
+          noCategories(input) ??
           withoutHarness(input) ??
           (String(input).startsWith("/api/registry")
             ? new Promise<Response>(() => undefined)
@@ -228,6 +233,7 @@ describe("SkillsPanel", () => {
       "fetch",
       vi.fn(
         async (input: RequestInfo | URL) =>
+          noCategories(input) ??
           withoutHarness(input) ??
           (String(input).startsWith("/api/registry")
             ? new Promise<Response>(() => undefined)
@@ -259,6 +265,7 @@ describe("SkillsPanel", () => {
       "fetch",
       vi.fn(
         async (input: RequestInfo | URL) =>
+          noCategories(input) ??
           withoutHarness(input) ??
           (String(input).startsWith("/api/registry")
             ? jsonResponse({ message: "boom" }, 500)
@@ -364,6 +371,8 @@ describe("SkillsPanel", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
+        const none = noCategories(input);
+        if (none) return none;
         if (url.startsWith("/api/registry")) return jsonResponse({ repos: [] });
         const harness = withoutHarness(input);
         if (harness !== null) return harness;
@@ -422,6 +431,8 @@ describe("SkillsPanel", () => {
         "fetch",
         vi.fn(async (input: RequestInfo | URL) => {
           const url = String(input);
+          const none = noCategories(input);
+          if (none) return none;
           if (failing.some((path) => url.startsWith(path)))
             return jsonResponse({ error: "unreadable" }, 503);
           if (url === "/api/harness")
@@ -436,6 +447,7 @@ describe("SkillsPanel", () => {
             return jsonResponse({ primitives: [], skipped: [], tools });
           if (url.startsWith("/api/drift")) return jsonResponse({ behind: [] });
           return (
+            noCategories(input) ??
             withoutHarness(input) ??
             jsonResponse({
               primitives: [
@@ -508,6 +520,8 @@ describe("SkillsPanel", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
+        const none = noCategories(input);
+        if (none) return none;
         if (url.startsWith("/api/registry")) return jsonResponse({ repos: [] });
         const harness = withoutHarness(input);
         if (harness !== null) return harness;

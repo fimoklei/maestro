@@ -247,3 +247,30 @@ describe("useViewOptions default grouping", () => {
     expect(result.current.groups).toBe(BY_LIGHT.groups);
   });
 });
+
+describe("useViewOptions columns", () => {
+  it("starts a column marked off hidden, until Display switches it on", () => {
+    const { result } = renderHook(() =>
+      useViewOptions(PLANTS, {
+        oneOf: [],
+        status: null,
+        groupings: [],
+        defaultGrouping: "none",
+        columns: [
+          { value: "status", label: "Status" },
+          { value: "soil", label: "Soil", off: true },
+        ],
+      }),
+    );
+    const columns = () => {
+      const section = result.current.menus[1].sections[0];
+      if (section?.kind !== "check") throw new Error("no columns section");
+      return section;
+    };
+
+    expect([...result.current.hidden]).toEqual(["soil"]);
+    expect([...columns().values]).toEqual(["status"]);
+    act(() => columns().onToggle("soil"));
+    expect([...result.current.hidden]).toEqual([]);
+  });
+});

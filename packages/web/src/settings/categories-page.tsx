@@ -5,11 +5,11 @@ import {
   CATEGORIES_READ_FAILED,
   CATEGORIES_SENTENCE,
   CATEGORY_NOT_ADDED,
-  categoryCounts,
   NO_CATEGORIES,
   NO_CATEGORIES_SENTENCE,
   REREAD_CATEGORIES,
 } from "../categories/categories-copy";
+import { CategoryCountLinks } from "../categories/category-count-links";
 import { useAddCategory, useCategories } from "../categories/use-categories";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { EmptyState } from "../ui/empty-state";
@@ -164,24 +164,29 @@ export function CategoriesPage() {
                 <SettingsRow
                   key={category.name}
                   name={category.name}
-                  value={categoryCounts(category.skills, category.prompts)}
-                  machine={false}
                   listItem
                   selected={category.name === selected}
                   rowRef={category.name === selected ? selectedRef : undefined}
                   control={
-                    <RowMenu
-                      label={rowActionsLabel(category.name)}
-                      tabStop
-                      busy={false}
-                      items={edits.items(category).map((item) => ({
-                        ...item,
-                        onSelect: () => {
-                          deletedAt.current = index;
-                          item.onSelect?.();
-                        },
-                      }))}
-                    />
+                    <>
+                      <CategoryCountLinks
+                        name={category.name}
+                        skills={category.skills}
+                        prompts={category.prompts}
+                      />
+                      <RowMenu
+                        label={rowActionsLabel(category.name)}
+                        tabStop
+                        busy={false}
+                        items={edits.items(category).map((item) => ({
+                          ...item,
+                          onSelect: () => {
+                            deletedAt.current = index;
+                            item.onSelect?.();
+                          },
+                        }))}
+                      />
+                    </>
                   }
                 />
               ))

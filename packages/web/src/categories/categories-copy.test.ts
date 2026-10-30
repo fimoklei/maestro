@@ -8,12 +8,14 @@ import {
   CATEGORY_NOT_ADDED,
   CATEGORY_NOT_SET_AFTER_EDIT,
   categoriesUnreadable,
-  categoryCounts,
   categoryNotSet,
+  countInCategory,
+  countWords,
   deleteMoves,
   emptyCategoryDeleted,
   NO_CATEGORIES,
   NO_CATEGORIES_SENTENCE,
+  NO_ITEMS,
   nameExistsError,
   notDeleted,
   notRenamed,
@@ -32,15 +34,22 @@ describe("Categories copy", () => {
   });
 
   it.each([
-    [0, 0, "No skills or prompts"],
-    [1, 0, "1 skill"],
-    [3, 0, "3 skills"],
-    [0, 1, "1 prompt"],
-    [0, 2, "2 prompts"],
-    [1, 1, "1 skill · 1 prompt"],
-    [2, 1, "2 skills · 1 prompt"],
-  ])("counts %i skills and %i prompts as %s", (skills, prompts, words) => {
-    expect(categoryCounts(skills, prompts)).toBe(words);
+    [1, "skill", "1 skill"],
+    [3, "skill", "3 skills"],
+    [1, "prompt", "1 prompt"],
+    [2, "prompt", "2 prompts"],
+  ] as const)("counts %i %s as %s", (count, type, words) => {
+    expect(countWords(count, type)).toBe(words);
+  });
+
+  it("names an empty row, and where each count link leads", () => {
+    expect(NO_ITEMS).toBe("No skills or prompts");
+    expect(countInCategory(3, "skill", "Planning")).toBe(
+      "3 skills in Planning",
+    );
+    expect(countInCategory(1, "prompt", "Planning")).toBe(
+      "1 prompt in Planning",
+    );
   });
 
   it("states each name refusal as one field line", () => {
