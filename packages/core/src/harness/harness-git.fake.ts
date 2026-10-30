@@ -427,9 +427,36 @@ export class InMemoryHarnessGit implements HarnessGitPort {
         tree: hash ?? null,
         commit,
         authorship: this.authorshipOf(leaf),
+        landed: this.hasLanded(commit, type, ref.name, hash ?? null),
       };
     }
     return refs;
+  }
+
+  // As the adapter: the tip is on origin/HEAD, or a commit the branch lacks
+  // holds its content.
+  private hasLanded(
+    branch: string | null,
+    type: HarnessPrimitiveType,
+    name: string,
+    hash: string | null,
+  ): boolean {
+    if (branch === null || this.tip === null) {
+      return false;
+    }
+    const onBranch = new Set(this.history(branch));
+    const base = this.history(this.tip);
+    return (
+      base.includes(branch) ||
+      base
+        .filter((id) => !onBranch.has(id))
+        .some((id) => {
+          const content = this.contentAt(id);
+          return (
+            content !== null && (hashesOf(content, type)[name] ?? null) === hash
+          );
+        })
+    );
   }
 
   async mergeBaseCommit(

@@ -385,8 +385,9 @@ const releaseStage = (input: StageInput): HarnessStageRead => {
 };
 
 // A branch whose tip is a merged request's head commit is spent. Without a
-// review read proving that, content equal to origin/HEAD is the fallback.
-// A bounded (incomplete) read proves nothing spent.
+// review read proving that, content that landed on or equals origin/HEAD is
+// the fallback: a merged branch left behind after a withdrawal from release
+// differs from origin/HEAD. A bounded (incomplete) read proves nothing spent.
 const currentProposal = (
   hashes: HarnessHashes,
   ref: PrimitiveRef,
@@ -411,7 +412,7 @@ const currentProposal = (
       (request) =>
         request.state === "merged" && request.headCommit === branch.commit,
     );
-  if (spent) {
+  if (spent || branch.landed) {
     return null;
   }
   return tree !== (hashes.remote[ref.name] ?? null) ? { tree } : null;

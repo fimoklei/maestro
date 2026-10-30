@@ -118,6 +118,9 @@ export type HarnessPromoteRef = {
   commit: string | null;
   // Judged over origin/HEAD.
   authorship: BranchAuthorship;
+  // origin/HEAD held the branch's content in a commit the branch lacks: a
+  // squash, rebase or merge commit landed it. False where unreadable.
+  landed: boolean;
 };
 
 // Hash per primitive name, for one type; in `promote` the name is the one its

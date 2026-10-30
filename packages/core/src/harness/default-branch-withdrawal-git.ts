@@ -9,7 +9,7 @@ import { gitOptions, NO_HOOKS } from "../git/non-interactive";
 import { runGitText } from "../git/run-git-text";
 import { classifyGitError } from "./classify-git-error";
 import { classifyPushFailure } from "./classify-push-failure";
-import { primitivePath } from "./harness-primitive";
+import { primitivePathspec } from "./harness-primitive";
 import {
   commitPrimitivesOnto,
   type PrimitiveChange,
@@ -21,8 +21,6 @@ import type {
 } from "./read-harness-state";
 
 const run = promisify(execFile);
-
-const literal = (path: string) => `:(literal)${path}`;
 
 // Null where `source` could not be read: never a guess at what it holds.
 const changesFrom = async (
@@ -181,11 +179,5 @@ const follow = async (
     return;
   }
   await step(["update-ref", `refs/remotes/origin/${defaultBranch}`, commit]);
-  await step([
-    "reset",
-    "-q",
-    commit,
-    "--",
-    ...refs.map((ref) => literal(primitivePath(ref))),
-  ]);
+  await step(["reset", "-q", commit, "--", ...refs.map(primitivePathspec)]);
 };

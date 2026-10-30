@@ -42,6 +42,7 @@ const onBranch = (
   tree,
   commit: "branch-tip",
   authorship,
+  landed: false,
 });
 
 const SETTLED: HarnessSkillTrees = {
@@ -644,7 +645,12 @@ describe("A spent proposal branch", () => {
   const ahead: HarnessSkillTrees = {
     remote: { tdd: "same" },
     promote: {
-      tdd: { tree: "pushed", commit: TIP, authorship: "own" as const },
+      tdd: {
+        tree: "pushed",
+        commit: TIP,
+        authorship: "own" as const,
+        landed: false,
+      },
     },
     local: { tdd: "same" },
     working: { tdd: "same" },
@@ -696,6 +702,27 @@ describe("A spent proposal branch", () => {
     expect(statuses(built.proposal)).toEqual(["tdd:new-local-work"]);
   });
 
+  // A merged branch left on GitHub after its item was withdrawn from release.
+  it("counts a branch whose content landed on the default branch as spent without a review read", () => {
+    const trees = {
+      ...ahead,
+      promote: {
+        tdd: {
+          tree: "pushed",
+          commit: TIP,
+          authorship: "own" as const,
+          landed: true,
+        },
+      },
+      working: { tdd: "pushed" },
+    };
+    const built = stages({
+      trees,
+      review: { outcome: "unavailable", reason: "no-gh" },
+    });
+    expect(statuses(built.proposal)).toEqual(["tdd:not-yet-proposed"]);
+  });
+
   it("keeps a branch with an open request pending review", () => {
     const review = reviewOf([
       request({ number: 44, state: "merged", headCommit: TIP }),
@@ -722,7 +749,12 @@ describe("A spent proposal branch", () => {
     const trees = {
       ...ahead,
       promote: {
-        tdd: { tree: "pushed", commit: null, authorship: "own" as const },
+        tdd: {
+          tree: "pushed",
+          commit: null,
+          authorship: "own" as const,
+          landed: false,
+        },
       },
     };
     expect(statuses(stages({ trees, review: mergedAtTip }).review)).toEqual([
@@ -925,7 +957,12 @@ describe("Local restoration eligibility", () => {
     const deleting: HarnessSkillTrees = {
       ...DELETED,
       promote: {
-        tdd: { tree: null, commit: null, authorship: "own" as const },
+        tdd: {
+          tree: null,
+          commit: null,
+          authorship: "own" as const,
+          landed: false,
+        },
       },
     };
     const built = stages({ trees: deleting, review: reviewOf([request()]) });
@@ -952,7 +989,12 @@ describe("Local restoration eligibility", () => {
     const restored: HarnessSkillTrees = {
       remote: { tdd: "same" },
       promote: {
-        tdd: { tree: null, commit: null, authorship: "own" as const },
+        tdd: {
+          tree: null,
+          commit: null,
+          authorship: "own" as const,
+          landed: false,
+        },
       },
       local: { tdd: "same" },
       working: { tdd: "same" },

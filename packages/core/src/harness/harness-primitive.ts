@@ -32,6 +32,10 @@ export const primitiveEntry = ({ type, name }: PrimitiveRef): string =>
 export const primitivePath = (ref: PrimitiveRef): string =>
   `${primitiveDir(ref.type)}/${primitiveEntry(ref)}`;
 
+// Literal, so git never reads a glob character in a name as a pattern.
+export const primitivePathspec = (ref: PrimitiveRef): string =>
+  `:(literal)${primitivePath(ref)}`;
+
 export const primitiveObject = (type: HarnessPrimitiveType): "tree" | "blob" =>
   type === "skill" ? "tree" : "blob";
 

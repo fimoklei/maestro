@@ -7,6 +7,7 @@ import {
   type PrimitiveRef,
   primitiveEntry,
   primitivePath,
+  primitivePathspec,
   proposalBranch,
   proposalBranchLeaf,
 } from "./harness-primitive";
@@ -35,7 +36,7 @@ export async function readUnproposedFiles(
     return null;
   }
   const path = primitivePath(ref);
-  const spec = `:(literal)${path}`;
+  const spec = primitivePathspec(ref);
   try {
     const differing = await listPaths(root, [
       "diff",
