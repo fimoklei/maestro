@@ -15,6 +15,10 @@ import { ReleaseDialog } from "./harness/release-dialog";
 const SRC = join(import.meta.dirname);
 
 const PLAIN: Record<string, Record<string, string>> = {
+  "categories/categories-copy.ts": {
+    "`Rename ${name}`": "dialog title",
+    "`Delete ${name}`": "dialog title",
+  },
   "deploy-state/import-local-edits-copy.ts": {
     "`${IMPORT_LOCAL_EDITS} from ${target}`": "dialog title",
   },
