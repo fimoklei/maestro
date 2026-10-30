@@ -5,7 +5,7 @@ paths:
 
 # Frontend conventions (project-specific for Maestro)
 
-React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer boundary lives in `architecture.md`.
+React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui**. The layer boundary lives in `architecture.md`.
 
 ## Server-state vs UI-state — the core split
 
@@ -45,12 +45,12 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer bo
   reference that a dependency array or a memoized child needs.
 - Co-locate a component's pure helpers and its sibling unit test.
 
-## Styling & components (ADR-0004)
+## Styling & components
 
 - **Tokens are the source of truth** (CSS variables via Tailwind v4 `@theme`). Never hard-coded values.
 - **shadcn/ui components are owned:** copied into the repo and restyled to our tokens. No externally-themed component library (MUI/Mantine).
-- New components land with a Storybook story (ADR-0004, ADR-0033).
-- Styled UI lands in one pass *after* working behaviour (ADR-0004) — do not style ahead.
+- New components land with a Storybook story.
+- Styled UI lands in one pass *after* working behaviour — do not style ahead.
 
 ## Stories (Storybook)
 
@@ -63,7 +63,7 @@ A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md
 - CSF3 (`satisfies Meta<typeof X>`, `StoryObj`); no legacy `storiesOf`.
 - Title is `Group/Component`; reuse existing groups.
 
-## Copy implementation (ADR-0025)
+## Copy implementation
 
 - Keep user-facing text in `packages/web`, centralised per feature. Author a
   notice's heading, sentence, `detail` and action label together, keyed by error

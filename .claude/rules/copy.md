@@ -7,7 +7,7 @@ paths:
 # Copy (project-specific for Maestro)
 
 Applies to every word the cockpit shows, and to the server's request-shape
-messages. See ADR-0025 for the decision.
+messages.
 
 Write simple English for a developer who knows git and a terminal but not APM.
 Use short sentences, familiar words and direct instructions, guided by
@@ -86,32 +86,32 @@ Notice: the outcome alone hides the next step
                  The skill was not removed. Its files changed after deployment.
                  Deploy again to restore the released files. Then remove the skill.
 
-Notice: the control is named with Press (#860)
+Notice: the control is named with Press
   Weak           Status out of date
                  Press Retry check to read GitHub again.
   Outcome-first  Status out of date
                  Select Re-read Harness to read GitHub again.
 
-Detail sentence: cause without the next step (#857)
+Detail sentence: cause without the next step
   Weak           The proposal branch is pushed, but no pull request opens it.
   Outcome-first  The proposal branch is on GitHub without a pull request.
                  Select Create pull request to open one.
 
-Empty state: off-form, with a control label that differs from the button (#867)
+Empty state: off-form, with a control label that differs from the button
   Weak           Nothing to propose
                  Edit a skill in your clone, or press Import skill, to propose a change.
   Outcome-first  No changes yet
                  Skills you import or edit in your clone will appear here.
 
-Status chip: the word disagrees with what happened (#889)
+Status chip: the word disagrees with what happened
   Weak           Pull request missing   (shown after the pull request was merged)
   Outcome-first  Proposal merged
 
-Tooltip cause: a shipped sentence already says it (#1593)
+Tooltip cause: a shipped sentence already says it
   Weak           Maestro detected no tool for Global on this machine.
   Outcome-first  Install Claude Code or Codex to deploy skills globally.
 
-Tooltip cause: words beyond the cause (#1593)
+Tooltip cause: words beyond the cause
   Weak           Choose a target to deploy to.
   Outcome-first  Choose a target.
 ```

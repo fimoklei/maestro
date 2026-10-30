@@ -1,6 +1,6 @@
 # Architecture boundaries (project-specific for Maestro)
 
-Where each kind of code lives. Package shape fixed by ADR-0002.
+Where each kind of code lives.
 
 ## The three layers
 
@@ -16,7 +16,7 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 
 - Outside-world access (filesystem, `apm` CLI, git) sits behind a **port** (an interface) in `core`.
 - Pure logic depends on the port, not the concrete adapter.
-- Adapters live in `core`, not `server` (ADR-0002).
+- Adapters live in `core`, not `server`.
 - Test split (`testing.md`): pure logic → sibling unit tests; adapters → `tests/integration/`.
 
 ## Validation
