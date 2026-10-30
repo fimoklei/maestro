@@ -24,6 +24,9 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 - Validate where data crosses a trust boundary: HTTP requests in `server`, and any parse of external data (lockfiles, `apm.yml`, `apm` output).
 - Order: normalize → validate with Zod → pass typed data inward.
 - Inside `core`, data is trusted; the boundary already checked it.
+- Derive a validated shape's type from its schema (`z.infer`; `z.input` or
+  `z.output` when a transform changes the shape). Never keep a hand-written
+  twin type.
 - Untrusted-input specifics → `security.md`.
 - Give every `as` cast a reason a reviewer can check. A cast on a copy table or
   a notice needs a test that renders its result.
