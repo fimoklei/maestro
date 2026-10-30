@@ -3,8 +3,11 @@ export const classifyGitError = <T>(
   error: unknown,
   classify: (stderr: string) => T,
 ): "offline" | T => {
-  const killed = (error as { killed?: boolean }).killed === true;
-  return killed
-    ? "offline"
-    : classify(String((error as { stderr?: string }).stderr));
+  if (typeof error !== "object" || error === null) {
+    return classify("");
+  }
+  if ("killed" in error && error.killed === true) {
+    return "offline";
+  }
+  return classify("stderr" in error ? String(error.stderr) : "");
 };

@@ -127,7 +127,8 @@ describe("Harness withdraw from release", () => {
 
   it("selects the old name's row under Pending proposal after withdrawing a rename", async () => {
     // tdd was renamed to testing and merged; the withdrawal brings tdd back
-    // and leaves two proposals: testing removed, tdd added.
+    // to the next release while the author keeps testing on disk, so tdd
+    // reads as deleted and testing as added, neither pending release.
     const RENAMED: HarnessState = withStages(ON_DISK, {
       release: [
         row("pending-release", "testing", "not-yet-released", {
@@ -139,23 +140,16 @@ describe("Harness withdraw from release", () => {
     });
     const RENAME_WITHDRAWN: HarnessState = withStages(ON_DISK, {
       proposal: [
-        row("pending-proposal", "testing", "not-yet-proposed", {
-          change: "deletion",
-          alsoIn: ["pending-release"],
-        }),
         row("pending-proposal", "tdd", "not-yet-proposed", {
-          onDisk: true,
-          change: "addition",
+          change: "deletion",
           remoteTree: "remote-tdd",
         }),
-      ],
-      release: [
-        row("pending-release", "testing", "not-yet-released", {
-          change: "rename",
-          previousName: "tdd",
-          alsoIn: ["pending-proposal"],
+        row("pending-proposal", "testing", "not-yet-proposed", {
+          onDisk: true,
+          change: "addition",
         }),
       ],
+      release: [],
     });
     const withdrawals: Record<string, unknown>[] = [];
     stubHarnessServer({

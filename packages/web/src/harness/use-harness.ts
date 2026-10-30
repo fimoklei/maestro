@@ -253,7 +253,7 @@ export function useImportPromptCheck(name: string | null) {
         body: JSON.stringify({ name }),
       }),
     enabled: name !== null,
-    // GitHub may move while the dialog is open.
+    // The disk is the author's to change while the dialog is open.
     staleTime: 0,
     gcTime: 0,
   });
@@ -352,7 +352,7 @@ export function useWithdrawCheck(ref: PrimitiveRef) {
         method: "POST",
         body: JSON.stringify(ref),
       }),
-    // GitHub may move while the dialog is open.
+    // The disk is the author's to change while the dialog is open.
     staleTime: 0,
     gcTime: 0,
   });
