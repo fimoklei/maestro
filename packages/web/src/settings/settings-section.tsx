@@ -5,7 +5,7 @@ import { type ReactNode, useId } from "react";
 
 export interface SettingsSectionProps {
   title: string;
-  /** One control beside the heading, acting on the rows below it. */
+  /** The controls beside the heading, acting on the rows below it. */
   action?: ReactNode;
   /** One sentence under the heading. */
   description?: string;

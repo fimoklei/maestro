@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
 import { CategoriesPage } from "./categories-page";
 
 afterEach(() => {
@@ -241,7 +241,22 @@ describe("Settings › Categories", () => {
     ).toBeInTheDocument();
   });
 
-  it("re-reads the categories from the notice after a failed read", async () => {
+  it("re-reads the list with Re-read Categories beside Add category", async () => {
+    let held = [category("Planning")];
+    stubServer({ read: () => jsonResponse(list(held)) });
+    renderPage();
+
+    await screen.findByText("Planning");
+    held = [category("Docs"), category("Planning")];
+    await userEvent.click(
+      screen.getByRole("button", { name: "Re-read Categories" }),
+    );
+
+    expect(await screen.findByText("Docs")).toBeInTheDocument();
+    expect(rows()).toHaveLength(2);
+  });
+
+  it("re-reads the categories with Re-read Categories after a failed read", async () => {
     let fail = true;
     stubServer({
       categories: [category("Planning")],
@@ -252,12 +267,51 @@ describe("Settings › Categories", () => {
     });
     renderPage();
 
-    const reread = await screen.findByRole("button", {
-      name: "Re-read Categories",
-    });
+    expect(
+      await screen.findByText(
+        sentence("Select Re-read Categories to try again."),
+      ),
+    ).toBeInTheDocument();
     fail = false;
-    await userEvent.click(reread);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Re-read Categories" }),
+    );
 
     expect(await screen.findByText("Planning")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add category" }),
+    ).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("reads the list again once the operator repairs the broken section", async () => {
+    let broken = true;
+    stubServer({
+      read: () =>
+        broken
+          ? jsonResponse(
+              {
+                error: "categories-unreadable",
+                configPath: "/Users/me/.maestro/config.json",
+              },
+              500,
+            )
+          : jsonResponse(list([category("Planning")])),
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText(
+        sentence(
+          "Repair the categories in /Users/me/.maestro/config.json manually. Then select Re-read Categories to try again.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    broken = false;
+    await userEvent.click(
+      screen.getByRole("button", { name: "Re-read Categories" }),
+    );
+
+    expect(await screen.findByText("Planning")).toBeInTheDocument();
+    expect(screen.queryByText(/^Categories not read/)).not.toBeInTheDocument();
   });
 });

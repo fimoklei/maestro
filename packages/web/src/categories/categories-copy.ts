@@ -44,7 +44,7 @@ export const categoriesUnreadable = (configPath: string) =>
   ({
     level: "error",
     label: CATEGORIES_NOT_READ,
-    message: phrase`Repair the categories in ${machine(configPath)} by hand.`,
+    message: phrase`Repair the categories in ${machine(configPath)} manually. Then select ${REREAD_CATEGORIES} to try again.`,
   }) as const satisfies NoticeCopy & { message: Phrase; level: "error" };
 
 export const CATEGORIES_READ_FAILED: NoticeCopy = {

@@ -45,11 +45,11 @@ describe("Categories copy", () => {
     expect(nameExistsError("Code review")).toBe("Code review already exists.");
   });
 
-  it("names the config file to repair by hand", () => {
+  it("names the config file to repair by hand, then the control that reads it again", () => {
     const notice = categoriesUnreadable("/Users/me/.maestro/config.json");
     expect(notice.label).toBe("Categories not read");
     expect(plainText(notice.message)).toBe(
-      "Repair the categories in /Users/me/.maestro/config.json by hand.",
+      "Repair the categories in /Users/me/.maestro/config.json manually. Then select Re-read Categories to try again.",
     );
   });
 
