@@ -3,8 +3,10 @@ import { plainText } from "../ui/phrase";
 import {
   CATEGORIES_READ_FAILED,
   CATEGORIES_SENTENCE,
+  CATEGORY_FIELD,
   CATEGORY_NAME_ERRORS,
   CATEGORY_NOT_ADDED,
+  CATEGORY_NOT_SET_AFTER_EDIT,
   categoriesUnreadable,
   categoryCounts,
   categoryNotSet,
@@ -84,6 +86,22 @@ describe("Categories copy", () => {
       level: "error",
       label: "Category not set",
       message,
+    });
+  });
+
+  it("labels the Category field with the hint drawn on the canvas", () => {
+    expect(CATEGORY_FIELD).toEqual({
+      label: "Category",
+      hint: "Only you see this category.",
+    });
+  });
+
+  it("states a category the edit could not set after the prompt was edited", () => {
+    expect(CATEGORY_NOT_SET_AFTER_EDIT).toEqual({
+      level: "error",
+      label: "Category not set",
+      message:
+        "The prompt was edited. Select Close, then select Set category on Prompts.",
     });
   });
 });

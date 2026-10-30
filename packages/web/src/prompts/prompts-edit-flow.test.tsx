@@ -1,4 +1,5 @@
 import type {
+  CategoryList,
   HarnessState,
   InventoryPrimitive,
   PrimitiveDeletionCheck,
@@ -66,9 +67,29 @@ function stubServer(options: {
   /** The read's refusal code, with its HTTP status. */
   readRefusal?: [string, number];
   editRefusal?: [string, number];
+  /** The name the edit answers with: another one is a rename. */
+  editedName?: string;
+  /** The prompt's category before the edit; none by default. */
+  category?: string;
+  /** The assign route's refusal code, with its HTTP status. */
+  assignRefusal?: [string, number];
 }) {
   const reads: unknown[] = [];
   const edits: unknown[] = [];
+  const assigns: unknown[] = [];
+  const names = ["Docs", "Planning"];
+  let assignments: CategoryList["assignments"] =
+    options.category === undefined
+      ? []
+      : [{ type: "prompt", name: "pr-review", category: options.category }];
+  const list = (): CategoryList => ({
+    categories: names.map((name) => ({
+      name,
+      skills: 0,
+      prompts: assignments.filter((each) => each.category === name).length,
+    })),
+    assignments,
+  });
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -91,10 +112,30 @@ function stubServer(options: {
               options.readRefusal[1],
             );
       }
+      if (url === "/api/categories/assign") {
+        const body = JSON.parse(String(init?.body));
+        assigns.push(body);
+        if (options.assignRefusal !== undefined) {
+          return jsonResponse(
+            { error: options.assignRefusal[0] },
+            options.assignRefusal[1],
+          );
+        }
+        assignments = [
+          ...assignments.filter((each) => each.name !== body.items[0].name),
+          ...(body.category === null
+            ? []
+            : [{ ...body.items[0], category: body.category }]),
+        ];
+        return jsonResponse(list());
+      }
+      if (url === "/api/categories") {
+        return jsonResponse(list());
+      }
       if (url === "/api/harness/prompt/edit") {
         edits.push(JSON.parse(String(init?.body)));
         return options.editRefusal === undefined
-          ? jsonResponse({ name: "pr-review" })
+          ? jsonResponse({ name: options.editedName ?? "pr-review" })
           : jsonResponse(
               { error: options.editRefusal[0] },
               options.editRefusal[1],
@@ -110,7 +151,7 @@ function stubServer(options: {
       return jsonResponse({}, 404);
     }),
   );
-  return { reads, edits };
+  return { reads, edits, assigns };
 }
 
 function renderPrompts() {
@@ -164,7 +205,12 @@ describe("Prompts — Edit prompt", () => {
     await waitFor(() =>
       expect(
         menu.getAllByRole("menuitem").map((item) => item.textContent),
-      ).toEqual(["Copy prompt", "Edit prompt", "Delete prompt"]),
+      ).toEqual([
+        "Copy prompt",
+        "Edit prompt",
+        "Set category",
+        "Delete prompt",
+      ]),
     );
     expect(menu.getAllByRole("separator")).toHaveLength(1);
   });
@@ -207,7 +253,7 @@ describe("Prompts — Edit prompt", () => {
 
     expect(confirm).toHaveAttribute("aria-disabled", "true");
     expect(confirm).toHaveAccessibleDescription(
-      "Change the description or text.",
+      "Change the description, text or category.",
     );
 
     const description = within(dialog).getByRole("textbox", {
@@ -500,4 +546,155 @@ describe("Prompts — Edit prompt refusals", () => {
       expect(confirmOf(dialog)).not.toHaveAttribute("aria-disabled");
     },
   );
+});
+
+const categoryField = (dialog: HTMLElement, value: string) =>
+  within(dialog).findByRole("button", { name: `Category ${value}` });
+
+async function pickCategory(dialog: HTMLElement, from: string, to: string) {
+  await userEvent.click(await categoryField(dialog, from));
+  const menu = within(screen.getByRole("group", { name: "Category" }));
+  await userEvent.click(menu.getByRole("option", { name: to }));
+}
+
+// The screen's own region; a notice carries a role of its own.
+const region = () =>
+  screen
+    .getAllByRole("status")
+    .find((each) => each.classList.contains("sr-only"));
+
+describe("Prompts — Edit prompt's Category field", () => {
+  it("shows the prompt's current category, under the hint drawn on the canvas", async () => {
+    stubServer({ category: "Planning" });
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    const field = await categoryField(dialog, "Planning");
+    expect(field).toHaveAccessibleDescription("Only you see this category.");
+    await userEvent.click(field);
+    const menu = within(screen.getByRole("group", { name: "Category" }));
+    expect(menu.getByRole("option", { name: /Planning/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("closes only the menu on Escape, and returns focus to the field", async () => {
+    stubServer({ category: "Planning" });
+    renderPrompts();
+    const dialog = await editFromMenu();
+    await userEvent.click(await categoryField(dialog, "Planning"));
+    screen.getByRole("group", { name: "Category" });
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("group", { name: "Category" })).toBeNull();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(await categoryField(dialog, "Planning")).toHaveFocus();
+  });
+
+  it("shows No category for a prompt without one", async () => {
+    stubServer({});
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    expect(await categoryField(dialog, "No category")).toBeInTheDocument();
+  });
+
+  it("sets only the category, writing nothing to the Harness, and stays on Prompts", async () => {
+    const { edits, assigns } = stubServer({ category: "Planning" });
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    await pickCategory(dialog, "Planning", "Docs");
+    expect(await categoryField(dialog, "Docs")).toBeInTheDocument();
+    await userEvent.click(confirmOf(dialog));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(assigns).toEqual([
+      { items: [{ type: "prompt", name: "pr-review" }], category: "Docs" },
+    ]);
+    expect(edits).toEqual([]);
+    expect(screen.queryByRole("heading", { name: "Harness" })).toBeNull();
+    await waitFor(() =>
+      expect(region()).toHaveTextContent("Set category for pr-review."),
+    );
+  });
+
+  it("writes the text to the Harness, then assigns the category", async () => {
+    const { edits, assigns } = stubServer({});
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    await pickCategory(dialog, "No category", "Planning");
+    await submitChangedText(dialog, "Review it again.");
+
+    await screen.findByRole("complementary", { name: "pr-review detail" });
+    expect(edits).toHaveLength(1);
+    expect(assigns).toEqual([
+      { items: [{ type: "prompt", name: "pr-review" }], category: "Planning" },
+    ]);
+  });
+
+  it("assigns nothing when only the text changed", async () => {
+    const { edits, assigns } = stubServer({ category: "Planning" });
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    await submitChangedText(dialog, "Review it again.");
+
+    await screen.findByRole("complementary", { name: "pr-review detail" });
+    expect(edits).toHaveLength(1);
+    expect(assigns).toEqual([]);
+  });
+
+  it("keeps the category under the name the edit answers with", async () => {
+    const { assigns } = stubServer({
+      category: "Planning",
+      editedName: "review-pr",
+    });
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    await submitChangedText(dialog, "Review it again.");
+
+    await waitFor(() =>
+      expect(assigns).toEqual([
+        {
+          items: [{ type: "prompt", name: "review-pr" }],
+          category: "Planning",
+        },
+      ]),
+    );
+  });
+
+  it("keeps the edit and says the category was not set when the assign fails", async () => {
+    const { edits } = stubServer({
+      assignRefusal: ["categories-unreadable", 500],
+    });
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    await pickCategory(dialog, "No category", "Planning");
+    await submitChangedText(dialog, "Review it again.");
+
+    const shown = within(dialog);
+    expect(await shown.findByText("Category not set")).toBeInTheDocument();
+    expect(
+      shown.getByText(
+        sentence(
+          "The prompt was edited. Select Close, then select Set category on Prompts.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(edits).toHaveLength(1);
+    expect(shown.queryByRole("button", { name: /^Edit prompt/ })).toBeNull();
+    expect(shown.getByRole("textbox", { name: /^Prompt text/ })).toBeDisabled();
+    expect(shown.getByRole("button", { name: /^Category/ })).toBeDisabled();
+
+    await userEvent.click(shown.getByText("Close", { selector: "button" }));
+
+    await screen.findByRole("complementary", { name: "pr-review detail" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 });

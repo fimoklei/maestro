@@ -176,7 +176,7 @@ export function PromptsView({
     : null;
   const editFlow = useEditPromptFlow({
     screen: "prompts",
-    report: screen.report,
+    writes: screen,
     onEdited,
   });
   // A read that found nothing opens no dialog; the row's pane says why.
