@@ -95,6 +95,28 @@
     {
       "includes": ["packages/core/src/**/*.test.ts"],
       "plugins": ["./biome-plugins/core-test-imports-interfaces-only.grit"]
+    },
+    {
+      "includes": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.cjs",
+        "!**/*.test.*",
+        "!**/*.stories.*",
+        "!packages/web/src/harness/notice-copy.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noExcessiveLinesPerFile": {
+              "level": "error",
+              "options": { "maxLines": 800 }
+            }
+          }
+        }
+      }
     }
   ],
   "plugins": ["./biome-plugins/no-shell-true.grit"]
