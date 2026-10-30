@@ -1,11 +1,10 @@
-import type { CategoryError } from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
 import { rereadLabel } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { machine, type Phrase, phrase } from "../ui/phrase";
 
-export const CATEGORIES = "Categories";
+const CATEGORIES = "Categories";
 export const CATEGORIES_SENTENCE =
   "Categories stay on this computer. Only you see them.";
 export const NO_CATEGORIES = "No categories yet";
@@ -43,7 +42,7 @@ export const categoriesUnreadable = (configPath: string) =>
   ({
     level: "error",
     label: CATEGORIES_NOT_READ,
-    message: phrase`Repair the categories in ${machine(configPath)} by hand.`,
+    message: phrase`Repair the categories in ${machine(configPath)} manually. Then select ${REREAD_CATEGORIES} to try again.`,
   }) as const satisfies NoticeCopy & { message: Phrase; level: "error" };
 
 export const CATEGORIES_READ_FAILED: NoticeCopy = {
@@ -58,8 +57,3 @@ export const CATEGORY_NOT_ADDED: NoticeCopy = {
 
 /** The refusals a notice states; a name refusal is the field's own line. */
 export const CATEGORY_NOT_CONFIGURED = harnessHeadings["not-configured"];
-
-export type CategoryNoticeCode = Extract<
-  CategoryError,
-  "not-configured" | "categories-unreadable"
->;
