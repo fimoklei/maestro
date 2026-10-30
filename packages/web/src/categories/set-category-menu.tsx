@@ -1,52 +1,17 @@
 import type { PrimitiveRef } from "@maestro/core";
-import { HttpError } from "../api/http";
 import type { MenuClosedBy } from "../ui/category-menu";
 import type { NoticeContent } from "../ui/notice";
-import { requestShapeNotice } from "../ui/notice-table";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
-import {
-  CATEGORY_NOT_CONFIGURED,
-  categoriesUnreadable,
-  categoryNotSet,
-  ITEM_WORDS,
-  setCategoryFor,
-} from "./categories-copy";
+import { ITEM_WORDS, setCategoryFor } from "./categories-copy";
 import { CategoryPicker } from "./category-picker";
+import { assignFailure } from "./category-refusals";
 import {
   type CategoryAssignment,
   sharedCategory,
   useAssignCategory,
   useCategories,
 } from "./use-categories";
-
-type Refusal = { error?: unknown; configPath?: unknown };
-
-/** Why an assign did not land; `reread` is the screen's own Re-read control. */
-export function assignFailure(
-  error: unknown,
-  reread: string,
-): NoticeContent | null {
-  if (!error) return null;
-  const shape = requestShapeNotice(error);
-  if (shape !== null) return shape;
-  const refusal: Refusal =
-    error instanceof HttpError && typeof error.body === "object"
-      ? ((error.body as Refusal | null) ?? {})
-      : {};
-  switch (refusal.error) {
-    case "category-not-found":
-    case "item-not-found":
-      return categoryNotSet(refusal.error, reread);
-    case "not-configured":
-      return CATEGORY_NOT_CONFIGURED;
-    case "categories-unreadable":
-      return typeof refusal.configPath === "string"
-        ? categoriesUnreadable(refusal.configPath)
-        : categoryNotSet("other", reread);
-    default:
-      return categoryNotSet("other", reread);
-  }
-}
+import { useHeldCategoryAdd } from "./use-held-category-add";
 
 /**
  * Set category for items of one type, inside a table screen: one item's row
@@ -66,6 +31,11 @@ export function SetCategoryMenu({
 }) {
   const categories = useCategories();
   const assign = useAssignCategory();
+  // One item is named, several counted: in the menu's name and the done sentence.
+  const [first] = items;
+  const type = first?.type ?? "skill";
+  const words = ITEM_WORDS[type];
+  const only = items.length === 1 && first !== undefined ? first.name : null;
   const write = useWriteAction<
     unknown,
     CategoryAssignment,
@@ -73,33 +43,27 @@ export function SetCategoryMenu({
   >(assign, {
     screen: useScreenWrites(),
     action: "setCategory",
-    subject: (_data, { items: set }) => {
-      const [only] = set;
-      if (set.length === 1 && only !== undefined) {
-        return { name: only.name, row: only.name };
-      }
-      const words = ITEM_WORDS[only?.type ?? "skill"];
-      return { name: { count: set.length, ...words }, row: null };
-    },
-    failure: (error) => assignFailure(error, reread),
+    subject: () =>
+      only === null
+        ? { name: { count: items.length, ...words }, row: null }
+        : { name: only, row: only },
+    failure: (error) =>
+      assignFailure(error, { type, count: items.length, reread }),
   });
-  const [only] = items;
-  const words = ITEM_WORDS[only?.type ?? "skill"];
-  const subject =
-    items.length === 1 && only !== undefined
-      ? only.name
-      : `${items.length} ${words.many}`;
+  const pick = (category: string | null) =>
+    write.run(
+      { items: [...items], category },
+      { onSuccess: () => onClose("picked") },
+    );
+  // Picked from the menu only: a press outside it cancels the assign.
+  const add = useHeldCategoryAdd(() => {});
   return (
     <CategoryPicker
-      label={setCategoryFor(subject)}
+      label={setCategoryFor(only ?? `${items.length} ${words.many}`)}
       current={sharedCategory(categories.data?.assignments ?? [], items)}
       failure={write.failure}
-      onPick={(category) =>
-        write.run(
-          { items: [...items], category },
-          { onSuccess: () => onClose("picked") },
-        )
-      }
+      add={add}
+      onPick={pick}
       onClose={onClose}
     />
   );

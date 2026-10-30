@@ -6,10 +6,12 @@ import { FieldFrame } from "../ui/field-frame";
 import { FOCUS_RING } from "../ui/focus-ring";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { Icon } from "../ui/icon";
-import { CATEGORY_FIELD } from "./categories-copy";
+import { Notice } from "../ui/notice";
+import { CATEGORY_FIELD, CATEGORY_NOT_ADDED } from "./categories-copy";
 import { CategoryPicker } from "./category-picker";
+import type { HeldCategoryAdd } from "./use-held-category-add";
 
-/** What an import dialog's Category field shows; `useCategoryChoice` builds it. */
+/** What a dialog's Category field shows and how it changes. */
 export type CategoryFieldState = {
   /** Null for No category. */
   value: string | null;
@@ -17,6 +19,8 @@ export type CategoryFieldState = {
   /** A name the imported file gave that matches no category: the menu opens on Add. */
   suggested: string | null;
   onChange: (category: string | null) => void;
+  /** Held by the dialog's flow, so an add the menu started outlives the menu. */
+  add: HeldCategoryAdd;
 };
 
 /**
@@ -28,16 +32,12 @@ export function CategoryField({
   value,
   onChange,
   disabled,
-  hint = CATEGORY_FIELD.hint,
-  suggested = null,
-}: {
-  value: string | null;
-  onChange: (category: string | null) => void;
+  hint,
+  suggested,
+  add,
+}: CategoryFieldState & {
   /** Locked while the dialog's action runs. */
   disabled: boolean;
-  /** Only Import says more: where a category the file named came from. */
-  hint?: string;
-  suggested?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -80,6 +80,8 @@ export function CategoryField({
               label={CATEGORY_FIELD.label}
               current={value}
               initialQuery={suggested ?? undefined}
+              failure={null}
+              add={add}
               onPick={(category) => {
                 onChange(category);
                 setOpen(false);
@@ -90,7 +92,15 @@ export function CategoryField({
                 if (via !== "press") button.current?.focus();
               }}
             />
-          ) : null}
+          ) : (
+            // An add refused after a press closed the menu.
+            <Notice
+              trigger="user-action"
+              notice={
+                add.failed ? { level: "error", ...CATEGORY_NOT_ADDED } : null
+              }
+            />
+          )}
         </div>
       )}
     </FieldFrame>

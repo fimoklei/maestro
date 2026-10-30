@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useCategoryChoice } from "../categories/use-category-choice";
+import { useSubmitAfterAdd } from "../categories/use-held-category-add";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { FOLDER_MISSING } from "./dialog-copy";
 import { proposalRow } from "./harness-route";
@@ -56,6 +57,47 @@ export function useImportFlow(
     open,
   });
 
+  // Imports only a folder whose check came back clean: a check under way is
+  // awaited and a failed one asked again, so a submit is never silent. A new
+  // typed folder is checked; a refusal stays beside its field.
+  const submitNow = async () => {
+    const typed = sourceText.trim();
+    if (typed === "") {
+      setFolderMissing(true);
+      return;
+    }
+    if (typed !== source) {
+      commitSource(typed);
+      return;
+    }
+    // A failed check states itself beside Folder path; so does a refusal.
+    const checked =
+      check.data ??
+      (await queryClient
+        .fetchQuery(importCheckQuery(typed, editedName))
+        .catch(() => undefined));
+    if (checked === undefined || !isImportable(checked)) return;
+    importWrite.run(
+      {
+        source: typed,
+        name:
+          checked.mode === "update"
+            ? checked.name
+            : (editedName ?? checked.name),
+      },
+      {
+        onSuccess: (outcome) =>
+          category.save(outcome, () => {
+            close();
+            onImported(importedRow(outcome));
+          }),
+      },
+    );
+  };
+  const afterAdd = useSubmitAfterAdd(category.field.add, () => {
+    void submitNow();
+  });
+
   const close = () => {
     setOpen(false);
     setSource(null);
@@ -88,43 +130,14 @@ export function useImportFlow(
     },
     commitSource,
     setEditedName,
-    // Imports only a folder whose check came back clean: a check under way is
-    // awaited and a failed one asked again, so a submit is never silent. A new
-    // typed folder is checked; a refusal stays beside its field.
-    submit: async () => {
-      const typed = sourceText.trim();
-      if (typed === "") {
-        setFolderMissing(true);
-        return;
-      }
-      if (typed !== source) {
-        commitSource(typed);
-        return;
-      }
-      // A failed check states itself beside Folder path; so does a refusal.
-      const checked =
-        check.data ??
-        (await queryClient
-          .fetchQuery(importCheckQuery(typed, editedName))
-          .catch(() => undefined));
-      if (checked === undefined || !isImportable(checked)) return;
-      importWrite.run(
-        {
-          source: typed,
-          name:
-            checked.mode === "update"
-              ? checked.name
-              : (editedName ?? checked.name),
-        },
-        {
-          onSuccess: (outcome) => {
-            close();
-            category.save(outcome);
-            onImported(importedRow(outcome));
-          },
-        },
-      );
-    },
-    close,
+    /** The import runs, or waits for a category add to land first. */
+    importing:
+      importWrite.phase === "running" || afterAdd.waiting || category.saving,
+    /** Why the import landed without its category; only Close is left. */
+    importError: category.failure ?? importWrite.failure,
+    outcome: category.failure !== null,
+    submit: afterAdd.submit,
+    /** After a failure, Close hands the import over as a clean one would. */
+    close: () => (category.failure === null ? close() : category.leave()),
   };
 }

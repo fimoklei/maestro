@@ -7,43 +7,26 @@ import {
   RENAME_CATEGORY,
 } from "../categories/categories-copy";
 import {
+  categoryEditFailure,
+  categoryNameError,
+  refusedForName,
+} from "../categories/category-refusals";
+import {
   type CategoryDeletion,
   useDeleteCategory,
   useRenameCategory,
 } from "../categories/use-categories";
-import type { NoticeContent } from "../ui/notice";
-import { requestShapeNotice } from "../ui/notice-table";
+import {
+  useHeldCategoryAdd,
+  useSubmitAfterAdd,
+} from "../categories/use-held-category-add";
 import { named, phrase } from "../ui/phrase";
 import type { RowMenuItem } from "../ui/row-menu";
 import { useWriteAction } from "../ui/use-write-action";
-import {
-  categoryNameError,
-  noticeFor,
-  refusalOf,
-  refusedForName,
-} from "./category-refusals";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
 import { RenameCategoryDialog } from "./rename-category-dialog";
 
 type Category = CategoryList["categories"][number];
-
-// A refusal the dialog states above its footer; a name refusal is the field's.
-function failureOf(
-  error: unknown,
-  copy: (code: "category-not-found" | "other") => NoticeContent,
-): NoticeContent | null {
-  if (!error) return null;
-  const shape = requestShapeNotice(error);
-  if (shape !== null) return shape;
-  return noticeFor(
-    error,
-    copy(
-      refusalOf(error)?.error === "category-not-found"
-        ? "category-not-found"
-        : "other",
-    ),
-  );
-}
 
 /**
  * Rename category and Delete category from a row's ⋮ (#1721): the items and
@@ -81,7 +64,7 @@ export function useCategoryEdits({
       row: to.trim(),
     }),
     failure: (error) =>
-      refusedForName(error) ? null : failureOf(error, notRenamed),
+      refusedForName(error) ? null : categoryEditFailure(error, notRenamed),
   });
   const remove = useWriteAction(deleteMutation, {
     report,
@@ -91,7 +74,7 @@ export function useCategoryEdits({
       name: phrase`${named(deletion.name)}`,
       row: null,
     }),
-    failure: (error) => failureOf(error, notDeleted),
+    failure: (error) => categoryEditFailure(error, notDeleted),
   });
 
   const runRename = () => {
@@ -112,13 +95,14 @@ export function useCategoryEdits({
     );
   };
 
-  const runDelete = () => {
+  const moveToAdd = useHeldCategoryAdd(setMoveTo);
+  const runDelete = useSubmitAfterAdd(moveToAdd, () => {
     if (deleting === null) return;
     remove.run(
       { name: deleting.name, moveTo },
       { onSuccess: () => setDeleting(null) },
     );
-  };
+  });
 
   const items = (category: Category): RowMenuItem[] => [
     {
@@ -137,6 +121,7 @@ export function useCategoryEdits({
       movesFocus: true,
       onSelect: () => {
         setMoveTo(null);
+        moveToAdd.reset();
         deleteMutation.reset();
         setDeleting(category);
       },
@@ -169,11 +154,14 @@ export function useCategoryEdits({
         category={deleting}
         moveTo={moveTo}
         onMoveToChange={setMoveTo}
+        moveToAdd={moveToAdd}
         failure={remove.failure}
-        busy={remove.phase === "running"}
-        onDelete={runDelete}
+        busy={remove.phase === "running" || runDelete.waiting}
+        onDelete={runDelete.submit}
         onClose={() => {
-          if (remove.phase !== "running") setDeleting(null);
+          if (remove.phase !== "running" && !runDelete.waiting) {
+            setDeleting(null);
+          }
         }}
       />
     ) : null;

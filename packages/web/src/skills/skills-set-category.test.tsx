@@ -106,7 +106,7 @@ describe("Set category on Skills", () => {
       expect(categoryFact(pane)).toHaveTextContent("Planning"),
     );
     await waitFor(() =>
-      expect(statusRegion()).toHaveTextContent("Set category for tdd."),
+      expect(statusRegion()).toHaveTextContent("Category set for tdd."),
     );
     expect(
       screen.queryByRole("group", { name: "Set category for tdd" }),
@@ -207,7 +207,7 @@ describe("Set category on Skills", () => {
       for (const name of names) {
         await userEvent.click(
           await screen.findByRole("checkbox", {
-            name: `Select ${name} for bulk deploy`,
+            name: `Select ${name}`,
           }),
         );
       }
@@ -235,7 +235,7 @@ describe("Set category on Skills", () => {
         category: "Writing",
       });
       expect(
-        await screen.findByText("Set category for 2 skills."),
+        await screen.findByText("Category set for 2 skills."),
       ).toBeInTheDocument();
     });
 
@@ -255,7 +255,7 @@ describe("Set category on Skills", () => {
 
       await waitFor(() => expect(screen.queryByText("2 selected")).toBeNull());
       expect(
-        screen.getByRole("checkbox", { name: "Select tdd for bulk deploy" }),
+        screen.getByRole("checkbox", { name: "Select tdd" }),
       ).not.toBeChecked();
       expect(screen.getByRole("grid")).toHaveFocus();
     });

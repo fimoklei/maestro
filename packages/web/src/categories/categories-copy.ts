@@ -1,8 +1,9 @@
 import type { HarnessPrimitiveType, ImportMode } from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
-import { ADD_CATEGORY } from "../ui/category-menu-copy";
+import { ADD_CATEGORY, NO_CATEGORY } from "../ui/category-menu-copy";
 import { rereadLabel, SET_CATEGORY } from "../ui/control-labels";
+import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { machine, named, type Phrase, phrase } from "../ui/phrase";
 
@@ -36,6 +37,7 @@ export const CATEGORY_NAME_ERRORS: Record<CategoryNameProblem, string> = {
   empty: "Enter a name.",
   "too-long": "Enter at most 64 characters.",
   "control-character": "Enter the name on one line.",
+  reserved: `Enter a name other than ${NO_CATEGORY}.`,
 };
 
 export const nameExistsError = (existing: string): string =>
@@ -92,21 +94,30 @@ const CATEGORY_NOT_SET = "Category not set";
 export const CATEGORY_NOT_SET_AFTER_EDIT: NoticeContent = {
   level: "error",
   label: CATEGORY_NOT_SET,
-  message: `The prompt was edited. Select Close, then select ${SET_CATEGORY} on Prompts.`,
+  message: `The prompt was edited. Select ${CLOSE}, then select ${SET_CATEGORY} on Prompts.`,
 };
 
-/** Why Set category did not land, stated in the menu; `reread` is the screen's control. */
+/** The items a refused Set category was for, and the screen's own Re-read control. */
+export type SetCategoryItems = {
+  type: HarnessPrimitiveType;
+  count: number;
+  reread: string;
+};
+
+const DELETED = "The category was deleted.";
+
+/** Why Set category did not land, stated where it was set. */
 export const categoryNotSet = (
   code: "category-not-found" | "item-not-found" | "other",
-  reread: string,
+  { type, count, reread }: SetCategoryItems,
 ): NoticeContent => ({
   level: "error",
   label: CATEGORY_NOT_SET,
   message:
     code === "category-not-found"
-      ? "The category no longer exists. Choose another category."
+      ? `${DELETED} Choose another category.`
       : code === "item-not-found"
-        ? `The Harness no longer holds it. Select ${reread} to update the list.`
+        ? `The Harness no longer contains ${count === 1 ? "the" : "a"} ${ITEM_WORDS[type].one}. Select ${reread} to update the list.`
         : "Choose the category again.",
 });
 
@@ -129,7 +140,7 @@ export const categoryNotSetAfterImport = (
 ): NoticeContent => ({
   level: "error",
   label: CATEGORY_NOT_SET,
-  message: phrase`${named(name)} was ${mode === "update" ? "updated" : "imported"}. Select ${SET_CATEGORY} on ${SCREEN_OF[type]} to set its category.`,
+  message: phrase`${named(name)} was ${mode === "update" ? "updated" : "imported"}. Select ${CLOSE}, then select ${SET_CATEGORY} on ${SCREEN_OF[type]}.`,
 });
 
 export const RENAME_CATEGORY = "Rename category";
@@ -175,7 +186,7 @@ export function deleteMoves(skills: number, prompts: number): string {
 export const emptyCategoryDeleted = (name: string): Phrase =>
   phrase`No skills or prompts are in ${named(name)}.`;
 
-const GONE = `The category no longer exists. Select ${REREAD_CATEGORIES} to update the list.`;
+const GONE = `${DELETED} Select ${REREAD_CATEGORIES} to update the list.`;
 
 /** Why Rename category did not land, stated in its dialog. */
 export const notRenamed = (

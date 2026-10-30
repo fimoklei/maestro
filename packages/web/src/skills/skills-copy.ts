@@ -22,9 +22,10 @@ export const NO_RELEASED_SKILLS = {
 
 // The Skills band 2 and table (#1040).
 export const SEARCH_LABEL = "Search Skills";
-export const STAGE_COLUMN_LABEL = "Select for bulk deploy";
-export const stageRowLabel = (name: string) => `Select ${name} for bulk deploy`;
-export const SELECT_ALL_LABEL = "Select all for bulk deploy";
+// The selection column, which Deploy and Set category on the selection bar act on.
+export const SELECT_SKILLS = "Select skills";
+export const selectSkillLabel = (name: string) => `Select ${name}`;
+export const SELECT_ALL_SKILLS = "Select all skills";
 
 // The selection bar's action and the dialog it opens (#992, #1042).
 export const DEPLOY_SKILLS = "Deploy skills";

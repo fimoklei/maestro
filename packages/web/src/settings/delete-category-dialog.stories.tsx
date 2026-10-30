@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { DeleteCategoryDialog } from "./delete-category-dialog";
 
+const idleAdd = {
+  run: async () => null,
+  pending: false,
+  failed: false,
+  reset: () => {},
+};
+
 // Move to opens the category menu, which reads the list; its story is
 // `Core/CategoryMenu`.
 const meta = {
@@ -10,6 +17,7 @@ const meta = {
     category: { name: "Planning", skills: 3, prompts: 2 },
     moveTo: null,
     onMoveToChange: () => {},
+    moveToAdd: idleAdd,
     failure: null,
     busy: false,
     onDelete: () => {},

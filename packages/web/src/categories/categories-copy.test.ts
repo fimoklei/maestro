@@ -59,6 +59,7 @@ describe("Categories copy", () => {
       empty: "Enter a name.",
       "too-long": "Enter at most 64 characters.",
       "control-character": "Enter the name on one line.",
+      reserved: "Enter a name other than No category.",
     });
     expect(nameExistsError("Code review")).toBe("Code review already exists.");
   });
@@ -90,20 +91,49 @@ describe("Categories copy", () => {
   it.each([
     [
       "category-not-found",
-      "The category no longer exists. Choose another category.",
+      { type: "skill", count: 1, reread: "Re-read Skills" },
+      "The category was deleted. Choose another category.",
     ],
     [
       "item-not-found",
-      "The Harness no longer holds it. Select Re-read Skills to update the list.",
+      { type: "skill", count: 1, reread: "Re-read Skills" },
+      "The Harness no longer contains the skill. Select Re-read Skills to update the list.",
     ],
-    ["other", "Choose the category again."],
-  ] as const)("states why Set category did not land: %s", (code, message) => {
-    expect(categoryNotSet(code, "Re-read Skills")).toEqual({
-      level: "error",
-      label: "Category not set",
-      message,
-    });
-  });
+    [
+      "item-not-found",
+      { type: "skill", count: 3, reread: "Re-read Skills" },
+      "The Harness no longer contains a skill. Select Re-read Skills to update the list.",
+    ],
+    [
+      "item-not-found",
+      { type: "prompt", count: 1, reread: "Re-read Prompts" },
+      "The Harness no longer contains the prompt. Select Re-read Prompts to update the list.",
+    ],
+    [
+      "item-not-found",
+      { type: "prompt", count: 1, reread: "Re-read Harness" },
+      "The Harness no longer contains the prompt. Select Re-read Harness to update the list.",
+    ],
+    [
+      "item-not-found",
+      { type: "prompt", count: 2, reread: "Re-read Prompts" },
+      "The Harness no longer contains a prompt. Select Re-read Prompts to update the list.",
+    ],
+    [
+      "other",
+      { type: "skill", count: 1, reread: "Re-read Skills" },
+      "Choose the category again.",
+    ],
+  ] as const)(
+    "states why Set category did not land: %s, %o",
+    (code, items, message) => {
+      expect(categoryNotSet(code, items)).toEqual({
+        level: "error",
+        label: "Category not set",
+        message,
+      });
+    },
+  );
 
   it("labels the Category field with the hint drawn on the canvas", () => {
     expect(CATEGORY_FIELD).toEqual({
@@ -183,7 +213,7 @@ describe("Categories copy", () => {
   it.each([
     [
       "category-not-found",
-      "The category no longer exists. Select Re-read Categories to update the list.",
+      "The category was deleted. Select Re-read Categories to update the list.",
     ],
     ["other", "Select Rename category to try again."],
   ] as const)(
@@ -200,7 +230,7 @@ describe("Categories copy", () => {
   it.each([
     [
       "category-not-found",
-      "The category no longer exists. Select Re-read Categories to update the list.",
+      "The category was deleted. Select Re-read Categories to update the list.",
     ],
     ["other", "Select Delete category to try again."],
   ] as const)(
@@ -218,12 +248,12 @@ describe("Categories copy", () => {
     [
       "skill",
       "add",
-      "code-review was imported. Select Set category on Skills to set its category.",
+      "code-review was imported. Select Close, then select Set category on Skills.",
     ],
     [
       "prompt",
       "update",
-      "review-pr was updated. Select Set category on Prompts to set its category.",
+      "review-pr was updated. Select Close, then select Set category on Prompts.",
     ],
   ] as const)(
     "states that a %s's %s landed without its category",

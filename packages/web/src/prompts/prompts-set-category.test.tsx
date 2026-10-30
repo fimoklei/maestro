@@ -111,7 +111,7 @@ describe("Set category on Prompts", () => {
       expect(categoryFact(pane)).toHaveTextContent("Planning"),
     );
     await waitFor(() =>
-      expect(statusRegion()).toHaveTextContent("Set category for standup."),
+      expect(statusRegion()).toHaveTextContent("Category set for standup."),
     );
     expect(pane.getByRole("button", { name: "Set category" })).toHaveFocus();
   });
@@ -211,7 +211,7 @@ describe("Set category on Prompts", () => {
         category: "Writing",
       });
       expect(
-        await screen.findByText("Set category for 2 prompts."),
+        await screen.findByText("Category set for 2 prompts."),
       ).toBeInTheDocument();
       await waitFor(() => expect(screen.queryByText("2 selected")).toBeNull());
       expect(

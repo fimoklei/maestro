@@ -2,10 +2,12 @@ import type { ImportMode } from "@maestro/core";
 import type { PromptFile } from "@maestro/core/prompt-file";
 import { FileText } from "lucide-react";
 import { type ClipboardEvent, useId, useRef } from "react";
+import { CATEGORY_FIELD } from "../categories/categories-copy";
 import {
   CategoryField,
   type CategoryFieldState,
 } from "../categories/category-field";
+import type { HeldCategoryAdd } from "../categories/use-held-category-add";
 import { Button } from "../ui/button";
 import { CHOOSE_ANOTHER_FILE, EDIT_PROMPT } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
@@ -35,6 +37,8 @@ type PromptDialogBase = {
   fieldErrors: PromptFieldErrors;
   changed: boolean;
   phase: "idle" | "running";
+  /** The write landed and its category did not: only Close is left. */
+  outcome: boolean;
   failure: NoticeContent | null;
   edit: (change: Partial<PromptFile>) => void;
   submit: () => void;
@@ -64,8 +68,7 @@ type EditProps = PromptDialogBase & {
   /** Undefined until the categories are read; null for No category. */
   category: string | null | undefined;
   pickCategory: (name: string | null) => void;
-  /** The edit landed and its category did not: only Close is left. */
-  outcome: boolean;
+  categoryAdd: HeldCategoryAdd;
 };
 
 type ImportPromptDialogProps = ImportProps | EditProps;
@@ -88,8 +91,8 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
       : { ...PROMPT_IMPORT_MODES[props.mode], unavailable: null };
   const importOnly = props.mode === "edit" ? null : props;
   const editOnly = props.mode === "edit" ? props : null;
-  // Once the edit landed, only Close is left.
-  const locked = importing || editOnly?.outcome === true;
+  // Once the write landed without its category, only Close is left.
+  const locked = importing || props.outcome;
   // Choose file opens the browser's file chooser at once, again on each press.
   const pickSource = (next: PromptSource) => {
     importOnly?.setSource(next);
@@ -112,18 +115,17 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
       version={null}
       width={480}
       {...dialogRun({
-        source:
-          editOnly?.outcome === true
-            ? null
-            : {
-                label: confirm,
-                verb,
-                tone: "primary",
-                unavailable,
-                onRun: submit,
-              },
+        source: props.outcome
+          ? null
+          : {
+              label: confirm,
+              verb,
+              tone: "primary",
+              unavailable,
+              onRun: submit,
+            },
         running: importing,
-        outcome: editOnly?.outcome === true,
+        outcome: props.outcome,
       })}
       failure={failure}
       // Every field states its own hint and its own refusal beside it.
@@ -140,6 +142,9 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
             <CategoryField
               value={editOnly.category}
               onChange={editOnly.pickCategory}
+              hint={CATEGORY_FIELD.hint}
+              suggested={null}
+              add={editOnly.categoryAdd}
               disabled={locked}
             />
           )}
@@ -185,7 +190,7 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
                     type="button"
                     variant="quiet"
                     aria-describedby={hintId}
-                    disabled={importing}
+                    disabled={locked}
                     onClick={() => fileInput.current?.click()}
                   >
                     {CHOOSE_ANOTHER_FILE}
@@ -206,7 +211,7 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
               describedBy={
                 importOnly.takenNotice === null ? undefined : takenNoticeId
               }
-              disabled={importing}
+              disabled={locked}
               mono
             />
             <Notice
@@ -235,7 +240,7 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         disabled={locked}
       />
       {importOnly === null ? null : (
-        <CategoryField {...importOnly.category.field} disabled={importing} />
+        <CategoryField {...importOnly.category.field} disabled={locked} />
       )}
     </Dialog>
   );

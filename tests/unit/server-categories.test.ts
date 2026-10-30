@@ -161,6 +161,7 @@ describe("categories over HTTP", () => {
     ["a name over 64 characters", "x".repeat(65)],
     ["a name with a line break", "Code\nreview"],
     ["a name with a tab", "Code\treview"],
+    ["the name of the No category group, in any case", " no CATEGORY "],
   ])("refuses %s", async (_, name) => {
     const { app } = world();
 
@@ -356,6 +357,7 @@ describe("categories over HTTP", () => {
       ["an empty name", " "],
       ["a name over 64 characters", "x".repeat(65)],
       ["a name with a line break", "Plan\nning"],
+      ["the name of the No category group", "No category"],
     ])("refuses %s", async (_, to) => {
       const { app } = world();
       await add(app, "Planning");

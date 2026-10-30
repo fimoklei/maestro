@@ -1,5 +1,6 @@
 import {
   CATEGORY_NAME_MAX_LENGTH,
+  categoryNameProblem,
   sameCategoryName,
   trimCategoryName,
 } from "@maestro/core/category-name";
@@ -47,7 +48,9 @@ function optionsFor(
   return [
     { kind: "none" },
     ...matching.map((name) => ({ kind: "name" as const, name })),
-    ...(typed === "" || taken ? [] : [{ kind: "add" as const, typed }]),
+    ...(categoryNameProblem(typed) !== null || taken
+      ? []
+      : [{ kind: "add" as const, typed }]),
   ];
 }
 

@@ -646,7 +646,7 @@ const ON_TABLE_SCREEN: Row[] = [
       name: "tdd",
     },
     columns: [
-      "Select for bulk deploy",
+      "Select skills",
       "Name",
       "Status",
       "Description",

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { idleCategoryAdd } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 import { ImportDialog } from "./import-dialog";
@@ -81,12 +82,14 @@ function SourceHost({
       onClose={onClose}
       onImport={onImport}
       importing={false}
+      outcome={false}
       importError={importError}
       category={{
         value: null,
         hint: "Only you see this category.",
         suggested: null,
         onChange: vi.fn(),
+        add: idleCategoryAdd,
       }}
     />
   );

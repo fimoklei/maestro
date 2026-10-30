@@ -33,11 +33,18 @@ const meta = {
     onImport: () => {},
     importing: false,
     importError: null,
+    outcome: false,
     category: {
       value: "Code review",
       hint: "Taken from SKILL.md.",
       suggested: null,
       onChange: () => {},
+      add: {
+        run: async () => null,
+        pending: false,
+        failed: false,
+        reset: () => {},
+      },
     },
   },
 } satisfies Meta<typeof ImportDialog>;

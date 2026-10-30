@@ -617,7 +617,7 @@ describe("Prompts — Edit prompt's Category field", () => {
     expect(edits).toEqual([]);
     expect(screen.queryByRole("heading", { name: "Harness" })).toBeNull();
     await waitFor(() =>
-      expect(region()).toHaveTextContent("Set category for pr-review."),
+      expect(region()).toHaveTextContent("Category set for pr-review."),
     );
   });
 

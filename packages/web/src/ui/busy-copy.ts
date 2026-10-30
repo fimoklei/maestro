@@ -59,7 +59,7 @@ export const ACTIONS: Record<
   scaffold: { busy: "Scaffolding…", done: "Scaffolded" },
   connect: { busy: "Connecting…", done: "Connected" },
   setLocation: { busy: "Setting…", done: "Set" },
-  setCategory: { busy: "Setting…", done: "Set category for" },
+  setCategory: { busy: "Setting…", done: "Category set for" },
   rename: { busy: "Renaming…", done: "Renamed" },
 };
 
