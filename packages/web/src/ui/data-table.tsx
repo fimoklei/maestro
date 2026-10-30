@@ -80,7 +80,7 @@ export function createDataTableColumns<T extends RowData>(
 }
 
 interface DataTableSelection<T> {
-  /** Accessible name of the checkbox column, e.g. "Select for bulk deploy". */
+  /** Accessible name of the checkbox column, e.g. "Select skills". */
   label: string;
   /** Accessible name of one row's checkbox. */
   rowLabel: (row: T) => string;

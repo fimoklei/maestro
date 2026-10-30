@@ -4,7 +4,7 @@ import { Checkbox } from "./checkbox";
 const meta = {
   title: "Core/Checkbox",
   component: Checkbox,
-  args: { "aria-label": "Select tdd for bulk deploy" },
+  args: { "aria-label": "Select tdd" },
 } satisfies Meta<typeof Checkbox>;
 
 export default meta;
@@ -19,7 +19,7 @@ export const Checked: Story = { args: { checked: true } };
 export const Indeterminate: Story = {
   args: {
     checked: "indeterminate",
-    "aria-label": "Select all for bulk deploy",
+    "aria-label": "Select all skills",
   },
 };
 

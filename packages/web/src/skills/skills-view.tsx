@@ -87,11 +87,11 @@ import {
   removeFromAllLabel,
   removeFromToolsLabel,
   SEARCH_LABEL,
-  SELECT_ALL_LABEL,
+  SELECT_ALL_SKILLS,
+  SELECT_SKILLS,
   SKILLS_FACT,
-  STAGE_COLUMN_LABEL,
+  selectSkillLabel,
   skillsFactValue,
-  stageRowLabel,
 } from "./skills-copy";
 
 // Presentational; the container supplies the reads (#992, #1040).
@@ -389,9 +389,9 @@ export function SkillsView({
           ),
       }}
       selection={{
-        label: STAGE_COLUMN_LABEL,
-        allLabel: SELECT_ALL_LABEL,
-        rowLabel: (row) => stageRowLabel(row.name),
+        label: SELECT_SKILLS,
+        allLabel: SELECT_ALL_SKILLS,
+        rowLabel: (row) => selectSkillLabel(row.name),
         selected: staged,
         onToggle: (row) =>
           setStaged((current) => toggleStaged(current, row.name)),
