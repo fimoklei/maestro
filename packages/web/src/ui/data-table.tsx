@@ -31,6 +31,7 @@ import { keyHint } from "./data-table-copy";
 import { DataTableName } from "./data-table-name";
 import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
+import { lastInputWasPointer } from "./input-modality";
 import {
   ACTIONS_COLUMN_ID,
   type RowMenuControl,
@@ -251,6 +252,8 @@ export function DataTable<T extends RowData>({
   // One Tab stop: the arrows move this cursor, not focus.
   const [cursor, setCursor] = useState(0);
   const [gridFocused, setGridFocused] = useState(false);
+  // The keyboard card opens only for keyboard focus, not focus a press handed back.
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
   // A row opened from outside (a detail pane's pager) takes the cursor with it.
   const [cursorFor, setCursorFor] = useState<string | null>(null);
   if (cursorFor !== openRowId) {
@@ -298,6 +301,7 @@ export function DataTable<T extends RowData>({
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTableElement>) => {
+    setKeyboardFocus(true);
     if (!showRows) return;
     // React bubbles a portal's keys (a row's open menu) through its cell.
     if (!event.currentTarget.contains(event.target as Node)) return;
@@ -458,6 +462,7 @@ export function DataTable<T extends RowData>({
                     row={row.original}
                     focused={
                       gridFocused &&
+                      keyboardFocus &&
                       index === active &&
                       cell.column.id === keyboardCard
                     }
@@ -508,7 +513,9 @@ export function DataTable<T extends RowData>({
           }
         }}
         onFocus={(event) => {
-          if (event.target === event.currentTarget) setGridFocused(true);
+          if (event.target !== event.currentTarget) return;
+          setGridFocused(true);
+          setKeyboardFocus(!lastInputWasPointer());
         }}
         onBlur={(event) => {
           if (event.target === event.currentTarget) setGridFocused(false);
