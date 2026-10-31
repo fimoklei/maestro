@@ -156,6 +156,7 @@ describe("deleting a Harness skill from the clone", () => {
           },
         },
         now: () => AT,
+        fetched: () => {},
       }),
       locks: new InFlightLocks(),
       review: unavailableHarnessReview(),

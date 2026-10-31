@@ -1,5 +1,7 @@
-// The Harness read asks GitHub once per Harness within a window; a Proposal
-// action through `writes` drops that answer, so its result shows at once.
+// The Harness read reuses one review read per Harness until its clone is
+// fetched, so the pull requests always match the refs beside them (#1738). A
+// Proposal action through `writes` drops that answer, so its result shows at
+// once. The sign-in read is reused within a window.
 import type { GitOrigin } from "../deploy/git-origin";
 import { ReuseGate } from "../reuse-gate";
 import type {
@@ -51,18 +53,23 @@ export class ReviewReadGate {
   }
 
   reads(
-    maxAgeMs: number,
+    viewerMaxAgeMs: number,
   ): Pick<HarnessReviewPort, "readReviews" | "readViewer"> {
     return {
       readReviews: (origin) =>
-        this.remembered(this.reviews, maxAgeMs, () =>
+        this.remembered(this.reviews, Number.POSITIVE_INFINITY, () =>
           this.review.readReviews(origin),
         ),
       readViewer: (origin) =>
-        this.remembered(this.viewers, maxAgeMs, () =>
+        this.remembered(this.viewers, viewerMaxAgeMs, () =>
           this.review.readViewer(origin),
         ),
     };
+  }
+
+  /** The clone at `root` was fetched: its next review read asks GitHub. */
+  fetched(root: string): void {
+    this.reviews.invalidate(root);
   }
 
   private async remembered<T>(

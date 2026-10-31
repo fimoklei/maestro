@@ -7,7 +7,10 @@ const ROOT = "/harness";
 const START = Date.parse("2026-08-01T07:00:00.000Z");
 const WINDOW = 30_000;
 
-function buildGate(git = new InMemoryHarnessGit()) {
+function buildGate(
+  git = new InMemoryHarnessGit(),
+  onFetched: (root: string) => void = () => {},
+) {
   let now = START;
   let current: HarnessFreshness = { outcome: null, lastFetchedAt: null };
   const freshness = {
@@ -16,15 +19,21 @@ function buildGate(git = new InMemoryHarnessGit()) {
       current = next;
     },
   };
+  const fetched: string[] = [];
   const gate = new HarnessFetchGate({
     git,
     freshness,
     now: () => new Date(now),
+    fetched: (root) => {
+      fetched.push(root);
+      onFetched(root);
+    },
   });
   return {
     git,
     gate,
     freshness,
+    fetched,
     advance: (ms: number) => {
       now += ms;
     },
@@ -155,6 +164,46 @@ describe("HarnessFetchGate", () => {
       outcome: "offline",
       lastFetchedAt: "2026-08-01T07:00:00.000Z",
     });
+  });
+
+  // The review read pairs with the refs a fetch brought (#1738).
+  it("reports each fetch that ran once it lands, never a reused one", async () => {
+    const { git, gate, fetched } = buildGate();
+    const release = holdFetches(git);
+
+    const running = gate.fetchFresh(ROOT);
+    expect(fetched).toEqual([]);
+    release();
+    await running;
+    await gate.fetchRecent(ROOT);
+
+    expect(fetched).toEqual([ROOT]);
+  });
+
+  it("reports a fetch whatever its outcome", async () => {
+    const git = new InMemoryHarnessGit();
+    git.fetchOutcomes = ["offline"];
+    const { gate, fetched } = buildGate(git);
+
+    await gate.fetchFresh(ROOT);
+
+    expect(fetched).toEqual([ROOT]);
+  });
+
+  // A read between the two would pair the new refs with the old review read.
+  it("reports the fetch before the clone catches up", async () => {
+    const git = new InMemoryHarnessGit().settled({ tdd: "ours" }, "aaa");
+    git.cloneSync = "behind";
+    git.teammatePushes("bbb", { tdd: "theirs" });
+    const caughtUpWhenReported: string[][] = [];
+    const { gate } = buildGate(git, () =>
+      caughtUpWhenReported.push([...git.caughtUp]),
+    );
+
+    await gate.fetchFresh(ROOT);
+
+    expect(caughtUpWhenReported).toEqual([[]]);
+    expect(git.caughtUp).toEqual(["bbb"]);
   });
 
   it("catches the clone up with what the fetch brought", async () => {

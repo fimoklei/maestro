@@ -66,7 +66,12 @@ function buildRead(
   },
 ) {
   const freshness = overrides?.freshness ?? stubFreshness(FETCHED);
-  const gate = new HarnessFetchGate({ git, freshness, now: () => FETCH_TIME });
+  const gate = new HarnessFetchGate({
+    git,
+    freshness,
+    now: () => FETCH_TIME,
+    fetched: () => {},
+  });
   return new ReadHarnessState({
     resolveRoot:
       overrides?.resolveRoot ??

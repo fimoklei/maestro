@@ -54,6 +54,7 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
           },
         },
         now: () => AT,
+        fetched: () => {},
       }),
       locks: new InFlightLocks(),
       // No GitHub capability in this lane: the push is what these journeys prove.

@@ -16,6 +16,9 @@ export class HarnessFetchGate {
     git: Pick<HarnessGitPort, "fetch" | "catchUp">;
     freshness: HarnessFreshnessPort;
     now: () => Date;
+    // Told as soon as a fetch that ran lands, whatever its outcome: a failed
+    // fetch may still have moved refs.
+    fetched: (root: string) => void;
   };
   private readonly gate: ReuseGate<HarnessFetchOutcome>;
 
@@ -40,7 +43,12 @@ export class HarnessFetchGate {
 
   private fetch(root: string, maxAgeMs: number): Promise<HarnessFetchOutcome> {
     return this.gate.run(root, maxAgeMs, async () => {
-      const outcome = await recordFetch(this.deps, root, this.deps.now());
+      let outcome: HarnessFetchOutcome;
+      try {
+        outcome = await recordFetch(this.deps, root, this.deps.now());
+      } finally {
+        this.deps.fetched(root);
+      }
       // Catching up writes the working tree; it never loses local work (#978).
       await this.deps.git.catchUp(root);
       return outcome;

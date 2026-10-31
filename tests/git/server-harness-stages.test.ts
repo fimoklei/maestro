@@ -82,6 +82,31 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     );
   });
 
+  // #1738: a merge on GitHub shows in one stage, never beside a remembered open request.
+  it("moves a skill merged on GitHub from Pending review to Pending release on the next refresh", async () => {
+    const app = makeApp();
+    await writeSkill("tdd", "proposed");
+    await promote(app, "tdd");
+    stages.answer([request()]);
+    expect(rowsOf((await refresh(app)).stages.review)).toMatchObject([
+      { name: "tdd", status: "waiting-for-review" },
+    ]);
+
+    stages.answer([request({ state: "merged" })]);
+    await git(
+      stages.remote,
+      "update-ref",
+      "refs/heads/main",
+      "refs/heads/maestro/tdd",
+    );
+    const state = await refresh(app);
+
+    expect(rowsOf(state.stages.review)).toEqual([]);
+    expect(rowsOf(state.stages.release)).toMatchObject([
+      { name: "tdd", status: "not-yet-released", change: "edit" },
+    ]);
+  });
+
   it("keeps the pull-request URL and branches across a fresh read, never in the browser", async () => {
     const app = makeApp();
     await writeSkill("tdd", "edited on disk");

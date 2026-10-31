@@ -113,8 +113,8 @@ export type UseCases = ReturnType<typeof composeUseCases>;
 
 // How old an `apm outdated` answer for one Target a Drift read may reuse.
 const OUTDATED_MAX_AGE_MS = 30_000;
-// How old a review read the Harness read may reuse.
-const REVIEW_READ_MAX_AGE_MS = 30_000;
+// How old a sign-in read the Harness read may reuse.
+const VIEWER_READ_MAX_AGE_MS = 30_000;
 
 export function composeUseCases(ports: UseCasePorts) {
   const { env, fs, git } = ports;
@@ -209,17 +209,18 @@ export function composeUseCases(ports: UseCasePorts) {
     },
   });
   const harnessFreshness = new HarnessFreshnessStore({ store });
-  // One gate for every read of the clone, keyed on the resolved root.
-  const harnessFetchGate = new HarnessFetchGate({
-    git: harnessGit,
-    freshness: harnessFreshness,
-    now: () => new Date(),
-  });
   // Every review write goes through `writes`, so a Proposal action shows at once.
   const reviewGate = new ReviewReadGate({
     review: ports.gh,
     root: harnessRoot,
     now: () => new Date(),
+  });
+  // One gate for every read of the clone, keyed on the resolved root.
+  const harnessFetchGate = new HarnessFetchGate({
+    git: harnessGit,
+    freshness: harnessFreshness,
+    now: () => new Date(),
+    fetched: (root) => reviewGate.fetched(root),
   });
   // A deploy always fetches, so it never deploys from a stale clone (#666).
   const syncHarness = async () => {
@@ -305,7 +306,7 @@ export function composeUseCases(ports: UseCasePorts) {
     freshness: harnessFreshness,
     // Opening the Harness screen and Re-read Harness always fetch (#1630).
     fetchHarness: (root) => harnessFetchGate.fetchFresh(root),
-    review: reviewGate.reads(REVIEW_READ_MAX_AGE_MS),
+    review: reviewGate.reads(VIEWER_READ_MAX_AGE_MS),
   });
   const scaffoldOffers = new ScaffoldOffers();
   const connect = new ConnectInventory({
