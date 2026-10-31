@@ -57,7 +57,7 @@ describe("withdrawing a proposal", () => {
     const dialog = await openWithdrawal();
 
     expect(dialog).toHaveTextContent(
-      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
+      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
     );
   });
 
@@ -189,7 +189,7 @@ describe("withdrawing a proposal", () => {
     ).toBeVisible();
     expect(dialog).toHaveTextContent("Delete maestro/tdd on GitHub.");
     expect(dialog).toHaveTextContent(
-      "The pull request is closed. Your skill folder matches its copy on main.",
+      "The pull request is closed. Your skill folder matches its copy in the next release.",
     );
   });
 
@@ -214,7 +214,7 @@ describe("withdrawing a proposal", () => {
       const dialog = await openWithdrawal();
 
       expect(dialog).toHaveTextContent(
-        "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
+        "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
       );
       expect(within(dialog).queryByText("Pull request")).toBeNull();
     });
@@ -273,7 +273,7 @@ describe("withdrawing a proposal", () => {
       ).toBeVisible();
       expect(dialog).toHaveTextContent("Delete maestro/tdd on GitHub.");
       expect(dialog).toHaveTextContent(
-        "Your skill folder matches its copy on main.",
+        "Your skill folder matches its copy in the next release.",
       );
       expect(dialog).not.toHaveTextContent("The pull request is closed.");
     });

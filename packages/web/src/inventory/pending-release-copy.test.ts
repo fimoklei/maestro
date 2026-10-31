@@ -27,22 +27,22 @@ describe("the pending release sentence", () => {
     },
   );
 
-  it("names a prompt's new name and branch", () => {
+  it("names a prompt's new name in the next release", () => {
     expect(
       line(
         { type: "prompt", name: "pr-review" },
         waiting("rename", "pr-check"),
       ),
     ).toBe(
-      "This prompt was renamed to pr-check on main. Select Create a release on the Harness screen to publish it.",
+      "This prompt was renamed to pr-check in the next release. Select Create a release on the Harness screen to publish it.",
     );
   });
 
-  it("names a skill's new name and branch", () => {
+  it("names a skill's new name in the next release", () => {
     expect(
       line({ type: "skill", name: "tdd" }, waiting("rename", "test-first")),
     ).toBe(
-      "This skill was renamed to test-first on main. Select Create a release on the Harness screen to publish it.",
+      "This skill was renamed to test-first in the next release. Select Create a release on the Harness screen to publish it.",
     );
   });
 });

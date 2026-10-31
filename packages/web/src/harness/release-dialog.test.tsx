@@ -112,22 +112,19 @@ describe("ReleaseDialog", () => {
     renderReady();
 
     const facts = screen.getAllByRole("term").map((term) => term.textContent);
-    expect(facts.slice(0, 4)).toEqual([
-      "Origin",
-      "Previous tag",
-      "Default branch",
-      "Revision",
-    ]);
+    expect(facts.slice(0, 3)).toEqual(["Origin", "Previous tag", "Revision"]);
     expect(screen.getByText("Origin").nextElementSibling).toHaveTextContent(
       "github.com/fimoklei/agent-harness",
     );
   });
 
-  it("names the previous tag, default branch, and exact revision", () => {
+  // The release reads as the next release, with no default-branch fact (#1731).
+  it("names the previous tag and exact revision, and no branch", () => {
     renderReady();
 
     expect(screen.getByText("v1.2.3")).toBeInTheDocument();
-    expect(screen.getByText("main")).toBeInTheDocument();
+    expect(screen.queryByText("Default branch")).not.toBeInTheDocument();
+    expect(screen.queryByText("main")).not.toBeInTheDocument();
     // The whole commit, not an abbreviation: a short hash is not the exact
     // revision the tag would point at, and need not be unique (#519).
     expect(

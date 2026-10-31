@@ -238,7 +238,7 @@ describe("SkillDetailPane", () => {
     expect(
       screen.getByText(
         sentence(
-          "This skill was renamed to test-first on main. Select Create a release on the Harness screen to publish it.",
+          "This skill was renamed to test-first in the next release. Select Create a release on the Harness screen to publish it.",
         ),
       ),
     ).toBeInTheDocument();

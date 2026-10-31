@@ -425,8 +425,8 @@ export function useDiscardChange() {
   });
 }
 
-// The files a withdrawal from release replaces, and the token the server
-// rebuilds at the press, read when its confirmation opens.
+// The token the server rebuilds at the press, read when a withdrawal from
+// release opens its confirmation.
 export function useReleaseWithdrawalCheck(ref: PrimitiveRef) {
   return useQuery({
     queryKey: [
@@ -436,11 +436,11 @@ export function useReleaseWithdrawalCheck(ref: PrimitiveRef) {
       ref.name,
     ] as const,
     queryFn: () =>
-      requestJson<{ files: string[]; confirmation: string }>(
+      requestJson<{ confirmation: string }>(
         "/api/harness/release/withdraw/check",
         { method: "POST", body: JSON.stringify(ref) },
       ),
-    // The disk is the author's to change while the dialog is open.
+    // GitHub may move while the dialog is open.
     staleTime: 0,
     gcTime: 0,
   });

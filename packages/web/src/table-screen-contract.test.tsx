@@ -495,7 +495,7 @@ const ON_TABLE_SCREEN: Row[] = [
       },
       name: "tdd",
       badge: "Not yet proposed",
-      body: "Your local copy differs from main.",
+      body: "Your local copy differs from the next release.",
       readAge: "Not read yet",
     },
     reading: null,

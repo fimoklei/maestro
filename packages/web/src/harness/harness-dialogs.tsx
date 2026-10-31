@@ -95,7 +95,6 @@ export type HarnessDialogsProps = {
   discarding: DiscardTarget | null;
   discard: Presses["discardWrite"];
   onDiscardClose: () => void;
-  defaultBranch: string | null;
   withdrawing: WithdrawTarget | null;
   proposalAction: Presses["proposalWrite"];
   onWithdrawClose: () => void;
@@ -200,7 +199,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           type={props.discarding.type}
           name={props.discarding.name}
           path={props.discarding.path}
-          defaultBranch={props.defaultBranch}
           onClose={props.onDiscardClose}
           // Closes on success only: a refusal is stated in the dialog.
           onConfirm={() =>
@@ -221,7 +219,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       {props.withdrawing !== null ? (
         <WithdrawDialogHost
           target={props.withdrawing}
-          defaultBranch={props.defaultBranch}
           write={props.proposalAction}
           onClose={props.onWithdrawClose}
         />

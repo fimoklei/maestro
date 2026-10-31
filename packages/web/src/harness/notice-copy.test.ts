@@ -257,7 +257,6 @@ const SURFACES: Surface[] = [
         type,
         name: "tdd",
         branch: "maestro/tdd",
-        defaultBranch: "main",
         number: 45,
       }),
     codes<WithdrawError>({
@@ -326,8 +325,10 @@ const SURFACES: Surface[] = [
       "not-pending-release": true,
       "proposal-open": true,
       "confirmation-stale": true,
-      "destination-unsafe": true,
-      "destination-unreadable": true,
+      "clone-not-current": true,
+      "push-refused": true,
+      offline: true,
+      "push-elsewhere": true,
       "withdraw-in-progress": true,
       "withdraw-failed": true,
     }),
@@ -811,7 +812,6 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
         type: "skill",
         name: "tdd",
         branch: "maestro/tdd",
-        defaultBranch: "main",
         number: null,
       }),
     );
@@ -849,7 +849,7 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
       "The proposal branch remains unchanged.",
     );
     expect(notice("branch-delete-failed")?.detail).toBe(
-      "Your skill folder matches its copy on main.",
+      "Your skill folder matches its copy in the next release.",
     );
   });
 });
@@ -911,5 +911,97 @@ describe("Withdraw from release while a proposal is open", () => {
       message:
         "Nothing was withdrawn. Merge pull requests #45 and #52 on GitHub, or select Withdraw proposal.",
     });
+  });
+});
+
+describe("Withdraw from release refused on GitHub (#1729)", () => {
+  const notice = (code: string) =>
+    readNotice(
+      releaseWithdrawalNotice(refusal(code), {
+        type: "skill",
+        name: "tdd",
+        openRequests: [],
+      }),
+    );
+
+  it.each([
+    [
+      "push-refused",
+      {
+        level: "error",
+        label: "Direct push refused",
+        message:
+          "Nothing was withdrawn. Allow direct pushes to the default branch on GitHub, then select Withdraw from release again.",
+        detail: "A rule on GitHub blocked the push.",
+      },
+    ],
+    [
+      "clone-not-current",
+      {
+        level: "error",
+        label: "Clone not up to date",
+        message:
+          "Nothing was withdrawn. Sync your clone with GitHub, then select Withdraw from release again.",
+        detail: "Your clone's last commit is not the one on GitHub.",
+      },
+    ],
+    [
+      "offline",
+      {
+        level: "error",
+        label: "GitHub did not respond",
+        message:
+          "Nothing was withdrawn. Select Withdraw from release again once GitHub is reachable.",
+      },
+    ],
+    [
+      "push-elsewhere",
+      {
+        level: "error",
+        label: "Different push remote",
+        message:
+          "Nothing was withdrawn. Point the clone's push remote at its origin.",
+        detail: "Maestro publishes only to the origin it reads from.",
+      },
+    ],
+    [
+      "withdraw-failed",
+      {
+        level: "error",
+        label: "Skill not withdrawn",
+        message:
+          "Nothing was withdrawn. Check that you can push to the default branch on GitHub, then select Withdraw from release again.",
+      },
+    ],
+    [
+      "confirmation-stale",
+      {
+        level: "error",
+        label: "Confirmation out of date",
+        message:
+          "Nothing was withdrawn. Select Re-read Harness, then select Withdraw from release again.",
+        detail: "GitHub changed after this confirmation.",
+      },
+    ],
+  ])("states %s", (code, expected) => {
+    expect(notice(code)).toEqual(expected);
+  });
+});
+
+// The author confirms against the next release, never a branch (#1731).
+describe("a confirmation the next release outran", () => {
+  it.each([
+    ["Delete skill", deletionNotice(refusal("confirmation-stale"), "skill")],
+    [
+      "Discard change",
+      discardNotice(refusal("confirmation-stale"), {
+        type: "skill",
+        name: "tdd",
+      }),
+    ],
+  ])("says the next release changed after %s", (_control, notice) => {
+    expect(readNotice(notice)?.detail).toBe(
+      "The next release changed after this confirmation.",
+    );
   });
 });

@@ -6,12 +6,10 @@ import { WithdrawDialog } from "./withdraw-dialog";
 // Reads the files the withdrawal would lose while the confirmation stands.
 export function WithdrawDialogHost({
   target,
-  defaultBranch,
   write,
   onClose,
 }: {
   target: WithdrawTarget;
-  defaultBranch: string | null;
   write: ReturnType<typeof useHarnessPresses>["proposalWrite"];
   onClose: () => void;
 }) {
@@ -22,7 +20,6 @@ export function WithdrawDialogHost({
       name={target.name}
       branch={target.branch}
       number={target.number}
-      defaultBranch={defaultBranch}
       unproposed={
         check.isPending
           ? { kind: "checking" }

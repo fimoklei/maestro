@@ -151,9 +151,9 @@ describe("Harness freshness and failed reads", () => {
     const band = htmlElement(read.closest('[data-band="2"]'));
     expect(
       Array.from(band.querySelectorAll("dt"), (label) => label.textContent),
-    ).toEqual(["Origin", "Release", "Branch"]);
+    ).toEqual(["Origin", "Release"]);
     expect(
-      within(band).getByText("Branch").compareDocumentPosition(read) &
+      within(band).getByText("Release").compareDocumentPosition(read) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });

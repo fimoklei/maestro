@@ -15,7 +15,9 @@ import {
   harnessSkillSubpath,
 } from "../inventory/harness-layout";
 import { classifyFetchFailure } from "./classify-fetch-failure";
+import { classifyGitError } from "./classify-git-error";
 import { classifyPushFailure } from "./classify-push-failure";
+import { withdrawOnDefaultBranch } from "./default-branch-withdrawal-git";
 import {
   type HarnessObject,
   type HarnessPrimitiveType,
@@ -25,7 +27,7 @@ import {
   proposalBranchLeaf,
 } from "./harness-primitive";
 import {
-  commitPrimitiveOnto,
+  commitPrimitivesOnto,
   hashWorkingPrimitive,
   listPrimitivesAt,
   listWorkingPrimitives,
@@ -47,6 +49,7 @@ import { type ProposalKind, proposalTitle } from "./proposal-request";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
   BranchAuthorship,
+  DefaultBranchWithdrawal,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
@@ -55,6 +58,7 @@ import type {
   PromoteSkillOutcome,
   PublishTagOutcome,
   SkillPushOutcome,
+  WithdrawalPushOutcome,
   WorktreeAmbiguity,
 } from "./read-harness-state";
 import {
@@ -62,6 +66,7 @@ import {
   parseSkillTreeListing,
   type ReleasedContentReader,
 } from "./released-content";
+import { remoteBranchHolds } from "./remote-branch-holds";
 
 const run = promisify(execFile);
 
@@ -132,7 +137,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
       );
     } catch (error) {
       const failure = classifyGitError(error, classifyPushFailure);
-      const settled = await this.settlePush(root, name, commit, failure);
+      const settled = await this.settlePush(
+        root,
+        name,
+        commit,
+        failure === "refused" ? "push-failed" : failure,
+      );
       if (settled !== "pushed") {
         return settled;
       }
@@ -214,14 +224,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitiveOnto(
-        root,
-        { ref, object },
-        base,
-        existingTip ?? base,
+      const commit = await commitPrimitivesOnto(root, [{ ref, object }], {
+        treeBase: base,
+        parent: existingTip ?? base,
         indexDir,
-        proposalTitle(ref, kind),
-      );
+        message: proposalTitle(ref, kind),
+      });
       // A save halfway through `git add` mixes two revisions: refuse content
       // that moved, since a pushed branch cannot be taken back.
       if (
@@ -263,14 +271,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitiveOnto(
-        root,
-        { ref, object: null },
-        base,
-        existingTip ?? base,
+      const commit = await commitPrimitivesOnto(root, [{ ref, object: null }], {
+        treeBase: base,
+        parent: existingTip ?? base,
         indexDir,
-        proposalTitle(ref, "deletion"),
-      );
+        message: proposalTitle(ref, "deletion"),
+      });
       // Reappeared since the guard: refuse, a pushed branch cannot be taken back.
       if (await primitiveOnDisk(root, ref)) {
         return "source-changed";
@@ -281,6 +287,15 @@ export class HarnessGitAdapter implements HarnessGitPort {
     } finally {
       await rm(indexDir, { recursive: true, force: true });
     }
+  }
+
+  async withdrawOnDefaultBranch(
+    root: string,
+    withdrawal: DefaultBranchWithdrawal,
+  ): Promise<WithdrawalPushOutcome> {
+    return await withdrawOnDefaultBranch(root, withdrawal, {
+      pushLandsWhereItFetched: () => this.pushLandsWhereItFetched(root),
+    });
   }
 
   async readUnproposedFiles(
@@ -425,9 +440,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  // A push can fail after the remote already moved the branch, so the remote is
-  // asked (#577). A teammate may have fast-forwarded past this commit since, so
-  // being an ancestor of the tip also counts as pushed.
+  // A teammate may have fast-forwarded past this commit since, so being an
+  // ancestor of the tip also counts as pushed.
   private async settlePromotion(
     root: string,
     ref: PrimitiveRef,
@@ -435,48 +449,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
     failure: SkillPushOutcome,
   ): Promise<SkillPushOutcome> {
     const branchRef = `refs/heads/${proposalBranch(ref)}`;
-    const listing = await run(
-      "git",
-      ["-C", root, "ls-remote", "origin", branchRef],
-      gitOptions(),
-    ).then(
-      ({ stdout }) => stdout.trim(),
-      () => "",
+    const holds = await remoteBranchHolds(
+      root,
+      branchRef,
+      commit,
+      `+${branchRef}:${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
     );
-    const [pushed] = listing.split("\t");
-    if (pushed === undefined || pushed === "") {
-      return failure;
-    }
-    if (pushed === commit) {
-      return "pushed";
-    }
-    // `merge-base` needs the tip's object locally.
-    const fetched = await run(
-      "git",
-      [
-        "-C",
-        root,
-        "fetch",
-        "origin",
-        `+${branchRef}:${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
-      ],
-      gitOptions(),
-    ).then(
-      () => true,
-      () => false,
-    );
-    if (!fetched) {
-      return failure;
-    }
-    const isAncestor = await run(
-      "git",
-      ["-C", root, "merge-base", "--is-ancestor", commit, pushed],
-      gitOptions(),
-    ).then(
-      () => true,
-      () => false,
-    );
-    return isAncestor ? "pushed" : failure;
+    return holds ? "pushed" : failure;
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {
@@ -662,17 +641,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
       });
   }
 }
-
-// A run we cut off got no answer, so it is offline, never a reply.
-const classifyGitError = <T>(
-  error: unknown,
-  classify: (stderr: string) => T,
-): "offline" | T => {
-  const killed = (error as { killed?: boolean }).killed === true;
-  return killed
-    ? "offline"
-    : classify(String((error as { stderr?: string }).stderr));
-};
 
 const pathExists = (path: string): Promise<boolean> =>
   access(path).then(

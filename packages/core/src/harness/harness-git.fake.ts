@@ -19,6 +19,7 @@ import type { ProposalKind } from "./proposal-request";
 import type {
   BranchAuthorship,
   CloneSync,
+  DefaultBranchWithdrawal,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
@@ -29,6 +30,7 @@ import type {
   PromoteSkillOutcome,
   PublishTagOutcome,
   SkillPushOutcome,
+  WithdrawalPushOutcome,
   WorktreeAmbiguity,
 } from "./read-harness-state";
 import type { HarnessSkillTree } from "./released-content";
@@ -146,6 +148,7 @@ export class InMemoryHarnessGit implements HarnessGitPort {
   pushOutcome: SkillPushOutcome | null = null;
   writeOutcome: "missing" | "failed" | null = null;
   deleteOutcome: "deleted" | "failed" = "deleted";
+  withdrawOutcome: WithdrawalPushOutcome | null = null;
   pushesWhereItFetched = true;
   // Per branch name, as `promote`: the files only the working tree holds;
   // null is no answer.
@@ -167,6 +170,8 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     commit: string;
     into: string;
   }[] = [];
+  // Commits pushed to the default branch by a withdrawal.
+  readonly withdrawals: { commit: string; message: string }[] = [];
   // Proposal branch names deleted on the remote.
   readonly deletedBranches: string[] = [];
   readonly caughtUp: string[] = [];
@@ -422,9 +427,36 @@ export class InMemoryHarnessGit implements HarnessGitPort {
         tree: hash ?? null,
         commit,
         authorship: this.authorshipOf(leaf),
+        landed: this.hasLanded(commit, type, ref.name, hash ?? null),
       };
     }
     return refs;
+  }
+
+  // As the adapter: the tip is on origin/HEAD, or a commit the branch lacks
+  // holds its content.
+  private hasLanded(
+    branch: string | null,
+    type: HarnessPrimitiveType,
+    name: string,
+    hash: string | null,
+  ): boolean {
+    if (branch === null || this.tip === null) {
+      return false;
+    }
+    const onBranch = new Set(this.history(branch));
+    const base = this.history(this.tip);
+    return (
+      base.includes(branch) ||
+      base
+        .filter((id) => !onBranch.has(id))
+        .some((id) => {
+          const content = this.contentAt(id);
+          return (
+            content !== null && (hashesOf(content, type)[name] ?? null) === hash
+          );
+        })
+    );
   }
 
   async mergeBaseCommit(
@@ -575,6 +607,54 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     );
     this.promote[leaf] = id;
     this.pushed.push({ type: ref.type, name: ref.name, base, kind });
+    return "pushed";
+  }
+
+  // The remote's answer is checked after the clone's own checks, as in git.
+  async withdrawOnDefaultBranch(
+    root: string,
+    withdrawal: DefaultBranchWithdrawal,
+  ): Promise<WithdrawalPushOutcome> {
+    this.at(root);
+    if (this.head !== withdrawal.tip) {
+      return "clone-not-current";
+    }
+    if (!this.pushesWhereItFetched) {
+      return "push-elsewhere";
+    }
+    if (this.withdrawOutcome !== null && this.withdrawOutcome !== "pushed") {
+      return this.withdrawOutcome;
+    }
+    if (this.tip !== withdrawal.tip) {
+      return "stale-tip";
+    }
+    const at = this.contentAt(withdrawal.tip);
+    const source =
+      withdrawal.source === null
+        ? { skills: {}, prompts: {} }
+        : this.contentAt(withdrawal.source);
+    if (at === null || source === null) {
+      return "push-failed";
+    }
+    const skills = { ...at.skills };
+    const prompts = { ...at.prompts };
+    for (const ref of withdrawal.refs) {
+      const held = textOf(source, ref);
+      const map: Record<string, string | null> =
+        ref.type === "skill" ? skills : prompts;
+      delete map[ref.name];
+      if (held !== undefined) {
+        map[ref.name] = held;
+      }
+    }
+    const id = this.commit(
+      `withdrawal-${this.withdrawals.length + 1}`,
+      skills,
+      { parent: withdrawal.tip, prompts },
+    );
+    this.withdrawals.push({ commit: id, message: withdrawal.message });
+    this.tip = id;
+    this.head = id;
     return "pushed";
   }
 

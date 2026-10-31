@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { GitBranch, RefreshCw, Tag } from "lucide-react";
+import { RefreshCw, Tag } from "lucide-react";
 import type { Band } from "./band";
 import { BandRow } from "./band";
 import type { BandSummaryInput } from "./band-summary";
@@ -38,13 +38,6 @@ const HARNESS: Band = {
       machine: true,
       drop: { rank: 3, belowRem: 24 },
     },
-    {
-      label: "Branch",
-      value: "main",
-      icon: <Icon of={GitBranch} />,
-      machine: true,
-      drop: { rank: 1, belowRem: 54 },
-    },
   ],
   summary: HARNESS_SUMMARY,
   labelsBelowRem: 62,
@@ -81,8 +74,9 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// Green: nothing to act on, the healthy word.
-export const AllFacts: Story = {};
+// Green: nothing to act on, the healthy word. Harness band 2 states Origin
+// and Release only: the author acts on the next release, not a branch (#1731).
+export const OriginAndRelease: Story = {};
 
 // Amber: counts of work waiting.
 export const Attention: Story = {

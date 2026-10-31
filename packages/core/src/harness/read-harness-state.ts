@@ -50,6 +50,28 @@ export type PromoteSkillOutcome =
 
 export type SkillPushOutcome = Exclude<PromoteSkillOutcome, "skill-missing">;
 
+/** One commit on the default branch that puts the named primitives back as `source` holds them. */
+export type DefaultBranchWithdrawal = {
+  defaultBranch: string;
+  // The tip the confirmation read: the push's lease.
+  tip: string;
+  // The latest release's commit; null where the Harness has no release.
+  source: string | null;
+  refs: readonly PrimitiveRef[];
+  message: string;
+};
+
+// `clone-not-current`: the local HEAD is not the tip. `refused`: the remote
+// declined the push (a protected branch). Any other failure is `push-failed`.
+export type WithdrawalPushOutcome =
+  | "pushed"
+  | "stale-tip"
+  | "refused"
+  | "offline"
+  | "push-elsewhere"
+  | "clone-not-current"
+  | "push-failed";
+
 // A removal is published from what is absent on disk, so any of these would
 // read as a deletion nobody made. `unreadable` is fail-closed.
 export type WorktreeAmbiguity =
@@ -96,6 +118,9 @@ export type HarnessPromoteRef = {
   commit: string | null;
   // Judged over origin/HEAD.
   authorship: BranchAuthorship;
+  // origin/HEAD held the branch's content in a commit the branch lacks: a
+  // squash, rebase or merge commit landed it. False where unreadable.
+  landed: boolean;
 };
 
 // Hash per primitive name, for one type; in `promote` the name is the one its
@@ -158,6 +183,13 @@ export interface HarnessGitPort {
     ref: PrimitiveRef,
     baseCommit: string,
   ): Promise<SkillPushOutcome>;
+  // Builds the commit in a throwaway index, pushes it with a lease on `tip`,
+  // then moves the local branch and resets the named paths in the index. The
+  // working tree is never touched; nothing is written before the checks pass.
+  withdrawOnDefaultBranch(
+    root: string,
+    withdrawal: DefaultBranchWithdrawal,
+  ): Promise<WithdrawalPushOutcome>;
   readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null>;
   readLocalHeadCommit(root: string): Promise<string | null>;
   // Null where the question could not be asked (fail-closed).

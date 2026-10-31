@@ -128,7 +128,7 @@ describe("Harness restore", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+          "This skill is deleted in your clone but still in the next release. Select Propose change to propose the deletion.",
         ),
       ),
     ).toBeInTheDocument();

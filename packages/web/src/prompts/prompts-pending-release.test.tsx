@@ -141,7 +141,7 @@ describe("a prompt whose merged change waits for a release", () => {
     ).toBeInTheDocument();
   });
 
-  it("names the new name and branch for a rename, and opens the row under the new name", async () => {
+  it("names the new name in the next release for a rename, and opens the row under the new name", async () => {
     renderPanel([
       prompt("pr-review", {
         change: "rename",
@@ -155,7 +155,7 @@ describe("a prompt whose merged change waits for a release", () => {
     expect(
       pane.getByText(
         sentence(
-          "This prompt was renamed to pr-check on trunk. Select Create a release on the Harness screen to publish it.",
+          "This prompt was renamed to pr-check in the next release. Select Create a release on the Harness screen to publish it.",
         ),
       ),
     ).toBeInTheDocument();

@@ -53,6 +53,7 @@ const row = (
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  mergedRequest: null,
   ...over,
 });
 
@@ -76,7 +77,6 @@ const ALL_STATUSES = Object.keys({
 const CHANGES: HarnessChange[] = ["addition", "edit", "deletion", "rename"];
 
 const CONTEXT = {
-  defaultBranch: "main",
   releasedVersion: "v1.4.0",
   origin: "github.com/fimoklei/agent-harness",
 };
@@ -327,13 +327,13 @@ describe("Detail sentences", () => {
     [
       "not-yet-proposed",
       { change: "deletion" },
-      "This prompt is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+      "This prompt is deleted in your clone but still in the next release. Select Propose change to propose the deletion.",
       null,
     ],
     [
       "not-yet-proposed",
       { change: "addition" },
-      "This prompt is not on main yet. Select Propose change to send it for review.",
+      "This prompt is not in the next release yet. Select Propose change to send it for review.",
       null,
     ],
     [
@@ -375,32 +375,32 @@ describe("Detail sentences", () => {
     [
       "not-yet-released",
       { change: "addition" },
-      "This prompt was added to main after release v1.4.0. Select Create a release to publish it.",
-      "This prompt is on main and in no release yet. Select Create a release to publish it.",
+      "This prompt was added after release v1.4.0. Select Create a release to publish it.",
+      "This prompt is in no release yet. Select Create a release to publish it.",
     ],
     [
       "not-yet-released",
       { change: "edit" },
-      "This prompt changed on main after release v1.4.0. Select Create a release to publish it.",
-      "This prompt is on main and in no release yet. Select Create a release to publish it.",
+      "This prompt changed after release v1.4.0. Select Create a release to publish it.",
+      "This prompt is in no release yet. Select Create a release to publish it.",
     ],
     [
       "not-yet-released",
       { change: "rename" },
-      "This prompt was renamed from testing on main. Select Create a release to publish it.",
+      "This prompt was renamed from testing. Select Create a release to publish it.",
       null,
     ],
     [
       "not-yet-released",
       { change: "rename", previousName: null },
-      "This prompt was renamed on main. Select Create a release to publish it.",
+      "This prompt was renamed. Select Create a release to publish it.",
       null,
     ],
     [
       "not-yet-released",
       { change: "deletion" },
-      "This prompt was deleted from main after release v1.4.0. Select Create a release to publish the deletion.",
-      "This prompt is no longer on main. Select Create a release to publish the deletion.",
+      "This prompt was deleted after release v1.4.0. Select Create a release to publish the deletion.",
+      "This prompt was deleted. Select Create a release to publish the deletion.",
     ],
   ])(
     "words a prompt's %s row as approved (%o)",
@@ -449,7 +449,9 @@ describe("Detail sentences", () => {
       ),
     );
 
-    expect(sentence).toMatch(/Select Propose change .*select Discard change/);
+    expect(sentence).toBe(
+      "Your local copy differs from the next release. Select Propose change to send it for review. Or select Discard change to match the next release.",
+    );
   });
 
   // One next action: Restore skill stays in the row menu (#1396).
@@ -530,7 +532,7 @@ describe("Detail sentences", () => {
 
     for (const sentence of sentences) {
       expect(plainText(sentence)).toContain("Select Create a release");
-      expect(machineValues(sentence)).toEqual(["main"]);
+      expect(machineValues(sentence)).toEqual([]);
     }
   });
 
@@ -567,24 +569,27 @@ describe("Detail sentences", () => {
     expect(several(4)).toEqual(several(3));
   });
 
-  it("names the branch it compared against when no proposal exists", () => {
+  // The author compares with the next release, never a git branch (#1731).
+  it("names the next release it compared against when no proposal exists", () => {
     expect(
       plainText(
         detailSentence(row("pending-proposal", "not-yet-proposed"), CONTEXT),
       ),
-    ).toContain("main");
+    ).toBe(
+      "Your local copy differs from the next release. Select Propose change to send it for review.",
+    );
   });
 
   it.each([
-    ["pending-proposal", "not-yet-proposed", "deletion", ["main"]],
-    ["pending-proposal", "not-yet-proposed", "addition", ["main"]],
-    ["pending-proposal", "not-yet-proposed", "edit", ["main"]],
-    ["pending-release", "not-yet-released", "addition", ["main", "v1.4.0"]],
-    ["pending-release", "not-yet-released", "edit", ["main", "v1.4.0"]],
-    ["pending-release", "not-yet-released", "rename", ["main"]],
-    ["pending-release", "not-yet-released", "deletion", ["main", "v1.4.0"]],
+    ["pending-proposal", "not-yet-proposed", "deletion", []],
+    ["pending-proposal", "not-yet-proposed", "addition", []],
+    ["pending-proposal", "not-yet-proposed", "edit", []],
+    ["pending-release", "not-yet-released", "addition", ["v1.4.0"]],
+    ["pending-release", "not-yet-released", "edit", ["v1.4.0"]],
+    ["pending-release", "not-yet-released", "rename", []],
+    ["pending-release", "not-yet-released", "deletion", ["v1.4.0"]],
   ] as const)(
-    "sets the branch and release apart in %s %s (%s)",
+    "sets only the release apart in %s %s (%s)",
     (stage, status, change, values) => {
       const sentence = detailSentence(
         row(stage, status, { change, previousName: "testing" }),
@@ -594,15 +599,6 @@ describe("Detail sentences", () => {
       expect(machineValues(sentence)).toEqual(values);
     },
   );
-
-  it("keeps the fallback branch words in plain text", () => {
-    const sentence = detailSentence(
-      row("pending-release", "not-yet-released", { change: "addition" }),
-      { ...CONTEXT, defaultBranch: null },
-    );
-
-    expect(machineValues(sentence)).toEqual(["v1.4.0"]);
-  });
 
   it("keeps every sentence within two sentences of fifteen words", () => {
     for (const status of OWN_STATUSES) {

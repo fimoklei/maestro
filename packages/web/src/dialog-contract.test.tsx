@@ -190,7 +190,6 @@ const withdrawDialog = (
     name="research"
     branch="maestro/research"
     number={45}
-    defaultBranch="main"
     unproposed={unproposed}
     onClose={over.onClose ?? vi.fn()}
     onConfirm={vi.fn()}
@@ -540,7 +539,6 @@ const ON_DIALOG: Row[] = [
         type="skill"
         name="research"
         path=".apm/skills/research"
-        defaultBranch="main"
         onClose={onClose}
         onConfirm={vi.fn()}
         discarding={running}
@@ -626,28 +624,16 @@ const ON_DIALOG: Row[] = [
     file: "harness/release-withdrawal-dialog.tsx",
     heading: "Withdraw research from release",
     render: ({ running, onClose }) =>
-      releaseWithdrawalDialog(
-        { kind: "read", files: [] },
-        { running, onClose },
-      ),
+      releaseWithdrawalDialog({ kind: "read" }, { running, onClose }),
     changed: null,
     emptyForm: null,
     loading: {
-      line: "Checking for changes not yet proposed…",
+      line: "Checking what GitHub holds…",
       render: () => releaseWithdrawalDialog({ kind: "checking" }),
     },
     loadFailed: () =>
       releaseWithdrawalDialog({ kind: "refused", notice: FAILED }),
-    notices: [
-      {
-        label: "Changes not yet proposed",
-        render: () =>
-          releaseWithdrawalDialog({
-            kind: "read",
-            files: [".apm/skills/research/SKILL.md"],
-          }),
-      },
-    ],
+    notices: [],
   },
   {
     file: "deploy-state/update-target-dialog.tsx",

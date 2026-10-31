@@ -76,13 +76,13 @@ describe("DeletionDialog", () => {
     expect(screen.getByText(TREE)).toBeInTheDocument();
   });
 
-  it("names the tree hash the default branch commit and says what a push does", () => {
+  it("names the tree hash the next release commit and says what a push does", () => {
     renderDialog();
 
-    expect(screen.getByText("Default branch commit")).toBeInTheDocument();
+    expect(screen.getByText("Next release commit")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "If the default branch moves before you confirm, nothing is pushed.",
+        "If the next release changes before you confirm, nothing is pushed.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Confirmed against")).not.toBeInTheDocument();
@@ -93,7 +93,7 @@ describe("DeletionDialog", () => {
 
     expectDescription(
       screen.getByText(TREE),
-      "If the default branch moves before you confirm, nothing is pushed.",
+      "If the next release changes before you confirm, nothing is pushed.",
     );
   });
 
@@ -472,12 +472,12 @@ describe("DeletionDialog", () => {
       expect(screen.queryByText(/targets/)).not.toBeInTheDocument();
     });
 
-    it("shows the prompt, its branch and the default branch commit as facts", () => {
+    it("shows the prompt, its branch and the next release commit as facts", () => {
       renderPrompt(PROMPT_PROPOSE);
 
       expect(screen.getByText("Prompt")).toBeInTheDocument();
       expect(screen.getByText("maestro/prompt.pr-review")).toBeInTheDocument();
-      expect(screen.getByText("Default branch commit")).toBeInTheDocument();
+      expect(screen.getByText("Next release commit")).toBeInTheDocument();
       expect(screen.getByText(TREE)).toBeInTheDocument();
     });
 

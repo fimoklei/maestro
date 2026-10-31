@@ -59,6 +59,9 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
 /** A blocked release, said as a tooltip cause and as a refusal heading. */
 export const NOTHING_TO_RELEASE = "Nothing to release";
 
+// Delete and Discard change confirm against the next release (#1731).
+const STALE_NEXT_RELEASE = "The next release changed after this confirmation.";
+
 const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   ...harnessHeadings,
   "no-answer": {
@@ -138,7 +141,7 @@ export const typeFolderNotRead = (
   message,
 });
 
-const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
+export const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
   ...harnessHeadings,
   "invalid-skill": invalidNameHeading(w),
   "no-answer": {
@@ -237,7 +240,7 @@ export const deletionHeadings = (
       level: "error",
       label: "Confirmation out of date",
       message: `Nothing was pushed. Select ${rereadLabel("Harness")}, then select ${DELETE} again.`,
-      detail: "The copy on the default branch moved after this confirmation.",
+      detail: STALE_NEXT_RELEASE,
     },
     "not-deleted": {
       level: "error",
@@ -407,7 +410,7 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
       level: "error",
       label: "Confirmation out of date",
       message: `Select ${rereadLabel("Harness")}, then select ${DISCARD_CHANGE} again.`,
-      detail: "The default branch moved after this confirmation.",
+      detail: STALE_NEXT_RELEASE,
     },
     "destination-unsafe": linkInHarness(
       w,

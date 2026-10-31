@@ -451,8 +451,6 @@ export function composeUseCases(ports: UseCasePorts) {
         return read.ok ? read.state.stages : null;
       },
       freshness: harnessFreshness,
-      fs,
-      copyFs: copyTreeFs,
       git: harnessGit,
       locks: harnessPromoteLocks,
     }),

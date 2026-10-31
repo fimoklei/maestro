@@ -53,7 +53,7 @@ describe("Harness stage headers", () => {
     ).toBeInTheDocument();
   });
 
-  it("names the default branch, as a machine value, when every row was compared with it", async () => {
+  it("names the next release when every row was compared with it", async () => {
     stubHarnessServer({
       read: {
         body: withStages(FETCHED, { proposal: [proposalRow("tdd", null)] }),
@@ -61,8 +61,7 @@ describe("Harness stage headers", () => {
     });
     renderHarness();
 
-    const meta = await metaOf("Pending proposal", "Compared with main");
-    expect(within(meta).getByText("main")).toHaveClass("font-mono");
+    await metaOf("Pending proposal", "Compared with the next release");
   });
 
   it("asserts no single comparison when the rows disagree", async () => {
@@ -77,9 +76,9 @@ describe("Harness stage headers", () => {
 
     const meta = await metaOf(
       "Pending proposal",
-      "Compared with each change's proposal or main",
+      "Compared with each change's proposal or the next release",
     );
-    expect(within(meta).getByText("main")).toHaveClass("font-mono");
+    expect(within(meta).queryByText("main")).toBeNull();
   });
 
   it("leaves a routine review read without a meta line", async () => {

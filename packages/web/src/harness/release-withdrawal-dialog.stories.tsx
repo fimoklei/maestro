@@ -14,7 +14,7 @@ const meta = {
   component: ReleaseWithdrawalDialog,
   args: {
     target: CODE_REVIEW,
-    check: { kind: "read", files: [] },
+    check: { kind: "read" },
     onClose: () => {},
     onConfirm: () => {},
     withdrawing: false,
@@ -32,15 +32,9 @@ export const Checking: Story = {
   args: { check: { kind: "checking" } },
 };
 
-export const UnproposedChanges: Story = {
+export const Renamed: Story = {
   args: {
-    check: {
-      kind: "read",
-      files: [
-        ".apm/skills/code-review/SKILL.md",
-        ".apm/skills/code-review/references/notes.md",
-      ],
-    },
+    target: { ...CODE_REVIEW, change: "rename", previousName: "review" },
   },
 };
 
@@ -60,6 +54,30 @@ export const DeletedPrompt: Story = {
   },
 };
 
+export const CloneNotUpToDate: Story = {
+  args: {
+    withdrawError: {
+      level: "error",
+      label: "Clone not up to date",
+      message:
+        "Nothing was withdrawn. Sync your clone with GitHub, then select Withdraw from release again.",
+      detail: "Your clone's last commit is not the one on GitHub.",
+    },
+  },
+};
+
+export const DirectPushRefused: Story = {
+  args: {
+    withdrawError: {
+      level: "error",
+      label: "Direct push refused",
+      message:
+        "Nothing was withdrawn. Allow direct pushes to the default branch on GitHub, then select Withdraw from release again.",
+      detail: "A rule on GitHub blocked the push.",
+    },
+  },
+};
+
 export const Withdrawing: Story = {
   args: { withdrawing: true },
 };
@@ -71,8 +89,7 @@ export const ConfirmationOutOfDate: Story = {
       label: "Confirmation out of date",
       message:
         "Nothing was withdrawn. Select Re-read Harness, then select Withdraw from release again.",
-      detail:
-        "Your clone or the latest release changed after this confirmation.",
+      detail: "GitHub changed after this confirmation.",
     },
   },
 };

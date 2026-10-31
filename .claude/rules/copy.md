@@ -126,7 +126,7 @@ Tooltip cause: words beyond the cause
 | Status chip | Two to four words, no verb, from `GLOSSARY.md` | `Not yet proposed` |
 | Control label | Verb plus object, from `GLOSSARY.md`; a reach beyond the row in words | `Propose change`, `Remove from all 3 targets` |
 | Blocked control | A button keeps its plain label; its tooltip states the cause on hover and focus. A menu item keeps its plain label and no cause | `Create a release`, tooltip `Status out of date` |
-| Group header meta | The fact, no routine read age | `Compared with main` |
+| Group header meta | The fact, no routine read age | `Compared with the next release` |
 | Empty state | `No {things} yet`, then one sentence saying what appears here | `No changes yet` |
 | Busy label | `{Verb}ing…`, the verb of the control's own label, no object | `Deploying…` |
 | Tooltip cause | A blocked button's cause, in its tooltip and as its description: the shortest true statement or command. Reuse the words the screen already shows, such as a notice's heading | `Choose a target.` |

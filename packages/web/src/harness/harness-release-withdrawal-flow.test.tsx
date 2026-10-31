@@ -58,7 +58,7 @@ describe("Harness withdraw from release", () => {
   const confirmButton = (dialog: HTMLElement) =>
     within(dialog).getByRole("button", { name: /^Withdraw from release/ });
 
-  it("withdraws nothing until the dialog is confirmed, and lists no files without unproposed work", async () => {
+  it("withdraws nothing until the dialog is confirmed, and says the press reaches GitHub", async () => {
     const withdrawals: Record<string, unknown>[] = [];
     stubHarnessServer({
       read: { body: MERGED },
@@ -70,15 +70,13 @@ describe("Harness withdraw from release", () => {
 
     expect(
       within(dialog).getByText(
-        sentence(
-          "This replaces the skill folder in your clone with its copy in the latest release.",
-        ),
+        sentence("This takes code-review out of the next release on GitHub."),
       ),
     ).toBeVisible();
     expect(
       within(dialog).getByText(
         sentence(
-          "The skill then waits under Pending proposal. Deployed copies remain unchanged.",
+          "Your copy in the clone stays as it is. The skill then waits under Pending proposal. Deployed copies remain unchanged.",
         ),
       ),
     ).toBeVisible();
@@ -87,28 +85,6 @@ describe("Harness withdraw from release", () => {
     );
     expect(within(dialog).queryByText("Changes not yet proposed")).toBeNull();
     expect(withdrawals).toEqual([]);
-  });
-
-  it("lists the files of unproposed work the withdrawal replaces", async () => {
-    stubHarnessServer({
-      read: { body: MERGED },
-      releaseWithdrawalCheck: {
-        body: {
-          files: [".apm/skills/code-review/SKILL.md"],
-          confirmation: "token-1",
-        },
-      },
-    });
-    renderHarness();
-
-    const dialog = await openWithdrawal();
-
-    expect(
-      await within(dialog).findByText("Changes not yet proposed"),
-    ).toBeVisible();
-    expect(
-      within(dialog).getByText(".apm/skills/code-review/SKILL.md"),
-    ).toBeVisible();
   });
 
   it("sends the confirmation it was given, then selects the row under Pending proposal", async () => {
@@ -151,7 +127,8 @@ describe("Harness withdraw from release", () => {
 
   it("selects the old name's row under Pending proposal after withdrawing a rename", async () => {
     // tdd was renamed to testing and merged; the withdrawal brings tdd back
-    // and leaves two proposals: testing removed, tdd added.
+    // to the next release while the author keeps testing on disk, so tdd
+    // reads as deleted and testing as added, neither pending release.
     const RENAMED: HarnessState = withStages(ON_DISK, {
       release: [
         row("pending-release", "testing", "not-yet-released", {
@@ -163,23 +140,16 @@ describe("Harness withdraw from release", () => {
     });
     const RENAME_WITHDRAWN: HarnessState = withStages(ON_DISK, {
       proposal: [
-        row("pending-proposal", "testing", "not-yet-proposed", {
-          change: "deletion",
-          alsoIn: ["pending-release"],
-        }),
         row("pending-proposal", "tdd", "not-yet-proposed", {
-          onDisk: true,
-          change: "addition",
+          change: "deletion",
           remoteTree: "remote-tdd",
         }),
-      ],
-      release: [
-        row("pending-release", "testing", "not-yet-released", {
-          change: "rename",
-          previousName: "tdd",
-          alsoIn: ["pending-proposal"],
+        row("pending-proposal", "testing", "not-yet-proposed", {
+          onDisk: true,
+          change: "addition",
         }),
       ],
+      release: [],
     });
     const withdrawals: Record<string, unknown>[] = [];
     stubHarnessServer({
@@ -274,7 +244,7 @@ describe("Harness withdraw from release", () => {
     stubHarnessServer({
       read: { body: MERGED },
       releaseWithdrawalCheck: {
-        body: { files: [], confirmation: "token-1" },
+        body: { confirmation: "token-1" },
         heldUntil: new Promise<void>((resolve) => (answer = resolve)),
       },
     });
@@ -282,10 +252,7 @@ describe("Harness withdraw from release", () => {
 
     const dialog = await openWithdrawal();
 
-    expectTooltipCause(
-      confirmButton(dialog),
-      "Checking for changes not yet proposed…",
-    );
+    expectTooltipCause(confirmButton(dialog), "Checking what GitHub holds…");
     answer();
     await waitFor(() =>
       expect(confirmButton(dialog)).not.toHaveAttribute("aria-disabled"),

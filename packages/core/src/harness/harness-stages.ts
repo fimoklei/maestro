@@ -137,6 +137,9 @@ export type HarnessStageRow = {
   // name and a rename's previous name. Null where the review read cannot
   // prove there are none.
   openRequests: number[] | null;
+  // Pending release only: the newest merged pull request for the item's
+  // name; null where no read found one.
+  mergedRequest: number | null;
 };
 
 // `bound` is the limit a read filled; null when the answer was complete.
@@ -286,6 +289,7 @@ const blankRow = (
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  mergedRequest: null,
 });
 
 // Local places only, so every stage gives the same answer.
@@ -331,6 +335,27 @@ const openRequestsFor = (
   return open.length === 0 && !review.complete ? null : open;
 };
 
+const mergedRequestFor = (
+  { origin, defaultBranch, review }: StageInput,
+  ref: PrimitiveRef,
+): number | null => {
+  if (review.outcome !== "read" || defaultBranch === null) {
+    return null;
+  }
+  const merged = review.requests
+    .filter(
+      (request) =>
+        request.state === "merged" &&
+        matchesProposal(request, {
+          ownerRepo: origin.ownerRepo,
+          branch: proposalBranch(ref),
+          base: defaultBranch,
+        }),
+    )
+    .map((request) => request.number);
+  return merged.length === 0 ? null : Math.max(...merged);
+};
+
 const releaseStage = (input: StageInput): HarnessStageRead => {
   const { release, trees } = input;
   if (release === null) {
@@ -354,13 +379,15 @@ const releaseStage = (input: StageInput): HarnessStageRead => {
           ? []
           : [{ type: movement.type, name: movement.previousName }]),
       ]),
+      mergedRequest: mergedRequestFor(input, movement),
     })),
   };
 };
 
 // A branch whose tip is a merged request's head commit is spent. Without a
-// review read proving that, content equal to origin/HEAD is the fallback.
-// A bounded (incomplete) read proves nothing spent.
+// review read proving that, content that landed on or equals origin/HEAD is
+// the fallback: a merged branch left behind after a withdrawal from release
+// differs from origin/HEAD. A bounded (incomplete) read proves nothing spent.
 const currentProposal = (
   hashes: HarnessHashes,
   ref: PrimitiveRef,
@@ -385,7 +412,7 @@ const currentProposal = (
       (request) =>
         request.state === "merged" && request.headCommit === branch.commit,
     );
-  if (spent) {
+  if (spent || branch.landed) {
     return null;
   }
   return tree !== (hashes.remote[ref.name] ?? null) ? { tree } : null;

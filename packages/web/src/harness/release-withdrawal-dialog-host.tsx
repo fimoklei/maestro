@@ -4,8 +4,8 @@ import { releaseWithdrawalNotice } from "./release-withdrawal-notice-copy";
 import { useReleaseWithdrawalCheck } from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
 
-// Mounted only while the dialog stands, so every opening reads the files and
-// the token afresh.
+// Mounted only while the dialog stands, so every opening reads the token
+// afresh.
 export function ReleaseWithdrawalDialogHost({
   target,
   write,
@@ -28,7 +28,7 @@ export function ReleaseWithdrawalDialogHost({
           ? { kind: "refused", notice: refused }
           : check.data === undefined
             ? { kind: "checking" }
-            : { kind: "read", files: check.data.files }
+            : { kind: "read" }
       }
       onClose={onClose}
       onConfirm={() =>

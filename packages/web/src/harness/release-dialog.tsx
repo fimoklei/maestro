@@ -1,10 +1,6 @@
 import type { ReleasePlan, SemverStep } from "@maestro/core";
 import { useId, useState } from "react";
-import {
-  DEFAULT_BRANCH_FACT,
-  NOT_RELEASED_YET,
-  ORIGIN_FACT,
-} from "../ui/band-copy";
+import { NOT_RELEASED_YET, ORIGIN_FACT } from "../ui/band-copy";
 import { loadingText } from "../ui/busy-copy";
 import { Card } from "../ui/card";
 import { PUBLISH_RELEASE } from "../ui/control-labels";
@@ -167,7 +163,6 @@ function PlanBody({
             label="Previous tag"
             value={plan.previousTag ?? NOT_RELEASED_YET}
           />
-          <Fact label={DEFAULT_BRANCH_FACT} value={plan.defaultBranch} />
           {/* The whole commit: a short hash is not the exact revision, and
               need not be unique in a repository this size (#519). */}
           <Fact label="Revision" value={plan.revision} wrap />

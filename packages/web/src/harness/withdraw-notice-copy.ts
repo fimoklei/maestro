@@ -1,4 +1,5 @@
 import type { PrimitiveRef, WithdrawError } from "@maestro/core";
+import { NEXT_RELEASE } from "../ui/band-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
 import { rereadLabel, WITHDRAW_PROPOSAL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
@@ -12,20 +13,18 @@ import {
   proposalHeadingsFor,
   typeFolderNotRead,
 } from "./notice-copy";
-import { defaultBranchCopy } from "./stage-copy";
 
 // A withdrawal stops at the step that failed, so each heading past the first
 // step says which steps already ran (#1638).
 const withdrawHeadings = ({
   type,
   branch,
-  defaultBranch,
   number,
 }: WithdrawContext): NoticeTable<WithdrawError> => {
   const w = ITEM_WORDS[type];
   const deletion = deletionHeadings(w);
-  const matches = phrase`Your ${w.noun} ${w.holder} now matches its copy on ${defaultBranchCopy(defaultBranch)}.`;
-  const replaced = phrase`Your ${w.noun} ${w.holder} matches its copy on ${defaultBranchCopy(defaultBranch)}.`;
+  const matches = phrase`Your ${w.noun} ${w.holder} now matches its copy in ${NEXT_RELEASE}.`;
+  const replaced = phrase`Your ${w.noun} ${w.holder} matches its copy in ${NEXT_RELEASE}.`;
   return {
     ...proposalHeadingsFor(w),
     "invalid-skill": invalidNameHeading(w),
@@ -117,10 +116,9 @@ const withdrawHeadings = ({
   };
 };
 
-/** What a withdrawal's notice names: the item, its branch, its request and the default branch. */
+/** What a withdrawal's notice names: the item, its branch and its request. */
 export type WithdrawContext = PrimitiveRef & {
   branch: string;
-  defaultBranch: string | null;
   // Null where no request was open to close.
   number: number | null;
 };

@@ -1,17 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { plainText } from "../ui/phrase";
-import { DEFAULT_BRANCH_COMMIT_HINT, deletionTitle } from "./deletion-copy";
+import {
+  deletionTitle,
+  NEXT_RELEASE_COMMIT_FACT,
+  NEXT_RELEASE_COMMIT_HINT,
+} from "./deletion-copy";
 import {
   ADVISORY_TEXT,
-  discardHint,
+  DISCARD_HINT,
+  discardBody,
   discardTitle,
   FINDING_TEXT,
   FOLDER_MISSING,
   inFlightNotice,
+  RELEASE_WITHDRAWAL_CHECKING,
   RESTORE_KEEPS_PROPOSAL,
   RESTORED_FROM_HINT,
   releaseWithdrawalBody,
-  releaseWithdrawalFilesNotice,
   releaseWithdrawalTitle,
   restoreTitle,
   rootSkillFileNotice,
@@ -19,7 +24,6 @@ import {
   withdrawBody,
   withdrawTitle,
 } from "./dialog-copy";
-import { defaultBranchCopy } from "./stage-copy";
 
 describe("Harness dialog copy", () => {
   it("titles each confirmation with its act and the item's name", () => {
@@ -31,14 +35,13 @@ describe("Harness dialog copy", () => {
   });
 
   it("states the hints under the facts a confirmation is given against", () => {
-    expect(DEFAULT_BRANCH_COMMIT_HINT).toBe(
-      "If the default branch moves before you confirm, nothing is pushed.",
+    // The author confirms against the next release, never a branch (#1731).
+    expect(NEXT_RELEASE_COMMIT_FACT).toBe("Next release commit");
+    expect(NEXT_RELEASE_COMMIT_HINT).toBe(
+      "If the next release changes before you confirm, nothing is pushed.",
     );
-    expect(plainText(discardHint(defaultBranchCopy("main")))).toBe(
-      "If main moves before you confirm, nothing is discarded.",
-    );
-    expect(plainText(discardHint(defaultBranchCopy(null)))).toBe(
-      "If the default branch moves before you confirm, nothing is discarded.",
+    expect(DISCARD_HINT).toBe(
+      "If the next release changes before you confirm, nothing is discarded.",
     );
     expect(RESTORED_FROM_HINT).toBe(
       "If your clone's last commit moves before you confirm, nothing is restored.",
@@ -47,68 +50,45 @@ describe("Harness dialog copy", () => {
   });
 
   it("names the pull request in a withdrawal only where one is open (#1639)", () => {
-    const main = defaultBranchCopy("main");
-
-    expect(plainText(withdrawBody("skill", main, true))).toBe(
-      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
+    expect(plainText(withdrawBody("skill", true))).toBe(
+      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
     );
-    expect(plainText(withdrawBody("skill", main, false))).toBe(
-      "This replaces the skill folder in your clone with its copy on main. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
+    expect(plainText(withdrawBody("skill", false))).toBe(
+      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
     );
   });
 
+  it("replaces a discarded change with its copy in the next release", () => {
+    expect(plainText(discardBody("prompt"))).toBe(
+      "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes.",
+    );
+  });
+
+  const OUT = "This takes testing out of the next release on GitHub.";
   const SKILL_STAYS =
-    "The skill then waits under Pending proposal. Deployed copies remain unchanged.";
+    "Your copy in the clone stays as it is. The skill then waits under Pending proposal. Deployed copies remain unchanged.";
   it.each([
-    [
-      "skill",
-      "edit",
-      "This replaces the skill folder in your clone with its copy in the latest release.",
-      SKILL_STAYS,
-    ],
-    [
-      "skill",
-      "addition",
-      "This removes the skill folder from your clone.",
-      SKILL_STAYS,
-    ],
-    [
-      "skill",
-      "deletion",
-      "This brings back the skill folder from the latest release.",
-      SKILL_STAYS,
-    ],
-    [
-      "skill",
-      "rename",
-      "This brings back tdd from the latest release and removes the new name.",
-      SKILL_STAYS,
-    ],
+    ["skill", "edit", OUT, SKILL_STAYS],
+    ["skill", "addition", OUT, SKILL_STAYS],
+    ["skill", "deletion", OUT, SKILL_STAYS],
+    ["skill", "rename", `${OUT} tdd returns to the next release.`, SKILL_STAYS],
     [
       "prompt",
       "edit",
-      "This replaces the prompt file in your clone with its copy in the latest release.",
-      "The prompt then waits under Pending proposal.",
+      OUT,
+      "Your copy in the clone stays as it is. The prompt then waits under Pending proposal.",
     ],
   ] as const)(
-    "states what a withdrawal from release of a %s %s changes, then what stays",
+    "states what a withdrawal from release of a %s %s changes on GitHub, then what stays",
     (type, change, changes, stays) => {
-      const body = releaseWithdrawalBody(type, change, "tdd");
+      const body = releaseWithdrawalBody(type, "testing", change, "tdd");
       expect(plainText(body.changes)).toBe(changes);
       expect(plainText(body.stays)).toBe(stays);
     },
   );
 
-  it("names the files a withdrawal from release replaces, and none where it replaces none", () => {
-    expect(releaseWithdrawalFilesNotice([])).toBeNull();
-    const notice = releaseWithdrawalFilesNotice([".apm/skills/tdd/SKILL.md"]);
-    expect(notice?.label).toBe("Changes not yet proposed");
-    expect(plainText(notice?.message ?? "")).toBe(
-      "Withdraw from release discards the changes in these files. To keep them, copy them outside your clone first.",
-    );
-    expect(notice?.items?.map((item) => plainText(item))).toEqual([
-      ".apm/skills/tdd/SKILL.md",
-    ]);
+  it("states the withdrawal check while it reads GitHub", () => {
+    expect(RELEASE_WITHDRAWAL_CHECKING).toBe("Checking what GitHub holds…");
   });
 
   it("warns about skill checks in one wording, naming the step still open", () => {

@@ -48,7 +48,7 @@ describe("Harness discard", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "Your local copy differs from main. Select Propose change to send it for review, or select Discard change to match main again.",
+          "Your local copy differs from the next release. Select Propose change to send it for review. Or select Discard change to match the next release.",
         ),
       ),
     ).toBeInTheDocument();
@@ -66,7 +66,6 @@ describe("Harness discard", () => {
     const dialog = await openDiscard();
 
     expect(within(dialog).getByText(".apm/skills/code-review")).toBeVisible();
-    expect(within(dialog).getByText("main", { selector: "dd" })).toBeVisible();
     expect(discards).toEqual([]);
   });
 

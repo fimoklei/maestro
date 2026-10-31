@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { GitBranch, Tag } from "lucide-react";
+import { Tag } from "lucide-react";
 import { BandFact } from "./band-fact";
 import { GitHubMark } from "./github-mark-link";
 import { Icon } from "./icon";
@@ -8,9 +8,9 @@ const meta = {
   title: "Core/BandFact",
   component: BandFact,
   args: {
-    label: "Branch",
-    value: "main",
-    icon: <Icon of={GitBranch} />,
+    label: "Release",
+    value: "v1.4.0",
+    icon: <Icon of={Tag} />,
     machine: true,
     labelHidden: false,
   },

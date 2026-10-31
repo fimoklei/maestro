@@ -14,9 +14,8 @@ import {
   harnessHeadings,
   invalidNameHeading,
   leftAsItWas,
-  linkInHarness,
   listOf,
-  typeFolderNotRead,
+  promoteHeadings,
 } from "./notice-copy";
 
 type WithdrawalItem = PrimitiveRef & { openRequests: readonly number[] | null };
@@ -31,6 +30,7 @@ const releaseWithdrawalHeadings = ({
   const known = openRequests === null ? null : openProposalCause(openRequests);
   const w = ITEM_WORDS[type];
   const deletion = deletionHeadings(w);
+  const promote = promoteHeadings(w);
   const again = `select ${WITHDRAW_FROM_RELEASE} again.`;
   return leftAsItWas<WithdrawFromReleaseError>("Nothing was withdrawn.", {
     "not-configured": harnessHeadings["not-configured"],
@@ -60,17 +60,29 @@ const releaseWithdrawalHeadings = ({
       level: "error",
       label: "Confirmation out of date",
       message: `Select ${rereadLabel("Harness")}, then ${again}`,
-      detail:
-        "Your clone or the latest release changed after this confirmation.",
+      detail: "GitHub changed after this confirmation.",
     },
-    "destination-unsafe": linkInHarness(
-      w,
-      `Replace the link with a real ${w.holder}, then ${again}`,
-    ),
-    "destination-unreadable": typeFolderNotRead(
-      w,
-      `Make the Harness ${w.home} readable, then ${again}`,
-    ),
+    "clone-not-current": {
+      level: "error",
+      label: "Clone not up to date",
+      message: `Sync your clone with GitHub, then ${again}`,
+      detail: "Your clone's last commit is not the one on GitHub.",
+    },
+    "push-refused": {
+      level: "error",
+      label: "Direct push refused",
+      message: `Allow direct pushes to the default branch on GitHub, then ${again}`,
+      detail: "A rule on GitHub blocked the push.",
+    },
+    offline: {
+      level: "error",
+      label: "GitHub did not respond",
+      message: `Select ${WITHDRAW_FROM_RELEASE} again once GitHub is reachable.`,
+    },
+    "push-elsewhere": {
+      ...promote["push-elsewhere"],
+      message: "Point the clone's push remote at its origin.",
+    },
     "withdraw-in-progress": {
       level: "error",
       label: HARNESS_BUSY,
@@ -80,7 +92,7 @@ const releaseWithdrawalHeadings = ({
     "withdraw-failed": {
       level: "error",
       label: `${w.Noun} not withdrawn`,
-      message: `Make the Harness ${w.home} writable, then ${again}`,
+      message: `Check that you can push to the default branch on GitHub, then ${again}`,
     },
     "sparse-checkout": {
       ...deletion["sparse-checkout"],

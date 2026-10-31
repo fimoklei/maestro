@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { gitOptions, indexOptions } from "../git/non-interactive";
-import { runGitText } from "../git/run-git-text";
+import { runGit, runGitText } from "../git/run-git-text";
 import {
   HARNESS_PRIMITIVE_TYPES,
   type HarnessObject,
@@ -20,6 +20,7 @@ import {
   primitiveKey,
   primitiveObject,
   primitivePath,
+  primitivePathspec,
 } from "./harness-primitive";
 import { readBranchAuthorship, readCommitEmail } from "./proposal-branch-git";
 import type { HarnessPromoteRef } from "./read-harness-state";
@@ -167,13 +168,11 @@ export async function readWorkingDifferences(
   refs: readonly PrimitiveRef[],
   commit: string,
 ): Promise<string[] | null> {
-  const paths = refs.map(primitivePath);
   const onDisk = await Promise.all(
     refs.map((ref) => primitiveOnDisk(root, ref)),
   );
-  const literal = (path: string) => `:(literal)${path}`;
-  const present = paths.filter((_, at) => onDisk[at]).map(literal);
-  const absent = paths.filter((_, at) => !onDisk[at]).map(literal);
+  const present = refs.filter((_, at) => onDisk[at]).map(primitivePathspec);
+  const absent = refs.filter((_, at) => !onDisk[at]).map(primitivePathspec);
 
   const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
   const options = indexOptions(join(indexDir, "index"));
@@ -214,7 +213,7 @@ export async function readWorkingDifferences(
         "--diff-filter=AMT",
         `${commit}^{commit}`,
         "--",
-        ...paths.map(literal),
+        ...refs.map(primitivePathspec),
       ],
       options,
     );
@@ -272,6 +271,14 @@ const readObjectAt = async (
   return { object: mode && hash ? { hash, mode } : null };
 };
 
+/** The primitive's object on a commit; `object: null` where it lacks it, null on a failed read. */
+export const readPrimitiveObject = (
+  root: string,
+  commit: string,
+  ref: PrimitiveRef,
+): Promise<{ object: PrimitiveObject | null } | null> =>
+  readObjectAt(root, commit, primitivePath(ref));
+
 /** The primitive's hash on a ref, or null where the ref lacks it. */
 export const readPrimitiveHash = (
   root: string,
@@ -280,47 +287,57 @@ export const readPrimitiveHash = (
 ): Promise<string | null> =>
   runGitText(root, ["rev-parse", `${treeish}:${primitivePath(ref)}`]);
 
-// The base's copy is dropped first: `read-tree --prefix` refuses a path the
-// index already holds. `object: null` stops there (a removal). `parent` is the
-// proposal branch's tip when one exists, so the push fast-forwards (#578).
-export async function commitPrimitiveOnto(
+/** One primitive's content in a new commit; `object: null` removes it. */
+export type PrimitiveChange = {
+  ref: PrimitiveRef;
+  object: PrimitiveObject | null;
+};
+
+// Each base copy is dropped first: `read-tree --prefix` refuses a path the
+// index already holds. `parent` is the proposal branch's tip when one exists,
+// so the push fast-forwards (#578).
+export async function commitPrimitivesOnto(
   root: string,
-  change: { ref: PrimitiveRef; object: PrimitiveObject | null },
-  treeBase: string,
-  parent: string,
-  indexDir: string,
-  subject: string,
+  changes: readonly PrimitiveChange[],
+  {
+    treeBase,
+    parent,
+    indexDir,
+    message,
+  }: { treeBase: string; parent: string; indexDir: string; message: string },
 ): Promise<string> {
-  const path = primitivePath(change.ref);
   const options = indexOptions(join(indexDir, "promote"));
   await run("git", ["-C", root, "read-tree", treeBase], options);
-  await run(
-    "git",
-    [
-      "-C",
-      root,
-      "rm",
-      "-r",
-      "-f",
-      "-q",
-      "--cached",
-      "--ignore-unmatch",
-      "--",
-      path,
-    ],
-    options,
-  );
-  if (change.object !== null) {
-    const add =
-      primitiveObject(change.ref.type) === "tree"
-        ? ["read-tree", `--prefix=${path}/`, change.object.hash]
-        : [
-            "update-index",
-            "--add",
-            "--cacheinfo",
-            `${change.object.mode},${change.object.hash},${path}`,
-          ];
-    await run("git", ["-C", root, ...add], options);
+  for (const change of changes) {
+    const path = primitivePath(change.ref);
+    await run(
+      "git",
+      [
+        "-C",
+        root,
+        "rm",
+        "-r",
+        "-f",
+        "-q",
+        "--cached",
+        "--ignore-unmatch",
+        "--",
+        path,
+      ],
+      options,
+    );
+    if (change.object !== null) {
+      const add =
+        primitiveObject(change.ref.type) === "tree"
+          ? ["read-tree", `--prefix=${path}/`, change.object.hash]
+          : [
+              "update-index",
+              "--add",
+              "--cacheinfo",
+              `${change.object.mode},${change.object.hash},${path}`,
+            ];
+      await run("git", ["-C", root, ...add], options);
+    }
   }
   const { stdout: tree } = await run(
     "git",
@@ -330,7 +347,7 @@ export async function commitPrimitiveOnto(
   // No author, no signing flag: the author's own git config applies (#574).
   const { stdout: commit } = await run(
     "git",
-    ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", subject],
+    ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", message],
     options,
   );
   return commit.trim();
@@ -340,6 +357,44 @@ const emptyByType = <T>(): Record<HarnessPrimitiveType, Record<string, T>> => ({
   skill: {},
   prompt: {},
 });
+
+// Whether `base` took in the branch: its tip is on `base`, or a commit the
+// branch lacks holds its content (a squash or rebase merge). A failed read is
+// never proof.
+const hasLanded = async (
+  root: string,
+  ref: PrimitiveRef,
+  branch: string,
+  tree: string | null,
+  base: string,
+): Promise<boolean> => {
+  const onBase = await runGit(root, [
+    "merge-base",
+    "--is-ancestor",
+    branch,
+    base,
+  ]);
+  if (onBase.ok) {
+    return true;
+  }
+  const commits = await runGitText(root, [
+    "rev-list",
+    "--full-history",
+    `${branch}..${base}`,
+    "--",
+    primitivePathspec(ref),
+  ]);
+  if (commits === null) {
+    return false;
+  }
+  for (const commit of commits.split("\n")) {
+    const read = await readObjectAt(root, commit, primitivePath(ref));
+    if (read !== null && (read.object?.hash ?? null) === tree) {
+      return true;
+    }
+  }
+  return false;
+};
 
 // Each branch is read only for the primitive it is named for; a null tree is
 // a branch proposing to delete it. A branch of no known family is skipped.
@@ -364,10 +419,13 @@ export async function readProposalRefs(
       if (ref === null) {
         return;
       }
+      const branch = `${PROPOSAL_REFS}/${leaf}`;
+      const tree = await readPrimitiveHash(root, branch, ref);
       refs[ref.type][ref.name] = {
-        tree: await readPrimitiveHash(root, `${PROPOSAL_REFS}/${leaf}`, ref),
+        tree,
         commit: commit || null,
         authorship: await readBranchAuthorship(root, ref, base, email),
+        landed: await hasLanded(root, ref, branch, tree, base),
       };
     }),
   );

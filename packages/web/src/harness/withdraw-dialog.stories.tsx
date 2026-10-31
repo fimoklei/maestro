@@ -9,7 +9,6 @@ const meta = {
     name: "code-review",
     branch: "maestro/code-review",
     number: 45,
-    defaultBranch: "main",
     unproposed: { kind: "read", files: [] },
     onClose: () => {},
     onConfirm: () => {},

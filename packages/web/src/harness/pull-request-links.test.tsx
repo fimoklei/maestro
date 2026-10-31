@@ -28,6 +28,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  mergedRequest: null,
   ...over,
 });
 

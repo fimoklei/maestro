@@ -4,11 +4,11 @@ import type {
   ManifestAdvisory,
   StructuralProblem,
 } from "@maestro/core";
+import { NEXT_RELEASE } from "../ui/band-copy";
 import {
   CREATE_RELEASE,
   DISCARD_CHANGE,
   rereadLabel,
-  WITHDRAW_FROM_RELEASE,
   WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
@@ -21,7 +21,6 @@ import {
   phrase,
 } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
-import type { defaultBranchCopy } from "./stage-copy";
 
 // Reported, never blocking: the skill still ships or imports (#519).
 export const skillChecksNotice = (
@@ -91,12 +90,9 @@ export const RESTORED_FROM_HINT =
   "If your clone's last commit moves before you confirm, nothing is restored.";
 
 // An item no target holds has no deployed copies to mention.
-const replacesInClone = (
-  type: HarnessPrimitiveType,
-  branch: ReturnType<typeof defaultBranchCopy>,
-): Phrase => {
+const replacesInClone = (type: HarnessPrimitiveType): Phrase => {
   const w = ITEM_WORDS[type];
-  return phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy on ${branch}. You cannot recover your changes.`;
+  return phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy in ${NEXT_RELEASE}. You cannot recover your changes.`;
 };
 
 const withDeployedCopies = (type: HarnessPrimitiveType, body: Phrase) =>
@@ -104,17 +100,12 @@ const withDeployedCopies = (type: HarnessPrimitiveType, body: Phrase) =>
     ? phrase`${body} Deployed copies remain unchanged.`
     : body;
 
-export const discardBody = (
-  type: HarnessPrimitiveType,
-  branch: ReturnType<typeof defaultBranchCopy>,
-): Phrase => withDeployedCopies(type, replacesInClone(type, branch));
+export const discardBody = (type: HarnessPrimitiveType): Phrase =>
+  withDeployedCopies(type, replacesInClone(type));
 
 export const discardTitle = (name: string) => `${DISCARD_CHANGE} for ${name}`;
 
-export const discardHint = (
-  branch: ReturnType<typeof defaultBranchCopy>,
-): Phrase =>
-  phrase`If ${branch} moves before you confirm, nothing is discarded.`;
+export const DISCARD_HINT = `If ${NEXT_RELEASE} changes before you confirm, nothing is discarded.`;
 
 export const withdrawTitle = (name: string) =>
   `${WITHDRAW_PROPOSAL} for ${name}`;
@@ -125,14 +116,13 @@ export const PULL_REQUEST_FACT = "Pull request";
 // With no open request there is nothing to close (#1639).
 export const withdrawBody = (
   type: HarnessPrimitiveType,
-  branch: ReturnType<typeof defaultBranchCopy>,
   closesRequest: boolean,
 ): Phrase =>
   withDeployedCopies(
     type,
     closesRequest
-      ? phrase`${replacesInClone(type, branch)} It closes the pull request and deletes the proposal branch.`
-      : phrase`${replacesInClone(type, branch)} It deletes the proposal branch.`,
+      ? phrase`${replacesInClone(type)} It closes the pull request and deletes the proposal branch.`
+      : phrase`${replacesInClone(type)} It deletes the proposal branch.`,
   );
 
 export const WITHDRAW_CHECKING = "Checking for changes not yet proposed…";
@@ -155,41 +145,28 @@ export const unproposedNotice = (
 export const releaseWithdrawalTitle = (name: string) =>
   `Withdraw ${name} from release`;
 
-// The Change decides what the clone gets back: the latest release's copy
-// under every name the change touched.
+// The commit on GitHub changes; the author's copy in the clone does not.
 export const releaseWithdrawalBody = (
   type: HarnessPrimitiveType,
+  name: string,
   change: HarnessChange,
   previousName: string | null,
 ): { changes: Phrase; stays: Phrase } => {
   const w = ITEM_WORDS[type];
-  const changed: Record<HarnessChange, Phrase> = {
-    addition: phrase`This removes the ${w.noun} ${w.holder} from your clone.`,
-    edit: phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy in the latest release.`,
-    deletion: phrase`This brings back the ${w.noun} ${w.holder} from the latest release.`,
-    rename: phrase`This brings back ${named(previousName ?? "")} from the latest release and removes the new name.`,
-  };
+  const out = phrase`This takes ${named(name)} out of the next release on GitHub.`;
   return {
-    changes: changed[change],
+    changes:
+      change === "rename" && previousName !== null
+        ? phrase`${out} ${named(previousName)} returns to the next release.`
+        : out,
     stays: withDeployedCopies(
       type,
-      phrase`The ${w.noun} then waits under Pending proposal.`,
+      phrase`Your copy in the clone stays as it is. The ${w.noun} then waits under Pending proposal.`,
     ),
   };
 };
 
-/** The files a withdrawal from release would replace; null where none would be. */
-export const releaseWithdrawalFilesNotice = (
-  files: readonly string[],
-): NoticeContent | null =>
-  files.length === 0
-    ? null
-    : {
-        level: "warning",
-        label: "Changes not yet proposed",
-        message: `${WITHDRAW_FROM_RELEASE} discards the changes in these files. ${KEEP_OUTSIDE_CLONE}`,
-        items: files.map((file) => phrase`${machine(file)}`),
-      };
+export const RELEASE_WITHDRAWAL_CHECKING = "Checking what GitHub holds…";
 
 export const UNPROPOSED_UNKNOWN_NOTICE: NoticeContent = {
   level: "warning",
