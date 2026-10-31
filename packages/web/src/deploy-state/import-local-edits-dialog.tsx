@@ -1,6 +1,6 @@
 import type { LocalEditsSkill } from "@maestro/core";
 import { useEffect, useRef } from "react";
-import { copiesDiffer, localEditsRefusal } from "../harness/notice-copy";
+import { copiesDiffer, localEditsRefusal } from "../harness/import-notice-copy";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
 import { GroupedList } from "../ui/grouped-list";

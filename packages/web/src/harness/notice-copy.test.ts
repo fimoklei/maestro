@@ -19,27 +19,28 @@ import { HttpError } from "../api/http";
 import { machineValues, readNotice, unselectedControls } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { plainText } from "../ui/phrase";
+import { importNotice, localEditsRefusal } from "./import-notice-copy";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
   CONCURRENT_CHANGE_NOTICE,
   deletionNotice,
   discardNotice,
   harnessStateNotice,
-  importNotice,
-  localEditsRefusal,
-  openProposalCause,
   promoteNotice,
   proposalNotice,
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
   releasePublishedNotice,
-  releaseWithdrawalNotice,
   restoredNotice,
   restoreNotice,
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
+import {
+  openProposalCause,
+  releaseWithdrawalNotice,
+} from "./release-withdrawal-notice-copy";
 import { withdrawNotice } from "./withdraw-notice-copy";
 
 // Contract tests: the words live once, in the copy module and the flow test

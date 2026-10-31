@@ -13,7 +13,7 @@ import {
   WITHDRAW_PROPOSAL,
 } from "../ui/control-labels";
 import type { FootItem } from "../ui/foot-actions";
-import { openProposalCause } from "./notice-copy";
+import { openProposalCause } from "./release-withdrawal-notice-copy";
 
 export type RowActionHandlers = {
   // Takes the row, not the name: two stages carry the press, and a refusal

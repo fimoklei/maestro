@@ -1,6 +1,6 @@
 import type { ReleaseWithdrawalItem } from "./harness-dialogs";
-import { releaseWithdrawalNotice } from "./notice-copy";
 import { ReleaseWithdrawalDialog } from "./release-withdrawal-dialog";
+import { releaseWithdrawalNotice } from "./release-withdrawal-notice-copy";
 import { useReleaseWithdrawalCheck } from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
 
