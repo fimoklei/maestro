@@ -272,6 +272,7 @@ describe("the pre-deploy sync through the Harness fetch gate", () => {
         record: async () => {},
       },
       now: () => new Date(),
+      fetched: () => {},
     }).fetchFresh(root);
 
   it("clears a carried-back change once it is released, and catches up", async () => {

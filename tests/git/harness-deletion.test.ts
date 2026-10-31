@@ -52,6 +52,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
           },
         },
         now: () => AT,
+        fetched: () => {},
       }),
       locks: new InFlightLocks(),
       review: unavailableHarnessReview(),

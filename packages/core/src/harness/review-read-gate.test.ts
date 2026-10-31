@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   HarnessReviewPort,
   HarnessReviewRead,
@@ -12,7 +12,7 @@ const ORIGIN = {
 };
 const ROOT = "/harness";
 const START = Date.parse("2026-08-01T07:00:00.000Z");
-const MAX_AGE = 30_000;
+const VIEWER_MAX_AGE = 30_000;
 
 const readOf = (limit: number): HarnessReviewRead => ({
   outcome: "read",
@@ -51,7 +51,8 @@ function build() {
   });
   return {
     asked,
-    reads: gate.reads(MAX_AGE),
+    gate,
+    reads: gate.reads(VIEWER_MAX_AGE),
     writes: gate.writes,
     advance: (ms: number) => {
       now += ms;
@@ -74,23 +75,49 @@ function build() {
 }
 
 describe("ReviewReadGate", () => {
-  it("reuses a review read within the window", async () => {
+  // The review read belongs to the fetch it sits beside, never to a clock (#1738).
+  it("reuses a review read until the Harness clone is fetched, however old", async () => {
     const { asked, reads, advance } = build();
     await reads.readReviews(ORIGIN);
 
-    advance(MAX_AGE - 1);
+    advance(24 * 60 * 60 * 1000);
 
     await expect(reads.readReviews(ORIGIN)).resolves.toEqual(readOf(1));
     expect(asked.reviews).toBe(1);
   });
 
-  it("reads again once the remembered answer is older than the window", async () => {
-    const { asked, reads, advance } = build();
+  it("reads again after the Harness clone is fetched", async () => {
+    const { asked, gate, reads } = build();
     await reads.readReviews(ORIGIN);
 
-    advance(MAX_AGE);
+    gate.fetched(ROOT);
 
     await expect(reads.readReviews(ORIGIN)).resolves.toEqual(readOf(2));
+    expect(asked.reviews).toBe(2);
+  });
+
+  it("keeps another Harness's review read when one clone is fetched", async () => {
+    const { asked, gate, reads } = build();
+    await reads.readReviews(ORIGIN);
+
+    gate.fetched("/other-harness");
+
+    await expect(reads.readReviews(ORIGIN)).resolves.toEqual(readOf(1));
+    expect(asked.reviews).toBe(1);
+  });
+
+  it("never answers a read after a fetch with a read in flight from before it", async () => {
+    const { asked, gate, reads, holdReads } = build();
+    const release = holdReads();
+    const before = reads.readReviews(ORIGIN);
+    await vi.waitFor(() => expect(asked.reviews).toBe(1));
+
+    gate.fetched(ROOT);
+    const after = reads.readReviews(ORIGIN);
+    release();
+
+    expect(await before).toEqual(readOf(1));
+    expect(await after).toEqual(readOf(2));
     expect(asked.reviews).toBe(2);
   });
 
@@ -130,12 +157,23 @@ describe("ReviewReadGate", () => {
   });
 
   it("reuses the sign-in read within the window", async () => {
-    const { asked, reads } = build();
+    const { asked, reads, advance } = build();
     await reads.readViewer(ORIGIN);
 
+    advance(VIEWER_MAX_AGE - 1);
     await reads.readViewer(ORIGIN);
 
     expect(asked.viewer).toBe(1);
+  });
+
+  it("reads the sign-in again once the remembered answer is older than the window", async () => {
+    const { asked, reads, advance } = build();
+    await reads.readViewer(ORIGIN);
+
+    advance(VIEWER_MAX_AGE);
+    await reads.readViewer(ORIGIN);
+
+    expect(asked.viewer).toBe(2);
   });
 
   it.each([

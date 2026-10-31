@@ -29,6 +29,7 @@ const readGate = (git: InMemoryHarnessGit) =>
     git,
     freshness: { read: async () => FRESHNESS, record: async () => {} },
     now: () => AT,
+    fetched: () => {},
   });
 
 const EMPTY_REVIEW: HarnessReviewRead = {

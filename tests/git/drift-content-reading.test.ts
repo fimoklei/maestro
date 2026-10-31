@@ -100,6 +100,7 @@ describe("the content reading beside apm's Behind", () => {
         record: async () => {},
       },
       now: () => new Date(),
+      fetched: () => {},
     });
     return new ReadDrift({
       drift: {

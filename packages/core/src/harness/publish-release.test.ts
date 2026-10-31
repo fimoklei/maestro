@@ -22,6 +22,7 @@ const readGate = (git: InMemoryHarnessGit) =>
     git,
     freshness: { read: async () => FRESHNESS, record: async () => {} },
     now: () => AT,
+    fetched: () => {},
   });
 
 // Distinct from the world in every field a stale dialog would still show.
@@ -89,6 +90,7 @@ function buildPublish(
           },
         },
         now: () => AT,
+        fetched: () => {},
       }),
   });
 }

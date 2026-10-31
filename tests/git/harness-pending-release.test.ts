@@ -81,6 +81,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       git: harnessGit,
       freshness,
       now: () => new Date("2026-08-03T08:00:00.000Z"),
+      fetched: () => {},
     });
     return new ReadHarnessState({
       resolveRoot: async () => root,
