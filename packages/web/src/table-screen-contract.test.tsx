@@ -29,6 +29,7 @@ import { SkillsPanel } from "./skills/skills-panel";
 import { SkillsView } from "./skills/skills-view";
 import {
   fakeTimeouts,
+  focusByKeyboard,
   hoverOpen,
   htmlElement,
   jsonResponse,
@@ -1181,7 +1182,7 @@ describe("every table screen", () => {
       const grid = await screen.findByRole("grid");
       await within(grid).findByText(card.badge);
 
-      act(() => grid.focus());
+      focusByKeyboard(grid);
 
       await expectOneStatusCard(card);
     });

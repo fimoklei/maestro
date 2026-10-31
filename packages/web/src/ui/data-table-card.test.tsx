@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sentence } from "../test-utils";
+import { focusByKeyboard, sentence } from "../test-utils";
 import { createDataTableColumns, DataTable } from "./data-table";
 import { reading } from "./status-reading";
 
@@ -137,7 +137,7 @@ describe("DataTable — a declared card", () => {
   it("opens the active row's keyboard card at once, and only the first shown one", () => {
     renderSeeds();
 
-    act(() => grid().focus());
+    focusByKeyboard(grid());
 
     expect(screen.getByText("The pear is Ripe.")).toBeInTheDocument();
     expect(screen.queryByText("The pear grew in the orchard.")).toBeNull();
@@ -149,7 +149,7 @@ describe("DataTable — a declared card", () => {
     renderSeeds();
     expect(screen.queryByText("The pear is Ripe.")).toBeNull();
 
-    act(() => grid().focus());
+    focusByKeyboard(grid());
     expect(screen.getByText("The pear is Ripe.")).toBeInTheDocument();
 
     fireEvent.keyDown(grid(), { key: "ArrowDown" });
@@ -162,10 +162,22 @@ describe("DataTable — a declared card", () => {
     expect(screen.queryByText("The apple is Green.")).toBeNull();
   });
 
+  it("keeps the keyboard card closed when focus follows a pointer press, until a key moves the cursor", () => {
+    renderSeeds();
+
+    // A press elsewhere, such as a detail pane's ✕, hands focus back to the grid.
+    fireEvent.pointerDown(document.body, { pointerType: "mouse" });
+    act(() => grid().focus());
+    expect(screen.queryByText("The pear is Ripe.")).toBeNull();
+
+    fireEvent.keyDown(grid(), { key: "ArrowDown" });
+    expect(screen.getByText("The apple is Green.")).toBeInTheDocument();
+  });
+
   it("opens the next keyboard card while the first one's column is hidden", () => {
     renderSeeds({ columnVisibility: { status: false } });
 
-    act(() => grid().focus());
+    focusByKeyboard(grid());
 
     expect(
       screen.getByText("The pear grew in the orchard."),
@@ -177,7 +189,7 @@ describe("DataTable — a declared card", () => {
       columns: seedColumns({ keyboard: { status: false, origin: false } }),
     });
 
-    act(() => grid().focus());
+    focusByKeyboard(grid());
 
     expect(screen.queryByText("The pear is Ripe.")).toBeNull();
     expect(screen.queryByText("The pear grew in the orchard.")).toBeNull();

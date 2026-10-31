@@ -1,7 +1,12 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { measureAs, openFootMenu, sentence } from "../test-utils";
+import {
+  focusByKeyboard,
+  measureAs,
+  openFootMenu,
+  sentence,
+} from "../test-utils";
 import {
   HARNESS_NOW,
   harnessRegion,
@@ -1032,7 +1037,7 @@ describe("Harness home base", () => {
       renderHarness();
       await stageHeader("Pending proposal");
 
-      act(() => (screen.getByRole("grid") as HTMLElement).focus());
+      focusByKeyboard(screen.getByRole("grid"));
 
       expect(
         await screen.findByText(
@@ -1048,7 +1053,7 @@ describe("Harness home base", () => {
       renderHarness();
       await stageHeader("Pending proposal");
 
-      act(() => (screen.getByRole("grid") as HTMLElement).focus());
+      focusByKeyboard(screen.getByRole("grid"));
 
       const change = await screen.findByText(
         sentence("This change adds tdd to github.com/fimoklei/agent-harness."),
@@ -1243,7 +1248,7 @@ describe("Harness home base", () => {
       renderHarness();
       await stageHeader("Pending review");
 
-      act(() => (screen.getByRole("grid") as HTMLElement).focus());
+      focusByKeyboard(screen.getByRole("grid"));
 
       const status = await screen.findByText(
         "Review requested from @sanne, @joris.",

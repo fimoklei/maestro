@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { expect, vi } from "vitest";
@@ -67,6 +67,12 @@ export function fakeTimeouts() {
 /** Moves a faked clock by `ms` without waiting them out. */
 export function passTime(ms: number) {
   act(() => vi.advanceTimersByTime(ms));
+}
+
+/** Moves focus to `element` as a Tab press does, so it counts as keyboard focus. */
+export function focusByKeyboard(element: HTMLElement) {
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: "Tab" });
+  act(() => element.focus());
 }
 
 /** Hovers `element` past the 400 ms a hover card or tooltip waits to open. */
