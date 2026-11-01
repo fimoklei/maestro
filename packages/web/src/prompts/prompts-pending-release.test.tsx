@@ -23,6 +23,7 @@ const prompt = (
     path: `.maestro/prompts/${name}.md`,
     pendingRelease,
     text: "Review it.\n",
+    example: "",
     nameValid: true,
   }) satisfies InventoryPrimitive;
 

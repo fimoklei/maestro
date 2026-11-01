@@ -1,12 +1,29 @@
 // The one owner of the prompt file format: read, write and the field rules.
 // Web imports it at runtime (`@maestro/core/prompt-file`), so no `node:` module.
-import { isMap, parse, parseDocument, stringify } from "yaml";
+import { Document, isMap, parse, parseDocument, Scalar } from "yaml";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { metadataCategory } from "./metadata-category";
 import { proposeSkillSlug } from "./skill-slug";
 import { readFrontmatter, splitFrontmatter } from "./validate-skill-structure";
 
-export type PromptFile = { description: string; text: string };
+/** `example` is "" when the prompt has none, as `description` is. */
+export type PromptFile = { description: string; text: string; example: string };
+
+/** A prompt's two texts, of which one box or block shows one at a time. */
+export type PromptPart = Extract<keyof PromptFile, "text" | "example">;
+
+// A record so a field added to `PromptFile` fails to compile here until the
+// comparison covers it. `Object.keys` widens to `string[]`; the `satisfies`
+// makes the keys exactly `PromptFile`'s.
+const PROMPT_FILE_FIELDS = Object.keys({
+  description: true,
+  text: true,
+  example: true,
+} satisfies Record<keyof PromptFile, true>) as (keyof PromptFile)[];
+
+/** Whether two prompts hold the same fields, byte for byte. */
+export const samePrompt = (a: PromptFile, b: PromptFile): boolean =>
+  PROMPT_FILE_FIELDS.every((field) => a[field] === b[field]);
 
 /** `frontmatter` is the YAML between the delimiters; "" when there is none. */
 export type PromptFileWrite = PromptFile & { frontmatter: string };
@@ -16,43 +33,77 @@ export type PromptDraft = PromptFileWrite & { name: string };
 /** The fields the operator types; the front matter is not one. */
 export type PromptFields = Omit<PromptDraft, "frontmatter">;
 
-/** Missing or broken front matter reads as an empty description. */
-export const readPromptFile = (raw: string): PromptFile => {
-  const description = readFrontmatter(raw)?.data.description;
-  return {
-    description: typeof description === "string" ? description : "",
-    text: splitFrontmatter(raw)?.body ?? raw,
-  };
+/** A missing, non-text or blank example is none: "". */
+export const exampleOf = (value: unknown): string =>
+  typeof value === "string" && value.trim() !== "" ? value : "";
+
+// The front matter's fields; "" for each it lacks or holds as other than text.
+const frontmatterFields = (
+  data: Record<string, unknown> | undefined,
+): Omit<PromptFile, "text"> => ({
+  description: typeof data?.description === "string" ? data.description : "",
+  example: exampleOf(data?.example),
+});
+
+/** Missing or broken front matter reads as an empty description and example. */
+export const readPromptFile = (raw: string): PromptFile => ({
+  ...frontmatterFields(readFrontmatter(raw)?.data),
+  text: splitFrontmatter(raw)?.body ?? raw,
+});
+
+// A multi-line example is a literal block, so its lines read as typed.
+const exampleNode = (document: Document, example: string): Scalar => {
+  const node = document.createNode(example);
+  if (example.includes("\n")) {
+    node.type = Scalar.BLOCK_LITERAL;
+  }
+  return node;
 };
 
-const descriptionOnly = (description: string): string =>
-  `---\n${stringify({ description }, { lineWidth: 0 })}---\n`;
+const withExample = (document: Document, example: string): void => {
+  if (example === "") {
+    document.delete("example");
+  } else {
+    document.set("example", exampleNode(document, example));
+  }
+};
+
+const yamlOf = (document: Document): string =>
+  document.toString({ lineWidth: 0 });
+
+const fieldsOnly = (description: string, example: string): string => {
+  const document = new Document({ description });
+  withExample(document, example);
+  return `---\n${yamlOf(document)}---\n`;
+};
 
 // A document start, end or directive line would end the block for another
 // reader.
 const documentMarker = /^(?:---|\.\.\.|%)/m;
 
-// The serializer, never string joins, so a description cannot add a key or
-// end the block. `lineWidth: 0` keeps it on one line. Front matter that is
-// not a YAML map, or that would not read back as this file, gives way to a
-// block holding only the description.
+// The serializer, never string joins, so a description or an example cannot
+// add a key or end the block. `lineWidth: 0` keeps the description on one
+// line. An empty example removes the key. Front matter that is not a YAML
+// map, or that would not read back as this file, gives way to a block holding
+// only the description and the example.
 export const writePromptFile = ({
   frontmatter,
-  description,
-  text,
+  ...fields
 }: PromptFileWrite): string => {
+  const file = { ...fields, example: exampleOf(fields.example) };
+  const { description, text, example } = file;
+  const fallback = `${fieldsOnly(description, example)}${text}`;
   const document = parseDocument(frontmatter);
   if (document.errors.length > 0 || !isMap(document.contents)) {
-    return `${descriptionOnly(description)}${text}`;
+    return fallback;
   }
   document.set("description", description);
-  const yaml = document.toString({ lineWidth: 0 });
-  const written = `---\n${yaml}---\n${text}`;
+  withExample(document, example);
+  const yaml = yamlOf(document);
+  const output = `---\n${yaml}---\n${text}`;
   const readsBack =
-    !documentMarker.test(yaml) &&
-    readFrontmatter(written)?.data.description === description &&
-    splitFrontmatter(written)?.body === text;
-  return readsBack ? written : `${descriptionOnly(description)}${text}`;
+    !documentMarker.test(yaml) && samePrompt(readPromptFile(output), file);
+  return readsBack ? output : fallback;
 };
 
 const fileSuffix = /(?:\.prompt)?\.(?:md|txt)$/i;
@@ -70,14 +121,15 @@ export const draftPrompt = (
   const frontmatter = readFrontmatter(raw);
   const body = splitFrontmatter(raw)?.body;
   if (frontmatter === null || body === undefined) {
-    return { name, frontmatter: "", description: "", text: raw };
+    return { name, frontmatter: "", description: "", text: raw, example: "" };
   }
-  const { description } = frontmatter.data;
+  const { description, example } = frontmatterFields(frontmatter.data);
   return {
     name,
     frontmatter: frontmatter.block,
-    description: typeof description === "string" ? oneLine(description) : "",
+    description: oneLine(description),
     text: body,
+    example,
   };
 };
 
@@ -114,12 +166,9 @@ const MAX_TEXT_BYTES = 102_400;
 export const withinPromptLimit = (value: string): boolean =>
   new TextEncoder().encode(value).byteLength <= MAX_TEXT_BYTES;
 
-/** The front matter a write keeps and the text, past 100 KB together. */
-export const promptFileTooLong = ({
-  frontmatter,
-  text,
-}: Pick<PromptFileWrite, "frontmatter" | "text">): boolean =>
-  !withinPromptLimit(`${frontmatter}${text}`);
+/** The file this write produces, past 100 KB. */
+export const promptFileTooLong = (write: PromptFileWrite): boolean =>
+  !withinPromptLimit(writePromptFile(write));
 
 /** Every rule the fields break, in field order; empty when all hold. */
 export const promptFieldProblems = ({
@@ -147,7 +196,7 @@ export const promptFieldProblems = ({
   return problems;
 };
 
-/** The field rules, and the 100 KB the pasted front matter and the text share. */
+/** The field rules, and the 100 KB the written file may hold. */
 export const promptDraftProblems = (
   draft: PromptDraft,
 ): PromptFieldProblem[] => {

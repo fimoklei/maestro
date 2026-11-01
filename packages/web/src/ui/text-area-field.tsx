@@ -1,6 +1,6 @@
 import type { TextareaHTMLAttributes } from "react";
 import { cn } from "./cn";
-import { FieldFrame } from "./field-frame";
+import { FieldFrame, type FieldLabel } from "./field-frame";
 import type { Copy } from "./phrase";
 
 // Field's multi-line twin: the same label, hint and error slots.
@@ -10,7 +10,7 @@ export interface TextAreaFieldProps
     "value" | "onChange" | "id"
   > {
   /** Visible, always — a placeholder is not a label. */
-  label: string;
+  label: FieldLabel;
   /** What the reader must know before acting, in one sentence. */
   hint?: Copy;
   /** One sentence, shown once the field has been judged. */
@@ -41,6 +41,7 @@ export function TextAreaField({
           id={control.id}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          aria-label={control.ariaLabel}
           aria-invalid={control.refused ? true : undefined}
           aria-describedby={control.describedBy}
           className={cn(

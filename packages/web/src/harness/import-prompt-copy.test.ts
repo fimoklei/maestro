@@ -12,6 +12,8 @@ import {
   longTextNotice,
   NOT_TEXT_FILE_NOTICE,
   NOTHING_CHANGED,
+  PROMPT_BOX_LABEL,
+  PROMPT_BOX_PARTS,
   PROMPT_FIELD_ERRORS,
   PROMPT_FIELD_HINTS,
   PROMPT_SOURCE_LABEL,
@@ -42,6 +44,17 @@ describe("Import prompt copy", () => {
         "Keep the description to one line of 1,024 characters or less.",
       "empty-text": "Enter the prompt text.",
     });
+  });
+
+  it("states the Prompt text / Example switch and the Example hint in the approved words", () => {
+    expect(PROMPT_BOX_LABEL).toBe("Prompt text or example");
+    expect(PROMPT_BOX_PARTS.map((each) => each.label)).toEqual([
+      "Prompt text",
+      "Example",
+    ]);
+    expect(PROMPT_FIELD_HINTS.example).toBe(
+      "Optional. The prompt, filled in and ready to paste.",
+    );
   });
 
   it("refuses a text over 100 KB with its own notice", () => {
@@ -76,7 +89,8 @@ describe("Import prompt copy", () => {
     expect(PROMPT_TAKEN_NOTICE).toEqual({
       level: "info",
       label: "Prompt already in the Harness",
-      message: "Select Update prompt to replace its text and description.",
+      message:
+        "Select Update prompt to replace its text, description and example.",
       detail: "To keep it, pick another name.",
     });
   });
@@ -134,7 +148,9 @@ describe("Edit prompt copy", () => {
   it("titles the dialog by the prompt and states why its button is blocked", () => {
     expect(EDIT_PROMPT).toBe("Edit prompt");
     expect(editPromptTitle("pr-review")).toBe("Edit pr-review");
-    expect(NOTHING_CHANGED).toBe("Change the description, text or category.");
+    expect(NOTHING_CHANGED).toBe(
+      "Change the description, text, example or category.",
+    );
   });
 
   it("refuses a text over 100 KB naming Edit prompt", () => {

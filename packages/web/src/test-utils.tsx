@@ -101,7 +101,7 @@ export async function chooseDeployTarget(
   await userEvent.click(await screen.findByRole("option", { name }));
 }
 
-/** Opens a pane foot's ⋯, where its danger items sit (#1485). */
+/** Opens a pane foot's ⋯, where the items besides the primary and the edit item sit (#1744). */
 export async function openFootMenu(pane: HTMLElement, name: string) {
   await userEvent.click(
     within(pane).getByRole("button", { name: `Actions for ${name}` }),

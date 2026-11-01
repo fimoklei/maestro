@@ -2,7 +2,13 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router";
 import { HttpError } from "../api/http";
 import { promptReadNotice } from "../harness/import-prompt-copy";
-import { COPY_PROMPT, DELETE_PROMPT, SET_CATEGORY } from "../ui/control-labels";
+import {
+  COPY_EXAMPLE,
+  COPY_PROMPT,
+  DELETE_PROMPT,
+  EDIT_PROMPT,
+  SET_CATEGORY,
+} from "../ui/control-labels";
 import { PromptDetailPane } from "./prompt-detail-pane";
 
 const meta = {
@@ -17,16 +23,18 @@ const meta = {
       path: ".maestro/prompts/pr-review.md",
       pendingRelease: null,
       text: "Review the pull request at [PR LINK].\n\nRead the diff and the linked issue first.\n\n$ARGUMENTS",
+      example: "",
       nameValid: true,
     },
     latestRelease: "v1.4.0",
     category: "Planning",
     footMenu: null,
-    copyRefused: false,
+    copyRefused: null,
     readRefusal: null,
     onCopy: () => {},
     footItems: [
       { label: COPY_PROMPT, onSelect: () => {} },
+      { label: EDIT_PROMPT, edit: true, onSelect: () => {} },
       { label: SET_CATEGORY, onSelect: () => {} },
       { label: DELETE_PROMPT, danger: true, onSelect: () => {} },
     ],
@@ -48,6 +56,17 @@ type Story = StoryObj<typeof meta>;
 
 export const Released: Story = {};
 
+// The Prompt / Example switch takes the block heading's place.
+export const WithExample: Story = {
+  args: {
+    prompt: {
+      ...meta.args.prompt,
+      example:
+        "Review the pull request at github.com/acme/app/pull/482.\n\nRead the diff and the linked issue first.\n\nFocus on the retry loop in the sync job.",
+    },
+  },
+};
+
 export const NameNotValid: Story = {
   args: {
     prompt: {
@@ -57,12 +76,28 @@ export const NameNotValid: Story = {
       path: ".maestro/prompts/Review_PR.md",
       pendingRelease: null,
       text: "Check the pull request at [PR LINK].",
+      example: "",
       nameValid: false,
     },
   },
 };
 
-export const CopyRefused: Story = { args: { copyRefused: true } };
+export const CopyRefused: Story = { args: { copyRefused: "text" } };
+
+// Copy example sits behind the foot's ⋯; only the example's refusal shows.
+export const ExampleCopyRefused: Story = {
+  args: {
+    ...WithExample.args,
+    copyRefused: "example",
+    footItems: [
+      { label: COPY_PROMPT, onSelect: () => {} },
+      { label: COPY_EXAMPLE, onSelect: () => {} },
+      { label: EDIT_PROMPT, edit: true, onSelect: () => {} },
+      { label: SET_CATEGORY, onSelect: () => {} },
+      { label: DELETE_PROMPT, danger: true, onSelect: () => {} },
+    ],
+  },
+};
 
 export const NotInClone: Story = {
   args: {

@@ -1,5 +1,5 @@
 import type { ImportMode, ImportPromptError } from "@maestro/core";
-import type { PromptFieldProblem } from "@maestro/core/prompt-file";
+import type { PromptFieldProblem, PromptPart } from "@maestro/core/prompt-file";
 import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { ActionKey } from "../ui/busy-copy";
@@ -23,7 +23,25 @@ export const PROMPT_FIELD_HINTS = {
   name: phrase`Maestro uses this as the file name in ${machine(".maestro/prompts")}.`,
   description: "One line, shown in the Prompts table.",
   text: "Saved exactly as you enter it.",
+  example: "Optional. The prompt, filled in and ready to paste.",
 } as const;
+
+/** The accessible name of the Prompt text / Example switch. */
+export const PROMPT_BOX_LABEL = "Prompt text or example";
+
+/** Each part's word: its segment, and the box's name while it shows. */
+export const PROMPT_BOX_WORDS: Record<PromptPart, string> = {
+  text: "Prompt text",
+  example: "Example",
+};
+
+export const PROMPT_BOX_PARTS: readonly {
+  value: PromptPart;
+  label: string;
+}[] = [
+  { value: "text", label: PROMPT_BOX_WORDS.text },
+  { value: "example", label: PROMPT_BOX_WORDS.example },
+];
 
 /** Where the prompt text comes from: the dialog's two tabs. */
 export type PromptSource = "paste" | "file";
@@ -87,7 +105,8 @@ const outcomeWords = (confirm: PromptConfirm) =>
 export const editPromptTitle = (prompt: string) => `Edit ${prompt}`;
 
 /** Why Edit prompt is blocked while both fields hold what was read. */
-export const NOTHING_CHANGED = "Change the description, text or category.";
+export const NOTHING_CHANGED =
+  "Change the description, text, example or category.";
 
 /** The dialog's title, submit label and busy verb, by whether the name is taken. */
 export const PROMPT_IMPORT_MODES = {
@@ -145,7 +164,7 @@ export const longTextNotice = (confirm: PromptConfirm): NoticeContent =>
 export const PROMPT_TAKEN_NOTICE: NoticeContent = {
   level: "info",
   label: "Prompt already in the Harness",
-  message: `Select ${UPDATE_PROMPT} to replace its text and description.`,
+  message: `Select ${UPDATE_PROMPT} to replace its text, description and example.`,
   detail: "To keep it, pick another name.",
 };
 

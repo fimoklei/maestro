@@ -3,6 +3,7 @@
 import { HARNESS_PRIMITIVE_TYPES } from "@maestro/core";
 import {
   type PromptFields,
+  type PromptFile,
   promptFieldProblems,
   withinPromptLimit,
 } from "@maestro/core/prompt-file";
@@ -34,14 +35,16 @@ export const importBodySchema = z.object({
 const fieldsHold = (fields: PromptFields) =>
   promptFieldProblems(fields).length === 0;
 
+// A prompt's fields, each held to the 100 KB per-field limit.
+const promptFileSchema = z.object({
+  description: z.string().refine(withinPromptLimit),
+  text: z.string().refine(withinPromptLimit),
+  example: z.string().refine(withinPromptLimit),
+}) satisfies z.ZodType<PromptFile>;
+
 // "" carries no front matter, so a block with only the description is written.
-export const importPromptBodySchema = z
-  .object({
-    name: z.string(),
-    frontmatter: z.string(),
-    description: z.string(),
-    text: z.string(),
-  })
+export const importPromptBodySchema = promptFileSchema
+  .extend({ name: z.string(), frontmatter: z.string() })
   .refine(fieldsHold);
 
 export const promptCheckBodySchema = z.object({ name: z.string() });
@@ -49,16 +52,8 @@ export const promptCheckBodySchema = z.object({ name: z.string() });
 export const promptReadBodySchema = z.object({ name: z.string() });
 
 // `read` is the prompt the dialog was filled with, as the read route gave it.
-export const promptEditBodySchema = z
-  .object({
-    name: z.string(),
-    description: z.string(),
-    text: z.string(),
-    read: z.object({
-      description: z.string().refine(withinPromptLimit),
-      text: z.string().refine(withinPromptLimit),
-    }),
-  })
+export const promptEditBodySchema = promptFileSchema
+  .extend({ name: z.string(), read: promptFileSchema })
   .refine(fieldsHold);
 
 // Trimmed and checked in core, which owns the name rules.
@@ -357,7 +352,7 @@ export const IMPORT_PROMPT_BODY: RequestShape = {
   message:
     "Nothing was imported. Reload the page, then import the prompt again.",
   detail:
-    "The request carries a name, front matter, a description and a text: { name: string, frontmatter: string, description: string, text: string }.",
+    "The page must send these strings: { name, frontmatter, description, text, example }.",
 };
 
 export const PROMPT_CHECK_BODY: RequestShape = {
@@ -375,7 +370,7 @@ export const PROMPT_EDIT_BODY: RequestShape = {
   message:
     "Nothing was edited. Reload the page, then select Edit prompt again.",
   detail:
-    "The request carries a name, a description, a text and the prompt as read: { name: string, description: string, text: string, read: { description: string, text: string } }.",
+    "The page must send these strings: { name, description, text, example, read: { description, text, example } }. The read values are the ones from when the dialog opened.",
 };
 
 export const TARGET_BODY: RequestShape = {

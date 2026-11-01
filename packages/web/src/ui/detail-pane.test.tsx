@@ -53,7 +53,7 @@ describe("DetailPane", () => {
     renderPane();
 
     const body = screen.getByText("Test-driven development.");
-    const action = screen.getByRole("button", { name: "Deploy skill" });
+    const action = screen.getByRole("button", { name: "Actions for tdd" });
     expect(
       body.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -67,7 +67,7 @@ describe("DetailPane", () => {
       .closest(".overflow-y-auto");
     expect(scroller).not.toBeNull();
     expect(scroller).not.toContainElement(
-      screen.getByRole("button", { name: "Deploy skill" }),
+      screen.getByRole("button", { name: "Actions for tdd" }),
     );
   });
 
@@ -380,13 +380,12 @@ describe("DetailPane primary", () => {
     renderPane({ ...steps, notices: [RETRY] });
 
     expect(button("Retry deploy")).toHaveClass(PRIMARY);
-    for (const name of [
-      "Update target",
-      "Import local edits",
-      "Deploy skill",
-    ]) {
-      expect(button(name)).not.toHaveClass(PRIMARY);
-    }
+    expect(button("Update target")).not.toHaveClass(PRIMARY);
+    // #1744: without a primary in the foot, its items sit behind the ⋯.
+    expect(button("Actions for tdd")).not.toHaveClass(PRIMARY);
+    expect(
+      screen.queryByRole("button", { name: "Import local edits" }),
+    ).toBeNull();
   });
 
   it("makes Import local edits primary over Update target, which would discard the edits", () => {
@@ -406,13 +405,14 @@ describe("DetailPane primary", () => {
     renderPane({ foot: steps.foot });
 
     expect(button("Import local edits")).toHaveClass(PRIMARY);
-    expect(button("Deploy skill")).not.toHaveClass(PRIMARY);
+    expect(screen.queryByRole("button", { name: "Deploy skill" })).toBeNull();
   });
 
   it("makes nothing primary where the state names no next step", () => {
     renderPane();
 
-    expect(button("Deploy skill")).not.toHaveClass(PRIMARY);
+    expect(screen.queryByRole("button", { name: "Deploy skill" })).toBeNull();
+    expect(button("Actions for tdd")).not.toHaveClass(PRIMARY);
   });
 
   it("makes the first enabled item primary where the ⋮ order leads with the next step", () => {
@@ -426,7 +426,7 @@ describe("DetailPane primary", () => {
     });
 
     expect(button("Deploy skill")).toHaveClass(PRIMARY);
-    expect(button("Propose change")).not.toHaveClass(PRIMARY);
+    expect(screen.queryByRole("button", { name: "Propose change" })).toBeNull();
   });
 });
 

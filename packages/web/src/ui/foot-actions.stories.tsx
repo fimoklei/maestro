@@ -5,12 +5,14 @@ const meta = {
   title: "Core/FootActions",
   component: FootActions,
   args: {
-    name: "tdd",
+    name: "pr-review",
     items: [
-      { label: "Deploy skill", onSelect: () => {} },
-      { label: "Remove from all 3 targets", danger: true, onSelect: () => {} },
+      { label: "Copy prompt", onSelect: () => {} },
+      { label: "Edit prompt", edit: true, onSelect: () => {} },
+      { label: "Set category", onSelect: () => {} },
+      { label: "Delete prompt", danger: true, onSelect: () => {} },
     ],
-    primary: "Deploy skill",
+    primary: "Copy prompt",
   },
   decorators: [
     (Story) => (
@@ -25,12 +27,13 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// The danger item sits behind the ⋯ at the foot's right end.
+// The primary and the edit item; Set category and Delete prompt behind the ⋯.
 export const Default: Story = {};
 
-// Nothing primary: an In sync target's Deploy skill stays quiet.
+// No primary and no edit item: the foot is the ⋯ alone.
 export const NoPrimary: Story = {
   args: {
+    name: "tdd",
     items: [
       { label: "Import local edits", onSelect: () => {} },
       { label: "Deploy skill", onSelect: () => {} },
@@ -42,18 +45,21 @@ export const NoPrimary: Story = {
 // Propose change's write is running; its row's other presses wait.
 export const Busy: Story = {
   args: {
+    name: "tdd",
     items: [
       { label: "Propose change", busy: "propose", disabled: true },
       { label: "Discard change", danger: true, disabled: true },
     ],
-    primary: null,
+    primary: "Propose change",
   },
 };
 
-// A blocked danger item with a cause leaves the ⋯: its tooltip states why.
+// A blocked item with a cause stays a button: its tooltip states why.
 export const BlockedWithCause: Story = {
   args: {
+    name: "tdd",
     items: [
+      { label: "View pull request", href: "https://github.com/o/r/pull/52" },
       {
         label: "Withdraw from release",
         danger: true,

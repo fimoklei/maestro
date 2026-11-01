@@ -27,6 +27,7 @@ const PR_REVIEW = {
   path: ".maestro/prompts/pr-review.md",
   pendingRelease: null,
   text: "Review the pull request at [PR LINK].",
+  example: "",
   nameValid: true,
 } satisfies InventoryPrimitive;
 
@@ -35,6 +36,7 @@ const BAD_NAME = {
   ...PR_REVIEW,
   name: "PR_Review",
   path: ".maestro/prompts/PR_Review.md",
+  example: "",
   nameValid: false,
 } satisfies InventoryPrimitive;
 

@@ -1,6 +1,8 @@
 import {
   type PromptFile,
+  type PromptPart,
   promptFieldProblems,
+  samePrompt,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
 import { CATEGORY_NOT_SET_AFTER_EDIT } from "../categories/categories-copy";
@@ -29,11 +31,9 @@ import {
   longTextNotice,
   NOTHING_CHANGED,
 } from "./import-prompt-copy";
+import { asTyped } from "./prompt-as-typed";
 import { promptFieldErrors } from "./prompt-field-errors";
 import { useEditPrompt, useReadPrompt } from "./use-harness";
-
-// A browser text field holds LF only, so the read is compared as it shows.
-const lf = (text: string) => text.replace(/\r\n?/g, "\n");
 
 /** The prompt the dialog edits, as the Working Harness gave it. */
 type Opened = { name: string; read: PromptFile };
@@ -67,10 +67,13 @@ export function useEditPromptFlow({
   const [fields, setFields] = useState<PromptFile>({
     description: "",
     text: "",
+    example: "",
   });
   // Undefined until the reader picks: the field shows the saved category.
   const [chosen, setChosen] = useState<string | null | undefined>(undefined);
   const [landed, setLanded] = useState<Landed | null>(null);
+  // Which text the one box holds; the dialog opens on the prompt text.
+  const [part, setPart] = useState<PromptPart>("text");
   // Errors show from the first submit on, and each clears once its field holds.
   const [submitted, setSubmitted] = useState(false);
   const reading = useReadPrompt();
@@ -94,10 +97,9 @@ export function useEditPromptFlow({
         ]) ?? null);
   const category = chosen === undefined ? saved : chosen;
   const categoryChanged = chosen !== undefined && chosen !== saved;
+  // Both sides are compared as the text field shows them.
   const fieldsChanged =
-    opened !== null &&
-    (fields.description !== opened.read.description ||
-      fields.text !== lf(opened.read.text));
+    opened !== null && !samePrompt(asTyped(fields), asTyped(opened.read));
 
   const close = () => {
     setOpened(null);
@@ -196,9 +198,10 @@ export function useEditPromptFlow({
         onError: onRefused,
         onSuccess: (read) => {
           setOpened({ name: prompt, read });
-          setFields({ description: read.description, text: lf(read.text) });
+          setFields(asTyped(read));
           setChosen(undefined);
           setLanded(null);
+          setPart("text");
           setSubmitted(false);
           editing.reset();
           assigning.reset();
@@ -208,12 +211,18 @@ export function useEditPromptFlow({
       editing.reset();
       setFields((current) => ({ ...current, ...change }));
     },
+    part,
+    showPart: setPart,
     pickCategory,
     categoryAdd,
+    // The box's only field error is the prompt text's: a refusal shows it.
     submit: () => {
       if (opened === null) return;
       setSubmitted(true);
-      if (problems.length > 0) return;
+      if (problems.length > 0) {
+        setPart("text");
+        return;
+      }
       afterAdd.submit();
     },
     close: () => {

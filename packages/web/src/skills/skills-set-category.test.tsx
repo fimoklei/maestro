@@ -6,10 +6,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   categoryFact,
   categoryMenu,
+  setCategoryFromFoot,
   statusRegion,
   stubCategoryServer,
 } from "../categories/category-server-test-helpers";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import { jsonResponse, openFootMenu, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import { SkillsPanel } from "./skills-panel";
 
@@ -64,20 +65,16 @@ describe("Set category on Skills", () => {
     expect(categoryFact(grill)).toHaveTextContent("No category");
   });
 
-  it("puts Set category in the pane's foot after Deploy skill, never behind ⋯", async () => {
+  // #1744: the foot shows Deploy skill, its primary; the rest sit behind ⋯.
+  it("puts Set category first behind the pane foot's ⋯", async () => {
     stubServer();
     renderPanel();
 
     const pane = await openPane("tdd");
-    const foot = await pane.findByRole("button", { name: "Set category" });
-
-    const buttons = pane
-      .getAllByRole("button")
-      .map((button) => button.textContent);
-    expect(buttons.indexOf("Set category")).toBe(
-      buttons.indexOf("Deploy skill") + 1,
-    );
-    expect(foot).toHaveAttribute("aria-expanded", "false");
+    await pane.findByText("Category", { selector: "dt" });
+    expect(pane.queryByRole("button", { name: "Set category" })).toBeNull();
+    const menu = await openFootMenu(screen.getByRole("complementary"), "tdd");
+    expect(menu.getAllByRole("menuitem")[0]).toHaveTextContent("Set category");
   });
 
   it("sets a category from the pane's foot and says so in the status region", async () => {
@@ -87,9 +84,7 @@ describe("Set category on Skills", () => {
     renderPanel();
     const pane = await openPane("tdd");
 
-    await userEvent.click(
-      await pane.findByRole("button", { name: "Set category" }),
-    );
+    await setCategoryFromFoot("tdd");
     const picker = categoryMenu("Set category for tdd");
     expect(
       picker.getByRole("option", { name: "Writing", selected: true }),
@@ -111,7 +106,7 @@ describe("Set category on Skills", () => {
     expect(
       screen.queryByRole("group", { name: "Set category for tdd" }),
     ).toBeNull();
-    expect(pane.getByRole("button", { name: "Set category" })).toHaveFocus();
+    expect(pane.getByRole("button", { name: "Actions for tdd" })).toHaveFocus();
   });
 
   it("reaches Set category from the row's ⋮ by keyboard", async () => {
@@ -146,9 +141,7 @@ describe("Set category on Skills", () => {
     renderPanel();
     const pane = await openPane("tdd");
 
-    await userEvent.click(
-      await pane.findByRole("button", { name: "Set category" }),
-    );
+    await setCategoryFromFoot("tdd");
     await userEvent.type(
       screen.getByRole("combobox", { name: "Search categories" }),
       "Docs",
@@ -171,9 +164,7 @@ describe("Set category on Skills", () => {
     renderPanel();
     const pane = await openPane("tdd");
 
-    await userEvent.click(
-      await pane.findByRole("button", { name: "Set category" }),
-    );
+    await setCategoryFromFoot("tdd");
     await userEvent.click(screen.getByRole("option", { name: "No category" }));
 
     await waitFor(() =>
@@ -192,9 +183,7 @@ describe("Set category on Skills", () => {
     renderPanel();
     const pane = await openPane("tdd");
 
-    await userEvent.click(
-      await pane.findByRole("button", { name: "Set category" }),
-    );
+    await setCategoryFromFoot("tdd");
     await userEvent.click(screen.getByRole("option", { name: "Planning" }));
 
     const picker = categoryMenu("Set category for tdd");

@@ -21,6 +21,7 @@ const PR_REVIEW = {
   path: ".maestro/prompts/pr-review.md",
   pendingRelease: null,
   text: "Review the pull request at [PR LINK].\n\n$ARGUMENTS\n",
+  example: "",
   nameValid: true,
 } satisfies InventoryPrimitive;
 
@@ -31,6 +32,18 @@ const STANDUP = {
   path: ".maestro/prompts/standup.md",
   pendingRelease: null,
   text: "Summarise $1.",
+  example: "",
+  nameValid: true,
+} satisfies InventoryPrimitive;
+
+const WITH_EXAMPLE = {
+  type: "prompt",
+  name: "bug-report",
+  description: "Turn a bug into steps.",
+  path: ".maestro/prompts/bug-report.md",
+  pendingRelease: null,
+  text: "Turn [BUG] into steps.\n",
+  example: "Turn the login loop into steps.\n\n  Start on Safari.\n",
   nameValid: true,
 } satisfies InventoryPrimitive;
 
@@ -49,6 +62,7 @@ const BADLY_NAMED = {
   path: ".maestro/prompts/Review_PR.md",
   pendingRelease: null,
   text: "Check the pull request at [PR LINK].",
+  example: "",
   nameValid: false,
 } satisfies InventoryPrimitive;
 
@@ -239,6 +253,65 @@ describe("PromptsPanel — Copy prompt", () => {
     expect(text.querySelector("pre")?.textContent).toBe(PR_REVIEW.text);
   });
 
+  it("shows no Prompt or example switch on a prompt without an example", async () => {
+    stubApi([PR_REVIEW]);
+    renderPanel();
+
+    const pane = await openPane("pr-review");
+
+    expect(
+      pane.queryByRole("group", { name: "Prompt or example" }),
+    ).not.toBeInTheDocument();
+    expect(
+      pane.queryByRole("button", { name: "Example" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("switches the block between the prompt and its example, as written", async () => {
+    const user = userEvent.setup();
+    stubApi([WITH_EXAMPLE]);
+    renderPanel();
+
+    const pane = await openPane("bug-report");
+    const block = pane.getByRole("region", { name: "Prompt or example" });
+    const toggle = within(block).getByRole("group", {
+      name: "Prompt or example",
+    });
+    expect(
+      within(toggle).getByRole("button", { name: "Prompt" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(block.querySelector("pre")?.textContent).toBe(WITH_EXAMPLE.text);
+
+    await user.click(within(toggle).getByRole("button", { name: "Example" }));
+
+    expect(
+      within(toggle).getByRole("button", { name: "Example" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(block.querySelector("pre")?.textContent).toBe(WITH_EXAMPLE.example);
+  });
+
+  it("shows the prompt again when another prompt is selected", async () => {
+    const user = userEvent.setup();
+    const OTHER = { ...WITH_EXAMPLE, name: "bug-triage", text: "Triage $1." };
+    stubApi([WITH_EXAMPLE, OTHER]);
+    renderPanel();
+
+    const pane = await openPane("bug-report");
+    await user.click(pane.getByRole("button", { name: "Example" }));
+    await user.click(
+      await within(grid()).findByRole("gridcell", { name: "bug-triage" }),
+    );
+
+    const block = within(screen.getByRole("complementary")).getByRole(
+      "region",
+      { name: "Prompt or example" },
+    );
+    expect(
+      within(block).getByRole("button", { name: "Prompt" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(block.querySelector("pre")?.textContent).toBe(OTHER.text);
+  });
+
   it("copies from the pane's primary button and from the Copy prompt text icon", async () => {
     const user = userEvent.setup();
     stubApi([PR_REVIEW, STANDUP]);
@@ -278,9 +351,152 @@ describe("PromptsPanel — Copy prompt", () => {
     expect(await pane.findByText("Prompt not copied")).toBeInTheDocument();
     expect(
       pane.getByText(
-        "The browser blocked the clipboard. Highlight the text in the Prompt box. Then copy it yourself.",
+        "The browser blocked the clipboard. Highlight the prompt text. Then copy it yourself.",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("PromptsPanel — Copy example", () => {
+  const clipboard = () => navigator.clipboard.readText();
+
+  async function openPane(name: string) {
+    await userEvent.click(
+      await within(await screen.findByRole("grid")).findByRole("gridcell", {
+        name,
+      }),
+    );
+    return within(await screen.findByRole("complementary"));
+  }
+
+  async function openRowMenu(
+    user: ReturnType<typeof userEvent.setup>,
+    name: string,
+  ) {
+    await user.click(
+      await screen.findByRole("button", { name: `Actions for ${name}` }),
+    );
+    return screen.getAllByRole("menuitem").map((item) => item.textContent);
+  }
+
+  it("offers Copy example right after Copy prompt in the row's ⋮, only with an example", async () => {
+    const user = userEvent.setup();
+    stubApi([WITH_EXAMPLE, PR_REVIEW]);
+    renderPanel();
+
+    const withExample = await openRowMenu(user, "bug-report");
+    expect(withExample.slice(0, 2)).toEqual(["Copy prompt", "Copy example"]);
+    await user.keyboard("{Escape}");
+
+    const without = await openRowMenu(user, "pr-review");
+    expect(without).not.toContain("Copy example");
+  });
+
+  it("copies the example from the row's ⋮ and names it in the toast", async () => {
+    const user = userEvent.setup();
+    stubApi([WITH_EXAMPLE]);
+    renderPanel();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Actions for bug-report" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Copy example" }));
+
+    expect(await clipboard()).toBe(WITH_EXAMPLE.example);
+    expect(
+      await screen.findByText(sentence("Copied example of bug-report.")),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps Copy prompt on the prompt text while the block shows the example", async () => {
+    const user = userEvent.setup();
+    stubApi([WITH_EXAMPLE]);
+    renderPanel();
+
+    const pane = await openPane("bug-report");
+    await user.click(pane.getByRole("button", { name: "Example" }));
+    await user.click(pane.getByRole("button", { name: "Copy prompt" }));
+
+    expect(await clipboard()).toBe(WITH_EXAMPLE.text);
+    expect(
+      await screen.findByText(sentence("Copied bug-report.")),
+    ).toBeInTheDocument();
+  });
+
+  it("copies the text on show from the block's icon, named for it", async () => {
+    const user = userEvent.setup();
+    stubApi([WITH_EXAMPLE]);
+    renderPanel();
+
+    const pane = await openPane("bug-report");
+    await user.click(pane.getByRole("button", { name: "Copy prompt text" }));
+    expect(await clipboard()).toBe(WITH_EXAMPLE.text);
+
+    await user.click(pane.getByRole("button", { name: "Example" }));
+    expect(
+      pane.queryByRole("button", { name: "Copy prompt text" }),
+    ).not.toBeInTheDocument();
+    await user.click(pane.getByRole("button", { name: "Copy example text" }));
+    expect(await clipboard()).toBe(WITH_EXAMPLE.example);
+  });
+
+  it("puts Copy example behind the pane foot's ⋯, only with an example", async () => {
+    const user = userEvent.setup();
+    stubApi([WITH_EXAMPLE, PR_REVIEW]);
+    renderPanel();
+
+    const pane = await openPane("bug-report");
+    expect(
+      pane.queryByRole("button", { name: "Copy example" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      pane.getByRole("button", { name: "Actions for bug-report" }),
+    );
+    expect(screen.getAllByRole("menuitem")[0]).toHaveTextContent(
+      "Copy example",
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Copy example" }));
+    expect(await clipboard()).toBe(WITH_EXAMPLE.example);
+
+    await user.click(
+      await within(screen.getByRole("grid")).findByRole("gridcell", {
+        name: "pr-review",
+      }),
+    );
+    const other = within(screen.getByRole("complementary"));
+    await user.click(
+      await other.findByRole("button", { name: "Actions for pr-review" }),
+    );
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Set category"]);
+  });
+
+  it("shows only the Example notice when the browser refuses the example", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(
+      new Error("denied"),
+    );
+    stubApi([WITH_EXAMPLE]);
+    renderPanel();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Actions for bug-report" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Copy prompt" }));
+    const pane = within(await screen.findByRole("complementary"));
+    expect(await pane.findByText("Prompt not copied")).toBeInTheDocument();
+
+    await user.click(pane.getByRole("button", { name: "Example" }));
+    await user.click(pane.getByRole("button", { name: "Copy example text" }));
+
+    expect(await pane.findByText("Example not copied")).toBeInTheDocument();
+    expect(
+      pane.getByText(
+        "The browser blocked the clipboard. Highlight the example text. Then copy it yourself.",
+      ),
+    ).toBeInTheDocument();
+    expect(pane.queryByText("Prompt not copied")).not.toBeInTheDocument();
   });
 });
 

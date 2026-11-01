@@ -271,7 +271,13 @@ const importPromptDialog = (
   >,
 ) => (
   <ImportPromptDialog
-    draft={{ name: "", frontmatter: "", description: "", text: "" }}
+    draft={{
+      name: "",
+      frontmatter: "",
+      description: "",
+      text: "",
+      example: "",
+    }}
     fieldErrors={{}}
     changed={false}
     phase="idle"
@@ -284,6 +290,8 @@ const importPromptDialog = (
     chosenFile={null}
     fileNotice={null}
     setSource={vi.fn()}
+    part="text"
+    showPart={vi.fn()}
     chooseFile={vi.fn()}
     checkName={vi.fn()}
     edit={vi.fn()}
@@ -804,6 +812,7 @@ const ON_DIALOG: Row[] = [
           frontmatter: "",
           description: "Review a pull request.",
           text: "Review $ARGUMENTS.",
+          example: "",
         },
         changed: true,
         phase: running ? "running" : "idle",
@@ -818,6 +827,7 @@ const ON_DIALOG: Row[] = [
             frontmatter: "",
             description: "",
             text: "Review.",
+            example: "",
           },
           changed: true,
           close: onClose,

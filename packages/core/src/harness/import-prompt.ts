@@ -16,6 +16,7 @@ import {
   promptFieldProblems,
   promptFileTooLong,
   promptNameProblem,
+  samePrompt,
   writePromptFile,
 } from "./prompt-file";
 
@@ -124,8 +125,7 @@ export class ImportPrompt {
     if (!found.ok) {
       return found;
     }
-    const { description, text } = found.draft;
-    return { ok: true, prompt: { description, text } };
+    return { ok: true, prompt: found.prompt };
   }
 
   // Rewrites only a file that is there: an edit never creates a prompt.
@@ -147,27 +147,21 @@ export class ImportPrompt {
   // The other front matter keys come from the file as it reads under the lock.
   private async rewrite(
     root: string,
-    { name, description, text, read }: PromptEdit,
+    { name, read, ...edited }: PromptEdit,
   ): Promise<EditPromptResult> {
     const found = await this.load(root, name);
     if (!found.ok) {
       return found;
     }
-    if (
-      found.draft.description !== read.description ||
-      found.draft.text !== read.text
-    ) {
+    if (!samePrompt(found.prompt, read)) {
       return { ok: false, error: "prompt-changed" };
     }
-    const frontmatter = found.draft.frontmatter;
-    if (promptFileTooLong({ frontmatter, text })) {
+    const write = { frontmatter: found.frontmatter, ...edited };
+    if (promptFileTooLong(write)) {
       return { ok: false, error: "long-text" };
     }
     try {
-      await this.deps.fs.writeFile(
-        found.path,
-        writePromptFile({ frontmatter, description, text }),
-      );
+      await this.deps.fs.writeFile(found.path, writePromptFile(write));
     } catch {
       return { ok: false, error: "write-failed" };
     }
@@ -191,7 +185,7 @@ export class ImportPrompt {
 
   private async write(
     root: string,
-    { name, frontmatter, description, text }: PromptDraft,
+    { name, ...file }: PromptDraft,
   ): Promise<ImportPromptResult> {
     const resolved = await ensureHarnessPrimitiveDir(
       this.deps.fs,
@@ -216,10 +210,7 @@ export class ImportPrompt {
     }
     const mode: ImportMode = entry.kind === "plain" ? "update" : "add";
     try {
-      await this.deps.fs.writeFile(
-        entry.path,
-        writePromptFile({ frontmatter, description, text }),
-      );
+      await this.deps.fs.writeFile(entry.path, writePromptFile(file));
     } catch {
       return { ok: false, error: "write-failed" };
     }
@@ -231,7 +222,7 @@ export class ImportPrompt {
     root: string,
     name: string,
   ): Promise<
-    | { ok: true; path: string; draft: PromptDraft }
+    | { ok: true; path: string; frontmatter: string; prompt: PromptFile }
     | {
         ok: false;
         error:
@@ -258,6 +249,7 @@ export class ImportPrompt {
     if (raw === null) {
       return { ok: false, error: "prompt-missing" };
     }
-    return { ok: true, path: entry.path, draft: draftPrompt(raw, null) };
+    const { name: _, frontmatter, ...prompt } = draftPrompt(raw, null);
+    return { ok: true, path: entry.path, frontmatter, prompt };
   }
 }

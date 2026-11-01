@@ -46,7 +46,7 @@ describe("POST body parsing", () => {
     message:
       "Nothing was imported. Reload the page, then import the prompt again.",
     detail:
-      "The request carries a name, front matter, a description and a text: { name: string, frontmatter: string, description: string, text: string }.",
+      "The page must send these strings: { name, frontmatter, description, text, example }.",
   };
 
   const PROMPT_CHECK_SHAPE = {
@@ -65,7 +65,7 @@ describe("POST body parsing", () => {
     message:
       "Nothing was edited. Reload the page, then select Edit prompt again.",
     detail:
-      "The request carries a name, a description, a text and the prompt as read: { name: string, description: string, text: string, read: { description: string, text: string } }.",
+      "The page must send these strings: { name, description, text, example, read: { description, text, example } }. The read values are the ones from when the dialog opened.",
   };
 
   const routes = [
@@ -165,6 +165,8 @@ describe("POST body parsing", () => {
     ["an empty text", { text: "" }],
     ["a text over 100 KB", { text: "é".repeat(60_000) }],
     ["a body without front matter", { frontmatter: undefined }],
+    ["an example over 100 KB", { example: "é".repeat(60_000) }],
+    ["a body without an example", { example: undefined }],
   ])("refuses %s on the prompt import at the edge", async (_, change) => {
     const res = await makeApp().request(
       "/api/harness/prompt/import",
@@ -174,6 +176,7 @@ describe("POST body parsing", () => {
           frontmatter: "",
           description: "Review a pull request.",
           text: "Review $ARGUMENTS.",
+          example: "",
           ...change,
         }),
       ),
@@ -192,11 +195,23 @@ describe("POST body parsing", () => {
     ["an empty text", { text: "" }],
     [
       "a read text over 100 KB",
-      { read: { description: "Old", text: "é".repeat(60_000) } },
+      { read: { description: "Old", text: "é".repeat(60_000), example: "" } },
     ],
     [
       "a read description over 100 KB",
-      { read: { description: "é".repeat(60_000), text: "Old." } },
+      { read: { description: "é".repeat(60_000), text: "Old.", example: "" } },
+    ],
+    ["an example over 100 KB", { example: "é".repeat(60_000) }],
+    ["a body without an example", { example: undefined }],
+    [
+      "a read example over 100 KB",
+      {
+        read: { description: "Old", text: "Old.", example: "é".repeat(60_000) },
+      },
+    ],
+    [
+      "a read without an example",
+      { read: { description: "Old", text: "Old." } },
     ],
   ])("refuses %s on the prompt edit at the edge", async (_, change) => {
     const res = await makeApp().request(
@@ -206,7 +221,8 @@ describe("POST body parsing", () => {
           name: "review-pr",
           description: "Review a pull request.",
           text: "Review $ARGUMENTS.",
-          read: { description: "Old", text: "Old." },
+          example: "",
+          read: { description: "Old", text: "Old.", example: "" },
           ...change,
         }),
       ),
@@ -219,6 +235,23 @@ describe("POST body parsing", () => {
     });
   });
 
+  it("passes an edit carrying an example through to the use case", async () => {
+    const res = await makeApp().request(
+      "/api/harness/prompt/edit",
+      post(
+        JSON.stringify({
+          name: "review-pr",
+          description: "Review a pull request.",
+          text: "Review $ARGUMENTS.",
+          example: "Review #12.\n",
+          read: { description: "Old", text: "Old.", example: "Old one.\n" },
+        }),
+      ),
+    );
+
+    expect(await res.json()).not.toMatchObject({ error: "invalid-body" });
+  });
+
   it("refuses a front matter and text past 100 KB together as the text over 100 KB", async () => {
     const res = await makeApp().request(
       "/api/harness/prompt/import",
@@ -228,6 +261,7 @@ describe("POST body parsing", () => {
           frontmatter: `description: Review\nnotes: ${"n".repeat(60_000)}`,
           description: "Review a pull request.",
           text: "t".repeat(60_000),
+          example: "",
         }),
       ),
     );

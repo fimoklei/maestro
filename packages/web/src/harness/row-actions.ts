@@ -80,6 +80,7 @@ export function rowItems(
       ? [
           {
             label: EDIT_PROMPT,
+            edit: true as const,
             disabled: !editEnabled,
             onSelect: () => handlers.edit(row),
           },

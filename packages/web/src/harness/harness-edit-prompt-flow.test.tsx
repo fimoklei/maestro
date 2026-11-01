@@ -3,7 +3,12 @@ import type { PromptFile } from "@maestro/core/prompt-file";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  jsonResponse,
+  openFootMenu,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import {
   harnessRegion,
   openRowMenu,
@@ -37,6 +42,7 @@ const prompt = (
 const WORKING: PromptFile = {
   description: "Review a pull request.",
   text: "Review [PR LINK] for $ARGUMENTS.\n",
+  example: "",
 };
 
 const STAGE_TITLE = {
@@ -105,22 +111,32 @@ async function openPane() {
   return screen.findByRole("complementary", { name: "pr-review detail" });
 }
 
-// The pane foot's buttons, in order; the ⋯ holds the danger items.
-const footButtons = (pane: HTMLElement) =>
-  within(pane)
+// The pane foot's primary and edit item as buttons, then the ⋯ items, in
+// order (#1744).
+async function foot(pane: HTMLElement) {
+  const buttons = within(pane)
     .getAllByRole("button")
     .map((button) => button.textContent)
     .filter((label) => label === "Propose change" || label === "Edit prompt");
+  const menu = await openFootMenu(pane, "pr-review");
+  const items = menu.getAllByRole("menuitem").map((item) => item.textContent);
+  await userEvent.keyboard("{Escape}");
+  return { buttons, items };
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("Harness — Edit prompt", () => {
-  it("offers Edit prompt after Propose change, in the ⋮ menu and the pane foot", async () => {
+  it("offers Edit prompt after Propose change, in the ⋮ menu and beside the primary in the pane foot", async () => {
     stubServer(
       withStages(FETCHED, {
-        proposal: [prompt("pending-proposal", "not-yet-proposed")],
+        proposal: [
+          prompt("pending-proposal", "not-yet-proposed", {
+            remoteTree: "remote-blob",
+          }),
+        ],
       }),
     );
     await render();
@@ -128,11 +144,12 @@ describe("Harness — Edit prompt", () => {
     expect(await menuLabels("pending-proposal")).toEqual([
       "Propose change",
       "Edit prompt",
+      "Discard change",
+      "Delete prompt",
     ]);
-    expect(footButtons(await openPane())).toEqual([
-      "Propose change",
-      "Edit prompt",
-    ]);
+    const { buttons, items } = await foot(await openPane());
+    expect(buttons).toEqual(["Propose change", "Edit prompt"]);
+    expect(items).toEqual(["Discard change", "Delete prompt"]);
   });
 
   it("offers Edit prompt on a Pending review row on disk, before its danger item", async () => {
@@ -241,6 +258,7 @@ describe("Harness — Edit prompt", () => {
           name: "pr-review",
           description: "Review a pull request. Be brief.",
           text: WORKING.text,
+          example: "",
           read: WORKING,
         },
       ]),
@@ -341,7 +359,8 @@ describe("Harness — Edit prompt", () => {
     });
     stubServer(proposal, proposal, ["import-in-progress", 409]);
     await render();
-    const pane = within(await openPane());
+    const element = await openPane();
+    const pane = within(element);
 
     await userEvent.click(pane.getByRole("button", { name: "Edit prompt" }));
 

@@ -1,4 +1,5 @@
 import type { CategoryList, InventoryPrompt } from "@maestro/core";
+import type { PromptPart } from "@maestro/core/prompt-file";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -27,8 +28,10 @@ import {
   RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
+import type { ActionKey } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import {
+  COPY_EXAMPLE,
   COPY_PROMPT,
   DELETE_PROMPT,
   EDIT_PROMPT,
@@ -77,6 +80,14 @@ import {
 // The default branch no longer holds the file under this name.
 const leavesDefaultBranch = ({ pendingRelease }: InventoryPrompt) =>
   pendingRelease?.change === "deletion" || pendingRelease?.change === "rename";
+
+// What one copy takes: the prompt and the part of it to copy.
+type Copying = { prompt: InventoryPrompt; part: PromptPart };
+
+const COPY_ACTION: Record<PromptPart, ActionKey> = {
+  text: "copy",
+  example: "copyExample",
+};
 
 // Step 1 of Delete prompt, offered only once the clone's read holds the file.
 type Deletion = { path: string; localOnly: boolean };
@@ -158,26 +169,25 @@ export function PromptsView({
       screen.open(name);
     },
   };
-  // Without a clipboard (no secure context, no permission) the write rejects.
+  // One copy action for either part, so a refusal never loses which part
+  // failed. Without a clipboard (no secure context, no permission) it rejects.
   const copying = useMutation({
-    mutationFn: (prompt: InventoryPrompt) =>
-      navigator.clipboard.writeText(prompt.text),
+    mutationFn: ({ prompt, part }: Copying) =>
+      navigator.clipboard.writeText(prompt[part]),
   });
   const copyWrite = useWriteAction(copying, {
     screen,
-    action: "copy",
+    action: ({ part }) => COPY_ACTION[part],
     // The copy lands on the clipboard, not in a row.
-    subject: (_done, prompt) => ({
+    subject: (_done, { prompt }) => ({
       name: phrase`${named(prompt.name)}`,
       row: null,
     }),
     // The refusal is the pane's notice.
     failure: () => null,
   });
-  // The prompt whose last copy the browser refused; its pane says so.
-  const copyRefusedFor = copying.isError
-    ? (copying.variables?.name ?? null)
-    : null;
+  // The last copy the browser refused; its prompt's pane says so.
+  const copyRefused = copying.isError ? (copying.variables ?? null) : null;
   const editFlow = useEditPromptFlow({
     screen: "prompts",
     writes: screen,
@@ -194,10 +204,14 @@ export function PromptsView({
           origin: harness?.origin ?? null,
           localDeletion: localDeletions.has(name),
         });
-  const copy = (prompt: InventoryPrompt) =>
-    copyWrite.run(prompt, { onError: () => screen.open(prompt.name) });
+  const copy = (prompt: InventoryPrompt, part: PromptPart) =>
+    copyWrite.run(
+      { prompt, part },
+      { onError: () => screen.open(prompt.name) },
+    );
   const run: Record<RowAction, (prompt: InventoryPrompt) => void> = {
-    copy,
+    copy: (prompt) => copy(prompt, "text"),
+    copyExample: (prompt) => copy(prompt, "example"),
     edit: (prompt) => edit(prompt.name),
     category: (prompt) => {
       screen.open(prompt.name);
@@ -223,7 +237,14 @@ export function PromptsView({
   const rows: PromptRow[] = all.map((prompt) => {
     // The pane's name warning or Pending release fact says what comes first.
     const editable = prompt.nameValid && !leavesDefaultBranch(prompt);
-    const copyItem: PromptItem = { action: "copy", label: COPY_PROMPT };
+    const copyExampleItem: PromptItem = {
+      action: "copyExample",
+      label: COPY_EXAMPLE,
+    };
+    const copyItems: PromptItem[] = [
+      { action: "copy", label: COPY_PROMPT },
+      ...(prompt.example === "" ? [] : [copyExampleItem]),
+    ];
     const editItem: PromptItem = { action: "edit", label: EDIT_PROMPT };
     const categoryItems: PromptItem[] = category.offered
       ? [{ action: "category", label: SET_CATEGORY }]
@@ -236,13 +257,13 @@ export function PromptsView({
       ...prompt,
       category: category.categoryOf(prompt.name),
       menu: [
-        copyItem,
+        ...copyItems,
         ...(editable ? [editItem] : []),
         ...categoryItems,
         ...deleteItems,
       ],
       foot: [
-        copyItem,
+        ...copyItems,
         { ...editItem, disabled: !editable },
         ...categoryItems,
         ...deleteItems,
@@ -398,14 +419,20 @@ export function PromptsView({
             <PromptDetailPane
               prompt={row}
               latestRelease={harness?.latestRelease}
-              copyRefused={copyRefusedFor === row.name}
+              copyRefused={
+                copyRefused?.prompt.name === row.name ? copyRefused.part : null
+              }
               readRefusal={readNotice(row.name)}
-              onCopy={() => copy(row)}
+              onCopy={(part) => copy(row, part)}
               category={row.category}
               footItems={row.foot.map(({ action, ...item }) =>
                 action === "category"
                   ? category.footItem(item.label)
-                  : { ...item, onSelect: () => run[action](row) },
+                  : {
+                      ...item,
+                      ...(action === "edit" ? { edit: true } : {}),
+                      onSelect: () => run[action](row),
+                    },
               )}
               footMenu={category.footMenu(row.name)}
               {...frame}

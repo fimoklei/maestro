@@ -5,6 +5,7 @@ import { type Copy, type Phrase, phrase } from "./phrase";
 export type ActionKey =
   | "add"
   | "copy"
+  | "copyExample"
   | "deploy"
   | "update"
   | "remove"
@@ -34,6 +35,8 @@ export const ACTIONS: Record<
 > = {
   add: { busy: "Adding…", done: "Added" },
   copy: { busy: "Copying…", done: "Copied" },
+  // "Copied tdd." would read as the prompt text copied.
+  copyExample: { busy: "Copying…", done: "Copied example of" },
   deploy: { busy: "Deploying…", done: "Deployed" },
   update: { busy: "Updating…", done: "Updated" },
   remove: { busy: "Removing…", done: "Removed" },

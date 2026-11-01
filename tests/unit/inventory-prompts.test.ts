@@ -60,9 +60,27 @@ describe("released prompts on the Inventory read", () => {
         path: ".maestro/prompts/pr-review.md",
         pendingRelease: null,
         text: "Review [PR LINK] for $ARGUMENTS.\nFocus on $1.\n",
+        example: "",
         nameValid: true,
       },
     ]);
+  });
+
+  it("carries a released prompt's example, as written", async () => {
+    const inventory = inventoryOver(
+      {},
+      {
+        "pr-review":
+          "---\ndescription: Review a pull request\nexample: |\n  Review #12.\n\n  Focus on tests.\n---\nReview $1.\n",
+      },
+    );
+
+    const [prompt] = await promptsOf(inventory);
+
+    expect(prompt).toMatchObject({
+      text: "Review $1.\n",
+      example: "Review #12.\n\nFocus on tests.\n",
+    });
   });
 
   it("copies the whole file when no frontmatter block closes", async () => {

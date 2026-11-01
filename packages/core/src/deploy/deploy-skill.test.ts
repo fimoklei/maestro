@@ -558,6 +558,7 @@ describe("DeploySkill", () => {
               path: ".maestro/prompts/pr-review.md",
               pendingRelease: null,
               text: "Review\n",
+              example: "",
               nameValid: true,
             },
           ],

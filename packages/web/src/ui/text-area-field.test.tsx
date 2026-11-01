@@ -22,6 +22,26 @@ describe("TextAreaField", () => {
     expect(area).not.toHaveClass("outline-none");
   });
 
+  it("draws a control in the label's place, still naming the text area by the word", () => {
+    render(
+      <TextAreaField
+        label={{
+          name: "Example",
+          control: <button type="button">Switch</button>,
+        }}
+        hint="Optional."
+        value=""
+        onChange={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByRole("textbox", { name: "Example" }),
+    ).toHaveAccessibleDescription("Optional.");
+    expect(screen.getByRole("button", { name: "Switch" })).toBeInTheDocument();
+    expect(screen.queryByText("Example")).toBeNull();
+  });
+
   it("states a refusal under the text area and marks it invalid", () => {
     render(
       <TextAreaField

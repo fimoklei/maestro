@@ -1,3 +1,4 @@
+import type { PromptPart } from "@maestro/core/prompt-file";
 import { COPY_PROMPT } from "../ui/control-labels";
 import { named, phrase } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
@@ -36,13 +37,34 @@ export const nameNotValidNotice = (name: string) => ({
 // The detail pane (#1598).
 export const PATH_FACT = "Path";
 export const PROMPT_TEXT_HEADING = "Prompt";
-export const COPY_PROMPT_TEXT = "Copy prompt text";
 
-// Copy prompt's refusal; its success is the shared done sentence in a toast.
-export const NOT_COPIED = {
-  label: "Prompt not copied",
-  message:
-    "The browser blocked the clipboard. Highlight the text in the Prompt box. Then copy it yourself.",
+/** The block's copy icon, named for the part on show. */
+export const COPY_PART_TEXT: Record<PromptPart, string> = {
+  text: "Copy prompt text",
+  example: "Copy example text",
+};
+export const PROMPT_PARTS_LABEL = "Prompt or example";
+export const PROMPT_PARTS: readonly { value: PromptPart; label: string }[] = [
+  { value: "text", label: "Prompt" },
+  { value: "example", label: "Example" },
+];
+
+// A copy's refusal, for the part it copied; its success is the shared done
+// sentence in a toast.
+export const NOT_COPIED: Record<
+  PromptPart,
+  { label: string; message: string }
+> = {
+  text: {
+    label: "Prompt not copied",
+    message:
+      "The browser blocked the clipboard. Highlight the prompt text. Then copy it yourself.",
+  },
+  example: {
+    label: "Example not copied",
+    message:
+      "The browser blocked the clipboard. Highlight the example text. Then copy it yourself.",
+  },
 };
 
 // The selection column, which Set category's selection bar acts on.

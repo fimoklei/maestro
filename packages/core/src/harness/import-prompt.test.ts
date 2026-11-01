@@ -52,6 +52,7 @@ const VALID = {
   name: "review-pr",
   description: "Review a pull request.",
   text: "Review $ARGUMENTS.\n",
+  example: "",
 };
 
 // Shaped after prompts found in real tool folders.
@@ -91,6 +92,7 @@ describe("ImportPrompt.execute", () => {
       expect(readPromptFile(written ?? "")).toEqual({
         description: draft.description,
         text: draft.text,
+        example: draft.example,
       });
     },
   );
@@ -171,7 +173,37 @@ describe("ImportPrompt.execute", () => {
     });
     expect(
       readPromptFile((await fs.readFile(`${PROMPTS}/review-pr.md`)) ?? ""),
-    ).toEqual({ description: VALID.description, text: VALID.text });
+    ).toEqual({
+      description: VALID.description,
+      text: VALID.text,
+      example: "",
+    });
+  });
+
+  it.each([
+    ["replaces", "Review #13.\n", "Review #13.\n"],
+    ["clears on an empty field", "", ""],
+  ])("%s the example of a taken name", async (_, example, readBack) => {
+    const { importPrompt, fs } = build({
+      seed: {
+        directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
+        files: {
+          [`${PROMPTS}/review-pr.md`]:
+            "---\ndescription: Old\nexample: |\n  Review #12.\n---\nOld text.\n",
+        },
+      },
+    });
+
+    await expect(
+      importPrompt.execute({ ...VALID, example }),
+    ).resolves.toMatchObject({ ok: true, mode: "update" });
+    expect(
+      readPromptFile((await fs.readFile(`${PROMPTS}/review-pr.md`)) ?? ""),
+    ).toEqual({
+      description: VALID.description,
+      text: VALID.text,
+      example: readBack,
+    });
   });
 
   it("writes a name whose file is gone from the working Harness as an add", async () => {
@@ -410,7 +442,20 @@ describe("ImportPrompt.read", () => {
       prompt: {
         description: "Review a pull request",
         text: "Review [PR LINK] for $ARGUMENTS.\nStart at $1.\n",
+        example: "",
       },
+    });
+  });
+
+  it("returns the working file's example", async () => {
+    const { importPrompt } = build({
+      seed: IN_HARNESS(
+        "---\ndescription: Review a pull request\nexample: |\n  Review #12.\n---\nReview $1.\n",
+      ),
+    });
+
+    await expect(importPrompt.read("review-pr")).resolves.toMatchObject({
+      prompt: { example: "Review #12.\n" },
     });
   });
 
@@ -429,7 +474,7 @@ describe("ImportPrompt.read", () => {
 
       await expect(importPrompt.read("review-pr")).resolves.toEqual({
         ok: true,
-        prompt: { description: "", text: raw },
+        prompt: { description: "", text: raw, example: "" },
       });
     },
   );
@@ -480,13 +525,15 @@ describe("ImportPrompt.edit", () => {
   const READ = {
     description: "Review a pull request",
     text: "Review $ARGUMENTS.\n",
+    example: "",
   };
 
-  it("writes the new description and prompt text, which read back equal", async () => {
+  it("writes the new description, prompt text and example, which read back equal", async () => {
     const { importPrompt } = build({ seed: IN_HARNESS(RAW) });
     const edited = {
       description: "Review a pull request in full",
       text: "Review [PR LINK].\nList the risks of $1.\n",
+      example: "Review #12.\n\nList the risks of the migration.\n",
     };
 
     await expect(
@@ -509,12 +556,61 @@ describe("ImportPrompt.edit", () => {
       name: "review-pr",
       description: "Review a pull request",
       text: "Review $1.\n",
-      read: { description: "Old words", text: "Old text.\n" },
+      example: "",
+      read: { description: "Old words", text: "Old text.\n", example: "" },
     });
 
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
       "---\nmodel: haiku\n# Shown in the menu.\ndescription: Review a pull request\nargument-hint: '[pr]'\n---\nReview $1.\n",
     );
+  });
+
+  const WITH_EXAMPLE =
+    "---\ndescription: Review a pull request\nexample: |\n  Review #12.\nmetadata:\n  category: Code review\n---\nReview $ARGUMENTS.\n";
+  const READ_WITH_EXAMPLE = { ...READ, example: "Review #12.\n" };
+
+  it("removes the example on an empty field, keeping the category", async () => {
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(WITH_EXAMPLE) });
+
+    await expect(
+      importPrompt.edit({
+        name: "review-pr",
+        ...READ,
+        example: "",
+        read: READ_WITH_EXAMPLE,
+      }),
+    ).resolves.toEqual({ ok: true, name: "review-pr" });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
+      "---\ndescription: Review a pull request\nmetadata:\n  category: Code review\n---\nReview $ARGUMENTS.\n",
+    );
+  });
+
+  it("refuses a file whose example changed since the read, writing nothing", async () => {
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(WITH_EXAMPLE) });
+
+    await expect(
+      importPrompt.edit({
+        name: "review-pr",
+        ...READ,
+        example: "Review #13.\n",
+        read: { ...READ, example: "Review #11.\n" },
+      }),
+    ).resolves.toEqual({ ok: false, error: "prompt-changed" });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(WITH_EXAMPLE);
+  });
+
+  it("refuses an example that grows the file past 100 KB, writing nothing", async () => {
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(WITH_EXAMPLE) });
+
+    await expect(
+      importPrompt.edit({
+        name: "review-pr",
+        ...READ,
+        example: "e".repeat(102_400),
+        read: READ_WITH_EXAMPLE,
+      }),
+    ).resolves.toEqual({ ok: false, error: "long-text" });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(WITH_EXAMPLE);
   });
 
   it("writes a CRLF file back with LF line endings", async () => {
@@ -528,7 +624,8 @@ describe("ImportPrompt.edit", () => {
       name: "review-pr",
       description: "Old words",
       text: "New text.\n",
-      read: { description: "Old words", text: "Old text.\r\n" },
+      example: "",
+      read: { description: "Old words", text: "Old text.\r\n", example: "" },
     });
 
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
@@ -544,7 +641,8 @@ describe("ImportPrompt.edit", () => {
       name: "review-pr",
       description: "Review a pull request",
       text: "Review $1.\n",
-      read: { description: "", text: raw },
+      example: "",
+      read: { description: "", text: raw, example: "" },
     });
 
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
@@ -556,6 +654,7 @@ describe("ImportPrompt.edit", () => {
     name: "review-pr",
     description: "Review a pull request in full",
     text: "Review $ARGUMENTS.\n",
+    example: "",
     read: READ,
   };
 
@@ -587,6 +686,19 @@ describe("ImportPrompt.edit", () => {
       importPrompt.edit({ ...EDIT, text: "t".repeat(60_000) }),
     ).resolves.toEqual({ ok: false, error: "long-text" });
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(raw);
+  });
+
+  it("counts the new description toward 100 KB, not the one the file holds", async () => {
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(RAW) });
+
+    await expect(
+      importPrompt.edit({
+        ...EDIT,
+        description: "d".repeat(1024),
+        text: "t".repeat(101_500),
+      }),
+    ).resolves.toEqual({ ok: false, error: "long-text" });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(RAW);
   });
 
   it("refuses a prompt whose file is gone, and creates none", async () => {

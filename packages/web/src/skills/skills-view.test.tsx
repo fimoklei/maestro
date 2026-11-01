@@ -1124,7 +1124,11 @@ describe("SkillsView — bulk staging", () => {
 
     await userEvent.click(checkbox("caveman"));
 
-    expect(paneDeploy).not.toHaveClass("bg-gray-12");
+    // #1744: without a primary, the pane foot's items sit behind its ⋯.
+    expect(paneDeploy).not.toBeInTheDocument();
+    expect(
+      within(pane).getByRole("button", { name: "Actions for tdd" }),
+    ).not.toHaveClass("bg-gray-12");
     expect(
       within(screen.getByRole("group", { name: "1 selected" })).getByRole(
         "button",

@@ -1,4 +1,5 @@
 import type { InventoryPrompt } from "@maestro/core";
+import type { PromptPart } from "@maestro/core/prompt-file";
 import type { ReactNode } from "react";
 import { CATEGORY_FACT } from "../categories/categories-copy";
 import {
@@ -34,11 +35,11 @@ export function PromptDetailPane({
   prompt: InventoryPrompt;
   /** The Harness's latest release: null where none exists, undefined until read. */
   latestRelease: string | null | undefined;
-  /** The last Copy prompt of this prompt was refused by the browser. */
-  copyRefused: boolean;
+  /** The part the browser refused on this prompt's last copy; null for none. */
+  copyRefused: PromptPart | null;
   /** Why the last Edit prompt of this prompt opened no dialog. */
   readRefusal: NoticeContent | null;
-  onCopy: () => void;
+  onCopy: (part: PromptPart) => void;
   /** The row's ⋮ items, Copy prompt first. */
   footItems: readonly FootItem[];
   /** A menu a foot item opened, such as Set category's. */
@@ -60,10 +61,10 @@ export function PromptDetailPane({
             trigger: "load",
           } satisfies PaneNotice,
         ]),
-    ...(copyRefused
+    ...(copyRefused !== null
       ? [
           {
-            content: { level: "error", ...NOT_COPIED },
+            content: { level: "error", ...NOT_COPIED[copyRefused] },
             trigger: "user-action",
           } satisfies PaneNotice,
         ]
@@ -110,7 +111,7 @@ export function PromptDetailPane({
       ]}
       clampParagraph
       notices={notices}
-      subList={<PromptText text={prompt.text} onCopy={onCopy} />}
+      subList={<PromptText key={prompt.name} prompt={prompt} onCopy={onCopy} />}
       foot={footItems}
       footMenu={footMenu}
       leadsWithNextStep

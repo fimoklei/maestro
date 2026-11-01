@@ -81,17 +81,20 @@ the new pattern to this section before building it.
   slate 11 `meta` beside a short value, in a two-column grid. A sub-list row is
   32px: mark, name, machine value, ⋮.
 - Fix the pane's foot and scroll only its content. The foot holds the row's ⋮
-  items that the pane does not place beside their fact or in a notice, as 32px
-  buttons in ⋮ order. Its danger items sit behind one 32px ⋯ at the foot's
-  right end, named `Actions for {name}`; a foot without one has no ⋯. A
-  blocked danger item with a cause sits in the foot as a `GatedButton`.
+  items that the pane does not place beside their fact or in a notice. Show
+  at most two as 32px buttons: the pane's primary, and the item that edits
+  the row's own content (`edit`, such as Edit prompt). Put every other item
+  behind one 32px ⋯ at the foot's right end, named `Actions for {name}`, in ⋮
+  order, danger items last after a separator; a foot with nothing left over
+  has no ⋯. Keep in the foot as a button a blocked item with a cause, as a
+  `GatedButton`.
 - Give a fact at most one action button beside its value, and only for an
   action that changes that fact.
 - Choose the pane's one primary by state, not position: an unfinished
   operation's retry in its notice, else Import local edits on Local edits,
   else Update target on a behind target, else none. A pane whose ⋮ order already
-  leads with the next step (Skills, Harness) makes its first enabled item
-  primary.
+  leads with the next step (Skills, Harness) makes its first enabled item, or
+  the item whose write runs, primary.
 - Show the pane beside the table at every width, never over it; the table
   hides secondary columns to make room. On a panel under 44rem, too narrow
   for the name, Status and ⋮ beside the pane, the pane takes the table's place.

@@ -2,19 +2,32 @@ import { type ReactNode, useId } from "react";
 import type { Copy } from "./phrase";
 import { PhraseText } from "./phrase-text";
 
-/** What the frame hands its control: the id its label names, and its wiring. */
-export type FieldControl = {
+/** A visible label, or a control such as a switch in its place plus the word it shows. */
+export type FieldLabel = string | { name: string; control: ReactNode };
+
+/**
+ * What the frame hands its control: the id its label names, and its wiring.
+ * Only a visible label has an id, so only that form hands out `labelId`.
+ */
+export type FieldControl<Label extends FieldLabel> = {
   id: string;
-  /** The label's own id, for a control its content names further. */
-  labelId: string;
   describedBy: string | undefined;
   refused: boolean;
-};
+} & (Label extends string
+  ? {
+      /** The label's own id, for a control its content names further. */
+      labelId: string;
+      ariaLabel: undefined;
+    }
+  : {
+      /** The control's name, as a switch takes the label's place. */
+      ariaLabel: string;
+    });
 
 // The label, hint and error slots every text field shares; the caller draws
 // the control. The caller owns when the refusal appears: on submit, or right
 // after a pick.
-export function FieldFrame({
+export function FieldFrame<Label extends FieldLabel>({
   label,
   hint,
   error,
@@ -23,7 +36,7 @@ export function FieldFrame({
   children,
 }: {
   /** Visible, always — a placeholder is not a label. */
-  label: string;
+  label: Label;
   /** What the reader must know before acting, in one sentence. */
   hint: Copy | undefined;
   /** One sentence, shown once the field has been judged. */
@@ -32,7 +45,7 @@ export function FieldFrame({
   describedBy: string | undefined;
   /** Refused by a `Notice` in the slot rather than by `error`. */
   invalid: boolean;
-  children: (control: FieldControl) => ReactNode;
+  children: (control: FieldControl<Label>) => ReactNode;
 }) {
   const id = useId();
   const labelId = `${id}-label`;
@@ -49,24 +62,34 @@ export function FieldFrame({
 
   return (
     <div className="flex flex-col gap-tight">
-      <label
-        id={labelId}
-        htmlFor={id}
-        className="font-medium font-ui text-gray-12 text-row"
-      >
-        {label}
-      </label>
+      {typeof label === "string" ? (
+        <label
+          id={labelId}
+          htmlFor={id}
+          className="font-medium font-ui text-gray-12 text-row"
+        >
+          {label}
+        </label>
+      ) : (
+        label.control
+      )}
       {hint === undefined ? null : (
         <span id={hintId} className="font-ui text-meta text-gray-11">
           <PhraseText copy={hint} />
         </span>
       )}
-      {children({
-        id,
-        labelId,
-        describedBy,
-        refused: invalid || error !== undefined,
-      })}
+      {children(
+        // TypeScript does not narrow `Label` from `typeof label`: the branch
+        // taken here is the one `FieldControl<Label>` picks.
+        {
+          id,
+          describedBy,
+          refused: invalid || error !== undefined,
+          ...(typeof label === "string"
+            ? { labelId, ariaLabel: undefined }
+            : { ariaLabel: label.name }),
+        } as unknown as FieldControl<Label>,
+      )}
       {error === undefined ? null : (
         // One line, glyph and sentence together: the mark carries the severity
         // without colour (WCAG 1.4.1) and is hidden from a reader who hears it.

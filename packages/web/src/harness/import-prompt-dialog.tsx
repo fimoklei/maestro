@@ -1,5 +1,5 @@
 import type { ImportMode } from "@maestro/core";
-import type { PromptFile } from "@maestro/core/prompt-file";
+import type { PromptFile, PromptPart } from "@maestro/core/prompt-file";
 import { FileText } from "lucide-react";
 import { type ClipboardEvent, useId, useRef } from "react";
 import { CATEGORY_FIELD } from "../categories/categories-copy";
@@ -22,6 +22,9 @@ import {
   CHOOSE_FILE_HINT,
   editPromptTitle,
   fileSize,
+  PROMPT_BOX_LABEL,
+  PROMPT_BOX_PARTS,
+  PROMPT_BOX_WORDS,
   PROMPT_FIELD_HINTS,
   PROMPT_IMPORT_MODES,
   PROMPT_SOURCE_LABEL,
@@ -40,6 +43,9 @@ type PromptDialogBase = {
   /** The write landed and its category did not: only Close is left. */
   outcome: boolean;
   failure: NoticeContent | null;
+  /** Which text the one box holds. */
+  part: PromptPart;
+  showPart: (part: PromptPart) => void;
   edit: (change: Partial<PromptFile>) => void;
   submit: () => void;
   close: () => void;
@@ -74,8 +80,18 @@ type EditProps = PromptDialogBase & {
 type ImportPromptDialogProps = ImportProps | EditProps;
 
 export function ImportPromptDialog(props: ImportPromptDialogProps) {
-  const { draft, fieldErrors, changed, phase, failure, edit, submit, close } =
-    props;
+  const {
+    draft,
+    fieldErrors,
+    changed,
+    phase,
+    failure,
+    part,
+    showPart,
+    edit,
+    submit,
+    close,
+  } = props;
   const takenNoticeId = useId();
   const hintId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -231,12 +247,24 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         disabled={locked}
       />
       <TextAreaField
-        label="Prompt text"
-        hint={PROMPT_FIELD_HINTS.text}
-        error={fieldErrors.text}
-        value={draft.text}
-        onChange={(text) => edit({ text })}
-        onPaste={importOnly === null ? undefined : pasteText}
+        label={{
+          name: PROMPT_BOX_WORDS[part],
+          control: (
+            <SegmentedControl
+              label={PROMPT_BOX_LABEL}
+              segments={PROMPT_BOX_PARTS}
+              value={part}
+              onChange={showPart}
+              className="self-start"
+            />
+          ),
+        }}
+        hint={PROMPT_FIELD_HINTS[part]}
+        error={part === "text" ? fieldErrors.text : undefined}
+        value={draft[part]}
+        onChange={(value) => edit({ [part]: value })}
+        // A pasted file drafts the fields from the prompt text only.
+        onPaste={part === "text" ? pasteText : undefined}
         disabled={locked}
       />
       {importOnly === null ? null : (

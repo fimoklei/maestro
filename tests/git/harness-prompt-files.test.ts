@@ -1,5 +1,5 @@
-// Delete, restore and discard a prompt over the real disk and git. The remote
-// is a bare repo on disk, so the whole suite is offline.
+// Delete, restore, discard and edit a prompt over the real disk and git. The
+// remote is a bare repo on disk, so the whole suite is offline.
 import { execFile } from "node:child_process";
 import {
   lstat,
@@ -216,6 +216,90 @@ describe("prompt files on disk", { timeout: 30_000 }, () => {
       "refs/heads/maestro/*",
     );
     expect(stdout).toBe("");
+  });
+
+  describe("Edit prompt's example", () => {
+    const FRONT = "---\ndescription: Review a pull request.\n";
+
+    const promptCall = async (
+      app: ReturnType<typeof makeApp>,
+      path: "read" | "edit",
+      body: Record<string, unknown>,
+    ) => {
+      const response = await app.request(`/api/harness/prompt/${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "pr-review", ...body }),
+      });
+      return { status: response.status, body: await response.json() };
+    };
+
+    const edit = async (example: string, text = "Review $ARGUMENTS\n") => {
+      const app = makeApp();
+      const read = (await promptCall(app, "read", {})).body;
+      return {
+        app,
+        read,
+        send: () =>
+          promptCall(app, "edit", {
+            description: "Review a pull request.",
+            text,
+            example,
+            read,
+          }),
+      };
+    };
+
+    it("writes a multi-line example as a literal block", async () => {
+      await writePrompt(`${FRONT}---\nReview $ARGUMENTS\n`);
+      const { send } = await edit("Review #12.\nStart at sync.ts.\n");
+
+      expect(await send()).toEqual({
+        status: 200,
+        body: { name: "pr-review" },
+      });
+      expect(await onDisk()).toBe(
+        `${FRONT}example: |\n  Review #12.\n  Start at sync.ts.\n---\nReview $ARGUMENTS\n`,
+      );
+    });
+
+    it("removes the example key for an empty example", async () => {
+      await writePrompt(
+        `${FRONT}example: Review PR 12.\n---\nReview $ARGUMENTS\n`,
+      );
+      const { send } = await edit("");
+
+      expect((await send()).status).toBe(200);
+      expect(await onDisk()).toBe(`${FRONT}---\nReview $ARGUMENTS\n`);
+    });
+
+    it("refuses with prompt-changed when only the example changed since the read", async () => {
+      await writePrompt(
+        `${FRONT}example: Review PR 12.\n---\nReview $ARGUMENTS\n`,
+      );
+      const { send } = await edit("Review PR 13.");
+      const changed = `${FRONT}example: Review PR 14.\n---\nReview $ARGUMENTS\n`;
+      await writePrompt(changed);
+
+      expect(await send()).toEqual({
+        status: 409,
+        body: { error: "prompt-changed" },
+      });
+      expect(await onDisk()).toBe(changed);
+    });
+
+    it("refuses with long-text when the example grows the file past 100 KB", async () => {
+      const text = `${"a".repeat(100_000)}\n`;
+      const before = `${FRONT}---\n${text}`;
+      await writePrompt(before);
+      const { send } = await edit("b".repeat(4_000), text);
+
+      expect(await send()).toEqual({
+        status: 422,
+        body: { error: "long-text" },
+      });
+      expect(await onDisk()).toBe(before);
+    });
   });
 
   it("refuses to restore into a prompts folder that links out of the Harness", async () => {
