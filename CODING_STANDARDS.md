@@ -31,6 +31,11 @@ changed file, and every rule file without `paths:`. Cite the file and the rule.
 A commit that changes what `packages/web` renders and lists no browser check in
 its body is a finding (`design.md` → Verify).
 
+**Reviewing a rule change:** when a diff changes `.claude/rules/**`, `AGENTS.md`
+or this file, read every other rule file. A new rule that contradicts one, and
+a `paths:` change that stops a rule loading for files its text names, are
+findings.
+
 ## Adding a rule
 
 For a rule a linter, a script or a test can check, propose that check
