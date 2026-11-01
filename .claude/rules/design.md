@@ -272,7 +272,8 @@ Mandatory for any change that alters what `packages/web` renders:
 3. Screenshot every state the change touches (loading, empty, failure,
    disabled, selected, the longest realistic name) in the changed component's
    stories, in each theme. Add a missing state as a story (`frontend.md` →
-   Stories). Start Storybook with `pnpm --filter @maestro/web storybook --ci
+   Stories). A state only the data-fetching screen shows: screenshot it in
+   smoke, or name it as not reached. Start Storybook with `pnpm --filter @maestro/web storybook --ci
    --no-open` in the background and take the URL from its `Local:` line; open
    `<url>/iframe.html?id=<story id>&viewMode=story&globals=theme:dark` (story
    ids: `<url>/index.json`).
