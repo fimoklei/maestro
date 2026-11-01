@@ -29,6 +29,7 @@ import {
   editPromptNotice,
   longTextNotice,
   NOTHING_CHANGED,
+  type PromptBoxPart,
 } from "./import-prompt-copy";
 import { asTyped } from "./prompt-as-typed";
 import { promptFieldErrors } from "./prompt-field-errors";
@@ -66,10 +67,13 @@ export function useEditPromptFlow({
   const [fields, setFields] = useState<PromptFile>({
     description: "",
     text: "",
+    example: "",
   });
   // Undefined until the reader picks: the field shows the saved category.
   const [chosen, setChosen] = useState<string | null | undefined>(undefined);
   const [landed, setLanded] = useState<Landed | null>(null);
+  // Which text the one box holds; the dialog opens on the prompt text.
+  const [part, setPart] = useState<PromptBoxPart>("text");
   // Errors show from the first submit on, and each clears once its field holds.
   const [submitted, setSubmitted] = useState(false);
   const reading = useReadPrompt();
@@ -197,6 +201,7 @@ export function useEditPromptFlow({
           setFields(asTyped(read));
           setChosen(undefined);
           setLanded(null);
+          setPart("text");
           setSubmitted(false);
           editing.reset();
           assigning.reset();
@@ -206,12 +211,18 @@ export function useEditPromptFlow({
       editing.reset();
       setFields((current) => ({ ...current, ...change }));
     },
+    part,
+    showPart: setPart,
     pickCategory,
     categoryAdd,
+    // The box's only field error is the prompt text's: a refusal shows it.
     submit: () => {
       if (opened === null) return;
       setSubmitted(true);
-      if (problems.length > 0) return;
+      if (problems.length > 0) {
+        setPart("text");
+        return;
+      }
       afterAdd.submit();
     },
     close: () => {

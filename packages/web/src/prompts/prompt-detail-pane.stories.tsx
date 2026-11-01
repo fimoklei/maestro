@@ -22,6 +22,7 @@ const meta = {
       path: ".maestro/prompts/pr-review.md",
       pendingRelease: null,
       text: "Review the pull request at [PR LINK].\n\nRead the diff and the linked issue first.\n\n$ARGUMENTS",
+      example: "",
       nameValid: true,
     },
     latestRelease: "v1.4.0",
@@ -54,6 +55,17 @@ type Story = StoryObj<typeof meta>;
 
 export const Released: Story = {};
 
+// The Prompt / Example switch takes the block heading's place.
+export const WithExample: Story = {
+  args: {
+    prompt: {
+      ...meta.args.prompt,
+      example:
+        "Review the pull request at github.com/acme/app/pull/482.\n\nRead the diff and the linked issue first.\n\nFocus on the retry loop in the sync job.",
+    },
+  },
+};
+
 export const NameNotValid: Story = {
   args: {
     prompt: {
@@ -63,6 +75,7 @@ export const NameNotValid: Story = {
       path: ".maestro/prompts/Review_PR.md",
       pendingRelease: null,
       text: "Check the pull request at [PR LINK].",
+      example: "",
       nameValid: false,
     },
   },

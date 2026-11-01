@@ -7,9 +7,14 @@ export type FieldControl = {
   id: string;
   /** The label's own id, for a control its content names further. */
   labelId: string;
+  /** The control's name when a switch takes the label's place; else undefined. */
+  ariaLabel: string | undefined;
   describedBy: string | undefined;
   refused: boolean;
 };
+
+/** A visible label, or a control such as a switch in its place plus the word it shows. */
+export type FieldLabel = string | { name: string; control: ReactNode };
 
 // The label, hint and error slots every text field shares; the caller draws
 // the control. The caller owns when the refusal appears: on submit, or right
@@ -23,7 +28,7 @@ export function FieldFrame({
   children,
 }: {
   /** Visible, always — a placeholder is not a label. */
-  label: string;
+  label: FieldLabel;
   /** What the reader must know before acting, in one sentence. */
   hint: Copy | undefined;
   /** One sentence, shown once the field has been judged. */
@@ -49,13 +54,17 @@ export function FieldFrame({
 
   return (
     <div className="flex flex-col gap-tight">
-      <label
-        id={labelId}
-        htmlFor={id}
-        className="font-medium font-ui text-gray-12 text-row"
-      >
-        {label}
-      </label>
+      {typeof label === "string" ? (
+        <label
+          id={labelId}
+          htmlFor={id}
+          className="font-medium font-ui text-gray-12 text-row"
+        >
+          {label}
+        </label>
+      ) : (
+        label.control
+      )}
       {hint === undefined ? null : (
         <span id={hintId} className="font-ui text-meta text-gray-11">
           <PhraseText copy={hint} />
@@ -64,6 +73,7 @@ export function FieldFrame({
       {children({
         id,
         labelId,
+        ariaLabel: typeof label === "string" ? undefined : label.name,
         describedBy,
         refused: invalid || error !== undefined,
       })}

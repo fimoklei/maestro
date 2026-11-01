@@ -4,6 +4,8 @@ import {
   NO_RELEASED_PROMPTS,
   NOT_COPIED,
   nameNotValidNotice,
+  PROMPT_PARTS,
+  PROMPT_PARTS_LABEL,
   promptsFactValue,
 } from "./prompts-copy";
 
@@ -23,6 +25,14 @@ describe("Prompts copy", () => {
       message:
         "The browser blocked the clipboard. Highlight the text in the Prompt box. Then copy it yourself.",
     });
+  });
+
+  it("names the pane block's switch as spec #1742 states it", () => {
+    expect(PROMPT_PARTS_LABEL).toBe("Prompt or example");
+    expect(PROMPT_PARTS.map((each) => each.label)).toEqual([
+      "Prompt",
+      "Example",
+    ]);
   });
 
   it("words the Name not valid warning as spec #1590 states it", () => {

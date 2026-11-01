@@ -250,6 +250,7 @@ describe("Harness import prompt flow", () => {
             frontmatter: "",
             description: "Review the open pull request",
             text: "Read the diff.",
+            example: "",
           },
         ]),
       );
@@ -297,6 +298,7 @@ describe("Harness import prompt flow", () => {
           frontmatter: "description: Review the open pull request\nmodel: opus",
           description: "Review the open pull request",
           text: "Review $ARGUMENTS.\nUse $1 as the focus.\nBe brief.",
+          example: "",
         },
       ]),
     );
@@ -686,6 +688,7 @@ describe("Harness import prompt flow", () => {
           frontmatter: "description: Review",
           description: "Review",
           text: "Read the diff.\nBe brief.\n",
+          example: "",
         },
       ]),
     );
@@ -719,6 +722,7 @@ describe("Harness import prompt flow", () => {
           frontmatter: "description: Review",
           description: "Review",
           text: "Read the diff.\r\nBe brief.\r\n",
+          example: "",
         },
       ]),
     );

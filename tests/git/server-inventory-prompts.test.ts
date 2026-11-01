@@ -160,6 +160,7 @@ describe("released prompts on the Inventory", { timeout: 30_000 }, () => {
         path: ".maestro/prompts/pr-review.md",
         pendingRelease: null,
         text: PROMPT_BODY,
+        example: "",
         nameValid: true,
       },
     ]);

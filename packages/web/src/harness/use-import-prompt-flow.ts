@@ -32,6 +32,7 @@ const EMPTY: PromptDraft = {
   frontmatter: "",
   description: "",
   text: "",
+  example: "",
 };
 
 /** The file last chosen, as the Choose file tab shows it. */

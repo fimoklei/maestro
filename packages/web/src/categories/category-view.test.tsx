@@ -32,6 +32,7 @@ const prompt = (name: string): InventoryPrimitive => ({
   path: `.maestro/prompts/${name}.md`,
   pendingRelease: null,
   text: "Do it.",
+  example: "",
   nameValid: true,
 });
 

@@ -6,7 +6,7 @@ import { parseGitOrigin } from "../deploy/git-origin";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
 import { primitivePath } from "../harness/harness-primitive";
-import { readPromptFile } from "../harness/prompt-file";
+import { type PromptFile, readPromptFile } from "../harness/prompt-file";
 import { readFrontmatter } from "../harness/validate-skill-structure";
 import type { FileSystemPort } from "../registry/file-system";
 import {
@@ -29,13 +29,11 @@ export type InventorySkill = {
 
 // `text` is what Copy prompt copies. `nameValid` is false for a file name that
 // breaks the name rule; the prompt is still listed and copyable.
-export type InventoryPrompt = {
+export type InventoryPrompt = PromptFile & {
   type: "prompt";
   name: string;
-  description: string;
   path: string;
   pendingRelease: PendingRelease;
-  text: string;
   nameValid: boolean;
 };
 

@@ -5,7 +5,13 @@ import type {
   PrimitiveDeletionCheck,
 } from "@maestro/core";
 import type { PromptFile } from "@maestro/core/prompt-file";
-import { screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -23,6 +29,7 @@ const PR_REVIEW = {
   path: ".maestro/prompts/pr-review.md",
   pendingRelease: null,
   text: "Review the pull request at [PR LINK].",
+  example: "",
   nameValid: true,
 } satisfies InventoryPrimitive;
 
@@ -30,6 +37,7 @@ const PR_REVIEW = {
 const WORKING: PromptFile = {
   description: "Review a pull request against the spec.",
   text: "Review [PR LINK] for $ARGUMENTS.\nStart at $1.\n",
+  example: "",
 };
 
 const IN_CLONE = {
@@ -253,7 +261,7 @@ describe("Prompts — Edit prompt", () => {
 
     expect(confirm).toHaveAttribute("aria-disabled", "true");
     expect(confirm).toHaveAccessibleDescription(
-      "Change the description, text or category.",
+      "Change the description, text, example or category.",
     );
 
     const description = within(dialog).getByRole("textbox", {
@@ -271,7 +279,11 @@ describe("Prompts — Edit prompt", () => {
 
   it("counts a CRLF file as unchanged until a field changes", async () => {
     stubServer({
-      read: { description: "Review it.", text: "Line one.\r\nLine two.\r\n" },
+      read: {
+        description: "Review it.",
+        text: "Line one.\r\nLine two.\r\n",
+        example: "",
+      },
     });
     renderPrompts();
     const dialog = await editFromMenu();
@@ -322,6 +334,7 @@ describe("Prompts — Edit prompt", () => {
           name: "pr-review",
           description: WORKING.description,
           text: "Review [PR LINK] in full.",
+          example: "",
           read: WORKING,
         },
       ]);
@@ -696,5 +709,159 @@ describe("Prompts — Edit prompt's Category field", () => {
 
     await screen.findByRole("complementary", { name: "pr-review detail" });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("Prompts — Edit prompt's Example", () => {
+  const WITH_EXAMPLE: PromptFile = {
+    ...WORKING,
+    example: "Review #12 for the retry loop.\nStart at sync.ts.\n",
+  };
+
+  const toggleOf = (dialog: HTMLElement) =>
+    within(
+      within(dialog).getByRole("group", { name: "Prompt text or example" }),
+    );
+
+  const showExample = (dialog: HTMLElement) =>
+    userEvent.click(toggleOf(dialog).getByRole("button", { name: "Example" }));
+
+  // Radix registers its outside listener on the next tick, and dismisses on
+  // pointerdown.
+  const clickOutside = async () => {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+  };
+
+  it("opens on Prompt text, with the current example loaded under Example", async () => {
+    stubServer({ read: WITH_EXAMPLE });
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    expect(
+      toggleOf(dialog).getByRole("button", { name: "Prompt text" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(dialog).getByRole("textbox", { name: "Prompt text" }),
+    ).toHaveAccessibleDescription("Saved exactly as you enter it.");
+
+    await showExample(dialog);
+
+    const example = within(dialog).getByRole("textbox", { name: "Example" });
+    expect(example).toHaveValue(WITH_EXAMPLE.example);
+    expect(example).toHaveAccessibleDescription(
+      "Optional. The prompt, filled in and ready to paste.",
+    );
+    expect(
+      within(dialog).queryByRole("textbox", { name: "Prompt text" }),
+    ).toBeNull();
+  });
+
+  it("keeps both texts while switching", async () => {
+    stubServer({ read: WITH_EXAMPLE });
+    renderPrompts();
+    const dialog = await editFromMenu();
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Prompt text" }),
+      " Be brief.",
+    );
+    await showExample(dialog);
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Example" }),
+      "Be brief.",
+    );
+
+    await userEvent.click(
+      toggleOf(dialog).getByRole("button", { name: "Prompt text" }),
+    );
+    expect(
+      within(dialog).getByRole("textbox", { name: "Prompt text" }),
+    ).toHaveValue(`${WORKING.text} Be brief.`);
+    await showExample(dialog);
+    expect(
+      within(dialog).getByRole("textbox", { name: "Example" }),
+    ).toHaveValue(`${WITH_EXAMPLE.example}Be brief.`);
+  });
+
+  it("unblocks Edit prompt on an example-only change, and sends it with the read", async () => {
+    const { edits } = stubServer({});
+    renderPrompts();
+    const dialog = await editFromMenu();
+    await showExample(dialog);
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Example" }),
+      "Review #12.",
+    );
+
+    await waitFor(() =>
+      expect(confirmOf(dialog)).not.toHaveAttribute("aria-disabled"),
+    );
+    await userEvent.click(confirmOf(dialog));
+
+    await waitFor(() =>
+      expect(edits).toEqual([
+        {
+          name: "pr-review",
+          ...WORKING,
+          example: "Review #12.",
+          read: WORKING,
+        },
+      ]),
+    );
+  });
+
+  it("sends an emptied example as none", async () => {
+    const { edits } = stubServer({ read: WITH_EXAMPLE });
+    renderPrompts();
+    const dialog = await editFromMenu();
+    await showExample(dialog);
+    await userEvent.clear(
+      within(dialog).getByRole("textbox", { name: "Example" }),
+    );
+    await userEvent.click(confirmOf(dialog));
+
+    await waitFor(() =>
+      expect(edits).toEqual([
+        { name: "pr-review", ...WORKING, example: "", read: WITH_EXAMPLE },
+      ]),
+    );
+  });
+
+  it("keeps the dialog open on a click outside once only the example changed", async () => {
+    stubServer({});
+    renderPrompts();
+    const dialog = await editFromMenu();
+    await showExample(dialog);
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Example" }),
+      "Review #12.",
+    );
+
+    await clickOutside();
+
+    expect(screen.getByRole("dialog", { name: "Edit pr-review" })).toBe(dialog);
+  });
+
+  it("selects Prompt text on a refused submit, showing its error", async () => {
+    const { edits } = stubServer({ read: WITH_EXAMPLE });
+    renderPrompts();
+    const dialog = await editFromMenu();
+    await userEvent.clear(
+      within(dialog).getByRole("textbox", { name: "Prompt text" }),
+    );
+    await showExample(dialog);
+
+    await userEvent.click(confirmOf(dialog));
+
+    expect(
+      toggleOf(dialog).getByRole("button", { name: "Prompt text" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(dialog).getByRole("textbox", { name: "Prompt text" }),
+    ).toHaveAccessibleDescription(/Enter the prompt text\./);
+    expect(edits).toEqual([]);
   });
 });

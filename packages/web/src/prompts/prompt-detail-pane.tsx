@@ -110,7 +110,14 @@ export function PromptDetailPane({
       ]}
       clampParagraph
       notices={notices}
-      subList={<PromptText text={prompt.text} onCopy={onCopy} />}
+      subList={
+        <PromptText
+          key={prompt.name}
+          text={prompt.text}
+          example={prompt.example}
+          onCopy={onCopy}
+        />
+      }
       foot={footItems}
       footMenu={footMenu}
       leadsWithNextStep

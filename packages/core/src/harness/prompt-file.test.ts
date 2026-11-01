@@ -30,6 +30,7 @@ describe("draftPrompt", () => {
         "description: Review a pull request\nallowed-tools: Bash # read only",
       description: "Review a pull request",
       text: "Review $ARGUMENTS.\n",
+      example: "",
     });
   });
 
@@ -43,7 +44,23 @@ describe("draftPrompt", () => {
         "description: |\n  Review a pull request\n  and list the risks",
       description: "Review a pull request and list the risks",
       text: "Review it.",
+      example: "",
     });
+  });
+
+  it("fills the example from the front matter, as written", () => {
+    const raw =
+      "---\ndescription: Review\nexample: |\n  Review #12.\n    Focus on tests.\n---\nReview $1.";
+
+    expect(draftPrompt(raw, null).example).toBe(
+      "Review #12.\n  Focus on tests.\n",
+    );
+  });
+
+  it("drafts an example that is not text as empty", () => {
+    expect(
+      draftPrompt("---\nexample:\n  - one\n---\nReview it.", null).example,
+    ).toBe("");
   });
 
   it("leaves front matter that does not parse in the text", () => {
@@ -54,6 +71,7 @@ describe("draftPrompt", () => {
       frontmatter: "",
       description: "",
       text: raw,
+      example: "",
     });
   });
 });
@@ -82,7 +100,31 @@ describe("readPromptFile", () => {
     expect(readPromptFile("Review it.\n")).toEqual({
       description: "",
       text: "Review it.\n",
+      example: "",
     });
+  });
+
+  it("reads a multi-line example and leaves the one-line description intact", () => {
+    expect(
+      readPromptFile(
+        "---\ndescription: Review a PR\nexample: |\n  Review #12.\n\n  Focus on tests.\n---\nReview $1.\n",
+      ),
+    ).toEqual({
+      description: "Review a PR",
+      text: "Review $1.\n",
+      example: "Review #12.\n\nFocus on tests.\n",
+    });
+  });
+
+  it.each([
+    ["no example key", "description: Review"],
+    ["a list", "example:\n  - one\n  - two"],
+    ["a number", "example: 3"],
+    ["a blank value", "example: '  \n\n  '"],
+  ])("reads %s as no example", (_, frontmatter) => {
+    expect(readPromptFile(`---\n${frontmatter}\n---\nReview.`).example).toBe(
+      "",
+    );
   });
 
   it("returns an empty description for broken front matter", () => {
@@ -97,7 +139,11 @@ describe("readPromptFile", () => {
       readPromptFile(
         "---\r\ndescription: Review\r\n---\r\nLine one\r\n  $1\r\n",
       ),
-    ).toEqual({ description: "Review", text: "Line one\r\n  $1\r\n" });
+    ).toEqual({
+      description: "Review",
+      text: "Line one\r\n  $1\r\n",
+      example: "",
+    });
   });
 });
 
@@ -113,11 +159,95 @@ describe("writePromptFile", () => {
     const text = "Review $ARGUMENTS.\r\n";
 
     expect(
-      readPromptFile(writePromptFile({ frontmatter: "", description, text })),
-    ).toEqual({
-      description,
-      text,
+      readPromptFile(
+        writePromptFile({ frontmatter: "", description, text, example: "" }),
+      ),
+    ).toEqual({ description, text, example: "" });
+  });
+
+  const EXAMPLE = "Review #12.\n\n  Focus on: tests\n---\n- one\n";
+
+  it.each([
+    ["no front matter", ""],
+    ["front matter with other keys", "model: haiku"],
+    ["front matter holding an old example", "example: Old one"],
+  ])("reads back a multi-line example written over %s", (_, frontmatter) => {
+    const write = {
+      frontmatter,
+      description: "Review a PR",
+      text: "Review $1.\n",
+      example: EXAMPLE,
+    };
+
+    expect(readPromptFile(writePromptFile(write))).toEqual({
+      description: "Review a PR",
+      text: "Review $1.\n",
+      example: EXAMPLE,
     });
+  });
+
+  it("writes the example as a block, keeping other keys and a one-line description", () => {
+    expect(
+      writePromptFile({
+        frontmatter: "description: Old\nmetadata:\n  category: Code review",
+        description: "Review a PR",
+        text: "Review it.",
+        example: "Review #12.\nFocus on tests.\n",
+      }),
+    ).toBe(
+      "---\ndescription: Review a PR\nmetadata:\n  category: Code review\nexample: |\n  Review #12.\n  Focus on tests.\n---\nReview it.",
+    );
+  });
+
+  it("changes the example in place", () => {
+    expect(
+      writePromptFile({
+        frontmatter: "description: Old\nexample: Old one\nmodel: haiku",
+        description: "Review",
+        text: "Review it.",
+        example: "New one",
+      }),
+    ).toBe(
+      "---\ndescription: Review\nexample: New one\nmodel: haiku\n---\nReview it.",
+    );
+  });
+
+  it.each([
+    ["an example", "example: |\n  Old one\n"],
+    ["an example that is not text", "example:\n  - one\n"],
+  ])("removes %s when the example is empty", (_, held) => {
+    expect(
+      writePromptFile({
+        frontmatter: `description: Old\n${held}model: haiku`,
+        description: "Review",
+        text: "Review it.",
+        example: "",
+      }),
+    ).toBe("---\ndescription: Review\nmodel: haiku\n---\nReview it.");
+  });
+
+  it("removes the example when it holds only spaces and blank lines", () => {
+    expect(
+      writePromptFile({
+        frontmatter: "description: Old\nexample: Old one\nmodel: haiku",
+        description: "Review",
+        text: "Review it.",
+        example: "  \n\n ",
+      }),
+    ).toBe("---\ndescription: Review\nmodel: haiku\n---\nReview it.");
+  });
+
+  it("keeps the example when the front matter gives way", () => {
+    const written = writePromptFile({
+      frontmatter: "model: [unclosed",
+      description: "Review",
+      text: "Review it.",
+      example: "Review #12.\n",
+    });
+
+    expect(written).toBe(
+      "---\ndescription: Review\nexample: |\n  Review #12.\n---\nReview it.",
+    );
   });
 
   it("writes only a description key above the text without front matter", () => {
@@ -126,6 +256,7 @@ describe("writePromptFile", () => {
         frontmatter: "",
         description: "Review a PR",
         text: "Review it.",
+        example: "",
       }),
     ).toBe("---\ndescription: Review a PR\n---\nReview it.");
   });
@@ -137,6 +268,7 @@ describe("writePromptFile", () => {
           "argument-hint: '[scope]' # shown in the menu\ndescription: Old\nmodel: haiku",
         description: "Write a commit message",
         text: "Write it.",
+        example: "",
       }),
     ).toBe(
       "---\nargument-hint: '[scope]' # shown in the menu\ndescription: Write a commit message\nmodel: haiku\n---\nWrite it.",
@@ -149,6 +281,7 @@ describe("writePromptFile", () => {
         frontmatter: "model: haiku",
         description: "Review",
         text: "Review it.",
+        example: "",
       }),
     ).toBe("---\nmodel: haiku\ndescription: Review\n---\nReview it.");
   });
@@ -166,6 +299,7 @@ describe("writePromptFile", () => {
           frontmatter,
           description: "Review",
           text: "Review it.",
+          example: "",
         }),
       ).toBe("---\ndescription: Review\n---\nReview it.");
     },
@@ -177,6 +311,7 @@ describe("promptFieldProblems", () => {
     name: "review-pr",
     description: "Review a pull request",
     text: "Review $ARGUMENTS.",
+    example: "",
   };
 
   it("finds nothing wrong with valid fields", () => {
@@ -185,7 +320,12 @@ describe("promptFieldProblems", () => {
 
   it("names every broken rule of empty fields", () => {
     expect(
-      promptFieldProblems({ name: "", description: " ", text: "\n" }),
+      promptFieldProblems({
+        name: "",
+        description: " ",
+        text: "\n",
+        example: "",
+      }),
     ).toEqual(["empty-name", "empty-description", "empty-text"]);
   });
 
@@ -233,6 +373,7 @@ describe("promptDraftProblems", () => {
     name: "review-pr",
     frontmatter: "",
     description: "Review a pull request",
+    example: "",
   };
 
   it("counts the description block the written file adds toward 100 KB", () => {
@@ -244,12 +385,38 @@ describe("promptDraftProblems", () => {
       promptDraftProblems({ ...draft, text: "a".repeat(102_300) }),
     ).toEqual([]);
   });
+
+  it("counts the example toward 100 KB", () => {
+    const text = "a".repeat(60_000);
+
+    expect(
+      promptDraftProblems({ ...draft, text, example: "b".repeat(43_000) }),
+    ).toEqual(["long-text"]);
+    expect(
+      promptDraftProblems({ ...draft, text, example: "b".repeat(42_000) }),
+    ).toEqual([]);
+  });
+
+  it("counts the new example, not the one the front matter holds", () => {
+    const text = "a".repeat(60_000);
+    const frontmatter = `example: ${"b".repeat(10)}`;
+
+    expect(
+      promptDraftProblems({
+        ...draft,
+        frontmatter,
+        text,
+        example: "c".repeat(43_000),
+      }),
+    ).toEqual(["long-text"]);
+  });
 });
 
 describe("samePrompt", () => {
   const prompt = {
     description: "Review a pull request",
     text: "Review $ARGUMENTS.\n",
+    example: "Review #12.\n",
   };
 
   it("holds for two prompts with equal fields", () => {
@@ -260,6 +427,8 @@ describe("samePrompt", () => {
     ["description", { ...prompt, description: "Review a PR" }],
     ["text", { ...prompt, text: "Review $1.\n" }],
     ["line endings", { ...prompt, text: "Review $ARGUMENTS.\r\n" }],
+    ["example", { ...prompt, example: "Review #13.\n" }],
+    ["missing example", { ...prompt, example: "" }],
   ])("tells two prompts apart by their %s", (_, other) => {
     expect(samePrompt(prompt, other)).toBe(false);
   });

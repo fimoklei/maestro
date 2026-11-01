@@ -22,10 +22,14 @@ import {
   CHOOSE_FILE_HINT,
   editPromptTitle,
   fileSize,
+  PROMPT_BOX_LABEL,
+  PROMPT_BOX_PARTS,
+  PROMPT_BOX_WORDS,
   PROMPT_FIELD_HINTS,
   PROMPT_IMPORT_MODES,
   PROMPT_SOURCE_LABEL,
   PROMPT_SOURCES,
+  type PromptBoxPart,
   type PromptSource,
 } from "./import-prompt-copy";
 import type { PromptFieldErrors } from "./prompt-field-errors";
@@ -69,6 +73,9 @@ type EditProps = PromptDialogBase & {
   category: string | null | undefined;
   pickCategory: (name: string | null) => void;
   categoryAdd: HeldCategoryAdd;
+  /** Which text the one box holds. */
+  part: PromptBoxPart;
+  showPart: (part: PromptBoxPart) => void;
 };
 
 type ImportPromptDialogProps = ImportProps | EditProps;
@@ -230,15 +237,37 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         onChange={(description) => edit({ description })}
         disabled={locked}
       />
-      <TextAreaField
-        label="Prompt text"
-        hint={PROMPT_FIELD_HINTS.text}
-        error={fieldErrors.text}
-        value={draft.text}
-        onChange={(text) => edit({ text })}
-        onPaste={importOnly === null ? undefined : pasteText}
-        disabled={locked}
-      />
+      {editOnly === null ? (
+        <TextAreaField
+          label="Prompt text"
+          hint={PROMPT_FIELD_HINTS.text}
+          error={fieldErrors.text}
+          value={draft.text}
+          onChange={(text) => edit({ text })}
+          onPaste={pasteText}
+          disabled={locked}
+        />
+      ) : (
+        <TextAreaField
+          label={{
+            name: PROMPT_BOX_WORDS[editOnly.part],
+            control: (
+              <SegmentedControl
+                label={PROMPT_BOX_LABEL}
+                segments={PROMPT_BOX_PARTS}
+                value={editOnly.part}
+                onChange={editOnly.showPart}
+                className="self-start"
+              />
+            ),
+          }}
+          hint={PROMPT_FIELD_HINTS[editOnly.part]}
+          error={editOnly.part === "text" ? fieldErrors.text : undefined}
+          value={draft[editOnly.part]}
+          onChange={(value) => edit({ [editOnly.part]: value })}
+          disabled={locked}
+        />
+      )}
       {importOnly === null ? null : (
         <CategoryField {...importOnly.category.field} disabled={locked} />
       )}

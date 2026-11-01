@@ -21,6 +21,7 @@ const PR_REVIEW = {
   path: ".maestro/prompts/pr-review.md",
   pendingRelease: null,
   text: "Review the pull request at [PR LINK].\n\n$ARGUMENTS\n",
+  example: "",
   nameValid: true,
 } satisfies InventoryPrimitive;
 
@@ -31,6 +32,18 @@ const STANDUP = {
   path: ".maestro/prompts/standup.md",
   pendingRelease: null,
   text: "Summarise $1.",
+  example: "",
+  nameValid: true,
+} satisfies InventoryPrimitive;
+
+const WITH_EXAMPLE = {
+  type: "prompt",
+  name: "bug-report",
+  description: "Turn a bug into steps.",
+  path: ".maestro/prompts/bug-report.md",
+  pendingRelease: null,
+  text: "Turn [BUG] into steps.\n",
+  example: "Turn the login loop into steps.\n\n  Start on Safari.\n",
   nameValid: true,
 } satisfies InventoryPrimitive;
 
@@ -49,6 +62,7 @@ const BADLY_NAMED = {
   path: ".maestro/prompts/Review_PR.md",
   pendingRelease: null,
   text: "Check the pull request at [PR LINK].",
+  example: "",
   nameValid: false,
 } satisfies InventoryPrimitive;
 
@@ -237,6 +251,65 @@ describe("PromptsPanel — Copy prompt", () => {
       within(text).getByRole("heading", { name: "Prompt" }),
     ).toBeInTheDocument();
     expect(text.querySelector("pre")?.textContent).toBe(PR_REVIEW.text);
+  });
+
+  it("shows no Prompt or example switch on a prompt without an example", async () => {
+    stubApi([PR_REVIEW]);
+    renderPanel();
+
+    const pane = await openPane("pr-review");
+
+    expect(
+      pane.queryByRole("group", { name: "Prompt or example" }),
+    ).not.toBeInTheDocument();
+    expect(
+      pane.queryByRole("button", { name: "Example" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("switches the block between the prompt and its example, as written", async () => {
+    const user = userEvent.setup();
+    stubApi([WITH_EXAMPLE]);
+    renderPanel();
+
+    const pane = await openPane("bug-report");
+    const block = pane.getByRole("region", { name: "Prompt or example" });
+    const toggle = within(block).getByRole("group", {
+      name: "Prompt or example",
+    });
+    expect(
+      within(toggle).getByRole("button", { name: "Prompt" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(block.querySelector("pre")?.textContent).toBe(WITH_EXAMPLE.text);
+
+    await user.click(within(toggle).getByRole("button", { name: "Example" }));
+
+    expect(
+      within(toggle).getByRole("button", { name: "Example" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(block.querySelector("pre")?.textContent).toBe(WITH_EXAMPLE.example);
+  });
+
+  it("shows the prompt again when another prompt is selected", async () => {
+    const user = userEvent.setup();
+    const OTHER = { ...WITH_EXAMPLE, name: "bug-triage", text: "Triage $1." };
+    stubApi([WITH_EXAMPLE, OTHER]);
+    renderPanel();
+
+    const pane = await openPane("bug-report");
+    await user.click(pane.getByRole("button", { name: "Example" }));
+    await user.click(
+      await within(grid()).findByRole("gridcell", { name: "bug-triage" }),
+    );
+
+    const block = within(screen.getByRole("complementary")).getByRole(
+      "region",
+      { name: "Prompt or example" },
+    );
+    expect(
+      within(block).getByRole("button", { name: "Prompt" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(block.querySelector("pre")?.textContent).toBe(OTHER.text);
   });
 
   it("copies from the pane's primary button and from the Copy prompt text icon", async () => {

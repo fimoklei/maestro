@@ -23,7 +23,28 @@ export const PROMPT_FIELD_HINTS = {
   name: phrase`Maestro uses this as the file name in ${machine(".maestro/prompts")}.`,
   description: "One line, shown in the Prompts table.",
   text: "Saved exactly as you enter it.",
+  example: "Optional. The prompt, filled in and ready to paste.",
 } as const;
+
+/** Which text the dialog's one box holds. */
+export type PromptBoxPart = "text" | "example";
+
+/** The accessible name of the Prompt text / Example switch. */
+export const PROMPT_BOX_LABEL = "Prompt text or example";
+
+/** Each part's word: its segment, and the box's name while it shows. */
+export const PROMPT_BOX_WORDS: Record<PromptBoxPart, string> = {
+  text: "Prompt text",
+  example: "Example",
+};
+
+export const PROMPT_BOX_PARTS: readonly {
+  value: PromptBoxPart;
+  label: string;
+}[] = [
+  { value: "text", label: PROMPT_BOX_WORDS.text },
+  { value: "example", label: PROMPT_BOX_WORDS.example },
+];
 
 /** Where the prompt text comes from: the dialog's two tabs. */
 export type PromptSource = "paste" | "file";
@@ -87,7 +108,8 @@ const outcomeWords = (confirm: PromptConfirm) =>
 export const editPromptTitle = (prompt: string) => `Edit ${prompt}`;
 
 /** Why Edit prompt is blocked while both fields hold what was read. */
-export const NOTHING_CHANGED = "Change the description, text or category.";
+export const NOTHING_CHANGED =
+  "Change the description, text, example or category.";
 
 /** The dialog's title, submit label and busy verb, by whether the name is taken. */
 export const PROMPT_IMPORT_MODES = {

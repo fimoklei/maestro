@@ -38,6 +38,14 @@ export const PATH_FACT = "Path";
 export const PROMPT_TEXT_HEADING = "Prompt";
 export const COPY_PROMPT_TEXT = "Copy prompt text";
 
+/** Which text the pane's prompt block shows, on a prompt with an example. */
+export type PromptPart = "text" | "example";
+export const PROMPT_PARTS_LABEL = "Prompt or example";
+export const PROMPT_PARTS: readonly { value: PromptPart; label: string }[] = [
+  { value: "text", label: "Prompt" },
+  { value: "example", label: "Example" },
+];
+
 // Copy prompt's refusal; its success is the shared done sentence in a toast.
 export const NOT_COPIED = {
   label: "Prompt not copied",

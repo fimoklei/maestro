@@ -42,6 +42,7 @@ const prompt = (
 const WORKING: PromptFile = {
   description: "Review a pull request.",
   text: "Review [PR LINK] for $ARGUMENTS.\n",
+  example: "",
 };
 
 const STAGE_TITLE = {
@@ -250,6 +251,7 @@ describe("Harness — Edit prompt", () => {
           name: "pr-review",
           description: "Review a pull request. Be brief.",
           text: WORKING.text,
+          example: "",
           read: WORKING,
         },
       ]),
