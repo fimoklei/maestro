@@ -642,7 +642,7 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
   ]);
   await api.post("/api/inventory/connect", { path: paths.clone });
   await refreshAndCheckMirror(api, paths, commits, V1_1);
-  // A category lives in Maestro's config, never in the Harness (ADR-0034).
+  // A category lives in Maestro's config, never in the Harness.
   await api.post(
     "/api/categories",
     { name: PROMPT_CATEGORY.category },
