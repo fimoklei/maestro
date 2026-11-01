@@ -405,7 +405,11 @@ export function PromptsView({
               footItems={row.foot.map(({ action, ...item }) =>
                 action === "category"
                   ? category.footItem(item.label)
-                  : { ...item, onSelect: () => run[action](row) },
+                  : {
+                      ...item,
+                      ...(action === "edit" ? { edit: true } : {}),
+                      onSelect: () => run[action](row),
+                    },
               )}
               footMenu={category.footMenu(row.name)}
               {...frame}

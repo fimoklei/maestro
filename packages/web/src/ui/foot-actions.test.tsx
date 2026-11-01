@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { FootActions, firstEnabled } from "./foot-actions";
 
@@ -10,38 +11,71 @@ const labels = () =>
     .filter((label) => label !== "");
 
 describe("FootActions", () => {
-  // #1485: the foot fits one line in the 360px pane.
-  it("puts the danger items behind one ⋯ named for the pane, never as buttons", async () => {
+  // #1485, #1744: the foot fits one line in the 360px pane.
+  it("shows the primary and the edit item; the rest sit behind the ⋯ in ⋮ order, danger last", async () => {
+    render(
+      <FootActions
+        name="pr-review"
+        primary="Copy prompt"
+        items={[
+          { label: "Copy prompt", onSelect: () => {} },
+          { label: "Edit prompt", edit: true, onSelect: () => {} },
+          { label: "Delete prompt", danger: true, onSelect: () => {} },
+          { label: "Set category", onSelect: () => {} },
+        ]}
+      />,
+    );
+
+    expect(labels()).toEqual(["Copy prompt", "Edit prompt", "⋯"]);
+    const trigger = screen.getByRole("button", {
+      name: "Actions for pr-review",
+    });
+    expect(trigger).toHaveClass("h-8", "w-8", "ml-auto");
+    await userEvent.click(trigger);
+    const menu = screen.getByRole("menu");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Set category", "Delete prompt"]);
+    expect(within(menu).getAllByRole("separator")).toHaveLength(1);
+  });
+
+  it("shows no primary button where none is named: the edit item, then the ⋯", () => {
+    render(
+      <FootActions
+        name="pr-review"
+        primary={null}
+        items={[
+          { label: "Copy prompt", onSelect: () => {} },
+          { label: "Edit prompt", edit: true, onSelect: () => {} },
+        ]}
+      />,
+    );
+
+    expect(labels()).toEqual(["Edit prompt", "⋯"]);
+  });
+
+  it("shows only the ⋯ without a primary or an edit item", () => {
     render(
       <FootActions
         name="tdd"
         primary={null}
         items={[
           { label: "Deploy skill", onSelect: () => {} },
-          {
-            label: "Remove from all 2 targets",
-            danger: true,
-            onSelect: () => {},
-          },
           { label: "Delete skill", danger: true, onSelect: () => {} },
         ]}
       />,
     );
 
-    expect(labels()).toEqual(["Deploy skill", "⋯"]);
-    const trigger = screen.getByRole("button", { name: "Actions for tdd" });
-    expect(trigger).toHaveClass("h-8", "w-8", "ml-auto");
-    await userEvent.click(trigger);
-    expect(
-      screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Remove from all 2 targets", "Delete skill"]);
+    expect(labels()).toEqual(["⋯"]);
   });
 
-  it("shows no ⋯ when the foot has no danger item", () => {
+  it("shows no ⋯ when nothing is left over", () => {
     render(
       <FootActions
         name="tdd"
-        primary={null}
+        primary="Deploy skill"
         items={[{ label: "Deploy skill", onSelect: () => {} }]}
       />,
     );
@@ -49,6 +83,71 @@ describe("FootActions", () => {
     expect(
       screen.queryByRole("button", { name: "Actions for tdd" }),
     ).toBeNull();
+  });
+
+  // #1689: a menu item shows no cause, so a blocked item with one stays out.
+  it("keeps a blocked item with a cause in the foot, its cause in the tooltip", async () => {
+    const cause =
+      "Merge pull request #52 on GitHub, or select Withdraw proposal.";
+    render(
+      <FootActions
+        name="tdd"
+        primary={null}
+        items={[
+          {
+            label: "View pull request",
+            href: "https://github.com/o/r/pull/52",
+          },
+          {
+            label: "Withdraw from release",
+            danger: true,
+            disabled: true,
+            cause,
+          },
+        ]}
+      />,
+    );
+
+    expect(labels()).toEqual(["Withdraw from release", "⋯"]);
+    const button = screen.getByRole("button", {
+      name: "Withdraw from release",
+    });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAccessibleDescription(cause);
+  });
+
+  it("keeps an item whose write runs a button with its busy label", () => {
+    render(
+      <FootActions
+        name="tdd"
+        primary={null}
+        items={[
+          { label: "Propose change", busy: "propose", disabled: true },
+          { label: "Discard change", danger: true, disabled: true },
+        ]}
+      />,
+    );
+
+    expect(labels()).toEqual(["Proposing…", "⋯"]);
+  });
+
+  // Set category opens its menu above the foot; closing it returns focus here.
+  it("points a ⋯ item's button ref at the ⋯", () => {
+    const buttonRef = createRef<HTMLButtonElement>();
+    render(
+      <FootActions
+        name="tdd"
+        primary="Deploy skill"
+        items={[
+          { label: "Deploy skill", onSelect: () => {} },
+          { label: "Set category", buttonRef, onSelect: () => {} },
+        ]}
+      />,
+    );
+
+    expect(buttonRef.current).toBe(
+      screen.getByRole("button", { name: "Actions for tdd" }),
+    );
   });
 
   it("keeps a blocked danger item focusable in the menu and never runs it", async () => {
@@ -72,26 +171,11 @@ describe("FootActions", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it("renders the menu's items as buttons, in the menu's order", () => {
-    render(
-      <FootActions
-        name="tdd"
-        primary={null}
-        items={[
-          { label: "Deploy skill", onSelect: () => {} },
-          { label: "Update target", onSelect: () => {} },
-        ]}
-      />,
-    );
-
-    expect(labels()).toEqual(["Deploy skill", "Update target"]);
-  });
-
   it("names a control by its label, then what it acts on", () => {
     render(
       <FootActions
         name="tdd"
-        primary={null}
+        primary="Update target"
         items={[
           {
             label: "Update target",
@@ -113,17 +197,17 @@ describe("FootActions", () => {
     render(
       <FootActions
         name="tdd"
-        primary="Import local edits"
+        primary="Copy prompt"
         items={[
-          { label: "Import local edits", onSelect: () => {} },
-          { label: "Deploy skill", onSelect: () => {} },
+          { label: "Copy prompt", onSelect: () => {} },
+          { label: "Edit prompt", edit: true, onSelect: () => {} },
         ]}
       />,
     );
 
     const button = (name: string) => screen.getByRole("button", { name });
-    expect(button("Import local edits")).toHaveClass("bg-gray-12");
-    expect(button("Deploy skill")).not.toHaveClass("bg-gray-12");
+    expect(button("Copy prompt")).toHaveClass("bg-gray-12");
+    expect(button("Edit prompt")).not.toHaveClass("bg-gray-12");
   });
 
   it("makes nothing primary when no item is named", () => {
@@ -131,13 +215,13 @@ describe("FootActions", () => {
       <FootActions
         name="tdd"
         primary={null}
-        items={[{ label: "Deploy skill", onSelect: () => {} }]}
+        items={[{ label: "Edit prompt", edit: true, onSelect: () => {} }]}
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Deploy skill" }),
-    ).not.toHaveClass("bg-gray-12");
+    expect(screen.getByRole("button", { name: "Edit prompt" })).not.toHaveClass(
+      "bg-gray-12",
+    );
   });
 
   // #1065: where the order already puts the next step first.
@@ -162,17 +246,19 @@ describe("FootActions", () => {
     render(
       <FootActions
         name="tdd"
-        primary={null}
+        primary="Copy prompt"
         items={[
-          { label: "Deploy skill", onSelect: () => {} },
-          { label: "Update target", onSelect: () => {} },
+          { label: "Copy prompt", onSelect: () => {} },
+          { label: "Edit prompt", edit: true, onSelect: () => {} },
+          { label: "Delete prompt", danger: true, onSelect: () => {} },
         ]}
       />,
     );
 
-    for (const button of screen.getAllByRole("button")) {
-      expect(button).toHaveClass("h-control");
-    }
+    const [copy, edit, more] = screen.getAllByRole("button");
+    expect(copy).toHaveClass("h-control");
+    expect(edit).toHaveClass("h-control");
+    expect(more).toHaveClass("h-8", "w-8");
   });
 
   it("keeps a blocked item focusable, stating why, and never runs it", async () => {
@@ -181,19 +267,11 @@ describe("FootActions", () => {
       <FootActions
         name="tdd"
         primary={null}
-        items={[
-          {
-            label: "Update target — on the latest release",
-            disabled: true,
-            onSelect,
-          },
-        ]}
+        items={[{ label: "Edit prompt", edit: true, disabled: true, onSelect }]}
       />,
     );
 
-    const button = screen.getByRole("button", {
-      name: "Update target — on the latest release",
-    });
+    const button = screen.getByRole("button", { name: "Edit prompt" });
     expect(button).toHaveAttribute("aria-disabled", "true");
     // Dimmed as a disabled control is, so it never reads as on offer.
     expect(button).toHaveClass(
@@ -204,7 +282,7 @@ describe("FootActions", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it("opens a link item in a new tab, never as a button", () => {
+  it("opens a link item from the ⋯ in a new tab", async () => {
     render(
       <FootActions
         name="tdd"
@@ -218,9 +296,12 @@ describe("FootActions", () => {
       />,
     );
 
+    expect(labels()).toEqual(["⋯"]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for tdd" }),
+    );
     expect(
-      screen.getByRole("link", { name: /View pull request/ }),
+      screen.getByRole("menuitem", { name: "View pull request" }),
     ).toHaveAttribute("target", "_blank");
-    expect(screen.queryByRole("button")).toBeNull();
   });
 });

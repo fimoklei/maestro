@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { hoverOpen, jsonResponse, sentence } from "../test-utils";
+import { hoverOpen, jsonResponse, openFootMenu, sentence } from "../test-utils";
 import {
   cellsOf,
   factValue,
@@ -50,9 +50,10 @@ const fact = (pane: HTMLElement, label: string) => {
   return value?.textContent ?? null;
 };
 
+// Found by its ⋯, where every item but the primary sits (#1744).
 const footOf = (pane: HTMLElement) =>
   within(pane)
-    .getByRole("button", { name: "Deploy skill" })
+    .getByRole("button", { name: `Actions for ${LABEL}` })
     .closest("div") as HTMLElement;
 
 const footLabels = (pane: HTMLElement) =>
@@ -452,8 +453,9 @@ describe("Deploy-state pane — facts", () => {
         ),
       ),
     ).toBeInTheDocument();
+    const menu = await openFootMenu(pane, "Claude Code");
     expect(
-      within(pane).getByRole("button", { name: "Deploy skill" }),
+      menu.getByRole("menuitem", { name: "Deploy skill" }),
     ).toBeInTheDocument();
   });
 
@@ -862,9 +864,11 @@ describe("Deploy-state pane — an unfinished operation", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(footLabels(pane)).toEqual(["Deploy skill"]);
+    expect(footLabels(pane)).toEqual(["⋯"]);
     expect(
-      within(footOf(pane)).getByRole("button", { name: "Deploy skill" }),
+      within(footOf(pane)).getByRole("button", {
+        name: `Actions for ${LABEL}`,
+      }),
     ).not.toHaveClass("bg-gray-12");
     expect(
       within(within(pane).getByRole("status")).getByRole("button", {
@@ -897,7 +901,7 @@ describe("Deploy-state pane — where each action sits", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(footLabels(pane)).toEqual(["Deploy skill"]);
+    expect(footLabels(pane)).toEqual(["⋯"]);
     for (const button of within(pane).getAllByRole("button")) {
       expect(button).not.toHaveClass("bg-gray-12");
     }
@@ -914,7 +918,7 @@ describe("Deploy-state pane — where each action sits", () => {
         { name: `Update target ${LABEL}` },
       ),
     ).not.toHaveClass("bg-gray-12");
-    expect(footLabels(pane)).toEqual(["Import local edits", "Deploy skill"]);
+    expect(footLabels(pane)).toEqual(["Import local edits", "⋯"]);
     expect(
       within(footOf(pane)).getByRole("button", { name: "Import local edits" }),
     ).toHaveClass("bg-gray-12");
@@ -946,7 +950,7 @@ describe("Deploy-state pane — where each action sits", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(footLabels(pane)).toEqual(["Import local edits", "Deploy skill"]);
+    expect(footLabels(pane)).toEqual(["Import local edits", "⋯"]);
     expect(
       within(footOf(pane)).getByRole("button", { name: "Import local edits" }),
     ).toHaveClass("bg-gray-12");

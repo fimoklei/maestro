@@ -1,25 +1,25 @@
-import { ArrowUpRight } from "lucide-react";
 import type { Ref } from "react";
 import { ActionsMenu, type ActionsMenuItem } from "./actions-menu";
 import { ACTIONS, type ActionKey } from "./busy-copy";
 import { Button } from "./button";
-import { cn } from "./cn";
 import { GatedButton } from "./gated-button";
-import { Icon } from "./icon";
 import { rowActionsLabel } from "./row-menu-copy";
 
-// The row's ⋮ items as buttons, at most one of them primary; the danger items
-// sit behind one ⋯ at the foot's right end, so the foot fits one line (#1485).
+// The pane's primary and its edit item as buttons; every other ⋮ item sits
+// behind one ⋯ at the foot's right end, so the foot fits one line (#1485,
+// #1744).
 export type FootItem = ActionsMenuItem & {
   /** The accessible name where the label alone would not say what it acts on. */
   name?: string;
   /** The next step its state names, which ranks it for the pane's primary. */
   step?: "update" | "import";
+  /** It edits the row's own content: a button beside the primary. */
+  edit?: true;
   /** Its write is running: picks the busy label from `busy-copy`. */
   busy?: ActionKey;
   /** It opens a menu above the foot: whether that menu is open. */
   expanded?: boolean;
-  /** Where focus returns once the menu it opened closes. */
+  /** Where focus returns once the menu it opened closes: its button, else the ⋯. */
   buttonRef?: Ref<HTMLButtonElement>;
 } & (
     | { cause?: undefined }
@@ -27,7 +27,7 @@ export type FootItem = ActionsMenuItem & {
         disabled: true;
         /**
          * Why the blocked item cannot run. The foot shows it as a button,
-         * danger or not, whose tooltip states it; the ⋮ menu shows no cause.
+         * never behind the ⋯, whose tooltip states it; a menu shows no cause.
          */
         cause: string;
       }
@@ -50,9 +50,20 @@ export function FootActions({
   /** The label of the one primary item, or null for none. */
   primary: string | null;
 }) {
-  const hasCause = (item: FootItem) => item.cause !== undefined;
-  const buttons = items.filter((item) => !item.danger || hasCause(item));
-  const danger = items.filter((item) => item.danger && !hasCause(item));
+  // A pressed item keeps its button while its write runs, to show the busy label.
+  const shown = (item: FootItem) =>
+    item.label === primary ||
+    item.edit === true ||
+    item.cause !== undefined ||
+    item.busy !== undefined;
+  const buttons = items.filter(shown);
+  const more = items.filter((item) => !shown(item));
+  const moreRef = (node: HTMLButtonElement | null) => {
+    for (const { buttonRef } of more) {
+      if (typeof buttonRef === "function") buttonRef(node);
+      else if (buttonRef) buttonRef.current = node;
+    }
+  };
   return (
     <>
       {buttons.map((item) =>
@@ -64,7 +75,7 @@ export function FootActions({
             label={item.label}
             unavailable={item.cause}
           />
-        ) : item.href === undefined ? (
+        ) : (
           <Button
             key={item.label}
             ref={item.buttonRef}
@@ -78,28 +89,19 @@ export function FootActions({
           >
             {item.busy === undefined ? item.label : ACTIONS[item.busy].busy}
           </Button>
-        ) : (
-          <a
-            key={item.label}
-            href={item.href}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              "inline-flex h-control items-center gap-tight rounded-control border border-edge px-cell font-ui text-gray-12 text-row no-underline hover:bg-gray-3",
-              "focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
-            )}
-          >
-            {item.label}
-            <Icon of={ArrowUpRight} />
-          </a>
         ),
       )}
-      {danger.length > 0 ? (
+      {more.length > 0 ? (
         <ActionsMenu
           label={rowActionsLabel(name)}
-          items={danger}
+          items={more}
           trigger={
-            <Button size="icon" variant="quiet" className="ml-auto">
+            <Button
+              ref={moreRef}
+              size="icon"
+              variant="quiet"
+              className="ml-auto"
+            >
               ⋯
             </Button>
           }

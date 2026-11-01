@@ -1,7 +1,8 @@
 import type { CategoryList, InventoryPrimitive } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import { jsonResponse } from "../test-utils";
+import { jsonResponse, openFootMenu } from "../test-utils";
 
 type Assignment = CategoryList["assignments"][number];
 
@@ -85,6 +86,14 @@ export function stubCategoryServer({
 /** The pane's Category fact. */
 export const categoryFact = (pane: ReturnType<typeof within>) =>
   pane.getByText("Category", { selector: "dt" }).nextElementSibling;
+
+/** Chooses Set category behind the open pane's ⋯, once the categories are read (#1744). */
+export async function setCategoryFromFoot(name: string) {
+  const pane = screen.getByRole("complementary");
+  await within(pane).findByText("Category", { selector: "dt" });
+  const menu = await openFootMenu(pane, name);
+  await userEvent.click(menu.getByRole("menuitem", { name: "Set category" }));
+}
 
 /** The screen's own status region; a notice carries a role of its own. */
 export const statusRegion = () => {

@@ -3,7 +3,12 @@ import type { PromptFile } from "@maestro/core/prompt-file";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import {
+  jsonResponse,
+  openFootMenu,
+  renderWithQuery,
+  sentence,
+} from "../test-utils";
 import {
   harnessRegion,
   openRowMenu,
@@ -105,12 +110,17 @@ async function openPane() {
   return screen.findByRole("complementary", { name: "pr-review detail" });
 }
 
-// The pane foot's buttons, in order; the ⋯ holds the danger items.
-const footButtons = (pane: HTMLElement) =>
-  within(pane)
+// The pane foot's primary as a button, then the ⋯ items, in order (#1744).
+async function foot(pane: HTMLElement) {
+  const buttons = within(pane)
     .getAllByRole("button")
     .map((button) => button.textContent)
     .filter((label) => label === "Propose change" || label === "Edit prompt");
+  const menu = await openFootMenu(pane, "pr-review");
+  const items = menu.getAllByRole("menuitem").map((item) => item.textContent);
+  await userEvent.keyboard("{Escape}");
+  return { buttons, items };
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -129,10 +139,9 @@ describe("Harness — Edit prompt", () => {
       "Propose change",
       "Edit prompt",
     ]);
-    expect(footButtons(await openPane())).toEqual([
-      "Propose change",
-      "Edit prompt",
-    ]);
+    const { buttons, items } = await foot(await openPane());
+    expect(buttons).toEqual(["Propose change"]);
+    expect(items[0]).toBe("Edit prompt");
   });
 
   it("offers Edit prompt on a Pending review row on disk, before its danger item", async () => {
@@ -341,9 +350,11 @@ describe("Harness — Edit prompt", () => {
     });
     stubServer(proposal, proposal, ["import-in-progress", 409]);
     await render();
-    const pane = within(await openPane());
+    const element = await openPane();
+    const pane = within(element);
 
-    await userEvent.click(pane.getByRole("button", { name: "Edit prompt" }));
+    const menu = await openFootMenu(element, "pr-review");
+    await userEvent.click(menu.getByRole("menuitem", { name: "Edit prompt" }));
 
     expect(await pane.findByText("Harness busy")).toBeInTheDocument();
     expect(

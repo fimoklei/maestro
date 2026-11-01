@@ -100,7 +100,7 @@ describe("a prompt row on the Harness screen", () => {
 
     expect(
       foot.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Withdraw from release"]);
+    ).toEqual(["View pull request", "Withdraw from release"]);
   });
 
   it("opens the Delete prompt dialog in the prompt's words", async () => {
