@@ -22,11 +22,6 @@ above it (ADR-0001).
   tracker issue.
 - **Docs: condense rather than expand.** Before calling doc work done, check
   the touched docs against the conflict rule in `docs/operating-model.md`.
-- Change a skill, hook or other deployed primitive in its deployed copy
-  (`~/.claude/…`, `~/.agents/…` or the consuming repo); Maestro's **Propose
-  change** carries it to the inventory repo (`inventoryPath` in
-  `~/.maestro/config.json`). Edit the inventory repo directly only for bundles
-  or APM manifests.
 
 ## Where to look
 
