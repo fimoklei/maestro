@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router";
 import { HttpError } from "../api/http";
 import { promptReadNotice } from "../harness/import-prompt-copy";
 import {
+  COPY_EXAMPLE,
   COPY_PROMPT,
   DELETE_PROMPT,
   EDIT_PROMPT,
@@ -28,7 +29,7 @@ const meta = {
     latestRelease: "v1.4.0",
     category: "Planning",
     footMenu: null,
-    copyRefused: false,
+    copyRefused: null,
     readRefusal: null,
     onCopy: () => {},
     footItems: [
@@ -81,7 +82,22 @@ export const NameNotValid: Story = {
   },
 };
 
-export const CopyRefused: Story = { args: { copyRefused: true } };
+export const CopyRefused: Story = { args: { copyRefused: "text" } };
+
+// Copy example sits behind the foot's ⋯; only the example's refusal shows.
+export const ExampleCopyRefused: Story = {
+  args: {
+    ...WithExample.args,
+    copyRefused: "example",
+    footItems: [
+      { label: COPY_PROMPT, onSelect: () => {} },
+      { label: COPY_EXAMPLE, onSelect: () => {} },
+      { label: EDIT_PROMPT, edit: true, onSelect: () => {} },
+      { label: SET_CATEGORY, onSelect: () => {} },
+      { label: DELETE_PROMPT, danger: true, onSelect: () => {} },
+    ],
+  },
+};
 
 export const NotInClone: Story = {
   args: {

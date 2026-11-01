@@ -4,7 +4,7 @@ import { Icon } from "../ui/icon";
 import { IconButton } from "../ui/icon-button";
 import { SegmentedControl } from "../ui/segmented-control";
 import {
-  COPY_PROMPT_TEXT,
+  COPY_PART_TEXT,
   PROMPT_PARTS,
   PROMPT_PARTS_LABEL,
   PROMPT_TEXT_HEADING,
@@ -13,7 +13,8 @@ import {
 
 /**
  * A prompt's released text, whole and as written, under its heading with a
- * copy icon. A prompt with an example gets a switch in the heading's place.
+ * copy icon for the text on show. A prompt with an example gets a switch in
+ * the heading's place.
  * Mount it keyed on the prompt's name, so another prompt opens on its text.
  */
 export function PromptText({
@@ -24,10 +25,12 @@ export function PromptText({
   text: string;
   /** "" when the prompt has none. */
   example: string;
-  onCopy: () => void;
+  /** Copies the part on show. */
+  onCopy: (part: PromptPart) => void;
 }) {
-  const [part, setPart] = useState<PromptPart>("text");
+  const [selected, setPart] = useState<PromptPart>("text");
   const switched = example !== "";
+  const part: PromptPart = switched ? selected : "text";
   return (
     <section
       aria-label={switched ? PROMPT_PARTS_LABEL : PROMPT_TEXT_HEADING}
@@ -47,12 +50,16 @@ export function PromptText({
             {PROMPT_TEXT_HEADING}
           </h3>
         )}
-        <IconButton label={COPY_PROMPT_TEXT} variant="ghost" onClick={onCopy}>
+        <IconButton
+          label={COPY_PART_TEXT[part]}
+          variant="ghost"
+          onClick={() => onCopy(part)}
+        >
           <Icon of={Copy} />
         </IconButton>
       </div>
       <pre className="m-0 whitespace-pre-wrap p-cell font-mono text-gray-12 text-meta [overflow-wrap:anywhere]">
-        {switched && part === "example" ? example : text}
+        {part === "example" ? example : text}
       </pre>
     </section>
   );

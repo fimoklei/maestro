@@ -11,6 +11,7 @@ import { plainText } from "./phrase";
 describe("busy labels", () => {
   it.each([
     ["copy", "Copying…"],
+    ["copyExample", "Copying…"],
     ["deploy", "Deploying…"],
     ["update", "Updating…"],
     ["remove", "Removing…"],
@@ -68,6 +69,7 @@ describe("done sentences", () => {
     ["add", "Added tdd."],
     ["setCategory", "Category set for tdd."],
     ["rename", "Renamed tdd."],
+    ["copyExample", "Copied example of tdd."],
   ] as const)("ends %s as %s", (action, sentence) => {
     expect(plainText(doneSentence(action, "tdd"))).toBe(sentence);
   });

@@ -12,7 +12,7 @@ import { WARNING_GLYPH } from "../ui/status-family";
 import { reading } from "../ui/status-reading";
 import { NAME_NOT_VALID, NAME_RULE } from "./prompts-copy";
 
-export type RowAction = "copy" | "edit" | "category" | "delete";
+export type RowAction = "copy" | "copyExample" | "edit" | "category" | "delete";
 
 export type PromptItem = {
   action: RowAction;

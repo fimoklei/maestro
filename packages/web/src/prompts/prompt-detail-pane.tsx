@@ -12,7 +12,12 @@ import { DetailPane, type PaneNotice } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
 import type { NoticeContent } from "../ui/notice";
 import { PromptText } from "./prompt-text";
-import { NOT_COPIED, nameNotValidNotice, PATH_FACT } from "./prompts-copy";
+import {
+  NOT_COPIED,
+  nameNotValidNotice,
+  PATH_FACT,
+  type PromptPart,
+} from "./prompts-copy";
 
 // Facts, the description, the findings, then the text to copy. Copy prompt
 // leads the ⋮ order, so it is the pane's primary.
@@ -34,11 +39,11 @@ export function PromptDetailPane({
   prompt: InventoryPrompt;
   /** The Harness's latest release: null where none exists, undefined until read. */
   latestRelease: string | null | undefined;
-  /** The last Copy prompt of this prompt was refused by the browser. */
-  copyRefused: boolean;
+  /** The part the browser refused on this prompt's last copy; null for none. */
+  copyRefused: PromptPart | null;
   /** Why the last Edit prompt of this prompt opened no dialog. */
   readRefusal: NoticeContent | null;
-  onCopy: () => void;
+  onCopy: (part: PromptPart) => void;
   /** The row's ⋮ items, Copy prompt first. */
   footItems: readonly FootItem[];
   /** A menu a foot item opened, such as Set category's. */
@@ -60,10 +65,10 @@ export function PromptDetailPane({
             trigger: "load",
           } satisfies PaneNotice,
         ]),
-    ...(copyRefused
+    ...(copyRefused !== null
       ? [
           {
-            content: { level: "error", ...NOT_COPIED },
+            content: { level: "error", ...NOT_COPIED[copyRefused] },
             trigger: "user-action",
           } satisfies PaneNotice,
         ]
