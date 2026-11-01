@@ -8,6 +8,18 @@ import { readFrontmatter, splitFrontmatter } from "./validate-skill-structure";
 
 export type PromptFile = { description: string; text: string };
 
+// A record so a field added to `PromptFile` fails to compile here until the
+// comparison covers it. `Object.keys` widens to `string[]`; the `satisfies`
+// makes the keys exactly `PromptFile`'s.
+const PROMPT_FILE_FIELDS = Object.keys({
+  description: true,
+  text: true,
+} satisfies Record<keyof PromptFile, true>) as (keyof PromptFile)[];
+
+/** Whether two prompts hold the same fields, byte for byte. */
+export const samePrompt = (a: PromptFile, b: PromptFile): boolean =>
+  PROMPT_FILE_FIELDS.every((field) => a[field] === b[field]);
+
 /** `frontmatter` is the YAML between the delimiters; "" when there is none. */
 export type PromptFileWrite = PromptFile & { frontmatter: string };
 
@@ -114,12 +126,9 @@ const MAX_TEXT_BYTES = 102_400;
 export const withinPromptLimit = (value: string): boolean =>
   new TextEncoder().encode(value).byteLength <= MAX_TEXT_BYTES;
 
-/** The front matter a write keeps and the text, past 100 KB together. */
-export const promptFileTooLong = ({
-  frontmatter,
-  text,
-}: Pick<PromptFileWrite, "frontmatter" | "text">): boolean =>
-  !withinPromptLimit(`${frontmatter}${text}`);
+/** The file this write produces, past 100 KB. */
+export const promptFileTooLong = (write: PromptFileWrite): boolean =>
+  !withinPromptLimit(writePromptFile(write));
 
 /** Every rule the fields break, in field order; empty when all hold. */
 export const promptFieldProblems = ({
@@ -147,7 +156,7 @@ export const promptFieldProblems = ({
   return problems;
 };
 
-/** The field rules, and the 100 KB the pasted front matter and the text share. */
+/** The field rules, and the 100 KB the written file may hold. */
 export const promptDraftProblems = (
   draft: PromptDraft,
 ): PromptFieldProblem[] => {

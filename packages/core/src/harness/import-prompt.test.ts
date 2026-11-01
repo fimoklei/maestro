@@ -589,6 +589,19 @@ describe("ImportPrompt.edit", () => {
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(raw);
   });
 
+  it("counts the new description toward 100 KB, not the one the file holds", async () => {
+    const { importPrompt, fs } = build({ seed: IN_HARNESS(RAW) });
+
+    await expect(
+      importPrompt.edit({
+        ...EDIT,
+        description: "d".repeat(1024),
+        text: "t".repeat(101_500),
+      }),
+    ).resolves.toEqual({ ok: false, error: "long-text" });
+    expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(RAW);
+  });
+
   it("refuses a prompt whose file is gone, and creates none", async () => {
     const { importPrompt, fs } = build({ seed: IN_FOLDER });
 

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   draftPrompt,
   promptCategory,
+  promptDraftProblems,
   promptFieldProblems,
   readPromptFile,
+  samePrompt,
   writePromptFile,
 } from "./prompt-file";
 
@@ -223,5 +225,42 @@ describe("promptFieldProblems", () => {
     expect(
       promptFieldProblems({ ...valid, text: "a".repeat(102_401) }),
     ).toEqual(["long-text"]);
+  });
+});
+
+describe("promptDraftProblems", () => {
+  const draft = {
+    name: "review-pr",
+    frontmatter: "",
+    description: "Review a pull request",
+  };
+
+  it("counts the description block the written file adds toward 100 KB", () => {
+    // 102,400 bytes of text fit alone; the written file adds the block.
+    expect(
+      promptDraftProblems({ ...draft, text: "a".repeat(102_400) }),
+    ).toEqual(["long-text"]);
+    expect(
+      promptDraftProblems({ ...draft, text: "a".repeat(102_300) }),
+    ).toEqual([]);
+  });
+});
+
+describe("samePrompt", () => {
+  const prompt = {
+    description: "Review a pull request",
+    text: "Review $ARGUMENTS.\n",
+  };
+
+  it("holds for two prompts with equal fields", () => {
+    expect(samePrompt(prompt, { ...prompt })).toBe(true);
+  });
+
+  it.each([
+    ["description", { ...prompt, description: "Review a PR" }],
+    ["text", { ...prompt, text: "Review $1.\n" }],
+    ["line endings", { ...prompt, text: "Review $ARGUMENTS.\r\n" }],
+  ])("tells two prompts apart by their %s", (_, other) => {
+    expect(samePrompt(prompt, other)).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import {
   type PromptFile,
   promptFieldProblems,
+  samePrompt,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
 import { CATEGORY_NOT_SET_AFTER_EDIT } from "../categories/categories-copy";
@@ -29,11 +30,9 @@ import {
   longTextNotice,
   NOTHING_CHANGED,
 } from "./import-prompt-copy";
+import { asTyped } from "./prompt-as-typed";
 import { promptFieldErrors } from "./prompt-field-errors";
 import { useEditPrompt, useReadPrompt } from "./use-harness";
-
-// A browser text field holds LF only, so the read is compared as it shows.
-const lf = (text: string) => text.replace(/\r\n?/g, "\n");
 
 /** The prompt the dialog edits, as the Working Harness gave it. */
 type Opened = { name: string; read: PromptFile };
@@ -94,10 +93,9 @@ export function useEditPromptFlow({
         ]) ?? null);
   const category = chosen === undefined ? saved : chosen;
   const categoryChanged = chosen !== undefined && chosen !== saved;
+  // The read is compared as the text field shows it.
   const fieldsChanged =
-    opened !== null &&
-    (fields.description !== opened.read.description ||
-      fields.text !== lf(opened.read.text));
+    opened !== null && !samePrompt(fields, asTyped(opened.read));
 
   const close = () => {
     setOpened(null);
@@ -196,7 +194,7 @@ export function useEditPromptFlow({
         onError: onRefused,
         onSuccess: (read) => {
           setOpened({ name: prompt, read });
-          setFields({ description: read.description, text: lf(read.text) });
+          setFields(asTyped(read));
           setChosen(undefined);
           setLanded(null);
           setSubmitted(false);

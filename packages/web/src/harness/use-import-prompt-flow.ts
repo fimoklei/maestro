@@ -4,6 +4,7 @@ import {
   type PromptDraft,
   promptCategory,
   promptDraftProblems,
+  samePrompt,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
 import { useCategoryChoice } from "../categories/use-category-choice";
@@ -19,6 +20,7 @@ import {
   PROMPT_TAKEN_NOTICE,
   type PromptSource,
 } from "./import-prompt-copy";
+import { asTyped } from "./prompt-as-typed";
 import { promptFieldErrors } from "./prompt-field-errors";
 import { useImportPrompt, useImportPromptCheck } from "./use-harness";
 
@@ -132,7 +134,7 @@ export function useImportPromptFlow(
       afterAdd.waiting || category.saving ? ("running" as const) : write.phase,
     /** The import landed and its category did not: only Close is left. */
     outcome: category.failure !== null,
-    changed: draft.name !== "" || draft.description !== "" || draft.text !== "",
+    changed: draft.name !== "" || !samePrompt(asTyped(draft), EMPTY),
     start: () => setOpen(true),
     edit,
     source,

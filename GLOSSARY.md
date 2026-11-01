@@ -28,6 +28,10 @@ _Avoid_: prompt (a different primitive), rule, instruction.
 A reusable text you copy from Prompts and paste into an AI coding assistant. The Harness keeps each prompt as one `<name>.md` file in `.maestro/prompts/`. APM never delivers it, so a prompt has no targets (ADR-0019 §8).
 _Avoid_: snippet, template, command, prompt in APM's sense (a `.prompt.md` file APM delivers to every prompt-capable tool of a target).
 
+**Example**:
+A filled-in version of a prompt that shows how the prompt is meant to be used, and that you can paste into an AI coding assistant like the prompt itself. A prompt has one example or none, kept in the prompt's own file.
+_Avoid_: sample, template, demo.
+
 **Category**:
 A named label in the operator's own list for one Harness that sorts skills and prompts. A skill or prompt has one category or none. A category exists until it is deleted, even when nothing carries it. Teammates do not see it (ADR-0034).
 _Avoid_: tag, folder, group (that is how Display shows a category).
