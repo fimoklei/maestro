@@ -36,7 +36,8 @@ above it (ADR-0001).
 - Where code lives → `docs/agents/codebase-map.md`. Before measuring anything
   → `docs/research/`. Domain terms → `GLOSSARY.md`; decisions → `docs/adr/`
   (`docs/agents/domain.md`). Read `LEARNINGS.md` at session start.
-- Tests while building → `pnpm test:affected`. The commit gate runs
+- Tests while building → `pnpm test:affected`; after merging branches,
+  `pnpm test:affected --since origin/main`. The commit gate runs
   typecheck, lint and the affected tests. CI runs the full suite on the pull
   request, so skip `pnpm test` locally unless asked. A sub-agent brief repeats this line instead of naming its
   own test commands.
