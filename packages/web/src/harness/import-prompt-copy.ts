@@ -167,7 +167,7 @@ export const longTextNotice = (confirm: PromptConfirm): NoticeContent =>
 export const PROMPT_TAKEN_NOTICE: NoticeContent = {
   level: "info",
   label: "Prompt already in the Harness",
-  message: `Select ${UPDATE_PROMPT} to replace its text and description.`,
+  message: `Select ${UPDATE_PROMPT} to replace its text, description and example.`,
   detail: "To keep it, pick another name.",
 };
 

@@ -89,7 +89,8 @@ describe("Import prompt copy", () => {
     expect(PROMPT_TAKEN_NOTICE).toEqual({
       level: "info",
       label: "Prompt already in the Harness",
-      message: "Select Update prompt to replace its text and description.",
+      message:
+        "Select Update prompt to replace its text, description and example.",
       detail: "To keep it, pick another name.",
     });
   });

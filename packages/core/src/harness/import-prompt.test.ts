@@ -180,6 +180,32 @@ describe("ImportPrompt.execute", () => {
     });
   });
 
+  it.each([
+    ["replaces", "Review #13.\n", "Review #13.\n"],
+    ["clears on an empty field", "", ""],
+  ])("%s the example of a taken name", async (_, example, readBack) => {
+    const { importPrompt, fs } = build({
+      seed: {
+        directories: { [ROOT]: ROOT, [PROMPTS]: PROMPTS },
+        files: {
+          [`${PROMPTS}/review-pr.md`]:
+            "---\ndescription: Old\nexample: |\n  Review #12.\n---\nOld text.\n",
+        },
+      },
+    });
+
+    await expect(
+      importPrompt.execute({ ...VALID, example }),
+    ).resolves.toMatchObject({ ok: true, mode: "update" });
+    expect(
+      readPromptFile((await fs.readFile(`${PROMPTS}/review-pr.md`)) ?? ""),
+    ).toEqual({
+      description: VALID.description,
+      text: VALID.text,
+      example: readBack,
+    });
+  });
+
   it("writes a name whose file is gone from the working Harness as an add", async () => {
     const { importPrompt } = build({
       seed: {

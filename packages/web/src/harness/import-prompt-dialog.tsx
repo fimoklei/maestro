@@ -44,6 +44,9 @@ type PromptDialogBase = {
   /** The write landed and its category did not: only Close is left. */
   outcome: boolean;
   failure: NoticeContent | null;
+  /** Which text the one box holds. */
+  part: PromptBoxPart;
+  showPart: (part: PromptBoxPart) => void;
   edit: (change: Partial<PromptFile>) => void;
   submit: () => void;
   close: () => void;
@@ -73,16 +76,23 @@ type EditProps = PromptDialogBase & {
   category: string | null | undefined;
   pickCategory: (name: string | null) => void;
   categoryAdd: HeldCategoryAdd;
-  /** Which text the one box holds. */
-  part: PromptBoxPart;
-  showPart: (part: PromptBoxPart) => void;
 };
 
 type ImportPromptDialogProps = ImportProps | EditProps;
 
 export function ImportPromptDialog(props: ImportPromptDialogProps) {
-  const { draft, fieldErrors, changed, phase, failure, edit, submit, close } =
-    props;
+  const {
+    draft,
+    fieldErrors,
+    changed,
+    phase,
+    failure,
+    part,
+    showPart,
+    edit,
+    submit,
+    close,
+  } = props;
   const takenNoticeId = useId();
   const hintId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -237,37 +247,27 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         onChange={(description) => edit({ description })}
         disabled={locked}
       />
-      {editOnly === null ? (
-        <TextAreaField
-          label="Prompt text"
-          hint={PROMPT_FIELD_HINTS.text}
-          error={fieldErrors.text}
-          value={draft.text}
-          onChange={(text) => edit({ text })}
-          onPaste={pasteText}
-          disabled={locked}
-        />
-      ) : (
-        <TextAreaField
-          label={{
-            name: PROMPT_BOX_WORDS[editOnly.part],
-            control: (
-              <SegmentedControl
-                label={PROMPT_BOX_LABEL}
-                segments={PROMPT_BOX_PARTS}
-                value={editOnly.part}
-                onChange={editOnly.showPart}
-                className="self-start"
-              />
-            ),
-          }}
-          hint={PROMPT_FIELD_HINTS[editOnly.part]}
-          error={editOnly.part === "text" ? fieldErrors.text : undefined}
-          value={draft[editOnly.part]}
-          onChange={(value) => edit({ [editOnly.part]: value })}
-          disabled={locked}
-        />
-      )}
+      <TextAreaField
+        label={{
+          name: PROMPT_BOX_WORDS[part],
+          control: (
+            <SegmentedControl
+              label={PROMPT_BOX_LABEL}
+              segments={PROMPT_BOX_PARTS}
+              value={part}
+              onChange={showPart}
+              className="self-start"
+            />
+          ),
+        }}
+        hint={PROMPT_FIELD_HINTS[part]}
+        error={part === "text" ? fieldErrors.text : undefined}
+        value={draft[part]}
+        onChange={(value) => edit({ [part]: value })}
+        // A pasted file drafts the fields from the prompt text only.
+        onPaste={part === "text" ? pasteText : undefined}
+        disabled={locked}
+      />
       {importOnly === null ? null : (
         <CategoryField {...importOnly.category.field} disabled={locked} />
       )}
