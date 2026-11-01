@@ -1,4 +1,5 @@
 import type { InventoryPrompt } from "@maestro/core";
+import type { PromptPart } from "@maestro/core/prompt-file";
 import type { ReactNode } from "react";
 import { CATEGORY_FACT } from "../categories/categories-copy";
 import {
@@ -12,12 +13,7 @@ import { DetailPane, type PaneNotice } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
 import type { NoticeContent } from "../ui/notice";
 import { PromptText } from "./prompt-text";
-import {
-  NOT_COPIED,
-  nameNotValidNotice,
-  PATH_FACT,
-  type PromptPart,
-} from "./prompts-copy";
+import { NOT_COPIED, nameNotValidNotice, PATH_FACT } from "./prompts-copy";
 
 // Facts, the description, the findings, then the text to copy. Copy prompt
 // leads the ⋮ order, so it is the pane's primary.
@@ -115,14 +111,7 @@ export function PromptDetailPane({
       ]}
       clampParagraph
       notices={notices}
-      subList={
-        <PromptText
-          key={prompt.name}
-          text={prompt.text}
-          example={prompt.example}
-          onCopy={onCopy}
-        />
-      }
+      subList={<PromptText key={prompt.name} prompt={prompt} onCopy={onCopy} />}
       foot={footItems}
       footMenu={footMenu}
       leadsWithNextStep

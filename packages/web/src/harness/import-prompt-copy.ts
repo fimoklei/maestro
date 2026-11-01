@@ -1,5 +1,5 @@
 import type { ImportMode, ImportPromptError } from "@maestro/core";
-import type { PromptFieldProblem } from "@maestro/core/prompt-file";
+import type { PromptFieldProblem, PromptPart } from "@maestro/core/prompt-file";
 import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import type { ActionKey } from "../ui/busy-copy";
@@ -26,20 +26,17 @@ export const PROMPT_FIELD_HINTS = {
   example: "Optional. The prompt, filled in and ready to paste.",
 } as const;
 
-/** Which text the dialog's one box holds. */
-export type PromptBoxPart = "text" | "example";
-
 /** The accessible name of the Prompt text / Example switch. */
 export const PROMPT_BOX_LABEL = "Prompt text or example";
 
 /** Each part's word: its segment, and the box's name while it shows. */
-export const PROMPT_BOX_WORDS: Record<PromptBoxPart, string> = {
+export const PROMPT_BOX_WORDS: Record<PromptPart, string> = {
   text: "Prompt text",
   example: "Example",
 };
 
 export const PROMPT_BOX_PARTS: readonly {
-  value: PromptBoxPart;
+  value: PromptPart;
   label: string;
 }[] = [
   { value: "text", label: PROMPT_BOX_WORDS.text },

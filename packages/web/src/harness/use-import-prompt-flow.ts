@@ -2,6 +2,7 @@ import type { ImportMode, ImportPromptSuccess } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
+  type PromptPart,
   promptCategory,
   promptDraftProblems,
   samePrompt,
@@ -18,7 +19,6 @@ import {
   NOT_TEXT_FILE_NOTICE,
   PROMPT_IMPORT_MODES,
   PROMPT_TAKEN_NOTICE,
-  type PromptBoxPart,
   type PromptSource,
 } from "./import-prompt-copy";
 import { asTyped } from "./prompt-as-typed";
@@ -60,7 +60,7 @@ export function useImportPromptFlow(
   const [draft, setDraft] = useState<PromptDraft>(EMPTY);
   const [source, setSource] = useState<PromptSource>("paste");
   // Which text the one box holds; the dialog opens on the prompt text.
-  const [part, setPart] = useState<PromptBoxPart>("text");
+  const [part, setPart] = useState<PromptPart>("text");
   const [chosenFile, setChosenFile] = useState<ChosenFile | null>(null);
   // Errors show from the first submit on, and each clears once its field holds.
   const [submitted, setSubmitted] = useState(false);

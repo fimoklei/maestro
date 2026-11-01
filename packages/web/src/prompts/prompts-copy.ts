@@ -1,3 +1,4 @@
+import type { PromptPart } from "@maestro/core/prompt-file";
 import { COPY_PROMPT } from "../ui/control-labels";
 import { named, phrase } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
@@ -37,8 +38,6 @@ export const nameNotValidNotice = (name: string) => ({
 export const PATH_FACT = "Path";
 export const PROMPT_TEXT_HEADING = "Prompt";
 
-/** Which text the pane's prompt block shows, on a prompt with an example. */
-export type PromptPart = "text" | "example";
 /** The block's copy icon, named for the part on show. */
 export const COPY_PART_TEXT: Record<PromptPart, string> = {
   text: "Copy prompt text",

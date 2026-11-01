@@ -958,6 +958,25 @@ describe("Harness import prompt flow — Example", () => {
     );
   });
 
+  // #1742: an example of only spaces or blank lines is no example.
+  it("closes on a click outside when the example holds only spaces or blank lines", async () => {
+    stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    const dialog = await openImportPrompt(user);
+    await showPart(user, dialog, "Example");
+    await user.type(field(dialog, "Example"), "  {Enter}{Enter} ");
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
   it("sends an empty example when Update prompt replaces a taken name", async () => {
     const { imports } = stubPromptServer({
       taken: ["review-pr"],

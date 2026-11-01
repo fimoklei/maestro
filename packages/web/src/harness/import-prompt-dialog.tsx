@@ -1,5 +1,5 @@
 import type { ImportMode } from "@maestro/core";
-import type { PromptFile } from "@maestro/core/prompt-file";
+import type { PromptFile, PromptPart } from "@maestro/core/prompt-file";
 import { FileText } from "lucide-react";
 import { type ClipboardEvent, useId, useRef } from "react";
 import { CATEGORY_FIELD } from "../categories/categories-copy";
@@ -29,7 +29,6 @@ import {
   PROMPT_IMPORT_MODES,
   PROMPT_SOURCE_LABEL,
   PROMPT_SOURCES,
-  type PromptBoxPart,
   type PromptSource,
 } from "./import-prompt-copy";
 import type { PromptFieldErrors } from "./prompt-field-errors";
@@ -45,8 +44,8 @@ type PromptDialogBase = {
   outcome: boolean;
   failure: NoticeContent | null;
   /** Which text the one box holds. */
-  part: PromptBoxPart;
-  showPart: (part: PromptBoxPart) => void;
+  part: PromptPart;
+  showPart: (part: PromptPart) => void;
   edit: (change: Partial<PromptFile>) => void;
   submit: () => void;
   close: () => void;

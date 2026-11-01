@@ -845,6 +845,20 @@ describe("Prompts — Edit prompt's Example", () => {
     expect(screen.getByRole("dialog", { name: "Edit pr-review" })).toBe(dialog);
   });
 
+  // #1742: an example of only spaces or blank lines is no example.
+  it("counts an example of only spaces or blank lines as unchanged", async () => {
+    stubServer({});
+    renderPrompts();
+    const dialog = await editFromMenu();
+    await showExample(dialog);
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Example" }),
+      "  {Enter}{Enter} ",
+    );
+
+    expect(confirmOf(dialog)).toHaveAttribute("aria-disabled", "true");
+  });
+
   it("selects Prompt text on a refused submit, showing its error", async () => {
     const { edits } = stubServer({ read: WITH_EXAMPLE });
     renderPrompts();

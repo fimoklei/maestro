@@ -9,6 +9,9 @@ import { readFrontmatter, splitFrontmatter } from "./validate-skill-structure";
 /** `example` is "" when the prompt has none, as `description` is. */
 export type PromptFile = { description: string; text: string; example: string };
 
+/** A prompt's two texts, of which one box or block shows one at a time. */
+export type PromptPart = Extract<keyof PromptFile, "text" | "example">;
+
 // A record so a field added to `PromptFile` fails to compile here until the
 // comparison covers it. `Object.keys` widens to `string[]`; the `satisfies`
 // makes the keys exactly `PromptFile`'s.
@@ -30,19 +33,23 @@ export type PromptDraft = PromptFileWrite & { name: string };
 /** The fields the operator types; the front matter is not one. */
 export type PromptFields = Omit<PromptDraft, "frontmatter">;
 
-// A missing, non-text or blank example is none.
-const exampleOf = (value: unknown): string =>
+/** A missing, non-text or blank example is none: "". */
+export const exampleOf = (value: unknown): string =>
   typeof value === "string" && value.trim() !== "" ? value : "";
 
+// The front matter's fields; "" for each it lacks or holds as other than text.
+const frontmatterFields = (
+  data: Record<string, unknown> | undefined,
+): Omit<PromptFile, "text"> => ({
+  description: typeof data?.description === "string" ? data.description : "",
+  example: exampleOf(data?.example),
+});
+
 /** Missing or broken front matter reads as an empty description and example. */
-export const readPromptFile = (raw: string): PromptFile => {
-  const data = readFrontmatter(raw)?.data;
-  return {
-    description: typeof data?.description === "string" ? data.description : "",
-    text: splitFrontmatter(raw)?.body ?? raw,
-    example: exampleOf(data?.example),
-  };
-};
+export const readPromptFile = (raw: string): PromptFile => ({
+  ...frontmatterFields(readFrontmatter(raw)?.data),
+  text: splitFrontmatter(raw)?.body ?? raw,
+});
 
 // A multi-line example is a literal block, so its lines read as typed.
 const exampleNode = (document: Document, example: string): Scalar => {
@@ -116,13 +123,13 @@ export const draftPrompt = (
   if (frontmatter === null || body === undefined) {
     return { name, frontmatter: "", description: "", text: raw, example: "" };
   }
-  const { description, example } = frontmatter.data;
+  const { description, example } = frontmatterFields(frontmatter.data);
   return {
     name,
     frontmatter: frontmatter.block,
-    description: typeof description === "string" ? oneLine(description) : "",
+    description: oneLine(description),
     text: body,
-    example: exampleOf(example),
+    example,
   };
 };
 

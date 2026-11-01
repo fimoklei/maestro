@@ -1,5 +1,6 @@
 import {
   type PromptFile,
+  type PromptPart,
   promptFieldProblems,
   samePrompt,
 } from "@maestro/core/prompt-file";
@@ -29,7 +30,6 @@ import {
   editPromptNotice,
   longTextNotice,
   NOTHING_CHANGED,
-  type PromptBoxPart,
 } from "./import-prompt-copy";
 import { asTyped } from "./prompt-as-typed";
 import { promptFieldErrors } from "./prompt-field-errors";
@@ -73,7 +73,7 @@ export function useEditPromptFlow({
   const [chosen, setChosen] = useState<string | null | undefined>(undefined);
   const [landed, setLanded] = useState<Landed | null>(null);
   // Which text the one box holds; the dialog opens on the prompt text.
-  const [part, setPart] = useState<PromptBoxPart>("text");
+  const [part, setPart] = useState<PromptPart>("text");
   // Errors show from the first submit on, and each clears once its field holds.
   const [submitted, setSubmitted] = useState(false);
   const reading = useReadPrompt();
@@ -97,9 +97,9 @@ export function useEditPromptFlow({
         ]) ?? null);
   const category = chosen === undefined ? saved : chosen;
   const categoryChanged = chosen !== undefined && chosen !== saved;
-  // The read is compared as the text field shows it.
+  // Both sides are compared as the text field shows them.
   const fieldsChanged =
-    opened !== null && !samePrompt(fields, asTyped(opened.read));
+    opened !== null && !samePrompt(asTyped(fields), asTyped(opened.read));
 
   const close = () => {
     setOpened(null);

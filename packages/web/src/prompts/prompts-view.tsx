@@ -1,4 +1,5 @@
 import type { CategoryList, InventoryPrompt } from "@maestro/core";
+import type { PromptPart } from "@maestro/core/prompt-file";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquare, Table2, Tag } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -27,6 +28,7 @@ import {
   RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
+import type { ActionKey } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import {
   COPY_EXAMPLE,
@@ -68,7 +70,6 @@ import {
   NO_RELEASED_PROMPTS,
   NO_SEARCH_MATCH,
   PROMPTS_FACT,
-  type PromptPart,
   promptsFactValue,
   SEARCH_LABEL,
   SELECT_ALL_PROMPTS,
@@ -82,6 +83,11 @@ const leavesDefaultBranch = ({ pendingRelease }: InventoryPrompt) =>
 
 // What one copy takes: the prompt and the part of it to copy.
 type Copying = { prompt: InventoryPrompt; part: PromptPart };
+
+const COPY_ACTION: Record<PromptPart, ActionKey> = {
+  text: "copy",
+  example: "copyExample",
+};
 
 // Step 1 of Delete prompt, offered only once the clone's read holds the file.
 type Deletion = { path: string; localOnly: boolean };
@@ -167,13 +173,11 @@ export function PromptsView({
   // failed. Without a clipboard (no secure context, no permission) it rejects.
   const copying = useMutation({
     mutationFn: ({ prompt, part }: Copying) =>
-      navigator.clipboard.writeText(
-        part === "example" ? prompt.example : prompt.text,
-      ),
+      navigator.clipboard.writeText(prompt[part]),
   });
   const copyWrite = useWriteAction(copying, {
     screen,
-    action: ({ part }) => (part === "example" ? "copyExample" : "copy"),
+    action: ({ part }) => COPY_ACTION[part],
     // The copy lands on the clipboard, not in a row.
     subject: (_done, { prompt }) => ({
       name: phrase`${named(prompt.name)}`,

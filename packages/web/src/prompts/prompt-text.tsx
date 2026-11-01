@@ -1,3 +1,4 @@
+import type { PromptFile, PromptPart } from "@maestro/core/prompt-file";
 import { Copy } from "lucide-react";
 import { useState } from "react";
 import { Icon } from "../ui/icon";
@@ -8,7 +9,6 @@ import {
   PROMPT_PARTS,
   PROMPT_PARTS_LABEL,
   PROMPT_TEXT_HEADING,
-  type PromptPart,
 } from "./prompts-copy";
 
 /**
@@ -18,18 +18,16 @@ import {
  * Mount it keyed on the prompt's name, so another prompt opens on its text.
  */
 export function PromptText({
-  text,
-  example,
+  prompt,
   onCopy,
 }: {
-  text: string;
-  /** "" when the prompt has none. */
-  example: string;
+  /** Its example is "" when the prompt has none. */
+  prompt: Pick<PromptFile, PromptPart>;
   /** Copies the part on show. */
   onCopy: (part: PromptPart) => void;
 }) {
   const [selected, setPart] = useState<PromptPart>("text");
-  const switched = example !== "";
+  const switched = prompt.example !== "";
   const part: PromptPart = switched ? selected : "text";
   return (
     <section
@@ -59,7 +57,7 @@ export function PromptText({
         </IconButton>
       </div>
       <pre className="m-0 whitespace-pre-wrap p-cell font-mono text-gray-12 text-meta [overflow-wrap:anywhere]">
-        {part === "example" ? example : text}
+        {prompt[part]}
       </pre>
     </section>
   );
