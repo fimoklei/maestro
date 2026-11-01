@@ -264,7 +264,8 @@ Mandatory for any change that alters what `packages/web` renders:
    - A first-run screen → stop here.
    - A connected screen → `pnpm smoke:ready`; a deploy or Harness state →
      `--scenario <name>[,<name>]` (each scenario and what it seeds:
-     `scripts/smoke-scenarios.mjs`).
+     `scripts/smoke-scenarios.mjs`). Every scenario's Harness holds three
+     released prompts, one with an Example and one in a category.
 2. Screenshot the changed UI with `agent-browser --session maestro-<worktree folder>`,
    in each theme. Read a region as text with
    `pnpm cockpit:snapshot "<selector>" [path]`, never a bare `agent-browser snapshot`.

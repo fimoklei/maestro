@@ -1,1 +1,1 @@
-export function changedFiles(cwd: string): string[];
+export function changedFiles(cwd: string, since: string | null): string[];

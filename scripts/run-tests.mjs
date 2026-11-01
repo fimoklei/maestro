@@ -14,17 +14,40 @@ const logPath = resolve(repoRoot, ".logs/test.log");
 const flags = process.argv.slice(2);
 
 // `--affected` runs only the tests the uncommitted work reaches, with the
-// commit gate's selection (`vitest related --passWithNoTests`).
+// commit gate's selection (`vitest related --passWithNoTests`). `--since <ref>`
+// widens the work to everything the branch changed since `ref`.
 const affected = flags.includes("--affected");
-const rest = flags.filter((flag) => flag !== "--affected");
+const sinceAt = flags.indexOf("--since");
+const since = sinceAt === -1 ? null : flags[sinceAt + 1];
+if (since === undefined || (since !== null && !affected)) {
+  process.stderr.write("--since takes a ref and needs --affected\n");
+  process.exit(2);
+}
+const rest = flags.filter(
+  (flag, index) =>
+    flag !== "--affected" &&
+    (sinceAt === -1 || index < sinceAt || index > sinceAt + 1),
+);
+
+let changed = [];
+if (affected) {
+  try {
+    changed = changedFiles(repoRoot, since);
+  } catch {
+    process.stderr.write(`git could not compare against ${since}\n`);
+    process.exit(2);
+  }
+  if (changed.length === 0) {
+    process.stdout.write(
+      since === null
+        ? "No uncommitted changes, so no tests ran. For committed or merged work: pnpm test:affected --since origin/main\n"
+        : `No changes since ${since}, so no tests ran.\n`,
+    );
+    process.exit(0);
+  }
+}
 const args = affected
-  ? [
-      "related",
-      "--run",
-      "--passWithNoTests",
-      ...rest,
-      ...changedFiles(repoRoot),
-    ]
+  ? ["related", "--run", "--passWithNoTests", ...rest, ...changed]
   : ["run", ...rest];
 
 mkdirSync(dirname(logPath), { recursive: true });

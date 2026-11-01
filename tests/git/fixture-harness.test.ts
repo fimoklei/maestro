@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readPromptFile } from "../../packages/core/src/harness/prompt-file";
 import {
   buildFixtureHarness,
   FIXTURE_RELEASES,
@@ -78,5 +79,46 @@ describe("the scenarios' fixture Harness", () => {
     expect(git("diff", "--name-only", "v2.0.0", "main")).toBe(
       ".apm/skills/commit-message/SKILL.md",
     );
+  });
+
+  it("holds the same three prompts in every release, one with an Example", () => {
+    const workDir = join(root, "work");
+    buildFixtureHarness({ fixtureDir, workDir });
+    const show = (release: string, file: string) =>
+      execFileSync("git", ["-C", workDir, "show", `${release}:${file}`], {
+        encoding: "utf8",
+      });
+
+    for (const release of FIXTURE_RELEASES) {
+      const prompts = execFileSync(
+        "git",
+        ["-C", workDir, "ls-tree", "--name-only", release, ".maestro/prompts/"],
+        { encoding: "utf8" },
+      )
+        .trim()
+        .split("\n")
+        .map((path) => {
+          const raw = show(release, path);
+          return {
+            path,
+            hasExample: readPromptFile(raw).example !== "",
+          };
+        });
+
+      expect(prompts).toEqual([
+        {
+          path: ".maestro/prompts/bug-report.md",
+          hasExample: true,
+        },
+        {
+          path: ".maestro/prompts/explain-code.md",
+          hasExample: false,
+        },
+        {
+          path: ".maestro/prompts/plan-feature.md",
+          hasExample: false,
+        },
+      ]);
+    }
   });
 });
