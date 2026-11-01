@@ -151,6 +151,8 @@ const SCENARIOS = [
 const HARNESS_SCENARIO = "harness-outcomes";
 const DELETED_LOCALLY = "test-plan";
 const UNRELEASED = "code-review";
+// One of the fixture Harness's prompts sorted into a category.
+const PROMPT_CATEGORY = { prompt: "plan-feature", category: "Planning" };
 // Leaves the Harness unreachable until the next `pnpm smoke` run.
 const OFFLINE_SCENARIO = "harness-offline";
 // Port 1 refuses every connection, so git reports "Failed to connect".
@@ -640,6 +642,16 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
   ]);
   await api.post("/api/inventory/connect", { path: paths.clone });
   await refreshAndCheckMirror(api, paths, commits, V1_1);
+  // A category lives in Maestro's config, never in the Harness (ADR-0034).
+  await api.post(
+    "/api/categories",
+    { name: PROMPT_CATEGORY.category },
+    { allowRefusal: true },
+  );
+  await api.post("/api/categories/assign", {
+    items: [{ type: "prompt", name: PROMPT_CATEGORY.prompt }],
+    category: PROMPT_CATEGORY.category,
+  });
 
   const scenarios = SCENARIOS.filter((scenario) =>
     names.includes(scenario.name),
