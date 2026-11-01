@@ -33,10 +33,14 @@ export type FootItem = ActionsMenuItem & {
       }
   );
 
-// The primary where the ⋮ order already leads with the next step (#1065).
+// The primary where the ⋮ order already leads with the next step (#1065). The
+// item whose write runs keeps it, so its button spins and holds focus.
 export const firstEnabled = (items: readonly FootItem[]): string | null =>
   items.find(
-    (item) => item.href === undefined && !item.disabled && !item.danger,
+    (item) =>
+      item.href === undefined &&
+      (!item.disabled || item.busy !== undefined) &&
+      !item.danger,
   )?.label ?? null;
 
 export function FootActions({
@@ -50,12 +54,8 @@ export function FootActions({
   /** The label of the one primary item, or null for none. */
   primary: string | null;
 }) {
-  // A pressed item keeps its button while its write runs, to show the busy label.
   const shown = (item: FootItem) =>
-    item.label === primary ||
-    item.edit === true ||
-    item.cause !== undefined ||
-    item.busy !== undefined;
+    item.label === primary || item.edit === true || item.cause !== undefined;
   const buttons = items.filter(shown);
   const more = items.filter((item) => !shown(item));
   const moreRef = (node: HTMLButtonElement | null) => {

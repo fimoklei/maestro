@@ -111,7 +111,8 @@ async function openPane() {
   return screen.findByRole("complementary", { name: "pr-review detail" });
 }
 
-// The pane foot's primary as a button, then the ⋯ items, in order (#1744).
+// The pane foot's primary and edit item as buttons, then the ⋯ items, in
+// order (#1744).
 async function foot(pane: HTMLElement) {
   const buttons = within(pane)
     .getAllByRole("button")
@@ -128,10 +129,14 @@ afterEach(() => {
 });
 
 describe("Harness — Edit prompt", () => {
-  it("offers Edit prompt after Propose change, in the ⋮ menu and the pane foot", async () => {
+  it("offers Edit prompt after Propose change, in the ⋮ menu and beside the primary in the pane foot", async () => {
     stubServer(
       withStages(FETCHED, {
-        proposal: [prompt("pending-proposal", "not-yet-proposed")],
+        proposal: [
+          prompt("pending-proposal", "not-yet-proposed", {
+            remoteTree: "remote-blob",
+          }),
+        ],
       }),
     );
     await render();
@@ -139,10 +144,12 @@ describe("Harness — Edit prompt", () => {
     expect(await menuLabels("pending-proposal")).toEqual([
       "Propose change",
       "Edit prompt",
+      "Discard change",
+      "Delete prompt",
     ]);
     const { buttons, items } = await foot(await openPane());
-    expect(buttons).toEqual(["Propose change"]);
-    expect(items[0]).toBe("Edit prompt");
+    expect(buttons).toEqual(["Propose change", "Edit prompt"]);
+    expect(items).toEqual(["Discard change", "Delete prompt"]);
   });
 
   it("offers Edit prompt on a Pending review row on disk, before its danger item", async () => {
@@ -355,8 +362,7 @@ describe("Harness — Edit prompt", () => {
     const element = await openPane();
     const pane = within(element);
 
-    const menu = await openFootMenu(element, "pr-review");
-    await userEvent.click(menu.getByRole("menuitem", { name: "Edit prompt" }));
+    await userEvent.click(pane.getByRole("button", { name: "Edit prompt" }));
 
     expect(await pane.findByText("Harness busy")).toBeInTheDocument();
     expect(

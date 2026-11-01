@@ -116,17 +116,18 @@ describe("FootActions", () => {
     expect(button).toHaveAccessibleDescription(cause);
   });
 
-  it("keeps an item whose write runs a button with its busy label", () => {
-    render(
-      <FootActions
-        name="tdd"
-        primary={null}
-        items={[
-          { label: "Propose change", busy: "propose", disabled: true },
-          { label: "Discard change", danger: true, disabled: true },
-        ]}
-      />,
+  it("puts an item whose write runs behind the ⋯ unless it is the primary", () => {
+    const items = [
+      { label: "Propose change", busy: "propose", disabled: true },
+      { label: "Discard change", danger: true, disabled: true },
+    ] as const;
+    const { rerender } = render(
+      <FootActions name="tdd" primary={null} items={items} />,
     );
+
+    expect(labels()).toEqual(["⋯"]);
+
+    rerender(<FootActions name="tdd" primary="Propose change" items={items} />);
 
     expect(labels()).toEqual(["Proposing…", "⋯"]);
   });
@@ -239,6 +240,16 @@ describe("FootActions", () => {
         { label: "Remove skill", danger: true, onSelect: () => {} },
       ]),
     ).toBeNull();
+  });
+
+  // The pressed item stays the primary button, spinning, while its write runs.
+  it("names an item whose write runs as firstEnabled", () => {
+    expect(
+      firstEnabled([
+        { label: "Propose change", busy: "propose", disabled: true },
+        { label: "Edit prompt", edit: true, onSelect: () => {} },
+      ]),
+    ).toBe("Propose change");
   });
 
   // #990: outside a row a control is 32px.

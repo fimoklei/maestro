@@ -50,7 +50,7 @@ export const Busy: Story = {
       { label: "Propose change", busy: "propose", disabled: true },
       { label: "Discard change", danger: true, disabled: true },
     ],
-    primary: null,
+    primary: "Propose change",
   },
 };
 

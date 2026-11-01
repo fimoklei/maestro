@@ -87,14 +87,14 @@ the new pattern to this section before building it.
   behind one 32px ⋯ at the foot's right end, named `Actions for {name}`, in ⋮
   order, danger items last after a separator; a foot with nothing left over
   has no ⋯. Keep in the foot as a button a blocked item with a cause, as a
-  `GatedButton`, and an item whose write runs, with its busy label.
+  `GatedButton`.
 - Give a fact at most one action button beside its value, and only for an
   action that changes that fact.
 - Choose the pane's one primary by state, not position: an unfinished
   operation's retry in its notice, else Import local edits on Local edits,
   else Update target on a behind target, else none. A pane whose ⋮ order already
-  leads with the next step (Skills, Harness) makes its first enabled item
-  primary.
+  leads with the next step (Skills, Harness) makes its first enabled item, or
+  the item whose write runs, primary.
 - Show the pane beside the table at every width, never over it; the table
   hides secondary columns to make room. On a panel under 44rem, too narrow
   for the name, Status and ⋮ beside the pane, the pane takes the table's place.
