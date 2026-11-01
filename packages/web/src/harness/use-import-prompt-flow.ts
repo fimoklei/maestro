@@ -18,6 +18,7 @@ import {
   NOT_TEXT_FILE_NOTICE,
   PROMPT_IMPORT_MODES,
   PROMPT_TAKEN_NOTICE,
+  type PromptBoxPart,
   type PromptSource,
 } from "./import-prompt-copy";
 import { asTyped } from "./prompt-as-typed";
@@ -58,6 +59,8 @@ export function useImportPromptFlow(
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PromptDraft>(EMPTY);
   const [source, setSource] = useState<PromptSource>("paste");
+  // Which text the one box holds; the dialog opens on the prompt text.
+  const [part, setPart] = useState<PromptBoxPart>("text");
   const [chosenFile, setChosenFile] = useState<ChosenFile | null>(null);
   // Errors show from the first submit on, and each clears once its field holds.
   const [submitted, setSubmitted] = useState(false);
@@ -105,6 +108,7 @@ export function useImportPromptFlow(
     setOpen(false);
     setDraft(EMPTY);
     setSource("paste");
+    setPart("text");
     setChosenFile(null);
     setSubmitted(false);
     setCheckedName(null);
@@ -140,6 +144,8 @@ export function useImportPromptFlow(
     edit,
     source,
     setSource,
+    part,
+    showPart: setPart,
     chosenFile,
     fileNotice: chosenFile?.isText === false ? NOT_TEXT_FILE_NOTICE : null,
     // The text stays as the file holds it, CRLF included, until the field is
@@ -160,10 +166,10 @@ export function useImportPromptFlow(
     // Left with an invalid name, the check states no error: submit does.
     checkName: () => setCheckedName(draft.name === "" ? null : draft.name),
     // A pasted front matter block leaves the text and travels with the
-    // draft, its description in the field; text without one pastes as it is,
-    // and over the whole text drops the block it replaces. False leaves the
-    // paste alone. A taken-over paste is saved with LF, as the browser saves
-    // its own.
+    // draft, its description and example in their fields; text without one
+    // pastes as it is, and over the whole text drops the block it replaces.
+    // False leaves the paste alone. A taken-over paste is saved with LF, as
+    // the browser saves its own.
     paste: (field: PasteTarget, pasted: string): boolean => {
       const next =
         field.value.slice(0, field.selectionStart) +
@@ -185,12 +191,17 @@ export function useImportPromptFlow(
         ...(drafted.description === ""
           ? {}
           : { description: drafted.description }),
+        ...(drafted.example === "" ? {} : { example: drafted.example }),
       });
       return true;
     },
+    // Every field error the box can show is the prompt text's.
     submit: () => {
       setSubmitted(true);
-      if (problems.length > 0) return;
+      if (problems.length > 0) {
+        setPart("text");
+        return;
+      }
       afterAdd.submit();
     },
     /** After a failure, Close hands the import over as a clean one would. */
