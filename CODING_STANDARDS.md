@@ -12,8 +12,8 @@ Claude Code loads these files by itself: `architecture.md` and `security.md` at
 launch, every other file once you read or write a file its `paths:` matches,
 but only for files inside the checkout the session started in. A sub-agent
 working in another worktree gets none of them, and neither does Codex. When a
-rule file's text is not in your context, read the file for the task before
-starting it.
+rule file's text is not in your context, open the file for the task with the
+Read tool, not the shell, before starting it.
 
 - Touching package boundaries (core/server/web), or designing a module, port or interface → `architecture.md`; for a design, also the `codebase-design` skill
 - Writing or running tests, or `pnpm verify` → `testing.md`
