@@ -113,8 +113,8 @@ Everything inside a skill folder that the team means to share. Repository intern
 _Avoid_: files, tree (the mechanism that measures it).
 
 **Target**:
-Where a deploy lands. Two kinds: **local** (a consuming repo) or **global** (the user-level config of a present tool). A global deploy resolves to one target per detected tool, so "global" can be several targets on a two-tool machine and one on a single-tool machine (ADR-0011).
-_Avoid_: destination, environment.
+Where a deploy lands. Two kinds: **local** (a consuming repo) or **Global**, the one user-level target. Global is one target on every machine, whatever its tools: one **Target release** and one **Selection** in the skills folder of every detected tool (ADR-0011).
+_Avoid_: destination, environment; "a target per tool" (a detected tool is a folder Global writes to, not a target).
 
 **Target release**:
 The one Harness release every skill in a target's **Selection** is deployed from; a target has exactly one, except while a stopped Update leaves it **Update incomplete** (ADR-0031).
@@ -137,7 +137,7 @@ A deploy scoped to one **consuming repo** — the primitive becomes available on
 _Avoid_: repo install, project-level.
 
 **Global deploy**:
-A deploy scoped to the user-level config of the AI coding tools the user actually has — the primitive becomes available across all of that user's work in those tools. The tools are **detected live** (ADR-0011): a machine with both Claude Code and Codex targets both; a Claude-only machine targets only Claude Code, and no `.agents` copy is written. "Global" is the set of present tools, not a single opaque destination.
+A deploy scoped to the user-level config of the AI coding tools the user actually has — the primitive becomes available across all of that user's work in those tools. The tools are **detected live** (ADR-0011): a machine with both Claude Code and Codex targets both; a Claude-only machine targets only Claude Code, and no `.agents` copy is written. The user does not choose the tools or folders. Every deploy, update and remove acts on all of them at once.
 _Avoid_: system-wide, machine install, "always both tools" (the reversed pre-ADR-0011 rule).
 
 **Consuming repo**:

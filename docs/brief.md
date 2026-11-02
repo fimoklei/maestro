@@ -69,7 +69,7 @@ A cockpit over APM, organized along **two axes** and **three views**.
 
 **Two axes**
 - **Unit:** a single primitive (skill / hook / MCP server) **or** a bundle.
-- **Target:** **local** (a consuming repo) **or** **global** (a tool: Claude Code, Codex).
+- **Target:** **local** (a consuming repo) **or** **global** (one target in the skills folders of the detected tools: Claude Code, Codex).
 
 **Three views**
 1. **Inventory** — what you have centrally available to reuse. Source of truth is the `agent-harness` repo. Central means **curated, production-ready**.
