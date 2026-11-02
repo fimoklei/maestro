@@ -1,6 +1,7 @@
 name: CI
 
-# The only enforced gate (no local git hooks): install -> lint -> typecheck -> test -> build -> build-storybook.
+# The only enforced gate (no local git hooks): lint, typecheck, build and
+# build-storybook in one job, the test lanes in parallel jobs beside it.
 # Runs on every pull request, so the required `verify` check always reports.
 # No push trigger: every merge reaches main through a pull request.
 on:
@@ -15,38 +16,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Locate the pnpm store
-        run: echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ env.PNPM_STORE_PATH }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
 
       - name: Lint
         run: pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck
-
-      - name: Test
-        run: pnpm test
 
       - name: Build
         run: pnpm build
@@ -56,3 +37,43 @@ jobs:
       # browser lane (story-as-test).
       - name: Build Storybook
         run: pnpm --filter @maestro/web build-storybook
+
+  # The web lane is the largest, so it runs as two shards.
+  test:
+    name: test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: web 1/2
+            args: --project web --shard 1/2
+          - name: web 2/2
+            args: --project web --shard 2/2
+          - name: git
+            args: --project git
+          - name: core + integration
+            args: --project core --project integration
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup
+
+      - name: Test
+        run: pnpm test ${{ matrix.args }}
+
+  # The required check. A required check that is skipped counts as passed, so
+  # this job always runs and fails unless every job it needs succeeded.
+  verify:
+    needs: [checks, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          for result in $RESULTS; do
+            [ "$result" = success ] || exit 1
+          done
