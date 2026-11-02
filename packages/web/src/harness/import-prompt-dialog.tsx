@@ -150,21 +150,9 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
       onClose={close}
     >
       {importOnly === null ? (
-        <>
-          <dl className="m-0">
-            <Fact label="Name" value={draft.name} wrap machine={false} />
-          </dl>
-          {editOnly === null || editOnly.category === undefined ? null : (
-            <CategoryField
-              value={editOnly.category}
-              onChange={editOnly.pickCategory}
-              hint={CATEGORY_FIELD.hint}
-              suggested={null}
-              add={editOnly.categoryAdd}
-              disabled={locked}
-            />
-          )}
-        </>
+        <dl className="m-0">
+          <Fact label="Name" value={draft.name} wrap machine={false} />
+        </dl>
       ) : (
         <>
           <SegmentedControl
@@ -246,6 +234,18 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         onChange={(description) => edit({ description })}
         disabled={locked}
       />
+      {importOnly !== null ? (
+        <CategoryField {...importOnly.category.field} disabled={locked} />
+      ) : editOnly === null || editOnly.category === undefined ? null : (
+        <CategoryField
+          value={editOnly.category}
+          onChange={editOnly.pickCategory}
+          hint={CATEGORY_FIELD.hint}
+          suggested={null}
+          add={editOnly.categoryAdd}
+          disabled={locked}
+        />
+      )}
       <TextAreaField
         label={{
           name: PROMPT_BOX_WORDS[part],
@@ -267,9 +267,6 @@ export function ImportPromptDialog(props: ImportPromptDialogProps) {
         onPaste={part === "text" ? pasteText : undefined}
         disabled={locked}
       />
-      {importOnly === null ? null : (
-        <CategoryField {...importOnly.category.field} disabled={locked} />
-      )}
     </Dialog>
   );
 }

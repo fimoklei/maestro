@@ -353,7 +353,6 @@ export function HarnessView({
                     ? staleStatusNotice(state.freshness, reread)
                     : null,
                 nothingToRelease,
-                counts: bandCounts,
               })}
               onClick={() => setPlanOpen(true)}
             />

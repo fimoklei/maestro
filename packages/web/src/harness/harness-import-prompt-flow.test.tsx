@@ -784,9 +784,7 @@ describe("Harness import prompt flow — Example", () => {
     await user.type(field(dialog, "Prompt text"), "Review $1.");
     await showPart(user, dialog, "Example");
     const example = field(dialog, "Example");
-    expect(example).toHaveAccessibleDescription(
-      "Optional. The prompt, filled in and ready to paste.",
-    );
+    expect(example).toHaveAccessibleDescription("Optional example prompt.");
     await user.type(example, "Review #12.");
     await user.click(
       within(dialog).getByRole("button", { name: "Import prompt" }),

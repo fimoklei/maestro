@@ -94,7 +94,7 @@ describe("importLabels", () => {
     expect(importLabels(clean)).toMatchObject({
       confirm: "Import skill",
       verb: "import",
-      hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
+      hint: "The name as it appears in the Harness.",
     });
     expect(importLabels(undefined).confirm).toBe("Import skill");
   });

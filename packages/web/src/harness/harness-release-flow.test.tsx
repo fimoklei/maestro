@@ -105,14 +105,14 @@ describe("Harness release", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("blocks Create a release on All released when every count is 0", async () => {
+  it("blocks Create a release on Nothing to release when every count is 0", async () => {
     stubHarnessServer({ read: { body: withStages(FETCHED, {}) } });
     renderHarness();
 
     const release = await screen.findByRole("button", {
       name: "Create a release",
     });
-    await waitFor(() => expectTooltipCause(release, "All released"));
+    await waitFor(() => expectTooltipCause(release, "Nothing to release"));
     expect(release).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByText(/Pending release 0/)).toBeNull();
   });

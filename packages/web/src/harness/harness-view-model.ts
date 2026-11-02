@@ -5,12 +5,11 @@ import type {
   HarnessState,
 } from "@maestro/core";
 import { NEXT_RELEASE, NOT_RELEASED_YET } from "../ui/band-copy";
-import type { BandCount } from "../ui/band-summary";
 import { freshnessLine, OFFLINE, READ_FAILED } from "../ui/freshness";
 import type { NoticeContent } from "../ui/notice";
 import { type Copy, machine, phrase } from "../ui/phrase";
 import { NOTHING_TO_RELEASE } from "./notice-copy";
-import { ALL_RELEASED, STAGE_NAMES } from "./stage-copy";
+import { STAGE_NAMES } from "./stage-copy";
 
 // The stage header's meta slot carries at most one reading, never two (#838),
 // and never a routine read age: null where a successful read has nothing to name (#1218).
@@ -128,13 +127,11 @@ export const releaseCause = ({
   freshness,
   staleNotice,
   nothingToRelease,
-  counts,
 }: {
   freshness: HarnessFreshness;
   /** The stale status notice, when the screen shows it. */
   staleNotice: NoticeContent | null;
   nothingToRelease: boolean;
-  counts: readonly BandCount[];
 }): string | null => {
   if (!releaseEnabled(freshness)) {
     return (
@@ -142,10 +139,7 @@ export const releaseCause = ({
       (freshness.outcome === "offline" ? OFFLINE : READ_FAILED)
     );
   }
-  if (!nothingToRelease) return null;
-  return counts.every((count) => count.count === 0)
-    ? ALL_RELEASED
-    : NOTHING_TO_RELEASE;
+  return nothingToRelease ? NOTHING_TO_RELEASE : null;
 };
 
 /**
