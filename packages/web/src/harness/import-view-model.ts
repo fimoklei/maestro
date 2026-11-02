@@ -60,7 +60,7 @@ export const importLabels = (
         title: "Import a skill",
         confirm: IMPORT_SKILL,
         verb: "import",
-        hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
+        hint: "The name as it appears in the Harness.",
       };
 
 // A convention exceeded costs readability, not correctness.

@@ -23,7 +23,7 @@ export const PROMPT_FIELD_HINTS = {
   name: phrase`Maestro uses this as the file name in ${machine(".maestro/prompts")}.`,
   description: "One line, shown in the Prompts table.",
   text: "Saved exactly as you enter it.",
-  example: "Optional. The prompt, filled in and ready to paste.",
+  example: "Optional example prompt.",
 } as const;
 
 /** The accessible name of the Prompt text / Example switch. */
