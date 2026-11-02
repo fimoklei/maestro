@@ -5,22 +5,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/fimoklei/maestro?include_prereleases)](https://github.com/fimoklei/maestro/releases)
 
-**See and steer your AI agent skills from one screen.**
+**See and steer your team's AI agent skills and prompts from one screen.**
 
-> **Alpha.** Maestro works for skills today. Hooks and MCP servers are not
-> supported yet. Expect rough edges and breaking changes between releases.
+> **Alpha.** Maestro works for skills and prompts today. Hooks and MCP servers
+> are not supported yet. Expect rough edges and breaking changes between releases.
 
 Your coding agents (Claude Code, Codex and others) read skills from folders on
 your machine: some per project, some global. After a few weeks you have copies
-everywhere, at different versions, and no single place that shows them.
+everywhere, at different versions, and no single place that shows them. The
+prompts your team reuses end up in chat histories and personal notes.
 
 Maestro is a local web app that shows every skill you have, where each copy
 is deployed and which copies are behind. From the same screen you deploy,
-update and publish skills for your whole team.
+update and publish skills for your whole team, and keep the prompts you share
+next to them.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/skills-dark.png">
-  <img src="docs/images/skills.png" alt="The Skills screen: every skill in the Harness, with its status and the number of targets it is deployed to" width="960">
+  <img src="docs/images/skills.png" alt="The Skills screen: each skill in the Harness with its status and targets, and a detail pane for a skill that is behind" width="960">
 </picture>
 
 Maestro does not install anything itself. [APM](https://microsoft.github.io/apm/),
@@ -67,13 +69,15 @@ To update later, check out the newer tag and run the script again. The
 
 ## How it works
 
-Three words appear everywhere in the cockpit:
+Four words appear everywhere in the cockpit:
 
 - **Harness** — a GitHub repository that holds the skills your team shares.
   Each release of the Harness is a git tag.
 - **Target** — a place a skill is deployed to: a project you registered, or
   the global folder a tool reads.
 - **Deploy** — copy one skill, at one released version, into one target.
+- **Prompt** — a reusable text in the Harness. You copy it from Prompts and
+  paste it into your coding agent. Prompts are not deployed.
 
 The first screen asks for a Harness. Give it one of these:
 
@@ -86,10 +90,20 @@ After that, the daily loop is:
 
 1. **Deploy** a skill from Skills to a project or to your global folder.
 2. **Update** a target when the Harness has a newer release.
-3. **Import** a skill you wrote into the Harness and **propose the change**.
-   Maestro opens a pull request on the Harness.
+3. **Import** a skill or prompt into the Harness, or edit one, and **propose
+   the change**. Maestro opens a pull request on the Harness.
 4. After the pull request is merged, **publish a release**. Maestro cuts a new
-   tag, and the skill can now be deployed.
+   tag, and the change reaches your team. A merged change you no longer want
+   leaves the next release with **Withdraw from release**.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/prompts-dark.png">
+  <img src="docs/images/prompts.png" alt="The Prompts screen: prompts sorted by category, with a detail pane that shows a prompt's text, its example tab and Copy prompt" width="960">
+</picture>
+
+To keep a long list in order, sort skills and prompts into categories of your
+own. Open the Harness button at the top left, choose **Settings**, then
+**Categories**. Your teammates do not see them.
 
 ## Requirements
 
