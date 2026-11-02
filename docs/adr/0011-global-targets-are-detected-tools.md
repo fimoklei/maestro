@@ -137,6 +137,33 @@ reclaims an untargeted tool's copy. **Accepted cost:** a stale `.claude` copy
 now survives beside the new `.agents` copy, and a tool reading both may see two
 versions of one skill.
 
+## Amendment (2026-11-02, issue #1771) — Global is one target on screen too
+
+The decision's first line ("Global is not one target") and "one card per
+detected tool" did not hold. One global manifest keeps one ref and one
+`skills:` list for every folder, and one install writes them all. A narrowed
+`-t` is undone by the next install, and `apm uninstall` has no `-t` (#1769,
+apm 0.35.0). The code already treats Global as one target (#1436). The
+per-tool rows each carried a Status, a release and a count, while Update and
+Remove changed every folder; in the #1770 walkthrough a reader predicted 3
+of 10 two-tool outcomes from them.
+
+Amended:
+
+- **Global is one target**, with one Target release, one Selection and one
+  unfinished-operation record. A detected tool is a skills folder Global
+  writes to, not a target. Global counts as one target on every screen.
+- **Deploy-state shows one Global row**, naming its tools and their folders.
+  Where they sit, and where Update and Remove live, is the deploy picker and
+  Global group prototype's call (#1772).
+- **One Status per target.** The row shows the worst Status of its folders,
+  in the existing order; the detail names the folder that differs.
+- **Presence, not choice, stays.** The user chooses no tools or folders. The
+  folder on/off choice of #1552 is not taken: it would delete skills from a
+  folder other tools read, and add an operation of its own.
+
+Unchanged: live detection, no backfill (#1284), and the #1557 amendment.
+
 ## Rejected alternatives
 
 - **Model A — one deploy unit mirrored to both tools.** Simpler, matches apm's
