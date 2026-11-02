@@ -206,9 +206,7 @@ describe("Harness import flow", () => {
     renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     await openImportWithSource(user);
-    expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
-      "code-review",
-    );
+    expect(await screen.findByLabelText("Name")).toHaveValue("code-review");
     await user.click(screen.getByRole("button", { name: "Import skill" }));
 
     await waitFor(() => {
@@ -300,7 +298,7 @@ describe("Harness import flow", () => {
 
     await openImportWithSource(user);
 
-    const field = await screen.findByLabelText(/name in the harness/i);
+    const field = await screen.findByLabelText("Name");
     expect(field).toHaveAccessibleDescription(
       /already holds a skill under it/i,
     );
@@ -344,9 +342,7 @@ describe("Harness import flow", () => {
       `${SOURCE}{Enter}`,
     );
 
-    expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
-      "code-review",
-    );
+    expect(await screen.findByLabelText("Name")).toHaveValue("code-review");
     expect(imports).toEqual([]);
   });
 
@@ -441,9 +437,7 @@ describe("Harness import flow", () => {
     ).toHaveLength(0);
     await user.tab();
 
-    expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
-      "code-review",
-    );
+    expect(await screen.findByLabelText("Name")).toHaveValue("code-review");
   });
 
   it("asks again with the typed name", async () => {
@@ -452,7 +446,7 @@ describe("Harness import flow", () => {
     renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
 
     await openImportWithSource(user);
-    const field = await screen.findByLabelText(/name in the harness/i);
+    const field = await screen.findByLabelText("Name");
     await user.clear(field);
     await user.type(field, "reviewer");
 

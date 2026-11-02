@@ -120,7 +120,7 @@ export function ImportDialog({
         {/* The directory name is the skill's identity, so the hint is stated
             before the name is chosen, not explained after a failure. */}
         <Field
-          label="Name in the Harness"
+          label="Name"
           hint={labels.hint}
           value={name}
           onChange={(next) => {

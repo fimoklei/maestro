@@ -100,10 +100,7 @@ describe("ImportDialog", () => {
     const onClose = vi.fn();
     renderDialog(DEEP, { kind: "ready", check: CHECK }, onClose);
 
-    await userEvent.type(
-      screen.getByRole("textbox", { name: /name in the harness/i }),
-      "x",
-    );
+    await userEvent.type(screen.getByRole("textbox", { name: "Name" }), "x");
     fireEvent.pointerDown(document.body);
     fireEvent.click(document.body);
 
@@ -176,7 +173,7 @@ describe("ImportDialog", () => {
     const { onImport } = renderDialog(DEEP, { kind: "ready", check: CHECK });
 
     await userEvent.type(
-      screen.getByRole("textbox", { name: /name in the harness/i }),
+      screen.getByRole("textbox", { name: "Name" }),
       "{Enter}",
     );
 
@@ -261,7 +258,7 @@ describe("ImportDialog", () => {
       check: { ...CHECK, mode: "update" },
     });
 
-    const field = screen.getByLabelText("Name in the Harness");
+    const field = screen.getByLabelText("Name");
     expect(field).toBeDisabled();
     expect(field).toHaveValue("release-notes");
   });
@@ -269,7 +266,7 @@ describe("ImportDialog", () => {
   it("keeps the name editable while it is adding a skill", () => {
     renderDialog(DEEP, { kind: "ready", check: CHECK });
 
-    expect(screen.getByLabelText("Name in the Harness")).toBeEnabled();
+    expect(screen.getByLabelText("Name")).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "Import skill" }),
     ).toBeInTheDocument();
@@ -281,6 +278,6 @@ describe("ImportDialog", () => {
     expect(screen.getByRole("textbox", { name: "Folder path" })).toHaveValue(
       "",
     );
-    expect(screen.getByLabelText("Name in the Harness")).toBeDisabled();
+    expect(screen.getByLabelText("Name")).toBeDisabled();
   });
 });

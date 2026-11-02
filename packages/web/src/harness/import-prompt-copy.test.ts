@@ -52,9 +52,7 @@ describe("Import prompt copy", () => {
       "Prompt text",
       "Example",
     ]);
-    expect(PROMPT_FIELD_HINTS.example).toBe(
-      "Optional. The prompt, filled in and ready to paste.",
-    );
+    expect(PROMPT_FIELD_HINTS.example).toBe("Optional example prompt.");
   });
 
   it("refuses a text over 100 KB with its own notice", () => {

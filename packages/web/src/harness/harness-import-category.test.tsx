@@ -154,9 +154,9 @@ async function openImportSkill() {
   const dialog = await screen.findByRole("dialog", { name: /a skill$/ });
   await user.click(within(dialog).getByRole("button", { name: "Browse" }));
   await waitFor(() =>
-    expect(
-      within(dialog).getByRole("textbox", { name: "Name in the Harness" }),
-    ).toHaveValue("code-review"),
+    expect(within(dialog).getByRole("textbox", { name: "Name" })).toHaveValue(
+      "code-review",
+    ),
   );
   return { user, dialog: within(dialog) };
 }
@@ -431,6 +431,21 @@ describe("Import skill's Category field", () => {
 });
 
 describe("Import prompt's Category field", () => {
+  it("sits between Description and the prompt text", async () => {
+    stubServer();
+    const { dialog } = await openImportPrompt("Review $ARGUMENTS.");
+
+    const follows = (a: Element, b: Element) =>
+      (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    const category = await categoryButton(dialog, "No category");
+    expect(
+      follows(dialog.getByRole("textbox", { name: "Description" }), category),
+    ).toBe(true);
+    expect(
+      follows(category, dialog.getByRole("textbox", { name: "Prompt text" })),
+    ).toBe(true);
+  });
+
   it("preselects the category the front matter names, and assigns it after the import", async () => {
     const { writes } = stubServer();
     const { user, dialog } = await openImportPrompt(PROMPT_FILE("docs"));

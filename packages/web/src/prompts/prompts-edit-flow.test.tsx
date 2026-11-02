@@ -752,9 +752,7 @@ describe("Prompts — Edit prompt's Example", () => {
 
     const example = within(dialog).getByRole("textbox", { name: "Example" });
     expect(example).toHaveValue(WITH_EXAMPLE.example);
-    expect(example).toHaveAccessibleDescription(
-      "Optional. The prompt, filled in and ready to paste.",
-    );
+    expect(example).toHaveAccessibleDescription("Optional example prompt.");
     expect(
       within(dialog).queryByRole("textbox", { name: "Prompt text" }),
     ).toBeNull();
