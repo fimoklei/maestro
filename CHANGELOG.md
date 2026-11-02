@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.1.4 — 2026-11-02
+
+### New Features
+- **Added prompts to the Harness.** Prompts your team reuses can now sit next to skills and go through the same proposal and review. Import one you already use, edit it in place, or add a filled-in example so a teammate sees what a good result looks like. To start, select Import prompt on the Harness screen. (#1605, #1617, #1682, #1750)
+- **Added Withdraw from release.** Sometimes a change merges and then turns out wrong. You can now take it out of the next release in one step, without another review round. Look for it on rows marked Pending release. (#1697, #1737)
+- **Made Withdraw proposal undo the whole proposal.** It now closes the pull request, deletes the branch and undoes your change in the Harness. It also works when the pull request is already closed or gone, as long as every commit on the branch is yours. (#1671, #1672)
+- **Added categories.** You can now sort skills and prompts into categories you make yourself. Create them in Settings › Categories, then choose Set category on a skill or prompt. (#1726)
+- **Added a reason to every greyed-out button.** A button you can't use keeps its normal label. Hover over it or tab to it, and the tooltip names what blocks it. Screen readers read the same reason. (#1632, #1662)
+- **Named the skills a deploy would overwrite.** When a deploy stops on local edits, it now lists every skill that Deploy again would reset, so you know whose work you're about to replace. (#1679)
+- **Blocked releases with a `SKILL.md` in the Harness root.** Create a release and Publish release now refuse and tell you why. (#1653)
+- **Made the confirmation dialogs match.** Delete, Discard change, Restore and both Withdraw dialogs now share one layout and say what will change. (#1715)
+- **Made success messages consistent.** Delete skill from a detail pane, for example, now confirms on the Harness screen like the other actions. (#1663)
+- **Linked the logo to Deploy-state.** Re-read Inventory is now an icon button that refreshes Skills, Prompts and the Harness together. (#1694)
+
+### Improvements
+- **Cut git fetches.** Maestro now fetches each Harness once instead of once per repository, and stops an `apm` command that hangs. (#1548)
+
+### Bug Fixes
+- **Stopped global deploys from deleting skills other tools read.** On a computer with Codex but no Claude Code, a global deploy removed skills that Cursor, OpenCode and Devin Desktop use. It now leaves them in place. (#1681)
+- **Refused symlinked prompts and skills.** Delete and Discard change used to report them as "already gone". (#1652)
+- **Made Re-read Harness always fetch.** A tag pushed right after a deploy now shows up. (#1647)
+- **Fixed the status of a skill with several closed pull requests.** The row now follows the newest one. (#1665)
+- **Cut repeat pull request reads from GitHub.** (#1739)
+- **Stopped the Status card from opening when you close a detail pane with the mouse.** (#1741)
+- **Stopped screen readers from reading some button names twice.** (#1619)
+
 ## v0.1.3 — 2026-10-12
 
 ### New Features
