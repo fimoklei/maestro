@@ -29,7 +29,8 @@ above it (ADR-0001).
   `.claude/rules/design.md`. Drafting user-facing copy, in code, a spec, a
   ticket or a grill option → `.claude/rules/copy.md`; complete its copy review.
 - Where code lives → `docs/agents/codebase-map.md`. Before measuring anything
-  → `docs/research/`. Domain terms → `GLOSSARY.md`; decisions → `docs/adr/`
+  → `docs/research/`; `head -n1 docs/research/*.md` lists each note's
+  question. Domain terms → `GLOSSARY.md`; decisions → `docs/adr/`
   (`docs/agents/domain.md`). Read `LEARNINGS.md` at session start.
 - Tests while building → `pnpm test:affected`; after merging branches,
   `pnpm test:affected --since origin/main`. The commit gate runs

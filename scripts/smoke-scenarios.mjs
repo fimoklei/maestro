@@ -33,14 +33,21 @@ const AT_V2 = ["code-review", "commit-message", "test-plan"];
 // Each scenario is one consuming repository. `atV1` runs while v1.1.0 is the
 // latest release, `atV2` once v2.0.0 is published.
 const SCENARIOS = [
-  { name: "empty", expect: { status: "Empty" } },
+  {
+    name: "empty",
+    summary: "A registered repo with nothing deployed.",
+    expect: { status: "Empty" },
+  },
   {
     name: "in-sync",
+    summary: "Every skill deployed at v2.0.0, the latest release.",
     atV2: (s, repo) => s.deploy(repo, AT_V2),
     expect: { status: "In sync" },
   },
   {
     name: "behind",
+    summary:
+      "Deployed at v1.1.0 while v2.0.0 is out: one skill changed, one gone, one new.",
     atV1: (s, repo) => s.deploy(repo, AT_V1),
     expect: {
       status: "Behind",
@@ -59,6 +66,7 @@ const SCENARIOS = [
   },
   {
     name: "mixed-releases",
+    summary: "An Update to v2.0.0 that stopped after one tool's copies moved.",
     atV1: (s, repo) => s.deploy(repo, AT_V1),
     // A deployed folder apm cannot write stops the Update after the other
     // tool's copies moved.
@@ -70,6 +78,7 @@ const SCENARIOS = [
   },
   {
     name: "local-edits",
+    summary: "Deployed at v2.0.0, then code-review edited by hand.",
     atV2: async (s, repo) => {
       await s.deploy(repo, AT_V2);
       editByHand(repo, "code-review");
@@ -81,6 +90,8 @@ const SCENARIOS = [
   },
   {
     name: "deploy-again",
+    summary:
+      "Only code-review deployed and edited, so deploying commit-message offers Deploy again.",
     // A deploy that adds commit-message meets the edited code-review copy, so
     // the bulk deploy Report offers Deploy commit-message again.
     atV2: async (s, repo) => {
@@ -94,6 +105,8 @@ const SCENARIOS = [
   },
   {
     name: "unverified",
+    summary:
+      "In sync, but commit-message has no recorded hashes to check its copies against.",
     atV2: async (s, repo) => {
       await s.deploy(repo, AT_V2);
       forgetRecordedHashes(join(repo, "apm.lock.yaml"), "commit-message");
@@ -102,6 +115,8 @@ const SCENARIOS = [
   },
   {
     name: "pinned-per-skill",
+    summary:
+      "Each skill installed by apm as its own dependency, at different releases.",
     // The cockpit no longer deploys one dependency per skill, so apm does it.
     atV1: (s, repo) => {
       s.installSkillDependency(repo, "code-review", V1_0);
@@ -111,6 +126,7 @@ const SCENARIOS = [
   },
   {
     name: "unfinished-operation",
+    summary: "A deploy that stopped halfway, so its record stays.",
     atV2: async (s, repo) => {
       await s.deploy(repo, ["code-review"]);
       await s.whileUnwritable(join(repo, ".agents/skills"), () =>
@@ -121,6 +137,8 @@ const SCENARIOS = [
   },
   {
     name: "import-edits",
+    summary:
+      "Two skills edited by hand on a v1.1.0 deploy; only code-review changed in v2.0.0.",
     // Both edited on a v1.1.0 deploy; only code-review moved in v2.0.0. Also
     // behind, so Update target shows its consent rows.
     atV1: (s, repo) => s.deploy(repo, AT_V1),
@@ -138,6 +156,7 @@ const SCENARIOS = [
   },
   {
     name: "unreadable",
+    summary: "An apm.lock.yaml that does not parse.",
     atV2: (_s, repo) =>
       writeFileSync(join(repo, "apm.lock.yaml"), "dependencies: [\n"),
     expect: { status: "Deploy-state not read." },
@@ -158,11 +177,21 @@ const OFFLINE_SCENARIO = "harness-offline";
 // Port 1 refuses every connection, so git reports "Failed to connect".
 const UNREACHABLE_ORIGIN = "http://127.0.0.1:1/";
 
-export const SCENARIO_NAMES = [
-  ...SCENARIOS.map((scenario) => scenario.name),
-  HARNESS_SCENARIO,
-  OFFLINE_SCENARIO,
+/** Every scenario `--scenario` seeds, with one line saying what it seeds. */
+export const SCENARIO_CATALOG = [
+  ...SCENARIOS.map(({ name, summary }) => ({ name, summary })),
+  {
+    name: HARNESS_SCENARIO,
+    summary:
+      "The Harness itself: one restorable deletion and one unreleased edit.",
+  },
+  {
+    name: OFFLINE_SCENARIO,
+    summary: "The Harness remote stops answering until the next `pnpm smoke`.",
+  },
 ];
+
+export const SCENARIO_NAMES = SCENARIO_CATALOG.map(({ name }) => name);
 
 function editByHand(repo, skill) {
   appendFileSync(
@@ -189,6 +218,19 @@ export function parseScenarioArg(argv) {
       );
   }
   return [...new Set(names)];
+}
+
+/** The fixture release `--release` asks for, or null when it is absent. */
+export function parseReleaseArg(argv) {
+  const at = argv.indexOf("--release");
+  if (at === -1) return null;
+  const value = argv[at + 1];
+  const valid = FIXTURE_RELEASES.join(", ");
+  if (value === undefined || value.startsWith("--"))
+    throw new Error(`--release names a fixture release: ${valid}`);
+  if (!FIXTURE_RELEASES.includes(value))
+    throw new Error(`unknown fixture release "${value}"; valid: ${valid}`);
+  return value;
 }
 
 const NOTICE = {
@@ -729,4 +771,27 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
     if (mismatch !== null) problems.push(mismatch);
   }
   return { repos: seeded, problems };
+}
+
+/**
+ * Moves the seeded fixture Harness to `release`, forward or back, and checks
+ * that the cockpit's fetch mirrors exactly the releases up to it.
+ */
+export async function publishRelease({ api, sandboxDir, release }) {
+  const paths = scenarioPaths(realpathSync(sandboxDir));
+  if (!existsSync(paths.work) || !existsSync(paths.clone))
+    throw new Error(
+      "no fixture Harness to move yet: seed one first with `pnpm smoke:ready --scenario <name>`",
+    );
+  const commits = Object.fromEntries(
+    releasesUpTo(release).map((tag) => [
+      tag,
+      execFileSync("git", ["-C", paths.work, "rev-parse", `${tag}^{commit}`], {
+        encoding: "utf8",
+      }).trim(),
+    ]),
+  );
+  publishFixtureRelease({ workDir: paths.work, bareDir: paths.bare, release });
+  await refreshAndCheckMirror(api, paths, commits, release);
+  return paths.clone;
 }

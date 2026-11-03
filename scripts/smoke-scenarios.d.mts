@@ -1,8 +1,12 @@
 import type { HarnessStageRow } from "@maestro/core";
 
+export const SCENARIO_CATALOG: { name: string; summary: string }[];
+
 export const SCENARIO_NAMES: string[];
 
 export function parseScenarioArg(argv: readonly string[]): string[] | null;
+
+export function parseReleaseArg(argv: readonly string[]): string | null;
 
 export interface CockpitRead {
   deployState: {

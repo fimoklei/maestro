@@ -8,7 +8,13 @@ import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
 import { pidsOnPort } from "./port-holders.mjs";
 import { MARKER_FILE, processStartOf, seededPaths } from "./seed-sandbox.mjs";
-import { parseScenarioArg, seedScenarios } from "./smoke-scenarios.mjs";
+import {
+  parseReleaseArg,
+  parseScenarioArg,
+  publishRelease,
+  SCENARIO_CATALOG,
+  seedScenarios,
+} from "./smoke-scenarios.mjs";
 import { checkTableFit } from "./table-fit.mjs";
 
 const PORTS = cockpitPorts();
@@ -296,10 +302,17 @@ const scenarioApi = {
 async function main() {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
   if (process.argv.includes("--check")) return check(repoRoot);
+  if (process.argv.includes("--list")) return listScenarios();
 
   let scenarios;
+  let release;
   try {
     scenarios = parseScenarioArg(process.argv.slice(2));
+    release = parseReleaseArg(process.argv.slice(2));
+    if (scenarios !== null && release !== null)
+      throw new Error(
+        "pass --scenario or --release, not both: seed first, then move the release",
+      );
   } catch (refusal) {
     console.error(`[smoke:ready] ${refusal.message}`);
     process.exit(1);
@@ -330,6 +343,7 @@ async function main() {
   requireOwnership(repoRoot, "smoke:ready", "refusing to seed");
 
   if (scenarios !== null) return await seedNamedScenarios(repoRoot, scenarios);
+  if (release !== null) return await moveRelease(repoRoot, release);
 
   if (!existsSync(inventoryPath)) {
     console.error(
@@ -376,6 +390,29 @@ async function seedNamedScenarios(repoRoot, names) {
   console.log(
     `[smoke:ready] ${names.join(", ")} seeded and checked in ${Math.round((Date.now() - startedAt) / 100) / 10}s:\n` +
       seeded.repos.map((repo) => `  ${repo}`).join("\n"),
+  );
+}
+
+function listScenarios() {
+  const width = Math.max(...SCENARIO_CATALOG.map(({ name }) => name.length));
+  for (const { name, summary } of SCENARIO_CATALOG)
+    console.log(`${name.padEnd(width)}  ${summary}`);
+}
+
+async function moveRelease(repoRoot, release) {
+  let clone;
+  try {
+    clone = await publishRelease({
+      api: scenarioApi,
+      sandboxDir: join(repoRoot, ".maestro-sandbox"),
+      release,
+    });
+  } catch (failure) {
+    console.error(`[smoke:release] ${failure.message}`);
+    process.exit(1);
+  }
+  console.log(
+    `[smoke:release] the fixture Harness's latest release is now ${release}, fetched and checked; its clone at ${clone} is untouched.`,
   );
 }
 

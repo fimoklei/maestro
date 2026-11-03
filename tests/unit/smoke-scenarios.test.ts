@@ -5,9 +5,11 @@ import {
   type HarnessReadRow,
   harnessMismatch,
   harnessOfflineMismatch,
+  parseReleaseArg,
   parseScenarioArg,
   readCockpit,
   releaseMirrorProblem,
+  SCENARIO_CATALOG,
   SCENARIO_NAMES,
   scenarioMismatch,
   unprefixedHashes,
@@ -64,6 +66,38 @@ describe("parseScenarioArg", () => {
 
   it("refuses the flag without a value", () => {
     expect(() => parseScenarioArg(["--scenario"])).toThrow(/names a scenario/);
+  });
+});
+
+describe("SCENARIO_CATALOG", () => {
+  it("gives every scenario one line saying what it seeds", () => {
+    expect(SCENARIO_CATALOG.map(({ name }) => name)).toEqual(SCENARIO_NAMES);
+    for (const { name, summary } of SCENARIO_CATALOG) {
+      expect(summary, name).toMatch(/^\S.*\S$/);
+      expect(summary, name).not.toContain("\n");
+    }
+  });
+});
+
+describe("parseReleaseArg", () => {
+  it("returns null when no release is asked for", () => {
+    expect(parseReleaseArg(["--scenario", "behind"])).toBeNull();
+  });
+
+  it("reads the fixture release to publish", () => {
+    expect(parseReleaseArg(["--release", "v1.1.0"])).toBe("v1.1.0");
+  });
+
+  it("refuses an unknown release and lists the valid ones", () => {
+    expect(() => parseReleaseArg(["--release", "v3.0.0"])).toThrow(
+      /unknown fixture release "v3.0.0"; valid: v1.0.0, v1.1.0, v2.0.0/,
+    );
+  });
+
+  it("refuses the flag without a value", () => {
+    expect(() => parseReleaseArg(["--release"])).toThrow(
+      /--release names a fixture release: v1.0.0, v1.1.0, v2.0.0/,
+    );
   });
 });
 
