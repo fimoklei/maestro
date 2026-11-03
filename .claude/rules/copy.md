@@ -51,7 +51,9 @@ meaning stays with review.
 - Write in the simple present, past or future, in the active voice.
 - Use one-word verbs: `replaces`, `restores`, `changes`.
 - Write a warning as a command plus its reason.
-- Keep a sentence to 12 words; 20 is the ceiling.
+- Keep a sentence under 20 words. Join a cause to its outcome in one sentence,
+  with `because` or `so`.
+- Write each sentence as idiomatic English that an app would print.
 
 ## Patterns
 
@@ -62,8 +64,11 @@ meaning stays with review.
 - The Change column states what a change does; the Status states only where it
   stands.
 - Before writing a sentence, grep `packages/web/src` for a shipped sentence with
-  the same meaning and reuse it word for word. Otherwise grep for the control or
-  status it names and reuse the form you find.
+  the same meaning. Reuse it word for word when it passes this file; when it
+  fails, write a new one and file a tracker issue for the shipped one.
+  Otherwise grep for the control or status it names and reuse the form you find.
+- Before writing a sentence, trace each fact it states (what happened, what
+  changed, what stays) to the code line that makes it true.
 - Approved sentences live in the copy module's sibling test as exact strings.
   Add a new sentence there; change an existing one there.
 - Render changed copy in the cockpit. Read it at a narrow width and at 200% zoom
@@ -114,6 +119,11 @@ Tooltip cause: a shipped sentence already says it
 Tooltip cause: words beyond the cause
   Weak           Choose a target to deploy to.
   Outcome-first  Choose a target.
+
+Detail sentence: clipped fragments instead of one joined sentence
+  Weak           code-review waits too. One deploy writes every Global skill at once.
+  Outcome-first  Global skills deploy together, so local edits to commit-message
+                 also prevented code-review from being deployed.
 ```
 
 ## Forms
