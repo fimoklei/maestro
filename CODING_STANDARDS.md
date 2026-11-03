@@ -4,7 +4,7 @@ The entrypoint for writing and reviewing code. The standards live in
 `.claude/rules/`.
 
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
-- **UI work is done after a browser check** (`design.md` → `Verify before "done"`).
+- **UI work is done after a browser check** (`verify-ui.md`).
 
 ## Rule files by task
 
@@ -20,7 +20,7 @@ Read tool, not the shell, before starting it.
 - Writing or trimming a code comment → `comments.md`
 - Starting a process, using a path from input, parsing an external file or adding an HTTP endpoint → `security.md`
 - React component or client-side data access → `frontend.md`
-- Changing what `packages/web` renders → `design.md`
+- Changing what `packages/web` renders → `design.md`; before calling it done, `verify-ui.md`
 - Driving `apm` or parsing its lockfile/output → `apm-driver.md`
 - Driving `gh` or parsing its output → `gh-driver.md`
 - Driving `git`, or building a git test remote → `git-driver.md`
@@ -29,7 +29,7 @@ Read tool, not the shell, before starting it.
 **Reviewing a diff:** review against every rule file whose `paths:` matches a
 changed file, and every rule file without `paths:`. Cite the file and the rule.
 A commit that changes what `packages/web` renders and lists no browser check in
-its body is a finding (`design.md` → Verify).
+its body is a finding (`verify-ui.md`).
 
 **Reviewing a rule change:** when a diff changes `.claude/rules/**`, `AGENTS.md`
 or this file, read every other rule file. A new rule that contradicts one, and

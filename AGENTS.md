@@ -25,9 +25,10 @@ above it (ADR-0001).
 
 ## Where to look
 
-- Designing a screen, dialog or use case, or running the cockpit →
-  `.claude/rules/design.md`. Drafting user-facing copy, in code, a spec, a
-  ticket or a grill option → `.claude/rules/copy.md`; complete its copy review.
+- Designing a screen, dialog or use case → read `.claude/rules/design.md`
+  whole. Running the cockpit → `.claude/rules/verify-ui.md`. Drafting
+  user-facing copy, in code, a spec, a ticket or a grill option →
+  `.claude/rules/copy.md`; complete its copy review.
 - Where code lives → `docs/agents/codebase-map.md`. Before measuring anything
   → `docs/research/`; `head -n1 docs/research/*.md` lists each note's
   question. Domain terms → `GLOSSARY.md`; decisions → `docs/adr/`
@@ -42,5 +43,5 @@ above it (ADR-0001).
   `docs/agents/worktree-brief.md`.
 - Committing → `workflow-commit`. Shipping → `workflow-ship`. Publishing an
   issue (job, spec or ticket) → `docs/agents/issue-tracker.md`.
-- Browser: the cockpit → `agent-browser` (`.claude/rules/design.md` → Verify);
+- Browser: the cockpit → `agent-browser` (`.claude/rules/verify-ui.md`);
   a live third-party site → the Chrome tools (the operator's logged-in profile).
