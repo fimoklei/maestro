@@ -61,6 +61,14 @@ Run from the repo root.
 - Never test a trivial function (one-liner, simple mapping, string concatenation) whose test only restates the code.
 - Never test that a route delegates to `core`. Test the behaviour in `core`.
 
+## Web test helpers
+
+From `packages/web/src/test-utils.tsx`:
+
+- Focus a grid or row by keyboard with `focusByKeyboard`.
+- Assert an accessible description with `expectDescription`.
+- Query a sentence that holds a name with `sentence("…")`, never `getByText` or a negative `queryByText` of the whole sentence.
+
 ## Mocking
 
 - Start a new test in the core composition (`composeUseCases`) over the in-memory adapters (`*.fake.ts` in `packages/core`, `tests/helpers/in-memory-app.ts`, `tests/helpers/deploy-world.ts`). Use the real disk or git only through `tests/helpers/node-app.ts`. Fake outside-world ports only, never a Maestro use case.

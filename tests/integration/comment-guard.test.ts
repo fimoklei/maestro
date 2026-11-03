@@ -165,6 +165,8 @@ describe("comment guard", () => {
     expect(run()).toMatchObject({
       status: 1,
       stdout: "scripts/e.mjs:2: LEARNINGS\n",
+      stderr:
+        "comment-guard: 1 offending lines. Code and ADRs may not name a story ID or the operator's home, and code may not cite an ADR; a code comment and any ADR line may not name a workshop document (docs/research, LEARNINGS, apm-behavior, .claude/, docs/jobs.md, design-principles).\n",
     });
   });
 });

@@ -21,7 +21,7 @@ Owning it at start does not settle it. → Run `pnpm smoke:check` before each sc
 
 ## Wrong session: leaked browser state
 
-`localStorage` is scoped to the origin, so a worktree keeps its own — but a value left by an earlier run of *this* worktree survives a restart and reads as a product bug. → Clear it before trusting: `agent-browser eval "localStorage.clear(); location.reload()"`.
+`localStorage` is scoped to the origin, so a worktree keeps its own — but a value left by an earlier run of *this* worktree survives a restart and reads as a product bug. → Clear it before trusting: `agent-browser --session <name> storage local clear`, then `agent-browser --session <name> reload`.
 
 The default `agent-browser` session is shared by every worktree; another session can move its tab. → Drive this worktree's own session, `agent-browser --session maestro-<worktree folder>`. `pnpm cockpit:snapshot "<selector>" [path]` reads that session as trimmed text and prints its name and URL.
 
