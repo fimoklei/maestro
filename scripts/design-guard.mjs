@@ -14,7 +14,7 @@ const TOAST =
 const CHECKBOX =
   "raw checkbox outside ui: list checkable rows with GroupedList (ui/grouped-list)";
 const COLOUR =
-  "colour class outside ui: pass a status family to STATUS_TOKENS (ui/status-family); a focus ring is FOCUS_RING (ui/focus-ring)";
+  "colour class outside ui: pass a status family to STATUS_TOKENS (ui/status-family); a focus ring is FOCUS_RING (ui/focus-ring); a selected or open row is CURRENT_ROW (ui/current-row)";
 const ICON =
   "icon styled by hand: use Icon (ui/icon) for the standard size and stroke";
 const GLYPH =

@@ -360,7 +360,7 @@ async function main() {
       repoPath,
     });
     console.log(
-      `[smoke:ready] cockpit ready in ${Math.round((Date.now() - startedAt) / 100) / 10}s ` +
+      `[smoke:ready] cockpit ready at ${WEB_ORIGIN} in ${Math.round((Date.now() - startedAt) / 100) / 10}s ` +
         `(waited ${Math.round(waitedMs / 100) / 10}s) — ` +
         `${primitiveCount} primitives, ${repoCount} repo registered.`,
     );
@@ -388,7 +388,7 @@ async function seedNamedScenarios(repoRoot, names) {
     console.error(`[smoke:ready] ${problem}`);
   if (seeded.problems.length > 0) process.exit(1);
   console.log(
-    `[smoke:ready] ${names.join(", ")} seeded and checked in ${Math.round((Date.now() - startedAt) / 100) / 10}s:\n` +
+    `[smoke:ready] ${names.join(", ")} seeded and checked in ${Math.round((Date.now() - startedAt) / 100) / 10}s; cockpit at ${WEB_ORIGIN}:\n` +
       seeded.repos.map((repo) => `  ${repo}`).join("\n"),
   );
 }

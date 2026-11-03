@@ -60,11 +60,11 @@ describe("design guard", () => {
     ],
     [
       '<p className="mt-inline text-amber-12">Behind</p>',
-      "colour class outside ui: pass a status family to STATUS_TOKENS (ui/status-family); a focus ring is FOCUS_RING (ui/focus-ring)",
+      "colour class outside ui: pass a status family to STATUS_TOKENS (ui/status-family); a focus ring is FOCUS_RING (ui/focus-ring); a selected or open row is CURRENT_ROW (ui/current-row)",
     ],
     [
       '<a className={cn("rounded", "focus-visible:outline-blue-9")}>x</a>',
-      "colour class outside ui: pass a status family to STATUS_TOKENS (ui/status-family); a focus ring is FOCUS_RING (ui/focus-ring)",
+      "colour class outside ui: pass a status family to STATUS_TOKENS (ui/status-family); a focus ring is FOCUS_RING (ui/focus-ring); a selected or open row is CURRENT_ROW (ui/current-row)",
     ],
     [
       "<X strokeWidth={1.5} />",

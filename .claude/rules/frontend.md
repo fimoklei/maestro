@@ -44,6 +44,9 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui**. The layer boundary live
 - Add `useMemo`, `useCallback` or `memo` only for a measured cost, or for a
   reference that a dependency array or a memoized child needs.
 - Co-locate a component's pure helpers and its sibling unit test.
+- A new dialog, table screen, named sentence or server code can fail a
+  contract test you did not touch: `docs/agents/codebase-map.md` → Contract
+  tests.
 
 ## Styling & components
 

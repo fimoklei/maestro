@@ -262,14 +262,17 @@ Mandatory for any change that alters what `packages/web` renders:
 1. Start `pnpm smoke` in the background: this worktree's own ports, sandbox
    config, connect gate.
    - A first-run screen → stop here.
-   - A connected screen → `pnpm smoke:ready`; a deploy or Harness state →
-     `--scenario <name>[,<name>]` (each scenario and what it seeds:
-     `pnpm smoke:ready --list`). Every scenario's Harness holds three
+   - A connected screen → `pnpm smoke:ready`; a deploy, Harness, Prompts or
+     category state → `--scenario <name>[,<name>]` (each scenario and what it
+     seeds: `pnpm smoke:ready --list`). Every scenario's Harness holds three
      released prompts, one with an Example and one in a category.
+   - `smoke:ready` waits up to 60 s for the cockpit and prints its URL: run it
+     straight after `pnpm smoke`, with no wait loop.
    - A newer or older release after seeding → `pnpm smoke:release <tag>`
      (`v1.0.0`, `v1.1.0`, `v2.0.0`).
 2. Screenshot the changed UI with `agent-browser --session maestro-<worktree folder>`,
-   in each theme. Read a region as text with
+   in each theme. Repeat it through a function, `ab(){ agent-browser --session
+   maestro-<worktree folder> "$@"; }`, never a variable. Read a region as text with
    `pnpm cockpit:snapshot "<selector>" [path]`, never a bare `agent-browser snapshot`.
 3. Screenshot every state the change touches (loading, empty, failure,
    disabled, selected, the longest realistic name) in the changed component's

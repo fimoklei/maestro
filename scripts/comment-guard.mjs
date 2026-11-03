@@ -133,7 +133,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const offenders = findOffenders(root);
   for (const offender of offenders) console.log(offender);
   if (offenders.length > 0) {
-    console.error(`comment-guard: ${offenders.length} offending lines`);
+    console.error(
+      `comment-guard: ${offenders.length} offending lines. Code and ADRs may not name a story ID or the operator's home, and code may not cite an ADR; a code comment and any ADR line may not name a workshop document (docs/research, LEARNINGS, apm-behavior, .claude/, docs/jobs.md, design-principles).`,
+    );
     process.exitCode = 1;
   }
 }

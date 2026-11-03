@@ -33,10 +33,13 @@ above it (ADR-0001).
   question. Domain terms → `GLOSSARY.md`; decisions → `docs/adr/`
   (`docs/agents/domain.md`). Read `LEARNINGS.md` at session start.
 - Tests while building → `pnpm test:affected`; after merging branches,
-  `pnpm test:affected --since origin/main`. The commit gate runs
+  `pnpm test:affected --since origin/main`. Lint fails on formatting →
+  `pnpm format`. The commit gate runs
   typecheck, lint and the affected tests. CI runs the full suite on the pull
   request, so skip `pnpm test` locally unless asked. A sub-agent brief repeats this line instead of naming its
   own test commands.
+- Briefing a sub-agent that works in its own worktree → paste the block in
+  `docs/agents/worktree-brief.md`.
 - Committing → `workflow-commit`. Shipping → `workflow-ship`. Publishing an
   issue (job, spec or ticket) → `docs/agents/issue-tracker.md`.
 - Browser: the cockpit → `agent-browser` (`.claude/rules/design.md` → Verify);
