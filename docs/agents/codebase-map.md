@@ -6,6 +6,11 @@ Where to look first. Layer rules and package shape: `.claude/rules/architecture.
   (deploy, drift, registry…). `tests/` holds the unit, integration and git-lane tests, fixtures and helpers.
 - **Product docs**: `docs/brief.md` holds the thesis and the bet; `docs/research/`
   files are named by the issue that asked.
+- **Harness repositories on GitHub**: `fimoklei/harness` is the operator's
+  private, live Harness. `fimoklei/agent-harness` is a test source only: the
+  root-package canary installs its `v0.6.0`, and plain `pnpm smoke` seeds its
+  inventory from a local clone. Its skills sit in `skills/` before `v0.6.0`
+  and in `.apm/skills/` from `v0.6.0`.
 - **Adapter wiring** (which real class backs a port): `realDeps()` in
   `packages/server/src/app.ts`. Routes: `packages/server/src/routes/<feature>-routes.ts`.
 - **Harness git**: the port in `packages/core/src/harness/read-harness-state.ts`,

@@ -23,7 +23,8 @@ Two grades of evidence back these claims, and they re-verify differently:
 
 What Maestro *decided* about any of this lives in ADRs (0001, 0003, 0011,
 0013, 0014), not here. The imperatives an agent must follow when driving apm
-live in `.claude/rules/apm-driver.md`.
+live in `.claude/rules/apm-driver.md`. Which Harness repository to measure
+against: `docs/agents/codebase-map.md`.
 
 ## Deploy — `apm install`
 

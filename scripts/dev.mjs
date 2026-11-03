@@ -196,6 +196,9 @@ if (smoke) {
     );
   env.COREPACK_ENABLE_DOWNLOAD_PROMPT = "0";
 
+  // Smoke screenshots are evidence; the feedback toolbar would sit in them.
+  env.VITE_AGENTATION = "0";
+
   // Dev tooling only: the product never bridges credentials to apm. gh's token
   // survives the HOME redirect; seedSandbox writes it for git.
   const UNAUTHENTICATED =
