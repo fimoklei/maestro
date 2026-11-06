@@ -333,17 +333,13 @@ describe("Deploy-state — Update target on the global target", () => {
       within(pane).getByRole("button", { name: /^Update target/ }),
     );
     const dialog = await screen.findByRole("dialog", { name: "Update Global" });
-    const writesTo = await within(dialog).findByRole("list", {
+    const writesTo = await within(dialog).findByRole("group", {
       name: "Writes to",
     });
-    expect(
-      within(writesTo)
-        .getAllByRole("listitem")
-        .map((item) => item.textContent),
-    ).toStrictEqual([
-      "~/.claude/skills",
-      "~/.agents/skills · Codex not detected · not written",
-    ]);
+    const [claude, codex] = within(writesTo).getAllByRole("listitem");
+    expect(claude).toHaveTextContent(/^~\/\.claude\/skills$/);
+    expect(codex).toHaveTextContent("~/.agents/skills");
+    expect(codex).toHaveTextContent("Codex not detected · not written");
   });
 
   it("shows an incomplete update's outcome and Retry update in the dialog", async () => {

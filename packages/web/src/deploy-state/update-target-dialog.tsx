@@ -18,7 +18,6 @@ import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import { reading } from "../ui/status-reading";
-import { WRITES_TO } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import { updateOutcomeReport } from "./update-outcome-report";
 import {
@@ -47,7 +46,9 @@ import {
   unverifiedSentence,
   updateDialogTitle,
 } from "./update-target-copy";
-import { type WritesToFolder, WritesToList } from "./writes-to-list";
+import { writesToGroup } from "./writes-to-group";
+
+type WritesToFolder = Parameters<typeof writesToGroup>[0][number];
 
 // The same grain the guard reads at, so one checkbox never stands for two copies (#952).
 const consentKey = (row: CopyConsentRow) => `${row.name}:${row.tool ?? ""}`;
@@ -360,9 +361,13 @@ export function UpdateTargetDialog({
               </Section>
             ) : null}
             {folders === null ? null : (
-              <Section heading={WRITES_TO}>
-                <WritesToList folders={folders} />
-              </Section>
+              <div className="py-cell">
+                <GroupedList
+                  groups={[writesToGroup(folders)]}
+                  checklist={null}
+                  live={null}
+                />
+              </div>
             )}
             {preview.addedByThisDeploy.length > 0 ? (
               <Section heading={ADDED_BY_THIS_DEPLOY}>

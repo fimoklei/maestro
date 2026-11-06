@@ -100,12 +100,13 @@ describe("UpdateTargetDialog on Global", () => {
     ).toBeInTheDocument();
   });
 
+  const writesTo = () => screen.getByRole("group", { name: "Writes to" });
+
   it("lists every folder Global writes under Writes to", () => {
     showGlobal();
 
-    const writesTo = screen.getByRole("list", { name: "Writes to" });
     expect(
-      within(writesTo)
+      within(writesTo())
         .getAllByRole("listitem")
         .map((item) => item.textContent),
     ).toStrictEqual(["~/.claude/skills", "~/.agents/skills"]);
@@ -114,15 +115,18 @@ describe("UpdateTargetDialog on Global", () => {
   it("mutes a folder Global does not write and names its undetected tool", () => {
     showGlobal({}, [CLAUDE_FOLDER, { ...CODEX_FOLDER, detected: false }]);
 
-    const items = within(
-      screen.getByRole("list", { name: "Writes to" }),
-    ).getAllByRole("listitem");
-    expect(items.map((item) => item.textContent)).toStrictEqual([
-      "~/.claude/skills",
-      "~/.agents/skills · Codex not detected · not written",
-    ]);
-    expect(items[1]).toHaveClass("text-gray-11");
-    expect(items[0]).not.toHaveClass("text-gray-11");
+    const [claude, codex] = within(writesTo()).getAllByRole("listitem");
+    expect(
+      within(codex as HTMLElement).getByText("~/.agents/skills").parentElement,
+    ).toHaveClass("text-gray-11");
+    expect(
+      within(codex as HTMLElement).getByText(
+        "Codex not detected · not written",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(claude as HTMLElement).getByText("~/.claude/skills").parentElement,
+    ).not.toHaveClass("text-gray-11");
   });
 
   it("shows one release line, one summary and one skill list", () => {
@@ -146,11 +150,16 @@ describe("UpdateTargetDialog on Global", () => {
       copyReceipt: "b".repeat(64),
     });
 
+    const localEdits = screen.getByRole("heading", { name: "Local edits" });
+    const changed = screen.getByRole("heading", { name: "Changed" });
+    const follows = (a: Node, b: Node) =>
+      (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    expect(follows(localEdits, writesTo())).toBe(true);
+    expect(follows(writesTo(), changed)).toBe(true);
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
     ).toStrictEqual([
       "Local edits",
-      "Writes to",
       "Changed",
       "Removed by this release",
       "Unchanged (3)",
@@ -185,8 +194,8 @@ describe("UpdateTargetDialog on a repository", () => {
   it("lists no Writes to", () => {
     show();
 
-    expect(screen.queryByRole("list", { name: "Writes to" })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Writes to" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Writes to" })).toBeNull();
+    expect(screen.queryByText("Writes to")).toBeNull();
   });
 });
 
