@@ -262,11 +262,20 @@ describe("a bulk run's deploy notice", () => {
 });
 
 describe("a bulk run's row held by other skills' copies", () => {
-  type Holder = { name: string; verdict: "local-edits" | "unverified" };
-  const edited = (name: string): Holder => ({ name, verdict: "local-edits" });
+  type Holder = {
+    name: string;
+    verdict: "local-edits" | "unverified";
+    folders: string[];
+  };
+  const edited = (name: string): Holder => ({
+    name,
+    verdict: "local-edits",
+    folders: [],
+  });
   const unverified = (name: string): Holder => ({
     name,
     verdict: "unverified",
+    folders: [],
   });
   const held = (
     blockingCopies: Holder[],

@@ -39,6 +39,21 @@ function detail(skill: SkillOutcome): Detail | null {
   }
 }
 
+/** A folder a deploy held by local edits wrote nothing to. */
+export function heldLine(
+  folder: Pick<FolderOutcome, "tool"> & { detected: boolean },
+  held: number,
+): WrittenToLine {
+  return {
+    tone: "neutral",
+    fact: folder.detected
+      ? `0 of ${skills(held)} deployed`
+      : notWrittenNote(toolDisplayName(folder.tool)),
+    details: [],
+    step: null,
+  };
+}
+
 /** `retry`: Retry deploy is in the footer, so a deviating folder names it. */
 export function writtenToLine(
   folder: FolderOutcome,

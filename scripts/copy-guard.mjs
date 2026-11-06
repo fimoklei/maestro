@@ -62,8 +62,6 @@ const RETIRED = [
   /\bClose this dialog\b/i,
   // A target that loses no work has no local edits (#1436).
   /\bclean cop(?:y|ies)\b/i,
-  // The Deploy-state row has no bare Deploy again; the bulk Report's is `Deploy {name} again` (#1468).
-  /\bDeploy again\b/,
   // One action has one name: Global's update is Update target too (#1772).
   /\bUpdate targets\b/,
   // Global is one target: its removal names no tool (#1803).

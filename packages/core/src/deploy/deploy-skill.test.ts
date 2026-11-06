@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  type BulkDeployReport,
   type DeployedContentPort,
   type DeployedContentState,
   DeploySkill,
@@ -1387,7 +1388,7 @@ describe("DeploySkill.executeBatch", () => {
       error: "deployed-diverged-from-lock",
       forceable: true,
       copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
-      blockingCopies: [{ name: "review", verdict: "local-edits" }],
+      blockingCopies: [{ name: "review", verdict: "local-edits", folders: [] }],
     });
     expect(report.failed).toEqual([]);
     expect(deployed.map((call) => call.skills)).toEqual([["tdd"]]);
@@ -1522,7 +1523,7 @@ describe("DeploySkill.executeBatch", () => {
     expect(report.attention).toEqual([
       expect.objectContaining({
         name: "tdd",
-        blockingCopies: [{ name: "docs", verdict: "local-edits" }],
+        blockingCopies: [{ name: "docs", verdict: "local-edits", folders: [] }],
       }),
     ]);
   });
@@ -1547,9 +1548,9 @@ describe("DeploySkill.executeBatch", () => {
       expect.objectContaining({
         name: "tdd",
         blockingCopies: [
-          { name: "review", verdict: "unverified" },
-          { name: "docs", verdict: "local-edits" },
-          { name: "tdd", verdict: "local-edits" },
+          { name: "review", verdict: "unverified", folders: [] },
+          { name: "docs", verdict: "local-edits", folders: [] },
+          { name: "tdd", verdict: "local-edits", folders: [] },
         ],
       }),
     ]);
@@ -1582,7 +1583,7 @@ describe("DeploySkill.executeBatch", () => {
     expect(report.attention).toEqual([
       expect.objectContaining({
         name: "tdd",
-        blockingCopies: [{ name: "docs", verdict: "local-edits" }],
+        blockingCopies: [{ name: "docs", verdict: "local-edits", folders: [] }],
       }),
     ]);
   });
@@ -1877,5 +1878,153 @@ describe("DeploySkill.executeBatch", () => {
       { name: "tdd", error: "manifest-not-recognised", forceable: false },
     ]);
     expect(report.failed).toEqual([]);
+  });
+});
+
+describe("DeploySkill.deployAgain", () => {
+  const skills = (...names: string[]) => ({
+    read: async () => ({
+      ok: true as const,
+      primitives: names.map((name) => ({
+        type: "skill" as const,
+        name,
+        description: name,
+        path: `.apm/skills/${name}`,
+        pendingRelease: null,
+      })),
+      unreadTypes: [],
+    }),
+  });
+
+  // commit-message is on Global with local edits in the Claude Code folder.
+  const heldOnGlobal = () => {
+    const fake = deployedCopies([
+      {
+        target: globalTarget,
+        name: "commit-message",
+        state: { claude: "diverged" },
+      },
+    ]);
+    const built = buildDeps({
+      inventory: skills("code-review", "commit-message"),
+      deployedContent: fake.content,
+    });
+    built.world.seed({ release: "v0.5.1", skills: ["commit-message"] });
+    return { ...built, fake };
+  };
+
+  const heldRows = (report: BulkDeployReport) =>
+    report.attention.map((row) => ({
+      name: row.name,
+      confirmedCopyReceipt: row.copyReceipt ?? "",
+    }));
+
+  it("names the Global folder of the copy that holds every skill", async () => {
+    const { deps } = heldOnGlobal();
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["code-review", "commit-message"],
+      target: globalTarget,
+    });
+
+    expect(report.deployed).toEqual([]);
+    const blocking = [
+      {
+        name: "commit-message",
+        verdict: "local-edits",
+        folders: ["~/.claude/skills"],
+      },
+    ];
+    expect(report.attention).toEqual([
+      expect.objectContaining({
+        name: "code-review",
+        blockingCopies: blocking,
+      }),
+      expect.objectContaining({
+        name: "commit-message",
+        blockingCopies: blocking,
+      }),
+    ]);
+  });
+
+  it("deploys every held skill in one install with each held row's receipt", async () => {
+    const { deps, deployed } = heldOnGlobal();
+    const deploy = new DeploySkill(deps);
+    const held = await deploy.executeBatch({
+      names: ["code-review", "commit-message"],
+      target: globalTarget,
+    });
+
+    const report = await deploy.deployAgain({
+      target: globalTarget,
+      held: heldRows(held),
+    });
+
+    expect(report.deployed).toEqual([
+      { name: "code-review", version: "v0.5.1" },
+      { name: "commit-message", version: "v0.5.1" },
+    ]);
+    expect(report.attention).toEqual([]);
+    expect(report.outcome).toEqual({ release: "v0.5.1", folders: [] });
+    expect(deployed.map((call) => call.skills)).toEqual([
+      ["commit-message", "code-review"],
+    ]);
+  });
+
+  it("holds again when the copy changed after the receipts were minted", async () => {
+    const { deps, deployed, fake } = heldOnGlobal();
+    const deploy = new DeploySkill(deps);
+    const held = await deploy.executeBatch({
+      names: ["code-review", "commit-message"],
+      target: globalTarget,
+    });
+    fake.editFile(
+      `${fake.treeRoot(globalTarget)}/.claude/skills/commit-message/SKILL.md`,
+      "commit-message, edited twice\n",
+    );
+
+    const report = await deploy.deployAgain({
+      target: globalTarget,
+      held: heldRows(held),
+    });
+
+    expect(report.deployed).toEqual([]);
+    expect(report.attention.map((row) => row.name)).toEqual([
+      "code-review",
+      "commit-message",
+    ]);
+    expect(deployed).toEqual([]);
+  });
+
+  it("never lets one skill's receipt cover another skill's edited copy", async () => {
+    // docs is not deployed yet, but an edited copy sits in its folder.
+    const fake = deployedCopies([
+      { target: globalTarget, name: "docs", state: { claude: "diverged" } },
+    ]);
+    const { deps, deployed } = buildDeps({
+      inventory: skills("tdd", "docs"),
+      deployedContent: fake.content,
+    });
+    const deploy = new DeploySkill(deps);
+    const refused = await deploy.execute({
+      type: "skill",
+      name: "docs",
+      target: globalTarget,
+    });
+    if (refused.ok) {
+      throw new Error("expected docs to be refused");
+    }
+
+    const report = await deploy.deployAgain({
+      target: globalTarget,
+      held: [
+        { name: "tdd", confirmedCopyReceipt: refused.copyReceipt ?? "" },
+        { name: "docs", confirmedCopyReceipt: "" },
+      ],
+    });
+
+    expect(report.deployed).toEqual([{ name: "tdd", version: "v0.5.1" }]);
+    expect(report.attention.map((row) => row.name)).toEqual(["docs"]);
+    expect(deployed.map((call) => call.skills)).toEqual([["tdd"]]);
   });
 });

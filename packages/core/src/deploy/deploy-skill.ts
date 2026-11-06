@@ -6,10 +6,13 @@ import type { SelectionResult, SelectionWriter } from "./apply-selection";
 import type { SupportedTool } from "./deploy-tools";
 import type { FolderOutcomeReader, FolderOutcomes } from "./folder-outcome";
 import type { GitOrigin } from "./git-origin";
+import { type BlockingCopy, blockingCopies, heldByCopies } from "./held-copies";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
   type CopyFinding,
   type CopyVerdict,
+  copyKey,
+  copyKeys,
   LocalCopyGuard,
   linkedPathAmong,
   worstVerdict,
@@ -190,8 +193,17 @@ export type DeploySkillResult =
       blockingCopies?: BlockingCopy[];
     };
 
-// A skill whose copy the receipt covers: its force replaces every one.
-type BlockingCopy = { name: string; verdict: "local-edits" | "unverified" };
+/** A held row's Deploy again: the receipt its own refusal minted (#952). */
+export type HeldSkill = { name: string; confirmedCopyReceipt: string };
+
+// `whole` licenses the one check it was minted for; `each` licenses, per
+// skill, the copies a single deploy of that skill reads.
+type Consent = {
+  whole: string | undefined;
+  each: readonly HeldSkill[];
+};
+
+const NO_CONSENT: Consent = { whole: undefined, each: [] };
 
 type BatchDeployResult = { name: string; result: DeploySkillResult };
 
@@ -282,22 +294,46 @@ export class DeploySkill {
     const [answer] = await this.run(
       [input.name],
       input.target,
-      input.confirmedCopyReceipt,
+      { whole: input.confirmedCopyReceipt, each: [] },
       {},
     );
     return answer?.result ?? { ok: false, error: "deploy-not-started" };
   }
 
   // No consent: a bulk deploy never overwrites a copy with local edits; force
-  // stays per-item, on the single deploy (#292).
+  // stays per-item (#292).
   async executeBatch(input: {
     names: readonly string[];
     target: DeployTarget;
   }): Promise<BulkDeployReport> {
+    return this.report(input.names, input.target, NO_CONSENT);
+  }
+
+  /**
+   * A held run's Deploy again: every held skill in one install, each copy
+   * replaced only under the receipt of the refusal that read it (#952).
+   */
+  async deployAgain(input: {
+    target: DeployTarget;
+    held: readonly HeldSkill[];
+  }): Promise<BulkDeployReport> {
+    return this.report(
+      input.held.map((row) => row.name),
+      input.target,
+      { whole: undefined, each: input.held },
+    );
+  }
+
+  private async report(
+    names: readonly string[],
+    target: DeployTarget,
+    consent: Consent,
+  ): Promise<BulkDeployReport> {
+    const input = { names, target };
     let rows: BatchDeployResult[];
     const read: OutcomeSink = {};
     try {
-      rows = await this.run(input.names, input.target, undefined, read);
+      rows = await this.run(input.names, input.target, consent, read);
     } catch {
       // Only the reads before the lock can throw here: nothing was written.
       rows = input.names.map((name) => ({
@@ -350,7 +386,7 @@ export class DeploySkill {
   private async run(
     names: readonly string[],
     target: DeployTarget,
-    receipt: string | undefined,
+    consent: Consent,
     read: OutcomeSink,
   ): Promise<BatchDeployResult[]> {
     const results = new Map<string, DeploySkillResult>();
@@ -365,7 +401,7 @@ export class DeploySkill {
       for (const [name, result] of await this.locked(
         valid,
         target,
-        receipt,
+        consent,
         read,
       )) {
         results.set(name, result);
@@ -380,7 +416,7 @@ export class DeploySkill {
   private async locked(
     names: readonly string[],
     target: DeployTarget,
-    receipt: string | undefined,
+    consent: Consent,
     read: OutcomeSink,
   ): Promise<Map<string, DeploySkillResult>> {
     const every = (error: DeploySkillError) =>
@@ -403,7 +439,7 @@ export class DeploySkill {
     }
 
     const run = await this.deps.locks.run(lockKey, () =>
-      this.deploy(names, target, lockKey, receipt, read),
+      this.deploy(names, target, lockKey, consent, read),
     );
     return run.ok ? run.value : every("deploy-in-progress");
   }
@@ -414,7 +450,7 @@ export class DeploySkill {
     names: readonly string[],
     target: DeployTarget,
     lockKey: string,
-    receipt: string | undefined,
+    consent: Consent,
     read: OutcomeSink,
   ): Promise<Map<string, DeploySkillResult>> {
     const results = new Map<string, DeploySkillResult>();
@@ -558,15 +594,25 @@ export class DeploySkill {
       ) {
         check = await checkOver(candidates);
       }
-      const admitted = this.copyGuard.admits(scope, check, receipt);
+      const admitted = this.copyGuard.admits(scope, check, consent.whole);
       let isBlocking: (finding: CopyFinding) => boolean = () => false;
       let held: string[] = [];
       if (!admitted.ok) {
         isBlocking = await this.blockingFilter(target, candidates);
+        const consented = new Set<string>();
+        for (const row of consent.each) {
+          if (!candidates.includes(row.name)) continue;
+          const own = await checkOver([row.name]);
+          if (this.copyGuard.admits(scope, own, row.confirmedCopyReceipt).ok) {
+            for (const key of copyKeys(own)) consented.add(key);
+          }
+        }
         held = heldByCopies(
           candidates,
           deployed,
-          check.findings.filter(isBlocking),
+          check.findings.filter(
+            (f) => isBlocking(f) && !consented.has(copyKey(f)),
+          ),
         );
       }
       const go = candidates.filter((name) => !held.includes(name));
@@ -752,27 +798,4 @@ export class DeploySkill {
 
 function union(left: readonly string[], right: readonly string[]): string[] {
   return [...new Set([...left, ...right])];
-}
-
-// A blocked deployed copy holds every name, since the one install rewrites it;
-// only a copy the Selection does not hold yet can be left out.
-function heldByCopies(
-  candidates: readonly string[],
-  deployed: readonly string[],
-  blocking: readonly CopyFinding[],
-): string[] {
-  if (blocking.some((f) => deployed.includes(f.name))) {
-    return [...candidates];
-  }
-  return candidates.filter((name) => blocking.some((f) => f.name === name));
-}
-
-// One per skill, at its worst tool's verdict.
-function blockingCopies(blocking: readonly CopyFinding[]): BlockingCopy[] {
-  return [...new Set(blocking.map((f) => f.name))].flatMap((name) => {
-    const verdict = worstVerdict(blocking.filter((f) => f.name === name));
-    return verdict === "local-edits" || verdict === "unverified"
-      ? [{ name, verdict }]
-      : [];
-  });
 }

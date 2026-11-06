@@ -126,6 +126,20 @@ export const bulkDeployBodySchema = z.object({
   target: targetSchema,
 });
 
+// Each held row carries the receipt its own refusal minted; no batch-wide
+// consent (#952).
+export const deployAgainBodySchema = z.object({
+  target: targetSchema,
+  held: z
+    .array(
+      z.object({
+        name: z.string(),
+        confirmedCopyReceipt: z.string().regex(/^[0-9a-f]{64}$/),
+      }),
+    )
+    .min(1),
+});
+
 export const removeBodySchema = z.object({
   type: z.string(),
   name: z.string(),
@@ -414,6 +428,13 @@ export const BULK_DEPLOY_BODY: RequestShape = {
     "Nothing was deployed. Reload the page, then stage the skills again.",
   detail:
     'The request carries a non-empty names array and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+export const DEPLOY_AGAIN_BODY: RequestShape = {
+  message:
+    "Nothing was deployed. Reload the page, then stage the skills again.",
+  detail:
+    "The request carries a target and a non-empty held array of { name, confirmedCopyReceipt }.",
 };
 
 export const BULK_REMOVE_BODY: RequestShape = {

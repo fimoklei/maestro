@@ -17,6 +17,8 @@ import {
   BULK_REMOVE_BODY,
   bulkDeployBodySchema,
   bulkRemoveBodySchema,
+  DEPLOY_AGAIN_BODY,
+  deployAgainBodySchema,
   deployBodySchema,
   IMPORT_LOCAL_EDITS_BODY,
   IMPORT_LOCAL_EDITS_CHECK_BODY,
@@ -297,6 +299,17 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
 
     const report = await deps.deploy.executeBatch(body.data);
+    return c.json(report);
+  });
+
+  // A held run's Deploy again. Always 200 with a report, like the bulk deploy.
+  app.post("/api/deploy/again", async (c) => {
+    const body = await parseBody(c, deployAgainBodySchema, DEPLOY_AGAIN_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const report = await deps.deploy.deployAgain(body.data);
     return c.json(report);
   });
 
