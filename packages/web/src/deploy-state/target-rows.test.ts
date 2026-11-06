@@ -400,6 +400,51 @@ describe("local edits on a target", () => {
   });
 });
 
+describe("a Global folder left at an older release", () => {
+  const head = { ...ON_LATEST, release: "v2.0.0", latestRelease: "v2.0.0" };
+  const lagging = (
+    notUpdated: GlobalFolderState["notUpdated"],
+    edited = false,
+  ) => {
+    const [global] = globalRows(
+      globalRead(
+        [
+          claude([skill("code-review", edited ? "local-edits" : undefined)]),
+          { ...agents([skill("code-review")]), notUpdated },
+        ],
+        { releaseHead: head },
+      ),
+      syncedDrift,
+      false,
+    );
+    if (global === undefined) throw new Error("no Global row");
+    return global;
+  };
+
+  it("reads that folder and the Global row as Not updated, over Local edits", () => {
+    const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }], true);
+    expect(folderMarks(global)).toEqual([
+      ["~/.claude/skills", "⚠ Local edits"],
+      ["~/.agents/skills", "⚠ Not updated"],
+    ]);
+    expect(words(global)).toBe("⚠ Not updated");
+  });
+
+  it("names the release the copy is still at in the hover card", () => {
+    const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }]);
+    expect(readCard(statusCard(global, COMPARED)).reason).toBe(
+      "code-review in ~/.agents/skills is still at v1.0.0, but the Target release is v2.0.0.",
+    );
+  });
+
+  it("names no release in the hover card where no older tag matched", () => {
+    const global = lagging([{ name: "code-review", stillAt: null }]);
+    expect(readCard(statusCard(global, COMPARED)).reason).toBe(
+      "code-review in ~/.agents/skills is not at the Target release v2.0.0.",
+    );
+  });
+});
+
 describe("Global as one target", () => {
   it("reads one Global row whose Status is its worst folder's", () => {
     const rows = globalRows(

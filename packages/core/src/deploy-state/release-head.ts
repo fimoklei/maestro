@@ -1,7 +1,11 @@
 // How much of a target's Selection the newest release touches. Compares
 // content, never ancestry; every unknown stays null.
 import type { HarnessTag } from "../harness/read-harness-state";
-import { highestReleaseTag, RELEASE_TAG_PATTERN } from "../harness/release-tag";
+import {
+  highestReleaseTag,
+  RELEASE_TAG_PATTERN,
+  releaseTagsNewestFirst,
+} from "../harness/release-tag";
 import type { HarnessSkillTree } from "../harness/released-content";
 import type { ReleaseHead } from "./deploy-state-types";
 
@@ -94,6 +98,18 @@ export class ReleaseHeadReader {
       changedSkills,
       comparedAt,
     });
+  }
+
+  /** The Harness's release tags, newest first; null where none could be read. */
+  async releaseTags(): Promise<string[] | null> {
+    const root = await this.deps.resolveRoot().catch(() => undefined);
+    if (root === undefined) {
+      return null;
+    }
+    const tags = await this.deps.git.readTags(root).catch(() => null);
+    return tags === null
+      ? null
+      : releaseTagsNewestFirst(tags.map((tag) => tag.name));
   }
 
   private remember(key: string, head: ReleaseHead): ReleaseHead {

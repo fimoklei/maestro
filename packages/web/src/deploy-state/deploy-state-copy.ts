@@ -1,3 +1,4 @@
+import type { NotUpdatedCopy } from "@maestro/core";
 import {
   IMPORT_LOCAL_EDITS,
   REGISTER_REPOSITORY,
@@ -5,7 +6,7 @@ import {
 } from "../ui/control-labels";
 import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
-import { namedList, phrase } from "../ui/phrase";
+import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
 import { joinNames } from "./join-names";
 
@@ -93,6 +94,34 @@ export const readByLine = (readBy: {
 /** Beside a Global folder Global does not write, its tool not detected. */
 export const notWrittenNote = (tool: string) =>
   `${tool} not detected · not written`;
+
+/**
+ * A Global folder's unedited copies at another release than the Target
+ * release. With no release matched, it names none and never says older.
+ */
+export function notUpdatedLine(
+  folder: string,
+  copies: readonly NotUpdatedCopy[],
+  release: string,
+): Phrase {
+  const [first] = copies;
+  const where = machine(folder);
+  const target = machine(release);
+  if (first === undefined) return phrase``;
+  const subject =
+    copies.length === 1
+      ? phrase`${named(first.name)} in ${where} is`
+      : phrase`${copies.length} skills in ${where} are`;
+  const stillAt = new Set(copies.map((copy) => copy.stillAt));
+  if (stillAt.has(null)) {
+    return phrase`${subject} not at the Target release ${target}.`;
+  }
+  const at =
+    stillAt.size === 1 && first.stillAt !== null
+      ? machine(first.stillAt)
+      : "older releases";
+  return phrase`${subject} still at ${at}, but the Target release is ${target}.`;
+}
 
 // The Global group's line while no supported tool is detected.
 export const NO_TOOL_DETECTED =

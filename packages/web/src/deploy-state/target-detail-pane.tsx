@@ -30,7 +30,7 @@ import {
   showsReadFailure,
   type TargetPaneActions,
 } from "./target-pane-actions";
-import { editedSkills, type TargetRow } from "./target-rows";
+import { editedSkills, notUpdatedLines, type TargetRow } from "./target-rows";
 import { updateLabel } from "./update-target-copy";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
@@ -92,6 +92,7 @@ export function TargetDetailPane({
   const latestRelease = latestReleaseFact(head);
   const edited = editedSkills(row.primitives);
   const why = [
+    ...(row.pending ? [] : notUpdatedLines(row)),
     // Its sentence names Import local edits, which an operation withholds.
     ...(edited.length === 0 || row.pending
       ? []

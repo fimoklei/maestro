@@ -1,8 +1,9 @@
 // Reads a target's apm.lock.yaml plus what is on disk under it, keeping absent,
 // skipped, phantom and malformed apart.
 import { join } from "node:path";
+import type { CopyReadingPort } from "../deploy/copy-reading";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
-import { globalFolders, type SupportedTool } from "../deploy/deploy-tools";
+import { globalFolders } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
 import type { PendingOperation } from "../deploy/retry-target-operation";
 import { type GitHubPage, UNKNOWN_PAGE } from "../git/github-page";
@@ -24,7 +25,9 @@ import {
   skippedFromReading,
 } from "./deploy-state-types";
 import {
+  type GlobalFolderState,
   type GlobalTargetState,
+  type NotUpdatedCopy,
   oneSkillList,
   readGlobalTarget,
 } from "./global-target";
@@ -229,12 +232,11 @@ export class DeployStateReader {
 
   // An unreadable copy carries no chip: the write path refuses it instead.
   // A copy equal to the latest release holds no unreleased work (#1213).
-  protected async markCopies(
+  private async markCopies(
     primitives: DeployedPrimitive[],
     target: DeployTarget,
     lockfile: LockfileReading,
     latestRelease: string | undefined,
-    tools?: readonly SupportedTool[],
   ): Promise<void> {
     // Call classify on the port, never detached: it reads `this`.
     const content = this.extras.content;
@@ -247,7 +249,6 @@ export class DeployStateReader {
           .classify({
             target,
             name: primitive.name,
-            tools,
             release: latestRelease,
             lockfile,
           })
@@ -295,6 +296,10 @@ function unreadableAsSkipped(
 export class GlobalDeployStateReader extends DeployStateReader {
   private readonly toolPresence: ToolPresencePort;
   private readonly treeRoot: () => string;
+  private readonly copies: CopyReadingPort | undefined;
+  private readonly releaseTags:
+    | (() => Promise<readonly string[] | null>)
+    | undefined;
 
   constructor(
     deps: {
@@ -303,10 +308,16 @@ export class GlobalDeployStateReader extends DeployStateReader {
       // What deployed_files are relative to: a global install writes the
       // lockfile under ~/.apm and the files under HOME.
       treeRoot?: () => string;
+      // Each Global copy is read against the Target release through it.
+      content?: Pick<DeployedContentPort, "classify"> & CopyReadingPort;
+      // The release tags the Behind check reads, newest first; null unread.
+      releaseTags?: () => Promise<readonly string[] | null>;
     } & DeployStateExtras,
   ) {
     super(deps);
     this.toolPresence = deps.toolPresence;
+    this.copies = deps.content;
+    this.releaseTags = deps.releaseTags;
     this.treeRoot = deps.treeRoot ?? (() => resolveHomeDirectory(process.env));
   }
 
@@ -353,17 +364,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
             release,
             target.primitives.map((primitive) => primitive.name),
           );
-    for (const folder of target.folders) {
-      if (folder.detected) {
-        await this.markCopies(
-          folder.primitives,
-          { kind: "global" },
-          parsed,
-          releaseHead?.latestRelease ?? undefined,
-          [folder.tool],
-        );
-      }
-    }
+    await this.readCopies(target.folders, release, parsed, releaseHead);
     const pendingOperation = await this.readPending({ kind: "global" });
     return {
       ok: true,
@@ -374,6 +375,47 @@ export class GlobalDeployStateReader extends DeployStateReader {
       skipped: [...unreadableAsSkipped(parsed.unreadable), ...skipped],
       ...(pendingOperation === undefined ? {} : { pendingOperation }),
     };
+  }
+
+  // Each copy against the Target release, not only its record: a narrowed
+  // install moves resolved_ref but keeps a skipped folder's old hashes.
+  private async readCopies(
+    folders: GlobalFolderState[],
+    release: string | undefined,
+    lockfile: LockfileReading,
+    head: ReleaseHead | undefined,
+  ): Promise<void> {
+    if (this.copies === undefined) {
+      return;
+    }
+    const latest = head?.latestRelease ?? undefined;
+    const tags =
+      (await this.releaseTags?.().catch(() => null)) ??
+      (latest === undefined ? [] : [latest]);
+    const session = this.copies.openReading({
+      target: { kind: "global" },
+      release,
+      tags,
+      lockfile,
+    });
+    for (const folder of folders.filter((each) => each.detected)) {
+      const notUpdated: NotUpdatedCopy[] = [];
+      for (const primitive of folder.primitives) {
+        const reading = await session
+          .read(primitive.name, folder.tool)
+          .catch(() => null);
+        if (reading?.kind === "local-edits") {
+          primitive.copy = "local-edits";
+        } else if (reading?.kind === "unverified") {
+          primitive.copy = "unverified";
+        } else if (reading?.kind === "not-updated") {
+          notUpdated.push({ name: primitive.name, stillAt: reading.stillAt });
+        }
+      }
+      if (notUpdated.length > 0) {
+        folder.notUpdated = notUpdated;
+      }
+    }
   }
 }
 

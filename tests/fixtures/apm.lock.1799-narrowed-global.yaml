@@ -1,0 +1,101 @@
+lockfile_version: '1'
+apm_version: 0.32.0
+dependencies:
+- repo_url: fimoklei/maestro-fixture-harness
+  name: maestro-fixture-harness
+  host: github.com
+  resolved_commit: e58b806d569aa5f576ade80cd4055b58a343cba7
+  resolved_ref: v2.0.0
+  version: 1.0.0
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/code-review
+  - .agents/skills/code-review/SKILL.md
+  - .agents/skills/commit-message
+  - .agents/skills/commit-message/SKILL.md
+  - .claude/skills/code-review
+  - .claude/skills/code-review/SKILL.md
+  - .claude/skills/commit-message
+  - .claude/skills/commit-message/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/code-review/SKILL.md: sha256:ea830d1d1a6211d37970b04d9da371380cc9416675bb6efbc1cc9d655858428d
+    .agents/skills/commit-message/SKILL.md: sha256:bef1e33fa8953a3cafb233dacda9285f47982b302bfdc000c23f2e6d038471c4
+    .claude/skills/code-review/SKILL.md: sha256:cfb0b8f0ecb114a8ee704f6cf90ed654601ed73c3615ab04e494be86d6f963ec
+    .claude/skills/commit-message/SKILL.md: sha256:52df490da6568f4c0fa28762281c6a94c06c759f3252a6445becc59589546362
+  content_hash: sha256:6fd51edf309f6eda549e3018bc14ef343715d10d0847b09c3bbff313d2c2400f
+  skill_subset:
+  - code-review
+  - commit-message
+deployments:
+- kind: project-relative
+  target: claude
+  value: .claude/skills/code-review
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/maestro-fixture-harness
+  active_owner: fimoklei/maestro-fixture-harness
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/code-review/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/maestro-fixture-harness
+  active_owner: fimoklei/maestro-fixture-harness
+  content_hash: sha256:cfb0b8f0ecb114a8ee704f6cf90ed654601ed73c3615ab04e494be86d6f963ec
+- kind: project-relative
+  target: claude
+  value: .claude/skills/commit-message
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/maestro-fixture-harness
+  active_owner: fimoklei/maestro-fixture-harness
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/commit-message/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/maestro-fixture-harness
+  active_owner: fimoklei/maestro-fixture-harness
+  content_hash: sha256:52df490da6568f4c0fa28762281c6a94c06c759f3252a6445becc59589546362
+- kind: project-relative
+  target: codex
+  value: .agents/skills/code-review
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/maestro-fixture-harness
+  active_owner: fimoklei/maestro-fixture-harness
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/code-review/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/maestro-fixture-harness
+  active_owner: fimoklei/maestro-fixture-harness
+  content_hash: sha256:ea830d1d1a6211d37970b04d9da371380cc9416675bb6efbc1cc9d655858428d
+- kind: project-relative
+  target: codex
+  value: .agents/skills/commit-message
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/maestro-fixture-harness
+  active_owner: fimoklei/maestro-fixture-harness
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/commit-message/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/maestro-fixture-harness
+  active_owner: fimoklei/maestro-fixture-harness
+  content_hash: sha256:bef1e33fa8953a3cafb233dacda9285f47982b302bfdc000c23f2e6d038471c4

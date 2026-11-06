@@ -518,6 +518,54 @@ describe("Deploy-state pane — Global folders", () => {
     expect(fact(pane, "Folder path") ?? null).toBeNull();
   });
 
+  it("names the release a lagging folder's copies are still at", async () => {
+    const answer = globalAnswer(
+      {
+        claude: [skill("code-review", "v2.0.0"), skill("tdd", "v2.0.0")],
+        codex: [skill("code-review", "v2.0.0"), skill("tdd", "v2.0.0")],
+      },
+      {
+        releaseHead: {
+          ...BEHIND,
+          release: "v2.0.0",
+          latestRelease: "v2.0.0",
+          changed: 0,
+          changedSkills: [],
+        },
+      },
+    );
+    const [claude, agents] = answer.folders;
+    stubServer(() => ({
+      global: {
+        ...answer,
+        folders: [
+          claude,
+          {
+            ...agents,
+            notUpdated: [
+              { name: "code-review", stillAt: "v1.0.0" },
+              { name: "tdd", stillAt: "v1.0.0" },
+            ],
+          },
+        ],
+      },
+    }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    expect(
+      within(pane).getByText(
+        sentence(
+          "2 skills in ~/.agents/skills are still at v1.0.0, but the Target release is v2.0.0.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    const folders = within(pane).getByRole("list", { name: "Global folders" });
+    expect(
+      within(folders).getByRole("img", { name: "Not updated" }),
+    ).toBeInTheDocument();
+  });
+
   it("leaves a folder Global does not write out of the pane", async () => {
     stubServer(() => ({ global: globalAnswer({ claude: [skill("tdd")] }) }));
     renderDeployState();
