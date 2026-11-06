@@ -10,7 +10,6 @@ import {
 } from "./deploy-state/notice-copy";
 import { REFUSAL_REASON } from "./skills/bulk-remove-dialog-view";
 import { bulkRemoveReportView } from "./skills/bulk-remove-report-view";
-import { UPDATE_TARGET } from "./ui/control-labels";
 
 // The approved reason per server code (#1459). Every surface that names one of
 // these codes reads the same words.
@@ -45,8 +44,8 @@ function noticeLabels(code: string): string[] {
   const error = refusal(code);
   const labels = [
     deployNotice(error).label,
-    updatePreviewNotice(error, UPDATE_TARGET).label,
-    updateNotice(error, UPDATE_TARGET).label,
+    updatePreviewNotice(error).label,
+    updateNotice(error).label,
   ].filter((label) => !FALLBACKS.has(label));
   // "Removal outcome unknown" is both the fallback and remove-failed's reason.
   const removal = removeNotice(error).label;

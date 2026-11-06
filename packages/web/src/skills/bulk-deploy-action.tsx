@@ -201,7 +201,6 @@ export function BulkDeployRun({
     return (
       <UpdateTargetAction
         targetName={chosenRun.label}
-        updateLabel={UPDATE_TARGET}
         target={chosenRun.target}
         update={update}
         add={updateFor}

@@ -1,11 +1,7 @@
 // Every word the Update target control and its preview show.
 
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
-import {
-  IMPORT_LOCAL_EDITS,
-  UPDATE_TARGET,
-  UPDATE_TARGETS,
-} from "../ui/control-labels";
+import { IMPORT_LOCAL_EDITS, UPDATE_TARGET } from "../ui/control-labels";
 import { CANCEL } from "../ui/dialog-copy";
 import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
@@ -70,6 +66,17 @@ export const unverifiedSentence = (name: string): Phrase =>
 export const consentRowName = (row: CopyConsentRow): string =>
   row.tool === null ? row.name : `${row.name} in ${toolDisplayName(row.tool)}`;
 
+/** A copy at risk on Global names its folder; a tool's name stays in the pane. */
+export const copyAtRiskName = (
+  row: CopyConsentRow,
+  folders: readonly { path: string; tool: string }[] | null,
+): string => {
+  const folder = folders?.find((held) => held.tool === row.tool);
+  return folder === undefined
+    ? consentRowName(row)
+    : `${row.name} in ${folder.path}`;
+};
+
 export const LOADING_PREVIEW = "Loading the update preview…";
 
 type OutcomeVerdict = "landed" | "failed" | "unconfirmed";
@@ -87,12 +94,7 @@ export const RETRY_UPDATE = "Retry update";
 
 const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.`;
 
-// An update that moves more than its row says so in its label (copy.md).
-export const updateLabel = (row: { name: string; updateName: string }) =>
-  row.updateName === row.name ? UPDATE_TARGET : UPDATE_TARGETS;
-
-export const updateAgain = (label: string) => `then select ${label} again.`;
-export const UPDATE_AGAIN = updateAgain(UPDATE_TARGET);
+export const UPDATE_AGAIN = `then select ${UPDATE_TARGET} again.`;
 
 export type UnlandedState = Exclude<UpdateSkillState, "updated" | "removed">;
 

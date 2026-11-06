@@ -55,7 +55,6 @@ import {
   worstFolderReading,
 } from "./target-status";
 import { toolDisplayName } from "./tool-presentation";
-import { updateLabel } from "./update-target-copy";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
 /** A Global folder under the Global row: read-only, with no action of its own. */
@@ -435,9 +434,7 @@ function statusReason(row: TargetRow): Copy | null {
   }
   if (!row.head) return null;
   if (row.head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
-  return row.behind
-    ? behindLine(row.head, updateLabel(row))
-    : ON_LATEST_RELEASE;
+  return row.behind ? behindLine(row.head) : ON_LATEST_RELEASE;
 }
 
 /** `compared` is band 2's line, the screen's oldest reading. */

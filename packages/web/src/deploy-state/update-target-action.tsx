@@ -5,6 +5,7 @@ import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { updateNotice, updatePreviewNotice } from "./notice-copy";
 import { updateOutcomeRows } from "./update-outcome-report";
 import { UpdateTargetDialog } from "./update-target-dialog";
+import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdatePreflight } from "./use-update-preflight";
 import type { useUpdateTarget } from "./use-update-target";
@@ -12,7 +13,6 @@ import type { useUpdateTarget } from "./use-update-target";
 // The caller owns the mutation, so the outcome outlives the control (#980).
 export function UpdateTargetAction({
   targetName,
-  updateLabel,
   target,
   update,
   add,
@@ -20,8 +20,6 @@ export function UpdateTargetAction({
   defaultOpen = false,
 }: {
   targetName: string;
-  /** The label of the control that opened it, which its notices name. */
-  updateLabel: string;
   target: DeployTarget;
   add?: string;
   update: ReturnType<typeof useUpdateTarget>;
@@ -36,6 +34,8 @@ export function UpdateTargetAction({
     add,
   );
   const preview = preflight.data?.preview ?? null;
+  // Writes to names the folders the Deploy-state read found, never a guess.
+  const globalRead = useGlobalDeployState(open && target.kind === "global");
   const screen = useScreenWrites();
   // Both writes name nothing: the dialog's Report states the outcome, failed
   // or not.
@@ -52,9 +52,7 @@ export function UpdateTargetAction({
     action: "update",
     subject: () => null,
     failure: (error) =>
-      updateOutcomeRows(error) === null
-        ? updateNotice(error, updateLabel)
-        : null,
+      updateOutcomeRows(error) === null ? updateNotice(error) : null,
   });
   const outcome = update.data?.outcome ?? updateOutcomeRows(update.error);
 
@@ -70,6 +68,9 @@ export function UpdateTargetAction({
       {open ? (
         <UpdateTargetDialog
           targetName={targetName}
+          folders={
+            target.kind === "global" ? (globalRead.data?.folders ?? []) : null
+          }
           preview={preview}
           isLoading={preflight.isPending}
           isRunning={
@@ -87,7 +88,7 @@ export function UpdateTargetAction({
           error={
             retry.failure(target) ??
             (preflight.isError
-              ? updatePreviewNotice(preflight.error, updateLabel)
+              ? updatePreviewNotice(preflight.error)
               : updateWrite.failure)
           }
           onCancel={close}
