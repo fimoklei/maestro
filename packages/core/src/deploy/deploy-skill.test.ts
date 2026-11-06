@@ -131,6 +131,13 @@ const buildDeps = (
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
     selection: world.writer,
+    // The per-folder read is proven in its own tests and the bulk route's.
+    outcomes: {
+      read: async ({ release }: { release: string }) => ({
+        release,
+        folders: [],
+      }),
+    },
     ...overrides,
   };
   const copyGuard = new LocalCopyGuard({ content: base.deployedContent });

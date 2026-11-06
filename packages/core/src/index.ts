@@ -27,6 +27,11 @@ export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export { DeployedLocation } from "./deploy/deployed-location";
 export { DeployedRefAdapter } from "./deploy/deployed-ref";
+export type {
+  FolderOutcome,
+  FolderOutcomes,
+  SkillOutcome,
+} from "./deploy/folder-outcome";
 export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
 export { LocalCopyGuard } from "./deploy/local-copy-guard";

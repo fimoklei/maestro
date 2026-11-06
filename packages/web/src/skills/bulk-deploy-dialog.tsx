@@ -1,7 +1,10 @@
 import { useId } from "react";
+import { RETRY_DEPLOY } from "../deploy-state/release-head-copy";
+import { WRITTEN_TO } from "../deploy-state/written-to-copy";
 import { ACTIONS } from "../ui/busy-copy";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
+import { type FoldLine, FoldList } from "../ui/fold-list";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
@@ -52,7 +55,14 @@ export function BulkDeployDialog({
    * The run's result. Once set, the dialog only reads and closes, or runs a
    * row's Deploy again.
    */
-  report: { heading: string; groups: ReportGroup[] } | null;
+  report: {
+    heading: string;
+    /** The Global folders the run wrote; null for a repository. */
+    writtenTo: readonly FoldLine[] | null;
+    groups: ReportGroup[];
+    /** Retry deploy in the footer, where the run left its operation unfinished. */
+    retry: (() => void) | null;
+  } | null;
   /** A reinstall from the Report that was refused: it changed nothing. */
   reportFailure: NoticeContent | null;
   onDeploy: () => void;
@@ -69,7 +79,15 @@ export function BulkDeployDialog({
             unavailable,
             onRun: onDeploy,
           }
-        : { bodyBusyLabel: ACTIONS.deploy.busy },
+        : report.retry !== null
+          ? {
+              label: RETRY_DEPLOY,
+              verb: "deploy",
+              tone: "primary",
+              unavailable: null,
+              onRun: report.retry,
+            }
+          : { bodyBusyLabel: ACTIONS.deploy.busy },
     running: busy,
     outcome: report !== null,
   });
@@ -108,7 +126,15 @@ export function BulkDeployDialog({
           )}
         </div>
       ) : (
-        <Report heading={report.heading} groups={report.groups} />
+        <Report
+          heading={report.heading}
+          lead={
+            report.writtenTo === null ? null : (
+              <FoldList legend={WRITTEN_TO} lines={report.writtenTo} />
+            )
+          }
+          groups={report.groups}
+        />
       )}
     </Dialog>
   );

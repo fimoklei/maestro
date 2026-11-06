@@ -29,6 +29,9 @@ const PLAIN: Record<string, Record<string, string>> = {
   "deploy-state/import-local-edits-copy.ts": {
     "`${IMPORT_LOCAL_EDITS} from ${target}`": "dialog title",
   },
+  "deploy-state/written-to-copy.ts": {
+    "`${skill.name} · still at ${skill.stillAt}`": "label | value cell",
+  },
   "deploy-state/notice-copy.ts": {
     "`${name} still incomplete`": "notice heading",
     "`${name} outcome unknown`": "notice heading",

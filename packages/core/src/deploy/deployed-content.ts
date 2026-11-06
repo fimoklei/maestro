@@ -11,6 +11,7 @@ import {
   type CopyReading,
   type CopyReadingPort,
   releasesAround,
+  type WrittenReading,
 } from "./copy-reading";
 import type {
   DeployedContentPort,
@@ -123,22 +124,59 @@ export class DeployedContentAdapter
     };
     const { older, latest } = releasesAround(input.release, input.tags);
     const root = this.deps.location.treeRoot(input.target);
+    // Null where the copy cannot be read.
+    const scanCopy = async (name: string, tool: SupportedTool) => {
+      const subtree = deployTargetSubtrees(name, [tool])[0] ?? "";
+      try {
+        const scan = await this.scanSubtrees(root, [subtree], { hash: true });
+        return {
+          subtree,
+          fileCount: scan.fileCount,
+          copy: stripSubtree(scan.hashes, subtree),
+        };
+      } catch (error) {
+        if (error instanceof DeployedSubtreeUnreadableError) return null;
+        throw error;
+      }
+    };
+    const olderReleaseHolding = async (
+      name: string,
+      copy: DeployedFileHashes,
+    ) => {
+      for (const tag of older) {
+        if (await holds(tag, name, copy)) return tag;
+      }
+      return null;
+    };
     return {
-      read: async (name: string, tool: SupportedTool): Promise<CopyReading> => {
-        const subtree = deployTargetSubtrees(name, [tool])[0] ?? "";
-        const baseline = this.baseline(input.lockfile, name, [subtree]);
-        let scan: SubtreeScan;
-        try {
-          scan = await this.scanSubtrees(root, [subtree], { hash: true });
-        } catch (error) {
-          if (error instanceof DeployedSubtreeUnreadableError) {
-            return { kind: "unreadable" };
-          }
-          throw error;
+      readWritten: async (
+        name: string,
+        tool: SupportedTool,
+      ): Promise<WrittenReading> => {
+        const scanned = await scanCopy(name, tool);
+        if (scanned === null) return { kind: "unreadable" };
+        if (scanned.fileCount === 0) return { kind: "missing" };
+        if (
+          input.release === undefined ||
+          (await releasedTree(input.release, name)) === null
+        ) {
+          return { kind: "unreadable" };
         }
+        if (await holds(input.release, name, scanned.copy)) {
+          return { kind: "at-release" };
+        }
+        return {
+          kind: "not-updated",
+          stillAt: await olderReleaseHolding(name, scanned.copy),
+        };
+      },
+      read: async (name: string, tool: SupportedTool): Promise<CopyReading> => {
+        const scanned = await scanCopy(name, tool);
+        if (scanned === null) return { kind: "unreadable" };
+        const { subtree, copy } = scanned;
+        const baseline = this.baseline(input.lockfile, name, [subtree]);
         if (baseline.kind === "malformed") return { kind: "unreadable" };
-        if (scan.fileCount === 0) return { kind: "missing" };
-        const copy = stripSubtree(scan.hashes, subtree);
+        if (scanned.fileCount === 0) return { kind: "missing" };
         if (await holds(input.release, name, copy)) {
           return { kind: "at-release" };
         }
@@ -157,12 +195,10 @@ export class DeployedContentAdapter
         ) {
           return { kind: "at-release" };
         }
-        for (const tag of older) {
-          if (await holds(tag, name, copy)) {
-            return { kind: "not-updated", stillAt: tag };
-          }
-        }
-        return { kind: "not-updated", stillAt: null };
+        return {
+          kind: "not-updated",
+          stillAt: await olderReleaseHolding(name, copy),
+        };
       },
     };
   }

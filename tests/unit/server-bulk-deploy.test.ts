@@ -24,6 +24,7 @@ function world() {
 describe("bulk deploy HTTP route", () => {
   it("deploys every staged skill to the target in one install", async () => {
     const w = world();
+    w.answers.releasedFiles = "as-installed";
 
     const res = await w.bulk({
       names: ["tdd", "review"],
@@ -31,6 +32,10 @@ describe("bulk deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(200);
+    const written = [
+      { name: "tdd", outcome: "written" },
+      { name: "review", outcome: "written" },
+    ];
     expect(await res.json()).toEqual({
       target: globalTarget,
       deployed: [
@@ -39,10 +44,98 @@ describe("bulk deploy HTTP route", () => {
       ],
       attention: [],
       failed: [],
+      outcome: {
+        release: "v0.5.1",
+        folders: [
+          {
+            path: "~/.claude/skills",
+            tool: "claude",
+            written: true,
+            skills: written,
+          },
+          {
+            path: "~/.agents/skills",
+            tool: "codex",
+            written: true,
+            skills: written,
+          },
+        ],
+      },
     });
     expect(w.installs.map((install) => install.skills)).toEqual([
       ["tdd", "review"],
     ]);
+  });
+
+  it("names each Global folder's missing skill when the install landed short", async () => {
+    const w = world();
+    w.answers.releasedFiles = "as-installed";
+    w.answers.lands = (skills, tool) =>
+      tool === "codex" ? skills.filter((name) => name !== "tdd") : skills;
+
+    const res = await w.bulk({
+      names: ["tdd", "review"],
+      target: globalTarget,
+    });
+
+    const body = (await res.json()) as BulkDeployReport;
+    expect(body.failed).toEqual([
+      { error: "deploy-incomplete", names: ["tdd", "review"] },
+    ]);
+    expect(
+      body.outcome?.folders.map((folder) => [folder.path, folder.skills]),
+    ).toEqual([
+      [
+        "~/.claude/skills",
+        [
+          { name: "tdd", outcome: "written" },
+          { name: "review", outcome: "written" },
+        ],
+      ],
+      [
+        "~/.agents/skills",
+        [
+          { name: "tdd", outcome: "missing" },
+          { name: "review", outcome: "written" },
+        ],
+      ],
+    ]);
+  });
+
+  it("reads the folders again after Retry deploy completes the install", async () => {
+    const w = world();
+    w.answers.releasedFiles = "as-installed";
+    w.answers.lands = (skills, tool) =>
+      tool === "codex" ? skills.filter((name) => name !== "tdd") : skills;
+    await w.bulk({ names: ["tdd"], target: globalTarget });
+    w.answers.lands = (skills) => skills;
+
+    const res = await w.post("/api/deploy/retry", { target: globalTarget });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      outcome?: BulkDeployReport["outcome"];
+    };
+    expect(body.outcome?.folders.map((folder) => folder.skills)).toEqual([
+      [{ name: "tdd", outcome: "written" }],
+      [{ name: "tdd", outcome: "written" }],
+    ]);
+  });
+
+  it("lists a folder the deploy skipped, its tool not detected", async () => {
+    const w = world();
+    w.answers.releasedFiles = "as-installed";
+    w.answers.detectedTools = ["claude"];
+
+    const res = await w.bulk({ names: ["tdd"], target: globalTarget });
+
+    const body = (await res.json()) as BulkDeployReport;
+    expect(body.outcome?.folders[1]).toEqual({
+      path: "~/.agents/skills",
+      tool: "codex",
+      written: false,
+      skills: [],
+    });
   });
 
   it("answers a failed install with 200 and a report that leaks nothing", async () => {

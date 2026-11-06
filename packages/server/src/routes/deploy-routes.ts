@@ -247,7 +247,10 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
         status,
       );
     }
-    return c.json({ completed: result.completed });
+    return c.json({
+      completed: result.completed,
+      ...(result.outcome === undefined ? {} : { outcome: result.outcome }),
+    });
   });
 
   // Read-only despite the POST. Core checks registry membership before any read.

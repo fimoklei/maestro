@@ -20,8 +20,15 @@ export type CopyReading =
   | { kind: "unverified" }
   | { kind: "unreadable" };
 
+/** What a write left: the copy against the release alone, never its lockfile record. */
+export type WrittenReading = Extract<
+  CopyReading,
+  { kind: "missing" | "at-release" | "not-updated" | "unreadable" }
+>;
+
 type CopyReadingSession = {
   read(name: string, tool: SupportedTool): Promise<CopyReading>;
+  readWritten(name: string, tool: SupportedTool): Promise<WrittenReading>;
 };
 
 export type CopyReadingPort = {

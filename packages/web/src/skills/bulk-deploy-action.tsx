@@ -1,7 +1,8 @@
-import type { BulkDeployReport } from "@maestro/core";
+import type { BulkDeployReport, FolderOutcomes } from "@maestro/core";
 import { useState } from "react";
 import { GLOBAL, NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
 import type { DeployStateRead } from "../deploy-state/deployed-view";
+import type { DeployStateNotice } from "../deploy-state/notice-copy";
 import {
   deployAttentionNotice,
   deployNotice,
@@ -13,6 +14,7 @@ import {
   type GlobalDeployStateView,
   useGlobalDeployState,
 } from "../deploy-state/use-global-deploy-state";
+import { useRetryOperation } from "../deploy-state/use-retry-operation";
 import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { writesToGroup } from "../deploy-state/writes-to-group";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
@@ -27,6 +29,8 @@ import { repoTargetName } from "../shell/target-name";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { deployAgainLabel, UPDATE_TARGET } from "../ui/control-labels";
+import type { FoldLine } from "../ui/fold-list";
+import type { NoticeContent } from "../ui/notice";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
@@ -41,6 +45,7 @@ import {
   TARGETS_LOADING,
 } from "./skills-copy";
 import { useBulkDeploy } from "./use-bulk-deploy";
+import { writtenToView } from "./written-to-view";
 
 type BulkDeployProps = {
   stagedNames: string[];
@@ -96,6 +101,15 @@ export function BulkDeployRun({
   const [redeployed, setRedeployed] = useState<SkillRelease[]>([]);
   const update = useUpdateTarget();
   const screen = useScreenWrites();
+  // Retry deploy in the Report's footer; its outcome replaces the run's.
+  const retry = useRetryOperation(screen, () =>
+    bulk.data?.outcome === undefined
+      ? null
+      : {
+          operation: { kind: "deploy", release: bulk.data.outcome.release },
+          subject: null,
+        },
+  );
   // The Report states the run, its request failure included.
   const bulkWrite = useWriteAction(bulk, {
     screen,
@@ -170,6 +184,7 @@ export function BulkDeployRun({
   const onDeploy = () => {
     if (chosenRun === null || preview === null) return;
     bulk.reset();
+    retry.reset();
     setRedeployed([]);
     setPlan(preview);
     if (preview.toDeploy.length > 0) {
@@ -191,6 +206,7 @@ export function BulkDeployRun({
           },
           skippedClean: plan.skippedClean,
           redeployed,
+          retried: retry.landed(chosenRun.target)?.outcome ?? null,
           targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
         });
@@ -234,6 +250,7 @@ export function BulkDeployRun({
       }
       onSelect={(value) => {
         bulk.reset();
+        retry.reset();
         setRedeployed([]);
         setPlan(null);
         setChosen(value);
@@ -248,7 +265,11 @@ export function BulkDeployRun({
               : null
       }
       fieldsChanged={chosen !== null}
-      busy={bulkWrite.phase === "running" || forceWrite.phase === "running"}
+      busy={
+        bulkWrite.phase === "running" ||
+        forceWrite.phase === "running" ||
+        (chosenRun !== null && retry.isRetrying(chosenRun.target))
+      }
       failure={
         view?.tone === "error"
           ? {
@@ -266,6 +287,8 @@ export function BulkDeployRun({
                 targetLabel: view.targetLabel,
                 counts: view.counts,
               }),
+              writtenTo: view.writtenTo,
+              retry: view.retry ? () => retry.run(chosenRun.target) : null,
               groups: bulkDeployReportGroups({
                 view,
                 force: {
@@ -293,7 +316,12 @@ export function BulkDeployRun({
               }),
             }
       }
-      reportFailure={forceWrite.failure}
+      reportFailure={
+        forceWrite.failure ??
+        (chosenRun === null
+          ? null
+          : retryFailure(retry.failure(chosenRun.target)))
+      }
       onDeploy={onDeploy}
       onClose={close}
     />
@@ -320,6 +348,10 @@ type BulkDeployReportView =
       skipped: string[];
       attention: BulkDeployReport["attention"];
       failed: BulkDeployReport["failed"];
+      /** Global only: one line per Global folder. */
+      writtenTo: FoldLine[] | null;
+      /** The install stopped short: Retry deploy finishes it. */
+      retry: boolean;
       counts: BulkReportCounts;
     }
   | {
@@ -344,6 +376,8 @@ function bulkDeployReportView(input: {
   skippedClean: string[];
   // Attention rows a later Deploy again succeeded on.
   redeployed: SkillRelease[];
+  // A completed Retry deploy's read of the Global folders; null before one.
+  retried: FolderOutcomes | null;
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
@@ -370,7 +404,20 @@ function bulkDeployReportView(input: {
   const attention = report.attention.filter(
     (row) => !redeployed.some((done) => done.name === row.name),
   );
-  const deployed = [...report.deployed, ...redeployed];
+  // On Global the folders state an unfinished install; its retry reads them
+  // again.
+  const outcome = input.retried ?? report.outcome;
+  const retry =
+    outcome !== undefined &&
+    input.retried === null &&
+    report.failed.some((line) => line.error === "deploy-incomplete");
+  const folders =
+    outcome === undefined ? null : writtenToView({ report, outcome, retry });
+  const deployed = [
+    ...report.deployed,
+    ...(folders?.deployed ?? []),
+    ...redeployed,
+  ];
 
   return {
     tone: "ran",
@@ -378,15 +425,23 @@ function bulkDeployReportView(input: {
     deployed,
     skipped: skippedClean,
     attention,
-    failed: report.failed,
+    failed: folders?.failed ?? report.failed,
+    writtenTo: folders?.lines ?? null,
+    retry,
     counts: {
       deployed: deployed.length,
       skipped: skippedClean.length,
       attention: attention.length,
-      failed: failedCount,
+      // A name the folders hold back still counts as not deployed.
+      failed: failedCount - (folders?.deployed.length ?? 0),
     },
   };
 }
+
+const retryFailure = (
+  notice: DeployStateNotice | null,
+): NoticeContent | null =>
+  notice === null ? null : { ...notice, level: "error" };
 
 type Force = {
   /** The row's own consent, so an inline deploy grants only what it read. */

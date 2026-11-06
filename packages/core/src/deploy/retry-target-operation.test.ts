@@ -18,6 +18,7 @@ function buildUseCase(state: DeployedContentState = "clean") {
     toolPresence: { detectGlobalTools: async () => ["claude" as const] },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
+    outcomes: { read: async () => ({ release: "", folders: [] }) },
   });
   return { world, retry };
 }
@@ -251,6 +252,7 @@ describe("RetryTargetOperation", () => {
       toolPresence: { detectGlobalTools: async () => ["claude" as const] },
       canonicalPath: async (path: string) => path,
       locks: new InFlightLocks(),
+      outcomes: { read: async () => ({ release: "", folders: [] }) },
     });
 
     expect(await retry.execute({ target })).toEqual({

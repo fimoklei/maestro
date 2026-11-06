@@ -4,6 +4,7 @@ import type { LockfileReading, PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionResult, SelectionWriter } from "./apply-selection";
 import type { SupportedTool } from "./deploy-tools";
+import type { FolderOutcomeReader, FolderOutcomes } from "./folder-outcome";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
@@ -213,7 +214,12 @@ export type BulkDeployReport = {
   deployed: { name: string; version: string }[];
   attention: BulkAttentionRow[];
   failed: BulkFailure[];
+  // Global only, where apm ran: each folder's copy of every name it installed.
+  outcome?: FolderOutcomes;
 };
+
+// Filled by the run once apm ran on Global.
+type OutcomeSink = { outcome?: FolderOutcomes };
 
 // Refusals the user acts on, and whether a force is the action. Every error
 // absent here is a genuine failure.
@@ -258,6 +264,7 @@ export class DeploySkill {
     // Shared with the remove use-case: both rewrite the same apm.lock.yaml.
     locks: InFlightLocks;
     selection: SelectionWriter;
+    outcomes: Pick<FolderOutcomeReader, "read">;
   };
 
   private readonly copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
@@ -276,6 +283,7 @@ export class DeploySkill {
       [input.name],
       input.target,
       input.confirmedCopyReceipt,
+      {},
     );
     return answer?.result ?? { ok: false, error: "deploy-not-started" };
   }
@@ -287,8 +295,9 @@ export class DeploySkill {
     target: DeployTarget;
   }): Promise<BulkDeployReport> {
     let rows: BatchDeployResult[];
+    const read: OutcomeSink = {};
     try {
-      rows = await this.run(input.names, input.target, undefined);
+      rows = await this.run(input.names, input.target, undefined, read);
     } catch {
       // Only the reads before the lock can throw here: nothing was written.
       rows = input.names.map((name) => ({
@@ -333,6 +342,7 @@ export class DeploySkill {
       deployed,
       attention,
       failed: [...failures.values()],
+      ...(read.outcome === undefined ? {} : { outcome: read.outcome }),
     };
   }
 
@@ -341,6 +351,7 @@ export class DeploySkill {
     names: readonly string[],
     target: DeployTarget,
     receipt: string | undefined,
+    read: OutcomeSink,
   ): Promise<BatchDeployResult[]> {
     const results = new Map<string, DeploySkillResult>();
     const valid = [...new Set(names)].filter((name) => {
@@ -351,7 +362,12 @@ export class DeploySkill {
       return false;
     });
     if (valid.length > 0) {
-      for (const [name, result] of await this.locked(valid, target, receipt)) {
+      for (const [name, result] of await this.locked(
+        valid,
+        target,
+        receipt,
+        read,
+      )) {
         results.set(name, result);
       }
     }
@@ -365,6 +381,7 @@ export class DeploySkill {
     names: readonly string[],
     target: DeployTarget,
     receipt: string | undefined,
+    read: OutcomeSink,
   ): Promise<Map<string, DeploySkillResult>> {
     const every = (error: DeploySkillError) =>
       new Map(names.map((name) => [name, { ok: false as const, error }]));
@@ -386,7 +403,7 @@ export class DeploySkill {
     }
 
     const run = await this.deps.locks.run(lockKey, () =>
-      this.deploy(names, target, lockKey, receipt),
+      this.deploy(names, target, lockKey, receipt, read),
     );
     return run.ok ? run.value : every("deploy-in-progress");
   }
@@ -398,6 +415,7 @@ export class DeploySkill {
     target: DeployTarget,
     lockKey: string,
     receipt: string | undefined,
+    read: OutcomeSink,
   ): Promise<Map<string, DeploySkillResult>> {
     const results = new Map<string, DeploySkillResult>();
     const refuseRest = (error: DeploySkillError) => {
@@ -570,6 +588,18 @@ export class DeploySkill {
           // Held-back names keep their own refusal rather than joining the
           // catch-all below.
           .catch((): SelectionResult => ({ ok: false, error: "apply-failed" }));
+        // What apm left per Global folder: the completion check reads only
+        // whether each recorded file exists.
+        if (
+          globalTools !== undefined &&
+          (applied.ok || applied.error === "apply-incomplete")
+        ) {
+          read.outcome = await this.deps.outcomes.read({
+            release: tag,
+            names: go,
+            written: globalTools,
+          });
+        }
         if (applied.ok) {
           for (const name of go) {
             results.set(name, {

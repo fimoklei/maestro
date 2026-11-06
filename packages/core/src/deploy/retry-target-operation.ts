@@ -8,6 +8,7 @@ import type {
   DeployTarget,
 } from "./deploy-skill";
 import { discardDroppedCopies } from "./discard-dropped-copies";
+import type { FolderOutcomeReader, FolderOutcomes } from "./folder-outcome";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import { type CopyVerdict, LocalCopyGuard } from "./local-copy-guard";
 import type { TargetOperation, TargetOperationKind } from "./target-operation";
@@ -32,7 +33,8 @@ export type RetryTargetOperationError =
   | "retry-failed";
 
 export type RetryTargetOperationResult =
-  | { ok: true; completed: PendingOperation }
+  // `outcome`: Global only, each folder's copy of the retried Selection.
+  | { ok: true; completed: PendingOperation; outcome?: FolderOutcomes }
   | {
       ok: false;
       error: RetryTargetOperationError;
@@ -63,6 +65,7 @@ export class RetryTargetOperation {
     toolPresence: ToolPresencePort;
     canonicalPath: (path: string) => Promise<string>;
     locks: InFlightLocks;
+    outcomes: Pick<FolderOutcomeReader, "read">;
   };
 
   private readonly copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
@@ -161,7 +164,19 @@ export class RetryTargetOperation {
         ...(tools === undefined ? {} : { tools }),
       });
       if (applied.ok) {
-        return { ok: true, completed: summarise(record) };
+        return {
+          ok: true,
+          completed: summarise(record),
+          ...(input.target.kind === "global"
+            ? {
+                outcome: await this.deps.outcomes.read({
+                  release: record.release,
+                  names: record.desired,
+                  written: tools ?? [],
+                }),
+              }
+            : {}),
+        };
       }
       return {
         ok: false,

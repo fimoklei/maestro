@@ -108,6 +108,8 @@ export const PartialReport: Story = {
     report: {
       heading:
         "Deployed to maestro · 2 failed · 1 attention · 2 deployed · 1 skipped",
+      writtenTo: null,
+      retry: null,
       groups: [
         {
           tone: "good",
@@ -153,6 +155,80 @@ export const PartialReport: Story = {
               },
             },
           ],
+        },
+      ],
+    },
+  },
+};
+
+export const GlobalReport: Story = {
+  args: {
+    count: 2,
+    report: {
+      heading: "Deployed 2 of 2 skills to Global",
+      writtenTo: [
+        {
+          key: "claude",
+          name: "~/.claude/skills",
+          tone: "good",
+          fact: "2 skills written",
+          details: [],
+          step: null,
+        },
+        {
+          key: "codex",
+          name: "~/.agents/skills",
+          tone: "neutral",
+          muted: true,
+          fact: "Codex not detected · not written",
+          details: [],
+          step: null,
+        },
+      ],
+      retry: null,
+      groups: [
+        {
+          tone: "good",
+          label: "Deployed",
+          rows: [
+            { name: "code-review", detail: "v2.0.0" },
+            { name: "commit-message", detail: "v2.0.0" },
+          ],
+        },
+      ],
+    },
+  },
+};
+
+export const GlobalReportFolderShort: Story = {
+  args: {
+    count: 2,
+    report: {
+      heading: "Deployed 1 of 2 skills to Global",
+      writtenTo: [
+        {
+          key: "claude",
+          name: "~/.claude/skills",
+          tone: "good",
+          fact: "2 skills written",
+          details: [],
+          step: null,
+        },
+        {
+          key: "codex",
+          name: "~/.agents/skills",
+          tone: "failed",
+          fact: "1 of 2 skills missing",
+          details: [{ label: "Missing", value: "commit-message" }],
+          step: "Select Retry deploy to write it again.",
+        },
+      ],
+      retry: () => {},
+      groups: [
+        {
+          tone: "good",
+          label: "Deployed",
+          rows: [{ name: "code-review", detail: "v2.0.0" }],
         },
       ],
     },
