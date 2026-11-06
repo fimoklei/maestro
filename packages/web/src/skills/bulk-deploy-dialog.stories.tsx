@@ -109,7 +109,8 @@ export const PartialReport: Story = {
       heading:
         "Deployed to maestro · 2 failed · 1 attention · 2 deployed · 1 skipped",
       writtenTo: null,
-      retry: null,
+      notice: null,
+      action: null,
       groups: [
         {
           tone: "good",
@@ -185,7 +186,8 @@ export const GlobalReport: Story = {
           step: null,
         },
       ],
-      retry: null,
+      notice: null,
+      action: null,
       groups: [
         {
           tone: "good",
@@ -223,7 +225,8 @@ export const GlobalReportFolderShort: Story = {
           step: "Select Retry deploy to write it again.",
         },
       ],
-      retry: () => {},
+      notice: null,
+      action: { label: "Retry deploy", onRun: () => {} },
       groups: [
         {
           tone: "good",
@@ -231,6 +234,46 @@ export const GlobalReportFolderShort: Story = {
           rows: [{ name: "code-review", detail: "v2.0.0" }],
         },
       ],
+    },
+  },
+};
+
+export const GlobalReportHeldByLocalEdits: Story = {
+  args: {
+    count: 2,
+    report: {
+      heading: "Deployed 0 of 2 skills to Global",
+      notice: {
+        level: "warning",
+        label: "Local edits",
+        message:
+          "Nothing was deployed, because commit-message has local edits.",
+        items: [
+          "Select Deploy again to replace those edits with the latest release and deploy both skills.",
+        ],
+        detail:
+          "Global skills deploy together, so local edits to commit-message also prevented code-review from being deployed.",
+      },
+      writtenTo: [
+        {
+          key: "claude",
+          name: "~/.claude/skills",
+          tone: "neutral",
+          fact: "0 of 2 skills deployed",
+          details: [],
+          step: null,
+        },
+        {
+          key: "codex",
+          name: "~/.agents/skills",
+          tone: "neutral",
+          fact: "0 of 2 skills deployed",
+          details: [],
+          step: null,
+        },
+      ],
+      action: { label: "Deploy again", onRun: () => {} },
+      groups: [],
     },
   },
 };

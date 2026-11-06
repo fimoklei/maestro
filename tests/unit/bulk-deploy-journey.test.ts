@@ -27,7 +27,13 @@ describe("bulk deploy journey", () => {
         error: "deployed-unverifiable",
         forceable: true,
         copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
-        blockingCopies: [{ name: "docs", verdict: "unverified" }],
+        blockingCopies: [
+          {
+            name: "docs",
+            verdict: "unverified",
+            folders: ["~/.claude/skills"],
+          },
+        ],
       },
     ]);
     expect(w.installs.map((install) => install.skills)).toEqual([

@@ -259,17 +259,21 @@ describe("BulkDeployAction", () => {
       error: "deployed-diverged-from-lock" as const,
       forceable: true,
       copyReceipt: "c".repeat(64),
-      blockingCopies: [{ name: holder, verdict: "local-edits" as const }],
+      blockingCopies: [
+        { name: holder, verdict: "local-edits" as const, folders: [] },
+      ],
     });
+    // grill deployed, so the run was not held whole: each held row keeps its
+    // own Deploy again (a whole hold: bulk-deploy-held.test.tsx).
     stubReads({
       target: { kind: "global" },
-      deployed: [],
+      deployed: [{ name: "grill", version: "v1.0.0" }],
       attention: [held("tdd", "docs"), held("review", "review")],
       failed: [],
     } satisfies BulkDeployReport);
     renderWithQuery(
       <BulkDeployAction
-        stagedNames={["tdd", "review"]}
+        stagedNames={["tdd", "review", "grill"]}
         repos={[]}
         registryReady
         onSelectionSpent={() => {}}

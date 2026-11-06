@@ -1,6 +1,6 @@
 import type { FolderOutcome, SkillOutcome } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import { updatedToLine, writtenToLine } from "./written-to-copy";
+import { heldLine, updatedToLine, writtenToLine } from "./written-to-copy";
 
 const folder = (
   skills: SkillOutcome[],
@@ -186,6 +186,19 @@ describe("Written to line after Update target", () => {
     });
   });
 
+  it("counts the skills deployed where the folder's outcomes are mixed", () => {
+    expect(
+      updatedToLine(
+        folder([
+          written("tdd"),
+          missing("review"),
+          notUpdated("code-review", "v1.1.0"),
+        ]),
+        update(false),
+      ).fact,
+    ).toBe("1 of 3 skills deployed");
+  });
+
   it("reads a folder nothing could confirm as Not confirmed", () => {
     expect(
       updatedToLine(
@@ -207,5 +220,25 @@ describe("Written to line after Update target", () => {
       details: [],
       step: null,
     });
+  });
+});
+
+describe("Written to line of a held deploy", () => {
+  it("states that the folder got none of the held skills", () => {
+    expect(heldLine({ tool: "claude", detected: true }, 2)).toEqual({
+      tone: "neutral",
+      fact: "0 of 2 skills deployed",
+      details: [],
+      step: null,
+    });
+    expect(heldLine({ tool: "claude", detected: true }, 1).fact).toBe(
+      "0 of 1 skill deployed",
+    );
+  });
+
+  it("names the undetected tool of a folder Global does not write", () => {
+    expect(heldLine({ tool: "codex", detected: false }, 2).fact).toBe(
+      "Codex not detected · not written",
+    );
   });
 });

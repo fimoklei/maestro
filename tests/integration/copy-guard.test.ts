@@ -81,8 +81,6 @@ describe("copy guard", () => {
     ["Harness already changing", "Harness already changing"],
     ["Select Show in Deploy-state to open it.", "Show in Deploy-state"],
     ["Close this dialog, then select Delete skill again.", "Close this dialog"],
-    ["Deploy again to re-check the target.", "Deploy again"],
-    ["Select Deploy again to overwrite it.", "Deploy again"],
     ["Update targets", "Update targets"],
     ["Select Update targets to move them.", "Update targets"],
     ["Remove from Claude Code and Codex", "Remove from Claude Code"],

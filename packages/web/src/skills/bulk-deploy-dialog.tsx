@@ -1,12 +1,11 @@
 import { useId } from "react";
-import { RETRY_DEPLOY } from "../deploy-state/release-head-copy";
 import { WRITTEN_TO } from "../deploy-state/written-to-copy";
 import { ACTIONS } from "../ui/busy-copy";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { type FoldLine, FoldList } from "../ui/fold-list";
 import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
-import type { NoticeContent } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
 import { Select, type SelectOption } from "../ui/select";
 import {
@@ -59,9 +58,14 @@ export function BulkDeployDialog({
     heading: string;
     /** The Global folders the run wrote; null for a repository. */
     writtenTo: readonly FoldLine[] | null;
+    /** Why the run wrote nothing, above the folders; null when it ran. */
+    notice: NoticeContent | null;
     groups: ReportGroup[];
-    /** Retry deploy in the footer, where the run left its operation unfinished. */
-    retry: (() => void) | null;
+    /**
+     * The footer's one write: Retry deploy where the run left its operation
+     * unfinished, Deploy again where local edits held it.
+     */
+    action: { label: string; onRun: () => void } | null;
   } | null;
   /** A reinstall from the Report that was refused: it changed nothing. */
   reportFailure: NoticeContent | null;
@@ -79,13 +83,13 @@ export function BulkDeployDialog({
             unavailable,
             onRun: onDeploy,
           }
-        : report.retry !== null
+        : report.action !== null
           ? {
-              label: RETRY_DEPLOY,
+              label: report.action.label,
               verb: "deploy",
               tone: "primary",
               unavailable: null,
-              onRun: report.retry,
+              onRun: report.action.onRun,
             }
           : { bodyBusyLabel: ACTIONS.deploy.busy },
     running: busy,
@@ -129,9 +133,14 @@ export function BulkDeployDialog({
         <Report
           heading={report.heading}
           lead={
-            report.writtenTo === null ? null : (
-              <FoldList legend={WRITTEN_TO} lines={report.writtenTo} />
-            )
+            <>
+              {report.notice === null ? null : (
+                <Notice trigger="user-action" notice={report.notice} />
+              )}
+              {report.writtenTo === null ? null : (
+                <FoldList legend={WRITTEN_TO} lines={report.writtenTo} />
+              )}
+            </>
           }
           groups={report.groups}
         />

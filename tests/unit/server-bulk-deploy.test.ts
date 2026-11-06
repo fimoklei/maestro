@@ -206,3 +206,61 @@ describe("bulk deploy HTTP route", () => {
     expect((await w.bulk({ target: globalTarget })).status).toBe(400);
   });
 });
+
+describe("Deploy again HTTP route", () => {
+  // tdd is on Global with local edits in the Claude Code folder.
+  async function held() {
+    const w = world();
+    w.answers.releasedFiles = "as-installed";
+    await w.bulk({ names: ["tdd"], target: globalTarget });
+    w.disk.write(`${HOME}/.claude/skills/tdd/SKILL.md`, "# tdd, edited\n");
+    const res = await w.bulk({
+      names: ["tdd", "review"],
+      target: globalTarget,
+    });
+    const report = (await res.json()) as BulkDeployReport;
+    return { w, report };
+  }
+
+  it("deploys every held skill in one install under each held row's receipt", async () => {
+    const { w, report } = await held();
+    expect(report.attention.map((row) => row.blockingCopies)).toEqual([
+      [{ name: "tdd", verdict: "local-edits", folders: ["~/.claude/skills"] }],
+      [{ name: "tdd", verdict: "local-edits", folders: ["~/.claude/skills"] }],
+    ]);
+
+    const res = await w.post("/api/deploy/again", {
+      target: globalTarget,
+      held: report.attention.map((row) => ({
+        name: row.name,
+        confirmedCopyReceipt: row.copyReceipt,
+      })),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as BulkDeployReport;
+    expect(body.deployed).toEqual([
+      { name: "tdd", version: "v0.5.1" },
+      { name: "review", version: "v0.5.1" },
+    ]);
+    expect(body.outcome?.folders.map((folder) => folder.path)).toEqual([
+      "~/.claude/skills",
+      "~/.agents/skills",
+    ]);
+    expect(w.installs.map((install) => install.skills)).toEqual([
+      ["tdd"],
+      ["tdd", "review"],
+    ]);
+  });
+
+  it("returns 400 for a held row without a receipt", async () => {
+    const { w } = await held();
+
+    const res = await w.post("/api/deploy/again", {
+      target: globalTarget,
+      held: [{ name: "tdd" }],
+    });
+
+    expect(res.status).toBe(400);
+  });
+});

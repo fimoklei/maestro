@@ -41,6 +41,21 @@ function detail(skill: SkillOutcome): Detail | null {
   }
 }
 
+/** A folder a deploy held by local edits wrote nothing to. */
+export function heldLine(
+  folder: Pick<FolderOutcome, "tool"> & { detected: boolean },
+  held: number,
+): WrittenToLine {
+  return {
+    tone: "neutral",
+    fact: folder.detected
+      ? `0 of ${skills(held)} deployed`
+      : notWrittenNote(toolDisplayName(folder.tool)),
+    details: [],
+    step: null,
+  };
+}
+
 /** `retry`: Retry deploy is in the footer, so a deviating folder names it. */
 export function writtenToLine(
   folder: FolderOutcome,
@@ -48,6 +63,7 @@ export function writtenToLine(
 ): WrittenToLine {
   return folderLine(folder, {
     clean: `${skills(folder.skills.length)} written`,
+    partial: "written",
     step: (details) =>
       retry
         ? `Select ${RETRY_DEPLOY} to write ${details.length === 1 ? "it" : "them"} again.`
@@ -62,6 +78,7 @@ export function updatedToLine(
 ): WrittenToLine {
   const line = folderLine(folder, {
     clean: `At ${update.release}`,
+    partial: "deployed",
     step: () => (update.retry ? RETRY_UPDATE_STEP : null),
   });
   const notUpdated = folder.skills.filter(
@@ -79,6 +96,8 @@ function folderLine(
   folder: FolderOutcome,
   words: {
     clean: string;
+    /** The verb of a partial count: `1 of 3 skills {partial}`. */
+    partial: "written" | "deployed";
     step: (details: readonly Detail[]) => string | null;
   },
 ): WrittenToLine {
@@ -115,7 +134,7 @@ function folderLine(
         ? missing === total
           ? `${skills(total)} missing`
           : `${missing} of ${skills(total)} missing`
-        : `${written} of ${skills(total)} written`,
+        : `${written} of ${skills(total)} ${words.partial}`,
     details,
     step: words.step(details),
   };

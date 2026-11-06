@@ -607,7 +607,41 @@ const ON_DIALOG: Row[] = [
     emptyForm: null,
     loading: null,
     loadFailed: null,
-    notices: [],
+    notices: [
+      {
+        // A Global run held whole by local edits states why in the Report.
+        label: "Local edits",
+        render: () => (
+          <BulkDeployDialog
+            count={2}
+            targets={[{ value: "global", label: "Global" }]}
+            selected="global"
+            skills={[]}
+            writesTo={null}
+            onSelect={vi.fn()}
+            unavailable={null}
+            fieldsChanged={true}
+            busy={false}
+            failure={null}
+            report={{
+              heading: "Deployed 0 of 2 skills to Global",
+              notice: {
+                level: "warning",
+                label: "Local edits",
+                message:
+                  "Nothing was deployed, because commit-message has local edits.",
+              },
+              writtenTo: null,
+              groups: [],
+              action: { label: "Deploy again", onRun: vi.fn() },
+            }}
+            reportFailure={null}
+            onDeploy={vi.fn()}
+            onClose={vi.fn()}
+          />
+        ),
+      },
+    ],
   },
   {
     file: "harness/withdraw-dialog.tsx",

@@ -32,6 +32,9 @@ export const WITHDRAW_PROPOSAL = "Withdraw proposal";
 /** A held bulk deploy row's own control: it overwrites the copies that held it. */
 export const deployAgainLabel = (name: string) => `Deploy ${name} again`;
 
+/** A held Global deploy's footer action: every held skill at once. */
+export const DEPLOY_AGAIN = "Deploy again";
+
 /** A screen's own Re-read control, named by the screen. */
 export const rereadLabel = (screen: string) => `Re-read ${screen}`;
 
