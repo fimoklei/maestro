@@ -19,6 +19,9 @@ import {
   REPO_NOT_READ_LINE,
   readByLine,
   skillsMissingLine,
+  strayCopiesLine,
+  strayCopiesNote,
+  strayDiffersLine,
   TARGET_LABEL,
   TARGETS_FACT,
   TIMED_OUT_HINT,
@@ -94,6 +97,55 @@ describe("Not updated copy", () => {
       ]),
     ).toBe(
       "2 skills in ~/.agents/skills are not at the Target release v2.0.0.",
+    );
+  });
+});
+
+describe("Copies in an undetected tool's folder", () => {
+  const AGENTS = "~/.agents/skills";
+  const CLAUDE = "~/.claude/skills";
+  const paneLine = (names: string[]) =>
+    plainText(strayCopiesLine(AGENTS, names, CLAUDE));
+
+  it("counts the copies beside the folder", () => {
+    expect(strayCopiesNote("Codex", 1)).toBe(
+      "Codex not detected · not written · 1 copy",
+    );
+    expect(strayCopiesNote("Codex", 2)).toBe(
+      "Codex not detected · not written · 2 copies",
+    );
+  });
+
+  it("says no copy is counted where there is none", () => {
+    expect(strayCopiesNote("Codex", 0)).toBe(
+      "Codex not detected · not written",
+    );
+  });
+
+  it("tells which tool loads the one copy and how to stop it", () => {
+    expect(paneLine(["code-review"])).toBe(
+      "Global does not update code-review in ~/.agents/skills. OpenCode loads this copy instead of the one in ~/.claude/skills. To load the current release, delete it from ~/.agents/skills yourself.",
+    );
+  });
+
+  it("names two copies with and", () => {
+    expect(paneLine(["code-review", "tdd"])).toBe(
+      "Global does not update code-review and tdd in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+    );
+  });
+
+  it("names three copies as a comma list ending in and", () => {
+    expect(paneLine(["code-review", "tdd", "commit-message"])).toBe(
+      "Global does not update code-review, tdd and commit-message in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+    );
+  });
+
+  it("says why the copies differ from the Target release", () => {
+    expect(plainText(strayDiffersLine(AGENTS, 1, "v2.0.0", "Codex"))).toBe(
+      "1 copy in ~/.agents/skills differs from v2.0.0. Global does not write there because Codex is not detected.",
+    );
+    expect(plainText(strayDiffersLine(AGENTS, 2, "v2.0.0", "Codex"))).toBe(
+      "2 copies in ~/.agents/skills differ from v2.0.0. Global does not write there because Codex is not detected.",
     );
   });
 });

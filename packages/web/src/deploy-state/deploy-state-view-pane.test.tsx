@@ -593,6 +593,39 @@ describe("Deploy-state pane — Global folders", () => {
     ).toBeInTheDocument();
   });
 
+  it("tells which tool loads the copies an undetected tool's folder holds", async () => {
+    const answer = globalAnswer({
+      claude: [skill("code-review"), skill("tdd")],
+    });
+    const [claude, agents] = answer.folders;
+    stubServer(() => ({
+      global: {
+        ...answer,
+        folders: [
+          claude,
+          {
+            ...agents,
+            strayCopies: [
+              { name: "code-review", atRelease: false },
+              { name: "tdd", atRelease: true },
+            ],
+          },
+        ],
+      },
+    }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    expect(
+      within(pane).getByText(
+        sentence(
+          "Global does not update code-review and tdd in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(within(pane).queryByText(/differs from/)).toBeNull();
+  });
+
   it("leaves a folder Global does not write out of the pane", async () => {
     stubServer(() => ({ global: globalAnswer({ claude: [skill("tdd")] }) }));
     renderDeployState();

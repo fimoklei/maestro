@@ -111,6 +111,35 @@ export const skillsMissingLine = (
     ? phrase`The deployed skill is missing in ${machine(folder)}.`
     : phrase`${missing} of ${deployed} deployed skills ${missing === 1 ? "is" : "are"} missing in ${machine(folder)}.`;
 
+/** Beside an undetected tool's folder: the copies of Global's skills it still holds. */
+export const strayCopiesNote = (tool: string, count: number) =>
+  count === 0
+    ? notWrittenNote(tool)
+    : `${notWrittenNote(tool)} · ${count} ${count === 1 ? "copy" : "copies"}`;
+
+/** Why Global reads Not updated: copies in an undetected tool's folder differ from the Target release. */
+export const strayDiffersLine = (
+  folder: string,
+  count: number,
+  release: string,
+  tool: string,
+): Phrase =>
+  phrase`${count} ${count === 1 ? "copy" : "copies"} in ${machine(folder)} ${count === 1 ? "differs" : "differ"} from ${machine(release)}. Global does not write there because ${tool} is not detected.`;
+
+/**
+ * The copies an undetected tool's folder holds, which OpenCode loads instead
+ * of the ones in `instead`, the folder Global writes (#1793).
+ */
+export function strayCopiesLine(
+  folder: string,
+  names: readonly string[],
+  instead: string,
+): Phrase {
+  const where = machine(folder);
+  const one = names.length === 1;
+  return phrase`Global does not update ${namedList(names)} in ${where}. OpenCode loads ${one ? "this copy" : "these copies"} instead of ${one ? "the one" : "the ones"} in ${machine(instead)}. To load the current release, delete ${one ? "it" : "them"} from ${where} yourself.`;
+}
+
 /**
  * A Global folder's unedited copies at another release than the Target
  * release. With no release matched, it names none and never says older.

@@ -30,6 +30,7 @@ import {
   type NotUpdatedCopy,
   oneSkillList,
   readGlobalTarget,
+  type StrayCopy,
 } from "./global-target";
 import { harnessPages, latestReleasePage, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
@@ -399,6 +400,8 @@ export class GlobalDeployStateReader extends DeployStateReader {
       lockfile,
     });
     const selection = oneSkillList(folders).map((primitive) => primitive.name);
+    // A skill with no copy in a written folder has no copy a stray one replaces.
+    const written = new Set<string>();
     for (const folder of folders.filter((each) => each.detected)) {
       const held = new Set(
         folder.primitives.map((primitive) => primitive.name),
@@ -418,6 +421,9 @@ export class GlobalDeployStateReader extends DeployStateReader {
         const reading = await session
           .read(primitive.name, folder.tool)
           .catch(() => null);
+        if (reading?.kind !== "missing") {
+          written.add(primitive.name);
+        }
         if (reading?.kind === "local-edits") {
           primitive.copy = "local-edits";
         } else if (reading?.kind === "unverified") {
@@ -428,6 +434,19 @@ export class GlobalDeployStateReader extends DeployStateReader {
       }
       if (notUpdated.length > 0) {
         folder.notUpdated = notUpdated;
+      }
+    }
+    for (const folder of folders.filter((each) => !each.detected)) {
+      const strayCopies: StrayCopy[] = [];
+      for (const name of written) {
+        const reading = await session.read(name, folder.tool).catch(() => null);
+        // An unread copy is still shown; only a proven equal raises no Status.
+        if (reading?.kind !== "missing") {
+          strayCopies.push({ name, atRelease: reading?.kind === "at-release" });
+        }
+      }
+      if (strayCopies.length > 0) {
+        folder.strayCopies = strayCopies;
       }
     }
   }

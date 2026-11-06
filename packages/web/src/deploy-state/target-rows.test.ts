@@ -491,6 +491,61 @@ describe("a Global folder that lacks skills", () => {
   });
 });
 
+describe("copies in an undetected tool's folder", () => {
+  const head = { ...ON_LATEST, release: "v2.0.0", latestRelease: "v2.0.0" };
+  const stray = (strayCopies: GlobalFolderState["strayCopies"]) => {
+    const [global] = globalRows(
+      globalRead(
+        [
+          claude([skill("code-review"), skill("tdd")]),
+          { ...agents([], false), strayCopies },
+        ],
+        { releaseHead: head },
+      ),
+      syncedDrift,
+      false,
+    );
+    if (global === undefined) throw new Error("no Global row");
+    return global;
+  };
+
+  it("counts the copies on the muted folder row", () => {
+    expect(
+      stray([
+        { name: "code-review", atRelease: false },
+        { name: "tdd", atRelease: true },
+      ]).folders?.map((folder) => folder.note),
+    ).toEqual([null, "Codex not detected · not written · 2 copies"]);
+  });
+
+  it("reads Global as Not updated where a copy differs from the Target release", () => {
+    const global = stray([
+      { name: "code-review", atRelease: false },
+      { name: "tdd", atRelease: false },
+    ]);
+    expect(words(global)).toBe("⚠ Not updated");
+    expect(readCard(statusCard(global, COMPARED)).reason).toBe(
+      "2 copies in ~/.agents/skills differ from v2.0.0. Global does not write there because Codex is not detected.",
+    );
+  });
+
+  it("counts only the differing copies in the hover card", () => {
+    const global = stray([
+      { name: "code-review", atRelease: false },
+      { name: "tdd", atRelease: true },
+    ]);
+    expect(readCard(statusCard(global, COMPARED)).reason).toBe(
+      "1 copy in ~/.agents/skills differs from v2.0.0. Global does not write there because Codex is not detected.",
+    );
+  });
+
+  it("raises no Status where every copy equals the Target release", () => {
+    expect(words(stray([{ name: "code-review", atRelease: true }]))).toBe(
+      "✓ In sync",
+    );
+  });
+});
+
 describe("Global as one target", () => {
   it("reads one Global row whose Status is its worst folder's", () => {
     const rows = globalRows(

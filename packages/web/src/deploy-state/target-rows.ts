@@ -18,12 +18,14 @@ import {
   NO_REPOSITORIES,
   NO_TOOL_DETECTED,
   notUpdatedLine,
-  notWrittenNote,
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
   readByLine,
   skillsMissingLine,
+  strayCopiesLine,
+  strayCopiesNote,
+  strayDiffersLine,
   TIMED_OUT_HINT,
   UNREACHED_HINT,
 } from "./deploy-state-copy";
@@ -70,6 +72,8 @@ export type FolderRow = {
   notUpdated: Copy | null;
   /** How many of Global's skills the folder lacks; null where it lacks none. */
   missing: Copy | null;
+  /** Which tool loads the copies an undetected tool's folder holds; null where none. */
+  strayCopies: Copy | null;
 };
 
 // One Deploy-state row per target: Global or a registered repository.
@@ -127,16 +131,68 @@ export const canImportLocalEdits = (
 ) => pending === undefined && primitive.copy === "local-edits";
 
 /** Each Global folder's Not updated sentence, in folder order. */
-export const notUpdatedLines = (row: Pick<TargetRow, "folders">): Copy[] =>
+const notUpdatedLines = (row: Pick<TargetRow, "folders">): Copy[] =>
   (row.folders ?? []).flatMap((folder) =>
     folder.notUpdated === null ? [] : [folder.notUpdated],
   );
 
 /** Each Global folder's Skills missing sentence, in folder order. */
-export const skillsMissingLines = (row: Pick<TargetRow, "folders">): Copy[] =>
+const skillsMissingLines = (row: Pick<TargetRow, "folders">): Copy[] =>
   (row.folders ?? []).flatMap((folder) =>
     folder.missing === null ? [] : [folder.missing],
   );
+
+/**
+ * The pane's folder lines: each Skills missing sentence, each Not updated
+ * sentence, and for an undetected tool's folder the line on which tool loads
+ * its copies where one is proven.
+ */
+export const folderPaneLines = (row: Pick<TargetRow, "folders">): Copy[] => [
+  ...skillsMissingLines(row),
+  ...(row.folders ?? []).flatMap((folder) => {
+    const line = folder.detected
+      ? folder.notUpdated
+      : (folder.strayCopies ?? folder.notUpdated);
+    return line === null ? [] : [line];
+  }),
+];
+
+// OpenCode prefers Codex's folder over Claude Code's (#1793); the other way
+// round no tool is proven to prefer the stray copy.
+function openCodeLine(
+  folder: GlobalFolderState,
+  folders: readonly GlobalFolderState[],
+): Copy | null {
+  const copies = folder.strayCopies ?? [];
+  const instead = folders.find(
+    (each) => each.detected && each.tool === "claude",
+  );
+  if (folder.tool !== "codex" || instead === undefined || copies.length === 0) {
+    return null;
+  }
+  return strayCopiesLine(
+    folder.path,
+    copies.map((copy) => copy.name),
+    instead.path,
+  );
+}
+
+function strayDiffers(
+  folder: GlobalFolderState,
+  release: string | undefined,
+): Copy | null {
+  const differing = (folder.strayCopies ?? []).filter(
+    (copy) => !copy.atRelease,
+  );
+  return release === undefined || differing.length === 0
+    ? null
+    : strayDiffersLine(
+        folder.path,
+        differing.length,
+        release,
+        toolDisplayName(folder.tool),
+      );
+}
 
 export const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
   primitives
@@ -195,11 +251,6 @@ export function globalRows(
     detected: folder.detected,
     status: folder.detected ? readingOf(folder) : null,
     readBy: readByLine(folder.readBy),
-    note: folder.detected ? null : notWrittenNote(toolDisplayName(folder.tool)),
-    notUpdated:
-      readFailed || release === undefined || !folder.notUpdated?.length
-        ? null
-        : notUpdatedLine(folder.path, folder.notUpdated, release),
     missing:
       readFailed || !folder.missing?.length
         ? null
@@ -208,7 +259,26 @@ export function globalRows(
             folder.missing.length,
             data.primitives.length,
           ),
+    note: folder.detected
+      ? null
+      : strayCopiesNote(
+          toolDisplayName(folder.tool),
+          readFailed ? 0 : (folder.strayCopies?.length ?? 0),
+        ),
+    notUpdated: readFailed
+      ? null
+      : !folder.detected
+        ? strayDiffers(folder, release)
+        : release === undefined || !folder.notUpdated?.length
+          ? null
+          : notUpdatedLine(folder.path, folder.notUpdated, release),
+    strayCopies: readFailed ? null : openCodeLine(folder, data.folders),
   }));
+  // An undetected folder carries no mark of its own, but a copy there that
+  // differs keeps Global from reading In sync.
+  const strayDiffer = folders.some(
+    (folder) => !folder.detected && folder.notUpdated !== null,
+  );
   const names = data.primitives.map((primitive) => primitive.name);
   return [
     {
@@ -225,9 +295,10 @@ export function globalRows(
       wire: { kind: "global" },
       updateName: GLOBAL,
       release: releaseOf(data.releaseHead, data.pinnedPerSkill),
-      status: worstFolderReading(
-        folders.filter((folder) => folder.detected).map((f) => f.status),
-      ),
+      status: worstFolderReading([
+        ...folders.filter((folder) => folder.detected).map((f) => f.status),
+        ...(strayDiffer ? [NOT_UPDATED] : []),
+      ]),
       skills: data.primitives.length,
       ...(data.releaseHead ? { head: data.releaseHead } : {}),
       ...(data.releaseGitHub ? { releaseGitHub: data.releaseGitHub } : {}),
