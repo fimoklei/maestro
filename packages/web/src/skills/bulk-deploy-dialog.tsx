@@ -21,6 +21,7 @@ export function BulkDeployDialog({
   targets,
   selected,
   skills,
+  writesTo,
   onSelect,
   unavailable,
   fieldsChanged,
@@ -37,6 +38,8 @@ export function BulkDeployDialog({
   selected: string | null;
   /** The staged skills, grouped by what the deploy will do with them. */
   skills: readonly GroupedListGroup[];
+  /** The folders a Global deploy writes; null for a repository or before a choice. */
+  writesTo: GroupedListGroup | null;
   onSelect: (value: string) => void;
   /** The sentence that says why no deploy can run; `null` when it can. */
   unavailable: string | null;
@@ -100,6 +103,9 @@ export function BulkDeployDialog({
             />
           </div>
           <GroupedList groups={skills} checklist={null} live={null} />
+          {writesTo === null ? null : (
+            <GroupedList groups={[writesTo]} checklist={null} live={null} />
+          )}
         </div>
       ) : (
         <Report heading={report.heading} groups={report.groups} />

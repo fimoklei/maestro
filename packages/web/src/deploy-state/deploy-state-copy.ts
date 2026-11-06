@@ -83,12 +83,15 @@ export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
 /** The Global pane's sub-list of the folders Global writes. */
 export const GLOBAL_FOLDERS = "Global folders";
 
-/** A Global folder's readers, in the Global pane: the only place a tool is named. */
+/** A Global folder's readers, in the Global pane: the only place a detected tool is named. */
 export const readByLine = (readBy: {
   tools: readonly string[];
   others: boolean;
 }) =>
   `Read by ${joinNames(readBy.others ? [...readBy.tools, "others"] : readBy.tools)}.`;
+
+/** A Global dialog's list of the Global folders its action writes. */
+export const WRITES_TO = "Writes to";
 
 /** Beside a Global folder Global does not write, its tool not detected. */
 export const notWrittenNote = (tool: string) =>

@@ -124,3 +124,27 @@ export const ReadOnlyWithSlots: Story = {
     ],
   },
 };
+
+// Rows named by a path; a row the action leaves alone is muted.
+export const ReadOnlyPaths: Story = {
+  args: {
+    live: null,
+    checklist: null,
+    groups: [
+      {
+        tone: "neutral",
+        legend: "Writes to",
+        rows: [
+          { key: "claude", name: "~/.claude/skills", machineName: true },
+          {
+            key: "agents",
+            name: "~/.agents/skills",
+            machineName: true,
+            muted: true,
+            sentence: "Codex not detected · not written",
+          },
+        ],
+      },
+    ],
+  },
+};

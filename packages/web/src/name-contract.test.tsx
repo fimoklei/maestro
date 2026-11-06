@@ -98,7 +98,6 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Remove ${skillName} from ${targetCount(count)}`": "dialog title",
     "`Select ${name}`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",
-    '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",
   },
   "prompts/prompts-copy.ts": {
     "`Select ${name}`": "checkbox label",

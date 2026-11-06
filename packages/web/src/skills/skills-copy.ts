@@ -1,7 +1,5 @@
-import {
-  toolDisplayName,
-  toolNameList,
-} from "../deploy-state/tool-presentation";
+import { GLOBAL } from "../deploy-state/deploy-state-copy";
+import { toolNameList } from "../deploy-state/tool-presentation";
 import { targetCount } from "../inventory/inventory-copy";
 import type { SkillState } from "../inventory/skill-status";
 import {
@@ -72,19 +70,10 @@ export const PINNED_LOCAL_CHANGES_NEXT_STEP =
 export const removeFromCountLabel = (count: number): string =>
   `Remove from ${targetCount(count)}`;
 
-// The bulk-deploy picker's Global option. undefined = not loaded or
-// unreadable → plain "Global"; empty = zero detected tools (#134).
-export function globalOptionLabel(
-  tools: readonly string[] | undefined,
-): string {
-  if (tools === undefined) {
-    return "Global";
-  }
-  if (tools.length === 0) {
-    return "Global (no tool detected)";
-  }
-  return `Global (${tools.map(toolDisplayName).join(" + ")})`;
-}
+// The bulk-deploy picker's Global option. Several tools read one folder, so it
+// names no tool: Writes to names the folders. Empty = zero detected tools (#134).
+export const globalOptionLabel = (tools: readonly string[] | undefined) =>
+  tools?.length === 0 ? "Global (no tool detected)" : GLOBAL;
 
 export const NO_SEARCH_MATCH = {
   title: "No skills match the search",
