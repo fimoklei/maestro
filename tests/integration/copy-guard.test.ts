@@ -83,6 +83,8 @@ describe("copy guard", () => {
     ["Close this dialog, then select Delete skill again.", "Close this dialog"],
     ["Deploy again to re-check the target.", "Deploy again"],
     ["Select Deploy again to overwrite it.", "Deploy again"],
+    ["Update targets", "Update targets"],
+    ["Select Update targets to move them.", "Update targets"],
     ["Remove from Claude Code and Codex", "Remove from Claude Code"],
     ["Remove from Codex", "Remove from Codex"],
   ])("fails a string saying %j and names the word", (sentence, word) => {

@@ -154,12 +154,12 @@ const SURFACES: Surface[] = [
   },
   {
     name: "updatePreviewNotice",
-    read: (error) => updatePreviewNotice(error, "Update target"),
+    read: (error) => updatePreviewNotice(error),
     codes: UPDATE_PREVIEW,
   },
   {
     name: "updateNotice",
-    read: (error) => updateNotice(error, "Update target"),
+    read: (error) => updateNotice(error),
     codes: UPDATE_RUN,
   },
   ...KINDS.map((kind) => ({
@@ -243,8 +243,8 @@ describe("the fallbacks", () => {
     const labels = [
       deployNotice(new Error("offline")),
       removeNotice(new Error("offline")),
-      updatePreviewNotice(new Error("offline"), "Update target"),
-      updateNotice(new Error("offline"), "Update target"),
+      updatePreviewNotice(new Error("offline")),
+      updateNotice(new Error("offline")),
     ].map(({ label }) => label);
 
     expect(new Set(labels).size).toBe(labels.length);
@@ -366,26 +366,16 @@ describe("a removal refused over local edits", () => {
   });
 });
 
-describe("an update that moves more than its row", () => {
-  // The tables name Update target; a wider row names its own label instead.
+describe("an update on any target, Global included", () => {
+  // One action has one name (#1802).
   it.each([
-    [
-      "preview, unknown",
-      updatePreviewNotice(new Error("offline"), "Update targets"),
-    ],
-    [
-      "run, out of date",
-      updateNotice(refusal("status-out-of-date"), "Update targets"),
-    ],
-    [
-      "run, linked folder",
-      updateNotice(refusal("destination-symlinked"), "Update targets"),
-    ],
-  ])("names the control by the label the row gives it (%s)", (_, notice) => {
+    ["preview, unknown", updatePreviewNotice(new Error("offline"))],
+    ["run, out of date", updateNotice(refusal("status-out-of-date"))],
+    ["run, linked folder", updateNotice(refusal("destination-symlinked"))],
+  ])("names the control Update target (%s)", (_, notice) => {
     const message = plainText(notice.message);
 
-    expect(message).toMatch(/[Ss]elect Update targets again\.$/);
-    expect(message).not.toMatch(/Update target\b(?!s)/);
+    expect(message).toMatch(/[Ss]elect Update target again\.$/);
   });
 });
 
@@ -401,8 +391,8 @@ describe("a linked skill folder", () => {
 
   it.each([
     ["deploy", deployNotice],
-    ["update preview", (e: unknown) => updatePreviewNotice(e, "Update target")],
-    ["update run", (e: unknown) => updateNotice(e, "Update target")],
+    ["update preview", (e: unknown) => updatePreviewNotice(e)],
+    ["update run", (e: unknown) => updateNotice(e)],
   ])("sets apart the rm for the path the server read (%s)", (_, notice) => {
     expect(machineValues(notice(withPath).message)).toEqual([`rm ${LINKED}`]);
     expect(machineValues(notice(withoutPath).message)).toEqual([]);
@@ -419,12 +409,9 @@ describe("a linked skill folder", () => {
 describe("notices that send the reader to the target", () => {
   it.each([
     ["remove, unfinished", removeNotice(refusal("operation-unfinished"))],
-    [
-      "update, unfinished",
-      updateNotice(refusal("operation-unfinished"), "Update target"),
-    ],
-    ["update, failed", updateNotice(refusal("update-failed"), "Update target")],
-    ["update, unknown", updateNotice(new Error("offline"), "Update target")],
+    ["update, unfinished", updateNotice(refusal("operation-unfinished"))],
+    ["update, failed", updateNotice(refusal("update-failed"))],
+    ["update, unknown", updateNotice(new Error("offline"))],
   ])("names the Deploy-state screen (%s)", (_, notice) => {
     expect(notice.message).toContain("on the Deploy-state screen");
     expect(notice.message).not.toContain("target card");
@@ -528,9 +515,7 @@ describe("a timed-out apm call", () => {
   });
 
   it("sends a timed-out update to Retry update", () => {
-    expect(
-      readNotice(updateNotice(refusal("update-timed-out"), "Update target")),
-    ).toEqual({
+    expect(readNotice(updateNotice(refusal("update-timed-out")))).toEqual({
       label: "Update timed out",
       message:
         "The update stopped after 5 minutes. Select Retry update to run it again.",
@@ -562,7 +547,7 @@ describe("Repository not registered", () => {
     for (const notice of [
       deployNotice(refusal("repo-not-registered")),
       removeNotice(refusal("repo-not-registered")),
-      updatePreviewNotice(refusal("repo-not-registered"), "Update target"),
+      updatePreviewNotice(refusal("repo-not-registered")),
       retryNotice(refusal("repo-not-registered"), pending("deploy")),
       localEditsCheckNotice(refusal("repo-not-registered")),
     ]) {

@@ -445,6 +445,107 @@ describe("a Global folder left at an older release", () => {
   });
 });
 
+describe("a Global folder that lacks skills", () => {
+  const lacking = (missing: string[]) => {
+    const [global] = globalRows(
+      globalRead([
+        claude([skill("code-review"), skill("tdd")]),
+        {
+          ...agents([skill("code-review", "local-edits")]),
+          missing,
+          notUpdated: [{ name: "code-review", stillAt: "v1.0.0" }],
+        },
+      ]),
+      syncedDrift,
+      false,
+    );
+    if (global === undefined) throw new Error("no Global row");
+    return global;
+  };
+
+  it("reads that folder and the Global row as Skills missing, over Not updated", () => {
+    const global = lacking(["tdd"]);
+    expect(folderMarks(global)).toEqual([
+      ["~/.claude/skills", "✓ In sync"],
+      ["~/.agents/skills", "⚠ Skills missing"],
+    ]);
+    expect(words(global)).toBe("⚠ Skills missing");
+  });
+
+  it("counts the missing skills against Global's list in the hover card", () => {
+    expect(readCard(statusCard(lacking(["tdd"]), COMPARED)).reason).toBe(
+      "1 of 2 deployed skills is missing in ~/.agents/skills.",
+    );
+  });
+
+  it("leaves a folder holding every skill without a missing line", () => {
+    const [global] = globalRows(
+      globalRead([claude([skill("tdd")]), agents([skill("tdd")])]),
+      syncedDrift,
+      false,
+    );
+    expect(global?.folders?.map((folder) => folder.missing)).toEqual([
+      null,
+      null,
+    ]);
+  });
+});
+
+describe("copies in an undetected tool's folder", () => {
+  const head = { ...ON_LATEST, release: "v2.0.0", latestRelease: "v2.0.0" };
+  const stray = (strayCopies: GlobalFolderState["strayCopies"]) => {
+    const [global] = globalRows(
+      globalRead(
+        [
+          claude([skill("code-review"), skill("tdd")]),
+          { ...agents([], false), strayCopies },
+        ],
+        { releaseHead: head },
+      ),
+      syncedDrift,
+      false,
+    );
+    if (global === undefined) throw new Error("no Global row");
+    return global;
+  };
+
+  it("counts the copies on the muted folder row", () => {
+    expect(
+      stray([
+        { name: "code-review", atRelease: false },
+        { name: "tdd", atRelease: true },
+      ]).folders?.map((folder) => folder.note),
+    ).toEqual([null, "Codex not detected · not written · 2 copies"]);
+  });
+
+  it("reads Global as Not updated where a copy differs from the Target release", () => {
+    const global = stray([
+      { name: "code-review", atRelease: false },
+      { name: "tdd", atRelease: false },
+    ]);
+    expect(words(global)).toBe("⚠ Not updated");
+    expect(readCard(statusCard(global, COMPARED)).reason).toBe(
+      "2 copies in ~/.agents/skills differ from v2.0.0. Global does not write there because Codex is not detected.",
+    );
+  });
+
+  it("counts only the differing copies in the hover card", () => {
+    const global = stray([
+      { name: "code-review", atRelease: false },
+      { name: "tdd", atRelease: true },
+    ]);
+    expect(readCard(statusCard(global, COMPARED)).reason).toBe(
+      "1 copy in ~/.agents/skills differs from v2.0.0. Global does not write there because Codex is not detected.",
+    );
+  });
+
+  it("raises no Status where every copy equals the Target release", () => {
+    expect(words(stray([{ name: "code-review", atRelease: true }]))).toBe(
+      "✓ In sync",
+    );
+  });
+});
+
 describe("Global as one target", () => {
   it("reads one Global row whose Status is its worst folder's", () => {
     const rows = globalRows(

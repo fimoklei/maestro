@@ -1,7 +1,6 @@
 import type { UpdatePreview } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { HttpError } from "../api/http";
-import { UPDATE_TARGET } from "../ui/control-labels";
 import { updatePreviewNotice } from "./notice-copy";
 import { UpdateTargetDialog } from "./update-target-dialog";
 
@@ -33,6 +32,7 @@ const meta = {
   component: UpdateTargetDialog,
   args: {
     targetName: "agent-harness",
+    folders: null,
     preview: PREVIEW,
     isLoading: false,
     error: null,
@@ -62,8 +62,26 @@ export const NoContentChanges: Story = {
   },
 };
 
+const GLOBAL_FOLDERS = [
+  { path: "~/.claude/skills", tool: "claude", detected: true },
+  { path: "~/.agents/skills", tool: "codex", detected: true },
+] as const;
+
+export const Global: Story = {
+  args: { targetName: "Global", folders: GLOBAL_FOLDERS },
+};
+
+export const GlobalCodexNotDetected: Story = {
+  args: {
+    targetName: "Global",
+    folders: [GLOBAL_FOLDERS[0], { ...GLOBAL_FOLDERS[1], detected: false }],
+  },
+};
+
 export const ConsentRequired: Story = {
   args: {
+    targetName: "Global",
+    folders: GLOBAL_FOLDERS,
     preview: {
       ...PREVIEW,
       localEdits: {
@@ -105,10 +123,7 @@ export const AddedByThisDeploy: Story = {
 export const Refused: Story = {
   args: {
     preview: null,
-    error: updatePreviewNotice(
-      new HttpError(404, "unused", "not-deployed"),
-      UPDATE_TARGET,
-    ),
+    error: updatePreviewNotice(new HttpError(404, "unused", "not-deployed")),
   },
 };
 

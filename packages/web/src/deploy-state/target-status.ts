@@ -9,6 +9,11 @@ import { UNFINISHED_HEADINGS } from "./release-head-copy";
 export const unfinishedReading = (kind: PendingOperation["kind"]) =>
   reading(UNFINISHED_HEADINGS[kind], "attention", WARNING_GLYPH);
 const ATTENTION = reading("Attention", "attention", WARNING_GLYPH);
+export const SKILLS_MISSING = reading(
+  "Skills missing",
+  "attention",
+  WARNING_GLYPH,
+);
 export const NOT_UPDATED = reading("Not updated", "attention", WARNING_GLYPH);
 export const LOCAL_EDITS = reading("Local edits", "attention", WARNING_GLYPH);
 export const BEHIND = reading("Behind", "attention");
@@ -23,6 +28,7 @@ export const TARGET_STATUS_WORDS = [
   ...Object.values(UNFINISHED_HEADINGS),
   ...[
     ATTENTION,
+    SKILLS_MISSING,
     NOT_UPDATED,
     LOCAL_EDITS,
     BEHIND,
@@ -63,6 +69,11 @@ export const TARGET_CHIPS: readonly StatusChip[] = [
     family: "attention",
     covers: [ATTENTION.word, ...Object.values(UNFINISHED_HEADINGS)],
   },
+  {
+    word: SKILLS_MISSING.word,
+    family: "attention",
+    covers: [SKILLS_MISSING.word],
+  },
   { word: NOT_UPDATED.word, family: "attention", covers: [NOT_UPDATED.word] },
   { word: LOCAL_EDITS.word, family: "attention", covers: [LOCAL_EDITS.word] },
   { word: BEHIND.word, family: "attention", covers: [BEHIND.word] },
@@ -77,6 +88,7 @@ export function targetStatus({
   pending,
   localEdits = false,
   notUpdated = false,
+  missing = false,
 }: {
   indicator: TargetDriftIndicator;
   pinnedPerSkill?: boolean;
@@ -87,9 +99,13 @@ export function targetStatus({
   localEdits?: boolean;
   // A Global folder holds an unedited copy at another release than the Target release.
   notUpdated?: boolean;
+  // A Global folder lacks skills of Global's one skill list.
+  missing?: boolean;
 }): StatusReading | null {
   if (pending) return unfinishedReading(pending);
-  if ((localEdits || notUpdated) && indicator === "attention") return ATTENTION;
+  if ((localEdits || notUpdated || missing) && indicator === "attention")
+    return ATTENTION;
+  if (missing && indicator !== "pending") return SKILLS_MISSING;
   if (notUpdated && indicator !== "pending") return NOT_UPDATED;
   if (localEdits && indicator !== "pending") return LOCAL_EDITS;
   if (pinnedPerSkill) return PINNED;

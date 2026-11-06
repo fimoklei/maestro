@@ -518,6 +518,33 @@ describe("Deploy-state pane — Global folders", () => {
     expect(fact(pane, "Folder path") ?? null).toBeNull();
   });
 
+  it("counts the skills a newly detected tool's folder lacks", async () => {
+    const answer = globalAnswer({
+      claude: [skill("code-review"), skill("tdd")],
+      codex: [],
+    });
+    const [claude, agents] = answer.folders;
+    stubServer(() => ({
+      global: {
+        ...answer,
+        folders: [claude, { ...agents, missing: ["code-review", "tdd"] }],
+      },
+    }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    expect(
+      within(pane).getByText(
+        sentence("2 of 2 deployed skills are missing in ~/.agents/skills."),
+      ),
+    ).toBeInTheDocument();
+    const folders = within(pane).getByRole("list", { name: "Global folders" });
+    expect(
+      within(folders).getByRole("img", { name: "Skills missing" }),
+    ).toBeInTheDocument();
+    expect(cellsOf("Global")[1]).toBe("Skills missing");
+  });
+
   it("names the release a lagging folder's copies are still at", async () => {
     const answer = globalAnswer(
       {
@@ -564,6 +591,39 @@ describe("Deploy-state pane — Global folders", () => {
     expect(
       within(folders).getByRole("img", { name: "Not updated" }),
     ).toBeInTheDocument();
+  });
+
+  it("tells which tool loads the copies an undetected tool's folder holds", async () => {
+    const answer = globalAnswer({
+      claude: [skill("code-review"), skill("tdd")],
+    });
+    const [claude, agents] = answer.folders;
+    stubServer(() => ({
+      global: {
+        ...answer,
+        folders: [
+          claude,
+          {
+            ...agents,
+            strayCopies: [
+              { name: "code-review", atRelease: false },
+              { name: "tdd", atRelease: true },
+            ],
+          },
+        ],
+      },
+    }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    expect(
+      within(pane).getByText(
+        sentence(
+          "Global does not update code-review and tdd in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(within(pane).queryByText(/differs from/)).toBeNull();
   });
 
   it("leaves a folder Global does not write out of the pane", async () => {
