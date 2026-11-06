@@ -23,11 +23,29 @@ above it (ADR-0001).
 - **Docs: condense rather than expand.** Before calling doc work done, check
   the touched docs against the conflict rule in `docs/operating-model.md`.
 
+## Rules and their checks
+
+When the operator corrects a mistake, add its rule here with what enforces it.
+A rule enforced by nothing that repeats gets a check in the same change.
+
+| Rule | Enforced by |
+| --- | --- |
+| Typecheck, lint and affected tests pass before a commit | commit gate (`~/.claude/hooks/commit-gate.py`); `verify` in CI |
+| A commit that removes a test case says why (`Tests-removed:`) | commit gate |
+| Code comments cite no ADR, story ID, home path or workshop document | `comment-guard` in `pnpm lint` |
+| Shipped strings use no retired screen word | `copy-guard` in `pnpm lint` |
+| Feature code takes status, colour, icon, toast and checkbox from `ui/` | `design-guard` in `pnpm lint` |
+| A rule file's `paths:` matches a file | `rules-guard` in `pnpm lint` |
+| A source file stays under 800 lines | Biome in `pnpm lint` |
+| Merge only after CI is green | `workflow-ship` → `wait-for-checks.sh`; ruleset on `main` |
+| Product copy reads natural and states traced facts | judgement: `.claude/rules/copy.md`, `copy-reviewer` |
+
 ## Where to look
 
-- Designing a screen, dialog or use case, or running the cockpit →
-  `.claude/rules/design.md`. Drafting user-facing copy, in code, a spec, a
-  ticket or a grill option → `.claude/rules/copy.md`; complete its copy review.
+- Designing a screen, dialog or use case → read `.claude/rules/design.md`
+  whole. Running the cockpit → `.claude/rules/verify-ui.md`. Drafting
+  user-facing copy, in code, a spec, a ticket or a grill option →
+  `.claude/rules/copy.md`; complete its copy review.
 - Where code lives → `docs/agents/codebase-map.md`. Before measuring anything
   → `docs/research/`; `head -n1 docs/research/*.md` lists each note's
   question. Domain terms → `GLOSSARY.md`; decisions → `docs/adr/`
@@ -42,5 +60,5 @@ above it (ADR-0001).
   `docs/agents/worktree-brief.md`.
 - Committing → `workflow-commit`. Shipping → `workflow-ship`. Publishing an
   issue (job, spec or ticket) → `docs/agents/issue-tracker.md`.
-- Browser: the cockpit → `agent-browser` (`.claude/rules/design.md` → Verify);
+- Browser: the cockpit → `agent-browser` (`.claude/rules/verify-ui.md`);
   a live third-party site → the Chrome tools (the operator's logged-in profile).
