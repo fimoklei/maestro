@@ -1,6 +1,11 @@
 import type { FolderOutcome, SkillOutcome } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import { heldLine, updatedToLine, writtenToLine } from "./written-to-copy";
+import {
+  folderLines,
+  heldLine,
+  updatedToLine,
+  writtenToLine,
+} from "./written-to-copy";
 
 const folder = (
   skills: SkillOutcome[],
@@ -8,7 +13,7 @@ const folder = (
 ): FolderOutcome => ({
   path: "~/.agents/skills",
   tool: "codex",
-  written: true,
+  detected: true,
   skills,
   ...options,
 });
@@ -110,7 +115,7 @@ describe("Written to line", () => {
 
   it("names the undetected tool of a folder the deploy skipped", () => {
     expect(
-      writtenToLine(folder([], { written: false, tool: "codex" }), true),
+      writtenToLine(folder([], { detected: false, tool: "codex" }), true),
     ).toEqual({
       tone: "neutral",
       fact: "Codex not detected · not written",
@@ -211,7 +216,7 @@ describe("Written to line after Update target", () => {
   it("names the undetected tool of a folder the update skipped", () => {
     expect(
       updatedToLine(
-        folder([], { written: false, tool: "codex" }),
+        folder([], { detected: false, tool: "codex" }),
         update(true),
       ),
     ).toEqual({
@@ -225,20 +230,31 @@ describe("Written to line after Update target", () => {
 
 describe("Written to line of a held deploy", () => {
   it("states that the folder got none of the held skills", () => {
-    expect(heldLine({ tool: "claude", detected: true }, 2)).toEqual({
+    expect(heldLine(2)).toEqual({
       tone: "neutral",
       fact: "0 of 2 skills deployed",
       details: [],
       step: null,
     });
-    expect(heldLine({ tool: "claude", detected: true }, 1).fact).toBe(
-      "0 of 1 skill deployed",
-    );
+    expect(heldLine(1).fact).toBe("0 of 1 skill deployed");
   });
 
-  it("names the undetected tool of a folder Global does not write", () => {
-    expect(heldLine({ tool: "codex", detected: false }, 2).fact).toBe(
-      "Codex not detected · not written",
-    );
+  it("names the undetected tool of a folder Global does not write, muted", () => {
+    expect(
+      folderLines(
+        [{ path: "~/.agents/skills", tool: "codex", detected: false }],
+        () => heldLine(2),
+      ),
+    ).toEqual([
+      {
+        key: "~/.agents/skills",
+        name: "~/.agents/skills",
+        muted: true,
+        tone: "neutral",
+        fact: "Codex not detected · not written",
+        details: [],
+        step: null,
+      },
+    ]);
   });
 });

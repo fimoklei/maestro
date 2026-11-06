@@ -76,13 +76,13 @@ describe("FolderOutcomeReader after a Global write", () => {
         {
           path: "~/.claude/skills",
           tool: "claude",
-          written: true,
+          detected: true,
           skills: [{ name: "code-review", outcome: "written" }],
         },
         {
           path: "~/.agents/skills",
           tool: "codex",
-          written: true,
+          detected: true,
           skills: [{ name: "code-review", outcome: "written" }],
         },
       ],
@@ -185,7 +185,7 @@ describe("FolderOutcomeReader after a Global write", () => {
     expect(outcome.folders[1]).toEqual({
       path: "~/.agents/skills",
       tool: "codex",
-      written: false,
+      detected: false,
       skills: [],
     });
   });

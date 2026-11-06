@@ -3,18 +3,14 @@
 
 export type SupportedTool = "claude" | "codex";
 
-/** The tools that load skills from a Global folder; `others`: the list is not complete. */
-type ReadBy = { tools: readonly string[]; others: boolean };
-
-// One entry per Global folder: the apm target that writes it, its presence
-// marker and the tools that read it.
+// One entry per Global folder: the apm target that writes it and its presence
+// marker.
 type DeployTool = {
   apmTarget: SupportedTool;
   // codex deploys to the cross-client ".agents" dir, not ".codex".
   skillsDirPrefix: string;
   // The tool's own config, never a skills directory a deploy creates.
   globalPresenceMarker: string;
-  readBy: ReadBy;
 };
 
 // No tool is the only reader of its skills folder, so Maestro never deletes a
@@ -25,16 +21,11 @@ export const DEPLOY_TOOLS: readonly DeployTool[] = [
     apmTarget: "claude",
     skillsDirPrefix: ".claude",
     globalPresenceMarker: ".claude.json",
-    readBy: { tools: ["Claude Code", "Cursor", "OpenCode"], others: false },
   },
   {
     apmTarget: "codex",
     skillsDirPrefix: ".agents",
     globalPresenceMarker: ".codex/config.toml",
-    readBy: {
-      tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
-      others: true,
-    },
   },
 ];
 
@@ -44,17 +35,21 @@ export type GlobalFolder = {
   tool: SupportedTool;
   /** Global writes this folder only while its tool is detected. */
   detected: boolean;
-  readBy: ReadBy;
 };
+
+/** The Global folder a tool's apm target writes, as the screen names it. */
+export function globalFolderPath(tool: SupportedTool): string {
+  const entry = DEPLOY_TOOLS.find((each) => each.apmTarget === tool);
+  return `~/${entry?.skillsDirPrefix ?? tool}/skills`;
+}
 
 export function globalFolders(
   detected: readonly SupportedTool[],
 ): GlobalFolder[] {
   return DEPLOY_TOOLS.map((tool) => ({
-    path: `~/${tool.skillsDirPrefix}/skills`,
+    path: globalFolderPath(tool.apmTarget),
     tool: tool.apmTarget,
     detected: detected.includes(tool.apmTarget),
-    readBy: tool.readBy,
   }));
 }
 

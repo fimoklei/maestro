@@ -118,7 +118,7 @@ describe("Global update outcome report", () => {
       {
         path: "~/.claude/skills",
         tool: "claude",
-        written: true,
+        detected: true,
         skills: [{ name: "tdd", outcome: "written" }],
       },
     ],

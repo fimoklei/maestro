@@ -484,7 +484,6 @@ describe("SkillsPanel", () => {
             path: "~/.claude/skills",
             tool: "claude",
             detected: true,
-            readBy: { tools: ["Claude Code"], others: false },
             primitives: [],
           },
         ],

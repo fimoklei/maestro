@@ -86,23 +86,10 @@ describe("apmTargetFlagForTools", () => {
 });
 
 describe("globalFolders", () => {
-  it("lists every Global folder by home-relative path, with who reads it", () => {
+  it("lists every Global folder by home-relative path, with the tool that writes it", () => {
     expect(globalFolders(["claude"])).toStrictEqual([
-      {
-        path: "~/.claude/skills",
-        tool: "claude",
-        detected: true,
-        readBy: { tools: ["Claude Code", "Cursor", "OpenCode"], others: false },
-      },
-      {
-        path: "~/.agents/skills",
-        tool: "codex",
-        detected: false,
-        readBy: {
-          tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
-          others: true,
-        },
-      },
+      { path: "~/.claude/skills", tool: "claude", detected: true },
+      { path: "~/.agents/skills", tool: "codex", detected: false },
     ]);
   });
 

@@ -49,6 +49,16 @@ const refusalBody = (result: {
   ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
 });
 
+// The Global folders whose local edits refused a removal, and those of them
+// Global does not write.
+const editedFoldersBody = (result: {
+  folders?: string[];
+  notWritten?: string[];
+}) => ({
+  ...(result.folders ? { folders: result.folders } : {}),
+  ...(result.notWritten ? { notWritten: result.notWritten } : {}),
+});
+
 type Deps = Pick<
   AppDeps,
   | "registry"
@@ -151,7 +161,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           ...(result.check && result.receipt
             ? { check: result.check, receipt: result.receipt }
             : {}),
-          ...(result.folders ? { folders: result.folders } : {}),
+          ...editedFoldersBody(result),
         },
         status,
       );
@@ -172,7 +182,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json(
         {
           error: result.error,
-          ...(result.folders ? { folders: result.folders } : {}),
+          ...editedFoldersBody(result),
         },
         status,
       );

@@ -18,26 +18,16 @@ const TWO_TOOL_LOCKFILE = readFileSync(
 );
 
 const TDD = { type: "skill", name: "tdd", version: "v0.5.1" };
-const CLAUDE_READERS = {
-  tools: ["Claude Code", "Cursor", "OpenCode"],
-  others: false,
-};
-const AGENTS_READERS = {
-  tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
-  others: true,
-};
 const claudeFolder = (primitives: unknown[], detected = true) => ({
   path: "~/.claude/skills",
   tool: "claude",
   detected,
-  readBy: CLAUDE_READERS,
   primitives,
 });
 const agentsFolder = (primitives: unknown[], detected = true) => ({
   path: "~/.agents/skills",
   tool: "codex",
   detected,
-  readBy: AGENTS_READERS,
   primitives,
 });
 

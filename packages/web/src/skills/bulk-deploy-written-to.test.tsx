@@ -28,11 +28,16 @@ const outcome = (
 ): FolderOutcomes => ({
   release: "v1.0.0",
   folders: [
-    { path: "~/.claude/skills", tool: "claude", written: true, skills: claude },
+    {
+      path: "~/.claude/skills",
+      tool: "claude",
+      detected: true,
+      skills: claude,
+    },
     {
       path: "~/.agents/skills",
       tool: "codex",
-      written: codex !== null,
+      detected: codex !== null,
       skills: codex ?? [],
     },
   ],

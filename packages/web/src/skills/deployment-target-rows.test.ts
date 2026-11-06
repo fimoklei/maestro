@@ -23,7 +23,6 @@ const folder = (
   path: tool === "claude" ? "~/.claude/skills" : "~/.agents/skills",
   tool,
   detected,
-  readBy: { tools: [], others: false },
   primitives,
 });
 

@@ -54,7 +54,7 @@ import {
   targetStatus,
   worstFolderReading,
 } from "./target-status";
-import { toolDisplayName } from "./tool-presentation";
+import { readByOf, toolDisplayName } from "./tool-presentation";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
 /** A Global folder under the Global row: read-only, with no action of its own. */
@@ -249,7 +249,7 @@ export function globalRows(
     path: folder.path,
     detected: folder.detected,
     status: folder.detected ? readingOf(folder) : null,
-    readBy: readByLine(folder.readBy),
+    readBy: readByLine(readByOf(folder.tool)),
     missing:
       readFailed || !folder.missing?.length
         ? null

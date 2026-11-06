@@ -171,13 +171,13 @@ export const GlobalUpdated: Story = {
           {
             path: "~/.claude/skills",
             tool: "claude",
-            written: true,
+            detected: true,
             skills: written(SELECTED),
           },
           {
             path: "~/.agents/skills",
             tool: "codex",
-            written: false,
+            detected: false,
             skills: [],
           },
         ],
@@ -199,13 +199,13 @@ export const GlobalOneFolderBehind: Story = {
           {
             path: "~/.claude/skills",
             tool: "claude",
-            written: true,
+            detected: true,
             skills: written(SELECTED),
           },
           {
             path: "~/.agents/skills",
             tool: "codex",
-            written: true,
+            detected: true,
             skills: [
               { name: "tdd", outcome: "not-updated", stillAt: "v0.3.2" },
               { name: "jobs", outcome: "not-updated", stillAt: null },

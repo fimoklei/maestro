@@ -56,8 +56,13 @@ const DEPLOYED_AGAIN: BulkDeployReport = {
   outcome: {
     release: "v1.0.0",
     folders: [
-      { path: "~/.claude/skills", tool: "claude", written: true, skills: both },
-      { path: "~/.agents/skills", tool: "codex", written: true, skills: both },
+      {
+        path: "~/.claude/skills",
+        tool: "claude",
+        detected: true,
+        skills: both,
+      },
+      { path: "~/.agents/skills", tool: "codex", detected: true, skills: both },
     ],
   },
 };

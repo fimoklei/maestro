@@ -50,13 +50,13 @@ describe("bulk deploy HTTP route", () => {
           {
             path: "~/.claude/skills",
             tool: "claude",
-            written: true,
+            detected: true,
             skills: written,
           },
           {
             path: "~/.agents/skills",
             tool: "codex",
-            written: true,
+            detected: true,
             skills: written,
           },
         ],
@@ -133,7 +133,7 @@ describe("bulk deploy HTTP route", () => {
     expect(body.outcome?.folders[1]).toEqual({
       path: "~/.agents/skills",
       tool: "codex",
-      written: false,
+      detected: false,
       skills: [],
     });
   });

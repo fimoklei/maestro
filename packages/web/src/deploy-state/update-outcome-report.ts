@@ -2,16 +2,16 @@
 // per tool only where the tools disagree; Global states one fact per Global
 // folder.
 import type {
+  FolderOutcome,
   FolderOutcomes,
-  GlobalFolderState,
+  SkillOutcome,
   UpdateOutcomeRow,
   UpdateSkillState,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { FoldLine } from "../ui/fold-list";
 import type { ReportGroup } from "../ui/report";
-import { notWrittenNote } from "./deploy-state-copy";
-import { toolDisplayName } from "./tool-presentation";
+import { isSupportedTool } from "./tool-presentation";
 import {
   consentRowName,
   outcomeDetail,
@@ -19,7 +19,12 @@ import {
   type UnlandedState,
   UPDATE_INCOMPLETE,
 } from "./update-target-copy";
-import { NOT_CONFIRMED, updatedToLine } from "./written-to-copy";
+import {
+  folderLines,
+  type GlobalFolderRef,
+  unconfirmedLine,
+  updatedToLine,
+} from "./written-to-copy";
 
 /** What the dialog shows once an update ran. */
 export type UpdateRunView =
@@ -28,66 +33,74 @@ export type UpdateRunView =
   // Global, where nothing read the folders back.
   | { kind: "unknown" };
 
-const STATES = new Set([
+const STATES: readonly UpdateSkillState[] = [
   "updated",
   "removed",
   "not-updated",
   "missing",
   "not-removed",
   "unknown",
-]);
+];
 
-const SKILL_OUTCOMES = new Set([
-  "written",
-  "missing",
-  "not-updated",
-  "not-confirmed",
-]);
+type Fields = { [key: string]: unknown };
 
-const bodyOf = (error: unknown): Record<string, unknown> | null =>
-  error instanceof HttpError && typeof error.body === "object"
-    ? ((error.body as Record<string, unknown> | null) ?? null)
-    : null;
+const isFields = (value: unknown): value is Fields =>
+  typeof value === "object" && value !== null;
+
+const isOneOf = <T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+): value is T => allowed.some((each) => each === value);
+
+const bodyOf = (error: unknown): Fields | null =>
+  error instanceof HttpError && isFields(error.body) ? error.body : null;
+
+function isOutcomeRow(entry: unknown): entry is UpdateOutcomeRow {
+  return (
+    isFields(entry) &&
+    typeof entry.name === "string" &&
+    (entry.tool === null || isSupportedTool(entry.tool)) &&
+    isOneOf(entry.state, STATES)
+  );
+}
+
+function isSkillOutcome(skill: unknown): skill is SkillOutcome {
+  if (!isFields(skill) || typeof skill.name !== "string") return false;
+  return skill.outcome === "not-updated"
+    ? skill.stillAt === null || typeof skill.stillAt === "string"
+    : isOneOf(skill.outcome, ["written", "missing", "not-confirmed"]);
+}
+
+function isFolderOutcome(folder: unknown): folder is FolderOutcome {
+  return (
+    isFields(folder) &&
+    typeof folder.path === "string" &&
+    isSupportedTool(folder.tool) &&
+    typeof folder.detected === "boolean" &&
+    Array.isArray(folder.skills) &&
+    folder.skills.every(isSkillOutcome)
+  );
+}
 
 // A report this build cannot read is dropped whole: a row built on a guess
 // states an outcome the server never proved.
 export function updateOutcomeRows(error: unknown): UpdateOutcomeRow[] | null {
   const outcome = bodyOf(error)?.outcome;
-  if (!Array.isArray(outcome)) {
+  if (!Array.isArray(outcome) || !outcome.every(isOutcomeRow)) {
     return null;
   }
-  const rows: UpdateOutcomeRow[] = [];
-  for (const entry of outcome as UpdateOutcomeRow[]) {
-    if (
-      typeof entry?.name !== "string" ||
-      !(entry.tool === null || typeof entry.tool === "string") ||
-      !STATES.has(entry.state)
-    ) {
-      return null;
-    }
-    rows.push({ name: entry.name, tool: entry.tool, state: entry.state });
-  }
-  return rows;
+  return outcome.map(({ name, tool, state }) => ({ name, tool, state }));
 }
 
 /** A failed Global update's folders, read back where apm ran; null otherwise. */
 export function updateFolders(error: unknown): FolderOutcomes | null {
-  const folders = bodyOf(error)?.folders as FolderOutcomes | undefined;
-  const readable =
-    typeof folders?.release === "string" &&
+  const folders = bodyOf(error)?.folders;
+  return isFields(folders) &&
+    typeof folders.release === "string" &&
     Array.isArray(folders.folders) &&
-    folders.folders.every(
-      (folder) =>
-        typeof folder?.path === "string" &&
-        typeof folder.written === "boolean" &&
-        Array.isArray(folder.skills) &&
-        folder.skills.every(
-          (skill) =>
-            typeof skill?.name === "string" &&
-            SKILL_OUTCOMES.has(skill.outcome),
-        ),
-    );
-  return readable && folders !== undefined ? folders : null;
+    folders.folders.every(isFolderOutcome)
+    ? { release: folders.release, folders: folders.folders }
+    : null;
 }
 
 export function updateOutcomeReport(input: {
@@ -148,33 +161,16 @@ export function updateFoldersReport(input: {
       retry && verdict === "landed"
         ? UPDATE_INCOMPLETE
         : outcomeHeading(folders.release, verdict),
-    lines: folders.folders.map((folder) => ({
-      key: folder.path,
-      name: folder.path,
-      muted: !folder.written,
-      ...updatedToLine(folder, { release: folders.release, retry }),
-    })),
+    lines: folderLines(folders.folders, (folder) =>
+      updatedToLine(folder, { release: folders.release, retry }),
+    ),
   };
 }
 
 /** Every folder Global writes reads Not confirmed: nothing read them back. */
-export function unconfirmedLines(
-  folders: readonly Pick<GlobalFolderState, "path" | "tool" | "detected">[],
-): FoldLine[] {
-  return folders.map((folder) => ({
-    key: folder.path,
-    name: folder.path,
-    details: [],
-    step: null,
-    ...(folder.detected
-      ? { tone: "unknown", fact: NOT_CONFIRMED }
-      : {
-          tone: "neutral",
-          muted: true,
-          fact: notWrittenNote(toolDisplayName(folder.tool)),
-        }),
-  }));
-}
+export const unconfirmedLines = (
+  folders: readonly GlobalFolderRef[],
+): FoldLine[] => folderLines(folders, () => unconfirmedLine);
 
 function foldAgreeingTools(
   rows: readonly UpdateOutcomeRow[],

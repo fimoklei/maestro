@@ -236,22 +236,12 @@ function twoToolEntry(ref: string, name: string): string {
   return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: .apm/skills/${name}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/${name}\n  - .agents/skills/${name}\n  content_hash: sha256:abc\n`;
 }
 
-const CLAUDE_READERS = {
-  tools: ["Claude Code", "Cursor", "OpenCode"],
-  others: false,
-};
-const AGENTS_READERS = {
-  tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
-  others: true,
-};
-
 // One Global folder as the read names it, with the copies Global wrote there.
 function claudeFolder(primitives: unknown[], detected = true) {
   return {
     path: "~/.claude/skills",
     tool: "claude",
     detected,
-    readBy: CLAUDE_READERS,
     primitives,
   };
 }
@@ -260,7 +250,6 @@ function agentsFolder(primitives: unknown[], detected = true) {
     path: "~/.agents/skills",
     tool: "codex",
     detected,
-    readBy: AGENTS_READERS,
     primitives,
   };
 }

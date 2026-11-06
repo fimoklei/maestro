@@ -82,6 +82,24 @@ export async function readGlobalTarget(
   // Entries no detected tool claims are named by origin, never dropped (#655).
   const otherOrigins = new Set<string>();
   const pins: SkillPin[] = [];
+  // Read at most once, and only once an entry could link to it.
+  let page: Promise<GitHubPage | null> | undefined;
+  const harnessPage = () => {
+    page = page ?? deps.harnessPage?.() ?? Promise.resolve(null);
+    return page;
+  };
+  const addSkill = (
+    folder: GlobalFolderState,
+    name: string,
+    version: string,
+    github: GitHubPage | undefined,
+  ) =>
+    folder.primitives.push({
+      type: "skill",
+      name,
+      version,
+      ...(github === undefined ? {} : { github }),
+    });
   let release: string | undefined;
   let extraFiles = 0;
   let releaseGitHub: GitHubPage | undefined;
@@ -94,7 +112,7 @@ export async function readGlobalTarget(
         continue;
       }
       release = entry.resolved_ref;
-      const pages = harnessPages(entry, (await deps.harnessPage?.()) ?? null);
+      const pages = harnessPages(entry, await harnessPage());
       releaseGitHub = pages?.release;
       const prefixes = written.map((folder) => prefixOf(folder));
       extraFiles = countExtraRootPackageFiles(entry, prefixes);
@@ -106,13 +124,12 @@ export async function readGlobalTarget(
       for (const folder of written) {
         for (const skill of deployed) {
           if (skill.prefix === prefixOf(folder)) {
-            const github = pages?.skill(skill.name);
-            folder.primitives.push({
-              type: "skill",
-              name: skill.name,
-              version: entry.resolved_ref,
-              ...(github === undefined ? {} : { github }),
-            });
+            addSkill(
+              folder,
+              skill.name,
+              entry.resolved_ref,
+              pages?.skill(skill.name),
+            );
           }
         }
       }
@@ -122,21 +139,12 @@ export async function readGlobalTarget(
       skipped.push(skippedFromReading(reading, entry.virtual_path ?? ""));
       continue;
     }
-    const github = perSkillPage(
-      entry,
-      reading.name,
-      (await deps.harnessPage?.()) ?? null,
-    );
+    const github = perSkillPage(entry, reading.name, await harnessPage());
     const holders = written.filter((folder) =>
       entryTargetsPrefix(entry, prefixOf(folder)),
     );
     for (const folder of holders) {
-      folder.primitives.push({
-        type: "skill",
-        name: reading.name,
-        version: entry.resolved_ref,
-        ...(github === undefined ? {} : { github }),
-      });
+      addSkill(folder, reading.name, entry.resolved_ref, github);
     }
     if (holders.length === 0) {
       if (entry.repo_url !== undefined) {

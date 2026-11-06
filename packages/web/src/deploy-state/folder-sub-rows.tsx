@@ -13,9 +13,14 @@ export function folderSubRows(
     cells: {
       name: (
         // Indented under its target's name.
-        <span className="block truncate pl-6">
-          <MachineValue>{folder.path}</MachineValue>
-          {folder.note === null ? null : <> {folder.note}</>}
+        // The path gives way first, so the note's copy count stays in view.
+        <span className="flex min-w-0 items-baseline gap-x-1 pl-6">
+          <span className="min-w-0 truncate">
+            <MachineValue>{folder.path}</MachineValue>
+          </span>
+          {folder.note === null ? null : (
+            <span className="shrink-0 whitespace-nowrap">{folder.note}</span>
+          )}
         </span>
       ),
       status:

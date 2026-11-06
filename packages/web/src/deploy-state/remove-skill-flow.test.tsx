@@ -35,6 +35,9 @@ const REPO_TARGET: Target = {
 };
 const CLAUDE_PATH = "~/.claude/skills";
 const AGENTS_PATH = "~/.agents/skills";
+// The next step for local edits in a folder Global does not write.
+const NOT_WRITTEN_STEP =
+  "Select Deploy skill to restore the released files. Then remove the skill.";
 const GLOBAL_TARGET: Target = {
   kind: "global",
   folders: [CLAUDE_PATH, AGENTS_PATH],
@@ -935,6 +938,29 @@ describe("RemoveSkillFlow", () => {
             "The skill was not removed. Its files in ~/.agents/skills changed after deployment.",
           ),
         ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Select Deploy skill to restore the released files. Then remove the skill.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("gives a next step that works for a folder Global does not write", async () => {
+      renderFlow({
+        target: ONE_TOOL,
+        preflight: failedWith(
+          {
+            error: "deployed-diverged-from-lock",
+            folders: [AGENTS_PATH],
+            notWritten: [AGENTS_PATH],
+          },
+          409,
+        ),
+      });
+
+      expect(
+        await screen.findByText(sentence(NOT_WRITTEN_STEP)),
       ).toBeInTheDocument();
     });
 

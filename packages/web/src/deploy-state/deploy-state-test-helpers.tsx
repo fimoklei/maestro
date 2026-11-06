@@ -48,15 +48,10 @@ export function globalAnswer(
   copies: { claude?: Copy[]; codex?: Copy[] },
   extra: Record<string, unknown> = {},
 ) {
-  const folder = (
-    path: string,
-    tool: "claude" | "codex",
-    readBy: { tools: string[]; others: boolean },
-  ) => ({
+  const folder = (path: string, tool: "claude" | "codex") => ({
     path,
     tool,
     detected: copies[tool] !== undefined,
-    readBy,
     primitives: copies[tool] ?? [],
   });
   const all = [...(copies.claude ?? []), ...(copies.codex ?? [])];
@@ -66,14 +61,8 @@ export function globalAnswer(
   return {
     primitives,
     folders: [
-      folder("~/.claude/skills", "claude", {
-        tools: ["Claude Code", "Cursor", "OpenCode"],
-        others: false,
-      }),
-      folder("~/.agents/skills", "codex", {
-        tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
-        others: true,
-      }),
+      folder("~/.claude/skills", "claude"),
+      folder("~/.agents/skills", "codex"),
     ],
     skipped: [],
     otherOrigins: [],

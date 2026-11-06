@@ -73,7 +73,7 @@ const foldersSchema = z.object({
     z.object({
       path: z.string().startsWith("~/").max(200),
       tool: z.string().max(40),
-      written: z.boolean(),
+      detected: z.boolean(),
       skills: z.array(
         z.discriminatedUnion("outcome", [
           z.object({

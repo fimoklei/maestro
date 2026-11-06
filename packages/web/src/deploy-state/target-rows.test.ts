@@ -271,7 +271,6 @@ const claude = (
   path: "~/.claude/skills",
   tool: "claude",
   detected,
-  readBy: { tools: ["Claude Code", "Cursor", "OpenCode"], others: false },
   primitives,
 });
 const agents = (
@@ -281,10 +280,6 @@ const agents = (
   path: "~/.agents/skills",
   tool: "codex",
   detected,
-  readBy: {
-    tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
-    others: true,
-  },
   primitives,
 });
 

@@ -1,6 +1,11 @@
 // A Global Report's `Written to` list: one fact per Global folder, and the
 // skills a deviating folder did not get.
-import type { FolderOutcome, SkillOutcome } from "@maestro/core";
+import type {
+  FolderOutcome,
+  GlobalFolderState,
+  SkillOutcome,
+} from "@maestro/core";
+import type { FoldLine } from "../ui/fold-list";
 import type { StatusFamily } from "../ui/status-family";
 import { notWrittenNote } from "./deploy-state-copy";
 import { RETRY_DEPLOY } from "./release-head-copy";
@@ -8,7 +13,7 @@ import { toolDisplayName } from "./tool-presentation";
 import { RETRY_UPDATE_STEP } from "./update-target-copy";
 
 export const WRITTEN_TO = "Written to";
-export const NOT_CONFIRMED = "Not confirmed";
+const NOT_CONFIRMED = "Not confirmed";
 
 type Detail = { label: string; value: string };
 
@@ -41,20 +46,51 @@ function detail(skill: SkillOutcome): Detail | null {
   }
 }
 
-/** A folder a deploy held by local edits wrote nothing to. */
-export function heldLine(
-  folder: Pick<FolderOutcome, "tool"> & { detected: boolean },
-  held: number,
-): WrittenToLine {
-  return {
-    tone: "neutral",
-    fact: folder.detected
-      ? `0 of ${skills(held)} deployed`
-      : notWrittenNote(toolDisplayName(folder.tool)),
-    details: [],
-    step: null,
-  };
+/** A Global folder as a dialog names it: by path, with whether Global writes it. */
+export type GlobalFolderRef = Pick<
+  GlobalFolderState,
+  "path" | "tool" | "detected"
+>;
+
+const notWrittenLine = (folder: GlobalFolderRef): WrittenToLine => ({
+  tone: "neutral",
+  fact: notWrittenNote(toolDisplayName(folder.tool)),
+  details: [],
+  step: null,
+});
+
+/**
+ * One line per Global folder. `line` states a folder the write reached; a
+ * folder it skipped reads muted, naming its undetected tool.
+ */
+export function folderLines<F extends GlobalFolderRef>(
+  folders: readonly F[],
+  line: (folder: F) => WrittenToLine,
+): FoldLine[] {
+  return folders.map((folder) => ({
+    key: folder.path,
+    name: folder.path,
+    ...(folder.detected
+      ? line(folder)
+      : { muted: true, ...notWrittenLine(folder) }),
+  }));
 }
+
+/** A folder a deploy held by local edits wrote nothing to. */
+export const heldLine = (held: number): WrittenToLine => ({
+  tone: "neutral",
+  fact: `0 of ${skills(held)} deployed`,
+  details: [],
+  step: null,
+});
+
+/** Every folder Global writes reads Not confirmed: nothing read them back. */
+export const unconfirmedLine: WrittenToLine = {
+  tone: "unknown",
+  fact: NOT_CONFIRMED,
+  details: [],
+  step: null,
+};
 
 /** `retry`: Retry deploy is in the footer, so a deviating folder names it. */
 export function writtenToLine(
@@ -97,13 +133,8 @@ function folderLine(
     step: (details: readonly Detail[]) => string | null;
   },
 ): WrittenToLine {
-  if (!folder.written) {
-    return {
-      tone: "neutral",
-      fact: notWrittenNote(toolDisplayName(folder.tool)),
-      details: [],
-      step: null,
-    };
+  if (!folder.detected) {
+    return notWrittenLine(folder);
   }
   const total = folder.skills.length;
   const count = (outcome: SkillOutcome["outcome"]) =>
@@ -120,7 +151,7 @@ function folderLine(
     };
   }
   if (unconfirmed === total) {
-    return { tone: "unknown", fact: NOT_CONFIRMED, details: [], step: null };
+    return unconfirmedLine;
   }
   const details = folder.skills.flatMap((skill) => detail(skill) ?? []);
   return {

@@ -194,7 +194,7 @@ describe("DeploySkill", () => {
         {
           path: "~/.claude/skills",
           tool: "claude" as const,
-          written: true,
+          detected: true,
           skills: names.map((name) => ({ name, outcome: "written" as const })),
         },
       ],

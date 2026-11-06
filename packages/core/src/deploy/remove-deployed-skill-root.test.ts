@@ -230,7 +230,10 @@ describe("RemoveDeployedSkill refusing a copy with local edits", () => {
         ok: false,
         error: "deployed-diverged-pinned-per-skill",
         ...(pinned.kind === "global"
-          ? { folders: ["~/.claude/skills", "~/.agents/skills"] }
+          ? {
+              folders: ["~/.claude/skills", "~/.agents/skills"],
+              notWritten: ["~/.agents/skills"],
+            }
           : {}),
       };
       expect(await remove.preflight(request)).toEqual(refusal);
@@ -284,10 +287,12 @@ describe("RemoveDeployedSkill on Global with an undetected tool's folder", () =>
     const { world, remove } = buildUseCase({ codex: "diverged" });
     world.seed({ release: "v0.6.0", skills: ["prototype"] });
 
+    // No deploy writes the undetected folder, so none can restore its copy.
     const refusal = {
       ok: false,
       error: "deployed-diverged-from-lock",
       folders: ["~/.agents/skills"],
+      notWritten: ["~/.agents/skills"],
     };
     expect(await remove.preflight(removeFromGlobal("prototype"))).toEqual(
       refusal,

@@ -1,7 +1,7 @@
 // A Global deploy's per-folder outcome, folded into its Report: the folders
 // state what each got, so an unfinished install is no Failed row of its own.
 import type { BulkDeployReport, FolderOutcomes } from "@maestro/core";
-import { writtenToLine } from "../deploy-state/written-to-copy";
+import { folderLines, writtenToLine } from "../deploy-state/written-to-copy";
 import type { FoldLine } from "../ui/fold-list";
 
 type WrittenToView = {
@@ -35,7 +35,7 @@ export function writtenToView(input: {
   const writtenEverywhere = (name: string) =>
     folders.every(
       (folder) =>
-        !folder.written ||
+        !folder.detected ||
         folder.skills.some(
           (skill) => skill.name === name && skill.outcome === "written",
         ),
@@ -48,11 +48,6 @@ export function writtenToView(input: {
       .filter(writtenEverywhere)
       .map((name) => ({ name, version: outcome.release })),
     failed: report.failed.filter((line) => line.error !== "deploy-incomplete"),
-    lines: folders.map((folder) => ({
-      key: folder.path,
-      name: folder.path,
-      muted: !folder.written,
-      ...writtenToLine(folder, retry),
-    })),
+    lines: folderLines(folders, (folder) => writtenToLine(folder, retry)),
   };
 }

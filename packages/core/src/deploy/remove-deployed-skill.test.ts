@@ -866,6 +866,7 @@ describe("RemoveDeployedSkill on a machine without Claude Code", () => {
       ok: false,
       error: "deployed-diverged-from-lock",
       folders: ["~/.claude/skills"],
+      notWritten: ["~/.claude/skills"],
     });
   });
 

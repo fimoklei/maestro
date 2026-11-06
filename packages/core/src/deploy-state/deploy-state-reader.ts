@@ -1,7 +1,7 @@
 // Reads a target's apm.lock.yaml plus what is on disk under it, keeping absent,
 // skipped, phantom and malformed apart.
 import { join } from "node:path";
-import type { CopyReadingPort } from "../deploy/copy-reading";
+import { type CopyReadingPort, readEach } from "../deploy/copy-reading";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import { globalFolders } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
@@ -403,31 +403,26 @@ export class GlobalDeployStateReader extends DeployStateReader {
     // A skill with no copy in a written folder has no copy a stray one replaces.
     const written = new Set<string>();
     for (const folder of folders.filter((each) => each.detected)) {
-      const held = new Set(
-        folder.primitives.map((primitive) => primitive.name),
+      const held = folder.primitives.map((primitive) => primitive.name);
+      const readings = await readEach(
+        [...selection.filter((each) => !held.includes(each)), ...held],
+        (name) => session.read(name, folder.tool),
       );
-      const missing: string[] = [];
-      for (const name of selection.filter((each) => !held.has(each))) {
-        const reading = await session.read(name, folder.tool).catch(() => null);
-        if (reading?.kind === "missing") {
-          missing.push(name);
-        }
-      }
+      const missing = selection.filter(
+        (name) =>
+          !held.includes(name) && readings.get(name)?.kind === "missing",
+      );
       if (missing.length > 0) {
         folder.missing = missing;
       }
       const notUpdated: NotUpdatedCopy[] = [];
       for (const primitive of folder.primitives) {
-        const reading = await session
-          .read(primitive.name, folder.tool)
-          .catch(() => null);
+        const reading = readings.get(primitive.name) ?? null;
         if (reading?.kind !== "missing") {
           written.add(primitive.name);
         }
-        if (reading?.kind === "local-edits") {
-          primitive.copy = "local-edits";
-        } else if (reading?.kind === "unverified") {
-          primitive.copy = "unverified";
+        if (reading?.kind === "local-edits" || reading?.kind === "unverified") {
+          primitive.copy = reading.kind;
         } else if (reading?.kind === "not-updated") {
           notUpdated.push({ name: primitive.name, stillAt: reading.stillAt });
         }
@@ -437,14 +432,16 @@ export class GlobalDeployStateReader extends DeployStateReader {
       }
     }
     for (const folder of folders.filter((each) => !each.detected)) {
-      const strayCopies: StrayCopy[] = [];
-      for (const name of written) {
-        const reading = await session.read(name, folder.tool).catch(() => null);
-        // An unread copy is still shown; only a proven equal raises no Status.
-        if (reading?.kind !== "missing") {
-          strayCopies.push({ name, atRelease: reading?.kind === "at-release" });
-        }
-      }
+      const readings = await readEach(written, (name) =>
+        session.read(name, folder.tool),
+      );
+      // An unread copy is still shown; only a proven equal raises no Status.
+      const strayCopies: StrayCopy[] = [...readings]
+        .filter(([, reading]) => reading?.kind !== "missing")
+        .map(([name, reading]) => ({
+          name,
+          atRelease: reading?.kind === "at-release",
+        }));
       if (strayCopies.length > 0) {
         folder.strayCopies = strayCopies;
       }

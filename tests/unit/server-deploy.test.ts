@@ -93,7 +93,7 @@ describe("deploy HTTP route", () => {
       outcome: { release: "v0.5.1", folders: expect.any(Array) },
     });
     expect(
-      body.outcome.folders.map((folder) => `${folder.path} ${folder.written}`),
+      body.outcome.folders.map((folder) => `${folder.path} ${folder.detected}`),
     ).toEqual(["~/.claude/skills true", "~/.agents/skills true"]);
     expect(w.installs).toEqual([
       {

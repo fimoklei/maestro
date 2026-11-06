@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useId, useState } from "react";
+import { Fragment, useId, useState } from "react";
 import { cn } from "./cn";
 import { FOCUS_RING } from "./focus-ring";
 import { Icon } from "./icon";
@@ -61,9 +61,17 @@ function Line({ line, last }: { line: FoldLine; last: boolean }) {
         )}
       >
         {folds ? <Icon of={open ? ChevronDown : ChevronRight} /> : null}
-        {/* A path has no break point of its own; it wraps, never clips. */}
-        <span className="min-w-0 wrap-anywhere">
-          <MachineValue>{line.name}</MachineValue>
+        {/* A path wraps after a slash; mid-word only when one part cannot fit. */}
+        <span className="min-w-0 break-words">
+          <MachineValue>
+            {line.name.split(/(?<=\/)/).map((part, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one fixed path never reorder.
+              <Fragment key={index}>
+                {index > 0 ? <wbr /> : null}
+                {part}
+              </Fragment>
+            ))}
+          </MachineValue>
         </span>
       </span>
       <span className="text-right text-gray-11 text-meta">{line.fact}</span>

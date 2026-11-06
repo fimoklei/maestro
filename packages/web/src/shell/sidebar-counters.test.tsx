@@ -125,7 +125,6 @@ describe("Deploy-state counter", () => {
             { path: "~/.agents/skills", tool: "codex", detected: true },
           ].map((folder) => ({
             ...folder,
-            readBy: { tools: [], others: false },
             primitives: [],
           })),
           releaseHead: head("v1", "v2"),

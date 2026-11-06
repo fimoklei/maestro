@@ -1,4 +1,8 @@
-import type { CopyReadingPort, WrittenReading } from "./copy-reading";
+import {
+  type CopyReadingPort,
+  readEach,
+  type WrittenReading,
+} from "./copy-reading";
 import type { DeployedContentPort } from "./deploy-skill";
 import { globalFolders, type SupportedTool } from "./deploy-tools";
 
@@ -11,9 +15,9 @@ export type FolderOutcome = {
   /** Home-relative, starting with `~/`, as the screen names it. */
   path: string;
   tool: SupportedTool;
-  /** False where the write skipped the folder: its tool is not detected. */
-  written: boolean;
-  /** Empty where the folder was not written. */
+  /** Global writes this folder only while its tool is detected. */
+  detected: boolean;
+  /** Empty where the tool is not detected: the write skipped its folder. */
   skills: SkillOutcome[];
 };
 
@@ -22,7 +26,7 @@ export type FolderOutcomes = {
   folders: FolderOutcome[];
 };
 
-const OUTCOME = {
+const OUTCOME_OF_READING = {
   missing: "missing",
   "at-release": "written",
   unreadable: "not-confirmed",
@@ -65,23 +69,21 @@ export class FolderOutcomeReader {
     });
     const folders: FolderOutcome[] = [];
     for (const folder of globalFolders(input.written)) {
-      const skills: SkillOutcome[] = [];
-      if (folder.detected) {
-        for (const name of input.names) {
-          const reading = await session
-            .readWritten(name, folder.tool)
-            .catch((): WrittenReading => ({ kind: "unreadable" }));
-          skills.push(
-            reading.kind === "not-updated"
-              ? { name, outcome: "not-updated", stillAt: reading.stillAt }
-              : { name, outcome: OUTCOME[reading.kind] },
-          );
-        }
-      }
+      const readings = folder.detected
+        ? await readEach(input.names, (name) =>
+            session.readWritten(name, folder.tool),
+          )
+        : new Map<string, WrittenReading | null>();
+      const skills: SkillOutcome[] = [...readings].map(([name, read]) => {
+        const reading = read ?? { kind: "unreadable" };
+        return reading.kind === "not-updated"
+          ? { name, outcome: "not-updated", stillAt: reading.stillAt }
+          : { name, outcome: OUTCOME_OF_READING[reading.kind] };
+      });
       folders.push({
         path: folder.path,
         tool: folder.tool,
-        written: folder.detected,
+        detected: folder.detected,
         skills,
       });
     }

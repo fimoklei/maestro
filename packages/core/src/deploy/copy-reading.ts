@@ -31,6 +31,18 @@ type CopyReadingSession = {
   readWritten(name: string, tool: SupportedTool): Promise<WrittenReading>;
 };
 
+/** Each name's copy in one folder, read one at a time; null where the read failed. */
+export async function readEach<R>(
+  names: Iterable<string>,
+  read: (name: string) => Promise<R>,
+): Promise<Map<string, R | null>> {
+  const readings = new Map<string, R | null>();
+  for (const name of names) {
+    readings.set(name, await read(name).catch(() => null));
+  }
+  return readings;
+}
+
 export type CopyReadingPort = {
   /**
    * One session per read: each (tag, skill) release tree is read at most once

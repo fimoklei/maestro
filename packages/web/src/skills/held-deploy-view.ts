@@ -1,12 +1,12 @@
 // A Global deploy that local edits on a deployed skill held whole: nothing
 // reached any folder, and one footer Deploy again carries every held row's
 // receipt (#952).
-import type {
-  BulkDeployReport,
-  GlobalFolderState,
-  HeldSkill,
-} from "@maestro/core";
-import { heldLine } from "../deploy-state/written-to-copy";
+import type { BulkDeployReport, HeldSkill } from "@maestro/core";
+import {
+  folderLines,
+  type GlobalFolderRef,
+  heldLine,
+} from "../deploy-state/written-to-copy";
 import type { FoldLine } from "../ui/fold-list";
 import type { NoticeContent } from "../ui/notice";
 import { heldDeployNotice } from "./held-deploy-copy";
@@ -26,7 +26,7 @@ export type HeldDeployView = {
  */
 export function heldDeployView(
   report: BulkDeployReport,
-  folders: readonly Pick<GlobalFolderState, "path" | "tool" | "detected">[],
+  folders: readonly GlobalFolderRef[],
   skipped: readonly string[],
 ): HeldDeployView | null {
   const rows = report.attention;
@@ -65,11 +65,6 @@ export function heldDeployView(
       level: "warning",
       ...heldDeployNotice({ edited, held: names }),
     },
-    lines: folders.map((folder) => ({
-      key: folder.path,
-      name: folder.path,
-      muted: !folder.detected,
-      ...heldLine(folder, names.length),
-    })),
+    lines: folderLines(folders, () => heldLine(names.length)),
   };
 }

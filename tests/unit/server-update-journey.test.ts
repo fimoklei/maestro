@@ -423,13 +423,13 @@ describe("update HTTP journey on Global", () => {
           {
             path: "~/.claude/skills",
             tool: "claude",
-            written: true,
+            detected: true,
             skills: written,
           },
           {
             path: "~/.agents/skills",
             tool: "codex",
-            written: true,
+            detected: true,
             skills: written,
           },
         ],

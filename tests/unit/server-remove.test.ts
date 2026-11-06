@@ -347,6 +347,7 @@ describe("remove HTTP route", () => {
       const refusal = {
         error: "deployed-diverged-from-lock",
         folders: ["~/.agents/skills"],
+        notWritten: ["~/.agents/skills"],
       };
       expect(await preflight.json()).toEqual(refusal);
       expect(await removal.json()).toEqual(refusal);

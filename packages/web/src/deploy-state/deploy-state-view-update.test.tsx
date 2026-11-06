@@ -127,13 +127,13 @@ const foldersAt = (
       {
         path: "~/.claude/skills",
         tool: "claude",
-        written: true,
+        detected: true,
         skills: claude,
       },
       {
         path: "~/.agents/skills",
         tool: "codex",
-        written: codex !== null,
+        detected: codex !== null,
         skills: codex ?? [],
       },
     ],

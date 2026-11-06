@@ -1,11 +1,11 @@
-import type { GlobalFolderState } from "@maestro/core";
 import type { GroupedListGroup } from "../ui/grouped-list";
 import { notWrittenNote, WRITES_TO } from "./deploy-state-copy";
 import { toolDisplayName } from "./tool-presentation";
+import type { GlobalFolderRef } from "./written-to-copy";
 
 /** A Global dialog's `Writes to` list: every Global folder by path, one it skips muted. */
 export function writesToGroup(
-  folders: readonly Pick<GlobalFolderState, "path" | "tool" | "detected">[],
+  folders: readonly GlobalFolderRef[],
 ): GroupedListGroup {
   return {
     tone: "neutral",
