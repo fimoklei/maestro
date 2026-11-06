@@ -4,6 +4,7 @@ import {
   TARGET_CHIPS,
   TARGET_STATUS_WORDS,
   targetStatus,
+  worstFolderReading,
 } from "./target-status";
 
 const words = (value: ReturnType<typeof targetStatus>) =>
@@ -178,5 +179,41 @@ describe("TARGET_CHIPS", () => {
       { word: "Behind", family: "attention", covers: ["Behind"] },
     ]);
     expect(IN_SYNC.word).toBe("In sync");
+  });
+});
+
+describe("worstFolderReading", () => {
+  const inSync = targetStatus({ indicator: "ok", pending: undefined });
+  const behind = targetStatus({
+    indicator: "ok",
+    behind: true,
+    pending: undefined,
+  });
+  const edited = targetStatus({
+    indicator: "ok",
+    localEdits: true,
+    pending: undefined,
+  });
+  const attention = targetStatus({
+    indicator: "attention",
+    pending: undefined,
+  });
+  const unknown = targetStatus({ indicator: "unknown", pending: undefined });
+  const unfinished = targetStatus({ indicator: "ok", pending: "update" });
+
+  it("takes the folder reading that comes first in the Filter order", () => {
+    expect(words(worstFolderReading([inSync, edited]))).toBe("⚠ Local edits");
+    expect(words(worstFolderReading([edited, attention]))).toBe("⚠ Attention");
+    // The Filter order, not the family: Behind outranks Unknown here.
+    expect(words(worstFolderReading([unknown, behind]))).toBe("↑ Behind");
+    expect(words(worstFolderReading([unknown, inSync]))).toBe("? Unknown");
+    expect(words(worstFolderReading([edited, unfinished, attention]))).toBe(
+      "⚠ Update incomplete",
+    );
+  });
+
+  it("waits while any folder has no reading yet", () => {
+    expect(worstFolderReading([inSync, null])).toBeNull();
+    expect(worstFolderReading([])).toBeNull();
   });
 });

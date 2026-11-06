@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { reading } from "./status-reading";
-import { SubListRow, SubListSkeleton } from "./sub-list-row";
+import { SubListRow, SubListSkeleton, SubListValueRow } from "./sub-list-row";
 
 const meta = {
   title: "Core/SubListRow",
@@ -51,4 +51,15 @@ export const Unread: Story = {
 // Rows still being read; the placeholders appear 1.3 s after the story opens.
 export const Reading: Story = {
   render: () => <SubListSkeleton rows={2} />,
+};
+
+// A read-only row with no menu: a Global folder and who reads it.
+export const ValueWithMeta: Story = {
+  render: () => (
+    <SubListValueRow
+      mark={reading("In sync", "good")}
+      value="~/.claude/skills"
+      meta="Read by Claude Code, Cursor and OpenCode."
+    />
+  ),
 };

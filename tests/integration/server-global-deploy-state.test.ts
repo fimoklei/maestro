@@ -17,12 +17,31 @@ const TWO_TOOL_LOCKFILE = readFileSync(
   "utf8",
 );
 
-type ToolDeployState = {
-  tool: string;
-  primitives: { type: string; name: string; version: string }[];
+const TDD = { type: "skill", name: "tdd", version: "v0.5.1" };
+const CLAUDE_READERS = {
+  tools: ["Claude Code", "Cursor", "OpenCode"],
+  others: false,
 };
+const AGENTS_READERS = {
+  tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
+  others: true,
+};
+const claudeFolder = (primitives: unknown[], detected = true) => ({
+  path: "~/.claude/skills",
+  tool: "claude",
+  detected,
+  readBy: CLAUDE_READERS,
+  primitives,
+});
+const agentsFolder = (primitives: unknown[], detected = true) => ({
+  path: "~/.agents/skills",
+  tool: "codex",
+  detected,
+  readBy: AGENTS_READERS,
+  primitives,
+});
 
-describe("global deploy-state HTTP route (per detected tool)", () => {
+describe("global deploy-state HTTP route (one target with its folders)", () => {
   let home: string;
   let apmRoot: string;
 
@@ -52,7 +71,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     );
   }
 
-  it("groups a single-tool install under only the detected tool", async () => {
+  it("reads a single-tool install as one target, the other folder not written", async () => {
     await installClaude();
     await writeFile(
       join(apmRoot, "apm.lock.yaml"),
@@ -64,18 +83,14 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
-        },
-      ],
+      primitives: [TDD],
+      folders: [claudeFolder([TDD]), agentsFolder([], false)],
       skipped: [],
       otherOrigins: [],
     });
   });
 
-  it("attributes a two-tool install to both detected tools", async () => {
+  it("lists a two-tool install's skill once, with a copy in each folder", async () => {
     await installClaude();
     await installCodex();
     await writeFile(join(apmRoot, "apm.lock.yaml"), TWO_TOOL_LOCKFILE, "utf8");
@@ -83,20 +98,15 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     const res = await makeApp().request("/api/deploy-state/global");
 
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { tools: ToolDeployState[] };
-    expect(body.tools).toEqual([
-      {
-        tool: "claude",
-        primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
-      },
-      {
-        tool: "codex",
-        primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
-      },
-    ]);
+    expect(await res.json()).toEqual({
+      primitives: [TDD],
+      folders: [claudeFolder([TDD]), agentsFolder([TDD])],
+      skipped: [],
+      otherOrigins: [],
+    });
   });
 
-  it("lists a detected tool with nothing deployed as an empty group", async () => {
+  it("lists a detected tool's folder with nothing deployed as empty", async () => {
     await installClaude();
     await installCodex();
     await writeFile(
@@ -109,27 +119,23 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
-        },
-        { tool: "codex", primitives: [] },
-      ],
+      primitives: [TDD],
+      folders: [claudeFolder([TDD]), agentsFolder([])],
       skipped: [],
       otherOrigins: [],
     });
   });
 
-  it("shows each detected tool an empty group when nothing is deployed globally", async () => {
-    // No global lockfile: an empty state per detected tool, not an error.
+  it("reads an empty target when nothing is deployed globally", async () => {
+    // No global lockfile: an empty target, not an error.
     await installClaude();
 
     const res = await makeApp().request("/api/deploy-state/global");
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      tools: [{ tool: "claude", primitives: [] }],
+      primitives: [],
+      folders: [claudeFolder([]), agentsFolder([], false)],
       skipped: [],
       otherOrigins: [],
     });
@@ -160,7 +166,8 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      tools: [{ tool: "claude", primitives: [] }],
+      primitives: [],
+      folders: [claudeFolder([]), agentsFolder([], false)],
       skipped: [],
       otherOrigins: ["fimoklei/agent-harness"],
     });
@@ -181,7 +188,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     expect(body.error).toBe("malformed");
   });
 
-  it("takes no client-supplied path: a repo query cannot redirect the global read", async () => {
+  it("takes no client-supplied path: a query cannot redirect the global read", async () => {
     await installClaude();
     await writeFile(
       join(apmRoot, "apm.lock.yaml"),
@@ -190,17 +197,13 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     );
 
     const res = await makeApp().request(
-      "/api/deploy-state/global?repo=/etc/passwd",
+      "/api/deploy-state/global?repo=/etc/passwd&root=/tmp&folder=/etc",
     );
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
-        },
-      ],
+      primitives: [TDD],
+      folders: [claudeFolder([TDD]), agentsFolder([], false)],
       skipped: [],
       otherOrigins: [],
     });

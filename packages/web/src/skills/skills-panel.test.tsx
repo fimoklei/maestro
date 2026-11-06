@@ -1,4 +1,4 @@
-import type { ToolDeployState } from "@maestro/core";
+import type { GlobalTargetState } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -425,8 +425,11 @@ describe("SkillsPanel", () => {
 
   describe("band 2", () => {
     // The Harness answers its origin and latest release; `failing` names the
-    // reads that answer 503, and `tools` the global deploy-state's tools.
-    const stubReads = (failing: string[] = [], tools?: ToolDeployState[]) =>
+    // reads that answer 503, and `global` the global deploy-state's own facts.
+    const stubReads = (
+      failing: string[] = [],
+      global: Partial<GlobalTargetState> = {},
+    ) =>
       vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL) => {
@@ -444,7 +447,7 @@ describe("SkillsPanel", () => {
           if (url.startsWith("/api/registry"))
             return jsonResponse({ repos: [] });
           if (url.startsWith("/api/deploy-state"))
-            return jsonResponse({ primitives: [], skipped: [], tools });
+            return jsonResponse({ primitives: [], skipped: [], ...global });
           if (url.startsWith("/api/drift")) return jsonResponse({ behind: [] });
           return (
             noCategories(input) ??
@@ -475,23 +478,25 @@ describe("SkillsPanel", () => {
     });
 
     it("dates Read by a release comparison older than the reads that carried it", async () => {
-      stubReads(
-        [],
-        [
+      stubReads([], {
+        folders: [
           {
+            path: "~/.claude/skills",
             tool: "claude",
+            detected: true,
+            readBy: { tools: ["Claude Code"], others: false },
             primitives: [],
-            releaseHead: {
-              release: "v1.4.0",
-              latestRelease: "v1.4.0",
-              changed: 0,
-              changedSkills: [],
-              selected: 0,
-              comparedAt: new Date(Date.now() - 30 * 60_000).toISOString(),
-            },
           },
         ],
-      );
+        releaseHead: {
+          release: "v1.4.0",
+          latestRelease: "v1.4.0",
+          changed: 0,
+          changedSkills: [],
+          selected: 0,
+          comparedAt: new Date(Date.now() - 30 * 60_000).toISOString(),
+        },
+      });
       renderPanel();
 
       expect(await screen.findByText("30 min ago")).toBeInTheDocument();

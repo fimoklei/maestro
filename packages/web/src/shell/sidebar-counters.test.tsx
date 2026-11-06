@@ -27,7 +27,7 @@ const read = (rows: ReturnType<typeof stageRow>[]): HarnessStageRead => ({
 type Reply = { body: unknown; status?: number };
 
 function stubServer({
-  global = { body: { tools: [], skipped: [] } },
+  global = { body: { primitives: [], folders: [], skipped: [] } },
   repos = {},
   harness = {},
 }: {
@@ -114,15 +114,21 @@ const repo = (releaseHead?: object, extra: object = {}): Reply => ({
 
 describe("Deploy-state counter", () => {
   it("counts the targets that are behind", async () => {
-    // Every tool row of a behind global target is behind (#951); an
-    // unfinished operation stands before the newer release.
+    // Global is one target, however many folders it writes; an unfinished
+    // operation stands before the newer release.
     stubServer({
       global: {
         body: {
-          tools: [
-            { tool: "claude", primitives: [], releaseHead: head("v1", "v2") },
-            { tool: "codex", primitives: [], releaseHead: head("v1", "v1") },
-          ],
+          primitives: [],
+          folders: [
+            { path: "~/.claude/skills", tool: "claude", detected: true },
+            { path: "~/.agents/skills", tool: "codex", detected: true },
+          ].map((folder) => ({
+            ...folder,
+            readBy: { tools: [], others: false },
+            primitives: [],
+          })),
+          releaseHead: head("v1", "v2"),
           skipped: [],
         },
       },
@@ -138,7 +144,7 @@ describe("Deploy-state counter", () => {
 
     expect(
       await within(screens()).findByRole("button", {
-        name: "Deploy-state 3 behind",
+        name: "Deploy-state 2 behind",
       }),
     ).toBeInTheDocument();
   });

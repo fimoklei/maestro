@@ -293,7 +293,7 @@ describe("reading a root-package target over HTTP", () => {
     });
   });
 
-  it("carries a Release head per global tool card", async () => {
+  it("carries one Release head for Global", async () => {
     const files = [
       ".claude/skills/tdd/SKILL.md",
       ".agents/skills/tdd/SKILL.md",
@@ -309,19 +309,14 @@ describe("reading a root-package target over HTTP", () => {
     const res = await app.request("/api/deploy-state/global");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
-          releaseHead: { ...HEAD, selection: ["tdd"], selected: 1 },
-        },
-        {
-          tool: "codex",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
-          releaseHead: { ...HEAD, selection: ["tdd"], selected: 1 },
-        },
+    const tdd = { type: "skill", name: "tdd", version: "v0.3.2" };
+    expect(await res.json()).toMatchObject({
+      primitives: [tdd],
+      folders: [
+        { path: "~/.claude/skills", primitives: [tdd] },
+        { path: "~/.agents/skills", primitives: [tdd] },
       ],
+      releaseHead: { ...HEAD, selection: ["tdd"], selected: 1 },
       skipped: [],
       otherOrigins: [],
     });
@@ -356,21 +351,15 @@ describe("reading a root-package target over HTTP", () => {
       });
     });
 
-    it("sends them per global tool card", async () => {
+    it("sends them for Global", async () => {
       expect(
         await read(
           async () => ({ kind: "link", url: HARNESS }),
           "/api/deploy-state/global",
         ),
       ).toMatchObject({
-        tools: [
-          {
-            tool: "claude",
-            primitives: [{ name: "tdd", github: { kind: "link", url: SKILL } }],
-            releaseGitHub: { kind: "link", url: RELEASE },
-          },
-          { tool: "codex", primitives: [] },
-        ],
+        primitives: [{ name: "tdd", github: { kind: "link", url: SKILL } }],
+        releaseGitHub: { kind: "link", url: RELEASE },
       });
     });
 

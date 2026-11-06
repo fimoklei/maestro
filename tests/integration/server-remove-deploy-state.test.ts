@@ -174,13 +174,19 @@ describe("the deploy-state read after a removal", () => {
   const globalNamesPerTool = async (app: App) => {
     const res = await app.request("/api/deploy-state/global");
     expect(res.status).toBe(200);
-    const { tools } = (await res.json()) as {
-      tools: { tool: string; primitives: { name: string }[] }[];
+    const { folders } = (await res.json()) as {
+      folders: {
+        tool: string;
+        detected: boolean;
+        primitives: { name: string }[];
+      }[];
     };
-    return tools.map((group) => ({
-      tool: group.tool,
-      names: group.primitives.map((primitive) => primitive.name),
-    }));
+    return folders
+      .filter((folder) => folder.detected)
+      .map((folder) => ({
+        tool: folder.tool,
+        names: folder.primitives.map((primitive) => primitive.name),
+      }));
   };
 
   it("stops listing the removed skill while the repo keeps the rest", async () => {

@@ -11,6 +11,7 @@ import {
   REPO_NOT_READ_LINE,
   TARGET_LABEL,
 } from "./deploy-state-copy";
+import { GlobalFolders } from "./global-folders";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   behindLine,
@@ -180,11 +181,16 @@ export function TargetDetailPane({
         notices={notice ? [notice] : []}
         subList={
           row.readFailed && row.primitives.length === 0 ? undefined : (
-            <SelectedSkills
-              row={row}
-              headingRef={skillsHeading}
-              onRemoved={() => skillsHeading.current?.focus()}
-            />
+            <>
+              {row.folders === undefined ? null : (
+                <GlobalFolders folders={row.folders} />
+              )}
+              <SelectedSkills
+                row={row}
+                headingRef={skillsHeading}
+                onRemoved={() => skillsHeading.current?.focus()}
+              />
+            </>
           )
         }
         foot={foot}

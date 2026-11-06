@@ -13,6 +13,7 @@ import {
 import {
   cellsOf,
   findRow,
+  globalAnswer,
   grid,
   RECENT,
   renderDeployState,
@@ -43,13 +44,10 @@ const head = (release: string, latestRelease: string, changed = 1) => ({
   comparedAt: RECENT(),
 });
 
-const TWO_TOOLS = {
-  tools: [
-    { tool: "claude", primitives: [skill("tdd")] },
-    { tool: "codex", primitives: [] },
-  ],
-  skipped: [],
-};
+const TWO_TOOLS = globalAnswer({
+  claude: [skill("tdd")],
+  codex: [skill("tdd")],
+});
 
 describe("Deploy-state — one table of every target", () => {
   it("lists every target under the Global and Repositories group headers", async () => {
@@ -68,11 +66,13 @@ describe("Deploy-state — one table of every target", () => {
     const cells = within(grid())
       .getAllByRole("gridcell")
       .map((cell) => cell.textContent);
-    expect(cells).toContain("Global 2");
+    // Global is one target; its folders are no targets of their own.
+    expect(cells).toContain("Global 1");
     expect(cells).toContain("Repositories 2");
     // #1180: the name only; the path is the pane's Path fact.
-    expect(cellsOf("Claude Code")[0]).toBe("Claude Code");
-    expect(cellsOf("Codex")[0]).toBe("Codex");
+    expect(cellsOf("Global")[0]).toBe("Global");
+    expect(screen.queryByText("Claude Code")).not.toBeInTheDocument();
+    expect(screen.queryByText("Codex")).not.toBeInTheDocument();
   });
 
   it("keeps two repositories that share a prefix apart", async () => {
@@ -115,7 +115,7 @@ describe("Deploy-state — one table of every target", () => {
 
     const fact = await screen.findByRole("term");
     expect(fact).toHaveTextContent("Targets");
-    expect(fact.nextElementSibling).toHaveTextContent("4");
+    expect(fact.nextElementSibling).toHaveTextContent("3");
   });
 
   it("does not count targets before both reads have landed", () => {
@@ -132,7 +132,7 @@ describe("Deploy-state — one table of every target", () => {
   });
 
   it("states plainly that nothing is deployed on a cold start", async () => {
-    stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
+    stubServer(() => ({ repos: [], global: globalAnswer({}) }));
     renderDeployState();
 
     expect(
@@ -147,7 +147,7 @@ describe("Deploy-state — one table of every target", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Claude Code, Codex and registered repositories appear here as targets.",
+        "Global and registered repositories appear here as targets.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
@@ -166,7 +166,7 @@ describe("Deploy-state — one table of every target", () => {
     stubServer(() => ({ repos: [], global: TWO_TOOLS }));
     renderDeployState();
 
-    await findRow("Codex");
+    await findRow("Global");
     const hint = within(grid()).getByText(
       "No repositories yet. Select Register repository on the Repositories screen.",
     );
@@ -185,6 +185,64 @@ describe("Deploy-state — one table of every target", () => {
     expect(
       screen.queryByText(/no repositories yet\./i),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state — Global and its folders", () => {
+  const edited = { ...skill("tdd"), copy: "local-edits" };
+
+  it("reads Global as one row, with a read-only row per folder: its path and one mark", async () => {
+    stubServer(() => ({
+      global: globalAnswer({ claude: [skill("tdd")], codex: [edited] }),
+    }));
+    renderDeployState();
+
+    await findRow("~/.agents/skills");
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Local edits"));
+    expect(cellsOf("~/.claude/skills")).toEqual([
+      "~/.claude/skills",
+      "✓In sync",
+      "",
+      "",
+    ]);
+    expect(cellsOf("~/.agents/skills")).toEqual([
+      "~/.agents/skills",
+      "⚠Local edits",
+      "",
+      "",
+    ]);
+    // No action on a folder: no ⋮, and a press opens no pane.
+    for (const path of ["~/.claude/skills", "~/.agents/skills"]) {
+      expect(within(rowOf(path)).queryAllByRole("button")).toEqual([]);
+    }
+    await userEvent.click(
+      htmlElement(
+        within(rowOf("~/.claude/skills")).getAllByRole("gridcell")[0],
+      ),
+    );
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+  });
+
+  it("mutes the folder of a tool not detected, and gives it no mark", async () => {
+    stubServer(() => ({ global: globalAnswer({ claude: [skill("tdd")] }) }));
+    renderDeployState();
+
+    const folder = await findRow("~/.agents/skills");
+    expect(cellsOf("~/.agents/skills").slice(0, 2)).toEqual([
+      "~/.agents/skills Codex not detected · not written",
+      "",
+    ]);
+    expect(folder).toHaveClass("text-gray-11");
+    expect(rowOf("~/.claude/skills")).not.toHaveClass("text-gray-11");
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("In sync"));
+  });
+
+  it("names no tool and no ~/.apm path in the table", async () => {
+    stubServer(() => ({ global: TWO_TOOLS }));
+    renderDeployState();
+
+    await findRow("~/.agents/skills");
+    expect(grid()).not.toHaveTextContent(/Claude Code|Codex|Cursor|~\/\.apm/);
   });
 });
 
@@ -229,13 +287,13 @@ describe("Deploy-state — Release, Status and Skills", () => {
 
   it("reads an empty target as Empty, with a dash for its release and skills", async () => {
     stubServer(() => ({
-      global: { tools: [{ tool: "codex", primitives: [] }], skipped: [] },
+      global: globalAnswer({ codex: [] }),
     }));
     renderDeployState();
 
-    await findRow("Codex");
+    await findRow("Global");
     await waitFor(() =>
-      expect(cellsOf("Codex").slice(1)).toEqual(["Empty", "—", "—"]),
+      expect(cellsOf("Global").slice(1)).toEqual(["Empty", "—", "—"]),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -285,31 +343,32 @@ describe("Deploy-state — Release, Status and Skills", () => {
     await waitFor(() => expect(cellsOf("…/me/project")[1]).toBe("Attention"));
   });
 
-  it("reads every global tool as Attention while a global record needs it", async () => {
+  it("reads every Global folder as Attention while a global record needs it", async () => {
     stubServer(() => ({
-      global: {
-        tools: [{ tool: "claude", primitives: [] }],
-        skipped: [
-          {
-            reason: "invalid-package",
-            virtualPath: "skills/tdd",
-            packageType: "invalid",
-          },
-        ],
-      },
+      global: globalAnswer(
+        { claude: [], codex: [] },
+        {
+          skipped: [
+            {
+              reason: "invalid-package",
+              virtualPath: "skills/tdd",
+              packageType: "invalid",
+            },
+          ],
+        },
+      ),
     }));
     renderDeployState();
 
-    await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Attention"));
+    await findRow("Global");
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Attention"));
+    expect(cellsOf("~/.claude/skills")[1]).toBe("⚠Attention");
+    expect(cellsOf("~/.agents/skills")[1]).toBe("⚠Attention");
   });
 
   it("reads a target with a no-longer-released skill as Attention", async () => {
     stubServer(() => ({
-      global: {
-        tools: [{ tool: "claude", primitives: [skill("tdd")] }],
-        skipped: [],
-      },
+      global: globalAnswer({ claude: [skill("tdd")] }),
       drift: {
         global: {
           behind: [
@@ -325,22 +384,21 @@ describe("Deploy-state — Release, Status and Skills", () => {
     }));
     renderDeployState();
 
-    await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Attention"));
+    await findRow("Global");
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Attention"));
   });
 
   it("names another origin instead of calling a target empty (#655)", async () => {
     stubServer(() => ({
-      global: {
-        tools: [{ tool: "claude", primitives: [] }],
-        skipped: [],
-        otherOrigins: ["fimoklei/agent-harness"],
-      },
+      global: globalAnswer(
+        { claude: [] },
+        { otherOrigins: ["fimoklei/agent-harness"] },
+      ),
     }));
     renderDeployState();
 
-    await findRow("Claude Code");
-    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Other origin"));
+    await findRow("Global");
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Other origin"));
   });
 
   it("reads a target pinned per skill as a fact, with the release most skills sit on", async () => {
@@ -369,9 +427,9 @@ describe("Deploy-state — Release, Status and Skills", () => {
     );
   });
 
-  it("maps the global drift onto the tool where the skill is deployed only", async () => {
+  it("maps the global drift onto the folder where the skill is deployed only", async () => {
     stubServer(() => ({
-      global: TWO_TOOLS,
+      global: globalAnswer({ claude: [skill("tdd")], codex: [] }),
       drift: {
         global: {
           behind: [
@@ -387,9 +445,10 @@ describe("Deploy-state — Release, Status and Skills", () => {
     }));
     renderDeployState();
 
-    await findRow("Codex");
-    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("Behind"));
-    expect(cellsOf("Codex")[1]).toBe("Empty");
+    await findRow("Global");
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Behind"));
+    expect(cellsOf("~/.claude/skills")[1]).toBe("↑Behind");
+    expect(cellsOf("~/.agents/skills")[1]).toBe("–Empty");
   });
 
   it("does not read Behind when the only behind skill is not deployed here", async () => {
@@ -535,7 +594,7 @@ describe("Deploy-state — failed reads", () => {
 
     const notice = await screen.findByText("Deploy-state not read");
     expect(notice.closest("[role=status]")).toHaveTextContent(
-      "Select Re-read Deploy-state to read every target again.Not read: global targets.",
+      "Select Re-read Deploy-state to read every target again.Not read: Global.",
     );
     expect(
       screen.queryByText(/install claude code or codex/i),
@@ -575,9 +634,7 @@ describe("Deploy-state — failed reads", () => {
     renderDeployState();
 
     expect(
-      await screen.findByText(
-        "Not read: global targets and registered repositories.",
-      ),
+      await screen.findByText("Not read: Global and registered repositories."),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Deploy-state not read")).toHaveLength(1);
     expect(
@@ -603,7 +660,7 @@ describe("Deploy-state — failed reads", () => {
   it("shows an install hint when no supported tool is detected, skipped entries still named", async () => {
     stubServer(() => ({
       global: {
-        tools: [],
+        ...globalAnswer({}),
         skipped: [
           {
             reason: "unsupported-type",
@@ -625,7 +682,7 @@ describe("Deploy-state — failed reads", () => {
   it("gives Filter and Display the first group line when there are no targets", async () => {
     stubServer(() => ({
       global: {
-        tools: [],
+        ...globalAnswer({}),
         skipped: [
           {
             reason: "unsupported-type",
@@ -647,7 +704,7 @@ describe("Deploy-state — failed reads", () => {
   });
 
   it("gives Filter and Display the empty state's heading on a cold start", async () => {
-    stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
+    stubServer(() => ({ repos: [], global: globalAnswer({}) }));
     renderDeployState();
 
     await screen.findByRole("heading", { level: 2, name: "No targets yet" });
@@ -668,11 +725,11 @@ describe("Deploy-state — Re-read and freshness", () => {
     }));
     fakeTimeouts();
     renderDeployState();
-    await findRow("Codex");
+    await findRow("Global");
 
     // Past the 1.3 s after which a running read draws skeleton rows.
     passTime(1500);
-    expect(rowOf("Codex")).toBeInTheDocument();
+    expect(rowOf("Global")).toBeInTheDocument();
     expect(grid()).not.toHaveAttribute("aria-busy");
   });
 
@@ -683,9 +740,9 @@ describe("Deploy-state — Re-read and freshness", () => {
     }));
     fakeTimeouts();
     renderDeployState();
-    await findRow("Claude Code");
+    await findRow("Global");
     const status = htmlElement(
-      within(rowOf("Claude Code")).getAllByRole("gridcell")[1],
+      within(rowOf("Global")).getAllByRole("gridcell")[1],
     );
 
     expect(status.querySelector("[aria-busy='true']")).not.toBeNull();
@@ -773,10 +830,10 @@ describe("Deploy-state — Re-read and freshness", () => {
 describe("Deploy-state — rows and their menu", () => {
   it("opens the pane of the target another screen asked for", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
-    renderDeployState({ openTarget: "global:codex" });
+    renderDeployState({ openTarget: "global" });
 
     expect(
-      await screen.findByRole("complementary", { name: "Codex detail" }),
+      await screen.findByRole("complementary", { name: "Global detail" }),
     ).toBeInTheDocument();
   });
 
@@ -806,8 +863,8 @@ describe("Deploy-state — rows and their menu", () => {
     renderDeployState();
 
     await userEvent.click(
-      within(await findRow("Codex")).getByRole("button", {
-        name: "Actions for Codex",
+      within(await findRow("Global")).getByRole("button", {
+        name: "Actions for Global",
       }),
     );
     await userEvent.click(
@@ -821,18 +878,18 @@ describe("Deploy-state — rows and their menu", () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
 
-    const row = await findRow("Claude Code");
+    const row = await findRow("Global");
     expect(
       within(row)
         .getAllByRole("button")
         .map((button) => button.getAttribute("aria-label")),
-    ).toEqual(["Actions for Claude Code"]);
+    ).toEqual(["Actions for Global"]);
   });
 
   it("names the Global/Repository split Target in Filter and Display", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
-    await findRow("Codex");
+    await findRow("Global");
 
     await userEvent.click(screen.getByRole("button", { name: /^Filter/ }));
     const filter = await screen.findByRole("menu");
@@ -855,7 +912,7 @@ describe("Deploy-state — rows and their menu", () => {
       drift: { "/Users/me/a": new Promise(() => {}) },
     }));
     renderDeployState();
-    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("In sync"));
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("In sync"));
 
     await userEvent.click(screen.getByRole("button", { name: /^Display/ }));
     await userEvent.click(
@@ -866,9 +923,10 @@ describe("Deploy-state — rows and their menu", () => {
     const rows = within(grid()).getAllByRole("row").slice(1);
     expect(rows.map((row) => row.textContent)).toEqual([
       "In sync 1",
-      expect.stringContaining("Claude Code"),
-      "Empty 2",
-      expect.stringContaining("Codex"),
+      expect.stringMatching(/^Global/),
+      expect.stringContaining("~/.claude/skills"),
+      expect.stringContaining("~/.agents/skills"),
+      "Empty 1",
       expect.stringContaining("…/me/b"),
       "Not read yet 1",
       expect.stringContaining("…/me/a"),
@@ -878,8 +936,8 @@ describe("Deploy-state — rows and their menu", () => {
   it("filters the table by status and says why no row shows", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();
-    await findRow("Codex");
-    await waitFor(() => expect(cellsOf("Claude Code")[1]).toBe("In sync"));
+    await findRow("Global");
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("In sync"));
 
     await userEvent.click(screen.getByRole("button", { name: /^Filter/ }));
     await userEvent.click(
@@ -900,6 +958,6 @@ describe("Deploy-state — rows and their menu", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Clear filters" }),
     );
-    expect(await findRow("Codex")).toBeInTheDocument();
+    expect(await findRow("Global")).toBeInTheDocument();
   });
 });

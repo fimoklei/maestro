@@ -10,11 +10,13 @@ import {
   NO_REPOSITORIES,
   NO_TARGETS,
   NO_TOOL_DETECTED,
+  notWrittenNote,
   ORIGIN_NOT_READ,
   otherOriginLine,
   packageBehindNotice,
   REPO_NOT_READ,
   REPO_NOT_READ_LINE,
+  readByLine,
   TARGET_LABEL,
   TARGETS_FACT,
   TIMED_OUT_HINT,
@@ -47,7 +49,7 @@ describe("Deploy-state copy", () => {
     };
     expect(deployStateNotRead(["global"])).toEqual({
       ...notice,
-      detail: "Not read: global targets.",
+      detail: "Not read: Global.",
     });
     expect(deployStateNotRead(["repos"])).toEqual({
       ...notice,
@@ -55,7 +57,7 @@ describe("Deploy-state copy", () => {
     });
     expect(deployStateNotRead(["global", "repos"])).toEqual({
       ...notice,
-      detail: "Not read: global targets and registered repositories.",
+      detail: "Not read: Global and registered repositories.",
     });
   });
 
@@ -72,8 +74,7 @@ describe("Deploy-state copy", () => {
     });
     expect(NO_TARGETS).toEqual({
       title: "No targets yet",
-      description:
-        "Claude Code, Codex and registered repositories appear here as targets.",
+      description: "Global and registered repositories appear here as targets.",
     });
   });
 
@@ -138,6 +139,25 @@ describe("Deploy-state copy", () => {
 
   it("says the local edits are being checked", () => {
     expect(CHECKING_LOCAL_EDITS).toBe("Checking for local edits…");
+  });
+
+  it("names who reads a Global folder, and a folder Global does not write", () => {
+    expect(
+      readByLine({
+        tools: ["Claude Code", "Cursor", "OpenCode"],
+        others: false,
+      }),
+    ).toBe("Read by Claude Code, Cursor and OpenCode.");
+    expect(
+      readByLine({
+        tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
+        others: true,
+      }),
+    ).toBe("Read by Codex, Copilot CLI, Cursor, Gemini CLI and others.");
+    expect(readByLine({ tools: ["Codex"], others: false })).toBe(
+      "Read by Codex.",
+    );
+    expect(notWrittenNote("Codex")).toBe("Codex not detected · not written");
   });
 
   it("advises importing local edits before a behind target updates", () => {

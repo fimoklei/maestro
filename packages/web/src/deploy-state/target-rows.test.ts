@@ -1,7 +1,7 @@
 import type {
   DeployedPrimitive,
+  GlobalFolderState,
   ReleaseHead,
-  SupportedTool,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
@@ -16,6 +16,7 @@ import {
   statusCard,
   type TargetRow,
 } from "./target-rows";
+import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
 // Band 2's line, which every Status card repeats.
 const COMPARED = "Read just now";
@@ -145,40 +146,6 @@ describe("statusCard", () => {
     ).toBe("The update is incomplete.");
   });
 
-  it("names another tool as behind on a global tool already on the latest release", () => {
-    expect(
-      readCard(
-        statusCard(
-          row({ group: GLOBAL, head: ON_LATEST, behind: true }),
-          COMPARED,
-        ),
-      ),
-    ).toEqual({
-      reason:
-        "Another tool's skills are behind v0.3.4. Select Update target to move this target to v0.3.4.",
-      readAge: "Read just now",
-    });
-  });
-
-  it("names the control that moves every tool on a global tool row", () => {
-    expect(
-      readCard(
-        statusCard(
-          row({
-            group: GLOBAL,
-            name: "Claude Code",
-            updateName: "Claude Code and Codex",
-            head: ON_LATEST,
-            behind: true,
-          }),
-          COMPARED,
-        ),
-      ).reason,
-    ).toBe(
-      "Another tool's skills are behind v0.3.4. Select Update targets to move this target to v0.3.4.",
-    );
-  });
-
   it("claims no latest release from a read that failed", () => {
     expect(
       readCard(
@@ -291,8 +258,56 @@ const syncedDrift = {
   forTool: () => syncedDrift,
 } as unknown as DriftViewModel;
 
-const words = (target: TargetRow) =>
+const words = (target: Pick<TargetRow, "status">) =>
   target.status && `${target.status.glyph} ${target.status.word}`;
+
+const folderMarks = (target: TargetRow | undefined) =>
+  target?.folders?.map((folder) => [folder.path, words(folder)]);
+
+const claude = (
+  primitives: DeployedPrimitive[],
+  detected = true,
+): GlobalFolderState => ({
+  path: "~/.claude/skills",
+  tool: "claude",
+  detected,
+  readBy: { tools: ["Claude Code", "Cursor", "OpenCode"], others: false },
+  primitives,
+});
+const agents = (
+  primitives: DeployedPrimitive[],
+  detected = true,
+): GlobalFolderState => ({
+  path: "~/.agents/skills",
+  tool: "codex",
+  detected,
+  readBy: {
+    tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
+    others: true,
+  },
+  primitives,
+});
+
+// What the Global read answers: one target, its folders and one skill list.
+function globalRead(
+  folders: GlobalFolderState[],
+  extra: Partial<GlobalDeployStateView> = {},
+): GlobalDeployStateView {
+  const names = new Set(
+    folders.flatMap((folder) => folder.primitives.map((p) => p.name)),
+  );
+  return {
+    primitives: [...names].map((name) => skill(name)),
+    folders,
+    detectedTools: folders
+      .filter((folder) => folder.detected)
+      .map((folder) => folder.tool),
+    releaseHead: ON_LATEST,
+    skipped: [],
+    otherOrigins: [],
+    ...extra,
+  };
+}
 
 describe("local edits on a target", () => {
   it("reads a repository holding an edited skill as Local edits", () => {
@@ -332,14 +347,9 @@ describe("local edits on a target", () => {
     } as unknown as DriftViewModel;
     expect(words(repoRow("/me/a", [], stale, unknownDrift))).toBe("? Unknown");
     const rows = globalRows(
-      {
-        tools: [{ tool: "claude", primitives: [skill("tdd", "local-edits")] }],
-        detectedTools: ["claude"],
-        primitives: [],
-        skipped: [],
-        otherOrigins: [],
+      globalRead([claude([skill("tdd", "local-edits")])], {
         pendingOperation: stale.data.pendingOperation,
-      },
+      }),
       syncedDrift,
       true,
     );
@@ -361,47 +371,116 @@ describe("local edits on a target", () => {
       },
       syncedDrift,
     );
-    const [tool] = globalRows(
-      {
-        tools: [{ tool: "claude", primitives: [] }],
-        detectedTools: ["claude"],
-        primitives: [],
-        skipped: [],
-        otherOrigins: [],
-        pendingOperation,
-      },
+    const [global] = globalRows(
+      globalRead([claude([])], { pendingOperation }),
       syncedDrift,
       true,
     );
-    if (tool === undefined) throw new Error("no tool row");
-    for (const unread of [repo, tool]) {
+    if (global === undefined) throw new Error("no Global row");
+    for (const unread of [repo, global]) {
       expect(targetMenuItems(unread, false).map((item) => item.action)).toEqual(
         ["deploy"],
       );
     }
   });
 
-  it("reads only the tool whose copy was edited as Local edits", () => {
-    const tool = (name: SupportedTool, primitives: DeployedPrimitive[]) => ({
-      tool: name,
-      primitives,
-      releaseHead: ON_LATEST,
-    });
-    const rows = globalRows(
-      {
-        tools: [
-          tool("claude", [skill("tdd", "local-edits")]),
-          tool("codex", [skill("tdd")]),
-        ],
-        detectedTools: ["claude", "codex"],
-        primitives: [],
-        skipped: [],
-        otherOrigins: [],
-      },
+  it("reads only the folder whose copy was edited as Local edits", () => {
+    const [global] = globalRows(
+      globalRead([
+        claude([skill("tdd", "local-edits")]),
+        agents([skill("tdd")]),
+      ]),
       syncedDrift,
       false,
     );
-    expect(rows.map(words)).toEqual(["⚠ Local edits", "✓ In sync"]);
+    expect(folderMarks(global)).toEqual([
+      ["~/.claude/skills", "⚠ Local edits"],
+      ["~/.agents/skills", "✓ In sync"],
+    ]);
+  });
+});
+
+describe("Global as one target", () => {
+  it("reads one Global row whose Status is its worst folder's", () => {
+    const rows = globalRows(
+      globalRead([
+        claude([skill("tdd")]),
+        agents([skill("tdd", "local-edits")]),
+      ]),
+      syncedDrift,
+      false,
+    );
+    expect(rows.map((target) => [target.name, words(target)])).toEqual([
+      ["Global", "⚠ Local edits"],
+    ]);
+  });
+
+  it("lists every Global folder under the row, with who reads it", () => {
+    const [global] = globalRows(
+      globalRead([claude([skill("tdd")]), agents([skill("tdd")])]),
+      syncedDrift,
+      false,
+    );
+    expect(
+      global?.folders?.map((folder) => [folder.path, folder.readBy]),
+    ).toEqual([
+      ["~/.claude/skills", "Read by Claude Code, Cursor and OpenCode."],
+      [
+        "~/.agents/skills",
+        "Read by Codex, Copilot CLI, Cursor, Gemini CLI and others.",
+      ],
+    ]);
+  });
+
+  it("reads an undetected tool's folder as not written, with no mark", () => {
+    const [global] = globalRows(
+      globalRead([claude([skill("tdd")]), agents([], false)]),
+      syncedDrift,
+      false,
+    );
+    expect(
+      global?.folders?.map((folder) => [
+        folder.path,
+        folder.detected,
+        folder.status,
+        folder.note,
+      ]),
+    ).toEqual([
+      [
+        "~/.claude/skills",
+        true,
+        expect.objectContaining({ word: "In sync" }),
+        null,
+      ],
+      ["~/.agents/skills", false, null, "Codex not detected · not written"],
+    ]);
+    expect(words(global as TargetRow)).toBe("✓ In sync");
+  });
+
+  it("shows no Global row while no tool is detected", () => {
+    expect(
+      globalRows(
+        globalRead([claude([], false), agents([], false)]),
+        syncedDrift,
+        false,
+      ),
+    ).toEqual([]);
+  });
+
+  it("acts on Global as one target, under its own name", () => {
+    const [global] = globalRows(
+      globalRead([claude([skill("tdd")]), agents([skill("tdd")])]),
+      syncedDrift,
+      false,
+    );
+    expect(global).toMatchObject({
+      id: "global",
+      name: "Global",
+      updateName: "Global",
+      wire: { kind: "global" },
+      target: { kind: "global", tools: ["claude", "codex"] },
+      skills: 1,
+    });
   });
 });
 

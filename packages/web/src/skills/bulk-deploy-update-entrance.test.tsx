@@ -45,7 +45,7 @@ function stubServer(attentionError: string) {
       }
       if (url.startsWith("/api/drift")) return jsonResponse({ behind: [] });
       if (url.startsWith("/api/deploy-state/global")) {
-        return jsonResponse({ tools: [], skipped: [] });
+        return jsonResponse({ primitives: [], folders: [], skipped: [] });
       }
       if (url.startsWith("/api/deploy-state")) {
         return jsonResponse({ primitives: [], skipped: [] });

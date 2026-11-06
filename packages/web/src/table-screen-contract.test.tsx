@@ -7,6 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  globalAnswer,
   renderDeployState,
   stubServer,
 } from "./deploy-state/deploy-state-test-helpers";
@@ -401,7 +402,7 @@ const ON_TABLE_SCREEN: Row[] = [
     },
     empty: {
       render: () => {
-        stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
+        stubServer(() => ({ repos: [], global: globalAnswer({}) }));
         renderDeployState();
       },
       title: "No targets yet",
@@ -416,20 +417,14 @@ const ON_TABLE_SCREEN: Row[] = [
     reading: {
       render: () => {
         stubServer(() => ({
-          global: {
-            tools: [
-              {
-                tool: "claude",
-                primitives: [{ type: "skill", name: "tdd", version: "v1" }],
-              },
-            ],
-            skipped: [],
-          },
+          global: globalAnswer({
+            claude: [{ type: "skill", name: "tdd", version: "v1" }],
+          }),
           drift: { global: new Promise(() => {}) },
         }));
         renderDeployState();
       },
-      name: "Claude Code",
+      name: "Global",
     },
     columns: ["Target", "Status", "Release", "Skills", "GitHub", "Actions"],
     off: [],

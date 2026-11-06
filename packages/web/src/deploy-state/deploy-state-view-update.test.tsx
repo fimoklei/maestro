@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { hoverOpen, jsonResponse, sentence } from "../test-utils";
 import {
   findRow,
+  globalAnswer,
   openPane,
   renderDeployState,
   type ServerState,
@@ -41,11 +42,16 @@ const headAt = (release: string) => ({
   comparedAt: "2026-09-14T10:00:00.000Z",
 });
 
-const toolAt = (release: string) => ({
-  tool: "claude",
-  primitives: [{ type: "skill", name: "tdd", version: release }],
-  releaseHead: headAt(release),
-});
+// Global with tdd at `release` in the folder of each tool named.
+const globalAt = (
+  release: string,
+  tools: readonly ("claude" | "codex")[] = ["claude"],
+) => {
+  const tdd = [{ type: "skill", name: "tdd", version: release }];
+  return globalAnswer(Object.fromEntries(tools.map((tool) => [tool, tdd])), {
+    releaseHead: headAt(release),
+  });
+};
 
 const PENDING = { kind: "update", release: "v0.3.5", desired: ["tdd"] };
 
@@ -268,17 +274,17 @@ describe("Deploy-state — Update target on a repository", () => {
 });
 
 describe("Deploy-state — Update target on the global target", () => {
-  const GLOBAL_BEHIND = { global: { tools: [toolAt("v0.3.4")], skipped: [] } };
+  const GLOBAL_BEHIND = { global: globalAt("v0.3.4") };
 
   it("keeps the dialog open while apm runs, nothing else reachable, then lists what landed", async () => {
     const update = deferred();
     stubUpdate(update.promise, {
       before: GLOBAL_BEHIND,
-      after: { global: { tools: [toolAt("v0.3.5")], skipped: [] } },
+      after: { global: globalAt("v0.3.5") },
     });
     renderDeployState();
 
-    const dialog = await confirmUpdate("Claude Code");
+    const dialog = await confirmUpdate("Global");
     expect(
       await within(dialog).findByRole("button", {
         name: "Updating…",
@@ -305,20 +311,13 @@ describe("Deploy-state — Update target on the global target", () => {
     ).toBeInTheDocument();
   });
 
-  it("labels Update by every detected tool it covers", async () => {
-    stubServer(() => ({
-      global: {
-        tools: [toolAt("v0.3.4"), { ...toolAt("v0.3.4"), tool: "codex" }],
-        skipped: [],
-      },
-    }));
+  it("labels Update target by Global, the one target every folder follows", async () => {
+    stubServer(() => ({ global: globalAt("v0.3.4", ["claude", "codex"]) }));
     renderDeployState();
 
-    const pane = await openPane("Codex");
+    const pane = await openPane("Global");
     expect(
-      within(pane).getByRole("button", {
-        name: "Update targets Claude Code and Codex",
-      }),
+      within(pane).getByRole("button", { name: "Update target Global" }),
     ).toBeInTheDocument();
   });
 
@@ -328,7 +327,7 @@ describe("Deploy-state — Update target on the global target", () => {
       before: GLOBAL_BEHIND,
       after: {
         global: {
-          tools: [toolAt("v0.3.4")],
+          ...globalAt("v0.3.4"),
           skipped: [],
           pendingOperation: PENDING,
         },
@@ -336,7 +335,7 @@ describe("Deploy-state — Update target on the global target", () => {
     });
     renderDeployState();
 
-    const dialog = await confirmUpdate("Claude Code");
+    const dialog = await confirmUpdate("Global");
     await within(dialog).findByRole("button", { name: "Updating…" });
     update.resolve(
       jsonResponse(
@@ -376,7 +375,7 @@ describe("Deploy-state — Update target on the global target", () => {
         before: GLOBAL_BEHIND,
         after: {
           global: {
-            tools: [toolAt("v0.3.4")],
+            ...globalAt("v0.3.4"),
             skipped: [],
             pendingOperation: PENDING,
           },
@@ -386,7 +385,7 @@ describe("Deploy-state — Update target on the global target", () => {
     );
     renderDeployState();
 
-    const dialog = await confirmUpdate("Claude Code");
+    const dialog = await confirmUpdate("Global");
     update.resolve(
       jsonResponse(
         {
@@ -422,7 +421,7 @@ describe("Deploy-state — Update target on the global target", () => {
       before: GLOBAL_BEHIND,
       after: {
         global: {
-          tools: [toolAt("v0.3.4")],
+          ...globalAt("v0.3.4"),
           skipped: [],
           pendingOperation: PENDING,
         },
@@ -430,7 +429,7 @@ describe("Deploy-state — Update target on the global target", () => {
     });
     renderDeployState();
 
-    const dialog = await confirmUpdate("Claude Code");
+    const dialog = await confirmUpdate("Global");
     await within(dialog).findByRole("button", { name: "Updating…" });
     update.resolve(
       jsonResponse(
@@ -465,16 +464,16 @@ describe("Deploy-state — Update target on the global target", () => {
       before: GLOBAL_BEHIND,
       during: {
         global: {
-          tools: [toolAt("v0.3.4")],
+          ...globalAt("v0.3.4"),
           skipped: [],
           pendingOperation: PENDING,
         },
       },
-      after: { global: { tools: [toolAt("v0.3.5")], skipped: [] } },
+      after: { global: globalAt("v0.3.5") },
     });
     renderDeployState();
 
-    const dialog = await confirmUpdate("Claude Code");
+    const dialog = await confirmUpdate("Global");
     await within(dialog).findByRole("button", { name: "Updating…" });
     act(() => {
       focusManager.setFocused(false);

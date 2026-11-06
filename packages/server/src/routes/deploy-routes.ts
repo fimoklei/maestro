@@ -98,23 +98,14 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, 422);
     }
     return c.json({
-      tools: result.tools.map(
-        ({
-          releaseHead,
-          pinnedPerSkill,
-          extraFiles,
-          releaseGitHub,
-          latestReleaseGitHub,
-          primitives,
-          ...group
-        }) => ({
-          ...group,
-          primitives: checkedPrimitives(primitives),
-          ...cardReadingFields({ releaseHead, pinnedPerSkill, extraFiles }),
-          ...githubPageField("releaseGitHub", releaseGitHub),
-          ...githubPageField("latestReleaseGitHub", latestReleaseGitHub),
-        }),
-      ),
+      primitives: checkedPrimitives(result.primitives),
+      folders: result.folders.map(({ primitives, ...folder }) => ({
+        ...folder,
+        primitives: checkedPrimitives(primitives),
+      })),
+      ...cardReadingFields(result),
+      ...githubPageField("releaseGitHub", result.releaseGitHub),
+      ...githubPageField("latestReleaseGitHub", result.latestReleaseGitHub),
       skipped: result.skipped,
       otherOrigins: result.otherOrigins,
       ...(result.pendingOperation

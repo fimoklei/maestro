@@ -6,6 +6,7 @@ import {
   cellsOf,
   factValue,
   findRow,
+  globalAnswer,
   grid,
   openPane,
   RECENT,
@@ -118,23 +119,16 @@ describe("Deploy-state pane — facts", () => {
     ).toHaveAttribute("href", url);
   });
 
-  it("links a global tool's Release fact to its release page on GitHub", async () => {
+  it("links Global's Release fact to its release page on GitHub", async () => {
     const url = "https://github.com/fimoklei/agent-harness/releases/tag/v0.3.2";
     stubServer(() => ({
-      global: {
-        tools: [
-          {
-            tool: "claude",
-            primitives: [skill("tdd")],
-            releaseHead: BEHIND,
-            releaseGitHub: { kind: "link", url },
-          },
-        ],
-        skipped: [],
-      },
+      global: globalAnswer(
+        { claude: [skill("tdd")] },
+        { releaseHead: BEHIND, releaseGitHub: { kind: "link", url } },
+      ),
     }));
     renderDeployState();
-    const pane = await openPane("Claude Code");
+    const pane = await openPane("Global");
 
     expect(
       within(pane).getByRole("link", { name: "v0.3.2 on GitHub" }),
@@ -437,15 +431,14 @@ describe("Deploy-state pane — facts", () => {
 
   it("names the other origin a global target holds, keeping Deploy skill", async () => {
     stubServer(() => ({
-      global: {
-        tools: [{ tool: "claude", primitives: [] }],
-        skipped: [],
-        otherOrigins: ["fimoklei/agent-harness"],
-      },
+      global: globalAnswer(
+        { claude: [] },
+        { otherOrigins: ["fimoklei/agent-harness"] },
+      ),
     }));
     renderDeployState();
 
-    const pane = await openPane("Claude Code");
+    const pane = await openPane("Global");
     expect(
       within(pane).getByText(
         sentence(
@@ -453,7 +446,7 @@ describe("Deploy-state pane — facts", () => {
         ),
       ),
     ).toBeInTheDocument();
-    const menu = await openFootMenu(pane, "Claude Code");
+    const menu = await openFootMenu(pane, "Global");
     expect(
       menu.getByRole("menuitem", { name: "Deploy skill" }),
     ).toBeInTheDocument();
@@ -484,18 +477,54 @@ describe("Deploy-state pane — facts", () => {
   it("pages through the targets as the table shows them", async () => {
     stubServer(() => ({
       repos: [REPO],
-      global: { tools: [{ tool: "claude", primitives: [] }], skipped: [] },
+      global: globalAnswer({ claude: [] }),
     }));
     renderDeployState();
     await findRow(LABEL);
 
-    const pane = await openPane("Claude Code");
+    const pane = await openPane("Global");
     expect(within(pane).getByText("1 of 2")).toBeInTheDocument();
 
     await userEvent.keyboard("{ArrowDown}");
     expect(
       await screen.findByRole("complementary", { name: `${LABEL} detail` }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state pane — Global folders", () => {
+  it("lists each folder Global writes, its mark, and which tools read it", async () => {
+    stubServer(() => ({
+      global: globalAnswer({
+        claude: [skill("tdd")],
+        codex: [skill("tdd", "v0.3.2", "local-edits")],
+      }),
+    }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    const folders = within(pane).getByRole("list", { name: "Global folders" });
+    expect(
+      within(folders)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual([
+      "✓~/.claude/skillsRead by Claude Code, Cursor and OpenCode.",
+      "⚠~/.agents/skillsRead by Codex, Copilot CLI, Cursor, Gemini CLI and others.",
+    ]);
+    expect(
+      within(folders).getByRole("img", { name: "Local edits" }),
+    ).toBeInTheDocument();
+    expect(fact(pane, "Folder path") ?? null).toBeNull();
+  });
+
+  it("leaves a folder Global does not write out of the pane", async () => {
+    stubServer(() => ({ global: globalAnswer({ claude: [skill("tdd")] }) }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    expect(within(pane).queryByText("~/.agents/skills")).toBeNull();
+    expect(within(pane).queryByText(/Codex/)).toBeNull();
   });
 });
 

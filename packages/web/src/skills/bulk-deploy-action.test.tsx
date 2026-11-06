@@ -2,6 +2,7 @@ import type { BulkDeployReport } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { globalAnswer } from "../deploy-state/deploy-state-test-helpers";
 import {
   chooseDeployTarget,
   expectTooltipCause,
@@ -11,6 +12,17 @@ import {
 import { ToastHost } from "../ui/toast";
 import { ScreenWritesContext } from "../ui/use-write-action";
 import { BulkDeployAction } from "./bulk-deploy-action";
+
+// The Global read from the tools it detects, each with its folder's copies.
+const globalOf = (tools: { tool: string; primitives: unknown[] }[]) =>
+  globalAnswer(
+    Object.fromEntries(
+      tools.map(({ tool, primitives }) => [
+        tool,
+        primitives as { name: string }[],
+      ]),
+    ),
+  );
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -29,13 +41,9 @@ function stubReads(bulkReport: unknown, deployed: string[] = []) {
     vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/deploy-state/global")) {
-        return jsonResponse({
-          tools: [
-            { tool: "claude", primitives },
-            { tool: "codex", primitives },
-          ],
-          skipped: [],
-        });
+        return jsonResponse(
+          globalAnswer({ claude: primitives, codex: primitives }),
+        );
       }
       if (url.startsWith("/api/drift/global")) {
         return jsonResponse({ behind: [] });
@@ -563,16 +571,12 @@ describe("BulkDeployAction", () => {
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({
-            tools: [
-              {
-                tool: "claude",
-                primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
-              },
-              { tool: "codex", primitives: [] },
-            ],
-            skipped: [],
-          });
+          return jsonResponse(
+            globalAnswer({
+              claude: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+              codex: [],
+            }),
+          );
         }
         if (url.startsWith("/api/drift/global")) {
           return jsonResponse({ behind: [] });
@@ -663,7 +667,7 @@ describe("BulkDeployAction", () => {
           return jsonResponse({ behind: [] });
         }
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({ tools: [], skipped: [] });
+          return jsonResponse(globalAnswer({}));
         }
         if (url.startsWith("/api/drift/global")) {
           return jsonResponse({ behind: [] });
@@ -721,13 +725,7 @@ describe("BulkDeployAction", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({
-            tools: [
-              { tool: "claude", primitives: [] },
-              { tool: "codex", primitives: [] },
-            ],
-            skipped: [],
-          });
+          return jsonResponse(globalAnswer({ claude: [], codex: [] }));
         }
         if (url.startsWith("/api/drift/global")) {
           return jsonResponse({ behind: [] });
@@ -781,10 +779,7 @@ describe("BulkDeployAction", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({
-            tools: [{ tool: "claude", primitives: [] }],
-            skipped: [],
-          });
+          return jsonResponse(globalAnswer({ claude: [] }));
         }
         if (url.startsWith("/api/drift/global")) {
           return jsonResponse({ behind: [] });
@@ -976,7 +971,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith("/api/deploy-state/global")) {
-        return jsonResponse({ tools, skipped: [] });
+        return jsonResponse(globalOf(tools));
       }
       if (url.startsWith("/api/drift")) {
         return jsonResponse({ behind: [] });
@@ -1084,7 +1079,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({ tools, skipped: [] });
+          return jsonResponse(globalOf(tools));
         }
         return jsonResponse({ behind: [] });
       }),
@@ -1221,14 +1216,18 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
         if (world.globalStateHangs) {
           return new Promise<Response>(() => undefined);
         }
-        return jsonResponse({
-          tools: Object.entries(tools).map(([tool, names]) => ({
-            tool,
-            primitives: names.map(skill),
-            ...releaseHead(names),
-          })),
-          skipped,
-        });
+        const names = [...new Set(Object.values(tools).flat())];
+        return jsonResponse(
+          globalAnswer(
+            Object.fromEntries(
+              Object.entries(tools).map(([tool, held]) => [
+                tool,
+                held.map(skill),
+              ]),
+            ),
+            { ...releaseHead(names), skipped },
+          ),
+        );
       }
       if (url.startsWith("/api/drift")) {
         return jsonResponse(

@@ -57,9 +57,6 @@ const PLAIN: Record<string, Record<string, string>> = {
   "deploy-state/use-deploy-state.ts": {
     "`/api/deploy-state?repo=${encodeURIComponent(repo)}`": "request URL",
   },
-  "deploy-state/use-global-deploy-state.ts": {
-    "`${primitive.name}@${primitive.version}`": "key",
-  },
   "drift/use-drift.ts": {
     "`/api/drift?repo=${encodeURIComponent(repo)}`": "request URL",
   },
@@ -138,8 +135,8 @@ const PLAIN_MACHINE: Record<string, Record<string, string>> = {
   "deploy-state/target-rows.ts": {
     "`repo:${repoPath}`": "key",
   },
-  "deploy-state/use-global-deploy-state.ts": {
-    "`${primitive.name}@${primitive.version}`": "key",
+  "deploy-state/folder-sub-rows.tsx": {
+    "`${row.id}:${folder.path}`": "key",
   },
   "ui/dialog.tsx": {
     "`${title} ${version}`": "accessible name",

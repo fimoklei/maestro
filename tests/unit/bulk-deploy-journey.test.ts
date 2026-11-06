@@ -43,14 +43,10 @@ describe("bulk deploy journey", () => {
     expect(single.status).toBe(200);
 
     const state = await w.app.request("/api/deploy-state/global");
-    const { tools } = (await state.json()) as {
-      tools: { primitives: { name: string; version: string }[] }[];
+    const { primitives } = (await state.json()) as {
+      primitives: { name: string; version: string }[];
     };
-    const names = new Set(
-      tools.flatMap((group) =>
-        group.primitives.map((p) => `${p.name}@${p.version}`),
-      ),
-    );
+    const names = new Set(primitives.map((p) => `${p.name}@${p.version}`));
     expect([...names].sort()).toEqual([
       "docs@v0.5.1",
       "review@v0.5.1",

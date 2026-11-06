@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectTooltipCause, jsonResponse } from "../test-utils";
 import {
+  globalAnswer,
   importRoutes,
   landed,
   openPane,
@@ -201,15 +202,15 @@ describe("Deploy-state — Import local edits on a skill row", () => {
     );
     stubServer(() => ({
       global: {
-        tools: [{ tool: "claude", primitives: TWO_EDITED.primitives }],
+        ...globalAnswer({ claude: TWO_EDITED.primitives }),
         skipped: [],
       },
       other,
     }));
     renderDeployState();
-    const pane = await openPane("Claude Code");
+    const pane = await openPane("Global");
 
-    const dialog = await openSkillDialog(pane, "code-review", "Claude Code");
+    const dialog = await openSkillDialog(pane, "code-review", "Global");
     await userEvent.click(
       await within(dialog).findByRole("button", { name: "Import 1 skill" }),
     );

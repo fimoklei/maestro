@@ -33,6 +33,7 @@ import {
   TARGET_LABEL,
   TARGETS_FACT,
 } from "./deploy-state-copy";
+import { folderSubRows } from "./folder-sub-rows";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { TargetDetailPane } from "./target-detail-pane";
 import { targetLinkItems, targetMenuItems } from "./target-menu";
@@ -231,7 +232,7 @@ export function DeployStateView() {
           filtered: view.filterCount > 0,
           global: globalDeploy.isSuccess
             ? {
-                tools: globalDeploy.data.tools.length,
+                tools: globalDeploy.data.detectedTools.length,
                 skipped: globalDeploy.data.skipped,
               }
             : null,
@@ -302,6 +303,7 @@ export function DeployStateView() {
       rows={rows}
       columns={columns}
       rowId={(row) => row.id}
+      subRows={folderSubRows}
       view={view}
       noMatch={NO_FILTER_MATCH}
       empty={{ ...NO_TARGETS, icon: <Icon of={LayoutList} /> }}

@@ -1,29 +1,26 @@
-// Exposes both the per-tool `tools` grouping and a flattened `primitives` list.
+// Global as one target: its skill list, its release and the folders it writes.
 import type {
-  DeployedPrimitive,
+  GlobalTargetState,
   PendingOperation,
   SkippedEntry,
-  ToolDeployState,
+  SupportedTool,
 } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import { DEPLOY_STATE_KEY } from "./use-deploy-state";
 
-// Not Zod-validated here: `tools` is defaulted once in `select`. Present-but-empty
-// means "detected zero tools"; absent means "not read yet".
-type GlobalDeployStateResponse = {
-  tools?: ToolDeployState[];
+// Not Zod-validated here: `folders` is defaulted once in `select`.
+type GlobalDeployStateResponse = Omit<GlobalTargetState, "folders"> & {
+  folders?: GlobalTargetState["folders"];
   skipped: SkippedEntry[];
   // Repos named on a lockfile entry no detected tool's prefix covers.
   otherOrigins?: string[];
   pendingOperation?: PendingOperation;
 };
 
-export type GlobalDeployStateView = {
-  tools: ToolDeployState[];
-  // Undefined until resolved; empty once resolved means no supported tool.
-  detectedTools: string[] | undefined;
-  primitives: DeployedPrimitive[];
+export type GlobalDeployStateView = GlobalTargetState & {
+  /** The tools whose folders Global writes; empty: none detected. */
+  detectedTools: SupportedTool[];
   skipped: SkippedEntry[];
   otherOrigins: string[];
   pendingOperation?: PendingOperation;
@@ -35,16 +32,15 @@ export function globalDeployStateQueryOptions() {
     queryFn: () =>
       requestJson<GlobalDeployStateResponse>("/api/deploy-state/global"),
     select: (data: GlobalDeployStateResponse): GlobalDeployStateView => {
-      const tools = data.tools ?? [];
+      const folders = data.folders ?? [];
       return {
-        tools,
-        detectedTools: data.tools?.map((group) => group.tool),
-        skipped: data.skipped,
-        primitives: flattenPrimitives(tools),
+        ...data,
+        primitives: data.primitives ?? [],
+        folders,
+        detectedTools: folders
+          .filter((folder) => folder.detected)
+          .map((folder) => folder.tool),
         otherOrigins: data.otherOrigins ?? [],
-        ...(data.pendingOperation
-          ? { pendingOperation: data.pendingOperation }
-          : {}),
       };
     },
   };
@@ -52,19 +48,4 @@ export function globalDeployStateQueryOptions() {
 
 export function useGlobalDeployState(enabled = true) {
   return useQuery({ ...globalDeployStateQueryOptions(), enabled });
-}
-
-function flattenPrimitives(tools: ToolDeployState[]): DeployedPrimitive[] {
-  const seen = new Set<string>();
-  const flat: DeployedPrimitive[] = [];
-  for (const group of tools) {
-    for (const primitive of group.primitives) {
-      const key = `${primitive.name}@${primitive.version}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        flat.push(primitive);
-      }
-    }
-  }
-  return flat;
 }

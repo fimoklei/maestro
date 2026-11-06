@@ -16,9 +16,11 @@ import {
   localEditsLine,
   NO_REPOSITORIES,
   NO_TOOL_DETECTED,
+  notWrittenNote,
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
+  readByLine,
   TIMED_OUT_HINT,
   UNREACHED_HINT,
 } from "./deploy-state-copy";
@@ -41,12 +43,24 @@ import {
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
-import { targetStatus } from "./target-status";
-import { toolNameList, toolPresentation } from "./tool-presentation";
+import { targetStatus, worstFolderReading } from "./target-status";
+import { toolDisplayName } from "./tool-presentation";
 import { updateLabel } from "./update-target-copy";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
-// One Deploy-state row per target: a detected tool or a registered repository.
+/** A Global folder under the Global row: read-only, with no action of its own. */
+export type FolderRow = {
+  path: string;
+  /** Global writes this folder only while its tool is detected. */
+  detected: boolean;
+  /** The folder's reading; null where Global does not write it, or not read yet. */
+  status: StatusReading | null;
+  readBy: string;
+  /** Muted beside a folder Global does not write; null on one it writes. */
+  note: string | null;
+};
+
+// One Deploy-state row per target: Global or a registered repository.
 export type TargetRow = {
   id: string;
   group: typeof GLOBAL | typeof REPOSITORIES;
@@ -77,10 +91,12 @@ export type TargetRow = {
   releaseGitHub?: GitHubPage;
   /** The Latest release fact's page on GitHub; absent where none exists. */
   latestReleaseGitHub?: GitHubPage;
+  /** Global's folders, shown as read-only rows under it; absent on a repository. */
+  folders?: FolderRow[];
 };
 
 // A row's id, which another screen names to open that row's pane.
-export const globalRowId = (tool: string) => `global:${tool}`;
+export const GLOBAL_ROW_ID = "global";
 export const repoRowId = (repoPath: string) => `repo:${repoPath}`;
 
 export const isBehind = (
@@ -103,13 +119,6 @@ export const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
     .filter((primitive) => primitive.copy === "local-edits")
     .map((primitive) => primitive.name);
 
-// One lockfile and one release for every detected tool, so any tool reading
-// behind puts every tool row behind (#951).
-export const isGlobalBehind = (
-  tools: readonly { releaseHead?: ReleaseHead }[],
-  pending?: PendingOperation,
-) => tools.some((tool) => isBehind(tool.releaseHead, pending));
-
 const releaseOf = (
   head: ReleaseHead | undefined,
   pinned: PinnedPerSkill | undefined,
@@ -125,60 +134,74 @@ export function globalRows(
   drift: DriftViewModel,
   readFailed: boolean,
 ): TargetRow[] {
+  const tools = data.detectedTools;
+  // No tool, no folder Global writes: the group's own line says so.
+  if (tools.length === 0) return [];
   const pending = data.pendingOperation;
-  const tools = data.tools.map((group) => group.tool);
-  const behind = isGlobalBehind(data.tools, pending);
-  return data.tools.map((group) => {
-    const { label, destination } = toolPresentation(group.tool);
-    const names = group.primitives.map((primitive) => primitive.name);
-    // Narrowed to this tool's skills, so one tool's drift never leaks in.
-    const toolDrift = drift.forTool(names);
+  const behind = isBehind(data.releaseHead, pending);
+  // Every folder shares Global's release, operation and read; only its own
+  // copies differ.
+  const readingOf = (primitives: readonly DeployedPrimitive[]) => {
+    const names = primitives.map((primitive) => primitive.name);
     const indicator = readFailed
       ? "unknown"
       : withOtherOrigins(
-          toolDrift.targetIndicator(
-            globalToolView(names, data.skipped, group.releaseHead),
-          ),
+          drift
+            .forTool(names)
+            .targetIndicator(
+              globalToolView(names, data.skipped, data.releaseHead),
+            ),
           data.otherOrigins,
         );
-    return {
-      id: globalRowId(group.tool),
+    return targetStatus({
+      indicator,
+      pinnedPerSkill: data.pinnedPerSkill !== undefined,
+      behind,
+      // A failed read's stale record never outranks its Unknown.
+      pending: readFailed ? undefined : pending?.kind,
+      localEdits: !readFailed && editedSkills(primitives).length > 0,
+    });
+  };
+  const folders: FolderRow[] = data.folders.map((folder) => ({
+    path: folder.path,
+    detected: folder.detected,
+    status: folder.detected ? readingOf(folder.primitives) : null,
+    readBy: readByLine(folder.readBy),
+    note: folder.detected ? null : notWrittenNote(toolDisplayName(folder.tool)),
+  }));
+  const names = data.primitives.map((primitive) => primitive.name);
+  return [
+    {
+      id: GLOBAL_ROW_ID,
       group: GLOBAL,
-      name: label,
-      path: destination,
+      name: GLOBAL,
+      path: "",
       target: { kind: "global", tools },
       wire: { kind: "global" },
-      updateName: toolNameList(tools),
-      release: releaseOf(group.releaseHead, group.pinnedPerSkill),
-      status: targetStatus({
-        indicator,
-        pinnedPerSkill: group.pinnedPerSkill !== undefined,
-        behind,
-        // A failed read's stale record never outranks its Unknown.
-        pending: readFailed ? undefined : pending?.kind,
-        localEdits: !readFailed && editedSkills(group.primitives).length > 0,
-      }),
-      skills: group.primitives.length,
-      ...(group.releaseHead ? { head: group.releaseHead } : {}),
-      ...(group.releaseGitHub ? { releaseGitHub: group.releaseGitHub } : {}),
-      ...(group.latestReleaseGitHub
-        ? { latestReleaseGitHub: group.latestReleaseGitHub }
+      updateName: GLOBAL,
+      release: releaseOf(data.releaseHead, data.pinnedPerSkill),
+      status: worstFolderReading(
+        folders.filter((folder) => folder.detected).map((f) => f.status),
+      ),
+      skills: data.primitives.length,
+      ...(data.releaseHead ? { head: data.releaseHead } : {}),
+      ...(data.releaseGitHub ? { releaseGitHub: data.releaseGitHub } : {}),
+      ...(data.latestReleaseGitHub
+        ? { latestReleaseGitHub: data.latestReleaseGitHub }
         : {}),
-      ...(group.pinnedPerSkill ? { pinned: group.pinnedPerSkill } : {}),
+      ...(data.pinnedPerSkill ? { pinned: data.pinnedPerSkill } : {}),
       // A failed read's stale record offers no retry: Re-read is the way back.
       ...(pending && !readFailed ? { pending } : {}),
-      primitives: group.primitives,
-      drift: toolDrift,
-      // A skipped entry or a foreign origin names no tool, so every tool carries them.
+      primitives: data.primitives,
+      drift: drift.forTool(names),
       skipped: data.skipped,
       otherOrigins: data.otherOrigins,
-      ...(group.extraFiles === undefined
-        ? {}
-        : { extraFiles: group.extraFiles }),
+      ...(data.extraFiles === undefined ? {} : { extraFiles: data.extraFiles }),
       readFailed,
       behind,
-    };
-  });
+      folders,
+    },
+  ];
 }
 
 type RepoRead = {

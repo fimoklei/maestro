@@ -1,24 +1,15 @@
 import { joinNames } from "./join-names";
 
-// Destinations mirror core's DEPLOY_TOOLS skillsDirPrefix. An unknown token is
-// shown verbatim, never dropped.
+// A tool's display name. An unknown token is shown verbatim, never dropped.
+// Folder paths come from the Global read, never from here.
 
-type ToolPresentation = {
-  label: string;
-  destination: string;
+const LABEL: Record<string, string> = {
+  claude: "Claude Code",
+  codex: "Codex",
 };
-
-const PRESENTATION: Record<string, ToolPresentation> = {
-  claude: { label: "Claude Code", destination: "~/.claude/skills" },
-  codex: { label: "Codex", destination: "~/.agents/skills" },
-};
-
-export function toolPresentation(tool: string): ToolPresentation {
-  return PRESENTATION[tool] ?? { label: tool, destination: "" };
-}
 
 export function toolDisplayName(tool: string): string {
-  return toolPresentation(tool).label;
+  return LABEL[tool] ?? tool;
 }
 
 // One readable list ("Claude Code and Codex"). Empty set yields "".

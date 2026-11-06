@@ -148,12 +148,12 @@ describe("production wiring", () => {
     const res = await app.request("/api/deploy-state/global");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
-        },
+    const tdd = { type: "skill", name: "tdd", version: "v0.5.1" };
+    expect(await res.json()).toMatchObject({
+      primitives: [tdd],
+      folders: [
+        { path: "~/.claude/skills", detected: true, primitives: [tdd] },
+        { path: "~/.agents/skills", detected: false, primitives: [] },
       ],
       skipped: [],
       otherOrigins: [],

@@ -32,8 +32,7 @@ export const NO_FILTER_MATCH = {
 
 export const NO_TARGETS = {
   title: "No targets yet",
-  description:
-    "Claude Code, Codex and registered repositories appear here as targets.",
+  description: "Global and registered repositories appear here as targets.",
 };
 
 /** The pane's line for behind names that are no deployed skill. */
@@ -54,7 +53,7 @@ export const packageBehindNotice = (
 
 const NOT_READ_LABEL = "Deploy-state not read";
 const NOT_READ_PARTS = {
-  global: "global targets",
+  global: "Global",
   repos: "registered repositories",
 } as const;
 
@@ -80,6 +79,20 @@ export const VIEW_SKILL_ON_GITHUB = "View skill on GitHub";
 
 // Import local edits' checking line, and the line beside a blocked Remove skill.
 export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
+
+/** The Global pane's sub-list of the folders Global writes. */
+export const GLOBAL_FOLDERS = "Global folders";
+
+/** A Global folder's readers, in the Global pane: the only place a tool is named. */
+export const readByLine = (readBy: {
+  tools: readonly string[];
+  others: boolean;
+}) =>
+  `Read by ${joinNames(readBy.others ? [...readBy.tools, "others"] : readBy.tools)}.`;
+
+/** Beside a Global folder Global does not write, its tool not detected. */
+export const notWrittenNote = (tool: string) =>
+  `${tool} not detected · not written`;
 
 // The Global group's line while no supported tool is detected.
 export const NO_TOOL_DETECTED =

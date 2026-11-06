@@ -2,7 +2,7 @@
 // skipped, phantom and malformed apart.
 import { join } from "node:path";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
-import type { SupportedTool } from "../deploy/deploy-tools";
+import { globalFolders, type SupportedTool } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
 import type { PendingOperation } from "../deploy/retry-target-operation";
 import { type GitHubPage, UNKNOWN_PAGE } from "../git/github-page";
@@ -24,9 +24,10 @@ import {
   skippedFromReading,
 } from "./deploy-state-types";
 import {
-  groupPrimitivesByTool,
-  type ToolDeployState,
-} from "./group-primitives-by-tool";
+  type GlobalTargetState,
+  oneSkillList,
+  readGlobalTarget,
+} from "./global-target";
 import { harnessPages, latestReleasePage, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import type { ReleaseHeadReader } from "./release-head";
@@ -57,13 +58,12 @@ type DeployStateResult =
 // `otherOrigins`: skill entries no detected tool's prefix claims, named by
 // their repo rather than silently dropped.
 type GlobalDeployStateResult =
-  | {
+  | ({
       ok: true;
-      tools: ToolDeployState[];
       skipped: SkippedEntry[];
       otherOrigins: string[];
       pendingOperation?: PendingOperation;
-    }
+    } & GlobalTargetState)
   | { ok: false; error: "malformed" };
 
 // Omitting any of these leaves an unknown reading, never an unmeasured claim.
@@ -319,7 +319,11 @@ export class GlobalDeployStateReader extends DeployStateReader {
       const unfinished = await this.readPending({ kind: "global" });
       return {
         ok: true,
-        tools: detected.map((tool) => ({ tool, primitives: [] })),
+        primitives: [],
+        folders: globalFolders(detected).map((folder) => ({
+          ...folder,
+          primitives: [],
+        })),
         skipped: [],
         otherOrigins: [],
         ...(unfinished === undefined ? {} : { pendingOperation: unfinished }),
@@ -331,38 +335,43 @@ export class GlobalDeployStateReader extends DeployStateReader {
       return { ok: false, error: "malformed" };
     }
     const tree = this.treeRoot();
-    const grouped = await groupPrimitivesByTool(parsed.entries, detected, {
-      fileExists: (file) => this.fs.isFileEntry(join(tree, file)),
-      origin: await this.connectedOrigin(),
-      harnessPage: this.connectedPage(),
-    });
-    for (const group of grouped.tools) {
-      // Exclusive with Pinned per skill, as on the repo card.
-      if (grouped.release !== undefined && group.pinnedPerSkill === undefined) {
-        group.releaseHead = await this.readHead(
-          `global:${group.tool}`,
-          grouped.release,
-          group.primitives.map((primitive) => primitive.name),
+    const { release, skipped, ...target } = await readGlobalTarget(
+      parsed.entries,
+      detected,
+      {
+        fileExists: (file) => this.fs.isFileEntry(join(tree, file)),
+        origin: await this.connectedOrigin(),
+        harnessPage: this.connectedPage(),
+      },
+    );
+    // Exclusive with Pinned per skill, as on the repo card.
+    const releaseHead =
+      release === undefined || target.pinnedPerSkill !== undefined
+        ? undefined
+        : await this.readHead(
+            "global",
+            release,
+            target.primitives.map((primitive) => primitive.name),
+          );
+    for (const folder of target.folders) {
+      if (folder.detected) {
+        await this.markCopies(
+          folder.primitives,
+          { kind: "global" },
+          parsed,
+          releaseHead?.latestRelease ?? undefined,
+          [folder.tool],
         );
       }
-      Object.assign(
-        group,
-        latestPageField(group.releaseGitHub, group.releaseHead),
-      );
-      await this.markCopies(
-        group.primitives,
-        { kind: "global" },
-        parsed,
-        group.releaseHead?.latestRelease ?? undefined,
-        [group.tool],
-      );
     }
     const pendingOperation = await this.readPending({ kind: "global" });
     return {
       ok: true,
-      tools: grouped.tools,
-      skipped: [...unreadableAsSkipped(parsed.unreadable), ...grouped.skipped],
-      otherOrigins: grouped.otherOrigins,
+      ...target,
+      primitives: oneSkillList(target.folders),
+      ...(releaseHead === undefined ? {} : { releaseHead }),
+      ...latestPageField(target.releaseGitHub, releaseHead),
+      skipped: [...unreadableAsSkipped(parsed.unreadable), ...skipped],
       ...(pendingOperation === undefined ? {} : { pendingOperation }),
     };
   }

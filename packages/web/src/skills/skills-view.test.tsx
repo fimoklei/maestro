@@ -7,6 +7,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { globalAnswer } from "../deploy-state/deploy-state-test-helpers";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
 import {
@@ -851,7 +852,7 @@ describe("SkillsView — detail pane", () => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
           return jsonResponse({
-            tools: [{ tool: "claude-code", primitives: [] }],
+            folders: globalAnswer({ claude: [] }).folders,
             primitives: [],
             skipped: [],
           });
@@ -917,7 +918,7 @@ describe("SkillsView — detail pane", () => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
           return jsonResponse({
-            tools: [{ tool: "claude-code", primitives: [] }],
+            folders: globalAnswer({ claude: [] }).folders,
             primitives: [],
             skipped: [],
           });

@@ -32,6 +32,27 @@ export const TARGET_STATUS_WORDS = [
   ].map((value) => value.word),
 ];
 
+/**
+ * Global's one Status: the reading of its worst Global folder, by the Filter
+ * order. Null while any folder has no reading yet.
+ */
+export function worstFolderReading(
+  readings: readonly (StatusReading | null)[],
+): StatusReading | null {
+  let worst: StatusReading | null = null;
+  for (const candidate of readings) {
+    if (candidate === null) return null;
+    if (
+      worst === null ||
+      TARGET_STATUS_WORDS.indexOf(candidate.word) <
+        TARGET_STATUS_WORDS.indexOf(worst.word)
+    ) {
+      worst = candidate;
+    }
+  }
+  return worst;
+}
+
 /** Band 2's count chips, worst first; the unfinished operations roll into Attention. */
 export const TARGET_CHIPS: readonly StatusChip[] = [
   { word: UNKNOWN.word, family: "failed", covers: [UNKNOWN.word] },

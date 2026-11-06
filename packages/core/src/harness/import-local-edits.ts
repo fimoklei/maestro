@@ -202,7 +202,7 @@ export class ImportLocalEdits {
     };
   }
 
-  // One row per detected tool; a skill reads Local edits where any tool's does.
+  // A skill reads Local edits where any Global folder's copy does.
   private async readGlobal(): Promise<Reading | { error: LocalEditsError }> {
     const state = await this.deps.deployState
       .readGlobal(this.deps.globalRoot())
@@ -217,14 +217,14 @@ export class ImportLocalEdits {
       string,
       Pick<Copy, "tools" | "version"> & Partial<Copy>
     >();
-    for (const group of state.tools) {
-      const release = group.releaseHead?.latestRelease ?? undefined;
-      for (const primitive of group.primitives) {
+    const release = state.releaseHead?.latestRelease ?? undefined;
+    for (const folder of state.folders) {
+      for (const primitive of folder.primitives) {
         const skill = held.get(primitive.name) ?? {
           tools: [],
           version: primitive.version,
         };
-        skill.tools.push({ tool: group.tool, release });
+        skill.tools.push({ tool: folder.tool, release });
         if (primitive.copy !== undefined && skill.copy !== "local-edits") {
           skill.copy = primitive.copy;
           // The copy that is imported names the release it came from.

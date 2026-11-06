@@ -8,7 +8,7 @@ import {
 } from "../deploy-state/release-head-copy";
 import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
 import { type SkillMark, skillMark } from "../deploy-state/skill-mark";
-import { globalRowId, repoRowId } from "../deploy-state/target-rows";
+import { GLOBAL_ROW_ID, repoRowId } from "../deploy-state/target-rows";
 import { unfinishedReading } from "../deploy-state/target-status";
 import { toolNameList } from "../deploy-state/tool-presentation";
 import type { DriftStatus } from "../drift/drift-view-model";
@@ -112,7 +112,7 @@ export function skillDeployments(
           ? repoRowId(wire.repoPath)
           : target.tool === undefined
             ? null
-            : globalRowId(target.tool),
+            : GLOBAL_ROW_ID,
       updatable: target.releaseHead !== undefined && status === "behind",
     });
   }

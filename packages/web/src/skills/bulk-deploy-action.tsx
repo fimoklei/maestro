@@ -463,7 +463,9 @@ function chosenBulkDeployTargets(params: {
   targetLabel: string;
   // What a write would name. Every row here belongs to the one chosen target.
   target: DeployTarget;
-  globalState: Pick<GlobalDeployStateView, "tools" | "skipped"> | undefined;
+  globalState:
+    | Pick<GlobalDeployStateView, "folders" | "releaseHead" | "skipped">
+    | undefined;
   // Ignored when isGlobal is true.
   repoRead: DeployStateRead;
   drift: DriftViewModel;

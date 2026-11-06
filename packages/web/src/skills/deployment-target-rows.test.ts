@@ -1,4 +1,4 @@
-import type { SkippedEntry } from "@maestro/core";
+import type { GlobalFolderState, SkippedEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
@@ -11,10 +11,25 @@ const unmanageable: SkippedEntry = {
   packageType: "claude_skill",
 };
 
+const folder = (
+  tool: "claude" | "codex",
+  primitives: (typeof skill)[],
+  detected = true,
+): GlobalFolderState => ({
+  path: tool === "claude" ? "~/.claude/skills" : "~/.agents/skills",
+  tool,
+  detected,
+  readBy: { tools: [], others: false },
+  primitives,
+});
+
 describe("globalToolTargets", () => {
-  it("builds one global row per detected tool", () => {
+  it("builds one global row per folder of a detected tool", () => {
     const rows = globalToolTargets(
-      { tools: [{ tool: "claude", primitives: [skill] }], skipped: [] },
+      {
+        folders: [folder("claude", [skill]), folder("codex", [], false)],
+        skipped: [],
+      },
       drift,
     );
 
@@ -39,10 +54,7 @@ describe("globalToolTargets", () => {
   it("carries the global target's unfinished operation onto every tool row", () => {
     const rows = globalToolTargets(
       {
-        tools: [
-          { tool: "claude", primitives: [skill] },
-          { tool: "codex", primitives: [skill] },
-        ],
+        folders: [folder("claude", [skill]), folder("codex", [skill])],
         skipped: [],
         pendingOperation: { kind: "remove", release: "v1.0.0", desired: [] },
       },
@@ -55,10 +67,7 @@ describe("globalToolTargets", () => {
   it("puts the section-wide attention count on every tool row", () => {
     const rows = globalToolTargets(
       {
-        tools: [
-          { tool: "claude", primitives: [skill] },
-          { tool: "codex", primitives: [] },
-        ],
+        folders: [folder("claude", [skill]), folder("codex", [])],
         skipped: [unmanageable],
       },
       drift,

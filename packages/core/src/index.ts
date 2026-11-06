@@ -72,7 +72,10 @@ export type {
   ReleaseHead,
   SkippedEntry,
 } from "./deploy-state/deploy-state-types";
-export type { ToolDeployState } from "./deploy-state/group-primitives-by-tool";
+export type {
+  GlobalFolderState,
+  GlobalTargetState,
+} from "./deploy-state/global-target";
 export { ReleaseHeadReader } from "./deploy-state/release-head";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";

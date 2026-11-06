@@ -79,7 +79,7 @@ export function useDeploymentTargets(
   } else {
     targets.push(
       ...globalToolTargets(
-        globalDeploy.data ?? { tools: [], skipped: [] },
+        globalDeploy.data ?? { folders: [], skipped: [] },
         globalDrift,
       ),
     );

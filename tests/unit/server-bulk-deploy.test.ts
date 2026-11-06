@@ -10,19 +10,13 @@ const globalTarget: DeployTarget = { kind: "global" };
 function world() {
   const w = deployWorld({ released: ["tdd", "review", "docs"] });
   const bulk = (body: unknown) => w.post("/api/deploy/bulk", body);
-  // Deduped across tool groups: a two-tool skill lands in both.
+  // Global's one skill list: a two-tool skill is listed once.
   const globalNames = async () => {
     const res = await w.app.request("/api/deploy-state/global");
-    const { tools } = (await res.json()) as {
-      tools: { primitives: { name: string; version: string }[] }[];
+    const { primitives } = (await res.json()) as {
+      primitives: { name: string; version: string }[];
     };
-    return [
-      ...new Set(
-        tools.flatMap((group) =>
-          group.primitives.map((p) => `${p.name}@${p.version}`),
-        ),
-      ),
-    ];
+    return primitives.map((p) => `${p.name}@${p.version}`);
   };
   return { ...w, bulk, globalNames };
 }

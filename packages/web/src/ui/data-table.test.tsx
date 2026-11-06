@@ -453,6 +453,32 @@ describe("DataTable", () => {
     expect(greenHeader).toHaveTextContent(/^Green 1$/);
   });
 
+  it("draws a row's read-only sub-rows under it, its cells under their columns", async () => {
+    const onRowOpen = vi.fn();
+    renderTable({
+      onRowOpen,
+      subRows: (fruit) =>
+        fruit.name === "pear"
+          ? [
+              { id: "skin", cells: { name: "skin", colour: "speckled" } },
+              { id: "core", cells: { name: "core" }, muted: true },
+            ]
+          : [],
+    });
+
+    expect(bodyNames()).toEqual(["pear", "skin", "core", "apple", "cherry"]);
+    const skin = screen.getByRole("gridcell", { name: "speckled" });
+    expect(skin.closest("tr")).not.toHaveAttribute("aria-selected");
+
+    // Read-only: a click opens nothing, and the cursor walks past.
+    await userEvent.click(skin);
+    expect(onRowOpen).not.toHaveBeenCalled();
+    act(() => grid().focus());
+    expect(activeRowName()).toBe("pear");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(activeRowName()).toBe("apple");
+  });
+
   it("moves the active row across a group header without stopping on it", async () => {
     renderTable({
       groups: {

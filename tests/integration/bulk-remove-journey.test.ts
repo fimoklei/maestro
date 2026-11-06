@@ -162,13 +162,19 @@ describe("retiring a skill from every target it is deployed to", () => {
   const globalNamesPerTool = async (app: App) => {
     const response = await app.request("/api/deploy-state/global");
     expect(response.status).toBe(200);
-    const { tools } = (await response.json()) as {
-      tools: { tool: string; primitives: { name: string }[] }[];
+    const { folders } = (await response.json()) as {
+      folders: {
+        tool: string;
+        detected: boolean;
+        primitives: { name: string }[];
+      }[];
     };
-    return tools.map((group) => ({
-      tool: group.tool,
-      names: group.primitives.map((primitive) => primitive.name),
-    }));
+    return folders
+      .filter((folder) => folder.detected)
+      .map((folder) => ({
+        tool: folder.tool,
+        names: folder.primitives.map((primitive) => primitive.name),
+      }));
   };
 
   it("clears the rows it removed and leaves the one it could not touch", async () => {
