@@ -62,8 +62,8 @@ export function checkFor(warning: string | null, init: RequestInit) {
     : {
         scope: "global",
         tools: [
-          { tool: "claude", warning },
-          { tool: "codex", warning },
+          { tool: "claude", path: "~/.claude/skills", detected: true, warning },
+          { tool: "codex", path: "~/.agents/skills", detected: true, warning },
         ],
       };
 }
@@ -96,14 +96,14 @@ export function stubFetch(
 export function renderRow({
   target = { kind: "repo", repoPath: REPO } as
     | { kind: "repo"; repoPath: string }
-    | { kind: "global"; tools: string[] },
+    | { kind: "global"; folders: string[] },
   onRemoved = vi.fn(),
   primitives = [tdd],
   name = REPO_NAME,
 }: {
   target?:
     | { kind: "repo"; repoPath: string }
-    | { kind: "global"; tools: string[] };
+    | { kind: "global"; folders: string[] };
   onRemoved?: () => void;
   primitives?: (typeof tdd)[];
   /** The row's name, as the Deploy-state table shows it. */

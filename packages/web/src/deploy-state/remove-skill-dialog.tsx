@@ -7,7 +7,7 @@ import { GroupedList, type GroupedListGroup } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report } from "../ui/report";
 
-import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
+import { CHECKING_LOCAL_EDITS, WRITES_TO } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   REMOVAL_TARGETS,
@@ -21,8 +21,8 @@ import {
 } from "./remove-ledger-rows";
 import type { RemovePreflightView } from "./remove-preflight-view";
 
-// No per-tool remove: apm's uninstall has no -t, and faking one orphans the
-// other tools' files.
+// No per-folder remove: apm's uninstall has no -t, and faking one orphans
+// the other folders' files.
 const ledgerGroup = (
   rows: readonly (RemoveLedgerRow & { id: string })[],
   target: RemoveDialogTarget,
@@ -30,15 +30,22 @@ const ledgerGroup = (
   {
     tone: "neutral",
     legend: null,
-    rows: rows.map((row) => ({
-      key: row.key,
-      name: row.name,
-      // Named as the table names it; the full path on hover.
-      ...(target.kind === "repo" ? { title: target.repoPath } : {}),
-      sentence: row.status ?? undefined,
-      tone: row.drift ? "attention" : undefined,
-      id: row.id,
-    })),
+    rows: rows.map((row) => {
+      const note = row.folder?.muted ? row.folder.note : null;
+      const sentence = [note, row.status].filter((part) => part !== null);
+      return {
+        key: row.key,
+        name: row.name,
+        // Named as the table names it; the full path on hover.
+        ...(target.kind === "repo" ? { title: target.repoPath } : {}),
+        ...(row.folder === undefined
+          ? {}
+          : { machineName: true, muted: row.folder.muted }),
+        sentence: sentence.length === 0 ? undefined : sentence.join(" · "),
+        tone: row.drift ? "attention" : undefined,
+        id: row.id,
+      };
+    }),
   },
 ];
 
@@ -110,7 +117,7 @@ export function RemoveSkillDialog({
         <div className="flex flex-col gap-tight">
           {/* Not a live region: the rows below already announce themselves. */}
           <span id={leadInId} className="font-ui text-gray-11 text-meta">
-            {removeLedgerLeadIn("skill")}
+            {target.kind === "global" ? WRITES_TO : removeLedgerLeadIn("skill")}
           </span>
           <GroupedList
             groups={ledgerGroup(rows, target)}

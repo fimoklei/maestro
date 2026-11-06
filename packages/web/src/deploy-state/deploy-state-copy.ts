@@ -93,9 +93,12 @@ export const readByLine = (readBy: {
 /** A Global dialog's list of the Global folders its action writes. */
 export const WRITES_TO = "Writes to";
 
+/** Beside a Global folder whose tool is not detected. */
+export const notDetectedNote = (tool: string) => `${tool} not detected`;
+
 /** Beside a Global folder Global does not write, its tool not detected. */
 export const notWrittenNote = (tool: string) =>
-  `${tool} not detected · not written`;
+  `${notDetectedNote(tool)} · not written`;
 
 // The Global group's line while no supported tool is detected.
 export const NO_TOOL_DETECTED =

@@ -59,32 +59,49 @@ describe("removePreflightView", () => {
         data: { check: { scope: "global", tools } },
       });
 
-    it("keeps each tool's answer against that tool's own name", () => {
+    const claude = {
+      tool: "claude",
+      path: "~/.claude/skills",
+      detected: true,
+    } as const;
+    const codex = {
+      tool: "codex",
+      path: "~/.agents/skills",
+      detected: false,
+    } as const;
+
+    it("keeps each folder's answer against that folder, in the server's order", () => {
       expect(
         globalAnswer([
-          { tool: "claude", warning: null },
-          { tool: "codex", warning: "cannot-verify-local-edits" },
+          { ...claude, warning: null },
+          { ...codex, warning: "cannot-verify-local-edits" },
         ]),
       ).toEqual({
         kind: "offered",
         check: {
-          kind: "per-tool",
-          warnings: { claude: "none", codex: "cannot-verify" },
+          kind: "per-folder",
+          folders: [
+            { ...claude, warning: "none" },
+            { ...codex, warning: "cannot-verify" },
+          ],
         },
       });
     });
 
-    it("keeps a tool that could not be checked apart from a clean one", () => {
+    it("keeps a folder that could not be checked apart from a clean one", () => {
       expect(
         globalAnswer([
-          { tool: "claude", warning: "check-did-not-run" },
-          { tool: "codex", warning: "cannot-verify-local-edits" },
+          { ...claude, warning: "check-did-not-run" },
+          { ...codex, warning: null },
         ]),
       ).toEqual({
         kind: "offered",
         check: {
-          kind: "per-tool",
-          warnings: { claude: "check-failed", codex: "cannot-verify" },
+          kind: "per-folder",
+          folders: [
+            { ...claude, warning: "check-failed" },
+            { ...codex, warning: "none" },
+          ],
         },
       });
     });

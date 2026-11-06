@@ -10,8 +10,31 @@ const noticeFor = (code: string): DeployStateNotice =>
 const repoCheck = (warning: RemoveRowWarning) =>
   ({ kind: "offered", check: { kind: "repo", warning } }) as const;
 
-const toolChecks = (warnings: Record<string, RemoveRowWarning>) =>
-  ({ kind: "offered", check: { kind: "per-tool", warnings } }) as const;
+const CLAUDE = "~/.claude/skills";
+const AGENTS = "~/.agents/skills";
+
+const folderChecks = (
+  warnings: Partial<Record<"claude" | "codex", RemoveRowWarning>>,
+  undetected: readonly string[] = [],
+) => ({
+  kind: "offered" as const,
+  check: {
+    kind: "per-folder" as const,
+    folders: (["claude", "codex"] as const).flatMap((tool) => {
+      const warning = warnings[tool];
+      return warning === undefined
+        ? []
+        : [
+            {
+              tool,
+              path: tool === "claude" ? CLAUDE : AGENTS,
+              detected: !undetected.includes(tool),
+              warning,
+            },
+          ];
+    }),
+  },
+});
 
 const CHECKING = {
   kind: "offered",
@@ -74,14 +97,14 @@ export const Failed: Story = {
 // The server's own per-target probe after a failure, as a Report.
 export const FailedPerTarget: Story = {
   args: {
-    target: { kind: "global", tools: ["claude", "codex"] },
-    preflight: toolChecks({ claude: "none", codex: "none" }),
+    target: { kind: "global", folders: [CLAUDE, AGENTS] },
+    preflight: folderChecks({ claude: "none", codex: "none" }),
     error: noticeFor("remove-failed"),
     outcome: {
       scope: "global",
       tools: [
-        { tool: "claude", state: "removed" },
-        { tool: "codex", state: "not-removed" },
+        { tool: "claude", path: "~/.claude/skills", state: "removed" },
+        { tool: "codex", path: "~/.agents/skills", state: "not-removed" },
       ],
     },
   },
@@ -118,8 +141,8 @@ export const RemovalRefused: Story = {
 // A failure after warnings: the failure replaces the ledger.
 export const FailedWithWarnings: Story = {
   args: {
-    target: { kind: "global", tools: ["codex"] },
-    preflight: toolChecks({ codex: "cannot-verify" }),
+    target: { kind: "global", folders: [AGENTS] },
+    preflight: folderChecks({ codex: "cannot-verify" }),
     error: noticeFor("remove-failed"),
   },
 };
@@ -160,7 +183,31 @@ export const CheckRefusedLocalEdits: Story = {
 
 export const GlobalScope: Story = {
   args: {
-    target: { kind: "global", tools: ["claude", "codex"] },
-    preflight: toolChecks({ claude: "none", codex: "none" }),
+    target: { kind: "global", folders: [CLAUDE, AGENTS] },
+    preflight: folderChecks({ claude: "none", codex: "none" }),
+  },
+};
+
+// Global's last skill: apm's named uninstall also deletes the copy in an
+// undetected tool's folder, so that folder is listed, muted.
+export const GlobalLastSkill: Story = {
+  args: {
+    target: { kind: "global", folders: [CLAUDE] },
+    preflight: folderChecks({ claude: "none", codex: "none" }, ["codex"]),
+  },
+};
+
+export const GlobalRefusedLocalEdits: Story = {
+  args: {
+    target: { kind: "global", folders: [CLAUDE] },
+    preflight: {
+      kind: "refused" as const,
+      code: "deployed-diverged-from-lock" as const,
+      notice: removeNotice(
+        new HttpError(409, "unused", "deployed-diverged-from-lock", {
+          folders: [AGENTS],
+        }),
+      ),
+    },
   },
 };

@@ -1,5 +1,4 @@
 import { GLOBAL } from "../deploy-state/deploy-state-copy";
-import { toolNameList } from "../deploy-state/tool-presentation";
 import { targetCount } from "../inventory/inventory-copy";
 import type { SkillState } from "../inventory/skill-status";
 import {
@@ -136,9 +135,6 @@ export const NOT_DEPLOYED_ANYWHERE = `Not deployed to any target. Select ${DEPLO
 // A target row's ⋮ in the pane, and the foot's removal (#1065). The count is
 // the targets the removal covers: global is one, whatever its tools (#1436).
 export const REMOVE_FROM_TARGET = "Remove from target";
-// A global row's removal takes every detected tool.
-export const removeFromToolsLabel = (tools: readonly string[]): string =>
-  `Remove from ${toolNameList(tools)}`;
 export const removeFromAllLabel = (count: number): string =>
   `Remove from all ${count} targets`;
 export const NO_TARGET_REMOVABLE = "No target can be removed.";

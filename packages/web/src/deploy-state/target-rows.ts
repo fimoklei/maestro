@@ -176,7 +176,12 @@ export function globalRows(
       group: GLOBAL,
       name: GLOBAL,
       path: "",
-      target: { kind: "global", tools },
+      target: {
+        kind: "global",
+        folders: data.folders
+          .filter((folder) => folder.detected)
+          .map((folder) => folder.path),
+      },
       wire: { kind: "global" },
       updateName: GLOBAL,
       release: releaseOf(data.releaseHead, data.pinnedPerSkill),

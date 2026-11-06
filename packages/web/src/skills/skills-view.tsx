@@ -84,7 +84,6 @@ import {
   NO_SEARCH_MATCH,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
-  removeFromToolsLabel,
   SEARCH_LABEL,
   SELECT_ALL_SKILLS,
   SELECT_SKILLS,
@@ -302,10 +301,7 @@ export function SkillsView({
             },
           ]),
       {
-        label:
-          deployment.removeTarget.kind === "global"
-            ? removeFromToolsLabel(deployment.removeTarget.tools)
-            : REMOVE_FROM_TARGET,
+        label: REMOVE_FROM_TARGET,
         danger: true,
         onSelect: () => setDialog({ kind: "remove", deployment }),
       },

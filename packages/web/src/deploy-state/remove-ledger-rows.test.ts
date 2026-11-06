@@ -1,6 +1,7 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
+  type RemoveDialogTarget,
   removeLedgerLeadIn,
   removeLedgerRows,
   removeOutcomeReport,
@@ -11,11 +12,34 @@ import type {
   RemoveRowWarning,
 } from "./remove-preflight-view";
 
+type RemoveFolderAnswer = Extract<
+  RemoveCheckState,
+  { kind: "per-folder" }
+>["folders"][number];
+
 const RUNNING: RemoveCheckState = { kind: "unanswered", warning: "checking" };
 
-const perTool = (
-  warnings: Record<string, RemoveRowWarning>,
-): RemoveCheckState => ({ kind: "per-tool", warnings });
+const CLAUDE = "~/.claude/skills";
+const AGENTS = "~/.agents/skills";
+const GLOBAL: RemoveDialogTarget = {
+  kind: "global",
+  folders: [CLAUDE, AGENTS],
+};
+
+const answer = (
+  tool: "claude" | "codex",
+  warning: RemoveRowWarning,
+  detected = true,
+): RemoveFolderAnswer => ({
+  tool,
+  path: tool === "claude" ? CLAUDE : AGENTS,
+  detected,
+  warning,
+});
+
+const perFolder = (
+  ...folders: readonly RemoveFolderAnswer[]
+): RemoveCheckState => ({ kind: "per-folder", folders });
 
 describe("removeLedgerRows", () => {
   it("states the repo path as the only row", () => {
@@ -34,18 +58,30 @@ describe("removeLedgerRows", () => {
     ]);
   });
 
-  it("keeps the detected tools in the order it was handed them", () => {
+  it("lists the Global folders by path, in the order it was handed them", () => {
     expect(
-      removeLedgerRows(
-        { kind: "global", tools: ["codex", "claude"] },
-        RUNNING,
-      ).map((row) => row.name),
-    ).toEqual(["Codex", "Claude Code"]);
+      removeLedgerRows({ kind: "global", folders: [AGENTS, CLAUDE] }, RUNNING),
+    ).toEqual([
+      expect.objectContaining({ name: AGENTS, folder: { muted: false } }),
+      expect.objectContaining({ name: CLAUDE, folder: { muted: false } }),
+    ]);
   });
 
-  describe("what the check says about a detected tool", () => {
+  it("lists the folders the check answered for, an undetected one muted with its tool", () => {
+    const rows = removeLedgerRows(
+      { kind: "global", folders: [CLAUDE] },
+      perFolder(answer("claude", "none"), answer("codex", "none", false)),
+    );
+
+    expect(rows.map((row) => [row.name, row.folder])).toEqual([
+      [CLAUDE, { muted: false }],
+      [AGENTS, { muted: true, note: "Codex not detected" }],
+    ]);
+  });
+
+  describe("what the check says about a Global folder", () => {
     const rowsFor = (check: RemoveCheckState) =>
-      removeLedgerRows({ kind: "global", tools: ["claude", "codex"] }, check);
+      removeLedgerRows(GLOBAL, check);
 
     it("says nothing on a row while the check is still running", () => {
       for (const row of rowsFor(RUNNING)) {
@@ -55,15 +91,17 @@ describe("removeLedgerRows", () => {
     });
 
     it("says nothing on a row the check came back clean about", () => {
-      const [claude] = rowsFor(perTool({ claude: "none", codex: "none" }));
+      const [claude] = rowsFor(
+        perFolder(answer("claude", "none"), answer("codex", "none")),
+      );
 
       expect(claude?.status).toBeNull();
       expect(claude?.drift).toBe(false);
     });
 
-    it("marks only the tool whose copy carries a cost", () => {
+    it("marks only the folder whose copy carries a cost", () => {
       const [claude, codex] = rowsFor(
-        perTool({ claude: "none", codex: "cannot-verify" }),
+        perFolder(answer("claude", "none"), answer("codex", "cannot-verify")),
       );
 
       expect(claude?.status).toBeNull();
@@ -74,7 +112,7 @@ describe("removeLedgerRows", () => {
 
     it("keeps a missing baseline apart from a check that never ran", () => {
       const [claude, codex] = rowsFor(
-        perTool({ claude: "cannot-verify", codex: "none" }),
+        perFolder(answer("claude", "cannot-verify"), answer("codex", "none")),
       );
 
       expect(claude?.status).toBe("Nothing recorded — may lose work");
@@ -82,9 +120,10 @@ describe("removeLedgerRows", () => {
       expect(codex?.status).toBeNull();
     });
 
-    it("never reads a tool the answer left out as a clean copy", () => {
-      const [, codex] = rowsFor(perTool({ claude: "none" }));
+    it("never reads a folder the answer left out as a clean copy", () => {
+      const [, codex] = rowsFor(perFolder(answer("claude", "none")));
 
+      expect(codex?.name).toBe(AGENTS);
       expect(codex?.status).toBe("Check did not run — may lose work");
       expect(codex?.drift).toBe(true);
     });
@@ -104,8 +143,8 @@ describe("removeLedgerRows", () => {
     const globalOutcome: RemoveOutcome = {
       scope: "global",
       tools: [
-        { tool: "claude", state: "removed" },
-        { tool: "codex", state: "not-removed" },
+        { tool: "claude", path: CLAUDE, state: "removed" },
+        { tool: "codex", path: AGENTS, state: "not-removed" },
       ],
     };
     const namesIn = (
@@ -116,48 +155,45 @@ describe("removeLedgerRows", () => {
         .find((group) => group.label === label)
         ?.rows.map((row) => row.name);
 
-    it("groups each detected tool under its proven outcome", () => {
-      const report = removeOutcomeReport(
-        { kind: "global", tools: ["claude", "codex"] },
-        globalOutcome,
-      );
+    it("groups each Global folder under its proven outcome, by path", () => {
+      const report = removeOutcomeReport(GLOBAL, globalOutcome);
 
       expect(report.groups.map((group) => [group.tone, group.label])).toEqual([
         ["failed", "Not removed"],
         ["attention", "Outcome unknown"],
         ["good", "Removed"],
       ]);
-      expect(namesIn(report, "Removed")).toEqual(["Claude Code"]);
-      expect(namesIn(report, "Not removed")).toEqual(["Codex"]);
+      expect(namesIn(report, "Removed")).toEqual([CLAUDE]);
+      expect(namesIn(report, "Not removed")).toEqual([AGENTS]);
     });
 
     it("keeps the order the ledger showed before the user confirmed", () => {
       const report = removeOutcomeReport(
-        { kind: "global", tools: ["codex", "claude"] },
+        { kind: "global", folders: [AGENTS, CLAUDE] },
         {
           scope: "global",
           tools: [
-            { tool: "claude", state: "removed" },
-            { tool: "codex", state: "removed" },
+            { tool: "claude", path: CLAUDE, state: "removed" },
+            { tool: "codex", path: AGENTS, state: "removed" },
           ],
         },
       );
 
-      expect(namesIn(report, "Removed")).toEqual(["Codex", "Claude Code"]);
+      expect(namesIn(report, "Removed")).toEqual([AGENTS, CLAUDE]);
     });
 
-    it("draws a row for a target only the report names", () => {
+    it("draws a row for a folder only the report names", () => {
       const report = removeOutcomeReport(
-        { kind: "global", tools: ["claude"] },
+        { kind: "global", folders: [CLAUDE] },
         globalOutcome,
       );
 
-      expect(namesIn(report, "Not removed")).toEqual(["Codex"]);
+      expect(namesIn(report, "Not removed")).toEqual([AGENTS]);
     });
 
-    it("drops a target the report left out, rather than drawing it blank", () => {
+    it("drops a folder the report left out, rather than drawing it blank", () => {
       const report = removeOutcomeReport(
-        { kind: "global", tools: ["claude", "codex", "cursor"] },
+        { kind: "global", folders: [CLAUDE, AGENTS, "~/.cursor/skills"] },
         globalOutcome,
       );
 
@@ -183,28 +219,31 @@ describe("removeLedgerRows", () => {
       expect(report.groups[0]?.rows[0]).toEqual({ name: "…/me/project" });
     });
 
-    it("counts the targets the removal came off in its heading", () => {
-      expect(
-        removeOutcomeReport(
-          { kind: "global", tools: ["claude", "codex"] },
-          globalOutcome,
-        ).heading,
-      ).toBe("Removed from 1 of 2 targets");
+    it("counts the folders the removal came off in its heading", () => {
+      expect(removeOutcomeReport(GLOBAL, globalOutcome).heading).toBe(
+        "Removed from 1 of 2 folders",
+      );
     });
 
-    it("counts an unproven target as one the removal did not come off", () => {
+    it("counts an unproven folder as one the removal did not come off", () => {
       expect(
-        removeOutcomeReport(
-          { kind: "global", tools: ["claude", "codex"] },
-          {
-            scope: "global",
-            tools: [
-              { tool: "claude", state: "unknown" },
-              { tool: "codex", state: "unknown" },
-            ],
-          },
-        ).heading,
-      ).toBe("Removed from 0 of 2 targets");
+        removeOutcomeReport(GLOBAL, {
+          scope: "global",
+          tools: [
+            { tool: "claude", path: CLAUDE, state: "unknown" },
+            { tool: "codex", path: AGENTS, state: "unknown" },
+          ],
+        }).heading,
+      ).toBe("Removed from 0 of 2 folders");
+    });
+
+    it("speaks of one folder in the singular", () => {
+      expect(
+        removeOutcomeReport(GLOBAL, {
+          scope: "global",
+          tools: [{ tool: "claude", path: CLAUDE, state: "removed" }],
+        }).heading,
+      ).toBe("Removed from 1 of 1 folder");
     });
 
     it("speaks of one target in the singular", () => {

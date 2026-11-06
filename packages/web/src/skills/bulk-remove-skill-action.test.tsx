@@ -596,8 +596,12 @@ describe("BulkRemoveRun", () => {
             failed(GLOBAL.target, {
               scope: "global",
               tools: [
-                { tool: "claude", state: "removed" },
-                { tool: "codex", state: "not-removed" },
+                { tool: "claude", path: "~/.claude/skills", state: "removed" },
+                {
+                  tool: "codex",
+                  path: "~/.agents/skills",
+                  state: "not-removed",
+                },
               ],
             }),
             failed(ACME_WEB.target, { scope: "repo", state: "removed" }),
@@ -864,8 +868,18 @@ describe("BulkRemoveRun — once the checks answer", () => {
     const cases: [unknown[], string | null][] = [
       [
         [
-          { tool: "claude", warning: null },
-          { tool: "codex", warning: "cannot-verify-local-edits" },
+          {
+            tool: "claude",
+            path: "~/.claude/skills",
+            detected: true,
+            warning: null,
+          },
+          {
+            tool: "codex",
+            path: "~/.agents/skills",
+            detected: true,
+            warning: "cannot-verify-local-edits",
+          },
         ],
         "Nothing recorded — may lose work",
       ],
@@ -873,8 +887,18 @@ describe("BulkRemoveRun — once the checks answer", () => {
       [[], "Check did not run"],
       [
         [
-          { tool: "claude", warning: null },
-          { tool: "codex", warning: null },
+          {
+            tool: "claude",
+            path: "~/.claude/skills",
+            detected: true,
+            warning: null,
+          },
+          {
+            tool: "codex",
+            path: "~/.agents/skills",
+            detected: true,
+            warning: null,
+          },
         ],
         null,
       ],

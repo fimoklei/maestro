@@ -7,13 +7,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { HttpError } from "../api/http";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
-import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
+import { machine, named, type Phrase, phrase } from "../ui/phrase";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
+import { GLOBAL } from "./deploy-state-copy";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
-import { toolDisplayName } from "./tool-presentation";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
 import {
   type RemovePreflight,
@@ -25,22 +25,13 @@ import {
 type RemovedSkill = {
   name: string;
   version: string | undefined;
-  // As the server resolved it: the detected tool set can differ from what was
-  // confirmed. A repo goes by the table's name, never its absolute path (#1119).
-  target:
-    | Exclude<RemoveDialogTarget, { kind: "repo" }>
-    | { kind: "repo"; name: string };
+  // A repo goes by the table's name, never its absolute path (#1119).
+  target: { kind: "global" } | { kind: "repo"; name: string };
 };
 
 // What a landed removal's done sentence names.
 function removedName({ name, version, target }: RemovedSkill): Phrase {
-  const scope =
-    target.kind === "repo"
-      ? named(target.name)
-      : // The detected set can be empty.
-        target.tools.length === 0
-        ? "every detected tool"
-        : namedList(target.tools.map(toolDisplayName));
+  const scope = target.kind === "repo" ? named(target.name) : GLOBAL;
   const release =
     version === undefined ? "(version unknown)" : machine(version);
   return phrase`${named(name)} ${release} from ${scope}`;
@@ -78,14 +69,21 @@ function removalOutcome(error: unknown): RemoveOutcome | null {
     const tools: RemoveToolOutcome[] = [];
     for (const entry of outcome.tools as {
       tool?: unknown;
+      path?: unknown;
       state?: unknown;
     }[]) {
       const state = STATES[String(entry?.state)];
       const tool = entry?.tool;
-      if (state === undefined || typeof tool !== "string" || !isKnown(tool)) {
+      const path = entry?.path;
+      if (
+        state === undefined ||
+        typeof tool !== "string" ||
+        !isKnown(tool) ||
+        typeof path !== "string"
+      ) {
         return null;
       }
-      tools.push({ tool, state });
+      tools.push({ tool, path, state });
     }
     return { scope: "global", tools };
   }
@@ -156,13 +154,10 @@ export function RemoveSkillFlow({
       name: removedName({
         name: removed.name,
         version: removed.version,
-        // No scope in the response falls back to what the user consented to.
         target:
-          removed.scope?.kind === "global"
-            ? { kind: "global", tools: removed.scope.tools }
-            : target.kind === "global"
-              ? target
-              : { kind: "repo", name: target.name },
+          target.kind === "global"
+            ? { kind: "global" }
+            : { kind: "repo", name: target.name },
       }),
       leftItsRow: true,
     }),

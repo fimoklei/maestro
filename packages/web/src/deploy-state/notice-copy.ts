@@ -21,7 +21,7 @@ import {
 } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
-import { machine, namedList, phrase } from "../ui/phrase";
+import { machine, machineList, namedList, phrase } from "../ui/phrase";
 import { REGISTER_STEP } from "./deploy-state-copy";
 import { REASON, type ReasonCode, TARGET_BUSY } from "./reason-copy";
 import {
@@ -554,7 +554,34 @@ function withRm(
 
 /** The whole notice for a refused or failed removal. */
 export function removeNotice(error: unknown): DeployStateNotice {
-  return noticeFor(REMOVE, error, UNKNOWN_REMOVE);
+  const notice = noticeFor(REMOVE, error, UNKNOWN_REMOVE);
+  const folders = editedFolders(error);
+  return folders.length === 0
+    ? notice
+    : {
+        ...notice,
+        message: phrase`The skill was not removed. Its files in ${machineList(folders)} changed after deployment.`,
+      };
+}
+
+const EDITED_COPY_REFUSALS: readonly string[] = [
+  "deployed-diverged-from-lock",
+  "deployed-diverged-pinned-per-skill",
+];
+
+// The Global folders a local-edits refusal names; none where the body names none.
+function editedFolders(error: unknown): string[] {
+  if (
+    !(error instanceof HttpError) ||
+    !EDITED_COPY_REFUSALS.includes(error.code ?? "")
+  ) {
+    return [];
+  }
+  const folders = (error.body as { folders?: unknown } | undefined)?.folders;
+  return Array.isArray(folders) &&
+    folders.every((folder) => typeof folder === "string")
+    ? folders
+    : [];
 }
 
 type RetriedOperation = Pick<PendingOperation, "kind" | "release">;

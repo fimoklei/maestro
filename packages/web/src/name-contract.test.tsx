@@ -36,7 +36,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Select ${deployAgainLabel(row.name)}`": "button label",
   },
   "deploy-state/remove-ledger-rows.ts": {
-    "`target:${name}`": "key",
+    "`target:${target.name}`": "key",
     "`Remove ${name}`": "dialog title",
   },
   "deploy-state/selected-skills.tsx": {
@@ -136,6 +136,9 @@ const PLAIN_MACHINE: Record<string, Record<string, string>> = {
   },
   "deploy-state/folder-sub-rows.tsx": {
     "`${row.id}:${folder.path}`": "key",
+  },
+  "deploy-state/remove-ledger-rows.ts": {
+    "`folder:${path}`": "key",
   },
   "ui/dialog.tsx": {
     "`${title} ${version}`": "accessible name",

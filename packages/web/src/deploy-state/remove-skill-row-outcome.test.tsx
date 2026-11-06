@@ -111,7 +111,7 @@ describe("removing a deployed skill from a row", () => {
       ).toBeInTheDocument();
     });
 
-    it("names the tools the server reached, not the ones the card knew", async () => {
+    it("names Global, never the tools the server reached", async () => {
       stubFetch(null, () =>
         jsonResponse(
           {
@@ -125,15 +125,13 @@ describe("removing a deployed skill from a row", () => {
           200,
         ),
       );
-      renderRow({ target: { kind: "global", tools: ["claude"] } });
+      renderRow({ target: { kind: "global", folders: ["~/.claude/skills"] } });
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(
-          sentence("Removed tdd v0.5.0 from Claude Code and Codex."),
-        ),
+        await screen.findByText(sentence("Removed tdd v0.5.0 from Global.")),
       ).toBeInTheDocument();
     });
 
