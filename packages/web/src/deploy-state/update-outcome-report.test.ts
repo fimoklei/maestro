@@ -16,7 +16,8 @@ const report = (rows: UpdateOutcomeRow[], retry = true) =>
   updateOutcomeReport({ rows, releases: RELEASES, retry });
 
 describe("update outcome report", () => {
-  it("groups a clean update by what landed", () => {
+  // #1776: the dialog lists the release's own groups; no row claims Updated.
+  it("states a clean update in its heading, with no row", () => {
     expect(
       report([
         { name: "tdd", tool: null, state: "updated" },
@@ -27,12 +28,6 @@ describe("update outcome report", () => {
       groups: [
         { tone: "failed", label: "Failed", rows: [] },
         { tone: "attention", label: "Attention", rows: [] },
-        {
-          tone: "good",
-          label: "Updated",
-          rows: [{ name: "tdd", detail: "v0.3.4" }],
-        },
-        { tone: "good", label: "Removed", rows: [{ name: "review" }] },
       ],
     });
   });
@@ -94,11 +89,11 @@ describe("update outcome report", () => {
 
   it("states a skill once where every tool agrees", () => {
     const { groups } = report([
-      { name: "tdd", tool: "claude", state: "updated" },
-      { name: "tdd", tool: "codex", state: "updated" },
+      { name: "tdd", tool: "claude", state: "missing" },
+      { name: "tdd", tool: "codex", state: "missing" },
     ]);
 
-    expect(groups[2]?.rows).toStrictEqual([{ name: "tdd", detail: "v0.3.4" }]);
+    expect(groups[0]?.rows.map((row) => row.name)).toStrictEqual(["tdd"]);
   });
 
   it("names the tool on each row where the tools disagree", () => {
@@ -109,9 +104,6 @@ describe("update outcome report", () => {
 
     expect(groups[0]?.rows.map((row) => row.name)).toStrictEqual([
       "grill in Codex",
-    ]);
-    expect(groups[2]?.rows.map((row) => row.name)).toStrictEqual([
-      "grill in Claude Code",
     ]);
   });
 });

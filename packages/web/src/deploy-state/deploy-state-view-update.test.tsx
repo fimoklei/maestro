@@ -1,9 +1,13 @@
-import type { UpdatePreview } from "@maestro/core";
+import type {
+  FolderOutcomes,
+  SkillOutcome,
+  UpdatePreview,
+} from "@maestro/core";
 import { focusManager } from "@tanstack/react-query";
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { hoverOpen, jsonResponse, sentence } from "../test-utils";
+import { hoverOpen, jsonResponse } from "../test-utils";
 import {
   findRow,
   globalAnswer,
@@ -69,6 +73,7 @@ function stubUpdate(
   answer: Promise<Response>,
   states: { before: ServerState; during?: ServerState; after: ServerState },
   retry?: () => Response,
+  preview: UpdatePreview = PREVIEW,
 ) {
   let phase: "before" | "during" | "after" = "before";
   void answer.then(() => {
@@ -78,7 +83,7 @@ function stubUpdate(
     ...(states[phase] ?? states.before),
     other: (url) => {
       if (url === "/api/deploy/update/preflight") {
-        return jsonResponse({ preview: PREVIEW });
+        return jsonResponse({ preview });
       }
       if (url === "/api/deploy/update") {
         phase = "during";
@@ -104,11 +109,41 @@ async function confirmUpdate(target: string) {
   return dialog;
 }
 
-// A Report group, found by its status word, so a row is tied to its outcome.
-const reportGroup = (dialog: HTMLElement, label: string) =>
+// A skill section of the Report, found by its heading.
+const skillSection = (dialog: HTMLElement, label: string) =>
   within(dialog)
-    .getByRole("heading", { level: 4, name: new RegExp(`^${label}`) })
+    .getByRole("heading", { level: 3, name: label })
     .closest("section") as HTMLElement;
+
+// Global's per-folder outcome: Claude Code's folder, and Codex's when written.
+const foldersAt = (
+  release: string,
+  claude: SkillOutcome[],
+  codex: SkillOutcome[] | null = null,
+) =>
+  ({
+    release,
+    folders: [
+      {
+        path: "~/.claude/skills",
+        tool: "claude",
+        written: true,
+        skills: claude,
+      },
+      {
+        path: "~/.agents/skills",
+        tool: "codex",
+        written: codex !== null,
+        skills: codex ?? [],
+      },
+    ],
+  }) satisfies FolderOutcomes;
+
+// The Report's `Written to` lines, each read as one string.
+const writtenToLines = (dialog: HTMLElement) =>
+  within(within(dialog).getByRole("group", { name: "Written to" }))
+    .getAllByRole("listitem")
+    .map((line) => line.textContent);
 
 const deferred = () => {
   let resolve: (response: Response) => void = () => {};
@@ -268,7 +303,7 @@ describe("Deploy-state — Update target on a repository", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      within(reportGroup(dialog, "Updated")).getByText("tdd"),
+      within(skillSection(dialog, "Changed")).getByText("tdd"),
     ).toBeInTheDocument();
   });
 });
@@ -276,7 +311,7 @@ describe("Deploy-state — Update target on a repository", () => {
 describe("Deploy-state — Update target on the global target", () => {
   const GLOBAL_BEHIND = { global: globalAt("v0.3.4") };
 
-  it("keeps the dialog open while apm runs, nothing else reachable, then lists what landed", async () => {
+  it("keeps the dialog open while apm runs, nothing else reachable, then states each folder", async () => {
     const update = deferred();
     stubUpdate(update.promise, {
       before: GLOBAL_BEHIND,
@@ -297,7 +332,7 @@ describe("Deploy-state — Update target on the global target", () => {
     update.resolve(
       jsonResponse({
         release: "v0.3.5",
-        outcome: [{ name: "tdd", tool: null, state: "updated" }],
+        folders: foldersAt("v0.3.5", [{ name: "tdd", outcome: "written" }]),
       }),
     );
     expect(
@@ -306,9 +341,62 @@ describe("Deploy-state — Update target on the global target", () => {
         name: "Updated to v0.3.5",
       }),
     ).toBeInTheDocument();
+    expect(writtenToLines(dialog)).toEqual([
+      "✓~/.claude/skillsAt v0.3.5",
+      "–~/.agents/skillsCodex not detected · not written",
+    ]);
     expect(
-      within(reportGroup(dialog, "Updated")).getByText("tdd"),
-    ).toBeInTheDocument();
+      within(dialog).queryByRole("button", { name: "Retry update" }),
+    ).toBeNull();
+  });
+
+  // #1776: the Report keeps the preview's groups, so nothing unchanged reads as updated.
+  it("lists the skills as Changed, Removed by this release and a folded Unchanged", async () => {
+    stubUpdate(
+      Promise.resolve(
+        jsonResponse({
+          release: "v0.3.5",
+          folders: foldersAt("v0.3.5", [
+            { name: "tdd", outcome: "written" },
+            { name: "grill", outcome: "written" },
+          ]),
+        }),
+      ),
+      { before: GLOBAL_BEHIND, after: { global: globalAt("v0.3.5") } },
+      undefined,
+      {
+        ...PREVIEW,
+        counts: { changed: 1, removed: 1, unchanged: 1 },
+        removed: ["review"],
+        unchanged: ["grill"],
+        selection: {
+          current: ["tdd", "grill", "review"],
+          desired: ["tdd", "grill"],
+        },
+      },
+    );
+    renderDeployState();
+
+    const dialog = await confirmUpdate("Global");
+    await within(dialog).findByRole("heading", {
+      level: 3,
+      name: "Updated to v0.3.5",
+    });
+
+    expect(
+      within(dialog)
+        .getAllByRole("heading", { level: 3 })
+        .map((heading) => heading.textContent),
+    ).toEqual([
+      "Updated to v0.3.5",
+      "Changed",
+      "Removed by this release",
+      "Unchanged (1)",
+    ]);
+    expect(within(dialog).queryByText("Updated")).toBeNull();
+    expect(
+      within(dialog).getByText("Unchanged (1)").closest("details"),
+    ).not.toHaveAttribute("open");
   });
 
   it("labels Update target by Global, the one target every folder follows", async () => {
@@ -342,7 +430,7 @@ describe("Deploy-state — Update target on the global target", () => {
     expect(codex).toHaveTextContent("Codex not detected · not written");
   });
 
-  it("shows an incomplete update's outcome and Retry update in the dialog", async () => {
+  it("names the folder an incomplete update left behind and puts Retry update in the footer", async () => {
     const update = deferred();
     stubUpdate(update.promise, {
       before: GLOBAL_BEHIND,
@@ -363,29 +451,110 @@ describe("Deploy-state — Update target on the global target", () => {
         {
           error: "update-incomplete",
           message: "irrelevant",
-          outcome: [
-            { name: "tdd", tool: "claude", state: "updated" },
-            { name: "tdd", tool: "codex", state: "not-updated" },
-          ],
+          folders: foldersAt(
+            "v0.3.5",
+            [{ name: "tdd", outcome: "written" }],
+            [{ name: "tdd", outcome: "not-updated", stillAt: "v0.3.4" }],
+          ),
         },
         502,
       ),
     );
 
-    await within(dialog).findByText("tdd in Codex");
-    const failed = within(reportGroup(dialog, "Failed"));
-    expect(failed.getByText("tdd in Codex")).toBeInTheDocument();
-    expect(
-      failed.getByText(
-        sentence(
-          "Still at v0.3.4. Select Retry update to run the same release again.",
-        ),
-      ),
-    ).toBeInTheDocument();
-    expect(within(dialog).getByText("Update incomplete")).toBeInTheDocument();
+    await within(dialog).findByRole("heading", {
+      level: 3,
+      name: "Not every skill reached v0.3.5",
+    });
+    expect(writtenToLines(dialog)).toEqual([
+      "✓~/.claude/skillsAt v0.3.5",
+      "✕~/.agents/skills1 skill not updated" +
+        "Not updatedtdd · still at v0.3.4" +
+        "Select Retry update to run the same release again.",
+    ]);
+    expect(within(dialog).queryByText("Update incomplete")).toBeNull();
+    expect(within(dialog).queryByText(/in Codex/)).toBeNull();
+    expect(within(dialog).queryByRole("alert")).toBeNull();
     expect(
       within(dialog).getByRole("button", { name: "Retry update" }),
     ).toBeInTheDocument();
+  });
+
+  it("states the folders again once Retry update completes", async () => {
+    const update = deferred();
+    stubUpdate(
+      update.promise,
+      {
+        before: GLOBAL_BEHIND,
+        after: {
+          global: {
+            ...globalAt("v0.3.4"),
+            skipped: [],
+            pendingOperation: PENDING,
+          },
+        },
+      },
+      () =>
+        jsonResponse({
+          completed: PENDING,
+          outcome: foldersAt("v0.3.5", [{ name: "tdd", outcome: "written" }]),
+        }),
+    );
+    renderDeployState();
+
+    const dialog = await confirmUpdate("Global");
+    update.resolve(
+      jsonResponse(
+        {
+          error: "update-incomplete",
+          message: "irrelevant",
+          folders: foldersAt("v0.3.5", [{ name: "tdd", outcome: "missing" }]),
+        },
+        502,
+      ),
+    );
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Retry update" }),
+    );
+
+    expect(
+      await within(dialog).findByRole("heading", {
+        level: 3,
+        name: "Updated to v0.3.5",
+      }),
+    ).toBeInTheDocument();
+    expect(writtenToLines(dialog)[0]).toBe("✓~/.claude/skillsAt v0.3.5");
+    expect(
+      within(dialog).queryByRole("button", { name: "Retry update" }),
+    ).toBeNull();
+  });
+
+  it("states an unconfirmed update and reads every folder Not confirmed", async () => {
+    stubUpdate(
+      Promise.resolve(
+        jsonResponse({ error: "update-failed", message: "irrelevant" }, 502),
+      ),
+      {
+        before: { global: globalAt("v0.3.4", ["claude", "codex"]) },
+        after: { global: globalAt("v0.3.4", ["claude", "codex"]) },
+      },
+    );
+    renderDeployState();
+
+    const dialog = await confirmUpdate("Global");
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Update outcome unknown" +
+        "Maestro could not confirm that the update finished." +
+        "Some folders may have changed. Check them on the Deploy-state screen, then select Update target again.",
+    );
+    expect(writtenToLines(dialog)).toEqual([
+      "?~/.claude/skillsNot confirmed",
+      "?~/.agents/skillsNot confirmed",
+    ]);
+    expect(within(dialog).queryByRole("heading", { level: 3 })).toBeNull();
+    expect(
+      within(dialog).queryByRole("button", { name: "Retry update" }),
+    ).toBeNull();
   });
 
   it("states a failed Retry update in the dialog, in place of Update incomplete", async () => {
@@ -412,7 +581,9 @@ describe("Deploy-state — Update target on the global target", () => {
         {
           error: "update-incomplete",
           message: "irrelevant",
-          outcome: [{ name: "tdd", tool: "claude", state: "not-updated" }],
+          folders: foldersAt("v0.3.5", [
+            { name: "tdd", outcome: "not-updated", stillAt: "v0.3.4" },
+          ]),
         },
         502,
       ),
@@ -431,12 +602,12 @@ describe("Deploy-state — Update target on the global target", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      within(notice).getByRole("button", { name: "Retry update" }),
+      within(dialog).getByRole("button", { name: "Retry update" }),
     ).toBeInTheDocument();
     expect(within(dialog).queryByText("Update incomplete")).toBeNull();
   });
 
-  it("names a tool's missing copy and offers Retry update", async () => {
+  it("names a folder's missing copy and offers Retry update", async () => {
     const update = deferred();
     stubUpdate(update.promise, {
       before: GLOBAL_BEHIND,
@@ -457,23 +628,23 @@ describe("Deploy-state — Update target on the global target", () => {
         {
           error: "update-incomplete",
           message: "irrelevant",
-          outcome: [
-            { name: "tdd", tool: "claude", state: "missing" },
-            { name: "tdd", tool: "codex", state: "updated" },
-          ],
+          folders: foldersAt(
+            "v0.3.5",
+            [{ name: "tdd", outcome: "missing" }],
+            [{ name: "tdd", outcome: "written" }],
+          ),
         },
         502,
       ),
     );
 
-    await within(dialog).findByText("tdd in Claude Code");
-    const failed = within(reportGroup(dialog, "Failed"));
-    expect(failed.getByText("tdd in Claude Code")).toBeInTheDocument();
-    expect(
-      failed.getByText(
-        "Not deployed. Select Retry update to run the same release again.",
-      ),
-    ).toBeInTheDocument();
+    await within(dialog).findByRole("group", { name: "Written to" });
+    expect(writtenToLines(dialog)).toEqual([
+      "✕~/.claude/skills1 skill missing" +
+        "Missingtdd" +
+        "Select Retry update to run the same release again.",
+      "✓~/.agents/skillsAt v0.3.5",
+    ]);
     expect(
       within(dialog).getByRole("button", { name: "Retry update" }),
     ).toBeInTheDocument();
@@ -511,7 +682,7 @@ describe("Deploy-state — Update target on the global target", () => {
     update.resolve(
       jsonResponse({
         release: "v0.3.5",
-        outcome: [{ name: "tdd", tool: null, state: "updated" }],
+        folders: foldersAt("v0.3.5", [{ name: "tdd", outcome: "written" }]),
       }),
     );
     expect(
@@ -521,7 +692,7 @@ describe("Deploy-state — Update target on the global target", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      within(reportGroup(dialog, "Updated")).getByText("tdd"),
+      within(skillSection(dialog, "Changed")).getByText("tdd"),
     ).toBeInTheDocument();
   });
 });

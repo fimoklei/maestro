@@ -311,6 +311,13 @@ const UNKNOWN_UPDATE_RUN: DeployStateNotice = {
   detail: UNKNOWN_DETAIL,
 };
 
+// Global: nothing read the folders back, so any of them may have changed.
+const UNKNOWN_GLOBAL_UPDATE_RUN: DeployStateNotice = {
+  label: UNKNOWN_UPDATE_RUN.label,
+  message: "Maestro could not confirm that the update finished.",
+  detail: `Some folders may have changed. Check them on the Deploy-state screen, ${UPDATE_AGAIN}`,
+};
+
 const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
   "repo-not-registered": {
     message: `${REGISTER_STEP}, ${UPDATE_AGAIN}`,
@@ -494,6 +501,17 @@ export function updateNotice(error: unknown): DeployStateNotice {
     error,
     UPDATE_AGAIN,
   );
+}
+
+/** A failed Global update; `unknown` where nothing proved what it did. */
+export function globalUpdateNotice(error: unknown): {
+  notice: DeployStateNotice;
+  unknown: boolean;
+} {
+  const notice = updateNotice(error);
+  return notice.label === UNKNOWN_UPDATE_RUN.label
+    ? { notice: UNKNOWN_GLOBAL_UPDATE_RUN, unknown: true }
+    : { notice, unknown: false };
 }
 
 // The path the server read from disk replaces the general instruction.

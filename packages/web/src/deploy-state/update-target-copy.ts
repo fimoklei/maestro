@@ -92,7 +92,7 @@ export function outcomeHeading(to: string, verdict: OutcomeVerdict): string {
 
 export const RETRY_UPDATE = "Retry update";
 
-const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.`;
+export const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.`;
 
 export const UPDATE_AGAIN = `then select ${UPDATE_TARGET} again.`;
 

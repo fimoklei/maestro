@@ -18,6 +18,7 @@ import {
   deployAttentionNotice,
   deployNotice,
   deployNoticeFor,
+  globalUpdateNotice,
   removeNotice,
   retryNotice,
   updateNotice,
@@ -376,6 +377,32 @@ describe("an update on any target, Global included", () => {
     const message = plainText(notice.message);
 
     expect(message).toMatch(/[Ss]elect Update target again\.$/);
+  });
+});
+
+describe("a Global update nothing read back", () => {
+  it.each([
+    ["failed", refusal("update-failed")],
+    ["offline", new Error("offline")],
+  ])("sends the reader to check the folders (%s)", (_, error) => {
+    const { notice, unknown } = globalUpdateNotice(error);
+
+    expect(unknown).toBe(true);
+    expect(readNotice(notice)).toEqual({
+      label: "Update outcome unknown",
+      message: "Maestro could not confirm that the update finished.",
+      detail:
+        "Some folders may have changed. Check them on the Deploy-state screen, then select Update target again.",
+    });
+  });
+
+  it("keeps a named refusal's own notice", () => {
+    const { notice, unknown } = globalUpdateNotice(
+      refusal("status-out-of-date"),
+    );
+
+    expect(unknown).toBe(false);
+    expect(notice).toEqual(updateNotice(refusal("status-out-of-date")));
   });
 });
 

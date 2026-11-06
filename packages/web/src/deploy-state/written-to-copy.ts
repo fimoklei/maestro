@@ -5,8 +5,10 @@ import type { StatusFamily } from "../ui/status-family";
 import { notWrittenNote } from "./deploy-state-copy";
 import { RETRY_DEPLOY } from "./release-head-copy";
 import { toolDisplayName } from "./tool-presentation";
+import { RETRY_UPDATE_STEP } from "./update-target-copy";
 
 export const WRITTEN_TO = "Written to";
+export const NOT_CONFIRMED = "Not confirmed";
 
 type Detail = { label: string; value: string };
 
@@ -27,7 +29,7 @@ function detail(skill: SkillOutcome): Detail | null {
     case "missing":
       return { label: "Missing", value: skill.name };
     case "not-confirmed":
-      return { label: "Not confirmed", value: skill.name };
+      return { label: NOT_CONFIRMED, value: skill.name };
     case "not-updated":
       return {
         label: "Not updated",
@@ -43,6 +45,42 @@ function detail(skill: SkillOutcome): Detail | null {
 export function writtenToLine(
   folder: FolderOutcome,
   retry: boolean,
+): WrittenToLine {
+  return folderLine(folder, {
+    clean: `${skills(folder.skills.length)} written`,
+    step: (details) =>
+      retry
+        ? `Select ${RETRY_DEPLOY} to write ${details.length === 1 ? "it" : "them"} again.`
+        : null,
+  });
+}
+
+/** The same words after Update target; `retry`: Retry update is in the footer. */
+export function updatedToLine(
+  folder: FolderOutcome,
+  update: { release: string; retry: boolean },
+): WrittenToLine {
+  const line = folderLine(folder, {
+    clean: `At ${update.release}`,
+    step: () => (update.retry ? RETRY_UPDATE_STEP : null),
+  });
+  const notUpdated = folder.skills.filter(
+    (skill) => skill.outcome === "not-updated",
+  ).length;
+  const written = folder.skills.filter(
+    (skill) => skill.outcome === "written",
+  ).length;
+  return notUpdated > 0 && written + notUpdated === folder.skills.length
+    ? { ...line, fact: `${skills(notUpdated)} not updated` }
+    : line;
+}
+
+function folderLine(
+  folder: FolderOutcome,
+  words: {
+    clean: string;
+    step: (details: readonly Detail[]) => string | null;
+  },
 ): WrittenToLine {
   if (!folder.written) {
     return {
@@ -61,13 +99,13 @@ export function writtenToLine(
   if (written === total) {
     return {
       tone: "good",
-      fact: `${skills(total)} written`,
+      fact: words.clean,
       details: [],
       step: null,
     };
   }
   if (unconfirmed === total) {
-    return { tone: "unknown", fact: "Not confirmed", details: [], step: null };
+    return { tone: "unknown", fact: NOT_CONFIRMED, details: [], step: null };
   }
   const details = folder.skills.flatMap((skill) => detail(skill) ?? []);
   return {
@@ -79,8 +117,6 @@ export function writtenToLine(
           : `${missing} of ${skills(total)} missing`
         : `${written} of ${skills(total)} written`,
     details,
-    step: retry
-      ? `Select ${RETRY_DEPLOY} to write ${details.length === 1 ? "it" : "them"} again.`
-      : null,
+    step: words.step(details),
   };
 }

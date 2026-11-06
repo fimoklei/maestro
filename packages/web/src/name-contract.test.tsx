@@ -146,6 +146,9 @@ const PLAIN_MACHINE: Record<string, Record<string, string>> = {
   "deploy-state/remove-ledger-rows.ts": {
     "`folder:${path}`": "key",
   },
+  "deploy-state/written-to-copy.ts": {
+    "`At ${update.release}`": "fold-list fact, a status word",
+  },
   "ui/dialog.tsx": {
     "`${title} ${version}`": "accessible name",
   },

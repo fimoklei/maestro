@@ -503,6 +503,7 @@ export function composeUseCases(ports: UseCasePorts) {
       selection,
       deployedCleanup,
       deployedContent,
+      outcomes,
       canonicalPath,
       locks: apmWriteLocks,
     }),

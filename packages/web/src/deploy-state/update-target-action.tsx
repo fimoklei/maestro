@@ -2,8 +2,16 @@ import { useState } from "react";
 import { HttpError } from "../api/http";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
-import { updateNotice, updatePreviewNotice } from "./notice-copy";
-import { updateOutcomeRows } from "./update-outcome-report";
+import {
+  globalUpdateNotice,
+  updateNotice,
+  updatePreviewNotice,
+} from "./notice-copy";
+import {
+  type UpdateRunView,
+  updateFolders,
+  updateOutcomeRows,
+} from "./update-outcome-report";
 import { UpdateTargetDialog } from "./update-target-dialog";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
@@ -47,14 +55,31 @@ export function UpdateTargetAction({
           subject: null,
         },
   );
+  const global = target.kind === "global";
   const updateWrite = useWriteAction(update, {
     screen,
     action: "update",
     subject: () => null,
     failure: (error) =>
-      updateOutcomeRows(error) === null ? updateNotice(error) : null,
+      updateOutcomeRows(error) !== null || updateFolders(error) !== null
+        ? null
+        : global
+          ? globalUpdateNotice(error).notice
+          : updateNotice(error),
   });
-  const outcome = update.data?.outcome ?? updateOutcomeRows(update.error);
+  // A completed Retry update reads the folders again; its read replaces the run's.
+  const retried = retry.landed(target)?.outcome ?? null;
+  const folders =
+    retried ?? update.data?.folders ?? updateFolders(update.error);
+  const rows = update.data?.outcome ?? updateOutcomeRows(update.error);
+  const outcome: UpdateRunView | null =
+    folders !== null
+      ? { kind: "folders", folders }
+      : rows !== null
+        ? { kind: "skills", rows }
+        : global && update.isError && globalUpdateNotice(update.error).unknown
+          ? { kind: "unknown" }
+          : null;
 
   const close = () => {
     setOpen(false);
@@ -77,7 +102,12 @@ export function UpdateTargetAction({
             updateWrite.phase === "running" || retry.isRetrying(target)
           }
           outcome={outcome}
-          incomplete={outcome !== null && update.isError}
+          incomplete={
+            outcome !== null &&
+            outcome.kind !== "unknown" &&
+            update.isError &&
+            retried === null
+          }
           onRetry={() => retry.run(target)}
           // An origin-less Harness cannot attribute the target's release, so
           // no update can be priced (#960).

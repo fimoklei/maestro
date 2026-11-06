@@ -1,6 +1,6 @@
 import type { FolderOutcome, SkillOutcome } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import { writtenToLine } from "./written-to-copy";
+import { updatedToLine, writtenToLine } from "./written-to-copy";
 
 const folder = (
   skills: SkillOutcome[],
@@ -111,6 +111,96 @@ describe("Written to line", () => {
   it("names the undetected tool of a folder the deploy skipped", () => {
     expect(
       writtenToLine(folder([], { written: false, tool: "codex" }), true),
+    ).toEqual({
+      tone: "neutral",
+      fact: "Codex not detected · not written",
+      details: [],
+      step: null,
+    });
+  });
+});
+
+describe("Written to line after Update target", () => {
+  const notUpdated = (name: string, stillAt: string | null): SkillOutcome => ({
+    name,
+    outcome: "not-updated",
+    stillAt,
+  });
+  const update = (retry: boolean) => ({ release: "v2.0.0", retry });
+
+  it("states the release a clean folder is at, with no fold", () => {
+    expect(
+      updatedToLine(
+        folder([written("code-review"), written("tdd")]),
+        update(false),
+      ),
+    ).toEqual({
+      tone: "good",
+      fact: "At v2.0.0",
+      details: [],
+      step: null,
+    });
+  });
+
+  it("counts the skills not updated and names the release each is still at", () => {
+    expect(
+      updatedToLine(
+        folder([written("tdd"), notUpdated("code-review", "v1.1.0")]),
+        update(true),
+      ),
+    ).toEqual({
+      tone: "failed",
+      fact: "1 skill not updated",
+      details: [
+        { label: "Not updated", value: "code-review · still at v1.1.0" },
+      ],
+      step: "Select Retry update to run the same release again.",
+    });
+    expect(
+      updatedToLine(
+        folder([notUpdated("code-review", null), notUpdated("tdd", "v1.0.0")]),
+        update(false),
+      ),
+    ).toEqual({
+      tone: "failed",
+      fact: "2 skills not updated",
+      details: [
+        { label: "Not updated", value: "code-review" },
+        { label: "Not updated", value: "tdd · still at v1.0.0" },
+      ],
+      step: null,
+    });
+  });
+
+  it("uses Deploy's words for a missing skill", () => {
+    expect(
+      updatedToLine(
+        folder([written("code-review"), missing("commit-message")]),
+        update(true),
+      ),
+    ).toEqual({
+      tone: "failed",
+      fact: "1 of 2 skills missing",
+      details: [{ label: "Missing", value: "commit-message" }],
+      step: "Select Retry update to run the same release again.",
+    });
+  });
+
+  it("reads a folder nothing could confirm as Not confirmed", () => {
+    expect(
+      updatedToLine(
+        folder([{ name: "tdd", outcome: "not-confirmed" }]),
+        update(true),
+      ).fact,
+    ).toBe("Not confirmed");
+  });
+
+  it("names the undetected tool of a folder the update skipped", () => {
+    expect(
+      updatedToLine(
+        folder([], { written: false, tool: "codex" }),
+        update(true),
+      ),
     ).toEqual({
       tone: "neutral",
       fact: "Codex not detected · not written",

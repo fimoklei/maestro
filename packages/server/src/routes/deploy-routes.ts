@@ -207,16 +207,13 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
 
     const result = await deps.update.run(body.data);
     // Omitted, never null: a refusal that never reached apm has no outcome (#416).
-    const outcome =
-      result.ok || result.outcome
-        ? updateOutcomeBody(result.ok ? result.outcome : (result.outcome ?? []))
-        : null;
+    const outcome = updateOutcomeBody(result);
     if (!result.ok) {
       const { status } = updateRunErrorResponses[result.error];
       return c.json(
         {
           error: result.error,
-          ...(outcome === null ? {} : { outcome }),
+          ...(outcome ?? {}),
           ...refusalBody(result),
         },
         status,
@@ -226,7 +223,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     if (outcome === null) {
       return c.json({ error: "update-failed" }, 502);
     }
-    return c.json({ release: result.release, outcome });
+    return c.json({ release: result.release, ...outcome });
   });
 
   // Re-runs the release and Selection the server recorded; the client chooses nothing (#951).

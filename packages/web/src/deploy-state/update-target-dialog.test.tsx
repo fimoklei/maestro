@@ -528,31 +528,59 @@ describe("UpdateTargetDialog outcome", () => {
         blocked={false}
         isLoading={false}
         error={null}
-        outcome={outcome}
+        outcome={{ kind: "skills", rows: outcome }}
         onCancel={vi.fn()}
         onConfirm={vi.fn()}
         {...props}
       />,
     );
 
-  it("reports what landed per skill and drops the sections it planned", () => {
+  // #1776: an unchanged skill is never listed as updated.
+  it("keeps the preview's groups, Unchanged folded, and drops the plan around them", () => {
     showOutcome([
       { name: "tdd", tool: null, state: "updated" },
+      { name: "grill", tool: null, state: "updated" },
       { name: "review", tool: null, state: "removed" },
     ]);
 
     expect(
-      screen.getByRole("heading", { level: 3, name: "Updated to v0.3.4" }),
-    ).toBeInTheDocument();
-    expect(within(reportGroup("Updated")).getByText("tdd")).toBeInTheDocument();
-    expect(
-      within(reportGroup("Removed")).getByText("review"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Changed")).not.toBeInTheDocument();
+      screen
+        .getAllByRole("heading", { level: 3 })
+        .map((heading) => heading.textContent),
+    ).toEqual([
+      "Updated to v0.3.4",
+      "Changed",
+      "Removed by this release",
+      "Unchanged (3)",
+    ]);
+    expect(screen.queryByText("Updated")).toBeNull();
+    expect(screen.queryByText(/New in this release/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
   });
 
-  it("names the tool of a failing row on the global target", () => {
+  it("lists a skill the update added under Deployed", () => {
+    render(
+      <UpdateTargetDialog
+        targetName="agent-harness"
+        folders={null}
+        preview={preview({ addedByThisDeploy: [row("wizard")] })}
+        blocked={false}
+        isLoading={false}
+        error={null}
+        outcome={{ kind: "skills", rows: [] }}
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen
+        .getByRole("heading", { level: 3, name: "Deployed" })
+        .closest("section"),
+    ).toHaveTextContent("wizard");
+  });
+
+  it("names the tool of a failing row where the tools disagree", () => {
     showOutcome([
       { name: "grill", tool: "claude", state: "updated" },
       { name: "grill", tool: "codex", state: "not-updated" },

@@ -1,7 +1,7 @@
 import type { UpdatePreview } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { HttpError } from "../api/http";
-import { updatePreviewNotice } from "./notice-copy";
+import { globalUpdateNotice, updatePreviewNotice } from "./notice-copy";
 import { UpdateTargetDialog } from "./update-target-dialog";
 
 const row = (name: string) => ({
@@ -129,22 +129,102 @@ export const Refused: Story = {
 
 export const Outcome: Story = {
   args: {
-    outcome: [
-      { name: "tdd", tool: null, state: "updated" },
-      { name: "jobs", tool: null, state: "updated" },
-      { name: "review", tool: null, state: "removed" },
-    ],
+    outcome: {
+      kind: "skills",
+      rows: [
+        { name: "tdd", tool: null, state: "updated" },
+        { name: "jobs", tool: null, state: "updated" },
+        { name: "review", tool: null, state: "removed" },
+      ],
+    },
   },
 };
 
 export const IncompleteOutcome: Story = {
   args: {
     incomplete: true,
-    outcome: [
-      { name: "tdd", tool: null, state: "updated" },
-      { name: "jobs", tool: "claude", state: "updated" },
-      { name: "jobs", tool: "codex", state: "not-updated" },
-      { name: "review", tool: null, state: "not-removed" },
-    ],
+    outcome: {
+      kind: "skills",
+      rows: [
+        { name: "tdd", tool: null, state: "updated" },
+        { name: "jobs", tool: "claude", state: "updated" },
+        { name: "jobs", tool: "codex", state: "not-updated" },
+        { name: "review", tool: null, state: "not-removed" },
+      ],
+    },
+  },
+};
+
+const SELECTED = ["tdd", "jobs", "grill", "brief", "worktree"];
+const written = (names: readonly string[]) =>
+  names.map((name) => ({ name, outcome: "written" as const }));
+
+export const GlobalUpdated: Story = {
+  args: {
+    targetName: "Global",
+    folders: GLOBAL_FOLDERS,
+    outcome: {
+      kind: "folders",
+      folders: {
+        release: "v0.3.4",
+        folders: [
+          {
+            path: "~/.claude/skills",
+            tool: "claude",
+            written: true,
+            skills: written(SELECTED),
+          },
+          {
+            path: "~/.agents/skills",
+            tool: "codex",
+            written: false,
+            skills: [],
+          },
+        ],
+      },
+    },
+  },
+};
+
+export const GlobalOneFolderBehind: Story = {
+  args: {
+    targetName: "Global",
+    folders: GLOBAL_FOLDERS,
+    incomplete: true,
+    outcome: {
+      kind: "folders",
+      folders: {
+        release: "v0.3.4",
+        folders: [
+          {
+            path: "~/.claude/skills",
+            tool: "claude",
+            written: true,
+            skills: written(SELECTED),
+          },
+          {
+            path: "~/.agents/skills",
+            tool: "codex",
+            written: true,
+            skills: [
+              { name: "tdd", outcome: "not-updated", stillAt: "v0.3.2" },
+              { name: "jobs", outcome: "not-updated", stillAt: null },
+              { name: "grill", outcome: "missing" },
+              ...written(["brief", "worktree"]),
+            ],
+          },
+        ],
+      },
+    },
+  },
+};
+
+export const GlobalOutcomeUnknown: Story = {
+  args: {
+    targetName: "Global",
+    folders: GLOBAL_FOLDERS,
+    outcome: { kind: "unknown" },
+    error: globalUpdateNotice(new HttpError(502, "unused", "update-failed"))
+      .notice,
   },
 };

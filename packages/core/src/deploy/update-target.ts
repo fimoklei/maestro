@@ -11,6 +11,7 @@ import type {
 } from "./deploy-skill";
 import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import { discardDroppedCopies } from "./discard-dropped-copies";
+import type { FolderOutcomeReader, FolderOutcomes } from "./folder-outcome";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
@@ -120,14 +121,20 @@ export type UpdateRunError =
   | "update-timed-out"
   | "update-failed";
 
+/** What the update left: per skill and tool on a repository, per Global folder on Global. */
+type UpdateOutcome =
+  | { outcome: readonly UpdateOutcomeRow[]; folders?: never }
+  | { folders: FolderOutcomes; outcome?: never };
+
 export type UpdateRunResult =
-  | { ok: true; release: string; outcome: readonly UpdateOutcomeRow[] }
+  | ({ ok: true; release: string } & UpdateOutcome)
   | {
       ok: false;
       error: UpdateRunError;
       linkedPath?: string;
       // Only where apm ran, so an absent key is never a proven outcome.
       outcome?: readonly UpdateOutcomeRow[];
+      folders?: FolderOutcomes;
       // Only where consent can clear the refusal (#952).
       copyReceipt?: string;
     };
@@ -172,8 +179,10 @@ export class UpdateTarget {
     copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
     selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
     deployedCleanup: DeployedCleanupPort;
-    // The outcome probe; the pre-write check is the guard's.
+    // A repository's outcome probe; the pre-write check is the guard's.
     deployedContent: Pick<DeployedContentPort, "readLockfile" | "classify">;
+    // Global's outcome: each Global folder against the chosen release.
+    outcomes: Pick<FolderOutcomeReader, "read">;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with deploy and remove: all three rewrite one apm.lock.yaml.
@@ -296,9 +305,18 @@ export class UpdateTarget {
         desired: scope.desired,
         ...(scope.tools.length === 0 ? {} : { tools: scope.tools }),
       });
-      const outcome = await this.outcome(scope, origin);
+      const outcome: UpdateOutcome =
+        input.target.kind === "global"
+          ? {
+              folders: await this.deps.outcomes.read({
+                release: scope.chosenRelease,
+                names: scope.desired,
+                written: scope.tools,
+              }),
+            }
+          : { outcome: await this.outcome(scope, origin) };
       if (applied.ok) {
-        return { ok: true, release: scope.chosenRelease, outcome };
+        return { ok: true, release: scope.chosenRelease, ...outcome };
       }
       return {
         ok: false,
@@ -311,7 +329,7 @@ export class UpdateTarget {
               : applied.error === "apply-timed-out"
                 ? "update-timed-out"
                 : "update-failed",
-        outcome,
+        ...outcome,
       };
     } catch {
       return { ok: false, error: "update-failed" };
@@ -324,7 +342,7 @@ export class UpdateTarget {
     origin: GitOrigin,
   ): Promise<UpdateOutcomeRow[]> {
     // A repo install runs for every tool, so each copy is read on its own.
-    const tools = scope.tools.length === 0 ? SUPPORTED_TOOLS : scope.tools;
+    const tools = SUPPORTED_TOOLS;
     const kept = new Set(scope.desired);
     // A clean copy proves only that copy and record agree; the record must also
     // name the chosen release before a skill is claimed to have moved.
