@@ -10,6 +10,7 @@ import {
   NO_REPOSITORIES,
   NO_TARGETS,
   NO_TOOL_DETECTED,
+  notUpdatedLine,
   notWrittenNote,
   ORIGIN_NOT_READ,
   otherOriginLine,
@@ -25,6 +26,54 @@ import {
 } from "./deploy-state-copy";
 
 // Approved sentences, as exact strings.
+describe("Not updated copy", () => {
+  const AGENTS = "~/.agents/skills";
+  const line = (copies: { name: string; stillAt: string | null }[]) =>
+    plainText(notUpdatedLine(AGENTS, copies, "v2.0.0"));
+
+  it("names the release one copy is still at", () => {
+    expect(line([{ name: "code-review", stillAt: "v1.0.0" }])).toBe(
+      "code-review in ~/.agents/skills is still at v1.0.0, but the Target release is v2.0.0.",
+    );
+  });
+
+  it("names the one release many copies are still at", () => {
+    expect(
+      line([
+        { name: "code-review", stillAt: "v1.0.0" },
+        { name: "commit-message", stillAt: "v1.0.0" },
+      ]),
+    ).toBe(
+      "2 skills in ~/.agents/skills are still at v1.0.0, but the Target release is v2.0.0.",
+    );
+  });
+
+  it("says older releases where many copies are at different ones", () => {
+    expect(
+      line([
+        { name: "code-review", stillAt: "v1.1.0" },
+        { name: "commit-message", stillAt: "v1.0.0" },
+      ]),
+    ).toBe(
+      "2 skills in ~/.agents/skills are still at older releases, but the Target release is v2.0.0.",
+    );
+  });
+
+  it("names no version and never says older where no release matched", () => {
+    expect(line([{ name: "code-review", stillAt: null }])).toBe(
+      "code-review in ~/.agents/skills is not at the Target release v2.0.0.",
+    );
+    expect(
+      line([
+        { name: "code-review", stillAt: "v1.0.0" },
+        { name: "commit-message", stillAt: null },
+      ]),
+    ).toBe(
+      "2 skills in ~/.agents/skills are not at the Target release v2.0.0.",
+    );
+  });
+});
+
 describe("Deploy-state copy", () => {
   // #1123: a row is a Target; the column, its split and the pane's fact say so.
   it("names a target Target wherever the screen labels one", () => {

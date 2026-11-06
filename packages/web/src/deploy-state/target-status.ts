@@ -9,6 +9,7 @@ import { UNFINISHED_HEADINGS } from "./release-head-copy";
 export const unfinishedReading = (kind: PendingOperation["kind"]) =>
   reading(UNFINISHED_HEADINGS[kind], "attention", WARNING_GLYPH);
 const ATTENTION = reading("Attention", "attention", WARNING_GLYPH);
+export const NOT_UPDATED = reading("Not updated", "attention", WARNING_GLYPH);
 export const LOCAL_EDITS = reading("Local edits", "attention", WARNING_GLYPH);
 export const BEHIND = reading("Behind", "attention");
 const UNKNOWN = reading("Unknown", "unknown");
@@ -22,6 +23,7 @@ export const TARGET_STATUS_WORDS = [
   ...Object.values(UNFINISHED_HEADINGS),
   ...[
     ATTENTION,
+    NOT_UPDATED,
     LOCAL_EDITS,
     BEHIND,
     UNKNOWN,
@@ -61,6 +63,7 @@ export const TARGET_CHIPS: readonly StatusChip[] = [
     family: "attention",
     covers: [ATTENTION.word, ...Object.values(UNFINISHED_HEADINGS)],
   },
+  { word: NOT_UPDATED.word, family: "attention", covers: [NOT_UPDATED.word] },
   { word: LOCAL_EDITS.word, family: "attention", covers: [LOCAL_EDITS.word] },
   { word: BEHIND.word, family: "attention", covers: [BEHIND.word] },
 ];
@@ -73,6 +76,7 @@ export function targetStatus({
   behind = false,
   pending,
   localEdits = false,
+  notUpdated = false,
 }: {
   indicator: TargetDriftIndicator;
   pinnedPerSkill?: boolean;
@@ -81,9 +85,12 @@ export function targetStatus({
   pending: PendingOperation["kind"] | undefined;
   // A deployed skill's files changed after deployment: it blocks the next step.
   localEdits?: boolean;
+  // A Global folder holds an unedited copy at another release than the Target release.
+  notUpdated?: boolean;
 }): StatusReading | null {
   if (pending) return unfinishedReading(pending);
-  if (localEdits && indicator === "attention") return ATTENTION;
+  if ((localEdits || notUpdated) && indicator === "attention") return ATTENTION;
+  if (notUpdated && indicator !== "pending") return NOT_UPDATED;
   if (localEdits && indicator !== "pending") return LOCAL_EDITS;
   if (pinnedPerSkill) return PINNED;
   switch (indicator) {

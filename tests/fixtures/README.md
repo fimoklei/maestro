@@ -295,3 +295,21 @@ owner or date lands in the file). `apm.lock.1217-owned-link.yaml`
 is the lockfile before the owned update; it is byte-identical afterwards.
 `apm.lock.1217-unowned-link-before.yaml` and `-after.yaml` bracket the
 unowned update; neither holds a `.claude/skills` row.
+
+## A global update narrowed to one tool (#1799)
+
+Captured 2026-11-06 on apm 0.32.0, global, in a sandbox `HOME` (`realpath`ed)
+with cwd `$HOME/work`, `COLUMNS=200`, `NO_COLOR=1`, `GITHUB_TOKEN` and
+`GITHUB_APM_PAT` from `gh auth token`. The Harness is the fixture Harness
+(`tests/fixtures/fixture-harness`, built with `buildFixtureHarness` and
+published up to v2.0.0), reached through `fixtureRedirectEnv`. `<sel>` is
+`--skill code-review --skill commit-message`.
+
+1. `apm install github.com/fimoklei/maestro-fixture-harness#v1.0.0 <sel> -g -t claude,codex`, exit 0.
+2. `apm install github.com/fimoklei/maestro-fixture-harness#v2.0.0 <sel> -g -t claude`, exit 0.
+
+`apm.lock.1799-narrowed-global.yaml` is the lockfile after step 2, copied
+verbatim. `resolved_ref` reads `v2.0.0`, yet the `.agents/skills` hashes are
+still those of the v1.0.0 copies, which stay on disk: `code-review` equals the
+committed `v1.0.0` and `v1.1.0` files, `commit-message` the `v1.0.0` file.
+Every recorded hash equals a committed fixture file's sha256.

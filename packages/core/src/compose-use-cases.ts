@@ -187,15 +187,17 @@ export function composeUseCases(ports: UseCasePorts) {
     const root = await harnessRoot();
     return root === undefined ? null : await readHarnessOrigin(root);
   };
+  const releaseHead = new ReleaseHeadReader({
+    git: harnessGit,
+    resolveRoot: harnessRoot,
+    now: () => new Date(),
+  });
   const deployState = new GlobalDeployStateReader({
     fs,
     toolPresence,
     treeRoot: () => deployedLocation.treeRoot({ kind: "global" }),
-    releaseHead: new ReleaseHeadReader({
-      git: harnessGit,
-      resolveRoot: harnessRoot,
-      now: () => new Date(),
-    }),
+    releaseHead,
+    releaseTags: () => releaseHead.releaseTags(),
     harnessOrigin,
     content: releaseAwareContent,
     // Read per request, not captured at construction: the retry use-case is

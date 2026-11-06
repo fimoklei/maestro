@@ -31,7 +31,7 @@ import {
   showsReadFailure,
   type TargetPaneActions,
 } from "./target-pane-actions";
-import { editedSkills, type TargetRow } from "./target-rows";
+import { editedSkills, notUpdatedLines, type TargetRow } from "./target-rows";
 import { useDifferingCopyFolders } from "./use-import-local-edits";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
@@ -99,6 +99,7 @@ export function TargetDetailPane({
     importable && row.wire.kind === "global",
   );
   const why = [
+    ...(row.pending ? [] : notUpdatedLines(row)),
     ...(importable ? [localEditsLine(edited, row.behind)] : []),
     ...(importable ? differing.map(differingCopiesLine) : []),
     // A plain behind target still says why, and which control moves it.

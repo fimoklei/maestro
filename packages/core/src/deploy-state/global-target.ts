@@ -23,9 +23,14 @@ import {
   deployedRootPackageSkills,
 } from "./root-package-skills";
 
+/** An unedited copy Global did not move to its Target release; `stillAt` null where no older release matches. */
+export type NotUpdatedCopy = { name: string; stillAt: string | null };
+
 /** A Global folder with the copies Global wrote there; none where its tool is not detected. */
 export type GlobalFolderState = GlobalFolder & {
   primitives: DeployedPrimitive[];
+  // Absent where every copy is at the Target release.
+  notUpdated?: NotUpdatedCopy[];
 };
 
 /** Global as one target: one release, one skill list, and the folders it writes. */

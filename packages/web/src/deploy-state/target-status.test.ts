@@ -144,12 +144,53 @@ describe("targetStatus", () => {
     ).toBeNull();
   });
 
+  it("reads a folder holding a copy left at an older release as Not updated, over Local edits and Behind", () => {
+    for (const status of [
+      targetStatus({ pending: undefined, indicator: "ok", notUpdated: true }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        behind: true,
+        localEdits: true,
+        notUpdated: true,
+      }),
+    ]) {
+      expect(words(status)).toBe("⚠ Not updated");
+      expect(status?.family).toBe("attention");
+    }
+  });
+
+  it("lets Attention and an unfinished operation outrank Not updated", () => {
+    expect(
+      words(
+        targetStatus({
+          pending: undefined,
+          indicator: "attention",
+          notUpdated: true,
+        }),
+      ),
+    ).toBe("⚠ Attention");
+    expect(
+      words(
+        targetStatus({ pending: "update", indicator: "ok", notUpdated: true }),
+      ),
+    ).toBe("⚠ Update incomplete");
+    expect(
+      targetStatus({
+        pending: undefined,
+        indicator: "pending",
+        notUpdated: true,
+      }),
+    ).toBeNull();
+  });
+
   it("offers every badge word to the Filter, worst first", () => {
     expect(TARGET_STATUS_WORDS).toEqual([
       "Deploy incomplete",
       "Removal incomplete",
       "Update incomplete",
       "Attention",
+      "Not updated",
       "Local edits",
       "Behind",
       "Unknown",
@@ -162,7 +203,7 @@ describe("targetStatus", () => {
 });
 
 describe("TARGET_CHIPS", () => {
-  it("offers Unknown as failed, and Attention, Local edits and Behind as attention, unfinished operations under Attention", () => {
+  it("offers Unknown as failed, and Attention, Not updated, Local edits and Behind as attention, unfinished operations under Attention", () => {
     expect(TARGET_CHIPS).toEqual([
       { word: "Unknown", family: "failed", covers: ["Unknown"] },
       {
@@ -175,6 +216,7 @@ describe("TARGET_CHIPS", () => {
           "Update incomplete",
         ],
       },
+      { word: "Not updated", family: "attention", covers: ["Not updated"] },
       { word: "Local edits", family: "attention", covers: ["Local edits"] },
       { word: "Behind", family: "attention", covers: ["Behind"] },
     ]);
@@ -200,9 +242,20 @@ describe("worstFolderReading", () => {
   });
   const unknown = targetStatus({ indicator: "unknown", pending: undefined });
   const unfinished = targetStatus({ indicator: "ok", pending: "update" });
+  const notUpdated = targetStatus({
+    indicator: "ok",
+    notUpdated: true,
+    pending: undefined,
+  });
 
   it("takes the folder reading that comes first in the Filter order", () => {
     expect(words(worstFolderReading([inSync, edited]))).toBe("⚠ Local edits");
+    expect(words(worstFolderReading([edited, notUpdated]))).toBe(
+      "⚠ Not updated",
+    );
+    expect(words(worstFolderReading([notUpdated, attention]))).toBe(
+      "⚠ Attention",
+    );
     expect(words(worstFolderReading([edited, attention]))).toBe("⚠ Attention");
     // The Filter order, not the family: Behind outranks Unknown here.
     expect(words(worstFolderReading([unknown, behind]))).toBe("↑ Behind");

@@ -1001,7 +1001,7 @@ function releasedIn041(
   target: DeployTarget,
   unreleased: SupportedTool[] = [],
 ): {
-  content: NonNullable<DeployStateExtras["content"]>;
+  content: DeployedContentAdapter;
   hashes: Record<string, string>;
 } {
   const released = "tdd at v0.4.1\n";

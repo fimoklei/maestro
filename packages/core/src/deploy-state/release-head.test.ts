@@ -232,3 +232,27 @@ describe("ReleaseHeadReader", () => {
     expect(head.latestRelease).toBeNull();
   });
 });
+
+describe("ReleaseHeadReader.releaseTags", () => {
+  it("lists the release tags newest first, leaving other tags out", async () => {
+    const list = await reader({
+      readTags: async () => tags("v0.9.0", "v0.10.0", "nightly", "v0.3.2"),
+    }).releaseTags();
+
+    expect(list).toStrictEqual(["v0.10.0", "v0.9.0", "v0.3.2"]);
+  });
+
+  it("reads as null where the Harness is not connected", async () => {
+    await expect(reader({ root: undefined }).releaseTags()).resolves.toBeNull();
+  });
+
+  it("reads as null where git rejects", async () => {
+    const list = await reader({
+      readTags: async () => {
+        throw new Error("no clone");
+      },
+    }).releaseTags();
+
+    expect(list).toBeNull();
+  });
+});
