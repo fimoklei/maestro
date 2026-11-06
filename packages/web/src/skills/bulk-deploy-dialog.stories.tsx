@@ -7,7 +7,7 @@ const meta = {
   args: {
     count: 6,
     targets: [
-      { value: "global", label: "Global (Claude Code, Codex)" },
+      { value: "global", label: "Global" },
       { value: "/Users/m/Projects/maestro", label: "maestro" },
     ],
     selected: null,
@@ -22,6 +22,7 @@ const meta = {
         ],
       },
     ],
+    writesTo: null,
     onSelect: () => {},
     unavailable: null,
     fieldsChanged: false,
@@ -61,6 +62,27 @@ export const TargetChosen: Story = {
         rows: [{ key: "wayfinder", name: "wayfinder" }],
       },
     ],
+  },
+};
+
+// A one-tool machine: the undetected tool's folder shows muted.
+export const GlobalChosen: Story = {
+  args: {
+    selected: "global",
+    writesTo: {
+      tone: "neutral",
+      legend: "Writes to",
+      rows: [
+        { key: "claude", name: "~/.claude/skills", machineName: true },
+        {
+          key: "agents",
+          name: "~/.agents/skills",
+          machineName: true,
+          muted: true,
+          sentence: "Codex not detected · not written",
+        },
+      ],
+    },
   },
 };
 

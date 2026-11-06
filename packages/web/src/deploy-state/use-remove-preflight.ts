@@ -49,13 +49,26 @@ function readCheck(value: unknown): RemoveCheck | null {
     const tools: RemoveToolCheck[] = [];
     for (const entry of check.tools as {
       tool?: unknown;
+      path?: unknown;
+      detected?: unknown;
       warning?: unknown;
     }[]) {
       const warning = readWarning(entry?.warning);
-      if (typeof entry?.tool !== "string" || warning === undefined) {
+      if (
+        typeof entry?.tool !== "string" ||
+        typeof entry.path !== "string" ||
+        typeof entry.detected !== "boolean" ||
+        warning === undefined
+      ) {
         return null;
       }
-      tools.push({ tool: entry.tool as RemoveToolCheck["tool"], warning });
+      tools.push({
+        // A tool this build does not know only names the folder's note.
+        tool: entry.tool as RemoveToolCheck["tool"],
+        path: entry.path,
+        detected: entry.detected,
+        warning,
+      });
     }
     return { scope: "global", tools };
   }

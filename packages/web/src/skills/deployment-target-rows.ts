@@ -1,3 +1,4 @@
+import { GLOBAL } from "../deploy-state/deploy-state-copy";
 import type { DeployStateRead } from "../deploy-state/deployed-view";
 import { globalToolView, toDeployedView } from "../deploy-state/deployed-view";
 import { toolDisplayName } from "../deploy-state/tool-presentation";
@@ -6,8 +7,39 @@ import type { DriftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 
-// A global entry apm could not manage names no tool, so every tool row carries
-// the section-wide attention count (#358).
+/** Global as one target row; none while no tool is detected. */
+export function globalTargets(
+  state: Pick<
+    GlobalDeployStateView,
+    "primitives" | "folders" | "releaseHead" | "skipped" | "pendingOperation"
+  >,
+  drift: DriftViewModel,
+): DeploymentTarget[] {
+  const written = state.folders.filter((folder) => folder.detected);
+  if (written.length === 0) {
+    return [];
+  }
+  const releaseHead = state.releaseHead;
+  const names = state.primitives.map((primitive) => primitive.name);
+  return [
+    {
+      label: GLOBAL,
+      target: { kind: "global" },
+      folders: written.map((folder) => folder.path),
+      deployed: globalToolView(names, state.skipped, releaseHead),
+      primitives: state.primitives,
+      drift: drift.forTool(names),
+      // Global's one Release head answers the per-skill reading; the drift
+      // model is the fallback where there is none (#956).
+      ...(releaseHead ? { releaseHead } : {}),
+      pending: state.pendingOperation?.kind,
+    },
+  ];
+}
+
+// Bulk deploy plans per folder, so a copy present in one folder and missing
+// in another never reads as deployed (#292). A global entry apm could not
+// manage names no folder, so every row carries the section-wide count (#358).
 export function globalToolTargets(
   state: Pick<
     GlobalDeployStateView,
@@ -22,14 +54,10 @@ export function globalToolTargets(
       const names = folder.primitives.map((primitive) => primitive.name);
       return {
         label: toolDisplayName(folder.tool),
-        // One removal covers every folder, so each row names the same global target.
         target: { kind: "global" },
-        tool: folder.tool,
         deployed: globalToolView(names, state.skipped, releaseHead),
         primitives: folder.primitives,
         drift: drift.forTool(names),
-        // Global's one Release head answers the per-skill reading; the drift
-        // model is the fallback where there is none (#956).
         ...(releaseHead ? { releaseHead } : {}),
         pending: state.pendingOperation?.kind,
       };

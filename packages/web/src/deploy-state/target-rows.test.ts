@@ -478,7 +478,10 @@ describe("Global as one target", () => {
       name: "Global",
       updateName: "Global",
       wire: { kind: "global" },
-      target: { kind: "global", tools: ["claude", "codex"] },
+      target: {
+        kind: "global",
+        folders: ["~/.claude/skills", "~/.agents/skills"],
+      },
       skills: 1,
     });
   });

@@ -14,6 +14,7 @@ import {
   useGlobalDeployState,
 } from "../deploy-state/use-global-deploy-state";
 import { useUpdateTarget } from "../deploy-state/use-update-target";
+import { writesToGroup } from "../deploy-state/writes-to-group";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
@@ -121,7 +122,7 @@ export function BulkDeployRun({
     selected === null
       ? null
       : isGlobal
-        ? { target: { kind: "global" }, label: "Global" }
+        ? { target: { kind: "global" }, label: GLOBAL }
         : {
             target: { kind: "repo", repoPath: selected },
             label: repoTargetName(selected, repoPaths),
@@ -199,7 +200,7 @@ export function BulkDeployRun({
   if (updateFor !== null && chosenRun !== null) {
     return (
       <UpdateTargetAction
-        targetName={isGlobal ? GLOBAL : chosenRun.label}
+        targetName={chosenRun.label}
         target={chosenRun.target}
         update={update}
         add={updateFor}
@@ -225,6 +226,11 @@ export function BulkDeployRun({
       ]}
       selected={selected}
       skills={bulkDeploySkillGroups(stagedNames, preview)}
+      writesTo={
+        isGlobal && globalDeployState.data
+          ? writesToGroup(globalDeployState.data.folders)
+          : null
+      }
       onSelect={(value) => {
         bulk.reset();
         setRedeployed([]);

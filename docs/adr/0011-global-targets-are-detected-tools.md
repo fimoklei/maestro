@@ -179,6 +179,27 @@ Amended:
 - **Each Global folder is a read-only row** under the one Global row, with one
   mark. A folder lacking skills of Global's Selection reads `Skills missing`.
 
+## Amendment (2026-11-06, issue #1803) — the last skill's uninstall reaches every recorded folder
+
+The #1557 amendment says no remove reclaims an untargeted tool's copy. One
+apm call breaks that: Remove of Global's last skill runs a named
+`apm uninstall`, which deletes the copies in every folder its lockfile
+records, detected or not (measured on apm 0.32.0). A Remove that leaves other
+skills installs with `-t` set to the detected tools and leaves the undetected
+folder's copy.
+
+Amended:
+
+- **Remove guards the folders its apm call touches.** The copy guard checks
+  every recorded folder when Remove takes Global's last skill, and the
+  detected folders otherwise. Local edits in an undetected folder refuse only
+  the last skill's Remove, and the refusal names that folder.
+- **The dialog names that folder.** For the last skill, `Writes to` also lists
+  an undetected tool's folder that holds a copy, muted, with its tool not
+  detected.
+
+Unchanged: Maestro itself still deletes no copy in an undetected tool's folder.
+
 ## Rejected alternatives
 
 - **Model A — one deploy unit mirrored to both tools.** Simpler, matches apm's

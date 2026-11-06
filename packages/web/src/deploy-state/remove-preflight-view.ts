@@ -3,6 +3,7 @@
 import type {
   RemoveCheck,
   RemovePreflightError,
+  RemoveToolCheck,
   RemoveWarning,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
@@ -21,8 +22,13 @@ export type RemoveCheckState =
   // No per-row answer yet: still running, or the request failed.
   | { kind: "unanswered"; warning: "checking" | "check-failed" }
   | { kind: "repo"; warning: RemoveRowWarning }
-  // A tool missing from the map was never reported on, which is not a clean copy.
-  | { kind: "per-tool"; warnings: Readonly<Record<string, RemoveRowWarning>> };
+  // A Global folder the answer left out was never checked, which is not a clean copy.
+  | { kind: "per-folder"; folders: readonly RemoveFolderAnswer[] };
+
+/** One Global folder the removal deletes from, with what the check found there. */
+type RemoveFolderAnswer = Omit<RemoveToolCheck, "warning"> & {
+  warning: RemoveRowWarning;
+};
 
 export type RemovePreflightView =
   | { kind: "offered"; check: RemoveCheckState }
@@ -107,13 +113,11 @@ function checkState(check: RemoveCheck): RemoveCheckState {
   return check.scope === "repo"
     ? { kind: "repo", warning: rowWarningFor(check.warning) }
     : {
-        kind: "per-tool",
-        warnings: Object.fromEntries(
-          check.tools.map((entry) => [
-            entry.tool,
-            rowWarningFor(entry.warning),
-          ]),
-        ),
+        kind: "per-folder",
+        folders: check.tools.map((entry) => ({
+          ...entry,
+          warning: rowWarningFor(entry.warning),
+        })),
       };
 }
 

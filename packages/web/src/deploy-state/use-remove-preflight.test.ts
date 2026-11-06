@@ -5,15 +5,18 @@ import {
   removePreflightQueryOptions,
 } from "./use-remove-preflight";
 
+const CLAUDE = { tool: "claude", path: "~/.claude/skills", detected: true };
+const CODEX = { tool: "codex", path: "~/.agents/skills", detected: false };
+
 describe("readRemovePreflight", () => {
-  it("reads the per-tool answer of the global scope", () => {
+  it("reads the per-folder answer of the global scope", () => {
     expect(
       readRemovePreflight({
         check: {
           scope: "global",
           tools: [
-            { tool: "claude", warning: null },
-            { tool: "codex", warning: "cannot-verify-local-edits" },
+            { ...CLAUDE, warning: null },
+            { ...CODEX, warning: "cannot-verify-local-edits" },
           ],
         },
         receipt: "r1",
@@ -22,8 +25,8 @@ describe("readRemovePreflight", () => {
       check: {
         scope: "global",
         tools: [
-          { tool: "claude", warning: null },
-          { tool: "codex", warning: "cannot-verify-local-edits" },
+          { ...CLAUDE, warning: null },
+          { ...CODEX, warning: "cannot-verify-local-edits" },
         ],
       },
       receipt: "r1",
@@ -63,6 +66,26 @@ describe("readRemovePreflight", () => {
           check: {
             scope: "global",
             tools: [{ tool: "claude", warning: null }, { warning: null }],
+          },
+        },
+      ],
+      [
+        "a folder row with no path",
+        {
+          check: {
+            scope: "global",
+            tools: [{ tool: "claude", detected: true, warning: null }],
+          },
+        },
+      ],
+      [
+        "a folder row that does not say whether its tool is detected",
+        {
+          check: {
+            scope: "global",
+            tools: [
+              { tool: "claude", path: "~/.claude/skills", warning: null },
+            ],
           },
         },
       ],

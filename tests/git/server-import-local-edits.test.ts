@@ -119,6 +119,7 @@ describe("import local edits HTTP routes", { timeout: 30_000 }, () => {
       target,
       names: ["tdd"],
       undo: [],
+      selected: [],
     });
     expect(imported.status).toBe(200);
     expect(await imported.json()).toEqual({

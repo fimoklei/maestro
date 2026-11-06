@@ -1,5 +1,5 @@
 import { repoTargetName } from "../shell/target-name";
-// Every deploy target (each detected tool and each registered repo) as one flat
+// Every deploy target (Global and each registered repo) as one flat
 // list for the roll-up (#272), from queries the cockpit already runs.
 
 import { useQueries } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { type Reading, targetReadings } from "../ui/freshness";
-import { globalToolTargets, repoTarget } from "./deployment-target-rows";
+import { globalTargets, repoTarget } from "./deployment-target-rows";
 
 export function useDeploymentTargets(
   repoPaths: string[],
@@ -78,8 +78,8 @@ export function useDeploymentTargets(
     });
   } else {
     targets.push(
-      ...globalToolTargets(
-        globalDeploy.data ?? { folders: [], skipped: [] },
+      ...globalTargets(
+        globalDeploy.data ?? { primitives: [], folders: [], skipped: [] },
         globalDrift,
       ),
     );

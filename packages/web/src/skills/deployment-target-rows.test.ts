@@ -1,7 +1,11 @@
 import type { GlobalFolderState, SkippedEntry } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import { globalToolTargets, repoTarget } from "./deployment-target-rows";
+import {
+  globalTargets,
+  globalToolTargets,
+  repoTarget,
+} from "./deployment-target-rows";
 
 const drift = driftViewModel({ data: { behind: [] }, isError: false });
 const skill = { type: "skill" as const, name: "tdd", version: "v1.0.0" };
@@ -23,6 +27,66 @@ const folder = (
   primitives,
 });
 
+describe("globalTargets", () => {
+  it("builds one Global row with its one skill list and the folders it writes", () => {
+    const rows = globalTargets(
+      {
+        primitives: [skill],
+        folders: [folder("claude", [skill]), folder("codex", [], false)],
+        skipped: [],
+      },
+      drift,
+    );
+
+    expect(rows).toEqual([
+      {
+        label: "Global",
+        target: { kind: "global" },
+        folders: ["~/.claude/skills"],
+        deployed: {
+          status: "ready",
+          names: ["tdd"],
+          skippedCount: 0,
+          attentionCount: 0,
+          followsRelease: false,
+        },
+        primitives: [skill],
+        drift: expect.anything(),
+      },
+    ]);
+  });
+
+  it("builds no row while no tool is detected", () => {
+    const rows = globalTargets(
+      {
+        primitives: [],
+        folders: [folder("claude", [], false), folder("codex", [], false)],
+        skipped: [],
+      },
+      drift,
+    );
+
+    expect(rows).toEqual([]);
+  });
+
+  it("carries the global target's unfinished operation and attention count", () => {
+    const [row] = globalTargets(
+      {
+        primitives: [skill],
+        folders: [folder("claude", [skill]), folder("codex", [skill])],
+        skipped: [unmanageable],
+        pendingOperation: { kind: "remove", release: "v1.0.0", desired: [] },
+      },
+      drift,
+    );
+
+    expect(row?.pending).toBe("remove");
+    expect(row?.deployed).toEqual(
+      expect.objectContaining({ status: "ready", attentionCount: 1 }),
+    );
+  });
+});
+
 describe("globalToolTargets", () => {
   it("builds one global row per folder of a detected tool", () => {
     const rows = globalToolTargets(
@@ -37,7 +101,6 @@ describe("globalToolTargets", () => {
       {
         label: "Claude Code",
         target: { kind: "global" },
-        tool: "claude",
         deployed: {
           status: "ready",
           names: ["tdd"],

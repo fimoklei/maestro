@@ -12,6 +12,7 @@ import {
   TARGET_LABEL,
 } from "./deploy-state-copy";
 import { GlobalFolders } from "./global-folders";
+import { differingCopiesLine } from "./import-local-edits-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   behindLine,
@@ -31,6 +32,7 @@ import {
   type TargetPaneActions,
 } from "./target-pane-actions";
 import { editedSkills, type TargetRow } from "./target-rows";
+import { useDifferingCopyFolders } from "./use-import-local-edits";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
 // Update target as `update`, and the dialogs they open as `dialogs`.
@@ -90,11 +92,15 @@ export function TargetDetailPane({
   const changed = head ? changedFact(head) : null;
   const latestRelease = latestReleaseFact(head);
   const edited = editedSkills(row.primitives);
+  // Its sentence names Import local edits, which an operation withholds.
+  const importable = edited.length > 0 && row.pending === undefined;
+  const differing = useDifferingCopyFolders(
+    row.wire,
+    importable && row.wire.kind === "global",
+  );
   const why = [
-    // Its sentence names Import local edits, which an operation withholds.
-    ...(edited.length === 0 || row.pending
-      ? []
-      : [localEditsLine(edited, row.behind)]),
+    ...(importable ? [localEditsLine(edited, row.behind)] : []),
+    ...(importable ? differing.map(differingCopiesLine) : []),
     // A plain behind target still says why, and which control moves it.
     ...(head && row.behind && edited.length === 0 && !row.pending && !row.pinned
       ? [behindLine(head)]

@@ -1028,8 +1028,14 @@ describe("BulkDeployAction — the target it deploys to", () => {
     expect(options[0]).toHaveTextContent("Global");
   });
 
-  // #134: the Global option says where it lands before anything runs.
-  it("names the tools the Global option will hit on a two-tool machine", async () => {
+  // The Global folders a deploy writes, named by path before anything runs
+  // (#134, #1798). Several tools read one folder, so the option names none.
+  const writesTo = async (dialog: HTMLElement) =>
+    within(
+      await within(dialog).findByRole("group", { name: "Writes to" }),
+    ).getAllByRole("listitem");
+
+  it("lists both Global folders under Writes to on a two-tool machine", async () => {
     stubTools([
       { tool: "claude", primitives: [] },
       { tool: "codex", primitives: [] },
@@ -1038,22 +1044,36 @@ describe("BulkDeployAction — the target it deploys to", () => {
     await openTargets(dialog);
 
     expect(
-      await screen.findByRole("option", {
-        name: /Global \(Claude Code \+ Codex\)/,
-      }),
+      await screen.findByRole("option", { name: "Global" }),
     ).not.toHaveAttribute("aria-disabled");
+    await userEvent.click(screen.getByRole("option", { name: "Global" }));
+
+    expect((await writesTo(dialog)).map((row) => row.textContent)).toEqual([
+      "~/.claude/skills",
+      "~/.agents/skills",
+    ]);
   });
 
-  it("names the single tool the Global option will hit on a one-tool machine", async () => {
+  it("marks an undetected tool's folder as not written on a one-tool machine", async () => {
     stubTools([{ tool: "claude", primitives: [] }]);
     const dialog = await openOne(twoRepos);
-    await openTargets(dialog);
+    await chooseDeployTarget(dialog, "Global");
+
+    expect((await writesTo(dialog)).map((row) => row.textContent)).toEqual([
+      "~/.claude/skills",
+      "~/.agents/skills" + "Codex not detected · not written",
+    ]);
+  });
+
+  it("lists no Global folders while a repository is the target", async () => {
+    stubTools([{ tool: "claude", primitives: [] }]);
+    const dialog = await openOne(twoRepos);
+    await chooseDeployTarget(dialog, /projects\/alpha$/);
+    await runnable(dialog);
 
     expect(
-      await screen.findByRole("option", {
-        name: /Global \(Claude Code\)/,
-      }),
-    ).toBeInTheDocument();
+      within(dialog).queryByRole("group", { name: "Writes to" }),
+    ).not.toBeInTheDocument();
   });
 
   it("disables the Global option, and the deploy waits for a target, when no tool is detected", async () => {
@@ -1365,7 +1385,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
       within(dialog)
         .getAllByRole("group")
         .map((group) => group.querySelector("legend")?.textContent),
-    ).toEqual(["To deploy · 2", "Already up to date · 1"]);
+    ).toEqual(["To deploy · 2", "Already up to date · 1", "Writes to"]);
     expect(dialog).not.toHaveTextContent(/update|latest/i);
   });
 

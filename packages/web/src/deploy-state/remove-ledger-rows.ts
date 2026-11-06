@@ -2,6 +2,7 @@ import type { RemoveOutcome, RemoveTargetState } from "@maestro/core";
 import type { DeployableType } from "../inventory/type-filter";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import type { ReportGroup } from "../ui/report";
+import { notDetectedNote } from "./deploy-state-copy";
 import type {
   RemoveCheckState,
   RemoveRowWarning,
@@ -11,13 +12,16 @@ import { toolDisplayName } from "./tool-presentation";
 export type RemoveDialogTarget =
   // A repo carries its table row's name, so the dialog names it as the row does.
   | { kind: "repo"; repoPath: string; name: string }
-  | { kind: "global"; tools: string[] };
+  // The Global folders Global writes, listed until the check names its own.
+  | { kind: "global"; folders: readonly string[] };
 
 export type RemoveLedgerRow = {
   key: string;
   name: string;
   status: string | null;
   drift: boolean;
+  /** A Global folder: muted, with its tool not detected, where Global does not write it. */
+  folder?: { muted: false } | { muted: true; note: string };
 };
 
 const WARNING_STATUS: Record<Exclude<RemoveRowWarning, "none">, string> = {
@@ -25,18 +29,15 @@ const WARNING_STATUS: Record<Exclude<RemoveRowWarning, "none">, string> = {
   "check-failed": "Check did not run — may lose work",
 };
 
-// A tool the answer never mentioned is unchecked, never clean.
-function warningForTool(
-  check: RemoveCheckState,
-  tool: string,
-): RemoveRowWarning | null {
+// Before an answer, or where it failed, no row has been checked.
+function unansweredWarning(check: RemoveCheckState): RemoveRowWarning | null {
   switch (check.kind) {
     case "unanswered":
       return check.warning === "checking" ? null : "check-failed";
     case "repo":
       return check.warning;
-    case "per-tool":
-      return check.warnings[tool] ?? "check-failed";
+    case "per-folder":
+      return "check-failed";
   }
 }
 
@@ -84,17 +85,31 @@ export function removeOutcomeReport(
   target: RemoveDialogTarget,
   outcome: RemoveOutcome,
 ): { heading: string; groups: ReportGroup[] } {
-  const targets = targetsOf(target);
-  const reported =
+  const reported: readonly { name: string; state: RemoveTargetState }[] =
     outcome.scope === "repo"
-      ? [{ tool: targets[0]?.tool ?? "", state: outcome.state }]
-      : outcome.tools;
-  const onScreen = targets.map((entry) => entry.tool);
+      ? [
+          {
+            name: target.kind === "repo" ? target.name : "",
+            state: outcome.state,
+          },
+        ]
+      : outcome.tools.map((entry) => ({
+          name: entry.path,
+          state: entry.state,
+        }));
+  const onScreen = target.kind === "repo" ? [target.name] : target.folders;
   const ordered = [...reported].sort(
-    (a, b) => rank(onScreen, a.tool) - rank(onScreen, b.tool),
+    (a, b) => rank(onScreen, a.name) - rank(onScreen, b.name),
   );
   const removed = reported.filter((entry) => entry.state === "removed").length;
-  const noun = reported.length === 1 ? "target" : "targets";
+  const noun =
+    outcome.scope === "global"
+      ? reported.length === 1
+        ? "folder"
+        : "folders"
+      : reported.length === 1
+        ? "target"
+        : "targets";
   return {
     heading: `Removed from ${removed} of ${reported.length} ${noun}`,
     groups: OUTCOME_GROUPS.map(({ state, tone, label }) => ({
@@ -102,36 +117,59 @@ export function removeOutcomeReport(
       label,
       rows: ordered
         .filter((entry) => entry.state === state)
-        .map((entry) =>
-          target.kind === "repo"
-            ? { name: target.name }
-            : {
-                name:
-                  targets.find((each) => each.tool === entry.tool)?.name ??
-                  toolDisplayName(entry.tool),
-              },
-        ),
+        .map((entry) => ({ name: entry.name })),
     })),
   };
 }
 
-const rank = (onScreen: readonly string[], tool: string) => {
-  const index = onScreen.indexOf(tool);
+const rank = (onScreen: readonly string[], name: string) => {
+  const index = onScreen.indexOf(name);
   return index === -1 ? onScreen.length : index;
 };
-
-const targetsOf = (target: RemoveDialogTarget) =>
-  target.kind === "repo"
-    ? [{ tool: target.repoPath, name: target.name }]
-    : target.tools.map((tool) => ({ tool, name: toolDisplayName(tool) }));
 
 export function removeLedgerRows(
   target: RemoveDialogTarget,
   check: RemoveCheckState,
 ): RemoveLedgerRow[] {
-  return targetsOf(target).map(({ tool, name }) => ({
-    key: `target:${name}`,
-    name,
-    ...statusFor(warningForTool(check, tool)),
+  if (target.kind === "repo") {
+    return [
+      {
+        key: `target:${target.name}`,
+        name: target.name,
+        ...statusFor(unansweredWarning(check)),
+      },
+    ];
+  }
+  if (check.kind !== "per-folder") {
+    return target.folders.map((path) =>
+      folderRow(path, unansweredWarning(check)),
+    );
+  }
+  // The answer names the folders the removal deletes from; one Global writes
+  // that it left out was never checked.
+  const answered = check.folders.map((folder) => ({
+    ...folderRow(folder.path, folder.warning),
+    ...(folder.detected
+      ? {}
+      : {
+          folder: {
+            muted: true as const,
+            note: notDetectedNote(toolDisplayName(folder.tool)),
+          },
+        }),
   }));
+  const unchecked = target.folders
+    .filter((path) => !check.folders.some((folder) => folder.path === path))
+    .map((path) => folderRow(path, "check-failed"));
+  return [...answered, ...unchecked];
 }
+
+const folderRow = (
+  path: string,
+  warning: RemoveRowWarning | null,
+): RemoveLedgerRow => ({
+  key: `folder:${path}`,
+  name: path,
+  ...statusFor(warning),
+  folder: { muted: false },
+});

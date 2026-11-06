@@ -34,6 +34,7 @@ describe("copy guard", () => {
         'export const d = "The Harness already holds a skill under it. Pick another name.";',
         'export const e = "Fix the skill, then deploy again.";',
         'export const f = "Deploy tdd again";',
+        'export const g = "Remove from target";',
         "",
       ].join("\n"),
     );
@@ -84,6 +85,8 @@ describe("copy guard", () => {
     ["Select Deploy again to overwrite it.", "Deploy again"],
     ["Update targets", "Update targets"],
     ["Select Update targets to move them.", "Update targets"],
+    ["Remove from Claude Code and Codex", "Remove from Claude Code"],
+    ["Remove from Codex", "Remove from Codex"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",

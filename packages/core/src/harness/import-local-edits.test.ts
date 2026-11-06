@@ -297,6 +297,18 @@ function target(
 const REPO_TARGET = { kind: "repo" as const, repoPath: REPO };
 const GLOBAL_TARGET = { kind: "global" as const };
 
+const CODEX_EDITED = `${EDITED}More.\n`;
+
+// Both Global copies carry local edits, and the Codex folder's differ.
+function differingGlobalCopies() {
+  const world = target({
+    global: true,
+    copies: { "code-review": { claude: "diverged", codex: "diverged" } },
+  });
+  world.files[`${HOME}/.agents/skills/code-review/SKILL.md`] = CODEX_EDITED;
+  return world;
+}
+
 describe("ImportLocalEdits.check", () => {
   it("lists every Local edits skill from this Harness as eligible", async () => {
     const { useCase } = target({
@@ -497,23 +509,19 @@ describe("ImportLocalEdits.check", () => {
     });
   });
 
-  it("refuses a global skill whose tool copies differ, naming both folders from home", async () => {
-    const { useCase, files } = target({
-      global: true,
-      copies: { "code-review": { claude: "diverged", codex: "diverged" } },
-    });
-    files[`${HOME}/.agents/skills/code-review/SKILL.md`] = `${EDITED}More.\n`;
+  it("lists a global skill whose edited copies differ with each copy's folder from home", async () => {
+    const { useCase } = differingGlobalCopies();
 
     await expect(useCase.check(GLOBAL_TARGET)).resolves.toEqual({
       ok: true,
       skills: [
         {
           name: "code-review",
-          refusal: "copies-differ",
-          folders: {
-            claude: "~/.claude/skills/code-review",
-            codex: "~/.agents/skills/code-review",
-          },
+          refusal: null,
+          folders: [
+            "~/.claude/skills/code-review",
+            "~/.agents/skills/code-review",
+          ],
         },
       ],
     });
@@ -546,6 +554,7 @@ describe("ImportLocalEdits.execute", () => {
       target: REPO_TARGET,
       names: ["code-review"],
       undo: [],
+      selected: [],
     });
 
     expect(result).toEqual({
@@ -566,12 +575,94 @@ describe("ImportLocalEdits.execute", () => {
         target: GLOBAL_TARGET,
         names: ["code-review"],
         undo: [],
+        selected: [],
       }),
     ).resolves.toEqual({
       ok: true,
       outcomes: [{ name: "code-review", refusal: null }],
     });
     expect(files[`${ROOT}/.apm/skills/code-review/SKILL.md`]).toBe(EDITED);
+  });
+
+  it("lands the selected one of differing global copies and leaves the other copy as it is", async () => {
+    const { useCase, files } = differingGlobalCopies();
+
+    await expect(
+      useCase.execute({
+        target: GLOBAL_TARGET,
+        names: ["code-review"],
+        undo: [],
+        selected: [
+          { name: "code-review", folder: "~/.agents/skills/code-review" },
+        ],
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      outcomes: [{ name: "code-review", refusal: null }],
+    });
+    expect(files[`${ROOT}/.apm/skills/code-review/SKILL.md`]).toBe(
+      CODEX_EDITED,
+    );
+    expect(files[`${HOME}/.claude/skills/code-review/SKILL.md`]).toBe(EDITED);
+    expect(files[`${HOME}/.agents/skills/code-review/SKILL.md`]).toBe(
+      CODEX_EDITED,
+    );
+  });
+
+  it("refuses differing global copies when no copy is selected", async () => {
+    const { useCase, files } = differingGlobalCopies();
+
+    await expect(
+      useCase.execute({
+        target: GLOBAL_TARGET,
+        names: ["code-review"],
+        undo: [],
+        selected: [],
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      outcomes: [{ name: "code-review", refusal: "copy-not-selected" }],
+    });
+    expect(files[`${ROOT}/.apm/skills/code-review/SKILL.md`]).toBe(HELD);
+  });
+
+  it("refuses a selected folder the check did not offer", async () => {
+    const { useCase, files } = differingGlobalCopies();
+
+    await expect(
+      useCase.execute({
+        target: GLOBAL_TARGET,
+        names: ["code-review"],
+        undo: [],
+        selected: [{ name: "code-review", folder: "~/elsewhere/code-review" }],
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      outcomes: [{ name: "code-review", refusal: "copy-not-offered" }],
+    });
+    expect(files[`${ROOT}/.apm/skills/code-review/SKILL.md`]).toBe(HELD);
+  });
+
+  it("refuses a selection for a skill whose copies do not differ", async () => {
+    const { useCase, files } = target({
+      global: true,
+      copies: { "code-review": { claude: "diverged", codex: "diverged" } },
+    });
+
+    await expect(
+      useCase.execute({
+        target: GLOBAL_TARGET,
+        names: ["code-review"],
+        undo: [],
+        selected: [
+          { name: "code-review", folder: "~/.agents/skills/code-review" },
+        ],
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      outcomes: [{ name: "code-review", refusal: "copy-not-offered" }],
+    });
+    expect(files[`${ROOT}/.apm/skills/code-review/SKILL.md`]).toBe(HELD);
   });
 
   it("refuses a skill that no longer reads Local edits", async () => {
@@ -583,6 +674,7 @@ describe("ImportLocalEdits.execute", () => {
         target: REPO_TARGET,
         names: ["code-review"],
         undo: [],
+        selected: [],
       }),
     ).resolves.toEqual({
       ok: true,
@@ -616,6 +708,7 @@ describe("ImportLocalEdits.execute", () => {
         target: REPO_TARGET,
         names: ["code-review", "tdd"],
         undo: [],
+        selected: [],
       }),
     ).resolves.toEqual({
       ok: true,
@@ -644,6 +737,7 @@ describe("ImportLocalEdits.execute", () => {
         target: REPO_TARGET,
         names: ["code-review", "tdd"],
         undo: ["tdd"],
+        selected: [],
       }),
     ).resolves.toEqual({
       ok: true,
@@ -672,6 +766,7 @@ describe("ImportLocalEdits.execute", () => {
         target: REPO_TARGET,
         names: ["code-review"],
         undo: [],
+        selected: [],
       }),
     ).resolves.toEqual({
       ok: true,
@@ -697,6 +792,7 @@ describe("ImportLocalEdits.execute", () => {
         target: REPO_TARGET,
         names: ["code-review", "tdd"],
         undo: [],
+        selected: [],
       }),
     ).resolves.toEqual({
       ok: true,
@@ -717,6 +813,7 @@ describe("ImportLocalEdits.execute", () => {
         target: REPO_TARGET,
         names: ["code-review"],
         undo: [],
+        selected: [],
       });
     });
 

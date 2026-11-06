@@ -315,9 +315,42 @@ describe("remove HTTP route", () => {
       w.copy(globalTarget, ".agents/skills/jobs/SKILL.md");
 
       expect(await (await w.preflight(globalTarget)).json()).toEqual({
-        check: { scope: "global", tools: [{ tool: "claude", warning: null }] },
+        check: {
+          scope: "global",
+          tools: [
+            {
+              tool: "claude",
+              path: "~/.claude/skills",
+              detected: true,
+              warning: null,
+            },
+          ],
+        },
         receipt: expect.any(String),
       });
+    });
+
+    it("names the Global folder whose local edits refuse the removal", async () => {
+      const w = await world({ detectedTools: ["claude"] });
+      w.seed(globalTarget, [
+        skillEntry("tdd", [
+          ".claude/skills/tdd/SKILL.md",
+          ".agents/skills/tdd/SKILL.md",
+        ]),
+      ]);
+      w.copy(globalTarget, ".claude/skills/tdd/SKILL.md");
+      w.copy(globalTarget, ".agents/skills/tdd/SKILL.md", "# tdd, edited\n");
+
+      const preflight = await w.preflight(globalTarget);
+      const removal = await w.remove({ target: globalTarget });
+
+      const refusal = {
+        error: "deployed-diverged-from-lock",
+        folders: ["~/.agents/skills"],
+      };
+      expect(await preflight.json()).toEqual(refusal);
+      expect(await removal.json()).toEqual(refusal);
+      expect(w.uninstalls).toEqual([]);
     });
 
     it("refuses when the machine has no supported tool", async () => {

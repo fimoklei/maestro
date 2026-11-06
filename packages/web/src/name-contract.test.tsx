@@ -36,7 +36,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Select ${deployAgainLabel(row.name)}`": "button label",
   },
   "deploy-state/remove-ledger-rows.ts": {
-    "`target:${name}`": "key",
+    "`target:${target.name}`": "key",
     "`Remove ${name}`": "dialog title",
   },
   "deploy-state/selected-skills.tsx": {
@@ -101,7 +101,6 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Remove ${skillName} from ${targetCount(count)}`": "dialog title",
     "`Select ${name}`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",
-    '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",
   },
   "prompts/prompts-copy.ts": {
     "`Select ${name}`": "checkbox label",
@@ -140,6 +139,9 @@ const PLAIN_MACHINE: Record<string, Record<string, string>> = {
   },
   "deploy-state/folder-sub-rows.tsx": {
     "`${row.id}:${folder.path}`": "key",
+  },
+  "deploy-state/remove-ledger-rows.ts": {
+    "`folder:${path}`": "key",
   },
   "ui/dialog.tsx": {
     "`${title} ${version}`": "accessible name",
@@ -443,6 +445,8 @@ const SURFACES: {
         checked={new Set()}
         checksChanged={false}
         onToggle={vi.fn()}
+        selections={new Map()}
+        onSelect={vi.fn()}
         isRunning={false}
         outcomes={null}
         failure={null}

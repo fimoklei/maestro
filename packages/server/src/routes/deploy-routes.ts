@@ -146,6 +146,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           ...(result.check && result.receipt
             ? { check: result.check, receipt: result.receipt }
             : {}),
+          ...(result.folders ? { folders: result.folders } : {}),
         },
         status,
       );
@@ -163,7 +164,13 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     const result = await deps.remove.preflight(body.data);
     if (!result.ok) {
       const { status } = removePreflightErrorResponses[result.error];
-      return c.json({ error: result.error }, status);
+      return c.json(
+        {
+          error: result.error,
+          ...(result.folders ? { folders: result.folders } : {}),
+        },
+        status,
+      );
     }
     return c.json({ check: result.check, receipt: result.receipt });
   });

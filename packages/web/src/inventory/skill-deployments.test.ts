@@ -139,40 +139,28 @@ describe("skillDeployments", () => {
   });
 
   // What the target row's ⋮ acts on (#1065): the write's target, the removal's
-  // target with every detected tool, the Deploy-state row it opens.
+  // target with the folders Global writes, the Deploy-state row it opens.
   it("names what each target row's actions act on", () => {
-    const tool = (name: string, label: string): DeploymentTarget => ({
-      ...target(label, [{ name: "tdd", version: "v1.0.0" }]),
-      tool: name,
-    });
     const targets = [
-      tool("claude", "Claude Code"),
-      tool("codex", "Codex"),
+      {
+        ...target("Global", [{ name: "tdd", version: "v1.0.0" }]),
+        folders: ["~/.claude/skills", "~/.agents/skills"],
+      },
       target("/dev/acme-web", [{ name: "tdd", version: "v1.1.0" }]),
     ];
 
     expect(skillDeployments("tdd", targets)).toEqual([
       {
-        label: "Claude Code",
+        label: "Global",
         release: "v1.0.0",
         version: "v1.0.0",
         status: "up-to-date",
         mark: expect.objectContaining({ word: "Up to date" }),
         target: { kind: "global" },
-        removeTarget: { kind: "global", tools: ["claude", "codex"] },
-        updateName: "Global",
-        rowId: "global",
-        updatable: false,
-        edited: false,
-      },
-      {
-        label: "Codex",
-        release: "v1.0.0",
-        version: "v1.0.0",
-        status: "up-to-date",
-        mark: expect.objectContaining({ word: "Up to date" }),
-        target: { kind: "global" },
-        removeTarget: { kind: "global", tools: ["claude", "codex"] },
+        removeTarget: {
+          kind: "global",
+          folders: ["~/.claude/skills", "~/.agents/skills"],
+        },
         updateName: "Global",
         rowId: "global",
         updatable: false,
@@ -197,18 +185,6 @@ describe("skillDeployments", () => {
         edited: false,
       },
     ]);
-  });
-
-  // "global:" opens no row, so a global target naming no tool names none.
-  it("names no Deploy-state row for a global target without its tool", () => {
-    const [deployment] = skillDeployments("tdd", [
-      {
-        ...target("Global", [{ name: "tdd", version: "v1.0.0" }]),
-        target: { kind: "global" },
-      },
-    ]);
-
-    expect(deployment?.rowId).toBeNull();
   });
 
   it("skips targets whose deploy-state has not resolved or could not be read", () => {
