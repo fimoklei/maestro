@@ -76,6 +76,7 @@ export type {
   GlobalFolderState,
   GlobalTargetState,
   NotUpdatedCopy,
+  StrayCopy,
 } from "./deploy-state/global-target";
 export { ReleaseHeadReader } from "./deploy-state/release-head";
 export { CheckVersionDrift } from "./drift/check-version-drift";
