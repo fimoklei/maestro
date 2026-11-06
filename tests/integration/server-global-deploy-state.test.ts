@@ -106,7 +106,7 @@ describe("global deploy-state HTTP route (one target with its folders)", () => {
     });
   });
 
-  it("lists a detected tool's folder with nothing deployed as empty", async () => {
+  it("names the skills a detected tool's folder with nothing deployed lacks", async () => {
     await installClaude();
     await installCodex();
     await writeFile(
@@ -120,7 +120,10 @@ describe("global deploy-state HTTP route (one target with its folders)", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       primitives: [TDD],
-      folders: [claudeFolder([TDD]), agentsFolder([])],
+      folders: [
+        claudeFolder([TDD]),
+        { ...agentsFolder([]), missing: [TDD.name] },
+      ],
       skipped: [],
       otherOrigins: [],
     });

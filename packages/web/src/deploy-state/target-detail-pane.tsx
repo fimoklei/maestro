@@ -31,7 +31,12 @@ import {
   showsReadFailure,
   type TargetPaneActions,
 } from "./target-pane-actions";
-import { editedSkills, notUpdatedLines, type TargetRow } from "./target-rows";
+import {
+  editedSkills,
+  notUpdatedLines,
+  skillsMissingLines,
+  type TargetRow,
+} from "./target-rows";
 import { updateLabel } from "./update-target-copy";
 import { useDifferingCopyFolders } from "./use-import-local-edits";
 
@@ -100,6 +105,7 @@ export function TargetDetailPane({
     importable && row.wire.kind === "global",
   );
   const why = [
+    ...(row.pending ? [] : skillsMissingLines(row)),
     ...(row.pending ? [] : notUpdatedLines(row)),
     ...(importable ? [localEditsLine(edited, row.behind)] : []),
     ...(importable ? differing.map(differingCopiesLine) : []),

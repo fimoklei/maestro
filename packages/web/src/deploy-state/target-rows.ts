@@ -23,6 +23,7 @@ import {
   REPO_NOT_READ,
   REPOSITORIES,
   readByLine,
+  skillsMissingLine,
   TIMED_OUT_HINT,
   UNREACHED_HINT,
 } from "./deploy-state-copy";
@@ -45,7 +46,12 @@ import {
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
-import { NOT_UPDATED, targetStatus, worstFolderReading } from "./target-status";
+import {
+  NOT_UPDATED,
+  SKILLS_MISSING,
+  targetStatus,
+  worstFolderReading,
+} from "./target-status";
 import { toolDisplayName } from "./tool-presentation";
 import { updateLabel } from "./update-target-copy";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
@@ -62,6 +68,8 @@ export type FolderRow = {
   note: string | null;
   /** Why the folder reads Not updated; null where it does not. */
   notUpdated: Copy | null;
+  /** How many of Global's skills the folder lacks; null where it lacks none. */
+  missing: Copy | null;
 };
 
 // One Deploy-state row per target: Global or a registered repository.
@@ -124,6 +132,12 @@ export const notUpdatedLines = (row: Pick<TargetRow, "folders">): Copy[] =>
     folder.notUpdated === null ? [] : [folder.notUpdated],
   );
 
+/** Each Global folder's Skills missing sentence, in folder order. */
+export const skillsMissingLines = (row: Pick<TargetRow, "folders">): Copy[] =>
+  (row.folders ?? []).flatMap((folder) =>
+    folder.missing === null ? [] : [folder.missing],
+  );
+
 export const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
   primitives
     .filter((primitive) => primitive.copy === "local-edits")
@@ -172,6 +186,7 @@ export function globalRows(
       pending: readFailed ? undefined : pending?.kind,
       localEdits: !readFailed && editedSkills(primitives).length > 0,
       notUpdated: !readFailed && (folder.notUpdated?.length ?? 0) > 0,
+      missing: !readFailed && (folder.missing?.length ?? 0) > 0,
     });
   };
   const release = data.releaseHead?.release;
@@ -185,6 +200,14 @@ export function globalRows(
       readFailed || release === undefined || !folder.notUpdated?.length
         ? null
         : notUpdatedLine(folder.path, folder.notUpdated, release),
+    missing:
+      readFailed || !folder.missing?.length
+        ? null
+        : skillsMissingLine(
+            folder.path,
+            folder.missing.length,
+            data.primitives.length,
+          ),
   }));
   const names = data.primitives.map((primitive) => primitive.name);
   return [
@@ -318,6 +341,10 @@ export type StatusCard = { reason: Copy | null; readAge: string | null };
 
 function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
+  const [missing] = skillsMissingLines(row);
+  if (missing !== undefined && row.status?.word === SKILLS_MISSING.word) {
+    return missing;
+  }
   const [notUpdated] = notUpdatedLines(row);
   if (notUpdated !== undefined && row.status?.word === NOT_UPDATED.word) {
     return notUpdated;

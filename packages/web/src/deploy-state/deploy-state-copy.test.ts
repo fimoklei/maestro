@@ -18,6 +18,7 @@ import {
   REPO_NOT_READ,
   REPO_NOT_READ_LINE,
   readByLine,
+  skillsMissingLine,
   TARGET_LABEL,
   TARGETS_FACT,
   TIMED_OUT_HINT,
@@ -26,6 +27,29 @@ import {
 } from "./deploy-state-copy";
 
 // Approved sentences, as exact strings.
+describe("Skills missing copy", () => {
+  const line = (missing: number, deployed: number) =>
+    plainText(skillsMissingLine("~/.agents/skills", missing, deployed));
+
+  it("counts many missing skills and names the folder", () => {
+    expect(line(2, 2)).toBe(
+      "2 of 2 deployed skills are missing in ~/.agents/skills.",
+    );
+  });
+
+  it("counts one missing skill and names the folder", () => {
+    expect(line(1, 2)).toBe(
+      "1 of 2 deployed skills is missing in ~/.agents/skills.",
+    );
+  });
+
+  it("drops the count where Global deploys one skill", () => {
+    expect(line(1, 1)).toBe(
+      "The deployed skill is missing in ~/.agents/skills.",
+    );
+  });
+});
+
 describe("Not updated copy", () => {
   const AGENTS = "~/.agents/skills";
   const line = (copies: { name: string; stillAt: string | null }[]) =>

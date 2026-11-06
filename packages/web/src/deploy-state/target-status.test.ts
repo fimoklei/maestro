@@ -160,6 +160,43 @@ describe("targetStatus", () => {
     }
   });
 
+  it("reads a folder lacking skills as Skills missing, over Not updated, Local edits and Empty", () => {
+    for (const status of [
+      targetStatus({ pending: undefined, indicator: "empty", missing: true }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        behind: true,
+        localEdits: true,
+        notUpdated: true,
+        missing: true,
+      }),
+    ]) {
+      expect(words(status)).toBe("⚠ Skills missing");
+      expect(status?.family).toBe("attention");
+    }
+  });
+
+  it("lets Attention and an unfinished operation outrank Skills missing", () => {
+    expect(
+      words(
+        targetStatus({
+          pending: undefined,
+          indicator: "attention",
+          missing: true,
+        }),
+      ),
+    ).toBe("⚠ Attention");
+    expect(
+      words(
+        targetStatus({ pending: "deploy", indicator: "ok", missing: true }),
+      ),
+    ).toBe("⚠ Deploy incomplete");
+    expect(
+      targetStatus({ pending: undefined, indicator: "pending", missing: true }),
+    ).toBeNull();
+  });
+
   it("lets Attention and an unfinished operation outrank Not updated", () => {
     expect(
       words(
@@ -190,6 +227,7 @@ describe("targetStatus", () => {
       "Removal incomplete",
       "Update incomplete",
       "Attention",
+      "Skills missing",
       "Not updated",
       "Local edits",
       "Behind",
@@ -203,7 +241,7 @@ describe("targetStatus", () => {
 });
 
 describe("TARGET_CHIPS", () => {
-  it("offers Unknown as failed, and Attention, Not updated, Local edits and Behind as attention, unfinished operations under Attention", () => {
+  it("offers Unknown as failed, and Attention, Skills missing, Not updated, Local edits and Behind as attention, unfinished operations under Attention", () => {
     expect(TARGET_CHIPS).toEqual([
       { word: "Unknown", family: "failed", covers: ["Unknown"] },
       {
@@ -215,6 +253,11 @@ describe("TARGET_CHIPS", () => {
           "Removal incomplete",
           "Update incomplete",
         ],
+      },
+      {
+        word: "Skills missing",
+        family: "attention",
+        covers: ["Skills missing"],
       },
       { word: "Not updated", family: "attention", covers: ["Not updated"] },
       { word: "Local edits", family: "attention", covers: ["Local edits"] },
@@ -247,9 +290,18 @@ describe("worstFolderReading", () => {
     notUpdated: true,
     pending: undefined,
   });
+  const missing = targetStatus({
+    indicator: "empty",
+    missing: true,
+    pending: undefined,
+  });
 
   it("takes the folder reading that comes first in the Filter order", () => {
     expect(words(worstFolderReading([inSync, edited]))).toBe("⚠ Local edits");
+    expect(words(worstFolderReading([notUpdated, missing]))).toBe(
+      "⚠ Skills missing",
+    );
+    expect(words(worstFolderReading([missing, attention]))).toBe("⚠ Attention");
     expect(words(worstFolderReading([edited, notUpdated]))).toBe(
       "⚠ Not updated",
     );

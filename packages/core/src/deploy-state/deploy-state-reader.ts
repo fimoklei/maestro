@@ -398,7 +398,21 @@ export class GlobalDeployStateReader extends DeployStateReader {
       tags,
       lockfile,
     });
+    const selection = oneSkillList(folders).map((primitive) => primitive.name);
     for (const folder of folders.filter((each) => each.detected)) {
+      const held = new Set(
+        folder.primitives.map((primitive) => primitive.name),
+      );
+      const missing: string[] = [];
+      for (const name of selection.filter((each) => !held.has(each))) {
+        const reading = await session.read(name, folder.tool).catch(() => null);
+        if (reading?.kind === "missing") {
+          missing.push(name);
+        }
+      }
+      if (missing.length > 0) {
+        folder.missing = missing;
+      }
       const notUpdated: NotUpdatedCopy[] = [];
       for (const primitive of folder.primitives) {
         const reading = await session

@@ -445,6 +445,52 @@ describe("a Global folder left at an older release", () => {
   });
 });
 
+describe("a Global folder that lacks skills", () => {
+  const lacking = (missing: string[]) => {
+    const [global] = globalRows(
+      globalRead([
+        claude([skill("code-review"), skill("tdd")]),
+        {
+          ...agents([skill("code-review", "local-edits")]),
+          missing,
+          notUpdated: [{ name: "code-review", stillAt: "v1.0.0" }],
+        },
+      ]),
+      syncedDrift,
+      false,
+    );
+    if (global === undefined) throw new Error("no Global row");
+    return global;
+  };
+
+  it("reads that folder and the Global row as Skills missing, over Not updated", () => {
+    const global = lacking(["tdd"]);
+    expect(folderMarks(global)).toEqual([
+      ["~/.claude/skills", "✓ In sync"],
+      ["~/.agents/skills", "⚠ Skills missing"],
+    ]);
+    expect(words(global)).toBe("⚠ Skills missing");
+  });
+
+  it("counts the missing skills against Global's list in the hover card", () => {
+    expect(readCard(statusCard(lacking(["tdd"]), COMPARED)).reason).toBe(
+      "1 of 2 deployed skills is missing in ~/.agents/skills.",
+    );
+  });
+
+  it("leaves a folder holding every skill without a missing line", () => {
+    const [global] = globalRows(
+      globalRead([claude([skill("tdd")]), agents([skill("tdd")])]),
+      syncedDrift,
+      false,
+    );
+    expect(global?.folders?.map((folder) => folder.missing)).toEqual([
+      null,
+      null,
+    ]);
+  });
+});
+
 describe("Global as one target", () => {
   it("reads one Global row whose Status is its worst folder's", () => {
     const rows = globalRows(

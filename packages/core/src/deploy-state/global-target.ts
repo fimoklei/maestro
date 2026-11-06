@@ -31,6 +31,8 @@ export type GlobalFolderState = GlobalFolder & {
   primitives: DeployedPrimitive[];
   // Absent where every copy is at the Target release.
   notUpdated?: NotUpdatedCopy[];
+  // Skills of Global's list with no files here; absent where none lack them.
+  missing?: string[];
 };
 
 /** Global as one target: one release, one skill list, and the folders it writes. */

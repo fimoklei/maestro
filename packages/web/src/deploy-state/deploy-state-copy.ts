@@ -101,6 +101,16 @@ export const notDetectedNote = (tool: string) => `${tool} not detected`;
 export const notWrittenNote = (tool: string) =>
   `${notDetectedNote(tool)} · not written`;
 
+/** A Global folder that lacks skills of Global's one skill list. */
+export const skillsMissingLine = (
+  folder: string,
+  missing: number,
+  deployed: number,
+): Phrase =>
+  deployed === 1
+    ? phrase`The deployed skill is missing in ${machine(folder)}.`
+    : phrase`${missing} of ${deployed} deployed skills ${missing === 1 ? "is" : "are"} missing in ${machine(folder)}.`;
+
 /**
  * A Global folder's unedited copies at another release than the Target
  * release. With no release matched, it names none and never says older.
