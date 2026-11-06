@@ -1,5 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { ApmCliDriver, type DeployTarget } from "@maestro/core";
+import {
+  ApmCliDriver,
+  type DeployTarget,
+  type FolderOutcomes,
+} from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { deployWorld, HOME, lockfilePath } from "../helpers/deploy-world";
 
@@ -81,9 +85,16 @@ describe("deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
+    // What each folder got is proven in the core lane; the route carries it.
+    // Checked by the toEqual below before its folders are read.
+    const body = (await res.json()) as { outcome: FolderOutcomes };
+    expect(body).toEqual({
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      outcome: { release: "v0.5.1", folders: expect.any(Array) },
     });
+    expect(
+      body.outcome.folders.map((folder) => `${folder.path} ${folder.written}`),
+    ).toEqual(["~/.claude/skills true", "~/.agents/skills true"]);
     expect(w.installs).toEqual([
       {
         target: globalTarget,

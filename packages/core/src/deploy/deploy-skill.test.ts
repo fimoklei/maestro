@@ -9,6 +9,7 @@ import {
 } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import { deployedCopies } from "./deployed-content.fake";
+import type { FolderOutcomes } from "./folder-outcome";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import { selectionWorld } from "./selection-writer-fake";
@@ -159,6 +160,88 @@ describe("DeploySkill", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "deploy-incomplete" });
+  });
+
+  it("completes a global deploy while an undetected tool's folder keeps its copies", async () => {
+    const { deps, world } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => ["claude"] },
+    });
+    world.seed({ release: "v0.5.1", skills: ["review"] });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(world.files.has("/target/.agents/skills/review/SKILL.md")).toBe(
+      true,
+    );
+  });
+
+  // Echoes the names read, one written copy each in Claude Code's folder.
+  const echoedOutcomes = {
+    read: async ({
+      release,
+      names,
+    }: {
+      release: string;
+      names: readonly string[];
+    }) => ({
+      release,
+      folders: [
+        {
+          path: "~/.claude/skills",
+          tool: "claude" as const,
+          written: true,
+          skills: names.map((name) => ({ name, outcome: "written" as const })),
+        },
+      ],
+    }),
+  };
+  const outcomeNames = (outcome: FolderOutcomes | undefined) =>
+    outcome?.folders.flatMap((folder) =>
+      folder.skills.map((skill) => skill.name),
+    );
+
+  it("reads every Global folder back over the whole Selection the install wrote", async () => {
+    const { deps, world } = buildDeps({ outcomes: echoedOutcomes });
+    world.seed({ release: "v0.5.1", skills: ["review"] });
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd"],
+      target: globalTarget,
+    });
+
+    expect(outcomeNames(report.outcome)).toEqual(["review", "tdd"]);
+  });
+
+  it("states the Global folders after a single deploy too", async () => {
+    const { deps } = buildDeps({ outcomes: echoedOutcomes });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result.ok ? outcomeNames(result.outcome) : null).toEqual(["tdd"]);
+  });
+
+  it("states no folders after a single deploy to a repository", async () => {
+    const { deps } = buildDeps({ outcomes: echoedOutcomes });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
   });
 
   it("refuses a global install that landed only part of the selection", async () => {
@@ -369,6 +452,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      outcome: { release: "v0.5.1", folders: [] },
     });
     expect(deployed).toEqual([
       {
@@ -511,6 +595,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      outcome: { release: "v0.5.1", folders: [] },
     });
     expect(deployed).toHaveLength(1);
   });
@@ -1218,6 +1303,7 @@ describe("DeploySkill", () => {
     await expect(first).resolves.toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      outcome: { release: "v0.5.1", folders: [] },
     });
   });
 

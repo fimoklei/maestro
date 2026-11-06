@@ -163,6 +163,29 @@ describe("RetryTargetOperation", () => {
     ]);
   });
 
+  it("finishes a Global removal over its saved tools while another folder keeps the removed skill", async () => {
+    const { world, retry } = buildUseCase();
+    world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
+    await world.operations.begin({
+      ...interrupted,
+      key: "global",
+      target: { kind: "global" },
+      kind: "remove",
+      previous: ["caveman", "prototype"],
+      desired: ["prototype"],
+      tools: ["claude"],
+    });
+
+    expect(await retry.execute({ target: { kind: "global" } })).toMatchObject({
+      ok: true,
+    });
+    expect(world.calls[0]?.tools).toEqual(["claude"]);
+    expect(world.files.has("/target/.agents/skills/caveman/SKILL.md")).toBe(
+      true,
+    );
+    expect(await world.operations.read("global")).toBeNull();
+  });
+
   it("refuses when there is nothing to retry", async () => {
     const { retry } = buildUseCase();
     expect(await retry.execute({ target })).toEqual({

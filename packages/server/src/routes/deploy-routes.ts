@@ -127,7 +127,10 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       const { status } = deployErrorResponses[result.error];
       return c.json({ error: result.error, ...refusalBody(result) }, status);
     }
-    return c.json({ deployed: result.deployed });
+    return c.json({
+      deployed: result.deployed,
+      ...(result.outcome ? { outcome: result.outcome } : {}),
+    });
   });
 
   app.post("/api/deploy/remove", async (c) => {

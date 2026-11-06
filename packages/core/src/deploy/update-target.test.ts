@@ -701,6 +701,18 @@ describe("UpdateTarget.run", () => {
     expect(running.world.calls[0]?.tools).toStrictEqual(["claude", "codex"]);
   });
 
+  it("completes a Global update while an undetected tool's folder keeps a skill the release dropped", async () => {
+    const running = await confirmed({ target: GLOBAL, detected: ["claude"] });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok).toBe(true);
+    expect(
+      running.world.files.has("/target/.agents/skills/review/SKILL.md"),
+    ).toBe(true);
+    expect(await running.world.operations.read("global")).toBeNull();
+  });
+
   it("stays incomplete when one tool lacks a copy", async () => {
     const running = await confirmed({
       target: GLOBAL,

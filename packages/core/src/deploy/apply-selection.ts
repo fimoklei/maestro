@@ -179,16 +179,19 @@ async function matches(
   if (write.desired.length === 0) {
     return landed.kind === "empty";
   }
-  if (
-    landed.kind !== "root" ||
-    landed.release !== write.release ||
-    !sameNames(landed.deployed, write.desired)
-  ) {
+  if (landed.kind !== "root" || landed.release !== write.release) {
     return false;
   }
-  // A name present for one tool proves nothing about another's copy. A write
-  // naming no tools is a repo install, which apm runs for every tool.
+  // A write naming no tools is a repo install, which apm runs for every tool.
+  // A folder outside the write keeps its copies; they say nothing about it.
   const tools = write.tools ?? SUPPORTED_TOOLS;
+  const written = landed.copies
+    .filter((copy) => tools.includes(copy.tool))
+    .map((copy) => copy.name);
+  if (!sameNames([...new Set(written)], write.desired)) {
+    return false;
+  }
+  // A name present for one tool proves nothing about another's copy.
   const everyCopy = tools.every((tool) =>
     write.desired.every((name) =>
       landed.copies.some((copy) => copy.tool === tool && copy.name === name),

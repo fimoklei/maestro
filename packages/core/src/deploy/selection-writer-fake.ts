@@ -107,14 +107,17 @@ ${
         .join("\n")}\n`
 }`;
 
-  const clearCopies = () => {
+  const inFolderOf = (path: string, tools: readonly SupportedTool[]) =>
+    DEPLOY_TOOLS.some(
+      (tool) =>
+        tools.includes(tool.apmTarget) &&
+        path.startsWith(`${treeRoot}/${tool.skillsDirPrefix}/skills/`),
+    );
+
+  // apm touches only the folders of the tools it targets.
+  const clearCopies = (tools: readonly SupportedTool[]) => {
     for (const path of [...files.keys()]) {
-      if (
-        !edited.has(path) &&
-        DEPLOY_TOOLS.some((tool) =>
-          path.startsWith(`${treeRoot}/${tool.skillsDirPrefix}/skills/`),
-        )
-      ) {
+      if (!edited.has(path) && inFolderOf(path, tools)) {
         files.delete(path);
       }
     }
@@ -161,15 +164,18 @@ ${
       }
       const landed = landing ?? [...(input.skills ?? [])];
       const tools = input.tools ?? SUPPORTED_TOOLS;
-      clearCopies();
+      clearCopies(tools);
       place(landed, tools);
       if (skipped !== null) {
         files.delete(`${treeRoot}/${skipped}`);
         skipped = null;
       }
       const placed = new Set(copyPaths(landed, tools));
-      const kept = [...edited]
-        .filter((path) => files.has(path))
+      const untargeted = SUPPORTED_TOOLS.filter(
+        (tool) => !tools.includes(tool),
+      );
+      const kept = [...files.keys()]
+        .filter((path) => edited.has(path) || inFolderOf(path, untargeted))
         .map((path) => path.slice(treeRoot.length + 1))
         .filter((path) => !placed.has(path));
       files.set(
@@ -194,7 +200,7 @@ ${
         return { ok: false as const };
       }
       const kept = landing ?? [];
-      clearCopies();
+      clearCopies(SUPPORTED_TOOLS);
       place(kept, SUPPORTED_TOOLS);
       if (kept.length === 0) {
         files.delete(lockfilePath);
