@@ -565,9 +565,10 @@ const ON_DIALOG: Row[] = [
     render: ({ running, onClose }) => (
       <BulkDeployDialog
         count={2}
-        targets={[{ value: "global", label: "Global (Claude Code)" }]}
+        targets={[{ value: "global", label: "Global" }]}
         selected="global"
         skills={[]}
+        writesTo={null}
         onSelect={vi.fn()}
         unavailable={null}
         fieldsChanged={false}
@@ -584,9 +585,10 @@ const ON_DIALOG: Row[] = [
       render(
         <BulkDeployDialog
           count={2}
-          targets={[{ value: "global", label: "Global (Claude Code)" }]}
+          targets={[{ value: "global", label: "Global" }]}
           selected="global"
           skills={[]}
+          writesTo={null}
           onSelect={vi.fn()}
           unavailable={null}
           fieldsChanged={true}

@@ -1,13 +1,12 @@
 import type { BulkDeployReport } from "@maestro/core";
 import { useState } from "react";
-import { NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
+import { GLOBAL, NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
 import type { DeployStateRead } from "../deploy-state/deployed-view";
 import {
   deployAttentionNotice,
   deployNotice,
   deployNoticeFor,
 } from "../deploy-state/notice-copy";
-import { toolNameList } from "../deploy-state/tool-presentation";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import {
@@ -15,6 +14,7 @@ import {
   useGlobalDeployState,
 } from "../deploy-state/use-global-deploy-state";
 import { useUpdateTarget } from "../deploy-state/use-update-target";
+import { writesToGroup } from "../deploy-state/writes-to-group";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
@@ -122,7 +122,7 @@ export function BulkDeployRun({
     selected === null
       ? null
       : isGlobal
-        ? { target: { kind: "global" }, label: "Global" }
+        ? { target: { kind: "global" }, label: GLOBAL }
         : {
             target: { kind: "repo", repoPath: selected },
             label: repoTargetName(selected, repoPaths),
@@ -200,9 +200,7 @@ export function BulkDeployRun({
   if (updateFor !== null && chosenRun !== null) {
     return (
       <UpdateTargetAction
-        targetName={
-          isGlobal ? toolNameList(globalTools ?? []) : chosenRun.label
-        }
+        targetName={chosenRun.label}
         updateLabel={UPDATE_TARGET}
         target={chosenRun.target}
         update={update}
@@ -229,6 +227,11 @@ export function BulkDeployRun({
       ]}
       selected={selected}
       skills={bulkDeploySkillGroups(stagedNames, preview)}
+      writesTo={
+        isGlobal && globalDeployState.data
+          ? writesToGroup(globalDeployState.data.folders)
+          : null
+      }
       onSelect={(value) => {
         bulk.reset();
         setRedeployed([]);
