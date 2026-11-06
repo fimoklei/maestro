@@ -1,6 +1,7 @@
 import type {
   DeployedPrimitive,
   GitHubPage,
+  GlobalFolderState,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
@@ -16,6 +17,7 @@ import {
   localEditsLine,
   NO_REPOSITORIES,
   NO_TOOL_DETECTED,
+  notUpdatedLine,
   notWrittenNote,
   otherOriginLine,
   REPO_NOT_READ,
@@ -43,7 +45,7 @@ import {
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
-import { targetStatus, worstFolderReading } from "./target-status";
+import { NOT_UPDATED, targetStatus, worstFolderReading } from "./target-status";
 import { toolDisplayName } from "./tool-presentation";
 import { updateLabel } from "./update-target-copy";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
@@ -58,6 +60,8 @@ export type FolderRow = {
   readBy: string;
   /** Muted beside a folder Global does not write; null on one it writes. */
   note: string | null;
+  /** Why the folder reads Not updated; null where it does not. */
+  notUpdated: Copy | null;
 };
 
 // One Deploy-state row per target: Global or a registered repository.
@@ -114,6 +118,12 @@ export const canImportLocalEdits = (
   primitive: Pick<DeployedPrimitive, "copy">,
 ) => pending === undefined && primitive.copy === "local-edits";
 
+/** Each Global folder's Not updated sentence, in folder order. */
+export const notUpdatedLines = (row: Pick<TargetRow, "folders">): Copy[] =>
+  (row.folders ?? []).flatMap((folder) =>
+    folder.notUpdated === null ? [] : [folder.notUpdated],
+  );
+
 export const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
   primitives
     .filter((primitive) => primitive.copy === "local-edits")
@@ -141,7 +151,8 @@ export function globalRows(
   const behind = isBehind(data.releaseHead, pending);
   // Every folder shares Global's release, operation and read; only its own
   // copies differ.
-  const readingOf = (primitives: readonly DeployedPrimitive[]) => {
+  const readingOf = (folder: GlobalFolderState) => {
+    const primitives = folder.primitives;
     const names = primitives.map((primitive) => primitive.name);
     const indicator = readFailed
       ? "unknown"
@@ -160,14 +171,20 @@ export function globalRows(
       // A failed read's stale record never outranks its Unknown.
       pending: readFailed ? undefined : pending?.kind,
       localEdits: !readFailed && editedSkills(primitives).length > 0,
+      notUpdated: !readFailed && (folder.notUpdated?.length ?? 0) > 0,
     });
   };
+  const release = data.releaseHead?.release;
   const folders: FolderRow[] = data.folders.map((folder) => ({
     path: folder.path,
     detected: folder.detected,
-    status: folder.detected ? readingOf(folder.primitives) : null,
+    status: folder.detected ? readingOf(folder) : null,
     readBy: readByLine(folder.readBy),
     note: folder.detected ? null : notWrittenNote(toolDisplayName(folder.tool)),
+    notUpdated:
+      readFailed || release === undefined || !folder.notUpdated?.length
+        ? null
+        : notUpdatedLine(folder.path, folder.notUpdated, release),
   }));
   const names = data.primitives.map((primitive) => primitive.name);
   return [
@@ -301,6 +318,10 @@ export type StatusCard = { reason: Copy | null; readAge: string | null };
 
 function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
+  const [notUpdated] = notUpdatedLines(row);
+  if (notUpdated !== undefined && row.status?.word === NOT_UPDATED.word) {
+    return notUpdated;
+  }
   const edited = editedSkills(row.primitives);
   if (!row.readFailed && edited.length > 0)
     return localEditsLine(edited, row.behind);
