@@ -66,13 +66,21 @@ export function ImportLocalEditsAction({
   // The reader's toggles: an eligible skill starts checked, one that undoes
   // newer Harness changes unchecked.
   const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
+  // The copy selected per skill whose copies differ; none until the reader picks.
+  const [selections, setSelections] = useState<ReadonlyMap<string, string>>(
+    new Map(),
+  );
   const skills =
     check.data?.skills.filter(
       (skill) => only === null || skill.name === only,
     ) ?? null;
+  const differing = (skills ?? []).filter(
+    (skill) => skill.refusal === null && skill.folders !== undefined,
+  );
   const picked = (skills ?? []).filter(
     (skill) =>
       skill.refusal === null &&
+      skill.folders === undefined &&
       (skill.undoesNewerSince === undefined) !== toggled.has(skill.name),
   );
   const checked = new Set(picked.map((skill) => skill.name));
@@ -86,8 +94,12 @@ export function ImportLocalEditsAction({
       targetName={targetName}
       skills={skills}
       checked={checked}
-      checksChanged={toggled.size > 0}
+      checksChanged={toggled.size > 0 || selections.size > 0}
       onToggle={(name) => setToggled((current) => toggleStaged(current, name))}
+      selections={selections}
+      onSelect={(name, folder) =>
+        setSelections((current) => new Map(current).set(name, folder))
+      }
       isRunning={importWrite.phase === "running"}
       outcomes={outcomes}
       failure={
@@ -97,10 +109,14 @@ export function ImportLocalEditsAction({
       onConfirm={() =>
         importWrite.run({
           target,
-          names: [...checked],
-          undo: picked
+          names: [...differing.map((skill) => skill.name), ...checked],
+          undo: [...differing, ...picked]
             .filter((skill) => skill.undoesNewerSince !== undefined)
             .map((skill) => skill.name),
+          selected: differing.flatMap(({ name }) => {
+            const folder = selections.get(name);
+            return folder === undefined ? [] : [{ name, folder }];
+          }),
         })
       }
     />

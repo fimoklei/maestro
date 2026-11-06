@@ -438,6 +438,8 @@ const SURFACES: {
         checked={new Set()}
         checksChanged={false}
         onToggle={vi.fn()}
+        selections={new Map()}
+        onSelect={vi.fn()}
         isRunning={false}
         outcomes={null}
         failure={null}

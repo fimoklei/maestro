@@ -13,6 +13,8 @@ describe("ImportLocalEditsDialog", () => {
         checked={new Set(["tdd"])}
         checksChanged={false}
         onToggle={vi.fn()}
+        selections={new Map()}
+        onSelect={vi.fn()}
         isRunning
         outcomes={null}
         failure={{

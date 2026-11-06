@@ -4,14 +4,20 @@ import { HARNESS_BUSY } from "../ui/busy-copy";
 import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
-import { IMPORT_LOCAL_EDITS, PROPOSE_CHANGE } from "../ui/control-labels";
+import {
+  IMPORT_LOCAL_EDITS,
+  PROPOSE_CHANGE,
+  rereadLabel,
+  UPDATE_TARGET,
+} from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
-import { machine, named, type Phrase, phrase } from "../ui/phrase";
+import { machine, machineList, named, type Phrase, phrase } from "../ui/phrase";
 import { LIST_TOKENS } from "../ui/status-family";
 import { REGISTER_STEP } from "./deploy-state-copy";
 import { REASON } from "./reason-copy";
+import { DISCARD_LOCAL_EDITS } from "./update-target-copy";
 
 export const importLocalEditsTitle = (target: string): string =>
   `${IMPORT_LOCAL_EDITS} from ${target}`;
@@ -21,6 +27,19 @@ export const canBeImportedLegend = (count: number): string =>
 
 export const cannotBeImportedLegend = (count: number): string =>
   `${LIST_TOKENS.failed.glyph} Cannot be imported · ${count}`;
+
+export const copiesDifferLegend = (count: number): string =>
+  `${LIST_TOKENS.attention.glyph} Copies differ · ${count}`;
+
+export const COPIES_DIFFER_LINE = "The copies differ. Select one to import.";
+export const COPY_TO_IMPORT = "Copy to import";
+export const MERGE_COPIES_LINE = `To keep all edits, merge them into one folder yourself. Then select ${CLOSE}, select ${rereadLabel("Deploy-state")}, then select ${IMPORT_LOCAL_EDITS} again.`;
+export const UNSELECTED_COPIES_LINE = `Copies you do not select stay as they are. ${UPDATE_TARGET} replaces them only if you check ${DISCARD_LOCAL_EDITS}.`;
+export const SELECT_A_COPY = "Select a copy.";
+
+/** The Global pane's line for the skills folders whose copies of one skill differ. */
+export const differingCopiesLine = (folders: readonly string[]): Phrase =>
+  phrase`The copies in ${machineList(folders)} differ. Select ${IMPORT_LOCAL_EDITS} to import one.`;
 
 const IMPORT_SKILLS = "Import skills";
 export const NO_SKILL_QUALIFIES = "You cannot import any of these skills.";

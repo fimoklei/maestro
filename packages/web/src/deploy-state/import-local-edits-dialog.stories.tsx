@@ -17,6 +17,8 @@ const meta = {
     checked: new Set(["code-review", "tdd"]),
     checksChanged: false,
     onToggle: () => {},
+    selections: new Map(),
+    onSelect: () => {},
     isRunning: false,
     outcomes: null,
     failure: null,
@@ -55,6 +57,24 @@ export const UndoesNewerChanges: Story = {
       { name: "grilling", refusal: "deployed-copy" },
     ],
     checked: new Set(["code-review", "tdd"]),
+  },
+};
+
+export const CopiesDiffer: Story = {
+  args: {
+    targetName: "Global",
+    skills: [
+      {
+        name: "code-review",
+        refusal: null,
+        folders: [
+          "~/.claude/skills/code-review",
+          "~/.agents/skills/code-review",
+        ],
+      },
+      { name: "tdd", refusal: null },
+    ],
+    checked: new Set(["tdd"]),
   },
 };
 
