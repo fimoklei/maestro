@@ -20,7 +20,10 @@ export type LocalEditsRefusal =
   // ImportSkill would add a new skill: this route only replaces the Harness's own.
   | "not-an-update"
   | "unverified"
-  | "copies-differ"
+  // Execute only: the copies differ and no offered folder was selected, or a
+  // folder was selected that the check did not offer.
+  | "copy-not-selected"
+  | "copy-not-offered"
   | "no-local-edits"
   // Execute only: flagged, and not among the skills the author chose to undo.
   | "undoes-newer-changes";
@@ -31,6 +34,8 @@ export type ImportLocalEditsInput = {
   // The flagged names the author checked knowing the import undoes newer
   // Harness changes; any other flagged skill is refused.
   undo: readonly string[];
+  // Per skill whose copies differ, the offered folder to import from.
+  selected: readonly { name: string; folder: string }[];
 };
 
 export type LocalEditsError =
@@ -40,14 +45,12 @@ export type LocalEditsError =
   | "target-unreadable"
   | "import-in-progress";
 
-// Home-relative, never absolute: the refusal's sentence names them.
-type DifferingFolders = { claude: string; codex: string };
-
 export type LocalEditsSkill = {
   name: string;
   refusal: LocalEditsRefusal | null;
-  // With `copies-differ` only.
-  folders?: DifferingFolders;
+  // Only on an eligible skill whose edited copies differ: each copy's folder,
+  // home-relative, one of which execute must be given.
+  folders?: string[];
   // Only on an eligible skill whose Harness copy changed since the release its
   // deployed copy came from: importing undoes those changes. Names that release.
   undoesNewerSince?: string;
@@ -81,8 +84,11 @@ type Reading = {
 type MovedSince = (name: string, copy: Copy) => Promise<boolean>;
 
 type Judged =
-  | { folder: string; undoesNewerSince?: string }
-  | { refusal: LocalEditsRefusal; folders?: DifferingFolders };
+  | { folder: string; folders?: string[]; undoesNewerSince?: string }
+  | { refusal: LocalEditsRefusal };
+
+// The check offers every differing copy; a run imports the one selected.
+type Choice = { run: false } | { run: true; folder: string | undefined };
 
 export class ImportLocalEdits {
   private readonly deps: {
@@ -115,7 +121,12 @@ export class ImportLocalEdits {
     const moved = await this.harnessMovement();
     const skills: LocalEditsSkill[] = [];
     for (const [name, copy] of reading.copies) {
-      skills.push(outcome(name, await this.judge(reading, moved, name, copy)));
+      skills.push(
+        outcome(
+          name,
+          await this.judge(reading, moved, name, copy, { run: false }),
+        ),
+      );
     }
     return { ok: true, skills };
   }
@@ -144,9 +155,12 @@ export class ImportLocalEdits {
       const judged: Judged =
         copy === undefined
           ? { refusal: "no-local-edits" }
-          : await this.judge(reading, moved, name, copy);
+          : await this.judge(reading, moved, name, copy, {
+              run: true,
+              folder: input.selected.find((pick) => pick.name === name)?.folder,
+            });
       if (!("folder" in judged)) {
-        outcomes.push(outcome(name, judged));
+        outcomes.push({ name, refusal: judged.refusal });
         continue;
       }
       if (judged.undoesNewerSince !== undefined && !input.undo.includes(name)) {
@@ -247,43 +261,73 @@ export class ImportLocalEdits {
     moved: MovedSince,
     name: string,
     copy: Copy,
+    choice: Choice,
   ): Promise<Judged> {
     if (copy.copy === "unverified") {
       return { refusal: "unverified" };
     }
     const edited = await this.editedFolders(reading, name, copy);
-    const first = edited.claude ?? edited.codex;
+    const [first, ...others] = edited;
     if (first === undefined) {
       return { refusal: "no-local-edits" };
     }
-    // Identical copies are carried back as one.
-    if (
-      edited.claude !== undefined &&
-      edited.codex !== undefined &&
-      !(await sameTree(this.deps.tree, edited.claude, edited.codex))
-    ) {
-      return {
-        refusal: "copies-differ",
-        folders: {
-          claude: this.shown(reading, edited.claude),
-          codex: this.shown(reading, edited.codex),
-        },
-      };
+    // Identical copies are carried back as one; differing ones by selection,
+    // matched against the folders computed here, never a path from the input.
+    let differ = false;
+    for (const other of others) {
+      if (!(await sameTree(this.deps.tree, first, other))) {
+        differ = true;
+        break;
+      }
     }
-    const checked = await this.deps.importSkill.check({ source: first });
+    const offered = differ
+      ? edited.map((folder) => this.shown(reading, folder))
+      : undefined;
+    let candidates = offered === undefined ? [first] : edited;
+    if (choice.run) {
+      if (offered === undefined) {
+        if (choice.folder !== undefined) {
+          return { refusal: "copy-not-offered" };
+        }
+      } else {
+        if (choice.folder === undefined) {
+          return { refusal: "copy-not-selected" };
+        }
+        const picked = edited[offered.indexOf(choice.folder)];
+        if (picked === undefined) {
+          return { refusal: "copy-not-offered" };
+        }
+        candidates = [picked];
+      }
+    }
+    // The check offers a skill where any copy could be imported.
+    let refusal: LocalEditsRefusal | undefined;
+    for (const source of candidates) {
+      const judged = await this.judgeSource(source);
+      if (judged === null) {
+        const undoes = await moved(name, copy);
+        return {
+          folder: source,
+          ...(offered === undefined ? {} : { folders: offered }),
+          ...(undoes ? { undoesNewerSince: copy.version } : {}),
+        };
+      }
+      refusal ??= judged;
+    }
+    return { refusal: refusal ?? "no-local-edits" };
+  }
+
+  // Null where Import skill would update the Harness's skill from this folder.
+  private async judgeSource(source: string): Promise<LocalEditsRefusal | null> {
+    const checked = await this.deps.importSkill.check({ source });
     if (!checked.ok) {
-      return { refusal: checked.error };
+      return checked.error;
     }
     const { sourceBlocker, mode } = checked.check;
     if (sourceBlocker !== null) {
-      return { refusal: sourceBlocker };
+      return sourceBlocker;
     }
-    if (mode !== "update") {
-      return { refusal: "not-an-update" };
-    }
-    return (await moved(name, copy))
-      ? { folder: first, undoesNewerSince: copy.version }
-      : { folder: first };
+    return mode === "update" ? null : "not-an-update";
   }
 
   // The folder is replaced whole, so any Harness change since the deployed
@@ -326,9 +370,9 @@ export class ImportLocalEdits {
     reading: Reading,
     name: string,
     copy: Copy,
-  ): Promise<Partial<Record<SupportedTool, string>>> {
-    const edited: Partial<Record<SupportedTool, string>> = {};
-    const present: Partial<Record<SupportedTool, string>> = {};
+  ): Promise<string[]> {
+    const edited: string[] = [];
+    const present: string[] = [];
     const lockfile = await this.deps.content.readLockfile(reading.target);
     for (const { tool, release } of copy.tools) {
       const state = await this.deps.content
@@ -344,12 +388,13 @@ export class ImportLocalEdits {
       if (subtree === undefined || state === null || state === "not-deployed") {
         continue;
       }
-      present[tool] = join(reading.tree, subtree);
+      const folder = join(reading.tree, subtree);
+      present.push(folder);
       if (state === "diverged") {
-        edited[tool] = present[tool];
+        edited.push(folder);
       }
     }
-    return Object.keys(edited).length > 0 ? edited : present;
+    return edited.length > 0 ? edited : present;
   }
 
   // `~/…` under home, else relative to the target: never absolute.
@@ -362,12 +407,14 @@ export class ImportLocalEdits {
 }
 
 function outcome(name: string, judged: Judged): LocalEditsSkill {
-  if ("folder" in judged) {
-    return judged.undoesNewerSince === undefined
-      ? { name, refusal: null }
-      : { name, refusal: null, undoesNewerSince: judged.undoesNewerSince };
+  if (!("folder" in judged)) {
+    return { name, refusal: judged.refusal };
   }
-  return judged.folders === undefined
-    ? { name, refusal: judged.refusal }
-    : { name, refusal: judged.refusal, folders: judged.folders };
+  const { folders, undoesNewerSince } = judged;
+  return {
+    name,
+    refusal: null,
+    ...(folders === undefined ? {} : { folders }),
+    ...(undoesNewerSince === undefined ? {} : { undoesNewerSince }),
+  };
 }

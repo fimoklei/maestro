@@ -28,16 +28,22 @@ export const link = (text: string, to: LinkTarget): Mark => ({
 // en-GB fixes the form to no Oxford comma, whatever locale the reader runs.
 const listFormat = new Intl.ListFormat("en-GB");
 
+const markedList = (
+  values: readonly string[],
+  mark: (text: string) => Mark,
+): Phrase => ({
+  parts: listFormat
+    .formatToParts(values)
+    .map((part) => (part.type === "element" ? mark(part.value) : part.value)),
+});
+
 /** Names joined as `a, b and c`, each one marked. */
-export function namedList(names: readonly string[]): Phrase {
-  return {
-    parts: listFormat
-      .formatToParts(names)
-      .map((part) =>
-        part.type === "element" ? named(part.value) : part.value,
-      ),
-  };
-}
+export const namedList = (names: readonly string[]): Phrase =>
+  markedList(names, named);
+
+/** Machine values, such as paths, joined as `a, b and c`, each one marked. */
+export const machineList = (values: readonly string[]): Phrase =>
+  markedList(values, machine);
 
 export function phrase(
   strings: TemplateStringsArray,

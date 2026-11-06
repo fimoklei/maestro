@@ -25,6 +25,8 @@ type GroupedListRow = {
   value?: string;
   /** Its cost or reason, under the name. */
   sentence?: ReactNode;
+  /** A control the row asks the reader to set, such as a radio group, under the sentence. */
+  choice?: ReactNode;
   /** The row's own reading where it differs from its group's. */
   tone?: StatusFamily;
   /** For a dialog that reads the row out with its question. */
@@ -298,6 +300,13 @@ function Group({
                 >
                   {row.sentence}
                 </p>
+              )}
+              {row.choice === undefined ? null : (
+                <div
+                  className={cn("col-span-2", lead !== null && "col-start-2")}
+                >
+                  {row.choice}
+                </div>
               )}
             </li>
           );

@@ -3,7 +3,6 @@ import type {
   ImportSkillError,
   ImportSourceBlocker,
   LocalEditsRefusal,
-  LocalEditsSkill,
 } from "@maestro/core";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import {
@@ -15,7 +14,6 @@ import {
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
-import { machine, type Phrase, phrase, plainText } from "../ui/phrase";
 import { harnessHeadings } from "./notice-copy";
 
 // Covers the import mutation and the check that runs before it: both blocker
@@ -179,11 +177,6 @@ export const importBlockerNotice = (
     ? importHeadings[blocker]
     : { ...importHeadings[blocker], message };
 
-export const copiesDiffer = (
-  folders: Record<"claude" | "codex", string>,
-): Phrase =>
-  phrase`The Claude Code and Codex copies differ. Select ${IMPORT_SKILL} on the Harness screen and choose one: ${machine(folders.claude)} or ${machine(folders.codex)}.`;
-
 // Import skill's sentences where they work from this dialog, retried with
 // Import local edits. Where Import skill says to pick a folder, this dialog
 // has none, so the way through is the manual copy or the deployed copy itself.
@@ -226,7 +219,8 @@ const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
     "The deployment record does not list this folder, so Maestro cannot tell which skill it updates. Copy the changed files into the Harness clone yourself.",
   unverified:
     "Maestro holds no record of this copy's deployed files. Copy the changed files into the Harness clone yourself.",
-  "copies-differ": `The Claude Code and Codex copies differ. Select ${IMPORT_SKILL} on the Harness screen and choose one.`,
+  "copy-not-selected": `The copies changed after the check and now differ, so this skill was not imported. Select ${IMPORT_LOCAL_EDITS} again to choose a copy.`,
+  "copy-not-offered": `The copies changed after the check, so this skill was not imported. Select ${IMPORT_LOCAL_EDITS} again to check them.`,
   "no-local-edits": "No local edits left in this copy. Nothing was imported.",
   "undoes-newer-changes": `The Harness changed this skill after the check, so it was not imported. Select ${IMPORT_LOCAL_EDITS} again to choose whether to undo that change.`,
 };
@@ -234,9 +228,8 @@ const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
 // One sentence under a skill Import local edits did not carry back.
 export function localEditsRefusal({
   refusal,
-  folders,
-}: Pick<LocalEditsSkill, "folders"> & { refusal: LocalEditsRefusal }): string {
-  return folders === undefined
-    ? LOCAL_EDITS_REFUSALS[refusal]
-    : plainText(copiesDiffer(folders));
+}: {
+  refusal: LocalEditsRefusal;
+}): string {
+  return LOCAL_EDITS_REFUSALS[refusal];
 }

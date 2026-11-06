@@ -623,7 +623,8 @@ describe("localEditsRefusal", () => {
     "copy-failed": true,
     "not-an-update": true,
     unverified: true,
-    "copies-differ": true,
+    "copy-not-selected": true,
+    "copy-not-offered": true,
     "no-local-edits": true,
     "undoes-newer-changes": true,
   });
@@ -644,17 +645,13 @@ describe("localEditsRefusal", () => {
     }
   });
 
-  it("names both folders where the Claude Code and Codex copies differ", () => {
-    const sentence = localEditsRefusal({
-      refusal: "copies-differ",
-      folders: {
-        claude: "~/.claude/skills/tdd",
-        codex: "~/.agents/skills/tdd",
-      },
-    });
-
-    expect(sentence).toContain("~/.claude/skills/tdd");
-    expect(sentence).toContain("~/.agents/skills/tdd");
+  it("states a selection the copies no longer match as a change after the check", () => {
+    expect(localEditsRefusal({ refusal: "copy-not-selected" })).toBe(
+      "The copies changed after the check and now differ, so this skill was not imported. Select Import local edits again to choose a copy.",
+    );
+    expect(localEditsRefusal({ refusal: "copy-not-offered" })).toBe(
+      "The copies changed after the check, so this skill was not imported. Select Import local edits again to check them.",
+    );
   });
 });
 

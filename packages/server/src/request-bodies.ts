@@ -94,6 +94,8 @@ export const importLocalEditsBodySchema = z.object({
   target: targetSchema,
   names: z.array(z.string()).min(1),
   undo: z.array(z.string()),
+  // Matched in core against the folders it computed, never resolved as a path.
+  selected: z.array(z.object({ name: z.string(), folder: z.string() })),
 });
 
 // Proves the confirmation came from this server's own preflight, not a client-built claim.
@@ -391,7 +393,7 @@ export const IMPORT_LOCAL_EDITS_BODY: RequestShape = {
   message:
     "Nothing was imported. Reload the page, then select Import local edits again.",
   detail:
-    "The request carries a target, a non-empty names array and an undo array.",
+    "The request carries a target, a non-empty names array, an undo array and a selected array of { name, folder }.",
 };
 
 export const UPDATE_TARGET_BODY: RequestShape = {

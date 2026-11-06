@@ -1,27 +1,34 @@
 import type { LocalEditsSkill } from "@maestro/core";
 import { useEffect, useRef } from "react";
-import { copiesDiffer, localEditsRefusal } from "../harness/import-notice-copy";
+import { localEditsRefusal } from "../harness/import-notice-copy";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { EmptyState } from "../ui/empty-state";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
+import { RadioGroup } from "../ui/radio-group";
 import { Report } from "../ui/report";
 import { StatusLine } from "../ui/status-line";
 import { CHECKING_LOCAL_EDITS } from "./deploy-state-copy";
 import {
+  COPIES_DIFFER_LINE,
+  COPY_TO_IMPORT,
   canBeImportedLegend,
   cannotBeImportedLegend,
+  copiesDifferLegend,
   IMPORTED,
   IMPORTED_NEXT_STEP,
   importConfirmLabel,
   importLocalEditsTitle,
   importReportHeading,
+  MERGE_COPIES_LINE,
   NO_LOCAL_EDITS,
   NO_SKILL_QUALIFIES,
   NOT_IMPORTED,
   NOTHING_CHECKED,
   noLocalEditsLine,
+  SELECT_A_COPY,
+  UNSELECTED_COPIES_LINE,
   undoesNewerLegend,
   undoesNewerLine,
 } from "./import-local-edits-copy";
@@ -34,6 +41,8 @@ export function ImportLocalEditsDialog({
   checked,
   checksChanged,
   onToggle,
+  selections,
+  onSelect,
   isRunning,
   outcomes,
   failure,
@@ -47,6 +56,9 @@ export function ImportLocalEditsDialog({
   /** Whether any check differs from the one the dialog opened with. */
   checksChanged: boolean;
   onToggle: (name: string) => void;
+  /** The folder selected per skill whose copies differ. */
+  selections: ReadonlyMap<string, string>;
+  onSelect: (name: string, folder: string) => void;
   isRunning: boolean;
   // Null before the run; set only when the dialog stays open on a refusal.
   outcomes: readonly LocalEditsSkill[] | null;
@@ -57,26 +69,39 @@ export function ImportLocalEditsDialog({
   // The check answers after the dialog opened: focus moves to the first
   // checkbox once, when the list appears.
   const firstBox = useRef<HTMLInputElement>(null);
+  const firstRadio = useRef<HTMLInputElement>(null);
   const listed = skills !== null;
   useEffect(() => {
-    if (listed) firstBox.current?.focus();
+    if (listed) (firstRadio.current ?? firstBox.current)?.focus();
   }, [listed]);
-  const eligible = (skills ?? []).filter(
-    (skill) => skill.refusal === null && skill.undoesNewerSince === undefined,
-  );
-  const flagged = (skills ?? []).flatMap(
-    ({ name, refusal, undoesNewerSince }) =>
-      refusal === null && undoesNewerSince !== undefined
-        ? [{ name, release: undoesNewerSince }]
+  // A skill whose copies differ is imported from the copy selected for it, so
+  // it carries no checkbox: Cancel is the way not to import it.
+  const differing = (skills ?? []).flatMap(
+    ({ name, refusal, folders, undoesNewerSince }) =>
+      refusal === null && folders !== undefined
+        ? [{ name, folders, undoesNewerSince }]
         : [],
   );
-  const refused = (skills ?? []).flatMap(({ refusal, ...skill }) =>
-    refusal === null ? [] : [{ ...skill, refusal }],
+  const listedApart = (skill: LocalEditsSkill) =>
+    skill.refusal === null && skill.folders === undefined;
+  const eligible = (skills ?? []).filter(
+    (skill) => listedApart(skill) && skill.undoesNewerSince === undefined,
   );
-  const count = [...eligible, ...flagged].filter((skill) =>
-    checked.has(skill.name),
-  ).length;
-  const undoing = flagged.filter((skill) => checked.has(skill.name)).length;
+  const flagged = (skills ?? []).flatMap((skill) =>
+    listedApart(skill) && skill.undoesNewerSince !== undefined
+      ? [{ name: skill.name, release: skill.undoesNewerSince }]
+      : [],
+  );
+  const refused = (skills ?? []).flatMap(({ refusal, name }) =>
+    refusal === null ? [] : [{ name, refusal }],
+  );
+  const count =
+    differing.length +
+    [...eligible, ...flagged].filter((skill) => checked.has(skill.name)).length;
+  const undoing =
+    differing.filter((skill) => skill.undoesNewerSince !== undefined).length +
+    flagged.filter((skill) => checked.has(skill.name)).length;
+  const unselected = differing.some((skill) => !selections.has(skill.name));
   const empty = skills !== null && skills.length === 0;
   const checking = skills === null && failure === null;
   // A running import keeps its confirm: a check that fails mid-run must not
@@ -91,11 +116,13 @@ export function ImportLocalEditsDialog({
           tone: "primary",
           unavailable: checking
             ? CHECKING_LOCAL_EDITS
-            : eligible.length === 0 && flagged.length === 0
+            : differing.length + eligible.length + flagged.length === 0
               ? NO_SKILL_QUALIFIES
-              : count === 0
-                ? NOTHING_CHECKED
-                : null,
+              : unselected
+                ? SELECT_A_COPY
+                : count === 0
+                  ? NOTHING_CHECKED
+                  : null,
           onRun: onConfirm,
         }
       : null,
@@ -130,12 +157,7 @@ export function ImportLocalEditsDialog({
                   : [
                       {
                         name: row.name,
-                        detail: (
-                          <RefusalSentence
-                            refusal={row.refusal}
-                            folders={row.folders}
-                          />
-                        ),
+                        detail: localEditsRefusal({ refusal: row.refusal }),
                       },
                     ],
               ),
@@ -161,49 +183,83 @@ export function ImportLocalEditsDialog({
           headingLevel={3}
         />
       ) : (
-        <GroupedList
-          groups={[
-            {
-              tone: "neutral",
-              legend: canBeImportedLegend(eligible.length),
-              rows: eligible.map(({ name }) => ({ key: name, name })),
-            },
-            {
-              tone: "attention",
-              legend: undoesNewerLegend(flagged.length),
-              rows: flagged.map(({ name, release }) => ({
-                key: name,
-                name,
-                sentence: <PhraseText copy={undoesNewerLine(release)} />,
-              })),
-            },
-            {
-              tone: "failed",
-              legend: cannotBeImportedLegend(refused.length),
-              rows: refused.map((skill) => ({
-                key: skill.name,
-                name: skill.name,
-                sentence: <RefusalSentence {...skill} />,
-              })),
-            },
-          ]}
-          checklist={{ checked, onToggle, isRunning, firstBox }}
-          live={null}
-        />
+        <>
+          {differing.length === 0 ? null : (
+            <>
+              <GroupedList
+                groups={[
+                  {
+                    tone: "attention",
+                    legend: copiesDifferLegend(differing.length),
+                    rows: differing.map((skill, index) => ({
+                      key: skill.name,
+                      name: skill.name,
+                      sentence:
+                        skill.undoesNewerSince === undefined ? (
+                          COPIES_DIFFER_LINE
+                        ) : (
+                          <>
+                            {COPIES_DIFFER_LINE}{" "}
+                            <PhraseText
+                              copy={undoesNewerLine(skill.undoesNewerSince)}
+                            />
+                          </>
+                        ),
+                      choice: (
+                        <RadioGroup
+                          label={COPY_TO_IMPORT}
+                          options={skill.folders}
+                          value={selections.get(skill.name) ?? null}
+                          onChange={(folder) => onSelect(skill.name, folder)}
+                          disabled={isRunning}
+                          firstRadio={index === 0 ? firstRadio : null}
+                        />
+                      ),
+                    })),
+                  },
+                ]}
+                checklist={null}
+                live={null}
+              />
+              <p className="m-0 font-ui text-gray-11 text-meta">
+                {MERGE_COPIES_LINE}
+              </p>
+              <p className="m-0 font-ui text-gray-11 text-meta">
+                {UNSELECTED_COPIES_LINE}
+              </p>
+            </>
+          )}
+          <GroupedList
+            groups={[
+              {
+                tone: "neutral",
+                legend: canBeImportedLegend(eligible.length),
+                rows: eligible.map(({ name }) => ({ key: name, name })),
+              },
+              {
+                tone: "attention",
+                legend: undoesNewerLegend(flagged.length),
+                rows: flagged.map(({ name, release }) => ({
+                  key: name,
+                  name,
+                  sentence: <PhraseText copy={undoesNewerLine(release)} />,
+                })),
+              },
+              {
+                tone: "failed",
+                legend: cannotBeImportedLegend(refused.length),
+                rows: refused.map(({ name, refusal }) => ({
+                  key: name,
+                  name,
+                  sentence: localEditsRefusal({ refusal }),
+                })),
+              },
+            ]}
+            checklist={{ checked, onToggle, isRunning, firstBox }}
+            live={null}
+          />
+        </>
       )}
     </Dialog>
   );
-}
-
-// The differing copies' folders are paths, set as machine values.
-function RefusalSentence(
-  skill: Pick<LocalEditsSkill, "folders"> & {
-    refusal: NonNullable<LocalEditsSkill["refusal"]>;
-  },
-) {
-  const { folders } = skill;
-  if (folders === undefined) {
-    return <>{localEditsRefusal(skill)}</>;
-  }
-  return <PhraseText copy={copiesDiffer(folders)} />;
 }

@@ -122,7 +122,12 @@ describe("Deploy-state — Import local edits on a skill row", () => {
 
     expect(await screen.findByText("harness view tdd")).toBeInTheDocument();
     expect(sent).toEqual([
-      { target: { kind: "repo", repoPath: REPO }, names: ["tdd"], undo: [] },
+      {
+        target: { kind: "repo", repoPath: REPO },
+        names: ["tdd"],
+        undo: [],
+        selected: [],
+      },
     ]);
   });
 
@@ -219,7 +224,12 @@ describe("Deploy-state — Import local edits on a skill row", () => {
       await screen.findByText("harness view code-review"),
     ).toBeInTheDocument();
     expect(sent).toEqual([
-      { target: { kind: "global" }, names: ["code-review"], undo: [] },
+      {
+        target: { kind: "global" },
+        names: ["code-review"],
+        undo: [],
+        selected: [],
+      },
     ]);
   });
 });

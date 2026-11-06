@@ -1,12 +1,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  expectTooltipCause,
-  htmlElement,
-  jsonResponse,
-  sentence,
-} from "../test-utils";
+import { expectTooltipCause, jsonResponse, sentence } from "../test-utils";
 import {
   findRow,
   importRoutes,
@@ -152,7 +147,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
       await screen.findByText("harness view code-review"),
     ).toBeInTheDocument();
     expect(sent).toEqual([
-      { target: TARGET, names: ["code-review"], undo: [] },
+      { target: TARGET, names: ["code-review"], undo: [], selected: [] },
     ]);
   });
 
@@ -220,7 +215,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     );
     await screen.findByText("harness view code-review");
     expect(sent).toEqual([
-      { target: TARGET, names: ["code-review"], undo: [] },
+      { target: TARGET, names: ["code-review"], undo: [], selected: [] },
     ]);
   });
 
@@ -265,46 +260,13 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     await screen.findByText("harness view with no skill open");
     expect(sent).toEqual([
-      { target: TARGET, names: ["code-review", "tdd"], undo: ["tdd"] },
+      {
+        target: TARGET,
+        names: ["code-review", "tdd"],
+        undo: ["tdd"],
+        selected: [],
+      },
     ]);
-  });
-
-  it("names both folders in mono where a skill's tool copies differ", async () => {
-    stubImport(["code-review", "tdd"], landed, () =>
-      jsonResponse({
-        skills: [
-          { name: "code-review", refusal: null },
-          {
-            name: "tdd",
-            refusal: "copies-differ",
-            folders: {
-              claude: "~/.claude/skills/tdd",
-              codex: "~/.agents/skills/tdd",
-            },
-          },
-        ],
-      }),
-    );
-    renderDeployState();
-
-    const dialog = await openDialog();
-    const refused = await within(dialog).findByRole("group", {
-      name: "✕ Cannot be imported · 1",
-    });
-
-    const box = within(refused).getByRole("checkbox", { name: "tdd" });
-    const reason = htmlElement(
-      document.getElementById(box.getAttribute("aria-describedby") ?? ""),
-    );
-    expect(reason.textContent).toBe(
-      "The Claude Code and Codex copies differ. Select Import skill on the Harness screen and choose one: ~/.claude/skills/tdd or ~/.agents/skills/tdd.",
-    );
-    // #1458: the shared machine value, not a hand-rolled <code>.
-    expect(within(refused).queryAllByRole("code")).toEqual([]);
-    expect(reason).not.toHaveClass("font-mono");
-    for (const path of ["~/.claude/skills/tdd", "~/.agents/skills/tdd"]) {
-      expect(within(reason).getByText(path)).toHaveClass("font-mono");
-    }
   });
 
   it("blocks the confirm when no skill qualifies", async () => {
