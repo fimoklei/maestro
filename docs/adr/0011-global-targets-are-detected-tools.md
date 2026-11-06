@@ -164,6 +164,21 @@ Amended:
 
 Unchanged: live detection, no backfill (#1284), and the #1557 amendment.
 
+## Amendment (2026-11-03, issues #1772 and #1780) — the folder is the message
+
+"Labelled with those tools" and "the tool name is the message; the path is
+secondary" did not hold. Several tools read one folder, so a tool name does
+not say where a skill lands. In #1770, two-tool predictions rose from 3 of 10
+to 9 of 10 once each choice point named the folders.
+
+Amended:
+
+- **The path is the message.** The deploy picker and every Global dialog name
+  the Global folders under `Writes to`. A tool's name appears only in the
+  Global pane's line `Read by {tools}.`
+- **Each Global folder is a read-only row** under the one Global row, with one
+  mark. A folder lacking skills of Global's Selection reads `Skills missing`.
+
 ## Rejected alternatives
 
 - **Model A — one deploy unit mirrored to both tools.** Simpler, matches apm's
