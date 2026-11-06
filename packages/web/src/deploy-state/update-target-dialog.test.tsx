@@ -43,6 +43,7 @@ function show(patch: Partial<UpdatePreview> = {}, onConfirm = vi.fn()) {
   render(
     <UpdateTargetDialog
       targetName="agent-harness"
+      folders={null}
       preview={preview(patch)}
       blocked={false}
       isLoading={false}
@@ -56,6 +57,138 @@ function show(patch: Partial<UpdatePreview> = {}, onConfirm = vi.fn()) {
 
 const confirmButton = () =>
   screen.getByRole("button", { name: "Update target" });
+
+const CLAUDE_FOLDER = {
+  path: "~/.claude/skills",
+  tool: "claude",
+  detected: true,
+} as const;
+const CODEX_FOLDER = {
+  path: "~/.agents/skills",
+  tool: "codex",
+  detected: true,
+} as const;
+
+function showGlobal(
+  patch: Partial<UpdatePreview> = {},
+  folders: readonly {
+    path: string;
+    tool: "claude" | "codex";
+    detected: boolean;
+  }[] = [CLAUDE_FOLDER, CODEX_FOLDER],
+) {
+  render(
+    <UpdateTargetDialog
+      targetName="Global"
+      folders={folders}
+      preview={preview(patch)}
+      blocked={false}
+      isLoading={false}
+      error={null}
+      onCancel={vi.fn()}
+      onConfirm={vi.fn()}
+    />,
+  );
+}
+
+describe("UpdateTargetDialog on Global", () => {
+  it("titles the dialog Update Global", () => {
+    showGlobal();
+
+    expect(
+      screen.getByRole("dialog", { name: "Update Global" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists every folder Global writes under Writes to", () => {
+    showGlobal();
+
+    const writesTo = screen.getByRole("list", { name: "Writes to" });
+    expect(
+      within(writesTo)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toStrictEqual(["~/.claude/skills", "~/.agents/skills"]);
+  });
+
+  it("mutes a folder Global does not write and names its undetected tool", () => {
+    showGlobal({}, [CLAUDE_FOLDER, { ...CODEX_FOLDER, detected: false }]);
+
+    const items = within(
+      screen.getByRole("list", { name: "Writes to" }),
+    ).getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toStrictEqual([
+      "~/.claude/skills",
+      "~/.agents/skills · Codex not detected · not written",
+    ]);
+    expect(items[1]).toHaveClass("text-gray-11");
+    expect(items[0]).not.toHaveClass("text-gray-11");
+  });
+
+  it("shows one release line, one summary and one skill list", () => {
+    showGlobal();
+
+    expect(
+      screen.getAllByText(sentence("release v0.3.2 → v0.3.4")),
+    ).toHaveLength(1);
+    expect(
+      screen.getAllByText("Updates 2 skills, removes 1, leaves 3 unchanged."),
+    ).toHaveLength(1);
+    expect(screen.getAllByText("tdd")).toHaveLength(1);
+  });
+
+  it("puts Local edits on top, then Writes to, then the changes", () => {
+    showGlobal({
+      localEdits: {
+        discard: [{ name: "tdd", tool: "codex" }],
+        unverified: [],
+      },
+      copyReceipt: "b".repeat(64),
+    });
+
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
+    ).toStrictEqual([
+      "Local edits",
+      "Writes to",
+      "Changed",
+      "Removed by this release",
+      "Unchanged (3)",
+      "New in this release (1)",
+    ]);
+  });
+
+  it("names the folder of each copy at risk by its path, never its tool", () => {
+    showGlobal({
+      localEdits: {
+        discard: [{ name: "tdd", tool: "codex" }],
+        unverified: [{ name: "jobs", tool: "claude" }],
+      },
+      copyReceipt: "b".repeat(64),
+    });
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Discard local edits for tdd in ~/.agents/skills",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Overwrite unverified copy for jobs in ~/.claude/skills",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Codex|Claude Code/)).toBeNull();
+  });
+});
+
+describe("UpdateTargetDialog on a repository", () => {
+  it("lists no Writes to", () => {
+    show();
+
+    expect(screen.queryByRole("list", { name: "Writes to" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Writes to" })).toBeNull();
+  });
+});
 
 describe("UpdateTargetDialog", () => {
   it("names the target in its title and the act in its confirm", () => {
@@ -107,10 +240,10 @@ describe("UpdateTargetDialog", () => {
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
     ).toStrictEqual([
+      "Local edits",
       "Added by this deploy",
       "Changed",
       "Removed by this release",
-      "Local edits",
       "Unchanged (3)",
       "New in this release (1)",
     ]);
@@ -239,6 +372,7 @@ describe("UpdateTargetDialog", () => {
     render(
       <UpdateTargetDialog
         targetName="agent-harness"
+        folders={null}
         preview={preview({
           localEdits: {
             discard: [{ name: "tdd", tool: null }],
@@ -271,11 +405,11 @@ describe("UpdateTargetDialog", () => {
     }
   });
 
-  it("says what each copy at risk costs, naming its tool on a global target", () => {
+  it("says what each copy at risk costs", () => {
     show({
       localEdits: {
-        discard: [{ name: "tdd", tool: "claude" }],
-        unverified: [{ name: "jobs", tool: "codex" }],
+        discard: [{ name: "tdd", tool: null }],
+        unverified: [{ name: "jobs", tool: null }],
       },
       copyReceipt: "b".repeat(64),
     });
@@ -294,7 +428,7 @@ describe("UpdateTargetDialog", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("checkbox", {
-        name: "Discard local edits for tdd in Claude Code",
+        name: "Discard local edits for tdd",
       }),
     ).toBeTruthy();
   });
@@ -321,6 +455,7 @@ describe("UpdateTargetDialog", () => {
     render(
       <UpdateTargetDialog
         targetName="agent-harness"
+        folders={null}
         preview={null}
         blocked={false}
         isLoading={true}
@@ -338,6 +473,7 @@ describe("UpdateTargetDialog", () => {
     render(
       <UpdateTargetDialog
         targetName="agent-harness"
+        folders={null}
         preview={null}
         isLoading={false}
         blocked
@@ -378,6 +514,7 @@ describe("UpdateTargetDialog outcome", () => {
     render(
       <UpdateTargetDialog
         targetName="agent-harness"
+        folders={null}
         preview={preview()}
         blocked={false}
         isLoading={false}
@@ -460,6 +597,7 @@ describe("UpdateTargetDialog outcome", () => {
     render(
       <UpdateTargetDialog
         targetName="agent-harness"
+        folders={null}
         preview={preview()}
         blocked={false}
         isLoading={false}

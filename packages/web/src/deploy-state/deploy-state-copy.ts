@@ -90,6 +90,9 @@ export const readByLine = (readBy: {
 }) =>
   `Read by ${joinNames(readBy.others ? [...readBy.tools, "others"] : readBy.tools)}.`;
 
+/** A Global dialog's list of the folders the action writes. */
+export const WRITES_TO = "Writes to";
+
 /** Beside a Global folder Global does not write, its tool not detected. */
 export const notWrittenNote = (tool: string) =>
   `${tool} not detected · not written`;

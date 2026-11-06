@@ -43,16 +43,19 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Actions for ${primitive.name}`": "menu label",
   },
   "deploy-state/target-menu.ts": {
-    "`${label} ${row.updateName}`": "menu item",
+    "`${UPDATE_TARGET} ${row.updateName}`": "menu item",
   },
   "deploy-state/update-target-copy.ts": {
     "`Update ${target}`": "dialog title",
     "`${row.name} in ${toolDisplayName(row.tool)}`": "checkbox label",
+    "`${row.name} in ${folder.path}`": "checkbox label",
   },
   "deploy-state/update-target-dialog.tsx": {
     '`${row.name}:${row.tool ?? ""}`': "key",
-    "`${DISCARD_LOCAL_EDITS} for ${consentRowName(row)}`": "checkbox label",
-    "`${OVERWRITE_UNVERIFIED} for ${consentRowName(row)}`": "checkbox label",
+    "`${DISCARD_LOCAL_EDITS} for ${copyAtRiskName(row, folders)}`":
+      "checkbox label",
+    "`${OVERWRITE_UNVERIFIED} for ${copyAtRiskName(row, folders)}`":
+      "checkbox label",
   },
   "deploy-state/use-deploy-state.ts": {
     "`/api/deploy-state?repo=${encodeURIComponent(repo)}`": "request URL",
@@ -140,6 +143,9 @@ const PLAIN_MACHINE: Record<string, Record<string, string>> = {
   },
   "ui/dialog.tsx": {
     "`${title} ${version}`": "accessible name",
+  },
+  "deploy-state/update-target-copy.ts": {
+    "`${row.name} in ${folder.path}`": "checkbox label",
   },
 };
 
@@ -400,6 +406,7 @@ const SURFACES: {
     render: () => (
       <UpdateTargetDialog
         targetName="agent-harness"
+        folders={null}
         preview={{
           release: "v0.3.2",
           chosenRelease: "v0.3.4",

@@ -232,6 +232,7 @@ const updateDialog = (
 ) => (
   <UpdateTargetDialog
     targetName="agent-harness"
+    folders={null}
     preview={null}
     blocked={false}
     isLoading={false}

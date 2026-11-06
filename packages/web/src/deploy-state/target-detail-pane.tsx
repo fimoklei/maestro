@@ -31,7 +31,6 @@ import {
   type TargetPaneActions,
 } from "./target-pane-actions";
 import { editedSkills, type TargetRow } from "./target-rows";
-import { updateLabel } from "./update-target-copy";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
 // Update target as `update`, and the dialogs they open as `dialogs`.
@@ -98,7 +97,7 @@ export function TargetDetailPane({
       : [localEditsLine(edited, row.behind)]),
     // A plain behind target still says why, and which control moves it.
     ...(head && row.behind && edited.length === 0 && !row.pending && !row.pinned
-      ? [behindLine(head, updateLabel(row))]
+      ? [behindLine(head)]
       : []),
     ...(row.pinned ? [pinnedTagsLine(row.pinned), RELEASE_NOT_ADOPTED] : []),
     ...(row.primitives.length === 0 && row.otherOrigins.length > 0

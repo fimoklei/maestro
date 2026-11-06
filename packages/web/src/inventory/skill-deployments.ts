@@ -2,6 +2,7 @@
 // targets the deployed column rolls up, so the two can't diverge.
 
 import type { ReleaseHead } from "@maestro/core";
+import { GLOBAL } from "../deploy-state/deploy-state-copy";
 import {
   comparedFact,
   UNFINISHED_REASONS,
@@ -10,7 +11,6 @@ import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
 import { type SkillMark, skillMark } from "../deploy-state/skill-mark";
 import { GLOBAL_ROW_ID, repoRowId } from "../deploy-state/target-rows";
 import { unfinishedReading } from "../deploy-state/target-status";
-import { toolNameList } from "../deploy-state/tool-presentation";
 import type { DriftStatus } from "../drift/drift-view-model";
 import { type DeploymentTarget, skillReading } from "./deployed-rollup";
 import type { DeployTarget } from "./use-deploy-skill";
@@ -106,7 +106,7 @@ export function skillDeployments(
         wire.kind === "repo"
           ? { ...wire, name: target.label }
           : { kind: "global", tools: [...tools] },
-      updateName: wire.kind === "repo" ? target.label : toolNameList(tools),
+      updateName: wire.kind === "repo" ? target.label : GLOBAL,
       rowId:
         wire.kind === "repo"
           ? repoRowId(wire.repoPath)

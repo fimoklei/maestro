@@ -48,7 +48,7 @@ describe("Release copy that names a control", () => {
 
 describe("behindLine", () => {
   const line = (over: Partial<ReleaseHead> = {}) =>
-    plainText(behindLine(head(over), "Update target"));
+    plainText(behindLine(head(over)));
 
   it("says a newer release changed none of the skills rather than counting zero", () => {
     expect(line({ changed: 0 })).not.toEqual(line());
@@ -59,9 +59,9 @@ describe("behindLine", () => {
     expect(line({ latestRelease: null })).not.toMatch(/Select/);
   });
 
-  it("names Update target by the label the target's row gives it", () => {
-    expect(plainText(behindLine(head(), "Update targets"))).toMatch(
-      /Select Update targets to move this target/,
+  it("names Update target on every target, Global included", () => {
+    expect(plainText(behindLine(head()))).toMatch(
+      /Select Update target to move this target/,
     );
   });
 });
@@ -110,7 +110,7 @@ describe("the pane's facts", () => {
 describe("a release in these sentences", () => {
   it("is set apart in the behind line", () => {
     const values = (over: Partial<ReleaseHead>) =>
-      machineValues(behindLine(head(over), "Update target"));
+      machineValues(behindLine(head(over)));
     const both = ["v0.3.4", "v0.3.4"];
     expect(values({})).toEqual(both);
     expect(values({ changed: null })).toEqual(both);

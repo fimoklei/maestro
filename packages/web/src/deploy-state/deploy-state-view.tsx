@@ -46,7 +46,6 @@ import {
 } from "./target-rows";
 import { IN_SYNC, TARGET_CHIPS, TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
-import { updateLabel } from "./update-target-copy";
 import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
 import { globalDeployStateQueryOptions } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
@@ -374,7 +373,6 @@ function TargetActions({
       update.isError ? (
         <UpdateTargetAction
           targetName={row.updateName}
-          updateLabel={updateLabel(row)}
           target={row.wire}
           update={update}
           defaultOpen={openUpdate}

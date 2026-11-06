@@ -321,6 +321,31 @@ describe("Deploy-state — Update target on the global target", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens Update Global listing the folders the read names under Writes to", async () => {
+    stubUpdate(Promise.resolve(jsonResponse({})), {
+      before: { global: globalAt("v0.3.4", ["claude"]) },
+      after: { global: globalAt("v0.3.4", ["claude"]) },
+    });
+    renderDeployState();
+
+    const pane = await openPane("Global");
+    await userEvent.click(
+      within(pane).getByRole("button", { name: /^Update target/ }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Update Global" });
+    const writesTo = await within(dialog).findByRole("list", {
+      name: "Writes to",
+    });
+    expect(
+      within(writesTo)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toStrictEqual([
+      "~/.claude/skills",
+      "~/.agents/skills · Codex not detected · not written",
+    ]);
+  });
+
   it("shows an incomplete update's outcome and Retry update in the dialog", async () => {
     const update = deferred();
     stubUpdate(update.promise, {

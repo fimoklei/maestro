@@ -10,7 +10,6 @@ import type { TargetAction, TargetTableRow } from "./deploy-state-columns";
 
 import { RETRY_LABELS } from "./release-head-copy";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";
-import { updateLabel } from "./update-target-copy";
 
 export type MenuFacts = Pick<
   TargetRow,
@@ -64,8 +63,12 @@ export const targetRowItem = (
   if (item.action !== "update" || item.disabled) {
     return { label: item.label, ...control };
   }
-  const label = updateLabel(row);
-  return { label, name: `${label} ${row.updateName}`, ...control };
+
+  return {
+    label: UPDATE_TARGET,
+    name: `${UPDATE_TARGET} ${row.updateName}`,
+    ...control,
+  };
 };
 
 // One row's items, as its ⋮ menu offers them. Each action opens the pane or

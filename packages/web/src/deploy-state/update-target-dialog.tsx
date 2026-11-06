@@ -18,6 +18,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import { reading } from "../ui/status-reading";
+import { WRITES_TO } from "./deploy-state-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import { updateOutcomeReport } from "./update-outcome-report";
 import {
@@ -25,7 +26,7 @@ import {
   BECOMES_EMPTY,
   CHANGED,
   CHECK_EVERY_BOX,
-  consentRowName,
+  copyAtRiskName,
   countingSentence,
   DISCARD_LOCAL_EDITS,
   foldedHeading,
@@ -46,6 +47,7 @@ import {
   unverifiedSentence,
   updateDialogTitle,
 } from "./update-target-copy";
+import { type WritesToFolder, WritesToList } from "./writes-to-list";
 
 // The same grain the guard reads at, so one checkbox never stands for two copies (#952).
 const consentKey = (row: CopyConsentRow) => `${row.name}:${row.tool ?? ""}`;
@@ -173,6 +175,7 @@ function SkillRows({
 // Prices an Update, asks for consent, and states what landed. The host owns the request.
 export function UpdateTargetDialog({
   targetName,
+  folders,
   preview,
   isLoading,
   error,
@@ -185,6 +188,8 @@ export function UpdateTargetDialog({
   onConfirm,
 }: {
   targetName: string;
+  /** Global's folders from the Deploy-state read; null on a repository. */
+  folders: readonly WritesToFolder[] | null;
   // Null while loading and after a refusal: never price from a missing reading.
   preview: UpdatePreview | null;
   isLoading: boolean;
@@ -310,21 +315,6 @@ export function UpdateTargetDialog({
           </div>
 
           <div className="flex flex-col divide-y divide-divider border-divider border-y empty:hidden">
-            {preview.addedByThisDeploy.length > 0 ? (
-              <Section heading={ADDED_BY_THIS_DEPLOY}>
-                <SkillRows rows={preview.addedByThisDeploy} inline={true} />
-              </Section>
-            ) : null}
-            {preview.changed.length > 0 ? (
-              <Section heading={CHANGED}>
-                <SkillRows rows={preview.changed} inline={true} />
-              </Section>
-            ) : null}
-            {preview.removed.length > 0 ? (
-              <Section heading={REMOVED_BY_THIS_RELEASE}>
-                <NameList names={preview.removed} inline={true} />
-              </Section>
-            ) : null}
             {required.length > 0 ? (
               <Section heading={LOCAL_EDITS} signal={true}>
                 {/* Each copy carries its own consent, never a set of them. */}
@@ -336,7 +326,7 @@ export function UpdateTargetDialog({
                       rows: [
                         ...preview.localEdits.discard.map((row) => ({
                           key: consentKey(row),
-                          name: `${DISCARD_LOCAL_EDITS} for ${consentRowName(row)}`,
+                          name: `${DISCARD_LOCAL_EDITS} for ${copyAtRiskName(row, folders)}`,
                           sentence: (
                             <PhraseText
                               copy={localEditsSentence(
@@ -348,7 +338,7 @@ export function UpdateTargetDialog({
                         })),
                         ...preview.localEdits.unverified.map((row) => ({
                           key: consentKey(row),
-                          name: `${OVERWRITE_UNVERIFIED} for ${consentRowName(row)}`,
+                          name: `${OVERWRITE_UNVERIFIED} for ${copyAtRiskName(row, folders)}`,
                           sentence: (
                             <PhraseText copy={unverifiedSentence(row.name)} />
                           ),
@@ -367,6 +357,26 @@ export function UpdateTargetDialog({
                 {preview.localEdits.discard.length > 0 ? (
                   <p className="m-0 text-gray-11">{KEEP_WORK_BY_IMPORTING}</p>
                 ) : null}
+              </Section>
+            ) : null}
+            {folders === null ? null : (
+              <Section heading={WRITES_TO}>
+                <WritesToList folders={folders} />
+              </Section>
+            )}
+            {preview.addedByThisDeploy.length > 0 ? (
+              <Section heading={ADDED_BY_THIS_DEPLOY}>
+                <SkillRows rows={preview.addedByThisDeploy} inline={true} />
+              </Section>
+            ) : null}
+            {preview.changed.length > 0 ? (
+              <Section heading={CHANGED}>
+                <SkillRows rows={preview.changed} inline={true} />
+              </Section>
+            ) : null}
+            {preview.removed.length > 0 ? (
+              <Section heading={REMOVED_BY_THIS_RELEASE}>
+                <NameList names={preview.removed} inline={true} />
               </Section>
             ) : null}
           </div>

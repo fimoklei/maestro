@@ -64,6 +64,8 @@ const RETIRED = [
   /\bclean cop(?:y|ies)\b/i,
   // The Deploy-state row has no bare Deploy again; the bulk Report's is `Deploy {name} again` (#1468).
   /\bDeploy again\b/,
+  // One action has one name: Global's update is Update target too (#1772).
+  /\bUpdate targets\b/,
   // A change reads Added, Changed, Renamed or Deleted on every screen (#1603).
   /\bAddition\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.

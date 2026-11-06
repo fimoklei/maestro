@@ -1,13 +1,12 @@
 import type { BulkDeployReport } from "@maestro/core";
 import { useState } from "react";
-import { NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
+import { GLOBAL, NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
 import type { DeployStateRead } from "../deploy-state/deployed-view";
 import {
   deployAttentionNotice,
   deployNotice,
   deployNoticeFor,
 } from "../deploy-state/notice-copy";
-import { toolNameList } from "../deploy-state/tool-presentation";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import {
@@ -200,10 +199,7 @@ export function BulkDeployRun({
   if (updateFor !== null && chosenRun !== null) {
     return (
       <UpdateTargetAction
-        targetName={
-          isGlobal ? toolNameList(globalTools ?? []) : chosenRun.label
-        }
-        updateLabel={UPDATE_TARGET}
+        targetName={isGlobal ? GLOBAL : chosenRun.label}
         target={chosenRun.target}
         update={update}
         add={updateFor}
