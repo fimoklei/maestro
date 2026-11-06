@@ -64,8 +64,12 @@ const RETIRED = [
   /\bclean cop(?:y|ies)\b/i,
   // One action has one name: Global's update is Update target too (#1772).
   /\bUpdate targets\b/,
-  // Global is one target: its removal names no tool (#1803).
+  // Global is one target: its removal names no tool (#1803), and no screen
+  // speaks of several Global targets (#1794).
   /\bRemove from (?:Claude Code|Codex)\b/,
+  /\bglobal targets\b/i,
+  // Copies that differ between Global folders read Local edits per folder (#1794).
+  /\bDiffering copies\b/i,
   // A change reads Added, Changed, Renamed or Deleted on every screen (#1603).
   /\bAddition\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.

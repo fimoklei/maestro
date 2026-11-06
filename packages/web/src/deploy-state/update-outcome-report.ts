@@ -17,6 +17,7 @@ import {
   outcomeDetail,
   outcomeHeading,
   type UnlandedState,
+  UPDATE_INCOMPLETE,
 } from "./update-target-copy";
 import { NOT_CONFIRMED, updatedToLine } from "./written-to-copy";
 
@@ -127,24 +128,26 @@ export function updateOutcomeReport(input: {
 /** Global's Report frame: one `Written to` line per Global folder. */
 export function updateFoldersReport(input: {
   folders: FolderOutcomes;
-  /** Retry update is in the footer, so a deviating folder names it. */
+  /** The update did not finish: Retry update is in the footer, and a deviating folder names it. */
   retry: boolean;
 }): { heading: string; lines: FoldLine[] } {
   const { folders, retry } = input;
   const outcomes = folders.folders.flatMap((folder) =>
     folder.skills.map((skill) => skill.outcome),
   );
+  const verdict = outcomes.some(
+    (outcome) => outcome === "missing" || outcome === "not-updated",
+  )
+    ? "failed"
+    : outcomes.includes("not-confirmed")
+      ? "unconfirmed"
+      : "landed";
   return {
-    heading: outcomeHeading(
-      folders.release,
-      outcomes.some(
-        (outcome) => outcome === "missing" || outcome === "not-updated",
-      )
-        ? "failed"
-        : outcomes.includes("not-confirmed")
-          ? "unconfirmed"
-          : "landed",
-    ),
+    // Every folder can read at the release while the record still disagrees.
+    heading:
+      retry && verdict === "landed"
+        ? UPDATE_INCOMPLETE
+        : outcomeHeading(folders.release, verdict),
     lines: folders.folders.map((folder) => ({
       key: folder.path,
       name: folder.path,

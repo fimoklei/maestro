@@ -109,6 +109,8 @@ export function BulkDeployRun({
   const [updateFor, setUpdateFor] = useState<string | null>(null);
   // The Attention rows Deploy again has since deployed: they read as Deployed.
   const [redeployed, setRedeployed] = useState<SkillRelease[]>([]);
+  // The Global folders as the latest row's Deploy again read them back.
+  const [reread, setReread] = useState<FolderOutcomes | null>(null);
   const update = useUpdateTarget();
   const screen = useScreenWrites();
   // A held run's footer Deploy again; its report replaces the held rows.
@@ -210,6 +212,7 @@ export function BulkDeployRun({
     again.reset();
     retry.reset();
     setRedeployed([]);
+    setReread(null);
     setPlan(preview);
     if (preview.toDeploy.length > 0) {
       bulkWrite.run({ names: preview.toDeploy, target: chosenRun.target });
@@ -234,6 +237,7 @@ export function BulkDeployRun({
           skippedClean: plan.skippedClean,
           redeployed,
           retried: retry.landed(chosenRun.target)?.outcome ?? null,
+          reread,
           targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
         });
@@ -279,6 +283,7 @@ export function BulkDeployRun({
         again.reset();
         retry.reset();
         setRedeployed([]);
+        setReread(null);
         setPlan(null);
         setChosen(value);
       }}
@@ -345,11 +350,13 @@ export function BulkDeployRun({
                         confirmedCopyReceipt,
                       },
                       {
-                        onSuccess: ({ deployed }) =>
+                        onSuccess: ({ deployed, outcome }) => {
                           setRedeployed((rows) => [
                             ...rows,
                             { name: deployed.name, version: deployed.version },
-                          ]),
+                          ]);
+                          if (outcome !== undefined) setReread(outcome);
+                        },
                       },
                     ),
                   running: forceDeploy.isPending
@@ -427,6 +434,8 @@ function bulkDeployReportView(input: {
   redeployed: SkillRelease[];
   // A completed Retry deploy's read of the Global folders; null before one.
   retried: FolderOutcomes | null;
+  // A row's Deploy again's read of the Global folders; null before one.
+  reread: FolderOutcomes | null;
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
@@ -455,21 +464,23 @@ function bulkDeployReportView(input: {
   );
   // On Global the folders state an unfinished install; its retry reads them
   // again.
-  const outcome = input.retried ?? report.outcome;
+  const outcome = input.retried ?? input.reread ?? report.outcome;
   const retry =
     outcome !== undefined &&
     input.retried === null &&
     report.failed.some((line) => line.error === "deploy-incomplete");
+  // Its rows are stated once, in the block above the folders.
+  const hold = heldDeployView(report, input.globalFolders, skippedClean);
+  const skipped = skippedClean.filter((name) => !hold?.names.includes(name));
   const folders =
-    outcome === undefined ? null : writtenToView({ report, outcome, retry });
+    outcome === undefined
+      ? null
+      : writtenToView({ report, outcome, skipped, retry });
   const deployed = [
     ...report.deployed,
     ...(folders?.deployed ?? []),
     ...redeployed,
   ];
-  // Its rows are stated once, in the block above the folders.
-  const hold = heldDeployView(report, input.globalFolders, skippedClean);
-  const skipped = skippedClean.filter((name) => !hold?.names.includes(name));
 
   return {
     tone: "ran",

@@ -62,11 +62,10 @@ export function writtenToLine(
   retry: boolean,
 ): WrittenToLine {
   return folderLine(folder, {
-    clean: `${skills(folder.skills.length)} written`,
-    partial: "written",
+    clean: `${skills(folder.skills.length)} deployed`,
     step: (details) =>
       retry
-        ? `Select ${RETRY_DEPLOY} to write ${details.length === 1 ? "it" : "them"} again.`
+        ? `Select ${RETRY_DEPLOY} to deploy ${details.length === 1 ? "it" : "them"} again.`
         : null,
   });
 }
@@ -78,7 +77,6 @@ export function updatedToLine(
 ): WrittenToLine {
   const line = folderLine(folder, {
     clean: `At ${update.release}`,
-    partial: "deployed",
     step: () => (update.retry ? RETRY_UPDATE_STEP : null),
   });
   const notUpdated = folder.skills.filter(
@@ -96,8 +94,6 @@ function folderLine(
   folder: FolderOutcome,
   words: {
     clean: string;
-    /** The verb of a partial count: `1 of 3 skills {partial}`. */
-    partial: "written" | "deployed";
     step: (details: readonly Detail[]) => string | null;
   },
 ): WrittenToLine {
@@ -134,7 +130,7 @@ function folderLine(
         ? missing === total
           ? `${skills(total)} missing`
           : `${missing} of ${skills(total)} missing`
-        : `${written} of ${skills(total)} ${words.partial}`,
+        : `${written} of ${skills(total)} deployed`,
     details,
     step: words.step(details),
   };

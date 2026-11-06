@@ -81,6 +81,16 @@ function stub(
       }
       if (url === "/api/deploy/bulk") return jsonResponse(report);
       if (url === "/api/deploy/retry") return retry();
+      if (url === "/api/deploy") {
+        return jsonResponse({
+          deployed: {
+            type: "skill",
+            name: "commit-message",
+            version: "v1.0.0",
+          },
+          outcome: BOTH_WRITTEN,
+        });
+      }
       throw new Error(`Unexpected request: ${url}`);
     }),
   );
@@ -134,8 +144,8 @@ describe("Global deploy Report: Written to", () => {
     const dialog = await deployToGlobal();
 
     expect(lines(dialog)).toEqual([
-      "✓~/.claude/skills2 skills written",
-      "✓~/.agents/skills2 skills written",
+      "✓~/.claude/skills2 skills deployed",
+      "✓~/.agents/skills2 skills deployed",
     ]);
     expect(
       within(writtenTo(dialog)).queryByRole("button"),
@@ -163,7 +173,7 @@ describe("Global deploy Report: Written to", () => {
     const dialog = await deployToGlobal();
 
     expect(lines(dialog)).toEqual([
-      "✓~/.claude/skills2 skills written",
+      "✓~/.claude/skills2 skills deployed",
       "–~/.agents/skillsCodex not detected · not written",
     ]);
   });
@@ -183,7 +193,7 @@ describe("Global deploy Report: Written to", () => {
     expect(fold).toHaveTextContent("1 of 2 skills missing");
     expect(writtenTo(dialog)).toHaveTextContent("Missingcommit-message");
     expect(writtenTo(dialog)).toHaveTextContent(
-      "Select Retry deploy to write it again.",
+      "Select Retry deploy to deploy it again.",
     );
     expect(dialog).not.toHaveTextContent(
       "Part of the selection is not on disk.",
@@ -214,8 +224,8 @@ describe("Global deploy Report: Written to", () => {
 
     await waitFor(() =>
       expect(lines(dialog)).toEqual([
-        "✓~/.claude/skills2 skills written",
-        "✓~/.agents/skills2 skills written",
+        "✓~/.claude/skills2 skills deployed",
+        "✓~/.agents/skills2 skills deployed",
       ]),
     );
     expect(within(dialog).getByRole("heading", { level: 3 })).toHaveTextContent(
@@ -231,6 +241,43 @@ describe("Global deploy Report: Written to", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       target: { kind: "global" },
     });
+  });
+
+  it("reads the folders again after a row's own Deploy again", async () => {
+    stub({
+      target: { kind: "global" },
+      deployed: [{ name: "code-review", version: "v1.0.0" }],
+      attention: [
+        {
+          name: "commit-message",
+          error: "deployed-diverged-from-lock",
+          forceable: true,
+          copyReceipt: "b".repeat(64),
+        },
+      ],
+      failed: [],
+      outcome: outcome(
+        [written("code-review"), written("commit-message")],
+        [
+          written("code-review"),
+          { name: "commit-message", outcome: "not-updated", stillAt: "v0.9.0" },
+        ],
+      ),
+    });
+    const dialog = await deployToGlobal();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Deploy commit-message again",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(lines(dialog)).toEqual([
+        "✓~/.claude/skills2 skills deployed",
+        "✓~/.agents/skills2 skills deployed",
+      ]),
+    );
   });
 
   it("states a failed retry above the footer and keeps Retry deploy", async () => {

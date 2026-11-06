@@ -33,7 +33,7 @@ export const NO_FILTER_MATCH = {
 
 export const NO_TARGETS = {
   title: "No targets yet",
-  description: "Global and registered repositories appear here as targets.",
+  description: "Global and registered repositories appear here.",
 };
 
 /** The pane's line for behind names that are no deployed skill. */

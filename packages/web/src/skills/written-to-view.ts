@@ -11,10 +11,14 @@ type WrittenToView = {
   lines: FoldLine[];
 };
 
-/** `outcome`: the latest read of the folders, the run's or its retry's. */
+/**
+ * `outcome`: the latest read of the folders, the run's or its retry's.
+ * `skipped`: skills the Report counts as up to date; the folders state them too.
+ */
 export function writtenToView(input: {
   report: BulkDeployReport;
   outcome: FolderOutcomes;
+  skipped: readonly string[];
   retry: boolean;
 }): WrittenToView {
   const { report, outcome, retry } = input;
@@ -22,6 +26,7 @@ export function writtenToView(input: {
     ...report.deployed.map((row) => row.name),
     ...report.attention.map((row) => row.name),
     ...report.failed.flatMap((line) => line.names),
+    ...input.skipped,
   ]);
   const folders = outcome.folders.map((folder) => ({
     ...folder,

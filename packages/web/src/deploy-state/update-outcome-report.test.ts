@@ -1,8 +1,11 @@
-import type { UpdateOutcomeRow } from "@maestro/core";
+import type { FolderOutcomes, UpdateOutcomeRow } from "@maestro/core";
 import { isValidElement, type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 import { type Copy, plainText } from "../ui/phrase";
-import { updateOutcomeReport } from "./update-outcome-report";
+import {
+  updateFoldersReport,
+  updateOutcomeReport,
+} from "./update-outcome-report";
 
 const RELEASES = { from: "v0.3.2", to: "v0.3.4" };
 
@@ -105,5 +108,31 @@ describe("update outcome report", () => {
     expect(groups[0]?.rows.map((row) => row.name)).toStrictEqual([
       "grill in Codex",
     ]);
+  });
+});
+
+describe("Global update outcome report", () => {
+  const everyFolderAt = {
+    release: "v0.3.4",
+    folders: [
+      {
+        path: "~/.claude/skills",
+        tool: "claude",
+        written: true,
+        skills: [{ name: "tdd", outcome: "written" }],
+      },
+    ],
+  } satisfies FolderOutcomes;
+
+  it("states a finished update in its heading", () => {
+    expect(
+      updateFoldersReport({ folders: everyFolderAt, retry: false }).heading,
+    ).toBe("Updated to v0.3.4");
+  });
+
+  it("claims no success while the update is incomplete, though every folder reads at the release", () => {
+    expect(
+      updateFoldersReport({ folders: everyFolderAt, retry: true }).heading,
+    ).toBe("Update incomplete");
   });
 });

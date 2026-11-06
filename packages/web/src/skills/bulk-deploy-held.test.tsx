@@ -62,18 +62,30 @@ const DEPLOYED_AGAIN: BulkDeployReport = {
   },
 };
 
-function stub(again: BulkDeployReport) {
+function stub(
+  again: BulkDeployReport,
+  run: { held: BulkDeployReport; current: string[] } = {
+    held: HELD,
+    current: [],
+  },
+) {
+  // A skill in `current` is at the release in both folders: the plan skips it.
+  const copies = run.current.map((name) => ({
+    type: "skill",
+    name,
+    version: "v1.0.0",
+  }));
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith("/api/deploy-state/global")) {
-        return jsonResponse(globalAnswer({ claude: [], codex: [] }));
+        return jsonResponse(globalAnswer({ claude: copies, codex: copies }));
       }
       if (url.startsWith("/api/drift/global")) {
         return jsonResponse({ behind: [] });
       }
-      if (url === "/api/deploy/bulk") return jsonResponse(HELD);
+      if (url === "/api/deploy/bulk") return jsonResponse(run.held);
       if (url === "/api/deploy/again") return jsonResponse(again);
       throw new Error(`Unexpected request: ${url}`);
     }),
@@ -150,8 +162,8 @@ describe("Global deploy Report: held by local edits", () => {
 
     await waitFor(() =>
       expect(lines(dialog)).toEqual([
-        "✓~/.claude/skills2 skills written",
-        "✓~/.agents/skills2 skills written",
+        "✓~/.claude/skills2 skills deployed",
+        "✓~/.agents/skills2 skills deployed",
       ]),
     );
     expect(within(dialog).getByRole("heading", { level: 3 })).toHaveTextContent(
@@ -175,5 +187,34 @@ describe("Global deploy Report: held by local edits", () => {
         },
       ],
     });
+  });
+
+  it("counts the skipped skill whose edits held the run in each folder once Deploy again ran", async () => {
+    // The install rewrites the whole Selection, so the folders are read over it.
+    stub(
+      {
+        ...DEPLOYED_AGAIN,
+        deployed: [{ name: "code-review", version: "v1.0.0" }],
+      },
+      {
+        held: { ...HELD, attention: [heldRow("code-review")] },
+        current: ["commit-message"],
+      },
+    );
+    const dialog = await deployToGlobal();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Deploy again" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("heading", { level: 3 }),
+      ).toHaveTextContent("Deployed 2 of 2 skills to Global"),
+    );
+    expect(lines(dialog)).toEqual([
+      "✓~/.claude/skills2 skills deployed",
+      "✓~/.agents/skills2 skills deployed",
+    ]);
   });
 });

@@ -146,9 +146,7 @@ describe("Deploy-state — one table of every target", () => {
       screen.getByRole("heading", { level: 2, name: "No targets yet" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Global and registered repositories appear here as targets.",
-      ),
+      screen.getByText("Global and registered repositories appear here."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });

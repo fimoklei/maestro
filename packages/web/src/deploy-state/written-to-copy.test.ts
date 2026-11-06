@@ -23,12 +23,12 @@ describe("Written to line", () => {
       writtenToLine(folder([written("code-review"), written("tdd")]), true),
     ).toEqual({
       tone: "good",
-      fact: "2 skills written",
+      fact: "2 skills deployed",
       details: [],
       step: null,
     });
     expect(writtenToLine(folder([written("tdd")]), true).fact).toBe(
-      "1 skill written",
+      "1 skill deployed",
     );
   });
 
@@ -42,7 +42,7 @@ describe("Written to line", () => {
       tone: "failed",
       fact: "1 of 2 skills missing",
       details: [{ label: "Missing", value: "commit-message" }],
-      step: "Select Retry deploy to write it again.",
+      step: "Select Retry deploy to deploy it again.",
     });
   });
 
@@ -59,7 +59,7 @@ describe("Written to line", () => {
     expect(
       writtenToLine(folder([missing("code-review"), missing("tdd")]), true)
         .step,
-    ).toBe("Select Retry deploy to write them again.");
+    ).toBe("Select Retry deploy to deploy them again.");
   });
 
   it("names the release a not updated skill is still at, or none", () => {
@@ -74,7 +74,7 @@ describe("Written to line", () => {
       ),
     ).toEqual({
       tone: "failed",
-      fact: "1 of 3 skills written",
+      fact: "1 of 3 skills deployed",
       details: [
         { label: "Not updated", value: "code-review · still at v1.1.0" },
         { label: "Not updated", value: "commit-message" },
@@ -102,7 +102,7 @@ describe("Written to line", () => {
       ),
     ).toEqual({
       tone: "unknown",
-      fact: "1 of 2 skills written",
+      fact: "1 of 2 skills deployed",
       details: [{ label: "Not confirmed", value: "review" }],
       step: null,
     });

@@ -199,7 +199,7 @@ describe("Deploy-state copy", () => {
     });
     expect(NO_TARGETS).toEqual({
       title: "No targets yet",
-      description: "Global and registered repositories appear here as targets.",
+      description: "Global and registered repositories appear here.",
     });
   });
 
