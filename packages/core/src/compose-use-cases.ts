@@ -13,6 +13,7 @@ import { DeploySkill } from "./deploy/deploy-skill";
 import { DeployedContentAdapter } from "./deploy/deployed-content";
 import { DeployedLocation } from "./deploy/deployed-location";
 import { DeployedRefAdapter } from "./deploy/deployed-ref";
+import { FolderOutcomeReader } from "./deploy/folder-outcome";
 import { InFlightLocks } from "./deploy/in-flight-locks";
 import { LocalCopyGuard } from "./deploy/local-copy-guard";
 import { RecordedPackageAdapter } from "./deploy/recorded-package";
@@ -187,15 +188,17 @@ export function composeUseCases(ports: UseCasePorts) {
     const root = await harnessRoot();
     return root === undefined ? null : await readHarnessOrigin(root);
   };
+  const releaseHead = new ReleaseHeadReader({
+    git: harnessGit,
+    resolveRoot: harnessRoot,
+    now: () => new Date(),
+  });
   const deployState = new GlobalDeployStateReader({
     fs,
     toolPresence,
     treeRoot: () => deployedLocation.treeRoot({ kind: "global" }),
-    releaseHead: new ReleaseHeadReader({
-      git: harnessGit,
-      resolveRoot: harnessRoot,
-      now: () => new Date(),
-    }),
+    releaseHead,
+    releaseTags: () => releaseHead.releaseTags(),
     harnessOrigin,
     content: releaseAwareContent,
     // Read per request, not captured at construction: the retry use-case is
@@ -259,7 +262,13 @@ export function composeUseCases(ports: UseCasePorts) {
     apm,
     operations: new TargetOperationStore({ store }),
   });
+  // What a Global write left per folder, against the release it installed.
+  const outcomes = new FolderOutcomeReader({
+    content: releaseAwareContent,
+    releaseTags: () => releaseHead.releaseTags(),
+  });
   const deploy = new DeploySkill({
+    outcomes,
     inventory,
     registry,
     apm,
@@ -291,6 +300,7 @@ export function composeUseCases(ports: UseCasePorts) {
     harnessOrigin,
   });
   const retryOperation = new RetryTargetOperation({
+    outcomes,
     registry,
     selection,
     deployedCleanup,
@@ -493,6 +503,7 @@ export function composeUseCases(ports: UseCasePorts) {
       selection,
       deployedCleanup,
       deployedContent,
+      outcomes,
       canonicalPath,
       locks: apmWriteLocks,
     }),

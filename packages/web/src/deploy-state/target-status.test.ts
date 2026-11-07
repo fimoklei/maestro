@@ -4,6 +4,7 @@ import {
   TARGET_CHIPS,
   TARGET_STATUS_WORDS,
   targetStatus,
+  worstFolderReading,
 } from "./target-status";
 
 const words = (value: ReturnType<typeof targetStatus>) =>
@@ -143,12 +144,91 @@ describe("targetStatus", () => {
     ).toBeNull();
   });
 
+  it("reads a folder holding a copy left at an older release as Not updated, over Local edits and Behind", () => {
+    for (const status of [
+      targetStatus({ pending: undefined, indicator: "ok", notUpdated: true }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        behind: true,
+        localEdits: true,
+        notUpdated: true,
+      }),
+    ]) {
+      expect(words(status)).toBe("⚠ Not updated");
+      expect(status?.family).toBe("attention");
+    }
+  });
+
+  it("reads a folder lacking skills as Skills missing, over Not updated, Local edits and Empty", () => {
+    for (const status of [
+      targetStatus({ pending: undefined, indicator: "empty", missing: true }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        behind: true,
+        localEdits: true,
+        notUpdated: true,
+        missing: true,
+      }),
+    ]) {
+      expect(words(status)).toBe("⚠ Skills missing");
+      expect(status?.family).toBe("attention");
+    }
+  });
+
+  it("lets Attention and an unfinished operation outrank Skills missing", () => {
+    expect(
+      words(
+        targetStatus({
+          pending: undefined,
+          indicator: "attention",
+          missing: true,
+        }),
+      ),
+    ).toBe("⚠ Attention");
+    expect(
+      words(
+        targetStatus({ pending: "deploy", indicator: "ok", missing: true }),
+      ),
+    ).toBe("⚠ Deploy incomplete");
+    expect(
+      targetStatus({ pending: undefined, indicator: "pending", missing: true }),
+    ).toBeNull();
+  });
+
+  it("lets Attention and an unfinished operation outrank Not updated", () => {
+    expect(
+      words(
+        targetStatus({
+          pending: undefined,
+          indicator: "attention",
+          notUpdated: true,
+        }),
+      ),
+    ).toBe("⚠ Attention");
+    expect(
+      words(
+        targetStatus({ pending: "update", indicator: "ok", notUpdated: true }),
+      ),
+    ).toBe("⚠ Update incomplete");
+    expect(
+      targetStatus({
+        pending: undefined,
+        indicator: "pending",
+        notUpdated: true,
+      }),
+    ).toBeNull();
+  });
+
   it("offers every badge word to the Filter, worst first", () => {
     expect(TARGET_STATUS_WORDS).toEqual([
       "Deploy incomplete",
       "Removal incomplete",
       "Update incomplete",
       "Attention",
+      "Skills missing",
+      "Not updated",
       "Local edits",
       "Behind",
       "Unknown",
@@ -161,7 +241,7 @@ describe("targetStatus", () => {
 });
 
 describe("TARGET_CHIPS", () => {
-  it("offers Unknown as failed, and Attention, Local edits and Behind as attention, unfinished operations under Attention", () => {
+  it("offers Unknown as failed, and Attention, Skills missing, Not updated, Local edits and Behind as attention, unfinished operations under Attention", () => {
     expect(TARGET_CHIPS).toEqual([
       { word: "Unknown", family: "failed", covers: ["Unknown"] },
       {
@@ -174,9 +254,71 @@ describe("TARGET_CHIPS", () => {
           "Update incomplete",
         ],
       },
+      {
+        word: "Skills missing",
+        family: "attention",
+        covers: ["Skills missing"],
+      },
+      { word: "Not updated", family: "attention", covers: ["Not updated"] },
       { word: "Local edits", family: "attention", covers: ["Local edits"] },
       { word: "Behind", family: "attention", covers: ["Behind"] },
     ]);
     expect(IN_SYNC.word).toBe("In sync");
+  });
+});
+
+describe("worstFolderReading", () => {
+  const inSync = targetStatus({ indicator: "ok", pending: undefined });
+  const behind = targetStatus({
+    indicator: "ok",
+    behind: true,
+    pending: undefined,
+  });
+  const edited = targetStatus({
+    indicator: "ok",
+    localEdits: true,
+    pending: undefined,
+  });
+  const attention = targetStatus({
+    indicator: "attention",
+    pending: undefined,
+  });
+  const unknown = targetStatus({ indicator: "unknown", pending: undefined });
+  const unfinished = targetStatus({ indicator: "ok", pending: "update" });
+  const notUpdated = targetStatus({
+    indicator: "ok",
+    notUpdated: true,
+    pending: undefined,
+  });
+  const missing = targetStatus({
+    indicator: "empty",
+    missing: true,
+    pending: undefined,
+  });
+
+  it("takes the folder reading that comes first in the Filter order", () => {
+    expect(words(worstFolderReading([inSync, edited]))).toBe("⚠ Local edits");
+    expect(words(worstFolderReading([notUpdated, missing]))).toBe(
+      "⚠ Skills missing",
+    );
+    expect(words(worstFolderReading([missing, attention]))).toBe("⚠ Attention");
+    expect(words(worstFolderReading([edited, notUpdated]))).toBe(
+      "⚠ Not updated",
+    );
+    expect(words(worstFolderReading([notUpdated, attention]))).toBe(
+      "⚠ Attention",
+    );
+    expect(words(worstFolderReading([edited, attention]))).toBe("⚠ Attention");
+    // The Filter order, not the family: Behind outranks Unknown here.
+    expect(words(worstFolderReading([unknown, behind]))).toBe("↑ Behind");
+    expect(words(worstFolderReading([unknown, inSync]))).toBe("? Unknown");
+    expect(words(worstFolderReading([edited, unfinished, attention]))).toBe(
+      "⚠ Update incomplete",
+    );
+  });
+
+  it("waits while any folder has no reading yet", () => {
+    expect(worstFolderReading([inSync, null])).toBeNull();
+    expect(worstFolderReading([])).toBeNull();
   });
 });

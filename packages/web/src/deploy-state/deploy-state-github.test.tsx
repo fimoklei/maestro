@@ -7,6 +7,7 @@ import {
   factValue,
   findRow,
   GITHUB_CELL,
+  globalAnswer,
   openPane,
   renderDeployState,
   rowOf,
@@ -23,7 +24,7 @@ const REPO = "/Users/me/maestro";
 const NAME = "…/me/maestro";
 const URL = "https://github.com/fimoklei/maestro";
 const TOOLS = {
-  tools: [{ tool: "claude", primitives: [] }],
+  ...globalAnswer({ claude: [] }),
   skipped: [],
 };
 
@@ -96,7 +97,7 @@ describe("Deploy-state — GitHub column", () => {
     await findRow(NAME);
 
     expect(githubCell(NAME)).toBeEmptyDOMElement();
-    expect(githubCell("Claude Code")).toBeEmptyDOMElement();
+    expect(githubCell("Global")).toBeEmptyDOMElement();
     await userEvent.click(
       within(rowOf(NAME)).getByRole("button", {
         name: `Actions for ${NAME}`,

@@ -1,20 +1,27 @@
-import type { BulkDeployReport } from "@maestro/core";
+import type {
+  BulkDeployReport,
+  FolderOutcomes,
+  GlobalFolderState,
+} from "@maestro/core";
 import { useState } from "react";
-import { NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
+import { GLOBAL, NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
 import type { DeployStateRead } from "../deploy-state/deployed-view";
+import type { DeployStateNotice } from "../deploy-state/notice-copy";
 import {
   deployAttentionNotice,
   deployNotice,
   deployNoticeFor,
 } from "../deploy-state/notice-copy";
-import { toolNameList } from "../deploy-state/tool-presentation";
+import { RETRY_DEPLOY } from "../deploy-state/release-head-copy";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import {
   type GlobalDeployStateView,
   useGlobalDeployState,
 } from "../deploy-state/use-global-deploy-state";
+import { useRetryOperation } from "../deploy-state/use-retry-operation";
 import { useUpdateTarget } from "../deploy-state/use-update-target";
+import { writesToGroup } from "../deploy-state/writes-to-group";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
@@ -26,12 +33,19 @@ import type { RegisteredRepo } from "../registry/use-registry";
 import { repoTargetName } from "../shell/target-name";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
-import { deployAgainLabel, UPDATE_TARGET } from "../ui/control-labels";
+import {
+  DEPLOY_AGAIN,
+  deployAgainLabel,
+  UPDATE_TARGET,
+} from "../ui/control-labels";
+import type { FoldLine } from "../ui/fold-list";
+import type { NoticeContent } from "../ui/notice";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
 import { bulkDeploySkillGroups } from "./bulk-deploy-skill-groups";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
+import { type HeldDeployView, heldDeployView } from "./held-deploy-view";
 import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
 import {
   bulkDeployDidNotRun,
@@ -40,7 +54,8 @@ import {
   NO_TARGET_CHOSEN,
   TARGETS_LOADING,
 } from "./skills-copy";
-import { useBulkDeploy } from "./use-bulk-deploy";
+import { useBulkDeploy, useDeployAgain } from "./use-bulk-deploy";
+import { writtenToView } from "./written-to-view";
 
 type BulkDeployProps = {
   stagedNames: string[];
@@ -94,8 +109,25 @@ export function BulkDeployRun({
   const [updateFor, setUpdateFor] = useState<string | null>(null);
   // The Attention rows Deploy again has since deployed: they read as Deployed.
   const [redeployed, setRedeployed] = useState<SkillRelease[]>([]);
+  // The Global folders as the latest row's Deploy again read them back.
+  const [reread, setReread] = useState<FolderOutcomes | null>(null);
   const update = useUpdateTarget();
   const screen = useScreenWrites();
+  // A held run's footer Deploy again; its report replaces the held rows.
+  const again = useDeployAgain();
+  const ran =
+    bulk.data === undefined || again.data === undefined
+      ? bulk.data
+      : { ...again.data, failed: [...bulk.data.failed, ...again.data.failed] };
+  // Retry deploy in the Report's footer; its outcome replaces the run's.
+  const retry = useRetryOperation(screen, () =>
+    ran?.outcome === undefined
+      ? null
+      : {
+          operation: { kind: "deploy", release: ran.outcome.release },
+          subject: null,
+        },
+  );
   // The Report states the run, its request failure included.
   const bulkWrite = useWriteAction(bulk, {
     screen,
@@ -105,6 +137,13 @@ export function BulkDeployRun({
   });
   // The Report states the reinstall: its row moves to Deployed.
   const forceWrite = useWriteAction(forceDeploy, {
+    screen,
+    action: "deploy",
+    subject: () => null,
+    failure: (error) => ({ ...deployNotice(error), level: "error" as const }),
+  });
+  // The Report states the run again: held rows move to Deployed.
+  const againWrite = useWriteAction(again, {
     screen,
     action: "deploy",
     subject: () => null,
@@ -122,7 +161,7 @@ export function BulkDeployRun({
     selected === null
       ? null
       : isGlobal
-        ? { target: { kind: "global" }, label: "Global" }
+        ? { target: { kind: "global" }, label: GLOBAL }
         : {
             target: { kind: "repo", repoPath: selected },
             label: repoTargetName(selected, repoPaths),
@@ -170,7 +209,10 @@ export function BulkDeployRun({
   const onDeploy = () => {
     if (chosenRun === null || preview === null) return;
     bulk.reset();
+    again.reset();
+    retry.reset();
     setRedeployed([]);
+    setReread(null);
     setPlan(preview);
     if (preview.toDeploy.length > 0) {
       bulkWrite.run({ names: preview.toDeploy, target: chosenRun.target });
@@ -183,14 +225,19 @@ export function BulkDeployRun({
     plan === null || chosenRun === null || bulk.isPending
       ? null
       : bulkDeployReportView({
-          report: bulk.data ?? {
+          report: ran ?? {
             target: chosenRun.target,
             deployed: [],
             attention: [],
             failed: [],
           },
+          globalFolders: isGlobal
+            ? (globalDeployState.data?.folders ?? [])
+            : [],
           skippedClean: plan.skippedClean,
           redeployed,
+          retried: retry.landed(chosenRun.target)?.outcome ?? null,
+          reread,
           targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
         });
@@ -200,10 +247,7 @@ export function BulkDeployRun({
   if (updateFor !== null && chosenRun !== null) {
     return (
       <UpdateTargetAction
-        targetName={
-          isGlobal ? toolNameList(globalTools ?? []) : chosenRun.label
-        }
-        updateLabel={UPDATE_TARGET}
+        targetName={chosenRun.label}
         target={chosenRun.target}
         update={update}
         add={updateFor}
@@ -229,9 +273,17 @@ export function BulkDeployRun({
       ]}
       selected={selected}
       skills={bulkDeploySkillGroups(stagedNames, preview)}
+      writesTo={
+        isGlobal && globalDeployState.data
+          ? writesToGroup(globalDeployState.data.folders)
+          : null
+      }
       onSelect={(value) => {
         bulk.reset();
+        again.reset();
+        retry.reset();
         setRedeployed([]);
+        setReread(null);
         setPlan(null);
         setChosen(value);
       }}
@@ -245,7 +297,12 @@ export function BulkDeployRun({
               : null
       }
       fieldsChanged={chosen !== null}
-      busy={bulkWrite.phase === "running" || forceWrite.phase === "running"}
+      busy={
+        bulkWrite.phase === "running" ||
+        forceWrite.phase === "running" ||
+        againWrite.phase === "running" ||
+        (chosenRun !== null && retry.isRetrying(chosenRun.target))
+      }
       failure={
         view?.tone === "error"
           ? {
@@ -263,6 +320,24 @@ export function BulkDeployRun({
                 targetLabel: view.targetLabel,
                 counts: view.counts,
               }),
+              writtenTo: view.writtenTo,
+              notice: view.hold?.notice ?? null,
+              action:
+                view.hold !== null
+                  ? {
+                      label: DEPLOY_AGAIN,
+                      onRun: () =>
+                        againWrite.run({
+                          target: chosenRun.target,
+                          held: view.hold?.held ?? [],
+                        }),
+                    }
+                  : view.retry
+                    ? {
+                        label: RETRY_DEPLOY,
+                        onRun: () => retry.run(chosenRun.target),
+                      }
+                    : null,
               groups: bulkDeployReportGroups({
                 view,
                 force: {
@@ -275,11 +350,13 @@ export function BulkDeployRun({
                         confirmedCopyReceipt,
                       },
                       {
-                        onSuccess: ({ deployed }) =>
+                        onSuccess: ({ deployed, outcome }) => {
                           setRedeployed((rows) => [
                             ...rows,
                             { name: deployed.name, version: deployed.version },
-                          ]),
+                          ]);
+                          if (outcome !== undefined) setReread(outcome);
+                        },
                       },
                     ),
                   running: forceDeploy.isPending
@@ -290,7 +367,13 @@ export function BulkDeployRun({
               }),
             }
       }
-      reportFailure={forceWrite.failure}
+      reportFailure={
+        forceWrite.failure ??
+        againWrite.failure ??
+        (chosenRun === null
+          ? null
+          : retryFailure(retry.failure(chosenRun.target)))
+      }
       onDeploy={onDeploy}
       onClose={close}
     />
@@ -317,6 +400,12 @@ type BulkDeployReportView =
       skipped: string[];
       attention: BulkDeployReport["attention"];
       failed: BulkDeployReport["failed"];
+      /** Global only: one line per Global folder. */
+      writtenTo: FoldLine[] | null;
+      /** The install stopped short: Retry deploy finishes it. */
+      retry: boolean;
+      /** Local edits held the whole Global run: Deploy again resolves it. */
+      hold: HeldDeployView | null;
       counts: BulkReportCounts;
     }
   | {
@@ -338,9 +427,15 @@ function bulkDeploySummary(input: {
 
 function bulkDeployReportView(input: {
   report: BulkDeployReport;
+  // Global's folders as the dialog read them; empty for a repository.
+  globalFolders: readonly GlobalFolderState[];
   skippedClean: string[];
   // Attention rows a later Deploy again succeeded on.
   redeployed: SkillRelease[];
+  // A completed Retry deploy's read of the Global folders; null before one.
+  retried: FolderOutcomes | null;
+  // A row's Deploy again's read of the Global folders; null before one.
+  reread: FolderOutcomes | null;
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
@@ -367,23 +462,50 @@ function bulkDeployReportView(input: {
   const attention = report.attention.filter(
     (row) => !redeployed.some((done) => done.name === row.name),
   );
-  const deployed = [...report.deployed, ...redeployed];
+  // On Global the folders state an unfinished install; its retry reads them
+  // again.
+  const outcome = input.retried ?? input.reread ?? report.outcome;
+  const retry =
+    outcome !== undefined &&
+    input.retried === null &&
+    report.failed.some((line) => line.error === "deploy-incomplete");
+  // Its rows are stated once, in the block above the folders.
+  const hold = heldDeployView(report, input.globalFolders, skippedClean);
+  const skipped = skippedClean.filter((name) => !hold?.names.includes(name));
+  const folders =
+    outcome === undefined
+      ? null
+      : writtenToView({ report, outcome, skipped, retry });
+  const deployed = [
+    ...report.deployed,
+    ...(folders?.deployed ?? []),
+    ...redeployed,
+  ];
 
   return {
     tone: "ran",
     targetLabel,
     deployed,
-    skipped: skippedClean,
-    attention,
-    failed: report.failed,
+    skipped,
+    attention: hold === null ? attention : [],
+    failed: folders?.failed ?? report.failed,
+    writtenTo: folders?.lines ?? hold?.lines ?? null,
+    retry,
+    hold,
     counts: {
       deployed: deployed.length,
-      skipped: skippedClean.length,
-      attention: attention.length,
-      failed: failedCount,
+      skipped: skipped.length,
+      attention: hold?.names.length ?? attention.length,
+      // A name the folders hold back still counts as not deployed.
+      failed: failedCount - (folders?.deployed.length ?? 0),
     },
   };
 }
+
+const retryFailure = (
+  notice: DeployStateNotice | null,
+): NoticeContent | null =>
+  notice === null ? null : { ...notice, level: "error" };
 
 type Force = {
   /** The row's own consent, so an inline deploy grants only what it read. */
@@ -463,7 +585,9 @@ function chosenBulkDeployTargets(params: {
   targetLabel: string;
   // What a write would name. Every row here belongs to the one chosen target.
   target: DeployTarget;
-  globalState: Pick<GlobalDeployStateView, "tools" | "skipped"> | undefined;
+  globalState:
+    | Pick<GlobalDeployStateView, "folders" | "releaseHead" | "skipped">
+    | undefined;
   // Ignored when isGlobal is true.
   repoRead: DeployStateRead;
   drift: DriftViewModel;

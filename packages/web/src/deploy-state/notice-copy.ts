@@ -21,7 +21,13 @@ import {
 } from "../ui/control-labels";
 import type { NoticeCopy } from "../ui/notice";
 import { requestShapeNotice } from "../ui/notice-table";
-import { machine, namedList, phrase } from "../ui/phrase";
+import {
+  type Copy,
+  machine,
+  machineList,
+  namedList,
+  phrase,
+} from "../ui/phrase";
 import { REGISTER_STEP } from "./deploy-state-copy";
 import { REASON, type ReasonCode, TARGET_BUSY } from "./reason-copy";
 import {
@@ -34,7 +40,6 @@ import {
   RETRY_UPDATE,
   UPDATE_AGAIN,
   UPDATE_INCOMPLETE_SENTENCE,
-  updateAgain,
 } from "./update-target-copy";
 
 export type DeployStateNotice = NoticeCopy;
@@ -312,6 +317,13 @@ const UNKNOWN_UPDATE_RUN: DeployStateNotice = {
   detail: UNKNOWN_DETAIL,
 };
 
+// Global: nothing read the folders back, so any of them may have changed.
+const UNKNOWN_GLOBAL_UPDATE_RUN: DeployStateNotice = {
+  label: UNKNOWN_UPDATE_RUN.label,
+  message: "Maestro could not confirm that the update finished.",
+  detail: `Some folders may have changed. Check them on the Deploy-state screen, ${UPDATE_AGAIN}`,
+};
+
 const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
   "repo-not-registered": {
     message: `${REGISTER_STEP}, ${UPDATE_AGAIN}`,
@@ -479,42 +491,33 @@ export function deployNotice(error: unknown): DeployStateNotice {
     : noticeFor(DEPLOY, error, UNKNOWN_DEPLOY);
 }
 
-/** The whole notice for a refused Update preview, naming the control by `label`. */
-export function updatePreviewNotice(
-  error: unknown,
-  label: string,
-): DeployStateNotice {
+/** The whole notice for a refused Update preview. */
+export function updatePreviewNotice(error: unknown): DeployStateNotice {
   return withLinkedPath(
-    namingUpdate(noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE), label),
+    noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE),
     error,
-    updateAgain(label),
+    UPDATE_AGAIN,
   );
 }
 
-/** The whole notice for a refused or failed Update, naming the control by `label`. */
-export function updateNotice(error: unknown, label: string): DeployStateNotice {
+/** The whole notice for a refused or failed Update. */
+export function updateNotice(error: unknown): DeployStateNotice {
   return withLinkedPath(
-    namingUpdate(noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN), label),
+    noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN),
     error,
-    updateAgain(label),
+    UPDATE_AGAIN,
   );
 }
 
-// The tables name Update target; a row whose update moves more names its own
-// label instead, so the notice points at the control the reader sees.
-function namingUpdate(
-  notice: DeployStateNotice,
-  label: string,
-): DeployStateNotice {
-  const { message } = notice;
-  return label === UPDATE_TARGET || typeof message !== "string"
-    ? notice
-    : {
-        ...notice,
-        message: message
-          .replace(UPDATE_AGAIN, updateAgain(label))
-          .replace(`Select ${UPDATE_TARGET} again.`, `Select ${label} again.`),
-      };
+/** A failed Global update; `unknown` where nothing proved what it did. */
+export function globalUpdateNotice(error: unknown): {
+  notice: DeployStateNotice;
+  unknown: boolean;
+} {
+  const notice = updateNotice(error);
+  return notice.label === UNKNOWN_UPDATE_RUN.label
+    ? { notice: UNKNOWN_GLOBAL_UPDATE_RUN, unknown: true }
+    : { notice, unknown: false };
 }
 
 // The path the server read from disk replaces the general instruction.
@@ -554,7 +557,51 @@ function withRm(
 
 /** The whole notice for a refused or failed removal. */
 export function removeNotice(error: unknown): DeployStateNotice {
-  return noticeFor(REMOVE, error, UNKNOWN_REMOVE);
+  const notice = noticeFor(REMOVE, error, UNKNOWN_REMOVE);
+  const folders = editedFolders(error, "folders");
+  const notWritten = editedFolders(error, "notWritten");
+  return folders.length === 0
+    ? notice
+    : {
+        ...notice,
+        message: phrase`The skill was not removed. Its files in ${machineList(folders)} changed after deployment.`,
+        ...(notWritten.length === 0
+          ? {}
+          : { detail: notWrittenEditsStep(notWritten) }),
+      };
+}
+
+/** The way out for edits in a folder Global does not write: the user deletes the copy. */
+const notWrittenEditsStep = (folders: readonly string[]): Copy =>
+  folders.length === 1
+    ? phrase`Global does not write to ${machineList(folders)} because its tool is not detected. Delete the copy yourself. Then select ${REMOVE_SKILL} again.`
+    : phrase`Global does not write to ${machineList(folders)} because their tools are not detected. Delete the copies yourself. Then select ${REMOVE_SKILL} again.`;
+
+const EDITED_COPY_REFUSALS: readonly string[] = [
+  "deployed-diverged-from-lock",
+  "deployed-diverged-pinned-per-skill",
+];
+
+// The Global folders a local-edits refusal names; none where the body names none.
+// `notWritten`: those Global does not write.
+function editedFolders(
+  error: unknown,
+  field: "folders" | "notWritten",
+): string[] {
+  if (
+    !(error instanceof HttpError) ||
+    !EDITED_COPY_REFUSALS.includes(error.code ?? "") ||
+    typeof error.body !== "object" ||
+    error.body === null ||
+    !(field in error.body)
+  ) {
+    return [];
+  }
+  const folders: unknown = Reflect.get(error.body, field);
+  return Array.isArray(folders) &&
+    folders.every((folder) => typeof folder === "string")
+    ? folders
+    : [];
 }
 
 type RetriedOperation = Pick<PendingOperation, "kind" | "release">;

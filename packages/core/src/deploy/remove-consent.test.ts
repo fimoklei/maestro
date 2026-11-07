@@ -16,15 +16,35 @@ describe("RemoveConsentIssuer receipts", () => {
   const CLEAN = {
     scope: "global",
     tools: [
-      { tool: "claude", warning: null },
-      { tool: "codex", warning: null },
+      {
+        tool: "claude",
+        path: "~/.claude/skills",
+        detected: true,
+        warning: null,
+      },
+      {
+        tool: "codex",
+        path: "~/.agents/skills",
+        detected: true,
+        warning: null,
+      },
     ],
   } as const satisfies RemoveCheck;
   const UNVERIFIABLE = {
     scope: "global",
     tools: [
-      { tool: "claude", warning: "cannot-verify-local-edits" },
-      { tool: "codex", warning: null },
+      {
+        tool: "claude",
+        path: "~/.claude/skills",
+        detected: true,
+        warning: "cannot-verify-local-edits",
+      },
+      {
+        tool: "codex",
+        path: "~/.agents/skills",
+        detected: true,
+        warning: null,
+      },
     ],
   } as const satisfies RemoveCheck;
 
@@ -98,6 +118,20 @@ describe("RemoveConsentIssuer receipts", () => {
     expect(
       consent.accepts(scope, reordered, consent.receipt(scope, CLEAN)),
     ).toBe(true);
+  });
+
+  it("refuses a receipt minted before a removal reached an undetected tool's folder", () => {
+    const consent = issuer();
+    const reachesUndetected: RemoveCheck = {
+      scope: "global",
+      tools: CLEAN.tools.map((row) =>
+        row.tool === "codex" ? { ...row, detected: false } : row,
+      ),
+    };
+
+    expect(
+      consent.accepts(scope, reachesUndetected, consent.receipt(scope, CLEAN)),
+    ).toBe(false);
   });
 
   it("refuses a receipt minted by another instance", () => {

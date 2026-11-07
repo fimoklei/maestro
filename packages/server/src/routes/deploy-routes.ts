@@ -17,6 +17,8 @@ import {
   BULK_REMOVE_BODY,
   bulkDeployBodySchema,
   bulkRemoveBodySchema,
+  DEPLOY_AGAIN_BODY,
+  deployAgainBodySchema,
   deployBodySchema,
   IMPORT_LOCAL_EDITS_BODY,
   IMPORT_LOCAL_EDITS_CHECK_BODY,
@@ -45,6 +47,16 @@ const refusalBody = (result: {
 }) => ({
   ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
   ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+});
+
+// The Global folders whose local edits refused a removal, and those of them
+// Global does not write.
+const editedFoldersBody = (result: {
+  folders?: string[];
+  notWritten?: string[];
+}) => ({
+  ...(result.folders ? { folders: result.folders } : {}),
+  ...(result.notWritten ? { notWritten: result.notWritten } : {}),
 });
 
 type Deps = Pick<
@@ -98,23 +110,14 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, 422);
     }
     return c.json({
-      tools: result.tools.map(
-        ({
-          releaseHead,
-          pinnedPerSkill,
-          extraFiles,
-          releaseGitHub,
-          latestReleaseGitHub,
-          primitives,
-          ...group
-        }) => ({
-          ...group,
-          primitives: checkedPrimitives(primitives),
-          ...cardReadingFields({ releaseHead, pinnedPerSkill, extraFiles }),
-          ...githubPageField("releaseGitHub", releaseGitHub),
-          ...githubPageField("latestReleaseGitHub", latestReleaseGitHub),
-        }),
-      ),
+      primitives: checkedPrimitives(result.primitives),
+      folders: result.folders.map(({ primitives, ...folder }) => ({
+        ...folder,
+        primitives: checkedPrimitives(primitives),
+      })),
+      ...cardReadingFields(result),
+      ...githubPageField("releaseGitHub", result.releaseGitHub),
+      ...githubPageField("latestReleaseGitHub", result.latestReleaseGitHub),
       skipped: result.skipped,
       otherOrigins: result.otherOrigins,
       ...(result.pendingOperation
@@ -134,7 +137,10 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       const { status } = deployErrorResponses[result.error];
       return c.json({ error: result.error, ...refusalBody(result) }, status);
     }
-    return c.json({ deployed: result.deployed });
+    return c.json({
+      deployed: result.deployed,
+      ...(result.outcome ? { outcome: result.outcome } : {}),
+    });
   });
 
   app.post("/api/deploy/remove", async (c) => {
@@ -155,6 +161,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           ...(result.check && result.receipt
             ? { check: result.check, receipt: result.receipt }
             : {}),
+          ...editedFoldersBody(result),
         },
         status,
       );
@@ -172,7 +179,13 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     const result = await deps.remove.preflight(body.data);
     if (!result.ok) {
       const { status } = removePreflightErrorResponses[result.error];
-      return c.json({ error: result.error }, status);
+      return c.json(
+        {
+          error: result.error,
+          ...editedFoldersBody(result),
+        },
+        status,
+      );
     }
     return c.json({ check: result.check, receipt: result.receipt });
   });
@@ -209,16 +222,13 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
 
     const result = await deps.update.run(body.data);
     // Omitted, never null: a refusal that never reached apm has no outcome (#416).
-    const outcome =
-      result.ok || result.outcome
-        ? updateOutcomeBody(result.ok ? result.outcome : (result.outcome ?? []))
-        : null;
+    const outcome = updateOutcomeBody(result);
     if (!result.ok) {
       const { status } = updateRunErrorResponses[result.error];
       return c.json(
         {
           error: result.error,
-          ...(outcome === null ? {} : { outcome }),
+          ...(outcome ?? {}),
           ...refusalBody(result),
         },
         status,
@@ -228,7 +238,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     if (outcome === null) {
       return c.json({ error: "update-failed" }, 502);
     }
-    return c.json({ release: result.release, outcome });
+    return c.json({ release: result.release, ...outcome });
   });
 
   // Re-runs the release and Selection the server recorded; the client chooses nothing (#951).
@@ -249,7 +259,10 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
         status,
       );
     }
-    return c.json({ completed: result.completed });
+    return c.json({
+      completed: result.completed,
+      ...(result.outcome === undefined ? {} : { outcome: result.outcome }),
+    });
   });
 
   // Read-only despite the POST. Core checks registry membership before any read.
@@ -296,6 +309,17 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
 
     const report = await deps.deploy.executeBatch(body.data);
+    return c.json(report);
+  });
+
+  // A held run's Deploy again. Always 200 with a report, like the bulk deploy.
+  app.post("/api/deploy/again", async (c) => {
+    const body = await parseBody(c, deployAgainBodySchema, DEPLOY_AGAIN_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const report = await deps.deploy.deployAgain(body.data);
     return c.json(report);
   });
 

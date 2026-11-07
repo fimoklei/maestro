@@ -7,7 +7,7 @@ const meta = {
   args: {
     count: 6,
     targets: [
-      { value: "global", label: "Global (Claude Code, Codex)" },
+      { value: "global", label: "Global" },
       { value: "/Users/m/Projects/maestro", label: "maestro" },
     ],
     selected: null,
@@ -22,6 +22,7 @@ const meta = {
         ],
       },
     ],
+    writesTo: null,
     onSelect: () => {},
     unavailable: null,
     fieldsChanged: false,
@@ -64,6 +65,27 @@ export const TargetChosen: Story = {
   },
 };
 
+// A one-tool machine: the undetected tool's folder shows muted.
+export const GlobalChosen: Story = {
+  args: {
+    selected: "global",
+    writesTo: {
+      tone: "neutral",
+      legend: "Writes to",
+      rows: [
+        { key: "claude", name: "~/.claude/skills", machineName: true },
+        {
+          key: "agents",
+          name: "~/.agents/skills",
+          machineName: true,
+          muted: true,
+          sentence: "Codex not detected · not written",
+        },
+      ],
+    },
+  },
+};
+
 export const LoadingTargets: Story = {
   args: { unavailable: "Loading targets…" },
 };
@@ -86,6 +108,9 @@ export const PartialReport: Story = {
     report: {
       heading:
         "Deployed to maestro · 2 failed · 1 attention · 2 deployed · 1 skipped",
+      writtenTo: null,
+      notice: null,
+      action: null,
       groups: [
         {
           tone: "good",
@@ -133,6 +158,122 @@ export const PartialReport: Story = {
           ],
         },
       ],
+    },
+  },
+};
+
+export const GlobalReport: Story = {
+  args: {
+    count: 2,
+    report: {
+      heading: "Deployed 2 of 2 skills to Global",
+      writtenTo: [
+        {
+          key: "claude",
+          name: "~/.claude/skills",
+          tone: "good",
+          fact: "2 skills deployed",
+          details: [],
+          step: null,
+        },
+        {
+          key: "codex",
+          name: "~/.agents/skills",
+          tone: "neutral",
+          muted: true,
+          fact: "Codex not detected · not written",
+          details: [],
+          step: null,
+        },
+      ],
+      notice: null,
+      action: null,
+      groups: [
+        {
+          tone: "good",
+          label: "Deployed",
+          rows: [
+            { name: "code-review", detail: "v2.0.0" },
+            { name: "commit-message", detail: "v2.0.0" },
+          ],
+        },
+      ],
+    },
+  },
+};
+
+export const GlobalReportFolderShort: Story = {
+  args: {
+    count: 2,
+    report: {
+      heading: "Deployed 1 of 2 skills to Global",
+      writtenTo: [
+        {
+          key: "claude",
+          name: "~/.claude/skills",
+          tone: "good",
+          fact: "2 skills deployed",
+          details: [],
+          step: null,
+        },
+        {
+          key: "codex",
+          name: "~/.agents/skills",
+          tone: "failed",
+          fact: "1 of 2 skills missing",
+          details: [{ label: "Missing", value: "commit-message" }],
+          step: "Select Retry deploy to deploy it again.",
+        },
+      ],
+      notice: null,
+      action: { label: "Retry deploy", onRun: () => {} },
+      groups: [
+        {
+          tone: "good",
+          label: "Deployed",
+          rows: [{ name: "code-review", detail: "v2.0.0" }],
+        },
+      ],
+    },
+  },
+};
+
+export const GlobalReportHeldByLocalEdits: Story = {
+  args: {
+    count: 2,
+    report: {
+      heading: "Deployed 0 of 2 skills to Global",
+      notice: {
+        level: "warning",
+        label: "Local edits",
+        message:
+          "Nothing was deployed, because commit-message has local edits.",
+        items: [
+          "Select Deploy again to replace those edits with the latest release and deploy both skills.",
+        ],
+        detail:
+          "Global skills deploy together, so local edits to commit-message also prevented code-review from being deployed.",
+      },
+      writtenTo: [
+        {
+          key: "claude",
+          name: "~/.claude/skills",
+          tone: "neutral",
+          fact: "0 of 2 skills deployed",
+          details: [],
+          step: null,
+        },
+        {
+          key: "codex",
+          name: "~/.agents/skills",
+          tone: "neutral",
+          fact: "0 of 2 skills deployed",
+          details: [],
+          step: null,
+        },
+      ],
+      action: { label: "Deploy again", onRun: () => {} },
+      groups: [],
     },
   },
 };

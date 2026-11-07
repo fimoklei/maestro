@@ -94,6 +94,8 @@ export const importLocalEditsBodySchema = z.object({
   target: targetSchema,
   names: z.array(z.string()).min(1),
   undo: z.array(z.string()),
+  // Matched in core against the folders it computed, never resolved as a path.
+  selected: z.array(z.object({ name: z.string(), folder: z.string() })),
 });
 
 // Proves the confirmation came from this server's own preflight, not a client-built claim.
@@ -122,6 +124,20 @@ export const retryOperationBodySchema = z.object({
 export const bulkDeployBodySchema = z.object({
   names: z.array(z.string()).min(1),
   target: targetSchema,
+});
+
+// Each held row carries the receipt its own refusal minted; no batch-wide
+// consent (#952).
+export const deployAgainBodySchema = z.object({
+  target: targetSchema,
+  held: z
+    .array(
+      z.object({
+        name: z.string(),
+        confirmedCopyReceipt: z.string().regex(/^[0-9a-f]{64}$/),
+      }),
+    )
+    .min(1),
 });
 
 export const removeBodySchema = z.object({
@@ -391,7 +407,7 @@ export const IMPORT_LOCAL_EDITS_BODY: RequestShape = {
   message:
     "Nothing was imported. Reload the page, then select Import local edits again.",
   detail:
-    "The request carries a target, a non-empty names array and an undo array.",
+    "The request carries a target, a non-empty names array, an undo array and a selected array of { name, folder }.",
 };
 
 export const UPDATE_TARGET_BODY: RequestShape = {
@@ -412,6 +428,13 @@ export const BULK_DEPLOY_BODY: RequestShape = {
     "Nothing was deployed. Reload the page, then stage the skills again.",
   detail:
     'The request carries a non-empty names array and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+export const DEPLOY_AGAIN_BODY: RequestShape = {
+  message:
+    "Nothing was deployed. Reload the page, then stage the skills again.",
+  detail:
+    "The request carries a target and a non-empty held array of { name, confirmedCopyReceipt }.",
 };
 
 export const BULK_REMOVE_BODY: RequestShape = {

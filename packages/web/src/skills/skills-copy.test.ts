@@ -23,14 +23,12 @@ describe("the bulk causes", () => {
 });
 
 describe("globalOptionLabel", () => {
-  it("names both detected tools", () => {
-    expect(globalOptionLabel(["claude", "codex"])).toBe(
-      "Global (Claude Code + Codex)",
-    );
+  it("names no tool, since several tools read one folder", () => {
+    expect(globalOptionLabel(["claude", "codex"])).toBe("Global");
+    expect(globalOptionLabel(["claude"])).toBe("Global");
   });
 
-  it("falls back to plain Global while the tool set is unknown", () => {
-    // Loading or unreadable: never claim a tool set we cannot prove.
+  it("keeps plain Global while the tool set is unknown", () => {
     expect(globalOptionLabel(undefined)).toBe("Global");
   });
 });

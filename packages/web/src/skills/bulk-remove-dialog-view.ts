@@ -94,14 +94,16 @@ function costOf(preflight: RemovePreflightView): string | null {
     return null;
   }
   const check = preflight.check;
-  const perTool =
-    check.kind === "per-tool" ? Object.values(check.warnings) : [];
+  const perFolder =
+    check.kind === "per-folder"
+      ? check.folders.map((folder) => folder.warning)
+      : [];
   const warnings: RemoveRowWarning[] =
-    check.kind === "per-tool"
-      ? // An answer that named no tool measured nothing: an empty map is no claim.
-        perTool.length === 0
+    check.kind === "per-folder"
+      ? // An answer that named no folder measured nothing: an empty list is no claim.
+        perFolder.length === 0
         ? ["check-failed"]
-        : perTool
+        : perFolder
       : check.kind === "repo"
         ? [check.warning]
         : [check.warning === "checking" ? "none" : "check-failed"];

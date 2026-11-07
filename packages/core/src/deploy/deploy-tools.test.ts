@@ -4,6 +4,7 @@ import {
   apmTargetFlagForTools,
   DEPLOY_TOOLS,
   deployTargetSubtrees,
+  globalFolders,
 } from "./deploy-tools";
 
 // The apm `-t` flag and the guard's scanned subtrees both derive from
@@ -81,5 +82,22 @@ describe("apmTargetFlagForTools", () => {
 
   it("is empty when no supported tool is detected", () => {
     expect(apmTargetFlagForTools([])).toBe("");
+  });
+});
+
+describe("globalFolders", () => {
+  it("lists every Global folder by home-relative path, with the tool that writes it", () => {
+    expect(globalFolders(["claude"])).toStrictEqual([
+      { path: "~/.claude/skills", tool: "claude", detected: true },
+      { path: "~/.agents/skills", tool: "codex", detected: false },
+    ]);
+  });
+
+  it("marks a folder written only where its tool is detected", () => {
+    expect(globalFolders(["codex", "claude"]).map((f) => f.detected)).toEqual([
+      true,
+      true,
+    ]);
+    expect(globalFolders([]).map((f) => f.detected)).toEqual([false, false]);
   });
 });

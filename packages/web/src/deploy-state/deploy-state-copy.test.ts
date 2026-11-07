@@ -10,11 +10,18 @@ import {
   NO_REPOSITORIES,
   NO_TARGETS,
   NO_TOOL_DETECTED,
+  notUpdatedLine,
+  notWrittenNote,
   ORIGIN_NOT_READ,
   otherOriginLine,
   packageBehindNotice,
   REPO_NOT_READ,
   REPO_NOT_READ_LINE,
+  readByLine,
+  skillsMissingLine,
+  strayCopiesLine,
+  strayCopiesNote,
+  strayDiffersLine,
   TARGET_LABEL,
   TARGETS_FACT,
   TIMED_OUT_HINT,
@@ -23,6 +30,126 @@ import {
 } from "./deploy-state-copy";
 
 // Approved sentences, as exact strings.
+describe("Skills missing copy", () => {
+  const line = (missing: number, deployed: number) =>
+    plainText(skillsMissingLine("~/.agents/skills", missing, deployed));
+
+  it("counts many missing skills and names the folder", () => {
+    expect(line(2, 2)).toBe(
+      "2 of 2 deployed skills are missing in ~/.agents/skills.",
+    );
+  });
+
+  it("counts one missing skill and names the folder", () => {
+    expect(line(1, 2)).toBe(
+      "1 of 2 deployed skills is missing in ~/.agents/skills.",
+    );
+  });
+
+  it("drops the count where Global deploys one skill", () => {
+    expect(line(1, 1)).toBe(
+      "The deployed skill is missing in ~/.agents/skills.",
+    );
+  });
+});
+
+describe("Not updated copy", () => {
+  const AGENTS = "~/.agents/skills";
+  const line = (copies: { name: string; stillAt: string | null }[]) =>
+    plainText(notUpdatedLine(AGENTS, copies, "v2.0.0"));
+
+  it("names the release one copy is still at", () => {
+    expect(line([{ name: "code-review", stillAt: "v1.0.0" }])).toBe(
+      "code-review in ~/.agents/skills is still at v1.0.0, but the Target release is v2.0.0.",
+    );
+  });
+
+  it("names the one release many copies are still at", () => {
+    expect(
+      line([
+        { name: "code-review", stillAt: "v1.0.0" },
+        { name: "commit-message", stillAt: "v1.0.0" },
+      ]),
+    ).toBe(
+      "2 skills in ~/.agents/skills are still at v1.0.0, but the Target release is v2.0.0.",
+    );
+  });
+
+  it("says older releases where many copies are at different ones", () => {
+    expect(
+      line([
+        { name: "code-review", stillAt: "v1.1.0" },
+        { name: "commit-message", stillAt: "v1.0.0" },
+      ]),
+    ).toBe(
+      "2 skills in ~/.agents/skills are still at older releases, but the Target release is v2.0.0.",
+    );
+  });
+
+  it("names no version and never says older where no release matched", () => {
+    expect(line([{ name: "code-review", stillAt: null }])).toBe(
+      "code-review in ~/.agents/skills is not at the Target release v2.0.0.",
+    );
+    expect(
+      line([
+        { name: "code-review", stillAt: "v1.0.0" },
+        { name: "commit-message", stillAt: null },
+      ]),
+    ).toBe(
+      "2 skills in ~/.agents/skills are not at the Target release v2.0.0.",
+    );
+  });
+});
+
+describe("Copies in an undetected tool's folder", () => {
+  const AGENTS = "~/.agents/skills";
+  const CLAUDE = "~/.claude/skills";
+  const paneLine = (names: string[]) =>
+    plainText(strayCopiesLine(AGENTS, names, CLAUDE));
+
+  it("counts the copies beside the folder", () => {
+    expect(strayCopiesNote("Codex", 1)).toBe(
+      "Codex not detected · not written · 1 copy",
+    );
+    expect(strayCopiesNote("Codex", 2)).toBe(
+      "Codex not detected · not written · 2 copies",
+    );
+  });
+
+  it("says no copy is counted where there is none", () => {
+    expect(strayCopiesNote("Codex", 0)).toBe(
+      "Codex not detected · not written",
+    );
+  });
+
+  it("tells which tool loads the one copy and how to stop it", () => {
+    expect(paneLine(["code-review"])).toBe(
+      "Global does not update code-review in ~/.agents/skills. OpenCode loads this copy instead of the one in ~/.claude/skills. To load the current release, delete it from ~/.agents/skills yourself.",
+    );
+  });
+
+  it("names two copies with and", () => {
+    expect(paneLine(["code-review", "tdd"])).toBe(
+      "Global does not update code-review and tdd in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+    );
+  });
+
+  it("names three copies as a comma list ending in and", () => {
+    expect(paneLine(["code-review", "tdd", "commit-message"])).toBe(
+      "Global does not update code-review, tdd and commit-message in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+    );
+  });
+
+  it("says why the copies differ from the Target release", () => {
+    expect(plainText(strayDiffersLine(AGENTS, 1, "v2.0.0", "Codex"))).toBe(
+      "1 copy in ~/.agents/skills differs from v2.0.0. Global does not write there because Codex is not detected.",
+    );
+    expect(plainText(strayDiffersLine(AGENTS, 2, "v2.0.0", "Codex"))).toBe(
+      "2 copies in ~/.agents/skills differ from v2.0.0. Global does not write there because Codex is not detected.",
+    );
+  });
+});
+
 describe("Deploy-state copy", () => {
   // #1123: a row is a Target; the column, its split and the pane's fact say so.
   it("names a target Target wherever the screen labels one", () => {
@@ -47,7 +174,7 @@ describe("Deploy-state copy", () => {
     };
     expect(deployStateNotRead(["global"])).toEqual({
       ...notice,
-      detail: "Not read: global targets.",
+      detail: "Not read: Global.",
     });
     expect(deployStateNotRead(["repos"])).toEqual({
       ...notice,
@@ -55,7 +182,7 @@ describe("Deploy-state copy", () => {
     });
     expect(deployStateNotRead(["global", "repos"])).toEqual({
       ...notice,
-      detail: "Not read: global targets and registered repositories.",
+      detail: "Not read: Global and registered repositories.",
     });
   });
 
@@ -72,8 +199,7 @@ describe("Deploy-state copy", () => {
     });
     expect(NO_TARGETS).toEqual({
       title: "No targets yet",
-      description:
-        "Claude Code, Codex and registered repositories appear here as targets.",
+      description: "Global and registered repositories appear here.",
     });
   });
 
@@ -138,6 +264,25 @@ describe("Deploy-state copy", () => {
 
   it("says the local edits are being checked", () => {
     expect(CHECKING_LOCAL_EDITS).toBe("Checking for local edits…");
+  });
+
+  it("names who reads a Global folder, and a folder Global does not write", () => {
+    expect(
+      readByLine({
+        tools: ["Claude Code", "Cursor", "OpenCode"],
+        others: false,
+      }),
+    ).toBe("Read by Claude Code, Cursor and OpenCode.");
+    expect(
+      readByLine({
+        tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
+        others: true,
+      }),
+    ).toBe("Read by Codex, Copilot CLI, Cursor, Gemini CLI and others.");
+    expect(readByLine({ tools: ["Codex"], others: false })).toBe(
+      "Read by Codex.",
+    );
+    expect(notWrittenNote("Codex")).toBe("Codex not detected · not written");
   });
 
   it("advises importing local edits before a behind target updates", () => {

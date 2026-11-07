@@ -6,7 +6,9 @@ import { ConsentSigner } from "./signed-consent";
 function canonicalCheck(check: RemoveCheck): string[] {
   return check.scope === "repo"
     ? [`repo:${check.warning ?? "none"}`]
-    : check.tools.map((row) => `${row.tool}:${row.warning ?? "none"}`).sort();
+    : check.tools
+        .map((row) => `${row.tool}:${row.detected}:${row.warning ?? "none"}`)
+        .sort();
 }
 
 export type RemoveScope = {

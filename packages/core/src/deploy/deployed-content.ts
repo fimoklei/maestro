@@ -7,6 +7,12 @@ import {
   parseLockfile,
   unreadableCovers,
 } from "../lockfile/lockfile";
+import {
+  type CopyReading,
+  type CopyReadingPort,
+  releasesAround,
+  type WrittenReading,
+} from "./copy-reading";
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -27,7 +33,9 @@ class DeployedSubtreeUnreadableError extends Error {}
 // `hashes` is empty unless hashing was requested; `fileCount` is always set.
 type SubtreeScan = { hashes: DeployedFileHashes; fileCount: number };
 
-export class DeployedContentAdapter implements DeployedContentPort {
+export class DeployedContentAdapter
+  implements DeployedContentPort, CopyReadingPort
+{
   private readonly deps: {
     location: Pick<DeployedLocation, "treeRoot" | "lockfilePath">;
     // Absent, a copy is only measured against its recorded baseline.
@@ -89,6 +97,110 @@ export class DeployedContentAdapter implements DeployedContentPort {
     ))
       ? "clean"
       : "diverged";
+  }
+
+  openReading(input: Parameters<CopyReadingPort["openReading"]>[0]) {
+    const trees = new Map<string, Promise<DeployedFileHashes | null>>();
+    const releasedTree = (tag: string, name: string) => {
+      const key = `${tag}\0${name}`;
+      let tree = trees.get(key);
+      if (tree === undefined) {
+        tree =
+          this.deps.inventoryGit
+            ?.readSkillFilesAtTag(tag, name)
+            .catch(() => null) ?? Promise.resolve(null);
+        trees.set(key, tree);
+      }
+      return tree;
+    };
+    const holds = async (
+      tag: string | undefined,
+      name: string,
+      copy: DeployedFileHashes,
+    ) => {
+      if (tag === undefined) return false;
+      const tree = await releasedTree(tag, name);
+      return tree !== null && classifyDeployedDrift(tree, copy) === "clean";
+    };
+    const { older, latest } = releasesAround(input.release, input.tags);
+    const root = this.deps.location.treeRoot(input.target);
+    // Null where the copy cannot be read.
+    const scanCopy = async (name: string, tool: SupportedTool) => {
+      const subtree = deployTargetSubtrees(name, [tool])[0] ?? "";
+      try {
+        const scan = await this.scanSubtrees(root, [subtree], { hash: true });
+        return {
+          subtree,
+          fileCount: scan.fileCount,
+          copy: stripSubtree(scan.hashes, subtree),
+        };
+      } catch (error) {
+        if (error instanceof DeployedSubtreeUnreadableError) return null;
+        throw error;
+      }
+    };
+    const olderReleaseHolding = async (
+      name: string,
+      copy: DeployedFileHashes,
+    ) => {
+      for (const tag of older) {
+        if (await holds(tag, name, copy)) return tag;
+      }
+      return null;
+    };
+    return {
+      readWritten: async (
+        name: string,
+        tool: SupportedTool,
+      ): Promise<WrittenReading> => {
+        const scanned = await scanCopy(name, tool);
+        if (scanned === null) return { kind: "unreadable" };
+        if (scanned.fileCount === 0) return { kind: "missing" };
+        if (
+          input.release === undefined ||
+          (await releasedTree(input.release, name)) === null
+        ) {
+          return { kind: "unreadable" };
+        }
+        if (await holds(input.release, name, scanned.copy)) {
+          return { kind: "at-release" };
+        }
+        return {
+          kind: "not-updated",
+          stillAt: await olderReleaseHolding(name, scanned.copy),
+        };
+      },
+      read: async (name: string, tool: SupportedTool): Promise<CopyReading> => {
+        const scanned = await scanCopy(name, tool);
+        if (scanned === null) return { kind: "unreadable" };
+        const { subtree, copy } = scanned;
+        const baseline = this.baseline(input.lockfile, name, [subtree]);
+        if (baseline.kind === "malformed") return { kind: "unreadable" };
+        if (scanned.fileCount === 0) return { kind: "missing" };
+        if (await holds(input.release, name, copy)) {
+          return { kind: "at-release" };
+        }
+        if (baseline.kind !== "hashes") return { kind: "unverified" };
+        const recorded = stripSubtree(baseline.hashes, subtree);
+        if (classifyDeployedDrift(recorded, copy) !== "clean") {
+          return (await holds(latest, name, copy))
+            ? { kind: "at-release" }
+            : { kind: "local-edits" };
+        }
+        // Equal to its record, but the Target release could not be read:
+        // the record is the only proof, as before.
+        if (
+          input.release === undefined ||
+          (await releasedTree(input.release, name)) === null
+        ) {
+          return { kind: "at-release" };
+        }
+        return {
+          kind: "not-updated",
+          stillAt: await olderReleaseHolding(name, copy),
+        };
+      },
+    };
   }
 
   async contentDigest(input: {

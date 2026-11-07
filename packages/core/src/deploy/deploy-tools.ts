@@ -3,6 +3,8 @@
 
 export type SupportedTool = "claude" | "codex";
 
+// One entry per Global folder: the apm target that writes it and its presence
+// marker.
 type DeployTool = {
   apmTarget: SupportedTool;
   // codex deploys to the cross-client ".agents" dir, not ".codex".
@@ -12,7 +14,7 @@ type DeployTool = {
 };
 
 // No tool is the only reader of its skills folder, so Maestro never deletes a
-// copy for a tool it did not detect (#202, #1557).
+// copy for a tool it did not detect (#202, #1557, #1793).
 
 export const DEPLOY_TOOLS: readonly DeployTool[] = [
   {
@@ -26,6 +28,30 @@ export const DEPLOY_TOOLS: readonly DeployTool[] = [
     globalPresenceMarker: ".codex/config.toml",
   },
 ];
+
+export type GlobalFolder = {
+  /** Home-relative, starting with `~/`, as the screen names it. */
+  path: string;
+  tool: SupportedTool;
+  /** Global writes this folder only while its tool is detected. */
+  detected: boolean;
+};
+
+/** The Global folder a tool's apm target writes, as the screen names it. */
+export function globalFolderPath(tool: SupportedTool): string {
+  const entry = DEPLOY_TOOLS.find((each) => each.apmTarget === tool);
+  return `~/${entry?.skillsDirPrefix ?? tool}/skills`;
+}
+
+export function globalFolders(
+  detected: readonly SupportedTool[],
+): GlobalFolder[] {
+  return DEPLOY_TOOLS.map((tool) => ({
+    path: globalFolderPath(tool.apmTarget),
+    tool: tool.apmTarget,
+    detected: detected.includes(tool.apmTarget),
+  }));
+}
 
 export const SUPPORTED_TOOLS: readonly SupportedTool[] = DEPLOY_TOOLS.map(
   (tool) => tool.apmTarget,

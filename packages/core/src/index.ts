@@ -21,12 +21,18 @@ export {
   DeploySkill,
   type DeploySkillError,
   type DeployTarget,
+  type HeldSkill,
 } from "./deploy/deploy-skill";
 export { DEPLOY_TOOLS, type SupportedTool } from "./deploy/deploy-tools";
 export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export { DeployedLocation } from "./deploy/deployed-location";
 export { DeployedRefAdapter } from "./deploy/deployed-ref";
+export type {
+  FolderOutcome,
+  FolderOutcomes,
+  SkillOutcome,
+} from "./deploy/folder-outcome";
 export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
 export { LocalCopyGuard } from "./deploy/local-copy-guard";
@@ -72,7 +78,12 @@ export type {
   ReleaseHead,
   SkippedEntry,
 } from "./deploy-state/deploy-state-types";
-export type { ToolDeployState } from "./deploy-state/group-primitives-by-tool";
+export type {
+  GlobalFolderState,
+  GlobalTargetState,
+  NotUpdatedCopy,
+  StrayCopy,
+} from "./deploy-state/global-target";
 export { ReleaseHeadReader } from "./deploy-state/release-head";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";

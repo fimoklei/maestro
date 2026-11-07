@@ -3,7 +3,11 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { findRow, stubServer } from "../deploy-state/deploy-state-test-helpers";
+import {
+  findRow,
+  globalAnswer,
+  stubServer,
+} from "../deploy-state/deploy-state-test-helpers";
 import { jsonResponse, noCategories, renderWithQuery } from "../test-utils";
 import { AppRoutes } from "./app-router";
 
@@ -234,7 +238,7 @@ describe("cockpit navigation", () => {
   it("opens Skills from Deploy skill on a Deploy-state row", async () => {
     stubServer(() => ({
       global: {
-        tools: [{ tool: "claude", primitives: [] }],
+        ...globalAnswer({ claude: [] }),
         skipped: [],
       },
       other: (url) =>
@@ -246,8 +250,8 @@ describe("cockpit navigation", () => {
     renderApp();
 
     await userEvent.click(
-      within(await findRow("Claude Code")).getByRole("button", {
-        name: "Actions for Claude Code",
+      within(await findRow("Global")).getByRole("button", {
+        name: "Actions for Global",
       }),
     );
     await userEvent.click(

@@ -25,13 +25,15 @@ const RESTORE_SKILL = "Restore skill";
 export const UPDATE_PROMPT = "Update prompt";
 export const UPDATE_SKILL = "Update skill";
 export const UPDATE_TARGET = "Update target";
-export const UPDATE_TARGETS = "Update targets";
 export const VIEW_DEPLOY_STATE = "View Deploy-state";
 export const WITHDRAW_FROM_RELEASE = "Withdraw from release";
 export const WITHDRAW_PROPOSAL = "Withdraw proposal";
 
 /** A held bulk deploy row's own control: it overwrites the copies that held it. */
 export const deployAgainLabel = (name: string) => `Deploy ${name} again`;
+
+/** A held Global deploy's footer action: every held skill at once. */
+export const DEPLOY_AGAIN = "Deploy again";
 
 /** A screen's own Re-read control, named by the screen. */
 export const rereadLabel = (screen: string) => `Re-read ${screen}`;

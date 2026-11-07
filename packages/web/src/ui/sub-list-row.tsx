@@ -44,6 +44,29 @@ export function SubListRow({
   );
 }
 
+/** A read-only sub-list row: mark, a machine value such as a path, and one meta line under it. */
+export function SubListValueRow({
+  mark,
+  value,
+  meta,
+}: {
+  mark: RowMark | null;
+  value: string;
+  meta: string;
+}) {
+  return (
+    <li className="border-divider border-b pb-tight text-row">
+      <span className="flex h-row items-center gap-inline">
+        <Mark mark={mark} />
+        <span className="min-w-0 flex-1 truncate text-gray-12">
+          <MachineValue>{value}</MachineValue>
+        </span>
+      </span>
+      <span className="block pl-8 text-gray-11 text-meta">{meta}</span>
+    </li>
+  );
+}
+
 // Rows still being read, in the row's shape, past 1.3 s.
 export function SubListSkeleton({ rows }: { rows: number }) {
   const { visible } = useReadSkeleton(true);

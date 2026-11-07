@@ -1,8 +1,11 @@
-import type { UpdateOutcomeRow } from "@maestro/core";
+import type { FolderOutcomes, UpdateOutcomeRow } from "@maestro/core";
 import { isValidElement, type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 import { type Copy, plainText } from "../ui/phrase";
-import { updateOutcomeReport } from "./update-outcome-report";
+import {
+  updateFoldersReport,
+  updateOutcomeReport,
+} from "./update-outcome-report";
 
 const RELEASES = { from: "v0.3.2", to: "v0.3.4" };
 
@@ -16,7 +19,8 @@ const report = (rows: UpdateOutcomeRow[], retry = true) =>
   updateOutcomeReport({ rows, releases: RELEASES, retry });
 
 describe("update outcome report", () => {
-  it("groups a clean update by what landed", () => {
+  // #1776: the dialog lists the release's own groups; no row claims Updated.
+  it("states a clean update in its heading, with no row", () => {
     expect(
       report([
         { name: "tdd", tool: null, state: "updated" },
@@ -27,12 +31,6 @@ describe("update outcome report", () => {
       groups: [
         { tone: "failed", label: "Failed", rows: [] },
         { tone: "attention", label: "Attention", rows: [] },
-        {
-          tone: "good",
-          label: "Updated",
-          rows: [{ name: "tdd", detail: "v0.3.4" }],
-        },
-        { tone: "good", label: "Removed", rows: [{ name: "review" }] },
       ],
     });
   });
@@ -94,11 +92,11 @@ describe("update outcome report", () => {
 
   it("states a skill once where every tool agrees", () => {
     const { groups } = report([
-      { name: "tdd", tool: "claude", state: "updated" },
-      { name: "tdd", tool: "codex", state: "updated" },
+      { name: "tdd", tool: "claude", state: "missing" },
+      { name: "tdd", tool: "codex", state: "missing" },
     ]);
 
-    expect(groups[2]?.rows).toStrictEqual([{ name: "tdd", detail: "v0.3.4" }]);
+    expect(groups[0]?.rows.map((row) => row.name)).toStrictEqual(["tdd"]);
   });
 
   it("names the tool on each row where the tools disagree", () => {
@@ -110,8 +108,31 @@ describe("update outcome report", () => {
     expect(groups[0]?.rows.map((row) => row.name)).toStrictEqual([
       "grill in Codex",
     ]);
-    expect(groups[2]?.rows.map((row) => row.name)).toStrictEqual([
-      "grill in Claude Code",
-    ]);
+  });
+});
+
+describe("Global update outcome report", () => {
+  const everyFolderAt = {
+    release: "v0.3.4",
+    folders: [
+      {
+        path: "~/.claude/skills",
+        tool: "claude",
+        detected: true,
+        skills: [{ name: "tdd", outcome: "written" }],
+      },
+    ],
+  } satisfies FolderOutcomes;
+
+  it("states a finished update in its heading", () => {
+    expect(
+      updateFoldersReport({ folders: everyFolderAt, retry: false }).heading,
+    ).toBe("Updated to v0.3.4");
+  });
+
+  it("claims no success while the update is incomplete, though every folder reads at the release", () => {
+    expect(
+      updateFoldersReport({ folders: everyFolderAt, retry: true }).heading,
+    ).toBe("Update incomplete");
   });
 });

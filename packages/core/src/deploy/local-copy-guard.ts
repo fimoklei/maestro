@@ -93,12 +93,11 @@ export function linkedPathAmong(
 
 // Shared with the Update preflight token, so the two never bind different facts.
 export function copyKeys(check: LocalCopyCheck): string[] {
-  return check.findings
-    .map(
-      (finding) => `${finding.name}:${finding.tool ?? ""}:${finding.verdict}`,
-    )
-    .sort();
+  return check.findings.map(copyKey).sort();
 }
+
+export const copyKey = (finding: CopyFinding): string =>
+  `${finding.name}:${finding.tool ?? ""}:${finding.verdict}`;
 
 export class LocalCopyGuard {
   private readonly deps: {

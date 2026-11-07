@@ -1,5 +1,5 @@
 // Retries at the release and Selection the server recorded (#951, #1363).
-import type { PendingOperation } from "@maestro/core";
+import type { FolderOutcomes, PendingOperation } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import {
@@ -22,13 +22,16 @@ export type Retried = {
 
 type RetryVariables = Retried & { target: DeployTarget };
 
-type RetryResponse = { completed: PendingOperation };
+// `outcome`: a Global retry's read of each folder.
+type RetryResponse = { completed: PendingOperation; outcome?: FolderOutcomes };
 
 export type RetryOperation = {
   run: (target: DeployTarget) => void;
   isRetrying: (target: DeployTarget) => boolean;
   /** The last retry's failure on this target, until the next retry starts. */
   failure: (target: DeployTarget) => DeployStateNotice | null;
+  /** The last retry that completed on this target, until the next one starts. */
+  landed: (target: DeployTarget) => RetryResponse | null;
   reset: () => void;
 };
 
@@ -66,6 +69,7 @@ export function useRetryOperation(
     },
     isRetrying: (target) => mutation.isPending && isFor(target),
     failure: (target) => (isFor(target) ? write.failure : null),
+    landed: (target) => (isFor(target) ? (mutation.data ?? null) : null),
     reset: mutation.reset,
   };
 }

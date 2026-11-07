@@ -1,6 +1,5 @@
 import type {
   CopyConsentRow,
-  UpdateOutcomeRow,
   UpdatePreview,
   UpdateSkillRow,
 } from "@maestro/core";
@@ -9,23 +8,29 @@ import { ACTIONS } from "../ui/busy-copy";
 import { cn } from "../ui/cn";
 import { UPDATE_TARGET } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
+import { type FoldLine, FoldList } from "../ui/fold-list";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
 import { PhraseText } from "../ui/phrase-text";
-import { Report } from "../ui/report";
+import { Report, type ReportGroup } from "../ui/report";
 import { StatusBadge } from "../ui/status-badge";
 import { STATUS_TOKENS } from "../ui/status-family";
 import { StatusLine } from "../ui/status-line";
 import { reading } from "../ui/status-reading";
 import type { DeployStateNotice } from "./notice-copy";
-import { updateOutcomeReport } from "./update-outcome-report";
+import {
+  type UpdateRunView,
+  unconfirmedLines,
+  updateFoldersReport,
+  updateOutcomeReport,
+} from "./update-outcome-report";
 import {
   ADDED_BY_THIS_DEPLOY,
   BECOMES_EMPTY,
   CHANGED,
   CHECK_EVERY_BOX,
-  consentRowName,
+  copyAtRiskName,
   countingSentence,
   DISCARD_LOCAL_EDITS,
   foldedHeading,
@@ -46,6 +51,10 @@ import {
   unverifiedSentence,
   updateDialogTitle,
 } from "./update-target-copy";
+import { writesToGroup } from "./writes-to-group";
+import { WRITTEN_TO } from "./written-to-copy";
+
+type WritesToFolder = Parameters<typeof writesToGroup>[0][number];
 
 // The same grain the guard reads at, so one checkbox never stands for two copies (#952).
 const consentKey = (row: CopyConsentRow) => `${row.name}:${row.tool ?? ""}`;
@@ -170,9 +179,104 @@ function SkillRows({
   );
 }
 
+type UpdateReportView = {
+  /** Null where nothing read the outcome back: the notice says so. */
+  heading: string | null;
+  groups: ReportGroup[];
+  /** Global's `Written to` lines; null on a repository. */
+  lines: FoldLine[] | null;
+};
+
+function reportOf(
+  outcome: UpdateRunView,
+  preview: UpdatePreview,
+  folders: readonly WritesToFolder[] | null,
+  retry: boolean,
+): UpdateReportView {
+  switch (outcome.kind) {
+    case "skills":
+      return {
+        ...updateOutcomeReport({
+          rows: outcome.rows,
+          releases: { from: preview.release, to: preview.chosenRelease },
+          retry,
+        }),
+        lines: null,
+      };
+    case "folders":
+      return {
+        ...updateFoldersReport({ folders: outcome.folders, retry }),
+        groups: [],
+      };
+    case "unknown":
+      return {
+        heading: null,
+        groups: [],
+        lines: unconfirmedLines(folders ?? []),
+      };
+  }
+}
+
+// The preview's own groups: what the release changed, never what it left alone (#1776).
+function SkillGroups({ preview }: { preview: UpdatePreview }) {
+  return (
+    <>
+      <div className="flex flex-col divide-y divide-divider border-divider border-y empty:hidden">
+        {preview.addedByThisDeploy.length > 0 ? (
+          <Section heading={ACTIONS.deploy.done}>
+            <SkillRows rows={preview.addedByThisDeploy} inline={true} />
+          </Section>
+        ) : null}
+        {preview.changed.length > 0 ? (
+          <Section heading={CHANGED}>
+            <SkillRows rows={preview.changed} inline={true} />
+          </Section>
+        ) : null}
+        {preview.removed.length > 0 ? (
+          <Section heading={REMOVED_BY_THIS_RELEASE}>
+            <NameList names={preview.removed} inline={true} />
+          </Section>
+        ) : null}
+      </div>
+      {preview.unchanged.length > 0 ? (
+        <FoldedSection heading={UNCHANGED} count={preview.unchanged.length}>
+          <NameList names={preview.unchanged} />
+        </FoldedSection>
+      ) : null}
+    </>
+  );
+}
+
+function UpdateReport({
+  report,
+  preview,
+}: {
+  report: UpdateReportView;
+  preview: UpdatePreview;
+}) {
+  const writtenTo =
+    report.lines === null ? null : (
+      <FoldList legend={WRITTEN_TO} lines={report.lines} />
+    );
+  if (report.heading === null) {
+    return writtenTo;
+  }
+  return (
+    <>
+      <Report
+        heading={report.heading}
+        lead={writtenTo}
+        groups={report.groups}
+      />
+      <SkillGroups preview={preview} />
+    </>
+  );
+}
+
 // Prices an Update, asks for consent, and states what landed. The host owns the request.
 export function UpdateTargetDialog({
   targetName,
+  folders,
   preview,
   isLoading,
   error,
@@ -185,14 +289,17 @@ export function UpdateTargetDialog({
   onConfirm,
 }: {
   targetName: string;
+  /** Global's folders from the Deploy-state read; null on a repository. */
+  folders: readonly WritesToFolder[] | null;
   // Null while loading and after a refusal: never price from a missing reading.
   preview: UpdatePreview | null;
   isLoading: boolean;
   error: DeployStateNotice | null;
   /** No update can be priced; the failure notice states why. */
   blocked: boolean;
-  outcome?: readonly UpdateOutcomeRow[] | null;
+  outcome?: UpdateRunView | null;
   isRunning?: boolean;
+  /** The update did not finish: Retry update is offered. */
   incomplete?: boolean;
   onRetry?: () => void;
   onCancel: () => void;
@@ -205,13 +312,9 @@ export function UpdateTargetDialog({
 
   const heading = updateDialogTitle(targetName);
   const report =
-    outcome && preview
-      ? updateOutcomeReport({
-          rows: outcome,
-          releases: { from: preview.release, to: preview.chosenRelease },
-          retry: incomplete,
-        })
-      : null;
+    preview && outcome ? reportOf(outcome, preview, folders, incomplete) : null;
+  // Global's folders state an unfinished update, and Retry update sits in the footer.
+  const byFolder = outcome != null && outcome.kind !== "skills";
   const required =
     preview === null
       ? []
@@ -231,22 +334,23 @@ export function UpdateTargetDialog({
 
   // On an incomplete update, `error` is the failed retry: it takes the place
   // of Update incomplete and keeps Retry update.
-  const failure: NoticeContent | null = incomplete
-    ? {
-        ...(error
-          ? { ...error, level: "error" }
-          : {
-              level: "warning",
-              label: UPDATE_INCOMPLETE,
-              message: UPDATE_INCOMPLETE_SENTENCE,
-            }),
-        action: {
-          label: RETRY_UPDATE,
-          onClick: onRetry,
-          busy: isRunning ? "update" : undefined,
-        },
-      }
-    : error && { ...error, level: "error" };
+  const failure: NoticeContent | null =
+    incomplete && !byFolder
+      ? {
+          ...(error
+            ? { ...error, level: "error" }
+            : {
+                level: "warning",
+                label: UPDATE_INCOMPLETE,
+                message: UPDATE_INCOMPLETE_SENTENCE,
+              }),
+          action: {
+            label: RETRY_UPDATE,
+            onClick: onRetry,
+            busy: isRunning ? "update" : undefined,
+          },
+        }
+      : error && { ...error, level: "error" };
   // The caller states why in `error`; without it the action still stays blocked.
   const unavailable = blocked
     ? (failure?.label ?? "")
@@ -263,8 +367,16 @@ export function UpdateTargetDialog({
             unavailable,
             onRun: onConfirm,
           }
-        : // Without the footer action, only Retry update can run.
-          { bodyBusyLabel: ACTIONS.update.busy },
+        : byFolder && incomplete
+          ? {
+              label: RETRY_UPDATE,
+              verb: "update",
+              tone: "primary",
+              unavailable: null,
+              onRun: onRetry,
+            }
+          : // Without the footer action, only Retry update can run.
+            { bodyBusyLabel: ACTIONS.update.busy },
     running: isRunning,
     outcome: report !== null,
   });
@@ -292,8 +404,8 @@ export function UpdateTargetDialog({
           ) : null}
         </div>
       ) : null}
-      {report !== null ? (
-        <Report heading={report.heading} groups={report.groups} />
+      {report !== null && preview !== null ? (
+        <UpdateReport report={report} preview={preview} />
       ) : preview === null ? (
         isLoading ? (
           <StatusLine>{LOADING_PREVIEW}</StatusLine>
@@ -310,21 +422,6 @@ export function UpdateTargetDialog({
           </div>
 
           <div className="flex flex-col divide-y divide-divider border-divider border-y empty:hidden">
-            {preview.addedByThisDeploy.length > 0 ? (
-              <Section heading={ADDED_BY_THIS_DEPLOY}>
-                <SkillRows rows={preview.addedByThisDeploy} inline={true} />
-              </Section>
-            ) : null}
-            {preview.changed.length > 0 ? (
-              <Section heading={CHANGED}>
-                <SkillRows rows={preview.changed} inline={true} />
-              </Section>
-            ) : null}
-            {preview.removed.length > 0 ? (
-              <Section heading={REMOVED_BY_THIS_RELEASE}>
-                <NameList names={preview.removed} inline={true} />
-              </Section>
-            ) : null}
             {required.length > 0 ? (
               <Section heading={LOCAL_EDITS} signal={true}>
                 {/* Each copy carries its own consent, never a set of them. */}
@@ -336,7 +433,7 @@ export function UpdateTargetDialog({
                       rows: [
                         ...preview.localEdits.discard.map((row) => ({
                           key: consentKey(row),
-                          name: `${DISCARD_LOCAL_EDITS} for ${consentRowName(row)}`,
+                          name: `${DISCARD_LOCAL_EDITS} for ${copyAtRiskName(row, folders)}`,
                           sentence: (
                             <PhraseText
                               copy={localEditsSentence(
@@ -348,7 +445,7 @@ export function UpdateTargetDialog({
                         })),
                         ...preview.localEdits.unverified.map((row) => ({
                           key: consentKey(row),
-                          name: `${OVERWRITE_UNVERIFIED} for ${consentRowName(row)}`,
+                          name: `${OVERWRITE_UNVERIFIED} for ${copyAtRiskName(row, folders)}`,
                           sentence: (
                             <PhraseText copy={unverifiedSentence(row.name)} />
                           ),
@@ -367,6 +464,30 @@ export function UpdateTargetDialog({
                 {preview.localEdits.discard.length > 0 ? (
                   <p className="m-0 text-gray-11">{KEEP_WORK_BY_IMPORTING}</p>
                 ) : null}
+              </Section>
+            ) : null}
+            {folders === null ? null : (
+              <div className="py-cell">
+                <GroupedList
+                  groups={[writesToGroup(folders)]}
+                  checklist={null}
+                  live={null}
+                />
+              </div>
+            )}
+            {preview.addedByThisDeploy.length > 0 ? (
+              <Section heading={ADDED_BY_THIS_DEPLOY}>
+                <SkillRows rows={preview.addedByThisDeploy} inline={true} />
+              </Section>
+            ) : null}
+            {preview.changed.length > 0 ? (
+              <Section heading={CHANGED}>
+                <SkillRows rows={preview.changed} inline={true} />
+              </Section>
+            ) : null}
+            {preview.removed.length > 0 ? (
+              <Section heading={REMOVED_BY_THIS_RELEASE}>
+                <NameList names={preview.removed} inline={true} />
               </Section>
             ) : null}
           </div>

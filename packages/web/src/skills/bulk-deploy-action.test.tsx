@@ -2,6 +2,7 @@ import type { BulkDeployReport } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { globalAnswer } from "../deploy-state/deploy-state-test-helpers";
 import {
   chooseDeployTarget,
   expectTooltipCause,
@@ -11,6 +12,17 @@ import {
 import { ToastHost } from "../ui/toast";
 import { ScreenWritesContext } from "../ui/use-write-action";
 import { BulkDeployAction } from "./bulk-deploy-action";
+
+// The Global read from the tools it detects, each with its folder's copies.
+const globalOf = (tools: { tool: string; primitives: unknown[] }[]) =>
+  globalAnswer(
+    Object.fromEntries(
+      tools.map(({ tool, primitives }) => [
+        tool,
+        primitives as { name: string }[],
+      ]),
+    ),
+  );
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -29,13 +41,9 @@ function stubReads(bulkReport: unknown, deployed: string[] = []) {
     vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/deploy-state/global")) {
-        return jsonResponse({
-          tools: [
-            { tool: "claude", primitives },
-            { tool: "codex", primitives },
-          ],
-          skipped: [],
-        });
+        return jsonResponse(
+          globalAnswer({ claude: primitives, codex: primitives }),
+        );
       }
       if (url.startsWith("/api/drift/global")) {
         return jsonResponse({ behind: [] });
@@ -251,17 +259,21 @@ describe("BulkDeployAction", () => {
       error: "deployed-diverged-from-lock" as const,
       forceable: true,
       copyReceipt: "c".repeat(64),
-      blockingCopies: [{ name: holder, verdict: "local-edits" as const }],
+      blockingCopies: [
+        { name: holder, verdict: "local-edits" as const, folders: [] },
+      ],
     });
+    // grill deployed, so the run was not held whole: each held row keeps its
+    // own Deploy again (a whole hold: bulk-deploy-held.test.tsx).
     stubReads({
       target: { kind: "global" },
-      deployed: [],
+      deployed: [{ name: "grill", version: "v1.0.0" }],
       attention: [held("tdd", "docs"), held("review", "review")],
       failed: [],
     } satisfies BulkDeployReport);
     renderWithQuery(
       <BulkDeployAction
-        stagedNames={["tdd", "review"]}
+        stagedNames={["tdd", "review", "grill"]}
         repos={[]}
         registryReady
         onSelectionSpent={() => {}}
@@ -563,16 +575,12 @@ describe("BulkDeployAction", () => {
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({
-            tools: [
-              {
-                tool: "claude",
-                primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
-              },
-              { tool: "codex", primitives: [] },
-            ],
-            skipped: [],
-          });
+          return jsonResponse(
+            globalAnswer({
+              claude: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+              codex: [],
+            }),
+          );
         }
         if (url.startsWith("/api/drift/global")) {
           return jsonResponse({ behind: [] });
@@ -663,7 +671,7 @@ describe("BulkDeployAction", () => {
           return jsonResponse({ behind: [] });
         }
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({ tools: [], skipped: [] });
+          return jsonResponse(globalAnswer({}));
         }
         if (url.startsWith("/api/drift/global")) {
           return jsonResponse({ behind: [] });
@@ -721,13 +729,7 @@ describe("BulkDeployAction", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({
-            tools: [
-              { tool: "claude", primitives: [] },
-              { tool: "codex", primitives: [] },
-            ],
-            skipped: [],
-          });
+          return jsonResponse(globalAnswer({ claude: [], codex: [] }));
         }
         if (url.startsWith("/api/drift/global")) {
           return jsonResponse({ behind: [] });
@@ -781,10 +783,7 @@ describe("BulkDeployAction", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({
-            tools: [{ tool: "claude", primitives: [] }],
-            skipped: [],
-          });
+          return jsonResponse(globalAnswer({ claude: [] }));
         }
         if (url.startsWith("/api/drift/global")) {
           return jsonResponse({ behind: [] });
@@ -976,7 +975,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith("/api/deploy-state/global")) {
-        return jsonResponse({ tools, skipped: [] });
+        return jsonResponse(globalOf(tools));
       }
       if (url.startsWith("/api/drift")) {
         return jsonResponse({ behind: [] });
@@ -1033,8 +1032,14 @@ describe("BulkDeployAction — the target it deploys to", () => {
     expect(options[0]).toHaveTextContent("Global");
   });
 
-  // #134: the Global option says where it lands before anything runs.
-  it("names the tools the Global option will hit on a two-tool machine", async () => {
+  // The Global folders a deploy writes, named by path before anything runs
+  // (#134, #1798). Several tools read one folder, so the option names none.
+  const writesTo = async (dialog: HTMLElement) =>
+    within(
+      await within(dialog).findByRole("group", { name: "Writes to" }),
+    ).getAllByRole("listitem");
+
+  it("lists both Global folders under Writes to on a two-tool machine", async () => {
     stubTools([
       { tool: "claude", primitives: [] },
       { tool: "codex", primitives: [] },
@@ -1043,22 +1048,36 @@ describe("BulkDeployAction — the target it deploys to", () => {
     await openTargets(dialog);
 
     expect(
-      await screen.findByRole("option", {
-        name: /Global \(Claude Code \+ Codex\)/,
-      }),
+      await screen.findByRole("option", { name: "Global" }),
     ).not.toHaveAttribute("aria-disabled");
+    await userEvent.click(screen.getByRole("option", { name: "Global" }));
+
+    expect((await writesTo(dialog)).map((row) => row.textContent)).toEqual([
+      "~/.claude/skills",
+      "~/.agents/skills",
+    ]);
   });
 
-  it("names the single tool the Global option will hit on a one-tool machine", async () => {
+  it("marks an undetected tool's folder as not written on a one-tool machine", async () => {
     stubTools([{ tool: "claude", primitives: [] }]);
     const dialog = await openOne(twoRepos);
-    await openTargets(dialog);
+    await chooseDeployTarget(dialog, "Global");
+
+    expect((await writesTo(dialog)).map((row) => row.textContent)).toEqual([
+      "~/.claude/skills",
+      "~/.agents/skills" + "Codex not detected · not written",
+    ]);
+  });
+
+  it("lists no Global folders while a repository is the target", async () => {
+    stubTools([{ tool: "claude", primitives: [] }]);
+    const dialog = await openOne(twoRepos);
+    await chooseDeployTarget(dialog, /projects\/alpha$/);
+    await runnable(dialog);
 
     expect(
-      await screen.findByRole("option", {
-        name: /Global \(Claude Code\)/,
-      }),
-    ).toBeInTheDocument();
+      within(dialog).queryByRole("group", { name: "Writes to" }),
+    ).not.toBeInTheDocument();
   });
 
   it("disables the Global option, and the deploy waits for a target, when no tool is detected", async () => {
@@ -1084,7 +1103,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return jsonResponse({ tools, skipped: [] });
+          return jsonResponse(globalOf(tools));
         }
         return jsonResponse({ behind: [] });
       }),
@@ -1221,14 +1240,18 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
         if (world.globalStateHangs) {
           return new Promise<Response>(() => undefined);
         }
-        return jsonResponse({
-          tools: Object.entries(tools).map(([tool, names]) => ({
-            tool,
-            primitives: names.map(skill),
-            ...releaseHead(names),
-          })),
-          skipped,
-        });
+        const names = [...new Set(Object.values(tools).flat())];
+        return jsonResponse(
+          globalAnswer(
+            Object.fromEntries(
+              Object.entries(tools).map(([tool, held]) => [
+                tool,
+                held.map(skill),
+              ]),
+            ),
+            { ...releaseHead(names), skipped },
+          ),
+        );
       }
       if (url.startsWith("/api/drift")) {
         return jsonResponse(
@@ -1366,7 +1389,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
       within(dialog)
         .getAllByRole("group")
         .map((group) => group.querySelector("legend")?.textContent),
-    ).toEqual(["To deploy · 2", "Already up to date · 1"]);
+    ).toEqual(["To deploy · 2", "Already up to date · 1", "Writes to"]);
     expect(dialog).not.toHaveTextContent(/update|latest/i);
   });
 

@@ -364,3 +364,101 @@ describe("update HTTP journey", () => {
     });
   });
 });
+
+const manifest = (name: string, body = "") =>
+  `---\nname: ${name}\ndescription: ${name} skill\n---\n${body}`;
+
+// Global follows v0.5.1, deployed through the real bulk route; v0.6.0 changes tdd.
+async function globalPriced() {
+  const w = deployWorld({ released: ["tdd", "grill"] });
+  w.answers.releasedFiles = "as-installed";
+  const grill = manifest("grill");
+  w.harness.tags = [
+    {
+      name: "v0.5.1",
+      commit: w.harness.commit("v0.5.1", { tdd: manifest("tdd"), grill }),
+    },
+    {
+      name: "v0.6.0",
+      commit: w.harness.commit("v0.6.0", {
+        tdd: manifest("tdd", "changed\n"),
+        grill,
+      }),
+    },
+  ];
+  const deployed = await w.post("/api/deploy/bulk", {
+    names: ["tdd", "grill"],
+    target: { kind: "global" },
+  });
+  expect(deployed.status).toBe(200);
+  const response = await w.post("/api/deploy/update/preflight", {
+    target: { kind: "global" },
+  });
+  expect(response.status).toBe(200);
+  const body = (await response.json()) as { preview: { token: string } };
+  const update = () =>
+    w.post("/api/deploy/update", {
+      target: { kind: "global" },
+      token: body.preview.token,
+    });
+  return { ...w, update };
+}
+
+describe("update HTTP journey on Global", () => {
+  it("states what each Global folder holds after the update", async () => {
+    const w = await globalPriced();
+
+    const response = await w.update();
+
+    expect(response.status).toBe(200);
+    const written = [
+      { name: "tdd", outcome: "written" },
+      { name: "grill", outcome: "written" },
+    ];
+    expect(await response.json()).toStrictEqual({
+      release: "v0.6.0",
+      folders: {
+        release: "v0.6.0",
+        folders: [
+          {
+            path: "~/.claude/skills",
+            tool: "claude",
+            detected: true,
+            skills: written,
+          },
+          {
+            path: "~/.agents/skills",
+            tool: "codex",
+            detected: true,
+            skills: written,
+          },
+        ],
+      },
+    });
+  });
+
+  it("names the folder that lacks a skill when the update lands short", async () => {
+    const w = await globalPriced();
+    w.answers.lands = (skills, tool) =>
+      tool === "codex" ? skills.filter((name) => name !== "tdd") : skills;
+
+    const response = await w.update();
+
+    expect(response.status).toBe(502);
+    const body = (await response.json()) as {
+      error: string;
+      folders: { folders: { path: string; skills: unknown[] }[] };
+    };
+    expect(body.error).toBe("update-incomplete");
+    expect(body.folders.folders.map((folder) => folder.skills)).toStrictEqual([
+      [
+        { name: "tdd", outcome: "written" },
+        { name: "grill", outcome: "written" },
+      ],
+      [
+        { name: "tdd", outcome: "missing" },
+        { name: "grill", outcome: "written" },
+      ],
+    ]);
+  });
+});

@@ -1,4 +1,9 @@
-import { isValidElement, type ReactElement, useId } from "react";
+import {
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+  useId,
+} from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 import type { NoticeCopy } from "./notice";
@@ -55,9 +60,12 @@ const GLYPH: Record<ReportTone, string | null> = {
 
 export function Report({
   heading,
+  lead = null,
   groups,
 }: {
   heading: string;
+  /** Drawn under the heading, before the groups, such as the places written to. */
+  lead?: ReactNode;
   groups: readonly ReportGroup[];
 }) {
   const id = useId();
@@ -74,6 +82,7 @@ export function Report({
       </span>
       {/* Under the dialog's own h2 title: a Report never stands alone. */}
       <h3 className="font-ui text-gray-12 text-prose">{heading}</h3>
+      {lead}
       {drawn.map((group, index) => (
         <section
           key={group.label}

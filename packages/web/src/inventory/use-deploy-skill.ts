@@ -1,4 +1,5 @@
 // After every deploy attempt, invalidates the target's deploy-state query.
+import type { FolderOutcomes } from "@maestro/core";
 import {
   type QueryClient,
   useMutation,
@@ -45,6 +46,8 @@ type DeployRequest = {
 
 type DeployResponse = {
   deployed: { type: "skill"; name: string; version: string };
+  /** Global only: each folder's copy of the Selection the install wrote. */
+  outcome?: FolderOutcomes;
 };
 
 export function useDeploySkill() {

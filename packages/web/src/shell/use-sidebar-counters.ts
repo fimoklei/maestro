@@ -6,7 +6,7 @@ import type {
   ReleaseHead,
 } from "@maestro/core";
 import { useQueries } from "@tanstack/react-query";
-import { isBehind, isGlobalBehind } from "../deploy-state/target-rows";
+import { isBehind } from "../deploy-state/target-rows";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { useHarness } from "../harness/use-harness";
@@ -22,10 +22,11 @@ const count = (text: string): NavCounter => ({ text, unknown: false });
 
 type Read<T> = { data: T | undefined; isError: boolean };
 
-// One per Deploy-state row: a behind global target puts every tool row behind.
+// One per Deploy-state row: Global is one row while any tool is detected.
 function deployStateCounter(
   global: Read<{
-    tools: { releaseHead?: ReleaseHead }[];
+    detected: boolean;
+    releaseHead?: ReleaseHead;
     pending?: PendingOperation;
   }>,
   repos: readonly Read<{
@@ -41,8 +42,8 @@ function deployStateCounter(
   ) {
     return null;
   }
-  const { tools, pending } = global.data;
-  const globalBehind = isGlobalBehind(tools, pending) ? tools.length : 0;
+  const { detected, releaseHead, pending } = global.data;
+  const globalBehind = detected && isBehind(releaseHead, pending) ? 1 : 0;
   const behind =
     globalBehind +
     repos.filter((one) =>
@@ -85,7 +86,10 @@ export function useSidebarCounters(): Record<string, NavCounter | null> {
       {
         data: registry.data &&
           global.data && {
-            tools: global.data.tools,
+            detected: global.data.detectedTools.length > 0,
+            ...(global.data.releaseHead
+              ? { releaseHead: global.data.releaseHead }
+              : {}),
             pending: global.data.pendingOperation,
           },
         isError: registry.isError || global.isError,

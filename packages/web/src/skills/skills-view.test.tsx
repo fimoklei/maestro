@@ -7,6 +7,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { globalAnswer } from "../deploy-state/deploy-state-test-helpers";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
 import {
@@ -851,7 +852,7 @@ describe("SkillsView — detail pane", () => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
           return jsonResponse({
-            tools: [{ tool: "claude-code", primitives: [] }],
+            folders: globalAnswer({ claude: [] }).folders,
             primitives: [],
             skipped: [],
           });
@@ -917,7 +918,7 @@ describe("SkillsView — detail pane", () => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
           return jsonResponse({
-            tools: [{ tool: "claude-code", primitives: [] }],
+            folders: globalAnswer({ claude: [] }).folders,
             primitives: [],
             skipped: [],
           });
@@ -1211,20 +1212,10 @@ describe("SkillsView — bulk remove entry point (#422)", () => {
     ).toBeNull();
   });
 
-  // #1066 lists each global tool as a target; #1436: the foot counts the
-  // targets the removal covers, and one global removal takes every tool.
+  // #1436: the foot counts the targets the removal covers; Global is one.
   it("counts global once in the foot, as the removal does", async () => {
     viewWith([
-      {
-        ...onTarget({ kind: "global" }, ["tdd"]),
-        label: "Claude Code",
-        tool: "claude",
-      },
-      {
-        ...onTarget({ kind: "global" }, ["tdd"]),
-        label: "Codex",
-        tool: "codex",
-      },
+      { ...onTarget({ kind: "global" }, ["tdd"]), label: "Global" },
       onTarget({ kind: "repo", repoPath: "/dev/acme-web" }, ["tdd"]),
     ]);
 
@@ -1235,30 +1226,19 @@ describe("SkillsView — bulk remove entry point (#422)", () => {
       within(pane)
         .getAllByRole("listitem")
         .map((row) => row.textContent?.replace(/v1\.0\.0.*$/, "")),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
     const menu = await openFootMenu(pane, "tdd");
     expect(
       menu.getByRole("menuitem", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 
-  it("offers none where every listed target is one global removal", async () => {
-    viewWith([
-      {
-        ...onTarget({ kind: "global" }, ["tdd"]),
-        label: "Claude Code",
-        tool: "claude",
-      },
-      {
-        ...onTarget({ kind: "global" }, ["tdd"]),
-        label: "Codex",
-        tool: "codex",
-      },
-    ]);
+  it("offers none where Global is the only target", async () => {
+    viewWith([{ ...onTarget({ kind: "global" }, ["tdd"]), label: "Global" }]);
 
     await openRow("tdd");
 
-    // Each tool row's own Remove from target already removes from both.
+    // The Global row's own Remove from target already does it.
     const menu = await openFootMenu(
       screen.getByRole("complementary", { name: "tdd detail" }),
       "tdd",
@@ -1522,7 +1502,10 @@ describe("SkillsView — row menu", () => {
 describe("SkillsView — a target row in the pane", () => {
   const targetMenu = async (label: string) => {
     const pane = screen.getByRole("complementary", { name: "tdd detail" });
-    const named = label === "Claude Code" ? label : `/projects/${label}`;
+    const named =
+      label === "Claude Code" || label === "Global"
+        ? label
+        : `/projects/${label}`;
     await userEvent.click(
       within(pane).getByRole("button", { name: `Actions for ${named}` }),
     );
@@ -1644,30 +1627,23 @@ describe("SkillsView — a target row in the pane", () => {
     );
   });
 
-  // apm's uninstall has no -t: a global removal takes every detected tool, so a
-  // tool row's label says so instead of naming its tool alone.
-  it("names every global tool on a global row's removal", async () => {
+  // Global is one target: its one row removes from every Global folder.
+  it("offers Remove from target on the one Global row", async () => {
     stubPendingFetch();
     renderView({
       targets: [
         {
           ...deployedTo(["tdd"]),
           target: { kind: "global" },
-          label: "Claude Code",
-          tool: "claude",
-        },
-        {
-          ...deployedTo(["tdd"]),
-          target: { kind: "global" },
-          label: "Codex",
-          tool: "codex",
+          label: "Global",
+          folders: ["~/.claude/skills", "~/.agents/skills"],
         },
       ],
     });
     await openRow("tdd");
 
-    expect(menuItems(await targetMenu("Claude Code"))).toEqual([
-      "Remove from Claude Code and Codex",
+    expect(menuItems(await targetMenu("Global"))).toEqual([
+      "Remove from target",
     ]);
   });
 

@@ -4,7 +4,6 @@ import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { PaneDeletion } from "../inventory/pane-deletion";
 import type { SkillDeployment } from "../inventory/skill-deployments";
 import type { RegisteredRepo } from "../registry/use-registry";
-import { UPDATE_TARGET } from "../ui/control-labels";
 import type { WriteResult } from "../ui/use-write-action";
 import { BulkDeployRun } from "./bulk-deploy-action";
 import { BulkRemoveRun } from "./bulk-remove-skill-action";
@@ -109,7 +108,6 @@ function PaneUpdate({
   return (
     <UpdateTargetAction
       targetName={deployment.updateName}
-      updateLabel={UPDATE_TARGET}
       target={deployment.target}
       update={update}
       // Priced with this skill, as the Skills entrance always was (#955).

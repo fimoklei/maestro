@@ -1,6 +1,6 @@
 // Sends only the two proofs the preview handed back (#954). Invalidates whatever
 // the answer: a partial landing changed the target too.
-import type { UpdateOutcomeRow } from "@maestro/core";
+import type { FolderOutcomes, UpdateOutcomeRow } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import {
@@ -16,10 +16,11 @@ type UpdateRequest = {
   confirmedCopyReceipt?: string;
 };
 
-type UpdateResponse = {
-  release: string;
-  outcome: UpdateOutcomeRow[];
-};
+// `folders` on Global, `outcome` on a repository.
+type UpdateResponse = { release: string } & (
+  | { outcome: UpdateOutcomeRow[]; folders?: never }
+  | { folders: FolderOutcomes; outcome?: never }
+);
 
 export function useUpdateTarget() {
   const queryClient = useQueryClient();

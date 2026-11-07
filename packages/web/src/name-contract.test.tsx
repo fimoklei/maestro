@@ -29,6 +29,9 @@ const PLAIN: Record<string, Record<string, string>> = {
   "deploy-state/import-local-edits-copy.ts": {
     "`${IMPORT_LOCAL_EDITS} from ${target}`": "dialog title",
   },
+  "deploy-state/written-to-copy.ts": {
+    "`${skill.name} · still at ${skill.stillAt}`": "label | value cell",
+  },
   "deploy-state/notice-copy.ts": {
     "`${name} still incomplete`": "notice heading",
     "`${name} outcome unknown`": "notice heading",
@@ -36,29 +39,29 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Select ${deployAgainLabel(row.name)}`": "button label",
   },
   "deploy-state/remove-ledger-rows.ts": {
-    "`target:${name}`": "key",
+    "`target:${target.name}`": "key",
     "`Remove ${name}`": "dialog title",
   },
   "deploy-state/selected-skills.tsx": {
     "`Actions for ${primitive.name}`": "menu label",
   },
   "deploy-state/target-menu.ts": {
-    "`${label} ${row.updateName}`": "menu item",
+    "`${UPDATE_TARGET} ${row.updateName}`": "menu item",
   },
   "deploy-state/update-target-copy.ts": {
     "`Update ${target}`": "dialog title",
     "`${row.name} in ${toolDisplayName(row.tool)}`": "checkbox label",
+    "`${row.name} in ${folder.path}`": "checkbox label",
   },
   "deploy-state/update-target-dialog.tsx": {
     '`${row.name}:${row.tool ?? ""}`': "key",
-    "`${DISCARD_LOCAL_EDITS} for ${consentRowName(row)}`": "checkbox label",
-    "`${OVERWRITE_UNVERIFIED} for ${consentRowName(row)}`": "checkbox label",
+    "`${DISCARD_LOCAL_EDITS} for ${copyAtRiskName(row, folders)}`":
+      "checkbox label",
+    "`${OVERWRITE_UNVERIFIED} for ${copyAtRiskName(row, folders)}`":
+      "checkbox label",
   },
   "deploy-state/use-deploy-state.ts": {
     "`/api/deploy-state?repo=${encodeURIComponent(repo)}`": "request URL",
-  },
-  "deploy-state/use-global-deploy-state.ts": {
-    "`${primitive.name}@${primitive.version}`": "key",
   },
   "drift/use-drift.ts": {
     "`/api/drift?repo=${encodeURIComponent(repo)}`": "request URL",
@@ -101,7 +104,6 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Remove ${skillName} from ${targetCount(count)}`": "dialog title",
     "`Select ${name}`": "checkbox label",
     "`Deploy to ${target} did not run`": "notice heading",
-    '`Global (${tools.map(toolDisplayName).join(" + ")})`': "target label",
   },
   "prompts/prompts-copy.ts": {
     "`Select ${name}`": "checkbox label",
@@ -138,11 +140,20 @@ const PLAIN_MACHINE: Record<string, Record<string, string>> = {
   "deploy-state/target-rows.ts": {
     "`repo:${repoPath}`": "key",
   },
-  "deploy-state/use-global-deploy-state.ts": {
-    "`${primitive.name}@${primitive.version}`": "key",
+  "deploy-state/folder-sub-rows.tsx": {
+    "`${row.id}:${folder.path}`": "key",
+  },
+  "deploy-state/remove-ledger-rows.ts": {
+    "`folder:${path}`": "key",
+  },
+  "deploy-state/written-to-copy.ts": {
+    "`At ${update.release}`": "fold-list fact, a status word",
   },
   "ui/dialog.tsx": {
     "`${title} ${version}`": "accessible name",
+  },
+  "deploy-state/update-target-copy.ts": {
+    "`${row.name} in ${folder.path}`": "checkbox label",
   },
 };
 
@@ -403,6 +414,7 @@ const SURFACES: {
     render: () => (
       <UpdateTargetDialog
         targetName="agent-harness"
+        folders={null}
         preview={{
           release: "v0.3.2",
           chosenRelease: "v0.3.4",
@@ -439,6 +451,8 @@ const SURFACES: {
         checked={new Set()}
         checksChanged={false}
         onToggle={vi.fn()}
+        selections={new Map()}
+        onSelect={vi.fn()}
         isRunning={false}
         outcomes={null}
         failure={null}

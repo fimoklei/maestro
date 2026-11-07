@@ -236,8 +236,26 @@ function twoToolEntry(ref: string, name: string): string {
   return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: .apm/skills/${name}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/${name}\n  - .agents/skills/${name}\n  content_hash: sha256:abc\n`;
 }
 
+// One Global folder as the read names it, with the copies Global wrote there.
+function claudeFolder(primitives: unknown[], detected = true) {
+  return {
+    path: "~/.claude/skills",
+    tool: "claude",
+    detected,
+    primitives,
+  };
+}
+function agentsFolder(primitives: unknown[], detected = true) {
+  return {
+    path: "~/.agents/skills",
+    tool: "codex",
+    detected,
+    primitives,
+  };
+}
+
 describe("GlobalDeployStateReader.readGlobal", () => {
-  it("groups deployed skills under each detected tool by their prefix", async () => {
+  it("reads Global as one target with a list of its folders", async () => {
     const fs = new InMemoryFileSystem({
       files: { [GLOBAL_LOCKFILE]: lockfile(twoToolEntry("v0.5.0", "tdd")) },
     });
@@ -245,19 +263,31 @@ describe("GlobalDeployStateReader.readGlobal", () => {
       fs,
       toolPresence: fakePresence(["claude", "codex"]),
     });
+    const tdd = { type: "skill", name: "tdd", version: "v0.5.0" };
 
     await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
       ok: true,
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-        },
-        {
-          tool: "codex",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-        },
-      ],
+      primitives: [tdd],
+      folders: [claudeFolder([tdd]), agentsFolder([tdd])],
+      skipped: [],
+      otherOrigins: [],
+    });
+  });
+
+  it("lists an undetected tool's folder as not written, with no copies", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [GLOBAL_LOCKFILE]: lockfile(twoToolEntry("v0.5.0", "tdd")) },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude"]),
+    });
+    const tdd = { type: "skill", name: "tdd", version: "v0.5.0" };
+
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
+      ok: true,
+      primitives: [tdd],
+      folders: [claudeFolder([tdd]), agentsFolder([], false)],
       skipped: [],
       otherOrigins: [],
     });
@@ -276,16 +306,14 @@ describe("GlobalDeployStateReader.readGlobal", () => {
 
     await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
       ok: true,
-      tools: [
-        { tool: "claude", primitives: [] },
-        { tool: "codex", primitives: [] },
-      ],
+      primitives: [],
+      folders: [claudeFolder([]), agentsFolder([])],
       skipped: [],
       otherOrigins: ["fimoklei/agent-harness"],
     });
   });
 
-  it("lists a detected tool with nothing deployed as an empty group", async () => {
+  it("lists a detected tool's folder with nothing deployed as empty", async () => {
     const fs = new InMemoryFileSystem({
       files: {
         [GLOBAL_LOCKFILE]: lockfile(skillEntry("v0.5.0", "skills/tdd")),
@@ -296,33 +324,27 @@ describe("GlobalDeployStateReader.readGlobal", () => {
       toolPresence: fakePresence(["claude", "codex"]),
     });
 
+    const tdd = { type: "skill", name: "tdd", version: "v0.5.0" };
     await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
       ok: true,
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-        },
-        { tool: "codex", primitives: [] },
-      ],
+      primitives: [tdd],
+      folders: [claudeFolder([tdd]), agentsFolder([])],
       skipped: [],
       otherOrigins: [],
     });
   });
 
-  it("returns an empty group per detected tool when there is no lockfile", async () => {
+  it("returns every folder empty when there is no lockfile", async () => {
     const fs = new InMemoryFileSystem();
     const reader = new GlobalDeployStateReader({
       fs,
-      toolPresence: fakePresence(["claude", "codex"]),
+      toolPresence: fakePresence(["claude"]),
     });
 
     await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
       ok: true,
-      tools: [
-        { tool: "claude", primitives: [] },
-        { tool: "codex", primitives: [] },
-      ],
+      primitives: [],
+      folders: [claudeFolder([]), agentsFolder([], false)],
       skipped: [],
       otherOrigins: [],
     });
@@ -610,7 +632,7 @@ describe("DeployStateReader on a root-package target", () => {
 });
 
 describe("GlobalDeployStateReader on a root-package target", () => {
-  it("groups the root package's skills under the tool their files sit in", async () => {
+  it("lists the root package's skills under the folder their files sit in", async () => {
     const files = [
       ".claude/skills/tdd/SKILL.md",
       ".agents/skills/tdd/SKILL.md",
@@ -630,27 +652,18 @@ describe("GlobalDeployStateReader on a root-package target", () => {
       treeRoot: () => "/home",
     });
 
+    const tdd = { type: "skill", name: "tdd", version: "v0.3.2" };
+    const grill = { type: "skill", name: "grill", version: "v0.3.2" };
     await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
       ok: true,
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
-        },
-        {
-          tool: "codex",
-          primitives: [
-            { type: "skill", name: "tdd", version: "v0.3.2" },
-            { type: "skill", name: "grill", version: "v0.3.2" },
-          ],
-        },
-      ],
+      primitives: [tdd, grill],
+      folders: [claudeFolder([tdd]), agentsFolder([tdd, grill])],
       skipped: [],
       otherOrigins: [],
     });
   });
 
-  it("carries a Release head per tool, over that tool's skills", async () => {
+  it("carries one Release head, over every skill Global holds", async () => {
     const files = [
       ".claude/skills/tdd/SKILL.md",
       ".agents/skills/tdd/SKILL.md",
@@ -681,27 +694,16 @@ describe("GlobalDeployStateReader on a root-package target", () => {
 
     const result = await reader.readGlobal(GLOBAL_ROOT);
 
-    expect(result.ok && result.tools.map((group) => group.releaseHead)).toEqual(
-      [
-        {
-          release: "v0.3.2",
-          latestRelease: "v0.3.4",
-          changed: 1,
-          selected: 1,
-          comparedAt: "2026-09-12T10:00:00.000Z",
-        },
-        {
-          release: "v0.3.2",
-          latestRelease: "v0.3.4",
-          changed: 2,
-          selected: 2,
-          comparedAt: "2026-09-12T10:00:00.000Z",
-        },
-      ],
-    );
+    expect(result.ok && result.releaseHead).toEqual({
+      release: "v0.3.2",
+      latestRelease: "v0.3.4",
+      changed: 2,
+      selected: 2,
+      comparedAt: "2026-09-12T10:00:00.000Z",
+    });
   });
 
-  it("carries no Release head for a tool group still pinned per skill", async () => {
+  it("carries no Release head for a Global still pinned per skill", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     const fs = new InMemoryFileSystem({
       files: {
@@ -729,13 +731,13 @@ describe("GlobalDeployStateReader on a root-package target", () => {
 
     const result = await reader.readGlobal(GLOBAL_ROOT);
 
-    expect(result.ok && result.tools[0]?.pinnedPerSkill).toEqual([
+    expect(result.ok && result.pinnedPerSkill).toEqual([
       { release: "v0.3.1", skills: 1 },
     ]);
-    expect(result.ok && result.tools[0]?.releaseHead).toBeUndefined();
+    expect(result.ok && result.releaseHead).toBeUndefined();
   });
 
-  it("leaves a phantom row out of the tool that no longer holds it", async () => {
+  it("leaves a phantom row out of the folder that no longer holds it", async () => {
     const fs = new InMemoryFileSystem({
       files: {
         [GLOBAL_LOCKFILE]: PHANTOM_LOCKFILE,
@@ -755,8 +757,8 @@ describe("GlobalDeployStateReader on a root-package target", () => {
 
     expect(
       result.ok &&
-        result.tools.map((group) =>
-          group.primitives.map((primitive) => primitive.name),
+        result.folders.map((folder) =>
+          folder.primitives.map((primitive) => primitive.name),
         ),
     ).toStrictEqual([["alpha"], ["alpha"]]);
   });
@@ -914,7 +916,7 @@ describe("DeployStateReader copy chips", () => {
     ]);
   });
 
-  it("keeps Local edits on the one global tool whose copy holds unreleased work (#1213)", async () => {
+  it("keeps Local edits on the one Global folder whose copy holds unreleased work (#1213)", async () => {
     const files = [
       ".claude/skills/tdd/SKILL.md",
       ".agents/skills/tdd/SKILL.md",
@@ -940,14 +942,19 @@ describe("DeployStateReader copy chips", () => {
 
     expect(
       result.ok &&
-        result.tools.map((group) => [group.tool, group.primitives[0]?.copy]),
+        result.folders.map((folder) => [
+          folder.path,
+          folder.primitives[0]?.copy,
+        ]),
     ).toStrictEqual([
-      ["claude", undefined],
-      ["codex", "local-edits"],
+      ["~/.claude/skills", undefined],
+      ["~/.agents/skills", "local-edits"],
     ]);
+    // The one skill list reads Local edits where any folder's copy does.
+    expect(result.ok && result.primitives[0]?.copy).toBe("local-edits");
   });
 
-  it("checks each global tool's copy against the latest release (#1213)", async () => {
+  it("checks each Global folder's copy against the latest release (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     const released = releasedIn041({ kind: "global" });
     const fs = new InMemoryFileSystem({
@@ -968,7 +975,10 @@ describe("DeployStateReader copy chips", () => {
 
     const result = await reader.readGlobal(GLOBAL_ROOT);
 
-    expect(result.ok && result.tools[0]?.primitives).toStrictEqual([
+    expect(result.ok && result.folders[0]?.primitives).toStrictEqual([
+      { type: "skill", name: "tdd", version: "v0.3.5" },
+    ]);
+    expect(result.ok && result.primitives).toStrictEqual([
       { type: "skill", name: "tdd", version: "v0.3.5" },
     ]);
   });
@@ -980,7 +990,7 @@ function releasedIn041(
   target: DeployTarget,
   unreleased: SupportedTool[] = [],
 ): {
-  content: NonNullable<DeployStateExtras["content"]>;
+  content: DeployedContentAdapter;
   hashes: Record<string, string>;
 } {
   const released = "tdd at v0.4.1\n";
@@ -1121,7 +1131,7 @@ describe("DeployStateReader on a record holding extra files", () => {
 });
 
 describe("GlobalDeployStateReader on a target pinned per skill", () => {
-  it("reads the status per tool, from that tool's own per-skill entries", async () => {
+  it("reads the status once, from every per-skill entry a Global folder holds", async () => {
     const fs = new InMemoryFileSystem({
       files: {
         [GLOBAL_LOCKFILE]: lockfile(
@@ -1139,18 +1149,13 @@ describe("GlobalDeployStateReader on a target pinned per skill", () => {
 
     const result = await reader.readGlobal(GLOBAL_ROOT);
 
-    expect(
-      result.ok && result.tools.map((group) => group.pinnedPerSkill),
-    ).toStrictEqual([
-      [
-        { release: "v0.3.1", skills: 1 },
-        { release: "v0.3.0", skills: 1 },
-      ],
-      [{ release: "v0.3.1", skills: 1 }],
+    expect(result.ok && result.pinnedPerSkill).toStrictEqual([
+      { release: "v0.3.1", skills: 1 },
+      { release: "v0.3.0", skills: 1 },
     ]);
   });
 
-  it("counts extra files per tool, from that tool's own subtree", async () => {
+  it("counts extra files across the detected tools' subtrees", async () => {
     const files = [
       ".claude/skills/tdd/SKILL.md",
       ".claude/agents/review.md",
@@ -1170,9 +1175,7 @@ describe("GlobalDeployStateReader on a target pinned per skill", () => {
 
     const result = await reader.readGlobal(GLOBAL_ROOT);
 
-    expect(
-      result.ok && result.tools.map((group) => group.extraFiles),
-    ).toStrictEqual([1, undefined]);
+    expect(result.ok && result.extraFiles).toBe(1);
   });
 });
 
@@ -1409,7 +1412,7 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
     });
   });
 
-  it("links a global tool's per-skill dependency the same way", async () => {
+  it("links a Global per-skill dependency the same way", async () => {
     const reader = new GlobalDeployStateReader({
       fs: new InMemoryFileSystem({
         files: { [GLOBAL_LOCKFILE]: lockfile(legacyAt("v0.2.0")) },
@@ -1419,24 +1422,19 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
       harnessPage: async () => ({ kind: "link", url: HARNESS }),
     });
     await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toMatchObject({
-      tools: [
+      primitives: [
         {
-          tool: "claude",
-          primitives: [
-            {
-              name: "tdd",
-              github: {
-                kind: "link",
-                url: `${HARNESS}/tree/v0.2.0/.apm/skills/tdd`,
-              },
-            },
-          ],
+          name: "tdd",
+          github: {
+            kind: "link",
+            url: `${HARNESS}/tree/v0.2.0/.apm/skills/tdd`,
+          },
         },
       ],
     });
   });
 
-  it("links a global tool's skills and release the same way", async () => {
+  it("links Global's skills and release the same way", async () => {
     const fs = new InMemoryFileSystem({
       files: {
         [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
@@ -1450,24 +1448,19 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
       harnessPage: async () => ({ kind: "link", url: HARNESS }),
     });
     await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toMatchObject({
-      tools: [
+      primitives: [
         {
-          tool: "claude",
-          primitives: [
-            {
-              name: "tdd",
-              github: {
-                kind: "link",
-                url: `${HARNESS}/tree/v0.3.2/.apm/skills/tdd`,
-              },
-            },
-          ],
-          releaseGitHub: {
+          name: "tdd",
+          github: {
             kind: "link",
-            url: `${HARNESS}/releases/tag/v0.3.2`,
+            url: `${HARNESS}/tree/v0.3.2/.apm/skills/tdd`,
           },
         },
       ],
+      releaseGitHub: {
+        kind: "link",
+        url: `${HARNESS}/releases/tag/v0.3.2`,
+      },
     });
   });
 });

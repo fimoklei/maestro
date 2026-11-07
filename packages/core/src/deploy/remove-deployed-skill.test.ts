@@ -381,6 +381,7 @@ describe("RemoveDeployedSkill", () => {
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
       ok: false,
       error: "deployed-diverged-from-lock",
+      folders: ["~/.claude/skills", "~/.agents/skills"],
     });
     expect(calls.removes).toEqual([]);
   });
@@ -593,8 +594,18 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
       check: {
         scope: "global",
         tools: [
-          { tool: "claude", warning: null },
-          { tool: "codex", warning: "cannot-verify-local-edits" },
+          {
+            tool: "claude",
+            path: "~/.claude/skills",
+            detected: true,
+            warning: null,
+          },
+          {
+            tool: "codex",
+            path: "~/.agents/skills",
+            detected: true,
+            warning: "cannot-verify-local-edits",
+          },
         ],
       },
       receipt: expect.any(String),
@@ -661,18 +672,30 @@ describe("RemoveDeployedSkill on the global target", () => {
     expect(calls.removes).toHaveLength(1);
   });
 
-  it("scans every supported tool's copy, not only the detected ones", async () => {
+  it("lists an undetected tool's copy its named uninstall deletes", async () => {
     // apm's uninstall deletes by its own recorded targets, which can still name a
-    // tool that has since dropped out; scanning only the detected set would let apm
-    // delete an edited copy the confirmation never mentioned (#414).
-    const { useCase, calls } = buildUseCase({ detectedTools: ["claude"] });
-
-    await confirmedExecute(useCase, removeTddGlobally);
-
-    expect(calls.classifies).toContainEqual({
-      target: { kind: "global" },
-      tools: undefined,
+    // tool that has since dropped out (#414).
+    const { useCase } = buildUseCase({
+      detectedTools: ["claude"],
+      deployedState: "unverifiable",
     });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
+      globalPreflightOk([
+        {
+          tool: "claude",
+          path: "~/.claude/skills",
+          detected: true,
+          warning: "cannot-verify-local-edits",
+        },
+        {
+          tool: "codex",
+          path: "~/.agents/skills",
+          detected: false,
+          warning: "cannot-verify-local-edits",
+        },
+      ]),
+    );
   });
 
   it("refuses when the machine has no detected tool to remove from", async () => {
@@ -717,6 +740,7 @@ describe("RemoveDeployedSkill on the global target", () => {
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
       ok: false,
       error: "deployed-diverged-from-lock",
+      folders: ["~/.claude/skills", "~/.agents/skills"],
     });
   });
 
@@ -732,6 +756,7 @@ describe("RemoveDeployedSkill on the global target", () => {
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
       ok: false,
       error: "deployed-diverged-from-lock",
+      folders: ["~/.agents/skills"],
     });
   });
 
@@ -761,8 +786,18 @@ describe("RemoveDeployedSkill on the global target", () => {
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
       globalPreflightOk([
-        { tool: "claude", warning: null },
-        { tool: "codex", warning: "cannot-verify-local-edits" },
+        {
+          tool: "claude",
+          path: "~/.claude/skills",
+          detected: true,
+          warning: null,
+        },
+        {
+          tool: "codex",
+          path: "~/.agents/skills",
+          detected: true,
+          warning: "cannot-verify-local-edits",
+        },
       ]),
     );
   });
@@ -777,8 +812,18 @@ describe("RemoveDeployedSkill on the global target", () => {
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
       globalPreflightOk([
-        { tool: "claude", warning: "check-did-not-run" },
-        { tool: "codex", warning: null },
+        {
+          tool: "claude",
+          path: "~/.claude/skills",
+          detected: true,
+          warning: "check-did-not-run",
+        },
+        {
+          tool: "codex",
+          path: "~/.agents/skills",
+          detected: true,
+          warning: null,
+        },
       ]),
     );
   });
@@ -820,6 +865,8 @@ describe("RemoveDeployedSkill on a machine without Claude Code", () => {
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
       ok: false,
       error: "deployed-diverged-from-lock",
+      folders: ["~/.claude/skills"],
+      notWritten: ["~/.claude/skills"],
     });
   });
 
@@ -1033,8 +1080,8 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
         outcome: {
           scope: "global",
           tools: [
-            { tool: "claude", state: "removed" },
-            { tool: "codex", state: "not-removed" },
+            { tool: "claude", path: "~/.claude/skills", state: "removed" },
+            { tool: "codex", path: "~/.agents/skills", state: "not-removed" },
           ],
         },
       },

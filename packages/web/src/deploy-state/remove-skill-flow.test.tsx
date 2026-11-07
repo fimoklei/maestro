@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   expectTooltipCause,
+  htmlElement,
   jsonResponse,
   renderWithQuery,
   sentence,
@@ -32,8 +33,16 @@ const REPO_TARGET: Target = {
   repoPath: "/Users/me/project",
   name: "…/me/project",
 };
-const GLOBAL_TARGET: Target = { kind: "global", tools: ["claude", "codex"] };
-const ONE_TOOL: Target = { kind: "global", tools: ["claude"] };
+const CLAUDE_PATH = "~/.claude/skills";
+const AGENTS_PATH = "~/.agents/skills";
+// The next step for local edits in a folder Global does not write.
+const NOT_WRITTEN_STEP =
+  "Global does not write to ~/.agents/skills because its tool is not detected. Delete the copy yourself. Then select Remove skill again.";
+const GLOBAL_TARGET: Target = {
+  kind: "global",
+  folders: [CLAUDE_PATH, AGENTS_PATH],
+};
+const ONE_TOOL: Target = { kind: "global", folders: [CLAUDE_PATH] };
 const RECEIPT = "b".repeat(64);
 
 const never: Answer = () => new Promise<Response>(() => {});
@@ -61,7 +70,12 @@ const toolChecks = (
         RemoveToolCheck["tool"],
         RemoveWarning | null,
       ][]
-    ).map(([tool, warning]) => ({ tool, warning })),
+    ).map(([tool, warning]) => ({
+      tool,
+      path: tool === "claude" ? CLAUDE_PATH : AGENTS_PATH,
+      detected: true,
+      warning,
+    })),
   });
 const cleanTools = (...tools: RemoveToolCheck["tool"][]) =>
   toolChecks(Object.fromEntries(tools.map((tool) => [tool, null])));
@@ -361,8 +375,8 @@ describe("RemoveSkillFlow", () => {
     const partial = {
       scope: "global",
       tools: [
-        { tool: "claude", state: "removed" },
-        { tool: "codex", state: "not-removed" },
+        { tool: "claude", path: "~/.claude/skills", state: "removed" },
+        { tool: "codex", path: "~/.agents/skills", state: "not-removed" },
       ],
     };
     const partialFailure = failedWith(
@@ -380,28 +394,28 @@ describe("RemoveSkillFlow", () => {
         remove: partialFailure,
       });
 
-    it("counts the targets it came off in the report's heading, the ledger gone", async () => {
+    it("counts the folders it came off in the report's heading, the ledger gone", async () => {
       renderPartialFailure();
       await fail();
 
       expect(
         screen.getByRole("heading", {
           level: 3,
-          name: "Removed from 1 of 2 targets",
+          name: "Removed from 1 of 2 folders",
         }),
       ).toBeInTheDocument();
-      expect(screen.queryByText("Removes the skill from:")).toBeNull();
+      expect(screen.queryByText("Writes to")).toBeNull();
     });
 
     it("puts each target under its outcome, the failed one first", async () => {
       renderPartialFailure();
       await fail();
 
-      expect(groupOf("Codex")).toBe("✕Not removed1");
-      expect(groupOf("Claude Code")).toBe("✓Removed1");
+      expect(groupOf(AGENTS_PATH)).toBe("✕Not removed1");
+      expect(groupOf(CLAUDE_PATH)).toBe("✓Removed1");
       expect(
         screen.getAllByRole("listitem").map((row) => row.textContent),
-      ).toEqual(["Codex", "Claude Code"]);
+      ).toEqual([AGENTS_PATH, CLAUDE_PATH]);
     });
 
     it("never reads a target the probe could not answer for as removed", async () => {
@@ -443,7 +457,12 @@ describe("RemoveSkillFlow", () => {
       const outcomes = [
         undefined,
         { scope: "repo", state: "maybe" },
-        { scope: "global", tools: [{ tool: "claude", state: "probably" }] },
+        {
+          scope: "global",
+          tools: [
+            { tool: "claude", path: "~/.claude/skills", state: "probably" },
+          ],
+        },
         { scope: "global", tools: [{ tool: "cursor", state: "removed" }] },
         { scope: "repo" },
         { scope: "global" },
@@ -583,15 +602,15 @@ describe("RemoveSkillFlow", () => {
       });
       await answered();
 
-      expect(rowFor("Codex")).toHaveTextContent(
+      expect(rowFor(AGENTS_PATH)).toHaveTextContent(
         "Nothing recorded — may lose work",
       );
-      expect(rowFor("Codex")).not.toHaveTextContent(/local edits/i);
-      expect(rowFor("Codex").className).toContain("amber");
-      expect(rowFor("Codex")).toHaveTextContent("⚠");
-      expect(rowFor("Claude Code")).not.toHaveTextContent(/may lose work/i);
-      expect(rowFor("Claude Code").className).not.toContain("amber");
-      expect(rowFor("Claude Code")).not.toHaveTextContent("⚠");
+      expect(rowFor(AGENTS_PATH)).not.toHaveTextContent(/local edits/i);
+      expect(rowFor(AGENTS_PATH).className).toContain("amber");
+      expect(rowFor(AGENTS_PATH)).toHaveTextContent("⚠");
+      expect(rowFor(CLAUDE_PATH)).not.toHaveTextContent(/may lose work/i);
+      expect(rowFor(CLAUDE_PATH).className).not.toContain("amber");
+      expect(rowFor(CLAUDE_PATH)).not.toHaveTextContent("⚠");
     });
 
     it("keeps a check that never ran apart from a missing baseline", async () => {
@@ -601,7 +620,7 @@ describe("RemoveSkillFlow", () => {
       });
       await answered();
 
-      const row = rowFor("Claude Code");
+      const row = rowFor(CLAUDE_PATH);
       expect(row).toHaveTextContent("Check did not run — may lose work");
       expect(row).not.toHaveTextContent(/nothing recorded/i);
     });
@@ -613,8 +632,8 @@ describe("RemoveSkillFlow", () => {
       });
       await answered();
 
-      expect(rowFor("Codex")).toHaveTextContent("Check did not run");
-      expect(rowFor("Claude Code")).not.toHaveTextContent("Check did not run");
+      expect(rowFor(AGENTS_PATH)).toHaveTextContent("Check did not run");
+      expect(rowFor(CLAUDE_PATH)).not.toHaveTextContent("Check did not run");
     });
 
     it("states a failed check on every row, because it answered for none", async () => {
@@ -729,19 +748,17 @@ describe("RemoveSkillFlow", () => {
   });
 
   describe("its typography", () => {
-    it("sets names in Geist and sentences as prose", async () => {
+    it("sets folder paths as machine values and sentences as prose", async () => {
       renderFlow({
         target: GLOBAL_TARGET,
         preflight: toolChecks({ claude: MAY_LOSE, codex: null }),
       });
       await answered();
 
-      for (const name of ["Claude Code", "Codex"]) {
-        expect(screen.getByText(name).className).not.toContain("font-mono");
+      for (const name of [CLAUDE_PATH, AGENTS_PATH]) {
+        expect(screen.getByText(name).className).toContain("font-mono");
       }
-      expect(screen.getByText("Removes the skill from:").className).toContain(
-        "font-ui",
-      );
+      expect(screen.getByText("Writes to").className).toContain("font-ui");
       expect(
         screen.getByText("Nothing recorded — may lose work").className,
       ).toContain("font-ui");
@@ -789,8 +806,8 @@ describe("RemoveSkillFlow", () => {
       });
       await answered();
 
-      expect(describedBy()).toContain("Claude Code");
-      expect(describedBy()).toContain("Codex");
+      expect(describedBy()).toContain(CLAUDE_PATH);
+      expect(describedBy()).toContain(AGENTS_PATH);
     });
   });
 
@@ -845,7 +862,7 @@ describe("RemoveSkillFlow", () => {
   });
 
   describe("on the global target", () => {
-    it("names the tools themselves, never a summary or a path", async () => {
+    it("lists the Global folders under Writes to, by path, naming no tool", async () => {
       renderFlow({
         target: GLOBAL_TARGET,
         preflight: cleanTools("claude", "codex"),
@@ -853,29 +870,107 @@ describe("RemoveSkillFlow", () => {
       await answered();
 
       const dialog = screen.getByRole("dialog");
-      expect(dialog).not.toHaveTextContent(/every detected tool/i);
-      expect(dialog).not.toHaveTextContent("/Users/me/project");
+      expect(dialog).toHaveTextContent("Writes to");
+      expect(dialog).not.toHaveTextContent("Removes the skill from:");
+      expect(dialog).not.toHaveTextContent(/Claude Code|Codex/);
     });
 
-    it("lists one row per detected tool, in the order it was handed them", async () => {
+    it("lists one row per folder, in the order the check named them", async () => {
       renderFlow({
-        target: { kind: "global", tools: ["codex", "claude"] },
+        target: { kind: "global", folders: [AGENTS_PATH, CLAUDE_PATH] },
         preflight: cleanTools("codex", "claude"),
       });
       await answered();
 
       expect(
         screen.getAllByRole("listitem").map((row) => row.textContent),
-      ).toEqual(["Codex", "Claude Code"]);
+      ).toEqual([AGENTS_PATH, CLAUDE_PATH]);
     });
 
-    it("names the single detected tool when the machine has only one", async () => {
+    it("lists an undetected tool's folder the last skill's removal deletes, muted", async () => {
+      renderFlow({
+        target: ONE_TOOL,
+        preflight: answer({
+          scope: "global",
+          tools: [
+            {
+              tool: "claude",
+              path: CLAUDE_PATH,
+              detected: true,
+              warning: null,
+            },
+            {
+              tool: "codex",
+              path: AGENTS_PATH,
+              detected: false,
+              warning: null,
+            },
+          ],
+        }),
+      });
+      await answered();
+
+      const [claude, agents] = screen.getAllByRole("listitem");
+      expect(claude).toHaveTextContent(CLAUDE_PATH);
+      expect(agents).toHaveTextContent(`${AGENTS_PATH}Codex not detected`);
+      expect(
+        within(htmlElement(agents))
+          .getByText(AGENTS_PATH)
+          .closest(".text-gray-11"),
+      ).not.toBeNull();
+    });
+
+    it("names the folder whose local edits refuse the removal", async () => {
+      renderFlow({
+        target: ONE_TOOL,
+        preflight: failedWith(
+          {
+            error: "deployed-diverged-from-lock",
+            folders: [AGENTS_PATH],
+          },
+          409,
+        ),
+      });
+
+      expect(
+        await screen.findByText(
+          sentence(
+            "The skill was not removed. Its files in ~/.agents/skills changed after deployment.",
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Select Deploy skill to restore the released files. Then remove the skill.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("gives a next step that works for a folder Global does not write", async () => {
+      renderFlow({
+        target: ONE_TOOL,
+        preflight: failedWith(
+          {
+            error: "deployed-diverged-from-lock",
+            folders: [AGENTS_PATH],
+            notWritten: [AGENTS_PATH],
+          },
+          409,
+        ),
+      });
+
+      expect(
+        await screen.findByText(sentence(NOT_WRITTEN_STEP)),
+      ).toBeInTheDocument();
+    });
+
+    it("names the single detected tool's folder when the machine has only one", async () => {
       renderFlow({ target: ONE_TOOL, preflight: cleanTools("claude") });
       await answered();
 
       const dialog = screen.getByRole("dialog");
-      expect(dialog).toHaveTextContent("Claude Code");
-      expect(dialog).not.toHaveTextContent("Codex");
+      expect(dialog).toHaveTextContent(CLAUDE_PATH);
+      expect(dialog).not.toHaveTextContent(AGENTS_PATH);
     });
 
     it("says nothing extra, in the neutral outline, when every copy is clean", async () => {
@@ -918,7 +1013,7 @@ describe("RemoveSkillFlow", () => {
       ).toBeInTheDocument();
     });
 
-    it("names the tools the user confirmed when the server named none", async () => {
+    it("names Global, never its tools", async () => {
       const { onRemoved } = renderFlow({
         target: ONE_TOOL,
         preflight: cleanTools("claude"),
@@ -926,26 +1021,9 @@ describe("RemoveSkillFlow", () => {
       await confirm();
 
       expect(
-        await screen.findByText(
-          sentence("Removed tdd v0.5.0 from Claude Code."),
-        ),
+        await screen.findByText(sentence("Removed tdd v0.5.0 from Global.")),
       ).toBeInTheDocument();
       expect(onRemoved).toHaveBeenCalledTimes(1);
-    });
-
-    it("names every detected tool when the server reached an empty set", async () => {
-      renderFlow({
-        target: ONE_TOOL,
-        preflight: cleanTools("claude"),
-        remove: removed({ scope: { kind: "global", tools: [] } }),
-      });
-      await confirm();
-
-      expect(
-        await screen.findByText(
-          sentence("Removed tdd v0.5.0 from every detected tool."),
-        ),
-      ).toBeInTheDocument();
     });
   });
 });

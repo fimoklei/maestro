@@ -232,6 +232,7 @@ const updateDialog = (
 ) => (
   <UpdateTargetDialog
     targetName="agent-harness"
+    folders={null}
     preview={null}
     blocked={false}
     isLoading={false}
@@ -311,6 +312,8 @@ const importLocalEditsDialog = (
     checked={new Set(["tdd"])}
     checksChanged={false}
     onToggle={vi.fn()}
+    selections={new Map()}
+    onSelect={vi.fn()}
     isRunning={false}
     outcomes={null}
     failure={null}
@@ -565,9 +568,10 @@ const ON_DIALOG: Row[] = [
     render: ({ running, onClose }) => (
       <BulkDeployDialog
         count={2}
-        targets={[{ value: "global", label: "Global (Claude Code)" }]}
+        targets={[{ value: "global", label: "Global" }]}
         selected="global"
         skills={[]}
+        writesTo={null}
         onSelect={vi.fn()}
         unavailable={null}
         fieldsChanged={false}
@@ -584,9 +588,10 @@ const ON_DIALOG: Row[] = [
       render(
         <BulkDeployDialog
           count={2}
-          targets={[{ value: "global", label: "Global (Claude Code)" }]}
+          targets={[{ value: "global", label: "Global" }]}
           selected="global"
           skills={[]}
+          writesTo={null}
           onSelect={vi.fn()}
           unavailable={null}
           fieldsChanged={true}
@@ -602,7 +607,41 @@ const ON_DIALOG: Row[] = [
     emptyForm: null,
     loading: null,
     loadFailed: null,
-    notices: [],
+    notices: [
+      {
+        // A Global run held whole by local edits states why in the Report.
+        label: "Local edits",
+        render: () => (
+          <BulkDeployDialog
+            count={2}
+            targets={[{ value: "global", label: "Global" }]}
+            selected="global"
+            skills={[]}
+            writesTo={null}
+            onSelect={vi.fn()}
+            unavailable={null}
+            fieldsChanged={true}
+            busy={false}
+            failure={null}
+            report={{
+              heading: "Deployed 0 of 2 skills to Global",
+              notice: {
+                level: "warning",
+                label: "Local edits",
+                message:
+                  "Nothing was deployed, because commit-message has local edits.",
+              },
+              writtenTo: null,
+              groups: [],
+              action: { label: "Deploy again", onRun: vi.fn() },
+            }}
+            reportFailure={null}
+            onDeploy={vi.fn()}
+            onClose={vi.fn()}
+          />
+        ),
+      },
+    ],
   },
   {
     file: "harness/withdraw-dialog.tsx",

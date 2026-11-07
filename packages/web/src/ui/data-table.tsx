@@ -29,6 +29,9 @@ import { CURRENT_ROW } from "./current-row";
 import { DataTableCard, type DataTableCardColumn } from "./data-table-card";
 import { keyHint } from "./data-table-copy";
 import { DataTableName } from "./data-table-name";
+import { type DataTableSubRow, DataTableSubRows } from "./data-table-sub-row";
+import { fitColumns } from "./fit-columns";
+import { GridCell } from "./grid-cell";
 import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { lastInputWasPointer } from "./input-modality";
@@ -138,6 +141,8 @@ export interface DataTableProps<T extends RowData> {
   groups?: DataTableGroups<T>;
   /** The row ids in the order shown, after sorting and grouping. */
   onRowOrderChange?: (ids: string[]) => void;
+  /** Read-only rows drawn under a row; the cursor and a click pass them by. */
+  subRows?: (row: T) => readonly DataTableSubRow[];
   ref?: Ref<HTMLTableElement>;
 }
 
@@ -157,6 +162,7 @@ export function DataTable<T extends RowData>({
   skeletonRows = 12,
   groups,
   onRowOrderChange,
+  subRows,
   ref,
 }: DataTableProps<T>) {
   const headRow = useRef<HTMLTableRowElement>(null);
@@ -474,6 +480,14 @@ export function DataTable<T extends RowData>({
             );
           })}
         </tr>
+        {subRows === undefined ? null : (
+          <DataTableSubRows
+            rows={subRows(row.original)}
+            columnIds={leafColumns.map((column) => column.id)}
+            withCheckbox={selection !== undefined}
+            parentOpen={isOpen}
+          />
+        )}
       </RowMenuControlContext.Provider>
     );
   };
@@ -681,60 +695,6 @@ export function DataTable<T extends RowData>({
   );
 }
 
-const NAME_REM = 8;
-
-// Which columns a table `available` rem wide hides, and which sized columns
-// drop their width to share what is left: the name once no column without a
-// width shows, then, once hiding is spent, every column wider than the name's
-// floor, widest first, until the table fits.
-function fitColumns(
-  columns: { id: string; width?: number; priority?: number }[],
-  available: number | null,
-): { hidden: string[]; fluid: string[] } {
-  let shown = columns;
-  const hidden: string[] = [];
-  const freed: string[] = [];
-  const fillerOf = (set: typeof columns) =>
-    set.some((column) => column.width === undefined)
-      ? null
-      : (set.find((column) => column.priority === undefined)?.id ?? null);
-  const needed = (set: typeof columns) => {
-    const filler = fillerOf(set);
-    return set.reduce(
-      (sum, column) =>
-        sum +
-        (column.width === undefined ||
-        column.id === filler ||
-        freed.includes(column.id)
-          ? NAME_REM
-          : column.width / 4),
-      0,
-    );
-  };
-  const byPriority = columns
-    .filter((column) => column.priority !== undefined)
-    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
-  for (const column of byPriority) {
-    if (available === null || needed(shown) <= available) break;
-    hidden.push(column.id);
-    shown = shown.filter((each) => each !== column);
-  }
-  const filler = fillerOf(shown);
-  const wide = shown
-    .filter(
-      (column) =>
-        column.id !== filler &&
-        column.width !== undefined &&
-        column.width / 4 > NAME_REM,
-    )
-    .sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
-  for (const column of wide) {
-    if (available === null || needed(shown) <= available) break;
-    freed.push(column.id);
-  }
-  return { hidden, fluid: filler === null ? freed : [filler, ...freed] };
-}
-
 function CardCell<T>({
   card,
   row,
@@ -754,15 +714,6 @@ function CardCell<T>({
     <DataTableCard content={content} focused={focused}>
       {children}
     </DataTableCard>
-  );
-}
-
-// jsdom maps a td to "cell" even inside a grid, so the role is stated here once.
-function GridCell(props: React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return (
-    // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of a role="grid" table is a gridcell (WAI-ARIA grid pattern)
-    // biome-ignore lint/a11y/useFocusableInteractive: the grid holds focus and points at its active row with aria-activedescendant
-    <td role="gridcell" {...props} />
   );
 }
 

@@ -3,21 +3,60 @@ import { HttpError } from "../api/http";
 import { machineValues } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
+  COPIES_DIFFER_LINE,
+  COPY_TO_IMPORT,
   cannotBeImportedLegend,
+  copiesDifferLegend,
+  differingCopiesLine,
   IMPORTED_NEXT_STEP,
   importConfirmLabel,
   importReportHeading,
   localEditsCheckNotice,
   localEditsImportNotice,
+  MERGE_COPIES_LINE,
   NO_LOCAL_EDITS,
   NO_SKILL_QUALIFIES,
   NOTHING_CHECKED,
   noLocalEditsLine,
+  SELECT_A_COPY,
+  UNSELECTED_COPIES_LINE,
   undoesNewerLegend,
   undoesNewerLine,
 } from "./import-local-edits-copy";
 
 describe("Import local edits copy", () => {
+  it("states the differing copies block and its radio group", () => {
+    expect(copiesDifferLegend(1)).toBe("⚠ Copies differ · 1");
+    expect(copiesDifferLegend(2)).toBe("⚠ Copies differ · 2");
+    expect(COPIES_DIFFER_LINE).toBe("The copies differ. Select one to import.");
+    expect(COPY_TO_IMPORT).toBe("Copy to import");
+    expect(MERGE_COPIES_LINE).toBe(
+      "To keep all edits, merge them into one folder yourself. Then select Close, select Re-read Deploy-state, then select Import local edits again.",
+    );
+    expect(UNSELECTED_COPIES_LINE).toBe(
+      "Copies you do not select stay as they are. Update target replaces them only if you check Discard local edits.",
+    );
+    expect(SELECT_A_COPY).toBe("Select a copy.");
+  });
+
+  it("names the folders whose copies differ in the pane", () => {
+    const two = differingCopiesLine(["~/.claude/skills", "~/.agents/skills"]);
+    expect(plainText(two)).toBe(
+      "The copies in ~/.claude/skills and ~/.agents/skills differ. Select Import local edits to import one.",
+    );
+    expect(machineValues(two)).toEqual([
+      "~/.claude/skills",
+      "~/.agents/skills",
+    ]);
+    expect(
+      plainText(
+        differingCopiesLine(["~/.a/skills", "~/.b/skills", "~/.c/skills"]),
+      ),
+    ).toBe(
+      "The copies in ~/.a/skills, ~/.b/skills and ~/.c/skills differ. Select Import local edits to import one.",
+    );
+  });
+
   it("counts the checked skills in the confirm", () => {
     expect(importConfirmLabel(0, 0)).toBe("Import skills");
     expect(importConfirmLabel(1, 0)).toBe("Import 1 skill");

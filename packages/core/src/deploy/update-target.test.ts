@@ -144,6 +144,10 @@ function subject(options: Options = {}) {
       readLockfile: onRead.readLockfile,
       classify,
     },
+    // Global's per-folder read is proven in its own tests and the update route's.
+    outcomes: {
+      read: async ({ release }) => ({ release, folders: [] }),
+    },
     canonicalPath: async (path) => path,
     locks,
     registry: { isRegistered: async () => options.registered ?? true },
@@ -684,7 +688,8 @@ describe("UpdateTarget.run", () => {
     expect(running.world.files.get("/target/apm.yml")).not.toContain("review");
   });
 
-  it("names the tool on every outcome row of the global target", async () => {
+  // What each Global folder got is proven through the update route.
+  it("writes every detected tool of the global target", async () => {
     const running = await confirmed({
       target: GLOBAL,
       detected: ["claude", "codex"],
@@ -693,14 +698,22 @@ describe("UpdateTarget.run", () => {
     const result = await running.run({ token: running.token });
 
     expect(result.ok).toBe(true);
-    expect(result.ok ? result.outcome.slice(0, 2) : []).toStrictEqual([
-      { name: "tdd", tool: "claude", state: "updated" },
-      { name: "tdd", tool: "codex", state: "updated" },
-    ]);
     expect(running.world.calls[0]?.tools).toStrictEqual(["claude", "codex"]);
   });
 
-  it("stays incomplete and names the missing copy when one tool lacks it", async () => {
+  it("completes a Global update while an undetected tool's folder keeps a skill the release dropped", async () => {
+    const running = await confirmed({ target: GLOBAL, detected: ["claude"] });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok).toBe(true);
+    expect(
+      running.world.files.has("/target/.agents/skills/review/SKILL.md"),
+    ).toBe(true);
+    expect(await running.world.operations.read("global")).toBeNull();
+  });
+
+  it("stays incomplete when one tool lacks a copy", async () => {
     const running = await confirmed({
       target: GLOBAL,
       detected: ["claude", "codex"],
@@ -710,10 +723,6 @@ describe("UpdateTarget.run", () => {
     const result = await running.run({ token: running.token });
 
     expect(result.ok ? null : result.error).toBe("update-incomplete");
-    expect(result.ok ? [] : (result.outcome ?? []).slice(0, 2)).toStrictEqual([
-      { name: "tdd", tool: "claude", state: "missing" },
-      { name: "tdd", tool: "codex", state: "updated" },
-    ]);
     expect(await running.world.operations.read("global")).toMatchObject({
       kind: "update",
       release: "v0.3.4",

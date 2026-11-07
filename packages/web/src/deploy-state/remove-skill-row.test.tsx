@@ -204,7 +204,7 @@ describe("removing a deployed skill from a row", () => {
 
     it("offers no confirm for a removal that cannot succeed", async () => {
       const fetchMock = refuseWith("no-supported-tool", 409);
-      renderRow({ target: { kind: "global", tools: ["claude"] } });
+      renderRow({ target: { kind: "global", folders: ["~/.claude/skills"] } });
 
       const dialog = await openRemoveDialog();
       await within(dialog).findByRole("alert");

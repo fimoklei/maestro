@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { LockfileEntry } from "../lockfile/lockfile";
-import { groupPrimitivesByTool } from "./group-primitives-by-tool";
+import { readGlobalTarget } from "./global-target";
+
+type LockfileEntry = Parameters<typeof readGlobalTarget>[0][number];
 
 // Per-skill entries are never probed on disk; a root-package one is (#941).
 const ALL_ON_DISK = { fileExists: async () => true };
 
-// deployed_files prefixes decide which tool the copy belongs to.
+// deployed_files prefixes decide which folder the copy sits in.
 function skillEntry(
   name: string,
   ref: string,
@@ -21,42 +22,40 @@ function skillEntry(
   };
 }
 
-describe("groupPrimitivesByTool", () => {
-  it("lists every detected tool, even one with nothing deployed", async () => {
-    const result = await groupPrimitivesByTool(
-      [],
-      ["claude", "codex"],
-      ALL_ON_DISK,
-    );
+const copiesBy = (result: Awaited<ReturnType<typeof readGlobalTarget>>) =>
+  result.folders.map((folder) => [
+    folder.path,
+    folder.detected,
+    folder.primitives.map((primitive) => primitive.name),
+  ]);
 
-    expect(result.tools).toEqual([
-      { tool: "claude", primitives: [] },
-      { tool: "codex", primitives: [] },
+describe("readGlobalTarget", () => {
+  it("lists every Global folder, even one with nothing deployed", async () => {
+    const result = await readGlobalTarget([], ["claude", "codex"], ALL_ON_DISK);
+
+    expect(copiesBy(result)).toEqual([
+      ["~/.claude/skills", true, []],
+      ["~/.agents/skills", true, []],
     ]);
+    expect(result.primitives).toEqual([]);
     expect(result.skipped).toEqual([]);
   });
 
-  it("does not list a tool that is not detected", async () => {
+  it("reads no copy into an undetected tool's folder", async () => {
     const entry = skillEntry("tdd", "v0.5.0", [
       ".claude/skills/tdd",
       ".agents/skills/tdd",
     ]);
 
-    const result = await groupPrimitivesByTool(
-      [entry],
-      ["claude"],
-      ALL_ON_DISK,
-    );
+    const result = await readGlobalTarget([entry], ["claude"], ALL_ON_DISK);
 
-    expect(result.tools).toEqual([
-      {
-        tool: "claude",
-        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-      },
+    expect(copiesBy(result)).toEqual([
+      ["~/.claude/skills", true, ["tdd"]],
+      ["~/.agents/skills", false, []],
     ]);
   });
 
-  it("attributes a two-tool skill to each tool whose prefix it carries", async () => {
+  it("attributes a two-tool skill to each folder its files sit in, and lists it once", async () => {
     const entry = skillEntry("tdd", "v0.5.1", [
       ".claude/skills/tdd",
       ".claude/skills/tdd/SKILL.md",
@@ -64,42 +63,36 @@ describe("groupPrimitivesByTool", () => {
       ".agents/skills/tdd/SKILL.md",
     ]);
 
-    const result = await groupPrimitivesByTool(
+    const result = await readGlobalTarget(
       [entry],
       ["claude", "codex"],
       ALL_ON_DISK,
     );
 
-    expect(result.tools).toEqual([
-      {
-        tool: "claude",
-        primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
-      },
-      {
-        tool: "codex",
-        primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
-      },
+    expect(copiesBy(result)).toEqual([
+      ["~/.claude/skills", true, ["tdd"]],
+      ["~/.agents/skills", true, ["tdd"]],
+    ]);
+    expect(result.primitives).toEqual([
+      { type: "skill", name: "tdd", version: "v0.5.1" },
     ]);
   });
 
-  it("does not back-fill a claude-only skill under codex", async () => {
+  it("does not back-fill a claude-only skill under ~/.agents/skills", async () => {
     const entry = skillEntry("tdd", "v0.5.0", [
       ".claude/skills/tdd",
       ".claude/skills/tdd/SKILL.md",
     ]);
 
-    const result = await groupPrimitivesByTool(
+    const result = await readGlobalTarget(
       [entry],
       ["claude", "codex"],
       ALL_ON_DISK,
     );
 
-    expect(result.tools).toEqual([
-      {
-        tool: "claude",
-        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-      },
-      { tool: "codex", primitives: [] },
+    expect(copiesBy(result)).toEqual([
+      ["~/.claude/skills", true, ["tdd"]],
+      ["~/.agents/skills", true, []],
     ]);
   });
 
@@ -112,17 +105,14 @@ describe("groupPrimitivesByTool", () => {
     };
     const skill = skillEntry("tdd", "v0.5.0", [".claude/skills/tdd"]);
 
-    const result = await groupPrimitivesByTool(
+    const result = await readGlobalTarget(
       [hook, skill],
       ["claude"],
       ALL_ON_DISK,
     );
 
-    expect(result.tools).toEqual([
-      {
-        tool: "claude",
-        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-      },
+    expect(result.primitives).toEqual([
+      { type: "skill", name: "tdd", version: "v0.5.0" },
     ]);
     expect(result.skipped).toEqual([
       {
@@ -133,7 +123,7 @@ describe("groupPrimitivesByTool", () => {
     ]);
   });
 
-  it("names the origin of a skill entry no detected tool's prefix covers", async () => {
+  it("names the origin of a skill entry no detected tool's folder holds", async () => {
     const entry = skillEntry(
       "tdd",
       "v0.5.1",
@@ -141,16 +131,13 @@ describe("groupPrimitivesByTool", () => {
       "fimoklei/agent-harness",
     );
 
-    const result = await groupPrimitivesByTool(
+    const result = await readGlobalTarget(
       [entry],
       ["claude", "codex"],
       ALL_ON_DISK,
     );
 
-    expect(result.tools).toEqual([
-      { tool: "claude", primitives: [] },
-      { tool: "codex", primitives: [] },
-    ]);
+    expect(result.primitives).toEqual([]);
     expect(result.otherOrigins).toEqual(["fimoklei/agent-harness"]);
   });
 
@@ -165,16 +152,12 @@ describe("groupPrimitivesByTool", () => {
       ),
     ];
 
-    const result = await groupPrimitivesByTool(
-      entries,
-      ["claude"],
-      ALL_ON_DISK,
-    );
+    const result = await readGlobalTarget(entries, ["claude"], ALL_ON_DISK);
 
     expect(result.otherOrigins).toEqual(["fimoklei/agent-harness"]);
   });
 
-  it("never names an origin for an entry a tool prefix already claims", async () => {
+  it("never names an origin for an entry a detected folder already holds", async () => {
     const entry = skillEntry(
       "tdd",
       "v0.5.1",
@@ -182,11 +165,7 @@ describe("groupPrimitivesByTool", () => {
       "fimoklei/agent-harness",
     );
 
-    const result = await groupPrimitivesByTool(
-      [entry],
-      ["claude"],
-      ALL_ON_DISK,
-    );
+    const result = await readGlobalTarget([entry], ["claude"], ALL_ON_DISK);
 
     expect(result.otherOrigins).toEqual([]);
   });
@@ -199,13 +178,9 @@ describe("groupPrimitivesByTool", () => {
       deployed_files: [".claude/skills/tdd"],
     };
 
-    const result = await groupPrimitivesByTool(
-      [hybrid],
-      ["claude"],
-      ALL_ON_DISK,
-    );
+    const result = await readGlobalTarget([hybrid], ["claude"], ALL_ON_DISK);
 
-    expect(result.tools).toEqual([{ tool: "claude", primitives: [] }]);
+    expect(result.primitives).toEqual([]);
     expect(result.skipped).toEqual([
       {
         reason: "unmanageable-skill",

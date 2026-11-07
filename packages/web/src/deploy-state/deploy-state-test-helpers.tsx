@@ -38,6 +38,38 @@ const respond = (answer: Answer): Response | Promise<Response> =>
 
 const EMPTY_TARGET = { primitives: [], skipped: [] };
 
+type Copy = { name: string } & Record<string, unknown>;
+
+/**
+ * The Global read as the server answers it: one target with its folders. A
+ * tool left out of `copies` is not detected; its folder holds no copy.
+ */
+export function globalAnswer(
+  copies: { claude?: Copy[]; codex?: Copy[] },
+  extra: Record<string, unknown> = {},
+) {
+  const folder = (path: string, tool: "claude" | "codex") => ({
+    path,
+    tool,
+    detected: copies[tool] !== undefined,
+    primitives: copies[tool] ?? [],
+  });
+  const all = [...(copies.claude ?? []), ...(copies.codex ?? [])];
+  const primitives = all.filter(
+    (copy, index) => all.findIndex((each) => each.name === copy.name) === index,
+  );
+  return {
+    primitives,
+    folders: [
+      folder("~/.claude/skills", "claude"),
+      folder("~/.agents/skills", "codex"),
+    ],
+    skipped: [],
+    otherOrigins: [],
+    ...extra,
+  };
+}
+
 export function stubServer(read: () => ServerState) {
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -50,7 +82,7 @@ export function stubServer(read: () => ServerState) {
           : respond(repos);
       }
       if (url === "/api/deploy-state/global") {
-        return respond(state.global ?? { tools: [], skipped: [] });
+        return respond(state.global ?? globalAnswer({}));
       }
       if (url.startsWith("/api/deploy-state?repo=")) {
         const repo = decodeURIComponent(url.split("repo=")[1] ?? "");
@@ -126,14 +158,16 @@ export function renderDeployState(state?: { openTarget: string }) {
 export const grid = () =>
   screen.getByRole("grid", { name: "Deploy-state table" });
 
+// A group header spans every column; a target or folder row does not.
 export function rowOf(name: string): HTMLElement {
   const row = within(grid())
     .getAllByRole("row")
-    .find((candidate) =>
-      within(candidate)
-        .queryAllByRole("gridcell")[0]
-        ?.textContent?.startsWith(name),
-    );
+    .find((candidate) => {
+      const first = within(candidate).queryAllByRole("gridcell")[0] as
+        | HTMLTableCellElement
+        | undefined;
+      return first?.colSpan === 1 && first.textContent?.startsWith(name);
+    });
   if (row === undefined) throw new Error(`no row for ${name}`);
   return row;
 }

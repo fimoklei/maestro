@@ -20,11 +20,17 @@ type GroupedListRow = {
   /** What the checked set holds for this row. */
   key: string;
   name: string;
+  /** The name is a path or another machine value, set in mono. */
+  machineName?: boolean;
+  /** A row the action leaves alone, such as a folder it does not write. */
+  muted?: boolean;
   /** The full text a shortened name stands for, on hover. */
   title?: string;
   value?: string;
   /** Its cost or reason, under the name. */
   sentence?: ReactNode;
+  /** A control the row asks the reader to set, such as a radio group, under the sentence. */
+  choice?: ReactNode;
   /** The row's own reading where it differs from its group's. */
   tone?: StatusFamily;
   /** For a dialog that reads the row out with its question. */
@@ -253,7 +259,15 @@ function Group({
                 {LIST_TOKENS[tone].glyph}
               </span>
             ) : null;
-          const nameClass = "min-w-0 truncate text-gray-12 text-row";
+          const nameClass = cn(
+            "min-w-0 truncate text-row",
+            row.muted ? "text-gray-11" : "text-gray-12",
+          );
+          const name = row.machineName ? (
+            <MachineValue>{row.name}</MachineValue>
+          ) : (
+            row.name
+          );
           return (
             <li
               key={row.key}
@@ -274,11 +288,11 @@ function Group({
                   className={cn(nameClass, !refused && "cursor-pointer")}
                   title={row.title}
                 >
-                  {row.name}
+                  {name}
                 </label>
               ) : (
                 <span className={nameClass} title={row.title}>
-                  {row.name}
+                  {name}
                 </span>
               )}
               <span className="break-all text-right text-gray-11 text-meta">
@@ -298,6 +312,13 @@ function Group({
                 >
                   {row.sentence}
                 </p>
+              )}
+              {row.choice === undefined ? null : (
+                <div
+                  className={cn("col-span-2", lead !== null && "col-start-2")}
+                >
+                  {row.choice}
+                </div>
               )}
             </li>
           );

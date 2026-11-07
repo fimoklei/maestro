@@ -62,8 +62,14 @@ const RETIRED = [
   /\bClose this dialog\b/i,
   // A target that loses no work has no local edits (#1436).
   /\bclean cop(?:y|ies)\b/i,
-  // The Deploy-state row has no bare Deploy again; the bulk Report's is `Deploy {name} again` (#1468).
-  /\bDeploy again\b/,
+  // One action has one name: Global's update is Update target too (#1772).
+  /\bUpdate targets\b/,
+  // Global is one target: its removal names no tool (#1803), and no screen
+  // speaks of several Global targets (#1794).
+  /\bRemove from (?:Claude Code|Codex)\b/,
+  /\bglobal targets\b/i,
+  // Copies that differ between Global folders read Local edits per folder (#1794).
+  /\bDiffering copies\b/i,
   // A change reads Added, Changed, Renamed or Deleted on every screen (#1603).
   /\bAddition\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.

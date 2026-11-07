@@ -7,7 +7,11 @@ import type {
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
-import type { SupportedTool } from "./deploy-tools";
+import {
+  globalFolderPath,
+  SUPPORTED_TOOLS,
+  type SupportedTool,
+} from "./deploy-tools";
 import type { DeployedRefLookup } from "./deployed-ref";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
@@ -78,8 +82,11 @@ const GUARD_WARNINGS: Partial<Record<CopyVerdict, RemoveWarning>> = {
   "lockfile-malformed": "check-did-not-run",
 };
 
+/** One Global folder the removal deletes from; `detected: false` only where it holds a copy. */
 export type RemoveToolCheck = {
   tool: SupportedTool;
+  path: string;
+  detected: boolean;
   warning: RemoveWarning | null;
 };
 
@@ -96,23 +103,40 @@ const repoCheck = (verdict: CopyVerdict): RemoveCheck => ({
 const soleVerdict = (copies: LocalCopyCheck): CopyVerdict =>
   copies.findings[0]?.verdict ?? "unreadable";
 
-const toolChecks = (findings: readonly CopyFinding[]): RemoveToolCheck[] =>
+// The tools whose copies refuse the removal.
+const editedTools = (findings: readonly CopyFinding[]): SupportedTool[] =>
   findings.flatMap((finding) =>
-    finding.tool === null
-      ? []
-      : [
-          {
-            tool: finding.tool,
-            warning: GUARD_WARNINGS[finding.verdict] ?? null,
-          },
-        ],
+    finding.verdict === "local-edits" && finding.tool !== null
+      ? [finding.tool]
+      : [],
   );
+
+/**
+ * The Global folders whose local edits refused the removal. `notWritten`: those
+ * Global does not write, whose copy no deploy restores.
+ */
+type EditedFolders = { folders?: string[]; notWritten?: string[] };
+
+function editedFolders(
+  findings: readonly CopyFinding[],
+  detected: readonly SupportedTool[],
+): EditedFolders {
+  const tools = editedTools(findings);
+  const notWritten = tools.filter((tool) => !detected.includes(tool));
+  return {
+    ...(tools.length === 0 ? {} : { folders: tools.map(globalFolderPath) }),
+    ...(notWritten.length === 0
+      ? {}
+      : { notWritten: notWritten.map(globalFolderPath) }),
+  };
+}
 
 // A probe that could not answer is "unknown", never "removed".
 export type RemoveTargetState = "removed" | "not-removed" | "unknown";
 
 export type RemoveToolOutcome = {
   tool: SupportedTool;
+  path: string;
   state: RemoveTargetState;
 };
 
@@ -145,7 +169,7 @@ type Priced =
       copies: LocalCopyCheck;
       check: RemoveCheck;
     }
-  | { ok: false; error: LocalEditsRefusal };
+  | ({ ok: false; error: LocalEditsRefusal } & EditedFolders);
 
 type LocalEditsRefusal =
   | "deployed-diverged-from-lock"
@@ -174,13 +198,13 @@ type RemoveDeployedSkillResult =
     }
   // `outcome` only where apm ran; the other two only on a cost nobody agreed
   // to, so no attempt mixes a fresh cost with a stale consent (#364).
-  | {
+  | ({
       ok: false;
       error: RemoveDeployedSkillError;
       outcome?: RemoveOutcome;
       check?: RemoveCheck;
       receipt?: string;
-    };
+    } & EditedFolders);
 
 type RemovePreflightResult =
   | {
@@ -188,7 +212,7 @@ type RemovePreflightResult =
       check: RemoveCheck;
       receipt: string;
     }
-  | { ok: false; error: RemovePreflightError };
+  | ({ ok: false; error: RemovePreflightError } & EditedFolders);
 
 // Each receipt belongs to this target's own preflight: one target's
 // confirmation never licenses another's removal (#458).
@@ -276,6 +300,7 @@ export class RemoveDeployedSkill {
         input,
         scope,
         lookup?.ok === true ? lookup.version : undefined,
+        await this.isNamedUninstall(input.target, input.name),
       );
       if (!priced.ok) {
         return priced;
@@ -296,18 +321,78 @@ export class RemoveDeployedSkill {
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
     release: string | undefined,
+    /** A named uninstall deletes the copies in every folder its lockfile
+     * records; an install with -t only the detected folders. */
+    namedUninstall: boolean,
   ): Promise<Priced> {
-    const copies = await this.runCheck(input, scope, release);
+    const copies = await this.runCheck(input, scope, release, namedUninstall);
     // One diverged copy refuses the whole set: apm's uninstall has no -t, so it
     // would abort on that copy after deleting the others (#775).
     if (copies.findings.some((finding) => finding.verdict === "local-edits")) {
-      return { ok: false, error: await this.localEditsRefusal(input.target) };
+      return {
+        ok: false,
+        error: await this.localEditsRefusal(input.target),
+        ...editedFolders(
+          copies.findings,
+          scope.scope === "global" ? scope.detected : SUPPORTED_TOOLS,
+        ),
+      };
     }
     const check: RemoveCheck =
       scope.scope === "repo"
         ? repoCheck(soleVerdict(copies))
-        : { scope: "global", tools: toolChecks(copies.findings) };
+        : {
+            scope: "global",
+            tools: await this.folderChecks(input, scope.detected, copies),
+          };
     return { ok: true, copies, check };
+  }
+
+  // Every detected folder, and an undetected one only where the removal
+  // deletes a copy there.
+  private async folderChecks(
+    input: RemoveDeployedSkillInput,
+    detected: readonly SupportedTool[],
+    copies: LocalCopyCheck,
+  ): Promise<RemoveToolCheck[]> {
+    const lockfile = await this.deps.deployedContent.readLockfile(input.target);
+    const checks: RemoveToolCheck[] = [];
+    for (const finding of copies.findings) {
+      if (finding.tool === null) {
+        continue;
+      }
+      const isDetected = detected.includes(finding.tool);
+      if (
+        !isDetected &&
+        (await this.probeTarget(input.target, lockfile, input.name, [
+          finding.tool,
+        ])) === "removed"
+      ) {
+        continue;
+      }
+      checks.push({
+        tool: finding.tool,
+        path: globalFolderPath(finding.tool),
+        detected: isDetected,
+        warning: GUARD_WARNINGS[finding.verdict] ?? null,
+      });
+    }
+    return checks;
+  }
+
+  // Read-only: the plan's own read decides it again under the lock.
+  private async isNamedUninstall(
+    target: DeployTarget,
+    name: string,
+  ): Promise<boolean> {
+    const origin = (await this.deps.harnessOrigin?.()) ?? null;
+    const current =
+      origin === null
+        ? undefined
+        : await this.deps.selection?.readTarget(target, origin);
+    return current?.kind === "root"
+      ? current.deployed.every((each) => each === name)
+      : true;
   }
 
   // A target pinned per skill refuses every deploy, so Deploy again cannot
@@ -329,30 +414,27 @@ export class RemoveDeployedSkill {
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
     release: string | undefined,
+    namedUninstall: boolean,
   ): Promise<LocalCopyCheck> {
-    const ask = (tools?: readonly SupportedTool[]) =>
-      this.copyGuard.check({
-        write: "remove",
-        target: input.target,
-        names: [input.name],
-        ...(tools === undefined ? {} : { tools }),
-        ...(release === undefined ? {} : { release }),
-      });
-
-    if (scope.scope === "repo") {
-      return await ask();
-    }
-    // The whole copy too: apm uninstalls by its own recorded targets, so a
-    // tool that has since dropped out is still at risk.
-    const parts = [await ask(), await ask(scope.detected)];
-    const findings: CopyFinding[] = parts.flatMap((part) => [...part.findings]);
-    const digests = parts
-      .map((part) => part.digest)
-      .filter((digest): digest is string => digest !== null);
-    return {
-      findings,
-      digest: digests.length === 0 ? null : digests.sort().join("\n"),
-    };
+    // Only the folders the apm call touches: local edits elsewhere lose nothing.
+    const tools =
+      scope.scope === "repo"
+        ? undefined
+        : namedUninstall
+          ? [
+              ...scope.detected,
+              ...SUPPORTED_TOOLS.filter(
+                (tool) => !scope.detected.includes(tool),
+              ),
+            ]
+          : scope.detected;
+    return await this.copyGuard.check({
+      write: "remove",
+      target: input.target,
+      names: [input.name],
+      ...(tools === undefined ? {} : { tools }),
+      ...(release === undefined ? {} : { release }),
+    });
   }
 
   async execute(
@@ -521,7 +603,13 @@ export class RemoveDeployedSkill {
 
       // Priced again under the lock, so a baseline lost since the check stops
       // the removal (#364, #952).
-      const priced = await this.price(input, scope, version);
+      const priced = await this.price(
+        input,
+        scope,
+        version,
+        plan.kind === "per-skill" ||
+          plan.previous.every((each) => each === input.name),
+      );
       if (!priced.ok) {
         return priced;
       }
@@ -559,7 +647,13 @@ export class RemoveDeployedSkill {
           error: failure,
           // From disk, not apm: a blocked uninstall deletes the rest of the
           // Selection first.
-          outcome: await this.probeOutcome(target, input.name, detected),
+          outcome: await this.probeOutcome(
+            target,
+            input.name,
+            priced.check.scope === "global"
+              ? priced.check.tools.map((folder) => folder.tool)
+              : undefined,
+          ),
         };
       }
 
@@ -626,19 +720,20 @@ export class RemoveDeployedSkill {
   private async probeOutcome(
     target: DeployTarget,
     name: string,
-    detected: readonly SupportedTool[] | undefined,
+    folders: readonly SupportedTool[] | undefined,
   ): Promise<RemoveOutcome> {
     const lockfile = await this.deps.deployedContent.readLockfile(target);
-    if (detected === undefined) {
+    if (folders === undefined) {
       return {
         scope: "repo",
         state: await this.probeTarget(target, lockfile, name),
       };
     }
     const tools: RemoveToolOutcome[] = [];
-    for (const tool of detected) {
+    for (const tool of folders) {
       tools.push({
         tool,
+        path: globalFolderPath(tool),
         state: await this.probeTarget(target, lockfile, name, [tool]),
       });
     }

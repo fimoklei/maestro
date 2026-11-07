@@ -57,6 +57,19 @@ export const WithSelection: Story = {
 
 export const DetailOpen: Story = { args: { openRowId: "diagnose" } };
 
+// Read-only rows under a row: no cursor, no click; a muted one is not acted on.
+export const WithSubRows: Story = {
+  args: {
+    subRows: (row: Row) =>
+      row.name === "tdd"
+        ? [
+            { id: "tdd:a", cells: { name: "~/.claude/skills" } },
+            { id: "tdd:b", cells: { name: "~/.agents/skills" }, muted: true },
+          ]
+        : [],
+  },
+};
+
 export const Grouped: Story = {
   args: {
     groups: {

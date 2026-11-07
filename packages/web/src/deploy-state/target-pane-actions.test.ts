@@ -89,18 +89,15 @@ describe("targetPaneActions", () => {
     });
   });
 
-  // A global tool row's update moves every detected tool, so its label says so.
-  it("labels Update by every target it moves where that reaches beyond the row", () => {
+  // One action has one name: Global's update reads Update target too (#1802).
+  it("labels Update target by the target it moves, Global included", () => {
     const { update } = targetPaneActions(
-      facts(["deploy", "update"], {
-        name: "Claude Code",
-        updateName: "Claude Code and Codex",
-      }),
+      facts(["deploy", "update"], { name: "Global", updateName: "Global" }),
       () => {},
     );
     expect(update).toMatchObject({
-      label: "Update targets",
-      name: "Update targets Claude Code and Codex",
+      label: "Update target",
+      name: "Update target Global",
     });
   });
 

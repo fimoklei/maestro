@@ -33,6 +33,7 @@ import {
   TARGET_LABEL,
   TARGETS_FACT,
 } from "./deploy-state-copy";
+import { folderSubRows } from "./folder-sub-rows";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { TargetDetailPane } from "./target-detail-pane";
 import { targetLinkItems, targetMenuItems } from "./target-menu";
@@ -45,7 +46,6 @@ import {
 } from "./target-rows";
 import { IN_SYNC, TARGET_CHIPS, TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
-import { updateLabel } from "./update-target-copy";
 import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
 import { globalDeployStateQueryOptions } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
@@ -231,7 +231,7 @@ export function DeployStateView() {
           filtered: view.filterCount > 0,
           global: globalDeploy.isSuccess
             ? {
-                tools: globalDeploy.data.tools.length,
+                tools: globalDeploy.data.detectedTools.length,
                 skipped: globalDeploy.data.skipped,
               }
             : null,
@@ -302,6 +302,7 @@ export function DeployStateView() {
       rows={rows}
       columns={columns}
       rowId={(row) => row.id}
+      subRows={folderSubRows}
       view={view}
       noMatch={NO_FILTER_MATCH}
       empty={{ ...NO_TARGETS, icon: <Icon of={LayoutList} /> }}
@@ -372,7 +373,6 @@ function TargetActions({
       update.isError ? (
         <UpdateTargetAction
           targetName={row.updateName}
-          updateLabel={updateLabel(row)}
           target={row.wire}
           update={update}
           defaultOpen={openUpdate}

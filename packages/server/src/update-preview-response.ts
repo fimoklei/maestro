@@ -2,7 +2,6 @@
 import {
   isValidSkillSlug,
   RELEASE_TAG_PATTERN,
-  type UpdateOutcomeRow,
   type UpdatePreview,
 } from "@maestro/core";
 import { z } from "zod";
@@ -68,9 +67,41 @@ const outcomeSchema = z.array(
   }),
 );
 
+const foldersSchema = z.object({
+  release: z.string().regex(RELEASE_TAG_PATTERN),
+  folders: z.array(
+    z.object({
+      path: z.string().startsWith("~/").max(200),
+      tool: z.string().max(40),
+      detected: z.boolean(),
+      skills: z.array(
+        z.discriminatedUnion("outcome", [
+          z.object({
+            name: skillName,
+            outcome: z.enum(["written", "missing", "not-confirmed"]),
+          }),
+          z.object({
+            name: skillName,
+            outcome: z.literal("not-updated"),
+            stillAt: z.string().regex(RELEASE_TAG_PATTERN).nullable(),
+          }),
+        ]),
+      ),
+    }),
+  ),
+});
+
+/** The outcome's body keys; null where apm never ran or the outcome fails its shape. */
 export function updateOutcomeBody(
-  outcome: readonly UpdateOutcomeRow[],
-): unknown | null {
-  const parsed = outcomeSchema.safeParse(outcome);
-  return parsed.success ? parsed.data : null;
+  result: object,
+): { outcome: unknown } | { folders: unknown } | null {
+  if ("folders" in result) {
+    const parsed = foldersSchema.safeParse(result.folders);
+    return parsed.success ? { folders: parsed.data } : null;
+  }
+  if ("outcome" in result) {
+    const parsed = outcomeSchema.safeParse(result.outcome);
+    return parsed.success ? { outcome: parsed.data } : null;
+  }
+  return null;
 }

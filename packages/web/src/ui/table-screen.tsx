@@ -55,6 +55,8 @@ type TableScreenBase<T extends RowData> = {
   shown?: (row: T) => boolean;
   /** Rows carry a checkbox for a bulk action. */
   selection?: DataTableProps<T>["selection"];
+  /** Read-only rows under a row, such as Global's folders. */
+  subRows?: DataTableProps<T>["subRows"];
   /** Follows the last row while rows are chosen, held in view as the table scrolls. */
   selectionBar?: ReactNode;
   /** In place of the table when the narrowing leaves no row; an active filter adds Clear filters. */
@@ -99,6 +101,7 @@ export function TableScreen<T extends RowData>({
   shown,
   view,
   selection,
+  subRows,
   selectionBar,
   noMatch,
   empty,
@@ -308,6 +311,7 @@ export function TableScreen<T extends RowData>({
                     }
                     onRowOrderChange={setOrder}
                     selection={selection}
+                    subRows={subRows}
                   />
                   {/* In the scroller: under a short list it follows the last
                       row, under a long one it sticks to the panel's foot. */}

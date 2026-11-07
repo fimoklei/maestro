@@ -2,15 +2,15 @@
 // targets the deployed column rolls up, so the two can't diverge.
 
 import type { ReleaseHead } from "@maestro/core";
+import { GLOBAL } from "../deploy-state/deploy-state-copy";
 import {
   comparedFact,
   UNFINISHED_REASONS,
 } from "../deploy-state/release-head-copy";
 import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
 import { type SkillMark, skillMark } from "../deploy-state/skill-mark";
-import { globalRowId, repoRowId } from "../deploy-state/target-rows";
+import { GLOBAL_ROW_ID, repoRowId } from "../deploy-state/target-rows";
 import { unfinishedReading } from "../deploy-state/target-status";
-import { toolNameList } from "../deploy-state/tool-presentation";
 import type { DriftStatus } from "../drift/drift-view-model";
 import { type DeploymentTarget, skillReading } from "./deployed-rollup";
 import type { DeployTarget } from "./use-deploy-skill";
@@ -28,9 +28,9 @@ export type SkillDeployment = {
   edited: boolean;
   /** The row's mark: the target's unfinished operation, else Deploy-state's skill mark. */
   mark: SkillMark | null;
-  /** What an update sends; every tool row names the one global target. */
+  /** What an update sends. */
   target: DeployTarget;
-  /** What a removal names: a global one covers every detected tool. */
+  /** What a removal names: a global one lists the folders Global writes. */
   removeTarget: RemoveDialogTarget;
   /** The name Update target's dialog carries. */
   updateName: string;
@@ -81,10 +81,6 @@ export function skillDeployments(
   targets: DeploymentTarget[],
 ): SkillDeployment[] {
   const rows: SkillDeployment[] = [];
-  // One global removal or update covers every detected tool.
-  const tools = targets.flatMap((target) =>
-    target.tool === undefined ? [] : [target.tool],
-  );
 
   for (const { target, deployed } of deployedTargets(skillName, targets)) {
     const wire = target.target;
@@ -105,14 +101,9 @@ export function skillDeployments(
       removeTarget:
         wire.kind === "repo"
           ? { ...wire, name: target.label }
-          : { kind: "global", tools: [...tools] },
-      updateName: wire.kind === "repo" ? target.label : toolNameList(tools),
-      rowId:
-        wire.kind === "repo"
-          ? repoRowId(wire.repoPath)
-          : target.tool === undefined
-            ? null
-            : globalRowId(target.tool),
+          : { kind: "global", folders: target.folders ?? [] },
+      updateName: wire.kind === "repo" ? target.label : GLOBAL,
+      rowId: wire.kind === "repo" ? repoRowId(wire.repoPath) : GLOBAL_ROW_ID,
       updatable: target.releaseHead !== undefined && status === "behind",
     });
   }

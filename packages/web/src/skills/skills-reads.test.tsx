@@ -41,7 +41,7 @@ function stubServer({
       if (url.startsWith("/api/registry"))
         return jsonResponse({ repos: [{ path: "/projects/alpha" }] });
       if (url.startsWith("/api/deploy-state/global"))
-        return jsonResponse({ tools: [], skipped: [] });
+        return jsonResponse({ primitives: [], folders: [], skipped: [] });
       if (url.startsWith("/api/deploy-state"))
         return jsonResponse({ primitives: [], skipped: [] });
       if (url.startsWith("/api/drift")) return jsonResponse({ behind: [] });

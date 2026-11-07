@@ -6,7 +6,10 @@ import type {
   DeploySkillDriverResult,
   ResolveLatestTagResult,
 } from "../../packages/core/src/deploy/deploy-skill";
-import { deployTargetSubtrees } from "../../packages/core/src/deploy/deploy-tools";
+import {
+  deployTargetSubtrees,
+  SUPPORTED_TOOLS,
+} from "../../packages/core/src/deploy/deploy-tools";
 import { DeployedLocation } from "../../packages/core/src/deploy/deployed-location";
 import { InMemoryCopyTree } from "../../packages/core/src/filesystem/copy-tree-fs.fake";
 import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
@@ -58,8 +61,8 @@ type Answers = {
   latestTag: ResolveLatestTagResult;
   // The next install's answer instead of landing; "throw" never returns.
   installRefusal: DeploySkillDriverResult | "throw" | null;
-  // What an install places, whatever it was asked for.
-  lands: (skills: readonly string[]) => readonly string[];
+  // What an install places in one tool's folder, whatever it was asked for.
+  lands: (skills: readonly string[], tool: SupportedTool) => readonly string[];
   installHold: Promise<void> | null;
   // "unproven" is an uninstall with no success marker.
   uninstallAnswer: (target: DeployTarget) => "removed" | "unproven" | "throw";
@@ -67,7 +70,8 @@ type Answers = {
   skillAtTag: boolean;
   divergedFromTag: boolean;
   // The release's file hashes by path; null is a clone that cannot answer.
-  releasedFiles: Record<string, string> | null;
+  // "as-installed": every tag holds the SKILL.md an install writes.
+  releasedFiles: Record<string, string> | null | "as-installed";
   // Replaces the install outright, as a driver fed a captured refusal.
   deploySkill: ApmDriverPort["deploySkill"] | null;
 };
@@ -99,8 +103,12 @@ export function deployWorld(
     skills: readonly string[],
     tools: readonly SupportedTool[] | undefined,
   ) =>
-    skills.flatMap((skill) =>
-      deployTargetSubtrees(skill, tools).map((dir) => `${dir}/SKILL.md`),
+    (tools ?? SUPPORTED_TOOLS).flatMap((tool) =>
+      state
+        .lands(skills, tool)
+        .flatMap((skill) =>
+          deployTargetSubtrees(skill, [tool]).map((dir) => `${dir}/SKILL.md`),
+        ),
     );
 
   // A recorded copy goes before the new ones land; an unrecorded one stays.
@@ -157,7 +165,7 @@ export function deployWorld(
       for (const dir of recorded(input.target)) {
         disk.remove(`${root}/${dir}`);
       }
-      const files = copies(state.lands(input.skills ?? []), input.tools);
+      const files = copies(input.skills ?? [], input.tools);
       for (const file of files) {
         disk.write(`${root}/${file}`, skillManifest(file.split("/")[2] ?? ""));
       }
@@ -227,7 +235,12 @@ export function deployWorld(
       inventory: () => ({
         skillExistsAtTag: async () => state.skillAtTag,
         skillDivergesFromTag: async () => state.divergedFromTag,
-        readSkillFilesAtTag: async () => state.releasedFiles,
+        readSkillFilesAtTag: async (_tag, name) =>
+          state.releasedFiles === "as-installed"
+            ? {
+                "SKILL.md": `sha256:${sha256(Buffer.from(skillManifest(name)))}`,
+              }
+            : state.releasedFiles,
       }),
     },
   });

@@ -14,11 +14,10 @@ import type { DeployTarget } from "./use-deploy-skill";
 // `primitives`, meaningful only when status is "ready".
 export type DeploymentTarget = {
   label: string;
-  // Which target a write would name; every global per-tool row carries
-  // `{ kind: "global" }`: one apm removal covers every tool.
+  // Which target a write would name.
   target: DeployTarget;
-  /** The detected tool a global row stands for; absent on a repository. */
-  tool?: string;
+  /** The Global folders Global writes; absent on a repository. */
+  folders?: readonly string[];
   deployed: DeployedView;
   primitives: DeployedPrimitive[];
   drift: DriftViewModel;

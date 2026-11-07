@@ -11,6 +11,8 @@ import {
   REPO_NOT_READ_LINE,
   TARGET_LABEL,
 } from "./deploy-state-copy";
+import { GlobalFolders } from "./global-folders";
+import { differingCopiesLine } from "./import-local-edits-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   behindLine,
@@ -29,8 +31,8 @@ import {
   showsReadFailure,
   type TargetPaneActions,
 } from "./target-pane-actions";
-import { editedSkills, type TargetRow } from "./target-rows";
-import { updateLabel } from "./update-target-copy";
+import { editedSkills, folderPaneLines, type TargetRow } from "./target-rows";
+import { useDifferingCopyFolders } from "./use-import-local-edits";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
 // Update target as `update`, and the dialogs they open as `dialogs`.
@@ -90,14 +92,19 @@ export function TargetDetailPane({
   const changed = head ? changedFact(head) : null;
   const latestRelease = latestReleaseFact(head);
   const edited = editedSkills(row.primitives);
+  // Its sentence names Import local edits, which an operation withholds.
+  const importable = edited.length > 0 && row.pending === undefined;
+  const differing = useDifferingCopyFolders(
+    row.wire,
+    importable && row.wire.kind === "global",
+  );
   const why = [
-    // Its sentence names Import local edits, which an operation withholds.
-    ...(edited.length === 0 || row.pending
-      ? []
-      : [localEditsLine(edited, row.behind)]),
+    ...(row.pending ? [] : folderPaneLines(row)),
+    ...(importable ? [localEditsLine(edited, row.behind)] : []),
+    ...(importable ? differing.map(differingCopiesLine) : []),
     // A plain behind target still says why, and which control moves it.
     ...(head && row.behind && edited.length === 0 && !row.pending && !row.pinned
-      ? [behindLine(head, updateLabel(row))]
+      ? [behindLine(head)]
       : []),
     ...(row.pinned ? [pinnedTagsLine(row.pinned), RELEASE_NOT_ADOPTED] : []),
     ...(row.primitives.length === 0 && row.otherOrigins.length > 0
@@ -180,11 +187,16 @@ export function TargetDetailPane({
         notices={notice ? [notice] : []}
         subList={
           row.readFailed && row.primitives.length === 0 ? undefined : (
-            <SelectedSkills
-              row={row}
-              headingRef={skillsHeading}
-              onRemoved={() => skillsHeading.current?.focus()}
-            />
+            <>
+              {row.folders === undefined ? null : (
+                <GlobalFolders folders={row.folders} />
+              )}
+              <SelectedSkills
+                row={row}
+                headingRef={skillsHeading}
+                onRemoved={() => skillsHeading.current?.focus()}
+              />
+            </>
           )
         }
         foot={foot}

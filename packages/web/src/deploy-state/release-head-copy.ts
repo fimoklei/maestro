@@ -6,7 +6,11 @@ import type {
   PinnedPerSkill,
   ReleaseHead,
 } from "@maestro/core";
-import { DEPLOY_SKILL, REMOVE_SKILL } from "../ui/control-labels";
+import {
+  DEPLOY_SKILL,
+  REMOVE_SKILL,
+  UPDATE_TARGET,
+} from "../ui/control-labels";
 import { ago, NOT_READ_YET } from "../ui/freshness";
 import { type Copy, machine, type Phrase, phrase } from "../ui/phrase";
 import { joinNames } from "./join-names";
@@ -17,14 +21,10 @@ import {
   UPDATE_INCOMPLETE_SENTENCE,
 } from "./update-target-copy";
 
-// A behind target's reason; this tool's own release can already be the latest
-// when another tool on the one global target is behind (#951).
+// A behind target's reason.
 function behindReason(head: ReleaseHead): Copy {
   if (head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
   const latest = machine(head.latestRelease);
-  if (head.latestRelease === head.release) {
-    return phrase`Another tool's skills are behind ${latest}.`;
-  }
   if (head.changed === null) {
     return phrase`Changes in ${latest} could not be read.`;
   }
@@ -34,11 +34,11 @@ function behindReason(head: ReleaseHead): Copy {
 }
 
 // The reason, then the control that moves the target (design.md → Disclosure).
-export function behindLine(head: ReleaseHead, updateLabel: string): Copy {
+export function behindLine(head: ReleaseHead): Copy {
   const reason = behindReason(head);
   return head.latestRelease === null
     ? reason
-    : phrase`${reason} Select ${updateLabel} to move this target to ${machine(head.latestRelease)}.`;
+    : phrase`${reason} Select ${UPDATE_TARGET} to move this target to ${machine(head.latestRelease)}.`;
 }
 
 export const ON_LATEST_RELEASE = "On the latest release.";

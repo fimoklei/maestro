@@ -25,7 +25,12 @@ afterEach(() => {
 describe("removing a deployed skill from a row", () => {
   describe("on a global row", () => {
     const renderGlobalRow = () =>
-      renderRow({ target: { kind: "global", tools: ["claude", "codex"] } });
+      renderRow({
+        target: {
+          kind: "global",
+          folders: ["~/.claude/skills", "~/.agents/skills"],
+        },
+      });
 
     it("offers Remove skill just as a repo row does", async () => {
       stubFetch(null);
@@ -36,14 +41,14 @@ describe("removing a deployed skill from a row", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 
-    it("names every detected tool in the confirmation", async () => {
+    it("names every Global folder in the confirmation", async () => {
       stubFetch(null);
       renderGlobalRow();
 
       const dialog = await openRemoveDialog();
 
-      expect(dialog).toHaveTextContent("Claude Code");
-      expect(dialog).toHaveTextContent("Codex");
+      expect(dialog).toHaveTextContent("~/.claude/skills");
+      expect(dialog).toHaveTextContent("~/.agents/skills");
     });
 
     it("asks the server for a global removal, carrying no path", async () => {
@@ -97,8 +102,18 @@ describe("removing a deployed skill from a row", () => {
                 check: {
                   scope: "global",
                   tools: [
-                    { tool: "codex", warning: "cannot-verify-local-edits" },
-                    { tool: "claude", warning: null },
+                    {
+                      tool: "codex",
+                      path: "~/.agents/skills",
+                      detected: true,
+                      warning: "cannot-verify-local-edits",
+                    },
+                    {
+                      tool: "claude",
+                      path: "~/.claude/skills",
+                      detected: true,
+                      warning: null,
+                    },
                   ],
                 },
                 receipt: RESTATED,

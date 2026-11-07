@@ -1,3 +1,4 @@
+import type { NotUpdatedCopy } from "@maestro/core";
 import {
   IMPORT_LOCAL_EDITS,
   REGISTER_REPOSITORY,
@@ -5,7 +6,7 @@ import {
 } from "../ui/control-labels";
 import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
-import { namedList, phrase } from "../ui/phrase";
+import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
 import { joinNames } from "./join-names";
 
@@ -32,8 +33,7 @@ export const NO_FILTER_MATCH = {
 
 export const NO_TARGETS = {
   title: "No targets yet",
-  description:
-    "Claude Code, Codex and registered repositories appear here as targets.",
+  description: "Global and registered repositories appear here.",
 };
 
 /** The pane's line for behind names that are no deployed skill. */
@@ -54,7 +54,7 @@ export const packageBehindNotice = (
 
 const NOT_READ_LABEL = "Deploy-state not read";
 const NOT_READ_PARTS = {
-  global: "global targets",
+  global: "Global",
   repos: "registered repositories",
 } as const;
 
@@ -80,6 +80,93 @@ export const VIEW_SKILL_ON_GITHUB = "View skill on GitHub";
 
 // Import local edits' checking line, and the line beside a blocked Remove skill.
 export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
+
+/** The Global pane's sub-list of the folders Global writes. */
+export const GLOBAL_FOLDERS = "Global folders";
+
+/** A Global folder's readers, in the Global pane: the only place a detected tool is named. */
+export const readByLine = (readBy: {
+  tools: readonly string[];
+  others: boolean;
+}) =>
+  `Read by ${joinNames(readBy.others ? [...readBy.tools, "others"] : readBy.tools)}.`;
+
+/** A Global dialog's list of the Global folders its action writes. */
+export const WRITES_TO = "Writes to";
+
+/** Beside a Global folder whose tool is not detected. */
+export const notDetectedNote = (tool: string) => `${tool} not detected`;
+
+/** Beside a Global folder Global does not write, its tool not detected. */
+export const notWrittenNote = (tool: string) =>
+  `${notDetectedNote(tool)} · not written`;
+
+/** A Global folder that lacks skills of Global's one skill list. */
+export const skillsMissingLine = (
+  folder: string,
+  missing: number,
+  deployed: number,
+): Phrase =>
+  deployed === 1
+    ? phrase`The deployed skill is missing in ${machine(folder)}.`
+    : phrase`${missing} of ${deployed} deployed skills ${missing === 1 ? "is" : "are"} missing in ${machine(folder)}.`;
+
+/** Beside an undetected tool's folder: the copies of Global's skills it still holds. */
+export const strayCopiesNote = (tool: string, count: number) =>
+  count === 0
+    ? notWrittenNote(tool)
+    : `${notWrittenNote(tool)} · ${count} ${count === 1 ? "copy" : "copies"}`;
+
+/** Why Global reads Not updated: copies in an undetected tool's folder differ from the Target release. */
+export const strayDiffersLine = (
+  folder: string,
+  count: number,
+  release: string,
+  tool: string,
+): Phrase =>
+  phrase`${count} ${count === 1 ? "copy" : "copies"} in ${machine(folder)} ${count === 1 ? "differs" : "differ"} from ${machine(release)}. Global does not write there because ${tool} is not detected.`;
+
+/**
+ * The copies an undetected tool's folder holds, which OpenCode loads instead
+ * of the ones in `instead`, the folder Global writes (#1793).
+ */
+export function strayCopiesLine(
+  folder: string,
+  names: readonly string[],
+  instead: string,
+): Phrase {
+  const where = machine(folder);
+  const one = names.length === 1;
+  return phrase`Global does not update ${namedList(names)} in ${where}. OpenCode loads ${one ? "this copy" : "these copies"} instead of ${one ? "the one" : "the ones"} in ${machine(instead)}. To load the current release, delete ${one ? "it" : "them"} from ${where} yourself.`;
+}
+
+/**
+ * A Global folder's unedited copies at another release than the Target
+ * release. With no release matched, it names none and never says older.
+ */
+export function notUpdatedLine(
+  folder: string,
+  copies: readonly NotUpdatedCopy[],
+  release: string,
+): Phrase {
+  const [first] = copies;
+  const where = machine(folder);
+  const target = machine(release);
+  if (first === undefined) return phrase``;
+  const subject =
+    copies.length === 1
+      ? phrase`${named(first.name)} in ${where} is`
+      : phrase`${copies.length} skills in ${where} are`;
+  const stillAt = new Set(copies.map((copy) => copy.stillAt));
+  if (stillAt.has(null)) {
+    return phrase`${subject} not at the Target release ${target}.`;
+  }
+  const at =
+    stillAt.size === 1 && first.stillAt !== null
+      ? machine(first.stillAt)
+      : "older releases";
+  return phrase`${subject} still at ${at}, but the Target release is ${target}.`;
+}
 
 // The Global group's line while no supported tool is detected.
 export const NO_TOOL_DETECTED =

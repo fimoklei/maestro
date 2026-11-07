@@ -1,47 +1,106 @@
-// What an Update did, per skill, as a Report: worst group first, each failure
-// with its cause and next step. One row per skill, per tool only where the
-// tools disagree.
-import type { UpdateOutcomeRow, UpdateSkillState } from "@maestro/core";
+// What an Update did, as a Report. A repository states its failures per skill,
+// per tool only where the tools disagree; Global states one fact per Global
+// folder.
+import type {
+  FolderOutcome,
+  FolderOutcomes,
+  SkillOutcome,
+  UpdateOutcomeRow,
+  UpdateSkillState,
+} from "@maestro/core";
 import { HttpError } from "../api/http";
+import type { FoldLine } from "../ui/fold-list";
 import type { ReportGroup } from "../ui/report";
+import { isSupportedTool } from "./tool-presentation";
 import {
   consentRowName,
   outcomeDetail,
   outcomeHeading,
   type UnlandedState,
+  UPDATE_INCOMPLETE,
 } from "./update-target-copy";
+import {
+  folderLines,
+  type GlobalFolderRef,
+  unconfirmedLine,
+  updatedToLine,
+} from "./written-to-copy";
 
-const STATES = new Set([
+/** What the dialog shows once an update ran. */
+export type UpdateRunView =
+  | { kind: "skills"; rows: readonly UpdateOutcomeRow[] }
+  | { kind: "folders"; folders: FolderOutcomes }
+  // Global, where nothing read the folders back.
+  | { kind: "unknown" };
+
+const STATES: readonly UpdateSkillState[] = [
   "updated",
   "removed",
   "not-updated",
   "missing",
   "not-removed",
   "unknown",
-]);
+];
+
+type Fields = { [key: string]: unknown };
+
+const isFields = (value: unknown): value is Fields =>
+  typeof value === "object" && value !== null;
+
+const isOneOf = <T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+): value is T => allowed.some((each) => each === value);
+
+const bodyOf = (error: unknown): Fields | null =>
+  error instanceof HttpError && isFields(error.body) ? error.body : null;
+
+function isOutcomeRow(entry: unknown): entry is UpdateOutcomeRow {
+  return (
+    isFields(entry) &&
+    typeof entry.name === "string" &&
+    (entry.tool === null || isSupportedTool(entry.tool)) &&
+    isOneOf(entry.state, STATES)
+  );
+}
+
+function isSkillOutcome(skill: unknown): skill is SkillOutcome {
+  if (!isFields(skill) || typeof skill.name !== "string") return false;
+  return skill.outcome === "not-updated"
+    ? skill.stillAt === null || typeof skill.stillAt === "string"
+    : isOneOf(skill.outcome, ["written", "missing", "not-confirmed"]);
+}
+
+function isFolderOutcome(folder: unknown): folder is FolderOutcome {
+  return (
+    isFields(folder) &&
+    typeof folder.path === "string" &&
+    isSupportedTool(folder.tool) &&
+    typeof folder.detected === "boolean" &&
+    Array.isArray(folder.skills) &&
+    folder.skills.every(isSkillOutcome)
+  );
+}
 
 // A report this build cannot read is dropped whole: a row built on a guess
 // states an outcome the server never proved.
 export function updateOutcomeRows(error: unknown): UpdateOutcomeRow[] | null {
-  if (!(error instanceof HttpError)) {
+  const outcome = bodyOf(error)?.outcome;
+  if (!Array.isArray(outcome) || !outcome.every(isOutcomeRow)) {
     return null;
   }
-  const outcome = (error.body as { outcome?: unknown } | undefined)?.outcome;
-  if (!Array.isArray(outcome)) {
-    return null;
-  }
-  const rows: UpdateOutcomeRow[] = [];
-  for (const entry of outcome as UpdateOutcomeRow[]) {
-    if (
-      typeof entry?.name !== "string" ||
-      !(entry.tool === null || typeof entry.tool === "string") ||
-      !STATES.has(entry.state)
-    ) {
-      return null;
-    }
-    rows.push({ name: entry.name, tool: entry.tool, state: entry.state });
-  }
-  return rows;
+  return outcome.map(({ name, tool, state }) => ({ name, tool, state }));
+}
+
+/** A failed Global update's folders, read back where apm ran; null otherwise. */
+export function updateFolders(error: unknown): FolderOutcomes | null {
+  const folders = bodyOf(error)?.folders;
+  return isFields(folders) &&
+    typeof folders.release === "string" &&
+    Array.isArray(folders.folders) &&
+    folders.folders.every(isFolderOutcome)
+    ? { release: folders.release, folders: folders.folders }
+    : null;
 }
 
 export function updateOutcomeReport(input: {
@@ -75,24 +134,43 @@ export function updateOutcomeReport(input: {
     groups: [
       { tone: "failed", label: "Failed", rows: failed },
       { tone: "attention", label: "Attention", rows: unknown },
-      {
-        tone: "good",
-        label: "Updated",
-        rows: inState("updated").map((row) => ({
-          name: consentRowName(row),
-          detail: releases.to,
-        })),
-      },
-      {
-        tone: "good",
-        label: "Removed",
-        rows: inState("removed").map((row) => ({
-          name: consentRowName(row),
-        })),
-      },
     ],
   };
 }
+
+/** Global's Report frame: one `Written to` line per Global folder. */
+export function updateFoldersReport(input: {
+  folders: FolderOutcomes;
+  /** The update did not finish: Retry update is in the footer, and a deviating folder names it. */
+  retry: boolean;
+}): { heading: string; lines: FoldLine[] } {
+  const { folders, retry } = input;
+  const outcomes = folders.folders.flatMap((folder) =>
+    folder.skills.map((skill) => skill.outcome),
+  );
+  const verdict = outcomes.some(
+    (outcome) => outcome === "missing" || outcome === "not-updated",
+  )
+    ? "failed"
+    : outcomes.includes("not-confirmed")
+      ? "unconfirmed"
+      : "landed";
+  return {
+    // Every folder can read at the release while the record still disagrees.
+    heading:
+      retry && verdict === "landed"
+        ? UPDATE_INCOMPLETE
+        : outcomeHeading(folders.release, verdict),
+    lines: folderLines(folders.folders, (folder) =>
+      updatedToLine(folder, { release: folders.release, retry }),
+    ),
+  };
+}
+
+/** Every folder Global writes reads Not confirmed: nothing read them back. */
+export const unconfirmedLines = (
+  folders: readonly GlobalFolderRef[],
+): FoldLine[] => folderLines(folders, () => unconfirmedLine);
 
 function foldAgreeingTools(
   rows: readonly UpdateOutcomeRow[],

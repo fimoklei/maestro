@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeployTarget } from "./deploy-skill";
-import { copiesIn } from "./deployed-content.fake";
+import { type CopyStates, copiesIn } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { RemoveDeployedSkill } from "./remove-deployed-skill";
 import { selectionWorld } from "./selection-writer-fake";
@@ -9,7 +9,7 @@ const HARNESS = "fimoklei/agent-harness";
 const ROOT = `github.com/${HARNESS}`;
 const target: DeployTarget = { kind: "repo", repoPath: "/repo" };
 
-function buildUseCase(copy: "clean" | "diverged" = "clean") {
+function buildUseCase(copy: CopyStates = "clean") {
   const world = selectionWorld();
   const deps = {
     registry: { isRegistered: async () => true },
@@ -229,6 +229,12 @@ describe("RemoveDeployedSkill refusing a copy with local edits", () => {
       const refusal = {
         ok: false,
         error: "deployed-diverged-pinned-per-skill",
+        ...(pinned.kind === "global"
+          ? {
+              folders: ["~/.claude/skills", "~/.agents/skills"],
+              notWritten: ["~/.agents/skills"],
+            }
+          : {}),
       };
       expect(await remove.preflight(request)).toEqual(refusal);
       expect(await remove.execute(request)).toEqual(refusal);
@@ -246,3 +252,111 @@ describe("RemoveDeployedSkill refusing a copy with local edits", () => {
     expect(world.calls).toEqual([]);
   });
 });
+
+// Only Claude Code is detected, so Global writes its folder and leaves the
+// Codex folder alone, except when apm's named uninstall reaches it.
+describe("RemoveDeployedSkill on Global with an undetected tool's folder", () => {
+  const global: DeployTarget = { kind: "global" };
+  const removeFromGlobal = (name: string) => ({
+    type: "skill",
+    name,
+    target: global,
+  });
+  const claudeFolder = {
+    tool: "claude",
+    path: "~/.claude/skills",
+    detected: true,
+    warning: null,
+  };
+
+  it("removes a skill that leaves others, whatever the undetected folder holds", async () => {
+    const { world, remove } = buildUseCase({ codex: "diverged" });
+    world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
+
+    expect(await remove.preflight(removeFromGlobal("caveman"))).toEqual({
+      ok: true,
+      check: { scope: "global", tools: [claudeFolder] },
+      receipt: expect.any(String),
+    });
+    expect(await removeConfirmedFrom(remove, global, "caveman")).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("refuses to remove the last skill over local edits in the undetected folder, naming it", async () => {
+    const { world, remove } = buildUseCase({ codex: "diverged" });
+    world.seed({ release: "v0.6.0", skills: ["prototype"] });
+
+    // No deploy writes the undetected folder, so none can restore its copy.
+    const refusal = {
+      ok: false,
+      error: "deployed-diverged-from-lock",
+      folders: ["~/.agents/skills"],
+      notWritten: ["~/.agents/skills"],
+    };
+    expect(await remove.preflight(removeFromGlobal("prototype"))).toEqual(
+      refusal,
+    );
+    expect(await remove.execute(removeFromGlobal("prototype"))).toEqual(
+      refusal,
+    );
+    expect(world.calls).toEqual([]);
+  });
+
+  it("lists the undetected folder that holds a copy when the last skill goes", async () => {
+    const { world, remove } = buildUseCase({ codex: "clean" });
+    world.seed({ release: "v0.6.0", skills: ["prototype"] });
+
+    expect(await remove.preflight(removeFromGlobal("prototype"))).toEqual({
+      ok: true,
+      check: {
+        scope: "global",
+        tools: [
+          claudeFolder,
+          {
+            tool: "codex",
+            path: "~/.agents/skills",
+            detected: false,
+            warning: null,
+          },
+        ],
+      },
+      receipt: expect.any(String),
+    });
+  });
+
+  it("leaves out an undetected folder that holds no copy", async () => {
+    const { world, remove } = buildUseCase({ codex: "not-deployed" });
+    world.seed({ release: "v0.6.0", skills: ["prototype"] });
+
+    expect(await remove.preflight(removeFromGlobal("prototype"))).toEqual({
+      ok: true,
+      check: { scope: "global", tools: [claudeFolder] },
+      receipt: expect.any(String),
+    });
+  });
+
+  it("names the detected folder whose copy refuses the removal", async () => {
+    const { world, remove } = buildUseCase({ claude: "diverged" });
+    world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
+
+    expect(await remove.preflight(removeFromGlobal("caveman"))).toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+      folders: ["~/.claude/skills"],
+    });
+  });
+});
+
+async function removeConfirmedFrom(
+  useCase: RemoveDeployedSkill,
+  on: DeployTarget,
+  name: string,
+) {
+  const request = { type: "skill", name, target: on };
+  const preflight = await useCase.preflight(request);
+  return useCase.execute({
+    ...request,
+    confirmedRemovalReceipt: preflight.ok ? preflight.receipt : undefined,
+  });
+}

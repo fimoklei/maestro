@@ -1,27 +1,28 @@
-import { joinNames } from "./join-names";
+// A tool's display name. An unknown token is shown verbatim, never dropped.
+// Folder paths come from the Global read, never from here.
+import type { SupportedTool } from "@maestro/core";
 
-// Destinations mirror core's DEPLOY_TOOLS skillsDirPrefix. An unknown token is
-// shown verbatim, never dropped.
-
-type ToolPresentation = {
-  label: string;
-  destination: string;
+const LABEL: Record<SupportedTool, string> = {
+  claude: "Claude Code",
+  codex: "Codex",
 };
 
-const PRESENTATION: Record<string, ToolPresentation> = {
-  claude: { label: "Claude Code", destination: "~/.claude/skills" },
-  codex: { label: "Codex", destination: "~/.agents/skills" },
+/** The tools that load skills from a tool's Global folder; `others`: the list is not complete. */
+export type ReadBy = { tools: readonly string[]; others: boolean };
+
+const READ_BY: Record<SupportedTool, ReadBy> = {
+  claude: { tools: ["Claude Code", "Cursor", "OpenCode"], others: false },
+  codex: {
+    tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
+    others: true,
+  },
 };
 
-export function toolPresentation(tool: string): ToolPresentation {
-  return PRESENTATION[tool] ?? { label: tool, destination: "" };
-}
+export const readByOf = (tool: SupportedTool): ReadBy => READ_BY[tool];
+
+export const isSupportedTool = (value: unknown): value is SupportedTool =>
+  typeof value === "string" && Object.hasOwn(LABEL, value);
 
 export function toolDisplayName(tool: string): string {
-  return toolPresentation(tool).label;
-}
-
-// One readable list ("Claude Code and Codex"). Empty set yields "".
-export function toolNameList(tools: readonly string[]): string {
-  return joinNames(tools.map(toolDisplayName));
+  return isSupportedTool(tool) ? LABEL[tool] : tool;
 }
