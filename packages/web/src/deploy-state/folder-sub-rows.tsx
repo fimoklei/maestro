@@ -19,7 +19,10 @@ export function folderSubRows(
             <MachineValue>{folder.path}</MachineValue>
           </span>
           {folder.note === null ? null : (
-            <span className="shrink-0 whitespace-nowrap">{folder.note}</span>
+            <>
+              {" "}
+              <span className="shrink-0 whitespace-nowrap">{folder.note}</span>
+            </>
           )}
         </span>
       ),
