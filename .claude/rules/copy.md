@@ -51,9 +51,11 @@ meaning stays with review.
 - Write in the simple present, past or future, in the active voice.
 - Use one-word verbs: `replaces`, `restores`, `changes`.
 - Write a warning as a command plus its reason.
-- Keep a sentence under 20 words. Join a cause to its outcome in one sentence,
-  with `because` or `so`.
-- Write each sentence as idiomatic English that an app would print.
+- Keep a sentence under 20 words.
+- Give a cause only when the reader needs it to act or decide. Join it to its
+  outcome in one sentence, with `because` or `so`.
+- Read each sentence aloud. Write it as idiomatic English that an app would
+  print, even where a rule above then bends.
 
 ## Patterns
 
@@ -124,6 +126,16 @@ Detail sentence: clipped fragments instead of one joined sentence
   Weak           code-review waits too. One deploy writes every Global skill at once.
   Outcome-first  Global skills deploy together, so local edits to commit-message
                  also prevented code-review from being deployed.
+
+Detail sentence: a second cause the next step already covers
+  Weak           Global does not write to ~/.agents/skills because its tool is not
+                 detected, so no deploy restores the copy there.
+  Outcome-first  Global does not write to ~/.agents/skills because its tool is not
+                 detected. Delete the copy yourself. Then select Remove skill again.
+
+Instruction: a filler word that reads stilted aloud
+  Weak           Restore or delete the copy there yourself.
+  Outcome-first  Delete the copy yourself.
 ```
 
 ## Forms
