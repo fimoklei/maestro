@@ -571,9 +571,11 @@ export function removeNotice(error: unknown): DeployStateNotice {
       };
 }
 
-/** The way out where no deploy restores the copy: Global does not write its folder. */
-const notWrittenEditsStep = (_folders: readonly string[]): Copy =>
-  LOCAL_CHANGES_NEXT_STEP;
+/** The way out for edits in a folder Global does not write: the user deletes the copy. */
+const notWrittenEditsStep = (folders: readonly string[]): Copy =>
+  folders.length === 1
+    ? phrase`Global does not write to ${machineList(folders)} because its tool is not detected. Delete the copy yourself. Then select ${REMOVE_SKILL} again.`
+    : phrase`Global does not write to ${machineList(folders)} because their tools are not detected. Delete the copies yourself. Then select ${REMOVE_SKILL} again.`;
 
 const EDITED_COPY_REFUSALS: readonly string[] = [
   "deployed-diverged-from-lock",

@@ -37,7 +37,7 @@ const CLAUDE_PATH = "~/.claude/skills";
 const AGENTS_PATH = "~/.agents/skills";
 // The next step for local edits in a folder Global does not write.
 const NOT_WRITTEN_STEP =
-  "Select Deploy skill to restore the released files. Then remove the skill.";
+  "Global does not write to ~/.agents/skills because its tool is not detected. Delete the copy yourself. Then select Remove skill again.";
 const GLOBAL_TARGET: Target = {
   kind: "global",
   folders: [CLAUDE_PATH, AGENTS_PATH],
