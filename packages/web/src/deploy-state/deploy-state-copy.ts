@@ -186,6 +186,15 @@ const localEditsReason = (names: readonly string[]) =>
 export const localEditsLine = (names: readonly string[], behind: boolean) =>
   phrase`${localEditsReason(names)} ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
 
+/** The Status hover card's Local edits reason; `latest` is the newer release, null where not behind. */
+export const localEditsCardLine = (
+  names: readonly string[],
+  latest: string | null,
+) =>
+  latest === null
+    ? localEditsLine(names, false)
+    : phrase`${localEditsReason(names)} To keep them, select ${IMPORT_LOCAL_EDITS} before you update to ${machine(latest)}.`;
+
 // A skill row's mark carries its reading's hint as its tooltip: one fact, no action.
 export const NO_LONGER_RELEASED_HINT = "Not in the latest release.";
 export const UNREACHED_HINT = "Update check did not run.";

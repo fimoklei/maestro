@@ -144,14 +144,13 @@ describe("targetStatus", () => {
     ).toBeNull();
   });
 
-  it("reads a folder holding a copy left at an older release as Not updated, over Local edits and Behind", () => {
+  it("reads a folder holding a copy left at an older release as Not updated, over Behind", () => {
     for (const status of [
       targetStatus({ pending: undefined, indicator: "ok", notUpdated: true }),
       targetStatus({
         pending: undefined,
         indicator: "ok",
         behind: true,
-        localEdits: true,
         notUpdated: true,
       }),
     ]) {
@@ -160,9 +159,36 @@ describe("targetStatus", () => {
     }
   });
 
-  it("reads a folder lacking skills as Skills missing, over Not updated, Local edits and Empty", () => {
+  it("reads a folder lacking skills as Skills missing, over Not updated and Empty", () => {
     for (const status of [
       targetStatus({ pending: undefined, indicator: "empty", missing: true }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        behind: true,
+        notUpdated: true,
+        missing: true,
+      }),
+    ]) {
+      expect(words(status)).toBe("⚠ Skills missing");
+      expect(status?.family).toBe("attention");
+    }
+  });
+
+  it("reads a folder holding a local edit as Local edits, over Skills missing and Not updated", () => {
+    for (const status of [
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        localEdits: true,
+        missing: true,
+      }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        localEdits: true,
+        notUpdated: true,
+      }),
       targetStatus({
         pending: undefined,
         indicator: "ok",
@@ -172,7 +198,7 @@ describe("targetStatus", () => {
         missing: true,
       }),
     ]) {
-      expect(words(status)).toBe("⚠ Skills missing");
+      expect(words(status)).toBe("⚠ Local edits");
       expect(status?.family).toBe("attention");
     }
   });
@@ -227,9 +253,9 @@ describe("targetStatus", () => {
       "Removal incomplete",
       "Update incomplete",
       "Attention",
+      "Local edits",
       "Skills missing",
       "Not updated",
-      "Local edits",
       "Behind",
       "Unknown",
       "In sync",
@@ -241,7 +267,7 @@ describe("targetStatus", () => {
 });
 
 describe("TARGET_CHIPS", () => {
-  it("offers Unknown as failed, and Attention, Skills missing, Not updated, Local edits and Behind as attention, unfinished operations under Attention", () => {
+  it("offers Unknown as failed, and Attention, Local edits, Skills missing, Not updated and Behind as attention, unfinished operations under Attention", () => {
     expect(TARGET_CHIPS).toEqual([
       { word: "Unknown", family: "failed", covers: ["Unknown"] },
       {
@@ -254,13 +280,13 @@ describe("TARGET_CHIPS", () => {
           "Update incomplete",
         ],
       },
+      { word: "Local edits", family: "attention", covers: ["Local edits"] },
       {
         word: "Skills missing",
         family: "attention",
         covers: ["Skills missing"],
       },
       { word: "Not updated", family: "attention", covers: ["Not updated"] },
-      { word: "Local edits", family: "attention", covers: ["Local edits"] },
       { word: "Behind", family: "attention", covers: ["Behind"] },
     ]);
     expect(IN_SYNC.word).toBe("In sync");
@@ -303,8 +329,9 @@ describe("worstFolderReading", () => {
     );
     expect(words(worstFolderReading([missing, attention]))).toBe("⚠ Attention");
     expect(words(worstFolderReading([edited, notUpdated]))).toBe(
-      "⚠ Not updated",
+      "⚠ Local edits",
     );
+    expect(words(worstFolderReading([missing, edited]))).toBe("⚠ Local edits");
     expect(words(worstFolderReading([notUpdated, attention]))).toBe(
       "⚠ Attention",
     );

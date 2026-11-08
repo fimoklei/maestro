@@ -28,9 +28,9 @@ export const TARGET_STATUS_WORDS = [
   ...Object.values(UNFINISHED_HEADINGS),
   ...[
     ATTENTION,
+    LOCAL_EDITS,
     SKILLS_MISSING,
     NOT_UPDATED,
-    LOCAL_EDITS,
     BEHIND,
     UNKNOWN,
     IN_SYNC,
@@ -69,13 +69,13 @@ export const TARGET_CHIPS: readonly StatusChip[] = [
     family: "attention",
     covers: [ATTENTION.word, ...Object.values(UNFINISHED_HEADINGS)],
   },
+  { word: LOCAL_EDITS.word, family: "attention", covers: [LOCAL_EDITS.word] },
   {
     word: SKILLS_MISSING.word,
     family: "attention",
     covers: [SKILLS_MISSING.word],
   },
   { word: NOT_UPDATED.word, family: "attention", covers: [NOT_UPDATED.word] },
-  { word: LOCAL_EDITS.word, family: "attention", covers: [LOCAL_EDITS.word] },
   { word: BEHIND.word, family: "attention", covers: [BEHIND.word] },
 ];
 
@@ -105,9 +105,9 @@ export function targetStatus({
   if (pending) return unfinishedReading(pending);
   if ((localEdits || notUpdated || missing) && indicator === "attention")
     return ATTENTION;
+  if (localEdits && indicator !== "pending") return LOCAL_EDITS;
   if (missing && indicator !== "pending") return SKILLS_MISSING;
   if (notUpdated && indicator !== "pending") return NOT_UPDATED;
-  if (localEdits && indicator !== "pending") return LOCAL_EDITS;
   if (pinnedPerSkill) return PINNED;
   switch (indicator) {
     case "ok":

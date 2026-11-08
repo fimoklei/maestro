@@ -416,13 +416,22 @@ describe("a Global folder left at an older release", () => {
     return global;
   };
 
-  it("reads that folder and the Global row as Not updated, over Local edits", () => {
+  it("reads that folder and the Global row as Not updated", () => {
+    const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }]);
+    expect(folderMarks(global)).toEqual([
+      ["~/.claude/skills", "✓ In sync"],
+      ["~/.agents/skills", "⚠ Not updated"],
+    ]);
+    expect(words(global)).toBe("⚠ Not updated");
+  });
+
+  it("reads the Global row as Local edits where another folder holds an edit", () => {
     const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }], true);
     expect(folderMarks(global)).toEqual([
       ["~/.claude/skills", "⚠ Local edits"],
       ["~/.agents/skills", "⚠ Not updated"],
     ]);
-    expect(words(global)).toBe("⚠ Not updated");
+    expect(words(global)).toBe("⚠ Local edits");
   });
 
   it("names the release the copy is still at in the hover card", () => {
@@ -441,12 +450,12 @@ describe("a Global folder left at an older release", () => {
 });
 
 describe("a Global folder that lacks skills", () => {
-  const lacking = (missing: string[]) => {
+  const lacking = (missing: string[], edited = false) => {
     const [global] = globalRows(
       globalRead([
         claude([skill("code-review"), skill("tdd")]),
         {
-          ...agents([skill("code-review", "local-edits")]),
+          ...agents([skill("code-review", edited ? "local-edits" : undefined)]),
           missing,
           notUpdated: [{ name: "code-review", stillAt: "v1.0.0" }],
         },
@@ -465,6 +474,15 @@ describe("a Global folder that lacks skills", () => {
       ["~/.agents/skills", "⚠ Skills missing"],
     ]);
     expect(words(global)).toBe("⚠ Skills missing");
+  });
+
+  it("reads that folder and the Global row as Local edits where its copy holds an edit", () => {
+    const global = lacking(["tdd"], true);
+    expect(folderMarks(global)).toEqual([
+      ["~/.claude/skills", "✓ In sync"],
+      ["~/.agents/skills", "⚠ Local edits"],
+    ]);
+    expect(words(global)).toBe("⚠ Local edits");
   });
 
   it("counts the missing skills against Global's list in the hover card", () => {

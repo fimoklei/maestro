@@ -14,7 +14,7 @@ import type { Copy } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
 import {
   GLOBAL,
-  localEditsLine,
+  localEditsCardLine,
   NO_REPOSITORIES,
   NO_TOOL_DETECTED,
   notUpdatedLine,
@@ -36,6 +36,7 @@ import {
 } from "./deployed-view";
 import {
   behindLine,
+  globalAlsoBehindLine,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
   pinnedTagsLine,
@@ -411,17 +412,23 @@ export type StatusCard = { reason: Copy | null; readAge: string | null };
 
 function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
+  const edited = editedSkills(row.primitives);
+  if (!row.readFailed && edited.length > 0) {
+    return localEditsCardLine(
+      edited,
+      row.behind ? (row.head?.latestRelease ?? null) : null,
+    );
+  }
   const [missing] = skillsMissingLines(row);
   if (missing !== undefined && row.status?.word === SKILLS_MISSING.word) {
-    return missing;
+    return row.behind && row.head
+      ? globalAlsoBehindLine(missing, row.head)
+      : missing;
   }
   const [notUpdated] = notUpdatedLines(row);
   if (notUpdated !== undefined && row.status?.word === NOT_UPDATED.word) {
     return notUpdated;
   }
-  const edited = editedSkills(row.primitives);
-  if (!row.readFailed && edited.length > 0)
-    return localEditsLine(edited, row.behind);
   if (row.pinned) return pinnedTagsLine(row.pinned);
   if (row.readFailed) return REPO_NOT_READ;
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {
