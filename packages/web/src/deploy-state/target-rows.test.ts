@@ -6,6 +6,8 @@ import type {
 import { describe, expect, it } from "vitest";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
 import { plainText } from "../ui/phrase";
+import { WARNING_GLYPH } from "../ui/status-family";
+import { reading } from "../ui/status-reading";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
 import { targetMenuItems } from "./target-menu";
 import {
@@ -198,6 +200,7 @@ describe("statusCard", () => {
           statusCard(
             row({
               head: ON_LATEST,
+              status: reading("Local edits", "attention", WARNING_GLYPH),
               primitives: [
                 skill("tdd", "local-edits"),
                 skill("grill"),
@@ -213,6 +216,28 @@ describe("statusCard", () => {
         "2 skills have changes that are not in the latest release: tdd and review. Select Import local edits to keep them.",
       readAge: "Read just now",
     });
+  });
+
+  it("explains an Attention reading by its own cause, though a skill holds local edits", () => {
+    expect(
+      readCard(
+        statusCard(
+          row({
+            head: ON_LATEST,
+            status: reading("Attention", "attention", WARNING_GLYPH),
+            primitives: [skill("tdd", "local-edits")],
+            skipped: [
+              {
+                reason: "invalid-package",
+                virtualPath: "skills/tdd",
+                packageType: "invalid",
+              },
+            ],
+          }),
+          COMPARED,
+        ),
+      ).reason,
+    ).toBe("The deploy of skills/tdd landed no files.");
   });
 
   it("names a skipped entry without its fix", () => {

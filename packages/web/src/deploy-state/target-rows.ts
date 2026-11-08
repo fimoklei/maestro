@@ -62,6 +62,7 @@ import {
 import {
   BEHIND,
   IN_SYNC,
+  LOCAL_EDITS,
   NOT_UPDATED,
   SKILLS_MISSING,
   targetStatus,
@@ -460,7 +461,11 @@ export type StatusCard = { reason: Copy | null; readAge: string | null };
 function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
   const edited = editedSkills(row.primitives);
-  if (!row.readFailed && edited.length > 0) {
+  if (
+    !row.readFailed &&
+    edited.length > 0 &&
+    row.status?.word === LOCAL_EDITS.word
+  ) {
     return localEditsCardLine(
       edited,
       row.behind ? (row.head?.latestRelease ?? null) : null,
