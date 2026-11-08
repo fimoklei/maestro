@@ -8,11 +8,13 @@ import type {
   SkippedEntry,
 } from "@maestro/core";
 import type { DriftViewModel } from "../drift/drift-view-model";
+import { UP_TO_DATE } from "../inventory/skill-status";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { repoTargetName } from "../shell/target-name";
 import type { Copy } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
 import {
+  folderMetaLine,
   GLOBAL,
   localEditsCardLine,
   NO_REPOSITORIES,
@@ -21,7 +23,6 @@ import {
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
-  readByLine,
   skillsMissingLine,
   strayCopiesLine,
   strayCopiesNote,
@@ -34,6 +35,10 @@ import {
   toDeployedView,
   withOtherOrigins,
 } from "./deployed-view";
+import {
+  type FolderCounts,
+  globalSkillReadings,
+} from "./global-skill-readings";
 import {
   behindLine,
   globalAlsoBehindLine,
@@ -50,6 +55,8 @@ import {
   skippedNeedsAttention,
 } from "./skipped-entry-text";
 import {
+  BEHIND,
+  IN_SYNC,
   NOT_UPDATED,
   SKILLS_MISSING,
   targetStatus,
@@ -65,7 +72,10 @@ export type FolderRow = {
   detected: boolean;
   /** The folder's reading; null where Global does not write it, or not read yet. */
   status: StatusReading | null;
-  readBy: string;
+  /** The pane's visible word: the status, or Up to date where no copy deviates. */
+  word: StatusReading | null;
+  /** The pane's line under the path: who reads the folder, then its counts. */
+  meta: string;
   /** Muted beside a folder Global does not write; null on one it writes. */
   note: string | null;
   /** Why the folder reads Not updated; null where it does not. */
@@ -209,6 +219,16 @@ const releaseOf = (
       ? { current: pinned[0].release, latest: null }
       : null;
 
+const NO_COUNTS: FolderCounts = { missing: 0, notUpdated: 0, localEdits: 0 };
+
+// Behind is Global's own axis: a folder whose copies all match the Target
+// release is Up to date, also while a newer release exists.
+const folderWord = (status: StatusReading | null): StatusReading | null =>
+  status !== null &&
+  (status.word === IN_SYNC.word || status.word === BEHIND.word)
+    ? UP_TO_DATE
+    : status;
+
 export function globalRows(
   data: GlobalDeployStateView,
   drift: DriftViewModel,
@@ -219,11 +239,21 @@ export function globalRows(
   if (tools.length === 0) return [];
   const pending = data.pendingOperation;
   const behind = isBehind(data.releaseHead, pending);
+  const table = globalSkillReadings(
+    data.primitives.map((primitive) => primitive.name),
+    data.folders,
+  );
+  // A failed read's stale copies count nowhere.
+  const countsOf = (folder: GlobalFolderState): FolderCounts =>
+    (readFailed
+      ? undefined
+      : table.folders.find((each) => each.path === folder.path)?.counts) ??
+    NO_COUNTS;
   // Every folder shares Global's release, operation and read; only its own
   // copies differ.
   const readingOf = (folder: GlobalFolderState) => {
-    const primitives = folder.primitives;
-    const names = primitives.map((primitive) => primitive.name);
+    const names = folder.primitives.map((primitive) => primitive.name);
+    const counts = countsOf(folder);
     const indicator = readFailed
       ? "unknown"
       : withOtherOrigins(
@@ -240,40 +270,44 @@ export function globalRows(
       behind,
       // A failed read's stale record never outranks its Unknown.
       pending: readFailed ? undefined : pending?.kind,
-      localEdits: !readFailed && editedSkills(primitives).length > 0,
-      notUpdated: !readFailed && (folder.notUpdated?.length ?? 0) > 0,
-      missing: !readFailed && (folder.missing?.length ?? 0) > 0,
+      localEdits: counts.localEdits > 0,
+      notUpdated: counts.notUpdated > 0,
+      missing: counts.missing > 0,
     });
   };
   const release = data.releaseHead?.release;
-  const folders: FolderRow[] = data.folders.map((folder) => ({
-    path: folder.path,
-    detected: folder.detected,
-    status: folder.detected ? readingOf(folder) : null,
-    readBy: readByLine(readByOf(folder.tool)),
-    missing:
-      readFailed || !folder.missing?.length
-        ? null
-        : skillsMissingLine(
-            folder.path,
-            folder.missing.length,
-            data.primitives.length,
-          ),
-    note: folder.detected
-      ? null
-      : strayCopiesNote(
-          toolDisplayName(folder.tool),
-          readFailed ? 0 : (folder.strayCopies?.length ?? 0),
-        ),
-    notUpdated: readFailed
-      ? null
-      : !folder.detected
-        ? strayDiffers(folder, release)
-        : release === undefined || !folder.notUpdated?.length
+  const folders: FolderRow[] = data.folders.map((folder) => {
+    const status = folder.detected ? readingOf(folder) : null;
+    return {
+      path: folder.path,
+      detected: folder.detected,
+      status,
+      word: folderWord(status),
+      meta: folderMetaLine(readByOf(folder.tool), countsOf(folder)),
+      missing:
+        readFailed || !folder.missing?.length
           ? null
-          : notUpdatedLine(folder.path, folder.notUpdated, release),
-    strayCopies: readFailed ? null : openCodeLine(folder, data.folders),
-  }));
+          : skillsMissingLine(
+              folder.path,
+              folder.missing.length,
+              data.primitives.length,
+            ),
+      note: folder.detected
+        ? null
+        : strayCopiesNote(
+            toolDisplayName(folder.tool),
+            readFailed ? 0 : (folder.strayCopies?.length ?? 0),
+          ),
+      notUpdated: readFailed
+        ? null
+        : !folder.detected
+          ? strayDiffers(folder, release)
+          : release === undefined || !folder.notUpdated?.length
+            ? null
+            : notUpdatedLine(folder.path, folder.notUpdated, release),
+      strayCopies: readFailed ? null : openCodeLine(folder, data.folders),
+    };
+  });
   // An undetected folder carries no mark of its own, but a copy there that
   // differs keeps Global from reading In sync.
   const strayDiffer = folders.some(

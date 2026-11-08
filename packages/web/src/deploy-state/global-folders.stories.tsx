@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { reading } from "../ui/status-reading";
-import { readByLine } from "./deploy-state-copy";
+import { folderMetaLine } from "./deploy-state-copy";
 import { GlobalFolders } from "./global-folders";
 import type { FolderRow } from "./target-rows";
 import { readByOf } from "./tool-presentation";
@@ -12,8 +12,13 @@ const folder = (
 ): FolderRow => ({
   path,
   detected: true,
-  status: reading("Up to date", "good"),
-  readBy: readByLine(readByOf(tool)),
+  status: reading("In sync", "good"),
+  word: reading("Up to date", "good"),
+  meta: folderMetaLine(readByOf(tool), {
+    missing: 0,
+    notUpdated: 0,
+    localEdits: 0,
+  }),
   note: null,
   notUpdated: null,
   missing: null,
@@ -39,7 +44,13 @@ export const OneUndetected: Story = {
   args: {
     folders: [
       claude,
-      { ...agents, detected: false, status: null, note: "Codex not detected" },
+      {
+        ...agents,
+        detected: false,
+        status: null,
+        word: null,
+        note: "Codex not detected",
+      },
     ],
   },
 };
@@ -48,7 +59,16 @@ export const OneWithLocalEdits: Story = {
   args: {
     folders: [
       claude,
-      { ...agents, status: reading("Local edits", "attention", "⚠") },
+      {
+        ...agents,
+        status: reading("Local edits", "attention", "⚠"),
+        word: reading("Local edits", "attention", "⚠"),
+        meta: folderMetaLine(readByOf("codex"), {
+          missing: 1,
+          notUpdated: 1,
+          localEdits: 2,
+        }),
+      },
     ],
   },
 };
@@ -56,8 +76,8 @@ export const OneWithLocalEdits: Story = {
 export const NotReadYet: Story = {
   args: {
     folders: [
-      { ...claude, status: null },
-      { ...agents, status: null },
+      { ...claude, status: null, word: null },
+      { ...agents, status: null, word: null },
     ],
   },
 };

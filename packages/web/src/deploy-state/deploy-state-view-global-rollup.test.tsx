@@ -103,11 +103,12 @@ describe("Deploy-state — Global roll-up", () => {
 
     const folders = within(pane).getByRole("list", { name: "Global folders" });
     await waitFor(() =>
+      // Each row's glyph and word, before its path.
       expect(
         within(folders)
-          .getAllByRole("img")
-          .map((mark) => mark.getAttribute("aria-label")),
-      ).toEqual(["Local edits", "Local edits"]),
+          .getAllByRole("listitem")
+          .map((item) => item.textContent?.split("~")[0]),
+      ).toEqual(["⚠Local edits", "⚠Local edits"]),
     );
   });
 });

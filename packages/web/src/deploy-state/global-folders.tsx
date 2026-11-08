@@ -4,7 +4,7 @@ import { SubListValueRow } from "../ui/sub-list-row";
 import { GLOBAL_FOLDERS } from "./deploy-state-copy";
 import type { FolderRow } from "./target-rows";
 
-/** The Global pane's folders: those Global writes, with the tools that read each. */
+/** The Global pane's folders: those Global writes, each with its word, readers and counts. */
 export function GlobalFolders({ folders }: { folders: readonly FolderRow[] }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const written = folders.filter((folder) => folder.detected);
@@ -22,9 +22,9 @@ export function GlobalFolders({ folders }: { folders: readonly FolderRow[] }) {
         {written.map((folder) => (
           <SubListValueRow
             key={folder.path}
-            mark={folder.status}
+            status={folder.word}
             value={folder.path}
-            meta={folder.readBy}
+            meta={folder.meta}
           />
         ))}
       </ul>

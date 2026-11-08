@@ -581,12 +581,12 @@ describe("Global as one target", () => {
       false,
     );
     expect(
-      global?.folders?.map((folder) => [folder.path, folder.readBy]),
+      global?.folders?.map((folder) => [folder.path, folder.meta]),
     ).toEqual([
-      ["~/.claude/skills", "Read by Claude Code, Cursor and OpenCode."],
+      ["~/.claude/skills", "Read by Claude Code, Cursor and OpenCode"],
       [
         "~/.agents/skills",
-        "Read by Codex, Copilot CLI, Cursor, Gemini CLI and others.",
+        "Read by Codex, Copilot CLI, Cursor, Gemini CLI and others",
       ],
     ]);
   });

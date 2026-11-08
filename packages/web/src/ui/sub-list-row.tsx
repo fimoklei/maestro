@@ -4,6 +4,7 @@ import { cn } from "./cn";
 import { MachineValue } from "./machine-value";
 import { RowMenu } from "./row-menu";
 import { Skeleton } from "./skeleton";
+import { STATUS_TOKENS } from "./status-family";
 import type { StatusReading } from "./status-reading";
 import { Tooltip } from "./tooltip";
 import { useReadSkeleton } from "./use-read-skeleton";
@@ -44,20 +45,37 @@ export function SubListRow({
   );
 }
 
-/** A read-only sub-list row: mark, a machine value such as a path, and one meta line under it. */
+/**
+ * A read-only sub-list row: its reading as glyph and visible word, a machine
+ * value such as a path, and one meta line under it.
+ */
 export function SubListValueRow({
-  mark,
+  status,
   value,
   meta,
 }: {
-  mark: RowMark | null;
+  /** Null while the reading has not answered: no status before the server. */
+  status: StatusReading | null;
   value: string;
   meta: string;
 }) {
   return (
     <li className="border-divider border-b pb-tight text-row">
       <span className="flex h-row items-center gap-inline">
-        <Mark mark={mark} />
+        <span
+          aria-hidden="true"
+          className={cn(
+            "inline-flex w-6 flex-none justify-center",
+            status === null ? null : STATUS_TOKENS[status.family].mark,
+          )}
+        >
+          {status?.glyph}
+        </span>
+        {status === null ? null : (
+          <span className="flex-none text-gray-12 text-meta">
+            {status.word}
+          </span>
+        )}
         <span className="min-w-0 flex-1 truncate text-gray-12">
           <MachineValue>{value}</MachineValue>
         </span>

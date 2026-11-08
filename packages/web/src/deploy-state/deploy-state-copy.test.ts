@@ -4,6 +4,7 @@ import { plainText } from "../ui/phrase";
 import {
   CHECKING_LOCAL_EDITS,
   deployStateNotRead,
+  folderMetaLine,
   localEditsLine,
   NO_FILTER_MATCH,
   NO_LONGER_RELEASED_HINT,
@@ -17,7 +18,6 @@ import {
   packageBehindNotice,
   REPO_NOT_READ,
   REPO_NOT_READ_LINE,
-  readByLine,
   skillsMissingLine,
   strayCopiesLine,
   strayCopiesNote,
@@ -267,22 +267,41 @@ describe("Deploy-state copy", () => {
   });
 
   it("names who reads a Global folder, and a folder Global does not write", () => {
+    const clean = { missing: 0, notUpdated: 0, localEdits: 0 };
     expect(
-      readByLine({
-        tools: ["Claude Code", "Cursor", "OpenCode"],
-        others: false,
-      }),
-    ).toBe("Read by Claude Code, Cursor and OpenCode.");
+      folderMetaLine(
+        { tools: ["Claude Code", "Cursor", "OpenCode"], others: false },
+        clean,
+      ),
+    ).toBe("Read by Claude Code, Cursor and OpenCode");
     expect(
-      readByLine({
-        tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
-        others: true,
-      }),
-    ).toBe("Read by Codex, Copilot CLI, Cursor, Gemini CLI and others.");
-    expect(readByLine({ tools: ["Codex"], others: false })).toBe(
-      "Read by Codex.",
+      folderMetaLine(
+        {
+          tools: ["Codex", "Copilot CLI", "Cursor", "Gemini CLI"],
+          others: true,
+        },
+        clean,
+      ),
+    ).toBe("Read by Codex, Copilot CLI, Cursor, Gemini CLI and others");
+    expect(folderMetaLine({ tools: ["Codex"], others: false }, clean)).toBe(
+      "Read by Codex",
     );
     expect(notWrittenNote("Codex")).toBe("Codex not detected · not written");
+  });
+
+  it("counts a Global folder's skills per reading, leaving out a count of 0", () => {
+    const claude = { tools: ["Claude Code"], others: false };
+    expect(
+      folderMetaLine(claude, { missing: 1, notUpdated: 1, localEdits: 2 }),
+    ).toBe(
+      "Read by Claude Code · 1 missing · 1 not updated · 2 with local edits",
+    );
+    expect(
+      folderMetaLine(claude, { missing: 1, notUpdated: 0, localEdits: 2 }),
+    ).toBe("Read by Claude Code · 1 missing · 2 with local edits");
+    expect(
+      folderMetaLine(claude, { missing: 0, notUpdated: 3, localEdits: 0 }),
+    ).toBe("Read by Claude Code · 3 not updated");
   });
 
   it("advises importing local edits before a behind target updates", () => {

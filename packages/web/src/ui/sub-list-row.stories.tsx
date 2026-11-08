@@ -53,13 +53,24 @@ export const Reading: Story = {
   render: () => <SubListSkeleton rows={2} />,
 };
 
-// A read-only row with no menu: a Global folder and who reads it.
+// A read-only row with no menu: a Global folder, its word, and who reads it.
 export const ValueWithMeta: Story = {
   render: () => (
     <SubListValueRow
-      mark={reading("In sync", "good")}
+      status={reading("Up to date", "good")}
       value="~/.claude/skills"
-      meta="Read by Claude Code, Cursor and OpenCode."
+      meta="Read by Claude Code, Cursor and OpenCode"
+    />
+  ),
+};
+
+// A folder that deviates, with its counts; the longest realistic readers.
+export const ValueWithCounts: Story = {
+  render: () => (
+    <SubListValueRow
+      status={reading("Local edits", "attention", "⚠")}
+      value="~/.agents/skills"
+      meta="Read by Codex, Copilot CLI, Cursor, Gemini CLI and others · 1 missing · 1 not updated · 2 with local edits"
     />
   ),
 };

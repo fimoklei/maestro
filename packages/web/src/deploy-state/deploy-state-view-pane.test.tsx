@@ -493,7 +493,7 @@ describe("Deploy-state pane — facts", () => {
 });
 
 describe("Deploy-state pane — Global folders", () => {
-  it("lists each folder Global writes, its mark, and which tools read it", async () => {
+  it("lists each folder Global writes, its word, and which tools read it", async () => {
     stubServer(() => ({
       global: globalAnswer({
         claude: [skill("tdd")],
@@ -509,12 +509,9 @@ describe("Deploy-state pane — Global folders", () => {
         .getAllByRole("listitem")
         .map((item) => item.textContent),
     ).toEqual([
-      "✓~/.claude/skillsRead by Claude Code, Cursor and OpenCode.",
-      "⚠~/.agents/skillsRead by Codex, Copilot CLI, Cursor, Gemini CLI and others.",
+      "✓Up to date~/.claude/skillsRead by Claude Code, Cursor and OpenCode",
+      "⚠Local edits~/.agents/skillsRead by Codex, Copilot CLI, Cursor, Gemini CLI and others · 1 with local edits",
     ]);
-    expect(
-      within(folders).getByRole("img", { name: "Local edits" }),
-    ).toBeInTheDocument();
     expect(fact(pane, "Folder path") ?? null).toBeNull();
   });
 
@@ -539,9 +536,7 @@ describe("Deploy-state pane — Global folders", () => {
       ),
     ).toBeInTheDocument();
     const folders = within(pane).getByRole("list", { name: "Global folders" });
-    expect(
-      within(folders).getByRole("img", { name: "Skills missing" }),
-    ).toBeInTheDocument();
+    expect(within(folders).getByText("Skills missing")).toBeInTheDocument();
     expect(cellsOf("Global")[1]).toBe("Skills missing");
   });
 
@@ -588,9 +583,7 @@ describe("Deploy-state pane — Global folders", () => {
       ),
     ).toBeInTheDocument();
     const folders = within(pane).getByRole("list", { name: "Global folders" });
-    expect(
-      within(folders).getByRole("img", { name: "Not updated" }),
-    ).toBeInTheDocument();
+    expect(within(folders).getByText("Not updated")).toBeInTheDocument();
   });
 
   it("tells which tool loads the copies an undetected tool's folder holds", async () => {

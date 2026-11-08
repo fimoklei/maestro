@@ -8,6 +8,7 @@ import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
 import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
+import type { FolderCounts } from "./global-skill-readings";
 import { joinNames } from "./join-names";
 
 // Every word the Deploy-state screen shows outside its dialogs.
@@ -84,12 +85,22 @@ export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
 /** The Global pane's sub-list of the folders Global writes. */
 export const GLOBAL_FOLDERS = "Global folders";
 
-/** A Global folder's readers, in the Global pane: the only place a detected tool is named. */
-export const readByLine = (readBy: {
-  tools: readonly string[];
-  others: boolean;
-}) =>
-  `Read by ${joinNames(readBy.others ? [...readBy.tools, "others"] : readBy.tools)}.`;
+/**
+ * A Global folder's meta line in the Global pane, the only place a detected
+ * tool is named: its readers, then each count above 0. One list, so no full stop.
+ */
+export function folderMetaLine(
+  readBy: { tools: readonly string[]; others: boolean },
+  counts: FolderCounts,
+): string {
+  const readers = readBy.others ? [...readBy.tools, "others"] : readBy.tools;
+  return [
+    `Read by ${joinNames(readers)}`,
+    ...(counts.missing > 0 ? [`${counts.missing} missing`] : []),
+    ...(counts.notUpdated > 0 ? [`${counts.notUpdated} not updated`] : []),
+    ...(counts.localEdits > 0 ? [`${counts.localEdits} with local edits`] : []),
+  ].join(" · ");
+}
 
 /** A Global dialog's list of the Global folders its action writes. */
 export const WRITES_TO = "Writes to";
