@@ -9,6 +9,7 @@ import { packageBehindNotice, VIEW_SKILL_ON_GITHUB } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { RemoveSkillFlow } from "./remove-skill-flow";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";
+import { useDeployedSkillsList } from "./use-deployed-skills-list";
 
 type SkillsRow = Pick<
   TargetRow,
@@ -24,18 +25,29 @@ type SkillsRow = Pick<
 
 type OpenDialog = { kind: "remove" | "import"; name: string };
 
+/** The target's reads the list orders by. */
+export type SkillsRead = {
+  /** The first update check answered. */
+  checked: boolean;
+  /** Rises on each answered read of the target. */
+  reads: number;
+};
+
 export function SelectedSkills({
   row,
+  read,
   onRemoved,
   headingRef,
 }: {
   row: SkillsRow;
+  read: SkillsRead;
   // Called after the dialog is gone: a successful removal destroys the trigger
   // the modal's own focus-restore would aim at.
   onRemoved?: () => void;
   headingRef: Ref<HTMLHeadingElement>;
 }) {
   const { primitives, drift } = row;
+  const list = useDeployedSkillsList({ rows: row.skillRows, ...read });
   const [open, setOpen] = useState<OpenDialog | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
 
@@ -60,7 +72,7 @@ export function SelectedSkills({
         headingRef={headingRef}
       />
       <ul className="m-0 list-none border-divider border-t p-0">
-        {row.skillRows.map(({ primitive, mark, value, hover }) => {
+        {list.rows.map(({ primitive, mark, value, hover }) => {
           return (
             <SubListRow
               key={primitive.name}
