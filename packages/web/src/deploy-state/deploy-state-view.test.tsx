@@ -15,6 +15,7 @@ import {
   findRow,
   globalAnswer,
   grid,
+  openPane,
   RECENT,
   renderDeployState,
   rowOf,
@@ -199,7 +200,7 @@ describe("Deploy-state — Global and its folders", () => {
     await waitFor(() => expect(cellsOf("Global")[1]).toBe("Local edits"));
     expect(cellsOf("~/.claude/skills")).toEqual([
       "~/.claude/skills",
-      "✓In sync",
+      "✓Up to date",
       "",
       "",
     ]);
@@ -233,6 +234,26 @@ describe("Deploy-state — Global and its folders", () => {
     expect(folder).toHaveClass("text-gray-11");
     expect(rowOf("~/.claude/skills")).not.toHaveClass("text-gray-11");
     await waitFor(() => expect(cellsOf("Global")[1]).toBe("In sync"));
+  });
+
+  it("reads a clean folder Up to date under a Global that reads In sync, the word its pane row shows", async () => {
+    stubServer(() => ({
+      global: globalAnswer({ claude: [skill("tdd")], codex: [skill("tdd")] }),
+    }));
+    renderDeployState();
+
+    await findRow("~/.agents/skills");
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("In sync"));
+    expect(cellsOf("~/.claude/skills")[1]).toBe("✓Up to date");
+    expect(cellsOf("~/.agents/skills")[1]).toBe("✓Up to date");
+
+    const pane = await openPane("Global");
+    const folders = within(pane).getByRole("list", { name: "Global folders" });
+    expect(
+      within(folders)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent?.split("~")[0]),
+    ).toEqual(["✓Up to date", "✓Up to date"]);
   });
 
   it("names no tool and no ~/.apm path in the table", async () => {
@@ -445,7 +466,8 @@ describe("Deploy-state — Release, Status and Skills", () => {
 
     await findRow("Global");
     await waitFor(() => expect(cellsOf("Global")[1]).toBe("Behind"));
-    expect(cellsOf("~/.claude/skills")[1]).toBe("↑Behind");
+    // Behind is Global's own axis; the folder holds the release it was given.
+    expect(cellsOf("~/.claude/skills")[1]).toBe("✓Up to date");
     expect(cellsOf("~/.agents/skills")[1]).toBe("–Empty");
   });
 
