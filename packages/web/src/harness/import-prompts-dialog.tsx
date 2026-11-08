@@ -1,14 +1,17 @@
 import { useId, useRef } from "react";
 import {
+  alreadyInHarnessLegend,
   canBeImportedLegend,
   cannotBeImportedLegend,
   IMPORTED,
   NOT_IMPORTED,
+  replacesLine,
 } from "../deploy-state/import-local-edits-copy";
 import { Button } from "../ui/button";
 import { IMPORT_PROMPTS } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
+import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { CHANGE_WORD } from "./change-words";
 import {
@@ -43,6 +46,8 @@ export function ImportPromptsDialog({
   const hintId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
   const ready = (rows ?? []).filter((row) => row.refusal === null);
+  const fresh = ready.filter((row) => !row.held);
+  const held = ready.filter((row) => row.held);
   const refused = (rows ?? []).flatMap((row) =>
     row.refusal === null ? [] : [{ ...row, refusal: row.refusal }],
   );
@@ -106,7 +111,15 @@ export function ImportPromptsDialog({
               note: IMPORTED_PROMPTS_NEXT_STEP,
               rows: report.flatMap((outcome) =>
                 outcome.imported
-                  ? [{ name: outcome.name, change: CHANGE_WORD.addition }]
+                  ? [
+                      {
+                        name: outcome.name,
+                        change:
+                          CHANGE_WORD[
+                            outcome.mode === "update" ? "edit" : "addition"
+                          ],
+                      },
+                    ]
                   : [],
               ),
             },
@@ -150,8 +163,17 @@ export function ImportPromptsDialog({
               groups={[
                 {
                   tone: "neutral",
-                  legend: canBeImportedLegend(ready.length),
-                  rows: ready.map(({ key, label }) => ({ key, name: label })),
+                  legend: canBeImportedLegend(fresh.length),
+                  rows: fresh.map(({ key, label }) => ({ key, name: label })),
+                },
+                {
+                  tone: "attention",
+                  legend: alreadyInHarnessLegend(held.length),
+                  rows: held.map(({ key, label }) => ({
+                    key,
+                    name: label,
+                    sentence: <PhraseText copy={replacesLine(label)} />,
+                  })),
                 },
                 {
                   tone: "failed",

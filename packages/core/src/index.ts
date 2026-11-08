@@ -170,6 +170,7 @@ export {
   type ImportPromptsAnswer,
   type ImportPromptsError,
   type PromptEdit,
+  type PromptImportDraft,
   type PromptImportOutcome,
   type PromptImportRefusal,
   type ReadPromptError,

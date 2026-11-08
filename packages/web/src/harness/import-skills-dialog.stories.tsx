@@ -16,14 +16,20 @@ const meta = {
       scan: {
         folderBlocker: null,
         folders: [
-          { entry: "code-review", name: "code-review", refusal: null },
+          {
+            entry: "code-review",
+            name: "code-review",
+            refusal: null,
+            replaces: false,
+          },
           {
             entry: "notes-helper",
             name: "notes-helper",
             refusal: "empty-description",
+            replaces: false,
           },
-          { entry: "review", name: "review", refusal: "name-taken" },
-          { entry: "tdd", name: "tdd", refusal: null },
+          { entry: "review", name: "review", refusal: null, replaces: true },
+          { entry: "tdd", name: "tdd", refusal: null, replaces: false },
         ],
       },
     },
@@ -59,8 +65,15 @@ export const Importing: Story = { args: { isRunning: true } };
 export const Report: Story = {
   args: {
     outcomes: [
-      { entry: "code-review", name: "code-review", refusal: null },
-      { entry: "tdd", name: "tdd", refusal: "source-changed" },
+      {
+        entry: "code-review",
+        name: "code-review",
+        refusal: null,
+        replaces: false,
+      },
+      { entry: "review", name: "review", refusal: null, replaces: true },
+      { entry: "tdd", name: "tdd", refusal: "source-changed", replaces: false },
+      { entry: "lint", name: "lint", refusal: "name-taken", replaces: false },
     ],
   },
 };

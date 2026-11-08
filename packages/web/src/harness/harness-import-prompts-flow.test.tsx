@@ -2,8 +2,8 @@ import type {
   HarnessState,
   ImportPromptCheck,
   ImportPromptsAnswer,
+  PromptImportDraft,
 } from "@maestro/core";
-import type { PromptDraft } from "@maestro/core/prompt-file";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -32,10 +32,10 @@ const HARNESS: HarnessState = {
 function stubServer(options: {
   /** Names the Harness already holds. */
   taken?: readonly string[];
-  answer?: (prompts: PromptDraft[]) => unknown;
+  answer?: (prompts: PromptImportDraft[]) => unknown;
   status?: number;
 }) {
-  const imports: { prompts: PromptDraft[] }[] = [];
+  const imports: { prompts: PromptImportDraft[] }[] = [];
   let harnessReads = 0;
   vi.stubGlobal(
     "fetch",
@@ -50,15 +50,16 @@ function stubServer(options: {
       }
       if (url === "/api/harness/prompts/import") {
         const body = JSON.parse(String(init?.body)) as {
-          prompts: PromptDraft[];
+          prompts: PromptImportDraft[];
         };
         imports.push(body);
         return jsonResponse(
           options.answer?.(body.prompts) ??
             ({
-              outcomes: body.prompts.map(({ name }) => ({
+              outcomes: body.prompts.map(({ name, replace }) => ({
                 name,
                 imported: true,
+                mode: replace ? "update" : "add",
               })),
             } satisfies ImportPromptsAnswer),
           options.status,
@@ -156,6 +157,7 @@ describe("Harness import prompts flow", () => {
             description: "Draft the release notes",
             text: "Draft the notes for $ARGUMENTS.\n",
             example: "",
+            replace: false,
           },
           {
             name: "standup-notes",
@@ -163,6 +165,7 @@ describe("Harness import prompts flow", () => {
             description: "Run the standup",
             text: "List what changed since yesterday.\n",
             example: "",
+            replace: false,
           },
         ],
       },
@@ -195,16 +198,13 @@ describe("Harness import prompts flow", () => {
     ]);
 
     const refused = await waitFor(() =>
-      group(dialog, /Cannot be imported · 4/),
+      group(dialog, /Cannot be imported · 3/),
     );
     const reason = (name: string) => {
       const box = within(refused).getByRole("checkbox", { name });
       expect(box).toHaveAttribute("aria-disabled", "true");
       return box;
     };
-    expect(reason("commit-tips")).toHaveAccessibleDescription(
-      "The Harness already has this prompt. To replace it, select Import prompt and choose this file.",
-    );
     expect(reason("onboarding")).toHaveAccessibleDescription(
       "The file has no description in its front matter. Add one, then choose the file again.",
     );
@@ -225,6 +225,59 @@ describe("Harness import prompts flow", () => {
     expect(server.imports[0]?.prompts.map(({ name }) => name)).toEqual([
       "release-notes",
     ]);
+  });
+
+  it("lists a file whose prompt the Harness holds apart, unchecked, naming the prompt it replaces", async () => {
+    stubServer({ taken: ["commit-tips"] });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    const dialog = await openImportPrompts(user);
+
+    await chooseFiles(user, dialog, [RELEASE_NOTES, COMMIT_TIPS]);
+
+    const held = await waitFor(() =>
+      group(dialog, /^⚠ Already in the Harness · 1$/),
+    );
+    const box = within(held).getByRole("checkbox", { name: "commit-tips" });
+    expect(box).not.toBeChecked();
+    expect(box).not.toHaveAttribute("aria-disabled");
+    expect(box).toHaveAccessibleDescription(
+      "Replaces commit-tips in the Harness.",
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+    ).toBeVisible();
+  });
+
+  it("replaces a held prompt only once its file is ticked, and reports it as Changed", async () => {
+    const server = stubServer({ taken: ["commit-tips"] });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    const dialog = await openImportPrompts(user);
+    await chooseFiles(user, dialog, [RELEASE_NOTES, COMMIT_TIPS]);
+    await waitFor(() => group(dialog, /Already in the Harness · 1/));
+
+    await user.click(
+      within(dialog).getByRole("checkbox", { name: "commit-tips" }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import 2 prompts" }),
+    );
+
+    await within(dialog).findByRole("heading", {
+      name: "Imported 2 of 2 prompts",
+    });
+    expect(
+      server.imports[0]?.prompts.map(({ name, replace }) => [name, replace]),
+    ).toEqual([
+      ["release-notes", false],
+      ["commit-tips", true],
+    ]);
+    const imported = within(dialog).getByRole("region", {
+      name: "Imported · 2",
+    });
+    expect(within(imported).getByText("Changed")).toBeVisible();
+    expect(within(imported).getByText("Added")).toBeVisible();
   });
 
   it("sends only the checked files", async () => {
@@ -276,7 +329,7 @@ describe("Harness import prompts flow", () => {
           outcomes: prompts.map(({ name }) =>
             name === "standup-notes"
               ? { name, imported: false, refusal: "prompt-taken" }
-              : { name, imported: true },
+              : { name, imported: true, mode: "add" },
           ),
         }) satisfies ImportPromptsAnswer,
     });
@@ -298,7 +351,7 @@ describe("Harness import prompts flow", () => {
     expect(within(failed).getByText("standup-notes")).toBeVisible();
     expect(
       within(failed).getByText(
-        "The Harness already has this prompt. To replace it, select Import prompt and choose this file.",
+        "The Harness now has a prompt with this name. To replace it, select Import prompts again. Choose the file, then check it under Already in the Harness.",
       ),
     ).toBeVisible();
   });

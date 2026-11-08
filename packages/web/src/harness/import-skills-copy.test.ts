@@ -19,7 +19,7 @@ describe("Import skills copy", () => {
     ],
     [
       "name-taken",
-      "The Harness already holds a skill under this name. To import it under another name, select Import skill.",
+      "The Harness now holds a skill with this name. To replace it, select Import skills again. Choose the folder, then check it under Already in the Harness.",
     ],
     [
       "source-changed",

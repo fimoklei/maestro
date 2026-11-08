@@ -4,6 +4,7 @@ import {
   promptDraftProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
+import { toggleStaged } from "../ui/bulk-selection";
 import type { PromptFileRefusal } from "./import-prompts-copy";
 import { useImportPromptChecks, useImportPrompts } from "./use-harness";
 
@@ -16,6 +17,8 @@ type PromptFileRow = {
   /** The prompt name, or the file name where none survives. */
   label: string;
   refusal: PromptFileRefusal | null;
+  /** The Harness holds a prompt under this name, which the import replaces. */
+  held: boolean;
 };
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -38,8 +41,10 @@ export type ImportPromptsFlow = ReturnType<typeof useImportPromptsFlow>;
 export function useImportPromptsFlow() {
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<readonly ChosenPrompt[] | null>(null);
-  // Unchecked rather than checked: a file that can run starts checked.
+  // A new file starts checked and a held one unchecked, so each set holds
+  // what the reader changed.
   const [unchecked, setUnchecked] = useState<ReadonlySet<string>>(new Set());
+  const [replacing, setReplacing] = useState<ReadonlySet<string>>(new Set());
   const importPrompts = useImportPrompts();
 
   // The single import's field rules, first broken rule only, in field order.
@@ -67,33 +72,35 @@ export function useImportPromptsFlow() {
   const rows: PromptFileRow[] = judged.map(({ file, problem }) => {
     let refusal: PromptFileRefusal | null = problem;
     const name = file.draft?.name ?? "";
-    if (refusal === null && taken.has(name)) refusal = "prompt-taken";
     if (refusal === null && seen.has(name)) refusal = "same-name";
     if (refusal === null) seen.add(name);
-    return { key: file.key, label: file.label, refusal };
+    return {
+      key: file.key,
+      label: file.label,
+      refusal,
+      held: refusal === null && taken.has(name),
+    };
   });
+  const isChecked = (row: PromptFileRow) =>
+    row.refusal === null &&
+    (row.held ? replacing.has(row.key) : !unchecked.has(row.key));
   const toSend = rows.flatMap((row) => {
     const draft = chosen?.find((file) => file.key === row.key)?.draft;
-    return row.refusal === null && !unchecked.has(row.key) && draft
-      ? [draft]
-      : [];
+    return isChecked(row) && draft ? [{ ...draft, replace: row.held }] : [];
   });
 
   const close = () => {
     setOpen(false);
     setChosen(null);
     setUnchecked(new Set());
+    setReplacing(new Set());
     importPrompts.reset();
   };
 
   return {
     open,
     rows: chosen === null ? null : rows,
-    checked: new Set(
-      rows.flatMap((row) =>
-        row.refusal === null && !unchecked.has(row.key) ? [row.key] : [],
-      ),
-    ),
+    checked: new Set(rows.filter(isChecked).map((row) => row.key)),
     running: importPrompts.isPending,
     report: importPrompts.data?.outcomes ?? null,
     error: importPrompts.error,
@@ -103,15 +110,14 @@ export function useImportPromptsFlow() {
       const read = await Promise.all(files.map(readChosen));
       importPrompts.reset();
       setUnchecked(new Set());
+      setReplacing(new Set());
       setChosen(read);
     },
     toggle: (key: string) => {
       importPrompts.reset();
-      setUnchecked((current) => {
-        const next = new Set(current);
-        if (!next.delete(key)) next.add(key);
-        return next;
-      });
+      const flip = (current: ReadonlySet<string>) => toggleStaged(current, key);
+      if (rows.find((row) => row.key === key)?.held) setReplacing(flip);
+      else setUnchecked(flip);
     },
     submit: () => {
       if (toSend.length > 0) importPrompts.mutate(toSend);

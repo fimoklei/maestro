@@ -3,6 +3,7 @@ import { HttpError } from "../api/http";
 import { machineValues } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import {
+  alreadyInHarnessLegend,
   COPIES_DIFFER_LINE,
   COPY_TO_IMPORT,
   cannotBeImportedLegend,
@@ -18,6 +19,7 @@ import {
   NO_SKILL_QUALIFIES,
   NOTHING_CHECKED,
   noLocalEditsLine,
+  replacesLine,
   SELECT_A_COPY,
   UNSELECTED_COPIES_LINE,
   undoesNewerLegend,
@@ -25,6 +27,13 @@ import {
 } from "./import-local-edits-copy";
 
 describe("Import local edits copy", () => {
+  it("names the group of rows that replace what the Harness holds", () => {
+    expect(alreadyInHarnessLegend(1)).toBe("⚠ Already in the Harness · 1");
+    expect(plainText(replacesLine("review"))).toBe(
+      "Replaces review in the Harness.",
+    );
+  });
+
   it("states the differing copies block and its radio group", () => {
     expect(copiesDifferLegend(1)).toBe("⚠ Copies differ · 1");
     expect(copiesDifferLegend(2)).toBe("⚠ Copies differ · 2");

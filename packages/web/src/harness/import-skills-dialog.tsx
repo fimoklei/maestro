@@ -1,5 +1,6 @@
 import type { SkillFolder, SkillFolderScan } from "@maestro/core";
 import {
+  alreadyInHarnessLegend,
   canBeImportedLegend,
   cannotBeImportedLegend,
   IMPORTED,
@@ -9,15 +10,18 @@ import {
   NO_SKILL_QUALIFIES,
   NOT_IMPORTED,
   NOTHING_CHECKED,
+  replacesLine,
 } from "../deploy-state/import-local-edits-copy";
 import { IMPORT_SKILLS } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
+import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { StatusLine } from "../ui/status-line";
 import type { FolderChooser } from "../ui/use-folder-chooser";
+import { CHANGE_WORD } from "./change-words";
 import {
   IMPORT_SKILLS_HINT,
   IMPORT_SKILLS_PLACEHOLDER,
@@ -79,6 +83,8 @@ export function ImportSkillsDialog({
 }) {
   const folders = load.kind === "ready" ? load.scan.folders : [];
   const ready = folders.filter((folder) => folder.refusal === null);
+  const fresh = ready.filter((folder) => !folder.replaces);
+  const held = ready.filter((folder) => folder.replaces);
   const refused = folders.flatMap((folder) =>
     folder.refusal === null
       ? []
@@ -165,7 +171,10 @@ export function ImportSkillsDialog({
               note: IMPORTED_NEXT_STEP,
               rows: outcomes
                 .filter((row) => row.refusal === null)
-                .map(({ name }) => ({ name })),
+                .map(({ name, replaces }) => ({
+                  name,
+                  change: CHANGE_WORD[replaces ? "edit" : "addition"],
+                })),
             },
           ]}
         />
@@ -199,8 +208,17 @@ export function ImportSkillsDialog({
               groups={[
                 {
                   tone: "neutral",
-                  legend: canBeImportedLegend(ready.length),
-                  rows: ready.map(({ entry, name }) => ({ key: entry, name })),
+                  legend: canBeImportedLegend(fresh.length),
+                  rows: fresh.map(({ entry, name }) => ({ key: entry, name })),
+                },
+                {
+                  tone: "attention",
+                  legend: alreadyInHarnessLegend(held.length),
+                  rows: held.map(({ entry, name }) => ({
+                    key: entry,
+                    name,
+                    sentence: <PhraseText copy={replacesLine(name)} />,
+                  })),
                 },
                 {
                   tone: "failed",

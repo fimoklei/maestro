@@ -41,7 +41,9 @@ const folderEntry = z
 
 export const importSkillsBodySchema = z.object({
   source: z.string(),
-  entries: z.array(folderEntry).min(1),
+  entries: z
+    .array(z.object({ entry: folderEntry, replace: z.boolean() }))
+    .min(1),
 }) satisfies z.ZodType<ImportSkillsInput>;
 
 // The edge applies the prompt field rules; core applies them again.
@@ -60,7 +62,7 @@ export const importPromptBodySchema = promptFileSchema
   .extend({ name: z.string(), frontmatter: z.string() })
   .refine(fieldsHold);
 
-// Strings only: core judges each file's fields, and a broken one is data.
+// Strings plus a replace flag: core judges each file's fields, and a broken one is data.
 export const importPromptsBodySchema = z.object({
   prompts: z
     .array(
@@ -70,6 +72,7 @@ export const importPromptsBodySchema = z.object({
         description: z.string(),
         text: z.string(),
         example: z.string(),
+        replace: z.boolean(),
       }),
     )
     .min(1),
@@ -401,7 +404,7 @@ export const IMPORT_SKILLS_BODY: RequestShape = {
   message:
     "Nothing was imported. Reload the page, then import the skills again.",
   detail:
-    "The request carries a folder and the names of folders directly inside it: { source: string, entries: string[] }, at least one entry.",
+    "The request carries a folder and the folders directly inside it to import: { source: string, entries: { entry: string, replace: boolean }[] }, at least one entry.",
 };
 
 export const IMPORT_PROMPT_BODY: RequestShape = {
@@ -415,7 +418,7 @@ export const IMPORT_PROMPTS_BODY: RequestShape = {
   message:
     "Nothing was imported. Reload the page, then import the prompts again.",
   detail:
-    "The page must send at least one prompt: { prompts: { name, frontmatter, description, text, example }[] }.",
+    "The page must send at least one prompt: { prompts: { name, frontmatter, description, text, example, replace }[] }, with replace a boolean.",
 };
 
 export const PROMPT_CHECK_BODY: RequestShape = {

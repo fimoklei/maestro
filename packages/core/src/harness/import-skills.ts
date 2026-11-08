@@ -3,20 +3,27 @@
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { FileSystemPort } from "../registry/file-system";
-import {
-  addBlocker,
-  type ImportSkill,
-  type ImportSkillError,
-  type ImportSourceBlocker,
+import type {
+  ImportSkill,
+  ImportSkillError,
+  ImportSourceBlocker,
 } from "./import-skill";
 import { proposeSkillSlug } from "./skill-slug";
 
-/** One folder inside the chosen one: its directory entry, its skill name, and why it cannot land. */
+/**
+ * One folder inside the chosen one: its directory entry, its skill name, why
+ * it cannot land, and whether landing replaces the skill the Harness holds
+ * under that name.
+ */
 export type SkillFolder = {
   entry: string;
   name: string;
   refusal: ImportSkillError | null;
+  replaces: boolean;
 };
+
+// A folder to import; only `replace` lets it take the place of a held skill.
+type SkillFolderPick = { entry: string; replace: boolean };
 
 /** What the chosen folder holds; `folderBlocker` refuses the folder itself and lists nothing. */
 export type SkillFolderScan = {
@@ -24,7 +31,10 @@ export type SkillFolderScan = {
   folders: SkillFolder[];
 };
 
-export type ImportSkillsInput = { source: string; entries: readonly string[] };
+export type ImportSkillsInput = {
+  source: string;
+  entries: readonly SkillFolderPick[];
+};
 
 export type ImportSkillsError = "not-configured" | "import-in-progress";
 
@@ -53,7 +63,10 @@ export class ImportSkills {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     fs: Pick<FileSystemPort, "realpath" | "isDirectory" | "listRawEntries">;
-    importSkill: Pick<ImportSkill, "check" | "add">;
+    importSkill: Pick<
+      ImportSkill,
+      "check" | "judgeReplace" | "add" | "replace"
+    >;
     // The Harness lock Delete and Restore take.
     locks: InFlightLocks;
   };
@@ -79,15 +92,14 @@ export class ImportSkills {
     }
     const folders: SkillFolder[] = [];
     for (const entry of listing.entries) {
-      const name = proposeSkillSlug(entry);
-      const checked = await this.deps.importSkill.check({
+      const judged = await this.deps.importSkill.judgeReplace({
         source: join(listing.folder, entry),
-        name,
+        name: proposeSkillSlug(entry),
       });
-      if (!checked.ok) {
-        return { ok: false, error: checked.error };
+      if (!judged.ok) {
+        return { ok: false, error: judged.error };
       }
-      folders.push({ entry, name, refusal: addBlocker(checked.check) });
+      folders.push({ entry, ...judged.verdict });
     }
     return { ok: true, scan: { folderBlocker: null, folders } };
   }
@@ -109,21 +121,42 @@ export class ImportSkills {
       return { ok: false, error: "not-configured" };
     }
     const outcomes: SkillFolder[] = [];
-    for (const entry of input.entries) {
+    // A skill this batch landed is never replaced by a later folder.
+    const landedNames = new Set<string>();
+    for (const { entry, replace } of input.entries) {
       const name = proposeSkillSlug(entry);
       if (!listing.ok) {
-        outcomes.push({ entry, name, refusal: listing.blocker });
+        outcomes.push({
+          entry,
+          name,
+          refusal: listing.blocker,
+          replaces: false,
+        });
         continue;
       }
       if (!listing.entries.includes(entry)) {
-        outcomes.push({ entry, name, refusal: "not-found" });
+        outcomes.push({ entry, name, refusal: "not-found", replaces: false });
         continue;
       }
-      const landed = await this.deps.importSkill.add({
-        source: join(listing.folder, entry),
-        name,
-      });
-      outcomes.push({ entry, name, refusal: landed.ok ? null : landed.error });
+      const folder = { source: join(listing.folder, entry), name };
+      const judged = replace
+        ? await this.deps.importSkill.judgeReplace(folder)
+        : null;
+      const replaces =
+        judged?.ok === true &&
+        judged.verdict.replaces &&
+        !landedNames.has(judged.verdict.name);
+      const landed = replaces
+        ? await this.deps.importSkill.replace(folder)
+        : await this.deps.importSkill.add(folder);
+      if (landed.ok) {
+        landedNames.add(landed.name);
+      }
+      outcomes.push(
+        landed.ok
+          ? { entry, name: landed.name, refusal: null, replaces }
+          : { entry, name, refusal: landed.error, replaces },
+      );
     }
     return { ok: true, outcomes };
   }

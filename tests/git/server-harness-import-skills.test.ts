@@ -87,15 +87,32 @@ describe("harness import of several skills over HTTP", () => {
     expect(await response.json()).toEqual({
       folderBlocker: null,
       folders: [
-        { entry: "code-review", name: "code-review", refusal: null },
-        { entry: "foreign", name: "foreign", refusal: "deployed-copy" },
+        {
+          entry: "code-review",
+          name: "code-review",
+          refusal: null,
+          replaces: false,
+        },
+        {
+          entry: "foreign",
+          name: "foreign",
+          refusal: "deployed-copy",
+          replaces: false,
+        },
         {
           entry: "notes-helper",
           name: "notes-helper",
           refusal: "empty-description",
+          replaces: false,
         },
-        { entry: "review", name: "review", refusal: "name-taken" },
-        { entry: "tdd", name: "tdd", refusal: null },
+        // This Harness is no git clone, so a replace cannot prove it loses no work.
+        {
+          entry: "review",
+          name: "review",
+          refusal: "harness-unreadable",
+          replaces: true,
+        },
+        { entry: "tdd", name: "tdd", refusal: null, replaces: false },
       ],
     });
   });
@@ -120,15 +137,34 @@ describe("harness import of several skills over HTTP", () => {
 
     const response = await post(app, "/api/harness/import/skills", {
       source: folder,
-      entries: ["code-review", "foreign", "review"],
+      entries: [
+        { entry: "code-review", replace: false },
+        { entry: "foreign", replace: false },
+        { entry: "review", replace: false },
+      ],
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       outcomes: [
-        { entry: "code-review", name: "code-review", refusal: null },
-        { entry: "foreign", name: "foreign", refusal: "deployed-copy" },
-        { entry: "review", name: "review", refusal: "name-taken" },
+        {
+          entry: "code-review",
+          name: "code-review",
+          refusal: null,
+          replaces: false,
+        },
+        {
+          entry: "foreign",
+          name: "foreign",
+          refusal: "deployed-copy",
+          replaces: false,
+        },
+        {
+          entry: "review",
+          name: "review",
+          refusal: "name-taken",
+          replaces: false,
+        },
       ],
     });
     expect((await readdir(join(harnessRoot, ".apm", "skills"))).sort()).toEqual(
@@ -143,14 +179,22 @@ describe("harness import of several skills over HTTP", () => {
     });
     expect(await scan.json()).toMatchObject({
       folders: expect.arrayContaining([
-        { entry: "code-review", name: "code-review", refusal: null },
+        {
+          entry: "code-review",
+          name: "code-review",
+          refusal: null,
+          replaces: false,
+        },
       ]),
     });
     await rm(join(folder, "code-review", "SKILL.md"));
 
     const response = await post(app, "/api/harness/import/skills", {
       source: folder,
-      entries: ["code-review", "tdd"],
+      entries: [
+        { entry: "code-review", replace: false },
+        { entry: "tdd", replace: false },
+      ],
     });
 
     expect(await response.json()).toEqual({
@@ -159,8 +203,9 @@ describe("harness import of several skills over HTTP", () => {
           entry: "code-review",
           name: "code-review",
           refusal: "missing-manifest",
+          replaces: false,
         },
-        { entry: "tdd", name: "tdd", refusal: null },
+        { entry: "tdd", name: "tdd", refusal: null, replaces: false },
       ],
     });
     expect((await readdir(join(harnessRoot, ".apm", "skills"))).sort()).toEqual(
@@ -173,7 +218,7 @@ describe("harness import of several skills over HTTP", () => {
 
     const response = await post(app, "/api/harness/import/skills", {
       source: folder,
-      entries: ["../code-review"],
+      entries: [{ entry: "../code-review", replace: false }],
     });
 
     expect(response.status).toBe(400);
@@ -187,11 +232,18 @@ describe("harness import of several skills over HTTP", () => {
 
     const response = await post(app, "/api/harness/import/skills", {
       source: folder,
-      entries: ["missing"],
+      entries: [{ entry: "missing", replace: false }],
     });
 
     expect(await response.json()).toEqual({
-      outcomes: [{ entry: "missing", name: "missing", refusal: "not-found" }],
+      outcomes: [
+        {
+          entry: "missing",
+          name: "missing",
+          refusal: "not-found",
+          replaces: false,
+        },
+      ],
     });
   });
 });

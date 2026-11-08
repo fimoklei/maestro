@@ -15,14 +15,20 @@ const FOLDER = "/home/me/.claude/skills";
 const SCAN = {
   folderBlocker: null,
   folders: [
-    { entry: "code-review", name: "code-review", refusal: null },
+    {
+      entry: "code-review",
+      name: "code-review",
+      refusal: null,
+      replaces: false,
+    },
     {
       entry: "notes-helper",
       name: "notes-helper",
       refusal: "empty-description",
+      replaces: false,
     },
-    { entry: "review", name: "review", refusal: "name-taken" },
-    { entry: "tdd", name: "tdd", refusal: null },
+    { entry: "review", name: "review", refusal: null, replaces: true },
+    { entry: "tdd", name: "tdd", refusal: null, replaces: false },
   ],
 } satisfies SkillFolderScan;
 
@@ -86,7 +92,7 @@ describe("Harness import of several skills", () => {
     ).toBeChecked();
     expect(within(ready).getByRole("checkbox", { name: "tdd" })).toBeChecked();
     const refused = within(dialog).getByRole("group", {
-      name: "✕ Cannot be imported · 2",
+      name: "✕ Cannot be imported · 1",
     });
     const broken = within(refused).getByRole("checkbox", {
       name: "notes-helper",
@@ -97,18 +103,80 @@ describe("Harness import of several skills", () => {
       "SKILL.md has an empty description. Add one, then choose the folder again.",
     );
     expect(
-      within(refused).getByRole("checkbox", { name: "review" }),
-    ).toHaveAttribute("aria-disabled", "true");
-    expect(
       within(dialog).getByRole("button", { name: "Import 2 skills" }),
     ).toBeInTheDocument();
+  });
+
+  it("lists a folder the Harness holds apart, unchecked, naming the skill it replaces", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    const dialog = await openImportSkills(user);
+
+    const held = within(dialog).getByRole("group", {
+      name: "⚠ Already in the Harness · 1",
+    });
+    const review = within(held).getByRole("checkbox", { name: "review" });
+    expect(review).not.toBeChecked();
+    expect(review).not.toHaveAttribute("aria-disabled");
+    expectDescription(review, "Replaces review in the Harness.");
+  });
+
+  it("replaces a held skill only once its folder is ticked, and reports it as Changed", async () => {
+    const { imports } = stubServer({
+      outcomes: [
+        {
+          entry: "code-review",
+          name: "code-review",
+          refusal: null,
+          replaces: false,
+        },
+        { entry: "review", name: "review", refusal: null, replaces: true },
+      ],
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    const dialog = await openImportSkills(user);
+
+    await user.click(within(dialog).getByRole("checkbox", { name: "tdd" }));
+    await user.click(within(dialog).getByRole("checkbox", { name: "review" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import 2 skills" }),
+    );
+
+    await within(dialog).findByRole("heading", {
+      name: "Imported 2 of 2 skills",
+    });
+    expect(imports).toEqual([
+      {
+        source: FOLDER,
+        entries: [
+          { entry: "code-review", replace: false },
+          { entry: "review", replace: true },
+        ],
+      },
+    ]);
+    const landed = within(dialog).getByRole("region", { name: "Imported · 2" });
+    expect(within(landed).getByText("Changed")).toBeInTheDocument();
+    expect(within(landed).getByText("Added")).toBeInTheDocument();
   });
 
   it("imports the ticked folders and reports what landed and what was refused", async () => {
     const { imports } = stubServer({
       outcomes: [
-        { entry: "code-review", name: "code-review", refusal: null },
-        { entry: "tdd", name: "tdd", refusal: "source-changed" },
+        {
+          entry: "code-review",
+          name: "code-review",
+          refusal: null,
+          replaces: false,
+        },
+        {
+          entry: "tdd",
+          name: "tdd",
+          refusal: "source-changed",
+          replaces: false,
+        },
       ],
     });
     const user = userEvent.setup();
@@ -128,7 +196,13 @@ describe("Harness import of several skills", () => {
       name: "Imported 1 of 2 skills",
     });
     expect(imports).toEqual([
-      { source: FOLDER, entries: ["code-review", "tdd"] },
+      {
+        source: FOLDER,
+        entries: [
+          { entry: "code-review", replace: false },
+          { entry: "tdd", replace: false },
+        ],
+      },
     ]);
     const failed = within(dialog).getByRole("region", {
       name: "Not imported · 1",

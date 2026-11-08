@@ -14,6 +14,7 @@ import type {
   PrimitiveDeletionCheck,
   PrimitiveRef,
   PromptEdit,
+  PromptImportDraft,
   ReleaseBlock,
   ReleasePlan,
   SemverStep,
@@ -330,7 +331,7 @@ export function useImportPromptChecks(names: readonly string[]) {
 export function useImportPrompts() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (prompts: PromptDraft[]) =>
+    mutationFn: (prompts: PromptImportDraft[]) =>
       requestJson<ImportPromptsAnswer>("/api/harness/prompts/import", {
         method: "POST",
         body: JSON.stringify({ prompts }),

@@ -1,3 +1,4 @@
+import type { SkillFolder } from "@maestro/core";
 import { useState } from "react";
 import { toggleStaged } from "../ui/bulk-selection";
 import { useFolderChooser } from "../ui/use-folder-chooser";
@@ -28,8 +29,10 @@ export function ImportSkillsAction({
   const [source, setSource] = useState<string | null>(null);
   // Set by a submit with no folder; any edit of the field clears it.
   const [folderMissing, setFolderMissing] = useState(false);
-  // The importable entries the reader unticked; every other one is ticked.
+  // The new entries the reader unticked, and the held ones they ticked: a
+  // folder that replaces a held skill starts unticked.
   const [unticked, setUnticked] = useState<ReadonlySet<string>>(new Set());
+  const [replacing, setReplacing] = useState<ReadonlySet<string>>(new Set());
   const scan = useSkillFolderScan(source);
   const run = useImportSkills();
   const importWrite = useWriteAction(run, {
@@ -51,9 +54,10 @@ export function ImportSkillsAction({
     load.kind === "ready"
       ? load.scan.folders.filter((folder) => folder.refusal === null)
       : [];
-  const checked = new Set(
-    ready.map((folder) => folder.entry).filter((entry) => !unticked.has(entry)),
-  );
+  const isChecked = ({ entry, replaces }: SkillFolder) =>
+    replaces ? replacing.has(entry) : !unticked.has(entry);
+  const picked = ready.filter(isChecked);
+  const checked = new Set(picked.map((folder) => folder.entry));
 
   // The same folder chosen again lists it anew: its rows may have changed.
   const commitSource = (path: string) => {
@@ -63,6 +67,7 @@ export function ImportSkillsAction({
     }
     setSource(path);
     setUnticked(new Set());
+    setReplacing(new Set());
   };
 
   // A press before any list scans what the field holds; a failed scan is
@@ -81,7 +86,13 @@ export function ImportSkillsAction({
       void scan.refetch();
       return;
     }
-    importWrite.run({ source: typed, entries: [...checked] });
+    importWrite.run({
+      source: typed,
+      entries: picked.map(({ entry, replaces }) => ({
+        entry,
+        replace: replaces,
+      })),
+    });
   };
 
   return (
@@ -98,7 +109,9 @@ export function ImportSkillsAction({
       load={load}
       checked={checked}
       onToggle={(entry) =>
-        setUnticked((current) => toggleStaged(current, entry))
+        ready.find((folder) => folder.entry === entry)?.replaces
+          ? setReplacing((current) => toggleStaged(current, entry))
+          : setUnticked((current) => toggleStaged(current, entry))
       }
       isRunning={importWrite.phase === "running"}
       outcomes={run.data?.outcomes ?? null}

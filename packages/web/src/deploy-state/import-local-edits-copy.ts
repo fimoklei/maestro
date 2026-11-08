@@ -29,6 +29,15 @@ export const canBeImportedLegend = (count: number): string =>
 export const cannotBeImportedLegend = (count: number): string =>
   `${LIST_TOKENS.failed.glyph} Cannot be imported · ${count}`;
 
+export const ALREADY_IN_HARNESS = "Already in the Harness";
+
+export const alreadyInHarnessLegend = (count: number): string =>
+  `${LIST_TOKENS.attention.glyph} ${ALREADY_IN_HARNESS} · ${count}`;
+
+/** Under a row whose import replaces what the Harness holds under its name. */
+export const replacesLine = (name: string): Phrase =>
+  phrase`Replaces ${named(name)} in the Harness.`;
+
 export const copiesDifferLegend = (count: number): string =>
   `${LIST_TOKENS.attention.glyph} Copies differ · ${count}`;
 

@@ -331,7 +331,7 @@ const importLocalEditsDialog = (
 
 const SKILL_FOLDERS: SkillFolderScan = {
   folderBlocker: null,
-  folders: [{ entry: "tdd", name: "tdd", refusal: null }],
+  folders: [{ entry: "tdd", name: "tdd", refusal: null, replaces: false }],
 };
 
 const importSkillsDialog = (
@@ -1096,7 +1096,9 @@ const ON_DIALOG: Row[] = [
     changed: async (onClose) => {
       render(
         importPromptsDialog({
-          rows: [{ key: "0", label: "release-notes", refusal: null }],
+          rows: [
+            { key: "0", label: "release-notes", refusal: null, held: false },
+          ],
           checked: new Set(["0"]),
           close: onClose,
         }),

@@ -2,7 +2,10 @@
 
 import type { ImportSkillError, ImportSkillsError } from "@maestro/core";
 import { HttpError } from "../api/http";
-import { NOT_CONFIRMED } from "../deploy-state/import-local-edits-copy";
+import {
+  ALREADY_IN_HARNESS,
+  NOT_CONFIRMED,
+} from "../deploy-state/import-local-edits-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
 import { IMPORT_SKILL, IMPORT_SKILLS } from "../ui/control-labels";
@@ -42,7 +45,9 @@ const REFUSAL: Record<ImportSkillError, string> = {
     "SKILL.md has an empty description. Add one, then choose the folder again.",
   "invalid-name":
     "Maestro cannot make a skill name from this folder name. Give the folder a name like code-review, then choose the folder again.",
-  "name-taken": `The Harness already holds a skill under this name. To import it under another name, select ${IMPORT_SKILL}.`,
+  // A held skill is listed apart, so this reaches only the Report: the name
+  // was taken after the scan.
+  "name-taken": `The Harness now holds a skill with this name. To replace it, select ${IMPORT_SKILLS} again. Choose the folder, then check it under ${ALREADY_IN_HARNESS}.`,
   "destination-exists": `The Harness already holds a folder under this name. To import it under another name, select ${IMPORT_SKILL}.`,
   "not-found": "The folder was moved or deleted before Maestro could copy it.",
   "not-a-directory": "This is no longer a folder, so Maestro did not copy it.",
@@ -54,8 +59,8 @@ const REFUSAL: Record<ImportSkillError, string> = {
   "too-large": `The folder is over 50 MiB. Remove the files the skill does not need, ${AGAIN}`,
   "copy-failed": `The copy failed. Free up disk space, ${AGAIN}`,
   "destination-unsafe": `The skills folder in the Harness clone links outside the clone. Make it a real folder, ${AGAIN}`,
-  // Update-only refusals: an update counts as a taken name here, so these
-  // reach this dialog only from a server that judged differently.
+  // The guards a replace of a held skill passes; they show in the checklist
+  // and in the Report alike.
   "harness-copy-uncommitted": `The Harness clone has uncommitted changes to this skill. Commit or undo them, ${AGAIN}`,
   "harness-unreadable": `Maestro cannot read the Harness clone. Make it readable, ${AGAIN}`,
   "nothing-to-carry-back":

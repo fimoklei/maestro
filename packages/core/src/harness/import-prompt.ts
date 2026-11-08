@@ -64,18 +64,22 @@ export type ReadPromptResult =
   | { ok: true; prompt: PromptFile }
   | { ok: false; error: ReadPromptError };
 
+/** One file of a batch; only `replace` lets it take the place of a held prompt. */
+export type PromptImportDraft = PromptDraft & { replace: boolean };
+
 /** Why one file of a batch was not written; the rest still run. */
 export type PromptImportRefusal =
   | PromptFieldProblem
-  // A batch never replaces: the Harness, or an earlier file, holds the name.
+  // Sent without `replace` while the Harness holds the name, or an earlier
+  // file of the batch took it.
   | "prompt-taken"
   | "destination-unsafe"
   | "destination-unreadable"
   | "write-failed";
 
-/** One file of a batch, in the order it was sent. */
+/** One file of a batch, in the order it was sent; `update` replaced a held prompt. */
 export type PromptImportOutcome = { name: string } & (
-  | { imported: true }
+  | { imported: true; mode: ImportMode }
   | { imported: false; refusal: PromptImportRefusal }
 );
 
@@ -214,10 +218,11 @@ export class ImportPrompt {
 
   /**
    * Each file is judged by the single import's field rules, in field order,
-   * and refused where the name is taken. One refusal never stops the rest.
+   * and refused where the name is taken and it does not ask to replace. One
+   * refusal never stops the rest.
    */
   async importMany(
-    drafts: readonly PromptDraft[],
+    drafts: readonly PromptImportDraft[],
   ): Promise<ImportPromptsResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
@@ -231,7 +236,7 @@ export class ImportPrompt {
 
   private async writeMany(
     root: string,
-    drafts: readonly PromptDraft[],
+    drafts: readonly PromptImportDraft[],
   ): Promise<ImportPromptsResult> {
     const folder = await this.ensureFolder(root);
     if (folder !== null) {
@@ -239,16 +244,22 @@ export class ImportPrompt {
     }
     const outcomes: PromptImportOutcome[] = [];
     // In order: an earlier file's write takes its name from a later one.
-    for (const draft of drafts) {
+    const written = new Set<string>();
+    for (const { replace, ...draft } of drafts) {
       const [problem] = promptDraftProblems(draft);
-      const written =
+      const landed =
         problem === undefined
-          ? await this.writeNew(root, draft)
+          ? await this.writeOne(
+              root,
+              draft,
+              replace && !written.has(draft.name),
+            )
           : ({ ok: false, error: problem } as const);
+      if (landed.ok) written.add(draft.name);
       outcomes.push(
-        written.ok
-          ? { name: draft.name, imported: true }
-          : { name: draft.name, imported: false, refusal: written.error },
+        landed.ok
+          ? { name: draft.name, imported: true, mode: landed.mode }
+          : { name: draft.name, imported: false, refusal: landed.error },
       );
     }
     return { ok: true, outcomes };
@@ -295,16 +306,19 @@ export class ImportPrompt {
     }
   }
 
-  // A batch never replaces: the Harness, or an earlier file, holds the name.
-  private async writeNew(
+  // A taken name is written over only where `replace` allows it.
+  private async writeOne(
     root: string,
     draft: PromptDraft,
-  ): Promise<{ ok: true } | { ok: false; error: PromptImportRefusal }> {
+    replace: boolean,
+  ): Promise<
+    { ok: true; mode: ImportMode } | { ok: false; error: PromptImportRefusal }
+  > {
     const entry = await this.entry(root, draft.name);
     if (!entry.ok) return entry;
-    if (entry.taken) return { ok: false, error: "prompt-taken" };
+    if (entry.taken && !replace) return { ok: false, error: "prompt-taken" };
     return (await this.writeAt(entry.path, draft))
-      ? { ok: true }
+      ? { ok: true, mode: entry.taken ? "update" : "add" }
       : { ok: false, error: "write-failed" };
   }
 

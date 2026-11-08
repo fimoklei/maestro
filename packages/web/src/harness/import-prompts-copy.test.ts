@@ -41,7 +41,7 @@ describe("import prompts copy", () => {
         "The file has no prompt text below its front matter. Add the text, then choose the file again.",
       "long-text": "The file is over 100 KB. Shorten it, then choose it again.",
       "prompt-taken":
-        "The Harness already has this prompt. To replace it, select Import prompt and choose this file.",
+        "The Harness now has a prompt with this name. To replace it, select Import prompts again. Choose the file, then check it under Already in the Harness.",
       "destination-unsafe":
         "The prompt file in the Harness is a link. Replace the link with a real file, then import the prompt again.",
       "destination-unreadable":

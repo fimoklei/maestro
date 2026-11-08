@@ -46,6 +46,7 @@ describe("import prompts HTTP route", () => {
     description: "Draft the release notes",
     text: "Draft the notes for $ARGUMENTS.\n",
     example: "",
+    replace: false,
     ...fields,
   });
 
@@ -66,10 +67,10 @@ describe("import prompts HTTP route", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       outcomes: [
-        { name: "release-notes", imported: true },
+        { name: "release-notes", imported: true, mode: "add" },
         { name: "", imported: false, refusal: "empty-name" },
         { name: "onboarding", imported: false, refusal: "empty-description" },
-        { name: "standup-notes", imported: true },
+        { name: "standup-notes", imported: true, mode: "add" },
       ],
     });
     expect((await readdir(promptsFolder())).sort()).toEqual([
@@ -96,7 +97,7 @@ describe("import prompts HTTP route", () => {
     expect(await response.json()).toEqual({
       outcomes: [
         { name: "commit-tips", imported: false, refusal: "prompt-taken" },
-        { name: "release-notes", imported: true },
+        { name: "release-notes", imported: true, mode: "add" },
       ],
     });
     expect(
@@ -113,7 +114,7 @@ describe("import prompts HTTP route", () => {
 
     expect(await response.json()).toEqual({
       outcomes: [
-        { name: "release-notes", imported: true },
+        { name: "release-notes", imported: true, mode: "add" },
         { name: "release-notes", imported: false, refusal: "prompt-taken" },
       ],
     });

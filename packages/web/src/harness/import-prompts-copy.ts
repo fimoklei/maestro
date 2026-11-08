@@ -1,13 +1,10 @@
 // Every word the Import prompts dialog and its Report show.
 
 import type { ImportPromptsError, PromptImportRefusal } from "@maestro/core";
+import { ALREADY_IN_HARNESS } from "../deploy-state/import-local-edits-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
-import {
-  IMPORT_PROMPT,
-  IMPORT_PROMPTS,
-  PROPOSE_CHANGE,
-} from "../ui/control-labels";
+import { IMPORT_PROMPTS, PROPOSE_CHANGE } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
@@ -52,7 +49,9 @@ export const PROMPT_FILE_REFUSALS: Record<PromptFileRefusal, string> = {
   "empty-text":
     "The file has no prompt text below its front matter. Add the text, then choose the file again.",
   "long-text": "The file is over 100 KB. Shorten it, then choose it again.",
-  "prompt-taken": `The Harness already has this prompt. To replace it, select ${IMPORT_PROMPT} and choose this file.`,
+  // A held prompt is listed apart, so this reaches only the Report: the name
+  // was taken after the check.
+  "prompt-taken": `The Harness now has a prompt with this name. To replace it, select ${IMPORT_PROMPTS} again. Choose the file, then check it under ${ALREADY_IN_HARNESS}.`,
   "destination-unsafe":
     "The prompt file in the Harness is a link. Replace the link with a real file, then import the prompt again.",
   "destination-unreadable": NOT_WRITTEN,
