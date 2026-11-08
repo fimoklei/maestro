@@ -167,7 +167,11 @@ export {
   type ImportPromptCheck,
   type ImportPromptError,
   type ImportPromptSuccess,
+  type ImportPromptsAnswer,
+  type ImportPromptsError,
   type PromptEdit,
+  type PromptImportOutcome,
+  type PromptImportRefusal,
   type ReadPromptError,
 } from "./harness/import-prompt";
 export {
