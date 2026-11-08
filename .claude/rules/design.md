@@ -149,6 +149,9 @@ Pick the form from this table. Add no other form, and no banner.
   release, Publish release, Restore and Discard change; confirm each with a
   danger button. Propose change, Deploy and Update run without one. A dialog that collects input is a
   form.
+- Treat proposing a deletion as Delete: confirm it, alone or in a batch. A
+  batch without a deletion runs at once. Open a batch confirmation at 640px,
+  since its Report follows in the same dialog.
 - Build every dialog on `Dialog`. Use two dialog widths, 480 and 640,
   top-aligned at 96px. Give it a 48px header with the title and a close
   control, and a footer with the leave control leading and the action
