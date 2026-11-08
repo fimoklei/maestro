@@ -15,6 +15,7 @@ import {
   IMPORT,
   IMPORT_PROMPT,
   IMPORT_SKILL,
+  IMPORT_SKILLS,
 } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
 import { GatedButton } from "../ui/gated-button";
@@ -41,6 +42,7 @@ import {
   stageSections,
 } from "./harness-view-model";
 import { harnessPromptReadNotice } from "./import-prompt-copy";
+import { ImportSkillsAction } from "./import-skills-action";
 import {
   harnessStateNotice,
   publishReleaseNotice,
@@ -150,6 +152,7 @@ export function HarnessView({
   };
 
   const importFlow = useImportFlow(table, open);
+  const [importingSkills, setImportingSkills] = useState(false);
   const promptImportFlow = useImportPromptFlow(table, open);
   const presses = useHarnessPresses(state, table);
   // The edited row's pane opens here; a row the edit removed leaves none.
@@ -328,7 +331,7 @@ export function HarnessView({
       action={
         state === undefined ? null : (
           <>
-            {/* Both items open a dialog, so focus returns to Import, its opener. */}
+            {/* Every item opens a dialog, so focus returns to Import, its opener. */}
             <ActionsMenu
               label={IMPORT}
               trigger={
@@ -336,6 +339,10 @@ export function HarnessView({
               }
               items={[
                 { label: IMPORT_SKILL, onSelect: importFlow.start },
+                {
+                  label: IMPORT_SKILLS,
+                  onSelect: () => setImportingSkills(true),
+                },
                 { label: IMPORT_PROMPT, onSelect: promptImportFlow.start },
               ]}
             />
@@ -448,6 +455,12 @@ export function HarnessView({
         />
       }
     >
+      {state !== undefined && importingSkills ? (
+        <ImportSkillsAction
+          screen={table}
+          onClose={() => setImportingSkills(false)}
+        />
+      ) : null}
       {state === undefined ? null : (
         <HarnessDialogs
           origin={state.origin}

@@ -1,6 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ReleasePlan, UpdatePreview } from "@maestro/core";
+import type {
+  ReleasePlan,
+  SkillFolderScan,
+  UpdatePreview,
+} from "@maestro/core";
 import {
   act,
   fireEvent,
@@ -24,6 +28,7 @@ import {
   PROMPT_TAKEN_NOTICE,
 } from "./harness/import-prompt-copy";
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
+import { ImportSkillsDialog } from "./harness/import-skills-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import {
   type ReleaseWithdrawalCheck,
@@ -319,6 +324,33 @@ const importLocalEditsDialog = (
     failure={null}
     onCancel={vi.fn()}
     onConfirm={vi.fn()}
+    {...props}
+  />
+);
+
+const SKILL_FOLDERS: SkillFolderScan = {
+  folderBlocker: null,
+  folders: [{ entry: "tdd", name: "tdd", refusal: null }],
+};
+
+const importSkillsDialog = (
+  props: Partial<ComponentProps<typeof ImportSkillsDialog>>,
+) => (
+  <ImportSkillsDialog
+    source={null}
+    sourceText=""
+    sourceError={undefined}
+    onSourceChange={vi.fn()}
+    onSourceCommit={vi.fn()}
+    chooser={NO_CHOOSER}
+    load={{ kind: "idle" }}
+    checked={new Set(["tdd"])}
+    onToggle={vi.fn()}
+    isRunning={false}
+    outcomes={null}
+    failure={null}
+    onClose={vi.fn()}
+    onImport={vi.fn()}
     {...props}
   />
 );
@@ -994,6 +1026,47 @@ const ON_DIALOG: Row[] = [
     },
     loadFailed: () => importLocalEditsDialog({ skills: null, failure: FAILED }),
     notices: [],
+  },
+  {
+    file: "harness/import-skills-dialog.tsx",
+    heading: "Import skills",
+    render: ({ running, onClose }) =>
+      importSkillsDialog({
+        sourceText: "/home/me/.claude/skills",
+        load: { kind: "ready", scan: SKILL_FOLDERS },
+        isRunning: running,
+        onClose,
+      }),
+    changed: async (onClose) => {
+      render(
+        importSkillsDialog({ sourceText: "/home/me/.claude/skills", onClose }),
+      );
+    },
+    emptyForm: {
+      submit: "Import skills",
+      render: (onRun) => importSkillsDialog({ onImport: onRun }),
+    },
+    // The scan checks the field, as Import skill's check does: its failure
+    // stands beside Folder path and the press asks again.
+    loading: {
+      line: "Reading the folder…",
+      render: () =>
+        importSkillsDialog({
+          sourceText: "/home/me/.claude/skills",
+          load: { kind: "loading" },
+        }),
+    },
+    loadFailed: null,
+    notices: [
+      {
+        label: "No skill folders",
+        render: () =>
+          importSkillsDialog({
+            sourceText: "/home/me/empty",
+            load: { kind: "ready", scan: { folderBlocker: null, folders: [] } },
+          }),
+      },
+    ],
   },
 ];
 

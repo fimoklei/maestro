@@ -9,6 +9,7 @@ import type {
   HarnessStateError,
   ImportPromptError,
   ImportSkillError,
+  ImportSkillsError,
   LocalEditsError,
   PromoteDeletionError,
   PromoteError,
@@ -433,6 +434,11 @@ export const importLocalEditsErrorResponses: ErrorTable<LocalEditsError> = {
   "repo-not-registered": { status: 403 },
   "unfinished-operation": { status: 409 },
   "target-unreadable": { status: 422 },
+  "import-in-progress": { status: 409 },
+};
+
+export const importSkillsErrorResponses: ErrorTable<ImportSkillsError> = {
+  "not-configured": { status: 409 },
   "import-in-progress": { status: 409 },
 };
 

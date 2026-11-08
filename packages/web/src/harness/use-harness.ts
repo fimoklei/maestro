@@ -9,12 +9,15 @@ import type {
   ImportMode,
   ImportPromptCheck,
   ImportPromptSuccess,
+  ImportSkillsInput,
   PrimitiveDeletionCheck,
   PrimitiveRef,
   PromptEdit,
   ReleaseBlock,
   ReleasePlan,
   SemverStep,
+  SkillFolder,
+  SkillFolderScan,
 } from "@maestro/core";
 import type { PromptDraft, PromptFile } from "@maestro/core/prompt-file";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -240,6 +243,35 @@ export function useImportSkill() {
       }),
     // Returned, so the dialog closes onto a read that already holds the row.
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+  });
+}
+
+/** The skill folders inside one chosen folder, each with its verdict; null asks nothing. */
+export function useSkillFolderScan(source: string | null) {
+  return useQuery({
+    queryKey: ["harness", "import-skills-check", source] as const,
+    queryFn: () =>
+      requestJson<SkillFolderScan>("/api/harness/import/skills/check", {
+        method: "POST",
+        body: JSON.stringify({ source }),
+      }),
+    enabled: source !== null,
+    // The disk is the author's to change while the dialog is open.
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+// Invalidated whatever the answer: a partial run changed the Harness too.
+export function useImportSkills() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: ImportSkillsInput) =>
+      requestJson<{ outcomes: SkillFolder[] }>("/api/harness/import/skills", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });
 }
 

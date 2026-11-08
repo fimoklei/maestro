@@ -40,6 +40,7 @@ import type { HarnessReviewPort } from "./harness/harness-review-port";
 import { ImportLocalEdits } from "./harness/import-local-edits";
 import { ImportPrompt } from "./harness/import-prompt";
 import { ImportSkill } from "./harness/import-skill";
+import { ImportSkills } from "./harness/import-skills";
 import { Promote } from "./harness/promote";
 import { PromoteDeletion } from "./harness/promote-deletion";
 import { ProposalActions } from "./harness/proposal-actions";
@@ -370,6 +371,13 @@ export function composeUseCases(ports: UseCasePorts) {
     }),
     harness,
     importSkill,
+    // Shares the lock Delete takes, as Import local edits does.
+    importSkills: new ImportSkills({
+      resolveRoot: harnessRoot,
+      fs,
+      importSkill,
+      locks: harnessPromoteLocks,
+    }),
     // Shares the lock Delete takes: an import never writes while another Harness change runs.
     importPrompt: new ImportPrompt({
       resolveRoot: harnessRoot,

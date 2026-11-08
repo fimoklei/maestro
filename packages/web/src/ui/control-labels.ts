@@ -15,6 +15,7 @@ export const IMPORT = "Import";
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 export const IMPORT_PROMPT = "Import prompt";
 export const IMPORT_SKILL = "Import skill";
+export const IMPORT_SKILLS = "Import skills";
 export const PROPOSE_CHANGE = "Propose change";
 export const PUBLISH_RELEASE = "Publish release";
 export const REGISTER_REPOSITORY = "Register repository";

@@ -1,6 +1,6 @@
 // Every POST body the server accepts, and the request-shape refusals for a wrong one.
 
-import { HARNESS_PRIMITIVE_TYPES } from "@maestro/core";
+import { HARNESS_PRIMITIVE_TYPES, type ImportSkillsInput } from "@maestro/core";
 import {
   type PromptFields,
   type PromptFile,
@@ -30,6 +30,19 @@ export const importBodySchema = z.object({
   source: z.string(),
   name: z.string().optional(),
 });
+
+export const importSkillsCheckBodySchema = z.object({ source: z.string() });
+
+// An entry names a folder directly inside `source`: never a path.
+const folderEntry = z
+  .string()
+  .min(1)
+  .refine((entry) => !/[/\\\0]/.test(entry) && entry !== "." && entry !== "..");
+
+export const importSkillsBodySchema = z.object({
+  source: z.string(),
+  entries: z.array(folderEntry).min(1),
+}) satisfies z.ZodType<ImportSkillsInput>;
 
 // The edge applies the prompt field rules; core applies them again.
 const fieldsHold = (fields: PromptFields) =>
@@ -362,6 +375,18 @@ export const IMPORT_BODY: RequestShape = {
     "Nothing was imported. Reload the page, then import the skill again.",
   detail:
     "The request carries a source folder and an optional name: { source: string, name?: string }.",
+};
+
+export const IMPORT_SKILLS_CHECK_BODY: RequestShape = {
+  message: "Nothing was read. Reload the page, then choose the folder again.",
+  detail: "The request carries a folder: { source: string }.",
+};
+
+export const IMPORT_SKILLS_BODY: RequestShape = {
+  message:
+    "Nothing was imported. Reload the page, then import the skills again.",
+  detail:
+    "The request carries a folder and the names of folders directly inside it: { source: string, entries: string[] }, at least one entry.",
 };
 
 export const IMPORT_PROMPT_BODY: RequestShape = {

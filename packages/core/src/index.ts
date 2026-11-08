@@ -177,6 +177,12 @@ export {
   type ImportSkillError,
   type ImportSourceBlocker,
 } from "./harness/import-skill";
+export type {
+  ImportSkillsError,
+  ImportSkillsInput,
+  SkillFolder,
+  SkillFolderScan,
+} from "./harness/import-skills";
 export {
   Promote,
   type PromoteError,

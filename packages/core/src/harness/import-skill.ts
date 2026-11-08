@@ -136,17 +136,29 @@ export class ImportSkill {
   }
 
   async execute(input: ImportSkillInput): Promise<ImportSkillResult> {
+    return await this.land(input, { replace: true });
+  }
+
+  /** As `execute`, but refuses a folder that would replace a held skill. */
+  async add(input: ImportSkillInput): Promise<ImportSkillResult> {
+    return await this.land(input, { replace: false });
+  }
+
+  private async land(
+    input: ImportSkillInput,
+    { replace }: { replace: boolean },
+  ): Promise<ImportSkillResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
     // Judged again: never trust the check the browser saw.
     const { check, source } = await this.inspect(root, input);
-    if (check.sourceBlocker !== null) {
-      return { ok: false, error: check.sourceBlocker };
-    }
-    if (check.nameBlocker !== null) {
-      return { ok: false, error: check.nameBlocker };
+    const blocker = replace
+      ? (check.sourceBlocker ?? check.nameBlocker)
+      : addBlocker(check);
+    if (blocker !== null) {
+      return { ok: false, error: blocker };
     }
     if (source === null) {
       return { ok: false, error: "source-unreadable" };
@@ -433,6 +445,14 @@ export class ImportSkill {
     }
   }
 }
+
+/** Why a folder cannot be added as a new skill; an update counts as a taken name. */
+export const addBlocker = (
+  check: ImportCheck,
+): ImportSourceBlocker | ImportNameBlocker | null =>
+  check.mode === "update"
+    ? "name-taken"
+    : (check.sourceBlocker ?? check.nameBlocker);
 
 type CopyRequest = Pick<
   CopySkillFolderInput,

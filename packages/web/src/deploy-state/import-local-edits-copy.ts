@@ -6,6 +6,7 @@ import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import {
   IMPORT_LOCAL_EDITS,
+  IMPORT_SKILLS,
   PROPOSE_CHANGE,
   rereadLabel,
   UPDATE_TARGET,
@@ -41,7 +42,6 @@ export const SELECT_A_COPY = "Select a copy.";
 export const differingCopiesLine = (folders: readonly string[]): Phrase =>
   phrase`The copies in ${machineList(folders)} differ. Select ${IMPORT_LOCAL_EDITS} to import one.`;
 
-const IMPORT_SKILLS = "Import skills";
 export const NO_SKILL_QUALIFIES = "You cannot import any of these skills.";
 export const NOTHING_CHECKED = "Check at least one skill.";
 
@@ -77,7 +77,7 @@ const NOT_CHECKED = {
   message: `Nothing was imported. Select ${CLOSE}, then select ${IMPORT_LOCAL_EDITS} again.`,
 };
 
-const NOT_CONFIRMED = {
+export const NOT_CONFIRMED = {
   label: "Import not confirmed",
   message: `The Maestro server did not answer, so some skills may have landed. Select ${CLOSE}, then check the Harness screen.`,
 };
