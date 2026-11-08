@@ -44,7 +44,11 @@ async function httpError(res: Response): Promise<HttpError> {
   );
 }
 
-/** A streamed answer of one JSON value per line: each line as it arrives. */
+/**
+ * A streamed answer of one JSON value per line: each line as it arrives. `T`
+ * must be the type the route writes each line as (`BatchLine` from
+ * `@maestro/core` on both sides), as `requestJson` trusts its route's answer.
+ */
 export async function requestJsonLines<T>(
   path: string,
   init: RequestInit,
@@ -66,6 +70,7 @@ export async function requestJsonLines<T>(
     const lines = pending.split("\n");
     pending = done ? "" : (lines.pop() ?? "");
     for (const line of lines) {
+      // Cast: each line is one `JSON.stringify` of the route's `T`.
       if (line.trim() !== "") onLine(JSON.parse(line) as T);
     }
     if (done) return;

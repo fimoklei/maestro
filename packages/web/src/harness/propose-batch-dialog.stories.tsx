@@ -134,6 +134,7 @@ export const Reported: Story = {
           items: [{ type: "skill", name: "commit-message" }],
         },
       ],
+      gh: "available",
     },
   },
 };

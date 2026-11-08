@@ -155,6 +155,7 @@ describe("POST /api/harness/promote/batch", () => {
         },
       ],
       failed: [],
+      gh: "available",
     });
   });
 
@@ -288,7 +289,8 @@ describe("POST /api/harness/promote/batch", () => {
   it("pushes every branch and gives each item its compare page when no pull request opens", async () => {
     const { app, harness, review } = world();
     editMixed(harness);
-    // No gh: every request is refused, so each pushed branch stays without one.
+    // gh answers the read but refuses every request, so each pushed branch
+    // stays without one.
     review.answerWrite({ ok: false, error: "unavailable" });
 
     const { status, lines } = await proposeBatch(app, MIXED);
@@ -305,23 +307,46 @@ describe("POST /api/harness/promote/batch", () => {
           name: "tdd",
           compareUrl:
             "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
-          pullRequest: { state: "missing" },
+          pullRequest: { state: "missing", gh: "available" },
         }),
         expect.objectContaining({
           name: "code-review",
           compareUrl:
             "https://github.com/fimoklei/agent-harness/compare/main...maestro/code-review?expand=1",
-          pullRequest: { state: "missing" },
+          pullRequest: { state: "missing", gh: "available" },
         }),
         expect.objectContaining({
           name: "pr-review",
           compareUrl:
             "https://github.com/fimoklei/agent-harness/compare/main...maestro/prompt.pr-review?expand=1",
-          pullRequest: { state: "missing" },
+          pullRequest: { state: "missing", gh: "available" },
         }),
       ],
       failed: [],
+      gh: "available",
     });
+  });
+
+  it("says gh was not available when the review read found no gh", async () => {
+    const review = stubReview({ outcome: "unavailable", reason: "no-gh" });
+    review.answerWrite({ ok: false, error: "unavailable" });
+    const { app, harness } = world({ review });
+    editMixed(harness);
+
+    const { lines } = await proposeBatch(app, MIXED);
+
+    expect(harness.pushed).toHaveLength(3);
+    expect(reportOf(lines)).toMatchObject({ gh: "absent" });
+  });
+
+  it("says gh was available when it answered but opened no pull request", async () => {
+    const { app, harness, review } = world();
+    editMixed(harness);
+    review.answerWrite({ ok: false, error: "failed" });
+
+    const { lines } = await proposeBatch(app, MIXED);
+
+    expect(reportOf(lines)).toMatchObject({ gh: "available" });
   });
 
   it("refuses an item that waits on another contributor's open proposal, and proposes the rest", async () => {

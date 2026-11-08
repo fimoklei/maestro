@@ -245,17 +245,22 @@ describe("beforeProposalPush", () => {
     });
   });
 
-  it.each<[string, HarnessReviewRead]>([
-    ["failed", { outcome: "failed" }],
-    ["unavailable", { outcome: "unavailable", reason: "no-gh" }],
-    ["bounded", { outcome: "read", requests: [], complete: false, limit: 100 }],
-  ])("answers with a missing request after a %s read", async (_, read) => {
+  it.each<[string, HarnessReviewRead, "available" | "absent"]>([
+    ["failed", { outcome: "failed" }, "available"],
+    ["no-gh", { outcome: "unavailable", reason: "no-gh" }, "absent"],
+    ["no-answer", { outcome: "unavailable", reason: "no-answer" }, "available"],
+    [
+      "bounded",
+      { outcome: "read", requests: [], complete: false, limit: 100 },
+      "available",
+    ],
+  ])("answers with a missing request after a %s read", async (_, read, gh) => {
     const { review } = reviewWith(read);
 
     const step = await beforeProposalPush(review, TARGET, "edit");
     if (!step.ok) throw new Error("refused");
 
-    await expect(step.afterPush()).resolves.toEqual({ state: "missing" });
+    await expect(step.afterPush()).resolves.toEqual({ state: "missing", gh });
   });
 
   it("answers with a missing request when GitHub refuses to open one", async () => {
@@ -265,6 +270,9 @@ describe("beforeProposalPush", () => {
     const step = await beforeProposalPush(review, TARGET, "addition");
     if (!step.ok) throw new Error("refused");
 
-    await expect(step.afterPush()).resolves.toEqual({ state: "missing" });
+    await expect(step.afterPush()).resolves.toEqual({
+      state: "missing",
+      gh: "available",
+    });
   });
 });

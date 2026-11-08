@@ -375,4 +375,19 @@ describe("Harness import prompts flow", () => {
       within(dialog).getByRole("checkbox", { name: "release-notes" }),
     ).toBeChecked();
   });
+
+  it("reads the Harness again when the answer breaks, since some files may have landed", async () => {
+    const server = stubServer({ status: 500, answer: () => ({}) });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    const dialog = await openImportPrompts(user);
+    await chooseFiles(user, dialog, [RELEASE_NOTES]);
+    const reads = server.harnessReads();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+    );
+
+    await waitFor(() => expect(server.harnessReads()).toBeGreaterThan(reads));
+  });
 });

@@ -3,6 +3,7 @@
 
 import type {
   BatchItemOutcome,
+  BatchLine,
   BatchReport,
   BatchRequest,
   HarnessChange,
@@ -26,6 +27,7 @@ import type {
 } from "@maestro/core";
 import type { PromptDraft, PromptFile } from "@maestro/core/prompt-file";
 import {
+  queryOptions,
   useMutation,
   useQueries,
   useQuery,
@@ -256,19 +258,24 @@ export function useImportSkill() {
   });
 }
 
-/** The skill folders inside one chosen folder, each with its verdict; null asks nothing. */
-export function useSkillFolderScan(source: string | null) {
-  return useQuery({
+const skillFolderScanQuery = (source: string | null) =>
+  queryOptions({
     queryKey: ["harness", "import-skills-check", source] as const,
     queryFn: () =>
       requestJson<SkillFolderScan>("/api/harness/import/skills/check", {
         method: "POST",
         body: JSON.stringify({ source }),
       }),
-    enabled: source !== null,
     // The disk is the author's to change while the dialog is open.
     staleTime: 0,
     gcTime: 0,
+  });
+
+/** The skill folders inside one chosen folder, each with its verdict; null asks nothing. */
+export function useSkillFolderScan(source: string | null) {
+  return useQuery({
+    ...skillFolderScanQuery(source),
+    enabled: source !== null,
   });
 }
 
@@ -285,19 +292,25 @@ export function useImportSkills() {
   });
 }
 
-// Asked once the name is left, not per keystroke; null asks nothing.
-export function useImportPromptCheck(name: string | null) {
-  return useQuery({
+// Shared by the single import's name check and the batch's per-name checks.
+const importPromptCheckQuery = (name: string | null) =>
+  queryOptions({
     queryKey: ["harness", "prompt-check", name] as const,
     queryFn: () =>
       requestJson<ImportPromptCheck>("/api/harness/prompt/check", {
         method: "POST",
         body: JSON.stringify({ name }),
       }),
-    enabled: name !== null,
     // The disk is the author's to change while the dialog is open.
     staleTime: 0,
     gcTime: 0,
+  });
+
+// Asked once the name is left, not per keystroke; null asks nothing.
+export function useImportPromptCheck(name: string | null) {
+  return useQuery({
+    ...importPromptCheckQuery(name),
+    enabled: name !== null,
   });
 }
 
@@ -317,20 +330,12 @@ export function useImportPrompt() {
 /** Each chosen name's check, as the single import's name check reads it. */
 export function useImportPromptChecks(names: readonly string[]) {
   return useQueries({
-    queries: names.map((name) => ({
-      queryKey: ["harness", "prompt-check", name] as const,
-      queryFn: () =>
-        requestJson<ImportPromptCheck>("/api/harness/prompt/check", {
-          method: "POST",
-          body: JSON.stringify({ name }),
-        }),
-      staleTime: 0,
-      gcTime: 0,
-    })),
+    queries: names.map((name) => importPromptCheckQuery(name)),
   });
 }
 
-// One call for the batch; the read places the rows it wrote.
+// One call for the batch; the read places the rows it wrote. Invalidated
+// whatever the answer: a broken answer may follow a partial write.
 export function useImportPrompts() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -339,7 +344,7 @@ export function useImportPrompts() {
         method: "POST",
         body: JSON.stringify({ prompts }),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });
 }
 
@@ -388,8 +393,6 @@ export function usePromotePrimitive() {
     },
   });
 }
-
-type BatchLine = { item: BatchItemOutcome } | { report: BatchReport };
 
 /** The stream broke off before its report: which items landed is unknown. */
 export class BatchReportMissing extends Error {}

@@ -147,10 +147,11 @@ const retitle = async (
   });
 };
 
-// Missing: no `gh`, an unknown read, or GitHub refused to open one.
+// Missing: no `gh`, an unknown read, or GitHub refused to open one. `gh`
+// is absent only when the read found no `gh` to ask.
 export type PullRequestOutcome =
   | { state: "opened" | "updated"; number: number; url: string }
-  | { state: "missing" };
+  | { state: "missing"; gh: "available" | "absent" };
 
 // Read before the push, never from the cockpit: it decides open versus update.
 export const beforeProposalPush = async (
@@ -176,11 +177,15 @@ export const beforeProposalPush = async (
   ) {
     return { ok: false, error: "proposed-by-other" };
   }
+  const gh =
+    read.outcome === "unavailable" && read.reason === "no-gh"
+      ? "absent"
+      : "available";
   return {
     ok: true,
     afterPush: async () => {
       if (open === null) {
-        return { state: "missing" };
+        return { state: "missing", gh };
       }
       const [only] = open;
       if (only !== undefined) {
@@ -190,7 +195,7 @@ export const beforeProposalPush = async (
       const created = await requestProposal(review, target, kind);
       return created.ok
         ? { state: "opened", number: created.number, url: created.url }
-        : { state: "missing" };
+        : { state: "missing", gh };
     },
   };
 };

@@ -59,7 +59,14 @@ const proposal = (ref: PrimitiveRef, number: number): BatchProposal => ({
 });
 
 // The stream a batch answers: each item as it finished, then the report.
-const streamOf = (report: BatchReport) => [
+const streamOf = (
+  sent: Omit<BatchReport, "gh"> & Partial<Pick<BatchReport, "gh">>,
+) => {
+  const report: BatchReport = { gh: "available", ...sent };
+  return streamLines(report);
+};
+
+const streamLines = (report: BatchReport) => [
   ...report.proposed.map((each) => ({
     item: { ok: true, ...each } satisfies BatchItemOutcome,
   })),
@@ -302,7 +309,7 @@ describe("proposing several changes from the selection bar", () => {
   it("lists a pushed branch without a pull request apart, with its compare page", async () => {
     const pushedOnly = (ref: PrimitiveRef) => ({
       ...proposal(ref, 0),
-      pullRequest: { state: "missing" as const },
+      pullRequest: { state: "missing" as const, gh: "available" as const },
     });
     stubHarnessServer({
       read: { body: PENDING },
@@ -346,7 +353,7 @@ describe("proposing several changes from the selection bar", () => {
   it("says pushed, not proposed, when no pull request opened", async () => {
     const pushedOnly = (ref: PrimitiveRef) => ({
       ...proposal(ref, 0),
-      pullRequest: { state: "missing" as const },
+      pullRequest: { state: "missing" as const, gh: "available" as const },
     });
     stubHarnessServer({
       read: { body: PENDING },

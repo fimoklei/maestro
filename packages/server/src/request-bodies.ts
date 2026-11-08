@@ -1,6 +1,11 @@
 // Every POST body the server accepts, and the request-shape refusals for a wrong one.
 
-import { HARNESS_PRIMITIVE_TYPES, type ImportSkillsInput } from "@maestro/core";
+import {
+  type BatchRequest,
+  HARNESS_PRIMITIVE_TYPES,
+  type ImportSkillsInput,
+  type PromptImportDraft,
+} from "@maestro/core";
 import {
   type PromptFields,
   type PromptFile,
@@ -76,7 +81,7 @@ export const importPromptsBodySchema = z.object({
       }),
     )
     .min(1),
-});
+}) satisfies z.ZodType<{ prompts: PromptImportDraft[] }>;
 
 export const promptCheckBodySchema = z.object({ name: z.string() });
 
@@ -235,7 +240,7 @@ export const proposeBatchBodySchema = z.object({
       }),
     )
     .min(1),
-});
+}) satisfies z.ZodType<{ items: BatchRequest[] }>;
 
 // The number is a claim, never an authorisation: it is rechecked against a fresh read (#827).
 export const proposalBodySchema = z.object({

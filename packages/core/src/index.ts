@@ -205,6 +205,7 @@ export {
 export type {
   BatchItemError,
   BatchItemOutcome,
+  BatchLine,
   BatchProposal,
   BatchReport,
   BatchRequest,

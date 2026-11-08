@@ -45,11 +45,18 @@ export type BatchItemOutcome =
   | ({ ok: true } & BatchProposal)
   | (PrimitiveRef & { ok: false; error: BatchItemError });
 
-/** The batch's end: identical failures collapse into one line. */
+/**
+ * The batch's end: identical failures collapse into one line. `gh` is absent
+ * once an item's review read found no `gh` to ask.
+ */
 export type BatchReport = {
   proposed: BatchProposal[];
   failed: { error: BatchItemError; items: PrimitiveRef[] }[];
+  gh: "available" | "absent";
 };
+
+/** One line of the streamed answer: an item as it finishes, then the report last. */
+export type BatchLine = { item: BatchItemOutcome } | { report: BatchReport };
 
 /** A refusal that stops the batch before any push. */
 export type ProposeBatchError =
@@ -187,5 +194,9 @@ const reportOf = (outcomes: readonly BatchItemOutcome[]): BatchReport => {
       line.items.push(ref);
     }
   }
-  return { proposed, failed };
+  const absent = proposed.some(
+    ({ pullRequest }) =>
+      pullRequest.state === "missing" && pullRequest.gh === "absent",
+  );
+  return { proposed, failed, gh: absent ? "absent" : "available" };
 };

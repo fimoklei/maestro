@@ -1,8 +1,4 @@
-import type {
-  BatchItemOutcome,
-  BatchReport,
-  BatchRequest,
-} from "@maestro/core";
+import type { BatchLine } from "@maestro/core";
 import type { Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { proposeBatchErrorResponses } from "../error-responses";
@@ -11,9 +7,6 @@ import {
   parseBody,
   proposeBatchBodySchema,
 } from "../request-bodies";
-
-/** One line of the stream: an item as it finishes, then the report last. */
-type BatchLine = { item: BatchItemOutcome } | { report: BatchReport };
 
 export function registerProposeBatchRoute(
   app: Hono,
@@ -26,12 +19,7 @@ export function registerProposeBatchRoute(
     if (!body.ok) {
       return body.response;
     }
-    const items = body.data.items.map(
-      ({ type, name, seenRemoteTree }): BatchRequest =>
-        seenRemoteTree === undefined
-          ? { type, name }
-          : { type, name, seenRemoteTree },
-    );
+    const { items } = body.data;
 
     const { readable, writable } = new TransformStream<Uint8Array>();
     const writer = writable.getWriter();
