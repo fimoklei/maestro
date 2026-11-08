@@ -7,7 +7,7 @@ import { useDeployedSkillsList } from "./use-deployed-skills-list";
 const row = (name: string, rank: number): SkillListRow => ({
   primitive: { type: "skill", name, version: "v0.4.1" },
   mark: null,
-  value: "v0.4.1",
+  value: { text: "v0.4.1", machine: true },
   hover: undefined,
   rank,
   clean: rank === 7,
@@ -44,7 +44,7 @@ describe("useDeployedSkillsList", () => {
         row("show-me", 2),
       ],
       checked: true,
-      reads: 1,
+      readVersion: "1",
       listFit: fits,
     });
 
@@ -53,11 +53,16 @@ describe("useDeployedSkillsList", () => {
 
   it("keeps the rows in their order until the first update check answers", () => {
     const rows = [row("tdd", 7), row("commit", 0)];
-    const list = renderList({ rows, checked: false, reads: 1, listFit: fits });
+    const list = renderList({
+      rows,
+      checked: false,
+      readVersion: "1",
+      listFit: fits,
+    });
 
     expect(list.names()).toEqual(["tdd", "commit"]);
 
-    list.rerender({ rows, checked: true, reads: 2, listFit: fits });
+    list.rerender({ rows, checked: true, readVersion: "2", listFit: fits });
     expect(list.names()).toEqual(["commit", "tdd"]);
   });
 
@@ -65,15 +70,25 @@ describe("useDeployedSkillsList", () => {
     const list = renderList({
       rows: [row("tdd", 7), row("commit", 0)],
       checked: true,
-      reads: 1,
+      readVersion: "1",
       listFit: fits,
     });
     const flipped = [row("tdd", 0), row("commit", 7)];
 
-    list.rerender({ rows: flipped, checked: true, reads: 1, listFit: fits });
+    list.rerender({
+      rows: flipped,
+      checked: true,
+      readVersion: "1",
+      listFit: fits,
+    });
     expect(list.names()).toEqual(["commit", "tdd"]);
 
-    list.rerender({ rows: flipped, checked: true, reads: 2, listFit: fits });
+    list.rerender({
+      rows: flipped,
+      checked: true,
+      readVersion: "2",
+      listFit: fits,
+    });
     expect(list.names()).toEqual(["tdd", "commit"]);
   });
 
@@ -81,7 +96,7 @@ describe("useDeployedSkillsList", () => {
     const list = renderList({
       rows: [row("tdd", 7), row("commit", 0), row("jobs", 7)],
       checked: true,
-      reads: 1,
+      readVersion: "1",
       listFit: fits,
     });
 
@@ -93,7 +108,7 @@ describe("useDeployedSkillsList", () => {
     const list = renderList({
       rows: [row("tdd", 7), row("show-me", 1), row("jobs", 7), row("ship", 2)],
       checked: true,
-      reads: 1,
+      readVersion: "1",
       listFit: doesNotFit,
     });
 
@@ -105,7 +120,7 @@ describe("useDeployedSkillsList", () => {
     const list = renderList({
       rows: [row("tdd", 7), row("commit", 0)],
       checked: false,
-      reads: 1,
+      readVersion: "1",
       listFit: doesNotFit,
     });
 
@@ -115,13 +130,28 @@ describe("useDeployedSkillsList", () => {
 
   it("decides the fold after a read only, never in between", () => {
     const rows = [row("tdd", 7), row("commit", 0)];
-    const list = renderList({ rows, checked: true, reads: 1, listFit: fits });
+    const list = renderList({
+      rows,
+      checked: true,
+      readVersion: "1",
+      listFit: fits,
+    });
 
     // A resize changes the measurement, not the read count.
-    list.rerender({ rows, checked: true, reads: 1, listFit: doesNotFit });
+    list.rerender({
+      rows,
+      checked: true,
+      readVersion: "1",
+      listFit: doesNotFit,
+    });
     expect(list.folded()).toEqual([]);
 
-    list.rerender({ rows, checked: true, reads: 2, listFit: doesNotFit });
+    list.rerender({
+      rows,
+      checked: true,
+      readVersion: "2",
+      listFit: doesNotFit,
+    });
     expect(list.folded()).toEqual(["tdd"]);
   });
 
@@ -129,7 +159,7 @@ describe("useDeployedSkillsList", () => {
     const list = renderList({
       rows: [row("tdd", 7), row("commit", 0)],
       checked: true,
-      reads: 1,
+      readVersion: "1",
       listFit: doesNotFit,
     });
     const fixed = [row("tdd", 7), row("commit", 7)];
@@ -137,7 +167,7 @@ describe("useDeployedSkillsList", () => {
     list.rerender({
       rows: fixed,
       checked: true,
-      reads: 1,
+      readVersion: "1",
       listFit: doesNotFit,
     });
     expect(list.folded()).toEqual(["tdd"]);
@@ -145,7 +175,7 @@ describe("useDeployedSkillsList", () => {
     list.rerender({
       rows: fixed,
       checked: true,
-      reads: 2,
+      readVersion: "2",
       listFit: doesNotFit,
     });
     expect(list.folded()).toEqual(["tdd", "commit"]);
@@ -156,7 +186,7 @@ describe("useDeployedSkillsList", () => {
     const list = renderList({
       rows,
       checked: true,
-      reads: 1,
+      readVersion: "1",
       listFit: doesNotFit,
     });
     expect(list.open()).toBe(false);
@@ -164,7 +194,12 @@ describe("useDeployedSkillsList", () => {
     list.toggle();
     expect(list.open()).toBe(true);
 
-    list.rerender({ rows, checked: true, reads: 2, listFit: doesNotFit });
+    list.rerender({
+      rows,
+      checked: true,
+      readVersion: "2",
+      listFit: doesNotFit,
+    });
     expect(list.open()).toBe(true);
   });
 });

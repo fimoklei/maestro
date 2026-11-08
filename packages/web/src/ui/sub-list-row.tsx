@@ -1,16 +1,18 @@
-import type { ReactNode } from "react";
 import type { ActionsMenuItem } from "./actions-menu";
 import { cn } from "./cn";
 import { MachineValue } from "./machine-value";
 import { RowMenu } from "./row-menu";
 import { Skeleton } from "./skeleton";
-import { STATUS_TOKENS } from "./status-family";
+import { StatusMark } from "./status-mark";
 import type { StatusReading } from "./status-reading";
 import { Tooltip } from "./tooltip";
 import { useReadSkeleton } from "./use-read-skeleton";
 
 // Inside the pane a row carries a mark, never a badge (#1065).
 type RowMark = StatusReading & { hint?: string };
+
+/** A row's value: a version or path is a machine value; words such as a count are not. */
+export type SubListValue = { text: string; machine: boolean };
 
 export function SubListRow({
   mark,
@@ -22,8 +24,7 @@ export function SubListRow({
   /** Null while the reading has not answered: no status before the server. */
   mark: RowMark | null;
   name: string;
-  /** Set a version or path in `MachineValue`; words such as a count stay plain. */
-  value: ReactNode;
+  value: SubListValue;
   menuLabel: string;
   /** A page elsewhere, such as GitHub, is an item here: the row has no link cell. */
   items: readonly ActionsMenuItem[];
@@ -34,7 +35,7 @@ export function SubListRow({
       {/* The name keeps priority: the value gives up its width first. */}
       <span className="min-w-0 truncate text-gray-12">{name}</span>
       <span className="min-w-0 flex-1 truncate text-right text-gray-11">
-        {value}
+        {value.machine ? <MachineValue>{value.text}</MachineValue> : value.text}
       </span>
       <RowMenu
         label={menuLabel}
@@ -64,25 +65,17 @@ export function SubListValueRow({
   return (
     <li className="border-divider border-b pb-tight text-row">
       <span className="flex h-row items-center gap-inline">
-        <span
-          aria-hidden="true"
-          className={cn(
-            "inline-flex w-6 flex-none justify-center",
-            status === null ? null : STATUS_TOKENS[status.family].mark,
-          )}
-        >
-          {status?.glyph}
-        </span>
         {status === null ? null : (
           <span className="flex-none text-gray-12 text-meta">
-            {status.word}
+            <StatusMark reading={status} />
           </span>
         )}
         <span className="min-w-0 flex-1 truncate text-gray-12">
           <MachineValue>{value}</MachineValue>
         </span>
       </span>
-      <span className="block pl-8 text-gray-11 text-meta">{meta}</span>
+      {/* Flush with the glyph: the reading's word sets no fixed indent to align under. */}
+      <span className="block text-gray-11 text-meta">{meta}</span>
     </li>
   );
 }

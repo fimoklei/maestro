@@ -34,8 +34,7 @@ function renderList(
 ) {
   return renderWithQuery(
     <SelectedSkills
-      read={{ checked: true, reads: 1 }}
-      listFit={() => true}
+      basis={{ checked: true, readVersion: "1", listFit: () => true }}
       row={{
         primitives,
         skillRows: repoSkillRows(primitives, drift),

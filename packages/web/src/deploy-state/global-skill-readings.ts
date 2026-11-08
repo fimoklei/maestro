@@ -1,14 +1,13 @@
 import type { GlobalFolderState } from "@maestro/core";
 import type { Copy } from "../ui/phrase";
+import type { SubListValue } from "../ui/sub-list-row";
 import {
   deviatingFoldersValue,
   inFoldersHint,
   noCopyInHint,
   notUpdatedLine,
 } from "./deploy-state-copy";
-
-/** How one skill's copy in one Global folder deviates; null where it does not. */
-export type FolderSkillReading = "local-edits" | "missing" | "not-updated";
+import { FOLDER_READINGS, type FolderSkillReading } from "./folder-reading";
 
 type SkillFolderReading = {
   skill: string;
@@ -29,7 +28,7 @@ type DeviatingSkill = {
   /** Its worst reading across the written folders. */
   reading: FolderSkillReading;
   /** The row's value in place of the version. */
-  value: Copy;
+  value: SubListValue;
   hover: Copy;
 };
 
@@ -41,13 +40,6 @@ export type GlobalSkillReadings = {
   /** Each skill that deviates somewhere, in skill order. */
   deviating: DeviatingSkill[];
 };
-
-// Worst first: a copy that holds work outranks one that is absent or behind.
-const WORST_FIRST: readonly FolderSkillReading[] = [
-  "local-edits",
-  "missing",
-  "not-updated",
-];
 
 function readingIn(
   folder: GlobalFolderState,
@@ -104,7 +96,7 @@ export function globalSkillReadings(
       const reading = readingIn(folder, skill);
       return reading === null ? [] : [{ folder, reading }];
     });
-    const reading = WORST_FIRST.find((each) =>
+    const reading = FOLDER_READINGS.find((each) =>
       off.some((one) => one.reading === each),
     );
     const [only] = off;

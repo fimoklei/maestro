@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MachineValue } from "./machine-value";
 import { reading } from "./status-reading";
 import { SubListGroup } from "./sub-list-group";
 import { SubListRow } from "./sub-list-row";
@@ -11,7 +10,7 @@ const row = (name: string) => (
     key={name}
     mark={UP_TO_DATE}
     name={name}
-    value={<MachineValue>v0.4.1</MachineValue>}
+    value={{ text: "v0.4.1", machine: true }}
     menuLabel={`Actions for ${name}`}
     items={[{ label: "Remove skill", danger: true, onSelect: () => {} }]}
   />
@@ -41,7 +40,7 @@ const meta = {
             hint: "In ~/.claude/skills and ~/.agents/skills.",
           }}
           name="workflow-commit"
-          value="Both folders"
+          value={{ text: "Both folders", machine: false }}
           menuLabel="Actions for workflow-commit"
           items={[{ label: "Import local edits", onSelect: () => {} }]}
         />

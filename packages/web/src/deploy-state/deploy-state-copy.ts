@@ -7,7 +7,6 @@ import {
 import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
 import {
-  type Copy,
   machine,
   machineList,
   named,
@@ -15,6 +14,7 @@ import {
   type Phrase,
   phrase,
 } from "../ui/phrase";
+import type { SubListValue } from "../ui/sub-list-row";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
 import type { FolderCounts } from "./global-skill-readings";
 import { joinNames } from "./join-names";
@@ -117,12 +117,17 @@ export function folderMetaLine(
 export function deviatingFoldersValue(
   deviating: readonly string[],
   written: number,
-): Copy {
+): SubListValue {
   const [only] = deviating;
   if (deviating.length === 1 && only !== undefined)
-    return phrase`${machine(only)}`;
-  if (deviating.length < written) return `${deviating.length} folders`;
-  return written === 2 ? "Both folders" : `All ${written} folders`;
+    return { text: only, machine: true };
+  const text =
+    deviating.length < written
+      ? `${deviating.length} folders`
+      : written === 2
+        ? "Both folders"
+        : `All ${written} folders`;
+  return { text, machine: false };
 }
 
 /** A Global skill row's hover: the folders its copies deviate in. */

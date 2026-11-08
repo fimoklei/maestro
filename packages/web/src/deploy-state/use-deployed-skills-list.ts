@@ -28,9 +28,18 @@ function scrollArea(element: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
+/** When the list decides, and how it measures: the target's reads and the pane's fit. */
+export type SkillsListBasis = {
+  /** The first update check answered. */
+  checked: boolean;
+  /** Changes on each answered read of the target, with data or an error, and at no other time. */
+  readVersion: string;
+  listFit: ListFit;
+};
+
 /** What the list decided on one read, by skill name. */
 type Decision = {
-  reads: number;
+  readVersion: string;
   order: readonly string[];
   folded: readonly string[];
   /** The fold is measured once the decided order has rendered. */
@@ -61,16 +70,9 @@ function inOrder(
 export function useDeployedSkillsList({
   rows,
   checked,
-  reads,
+  readVersion,
   listFit,
-}: {
-  rows: readonly SkillListRow[];
-  /** The first update check answered. */
-  checked: boolean;
-  /** Rises on each answered read of the target. */
-  reads: number;
-  listFit: ListFit;
-}): {
+}: { rows: readonly SkillListRow[] } & SkillsListBasis): {
   rows: readonly SkillListRow[];
   folded: readonly SkillListRow[];
   /** The group's open state, kept for as long as the list is mounted. */
@@ -83,9 +85,9 @@ export function useDeployedSkillsList({
   const [open, setOpen] = useState(false);
   const [decided, setDecided] = useState<Decision | null>(null);
   let decision = decided;
-  if (checked && decision?.reads !== reads) {
+  if (checked && decision?.readVersion !== readVersion) {
     decision = {
-      reads,
+      readVersion,
       order: ranked(rows),
       // The last fold holds until the new order is measured.
       folded: decided?.folded ?? [],

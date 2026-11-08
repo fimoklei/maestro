@@ -42,9 +42,6 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`target:${target.name}`": "key",
     "`Remove ${name}`": "dialog title",
   },
-  "deploy-state/selected-skills.tsx": {
-    "`Actions for ${primitive.name}`": "menu label",
-  },
   "deploy-state/target-menu.ts": {
     "`${UPDATE_TARGET} ${row.updateName}`": "menu item",
   },
@@ -134,6 +131,9 @@ const PLAIN: Record<string, Record<string, string>> = {
 // scan knows a value by its identifier's words only: a release held in a
 // variable named `latest`, or a file name written into the words, escapes it.
 const PLAIN_MACHINE: Record<string, Record<string, string>> = {
+  "deploy-state/skill-list-row.ts": {
+    "`${primitive.version} → ${latest}`": "sub-list value, set in mono",
+  },
   "deploy-state/target-rows.ts": {
     "`repo:${repoPath}`": "key",
   },

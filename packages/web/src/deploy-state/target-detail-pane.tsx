@@ -25,7 +25,7 @@ import {
   screenComparedFact,
   unfinishedOperationNotice,
 } from "./release-head-copy";
-import { SelectedSkills, type SkillsRead } from "./selected-skills";
+import { SelectedSkills } from "./selected-skills";
 import { skippedEntryText } from "./skipped-entry-text";
 import {
   showsReadFailure,
@@ -36,7 +36,7 @@ import {
   type TargetRow,
   undetectedFolderLines,
 } from "./target-rows";
-import type { ListFit } from "./use-deployed-skills-list";
+import type { SkillsListBasis } from "./use-deployed-skills-list";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
 // Update target as `update`, and the dialogs they open as `dialogs`.
@@ -51,15 +51,13 @@ export function TargetDetailPane({
   isRetrying,
   retryFailure,
   compared,
-  skillsRead,
-  listFit,
+  skillsList,
   update,
   foot,
   dialogs,
 }: {
   row: TargetRow;
-  skillsRead: SkillsRead;
-  listFit: ListFit;
+  skillsList: SkillsListBasis;
   position?: { index: number; count: number } | null;
   onPage?: (step: -1 | 1) => void;
   onClose: () => void;
@@ -205,8 +203,7 @@ export function TargetDetailPane({
               <SelectedSkills
                 key={row.id}
                 row={row}
-                read={skillsRead}
-                listFit={listFit}
+                basis={skillsList}
                 headingRef={skillsHeading}
                 onRemoved={() => skillsHeading.current?.focus()}
               />

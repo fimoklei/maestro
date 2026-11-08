@@ -113,8 +113,7 @@ export function renderRow({
   const list = (primitives: (typeof tdd)[]) => (
     <ScreenHost>
       <SelectedSkills
-        read={{ checked: false, reads: 0 }}
-        listFit={() => true}
+        basis={{ checked: false, readVersion: "0", listFit: () => true }}
         row={{
           primitives,
           skillRows: repoSkillRows(primitives, PENDING_DRIFT),

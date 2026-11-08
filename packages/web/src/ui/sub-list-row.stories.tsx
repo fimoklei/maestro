@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MachineValue } from "./machine-value";
 import { reading } from "./status-reading";
 import { SubListRow, SubListSkeleton, SubListValueRow } from "./sub-list-row";
 
@@ -9,7 +8,7 @@ const meta = {
   args: {
     mark: reading("In sync", "good"),
     name: "Claude Code",
-    value: <MachineValue>v1.4.0</MachineValue>,
+    value: { text: "v1.4.0", machine: true },
     menuLabel: "Actions for Claude Code",
     items: [
       { label: "View Deploy-state", onSelect: () => {} },
@@ -35,7 +34,7 @@ export const Behind: Story = {
   args: {
     mark: { ...reading("Behind", "attention"), hint: "v1.4.0 is released." },
     name: "Codex",
-    value: <MachineValue>v1.3.2</MachineValue>,
+    value: { text: "v1.3.2", machine: true },
     menuLabel: "Actions for Codex",
     items: [
       { label: "Update target", onSelect: () => {} },
@@ -52,7 +51,7 @@ export const LongNameAndFolder: Story = {
       hint: "No copy in ~/.agents/skills.",
     },
     name: "improve-codebase-architecture",
-    value: <MachineValue>~/.agents/skills</MachineValue>,
+    value: { text: "~/.agents/skills", machine: true },
     menuLabel: "Actions for improve-codebase-architecture",
   },
 };

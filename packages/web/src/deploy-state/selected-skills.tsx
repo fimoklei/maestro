@@ -1,9 +1,8 @@
 import { type Ref, useEffect, useState } from "react";
 import { UP_TO_DATE } from "../inventory/skill-status";
 import { IMPORT_LOCAL_EDITS, REMOVE_SKILL } from "../ui/control-labels";
-import { MachineValue } from "../ui/machine-value";
 import { Notice } from "../ui/notice";
-import { plainText } from "../ui/phrase";
+import { rowActionsLabel } from "../ui/row-menu-copy";
 import { SubListGroup } from "../ui/sub-list-group";
 import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow } from "../ui/sub-list-row";
@@ -13,7 +12,7 @@ import { RemoveSkillFlow } from "./remove-skill-flow";
 import type { SkillListRow } from "./skill-list-row";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";
 import {
-  type ListFit,
+  type SkillsListBasis,
   useDeployedSkillsList,
 } from "./use-deployed-skills-list";
 
@@ -31,31 +30,21 @@ type SkillsRow = Pick<
 
 type OpenDialog = { kind: "remove" | "import"; name: string };
 
-/** The target's reads the list orders by. */
-export type SkillsRead = {
-  /** The first update check answered. */
-  checked: boolean;
-  /** Rises on each answered read of the target. */
-  reads: number;
-};
-
 export function SelectedSkills({
   row,
-  read,
-  listFit,
+  basis,
   onRemoved,
   headingRef,
 }: {
   row: SkillsRow;
-  read: SkillsRead;
-  listFit: ListFit;
+  basis: SkillsListBasis;
   // Called after the dialog is gone: a successful removal destroys the trigger
   // the modal's own focus-restore would aim at.
   onRemoved?: () => void;
   headingRef: Ref<HTMLHeadingElement>;
 }) {
   const { primitives, drift } = row;
-  const list = useDeployedSkillsList({ rows: row.skillRows, ...read, listFit });
+  const list = useDeployedSkillsList({ rows: row.skillRows, ...basis });
   const [open, setOpen] = useState<OpenDialog | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
 
@@ -77,14 +66,8 @@ export function SelectedSkills({
       key={primitive.name}
       mark={mark === null ? null : { ...mark, hint: hover }}
       name={primitive.name}
-      value={
-        typeof value === "string" ? (
-          value
-        ) : (
-          <MachineValue>{plainText(value)}</MachineValue>
-        )
-      }
-      menuLabel={`Actions for ${primitive.name}`}
+      value={value}
+      menuLabel={rowActionsLabel(primitive.name)}
       items={[
         ...(primitive.github?.kind === "link"
           ? [{ label: VIEW_SKILL_ON_GITHUB, href: primitive.github.url }]

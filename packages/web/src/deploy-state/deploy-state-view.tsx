@@ -35,7 +35,6 @@ import {
 } from "./deploy-state-copy";
 import { folderSubRows } from "./folder-sub-rows";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
-import type { SkillsRead } from "./selected-skills";
 import { TargetDetailPane } from "./target-detail-pane";
 import { targetLinkItems, targetMenuItems } from "./target-menu";
 import { targetPaneActions } from "./target-pane-actions";
@@ -49,7 +48,7 @@ import {
 import { IN_SYNC, TARGET_CHIPS, TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
-import type { ListFit } from "./use-deployed-skills-list";
+import type { ListFit, SkillsListBasis } from "./use-deployed-skills-list";
 import { globalDeployStateQueryOptions } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdateTarget } from "./use-update-target";
@@ -193,16 +192,17 @@ export function DeployStateView({
     outcome: "untracked",
   };
   const freshness = freshnessLine(reading, now);
-  const skillsRead = (row: TargetRow): SkillsRead => {
+  const skillsList = (row: TargetRow): SkillsListBasis => {
     const index = repoPaths.findIndex((path) => repoRowId(path) === row.id);
     const deploy = index === -1 ? globalDeploy : repoDeploy[index];
     const drift = index === -1 ? globalDrift : repoDrift[index];
-    // Each answer, data or error, moves one of its two timestamps forward.
-    const answers = (query: typeof deploy | typeof drift) =>
-      (query?.dataUpdatedAt ?? 0) + (query?.errorUpdatedAt ?? 0);
+    // Each answer, data or error, moves one of its query's two timestamps.
+    const answeredAt = (query: typeof deploy | typeof drift) =>
+      `${query?.dataUpdatedAt ?? 0}:${query?.errorUpdatedAt ?? 0}`;
     return {
       checked: drift?.data !== undefined || drift?.isError === true,
-      reads: answers(deploy) + answers(drift),
+      readVersion: `${answeredAt(deploy)}/${answeredAt(drift)}`,
+      listFit,
     };
   };
 
@@ -337,8 +337,7 @@ export function DeployStateView({
             isRetrying={retry.isRetrying(row.wire)}
             retryFailure={retry.failure(row.wire)}
             compared={freshness}
-            skillsRead={skillsRead(row)}
-            listFit={listFit}
+            skillsList={skillsList(row)}
             update={placed.update}
             foot={placed.foot}
             dialogs={

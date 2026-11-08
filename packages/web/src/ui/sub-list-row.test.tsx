@@ -10,7 +10,7 @@ const renderRow = (onSelect = () => {}) =>
       <SubListRow
         mark={{ ...reading("Behind", "attention"), hint: "A newer release" }}
         name="…/me/project"
-        value="v0.3.2"
+        value={{ text: "v0.3.2", machine: true }}
         menuLabel="Actions for …/me/project"
         items={[{ label: "Update target", onSelect }]}
       />
@@ -74,7 +74,7 @@ describe("SubListRow", () => {
         <SubListRow
           mark={null}
           name="tdd"
-          value="v0.3.2"
+          value={{ text: "v0.3.2", machine: true }}
           menuLabel="Actions for tdd"
           items={[]}
         />

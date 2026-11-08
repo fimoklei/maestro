@@ -7,13 +7,12 @@ import {
   UNVERIFIED,
   UP_TO_DATE,
 } from "../inventory/skill-status";
-import { type Copy, machine, phrase, plainText } from "../ui/phrase";
+import { plainText } from "../ui/phrase";
 import { WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
-import type {
-  FolderSkillReading,
-  GlobalSkillReadings,
-} from "./global-skill-readings";
+import type { SubListValue } from "../ui/sub-list-row";
+import { FOLDER_READINGS, type FolderSkillReading } from "./folder-reading";
+import type { GlobalSkillReadings } from "./global-skill-readings";
 import { skillMark } from "./skill-mark";
 import { LOCAL_EDITS, NOT_UPDATED } from "./target-status";
 
@@ -29,7 +28,7 @@ export type SkillListRow = {
   /** Null while the reading has not answered. */
   mark: StatusReading | null;
   /** A version or path as a machine value; a folder count in words. */
-  value: Copy;
+  value: SubListValue;
   /** The mark's tooltip line under its word. */
   hover: string | undefined;
   /** Lower is worse: the mark's place in the skill-row order. */
@@ -46,9 +45,7 @@ const FOLDER_MARKS = {
 
 // Worst first. Unknown sits with Unverified: neither proves the skill fine.
 const RANKED = [
-  LOCAL_EDITS,
-  MISSING,
-  NOT_UPDATED,
+  ...FOLDER_READINGS.map((each) => FOLDER_MARKS[each]),
   UNVERIFIED,
   UNKNOWN,
   NO_LONGER_RELEASED,
@@ -73,11 +70,13 @@ export function repoSkillRows(
     return {
       primitive,
       mark,
-      value: phrase`${machine(
-        lagsPin(status) && latest
-          ? `${primitive.version} → ${latest}`
-          : primitive.version,
-      )}`,
+      value: {
+        text:
+          lagsPin(status) && latest
+            ? `${primitive.version} → ${latest}`
+            : primitive.version,
+        machine: true,
+      },
       hover: mark?.hint,
       rank: rankOf(mark),
       clean: mark?.word === UP_TO_DATE.word,
