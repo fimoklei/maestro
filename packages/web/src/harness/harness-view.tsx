@@ -55,6 +55,7 @@ import {
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
+import { ProposeBatchAction } from "./propose-batch-action";
 import { type RowActionHandlers, rowItems } from "./row-actions";
 import {
   ALL_RELEASED,
@@ -472,7 +473,12 @@ export function HarnessView({
             count={chosen.size}
             onClear={() => setStaged(new Set())}
           >
-            {null}
+            <ProposeBatchAction
+              chosen={rows
+                .filter((row) => chosen.has(row.id))
+                .map(({ type, name, change }) => ({ type, name, change }))}
+              onSelectionSpent={() => setStaged(new Set())}
+            />
           </SelectionBar>
         ) : null
       }
