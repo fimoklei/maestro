@@ -25,7 +25,7 @@ import {
   screenComparedFact,
   unfinishedOperationNotice,
 } from "./release-head-copy";
-import { SelectedSkills } from "./selected-skills";
+import { SelectedSkills, type SkillsRead } from "./selected-skills";
 import { skippedEntryText } from "./skipped-entry-text";
 import {
   showsReadFailure,
@@ -50,11 +50,13 @@ export function TargetDetailPane({
   isRetrying,
   retryFailure,
   compared,
+  skillsRead,
   update,
   foot,
   dialogs,
 }: {
   row: TargetRow;
+  skillsRead: SkillsRead;
   position?: { index: number; count: number } | null;
   onPage?: (step: -1 | 1) => void;
   onClose: () => void;
@@ -196,8 +198,11 @@ export function TargetDetailPane({
               {row.folders === undefined ? null : (
                 <GlobalFolders folders={row.folders} />
               )}
+              {/* Keyed: paging to another target opens its list afresh. */}
               <SelectedSkills
+                key={row.id}
                 row={row}
+                read={skillsRead}
                 headingRef={skillsHeading}
                 onRemoved={() => skillsHeading.current?.focus()}
               />
