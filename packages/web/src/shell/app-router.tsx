@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useParams } from "react-router";
 import { ConnectView } from "../connect-gate/connect-view";
 import { WelcomeView } from "../connect-gate/welcome-view";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
+import { measureListFit } from "../deploy-state/use-deployed-skills-list";
 import { HarnessScreen } from "../harness/harness-screen";
 import {
   FIRST_INVENTORY_PATH,
@@ -41,7 +42,7 @@ export function AppRoutes() {
         <Route path="appearance" element={<AppearancePage />} />
       </Route>
       <Route element={<AppShell />}>
-        <Route index element={<DeployStateView />} />
+        <Route index element={<DeployStateView listFit={measureListFit} />} />
         <Route
           path="inventory"
           element={<Navigate to={FIRST_INVENTORY_PATH} replace />}

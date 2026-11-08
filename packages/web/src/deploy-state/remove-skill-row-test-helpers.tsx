@@ -114,6 +114,7 @@ export function renderRow({
     <ScreenHost>
       <SelectedSkills
         read={{ checked: false, reads: 0 }}
+        listFit={() => true}
         row={{
           primitives,
           skillRows: repoSkillRows(primitives, PENDING_DRIFT),

@@ -49,6 +49,7 @@ import {
 import { IN_SYNC, TARGET_CHIPS, TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
 import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
+import type { ListFit } from "./use-deployed-skills-list";
 import { globalDeployStateQueryOptions } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdateTarget } from "./use-update-target";
@@ -76,7 +77,12 @@ const COLUMN_OPTIONS = [
 const LABELS_BELOW_REM = 46;
 const COUNTS_BELOW_REM = 42;
 
-export function DeployStateView() {
+export function DeployStateView({
+  listFit,
+}: {
+  /** Whether a pane's Deployed skills fits its scroll area. */
+  listFit: ListFit;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const registry = useRegistry();
@@ -332,6 +338,7 @@ export function DeployStateView() {
             retryFailure={retry.failure(row.wire)}
             compared={freshness}
             skillsRead={skillsRead(row)}
+            listFit={listFit}
             update={placed.update}
             foot={placed.foot}
             dialogs={

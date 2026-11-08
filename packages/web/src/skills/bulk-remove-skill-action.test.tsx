@@ -312,7 +312,7 @@ describe("BulkRemoveRun", () => {
       <>
         <Opener targets={[ACME_WEB]} />
         <MemoryRouter>
-          <DeployStateView />
+          <DeployStateView listFit={() => true} />
         </MemoryRouter>
       </>,
     );
@@ -401,7 +401,7 @@ describe("BulkRemoveRun", () => {
       <>
         <Opener targets={[ACME_WEB]} />
         <MemoryRouter>
-          <DeployStateView />
+          <DeployStateView listFit={() => true} />
         </MemoryRouter>
       </>,
     );

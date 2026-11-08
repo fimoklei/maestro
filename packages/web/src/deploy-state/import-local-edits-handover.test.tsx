@@ -85,7 +85,7 @@ function renderApp() {
   renderWithQuery(
     <MemoryRouter initialEntries={["/"]}>
       <Routes>
-        <Route path="/" element={<DeployStateView />} />
+        <Route path="/" element={<DeployStateView listFit={() => true} />} />
         <Route
           path="/harness"
           element={

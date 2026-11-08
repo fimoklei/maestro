@@ -138,11 +138,15 @@ function HarnessProbe() {
   );
 }
 
-export function renderDeployState(state?: { openTarget: string }) {
+/** `fits` answers the pane's "does Deployed skills fit" measurement. */
+export function renderDeployState(
+  state?: { openTarget: string },
+  { fits = true }: { fits?: boolean } = {},
+) {
   return renderWithQuery(
     <MemoryRouter initialEntries={[{ pathname: "/", state }]}>
       <Routes>
-        <Route path="/" element={<DeployStateView />} />
+        <Route path="/" element={<DeployStateView listFit={() => fits} />} />
         <Route
           path={inventoryPathFor("skill")}
           element={<p>inventory view</p>}

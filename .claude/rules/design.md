@@ -83,6 +83,10 @@ the new pattern to this section before building it.
   explaining the state, the notice, then the sub-list. A fact is a label in
   slate 11 `meta` beside a short value, in a two-column grid. A sub-list row is
   32px: mark, name, machine value, ⋮.
+- Fold a sub-list's rows with `SubListGroup`: the list's last item, one 32px
+  button in the Tab order with the chevron in the mark slot, then the label
+  and its count in `text-gray-11`. Name it `{label}, {count}`; `aria-expanded`
+  carries the state. Its rows sit in a list inside the item.
 - Fix the pane's foot and scroll only its content. The foot holds the row's ⋮
   items that the pane does not place beside their fact or in a notice. Show
   at most two as 32px buttons: the pane's primary, and the item that edits

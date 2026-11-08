@@ -32,6 +32,7 @@ import {
   type TargetPaneActions,
 } from "./target-pane-actions";
 import { editedSkills, folderPaneLines, type TargetRow } from "./target-rows";
+import type { ListFit } from "./use-deployed-skills-list";
 import { useDifferingCopyFolders } from "./use-import-local-edits";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
@@ -48,12 +49,14 @@ export function TargetDetailPane({
   retryFailure,
   compared,
   skillsRead,
+  listFit,
   update,
   foot,
   dialogs,
 }: {
   row: TargetRow;
   skillsRead: SkillsRead;
+  listFit: ListFit;
   position?: { index: number; count: number } | null;
   onPage?: (step: -1 | 1) => void;
   onClose: () => void;
@@ -198,6 +201,7 @@ export function TargetDetailPane({
                 key={row.id}
                 row={row}
                 read={skillsRead}
+                listFit={listFit}
                 headingRef={skillsHeading}
                 onRemoved={() => skillsHeading.current?.focus()}
               />
