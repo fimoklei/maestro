@@ -41,8 +41,9 @@ The observed behavior behind them is in `docs/research/806-gh-pull-request-statu
 - Recheck identity and the request itself against a fresh read before every
   write. A number the browser sent is a claim, never an authorisation.
 - Never write while more than one open request matches the branch.
-- Classify a write's failure the way a read's is classified, and parse nothing
-  out of its stdout.
+- Classify a write's failure the way a read's is classified. Parse nothing out
+  of a write's stdout but `pr create`'s request URL, whole and on this
+  repository; any other stdout fails the write.
 
 ## Classifying output
 

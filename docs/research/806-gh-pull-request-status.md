@@ -388,7 +388,11 @@ controlled process outcomes in the tests.
 
 All four take `{<number> | <url> | <branch>}`; Maestro passes the number it
 matched itself. Exit codes and the offline phrase are §3's, unchanged: a write
-classifies the same way a read does, and its stdout is never parsed.
+classifies the same way a read does. Only `pr create`'s stdout is parsed
+(#1823): the help's printed URL, the whole stdout, on the origin's repository
+in any letter case; the number is read from the URL. gh 2.101.0's help says the
+same. Not yet captured from a live create: any stdout beyond the URL fails the
+write, so the outcome reads as missing, never as a wrong number.
 
 ### The signed-in login (measured 2026-10-06, `gh` 2.101.0, #1373)
 

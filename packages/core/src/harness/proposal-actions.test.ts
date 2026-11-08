@@ -93,7 +93,13 @@ function build(overrides?: {
         overrides?.viewer ?? { outcome: "read", login: "fimoklei" },
       createRequest: async (_origin, made) => {
         calls.created.push(made);
-        return write;
+        return write.ok
+          ? {
+              ok: true,
+              number: 52,
+              url: "https://github.com/fimoklei/agent-harness/pull/52",
+            }
+          : write;
       },
       reopenRequest: async (_origin, number) => {
         calls.reopened.push(number);
