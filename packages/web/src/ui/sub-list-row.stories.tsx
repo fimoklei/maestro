@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { MachineValue } from "./machine-value";
 import { reading } from "./status-reading";
 import { SubListRow, SubListSkeleton, SubListValueRow } from "./sub-list-row";
 
@@ -8,7 +9,7 @@ const meta = {
   args: {
     mark: reading("In sync", "good"),
     name: "Claude Code",
-    value: "v1.4.0",
+    value: <MachineValue>v1.4.0</MachineValue>,
     menuLabel: "Actions for Claude Code",
     items: [
       { label: "View Deploy-state", onSelect: () => {} },
@@ -34,12 +35,25 @@ export const Behind: Story = {
   args: {
     mark: { ...reading("Behind", "attention"), hint: "v1.4.0 is released." },
     name: "Codex",
-    value: "v1.3.2",
+    value: <MachineValue>v1.3.2</MachineValue>,
     menuLabel: "Actions for Codex",
     items: [
       { label: "Update target", onSelect: () => {} },
       { label: "Remove from target", danger: true, onSelect: () => {} },
     ],
+  },
+};
+
+// A long name keeps its width; the folder in place of the version gives way.
+export const LongNameAndFolder: Story = {
+  args: {
+    mark: {
+      ...reading("Missing", "attention", "⚠"),
+      hint: "No copy in ~/.agents/skills.",
+    },
+    name: "improve-codebase-architecture",
+    value: <MachineValue>~/.agents/skills</MachineValue>,
+    menuLabel: "Actions for improve-codebase-architecture",
   },
 };
 

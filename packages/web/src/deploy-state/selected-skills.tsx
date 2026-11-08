@@ -1,19 +1,25 @@
 import { type Ref, useEffect, useState } from "react";
-import { lagsPin } from "../drift/drift-view-model";
 import { IMPORT_LOCAL_EDITS, REMOVE_SKILL } from "../ui/control-labels";
+import { MachineValue } from "../ui/machine-value";
 import { Notice } from "../ui/notice";
+import { plainText } from "../ui/phrase";
 import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow } from "../ui/sub-list-row";
 import { packageBehindNotice, VIEW_SKILL_ON_GITHUB } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
-
 import { RemoveSkillFlow } from "./remove-skill-flow";
-import { skillMark } from "./skill-mark";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";
 
 type SkillsRow = Pick<
   TargetRow,
-  "primitives" | "drift" | "target" | "wire" | "name" | "updateName" | "pending"
+  | "primitives"
+  | "skillRows"
+  | "drift"
+  | "target"
+  | "wire"
+  | "name"
+  | "updateName"
+  | "pending"
 >;
 
 type OpenDialog = { kind: "remove" | "import"; name: string };
@@ -54,18 +60,18 @@ export function SelectedSkills({
         headingRef={headingRef}
       />
       <ul className="m-0 list-none border-divider border-t p-0">
-        {primitives.map((primitive) => {
-          const status = drift.skillStatus(primitive.name);
-          const latest = drift.latest(primitive.name);
+        {row.skillRows.map(({ primitive, mark, value, hover }) => {
           return (
             <SubListRow
               key={primitive.name}
-              mark={skillMark(primitive.copy, status)}
+              mark={mark === null ? null : { ...mark, hint: hover }}
               name={primitive.name}
               value={
-                lagsPin(status) && latest
-                  ? `${primitive.version} → ${latest}`
-                  : primitive.version
+                typeof value === "string" ? (
+                  value
+                ) : (
+                  <MachineValue>{plainText(value)}</MachineValue>
+                )
               }
               menuLabel={`Actions for ${primitive.name}`}
               items={[

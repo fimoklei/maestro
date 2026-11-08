@@ -50,6 +50,11 @@ import {
 } from "./release-head-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import {
+  globalSkillRows,
+  repoSkillRows,
+  type SkillListRow,
+} from "./skill-list-row";
+import {
   skippedEntryReason,
   skippedEntryText,
   skippedNeedsAttention,
@@ -104,6 +109,8 @@ export type TargetRow = {
   pinned?: PinnedPerSkill;
   pending?: PendingOperation;
   primitives: DeployedPrimitive[];
+  /** Deployed skills' rows, ready to render. */
+  skillRows: SkillListRow[];
   drift: DriftViewModel;
   skipped: SkippedEntry[];
   otherOrigins: string[];
@@ -242,6 +249,7 @@ export function globalRows(
   const table = globalSkillReadings(
     data.primitives.map((primitive) => primitive.name),
     data.folders,
+    data.releaseHead?.release,
   );
   // A failed read's stale copies count nowhere.
   const countsOf = (folder: GlobalFolderState): FolderCounts =>
@@ -314,6 +322,7 @@ export function globalRows(
     (folder) => !folder.detected && folder.notUpdated !== null,
   );
   const names = data.primitives.map((primitive) => primitive.name);
+  const globalDrift = drift.forTool(names);
   return [
     {
       id: GLOBAL_ROW_ID,
@@ -343,7 +352,11 @@ export function globalRows(
       // A failed read's stale record offers no retry: Re-read is the way back.
       ...(pending && !readFailed ? { pending } : {}),
       primitives: data.primitives,
-      drift: drift.forTool(names),
+      // A failed read's stale copies name no folder.
+      skillRows: readFailed
+        ? repoSkillRows(data.primitives, globalDrift)
+        : globalSkillRows(data.primitives, globalDrift, table),
+      drift: globalDrift,
       skipped: data.skipped,
       otherOrigins: data.otherOrigins,
       ...(data.extraFiles === undefined ? {} : { extraFiles: data.extraFiles }),
@@ -405,6 +418,7 @@ export function repoRow(
     ...(pinned ? { pinned } : {}),
     ...(pending && !read.isError ? { pending } : {}),
     primitives: data?.primitives ?? [],
+    skillRows: repoSkillRows(data?.primitives ?? [], drift),
     drift,
     skipped: data?.skipped ?? [],
     otherOrigins: [],

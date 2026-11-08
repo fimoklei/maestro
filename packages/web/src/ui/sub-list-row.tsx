@@ -22,6 +22,7 @@ export function SubListRow({
   /** Null while the reading has not answered: no status before the server. */
   mark: RowMark | null;
   name: string;
+  /** Set a version or path in `MachineValue`; words such as a count stay plain. */
   value: ReactNode;
   menuLabel: string;
   /** A page elsewhere, such as GitHub, is an item here: the row has no link cell. */
@@ -30,9 +31,10 @@ export function SubListRow({
   return (
     <li className="group/row flex h-row items-center gap-inline border-divider border-b text-row">
       <Mark mark={mark} />
-      <span className="min-w-0 flex-1 truncate text-gray-12">{name}</span>
-      <span className="text-gray-11">
-        <MachineValue>{value}</MachineValue>
+      {/* The name keeps priority: the value gives up its width first. */}
+      <span className="min-w-0 truncate text-gray-12">{name}</span>
+      <span className="min-w-0 flex-1 truncate text-right text-gray-11">
+        {value}
       </span>
       <RowMenu
         label={menuLabel}

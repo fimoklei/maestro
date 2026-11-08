@@ -7,6 +7,7 @@ import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse } from "../drift/use-drift";
 import { renderWithQuery } from "../test-utils";
 import { SelectedSkills } from "./selected-skills";
+import { repoSkillRows } from "./skill-list-row";
 
 // The removal flow behind a row's menu is covered by remove-skill-row-*.test.tsx.
 
@@ -35,6 +36,7 @@ function renderList(
     <SelectedSkills
       row={{
         primitives,
+        skillRows: repoSkillRows(primitives, drift),
         drift,
         target: {
           kind: "repo",

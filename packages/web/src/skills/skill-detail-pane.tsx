@@ -16,6 +16,7 @@ import { NO_CATEGORY } from "../ui/category-menu-copy";
 import { cn } from "../ui/cn";
 import { DetailPane } from "../ui/detail-pane";
 import type { FootItem } from "../ui/foot-actions";
+import { MachineValue } from "../ui/machine-value";
 import { rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
 import { SubListHeading } from "../ui/sub-list-heading";
@@ -144,7 +145,7 @@ export function SkillDetailPane({
                   key={deployment.rowId ?? deployment.label}
                   mark={deployment.mark}
                   name={deployment.label}
-                  value={deployment.release}
+                  value={<MachineValue>{deployment.release}</MachineValue>}
                   menuLabel={rowActionsLabel(
                     wholeTargetName(deployment.target, deployment.label),
                   )}

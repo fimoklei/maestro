@@ -27,25 +27,29 @@ const SKILLS = ["workflow-commit", "workflow-ship", "show-me", "tdd"];
 
 describe("globalSkillReadings", () => {
   it("reads each skill in each written folder", () => {
-    const { readings } = globalSkillReadings(SKILLS, [
-      folder("~/.claude/skills", {
-        primitives: [
-          copy("workflow-commit", "local-edits"),
-          copy("workflow-ship"),
-          copy("show-me"),
-          copy("tdd"),
-        ],
-      }),
-      folder("~/.agents/skills", {
-        primitives: [
-          copy("workflow-commit"),
-          copy("workflow-ship", "local-edits"),
-          copy("tdd"),
-        ],
-        missing: ["show-me"],
-        notUpdated: [{ name: "tdd", stillAt: "v0.4.0" }],
-      }),
-    ]);
+    const { readings } = globalSkillReadings(
+      SKILLS,
+      [
+        folder("~/.claude/skills", {
+          primitives: [
+            copy("workflow-commit", "local-edits"),
+            copy("workflow-ship"),
+            copy("show-me"),
+            copy("tdd"),
+          ],
+        }),
+        folder("~/.agents/skills", {
+          primitives: [
+            copy("workflow-commit"),
+            copy("workflow-ship", "local-edits"),
+            copy("tdd"),
+          ],
+          missing: ["show-me"],
+          notUpdated: [{ name: "tdd", stillAt: "v0.4.0" }],
+        }),
+      ],
+      "v0.4.1",
+    );
 
     expect(
       readings.map(({ skill, folder, reading }) => [skill, folder, reading]),
@@ -62,20 +66,24 @@ describe("globalSkillReadings", () => {
   });
 
   it("counts each folder's skills per reading", () => {
-    const { folders } = globalSkillReadings(SKILLS, [
-      folder("~/.claude/skills", {
-        primitives: SKILLS.map((name) => copy(name)),
-      }),
-      folder("~/.agents/skills", {
-        primitives: [
-          copy("workflow-commit", "local-edits"),
-          copy("workflow-ship", "local-edits"),
-          copy("tdd"),
-        ],
-        missing: ["show-me"],
-        notUpdated: [{ name: "tdd", stillAt: null }],
-      }),
-    ]);
+    const { folders } = globalSkillReadings(
+      SKILLS,
+      [
+        folder("~/.claude/skills", {
+          primitives: SKILLS.map((name) => copy(name)),
+        }),
+        folder("~/.agents/skills", {
+          primitives: [
+            copy("workflow-commit", "local-edits"),
+            copy("workflow-ship", "local-edits"),
+            copy("tdd"),
+          ],
+          missing: ["show-me"],
+          notUpdated: [{ name: "tdd", stillAt: null }],
+        }),
+      ],
+      "v0.4.1",
+    );
 
     expect(folders).toEqual([
       {
@@ -101,6 +109,7 @@ describe("globalSkillReadings", () => {
           strayCopies: [{ name: "tdd", atRelease: false }],
         }),
       ],
+      "v0.4.1",
     );
 
     expect(readings.map((each) => each.folder)).toEqual(["~/.claude/skills"]);

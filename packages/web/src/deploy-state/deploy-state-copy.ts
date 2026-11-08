@@ -6,7 +6,15 @@ import {
 } from "../ui/control-labels";
 import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
-import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
+import {
+  type Copy,
+  machine,
+  machineList,
+  named,
+  namedList,
+  type Phrase,
+  phrase,
+} from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
 import type { FolderCounts } from "./global-skill-readings";
 import { joinNames } from "./join-names";
@@ -101,6 +109,29 @@ export function folderMetaLine(
     ...(counts.localEdits > 0 ? [`${counts.localEdits} with local edits`] : []),
   ].join(" · ");
 }
+
+/**
+ * A Global skill row's value where its copies deviate: the one folder's path,
+ * or a count of the `deviating` folders out of the `written` ones.
+ */
+export function deviatingFoldersValue(
+  deviating: readonly string[],
+  written: number,
+): Copy {
+  const [only] = deviating;
+  if (deviating.length === 1 && only !== undefined)
+    return phrase`${machine(only)}`;
+  if (deviating.length < written) return `${deviating.length} folders`;
+  return written === 2 ? "Both folders" : `All ${written} folders`;
+}
+
+/** A Global skill row's hover: the folders its copies deviate in. */
+export const inFoldersHint = (folders: readonly string[]): Phrase =>
+  phrase`In ${machineList(folders)}.`;
+
+/** A Global skill row's Missing hover. */
+export const noCopyInHint = (folder: string): Phrase =>
+  phrase`No copy in ${machine(folder)}.`;
 
 /** A Global dialog's list of the Global folders its action writes. */
 export const WRITES_TO = "Writes to";

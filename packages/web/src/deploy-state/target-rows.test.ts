@@ -43,6 +43,7 @@ const row = (facts: Partial<TargetRow>): TargetRow => ({
   status: null,
   skills: 1,
   primitives: [],
+  skillRows: [],
   drift: {} as DriftViewModel,
   skipped: [],
   otherOrigins: [],
@@ -253,7 +254,14 @@ const skill = (
   ...(copy ? { copy } : {}),
 });
 
+// Every skill up to date, with no newer release named.
+const skillsUpToDate = {
+  skillStatus: () => "up-to-date",
+  latest: () => undefined,
+};
+
 const syncedDrift = {
+  ...skillsUpToDate,
   targetIndicator: () => "ok",
   forTool: () => syncedDrift,
 } as unknown as DriftViewModel;
@@ -338,6 +346,7 @@ describe("local edits on a target", () => {
       isError: true,
     };
     const unknownDrift = {
+      ...skillsUpToDate,
       targetIndicator: () => "unknown",
     } as unknown as DriftViewModel;
     expect(words(repoRow("/me/a", [], stale, unknownDrift))).toBe("? Unknown");
