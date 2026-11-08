@@ -53,6 +53,11 @@ export type ReportGroup = {
   label: string;
   /** One sentence for the whole group, such as its next step, after its rows. */
   note?: string;
+  /**
+   * A group that needs the reader, but whose next step a lead above states
+   * once: a calm list with its family's edge instead of a box.
+   */
+  calm?: boolean;
   rows: readonly ReportRow[];
 };
 
@@ -126,7 +131,12 @@ function Group({
   group: ReportGroup;
   headingId: string;
 }) {
-  const look = LOOK[group.tone];
+  const look =
+    group.calm === true
+      ? { ...LOOK[group.tone], boxed: false }
+      : LOOK[group.tone];
+  const edge =
+    group.calm === true ? STATUS_TOKENS[group.tone].edge : "border-edge";
   const count = group.rows.reduce((total, row) => total + (row.count ?? 1), 0);
   return (
     <section
@@ -155,13 +165,15 @@ function Group({
           "m-0 flex min-w-0 list-none flex-col overflow-hidden rounded-control border p-0",
           look.boxed
             ? cn(STATUS_TOKENS[group.tone].edge, STATUS_TOKENS[group.tone].fill)
-            : "border-edge",
+            : edge,
         )}
       >
         {group.rows.map((row, index) => {
           const divided =
             index > 0 &&
-            (look.boxed ? STATUS_TOKENS[group.tone].edge : "border-divider");
+            (look.boxed || group.calm === true
+              ? STATUS_TOKENS[group.tone].edge
+              : "border-divider");
           return look.boxed ? (
             <BoxedRow
               key={row.name}
@@ -254,6 +266,7 @@ function ListRow({
         </span>
       )}
       <Change change={row.change} ink="text-gray-11" />
+      <CompareLink compare={row.compare} />
       {row.pullRequest === undefined ? null : (
         <span className="flex w-16 flex-none justify-end text-row">
           <PullRequestLinkList requests={[row.pullRequest]} focusable={true} />

@@ -176,6 +176,7 @@ export function reportGroups(
       });
     }
   }
+  const noGh = report.gh === "absent";
   return [
     {
       tone: "failed",
@@ -197,11 +198,15 @@ export function reportGroups(
     {
       tone: "attention",
       label: PULL_REQUEST_MISSING,
+      // Without gh the lead states every row's next step once.
+      calm: noGh,
+      // The closing step stays when no Proposed group draws to carry it.
+      ...(opened.length === 0 ? { note: PROPOSED_NOTE } : {}),
       rows: missing.map((each) => ({
         name: each.name,
         change: changeOf(each),
         compare: { label: CREATE_PULL_REQUEST_ON_GITHUB, url: each.compareUrl },
-        detail: PULL_REQUEST_MISSING_DETAIL,
+        ...(noGh ? {} : { detail: PULL_REQUEST_MISSING_DETAIL }),
       })),
     },
     {

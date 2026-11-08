@@ -4,6 +4,7 @@ import { plainText } from "../ui/phrase";
 import {
   deletionsKept,
   deletionsSentence,
+  noGhNotice,
   PROPOSE_CHANGES,
   PROPOSED_NOTE,
   proposeBatchHeading,
@@ -20,6 +21,21 @@ describe("Propose changes copy", () => {
     expect(proposeBatchHeading(1, 1, 1)).toBe("Proposed 1 of 1 change");
     expect(proposeBatchHeading(0, 0, 9)).toBe("Proposed 0 of 9 changes");
     expect(proposeBatchHeading(7, 9, 9)).toBe("Proposed 7 of 9 changes");
+  });
+
+  it("states once that gh is missing, for one row and several", () => {
+    const cause =
+      "Maestro opens pull requests through gh, and gh is not available.";
+    expect(noGhNotice(1)).toEqual({
+      label: "Pull request not opened",
+      message: "Select Create pull request on GitHub.",
+      detail: cause,
+    });
+    expect(noGhNotice(9)).toEqual({
+      label: "Pull requests not opened",
+      message: "Select Create pull request on GitHub on each row.",
+      detail: cause,
+    });
   });
 
   it("says pushed, not proposed, when no pull request opened", () => {

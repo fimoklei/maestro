@@ -345,6 +345,13 @@ describe("proposing several changes from the selection bar", () => {
       "https://github.com/fimoklei/agent-harness/compare/main...maestro/code-review?expand=1",
       "https://github.com/fimoklei/agent-harness/compare/main...maestro/release-notes?expand=1",
     ]);
+    // gh answered: each row keeps its own next step, and no lead states it.
+    expect(
+      within(missing).getAllByText(
+        "The proposal branch is on GitHub without a pull request. Select Close, then select Create pull request.",
+      ),
+    ).toHaveLength(2);
+    expect(within(dialog).queryByText(/not opened$/)).toBeNull();
     expect(
       within(dialog).getByRole("region", { name: "Proposed · 1" }),
     ).toBeInTheDocument();
@@ -386,6 +393,60 @@ describe("proposing several changes from the selection bar", () => {
         name: "Create pull request on GitHub",
       }),
     ).toHaveLength(3);
+  });
+
+  it("states once that gh is missing, and keeps the closing step, when no gh opened any pull request", async () => {
+    const pushedOnly = (ref: PrimitiveRef) => ({
+      ...proposal(ref, 0),
+      pullRequest: { state: "missing" as const, gh: "absent" as const },
+    });
+    stubHarnessServer({
+      read: { body: PENDING },
+      batch: {
+        lines: streamOf({
+          proposed: [
+            pushedOnly(CODE_REVIEW),
+            pushedOnly(RELEASE_NOTES),
+            pushedOnly(TDD),
+          ],
+          failed: [],
+          gh: "absent",
+        }),
+      },
+    });
+    renderHarness();
+    await tickThree();
+
+    await userEvent.click(proposeChanges());
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Propose 3 changes",
+    });
+    await within(dialog).findByRole("heading", {
+      name: "Pushed 3 of 3 changes",
+    });
+    expect(within(dialog).getByText("Pull requests not opened")).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        "Select Create pull request on GitHub on each row.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        "Maestro opens pull requests through gh, and gh is not available.",
+      ),
+    ).toBeVisible();
+    const missing = within(dialog).getByRole("region", {
+      name: "Pull request missing · 3",
+    });
+    expect(
+      within(missing).queryByText(/The proposal branch is on GitHub/),
+    ).toBeNull();
+    expect(
+      within(missing).getByText(
+        "Review and merge each pull request on GitHub. Then select Create a release.",
+      ),
+    ).toBeVisible();
   });
 
   it("says the outcome is unknown when the stream ends before its report", async () => {

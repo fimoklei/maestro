@@ -139,6 +139,52 @@ export const Reported: Story = {
   },
 };
 
+// No gh on the machine: every branch pushed, no pull request opened.
+export const ReportedWithoutGh: Story = {
+  args: {
+    running: false,
+    report: {
+      proposed: ["code-review", "commit-message", "tdd"].map((name) => ({
+        type: "skill" as const,
+        name,
+        branch: `maestro/${name}`,
+        compareUrl: `https://github.com/fimoklei/agent-harness/compare/main...maestro/${name}?expand=1`,
+        pullRequest: { state: "missing" as const, gh: "absent" as const },
+      })),
+      failed: [],
+      gh: "absent",
+    },
+  },
+};
+
+// gh answered, but one pull request did not open.
+export const ReportedOneMissing: Story = {
+  args: {
+    running: false,
+    report: {
+      proposed: [
+        {
+          type: "skill",
+          name: "code-review",
+          branch: "maestro/code-review",
+          compareUrl:
+            "https://github.com/fimoklei/agent-harness/compare/main...maestro/code-review?expand=1",
+          pullRequest: { state: "missing", gh: "available" },
+        },
+        {
+          type: "skill",
+          name: "tdd",
+          branch: "maestro/tdd",
+          compareUrl: "",
+          pullRequest: pullRequest(12),
+        },
+      ],
+      failed: [],
+      gh: "available",
+    },
+  },
+};
+
 // Another Harness write held the lock: nothing ran.
 export const Refused: Story = {
   args: {

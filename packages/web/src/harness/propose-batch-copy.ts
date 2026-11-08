@@ -5,7 +5,7 @@ import {
   UPDATE_TARGET,
 } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
-import type { NoticeContent } from "../ui/notice";
+import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { named, type Phrase, phrase } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
@@ -42,6 +42,23 @@ export const PULL_REQUEST_MISSING = "Pull request missing";
 export const PULL_REQUEST_MISSING_DETAIL =
   "The proposal branch is on GitHub without a pull request. Select Close, then select Create pull request.";
 export const CREATE_PULL_REQUEST_ON_GITHUB = "Create pull request on GitHub";
+
+const NO_GH_CAUSE =
+  "Maestro opens pull requests through gh, and gh is not available.";
+
+/** The Report's one lead without gh: every pushed row's next step at once. */
+export const noGhNotice = (missing: number): NoticeCopy =>
+  missing === 1
+    ? {
+        label: "Pull request not opened",
+        message: `Select ${CREATE_PULL_REQUEST_ON_GITHUB}.`,
+        detail: NO_GH_CAUSE,
+      }
+    : {
+        label: "Pull requests not opened",
+        message: `Select ${CREATE_PULL_REQUEST_ON_GITHUB} on each row.`,
+        detail: NO_GH_CAUSE,
+      };
 
 // The confirmation a batch with a deletion opens on (#1828). Its wording is
 // the Confirm canvas's, except where a prompt or a single change differs.

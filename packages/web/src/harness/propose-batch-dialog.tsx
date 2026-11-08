@@ -10,6 +10,7 @@ import {
   deletionsKept,
   deletionsSentence,
   NOT_PROPOSED,
+  noGhNotice,
   PER_CHANGE_PULL_REQUEST,
   PROPOSE_CHANGES,
   PROPOSED,
@@ -51,6 +52,9 @@ function OutcomeCell({ standing }: { standing: RunningState }) {
       );
   }
 }
+
+const missingOf = (report: BatchReport) =>
+  report.proposed.filter((each) => each.pullRequest.state === "missing").length;
 
 // A batch with a deletion opens on its confirmation first; a batch without one
 // opens running. The Report lands in the same dialog, which cannot close while
@@ -109,7 +113,12 @@ export function ProposeBatchDialog({
       version={null}
       width={640}
       {...run}
-      failure={failure}
+      // Without gh, one warning above the footer gives every row's next step.
+      failure={
+        report !== null && report.gh === "absent" && missingOf(report) > 0
+          ? { level: "warning", ...noGhNotice(missingOf(report)) }
+          : failure
+      }
       describedBy={null}
       fieldsChanged={false}
       onClose={onClose}
@@ -137,9 +146,7 @@ export function ProposeBatchDialog({
       ) : (
         <Report
           heading={proposeBatchHeading(
-            report.proposed.filter(
-              (each) => each.pullRequest.state !== "missing",
-            ).length,
+            report.proposed.length - missingOf(report),
             report.proposed.length,
             items.length,
           )}
