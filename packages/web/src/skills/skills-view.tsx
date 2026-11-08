@@ -6,11 +6,6 @@ import { SetCategoryBarAction } from "../categories/set-category-bar-action";
 import { usePaneCategory } from "../categories/use-pane-category";
 import { LOCAL_EDITS } from "../deploy-state/target-status";
 import {
-  hiddenStagedCount,
-  setStagedMany,
-  toggleStaged,
-} from "../inventory/bulk-selection";
-import {
   type CloneReading,
   deleteItem,
   inClone,
@@ -41,6 +36,11 @@ import {
   RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
+import {
+  hiddenStagedCount,
+  setStagedMany,
+  toggleStaged,
+} from "../ui/bulk-selection";
 import { Button } from "../ui/button";
 import {
   DELETE_SKILL,

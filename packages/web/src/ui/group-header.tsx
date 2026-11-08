@@ -11,6 +11,7 @@ export function GroupHeader({
   columnCount,
   collapsed,
   onToggle,
+  check,
 }: {
   label: string;
   /** Left out where the group holds no rows, so a zero never reads as unread. */
@@ -21,12 +22,17 @@ export function GroupHeader({
   /** Undefined where the group has no rows to fold. */
   collapsed?: boolean;
   onToggle?: () => void;
+  /** The checkbox column's cell: a box that picks the group's rows, or null for an empty one; none: no such column. */
+  check?: ReactNode;
 }) {
   const Chevron = collapsed ? ChevronRight : ChevronDown;
   return (
     <tr className="h-row border-divider border-b bg-gray-2">
+      {check === undefined ? null : (
+        <HeaderCell className="px-inline">{check}</HeaderCell>
+      )}
       <HeaderCell
-        colSpan={columnCount}
+        colSpan={check === undefined ? columnCount : columnCount - 1}
         className="px-inline text-gray-11 text-meta"
       >
         <span className="flex min-w-0 items-center gap-inline">
