@@ -393,9 +393,9 @@ type BatchLine = { item: BatchItemOutcome } | { report: BatchReport };
 /** The stream broke off before its report: which items landed is unknown. */
 export class BatchReportMissing extends Error {}
 
-// One request for the whole batch. Items stream in as they finish; the
-// report closes the stream.
-export function useProposeBatch() {
+// One request for the whole batch. Each item's outcome reaches `onItem` as it
+// finishes; the report closes the stream.
+export function useProposeBatch(onItem: (outcome: BatchItemOutcome) => void) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (items: BatchRequest[]): Promise<BatchReport> => {
@@ -405,6 +405,7 @@ export function useProposeBatch() {
         { method: "POST", body: JSON.stringify({ items }) },
         (line) => {
           if ("report" in line) ended.report = line.report;
+          else onItem(line.item);
         },
       );
       if (ended.report === undefined) throw new BatchReportMissing();

@@ -59,8 +59,8 @@ type Checklist = {
 type SlottedRow = {
   key: string;
   name: string;
-  /** One value per slot, in the slots' order. */
-  slots: readonly string[];
+  /** One cell per slot, in the slots' order. */
+  slots: readonly ReactNode[];
 };
 
 type SlottedGroup = {

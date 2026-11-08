@@ -631,6 +631,7 @@ const ON_DIALOG: Row[] = [
         origin="fimoklei/agent-harness"
         // A deletion asks first; once running, the confirmation is past.
         confirming={!running}
+        outcomes={[]}
         running={running}
         report={null}
         failure={null}

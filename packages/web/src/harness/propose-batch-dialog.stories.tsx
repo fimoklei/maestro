@@ -34,6 +34,7 @@ const meta = {
     ],
     origin: "fimoklei/agent-harness",
     confirming: false,
+    outcomes: [],
     running: true,
     report: null,
     failure: null,
@@ -74,6 +75,28 @@ export const Confirming: Story = {
     ],
     confirming: true,
     running: false,
+  },
+};
+
+// Two items landed, one pull request missing; the third is in progress.
+export const Filling: Story = {
+  args: {
+    outcomes: [
+      {
+        type: "skill",
+        name: "code-review",
+        ok: true,
+        branch: "maestro/code-review",
+        compareUrl: "",
+        pullRequest: pullRequest(214),
+      },
+      {
+        type: "skill",
+        name: "commit-message",
+        ok: false,
+        error: "promote-failed",
+      },
+    ],
   },
 };
 

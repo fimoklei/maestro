@@ -285,6 +285,45 @@ describe("POST /api/harness/promote/batch", () => {
     });
   });
 
+  it("pushes every branch and gives each item its compare page when no pull request opens", async () => {
+    const { app, harness, review } = world();
+    editMixed(harness);
+    // No gh: every request is refused, so each pushed branch stays without one.
+    review.answerWrite({ ok: false, error: "unavailable" });
+
+    const { status, lines } = await proposeBatch(app, MIXED);
+
+    expect(status).toBe(200);
+    expect(harness.pushed.map(({ name }) => name)).toEqual([
+      "tdd",
+      "code-review",
+      "pr-review",
+    ]);
+    expect(reportOf(lines)).toEqual({
+      proposed: [
+        expect.objectContaining({
+          name: "tdd",
+          compareUrl:
+            "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
+          pullRequest: { state: "missing" },
+        }),
+        expect.objectContaining({
+          name: "code-review",
+          compareUrl:
+            "https://github.com/fimoklei/agent-harness/compare/main...maestro/code-review?expand=1",
+          pullRequest: { state: "missing" },
+        }),
+        expect.objectContaining({
+          name: "pr-review",
+          compareUrl:
+            "https://github.com/fimoklei/agent-harness/compare/main...maestro/prompt.pr-review?expand=1",
+          pullRequest: { state: "missing" },
+        }),
+      ],
+      failed: [],
+    });
+  });
+
   it("refuses an item that waits on another contributor's open proposal, and proposes the rest", async () => {
     const review = stubReview({
       outcome: "read",

@@ -1,3 +1,4 @@
+import type { BatchItemOutcome } from "@maestro/core";
 import { useState } from "react";
 import { GatedButton } from "../ui/gated-button";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
@@ -22,7 +23,11 @@ export function ProposeBatchAction({
   const [items, setItems] = useState<readonly BatchItem[] | null>(null);
   // A batch with a deletion waits here until its confirmation is pressed.
   const [started, setStarted] = useState(false);
-  const batch = useProposeBatch();
+  // Each item's outcome, in the order the batch finished them.
+  const [outcomes, setOutcomes] = useState<readonly BatchItemOutcome[]>([]);
+  const batch = useProposeBatch((outcome) =>
+    setOutcomes((held) => [...held, outcome]),
+  );
   // The dialog keeps its Report; the screen hears the busy label and the end.
   const write = useWriteAction(batch, {
     screen: useScreenWrites(),
@@ -33,6 +38,7 @@ export function ProposeBatchAction({
 
   const run = (sent: readonly BatchItem[]) => {
     setStarted(true);
+    setOutcomes([]);
     write.run(sent.map(batchRequest));
   };
   const start = () => {
@@ -47,6 +53,7 @@ export function ProposeBatchAction({
     const reported = batch.data !== undefined;
     setItems(null);
     setStarted(false);
+    setOutcomes([]);
     batch.reset();
     if (reported) onSelectionSpent();
   };
@@ -65,6 +72,7 @@ export function ProposeBatchAction({
           items={items}
           origin={origin}
           confirming={!started}
+          outcomes={outcomes}
           running={write.phase === "running"}
           report={batch.data ?? null}
           failure={write.failure}
