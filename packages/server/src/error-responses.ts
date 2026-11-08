@@ -8,6 +8,7 @@ import type {
   EditPromptError,
   HarnessStateError,
   ImportPromptError,
+  ImportPromptsError,
   ImportSkillError,
   LocalEditsError,
   PromoteDeletionError,
@@ -402,6 +403,15 @@ export const importPromptErrorResponses: ErrorTable<ImportPromptRefusal> = {
   "destination-unreadable": { status: 409 },
   "import-in-progress": { status: 409 },
   "write-failed": { status: 500 },
+};
+
+// A refusal of one file is data in the answer; these refuse the batch.
+export const importPromptsErrorResponses: ErrorTable<ImportPromptsError> = {
+  "not-configured": importPromptErrorResponses["not-configured"],
+  "destination-unsafe": importPromptErrorResponses["destination-unsafe"],
+  "destination-unreadable":
+    importPromptErrorResponses["destination-unreadable"],
+  "import-in-progress": importPromptErrorResponses["import-in-progress"],
 };
 
 export const isImportPromptRefusal = (

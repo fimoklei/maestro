@@ -24,6 +24,7 @@ import {
   PROMPT_TAKEN_NOTICE,
 } from "./harness/import-prompt-copy";
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
+import { ImportPromptsDialog } from "./harness/import-prompts-dialog";
 import { ProposeBatchDialog } from "./harness/propose-batch-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import {
@@ -320,6 +321,24 @@ const importLocalEditsDialog = (
     failure={null}
     onCancel={vi.fn()}
     onConfirm={vi.fn()}
+    {...props}
+  />
+);
+
+// Opened, before any file is chosen.
+const importPromptsDialog = (
+  props: Partial<ComponentProps<typeof ImportPromptsDialog>>,
+) => (
+  <ImportPromptsDialog
+    rows={null}
+    checked={new Set()}
+    running={false}
+    report={null}
+    error={null}
+    chooseFiles={vi.fn()}
+    toggle={vi.fn()}
+    submit={vi.fn()}
+    close={vi.fn()}
     {...props}
   />
 );
@@ -1015,6 +1034,26 @@ const ON_DIALOG: Row[] = [
       render: () => importLocalEditsDialog({ skills: null }),
     },
     loadFailed: () => importLocalEditsDialog({ skills: null, failure: FAILED }),
+    notices: [],
+  },
+  {
+    file: "harness/import-prompts-dialog.tsx",
+    heading: "Import prompts",
+    render: ({ running, onClose }) =>
+      importPromptsDialog({ running, close: onClose }),
+    // Chosen files are the dialog's input: a click outside keeps them.
+    changed: async (onClose) => {
+      render(
+        importPromptsDialog({
+          rows: [{ key: "0", label: "release-notes", refusal: null }],
+          checked: new Set(["0"]),
+          close: onClose,
+        }),
+      );
+    },
+    emptyForm: null,
+    loading: null,
+    loadFailed: null,
     notices: [],
   },
 ];

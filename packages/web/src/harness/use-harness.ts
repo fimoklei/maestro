@@ -11,6 +11,7 @@ import type {
   ImportMode,
   ImportPromptCheck,
   ImportPromptSuccess,
+  ImportPromptsAnswer,
   PrimitiveDeletionCheck,
   PrimitiveRef,
   PromptEdit,
@@ -19,7 +20,12 @@ import type {
   SemverStep,
 } from "@maestro/core";
 import type { PromptDraft, PromptFile } from "@maestro/core/prompt-file";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { HttpError, requestJson, requestJsonLines } from "../api/http";
 import {
   fetchInventoryPrimitives,
@@ -269,6 +275,35 @@ export function useImportPrompt() {
       requestJson<ImportPromptSuccess>("/api/harness/prompt/import", {
         method: "POST",
         body: JSON.stringify(request),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+  });
+}
+
+/** Each chosen name's check, as the single import's name check reads it. */
+export function useImportPromptChecks(names: readonly string[]) {
+  return useQueries({
+    queries: names.map((name) => ({
+      queryKey: ["harness", "prompt-check", name] as const,
+      queryFn: () =>
+        requestJson<ImportPromptCheck>("/api/harness/prompt/check", {
+          method: "POST",
+          body: JSON.stringify({ name }),
+        }),
+      staleTime: 0,
+      gcTime: 0,
+    })),
+  });
+}
+
+// One call for the batch; the read places the rows it wrote.
+export function useImportPrompts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (prompts: PromptDraft[]) =>
+      requestJson<ImportPromptsAnswer>("/api/harness/prompts/import", {
+        method: "POST",
+        body: JSON.stringify({ prompts }),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });

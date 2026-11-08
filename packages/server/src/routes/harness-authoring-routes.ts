@@ -1,4 +1,8 @@
-import type { ImportPromptSuccess, PrimitiveRef } from "@maestro/core";
+import type {
+  ImportPromptSuccess,
+  ImportPromptsAnswer,
+  PrimitiveRef,
+} from "@maestro/core";
 import type { PromptFile } from "@maestro/core/prompt-file";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
@@ -10,6 +14,7 @@ import {
   editPromptErrorResponses,
   importErrorResponses,
   importPromptErrorResponses,
+  importPromptsErrorResponses,
   isEditPromptRefusal,
   isImportPromptRefusal,
   localDeletionErrorResponses,
@@ -29,8 +34,10 @@ import {
   discardBodySchema,
   IMPORT_BODY,
   IMPORT_PROMPT_BODY,
+  IMPORT_PROMPTS_BODY,
   importBodySchema,
   importPromptBodySchema,
+  importPromptsBodySchema,
   LOCAL_DELETION_BODY,
   localDeletionBodySchema,
   PATH_BODY,
@@ -354,6 +361,26 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       mode: result.mode,
       name: result.name,
     } satisfies ImportPromptSuccess);
+  });
+
+  // One outcome per file, in the order sent; a refused file is data.
+  app.post("/api/harness/prompts/import", async (c) => {
+    const body = await parseBody(
+      c,
+      importPromptsBodySchema,
+      IMPORT_PROMPTS_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importPrompt.importMany(body.data.prompts);
+    if (!result.ok) {
+      const { status } = importPromptsErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({
+      outcomes: result.outcomes,
+    } satisfies ImportPromptsAnswer);
   });
 
   // Reads the Working Harness the server resolves, never the Released harness.

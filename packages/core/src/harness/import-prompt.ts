@@ -64,6 +64,35 @@ export type ReadPromptResult =
   | { ok: true; prompt: PromptFile }
   | { ok: false; error: ReadPromptError };
 
+/** Why one file of a batch was not written; the rest still run. */
+export type PromptImportRefusal =
+  | PromptFieldProblem
+  // A batch never replaces: the Harness, or an earlier file, holds the name.
+  | "prompt-taken"
+  | "destination-unsafe"
+  | "destination-unreadable"
+  | "write-failed";
+
+/** One file of a batch, in the order it was sent. */
+export type PromptImportOutcome = { name: string } & (
+  | { imported: true }
+  | { imported: false; refusal: PromptImportRefusal }
+);
+
+/** Refuses the whole batch before any file is written. */
+export type ImportPromptsError =
+  | "not-configured"
+  | "destination-unsafe"
+  | "destination-unreadable"
+  | "import-in-progress";
+
+/** What the batch import route answers on success. */
+export type ImportPromptsAnswer = { outcomes: PromptImportOutcome[] };
+
+export type ImportPromptsResult =
+  | ({ ok: true } & ImportPromptsAnswer)
+  | { ok: false; error: ImportPromptsError };
+
 /** The edited fields, and the prompt as `read` gave it when the dialog opened. */
 export type PromptEdit = PromptFile & { name: string; read: PromptFile };
 
@@ -183,38 +212,117 @@ export class ImportPrompt {
     return run.ok ? run.value : { ok: false, error: "import-in-progress" };
   }
 
-  private async write(
+  /**
+   * Each file is judged by the single import's field rules, in field order,
+   * and refused where the name is taken. One refusal never stops the rest.
+   */
+  async importMany(
+    drafts: readonly PromptDraft[],
+  ): Promise<ImportPromptsResult> {
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    const run = await this.deps.locks.run(root, () =>
+      this.writeMany(root, drafts),
+    );
+    return run.ok ? run.value : { ok: false, error: "import-in-progress" };
+  }
+
+  private async writeMany(
     root: string,
-    { name, ...file }: PromptDraft,
-  ): Promise<ImportPromptResult> {
+    drafts: readonly PromptDraft[],
+  ): Promise<ImportPromptsResult> {
+    const folder = await this.ensureFolder(root);
+    if (folder !== null) {
+      return { ok: false, error: folder };
+    }
+    const outcomes: PromptImportOutcome[] = [];
+    // In order: an earlier file's write takes its name from a later one.
+    for (const draft of drafts) {
+      const [problem] = promptDraftProblems(draft);
+      const written =
+        problem === undefined
+          ? await this.writeNew(root, draft)
+          : ({ ok: false, error: problem } as const);
+      outcomes.push(
+        written.ok
+          ? { name: draft.name, imported: true }
+          : { name: draft.name, imported: false, refusal: written.error },
+      );
+    }
+    return { ok: true, outcomes };
+  }
+
+  private async ensureFolder(
+    root: string,
+  ): Promise<"destination-unsafe" | "destination-unreadable" | null> {
     const resolved = await ensureHarnessPrimitiveDir(
       this.deps.fs,
       root,
       "prompt",
     );
-    if (!resolved.ok) {
-      return {
-        ok: false,
-        error:
-          resolved.reason === "outside-root"
-            ? "destination-unsafe"
-            : "destination-unreadable",
-      };
-    }
+    if (resolved.ok) return null;
+    return resolved.reason === "outside-root"
+      ? "destination-unsafe"
+      : "destination-unreadable";
+  }
+
+  // A link is refused before it is written: the write never follows it.
+  private async entry(root: string, name: string) {
     const entry = await inspectPrimitiveEntry(this.deps.fs, root, {
       type: "prompt",
       name,
     });
-    if (entry.kind === "unsafe" || entry.kind === "unreadable") {
-      return { ok: false, error: entryRefusal(entry.kind) };
-    }
-    const mode: ImportMode = entry.kind === "plain" ? "update" : "add";
+    return entry.kind === "unsafe" || entry.kind === "unreadable"
+      ? ({ ok: false, error: entryRefusal(entry.kind) } as const)
+      : ({
+          ok: true,
+          path: entry.path,
+          taken: entry.kind === "plain",
+        } as const);
+  }
+
+  private async writeAt(
+    path: string,
+    { name: _, ...file }: PromptDraft,
+  ): Promise<boolean> {
     try {
-      await this.deps.fs.writeFile(entry.path, writePromptFile(file));
+      await this.deps.fs.writeFile(path, writePromptFile(file));
+      return true;
     } catch {
+      return false;
+    }
+  }
+
+  // A batch never replaces: the Harness, or an earlier file, holds the name.
+  private async writeNew(
+    root: string,
+    draft: PromptDraft,
+  ): Promise<{ ok: true } | { ok: false; error: PromptImportRefusal }> {
+    const entry = await this.entry(root, draft.name);
+    if (!entry.ok) return entry;
+    if (entry.taken) return { ok: false, error: "prompt-taken" };
+    return (await this.writeAt(entry.path, draft))
+      ? { ok: true }
+      : { ok: false, error: "write-failed" };
+  }
+
+  private async write(
+    root: string,
+    draft: PromptDraft,
+  ): Promise<ImportPromptResult> {
+    const folder = await this.ensureFolder(root);
+    if (folder !== null) {
+      return { ok: false, error: folder };
+    }
+    const entry = await this.entry(root, draft.name);
+    if (!entry.ok) return entry;
+    if (!(await this.writeAt(entry.path, draft))) {
       return { ok: false, error: "write-failed" };
     }
-    return { ok: true, mode, name };
+    const mode: ImportMode = entry.taken ? "update" : "add";
+    return { ok: true, mode, name: draft.name };
   }
 
   // A link is refused before it is read: the read never follows it.

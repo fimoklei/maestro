@@ -15,6 +15,7 @@ import {
   CREATE_RELEASE,
   IMPORT,
   IMPORT_PROMPT,
+  IMPORT_PROMPTS,
   IMPORT_SKILL,
 } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
@@ -77,6 +78,7 @@ import {
 import { useHarnessPresses } from "./use-harness-presses";
 import { useImportFlow } from "./use-import-flow";
 import { useImportPromptFlow } from "./use-import-prompt-flow";
+import { useImportPromptsFlow } from "./use-import-prompts-flow";
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
 // counts; the dot and Read never drop.
@@ -160,6 +162,7 @@ export function HarnessView({
 
   const importFlow = useImportFlow(table, open);
   const promptImportFlow = useImportPromptFlow(table, open);
+  const promptsImportFlow = useImportPromptsFlow();
   const presses = useHarnessPresses(state, table);
   // The edited row's pane opens here; a row the edit removed leaves none.
   const editFlow = useEditPromptFlow({
@@ -358,6 +361,7 @@ export function HarnessView({
               items={[
                 { label: IMPORT_SKILL, onSelect: importFlow.start },
                 { label: IMPORT_PROMPT, onSelect: promptImportFlow.start },
+                { label: IMPORT_PROMPTS, onSelect: promptsImportFlow.start },
               ]}
             />
             {/* Closed while the remote's answer is unknown — an offline or
@@ -510,6 +514,7 @@ export function HarnessView({
           origin={state.origin}
           importFlow={importFlow}
           promptImportFlow={promptImportFlow}
+          promptsImportFlow={promptsImportFlow}
           editPromptFlow={editFlow}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletionWrite}
