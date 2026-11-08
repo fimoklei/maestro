@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse } from "../drift/use-drift";
-import { renderWithQuery } from "../test-utils";
+import { expectDescription, renderWithQuery } from "../test-utils";
 import { SelectedSkills } from "./selected-skills";
 import { repoSkillRows } from "./skill-list-row";
 
@@ -124,7 +124,9 @@ describe("SelectedSkills marks", () => {
     expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull();
   });
 
-  it("shows a mark with no reason as its word alone, on hover", async () => {
+  // #1811: the row may shorten its value, so a mark with no reason of its own
+  // holds the value whole under its word.
+  it("shows a mark with no reason as its word and the row's whole value, on hover", async () => {
     const user = userEvent.setup();
     renderList(behindTdd);
 
@@ -132,9 +134,9 @@ describe("SelectedSkills marks", () => {
     await user.hover(mark);
     expect(
       await screen.findByRole("tooltip", { hidden: true }),
-    ).toHaveTextContent(/^Behind$/);
+    ).toHaveTextContent(/^Behindv0\.5\.0 → v0\.5\.1$/);
     // The word is the name already; it is not read a second time (#1068).
-    expect(mark).not.toHaveAccessibleDescription();
+    expectDescription(mark, "v0.5.0 → v0.5.1");
   });
 
   it("marks a behind skill and states its deployed → latest pair", () => {

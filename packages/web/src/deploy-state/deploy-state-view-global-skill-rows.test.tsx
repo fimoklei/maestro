@@ -201,6 +201,8 @@ describe("Deploy-state pane — Global skill rows", () => {
 
     await waitFor(() => expect(row.mark()).toHaveAccessibleName("Up to date"));
     expect(row.value()).toBe("v0.4.1");
+    // A long name shortens the version; the hover holds it whole.
+    expectDescription(row.mark(), "v0.4.1");
   });
 
   it("changes no skill row for a copy in a folder whose tool is not detected", async () => {

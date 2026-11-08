@@ -56,6 +56,16 @@ export const LongNameAndFolder: Story = {
   },
 };
 
+// A long name shortens a version pair; the mark's hover holds it whole.
+export const LongNameAndVersion: Story = {
+  args: {
+    mark: reading("Behind", "attention"),
+    name: "improve-codebase-architecture",
+    value: { text: "v0.4.1 → v0.4.3", machine: true },
+    menuLabel: "Actions for improve-codebase-architecture",
+  },
+};
+
 // No status before the server answers: the row carries no mark.
 export const Unread: Story = {
   args: { mark: null },

@@ -31,7 +31,10 @@ export function SubListRow({
 }) {
   return (
     <li className="group/row flex h-row items-center gap-inline border-divider border-b text-row">
-      <Mark mark={mark} />
+      {/* A reading with no line of its own shows the value whole, which the row may shorten. */}
+      <Mark
+        mark={mark === null ? null : { ...mark, hint: mark.hint ?? value.text }}
+      />
       {/* The name keeps priority: the value gives up its width first. */}
       <span className="min-w-0 truncate text-gray-12">{name}</span>
       <span className="min-w-0 flex-1 truncate text-right text-gray-11">
