@@ -134,6 +134,14 @@ describe("selecting rows under Pending proposal", () => {
     expect(selectionBar()).toBeNull();
   });
 
+  it("badges a row that waits on another contributor with who proposed it", async () => {
+    await openMixed();
+
+    const waiting = screen.getByRole("row", { name: /lint-fix/ });
+    expect(within(waiting).getByText("Proposed by mvdberg")).toBeVisible();
+    expect(within(waiting).queryByText("Not yet proposed")).toBeNull();
+  });
+
   it("checks a row from the keyboard, but never the waiting one", async () => {
     await openMixed();
     const grid = await harnessGrid();

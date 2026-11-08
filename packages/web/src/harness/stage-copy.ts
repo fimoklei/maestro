@@ -87,13 +87,16 @@ const READINGS: Record<Exclude<StageStatus, "proposed-by-other">, string> = {
   "not-yet-released": "Not yet released",
 };
 
-// A stuck row is a warning, not a lag, so it carries ⚠ rather than ↑.
+// A stuck row is a warning, not a lag, so it carries ⚠ rather than ↑. Local
+// work behind another contributor's open request reads as that request.
 export const statusReading = (row: HarnessStageRow): StatusReading => {
-  const family = FAMILIES[row.status];
+  const status =
+    row.waitingOn === null ? row.status : ("proposed-by-other" as const);
+  const family = FAMILIES[status];
   return reading(
-    row.status === "proposed-by-other"
+    status === "proposed-by-other"
       ? `Proposed by ${row.waitingOn ?? "another contributor"}`
-      : READINGS[row.status],
+      : READINGS[status],
     family,
     family === "attention" ? WARNING_GLYPH : undefined,
   );
