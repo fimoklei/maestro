@@ -70,7 +70,13 @@ export function ProposeBatchDialog({
         ) : null
       ) : (
         <Report
-          heading={proposeBatchHeading(report.proposed.length, items.length)}
+          heading={proposeBatchHeading(
+            report.proposed.filter(
+              (each) => each.pullRequest.state !== "missing",
+            ).length,
+            report.proposed.length,
+            items.length,
+          )}
           groups={reportGroups(report, items)}
         />
       )}

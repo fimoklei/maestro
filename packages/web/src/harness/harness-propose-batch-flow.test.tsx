@@ -223,6 +223,88 @@ describe("proposing several changes from the selection bar", () => {
     expect(within(failed).getByText("Change not proposed")).toBeInTheDocument();
   });
 
+  it("lists a pushed branch without a pull request apart, with its compare page", async () => {
+    const pushedOnly = (ref: PrimitiveRef) => ({
+      ...proposal(ref, 0),
+      pullRequest: { state: "missing" as const },
+    });
+    stubHarnessServer({
+      read: { body: PENDING },
+      batch: {
+        lines: streamOf({
+          proposed: [
+            pushedOnly(CODE_REVIEW),
+            pushedOnly(RELEASE_NOTES),
+            proposal(TDD, 12),
+          ],
+          failed: [],
+        }),
+      },
+    });
+    renderHarness();
+    await tickThree();
+
+    await userEvent.click(proposeChanges());
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Propose 3 changes",
+    });
+    await within(dialog).findByRole("heading", {
+      name: "Proposed 1 of 3 changes",
+    });
+    const missing = within(dialog).getByRole("region", {
+      name: "Pull request missing · 2",
+    });
+    const links = within(missing).getAllByRole("link", {
+      name: "Create pull request on GitHub",
+    });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "https://github.com/fimoklei/agent-harness/compare/main...maestro/code-review?expand=1",
+      "https://github.com/fimoklei/agent-harness/compare/main...maestro/release-notes?expand=1",
+    ]);
+    expect(
+      within(dialog).getByRole("region", { name: "Proposed · 1" }),
+    ).toBeInTheDocument();
+  });
+
+  it("says pushed, not proposed, when no pull request opened", async () => {
+    const pushedOnly = (ref: PrimitiveRef) => ({
+      ...proposal(ref, 0),
+      pullRequest: { state: "missing" as const },
+    });
+    stubHarnessServer({
+      read: { body: PENDING },
+      batch: {
+        lines: streamOf({
+          proposed: [
+            pushedOnly(CODE_REVIEW),
+            pushedOnly(RELEASE_NOTES),
+            pushedOnly(TDD),
+          ],
+          failed: [],
+        }),
+      },
+    });
+    renderHarness();
+    await tickThree();
+
+    await userEvent.click(proposeChanges());
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Propose 3 changes",
+    });
+    expect(
+      await within(dialog).findByRole("heading", {
+        name: "Pushed 3 of 3 changes",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getAllByRole("link", {
+        name: "Create pull request on GitHub",
+      }),
+    ).toHaveLength(3);
+  });
+
   it("says the outcome is unknown when the stream ends before its report", async () => {
     stubHarnessServer({
       read: { body: PENDING },
