@@ -207,7 +207,7 @@ describe("Global deploy Report: Written to", () => {
       within(dialog)
         .getAllByRole("heading", { level: 4 })
         .map((group) => group.textContent),
-    ).toEqual(["✓Deployed1"]);
+    ).toEqual(["✓Deployed · 1"]);
     const footer = within(dialog).getByRole("button", { name: "Retry deploy" });
     expect(footer).toBeVisible();
 

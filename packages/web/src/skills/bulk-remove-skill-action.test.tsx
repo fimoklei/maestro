@@ -503,7 +503,7 @@ describe("BulkRemoveRun", () => {
       screen
         .getAllByRole("heading", { level: 4 })
         .map((heading) => heading.textContent),
-    ).toEqual(["✕Failed1", "✕Refused1", "✓Removed1"]);
+    ).toEqual(["✕Failed · 1", "✕Refused · 1", "✓Removed · 1"]);
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("/dev/acme-apiTarget busy");
     expect(dialog).toHaveTextContent(
