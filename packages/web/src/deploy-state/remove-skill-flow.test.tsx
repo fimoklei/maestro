@@ -411,8 +411,8 @@ describe("RemoveSkillFlow", () => {
       renderPartialFailure();
       await fail();
 
-      expect(groupOf(AGENTS_PATH)).toBe("✕Not removed1");
-      expect(groupOf(CLAUDE_PATH)).toBe("✓Removed1");
+      expect(groupOf(AGENTS_PATH)).toBe("✕Not removed · 1");
+      expect(groupOf(CLAUDE_PATH)).toBe("✓Removed · 1");
       expect(
         screen.getAllByRole("listitem").map((row) => row.textContent),
       ).toEqual([AGENTS_PATH, CLAUDE_PATH]);
@@ -430,7 +430,7 @@ describe("RemoveSkillFlow", () => {
       });
       await fail();
 
-      expect(groupOf("…/me/project")).toBe("⚠Outcome unknown1");
+      expect(groupOf("…/me/project")).toBe("⚠Outcome unknown · 1");
     });
 
     it("drops the cost it named before the attempt", async () => {

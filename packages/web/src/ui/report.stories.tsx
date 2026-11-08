@@ -68,6 +68,65 @@ export const Partial: Story = {
   },
 };
 
+const pullRequest = (number: number) => ({
+  number,
+  url: `https://github.com/fimoklei/agent-harness/pull/${number}`,
+});
+
+const proposed = (name: string, change: string, number: number) => ({
+  name,
+  change,
+  pullRequest: pullRequest(number),
+});
+
+// A batch proposal: each row states its Change word, and a proposed row ends
+// in its pull request.
+export const Proposed: Story = {
+  args: {
+    heading: "Proposed 7 of 9 changes",
+    groups: [
+      {
+        tone: "failed",
+        label: "Not proposed",
+        rows: [
+          {
+            name: "old-deploy",
+            change: "Deleted",
+            detail:
+              "The push to GitHub failed. Select Propose change again to retry.",
+          },
+        ],
+      },
+      {
+        tone: "attention",
+        label: "Pull request missing",
+        rows: [
+          {
+            name: "pr-body",
+            change: "Added",
+            detail:
+              "The proposal branch is on GitHub without a pull request. Close this dialog, then select Create pull request.",
+          },
+        ],
+      },
+      {
+        tone: "good",
+        label: "Proposed",
+        note: "Review and merge each pull request on GitHub. Then select Create a release.",
+        rows: [
+          proposed("code-review", "Added", 214),
+          proposed("commit-message", "Added", 215),
+          proposed("tdd", "Added", 216),
+          proposed("write-spec", "Added", 217),
+          proposed("release-notes", "Added", 218),
+          proposed("standup-notes", "Added", 219),
+          proposed("legacy-review", "Deleted", 220),
+        ],
+      },
+    ],
+  },
+};
+
 // Nothing needed the reader: only the group that happened is drawn.
 export const Clean: Story = {
   args: {

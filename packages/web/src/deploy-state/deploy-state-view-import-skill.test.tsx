@@ -191,7 +191,7 @@ describe("Deploy-state — Import local edits on a skill row", () => {
     );
 
     const refused = await within(dialog).findByRole("region", {
-      name: "Not imported 1",
+      name: "Not imported · 1",
     });
     expect(within(refused).getByText("tdd")).toBeInTheDocument();
     expect(dialog).toBeInTheDocument();

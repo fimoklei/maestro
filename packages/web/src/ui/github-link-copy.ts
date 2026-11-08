@@ -6,6 +6,8 @@ export const GITHUB_COLUMN = "GitHub";
 export const viewOnGitHub = (name: string) => `View ${name} on GitHub`;
 /** A fact's value is its own link, so its name starts with that value. */
 export const factOnGitHub = (value: string) => `${value} on GitHub`;
+export const pullRequestLinkName = (number: number): string =>
+  `Pull request #${number}, opens in a new tab`;
 /** The column's keyboard way to the same page, as a ⋮ item. */
 export const VIEW_REPOSITORY_ON_GITHUB = "View repository on GitHub";
 /** The cause behind the column's Unknown badge, recovered by the screen's own Re-read. */
