@@ -1,3 +1,4 @@
+import type { BatchItemOutcome } from "@maestro/core";
 import { useState } from "react";
 import { GatedButton } from "../ui/gated-button";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
@@ -21,7 +22,11 @@ export function ProposeBatchAction({
 }) {
   // Held from the press, so a re-read under the dialog never renames its rows.
   const [items, setItems] = useState<readonly BatchItem[] | null>(null);
-  const batch = useProposeBatch();
+  // Each item's outcome, in the order the batch finished them.
+  const [outcomes, setOutcomes] = useState<readonly BatchItemOutcome[]>([]);
+  const batch = useProposeBatch((outcome) =>
+    setOutcomes((held) => [...held, outcome]),
+  );
   // The dialog keeps its Report; the screen hears the busy label and the end.
   const write = useWriteAction(batch, {
     screen: useScreenWrites(),
@@ -33,11 +38,13 @@ export function ProposeBatchAction({
   const start = () => {
     const sent = [...chosen];
     setItems(sent);
+    setOutcomes([]);
     write.run(sent.map(({ type, name }) => ({ type, name })));
   };
   const close = () => {
     const reported = batch.data !== undefined;
     setItems(null);
+    setOutcomes([]);
     batch.reset();
     if (reported) onSelectionSpent();
   };
@@ -58,6 +65,7 @@ export function ProposeBatchAction({
       {items === null ? null : (
         <ProposeBatchDialog
           items={items}
+          outcomes={outcomes}
           running={write.phase === "running"}
           report={batch.data ?? null}
           failure={write.failure}

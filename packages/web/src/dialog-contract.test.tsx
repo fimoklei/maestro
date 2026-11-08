@@ -623,6 +623,7 @@ const ON_DIALOG: Row[] = [
           { type: "skill", name: "tdd", change: "edit" },
           { type: "prompt", name: "pr-review", change: "addition" },
         ]}
+        outcomes={[]}
         running={running}
         report={null}
         failure={null}

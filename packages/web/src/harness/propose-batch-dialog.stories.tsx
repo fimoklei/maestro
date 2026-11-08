@@ -17,6 +17,7 @@ const meta = {
       { type: "skill", name: "tdd", change: "edit" },
       { type: "prompt", name: "release-notes", change: "addition" },
     ],
+    outcomes: [],
     running: true,
     report: null,
     failure: null,
@@ -29,6 +30,28 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Running: Story = {};
+
+// Two items landed, one pull request missing; the third is in progress.
+export const Filling: Story = {
+  args: {
+    outcomes: [
+      {
+        type: "skill",
+        name: "code-review",
+        ok: true,
+        branch: "maestro/code-review",
+        compareUrl: "",
+        pullRequest: pullRequest(214),
+      },
+      {
+        type: "skill",
+        name: "commit-message",
+        ok: false,
+        error: "promote-failed",
+      },
+    ],
+  },
+};
 
 // One push failed; the rest each opened or updated its pull request.
 export const Reported: Story = {

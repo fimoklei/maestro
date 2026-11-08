@@ -67,6 +67,15 @@ const streamOf = (report: BatchReport) => [
   { report },
 ];
 
+// A promise a test opens by hand, to hold one line of the stream.
+function deferred() {
+  let open: () => void = () => {};
+  const promise = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { promise, open };
+}
+
 const box = (name: string, noun: "skill" | "prompt" = "skill") =>
   screen.getByRole("checkbox", { name: `Select ${name} ${noun}` });
 
@@ -188,6 +197,69 @@ describe("proposing several changes from the selection bar", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.queryByRole("group", { name: /selected$/ })).toBeNull();
+  });
+
+  it("fills each row in as its item lands, announcing only the start and the end", async () => {
+    const landFirst = deferred();
+    const landSecond = deferred();
+    const reported = deferred();
+    stubHarnessServer({
+      read: { body: PENDING },
+      batch: {
+        lines: streamOf({
+          proposed: [proposal(CODE_REVIEW, 101), proposal(TDD, 12)],
+          failed: [],
+        }),
+        gates: [landFirst.promise, landSecond.promise, reported.promise],
+      },
+    });
+    renderHarness();
+    await tickThree();
+
+    await userEvent.click(proposeChanges());
+    const dialog = await screen.findByRole("dialog", {
+      name: "Propose 3 changes",
+    });
+    expect(
+      within(dialog).getByRole("button", { name: "Proposing…" }),
+    ).toBeInTheDocument();
+
+    landFirst.open();
+    expect(
+      await within(dialog).findByRole("link", {
+        name: "Pull request #101, opens in a new tab",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("link", {
+        name: "Pull request #12, opens in a new tab",
+      }),
+    ).toBeNull();
+    expect(
+      within(dialog).queryByRole("heading", { name: /^Proposed \d/ }),
+    ).toBeNull();
+    for (const region of document.querySelectorAll(
+      '[role="status"], [aria-live]',
+    )) {
+      expect(region.textContent).not.toContain("#101");
+    }
+
+    landSecond.open();
+    expect(
+      await within(dialog).findByRole("link", {
+        name: "Pull request #12, opens in a new tab",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("heading", { name: /^Proposed \d/ }),
+    ).toBeNull();
+
+    reported.open();
+    expect(
+      await within(dialog).findByRole("heading", {
+        name: "Proposed 2 of 3 changes",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("collapses identical failures into one line with the items it covers", async () => {

@@ -1,5 +1,6 @@
 import type {
   BatchItemError,
+  BatchItemOutcome,
   BatchReport,
   HarnessChange,
   HarnessPrimitiveType,
@@ -21,8 +22,43 @@ const keyOf = ({ type, name }: PrimitiveRef) => `${type}:${name}`;
 // The order the Change column reads in.
 const CHANGES: HarnessChange[] = ["addition", "edit", "rename", "deletion"];
 
-/** The running batch: its items under their Change word, each with its type. */
-export function runningGroups(items: readonly BatchItem[]) {
+/** Where one item stands while the batch runs. */
+export type RunningState =
+  | { state: "waiting" }
+  | { state: "in-progress" }
+  | { state: "failed" }
+  | {
+      state: "proposed";
+      /** Null where the pull request is missing. */
+      pullRequest: { number: number; url: string } | null;
+    };
+
+/**
+ * The running batch: its items under their Change word, each with its type
+ * and where it stands. Items run in order, so the first one with no outcome
+ * is the one in progress.
+ */
+export function runningGroups(
+  items: readonly BatchItem[],
+  outcomes: readonly BatchItemOutcome[],
+) {
+  const landed = new Map(outcomes.map((outcome) => [keyOf(outcome), outcome]));
+  const current = items.find((item) => !landed.has(keyOf(item)));
+  const stateOf = (item: BatchItem): RunningState => {
+    const outcome = landed.get(keyOf(item));
+    if (outcome === undefined) {
+      return { state: item === current ? "in-progress" : "waiting" };
+    }
+    if (!outcome.ok) return { state: "failed" };
+    const { pullRequest } = outcome;
+    return {
+      state: "proposed",
+      pullRequest:
+        pullRequest.state === "missing"
+          ? null
+          : { number: pullRequest.number, url: pullRequest.url },
+    };
+  };
   return CHANGES.map((change) => {
     const rows = items.filter((item) => item.change === change);
     return {
@@ -31,7 +67,8 @@ export function runningGroups(items: readonly BatchItem[]) {
       rows: rows.map((item) => ({
         key: keyOf(item),
         name: item.name,
-        slots: [TYPE_WORD[item.type]],
+        type: TYPE_WORD[item.type],
+        standing: stateOf(item),
       })),
     };
   }).filter((group) => group.rows.length > 0);
