@@ -2,6 +2,8 @@
 // that reaches the remote and replaces it.
 
 import type {
+  BatchItemOutcome,
+  BatchReport,
   HarnessChange,
   HarnessPrimitiveType,
   HarnessState,
@@ -28,7 +30,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { HttpError, requestJson } from "../api/http";
+import { HttpError, requestJson, requestJsonLines } from "../api/http";
 import {
   fetchInventoryPrimitives,
   INVENTORY_KEY,
@@ -381,6 +383,36 @@ export function usePromotePrimitive() {
         body: JSON.stringify(request),
       }),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
+type BatchLine = { item: BatchItemOutcome } | { report: BatchReport };
+
+/** The stream broke off before its report: which items landed is unknown. */
+export class BatchReportMissing extends Error {}
+
+// One request for the whole batch. Each item's outcome reaches `onItem` as it
+// finishes; the report closes the stream.
+export function useProposeBatch(onItem: (outcome: BatchItemOutcome) => void) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: PrimitiveRef[]): Promise<BatchReport> => {
+      const ended: { report?: BatchReport } = {};
+      await requestJsonLines<BatchLine>(
+        "/api/harness/promote/batch",
+        { method: "POST", body: JSON.stringify({ items }) },
+        (line) => {
+          if ("report" in line) ended.report = line.report;
+          else onItem(line.item);
+        },
+      );
+      if (ended.report === undefined) throw new BatchReportMissing();
+      return ended.report;
+    },
+    // A batch that broke off may still have pushed some items.
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
     },
   });

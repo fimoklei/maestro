@@ -87,6 +87,9 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`${movement.previousName} → ${movement.name}`": "list row",
     "`${movement.type}:${movement.name}`": "key",
   },
+  "harness/propose-batch-view.ts": {
+    "`${type}:${name}`": "key",
+  },
   "harness/release-dialog.tsx": {
     "`${PUBLISH_RELEASE} for ${repoName}`": "dialog title",
   },

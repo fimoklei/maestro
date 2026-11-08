@@ -146,6 +146,9 @@ export class InMemoryHarnessGit implements HarnessGitPort {
   // What the remote answers; `null` lets the world decide.
   publishOutcome: PublishTagOutcome | null = null;
   pushOutcome: SkillPushOutcome | null = null;
+  // Per branch name, as `promote`: what that branch's push answers, ahead of
+  // `pushOutcome`.
+  pushOutcomes: Record<string, SkillPushOutcome> = {};
   writeOutcome: "missing" | "failed" | null = null;
   deleteOutcome: "deleted" | "failed" = "deleted";
   withdrawOutcome: WithdrawalPushOutcome | null = null;
@@ -584,11 +587,11 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     kind: ProposalKind,
     content: string | null | undefined,
   ): SkillPushOutcome {
-    const outcome = this.pushOutcome ?? "pushed";
+    const leaf = proposalBranchLeaf(ref);
+    const outcome = this.pushOutcomes[leaf] ?? this.pushOutcome ?? "pushed";
     if (outcome !== "pushed") {
       return outcome;
     }
-    const leaf = proposalBranchLeaf(ref);
     const at = this.contentAt(base) ?? { skills: {}, prompts: {} };
     const placed = <T>(map: Record<string, T>, value: T | undefined) => {
       const { [ref.name]: _replaced, ...rest } = map;

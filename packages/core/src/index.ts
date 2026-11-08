@@ -202,6 +202,13 @@ export {
   ProposalActions,
   type WithdrawError,
 } from "./harness/proposal-actions";
+export type {
+  BatchItemError,
+  BatchItemOutcome,
+  BatchProposal,
+  BatchReport,
+  ProposeBatchError,
+} from "./harness/propose-batch";
 export type { SemverStep } from "./harness/propose-release-version";
 export {
   PublishRelease,

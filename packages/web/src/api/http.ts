@@ -25,17 +25,49 @@ export async function requestJson<T>(
   });
 
   if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as {
-      message?: string;
-      error?: string;
-    } | null;
-    throw new HttpError(
-      res.status,
-      body?.message ?? `Request failed with status ${res.status}.`,
-      body?.error,
-      body,
-    );
+    throw await httpError(res);
   }
 
   return res.json() as Promise<T>;
+}
+
+async function httpError(res: Response): Promise<HttpError> {
+  const body = (await res.json().catch(() => null)) as {
+    message?: string;
+    error?: string;
+  } | null;
+  return new HttpError(
+    res.status,
+    body?.message ?? `Request failed with status ${res.status}.`,
+    body?.error,
+    body,
+  );
+}
+
+/** A streamed answer of one JSON value per line: each line as it arrives. */
+export async function requestJsonLines<T>(
+  path: string,
+  init: RequestInit,
+  onLine: (line: T) => void,
+): Promise<void> {
+  const res = await fetch(path, {
+    ...init,
+    headers: { "content-type": "application/json", ...init.headers },
+  });
+  if (!res.ok) {
+    throw await httpError(res);
+  }
+  if (res.body === null) return;
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let pending = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    pending += value ?? "";
+    const lines = pending.split("\n");
+    pending = done ? "" : (lines.pop() ?? "");
+    for (const line of lines) {
+      if (line.trim() !== "") onLine(JSON.parse(line) as T);
+    }
+    if (done) return;
+  }
 }
