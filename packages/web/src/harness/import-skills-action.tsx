@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toggleStaged } from "../inventory/bulk-selection";
+import { toggleStaged } from "../ui/bulk-selection";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import {

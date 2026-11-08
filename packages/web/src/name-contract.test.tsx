@@ -108,6 +108,9 @@ const PLAIN: Record<string, Record<string, string>> = {
   "prompts/prompts-copy.ts": {
     "`Select ${name}`": "checkbox label",
   },
+  "harness/stage-copy.ts": {
+    "`Select ${row.name} ${ITEM_WORDS[row.type].noun}`": "checkbox label",
+  },
   "registry/repositories-copy.ts": {
     "`${UNREGISTER} ${name}`": "dialog title",
   },

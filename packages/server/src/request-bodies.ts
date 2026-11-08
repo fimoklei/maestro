@@ -60,6 +60,21 @@ export const importPromptBodySchema = promptFileSchema
   .extend({ name: z.string(), frontmatter: z.string() })
   .refine(fieldsHold);
 
+// Strings only: core judges each file's fields, and a broken one is data.
+export const importPromptsBodySchema = z.object({
+  prompts: z
+    .array(
+      z.object({
+        name: z.string(),
+        frontmatter: z.string(),
+        description: z.string(),
+        text: z.string(),
+        example: z.string(),
+      }),
+    )
+    .min(1),
+});
+
 export const promptCheckBodySchema = z.object({ name: z.string() });
 
 export const promptReadBodySchema = z.object({ name: z.string() });
@@ -394,6 +409,13 @@ export const IMPORT_PROMPT_BODY: RequestShape = {
     "Nothing was imported. Reload the page, then import the prompt again.",
   detail:
     "The page must send these strings: { name, frontmatter, description, text, example }.",
+};
+
+export const IMPORT_PROMPTS_BODY: RequestShape = {
+  message:
+    "Nothing was imported. Reload the page, then import the prompts again.",
+  detail:
+    "The page must send at least one prompt: { prompts: { name, frontmatter, description, text, example }[] }.",
 };
 
 export const PROMPT_CHECK_BODY: RequestShape = {

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { type HarnessArrival, proposalRow } from "../harness/harness-route";
-import { toggleStaged } from "../inventory/bulk-selection";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
+import { toggleStaged } from "../ui/bulk-selection";
 import { useScreenReport, useWriteAction } from "../ui/use-write-action";
 import {
   localEditsCheckNotice,

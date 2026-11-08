@@ -14,6 +14,7 @@ export const EDIT_PROMPT = "Edit prompt";
 export const IMPORT = "Import";
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 export const IMPORT_PROMPT = "Import prompt";
+export const IMPORT_PROMPTS = "Import prompts";
 export const IMPORT_SKILL = "Import skill";
 export const IMPORT_SKILLS = "Import skills";
 export const PROPOSE_CHANGE = "Propose change";
