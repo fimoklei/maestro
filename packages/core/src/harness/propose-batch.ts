@@ -7,11 +7,31 @@ import { type PrimitiveRef, primitiveKey } from "./harness-primitive";
 import type { PrimitiveEntryFs } from "./harness-primitive-dir";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { type PullRequestOutcome, readOriginFacts } from "./proposal-request";
-import { type ProposeChangeError, proposeChange } from "./propose-item";
+import {
+  hashOf,
+  type ProposeChangeError,
+  type ProposeDeletionError,
+  proposeChange,
+  proposeDeletion,
+} from "./propose-item";
 import type { HarnessGitPort } from "./read-harness-state";
 
+/**
+ * One ticked item. A deletion carries the default-branch tree its
+ * confirmation showed; any other item carries none.
+ */
+export type BatchRequest = PrimitiveRef & { seenRemoteTree?: string };
+
+type Deletion = PrimitiveRef & { seenRemoteTree: string };
+
+const isDeletion = (item: BatchRequest): item is Deletion =>
+  item.seenRemoteTree !== undefined;
+
 /** One item's refusal: a single proposal's own outcome, never a new kind. */
-export type BatchItemError = "invalid-skill" | ProposeChangeError;
+export type BatchItemError =
+  | "invalid-skill"
+  | ProposeChangeError
+  | ProposeDeletionError;
 
 /** A proposed item: its branch, its compare page, and its pull request. */
 export type BatchProposal = PrimitiveRef & {
@@ -35,6 +55,8 @@ export type BatchReport = {
 export type ProposeBatchError =
   | "not-configured"
   | "no-usable-origin"
+  | "no-answer"
+  | "confirmation-stale"
   | "promote-in-progress";
 
 export type ProposeBatchResult =
@@ -58,7 +80,7 @@ export class ProposeBatch {
   // One item failing never stops the next; each keeps its own fetch and
   // re-check right before its push (#579).
   async execute(
-    items: readonly PrimitiveRef[],
+    items: readonly BatchRequest[],
     onItem: (outcome: BatchItemOutcome) => void,
   ): Promise<ProposeBatchResult> {
     const root = await this.deps.resolveRoot();
@@ -70,9 +92,13 @@ export class ProposeBatch {
       if (!facts.ok && facts.error === "no-usable-origin") {
         return { ok: false as const, error: facts.error };
       }
+      const refusal = await this.deletionsRefusal(root, items);
+      if (refusal !== null) {
+        return { ok: false as const, error: refusal };
+      }
       const outcomes: BatchItemOutcome[] = [];
-      for (const ref of distinct(items)) {
-        const outcome = await this.proposeOne(root, ref);
+      for (const item of distinct(items)) {
+        const outcome = await this.proposeOne(root, item);
         outcomes.push(outcome);
         onItem(outcome);
       }
@@ -81,14 +107,46 @@ export class ProposeBatch {
     return run.ok ? run.value : { ok: false, error: "promote-in-progress" };
   }
 
+  // A deletion the default branch moved past refuses the whole batch before
+  // any push. Other items never do (#580).
+  private async deletionsRefusal(
+    root: string,
+    items: readonly BatchRequest[],
+  ): Promise<"no-answer" | "confirmation-stale" | null> {
+    const deletions = items.filter(isDeletion);
+    if (deletions.length === 0) {
+      return null;
+    }
+    const fetched = await this.deps.fetchGate.fetchFresh(root);
+    if (fetched !== "fetched") {
+      return "no-answer";
+    }
+    const facts = await readOriginFacts(this.deps.git, root);
+    if (!facts.ok || facts.head === null) {
+      return "no-answer";
+    }
+    const remote = await this.deps.git.readPrimitives(root, facts.head);
+    if (remote === null) {
+      return "no-answer";
+    }
+    const moved = deletions.some(
+      (ref) => (hashOf(remote, ref) ?? undefined) !== ref.seenRemoteTree,
+    );
+    return moved ? "confirmation-stale" : null;
+  }
+
   private async proposeOne(
     root: string,
-    ref: PrimitiveRef,
+    item: BatchRequest,
   ): Promise<BatchItemOutcome> {
+    // Only type and name leave here: the outcome never echoes a tree.
+    const ref: PrimitiveRef = { type: item.type, name: item.name };
     if (!isValidSkillSlug(ref.name)) {
       return { ...ref, ok: false, error: "invalid-skill" };
     }
-    const result = await proposeChange(this.deps, root, ref);
+    const result = isDeletion(item)
+      ? await proposeDeletion(this.deps, root, ref, item.seenRemoteTree)
+      : await proposeChange(this.deps, root, ref);
     return result.ok
       ? {
           ...ref,
@@ -102,7 +160,7 @@ export class ProposeBatch {
 }
 
 // A repeated item would only push its own branch again.
-const distinct = (items: readonly PrimitiveRef[]): PrimitiveRef[] => {
+const distinct = <T extends PrimitiveRef>(items: readonly T[]): T[] => {
   const seen = new Set<string>();
   return items.filter((ref) => {
     const key = primitiveKey(ref);

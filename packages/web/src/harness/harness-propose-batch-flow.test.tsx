@@ -7,7 +7,6 @@ import type {
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { expectTooltipCause } from "../test-utils";
 import {
   installHarnessHooks,
   RELEASED,
@@ -19,6 +18,9 @@ import {
 import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
+
+// The default-branch tree the deleted skill's row was read against.
+const OLD_DEPLOY_TREE = "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345";
 
 const PENDING = withStages(RELEASED, {
   proposal: [
@@ -35,6 +37,7 @@ const PENDING = withStages(RELEASED, {
     }),
     row("pending-proposal", "old-deploy", "not-yet-proposed", {
       change: "deletion",
+      remoteTree: OLD_DEPLOY_TREE,
     }),
   ],
 });
@@ -42,6 +45,7 @@ const PENDING = withStages(RELEASED, {
 const CODE_REVIEW: PrimitiveRef = { type: "skill", name: "code-review" };
 const RELEASE_NOTES: PrimitiveRef = { type: "prompt", name: "release-notes" };
 const TDD: PrimitiveRef = { type: "skill", name: "tdd" };
+const OLD_DEPLOY: PrimitiveRef = { type: "skill", name: "old-deploy" };
 
 const proposal = (ref: PrimitiveRef, number: number): BatchProposal => ({
   ...ref,
@@ -267,18 +271,114 @@ describe("proposing several changes from the selection bar", () => {
     ).toBeNull();
   });
 
-  it("blocks Propose changes while the selection holds a deletion", async () => {
+  it("asks first when the selection holds a deletion, with Deleted last and the others folded", async () => {
+    const batches: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: PENDING },
+      batch: {
+        lines: streamOf({
+          proposed: [proposal(CODE_REVIEW, 101), proposal(TDD, 12)],
+          failed: [],
+        }),
+      },
+      batches,
+    });
+    renderHarness();
+    await tickThree();
+    await userEvent.click(box("old-deploy"));
+
+    await userEvent.click(proposeChanges());
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Propose 4 changes",
+    });
+    // The origin is set apart in its own element, so the paragraph is matched whole.
+    expect(
+      within(dialog).getByText(
+        (_, element) =>
+          element?.tagName === "P" &&
+          element.textContent ===
+            "1 change deletes a skill from fimoklei/agent-harness when merged.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Added · 2" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      within(dialog).getByRole("button", { name: "Changed · 1" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      within(dialog).getByRole("button", { name: "Deleted · 1" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(within(dialog).getByText("old-deploy")).toBeVisible();
+    expect(within(dialog).getByText("code-review")).not.toBeVisible();
+    const legend = (name: string) =>
+      within(dialog).getByRole("button", { name });
+    const follows = (first: HTMLElement, second: HTMLElement) =>
+      (first.compareDocumentPosition(second) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+      0;
+    expect(follows(legend("Added · 2"), legend("Changed · 1"))).toBe(true);
+    expect(follows(legend("Changed · 1"), legend("Deleted · 1"))).toBe(true);
+    expect(batches).toEqual([]);
+  });
+
+  it("sends the deletion with the tree it was confirmed against, once confirmed", async () => {
+    const batches: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: PENDING },
+      batch: {
+        lines: streamOf({
+          proposed: [proposal(CODE_REVIEW, 101), proposal(TDD, 12)],
+          failed: [],
+        }),
+      },
+      batches,
+    });
+    renderHarness();
+    await tickThree();
+    await userEvent.click(box("old-deploy"));
+    await userEvent.click(proposeChanges());
+    const dialog = await screen.findByRole("dialog", {
+      name: "Propose 4 changes",
+    });
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Propose 4 changes" }),
+    );
+
+    await within(dialog).findByRole("heading", {
+      name: "Proposed 2 of 4 changes",
+    });
+    expect(batches).toHaveLength(1);
+    expect(batches[0]?.items).toEqual(
+      expect.arrayContaining([
+        CODE_REVIEW,
+        RELEASE_NOTES,
+        TDD,
+        { ...OLD_DEPLOY, seenRemoteTree: OLD_DEPLOY_TREE },
+      ]),
+    );
+    expect(batches[0]?.items).toHaveLength(4);
+  });
+
+  it("sends nothing when the confirmation is cancelled", async () => {
     const batches: Record<string, unknown>[] = [];
     stubHarnessServer({ read: { body: PENDING }, batches });
     renderHarness();
     await screen.findByRole("checkbox", { name: "Select code-review skill" });
     await userEvent.click(box("code-review"));
     await userEvent.click(box("old-deploy"));
-
-    await expectTooltipCause(proposeChanges(), "Deselect the deleted items.");
     await userEvent.click(proposeChanges());
+    const dialog = await screen.findByRole("dialog", {
+      name: "Propose 2 changes",
+    });
 
-    expect(screen.queryByRole("dialog")).toBeNull();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(batches).toEqual([]);
   });
 });

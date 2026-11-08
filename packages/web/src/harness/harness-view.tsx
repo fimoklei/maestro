@@ -476,7 +476,14 @@ export function HarnessView({
             <ProposeBatchAction
               chosen={rows
                 .filter((row) => chosen.has(row.id))
-                .map(({ type, name, change }) => ({ type, name, change }))}
+                .map(({ type, name, change, remoteTree }) => ({
+                  type,
+                  name,
+                  change,
+                  seenRemoteTree: remoteTree,
+                }))}
+              // The host is dropped: owner/repo names it.
+              origin={state?.origin.replace(/^[^/]+\//, "") ?? ""}
               onSelectionSpent={() => setStaged(new Set())}
             />
           </SelectionBar>

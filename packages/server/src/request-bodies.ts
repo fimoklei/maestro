@@ -221,9 +221,17 @@ const primitiveRefShape = {
 
 export const primitiveRefBodySchema = z.object(primitiveRefShape);
 
-// Each item proposed in order; core re-reads every one before its push.
+// Each item proposed in order; core re-reads every one before its push. An
+// item with a seenRemoteTree is a deletion, confirmed against that tree (#580).
 export const proposeBatchBodySchema = z.object({
-  items: z.array(z.object(primitiveRefShape)).min(1),
+  items: z
+    .array(
+      z.object({
+        ...primitiveRefShape,
+        seenRemoteTree: z.string().optional(),
+      }),
+    )
+    .min(1),
 });
 
 // The number is a claim, never an authorisation: it is rechecked against a fresh read (#827).
@@ -288,7 +296,7 @@ export const PROPOSE_BATCH_BODY: RequestShape = {
   message:
     "Nothing was proposed. Reload the page, then propose the changes again.",
   detail:
-    'The request carries a non-empty items array, each item a type and a name: { items: { type: "skill" | "prompt", name: string }[] }.',
+    'The request carries a non-empty items array, each item a type and a name, and a seenRemoteTree for a deletion: { items: { type: "skill" | "prompt", name: string, seenRemoteTree?: string }[] }.',
 };
 
 export const PROPOSAL_CREATE_BODY: RequestShape = {

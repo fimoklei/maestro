@@ -246,6 +246,8 @@ export const promoteErrorResponses: ErrorTable<PromoteError> = {
 // Only what stops the whole batch; an item's refusal rides in its stream.
 export const proposeBatchErrorResponses: ErrorTable<ProposeBatchError> = {
   ...harnessErrorResponses,
+  "no-answer": { status: 409 },
+  "confirmation-stale": { status: 409 },
   "promote-in-progress": { status: 409 },
 };
 

@@ -2,7 +2,10 @@
 // item its own branch and pull request, streamed as each one finishes.
 import type { ReviewRequest } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
+import {
+  InMemoryHarnessGit,
+  treeHash,
+} from "../../packages/core/src/harness/harness-git.fake";
 import { InMemoryFileSystem } from "../../packages/core/src/registry/file-system.fake";
 import { inMemoryApp } from "../helpers/in-memory-app";
 import { type StubReview, stubReview } from "../helpers/stub-review";
@@ -400,9 +403,123 @@ describe("POST /api/harness/promote/batch refusing the whole batch", () => {
       message:
         "Nothing was proposed. Reload the page, then propose the changes again.",
       detail:
-        'The request carries a non-empty items array, each item a type and a name: { items: { type: "skill" | "prompt", name: string }[] }.',
+        'The request carries a non-empty items array, each item a type and a name, and a seenRemoteTree for a deletion: { items: { type: "skill" | "prompt", name: string, seenRemoteTree?: string }[] }.',
     });
     expect(harness.pushed).toEqual([]);
+  });
+});
+
+// `lint-fix` is on the default branch and the author deleted its folder.
+const LINT_FIX_SEEN = treeHash("lint as released");
+const deleteLintFix = (harness: InMemoryHarnessGit) => {
+  const { "lint-fix": _gone, ...rest } = harness.working;
+  harness.working = { ...rest, "code-review": "a new skill" };
+};
+const LINT_FIX_DELETION = {
+  type: "skill",
+  name: "lint-fix",
+  seenRemoteTree: LINT_FIX_SEEN,
+};
+
+describe("POST /api/harness/promote/batch with a deletion", () => {
+  it("refuses the whole batch before any push when a deleted item moved on the default branch", async () => {
+    const { app, harness } = world();
+    deleteLintFix(harness);
+    harness.commit(
+      "moved",
+      { tdd: "tdd as released", "lint-fix": "lint, changed upstream" },
+      { parent: "released", author: "teammate" },
+    );
+    harness.tip = "moved";
+
+    const { status, text } = await proposeBatch(app, [
+      { type: "skill", name: "code-review" },
+      LINT_FIX_DELETION,
+    ]);
+
+    expect(status).toBe(409);
+    expect(JSON.parse(text)).toEqual({ error: "confirmation-stale" });
+    expect(harness.pushed).toEqual([]);
+  });
+
+  it("fails a deletion that moved after the batch started alone, and the other items still run", async () => {
+    const { app, harness } = world();
+    deleteLintFix(harness);
+    // Fetches: the batch's check, then code-review's two, then lint-fix's.
+    harness.arrivals.push(
+      () => {},
+      () => {},
+      () => {},
+      () => {
+        harness.commit(
+          "merged-lint",
+          { tdd: "tdd as released", "lint-fix": "lint, merged by a teammate" },
+          { parent: "released", author: "teammate" },
+        );
+        harness.tip = "merged-lint";
+      },
+    );
+
+    const { status, lines } = await proposeBatch(app, [
+      { type: "skill", name: "code-review" },
+      LINT_FIX_DELETION,
+    ]);
+
+    expect(status).toBe(200);
+    expect(harness.pushed.map(({ name }) => name)).toEqual(["code-review"]);
+    expect(reportOf(lines)).toMatchObject({
+      proposed: [{ name: "code-review" }],
+      failed: [
+        {
+          error: "confirmation-stale",
+          items: [{ type: "skill", name: "lint-fix" }],
+        },
+      ],
+    });
+  });
+
+  it("refuses nothing when another item's change lands before the batch starts", async () => {
+    const { app, harness } = world();
+    deleteLintFix(harness);
+    harness.arrivals.push(() => {
+      harness.commit(
+        "merged-tdd",
+        { tdd: "tdd, merged by a teammate", "lint-fix": "lint as released" },
+        { parent: "released", author: "teammate" },
+      );
+      harness.tip = "merged-tdd";
+    });
+
+    const { status, lines } = await proposeBatch(app, [
+      { type: "skill", name: "code-review" },
+      LINT_FIX_DELETION,
+    ]);
+
+    expect(status).toBe(200);
+    expect(reportOf(lines)).toMatchObject({ failed: [] });
+    expect(harness.pushed.map(({ name, kind }) => [name, kind])).toEqual([
+      ["code-review", "addition"],
+      ["lint-fix", "deletion"],
+    ]);
+  });
+
+  it("gives a deletion's pull request the title and body a single deletion gives it", async () => {
+    const batch = world();
+    deleteLintFix(batch.harness);
+    await proposeBatch(batch.app, [LINT_FIX_DELETION]);
+
+    const single = world();
+    deleteLintFix(single.harness);
+    const response = await single.app.request("/api/harness/promote/deletion", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(LINT_FIX_DELETION),
+    });
+
+    expect(response.status).toBe(200);
+    expect(batch.review.created).toHaveLength(1);
+    expect(batch.review.created[0]?.title).toBe("Delete skill: lint-fix");
+    expect(batch.review.created[0]).toEqual(single.review.created[0]);
   });
 });
 

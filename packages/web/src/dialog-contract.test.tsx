@@ -620,12 +620,21 @@ const ON_DIALOG: Row[] = [
     render: ({ running, onClose }) => (
       <ProposeBatchDialog
         items={[
-          { type: "skill", name: "tdd", change: "edit" },
-          { type: "prompt", name: "pr-review", change: "addition" },
+          { type: "skill", name: "tdd", change: "edit", seenRemoteTree: null },
+          {
+            type: "prompt",
+            name: "pr-review",
+            change: "deletion",
+            seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+          },
         ]}
+        origin="fimoklei/agent-harness"
+        // A deletion asks first; once running, the confirmation is past.
+        confirming={!running}
         running={running}
         report={null}
         failure={null}
+        onConfirm={() => {}}
         onClose={onClose}
       />
     ),
