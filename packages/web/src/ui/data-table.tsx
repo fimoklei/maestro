@@ -23,10 +23,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { Checkbox } from "./checkbox";
 import { cn } from "./cn";
 import { CURRENT_ROW } from "./current-row";
 import { DataTableCard, type DataTableCardColumn } from "./data-table-card";
+import { AllCheck, checkState, RowCheck } from "./data-table-check";
 import { keyHint } from "./data-table-copy";
 import { DataTableName } from "./data-table-name";
 import { type DataTableSubRow, DataTableSubRows } from "./data-table-sub-row";
@@ -94,6 +94,12 @@ interface DataTableSelection<T> {
   allLabel?: string;
   /** Choose or drop several rows at once: select-all, or a Shift range. */
   onSetSelected?: (rows: T[], select: boolean) => void;
+  /** Whether a row carries a checkbox; none: every row does. */
+  selectable?: (row: T) => boolean;
+  /** Why a row's checkbox cannot be ticked; null: it can. */
+  blocked?: (row: T) => string | null;
+  /** Accessible name of a group header's checkbox, which picks that group's rows; null: none. */
+  groupLabel?: (key: string) => string | null;
 }
 
 /** How a screen groups its rows. */
@@ -285,14 +291,27 @@ export function DataTable<T extends RowData>({
     reportOrder.current?.(order === "" ? [] : order.split("\n"));
   }, [order]);
 
-  const chosenShown = selection
-    ? rows.filter((row) => selection.selected.has(row.id)).length
-    : 0;
-  const allShownChosen = rows.length > 0 && chosenShown === rows.length;
+  const hasBox = (row: T) => selection?.selectable?.(row) ?? true;
+  const blockedOf = (row: T) => selection?.blocked?.(row) ?? null;
+  const canTick = (row: T) => hasBox(row) && blockedOf(row) === null;
+  const tickable = (of: typeof rows) =>
+    of.filter((row) => canTick(row.original));
+  const tickableShown = tickable(rows);
+  const chosenIn = (of: typeof rows) =>
+    selection ? of.filter((row) => selection.selected.has(row.id)).length : 0;
+  const allShownChosen =
+    tickableShown.length > 0 &&
+    chosenIn(tickableShown) === tickableShown.length;
+  const setAll = (of: typeof rows, select: boolean) =>
+    selection?.onSetSelected?.(
+      of.map((row) => row.original),
+      select,
+    );
 
   const toggleRow = (index: number, shift: boolean) => {
     const row = rows[index];
     if (row === undefined || selection === undefined) return;
+    if (!canTick(row.original)) return;
     const from = rows.findIndex((each) => each.id === anchor);
     setAnchor(row.id);
     if (!shift || from === -1 || selection.onSetSelected === undefined) {
@@ -300,8 +319,8 @@ export function DataTable<T extends RowData>({
       return;
     }
     const [start, end] = from < index ? [from, index] : [index, from];
-    selection.onSetSelected(
-      rows.slice(start, end + 1).map((each) => each.original),
+    setAll(
+      tickable(rows.slice(start, end + 1)),
       !selection.selected.has(row.id),
     );
   };
@@ -362,10 +381,7 @@ export function DataTable<T extends RowData>({
           return;
         }
         event.preventDefault();
-        selection.onSetSelected(
-          rows.map((each) => each.original),
-          !allShownChosen,
-        );
+        setAll(tickableShown, !allShownChosen);
         return;
       default:
         return;
@@ -374,8 +390,27 @@ export function DataTable<T extends RowData>({
 
   const spanCount = leafColumns.length + (selection ? 1 : 0);
 
+  // A folded group's rows count too: its count says they are there. Where any
+  // group checks its rows, every header keeps the checkbox cell, so the
+  // chevrons line up.
+  const groupCheck = (key: string, of: typeof rows) => {
+    if (selection?.groupLabel === undefined) return undefined;
+    const label = selection.groupLabel(key);
+    const own = tickable(of);
+    if (label === null || own.length === 0) return null;
+    return (
+      <AllCheck
+        label={label}
+        disabled={false}
+        checked={checkState(chosenIn(own), own.length)}
+        onChange={() => setAll(own, chosenIn(own) !== own.length)}
+      />
+    );
+  };
+
   const renderRow = (row: (typeof rows)[number], index: number) => {
     const id = row.id;
+    const boxed = selection !== undefined && hasBox(row.original);
     const isSelected = selection?.selected.has(id) ?? false;
     const isOpen = id === openRowId;
     const menu: RowMenuControl = {
@@ -390,7 +425,7 @@ export function DataTable<T extends RowData>({
       <RowMenuControlContext.Provider key={id} value={menu}>
         <tr
           id={rowDomId(index)}
-          aria-selected={selection ? isSelected : undefined}
+          aria-selected={boxed ? isSelected : undefined}
           aria-current={isOpen || undefined}
           data-active={gridFocused && index === active ? true : undefined}
           // The press focuses the grid, so the cursor moves with it; on click
@@ -422,21 +457,14 @@ export function DataTable<T extends RowData>({
         >
           {selection ? (
             <GridCell className="px-inline">
-              {/* The padding lifts the 16px box to the 24px pointer floor. */}
-              {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
-              <label className="-m-1 flex w-fit cursor-pointer p-1">
-                <Checkbox
-                  tabIndex={-1}
+              {boxed ? (
+                <RowCheck
+                  label={selection.rowLabel(row.original)}
                   checked={isSelected}
-                  onClick={(event) => {
-                    // Radix toggles on click; the row's state is
-                    // the caller's, so the click is taken here.
-                    event.preventDefault();
-                    toggleRow(index, event.shiftKey);
-                  }}
-                  aria-label={selection.rowLabel(row.original)}
+                  blocked={blockedOf(row.original)}
+                  onToggle={(shift) => toggleRow(index, shift)}
                 />
-              </label>
+              ) : null}
             </GridCell>
           ) : null}
           {row.getVisibleCells().map((cell) => {
@@ -548,27 +576,15 @@ export function DataTable<T extends RowData>({
                 <th scope="col" className="w-8 px-inline">
                   <span className="sr-only">{selection.label}</span>
                   {selection.allLabel === undefined ? null : (
-                    // biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps
-                    <label className="-m-1 flex w-fit cursor-pointer p-1">
-                      <Checkbox
-                        tabIndex={-1}
-                        disabled={!showRows}
-                        checked={
-                          allShownChosen
-                            ? true
-                            : chosenShown > 0
-                              ? "indeterminate"
-                              : false
-                        }
-                        onCheckedChange={() =>
-                          selection.onSetSelected?.(
-                            rows.map((row) => row.original),
-                            !allShownChosen,
-                          )
-                        }
-                        aria-label={selection.allLabel}
-                      />
-                    </label>
+                    <AllCheck
+                      label={selection.allLabel}
+                      disabled={!showRows}
+                      checked={checkState(
+                        chosenIn(tickableShown),
+                        tickableShown.length,
+                      )}
+                      onChange={() => setAll(tickableShown, !allShownChosen)}
+                    />
                   )}
                 </th>
               ) : null}
@@ -668,6 +684,7 @@ export function DataTable<T extends RowData>({
                           : groups.collapsed.has(block.key)
                       }
                       onToggle={() => groups.onToggle(block.key)}
+                      check={groupCheck(block.key, block.all)}
                     />
                     {block.all.length === 0 ? (
                       <tr className="h-row border-divider border-b">
