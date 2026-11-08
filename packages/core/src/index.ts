@@ -207,6 +207,7 @@ export type {
   BatchItemOutcome,
   BatchProposal,
   BatchReport,
+  BatchRequest,
   ProposeBatchError,
 } from "./harness/propose-batch";
 export type { SemverStep } from "./harness/propose-release-version";

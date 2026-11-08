@@ -252,6 +252,9 @@ const checkNotConcurrent = async (
   return { ok: true, origin, head, base, kind };
 };
 
-const hashOf = (objects: HarnessObject[], ref: PrimitiveRef): string | null =>
+export const hashOf = (
+  objects: HarnessObject[],
+  ref: PrimitiveRef,
+): string | null =>
   objects.find((object) => object.type === ref.type && object.name === ref.name)
     ?.hash ?? null;

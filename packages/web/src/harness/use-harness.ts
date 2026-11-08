@@ -4,6 +4,7 @@
 import type {
   BatchItemOutcome,
   BatchReport,
+  BatchRequest,
   HarnessChange,
   HarnessPrimitiveType,
   HarnessState,
@@ -398,7 +399,7 @@ export class BatchReportMissing extends Error {}
 export function useProposeBatch(onItem: (outcome: BatchItemOutcome) => void) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (items: PrimitiveRef[]): Promise<BatchReport> => {
+    mutationFn: async (items: BatchRequest[]): Promise<BatchReport> => {
       const ended: { report?: BatchReport } = {};
       await requestJsonLines<BatchLine>(
         "/api/harness/promote/batch",

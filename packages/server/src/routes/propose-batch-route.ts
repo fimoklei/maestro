@@ -1,7 +1,7 @@
 import type {
   BatchItemOutcome,
   BatchReport,
-  PrimitiveRef,
+  BatchRequest,
 } from "@maestro/core";
 import type { Hono } from "hono";
 import type { AppDeps } from "../app-deps";
@@ -27,7 +27,10 @@ export function registerProposeBatchRoute(
       return body.response;
     }
     const items = body.data.items.map(
-      ({ type, name }): PrimitiveRef => ({ type, name }),
+      ({ type, name, seenRemoteTree }): BatchRequest =>
+        seenRemoteTree === undefined
+          ? { type, name }
+          : { type, name, seenRemoteTree },
     );
 
     const { readable, writable } = new TransformStream<Uint8Array>();
