@@ -77,7 +77,7 @@ export type FolderRow = {
   detected: boolean;
   /** The folder's reading; null where Global does not write it, or not read yet. */
   status: StatusReading | null;
-  /** The pane's visible word: the status, or Up to date where no copy deviates. */
+  /** The word its pane row and table sub-row show: the status, or Up to date where no copy deviates. */
   word: StatusReading | null;
   /** The pane's line under the path: who reads the folder, then its counts. */
   meta: string;

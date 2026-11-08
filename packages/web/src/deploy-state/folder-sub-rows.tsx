@@ -3,7 +3,7 @@ import { MachineValue } from "../ui/machine-value";
 import { StatusMark } from "../ui/status-mark";
 import type { TargetRow } from "./target-rows";
 
-/** Global's folders under its row: the path and one mark, read-only. */
+/** Global's folders under its row: the path and the word its pane row shows, read-only. */
 export function folderSubRows(
   row: Pick<TargetRow, "id" | "folders">,
 ): DataTableSubRow[] {
@@ -27,7 +27,7 @@ export function folderSubRows(
         </span>
       ),
       status:
-        folder.status === null ? null : <StatusMark reading={folder.status} />,
+        folder.word === null ? null : <StatusMark reading={folder.word} />,
     },
   }));
 }
