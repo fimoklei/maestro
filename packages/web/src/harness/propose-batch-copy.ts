@@ -7,7 +7,7 @@ import {
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
-import { named, type Phrase, phrase } from "../ui/phrase";
+import { named, namedList, type Phrase, phrase } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
 import {
   harnessHeadings,
@@ -66,6 +66,21 @@ export const PER_CHANGE_PULL_REQUEST = "Each change gets its own pull request.";
 
 const plural = (count: number, one: string, many: string) =>
   count === 1 ? one : many;
+
+// A deletion with no default-branch copy: its confirmation cannot run.
+export const NOT_IN_NEXT_RELEASE = "Not in the next release";
+
+/** Why the confirmation is blocked, naming each deletion it cannot confirm. */
+export const notInNextReleaseNotice = (
+  names: readonly string[],
+): NoticeContent => ({
+  level: "error",
+  label: NOT_IN_NEXT_RELEASE,
+  message:
+    names.length === 1
+      ? phrase`${namedList(names)} is not in the next release, so there is nothing to delete. Select ${CLOSE}, then deselect it.`
+      : phrase`${namedList(names)} are not in the next release, so there is nothing to delete. Select ${CLOSE}, then deselect them.`,
+});
 
 /** The first sentence: what the batch deletes, from which origin. */
 export const deletionsSentence = (

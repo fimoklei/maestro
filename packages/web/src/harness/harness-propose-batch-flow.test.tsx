@@ -7,6 +7,7 @@ import type {
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { expectTooltipCause, sentence } from "../test-utils";
 import {
   installHarnessHooks,
   RELEASED,
@@ -601,6 +602,54 @@ describe("proposing several changes from the selection bar", () => {
     );
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(batches).toEqual([]);
+  });
+
+  it("blocks the confirmation when a deleted item is not in the next release", async () => {
+    const batches: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [
+            row("pending-proposal", "code-review", "not-yet-proposed", {
+              change: "addition",
+            }),
+            // Only ever on its proposal branch: no default-branch tree.
+            row("pending-proposal", "old-deploy", "not-yet-proposed", {
+              change: "deletion",
+              remoteTree: null,
+            }),
+          ],
+        }),
+      },
+      batches,
+    });
+    renderHarness();
+    await screen.findByRole("checkbox", { name: "Select code-review skill" });
+    await userEvent.click(box("code-review"));
+    await userEvent.click(box("old-deploy"));
+    await userEvent.click(proposeChanges());
+    const dialog = await screen.findByRole("dialog", {
+      name: "Propose 2 changes",
+    });
+
+    const confirm = within(dialog).getByRole("button", {
+      name: "Propose 2 changes",
+    });
+    expectTooltipCause(confirm, "Not in the next release");
+    expect(
+      within(dialog).getByText(
+        sentence(
+          "old-deploy is not in the next release, so there is nothing to delete. Select Close, then deselect it.",
+        ),
+      ),
+    ).toBeVisible();
+    // The sentence names the leave control as it reads beside the failure.
+    expect(
+      within(dialog).getAllByRole("button", { name: "Close" }).at(-1),
+    ).toHaveTextContent("Close");
+    await userEvent.click(confirm);
+
     expect(batches).toEqual([]);
   });
 });

@@ -5,6 +5,7 @@ import {
   deletionsKept,
   deletionsSentence,
   noGhNotice,
+  notInNextReleaseNotice,
   PROPOSE_CHANGES,
   PROPOSED_NOTE,
   proposeBatchHeading,
@@ -21,6 +22,21 @@ describe("Propose changes copy", () => {
     expect(proposeBatchHeading(1, 1, 1)).toBe("Proposed 1 of 1 change");
     expect(proposeBatchHeading(0, 0, 9)).toBe("Proposed 0 of 9 changes");
     expect(proposeBatchHeading(7, 9, 9)).toBe("Proposed 7 of 9 changes");
+  });
+
+  it("blocks a deletion that is not in the next release, for one and several", () => {
+    const one = notInNextReleaseNotice(["old-deploy"]);
+    expect(one.label).toBe("Not in the next release");
+    expect(plainText(one.message)).toBe(
+      "old-deploy is not in the next release, so there is nothing to delete. Select Close, then deselect it.",
+    );
+    expect(
+      plainText(
+        notInNextReleaseNotice(["old-deploy", "legacy-review"]).message,
+      ),
+    ).toBe(
+      "old-deploy and legacy-review are not in the next release, so there is nothing to delete. Select Close, then deselect them.",
+    );
   });
 
   it("states once that gh is missing, for one row and several", () => {

@@ -8,9 +8,11 @@ import type {
   PrimitiveRef,
   PromoteDeletionError,
   PromoteError,
+  PullRequestRef,
 } from "@maestro/core";
 import { TYPE_WORD } from "../inventory/type-filter";
 import type { NoticeCopy } from "../ui/notice";
+import { plainText } from "../ui/phrase";
 import type { ReportGroup } from "../ui/report";
 import { CHANGE_WORD } from "./change-words";
 import { ITEM_WORDS } from "./item-words";
@@ -23,8 +25,6 @@ import {
   PULL_REQUEST_MISSING,
   PULL_REQUEST_MISSING_DETAIL,
 } from "./propose-batch-copy";
-
-type PullRequestRef = { number: number; url: string };
 
 /**
  * An item as the reader ticked it: what it is, what it changes, and for a
@@ -46,27 +46,39 @@ export const batchRequest = (item: BatchItem): BatchRequest =>
     ? {
         type: item.type,
         name: item.name,
-        // No tree to confirm: the server refuses the empty one as stale.
+        // The confirmation blocks a deletion without a tree, so the empty
+        // one never leaves; the server would refuse it as stale.
         seenRemoteTree: item.seenRemoteTree ?? "",
       }
     : { type: item.type, name: item.name };
 
-/** The confirmation's groups: Added and Changed fold shut, Deleted stays open and last. */
-export function confirmationGroups(items: readonly BatchItem[]) {
+// Items under their Change word, in the Change column's order; empty
+// groups are dropped.
+function byChange<Row>(
+  items: readonly BatchItem[],
+  rowOf: (item: BatchItem) => Row,
+) {
   return CHANGES.map((change) => {
     const rows = items.filter((item) => item.change === change);
     return {
+      change,
       tone: "neutral" as const,
       legend: `${CHANGE_WORD[change]} · ${rows.length}`,
-      folded: change !== "deletion",
-      rows: rows.map((item) => ({
-        key: keyOf(item),
-        name: item.name,
-        slots: [TYPE_WORD[item.type]],
-      })),
+      rows: rows.map(rowOf),
     };
   }).filter((group) => group.rows.length > 0);
 }
+
+/** The confirmation's groups: Added and Changed fold shut, Deleted stays open and last. */
+export const confirmationGroups = (items: readonly BatchItem[]) =>
+  byChange(items, (item) => ({
+    key: keyOf(item),
+    name: item.name,
+    slots: [TYPE_WORD[item.type]],
+  })).map(({ change, ...group }) => ({
+    ...group,
+    folded: change !== "deletion",
+  }));
 
 /** Where one item stands while the batch runs. */
 export type RunningState =
@@ -76,7 +88,7 @@ export type RunningState =
   | {
       state: "proposed";
       /** Null where the pull request is missing. */
-      pullRequest: { number: number; url: string } | null;
+      pullRequest: PullRequestRef | null;
     };
 
 /**
@@ -105,19 +117,12 @@ export function runningGroups(
           : { number: pullRequest.number, url: pullRequest.url },
     };
   };
-  return CHANGES.map((change) => {
-    const rows = items.filter((item) => item.change === change);
-    return {
-      tone: "neutral" as const,
-      legend: `${CHANGE_WORD[change]} · ${rows.length}`,
-      rows: rows.map((item) => ({
-        key: keyOf(item),
-        name: item.name,
-        type: TYPE_WORD[item.type],
-        standing: stateOf(item),
-      })),
-    };
-  }).filter((group) => group.rows.length > 0);
+  return byChange(items, (item) => ({
+    key: keyOf(item),
+    name: item.name,
+    type: TYPE_WORD[item.type],
+    standing: stateOf(item),
+  })).map(({ change: _change, ...group }) => group);
 }
 
 // A refusal reads in its own kind's words: a deletion's from the deletion
@@ -133,6 +138,12 @@ const noticeFor = (
     : promoteHeadings(words)[error as PromoteError];
 };
 
+const sameNotice = (a: NoticeCopy, b: NoticeCopy) =>
+  a.label === b.label &&
+  plainText(a.message) === plainText(b.message) &&
+  (a.detail === undefined ? "" : plainText(a.detail)) ===
+    (b.detail === undefined ? "" : plainText(b.detail));
+
 // A line covering a skill and a prompt splits where their words differ.
 function byNotice(
   error: BatchItemError,
@@ -142,9 +153,7 @@ function byNotice(
   const lines: { notice: NoticeCopy; items: PrimitiveRef[] }[] = [];
   for (const ref of refs) {
     const notice = noticeFor(error, ref, itemOf(ref));
-    const same = lines.find(
-      (line) => JSON.stringify(line.notice) === JSON.stringify(notice),
-    );
+    const same = lines.find((line) => sameNotice(line.notice, notice));
     if (same === undefined) lines.push({ notice, items: [ref] });
     else same.items.push(ref);
   }

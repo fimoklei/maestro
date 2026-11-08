@@ -185,6 +185,28 @@ export const ReportedOneMissing: Story = {
   },
 };
 
+// A ticked deletion has no copy in the next release: the confirm is blocked.
+export const ConfirmingBlocked: Story = {
+  args: {
+    running: false,
+    confirming: true,
+    items: [
+      {
+        type: "skill",
+        name: "code-review",
+        change: "addition",
+        seenRemoteTree: null,
+      },
+      {
+        type: "skill",
+        name: "old-deploy",
+        change: "deletion",
+        seenRemoteTree: null,
+      },
+    ],
+  },
+};
+
 // Another Harness write held the lock: nothing ran.
 export const Refused: Story = {
   args: {

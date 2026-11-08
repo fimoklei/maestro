@@ -1,3 +1,4 @@
+import type { PullRequestRef } from "@maestro/core";
 import { ArrowUpRight } from "lucide-react";
 import {
   isValidElement,
@@ -27,7 +28,7 @@ type ReportRow = {
   /** What the change does, as the Harness's Change column states it, such as `Added`. */
   change?: string;
   /** The pull request this row opened or updated. */
-  pullRequest?: { number: number; url: string };
+  pullRequest?: PullRequestRef;
   /** A GitHub page this row's reader opens next, such as a compare page. */
   compare?: { label: string; url: string };
   /** Why this row reads the way it does, in one or two short sentences. */

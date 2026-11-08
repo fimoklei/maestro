@@ -140,6 +140,7 @@ export type {
   HarnessReviewPort,
   HarnessReviewRead,
   NewReviewRequest,
+  PullRequestRef,
   RequestedReviewer,
   ReviewRequest,
   ReviewWriteOutcome,

@@ -1,57 +1,27 @@
 import type { BatchItemOutcome, BatchReport } from "@maestro/core";
-import { Spinner } from "../ui/button";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import type { NoticeContent } from "../ui/notice";
-import { PhraseText } from "../ui/phrase-text";
-import { PullRequestLinkList } from "../ui/pull-request-link";
 import { Report } from "../ui/report";
+import { BatchDeletionConfirmation } from "./batch-deletion-confirmation";
+import { BatchOutcomeCell } from "./batch-outcome-cell";
 import {
-  deletionsKept,
-  deletionsSentence,
-  NOT_PROPOSED,
+  NOT_IN_NEXT_RELEASE,
   noGhNotice,
-  PER_CHANGE_PULL_REQUEST,
+  notInNextReleaseNotice,
   PROPOSE_CHANGES,
-  PROPOSED,
   proposeBatchHeading,
   proposeBatchTitle,
 } from "./propose-batch-copy";
 import {
   type BatchItem,
-  confirmationGroups,
-  type RunningState,
   reportGroups,
   runningGroups,
 } from "./propose-batch-view";
 
-// The type, in spacing steps: 88px, as the release dialog sets it.
-const TYPE_SLOT = [22];
-
 // The type and the outcome, in spacing steps: 88px and 72px, as the release
 // dialog and the Harness pull-request column set them.
 const RUNNING_SLOTS = [22, 18];
-
-// What one item's row shows while the batch runs.
-function OutcomeCell({ standing }: { standing: RunningState }) {
-  switch (standing.state) {
-    case "waiting":
-      return null;
-    case "in-progress":
-      return <Spinner />;
-    case "failed":
-      return NOT_PROPOSED;
-    case "proposed":
-      return standing.pullRequest === null ? (
-        PROPOSED
-      ) : (
-        <PullRequestLinkList
-          requests={[standing.pullRequest]}
-          focusable={true}
-        />
-      );
-  }
-}
 
 const missingOf = (report: BatchReport) =>
   report.proposed.filter((each) => each.pullRequest.state === "missing").length;
@@ -84,6 +54,14 @@ export function ProposeBatchDialog({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  // The write needs each deletion's default-branch tree: without one the
+  // confirmation is blocked before the press.
+  const untreed = items
+    .filter(
+      (item) => item.change === "deletion" && item.seenRemoteTree === null,
+    )
+    .map((item) => item.name);
+  const blocked = confirming && untreed.length > 0;
   const run = dialogRun({
     // The footer holds the busy label while it runs, then only Close.
     source: confirming
@@ -91,7 +69,7 @@ export function ProposeBatchDialog({
           label: proposeBatchTitle(items.length),
           verb: "propose",
           tone: "danger",
-          unavailable: null,
+          unavailable: blocked ? NOT_IN_NEXT_RELEASE : null,
           onRun: onConfirm,
         }
       : running
@@ -117,14 +95,16 @@ export function ProposeBatchDialog({
       failure={
         report !== null && report.gh === "absent" && missingOf(report) > 0
           ? { level: "warning", ...noGhNotice(missingOf(report)) }
-          : failure
+          : blocked
+            ? notInNextReleaseNotice(untreed)
+            : failure
       }
       describedBy={null}
       fieldsChanged={false}
       onClose={onClose}
     >
       {confirming ? (
-        <DeletionConfirmation items={items} origin={origin} />
+        <BatchDeletionConfirmation items={items} origin={origin} />
       ) : report === null ? (
         failure === null ? (
           <GroupedList
@@ -134,7 +114,7 @@ export function ProposeBatchDialog({
                 ...row,
                 slots: [
                   type,
-                  <OutcomeCell key={row.key} standing={standing} />,
+                  <BatchOutcomeCell key={row.key} standing={standing} />,
                 ],
               })),
             }))}
@@ -154,38 +134,5 @@ export function ProposeBatchDialog({
         />
       )}
     </Dialog>
-  );
-}
-
-// What the deletions do, then the changes grouped by their Change word.
-function DeletionConfirmation({
-  items,
-  origin,
-}: {
-  items: readonly BatchItem[];
-  origin: string;
-}) {
-  const deletions = items.filter((item) => item.change === "deletion");
-  const skills = deletions.filter((item) => item.type === "skill").length;
-  return (
-    <div className="flex flex-col gap-cell">
-      <div className="flex flex-col gap-tight text-gray-11">
-        <p className="m-0 text-gray-12">
-          <PhraseText copy={deletionsSentence(deletions, origin)} />
-        </p>
-        <p className="m-0">{PER_CHANGE_PULL_REQUEST}</p>
-        {deletionsKept(skills, deletions.length - skills).map((sentence) => (
-          <p key={sentence} className="m-0">
-            {sentence}
-          </p>
-        ))}
-      </div>
-      <GroupedList
-        groups={confirmationGroups(items)}
-        checklist={null}
-        slots={TYPE_SLOT}
-        live={null}
-      />
-    </div>
   );
 }

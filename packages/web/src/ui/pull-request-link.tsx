@@ -1,9 +1,8 @@
+import type { PullRequestRef } from "@maestro/core";
 import { ArrowUpRight, GitPullRequestArrow } from "lucide-react";
 import { pullRequestLinkName } from "./github-link-copy";
 import { Icon } from "./icon";
 import { MachineValue } from "./machine-value";
-
-type PullRequestRef = { number: number; url: string };
 
 // The pull-request icon, then each number as a link to GitHub in a new tab.
 // Slate, not blue: blue 11 on a hovered row falls under 4.5:1.

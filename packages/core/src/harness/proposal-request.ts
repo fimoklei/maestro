@@ -8,6 +8,7 @@ import {
 import {
   type HarnessReviewPort,
   matchesProposal,
+  type PullRequestRef,
   type ReviewCreateOutcome,
   type ReviewRequest,
   waitingOn,
@@ -150,7 +151,7 @@ const retitle = async (
 // Missing: no `gh`, an unknown read, or GitHub refused to open one. `gh`
 // is absent only when the read found no `gh` to ask.
 export type PullRequestOutcome =
-  | { state: "opened" | "updated"; number: number; url: string }
+  | ({ state: "opened" | "updated" } & PullRequestRef)
   | { state: "missing"; gh: "available" | "absent" };
 
 // Read before the push, never from the cockpit: it decides open versus update.

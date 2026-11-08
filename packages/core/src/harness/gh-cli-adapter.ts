@@ -12,6 +12,7 @@ import type {
   RequestedReviewer,
   ReviewCreateOutcome,
   ReviewDecision,
+  ReviewFailure,
   ReviewRequest,
   ReviewWriteOutcome,
   ViewerRead,
@@ -306,10 +307,7 @@ export class GhCliAdapter implements HarnessReviewPort {
   private async invoke(
     origin: GitOrigin,
     args: string[],
-  ): Promise<
-    | { ok: true; stdout: string }
-    | { ok: false; error: "unavailable" | "failed" }
-  > {
+  ): Promise<{ ok: true; stdout: string } | ReviewFailure> {
     if (origin.host !== "github.com") {
       return { ok: false, error: "unavailable" };
     }

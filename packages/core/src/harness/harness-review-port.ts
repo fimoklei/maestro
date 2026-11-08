@@ -51,14 +51,17 @@ export type ViewerRead =
   | { outcome: "failed" }
   | { outcome: "unavailable" };
 
+/** A pull request as a link names it. */
+export type PullRequestRef = { number: number; url: string };
+
 // `failed` is GitHub refusing. Nothing GitHub said crosses.
-export type ReviewWriteOutcome =
-  | { ok: true }
-  | { ok: false; error: "unavailable" | "failed" };
+export type ReviewFailure = { ok: false; error: "unavailable" | "failed" };
+
+export type ReviewWriteOutcome = { ok: true } | ReviewFailure;
 
 export type ReviewCreateOutcome =
-  | { ok: true; number: number; url: string }
-  | { ok: false; error: "unavailable" | "failed" };
+  | ({ ok: true } & PullRequestRef)
+  | ReviewFailure;
 
 // `head` is already on the remote: no push happens here.
 export type NewReviewRequest = {
