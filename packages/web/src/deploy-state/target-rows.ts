@@ -160,19 +160,18 @@ const skillsMissingLines = (row: Pick<TargetRow, "folders">): Copy[] =>
   );
 
 /**
- * The pane's folder lines: each Skills missing sentence, each Not updated
- * sentence, and for an undetected tool's folder the line on which tool loads
- * its copies where one is proven.
+ * The pane's lines on undetected tools' folders: which tool loads their
+ * copies where one is proven, else how many differ. A written folder's
+ * readings sit on its own row instead.
  */
-export const folderPaneLines = (row: Pick<TargetRow, "folders">): Copy[] => [
-  ...skillsMissingLines(row),
-  ...(row.folders ?? []).flatMap((folder) => {
-    const line = folder.detected
-      ? folder.notUpdated
-      : (folder.strayCopies ?? folder.notUpdated);
+export const undetectedFolderLines = (
+  row: Pick<TargetRow, "folders">,
+): Copy[] =>
+  (row.folders ?? []).flatMap((folder) => {
+    if (folder.detected) return [];
+    const line = folder.strayCopies ?? folder.notUpdated;
     return line === null ? [] : [line];
-  }),
-];
+  });
 
 // OpenCode prefers Codex's folder over Claude Code's (#1793); the other way
 // round no tool is proven to prefer the stray copy.

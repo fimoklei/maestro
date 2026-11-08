@@ -5,6 +5,7 @@ import {
   CHECKING_LOCAL_EDITS,
   deployStateNotRead,
   folderMetaLine,
+  globalLocalEditsLine,
   localEditsLine,
   NO_FILTER_MATCH,
   NO_LONGER_RELEASED_HINT,
@@ -307,6 +308,21 @@ describe("Deploy-state copy", () => {
   it("advises importing local edits before a behind target updates", () => {
     expect(plainText(localEditsLine(["tdd", "review"], true))).toBe(
       "2 skills have changes that are not in the latest release: tdd and review. To keep them, select Import local edits before you update.",
+    );
+  });
+
+  it("counts Global's skills with local edits in one paragraph, naming none", () => {
+    expect(globalLocalEditsLine(1, false)).toBe(
+      "1 skill has changes that are not in the latest release. Select Import local edits to keep them.",
+    );
+    expect(globalLocalEditsLine(2, false)).toBe(
+      "2 skills have changes that are not in the latest release. Select Import local edits to keep them.",
+    );
+    expect(globalLocalEditsLine(1, true)).toBe(
+      "1 skill has changes that are not in the latest release. To keep them, select Import local edits before you update.",
+    );
+    expect(globalLocalEditsLine(2, true)).toBe(
+      "2 skills have changes that are not in the latest release. To keep them, select Import local edits before you update.",
     );
   });
 });

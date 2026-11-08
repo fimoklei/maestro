@@ -1,9 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { hoverOpen } from "../test-utils";
+import { hoverOpen, sentence } from "../test-utils";
 import {
   cellsOf,
+  factValue,
   findRow,
   globalAnswer,
   openPane,
@@ -147,6 +148,116 @@ describe("Deploy-state — band with a Global that reads Local edits", () => {
         name: "No targets match the filters",
       }),
     ).toBeInTheDocument();
+  });
+});
+
+// The pane paragraph's lines, found by the one it must hold.
+function paragraphLines(pane: HTMLElement, first: string) {
+  const line = within(pane).getByText(sentence(first));
+  return Array.from(
+    (line.closest("p") as HTMLElement).children,
+    (each) => each.textContent,
+  );
+}
+
+const KEEP_BEFORE_UPDATE =
+  "2 skills have changes that are not in the latest release. To keep them, select Import local edits before you update.";
+const KEEP_THEM =
+  "2 skills have changes that are not in the latest release. Select Import local edits to keep them.";
+
+describe("Deploy-state — Global pane paragraph", () => {
+  it("says to import before you update where Global is behind, naming no folder or skill", async () => {
+    stubServer(() => ({
+      global: globalWith({ missing: true, notUpdated: true, behind: true }),
+    }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    await waitFor(() =>
+      expect(paragraphLines(pane, KEEP_BEFORE_UPDATE)).toEqual([
+        KEEP_BEFORE_UPDATE,
+      ]),
+    );
+    expect(within(pane).queryByText(/missing in|still at/)).toBeNull();
+  });
+
+  it("says to import to keep them where Global is not behind", async () => {
+    stubServer(() => ({
+      global: globalWith({ missing: true, notUpdated: true, behind: false }),
+    }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    await waitFor(() =>
+      expect(paragraphLines(pane, KEEP_THEM)).toEqual([KEEP_THEM]),
+    );
+  });
+
+  it("takes the not-behind form where the update check did not run", async () => {
+    const answer = globalWith({
+      missing: false,
+      notUpdated: false,
+      behind: false,
+    });
+    stubServer(() => ({
+      global: {
+        ...answer,
+        releaseHead: { ...head("v0.4.1"), latestRelease: null },
+      },
+    }));
+    renderDeployState();
+    const pane = await openPane("Global");
+
+    await waitFor(() =>
+      expect(paragraphLines(pane, KEEP_THEM)).toEqual([KEEP_THEM]),
+    );
+  });
+
+  it("shows the Behind line and no primary in the foot where no copy holds local edits", async () => {
+    stubServer(() => ({
+      global: globalWith(
+        { missing: true, notUpdated: true, behind: true },
+        false,
+      ),
+    }));
+    renderDeployState();
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Skills missing"));
+    const pane = await openPane("Global");
+
+    const behindLine =
+      "1 of 4 deployed skills changed in v0.4.3. Select Update target to move this target to v0.4.3.";
+    expect(paragraphLines(pane, behindLine)).toEqual([behindLine]);
+    // Update target sits beside the Latest release fact, not in the foot.
+    const foot = within(pane)
+      .getByRole("button", { name: "Actions for Global" })
+      .closest("div") as HTMLElement;
+    expect(
+      within(foot)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["⋯"]);
+    expect(
+      within(factValue(pane, "Latest release") as HTMLElement).getByRole(
+        "button",
+        { name: "Update target Global" },
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no paragraph on a Global that is not behind and holds no local edits", async () => {
+    stubServer(() => ({
+      global: globalWith(
+        { missing: true, notUpdated: true, behind: false },
+        false,
+      ),
+    }));
+    renderDeployState();
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Skills missing"));
+    const pane = await openPane("Global");
+
+    expect(
+      within(pane).queryByText(/missing in|still at|changed in|changes/),
+    ).toBeNull();
   });
 });
 

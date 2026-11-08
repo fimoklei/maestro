@@ -515,7 +515,7 @@ describe("Deploy-state pane — Global folders", () => {
     expect(fact(pane, "Folder path") ?? null).toBeNull();
   });
 
-  it("counts the skills a newly detected tool's folder lacks", async () => {
+  it("counts the skills a newly detected tool's folder lacks on its row, not in the paragraph", async () => {
     const answer = globalAnswer({
       claude: [skill("code-review"), skill("tdd")],
       codex: [],
@@ -530,17 +530,14 @@ describe("Deploy-state pane — Global folders", () => {
     renderDeployState();
     const pane = await openPane("Global");
 
-    expect(
-      within(pane).getByText(
-        sentence("2 of 2 deployed skills are missing in ~/.agents/skills."),
-      ),
-    ).toBeInTheDocument();
+    expect(within(pane).queryByText(/missing in/)).toBeNull();
     const folders = within(pane).getByRole("list", { name: "Global folders" });
     expect(within(folders).getByText("Skills missing")).toBeInTheDocument();
+    expect(within(folders).getByText(/· 2 missing$/)).toBeInTheDocument();
     expect(cellsOf("Global")[1]).toBe("Skills missing");
   });
 
-  it("names the release a lagging folder's copies are still at", async () => {
+  it("marks a lagging folder Not updated on its row, not in the paragraph", async () => {
     const answer = globalAnswer(
       {
         claude: [skill("code-review", "v2.0.0"), skill("tdd", "v2.0.0")],
@@ -575,15 +572,10 @@ describe("Deploy-state pane — Global folders", () => {
     renderDeployState();
     const pane = await openPane("Global");
 
-    expect(
-      within(pane).getByText(
-        sentence(
-          "2 skills in ~/.agents/skills are still at v1.0.0, but the Target release is v2.0.0.",
-        ),
-      ),
-    ).toBeInTheDocument();
+    expect(within(pane).queryByText(/still at/)).toBeNull();
     const folders = within(pane).getByRole("list", { name: "Global folders" });
     expect(within(folders).getByText("Not updated")).toBeInTheDocument();
+    expect(within(folders).getByText(/· 2 not updated$/)).toBeInTheDocument();
   });
 
   it("tells which tool loads the copies an undetected tool's folder holds", async () => {

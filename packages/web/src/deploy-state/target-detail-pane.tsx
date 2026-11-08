@@ -5,6 +5,7 @@ import { GitHubFactLink } from "../ui/github-fact-link";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import {
   GLOBAL,
+  globalLocalEditsLine,
   localEditsLine,
   ORIGIN_NOT_READ,
   otherOriginLine,
@@ -12,7 +13,6 @@ import {
   TARGET_LABEL,
 } from "./deploy-state-copy";
 import { GlobalFolders } from "./global-folders";
-import { differingCopiesLine } from "./import-local-edits-copy";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   behindLine,
@@ -31,8 +31,11 @@ import {
   showsReadFailure,
   type TargetPaneActions,
 } from "./target-pane-actions";
-import { editedSkills, folderPaneLines, type TargetRow } from "./target-rows";
-import { useDifferingCopyFolders } from "./use-import-local-edits";
+import {
+  editedSkills,
+  type TargetRow,
+  undetectedFolderLines,
+} from "./target-rows";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
 // Update target as `update`, and the dialogs they open as `dialogs`.
@@ -94,14 +97,16 @@ export function TargetDetailPane({
   const edited = editedSkills(row.primitives);
   // Its sentence names Import local edits, which an operation withholds.
   const importable = edited.length > 0 && row.pending === undefined;
-  const differing = useDifferingCopyFolders(
-    row.wire,
-    importable && row.wire.kind === "global",
-  );
   const why = [
-    ...(row.pending ? [] : folderPaneLines(row)),
-    ...(importable ? [localEditsLine(edited, row.behind)] : []),
-    ...(importable ? differing.map(differingCopiesLine) : []),
+    ...(row.pending ? [] : undetectedFolderLines(row)),
+    // Global's rows name each skill and folder; its paragraph counts only.
+    ...(importable
+      ? [
+          row.group === GLOBAL
+            ? globalLocalEditsLine(edited.length, row.behind)
+            : localEditsLine(edited, row.behind),
+        ]
+      : []),
     // A plain behind target still says why, and which control moves it.
     ...(head && row.behind && edited.length === 0 && !row.pending && !row.pinned
       ? [behindLine(head)]

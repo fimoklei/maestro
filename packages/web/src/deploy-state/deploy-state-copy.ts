@@ -228,6 +228,10 @@ const localEditsReason = (names: readonly string[]) =>
 export const localEditsLine = (names: readonly string[], behind: boolean) =>
   phrase`${localEditsReason(names)} ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
 
+/** The Global pane's one paragraph on its local edits: a count, no folder and no skill. */
+export const globalLocalEditsLine = (count: number, behind: boolean) =>
+  `${count} ${count === 1 ? "skill has" : "skills have"} changes that are not in the latest release. ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
+
 /** The Status hover card's Local edits reason; `latest` is the newer release, null where not behind. */
 export const localEditsCardLine = (
   names: readonly string[],
