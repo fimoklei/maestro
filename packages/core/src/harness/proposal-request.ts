@@ -8,8 +8,8 @@ import {
 import {
   type HarnessReviewPort,
   matchesProposal,
+  type ReviewCreateOutcome,
   type ReviewRequest,
-  type ReviewWriteOutcome,
   waitingOn,
 } from "./harness-review-port";
 import type { HarnessChange } from "./harness-stages";
@@ -122,7 +122,7 @@ export const requestProposal = (
   review: HarnessReviewPort,
   target: ProposalTarget,
   kind: ProposalKind,
-): Promise<ReviewWriteOutcome> =>
+): Promise<ReviewCreateOutcome> =>
   review.createRequest(target.origin, {
     head: proposalBranch(target.ref),
     base: target.base,
@@ -147,13 +147,18 @@ const retitle = async (
   });
 };
 
+// Missing: no `gh`, an unknown read, or GitHub refused to open one.
+export type PullRequestOutcome =
+  | { state: "opened" | "updated"; number: number; url: string }
+  | { state: "missing" };
+
 // Read before the push, never from the cockpit: it decides open versus update.
 export const beforeProposalPush = async (
   review: HarnessReviewPort,
   target: ProposalTarget,
   kind: ProposalKind,
 ): Promise<
-  | { ok: true; afterPush: () => Promise<void> }
+  | { ok: true; afterPush: () => Promise<PullRequestOutcome> }
   | { ok: false; error: "extra-requests" | "proposed-by-other" }
 > => {
   const read = await review.readReviews(target.origin);
@@ -175,14 +180,17 @@ export const beforeProposalPush = async (
     ok: true,
     afterPush: async () => {
       if (open === null) {
-        return;
+        return { state: "missing" };
       }
       const [only] = open;
-      if (only === undefined) {
-        await requestProposal(review, target, kind);
-      } else {
+      if (only !== undefined) {
         await retitle(review, target, kind, only);
+        return { state: "updated", number: only.number, url: only.url };
       }
+      const created = await requestProposal(review, target, kind);
+      return created.ok
+        ? { state: "opened", number: created.number, url: created.url }
+        : { state: "missing" };
     },
   };
 };

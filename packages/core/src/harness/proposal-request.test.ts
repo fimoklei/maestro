@@ -55,7 +55,11 @@ function reviewWith(
     readViewer: async () => viewer,
     createRequest: async (_origin, made) => {
       created.push(made);
-      return { ok: true };
+      return {
+        ok: true,
+        number: 51,
+        url: "https://github.com/fimoklei/agent-harness/pull/51",
+      };
     },
     reopenRequest: async () => ({ ok: true }),
     closeRequest: async () => ({ ok: true }),
@@ -208,6 +212,59 @@ describe("beforeProposalPush", () => {
     const step = await beforeProposalPush(review, TARGET, "deletion");
     if (!step.ok) throw new Error("refused");
 
-    await expect(step.afterPush()).resolves.toBeUndefined();
+    await expect(step.afterPush()).resolves.toEqual({
+      state: "updated",
+      number: 45,
+      url: "https://github.com/fimoklei/agent-harness/pull/45",
+    });
+  });
+
+  it("answers with the request it opened", async () => {
+    const { review } = reviewWith(readOf([]));
+
+    const step = await beforeProposalPush(review, TARGET, "addition");
+    if (!step.ok) throw new Error("refused");
+
+    await expect(step.afterPush()).resolves.toEqual({
+      state: "opened",
+      number: 51,
+      url: "https://github.com/fimoklei/agent-harness/pull/51",
+    });
+  });
+
+  it("answers with the open request the push updated", async () => {
+    const { review } = reviewWith(readOf([request(45, "Edit skill: tdd")]));
+
+    const step = await beforeProposalPush(review, TARGET, "edit");
+    if (!step.ok) throw new Error("refused");
+
+    await expect(step.afterPush()).resolves.toEqual({
+      state: "updated",
+      number: 45,
+      url: "https://github.com/fimoklei/agent-harness/pull/45",
+    });
+  });
+
+  it.each<[string, HarnessReviewRead]>([
+    ["failed", { outcome: "failed" }],
+    ["unavailable", { outcome: "unavailable", reason: "no-gh" }],
+    ["bounded", { outcome: "read", requests: [], complete: false, limit: 100 }],
+  ])("answers with a missing request after a %s read", async (_, read) => {
+    const { review } = reviewWith(read);
+
+    const step = await beforeProposalPush(review, TARGET, "edit");
+    if (!step.ok) throw new Error("refused");
+
+    await expect(step.afterPush()).resolves.toEqual({ state: "missing" });
+  });
+
+  it("answers with a missing request when GitHub refuses to open one", async () => {
+    const { review } = reviewWith(readOf([]));
+    review.createRequest = async () => ({ ok: false, error: "failed" });
+
+    const step = await beforeProposalPush(review, TARGET, "addition");
+    if (!step.ok) throw new Error("refused");
+
+    await expect(step.afterPush()).resolves.toEqual({ state: "missing" });
   });
 });

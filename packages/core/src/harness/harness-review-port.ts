@@ -56,6 +56,10 @@ export type ReviewWriteOutcome =
   | { ok: true }
   | { ok: false; error: "unavailable" | "failed" };
 
+export type ReviewCreateOutcome =
+  | { ok: true; number: number; url: string }
+  | { ok: false; error: "unavailable" | "failed" };
+
 // `head` is already on the remote: no push happens here.
 export type NewReviewRequest = {
   head: string;
@@ -71,7 +75,7 @@ export interface HarnessReviewPort {
   createRequest(
     origin: GitOrigin,
     request: NewReviewRequest,
-  ): Promise<ReviewWriteOutcome>;
+  ): Promise<ReviewCreateOutcome>;
   reopenRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
   closeRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
   // Sets the title only: a body may hold a teammate's or the Curator's words.

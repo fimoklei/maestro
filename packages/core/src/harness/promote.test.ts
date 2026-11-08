@@ -6,8 +6,8 @@ import { InMemoryHarnessGit, skillRef } from "./harness-git.fake";
 import type {
   HarnessReviewRead,
   NewReviewRequest,
+  ReviewCreateOutcome,
   ReviewRequest,
-  ReviewWriteOutcome,
 } from "./harness-review-port";
 import { Promote } from "./promote";
 import type { HarnessFreshness } from "./read-harness-state";
@@ -28,6 +28,12 @@ const EMPTY_REVIEW: HarnessReviewRead = {
   requests: [],
   complete: true,
   limit: 100,
+};
+
+const CREATED: ReviewCreateOutcome = {
+  ok: true,
+  number: 52,
+  url: "https://github.com/fimoklei/agent-harness/pull/52",
 };
 
 const openRequest = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
@@ -68,7 +74,7 @@ function buildPromote(
     review?: HarnessReviewRead;
     onCreate?: (request: NewReviewRequest) => void;
     onEdit?: (number: number, title: string) => void;
-    createOutcome?: ReviewWriteOutcome;
+    createOutcome?: ReviewCreateOutcome;
     fetchGate?: HarnessFetchGate;
     disk?: Parameters<typeof harnessDisk>[0];
   },
@@ -97,7 +103,7 @@ function buildPromote(
       readViewer: async () => ({ outcome: "read", login: "fimoklei" }),
       createRequest: async (_origin, made) => {
         overrides?.onCreate?.(made);
-        return overrides?.createOutcome ?? { ok: true };
+        return overrides?.createOutcome ?? CREATED;
       },
       reopenRequest: async () => ({ ok: true }),
       closeRequest: async () => ({ ok: true }),

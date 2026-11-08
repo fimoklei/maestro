@@ -506,7 +506,11 @@ describe("GhCliAdapter", () => {
       body: "Proposed from the Maestro cockpit.",
     });
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({
+      ok: true,
+      number: 9,
+      url: "https://github.com/fimoklei/harness/pull/9",
+    });
     expect(calls[0]?.args).toEqual([
       "pr",
       "create",
@@ -524,6 +528,48 @@ describe("GhCliAdapter", () => {
     expect(calls[0]?.env.GH_PROMPT_DISABLED).toBe("1");
     expect(calls[0]?.timeout).toBeGreaterThan(0);
   });
+
+  it("reads the opened request's link whatever case GitHub gives the repository", async () => {
+    const { run } = fakeRun("https://github.com/Fimoklei/Harness/pull/12\n");
+
+    const result = await new GhCliAdapter({ run }).createRequest(origin, {
+      head: "maestro/tdd",
+      base: "main",
+      title: "Add skill: tdd",
+      body: "Proposed from the Maestro cockpit.",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      number: 12,
+      url: "https://github.com/Fimoklei/Harness/pull/12",
+    });
+  });
+
+  it.each([
+    ["no link at all", ""],
+    ["another repository's request", "https://github.com/acme/other/pull/9\n"],
+    ["a page that is no request", "https://github.com/fimoklei/harness/9\n"],
+    [
+      "words around the link",
+      "Warning: 1 uncommitted change\nhttps://github.com/fimoklei/harness/pull/9\n",
+    ],
+    ["a link to another host", "https://evil.example/fimoklei/harness/pull/9"],
+  ])(
+    "reports an opened request with %s as failed, letting nothing cross",
+    async (_case, stdout) => {
+      const { run } = fakeRun(stdout);
+
+      const result = await new GhCliAdapter({ run }).createRequest(origin, {
+        head: "maestro/tdd",
+        base: "main",
+        title: "Add skill: tdd",
+        body: "Proposed from the Maestro cockpit.",
+      });
+
+      expect(result).toEqual({ ok: false, error: "failed" });
+    },
+  );
 
   it("reopens and closes a request by its number, keeping the branch", async () => {
     // No `--delete-branch`: a closed proposal must stay recoverable (#827).
