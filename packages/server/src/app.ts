@@ -8,6 +8,7 @@ import { registerFolderRoutes } from "./routes/folder-routes";
 import { registerHarnessAuthoringRoutes } from "./routes/harness-authoring-routes";
 import { registerHarnessRoutes } from "./routes/harness-routes";
 import { registerInventoryRoutes } from "./routes/inventory-routes";
+import { registerProposeBatchRoute } from "./routes/propose-batch-route";
 
 export function createApp(deps: AppDeps) {
   const app = new Hono();
@@ -28,6 +29,7 @@ export function createApp(deps: AppDeps) {
   registerInventoryRoutes(app, deps);
   registerHarnessRoutes(app, deps);
   registerHarnessAuthoringRoutes(app, deps);
+  registerProposeBatchRoute(app, deps);
   registerFolderRoutes(app, deps);
   registerDeployRoutes(app, deps);
   registerCategoryRoutes(app, deps);

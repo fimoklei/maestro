@@ -24,6 +24,7 @@ import {
   PROMPT_TAKEN_NOTICE,
 } from "./harness/import-prompt-copy";
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
+import { ProposeBatchDialog } from "./harness/propose-batch-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import {
   type ReleaseWithdrawalCheck,
@@ -554,6 +555,27 @@ const ON_DIALOG: Row[] = [
         onConfirm={vi.fn()}
         discarding={running}
         discardError={null}
+      />
+    ),
+    changed: null,
+    emptyForm: null,
+    loading: null,
+    loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "harness/propose-batch-dialog.tsx",
+    heading: "Propose 2 changes",
+    render: ({ running, onClose }) => (
+      <ProposeBatchDialog
+        items={[
+          { type: "skill", name: "tdd", change: "edit" },
+          { type: "prompt", name: "pr-review", change: "addition" },
+        ]}
+        running={running}
+        report={null}
+        failure={null}
+        onClose={onClose}
       />
     ),
     changed: null,

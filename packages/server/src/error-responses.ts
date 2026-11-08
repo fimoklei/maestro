@@ -13,6 +13,7 @@ import type {
   PromoteDeletionError,
   PromoteError,
   ProposalActionError,
+  ProposeBatchError,
   PublishReleaseError,
   ReadPromptError,
   ReleasePlanError,
@@ -237,6 +238,12 @@ export const promoteErrorResponses: ErrorTable<PromoteError> = {
   "extra-requests": { status: 409 },
   "proposed-by-other": { status: 409 },
   "promote-failed": { status: 502 },
+  "promote-in-progress": { status: 409 },
+};
+
+// Only what stops the whole batch; an item's refusal rides in its stream.
+export const proposeBatchErrorResponses: ErrorTable<ProposeBatchError> = {
+  ...harnessErrorResponses,
   "promote-in-progress": { status: 409 },
 };
 

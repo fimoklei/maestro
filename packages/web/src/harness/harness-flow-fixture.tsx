@@ -97,6 +97,9 @@ export function stubHarnessServer(options: {
   };
   promote?: { body: unknown; status?: number };
   promotions?: Record<string, unknown>[];
+  // Propose changes: the stream's lines, or one body under a refusal status.
+  batch?: { lines: unknown[]; status?: number; heldUntil?: Promise<void> };
+  batches?: Record<string, unknown>[];
   // `retry` answers every call after the first.
   deletion?: {
     body: unknown;
@@ -256,6 +259,20 @@ export function stubHarnessServer(options: {
           promoted = true;
         }
         return jsonResponse(back.body, back.status);
+      }
+      if (url === "/api/harness/promote/batch") {
+        options.batches?.push(JSON.parse(String(init?.body)));
+        const batch = options.batch ?? { lines: [{}], status: 500 };
+        await batch.heldUntil;
+        const status = batch.status ?? 200;
+        if (status >= 400) {
+          return jsonResponse(batch.lines[0], status);
+        }
+        promoted = true;
+        return new Response(
+          batch.lines.map((line) => `${JSON.stringify(line)}\n`).join(""),
+          { status, headers: { "content-type": "application/x-ndjson" } },
+        );
       }
       if (url === "/api/harness/promote") {
         options.promotions?.push(JSON.parse(String(init?.body)));
