@@ -1,6 +1,7 @@
 import type {
   BatchItemError,
   BatchItemOutcome,
+  BatchProposal,
   BatchReport,
   HarnessChange,
   HarnessPrimitiveType,
@@ -12,7 +13,16 @@ import type { ReportGroup } from "../ui/report";
 import { CHANGE_WORD } from "./change-words";
 import { ITEM_WORDS } from "./item-words";
 import { promoteHeadings } from "./notice-copy";
-import { NOT_PROPOSED, PROPOSED, PROPOSED_NOTE } from "./propose-batch-copy";
+import {
+  CREATE_PULL_REQUEST_ON_GITHUB,
+  NOT_PROPOSED,
+  PROPOSED,
+  PROPOSED_NOTE,
+  PULL_REQUEST_MISSING,
+  PULL_REQUEST_MISSING_DETAIL,
+} from "./propose-batch-copy";
+
+type PullRequestRef = { number: number; url: string };
 
 /** An item as the reader ticked it: what it is and what it changes. */
 export type BatchItem = PrimitiveRef & { change: HarnessChange };
@@ -102,6 +112,20 @@ export function reportGroups(
     const item = items.find((each) => keyOf(each) === keyOf(ref));
     return item === undefined ? undefined : CHANGE_WORD[item.change];
   };
+  // A pushed branch whose pull request did not open is not proposed yet.
+  const opened: { each: BatchProposal; request: PullRequestRef }[] = [];
+  const missing: BatchProposal[] = [];
+  for (const each of report.proposed) {
+    const { pullRequest } = each;
+    if (pullRequest.state === "missing") {
+      missing.push(each);
+    } else {
+      opened.push({
+        each,
+        request: { number: pullRequest.number, url: pullRequest.url },
+      });
+    }
+  }
   return [
     {
       tone: "failed",
@@ -121,20 +145,23 @@ export function reportGroups(
       ),
     },
     {
+      tone: "attention",
+      label: PULL_REQUEST_MISSING,
+      rows: missing.map((each) => ({
+        name: each.name,
+        change: changeOf(each),
+        compare: { label: CREATE_PULL_REQUEST_ON_GITHUB, url: each.compareUrl },
+        detail: PULL_REQUEST_MISSING_DETAIL,
+      })),
+    },
+    {
       tone: "good",
       label: PROPOSED,
       note: PROPOSED_NOTE,
-      rows: report.proposed.map((each) => ({
+      rows: opened.map(({ each, request }) => ({
         name: each.name,
         change: changeOf(each),
-        ...(each.pullRequest.state === "missing"
-          ? {}
-          : {
-              pullRequest: {
-                number: each.pullRequest.number,
-                url: each.pullRequest.url,
-              },
-            }),
+        pullRequest: request,
       })),
     },
   ];

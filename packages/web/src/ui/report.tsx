@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import {
   isValidElement,
   type ReactElement,
@@ -6,6 +7,7 @@ import {
 } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
+import { Icon } from "./icon";
 import type { NoticeCopy } from "./notice";
 import type { Copy } from "./phrase";
 import { PhraseText } from "./phrase-text";
@@ -26,6 +28,8 @@ type ReportRow = {
   change?: string;
   /** The pull request this row opened or updated. */
   pullRequest?: { number: number; url: string };
+  /** A GitHub page this row's reader opens next, such as a compare page. */
+  compare?: { label: string; url: string };
   /** Why this row reads the way it does, in one or two short sentences. */
   detail?: Copy | ReactElement;
   /** A refusal or failure, stated as the same notice a single action shows. */
@@ -200,6 +204,7 @@ function BoxedRow({
           {row.name}
         </span>
         <Change change={row.change} ink={ink} />
+        <CompareLink compare={row.compare} />
         <RowAction action={row.action} />
       </span>
       {row.detail === undefined ? null : (
@@ -266,6 +271,22 @@ function Detail({ detail }: { detail: Copy | ReactElement }) {
 function Change({ change, ink }: { change?: string; ink: string }) {
   return change === undefined ? null : (
     <span className={cn("w-18 flex-none text-meta", ink)}>{change}</span>
+  );
+}
+
+// The GitHub page a row's reader opens next, in a new tab. Slate, as the
+// pull-request links are: blue 11 on a hovered row falls under 4.5:1.
+function CompareLink({ compare }: { compare?: ReportRow["compare"] }) {
+  return compare === undefined ? null : (
+    <a
+      href={compare.url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex shrink-0 items-center gap-tight rounded-control text-gray-12 text-meta no-underline hover:underline focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
+    >
+      {compare.label}
+      <Icon of={ArrowUpRight} small />
+    </a>
   );
 }
 
