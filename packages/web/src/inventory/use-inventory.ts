@@ -4,6 +4,7 @@ import type {
   InventoryResult,
 } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { requestJson } from "../api/http";
 
 type InventoryResponse = Omit<Extract<InventoryResult, { ok: true }>, "ok">;
@@ -28,10 +29,10 @@ export function useInventory({ enabled = true }: { enabled?: boolean } = {}) {
 
 /** One type's primitives, from the same cached read: a view switch sends no request. */
 export function useInventoryOf<T extends InventoryPrimitive["type"]>(type: T) {
-  return useQuery({
-    queryKey: INVENTORY_KEY,
-    queryFn: fetchInventoryPrimitives,
-    select: (data) => {
+  // A stable select keeps one failure per read; a new one each render
+  // re-renders the screen without end (#1506).
+  const select = useCallback(
+    (data: InventoryResponse) => {
       // A throw here fails this type's query only; the other types still list.
       if (data.unreadTypes.includes(type)) {
         throw new Error(`The ${type} files of the release were not read.`);
@@ -41,6 +42,12 @@ export function useInventoryOf<T extends InventoryPrimitive["type"]>(type: T) {
           primitive.type === type,
       );
     },
+    [type],
+  );
+  return useQuery({
+    queryKey: INVENTORY_KEY,
+    queryFn: fetchInventoryPrimitives,
+    select,
   });
 }
 
